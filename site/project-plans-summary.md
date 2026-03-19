@@ -245,3 +245,251 @@ Modernize transport and routing architecture
 
 
 ---
+
+## Workstream C: InfoBlox IPAM Modernization
+
+**ID:** C1 | **Status:** Ready for PMO intake | **Owner:** Network Services / Infrastructure Architecture
+
+### Purpose
+Modernize addressing, DNS, and DHCP architecture
+
+- InfoBlox as the authoritative IPAM platform
+
+- Unified DNS/DHCP governance
+
+- Cloud IPAM reconciliation (Azure/AWS/GCP)
+
+- IPAM-driven location inference for E911 and INR
+
+- Integration with SD-WAN and Telemetry pipelines
+
+- Alignment with TIC 3.0 visibility requirements
+
+
+### Scope
+#### In Scope
+
+- InfoBlox IPAM authoritative design
+
+- DNS/DHCP modernization
+
+- Cloud IPAM reconciliation (Azure, AWS, GCP)
+
+- IPAM to SD-WAN integration (location inference)
+
+- IPAM to Telemetry integration (correlation)
+
+- IPAM to CMDB synchronization
+
+- Delegated DNS zones for cloud VNETs/VPCs
+
+- IPAM governance model and lifecycle
+
+- Addressing standards and documentation
+
+
+#### Out of Scope
+
+- Legacy DNS appliances not part of InfoBlox
+
+- Non-IP-based addressing systems
+
+- IPv6-only deployments (future phase)
+
+
+### Objectives
+
+- Establish InfoBlox as the authoritative IPAM for all environments
+
+- Modernize DNS/DHCP to support cloud-first routing
+
+- Reconcile cloud-native IPAMs with on-prem IPAM
+
+- Enable accurate location inference for E911 and INR
+
+- Provide addressing telemetry to SD-WAN and SIEM
+
+- Support TIC 3.0 visibility and reporting requirements
+
+
+### Milestones
+| Milestone | Description | Target |
+|-----------|-------------|--------|
+
+| M1 | IPAM HLD complete | Month 1 |
+
+| M2 | DNS/DHCP modernization plan | Month 2 |
+
+| M3 | Cloud IPAM reconciliation | Month 3 |
+
+| M4 | IPAM to SD-WAN integration | Month 4 |
+
+| M5 | IPAM to Telemetry integration | Month 4 |
+
+| M6 | IPAM to CMDB sync | Month 5 |
+
+| M7 | Addressing governance approved | Month 5 |
+
+| M8 | IPAM lifecycle automation | Month 6 |
+
+
+### Risks & Mitigations
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+
+| Inconsistent IPAM data across environments | High | Reconciliation + authoritative governance |
+
+| DNS misconfiguration during migration | High | Phased rollout + validation |
+
+| Cloud teams bypassing IPAM | Medium | Enforce delegated zones + automation |
+
+| CMDB sync failures | Medium | API-based integration + monitoring |
+
+| Telemetry correlation gaps | Medium | Align with Workstream D |
+
+
+### Acceptance Criteria
+
+- InfoBlox is the authoritative IPAM across all environments
+
+- DNS/DHCP modernization complete and validated
+
+- Cloud IPAMs reconciled with authoritative IPAM
+
+- IPAM telemetry integrated with SD-WAN and SIEM
+
+- IPAM location inference operational for E911 and INR
+
+- Addressing governance approved and enforced
+
+- CMDB synchronization operational
+
+- Address lifecycle automation deployed
+
+
+---
+
+## Workstream D: Telemetry, Location Services, and TIC 3.0 Modernization
+
+**ID:** D1 | **Status:** Ready for PMO intake | **Owner:** Security Architecture / Network Architecture / Compliance
+
+### Purpose
+Modernize telemetry, monitoring, visibility, and compliance architecture
+
+- Unified telemetry pipeline across cloud, network, identity, and endpoints
+
+- Accurate, authoritative location services for E911 and INR
+
+- TIC 3.0 Cloud + Branch compliance
+
+- Real-time routing and Zero Trust enforcement using telemetry signals
+
+- CDM/CLAW reporting alignment
+
+
+### Scope
+#### In Scope
+
+- Unified telemetry pipeline (M365, SD-WAN, IPAM, endpoint)
+
+- Location services modernization (E911, LLDP, BSSID, IPAM inference)
+
+- TIC 3.0 Cloud Use Case package
+
+- TIC 3.0 Branch Use Case package
+
+- CDM/CLAW integration
+
+- SIEM ingestion and normalization
+
+- SLA monitoring and performance baselines
+
+- Telemetry to SD-WAN routing integration
+
+- Telemetry to Zero Trust enforcement integration
+
+
+#### Out of Scope
+
+- Replacement of SIEM platform (uses existing)
+
+- Endpoint hardware refresh
+
+- Non-FedRAMP cloud telemetry sources
+
+
+### Objectives
+
+- Establish a unified, authoritative telemetry pipeline
+
+- Fix Cloud Telemetry + Location block for INR and E911
+
+- Provide TIC 3.0 visibility and reporting
+
+- Enable telemetry-driven routing decisions in SD-WAN
+
+- Support Zero Trust enforcement across identity, network, and endpoints
+
+- Integrate telemetry with CDM/CLAW for federal reporting
+
+
+### Milestones
+| Milestone | Description | Target |
+|-----------|-------------|--------|
+
+| M1 | Telemetry HLD complete | Month 1 |
+
+| M2 | Location services modernization plan | Month 2 |
+
+| M3 | E911 dynamic location mapping | Month 3 |
+
+| M4 | IPAM-based location inference | Month 3 |
+
+| M5 | SD-WAN telemetry export operational | Month 4 |
+
+| M6 | M365 Network Telemetry integrated | Month 4 |
+
+| M7 | TIC 3.0 Cloud Use Case package | Month 5 |
+
+| M8 | TIC 3.0 Branch Use Case package | Month 6 |
+
+| M9 | CDM/CLAW integration | Month 6 |
+
+
+### Risks & Mitigations
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+
+| Telemetry gaps across systems | High | Unified pipeline + validation |
+
+| Incorrect location inference | High | IPAM + LLDP/BSSID correlation |
+
+| TIC 3.0 documentation delays | Medium | Early compliance workshops |
+
+| SIEM ingestion failures | Medium | Normalization + monitoring |
+
+| CDM/CLAW reporting gaps | Medium | API-based integration |
+
+
+### Acceptance Criteria
+
+- Unified telemetry pipeline operational
+
+- Location services accurate and validated
+
+- E911 dynamic location fully functional
+
+- IPAM-based location inference integrated
+
+- SD-WAN telemetry exported and correlated
+
+- M365 Network Telemetry integrated
+
+- TIC 3.0 Cloud + Branch packages approved
+
+- CDM/CLAW reporting operational
+
+- Telemetry signals consumed by SD-WAN and Zero Trust engines
+
+
+---
