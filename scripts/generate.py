@@ -11,24 +11,16 @@ OUTPUT_DIR = Path('site')
 
 
 def load_all_data():
-    """Load all YAML files and merge top-level keys into a unified context."""
+    """Load all YAML files from data/ into a unified context dict."""
     context = {}
-    for yaml_file in sorted(DATA_DIR.rglob('*.yml')):
+    for yaml_file in DATA_DIR.rglob('*.yml'):
+        key = yaml_file.stem.replace('-', '_')
         with open(yaml_file) as f:
-            data = yaml.safe_load(f)
-        if isinstance(data, dict):
-            context.update(data)
-        else:
-            key = yaml_file.stem.replace('-', '_')
-            context[key] = data
-    for yaml_file in sorted(DATA_DIR.rglob('*.yaml')):
+            context[key] = yaml.safe_load(f)
+    for yaml_file in DATA_DIR.rglob('*.yaml'):
+        key = yaml_file.stem.replace('-', '_')
         with open(yaml_file) as f:
-            data = yaml.safe_load(f)
-        if isinstance(data, dict):
-            context.update(data)
-        else:
-            key = yaml_file.stem.replace('-', '_')
-            context[key] = data
+            context[key] = yaml.safe_load(f)
     return context
 
 
@@ -52,7 +44,7 @@ def render_templates(context):
 def main():
     print('Loading YAML data...')
     context = load_all_data()
-    print(f'Loaded {len(context)} top-level keys: {list(context.keys())}')
+    print(f'Loaded {len(context)} data files')
 
     print('Rendering templates...')
     render_templates(context)
