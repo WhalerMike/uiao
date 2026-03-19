@@ -1,121 +1,31 @@
-# UIAO-Core
+# UIAO Document Compiler v1.0
 
-Unified Identity-Addressing-Overlay Architecture - Machine-readable data layer for federal modernization.
+The UIAO Document Compiler v1.0 is a YAML‑driven system that generates leadership‑grade modernization documents from a single canonical content graph.
 
-## Overview
+## Canon
 
-This repo replaces repetitive static documents with a structured YAML data layer + Jinja2 templates. Documents are generated on demand via GitHub Actions.
+- `canon/uiao_leadership_briefing_v1.0.yaml`  
+  This is the **source of truth** for all leadership content.
 
-## Repository Structure
+## Templates
 
-```
-uiao-core/
-  data/              # YAML Single Source of Truth
-    program.yml      # Core program data (vision, architecture, canon)
-    roadmap.yml      # TIC 3.0 roadmap and modernization timeline
-    appendices.yml   # 104-appendix canon map (A-CZ)
-  templates/         # Jinja2 templates for document generation
-    leadership-briefing.md.j2
-    program-vision.md.j2
-    unified-architecture.md.j2
-    tic3-roadmap.md.j2
-    modernization-timeline.md.j2
-  site/              # Auto-generated documents (do not edit)
-  scripts/           # Generation scripts (generate.py)
-  schemas/           # YAML validation schemas
-  .github/workflows/ # GitHub Actions for auto-generation
-```
+Located in `templates/`:
 
-## How It Works
+- `leadership_briefing_v1.0.md.j2`
+- `program_vision_v1.0.md.j2`
+- `unified_architecture_v1.0.md.j2`
+- `tic3_roadmap_v1.0.md.j2`
+- `modernization_timeline_v1.0.md.j2`
+- `fedramp22_summary_v1.0.md.j2`
+- `zero_trust_narrative_v1.0.md.j2`
+- `identity_plane_deep_dive_v1.0.md.j2`
+- `telemetry_plane_deep_dive_v1.0.md.j2`
 
-1. **Data Layer** (`data/*.yml`): All program facts stored once in YAML
-2. **Templates** (`templates/*.md.j2`): Jinja2 templates reference data fields
-3. **Generation**: On push, GitHub Actions runs `scripts/generate.py`
-4. **Output** (`site/*.md`): Generated Markdown documents
+## Generation Pipeline
 
-## Data Files
+1. Update the YAML canon in `canon/uiao_leadership_briefing_v1.0.yaml`.
+2. Run:
 
-| File | Contents | Lines |
-|------|----------|-------|
-| `program.yml` | Program vision, architecture, 17-point canon, frozen domains | ~180 |
-| `roadmap.yml` | TIC 3.0 phases, milestones, workstreams, timeline | ~150 |
-| `appendices.yml` | 104 appendix definitions across 4 families (A-Z, AA-AZ, BA-BZ, CA-CZ) | ~430 |
-
-## Generated Documents
-
-| Template | Description |
-|----------|-------------|
-| Leadership Briefing | Executive summary for CIO/CISO audience |
-| Program Vision | Full architectural vision and core thesis |
-| Unified Architecture | Seven-concept model and layer details |
-| TIC 3.0 Roadmap | Phase-by-phase implementation plan |
-| Modernization Timeline | Workstream milestones and dependencies |
-
-## Adding New Documents
-
-1. Add a new `.md.j2` template in `templates/`
-2. Reference data fields from `data/*.yml` using `{{ variable }}` syntax
-3. Push to `main` - GitHub Actions auto-generates the document
-
-## Design Principles
-
-- **Write data once**: No duplication across documents
-- **Machine-readable**: YAML structure for AI/LLM consumption
-- **On-demand generation**: Any document format from the same data
-- **Vendor-agnostic**: Templates can target any vendor or audience
-- **Version-controlled**: Full change history via Git
-
-## Classification
-
-CUI/FOUO or as appropriate
-
----
-
-## UDC Document Compiler
-
-This repository includes the **UIAO Document Compiler (UDC)** - a schema-validated, multi-format compilation pipeline that extends the base YAML + Jinja2 system.
-
-### Quick Start
-
-**Automatic:** Push changes to `data/`, `templates/`, `schemas/`, or `scripts/` and GitHub Actions runs the full pipeline.
-
-**Manual:** Go to **Actions > Generate UIAO Documents > Run workflow**.
-
-**Local:**
-```bash
-pip install -r requirements.txt
-python scripts/validate_schemas.py
-python scripts/normalize_artifacts.py
-python scripts/compile_documents.py
-```
-
-### UDC Pipeline Stages
-
-| Stage | Script | Output |
-|-------|--------|--------|
-| Validate | `scripts/validate_schemas.py` | Pass/fail against JSON schemas |
-| Normalize | `scripts/normalize_artifacts.py` | Canonical ordering in `normalized/` |
-| Compile | `scripts/compile_documents.py` | MD, DOCX, PDF, HTML in `site/` + `exports/` |
-
-### UDC Schemas
-
-Four schema pairs in `schemas/udc/` define the contract for all canon artifacts:
-- **udc_metadata** - Document identity (id, title, version, status, authors)
-- **udc_templates** - Template bindings (format, file path, field mappings)
-- **udc_pipeline** - Pipeline stage definitions
-- **udc_export** - Output format and integrity configuration
-
-### Output Formats
-
-| Format | Location | Tool |
-|--------|----------|------|
-| Markdown | `site/` | Jinja2 |
-| Word (DOCX) | `exports/` | Pandoc |
-| PDF | `exports/` | Pandoc + LaTeX |
-| HTML | `exports/` | Pandoc |
-
-Compiled exports include `exports/manifest.json` with SHA-256 hashes for integrity verification.
-
-### Full Usage Guide
-
-See **[USAGE.md](USAGE.md)** for complete documentation including local setup, authoring guides, template examples, troubleshooting, and script reference.
+   ```bash
+   python scripts/generate_docs.py
+   mkdocs build
