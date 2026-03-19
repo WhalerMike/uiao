@@ -35,18 +35,26 @@ graph TD
 **Purpose:** Maps specific vendors (Catalyst, INR, Infoblox) to the UIAO pillars.
 
 ```mermaid
-architecture-beta
-  group identity(logos:microsoft-azure)[Identity Layer]
-  group addressing(logos:infoblox)[Addressing Layer]
-  group overlay(logos:cisco)[Overlay Layer]
+graph LR
+    subgraph Identity_Layer [Identity Layer]
+        INR[Microsoft INR]
+    end
 
-  node inr(logos:microsoft-azure)[Microsoft INR] in identity
-  node ib(logos:infoblox)[Infoblox IPAM/DNS] in addressing
-  node cat(logos:cisco)[Catalyst SD-WAN] in overlay
+    subgraph Addressing_Layer [Addressing Layer]
+        IB[Infoblox IPAM/DNS]
+    end
 
-  inr -- "Policy Attribution" --> cat
-  ib -- "C1 IPAM Synchronization" --> cat
-  cat -- "D1 Telemetry" --> ib
+    subgraph Overlay_Layer [Overlay Layer]
+        CAT[Cisco Catalyst SD-WAN]
+    end
+
+    INR -- "Policy Attribution" --> CAT
+    IB -- "C1 IPAM Sync" --> CAT
+    CAT -- "D1 Telemetry" --> IB
+
+    style Identity_Layer fill:#f0f7ff,stroke:#0078d4
+    style Addressing_Layer fill:#f0fff4,stroke:#008762
+    style Overlay_Layer fill:#fff5f0,stroke:#e34326
 ```
 
 ---
@@ -86,14 +94,17 @@ sequenceDiagram
 gantt
   title UIAO Modernization Timeline (2026)
   dateFormat  YYYY-MM-DD
+
   section Phase 1: Foundation
-    TIC 3.0 Alignment         :done,    a1, 2026-01-01, 30d
-    Identity Fabric Setup     :active,  a2, 2026-02-01, 45d
+  TIC 3.0 Alignment           :done, a1, 2026-01-01, 30d
+  Identity Fabric Setup        :active, a2, 2026-02-01, 45d
+
   section Phase 2: Core Services
-    C1 IPAM Integration (Infoblox) :a3, after a2, 60d
-    D1 Telemetry (Catalyst)        :a4, after a3, 45d
+  C1 IPAM Integration (Infoblox) :a3, after a2, 60d
+  D1 Telemetry (Catalyst)        :a4, after a3, 45d
+
   section Phase 3: Overlay
-    SD-WAN Fabric Expansion   :a5, after a4, 90d
+  SD-WAN Fabric Expansion        :a5, after a4, 90d
 ```
 
 ---
@@ -104,21 +115,22 @@ gantt
 
 ```mermaid
 graph TD
-  L7[7. Application]
-  L6[6. User Identity (Microsoft INR)]
-  L5[5. Security Policy]
-  L4[4. Addressing Overlay (Infoblox)]
-  L3[3. Unified Fabric (Catalyst SD-WAN)]
-  L2[2. Transport (SD-WAN Underlay)]
-  L1[1. Physical/Cloud]
+    L7["7. Application"]
+    L6["6. User Identity (Microsoft INR)"]
+    L5["5. Security Policy"]
+    L4["4. Addressing Overlay (Infoblox)"]
+    L3["3. Unified Fabric (Catalyst SD-WAN)"]
+    L2["2. Transport (SD-WAN Underlay)"]
+    L1["1. Physical/Cloud"]
 
-  L7 --> L6
-  L6 -.-> L5
-  L5 ==> L4
-  L4 ==> L3
-  L3 --> L2
-  L2 --> L1
-  linkStyle 2,3 stroke-width:4px,fill:none,stroke:blue;
+    L7 --> L6
+    L6 -.-> L5
+    L5 ==> L4
+    L4 ==> L3
+    L3 --> L2
+    L2 --> L1
+
+    linkStyle 2,3 stroke-width:4px,fill:none,stroke:blue
 ```
 
 ---
@@ -183,22 +195,24 @@ erDiagram
 
 ```mermaid
 graph LR
-  subgraph SD_WAN_Fabric
-    EDGE1[Catalyst Edge 1000V]
-    EDGE2[Catalyst Edge 8300]
-  end
-  subgraph Core_Services_VPC
-    IB_GRID[Infoblox Grid Master]
-    IB_CP[Infoblox Cloud Platform]
-  end
-  subgraph Data_Center
-    DC_DHCP[Legacy DHCP]
-  end
+    subgraph SD_WAN_Fabric [SD-WAN Fabric]
+        EDGE1[Catalyst Edge 1000V]
+        EDGE2[Catalyst Edge 8300]
+    end
 
-  EDGE1 -- "DHCP Relay" --> IB_CP
-  EDGE2 -- "DHCP Relay" --> IB_CP
-  IB_CP <-> IB_GRID
-  IB_GRID -. "C1 Migration" .-> DC_DHCP
+    subgraph Core_Services [Core Services VPC]
+        IB_GRID[Infoblox Grid Master]
+        IB_CP[Infoblox Cloud Platform]
+    end
+
+    subgraph Data_Center [Data Center]
+        DC_DHCP[Legacy DHCP]
+    end
+
+    EDGE1 -- "DHCP Relay" --> IB_CP
+    EDGE2 -- "DHCP Relay" --> IB_CP
+    IB_CP <--> IB_GRID
+    IB_GRID -. "C1 Migration" .-> DC_DHCP
 ```
 
 ---
@@ -214,11 +228,14 @@ graph TD
     R_YML[roadmap.yml]
     A_YML[appendices.yml]
   end
+
   GEN[scripts/generate.py]
+
   subgraph Templates ["Templates folder"]
     PV_J2[program-vision.md.j2]
     TR_J2[tic3-roadmap.md.j2]
   end
+
   subgraph Generated ["Generated Docs"]
     PV_MD[site/program-vision.md]
     TR_MD[site/tic3-roadmap.md]
