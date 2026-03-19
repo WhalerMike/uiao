@@ -68,3 +68,54 @@ uiao-core/
 ## Classification
 
 CUI/FOUO or as appropriate
+
+---
+
+## UDC Document Compiler
+
+This repository includes the **UIAO Document Compiler (UDC)** - a schema-validated, multi-format compilation pipeline that extends the base YAML + Jinja2 system.
+
+### Quick Start
+
+**Automatic:** Push changes to `data/`, `templates/`, `schemas/`, or `scripts/` and GitHub Actions runs the full pipeline.
+
+**Manual:** Go to **Actions > Generate UIAO Documents > Run workflow**.
+
+**Local:**
+```bash
+pip install -r requirements.txt
+python scripts/validate_schemas.py
+python scripts/normalize_artifacts.py
+python scripts/compile_documents.py
+```
+
+### UDC Pipeline Stages
+
+| Stage | Script | Output |
+|-------|--------|--------|
+| Validate | `scripts/validate_schemas.py` | Pass/fail against JSON schemas |
+| Normalize | `scripts/normalize_artifacts.py` | Canonical ordering in `normalized/` |
+| Compile | `scripts/compile_documents.py` | MD, DOCX, PDF, HTML in `site/` + `exports/` |
+
+### UDC Schemas
+
+Four schema pairs in `schemas/udc/` define the contract for all canon artifacts:
+- **udc_metadata** - Document identity (id, title, version, status, authors)
+- **udc_templates** - Template bindings (format, file path, field mappings)
+- **udc_pipeline** - Pipeline stage definitions
+- **udc_export** - Output format and integrity configuration
+
+### Output Formats
+
+| Format | Location | Tool |
+|--------|----------|------|
+| Markdown | `site/` | Jinja2 |
+| Word (DOCX) | `exports/` | Pandoc |
+| PDF | `exports/` | Pandoc + LaTeX |
+| HTML | `exports/` | Pandoc |
+
+Compiled exports include `exports/manifest.json` with SHA-256 hashes for integrity verification.
+
+### Full Usage Guide
+
+See **[USAGE.md](USAGE.md)** for complete documentation including local setup, authoring guides, template examples, troubleshooting, and script reference.
