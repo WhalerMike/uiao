@@ -21,9 +21,21 @@ graph TD
 
 ```mermaid
 graph LR
-    INR[Microsoft INR] --> CAT[Cisco Catalyst SD-WAN]
-    IB[Infoblox IPAM] --> CAT
+    subgraph Identity
+        INR[Microsoft INR]
+    end
+    subgraph Addressing
+        IB[Infoblox IPAM]
+    end
+    subgraph Overlay
+        CAT[Cisco Catalyst]
+    end
+    INR --> CAT
+    IB --> CAT
     CAT --> IB
+    style Identity fill:#f9f,stroke:#333
+    style Addressing fill:#bbf,stroke:#333
+    style Overlay fill:#dfd,stroke:#333
 ```
 
 ---
