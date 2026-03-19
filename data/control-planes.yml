@@ -1,0 +1,260 @@
+# UIAO Control Plane Architecture Data
+# Extracted from 00_Core control plane documents
+
+control_planes:
+  - id: identity
+    name: "Identity Control Plane"
+    subtitle: "Entra ID + ICAM + Zero Trust"
+    description: "The authoritative identity control plane for the Unified Modernization Program"
+    components:
+      - name: "Microsoft Entra ID"
+        role: "Primary Identity Provider"
+        capabilities:
+          - Conditional Access (CA)
+          - MFA / SSPR
+          - Identity Protection
+          - Authentication Strength
+      - name: "ICAM Governance"
+        role: "Identity governance and compliance"
+        capabilities:
+          - NIST 800-63 Alignment
+          - OMB M-19-17 Compliance
+          - Credentialing
+          - Access Reviews
+          - Privileged Identity Management (PIM)
+          - Joiner/Mover/Leaver Automation
+      - name: "Zero Trust Policy Engine"
+        role: "Continuous access evaluation"
+        capabilities:
+          - "Identity + Device + Location + Risk"
+          - Continuous Access Evaluation (CAE)
+          - "Policy decisions exported to SD-WAN + Telemetry"
+    telemetry_feeds:
+      - Sign-in logs
+      - Risk events
+      - Conditional Access outcomes
+      - Device compliance
+      - "User risk + session risk"
+    integrations: [network, addressing, telemetry]
+    notes:
+      - "Identity is the first control plane in the modernization program"
+      - "All other planes consume identity signals"
+      - "Aligned to Zero Trust, TIC 3.0, and INR requirements"
+
+  - id: addressing
+    name: "Addressing Control Plane"
+    subtitle: "InfoBlox IPAM"
+    description: "The authoritative source of truth for identity-anchored addressing, DNS, DHCP, and cross-cloud reconciliation"
+    components:
+      - name: "InfoBlox IPAM"
+        role: "Authoritative Source of Truth"
+        capabilities:
+          - IP address allocation and tracking
+          - Subnet creation and lifecycle management
+          - DNS zone management and record authority
+          - DHCP scope governance and lease evidence
+      - name: "DNS Management"
+        role: "Authoritative DNS zones"
+        capabilities:
+          - Internal zones managed by InfoBlox
+          - Split-horizon DNS
+          - DNS evidence tied to identity/subnet/location
+      - name: "DHCP Management"
+        role: "Scope governance"
+        capabilities:
+          - Scopes defined and owned by IPAM
+          - Lease durations aligned with device identity
+          - Automatic DNS record creation from DHCP leases
+      - name: "Cloud IPAM Reconciliation"
+        role: "Multi-cloud addressing truth"
+        platforms: [Azure VNets, AWS VPCs, GCP VPCs]
+        requirements:
+          - All cloud subnets registered in InfoBlox
+          - Cloud IP assignments reconciled daily
+          - Conflicts trigger alerts and remediation
+    core_responsibilities:
+      - "IP lifecycle: allocation > assignment > reclamation"
+      - Authoritative DNS and DHCP services
+      - Cloud-native IPAM reconciliation
+      - Deterministic addressing for devices/workloads/apps
+      - Subnet ownership and segmentation alignment
+      - Emit addressing evidence to Telemetry Plane
+    governance:
+      - All assignments must originate from IPAM
+      - No manual IP assignment permitted
+      - All DNS/DHCP changes require auditable workflows
+    integrations: [identity, network, telemetry]
+    notes:
+      - "InfoBlox is the single source of truth; cloud IPAMs are reconciled, not authoritative"
+      - "DNS and DHCP are identity and location evidence systems"
+      - "IP-to-location inference is foundational for Zero Trust, INR, and compliance"
+
+  - id: network
+    name: "Network Control Plane"
+    subtitle: "Cisco Catalyst SD-WAN (Viptela/vManage)"
+    description: "A governed, identity-anchored, telemetry-driven routing and segmentation system"
+    components:
+      - name: vManage
+        role: "Centralized policy engine"
+        capabilities:
+          - Pushes routing/segmentation/security policies to WAN edges
+          - Integrates with identity and telemetry for INR
+      - name: vSmart
+        role: "Control-plane orchestrator"
+        capabilities:
+          - OMP route distribution
+          - Security and segmentation policy distribution
+      - name: vBond
+        role: "Secure orchestration"
+        capabilities:
+          - Secure control-plane connections
+          - WAN edge device authentication
+      - name: "WAN Edge Devices"
+        role: "Enforcement points"
+        capabilities:
+          - Segmentation and routing enforcement
+          - IPSEC/GRE overlay maintenance
+          - Telemetry emission
+    tic3_compliance:
+      dia:
+        - Identity-anchored policy enforcement
+        - SD-WAN-based segmentation
+        - Cloud-based inspection (SASE)
+      branch_to_cloud:
+        - Secure overlays required
+        - Identity-anchored trust
+        - Auditability and telemetry preserved
+      inspection:
+        - Inline SASE for outbound traffic
+        - SD-WAN policy enforcement for segmentation
+        - Telemetry forwarding to audit systems
+    inr:
+      description: "Identity-Aware Routing"
+      signals: [user_identity, device_identity, app_identity, conditional_access_posture]
+      enables: [per_user_routing, per_app_path_selection, zero_trust_segmentation]
+      requires: [telemetry_plane, ipam_plane]
+    cloud_onramp:
+      optimizes: [Exchange Online, SharePoint Online, Teams media flows]
+      uses: [real_time_wan_telemetry, m365_performance_metrics]
+      ensures: [local_breakout, optimal_path_selection, tic3_compliance]
+    integrations: [identity, addressing, telemetry]
+    notes:
+      - "SD-WAN is the orchestration substrate, not the source of truth"
+      - "INR is the convergence point where identity, telemetry, and routing unify"
+      - "TIC 3.0 compliance through identity-anchored routing and telemetry-driven governance"
+
+  - id: telemetry
+    name: "Telemetry Control Plane"
+    subtitle: "Detection, diagnosis, governance, and automation"
+    description: "The substrate of truth for detection, diagnosis, governance, and automation"
+    components:
+      - name: "Splunk / Sentinel"
+        role: "Aggregation, correlation, compliance"
+      - name: "Azure Monitor / CloudWatch"
+        role: "Cloud-native telemetry"
+      - name: "ThousandEyes / Riverbed"
+        role: "Network path truth"
+      - name: "InfoBlox"
+        role: "DNS/DHCP/IPAM evidence"
+      - name: "Defender / MINR"
+        role: "Endpoint truth"
+    domains:
+      endpoint: ["OS/process/resource metrics", "Defender/MINR signals", "File integrity events"]
+      network: ["Flow logs, DNS logs, routing evidence", "SD-WAN, ThousandEyes, Riverbed"]
+      cloud: ["Azure Monitor, CloudWatch, GCP Ops", "API calls, workload metrics, identity events"]
+      conversation: ["ServiceNow tickets", "GitOps logs", "Automation transcripts"]
+    required_types:
+      metrics: ["CPU, memory, disk, I/O", "Network throughput", "API latency"]
+      logs: ["System, application, security, access", "DNS, DHCP, IPAM lifecycle"]
+      events: ["Authentication", "Service restarts", "Network path changes"]
+      traces: ["Distributed transaction traces", "API call chains"]
+    retention:
+      metrics: "13 months"
+      logs: "7 years"
+      events: "3 years"
+      traces: "90 days"
+    core_responsibilities:
+      - Collect, normalize, and correlate telemetry across all domains
+      - Tamper-proof storage for audit and compliance
+      - Real-time signals to Identity, Network, and Addressing planes
+      - Detect anomalies, drift, and misconfigurations
+      - Enable closed-loop automation and remediation
+      - Dashboards that express operational truth
+    integrations: [identity, network, addressing, endpoint]
+    notes:
+      - "Telemetry is the control plane that validates all other planes"
+      - "No signal is trusted unless correlated across identity, addressing, and network context"
+      - "Dashboards must express truth, not noise"
+
+  - id: endpoint
+    name: "Endpoint Control Plane"
+    subtitle: "Identity-anchored, telemetry-driven device governance"
+    description: "The identity-anchored, telemetry-driven governance layer for all devices"
+    device_types: [laptops, servers, mobile_devices, VMs, containers]
+    components:
+      - name: "Defender / MINR"
+        role: "Endpoint detection and response"
+      - name: "Intune"
+        role: "Configuration and compliance management"
+      - name: "Entra ID Device Objects"
+        role: "Device identity anchoring"
+    core_responsibilities:
+      - Device identity and compliance posture
+      - Configuration baselines and OS hardening
+      - Application control, patching, vulnerability remediation
+      - Emit endpoint telemetry to Telemetry Plane
+      - Provide device evidence to Identity and Network planes
+      - Support Zero Trust segmentation and INR
+    device_identity:
+      anchored_in: ["Entra ID device objects", "Certificates (TPM-backed)", "Intune compliance state"]
+      used_for: ["Conditional Access", "INR routing decisions", "Segmentation boundaries"]
+    patch_management:
+      cadence: "Monthly baseline"
+      emergency: "With justification"
+      scanning: ["Defender ATP", "Cloud-native scanners"]
+    integrations: [identity, network, addressing, telemetry]
+    notes:
+      - "Endpoint identity is the foundation of Zero Trust"
+      - "No device is trusted unless identity-anchored, telemetry-visible, and policy-compliant"
+
+  - id: security
+    name: "Security Control Plane"
+    subtitle: "Zero Trust enforcement, validation, and assurance"
+    description: "The enforcement, validation, and assurance substrate for Zero Trust across all systems, identities, networks, and workloads"
+    core_responsibilities:
+      - Authentication, authorization, and access control
+      - Zero Trust segmentation across identity, network, and endpoint
+      - Continuous risk evaluation and adaptive policy enforcement
+      - Threat detection and response using correlated telemetry
+      - Vulnerability management and attack-surface reduction
+      - Audit-ready evidence for compliance and governance
+    zero_trust:
+      verify_across: [Identity, Device, Network_path, Application, Data]
+      enforcement_requires:
+        - "Identity Plane for user/device/app identity"
+        - "Endpoint Plane for device posture"
+        - "Network Plane for segmentation"
+        - "Telemetry Plane for behavioral evidence"
+      policies: [Conditional_Access, Micro-segmentation, Least_privilege, Continuous_validation]
+    threat_detection:
+      sources: [Defender_ATP, Entra_ID_Protection, "SIEM (Splunk/Sentinel)", "Network telemetry (SD-WAN, TE, Riverbed)", DNS/DHCP/IPAM_evidence]
+      response_actions: [Automated_containment, Session_revocation, Device_quarantine, Network_isolation]
+    integrations: [identity, network, addressing, telemetry, endpoint]
+    notes:
+      - "Security Plane is the enforcement substrate that ties all other planes together"
+      - "All access, routing, and system behavior must be identity-anchored, policy-validated, and telemetry-verified"
+
+# Cross-plane integration matrix
+integration_matrix:
+  identity:
+    provides_to_all: ["User identity", "Device identity", "App identity", "Conditional Access posture", "Risk signals"]
+  addressing:
+    provides_to_all: ["IP-to-identity mapping", "DNS evidence", "Subnet classification", "Location inference"]
+  network:
+    provides_to_all: ["Routing decisions", "Segmentation enforcement", "Tunnel health", "Path performance"]
+  telemetry:
+    provides_to_all: ["Correlated evidence", "Anomaly detection", "Drift detection", "Behavioral analysis"]
+  endpoint:
+    provides_to_all: ["Device compliance", "Health posture", "Authentication evidence", "Process metrics"]
+  security:
+    provides_to_all: ["Zero Trust enforcement", "Threat detection", "Access control", "Audit evidence"]
