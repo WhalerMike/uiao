@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UIAO-Core | Document Compiler</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uswds/3.7.1/css/uswds.min.css">
+  <style>
+    :root {
+      --uiao-primary: #1b3a4b;
+      --uiao-accent: #2e8bc0;
+      --uiao-light: #f0f4f8;
+      --uiao-success: #00a91c;
+      --uiao-warning: #e5a000;
+    }
+    body { font-family: 'Source Sans Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 0; background: var(--uiao-light); }
+    .usa-banner { background: #f0f0f0; }
+    .usa-banner__inner { max-width: 1200px; margin: 0 auto; padding: 4px 16px; font-size: 12px; color: #1b1b1b; }
+    .site-header { background: var(--uiao-primary); color: #fff; padding: 16px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .site-header__inner { max-width: 1200px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; }
+    .site-header h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px; }
+    .site-header p { margin: 4px 0 0; font-size: 14px; opacity: 0.85; }
+    .site-nav { display: flex; gap: 24px; }
+    .site-nav a { color: #fff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 4px 0; border-bottom: 2px solid transparent; transition: border-color 0.2s; }
+    .site-nav a:hover, .site-nav a.active { border-bottom-color: var(--uiao-accent); }
+    .main-content { max-width: 1200px; margin: 0 auto; padding: 32px 16px; }
+    .dashboard-grid { display: grid; grid-template-columns: 280px 1fr; gap: 24px; }
+    .sidebar { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .sidebar h3 { margin: 0 0 16px; font-size: 16px; color: var(--uiao-primary); border-bottom: 2px solid var(--uiao-accent); padding-bottom: 8px; }
+    .sidebar ul { list-style: none; padding: 0; margin: 0; }
+    .sidebar li { margin-bottom: 4px; }
+    .sidebar a { display: block; padding: 8px 12px; color: #1b1b1b; text-decoration: none; border-radius: 4px; font-size: 14px; transition: background 0.15s; }
+    .sidebar a:hover { background: var(--uiao-light); }
+    .sidebar a.active { background: var(--uiao-accent); color: #fff; }
+    .content-area { display: flex; flex-direction: column; gap: 24px; }
+    .card { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .card h2 { margin: 0 0 16px; font-size: 20px; color: var(--uiao-primary); }
+    .card p { margin: 0 0 12px; color: #565c65; line-height: 1.6; }
+    .status-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .status-badge.success { background: #d4edda; color: #155724; }
+    .status-badge.pending { background: #fff3cd; color: #856404; }
+    .status-badge.error { background: #f8d7da; color: #721c24; }
+    .doc-table { width: 100%; border-collapse: collapse; }
+    .doc-table th { text-align: left; padding: 10px 12px; background: var(--uiao-primary); color: #fff; font-size: 13px; font-weight: 600; }
+    .doc-table td { padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 14px; }
+    .doc-table tr:hover { background: var(--uiao-light); }
+    .btn { display: inline-block; padding: 8px 20px; border: none; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s; }
+    .btn-primary { background: var(--uiao-accent); color: #fff; }
+    .btn-primary:hover { background: #2577a3; }
+    .btn-secondary { background: #dfe1e2; color: #1b1b1b; }
+    .btn-secondary:hover { background: #c6cace; }
+    .btn-sm { padding: 4px 12px; font-size: 12px; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .generate-section { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--uiao-light); border-radius: 6px; margin-bottom: 16px; }
+    .generate-section select { padding: 8px 12px; border: 1px solid #c6cace; border-radius: 4px; font-size: 14px; }
+    .doc-viewer { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 32px; min-height: 400px; font-size: 15px; line-height: 1.8; }
+    .doc-viewer h1 { color: var(--uiao-primary); border-bottom: 3px solid var(--uiao-accent); padding-bottom: 8px; }
+    .doc-viewer h2 { color: var(--uiao-primary); margin-top: 24px; }
+    .pipeline-steps { display: flex; gap: 0; align-items: center; margin: 16px 0; }
+    .pipeline-step { background: #fff; border: 2px solid #dfe1e2; padding: 12px 20px; text-align: center; min-width: 140px; position: relative; }
+    .pipeline-step.active { border-color: var(--uiao-accent); background: #e8f4fd; }
+    .pipeline-step.done { border-color: var(--uiao-success); background: #d4edda; }
+    .pipeline-arrow { font-size: 24px; color: #aeb0b5; margin: 0 4px; }
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: #fff; border-radius: 8px; padding: 16px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-top: 3px solid var(--uiao-accent); }
+    .stat-card .stat-num { font-size: 32px; font-weight: 700; color: var(--uiao-primary); }
+    .stat-card .stat-label { font-size: 12px; color: #71767a; text-transform: uppercase; letter-spacing: 0.5px; }
+    .footer { background: var(--uiao-primary); color: rgba(255,255,255,0.7); padding: 24px 0; margin-top: 48px; text-align: center; font-size: 13px; }
+    #loading { display: none; }
+    .spinner { border: 3px solid #dfe1e2; border-top: 3px solid var(--uiao-accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } .stats-row { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+  <!-- US Gov Banner -->
+  <div class="usa-banner">
+    <div class="usa-banner__inner">
+      <img src="https://designsystem.digital.gov/img/us_flag_small.png" alt="U.S. flag" style="height:11px;margin-right:6px;vertical-align:middle;">
+      An official website of the United States government
+    </div>
+  </div>
+
+  <!-- Site Header -->
+  <header class="site-header">
+    <div class="site-header__inner">
+      <div>
+        <h1>UIAO-Core</h1>
+        <p>Unified Identity-Addressing-Overlay Architecture &mdash; Document Compiler</p>
+      </div>
+      <nav class="site-nav">
+        <a href="#" class="active" onclick="showPage('dashboard')">Dashboard</a>
+        <a href="#" onclick="showPage('documents')">Documents</a>
+        <a href="#" onclick="showPage('pipeline')">Pipeline</a>
+        <a href="#" onclick="showPage('viewer')">Viewer</a>
+        <a href="https://github.com/WhalerMike/uiao-core" target="_blank">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">Data Files</div></div>
+      <div class="stat-card"><div class="stat-num">5</div><div class="stat-label">Templates</div></div>
+      <div class="stat-card"><div class="stat-num">5</div><div class="stat-label">Generated Docs</div></div>
+      <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">Output Formats</div></div>
+    </div>
+
+    <!-- Dashboard Grid -->
+    <div class="dashboard-grid">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <h3>Documents</h3>
+        <ul>
+          <li><a href="#" class="active" onclick="loadDoc('leadership-briefing')">Leadership Briefing</a></li>
+          <li><a href="#" onclick="loadDoc('program-vision')">Program Vision</a></li>
+          <li><a href="#" onclick="loadDoc('unified-architecture')">Unified Architecture</a></li>
+          <li><a href="#" onclick="loadDoc('tic3-roadmap')">TIC 3.0 Roadmap</a></li>
+          <li><a href="#" onclick="loadDoc('modernization-timeline')">Modernization Timeline</a></li>
+        </ul>
+        <h3 style="margin-top:24px;">Data Sources</h3>
+        <ul>
+          <li><a href="#">program.yml</a></li>
+          <li><a href="#">roadmap.yml</a></li>
+          <li><a href="#">appendices.yml</a></li>
+        </ul>
+        <h3 style="margin-top:24px;">Schemas</h3>
+        <ul>
+          <li><a href="#">udc_metadata</a></li>
+          <li><a href="#">udc_templates</a></li>
+          <li><a href="#">udc_pipeline</a></li>
+          <li><a href="#">udc_export</a></li>
+        </ul>
+      </div>
+
+      <!-- Content Area -->
+      <div class="content-area">
+        <!-- PAGE: Dashboard -->
+        <div id="page-dashboard">
+          <div class="card">
+            <h2>Generate Documents</h2>
+            <div class="generate-section">
+              <select id="docSelect">
+                <option value="all">All Documents</option>
+                <option value="leadership-briefing">Leadership Briefing</option>
+                <option value="program-vision">Program Vision</option>
+                <option value="unified-architecture">Unified Architecture</option>
+                <option value="tic3-roadmap">TIC 3.0 Roadmap</option>
+                <option value="modernization-timeline">Modernization Timeline</option>
+              </select>
+              <select id="formatSelect">
+                <option value="md">Markdown</option>
+                <option value="docx">Word (DOCX)</option>
+                <option value="pdf">PDF</option>
+                <option value="html">HTML</option>
+              </select>
+              <button class="btn btn-primary" onclick="generateDoc()">Generate</button>
+              <span id="loading"><span class="spinner"></span>Generating...</span>
+            </div>
+            <h2>Pipeline Status</h2>
+            <div class="pipeline-steps">
+              <div class="pipeline-step done"><strong>Validate</strong><br><small>Schemas OK</small></div>
+              <span class="pipeline-arrow">&rarr;</span>
+              <div class="pipeline-step done"><strong>Normalize</strong><br><small>Ordered</small></div>
+              <span class="pipeline-arrow">&rarr;</span>
+              <div class="pipeline-step done"><strong>Compile</strong><br><small>5 docs</small></div>
+              <span class="pipeline-arrow">&rarr;</span>
+              <div class="pipeline-step done"><strong>Export</strong><br><small>Ready</small></div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Recent Documents</h2>
+            <table class="doc-table">
+              <thead><tr><th>Document</th><th>Template</th><th>Last Generated</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                <tr><td>Leadership Briefing</td><td>leadership-briefing.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('leadership-briefing')">View</button><button class="btn btn-secondary btn-sm">DOCX</button><button class="btn btn-secondary btn-sm">PDF</button></div></td></tr>
+                <tr><td>Program Vision</td><td>program-vision.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('program-vision')">View</button><button class="btn btn-secondary btn-sm">DOCX</button><button class="btn btn-secondary btn-sm">PDF</button></div></td></tr>
+                <tr><td>Unified Architecture</td><td>unified-architecture.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('unified-architecture')">View</button><button class="btn btn-secondary btn-sm">DOCX</button><button class="btn btn-secondary btn-sm">PDF</button></div></td></tr>
+                <tr><td>TIC 3.0 Roadmap</td><td>tic3-roadmap.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('tic3-roadmap')">View</button><button class="btn btn-secondary btn-sm">DOCX</button><button class="btn btn-secondary btn-sm">PDF</button></div></td></tr>
+                <tr><td>Modernization Timeline</td><td>modernization-timeline.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('modernization-timeline')">View</button><button class="btn btn-secondary btn-sm">DOCX</button><button class="btn btn-secondary btn-sm">PDF</button></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PAGE: Viewer (hidden by default) -->
+        <div id="page-viewer" style="display:none;">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h2 id="viewer-title">Document Viewer</h2>
+              <div class="btn-group">
+                <button class="btn btn-secondary btn-sm" onclick="window.print()">Print</button>
+                <button class="btn btn-primary btn-sm" onclick="showPage('dashboard')">Back</button>
+              </div>
+            </div>
+            <div id="doc-viewer" class="doc-viewer">
+              <p style="color:#71767a;text-align:center;padding:60px 0;">Select a document from the sidebar to view it here.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- PAGE: Pipeline -->
+        <div id="page-pipeline" style="display:none;">
+          <div class="card">
+            <h2>UDC Pipeline</h2>
+            <p>The UIAO Document Compiler runs a three-stage pipeline on every push to <code>main</code>.</p>
+            <table class="doc-table">
+              <thead><tr><th>Stage</th><th>Script</th><th>Output</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td><strong>1. Validate</strong></td><td>scripts/validate_schemas.py</td><td>Pass/fail against JSON schemas</td><td><span class="status-badge success">Pass</span></td></tr>
+                <tr><td><strong>2. Normalize</strong></td><td>scripts/normalize_artifacts.py</td><td>Canonical ordering in normalized/</td><td><span class="status-badge success">Pass</span></td></tr>
+                <tr><td><strong>3. Compile</strong></td><td>scripts/compile_documents.py</td><td>MD, DOCX, PDF, HTML output</td><td><span class="status-badge success">Pass</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PAGE: Documents List -->
+        <div id="page-documents" style="display:none;">
+          <div class="card">
+            <h2>Document Library</h2>
+            <p>All generated documents from the UIAO-Core data layer.</p>
+            <table class="doc-table">
+              <thead><tr><th>Document</th><th>Description</th><th>Formats</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Leadership Briefing</strong></td><td>Executive summary for CIO/CISO audience</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm">MD</button><button class="btn btn-secondary btn-sm">DOCX</button><button class="btn btn-secondary btn-sm">PDF</button><button class="btn btn-secondary btn-sm">HTML</button></div></td></tr>
+                <tr><td><strong>Program Vision</strong></td><td>Full architectural vision and core thesis</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm">MD</button><button class="btn btn-secondary btn-sm">DOCX</button><button class="btn btn-secondary btn-sm">PDF</button><button class="btn btn-secondary btn-sm">HTML</button></div></td></tr>
+                <tr><td><strong>Unified Architecture</strong></td><td>Seven-concept model and layer details</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm">MD</button><button class="btn btn-secondary btn-sm">DOCX</button><button class="btn btn-secondary btn-sm">PDF</button><button class="btn btn-secondary btn-sm">HTML</button></div></td></tr>
+                <tr><td><strong>TIC 3.0 Roadmap</strong></td><td>Phase-by-phase implementation plan</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm">MD</button><button class="btn btn-secondary btn-sm">DOCX</button><button class="btn btn-secondary btn-sm">PDF</button><button class="btn btn-secondary btn-sm">HTML</button></div></td></tr>
+                <tr><td><strong>Modernization Timeline</strong></td><td>Workstream milestones and dependencies</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm">MD</button><button class="btn btn-secondary btn-sm">DOCX</button><button class="btn btn-secondary btn-sm">PDF</button><button class="btn btn-secondary btn-sm">HTML</button></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /content-area -->
+    </div><!-- /dashboard-grid -->
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div>UIAO-Core &mdash; Unified Identity-Addressing-Overlay Architecture</div>
+    <div style="margin-top:4px;">Classification: CUI/FOUO or as appropriate &bull; Machine-generated via UDC Pipeline</div>
+  </footer>
+
+  <!-- Markdown renderer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    const REPO = 'WhalerMike/uiao-core';
+    const BRANCH = 'main';
+
+    function showPage(page) {
+      document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
+      const target = document.getElementById('page-' + page);
+      if (target) target.style.display = 'block';
+      document.querySelectorAll('.site-nav a').forEach(a => a.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    async function loadDoc(slug) {
+      showPageDirect('viewer');
+      const viewer = document.getElementById('doc-viewer');
+      const title = document.getElementById('viewer-title');
+      viewer.innerHTML = '<p style="text-align:center;padding:40px;"><span class="spinner"></span> Loading document...</p>';
+      title.textContent = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      try {
+        const url = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/site/' + slug + '.md';
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('Not found');
+        const md = await resp.text();
+        viewer.innerHTML = marked.parse(md);
+      } catch(e) {
+        viewer.innerHTML = '<p style="color:#d54309;text-align:center;padding:40px;">Could not load document: ' + slug + '.md<br><small>' + e.message + '</small></p>';
+      }
+    }
+
+    function showPageDirect(page) {
+      document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
+      const target = document.getElementById('page-' + page);
+      if (target) target.style.display = 'block';
+    }
+
+    function generateDoc() {
+      const doc = document.getElementById('docSelect').value;
+      const fmt = document.getElementById('formatSelect').value;
+      const loading = document.getElementById('loading');
+      loading.style.display = 'inline';
+      setTimeout(() => {
+        loading.style.display = 'none';
+        if (doc === 'all') {
+          alert('Generation triggered for all documents in ' + fmt.toUpperCase() + ' format.\n\nIn production, this calls the GitHub Actions API to run the UDC pipeline.');
+        } else {
+          loadDoc(doc);
+        }
+      }, 2000);
+    }
+  </script>
+</body>
+</html>
