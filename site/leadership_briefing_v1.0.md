@@ -173,4 +173,18 @@ intune:
 
 ---
 
+# Vibrant Visualizations
+
+### Modernization Journey
+![Modernization Atlas](../visuals/uiao-vibrant-modernization-atlas.png "TIC 3.0 Before & After")
+
+### FedRAMP 20x Governance Loop
+![20x Governance Hub](../visuals/uiao-vibrant-20x-governance-hub.png "Continuous Monitoring Evidence")
+
+### Identity-to-IP Architecture
+![Identity Mapping](../visuals/uiao-vibrant-u-plus-a-mapping.png "NIST 800-53 IA-2 / CM-8")
+
+---
+
+
 *End of Leadership Briefing v1.0*
