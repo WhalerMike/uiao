@@ -1,0 +1,37 @@
+name: Generate Pitch Artifacts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'canon/uiao_pitch_deck_v1.0.yaml'
+      - 'canon/uiao_project_plan_v1.0.yaml'
+      - 'scripts/generate_pptx.py'
+      - 'scripts/plan_to_csv.py'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install python-pptx pyyaml
+
+      - name: Generate PPTX
+        run: python scripts/generate_pptx.py
+
+      - name: Generate Planner CSV
+        run: python scripts/plan_to_csv.py
+
+      - name: Commit Artifacts
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'docs: update PPTX and Planner CSV [skip ci]'
