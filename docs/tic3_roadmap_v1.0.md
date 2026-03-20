@@ -4,7 +4,7 @@ version: "1.0"
 classification: "CUI/FOUO"
 ---
 
-# UIAO TIC 3.0 Roadmap  
+# UIAO TIC 3.0 Roadmap
 **Version 1.0**
 
 ---
@@ -145,6 +145,18 @@ intune:
     - "AC-19: Access Control for Mobile Devices (Rev 5)"
     - "CM-8: System Component Inventory (Rev 5)"
 
+
+---
+
+## The Perimeter Collapse: TIC 2.2 to UIAO (Visual V4)
+
+The "Modernization Atlas" visualizes the fundamental shift from rigid, hardware-bound perimeters to a flexible, software-defined trust fabric. The following table details the **Perimeter Collapse**—the decommissioning of legacy silos in favor of the UIAO model.
+
+| Modernization Pillar | Legacy State (TIC 2.2) | UIAO Future State (TIC 3.0) | Strategic Mission Impact |
+| :--- | :--- | :--- | :--- |
+
+
+> **Foreman's Directive:** This transition is verified by the **V4 Modernization Atlas** graphic. By collapsing these silos, **the agency** achieves the 'Advanced' level in the Network/Environment pillar of the CISA Zero Trust Maturity Model.
 
 ---
 
