@@ -1,0 +1,91 @@
+# UIAO Management & Orchestration Layer
+# FedRAMP 20x (2026 Consolidated Rules) - Governance Tools
+# NIST 800-53 Rev 5 Control Mappings
+# Aligned with FedRAMP 20x machine-readable evidence requirements
+
+management_stack:
+  - provider: "ServiceNow"
+    product: "IT Service Management (ITSM) / GRC"
+    uiao_pillar: "Governance & Orchestration"
+    role: "Continuous Governance & Incident Response"
+    certification_class: "Class C (Moderate)"
+    fedramp_id: "FR2018097656"
+    status: "FedRAMP Authorized"
+    nist_controls:
+      - "IR-4: Incident Handling (Rev 5)"
+      - "CA-7: Continuous Monitoring (Rev 5)"
+      - "IR-5: Incident Monitoring (Rev 5)"
+      - "IR-6: Incident Reporting (Rev 5)"
+      - "SI-4: System Monitoring (Rev 5)"
+    ksi_mapping: "KSI-GOV-01"
+    evidence_method: "Automated OSCAL export via ServiceNow GRC module; machine-readable POA&M and SSP artifacts per FedRAMP 20x requirements"
+    overlay_drift_governance: >
+      ServiceNow acts as the authoritative system of record for Overlay
+      Drift detection and remediation. When telemetry signals from Splunk,
+      Azure Monitor, or Infoblox detect configuration deviations in the
+      SD-WAN overlay (e.g., unauthorized tunnel endpoints, expired
+      certificates, or policy mismatches), ServiceNow automatically
+      generates a Change Request (CR) linked to the affected CMDB CI.
+      The CR triggers an automated remediation workflow that re-validates
+      the overlay configuration against the approved baseline in
+      program.yml, enforces the corrective action, and closes the loop
+      by updating the telemetry plane with the resolution status. This
+      ensures continuous governance of the Overlay Plane without manual
+      intervention.
+    integration_points:
+      - "Splunk SIEM: Automated incident creation from correlated alerts"
+      - "Azure Monitor: Health signal ingestion for CMDB enrichment"
+      - "Infoblox IPAM: DHCP/DNS change tracking linked to CMDB CIs"
+      - "Cisco Catalyst Center: Overlay configuration baseline validation"
+    documentation_source: "https://docs.servicenow.com/"
+
+  - provider: "Microsoft"
+    product: "Intune (Endpoint Manager)"
+    uiao_pillar: "Governance & Orchestration"
+    role: "Endpoint Identity & Compliance Enforcement"
+    certification_class: "Class C (Moderate)"
+    fedramp_id: "FR1819041707"
+    status: "FedRAMP Authorized"
+    nist_controls:
+      - "AC-19: Access Control for Mobile Devices (Rev 5)"
+      - "CM-8: System Component Inventory (Rev 5)"
+      - "AC-20: Use of External Systems (Rev 5)"
+      - "CM-2: Baseline Configuration (Rev 5)"
+      - "IA-3: Device Identification and Authentication (Rev 5)"
+    ksi_mapping: "KSI-IDM-02"
+    evidence_method: "Continuous compliance posture export via Microsoft Graph API; device attestation signals fed to Conditional Access per FedRAMP 20x machine-readable evidence model"
+    identity_plane_enforcement: >
+      Microsoft Intune serves as the gatekeeper ensuring the Identity
+      Plane only allows healthy, certified devices into the architectural
+      fabric. Before any device is granted network access through the
+      Overlay Plane, Intune validates its compliance posture: OS patch
+      level, disk encryption status, EDR agent health (Microsoft Defender
+      for Endpoint), and certificate validity. This compliance signal is
+      consumed by Entra ID Conditional Access, which enforces a
+      device-trust gate at authentication time. Non-compliant devices
+      are quarantined to a restricted VLAN segment managed by Cisco ISE,
+      preventing lateral movement within the fabric. Intune continuously
+      re-evaluates posture, ensuring that device trust is not a one-time
+      check but a persistent, real-time control input to the Identity
+      Control Plane.
+    integration_points:
+      - "Entra ID Conditional Access: Device compliance as authentication gate"
+      - "Cisco ISE: Quarantine VLAN assignment for non-compliant endpoints"
+      - "Microsoft Defender for Endpoint: EDR health as compliance signal"
+      - "ServiceNow CMDB: Device inventory sync and lifecycle tracking"
+    documentation_source: "https://learn.microsoft.com/en-us/mem/intune/"
+
+fedramp_20x_alignment:
+  framework_version: "FedRAMP 20x (2026 Consolidated Rules)"
+  classification_note: >
+    Under FedRAMP 20x, the legacy Low/Moderate/High baselines have been
+    consolidated into a Class-based system. Class C corresponds to the
+    former Moderate baseline and requires continuous monitoring with
+    machine-readable evidence artifacts (OSCAL format) for automated
+    assessment.
+  evidence_requirements:
+    - "OSCAL-formatted System Security Plans (SSP)"
+    - "Machine-readable Plans of Action & Milestones (POA&M)"
+    - "Automated continuous monitoring data feeds"
+    - "API-accessible compliance posture for 3PAO validation"
+  nist_revision: "NIST 800-53 Rev 5 (September 2020, updated December 2024)"
