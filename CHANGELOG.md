@@ -1,3 +1,12 @@
+# [0.5.0](https://github.com/WhalerMike/uiao-core/compare/v0.4.0...v0.5.0) (2026-03-20)
+
+
+### Features
+
+* update mkdocs.yml with Implementation, Compliance, and Executive nav sections ([e787c11](https://github.com/WhalerMike/uiao-core/commit/e787c11e66667e7845fc575014bfad6cdcb18406))
+
+
+
 # [0.4.0](https://github.com/WhalerMike/uiao-core/compare/v0.3.0...v0.4.0) (2026-03-20)
 
 
