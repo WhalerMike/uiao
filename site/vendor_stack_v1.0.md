@@ -39,9 +39,13 @@ The UIAO architecture integrates five primary technology vendors, each mapped to
 | Infoblox | BloxOne Threat Defense | Addressing (A) | Class C | Authorized |
 | Cisco | Catalyst SD-WAN | Overlay (O) | Class C | Authorized |
 | Microsoft | Entra ID + Informed Network Routing (INR) | Identity (U) | Class C | Authorized |
+| Microsoft | Intune Endpoint Management | Identity (U) - Device Compliance | Class C | Authorized |
+| Microsoft | Defender for Endpoint (MDE) | Overlay (O) - Endpoint Detection | Class C | Authorized |
+| Microsoft | Sentinel SIEM/SOAR | Governance (G) - Security Operations | Class C | Authorized |
 | Palo Alto Networks | Next-Generation Firewall (NGFW) | Overlay (O) - Security Inspection | Class C | Authorized |
 | CyberArk | Privileged Access Management | Identity (U) - Privileged Access | Class C | Authorized |
 | ServiceNow | IT Service Management (ITSM) + GRC | Governance (G) | Class C | Authorized |
+| Splunk | Splunk Enterprise (GovCloud) | Governance (G) - Log Analytics | Class C | Authorized |
 
 
 
@@ -135,7 +139,102 @@ The UIAO architecture integrates five primary technology vendors, each mapped to
 
 
 
-### 3.4. Palo Alto Networks — Next-Generation Firewall (NGFW)
+### 3.4. Microsoft — Intune Endpoint Management
+
+**UIAO Pillar:** Identity (U) - Device Compliance  
+**Role:** Endpoint Management, Device Compliance Enforcement, and Configuration Baseline Deployment  
+**FedRAMP Certification:** Class C (FR1612345678)  
+**Authorization Status:** Authorized  
+
+**NIST 800-53 Controls:**
+
+- CM-2: Baseline Configuration
+
+- CM-6: Configuration Settings
+
+- CM-8: System Component Inventory
+
+- IA-3: Device Identification and Authentication
+
+- SC-7: Boundary Protection (Device Compliance Gates)
+
+- SI-2: Flaw Remediation
+
+
+**KSI Category:** `KSI-IAM`  
+**Evidence Method:** Intune Compliance Policy Audit Logs and Device Configuration Profiles
+
+
+
+**Documentation:** [Microsoft Technical Docs](https://learn.microsoft.com/en-us/mem/intune/)
+
+
+
+### 3.5. Microsoft — Defender for Endpoint (MDE)
+
+**UIAO Pillar:** Overlay (O) - Endpoint Detection  
+**Role:** Endpoint Detection and Response, Threat Intelligence, and Automated Investigation  
+**FedRAMP Certification:** Class C (FR1612345678)  
+**Authorization Status:** Authorized  
+
+**NIST 800-53 Controls:**
+
+- SI-3: Malicious Code Protection
+
+- SI-4: System Monitoring
+
+- IR-4: Incident Handling
+
+- IR-5: Incident Monitoring
+
+- RA-5: Vulnerability Monitoring and Scanning
+
+- SC-7: Boundary Protection (Host-Based)
+
+
+**KSI Category:** `KSI-SVC`  
+**Evidence Method:** MDE Advanced Hunting Logs and Automated Investigation Audit Trail
+
+
+
+**Documentation:** [Microsoft Technical Docs](https://learn.microsoft.com/en-us/defender-endpoint/)
+
+
+
+### 3.6. Microsoft — Sentinel SIEM/SOAR
+
+**UIAO Pillar:** Governance (G) - Security Operations  
+**Role:** Cloud-Native SIEM, Security Orchestration, Automated Response, and Continuous Monitoring  
+**FedRAMP Certification:** Class C (FR1612345678)  
+**Authorization Status:** Authorized  
+
+**NIST 800-53 Controls:**
+
+- AU-6: Audit Record Review, Analysis, and Reporting
+
+- AU-12: Audit Record Generation
+
+- SI-4: System Monitoring
+
+- IR-4: Incident Handling
+
+- IR-5: Incident Monitoring
+
+- IR-6: Incident Reporting
+
+- CA-7: Continuous Monitoring
+
+
+**KSI Category:** `KSI-GOV`  
+**Evidence Method:** Sentinel Analytics Rules, Incident Logs, and Playbook Execution Audit Trail
+
+
+
+**Documentation:** [Microsoft Technical Docs](https://learn.microsoft.com/en-us/azure/sentinel/)
+
+
+
+### 3.7. Palo Alto Networks — Next-Generation Firewall (NGFW)
 
 **UIAO Pillar:** Overlay (O) - Security Inspection  
 **Role:** Deep Packet Inspection within SD-WAN Service Chain  
@@ -156,7 +255,7 @@ The UIAO architecture integrates five primary technology vendors, each mapped to
 
 
 
-### 3.5. CyberArk — Privileged Access Management
+### 3.8. CyberArk — Privileged Access Management
 
 **UIAO Pillar:** Identity (U) - Privileged Access  
 **Role:** Privileged Identity Lifecycle and Session Recording  
@@ -177,7 +276,7 @@ The UIAO architecture integrates five primary technology vendors, each mapped to
 
 
 
-### 3.6. ServiceNow — IT Service Management (ITSM) + GRC
+### 3.9. ServiceNow — IT Service Management (ITSM) + GRC
 
 **UIAO Pillar:** Governance (G)  
 **Role:** IT Service Management, Incident Response, and Continuous Authorization Support  
@@ -209,6 +308,41 @@ The UIAO architecture integrates five primary technology vendors, each mapped to
 
 
 **Documentation:** [ServiceNow Technical Docs](https://docs.servicenow.com/bundle/xanadu-it-service-management/page/product/incident-management/concept/c_IncidentManagement.html)
+
+
+
+### 3.10. Splunk — Splunk Enterprise (GovCloud)
+
+**UIAO Pillar:** Governance (G) - Log Analytics  
+**Role:** Operational Log Aggregation, Search Analytics, and Compliance Reporting  
+**FedRAMP Certification:** Class C (FR2009876543)  
+**Authorization Status:** Authorized  
+
+**NIST 800-53 Controls:**
+
+- AU-2: Audit Events
+
+- AU-3: Content of Audit Records
+
+- AU-6: Audit Record Review, Analysis, and Reporting
+
+- AU-7: Audit Record Reduction and Report Generation
+
+- AU-12: Audit Record Generation
+
+- SI-4: System Monitoring
+
+
+**KSI Category:** `KSI-GOV`  
+**Evidence Method:** Splunk Search Processing Language (SPL) Queries and Scheduled Report Audit Logs
+
+
+> **CISA Directive Compliance:**  —   
+> **Status:**  ()
+
+
+
+**Documentation:** [Splunk Technical Docs](https://docs.splunk.com/Documentation/SplunkCloud)
 
 
 
