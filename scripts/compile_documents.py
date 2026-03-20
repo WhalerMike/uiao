@@ -47,7 +47,7 @@ def compile_markdown(context):
         out_path = SITE_DIR / out_name
         out_path.parent.mkdir(parents=True, exist_ok=True)
         template = env.get_template(str(rel))
-        rendered = template.render(**context)
+        rendered = template.render(data=context, **context)
         out_path.write_text(rendered)
         generated.append(out_path)
         print(f'  MD: {out_path}')
