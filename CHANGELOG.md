@@ -1,3 +1,12 @@
+# [0.9.0](https://github.com/WhalerMike/uiao-core/compare/v0.8.0...v0.9.0) (2026-03-20)
+
+
+### Features
+
+* add Sentinel Workbook JSON for Atlas health dashboard ([dc6255d](https://github.com/WhalerMike/uiao-core/commit/dc6255d3c19303264bd21ed8999bafd11155970d))
+
+
+
 # [0.8.0](https://github.com/WhalerMike/uiao-core/compare/v0.7.0...v0.8.0) (2026-03-20)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * add .env.example with all Atlas environment variables ([7317b97](https://github.com/WhalerMike/uiao-core/commit/7317b970de41a5376e0e629087f72c24dae6dfea))
-
-
-
-# [0.5.0](https://github.com/WhalerMike/uiao-core/compare/v0.4.0...v0.5.0) (2026-03-20)
-
-
-### Features
-
-* update mkdocs.yml with Implementation, Compliance, and Executive nav sections ([e787c11](https://github.com/WhalerMike/uiao-core/commit/e787c11e66667e7845fc575014bfad6cdcb18406))
 
 
 
