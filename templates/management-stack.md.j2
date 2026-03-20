@@ -1,0 +1,61 @@
+# Management Stack — FedRAMP Control Definitions
+
+> Auto-generated from `data/management-stack.yml` by the UDC Pipeline.
+
+The Management Stack defines the two primary management-plane tools in the UIAO architecture — ServiceNow and Microsoft Intune — along with their FedRAMP authorization details and the specific NIST 800-53 Rev 5 controls each tool implements at the operational level. Every control mapping follows the same rigor applied to the Cisco and Infoblox pillars in the Vendor Stack: the product function named in each entry is the mechanism that satisfies the control requirement, and the evidence artifact identifies the specific log, API, or report an assessor would examine during a FedRAMP annual assessment.
+
+---
+
+{% set stack = management_stack.management_stack | default(management_stack) %}
+{% for tool_key, tool in stack.items() %}
+## {{ tool.provider }} — {{ tool.product }}
+
+{{ tool.uiao_role }}
+
+### FedRAMP Authorization
+
+| Attribute | Value |
+|-----------|-------|
+| Package Type | {{ tool.fedramp_authorization.package_type }} |
+| Impact Level | {{ tool.fedramp_authorization.impact_level }} |
+| FedRAMP 20x Class | {{ tool.fedramp_authorization.fedramp_20x_class }} |
+| Status | {{ tool.fedramp_authorization.status }} |
+| Framework | {{ tool.fedramp_authorization.assessment_framework }} |
+| Authorization Source | {{ tool.fedramp_authorization.authorization_source }} |
+{% if tool.fedramp_authorization.controls_assessed is defined %}| Controls Assessed | {{ tool.fedramp_authorization.controls_assessed }} |
+{% endif %}{% if tool.fedramp_authorization.last_annual_assessment is defined %}| Last Annual Assessment | {{ tool.fedramp_authorization.last_annual_assessment }} |
+{% endif %}{% if tool.fedramp_authorization.parent_package is defined %}| Parent Package | {{ tool.fedramp_authorization.parent_package }} |
+{% endif %}| Marketplace | [Link]({{ tool.fedramp_authorization.marketplace_url }}) |
+| Required Version | {{ tool.required_version }} |
+
+### NIST 800-53 Rev 5 Control Mappings
+
+{% for ctrl in tool.nist_controls %}
+#### {{ ctrl.control_id }} — {{ ctrl.control_name }}
+
+{{ ctrl.implements }}
+
+{% if ctrl.evidence_artifact is defined %}**Evidence Artifact:** {{ ctrl.evidence_artifact }}{% endif %}
+
+{% if ctrl.api_endpoint is defined %}**API Endpoint:** `{{ ctrl.api_endpoint }}`{% endif %}
+
+{% if ctrl.baseline_sources is defined %}
+**Baseline Sources:**
+{% for src in ctrl.baseline_sources %}
+- {{ src }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+{% if tool.integration_bindings is defined %}
+### Integration Bindings
+
+| Target System | Mechanism | Control Supported |
+|--------------|-----------|-------------------|
+{% for binding in tool.integration_bindings %}| {{ binding.target }} | {{ binding.mechanism }} | {{ binding.control_supported }} |
+{% endfor %}
+{% endif %}
+
+---
+
+{% endfor %}
