@@ -1,3 +1,12 @@
+# [0.3.0](https://github.com/WhalerMike/uiao-core/compare/v0.2.0...v0.3.0) (2026-03-20)
+
+
+### Features
+
+* Add JML (Joiner/Mover/Leaver) transition logic canon ([dcc6a56](https://github.com/WhalerMike/uiao-core/commit/dcc6a56bf0539bee632c75b6c0b642c8f44bc6f1))
+
+
+
 # [0.2.0](https://github.com/WhalerMike/uiao-core/compare/v0.1.0...v0.2.0) (2026-03-20)
 
 
