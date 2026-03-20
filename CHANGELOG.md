@@ -1,3 +1,12 @@
+# [0.4.0](https://github.com/WhalerMike/uiao-core/compare/v0.3.0...v0.4.0) (2026-03-20)
+
+
+### Features
+
+* add E2E integration test for Atlas enforcement flow ([c3bca8d](https://github.com/WhalerMike/uiao-core/commit/c3bca8d05677af82120b93da14ed10c039d088c7))
+
+
+
 # [0.3.0](https://github.com/WhalerMike/uiao-core/compare/v0.2.0...v0.3.0) (2026-03-20)
 
 
