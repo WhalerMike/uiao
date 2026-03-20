@@ -29,7 +29,7 @@ Images are generated using a **Parallel AI Orchestration** workflow:
 
 ### V2: Cisco-Microsoft INR Fabric (US Federal Edition)
 
-- **File:** `uiao-vibrant-o-pillar-inr-fabric.png`
+- **File:** `telemetry_fabric_mesh.png`
 - **Pillar:** **O** (Overlay)
 - **Geographic Constraint:** US-only map. No world maps.
 - **Gencraft Prompt:**
@@ -47,7 +47,7 @@ Images are generated using a **Parallel AI Orchestration** workflow:
 
 ### V3: 20x Governance Loop
 
-- **File:** `uiao-vibrant-20x-governance-hub.png`
+- **File:** `atlas_vision_outcome.png`
 - **Pillar:** **Governance**
 - **Gencraft Prompt:**
   > A high-tech "Mission Control" center. In the center is a glowing holographic
