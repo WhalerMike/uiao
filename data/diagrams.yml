@@ -1,0 +1,98 @@
+# UIAO-Core Modernization Atlas: Diagram Library
+# These strings are injected into Jinja2 templates via generate.py
+
+unified_arch: |
+  graph TD
+    subgraph "Identity Plane (The 'Who')"
+      A[Azure AD / Cisco ISE] -->|SGT / Identity Tags| D{Policy Engine}
+    end
+    subgraph "Addressing Plane (The 'Where')"
+      B[Infoblox IPAM] -->|IP Scopes / VLANs| D
+    end
+    subgraph "Overlay Plane (The 'How')"
+      D -->|Fabric Assignment| E[Cisco Catalyst Center]
+      E -->|VXLAN Encapsulation| F[Edge Switch Port]
+    end
+    subgraph "Telemetry Control Plane (Observation)"
+      G[Splunk / Azure Monitor] -.->|Real-time Feedback| D
+      G -.->|Audit Logs| E
+    end
+    style D fill:#f96,stroke:#333,stroke-width:2px
+    style F fill:#bbf,stroke:#333,stroke-width:2px
+
+vendor_logic: |
+  flowchart LR
+    YAML[(program.yml)] --> Python[generate.py Logic]
+    subgraph "Logic Processing"
+      Python --> RegEx[Hyphen-to-Underscore Translation]
+      RegEx --> Jinja[Jinja2 Templates]
+    end
+    Jinja -->|Output 1| Cisco[Cisco CLI / API Config]
+    Jinja -->|Output 2| Blox[Infoblox WAPI Calls]
+    Jinja -->|Output 3| Azure[Azure VNet/NSG Rules]
+    style YAML fill:#dfd
+    style Jinja fill:#ffd
+
+appendix_library: |
+  graph LR
+    subgraph "Data Source: appendices.yml"
+      A[Group A-Z: Core Standards]
+      B[Group AA-AZ: Network Patterns]
+      C[Group BA-BZ: Security Protocols]
+      D[Group CA-CZ: Operational Procedures]
+    end
+    subgraph "Processing: generate.py"
+      Logic{Jinja2 Renderer}
+      Logic -->|Lookup ID| A
+      Logic -->|Lookup ID| B
+      Logic -->|Lookup ID| C
+      Logic -->|Lookup ID| D
+    end
+    subgraph "Output: site/ Documentation"
+      Doc1[Appendix A: Global Naming]
+      Doc2[Appendix AZ: SD-WAN Edge]
+      Doc3[Appendix CZ: Decommissioning]
+    end
+    Logic --> Doc1
+    Logic --> Doc2
+    Logic --> Doc3
+    style Logic fill:#f9f,stroke:#333,stroke-width:2px
+    style A,B,C,D fill:#e1f5fe,stroke:#01579b
+
+multi_plane_integration: |
+  graph TB
+    subgraph "Telemetry Control Plane (Visibility)"
+      direction TB
+      S[Splunk / Azure Monitor]
+      IB[Infoblox Ecosystem]
+    end
+    subgraph "Identity Plane"
+      ID[Azure AD / Cisco ISE]
+    end
+    subgraph "Network & Addressing Plane"
+      IP[IPAM Scopes]
+      SD[Cisco Catalyst Center]
+    end
+    ID -- "Auth Events" --> S
+    IP -- "Lease Data" --> S
+    SD -- "Flow Logs / SNMP" --> S
+    S -- "Threat Alerts" --> ID
+    S -- "Performance Signals" --> SD
+    IB -- "DNS Analytics" --> S
+    classDef telemetry fill:#f1f8e9,stroke:#558b2f,stroke-width:2px;
+    classDef feedback stroke-dasharray: 5 5;
+    class S,IB telemetry;
+
+jinja_normalization: |
+  flowchart TD
+    A[(program.yml / appendices.yml)] -->|Key: 'site-location'| B[generate.py Load]
+    B --> C{Normalization Filter}
+    C -->|Regex: s/-/_/g| D[Key: 'site_location']
+    subgraph "Jinja2 Context"
+      D --> E{Render Template}
+      F[template.j2] --> E
+    end
+    E -->|Success| G[site/config.txt]
+    E -->|Failure: Hyphen detected| H[Jinja2 UndefinedError]
+    style C fill:#fff3e0,stroke:#ef6c00
+    style D fill:#e8f5e9,stroke:#2e7b32
