@@ -33,12 +33,12 @@ def render_template(env, template_name, context, output_name):
     return output
 
 def main():
-    # Load canon YAML (primary context)
-    context = load_canon()
+    # Load all data/*.yml files first
+    context = load_data_files()
 
-    # Load all data/*.yml files and merge into context
-    data_context = load_data_files()
-    context.update(data_context)
+    # Load canon YAML (primary context - overwrites data keys)
+    canon_context = load_canon()
+    context.update(canon_context)
 
     env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=False)
 
