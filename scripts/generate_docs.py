@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CANON = ROOT / "canon" / "uiao_leadership_briefing_v1.0.yaml"
+DATA_DIR = ROOT / "data"
 TEMPLATES_DIR = ROOT / "templates"
 DOCS_DIR = ROOT / "docs"
 SITE_DIR = ROOT / "site"
@@ -11,6 +12,18 @@ SITE_DIR = ROOT / "site"
 def load_canon():
     with CANON.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+def load_data_files():
+    """Load all YAML files from data/ directory and merge into context."""
+    data = {}
+    if DATA_DIR.exists():
+        for yml_file in sorted(DATA_DIR.glob("*.yml")):
+            key = yml_file.stem.replace("-", "_")
+            with yml_file.open("r", encoding="utf-8") as f:
+                content = yaml.safe_load(f)
+                if content:
+                    data[key] = content
+    return data
 
 def render_template(env, template_name, context, output_name):
     template = env.get_template(template_name)
@@ -20,7 +33,13 @@ def render_template(env, template_name, context, output_name):
     return output
 
 def main():
+    # Load canon YAML (primary context)
     context = load_canon()
+
+    # Load all data/*.yml files and merge into context
+    data_context = load_data_files()
+    context.update(data_context)
+
     env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=False)
 
     # Mapping: template -> docs output name -> site output name (hyphenated)
@@ -34,6 +53,7 @@ def main():
         "zero_trust_narrative_v1.0.md.j2": ("zero_trust_narrative_v1.0.md", "zero_trust_narrative_v1.0.md"),
         "identity_plane_deep_dive_v1.0.md.j2": ("identity_plane_deep_dive_v1.0.md", "identity_plane_deep_dive_v1.0.md"),
         "telemetry_plane_deep_dive_v1.0.md.j2": ("telemetry_plane_deep_dive_v1.0.md", "telemetry_plane_deep_dive_v1.0.md"),
+        "vendor_stack_v1.0.md.j2": ("vendor_stack_v1.0.md", "vendor-stack.md"),
     }
 
     DOCS_DIR.mkdir(exist_ok=True)
