@@ -41,6 +41,7 @@ The UIAO architecture integrates five primary technology vendors, each mapped to
 | Microsoft | Entra ID + Informed Network Routing (INR) | Identity (U) | Class C | Authorized |
 | Palo Alto Networks | Next-Generation Firewall (NGFW) | Overlay (O) - Security Inspection | Class C | Authorized |
 | CyberArk | Privileged Access Management | Identity (U) - Privileged Access | Class C | Authorized |
+| ServiceNow | IT Service Management (ITSM) + GRC | Governance (G) | Class C | Authorized |
 
 
 
@@ -173,6 +174,41 @@ The UIAO architecture integrates five primary technology vendors, each mapped to
 **Evidence Method:** CyberArk Session Audit Logs
 
 
+
+
+
+### 3.6. ServiceNow — IT Service Management (ITSM) + GRC
+
+**UIAO Pillar:** Governance (G)  
+**Role:** IT Service Management, Incident Response, and Continuous Authorization Support  
+**FedRAMP Certification:** Class C (FR1710155498)  
+**Authorization Status:** Authorized  
+
+**NIST 800-53 Controls:**
+
+- IR-4: Incident Handling
+
+- IR-5: Incident Monitoring
+
+- IR-6: Incident Reporting
+
+- SI-4: System Monitoring
+
+- CA-7: Continuous Monitoring
+
+- SA-9: External System Services
+
+
+**KSI Category:** `KSI-GOV`  
+**Evidence Method:** ServiceNow CMDB + Incident/Change Audit Trail
+
+
+> **CISA Directive Compliance:**  —   
+> **Status:**  ()
+
+
+
+**Documentation:** [ServiceNow Technical Docs](https://docs.servicenow.com/bundle/xanadu-it-service-management/page/product/incident-management/concept/c_IncidentManagement.html)
 
 
 
