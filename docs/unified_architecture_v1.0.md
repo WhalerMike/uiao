@@ -27,6 +27,12 @@ graph LR
 
     %% Dynamically generate nodes from program.yml
     
+    INR["Microsoft INR"]:::identity
+    
+    IB["Infoblox IPAM"]:::addressing
+    
+    CAT["Cisco Catalyst"]:::overlay
+    
 
     %% Static Logic Connections (The Unified Fabric)
     INR --> CAT
