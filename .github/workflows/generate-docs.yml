@@ -8,11 +8,12 @@ on:
       - 'templates/**'
       - 'schemas/**'
       - 'scripts/**'
+      - 'visuals/**'
   workflow_dispatch:
-
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
   pages: write
@@ -30,32 +31,24 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: 🛡 Run Federal Compliance Safety Gate
+        run: python scripts/validate_build_readiness.py
+
+      - name: Generate documents from templates
+        run: python scripts/generate_docs.py
+
+      - name: 📊 Export GRC Compliance Evidence
+        run: python scripts/export_compliance_evidence.py
+
+      - name: Build MkDocs site
+        run: mkdocs build
+
+      - name: Commit generated docs and exports
         run: |
-          pip install -r requirements.txt
-          sudo apt-get update && sudo apt-get install -y pandoc
-
-      - name: Validate schemas
-        run: python scripts/validate_schemas.py
-
-      - name: Normalize artifacts
-        run: python scripts/normalize_artifacts.py
-
-      - name: Compile documents
-        run: python scripts/compile_documents.py
-
-      - name: Upload exports as artifacts
-        uses: actions/upload-artifact@v5
-        with:
-          name: udc-exports
-          path: exports/
-          retention-days: 90
-        if: always()
-
-      - name: Commit generated docs
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add site/ exports/
-          git diff --cached --quiet || git commit -m "Auto-generate docs from data [skip ci]"
-          git pull --rebase origin main
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add docs/ site/ exports/
+          git commit -m "Build: Automated sync of docs and GRC evidence [skip ci]" || echo "No changes to commit"
           git push
