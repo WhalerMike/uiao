@@ -4,7 +4,7 @@ version: "1.0"
 classification: "CUI/FOUO"
 ---
 
-# UIAO Unified Architecture  
+# UIAO Unified Architecture
 **Version 1.0**
 
 ---
@@ -134,5 +134,24 @@ The following high-fidelity visuals provide presentation-grade evidence for audi
 
 ---
 
+## The Cryptographic Trust Chain (Visual V5)
+
+The UIAO model replaces legacy password-based access with a cryptographically proven trust chain. Every connection to the **agency** fabric is validated using a "Digital Passport" anchored to the **GSA Federal Common Policy CA (Root)**.
+
+### **Trust Propagation Flow**
+
+1. **Root Anchor:** Trust originates at the Federal Root CA.
+2. **Issuance:** The **Agency Issuing CA (Subordinate)** issues certificates via **SCEP / Microsoft Intune**.
+3. **Verification:** The **UIAO Fabric Edge (Cisco SD-WAN)** performs a hardware-backed mTLS handshake.
+
+| Entity Type | Issuance Protocol | Enforcement Mechanism |
+| :--- | :--- | :--- |
+| Managed Workstations | `SCEP / Microsoft Intune` | Mutual TLS (mTLS) to Cisco Catalyst Edge |
+| Mobile Devices | `Derive PIV / Entra ID` | Conditional Access + FIDO2 |
+
+
+> **Security Note:** This architecture ensures that even if a user's credentials are compromised, the lack of a hardware-bound certificate (V5) prevents unauthorized access to the UIAO fabric.
+
+---
 
 *End of Unified Architecture v1.0*
