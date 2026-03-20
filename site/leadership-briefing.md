@@ -169,6 +169,50 @@ intune:
     - "AC-19: Access Control for Mobile Devices (Rev 5)"
     - "CM-8: System Component Inventory (Rev 5)"
 
+      identity_lifecycle_scenarios:
+mover_scenario:
+  persona: "Sarah Miller, Senior Analyst"
+  event: "Internal Transfer from Field Operations (Dept 400) to Cyber Policy (Dept 800)"
+  narrative: >
+    The Mover scenario demonstrates Zero-Touch internal transfers.
+    When the HRIS updates Sarah's department ID, the Entra ID
+    Provisioning Service detects the attribute change within one hour.
+    The ABAC engine evaluates her identity against dynamic groups.
+    She is automatically removed from Field Ops Users (department eq 400)
+    and added to Cyber Policy Users (department eq 800). Access to
+    Field Operations SharePoint is revoked while Cyber Policy Teams
+    channel, Agency Policy Repository, and Moderate-Security Azure
+    enclave are provisioned instantly. Conditional Access updates to
+    require phishing-resistant MFA (PIV Card) for policy-specific
+    resources. The Sync Orchestrator updates her ServiceNow CI record
+    and notifies the Cyber Policy Lead via MS Teams.
+  metrics:
+    time_to_productivity: "Reduced from 5-7 days to less than 60 minutes"
+    security_risk: "Eliminated access creep from accumulated permissions"
+    admin_load: "100% reduction in manual group management for transfers"
+leaver_scenario:
+  persona: "James Vance, Contractor"
+  event: "Immediate Separation (End of Contract / High-Risk Departure)"
+  narrative: >
+    The Leaver scenario demonstrates the automated kill switch.
+    When HR finalizes the separation, the HRIS pushes a status update
+    setting Employee Status to Terminated with immediate effect.
+    Entra ID disables the account within seconds, blocking all new
+    sign-in sessions across M365, Azure, ServiceNow, and federated
+    apps. Continuous Access Evaluation (CAE) issues a revocation
+    signal to all supporting apps, terminating active sessions
+    instantly without waiting for token expiry. The Sync Orchestrator
+    moves all assigned assets (laptop, PIV card, mobile) to
+    In Stock Pending Recovery status in ServiceNow and generates
+    a high-priority recovery ticket for Physical Security. Sentinel
+    logs the disablement and monitors for failed login attempts.
+    A final Atlas Report is sent to the Department Lead and Security
+    via MS Teams.
+  metrics:
+    revocation_latency: "Reduced from hours/days to less than 120 seconds"
+    audit_compliance: "100% automated logging for FISMA and GCC-Moderate separation"
+    asset_accountability: "Zero-latency flagging of agency hardware for recovery"
+
 
 ---
 
