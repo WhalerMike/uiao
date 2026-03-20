@@ -1,0 +1,32 @@
+kql_alerts:
+  - name: "Atlas_Privileged_Leaver_Detected"
+    description: "Detects account disablement for high-value assets."
+    query: |
+      AuditLogs
+      | where OperationName == "Disable user"
+      | extend TargetUser = tostring(TargetResources[0].userPrincipalName)
+      | join kind=inner (
+          IdentityInfo
+          | where IsHighValueAsset == true
+      ) on $left.TargetUser == $right.AccountUPN
+    severity: "High"
+    trigger: "enforcement_orchestrator.py --action add"
+
+  - name: "Atlas_Compliance_Drift_Quarantine"
+    description: "Detects non-compliant Intune devices."
+    query: |
+      IntuneDevices
+      | where ComplianceState == "Noncompliant"
+      | project DeviceName, UserEmail, ComplianceState
+    severity: "Medium"
+    trigger: "enforcement_orchestrator.py --action add"
+
+  - name: "Atlas_Orchestrator_Failure"
+    description: "Self-monitoring alert for GitHub Actions pipeline failures."
+    query: |
+      GitHubRepoLogs_CL
+      | where status_s == "failure"
+      | where workflow_name_s has "Atlas"
+      | project TimeGenerated, workflow_name_s, run_id_s, error_message_s
+    severity: "High"
+    trigger: "Teams notification to #Atlas-Operations"
