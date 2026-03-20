@@ -1,0 +1,50 @@
+---
+title: "UIAO Seven-Layer Model"
+version: "{{ version }}"
+classification: "{{ classification }}"
+---
+
+# The UIAO Seven-Layer Model
+
+This model defines the architectural stack for the modernization efforts at {{ program.name }}. Each layer represents a functional domain, and the three UIAO pillars (Identity, Addressing, Overlay) are highlighted to show where vendor-specific integration occurs.
+
+```mermaid
+graph TD
+    %% Define CSS-like classes for the UIAO Pillars
+    classDef identity fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef addressing fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef overlay fill:#dfd,stroke:#333,stroke-width:2px;
+    classDef default_layer fill:#fff,stroke:#333,stroke-width:1px;
+
+    %% Generate Layer Nodes
+    {% for layer in seven_layer_model.layers %}
+    L{{ layer.level }}["{{ layer.level }}. {{ layer.name }}{% if layer.vendor %} ({{ layer.vendor }}){% endif %}"]{% if layer.pillar %}:::{{ layer.pillar }}{% else %}:::default_layer{% endif %}
+    {% endfor %}
+
+    %% Generate Sequential Connections (7 -> 6 -> ... -> 1)
+    L7 --> L6
+    L6 --> L5
+    L5 --> L4
+    L4 --> L3
+    L3 --> L2
+    L2 --> L1
+```
+
+---
+
+## Layer Descriptions
+
+{% for layer in seven_layer_model.layers %}
+### Layer {{ layer.level }}: {{ layer.name }}
+{% if layer.vendor %}
+**Vendor:** {{ layer.vendor }} | **Pillar:** {{ layer.pillar | capitalize }}
+{% endif %}
+{% if layer.description %}
+{{ layer.description }}
+{% endif %}
+
+{% endfor %}
+
+---
+
+*End of Seven-Layer Model v{{ version }}*
