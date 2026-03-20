@@ -1,0 +1,108 @@
+{
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json",
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "## Modernization Atlas: Operational Health Dashboard\n\nReal-time visibility into Identity, Management, and Enforcement sync status.\n\n**Last Updated:** Auto-refreshes every 15 minutes."
+      },
+      "name": "header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "GitHubRepoLogs_CL\n| where TimeGenerated > ago(24h)\n| where workflow_name_s has \"Atlas\"\n| summarize count() by status_s\n| render piechart",
+        "size": 1,
+        "title": "Orchestrator Sync Status (Last 24h)",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "piechart",
+        "chartSettings": {
+          "seriesLabelSettings": [
+            { "seriesName": "success", "color": "green" },
+            { "seriesName": "failure", "color": "red" }
+          ]
+        }
+      },
+      "name": "sync-status-pie"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AuditLogs\n| where TimeGenerated > ago(7d)\n| where OperationName in (\"Disable user\", \"Enable user\")\n| extend TargetUser = tostring(TargetResources[0].userPrincipalName)\n| summarize count() by OperationName, bin(TimeGenerated, 1d)\n| render timechart",
+        "size": 0,
+        "title": "Identity Lifecycle Events (7-Day Trend)",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "identity-lifecycle-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "IntuneDevices\n| where TimeGenerated > ago(1d)\n| summarize count() by ComplianceState\n| render barchart",
+        "size": 1,
+        "title": "Device Compliance Overview",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "barchart",
+        "chartSettings": {
+          "seriesLabelSettings": [
+            { "seriesName": "Compliant", "color": "green" },
+            { "seriesName": "Noncompliant", "color": "redBright" }
+          ]
+        }
+      },
+      "name": "device-compliance-bar"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "SecurityAlert\n| where TimeGenerated > ago(24h)\n| where AlertName has \"Atlas\"\n| project TimeGenerated, AlertName, AlertSeverity, Status\n| order by TimeGenerated desc",
+        "size": 0,
+        "title": "Atlas Security Alerts (Last 24h)",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "AlertSeverity",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "colors",
+                "thresholdsGrid": [
+                  { "operator": "==", "thresholdValue": "High", "representation": "redBright" },
+                  { "operator": "==", "thresholdValue": "Medium", "representation": "yellow" },
+                  { "operator": "Default", "representation": "blue" }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "name": "atlas-alerts-table"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "GitHubRepoLogs_CL\n| where TimeGenerated > ago(7d)\n| where workflow_name_s has \"Atlas\"\n| summarize SuccessCount=countif(status_s == \"success\"), FailCount=countif(status_s == \"failure\") by bin(TimeGenerated, 1d)\n| render timechart",
+        "size": 0,
+        "title": "Orchestrator Run History (7-Day)",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "visualization": "timechart"
+      },
+      "name": "orchestrator-history"
+    }
+  ],
+  "fallbackResourceIds": [],
+  "fromTemplateId": "Atlas-Health-Dashboard-v1.0"
+}
