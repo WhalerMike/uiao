@@ -22,10 +22,11 @@ def load_data_files():
             with yml_file.open("r", encoding="utf-8") as f:
                 content = yaml.safe_load(f)
                 if content:
-                    data[key] = content
-                                        # Also merge dict keys into top-level context for template access
+                                        # Merge dict keys into top-level context first
                     if isinstance(content, dict):
                         data.update(content)
+                    # Then set stem key (overwrites any collision with full dict)
+                    data[key] = content
     return data
 
 def render_template(env, template_name, context, output_name):
