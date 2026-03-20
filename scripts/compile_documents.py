@@ -25,6 +25,14 @@ def load_all_data():
         key = yaml_file.stem.replace('-', '_')
         with open(yaml_file) as f:
             context[key] = yaml.safe_load(f)
+                    # Also load canon YAML files (templates reference leadership_briefing, etc.)
+    canon_dir = Path('canon')
+    if canon_dir.exists():
+        for yaml_file in sorted(canon_dir.rglob('*.yaml')):
+            with open(yaml_file) as f:
+                canon_data = yaml.safe_load(f)
+                if isinstance(canon_data, dict):
+                    context.update(canon_data)
     return context
 
 
