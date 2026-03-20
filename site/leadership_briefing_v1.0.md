@@ -4,7 +4,6 @@ version: "1.0"
 classification: "CUI/FOUO"
 audience: "CIO, CISO, CTO, PMO, Network Leadership, Identity Leadership"
 ---
-
 # Unified Identity‑Addressing‑Overlay Architecture (UIAO)
 **Leadership Briefing — Version 1.0**
 
@@ -197,6 +196,20 @@ The following section provides a direct mapping of the UIAO Modernization Archit
 | **V3: 20x Governance Loop** | **Governance** (The Hub) | **CA-7 (Continuous Monitoring), IR-4 (Incident Handling)** | ![V3 Evidence](../visuals/uiao-vibrant-20x-governance-hub.png "ServiceNow AI Hub telemetry ingestion") |
 | **V4: Modernization Atlas** | **Strategy** (The Journey) | **Program Vision / TIC 3.0** | ![V4 Evidence](../visuals/uiao-vibrant-modernization-atlas.png "TIC 2.2 to UIAO transition") |
 | **V5: Cryptographic Trust Chain** | **Security** (The Lock) | **SC-8 (Transmission Confidentiality)** | ![V5 Evidence](../visuals/uiao-vibrant-cryptographic-trust-chain.png "Federal Root CA trust flow") |
+
+---
+
+## 🛡 Unified Compliance & Maturity Matrix
+
+The following table demonstrates the alignment of the UIAO project with both **CISA Zero Trust Maturity Model** pillars and **NIST 800-53 Rev. 5** security controls simultaneously.
+
+| UIAO Pillar | CISA ZT Pillar | Target Maturity | NIST 800-53 Controls | Mission Impact |
+| :--- | :--- | :--- | :--- | :--- |
+
+| **** () |  | **** |  |  |
+
+
+> **Auditor Note:** All controls listed above are continuously monitored via the UIAO Governance Plane (V3) and reported through the ServiceNow SCuBA integration.
 
 ---
 
