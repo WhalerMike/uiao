@@ -23,6 +23,9 @@ def load_data_files():
                 content = yaml.safe_load(f)
                 if content:
                     data[key] = content
+                                        # Also merge dict keys into top-level context for template access
+                    if isinstance(content, dict):
+                        data.update(content)
     return data
 
 def render_template(env, template_name, context, output_name):
