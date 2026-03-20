@@ -1,3 +1,12 @@
+# [0.7.0](https://github.com/WhalerMike/uiao-core/compare/v0.6.1...v0.7.0) (2026-03-20)
+
+
+### Features
+
+* add Mover/Leaver identity lifecycle scenarios to leadership briefing canon ([7c8b9a2](https://github.com/WhalerMike/uiao-core/commit/7c8b9a224c4169138f4b3e15649716d1935a7ff0))
+
+
+
 ## [0.6.1](https://github.com/WhalerMike/uiao-core/compare/v0.6.0...v0.6.1) (2026-03-20)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * add E2E integration test for Atlas enforcement flow ([c3bca8d](https://github.com/WhalerMike/uiao-core/commit/c3bca8d05677af82120b93da14ed10c039d088c7))
-
-
-
-# [0.3.0](https://github.com/WhalerMike/uiao-core/compare/v0.2.0...v0.3.0) (2026-03-20)
-
-
-### Features
-
-* Add JML (Joiner/Mover/Leaver) transition logic canon ([dcc6a56](https://github.com/WhalerMike/uiao-core/commit/dcc6a56bf0539bee632c75b6c0b642c8f44bc6f1))
 
 
 
