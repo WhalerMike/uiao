@@ -1,3 +1,12 @@
+## [0.6.1](https://github.com/WhalerMike/uiao-core/compare/v0.6.0...v0.6.1) (2026-03-20)
+
+
+### Bug Fixes
+
+* align visuals README filenames - V2 maps to telemetry_fabric_mesh.png, V3 maps to atlas_vision_outcome.png ([20c373d](https://github.com/WhalerMike/uiao-core/commit/20c373d278e1762b2f09568be2002aa993c30001))
+
+
+
 # [0.6.0](https://github.com/WhalerMike/uiao-core/compare/v0.5.0...v0.6.0) (2026-03-20)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * Add JML (Joiner/Mover/Leaver) transition logic canon ([dcc6a56](https://github.com/WhalerMike/uiao-core/commit/dcc6a56bf0539bee632c75b6c0b642c8f44bc6f1))
-
-
-
-# [0.2.0](https://github.com/WhalerMike/uiao-core/compare/v0.1.0...v0.2.0) (2026-03-20)
-
-
-### Features
-
-* Add Sentinel KQL alert definitions for Atlas detection layer ([9dd30a6](https://github.com/WhalerMike/uiao-core/commit/9dd30a6f134cf3f615a7838f87217be6218087c6))
 
 
 
