@@ -1,91 +1,175 @@
-# UIAO Management & Orchestration Layer
-# FedRAMP 20x (2026 Consolidated Rules) - Governance Tools
-# NIST 800-53 Rev 5 Control Mappings
-# Aligned with FedRAMP 20x machine-readable evidence requirements
+# UIAO Management Stack - ServiceNow and Intune Control Definitions
+# Purpose: Defines FedRAMP authorization details and NIST 800-53 Rev 5 control
+# mappings at the same specificity level as the Infoblox and Cisco entries in
+# vendor-stack.yml. Each control maps to a specific product function that
+# directly implements the control requirement at the operational level.
+#
+# Correctness standard:
+#   Infoblox CM-8 -> IPAM maintains authoritative IP-to-host inventory
+#   Infoblox SC-20 -> DNSSEC validation on recursive resolution
+#   Cisco AC-4  -> SD-WAN policy-based routing enforces flow segmentation
+#   Cisco SC-8  -> mTLS encrypts all fabric transport
+#   Cisco SC-23 -> OMP session authentication validates peer identity
+#
+# Each control below follows this pattern: the product function named in
+# 'implements' is the mechanism that satisfies the control requirement.
+# 'evidence_artifact' identifies the specific log, API, or report that
+# an assessor would examine during a FedRAMP annual assessment.
 
 management_stack:
-  - provider: "ServiceNow"
-    product: "IT Service Management (ITSM) / GRC"
-    uiao_pillar: "Governance & Orchestration"
-    role: "Continuous Governance & Incident Response"
-    certification_class: "Class C (Moderate)"
-    fedramp_id: "FR2018097656"
-    status: "FedRAMP Authorized"
-    nist_controls:
-      - "IR-4: Incident Handling (Rev 5)"
-      - "CA-7: Continuous Monitoring (Rev 5)"
-      - "IR-5: Incident Monitoring (Rev 5)"
-      - "IR-6: Incident Reporting (Rev 5)"
-      - "SI-4: System Monitoring (Rev 5)"
-    ksi_mapping: "KSI-GOV-01"
-    evidence_method: "Automated OSCAL export via ServiceNow GRC module; machine-readable POA&M and SSP artifacts per FedRAMP 20x requirements"
-    overlay_drift_governance: >
-      ServiceNow acts as the authoritative system of record for Overlay
-      Drift detection and remediation. When telemetry signals from Splunk,
-      Azure Monitor, or Infoblox detect configuration deviations in the
-      SD-WAN overlay (e.g., unauthorized tunnel endpoints, expired
-      certificates, or policy mismatches), ServiceNow automatically
-      generates a Change Request (CR) linked to the affected CMDB CI.
-      The CR triggers an automated remediation workflow that re-validates
-      the overlay configuration against the approved baseline in
-      program.yml, enforces the corrective action, and closes the loop
-      by updating the telemetry plane with the resolution status. This
-      ensures continuous governance of the Overlay Plane without manual
-      intervention.
-    integration_points:
-      - "Splunk SIEM: Automated incident creation from correlated alerts"
-      - "Azure Monitor: Health signal ingestion for CMDB enrichment"
-      - "Infoblox IPAM: DHCP/DNS change tracking linked to CMDB CIs"
-      - "Cisco Catalyst Center: Overlay configuration baseline validation"
-    documentation_source: "https://docs.servicenow.com/"
 
-  - provider: "Microsoft"
-    product: "Intune (Endpoint Manager)"
-    uiao_pillar: "Governance & Orchestration"
-    role: "Endpoint Identity & Compliance Enforcement"
-    certification_class: "Class C (Moderate)"
-    fedramp_id: "FR1819041707"
-    status: "FedRAMP Authorized"
-    nist_controls:
-      - "AC-19: Access Control for Mobile Devices (Rev 5)"
-      - "CM-8: System Component Inventory (Rev 5)"
-      - "AC-20: Use of External Systems (Rev 5)"
-      - "CM-2: Baseline Configuration (Rev 5)"
-      - "IA-3: Device Identification and Authentication (Rev 5)"
-    ksi_mapping: "KSI-IDM-02"
-    evidence_method: "Continuous compliance posture export via Microsoft Graph API; device attestation signals fed to Conditional Access per FedRAMP 20x machine-readable evidence model"
-    identity_plane_enforcement: >
-      Microsoft Intune serves as the gatekeeper ensuring the Identity
-      Plane only allows healthy, certified devices into the architectural
-      fabric. Before any device is granted network access through the
-      Overlay Plane, Intune validates its compliance posture: OS patch
-      level, disk encryption status, EDR agent health (Microsoft Defender
-      for Endpoint), and certificate validity. This compliance signal is
-      consumed by Entra ID Conditional Access, which enforces a
-      device-trust gate at authentication time. Non-compliant devices
-      are quarantined to a restricted VLAN segment managed by Cisco ISE,
-      preventing lateral movement within the fabric. Intune continuously
-      re-evaluates posture, ensuring that device trust is not a one-time
-      check but a persistent, real-time control input to the Identity
-      Control Plane.
-    integration_points:
-      - "Entra ID Conditional Access: Device compliance as authentication gate"
-      - "Cisco ISE: Quarantine VLAN assignment for non-compliant endpoints"
-      - "Microsoft Defender for Endpoint: EDR health as compliance signal"
-      - "ServiceNow CMDB: Device inventory sync and lifecycle tracking"
-    documentation_source: "https://learn.microsoft.com/en-us/mem/intune/"
+  servicenow:
+    provider: "ServiceNow"
+    product: "ServiceNow GovCommunityCloud"
+    fedramp_authorization:
+      package_type: "JAB P-ATO"
+      impact_level: "High"
+      fedramp_20x_class: "Class C"
+      status: "Authorized"
+      controls_assessed: 421
+      assessment_framework: "NIST SP 800-53 Rev 5"
+      last_annual_assessment: "2025-09-30"
+      authorization_source: "Joint Authorization Board (JAB)"
+      marketplace_url: "https://marketplace.fedramp.gov/products/F1607067912"
+    required_version: "Xanadu (GovCommunityCloud)"
+    uiao_role: "Incident lifecycle management, change control, CMDB asset inventory, and continuous authorization support"
 
-fedramp_20x_alignment:
-  framework_version: "FedRAMP 20x (2026 Consolidated Rules)"
-  classification_note: >
-    Under FedRAMP 20x, the legacy Low/Moderate/High baselines have been
-    consolidated into a Class-based system. Class C corresponds to the
-    former Moderate baseline and requires continuous monitoring with
-    machine-readable evidence artifacts (OSCAL format) for automated
-    assessment.
-  evidence_requirements:
-    - "OSCAL-formatted System Security Plans (SSP)"
-    - "Machine-readable Plans of Action & Milestones (POA&M)"
-    - "Automated continuous monitoring data feeds"
-    - "API-accessible compliance posture for 3PAO validation"
-  nist_revision: "NIST 800-53 Rev 5 (September 2020, updated December 2024)"
+    nist_controls:
+
+      - control_id: "IR-4"
+        control_name: "Incident Handling"
+        implements: "Incident Management module state machine workflow (New > In Progress > Resolved > Closed) with mandatory categorization, priority assignment, and escalation rules"
+        evidence_artifact: "incident table audit trail: sys_audit_list where tablename=incident"
+        api_endpoint: "/api/now/table/incident"
+
+      - control_id: "IR-5"
+        control_name: "Incident Monitoring"
+        implements: "Performance Analytics incident dashboards with real-time MTTR/MTTI metrics, trend analysis, and SLA breach tracking against OLA definitions"
+        evidence_artifact: "pa_dashboards where category=incident; sla_breach_log table"
+        api_endpoint: "/api/now/stats/incident"
+
+      - control_id: "IR-6"
+        control_name: "Incident Reporting"
+        implements: "Notification rules engine (sysevent + cmn_notif_message) auto-generates incident reports to designated authorities; US-CERT reporting templates in GRC module"
+        evidence_artifact: "cmn_notif_message audit log; scheduled report execution history"
+        api_endpoint: "/api/now/table/sys_report"
+
+      - control_id: "IR-8"
+        control_name: "Incident Response Plan"
+        implements: "GRC Policy and Compliance Management stores the IRP as a controlled document with version history, annual review workflow, and stakeholder acknowledgment tracking"
+        evidence_artifact: "sn_compliance_policy table where category=incident_response; document_revision history"
+
+      - control_id: "CM-3"
+        control_name: "Configuration Change Control"
+        implements: "Change Management module enforces CAB approval workflow, risk assessment scoring (change_risk_score), collision detection, and mandatory back-out plan documentation"
+        evidence_artifact: "change_request table audit trail; cab_meeting_agenda and approval history"
+        api_endpoint: "/api/now/table/change_request"
+
+      - control_id: "CM-8"
+        control_name: "System Component Inventory"
+        implements: "CMDB maintains authoritative CI records; Discovery auto-populates hardware, software, and dependency relationships via agentless network scans"
+        evidence_artifact: "cmdb_ci table with discovery_source=ServiceNow Discovery; cmdb_rel_ci relationship map"
+        api_endpoint: "/api/now/table/cmdb_ci"
+
+      - control_id: "CA-7"
+        control_name: "Continuous Monitoring"
+        implements: "GRC Continuous Authorization and Monitoring module (com.sn_irm_cont_auth_monitor) tracks control implementation status against NIST 800-53 Rev 5 baseline, auto-generates POA&Ms from failed assessments"
+        evidence_artifact: "sn_irm_cont_auth_monitor tables; poam table with auto-generated entries"
+
+      - control_id: "SA-9"
+        control_name: "External System Services"
+        implements: "Vendor Risk Management module tracks third-party providers, stores vendor assessments, monitors SLA compliance, and links vendor CIs to CMDB service maps"
+        evidence_artifact: "vendor_assessment table; sn_vdr_risk_assessment with linked cmdb_ci_service records"
+
+    integration_bindings:
+      - target: "Infoblox BloxOne DDI"
+        mechanism: "CMDB Discovery imports IP allocation records via REST IntegrationHub spoke"
+        control_supported: "CM-8 (CMDB completeness depends on Infoblox as IP source of truth)"
+      - target: "CyberArk PAM"
+        mechanism: "Privileged session events forwarded via MID Server syslog integration"
+        control_supported: "IR-4 (privileged access anomalies auto-create P1 incidents)"
+      - target: "Microsoft Sentinel"
+        mechanism: "Bidirectional incident sync via Azure Logic App connector"
+        control_supported: "IR-5 (correlated SIEM alerts enrich incident records)"
+      - target: "Microsoft Intune"
+        mechanism: "Device compliance status synced to CMDB via Graph API IntegrationHub spoke"
+        control_supported: "CM-8 (managed device inventory reconciliation)"
+
+  intune:
+    provider: "Microsoft"
+    product: "Microsoft Intune (M365 GCC High)"
+    fedramp_authorization:
+      package_type: "Agency ATO"
+      impact_level: "High"
+      fedramp_20x_class: "Class C"
+      parent_package: "Microsoft Office 365 GCC High"
+      fedramp_package_id: "FR1824057433"
+      status: "Authorized"
+      assessment_framework: "NIST SP 800-53 Rev 5"
+      authorization_source: "DoD / Agency ATO (FedRAMP High baseline)"
+      marketplace_url: "https://marketplace.fedramp.gov/products/FR1824057433"
+      note: "Intune inherits authorization from the M365 GCC High boundary. Controls are assessed as part of the O365 GCC High annual assessment."
+    required_version: "2602 Service Release (March 2026)"
+    deployment_ring: "GCC High"
+    uiao_role: "Endpoint configuration baseline enforcement, device compliance gating for Conditional Access, and hardware/software inventory for CMDB reconciliation"
+
+    nist_controls:
+
+      - control_id: "CM-2"
+        control_name: "Baseline Configuration"
+        implements: "Configuration Profiles define the approved baseline per device platform (Windows, iOS, macOS). Each profile specifies registry keys, MDM CSP settings, or plist values that enforce the organizational standard build."
+        evidence_artifact: "Intune > Devices > Configuration profiles > Per-profile compliance report; Graph API: GET /deviceManagement/deviceConfigurations/{id}/deviceStatuses"
+        baseline_sources:
+          - "DISA STIG Windows 11 v1r6"
+          - "CIS Microsoft 365 Benchmark v3.1.0"
+          - "CISA SCuBA M365 Baseline (BOD 25-01)"
+
+      - control_id: "CM-6"
+        control_name: "Configuration Settings"
+        implements: "Security Baselines deploy pre-built policy sets aligned to DISA STIGs and CIS Benchmarks. Settings Catalog provides granular per-CSP control over 5000+ individual Windows MDM policy settings."
+        evidence_artifact: "Intune > Endpoint security > Security baselines > Profile compliance status; Graph API: GET /deviceManagement/templates"
+
+      - control_id: "CM-8"
+        control_name: "System Component Inventory"
+        implements: "Hardware inventory agent reports device make, model, serial number, OS version, installed applications, and TPM attestation status. Software inventory enumerates all discovered and managed applications per device."
+        evidence_artifact: "Intune > Devices > All devices > Hardware tab; Graph API: GET /deviceManagement/managedDevices/{id}?$select=hardwareInformation"
+        api_endpoint: "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices"
+
+      - control_id: "CM-7"
+        control_name: "Least Functionality"
+        implements: "App Protection Policies restrict which applications access corporate data. Enrollment Restrictions limit permitted device types and OS versions. AppLocker/WDAC policies deployed via Configuration Profiles block unauthorized executables."
+        evidence_artifact: "Intune > Apps > App protection policies > User report; Intune > Devices > Enrollment restrictions"
+
+      - control_id: "IA-3"
+        control_name: "Device Identification and Authentication"
+        implements: "Autopilot device registration binds hardware hash (TPM 2.0 endorsement key + device serial) to Entra ID device object at enrollment. SCEP/PKCS certificate profiles issue machine certificates from agency PKI."
+        evidence_artifact: "Entra ID > Devices > Device list with join type=Autopilot; Intune > Configuration profiles > SCEP certificate deployment status"
+
+      - control_id: "AC-19"
+        control_name: "Access Control for Mobile Devices"
+        implements: "Compliance Policies evaluate device posture (encryption, PIN, OS version, jailbreak detection, Defender risk score) and report status to Entra ID. Conditional Access consumes this signal to gate resource access."
+        evidence_artifact: "Intune > Devices > Compliance policies > Per-policy device status; Entra ID > Conditional Access > Grant controls = Require compliant device"
+
+      - control_id: "SI-2"
+        control_name: "Flaw Remediation"
+        implements: "Windows Update for Business policies define update rings (Current/Deferred/Pilot) with deferral periods, deadline enforcement, and restart grace periods. Compliance tracked per ring with non-compliant device escalation."
+        evidence_artifact: "Intune > Devices > Windows updates > Update rings compliance; Graph API: GET /deviceManagement/windowsUpdateForBusinessConfigurations"
+
+      - control_id: "SC-28"
+        control_name: "Protection of Information at Rest"
+        implements: "BitLocker encryption policy via Endpoint Protection profile requires TPM+PIN protector, XTS-AES-256, and automatic key escrow to Entra ID. FileVault enforced on macOS. Compliance policy marks unencrypted devices non-compliant."
+        evidence_artifact: "Intune > Configuration profiles > Endpoint protection > BitLocker status; Intune > Reports > Device encryption report"
+
+    integration_bindings:
+      - target: "Microsoft Entra ID"
+        mechanism: "Compliance policy evaluation result is the primary signal consumed by Entra Conditional Access grant controls"
+        control_supported: "AC-19 (device posture gates identity-based access decisions)"
+      - target: "Microsoft Defender for Endpoint"
+        mechanism: "MDE machine risk score feeds into Intune compliance policy as a device threat level condition"
+        control_supported: "SI-2, IA-3 (compromised devices auto-quarantined via compliance failure)"
+      - target: "ServiceNow CMDB"
+        mechanism: "Graph API device inventory exported to ServiceNow CMDB via IntegrationHub spoke"
+        control_supported: "CM-8 (Intune is MDM source of truth; ServiceNow CMDB is authoritative asset register)"
+      - target: "Cisco SD-WAN"
+        mechanism: "Device compliance status informs network access via Entra Conditional Access and Cisco ISE integration"
+        control_supported: "AC-4 (non-compliant devices blocked from overlay network segments)"
