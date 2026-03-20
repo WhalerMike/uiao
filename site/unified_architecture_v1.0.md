@@ -14,6 +14,26 @@ The Unified Identity-Addressing-Overlay Architecture (UIAO) is a modernization i
 The strategic goal is to transform the agency into a modern federal network where identity is the perimeter, telemetry is the truth, routing is cloud-first, and governance is automated. UIAO provides the architectural foundation needed to meet Zero Trust expectations, TIC 3.0 requirements, and FedRAMP-aligned controls while improving mission performance and citizen experience.
 
 
+# Core Stack Integration
+
+The following diagram illustrates how the three pillars of the UIAO framework interconnect. Each node is dynamically generated from program.yml and styled using validated classDef syntax.
+
+```mermaid
+graph LR
+    %% Define Classes based on UIAO Pillars
+    classDef identity fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef addressing fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef overlay fill:#dfd,stroke:#333,stroke-width:2px;
+
+    %% Dynamically generate nodes from program.yml
+    
+
+    %% Static Logic Connections (The Unified Fabric)
+    INR --> CAT
+    IB --> CAT
+    CAT --> IB
+```
+
 ---
 
 # The Five Control Planes
