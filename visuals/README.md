@@ -1,8 +1,8 @@
 # UIAO Vibrant Visualization Canon
 
-This directory contains high-fidelity, presentation-grade architectural visualizations.
-These assets supplement the technical **Mermaid.js** diagrams in `data/diagrams.yml`
-for use in leadership briefings and FedRAMP authorized evidence.
+This directory contains high-fidelity, presentation-grade architectural visualizations. These assets supplement the technical **Mermaid.js** diagrams in `data/diagrams.yml` for use in leadership briefings and FedRAMP authorized evidence.
+
+> **Geographic Constraint:** All map-based imagery in this repository MUST depict only the United States and its territories (CONUS, Alaska, Hawaii, Puerto Rico, Guam, US Virgin Islands, and minor outlying islands). World maps are prohibited in a US Federal Government context.
 
 ## AI Generation Workflow
 
@@ -27,16 +27,23 @@ Images are generated using a **Parallel AI Orchestration** workflow:
   > labeled "Identity-to-IP Hash" converts the name "User_Alpha" into the IPv6
   > address `2001:db8:85a3::8a2e:370:7334`.
 
-### V2: Cisco-Microsoft INR Fabric
+### V2: Cisco-Microsoft INR Fabric (US Federal Edition)
 
 - **File:** `uiao-vibrant-o-pillar-inr-fabric.png`
 - **Pillar:** **O** (Overlay)
+- **Geographic Constraint:** US-only map. No world maps.
 - **Gencraft Prompt:**
-  > Global "Command Center" map view, vibrant blue and gold highlights. A stylized
-  > world map showing silver "Overlay Tunnels" (Cisco Catalyst SD-WAN) connecting
-  > data centers. Glowing blue beacons sit atop the tunnels labeled "Microsoft INR
-  > Telemetry." These beacons send "Pulses" (representing Jitter/Latency data) to
-  > a centralized dashboard labeled "ServiceNow Governance Hub."
+  > High-fidelity 3D infographic, "Command Center" aesthetic with vibrant blue and
+  > gold highlights. The visual is centered on a detailed map of the United States
+  > of America and its territories (including Alaska, Hawaii, Puerto Rico, Guam, and
+  > minor outlying islands). Stylized "Federal Data Center" icons are located at
+  > domestic hubs (e.g., DC Metro, Denver, Dallas, Seattle, Honolulu, San Juan).
+  > Silver "Overlay Tunnels" (Cisco Catalyst SD-WAN) create a domestic mesh network
+  > connecting these sites. Glowing blue beacons sit atop these domestic tunnels
+  > labeled "Microsoft INR Telemetry." These beacons send "Pulses" (symbolizing
+  > Jitter/Latency metrics) to a centralized dashboard labeled "ServiceNow
+  > Governance Hub." The overall aesthetic is clean, high-tech, and explicitly
+  > limited to US sovereign territory.
 
 ### V3: 20x Governance Loop
 
