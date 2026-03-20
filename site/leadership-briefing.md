@@ -1,239 +1,126 @@
-# Leadership Briefing - Unified Identity-Addressing-Overlay Architecture
+---
+title: "UIAO Leadership Briefing"
+version: "1.0"
+classification: "CUI/FOUO"
+audience: "CIO, CISO, CTO, PMO, Network Leadership, Identity Leadership"
+---
 
-Format: Markdown slide deck
-Audience: CIO, CISO, CTO, PMO, Network/Identity Leadership
-Version: 1.0 (March 2026)
-Classification: CUI/FOUO or as appropriate
+# Unified Identity‑Addressing‑Overlay Architecture (UIAO)
+**Leadership Briefing — Version 1.0**
 
 ---
 
-# Slide 1 - Program Overview
-
-## Unified Identity-Addressing-Overlay Architecture (UIAO)
-
-A coordinated modernization effort across:
-
-- Microsoft Entra ID (Identity control plane)
-
-- ICAM (NIST 800-63, OMB M-19-17) (Governance backbone)
-
-- InfoBlox IPAM (Authoritative IPAM)
-
-- Cisco Catalyst SD-WAN (Routing control plane)
-
-- Cloud Telemetry + Location Services (Telemetry and location)
-
-- TIC 3.0 Cloud + Branch (Security and compliance)
-
-
-## Strategic Goal
-
-Transform the agency into a cloud-optimized, identity-driven, telemetry-informed, Zero Trust-aligned, TIC 3.0-compliant federal enterprise
-
----
-
-# Slide 2 - Why Modernization Is Required
-
-## Current State Challenges
-
-- TIC 2.0 hairpin bottlenecks
-
-- AD-centric identity with limited governance
-
-- Fragmented IPAM across cloud and on-prem
-
-- Limited telemetry visibility
-
-- No INR or E911 readiness
-
-- Inconsistent Zero Trust enforcement
-
-
-## Mission Impact
-
-- Poor M365 performance
-
-- Increased cyber risk
-
-- Compliance gaps
-
-- Operational inefficiencies
+# Executive Summary
+The Unified Identity-Addressing-Overlay Architecture (UIAO) establishes a modern federal enterprise built on identity, telemetry, and cloud-first routing. It replaces fragmented legacy systems with a coherent, Zero Trust-aligned architecture that treats identity as the perimeter, telemetry as the authoritative truth source, and governance as an automated workflow rather than a manual process. UIAO is not a technology refresh; it is a structural modernization of how the agency authenticates, addresses, routes, observes, and governs every digital interaction.
+The agency’s current environment is constrained by TIC 2.0 hairpinning, on-premises Active Directory dependencies, fragmented IPAM, inconsistent Zero Trust enforcement, and incomplete telemetry. These limitations degrade M365 performance, increase cyber risk, and create compliance gaps with TIC 3.0, FedRAMP 22, SCuBA, and NIST 800-63. UIAO directly addresses these issues by unifying identity, addressing, routing, and telemetry into a single architectural fabric.
+The vision is a cloud-optimized, identity-driven enterprise where every resource—from IP addresses to certificates to routing paths—is derived from or bound to identity. Telemetry becomes a real-time control input for routing and security decisions. Addressing becomes deterministic and policy-driven. Routing becomes cloud-first and performance-optimized. Governance becomes embedded and automated. Above all, modernization is guided by a simple principle: if a change degrades citizen experience, it does not ship.
+UIAO organizes the modernized enterprise into five coordinated control planes and seven core concepts that define how the architecture operates. These planes and concepts work together to deliver conversation-level visibility, identity-aware segmentation, accurate location inference, and automated policy enforcement. The frozen state analysis reveals a legacy environment that cannot support modern mission requirements. UIAO resolves these issues by establishing a unified, authoritative, and automated architecture that improves performance, strengthens security, reduces compliance risk, and enhances citizen-facing services.
+UIAO delivers measurable outcomes: reduced latency, improved M365 performance, stronger identity governance, deterministic addressing, real-time telemetry correlation, and alignment with federal modernization mandates. It provides the foundation for a resilient, scalable, and future-ready federal enterprise.
 
 
 ---
 
-# Slide 3 - Program Vision
+# Program Overview
+The Unified Identity-Addressing-Overlay Architecture (UIAO) is a modernization initiative designed to unify identity, addressing, routing, telemetry, and governance into a coherent, Zero Trust-aligned federal architecture. It integrates Microsoft Entra ID as the identity control plane, ICAM as the governance backbone, InfoBlox as the authoritative IPAM, Cisco SD-WAN as the routing control plane, and cloud-native telemetry and location services as the truth source for operational decisions. Together, these components form a coordinated modernization effort that replaces fragmented legacy systems with a cloud-optimized, identity-driven, telemetry-informed enterprise.
+The strategic goal is to transform the agency into a modern federal network where identity is the perimeter, telemetry is the truth, routing is cloud-first, and governance is automated. UIAO provides the architectural foundation needed to meet Zero Trust expectations, TIC 3.0 requirements, and FedRAMP-aligned controls while improving mission performance and citizen experience.
 
-## End State
-
-A fully modernized, identity-driven, cloud-optimized, telemetry-rich federal network
-
-## Guiding Principles
-
-- Zero Trust by default
-
-- Identity as the new perimeter
-
-- Telemetry as the truth source
-
-- Cloud-first routing
-
-- Incremental modernization (no big-bang)
-
-- FedRAMP-aligned controls
-
-- Modular, extensible architecture
-
-
-## Design Principle
-
-> If it degrades the citizen interaction, it does not ship
 
 ---
 
-# Slide 4 - Five Control Planes
+# Why Modernization Is Required
+The agency’s current environment is constrained by legacy TIC 2.0 routing patterns that force traffic through centralized bottlenecks, degrading performance and limiting cloud adoption. Identity remains anchored in on-premises Active Directory, creating governance gaps and inconsistent enforcement across divisions. Addressing is fragmented across spreadsheets and disconnected IPAM tools, making it difficult to correlate identity, device, and network activity. Telemetry is incomplete and siloed, preventing conversation-level visibility and limiting the agency’s ability to support INR, E911, or Zero Trust enforcement.
+These limitations have direct mission impact. M365 performance is degraded by unnecessary hairpinning. Cyber risk increases when identity governance is inconsistent and telemetry is incomplete. Compliance gaps emerge when the agency cannot meet TIC 3.0, FedRAMP 22, or SCuBA expectations. Operational inefficiencies multiply when governance depends on manual tickets instead of automated workflows. Modernization is required to support mission readiness, cyber resilience, and citizen-facing services.
 
 
-## Identity Control Plane
+---
 
-- Entra ID
-
-- ICAM governance
-
-- Conditional Access
-
-- PIM
-
-- Lifecycle automation
+# Program Vision
+UIAO envisions a fully modernized federal network where identity, addressing, routing, and telemetry operate as a unified system. In this end state, identity becomes the root namespace for all resources, addressing becomes deterministic and policy-driven, routing becomes cloud-first and performance-optimized, and telemetry becomes a real-time control input rather than a passive reporting mechanism.
+The architecture is guided by several principles. Zero Trust is the default operating model, with identity as the perimeter and continuous verification as the norm. Telemetry is treated as the authoritative truth source for routing, security, and compliance decisions. Modernization proceeds incrementally, avoiding big-bang cutovers and minimizing operational disruption. All design choices are aligned with FedRAMP, TIC 3.0, and NIST 800-63 requirements. Above all, the architecture prioritizes citizen experience: if a change degrades public service, it does not ship.
 
 
+---
 
-## Network Control Plane
+# The Five Control Planes
 
-- Cisco Catalyst SD-WAN
-
-- Cloud OnRamp for M365
-
-- INR integration
-
-- Zero Trust segmentation
+### 1. Identity Control Plane
+The Identity Control Plane is anchored in Entra ID and reinforced by ICAM governance, Conditional Access, Privileged Identity Management, and lifecycle automation. Identity becomes the authoritative source for access, addressing, certificates, and policy.
 
 
 
-## Addressing Control Plane
-
-- InfoBlox IPAM
-
-- DNS/DHCP modernization
-
-- Cloud IPAM reconciliation
+### 2. Network Control Plane
+The Network Control Plane uses Cisco SD-WAN to deliver cloud-first routing, performance-optimized paths for M365, and identity-aware segmentation. Integration with INR enables location-aware routing and emergency services readiness.
 
 
 
-## Telemetry and Location Control Plane
-
-- M365 Network Telemetry
-
-- SD-WAN telemetry (IPFIX/SNMP/syslog)
-
-- Endpoint telemetry (Defender/Intune)
-
-- DNS telemetry (InfoBlox)
-
-- CDM/CLAW reporting
-
-- SIEM ingestion
+### 3. Addressing Control Plane
+The Addressing Control Plane modernizes IPAM through InfoBlox, replacing spreadsheets with authoritative, identity-derived addressing. DNS and DHCP are unified across cloud and on-prem environments, enabling consistent policy enforcement and accurate telemetry correlation.
 
 
 
-## Security and Compliance Plane
+### 4. Telemetry & Location Control Plane
+The Telemetry and Location Control Plane consolidates signals from M365, SD-WAN, endpoints, DNS, CDM/CLAW, and SIEM platforms. Telemetry becomes a real-time control input for routing, security, and compliance, enabling conversation-level visibility across the enterprise.
 
-- TIC 3.0 Cloud + Branch
 
-- Zero Trust
 
-- FedRAMP alignment
+### 5. Security & Compliance Plane
+The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Trust, FedRAMP 22, NIST 800-63, and ICAM governance. Security becomes embedded in the architecture rather than bolted on, with automated enforcement replacing manual review.
 
-- NIST 800-63
-
-- ICAM governance
 
 
 
 ---
 
-# Slide 5 - Seven Core Concepts
+# Seven Core Concepts
+
+### 1. Conversation as the Atomic Unit
+Every interaction—identity, certificate, addressing, path, QoS, and telemetry—is treated as a single, correlated conversation rather than isolated events.
 
 
-### 1. Conversation as atomic unit
-Every interaction is a conversation with identity, certificates, addressing, path, QoS, and telemetry bound together
+
+### 2. Identity as the Root Namespace
+Identity becomes the root namespace for all resources, ensuring that every IP address, certificate, subnet, policy, and telemetry event is derived from or bound to identity.
 
 
-### 2. Identity as root namespace
-Every IP, certificate, subnet, policy, and telemetry event is derived from or bound to identity
+
+### 3. Deterministic Addressing
+Addressing becomes deterministic and policy-driven, replacing ad-hoc assignment with identity-derived logic that enables accurate correlation and automated governance.
 
 
-### 3. Deterministic addressing
-Addressing is derived from identity attributes and policy, not ad-hoc assignment
+
+### 4. Certificate-Anchored Overlay
+Certificates and mutual TLS anchor tunnels, services, and trust relationships across the enterprise.
 
 
-### 4. Certificate-anchored overlay
-Certificates and mutual TLS anchor tunnel and service authentication
+
+### 5. Telemetry as Control
+Telemetry becomes an active control input for routing, security, and compliance decisions rather than a passive reporting mechanism.
 
 
-### 5. Telemetry as control
-Telemetry is a control plane input to automated decisions, not passive reporting
+
+### 6. Embedded Governance & Automation
+Governance is executed through orchestrated workflows that enforce policy consistently and reduce operational burden.
 
 
-### 6. Embedded governance and automation
-Governance is executed through orchestrated workflows, not manual tickets
+
+### 7. Public Service First
+Citizen experience, accessibility, and privacy remain top-level design constraints.
 
 
-### 7. Public service first
-Citizen experience, accessibility, and privacy are top-level design constraints
-
-
----
-
-# Slide 6 - Frozen State Analysis
-
-| Domain | Current State | Gap |
-|--------|--------------|-----|
-
-| identity | On-prem Active Directory, siloed per division | No unified identity graph |
-
-| addressing | Static IP managed in spreadsheets | No identity-to-address binding |
-
-| network-security | Perimeter firewalls (L3/L4) | No identity-aware segmentation |
-
-| endpoint | Mixed tooling | No unified posture signal |
-
-| app-delivery | Monolithic apps, local auth per app | No workload identity |
-
-| telemetry | SIEM collects logs but no correlation | No conversation-level correlation |
-
-| governance | Change management by email and tickets | No automated policy enforcement |
-
-| data-protection | Manual classification, noisy DLP | No data-aware routing |
 
 
 ---
 
-# Slide 7 - Program Outcomes
-
-- Reduced latency and improved M365 performance
-
-- Stronger identity governance and compliance
-
-- Accurate addressing and location inference
-
-- Real-time telemetry for routing and security
-
-- TIC 3.0 compliance across cloud and branch
-
-- A unified, future-proof modernization foundation
+# Frozen State Analysis
+The agency’s current environment reflects a series of disconnected legacy systems that cannot support modern requirements. Identity is siloed across divisions, preventing a unified identity graph. Addressing is static and manually managed, creating operational risk and preventing accurate correlation. Network security relies on perimeter firewalls that cannot enforce identity-aware segmentation. Endpoint posture is inconsistent due to mixed tooling. Applications rely on monolithic architectures and local authentication, limiting scalability and modernization. Telemetry is collected but not correlated, preventing conversation-level visibility. Governance depends on email and manual change management, slowing operations and increasing error rates. Data protection relies on manual classification and noisy DLP, limiting effectiveness.
 
 
 ---
 
-*Generated from UIAO data layer - March 2026*
+# Program Outcomes
+UIAO delivers measurable improvements across performance, security, compliance, and mission readiness. Cloud-first routing and identity- driven segmentation reduce latency and improve M365 performance. Stronger identity governance and deterministic addressing enhance Zero Trust enforcement. Unified telemetry enables accurate location inference, conversation-level visibility, and real-time decision-making. The architecture aligns the agency with TIC 3.0, FedRAMP 22, and NIST 800-63 requirements, reducing compliance risk. Most importantly, the modernization improves citizen experience by delivering faster, more reliable, and more secure services.
+
+
+---
+
+*End of Leadership Briefing v1.0*
