@@ -1,4 +1,13 @@
-# 0.1.0 (2026-03-20)
+# [0.2.0](https://github.com/WhalerMike/uiao-core/compare/v0.1.0...v0.2.0) (2026-03-20)
+
+
+### Features
+
+* Add Sentinel KQL alert definitions for Atlas detection layer ([9dd30a6](https://github.com/WhalerMike/uiao-core/commit/9dd30a6f134cf3f615a7838f87217be6218087c6))
+
+
+
+# [0.1.0](https://github.com/WhalerMike/uiao-core/compare/0ed2b68bcae6f6ff0c2cb6a119b120a9287fbd04...v0.1.0) (2026-03-20)
 
 
 ### Bug Fixes
