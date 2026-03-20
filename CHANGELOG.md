@@ -1,3 +1,12 @@
+# [0.8.0](https://github.com/WhalerMike/uiao-core/compare/v0.7.0...v0.8.0) (2026-03-20)
+
+
+### Features
+
+* add Sentinel IaC Bicep template with 3 KQL alert rules ([f7ca966](https://github.com/WhalerMike/uiao-core/commit/f7ca966e4c32807aca22fc5f8cfa2597953ade5a))
+
+
+
 # [0.7.0](https://github.com/WhalerMike/uiao-core/compare/v0.6.1...v0.7.0) (2026-03-20)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * update mkdocs.yml with Implementation, Compliance, and Executive nav sections ([e787c11](https://github.com/WhalerMike/uiao-core/commit/e787c11e66667e7845fc575014bfad6cdcb18406))
-
-
-
-# [0.4.0](https://github.com/WhalerMike/uiao-core/compare/v0.3.0...v0.4.0) (2026-03-20)
-
-
-### Features
-
-* add E2E integration test for Atlas enforcement flow ([c3bca8d](https://github.com/WhalerMike/uiao-core/commit/c3bca8d05677af82120b93da14ed10c039d088c7))
 
 
 
