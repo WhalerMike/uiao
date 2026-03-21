@@ -1,3 +1,13 @@
+## [0.9.2](https://github.com/WhalerMike/uiao-core/compare/v0.9.1...v0.9.2) (2026-03-21)
+
+
+### Bug Fixes
+
+* add git pull --rebase to docs.yml to prevent push race condition ([a8a3084](https://github.com/WhalerMike/uiao-core/commit/a8a3084727a0d3e7f7933690dd99835daceb1c5c))
+* correct YAML indentation in pitch deck canon file ([6b66056](https://github.com/WhalerMike/uiao-core/commit/6b66056dff619cb8adbcb9489a1f5c1911d7f5c6))
+
+
+
 ## [0.9.1](https://github.com/WhalerMike/uiao-core/compare/v0.9.0...v0.9.1) (2026-03-21)
 
 
@@ -31,15 +41,6 @@
 ### Features
 
 * add Mover/Leaver identity lifecycle scenarios to leadership briefing canon ([7c8b9a2](https://github.com/WhalerMike/uiao-core/commit/7c8b9a224c4169138f4b3e15649716d1935a7ff0))
-
-
-
-## [0.6.1](https://github.com/WhalerMike/uiao-core/compare/v0.6.0...v0.6.1) (2026-03-20)
-
-
-### Bug Fixes
-
-* align visuals README filenames - V2 maps to telemetry_fabric_mesh.png, V3 maps to atlas_vision_outcome.png ([20c373d](https://github.com/WhalerMike/uiao-core/commit/20c373d278e1762b2f09568be2002aa993c30001))
 
 
 
