@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UIAO-Core | Document Compiler</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uswds/3.7.1/css/uswds.min.css">
+            <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
             --uiao-primary: #1b3a4b;
@@ -360,6 +362,39 @@
                 }
             }, 2000);
         }
+
+                // Attach onclick handlers to Recent Documents table buttons
+                document.querySelectorAll('.doc-table td .btn').forEach(function(btn) {
+            var row = btn.closest('tr');
+            if (!row) return;
+            var templateCell = row.querySelectorAll('td')[1];
+            if (!templateCell) return;
+            var templateName = templateCell.textContent.trim();
+            var slug = templateName.replace('.md.j2', '').replace(/_/g, '-');
+            var label = btn.textContent.trim();
+            if (label === 'View') {
+                btn.onclick = function() { loadDoc(slug); };
+            } else if (label === 'DOCX') {
+                btn.onclick = function() { downloadAs(slug, 'docx'); };
+            } else if (label === 'PDF') {
+                btn.onclick = function() { downloadAs(slug, 'pdf'); };
+            }
+        });
+
+        // Also attach handlers to Document Library format buttons
+                document.querySelectorAll('.card td .btn-sm').forEach(function(btn) {
+            var row = btn.closest('tr');
+            if (!row) return;
+            var docName = row.querySelector('strong');
+            if (!docName) return;
+            var slug = docName.textContent.trim().toLowerCase().replace(/\s+/g, '-');
+            var label = btn.textContent.trim();
+            var fmtMap = {'MD':'md','DOCX':'docx','PDF':'pdf','HTML':'html'};
+            var fmt = fmtMap[label];
+            if (fmt) {
+                btn.onclick = function() { downloadAs(slug, fmt); };
+            }
+        });
     </script>
 </body>
 </html>
