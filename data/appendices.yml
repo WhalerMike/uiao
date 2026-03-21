@@ -425,3 +425,65 @@ audience_routing:
     sections: "3-4"
     appendices: [C]
     note: "Mandate crosswalk"
+  # BA-01: IDENTITY PLANE POLICY (ISE/SGT)
+  BA-01:
+    title: "Identity Plane Policy (ISE/SGT)"
+    status: "Approved"
+    owner: "Security Architecture"
+    last_updated: "2026-03-21"
+    description: "Defines the Zero-Trust enforcement model by mapping authenticated Azure AD identities to Scalable Group Tags (SGTs)."
+    source_file: "security/IA-ZeroTrust-Identity-v1.4.pdf"
+    config_snippet: |
+      identity_mapping:
+        provider: "Azure AD / Cisco ISE"
+        trust_model: "Zero-Trust (Identity-Defined)"
+        mappings:
+          - ad_group: "Agency-Privileged-Admin"
+            sgt_name: "INFRA_ADMIN"
+            sgt_id: 2
+          - ad_group: "Agency-Employee-Standard"
+            sgt_name: "EMPLOYEE"
+            sgt_id: 4
+          - ad_group: "Agency-Contractor-External"
+            sgt_name: "CONTRACTOR"
+            sgt_id: 6
+  # A-04: GLOBAL TIME & DIRECTORY STANDARD
+  A-04:
+    title: "Global Time & Directory Standard"
+    status: "Approved"
+    owner: "Infrastructure Operations"
+    last_updated: "2026-03-21"
+    description: "Establishes the authoritative hierarchy for time synchronization and name resolution."
+    source_file: "standards/IA-Directory-Services-v3.0.pdf"
+    config_snippet: |
+      directory_services:
+        ntp_hierarchy:
+          stratum_1: "gps.agency.gov"
+          stratum_2: ["ntp-p1.agency.gov", "ntp-p2.agency.gov"]
+        dns_zones:
+          internal: "internal.agency.gov"
+          external: "agency.gov"
+        ad_structure:
+          forest_functional_level: "Windows Server 2022"
+          top_level_ou: "OU=Agency_Assets,DC=internal,DC=agency,DC=gov"
+  # BA-02: MICRO-SEGMENTATION BASELINE
+  BA-02:
+    title: "Micro-segmentation Baseline"
+    status: "Approved"
+    owner: "Cybersecurity Operations (SecOps)"
+    last_updated: "2026-03-21"
+    description: "Defines the default-deny posture and the SGACL matrix for granular traffic control between SGTs."
+    source_file: "security/IA-Microsegmentation-Baseline-v2.0.pdf"
+    config_snippet: |
+      segmentation_policy:
+        default_posture: "Deny All / Log All"
+        sgacl_matrix:
+          - source: "EMPLOYEE"
+            destination: "INFRA_ADMIN"
+            action: "Deny"
+          - source: "CONTRACTOR"
+            destination: "EMPLOYEE"
+            action: "Deny"
+          - source: "ANY"
+            destination: "SHARED_SERVICES"
+            action: "Permit (DNS, NTP, HTTPs)"
