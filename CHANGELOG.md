@@ -1,3 +1,12 @@
+## [0.9.6](https://github.com/WhalerMike/uiao-core/compare/v0.9.5...v0.9.6) (2026-03-21)
+
+
+### Bug Fixes
+
+* correct CSS selectors for button onclick handlers (td not btn-group) ([f9c3aba](https://github.com/WhalerMike/uiao-core/commit/f9c3aba6ab1412130a3282c7148c95b357e78e0a))
+
+
+
 ## [0.9.5](https://github.com/WhalerMike/uiao-core/compare/v0.9.4...v0.9.5) (2026-03-21)
 
 
@@ -32,15 +41,6 @@
 
 * add git pull --rebase to docs.yml to prevent push race condition ([a8a3084](https://github.com/WhalerMike/uiao-core/commit/a8a3084727a0d3e7f7933690dd99835daceb1c5c))
 * correct YAML indentation in pitch deck canon file ([6b66056](https://github.com/WhalerMike/uiao-core/commit/6b66056dff619cb8adbcb9489a1f5c1911d7f5c6))
-
-
-
-## [0.9.1](https://github.com/WhalerMike/uiao-core/compare/v0.9.0...v0.9.1) (2026-03-21)
-
-
-### Bug Fixes
-
-* add pandoc/DOCX/PDF export step and fix git push race condition ([26dd629](https://github.com/WhalerMike/uiao-core/commit/26dd6294f14fff3cc1b7c1e76b20bcb841cf7b11))
 
 
 
