@@ -1,3 +1,12 @@
+## [0.9.3](https://github.com/WhalerMike/uiao-core/compare/v0.9.2...v0.9.3) (2026-03-21)
+
+
+### Bug Fixes
+
+* add error handling to compile_documents.py and merge data context properly ([fb715ee](https://github.com/WhalerMike/uiao-core/commit/fb715eee1c9b3f7057d242784eb73f334428d7dd))
+
+
+
 ## [0.9.2](https://github.com/WhalerMike/uiao-core/compare/v0.9.1...v0.9.2) (2026-03-21)
 
 
@@ -32,15 +41,6 @@
 ### Features
 
 * add Sentinel IaC Bicep template with 3 KQL alert rules ([f7ca966](https://github.com/WhalerMike/uiao-core/commit/f7ca966e4c32807aca22fc5f8cfa2597953ade5a))
-
-
-
-# [0.7.0](https://github.com/WhalerMike/uiao-core/compare/v0.6.1...v0.7.0) (2026-03-20)
-
-
-### Features
-
-* add Mover/Leaver identity lifecycle scenarios to leadership briefing canon ([7c8b9a2](https://github.com/WhalerMike/uiao-core/commit/7c8b9a224c4169138f4b3e15649716d1935a7ff0))
 
 
 
