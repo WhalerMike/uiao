@@ -45,6 +45,20 @@ In the event of an "Automation Storm" or a critical executive exclusion:
 | Tier 2 (Eng) | Logic & API Troubleshooting | Pipeline failures, script errors, or persistent false positives |
 | Tier 3 (Lead) | Strategic Override / CISO Liaison | Broad network isolation events or suspected compromise of Atlas |
 
+### Escalation Flow Diagram
+
+```mermaid
+graph TD
+  Trigger[ALERT GRC Key Collision]
+  Trigger -- Sev1 --> L1[L1 SOC Analyst]
+  Trigger -- Sev2 --> L2[L2 SecOps Engineer]
+  L1 -- DataIssue --> Sys[System Administrator]
+  L2 -- mTLSIssue --> IAM[Identity Team]
+  IAM -- CertReissued --> Resolved[ALERT RESOLVED]
+  IAM -- RootCACompromised --> Fed[FedRAMP Liaison]
+```
+
+
 ---
 
 ## SOP 5: Runbook for Failure Scenarios
