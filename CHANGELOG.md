@@ -1,3 +1,12 @@
+## [0.20.4](https://github.com/WhalerMike/uiao-core/compare/v0.20.3...v0.20.4) (2026-03-21)
+
+
+### Bug Fixes
+
+* **compliance:** replace FedRAMP 22 with FedRAMP 20x Phase 2 in canon pitch deck ([3916a25](https://github.com/WhalerMike/uiao-core/commit/3916a2524aafb924fb8829d817e8a1f7b3091fef))
+
+
+
 ## [0.20.3](https://github.com/WhalerMike/uiao-core/compare/v0.20.2...v0.20.3) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **docs:** add Executive FAQ to MkDocs navigation ([19eabeb](https://github.com/WhalerMike/uiao-core/commit/19eabebbe4ab35e0d31f8b07c70f09a4a47061c8))
-
-
-
-# [0.19.0](https://github.com/WhalerMike/uiao-core/compare/v0.18.1...v0.19.0) (2026-03-21)
-
-
-### Features
-
-* **docs:** add Executive FAQ template for SES leadership briefing ([9abd592](https://github.com/WhalerMike/uiao-core/commit/9abd5924e4b4ba67c4677a3ed34da09e6d8ac2a3))
 
 
 
