@@ -1,3 +1,21 @@
+## [0.20.9](https://github.com/WhalerMike/uiao-core/compare/v0.20.8...v0.20.9) (2026-03-21)
+
+
+### Bug Fixes
+
+* **ci:** add git pull --rebase before artifact commit to prevent push conflicts ([72df296](https://github.com/WhalerMike/uiao-core/commit/72df29637d84f6b253051c4306d3cea4cec06c54))
+
+
+
+## [0.20.8](https://github.com/WhalerMike/uiao-core/compare/v0.20.7...v0.20.8) (2026-03-21)
+
+
+### Bug Fixes
+
+* **scripts:** use executive_summary key in generate_pptx.py ([afe9a80](https://github.com/WhalerMike/uiao-core/commit/afe9a80a37e00f107120f917830f9b51870b5598))
+
+
+
 ## [0.20.7](https://github.com/WhalerMike/uiao-core/compare/v0.20.6...v0.20.7) (2026-03-21)
 
 
@@ -22,24 +40,6 @@
 ### Bug Fixes
 
 * **docs:** correct Executive FAQ nav indentation in mkdocs.yml ([86ff253](https://github.com/WhalerMike/uiao-core/commit/86ff2539c0ad8fc8b53ff088e51130f8a273dc7c))
-
-
-
-## [0.20.4](https://github.com/WhalerMike/uiao-core/compare/v0.20.3...v0.20.4) (2026-03-21)
-
-
-### Bug Fixes
-
-* **compliance:** replace FedRAMP 22 with FedRAMP 20x Phase 2 in canon pitch deck ([3916a25](https://github.com/WhalerMike/uiao-core/commit/3916a2524aafb924fb8829d817e8a1f7b3091fef))
-
-
-
-## [0.20.3](https://github.com/WhalerMike/uiao-core/compare/v0.20.2...v0.20.3) (2026-03-21)
-
-
-### Bug Fixes
-
-* **compliance:** replace FedRAMP 22 with FedRAMP 20x Phase 2 in canon leadership briefing ([b865516](https://github.com/WhalerMike/uiao-core/commit/b8655169321f124d953c18f9d66e5661d5745515))
 
 
 
