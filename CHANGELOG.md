@@ -1,3 +1,12 @@
+## [0.11.3](https://github.com/WhalerMike/uiao-core/compare/v0.11.2...v0.11.3) (2026-03-21)
+
+
+### Bug Fixes
+
+* add is defined guards to all pitch deck template sections ([05c661d](https://github.com/WhalerMike/uiao-core/commit/05c661ddcc7c0132c3b70411212ed54a51fd9052))
+
+
+
 ## [0.11.2](https://github.com/WhalerMike/uiao-core/compare/v0.11.1...v0.11.2) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * change fetch URL from site/ to docs/ with underscore slug conversion ([c8b5584](https://github.com/WhalerMike/uiao-core/commit/c8b5584a8d467674c18461d28402f2dbe10d6352))
-
-
-
-## [0.10.1](https://github.com/WhalerMike/uiao-core/compare/v0.10.0...v0.10.1) (2026-03-21)
-
-
-### Bug Fixes
-
-* replace git rebase with merge --strategy-option ours to resolve binary conflicts ([6ae7555](https://github.com/WhalerMike/uiao-core/commit/6ae75553d05cd35f27ffc1f91d15b05d8e88e36d))
 
 
 
