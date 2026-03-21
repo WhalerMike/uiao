@@ -1,3 +1,12 @@
+# [0.13.0](https://github.com/WhalerMike/uiao-core/compare/v0.12.2...v0.13.0) (2026-03-21)
+
+
+### Features
+
+* **assets:** add 7 Modernization Atlas diagram images from Gemini ([1acbca1](https://github.com/WhalerMike/uiao-core/commit/1acbca1e52f4d8949c341c802733316124410399))
+
+
+
 ## [0.12.2](https://github.com/WhalerMike/uiao-core/compare/v0.12.1...v0.12.2) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * add is defined guards to all pitch deck template sections ([05c661d](https://github.com/WhalerMike/uiao-core/commit/05c661ddcc7c0132c3b70411212ed54a51fd9052))
-
-
-
-## [0.11.2](https://github.com/WhalerMike/uiao-core/compare/v0.11.1...v0.11.2) (2026-03-21)
-
-
-### Bug Fixes
-
-* guard integration_matrix with is defined check in control-plane-architecture template ([9013821](https://github.com/WhalerMike/uiao-core/commit/9013821ab7124cd236530442813187640fdb04c2))
 
 
 
