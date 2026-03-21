@@ -1,3 +1,12 @@
+## [0.9.5](https://github.com/WhalerMike/uiao-core/compare/v0.9.4...v0.9.5) (2026-03-21)
+
+
+### Bug Fixes
+
+* add marked.js and html2pdf.js CDN scripts for download functionality ([6124164](https://github.com/WhalerMike/uiao-core/commit/6124164ab5d3bef3b1ecab8dde465a9f5eedcfdf))
+
+
+
 ## [0.9.4](https://github.com/WhalerMike/uiao-core/compare/v0.9.3...v0.9.4) (2026-03-21)
 
 
@@ -32,15 +41,6 @@
 ### Bug Fixes
 
 * add pandoc/DOCX/PDF export step and fix git push race condition ([26dd629](https://github.com/WhalerMike/uiao-core/commit/26dd6294f14fff3cc1b7c1e76b20bcb841cf7b11))
-
-
-
-# [0.9.0](https://github.com/WhalerMike/uiao-core/compare/v0.8.0...v0.9.0) (2026-03-20)
-
-
-### Features
-
-* add Sentinel Workbook JSON for Atlas health dashboard ([dc6255d](https://github.com/WhalerMike/uiao-core/commit/dc6255d3c19303264bd21ed8999bafd11155970d))
 
 
 
