@@ -6,7 +6,7 @@ import subprocess
 import shutil
 from pathlib import Path
 import yaml
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, Undefined
 
 DATA_DIR = Path('data')
 TEMPLATE_DIR = Path('templates')
@@ -20,12 +20,22 @@ def load_all_data():
     for yaml_file in sorted(DATA_DIR.rglob('*.yml')):
         key = yaml_file.stem.replace('-', '_')
         with open(yaml_file) as f:
-            context[key] = yaml.safe_load(f)
+            content = yaml.safe_load(f)
+            if content:
+                # Merge dict keys into top-level context
+                if isinstance(content, dict):
+                    context.update(content)
+                # Also keep under stem key
+                context[key] = content
     for yaml_file in sorted(DATA_DIR.rglob('*.yaml')):
         key = yaml_file.stem.replace('-', '_')
         with open(yaml_file) as f:
-            context[key] = yaml.safe_load(f)
-                    # Also load canon YAML files (templates reference leadership_briefing, etc.)
+            content = yaml.safe_load(f)
+            if content:
+                if isinstance(content, dict):
+                    context.update(content)
+                context[key] = content
+    # Also load canon YAML files (templates reference leadership_briefing, etc.)
     canon_dir = Path('canon')
     if canon_dir.exists():
         for yaml_file in sorted(canon_dir.rglob('*.yaml')):
@@ -38,7 +48,10 @@ def load_all_data():
 
 def compile_markdown(context):
     """Render Jinja2 templates to Markdown (existing pipeline)."""
-    env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)))
+    env = Environment(
+        loader=FileSystemLoader(str(TEMPLATE_DIR)),
+        undefined=Undefined
+    )
     SITE_DIR.mkdir(parents=True, exist_ok=True)
     generated = []
     for tmpl_path in sorted(TEMPLATE_DIR.rglob('*.md.j2')):
@@ -46,11 +59,14 @@ def compile_markdown(context):
         out_name = str(rel).replace('.j2', '')
         out_path = SITE_DIR / out_name
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        template = env.get_template(str(rel))
-        rendered = template.render(data=context, **context)
-        out_path.write_text(rendered)
-        generated.append(out_path)
-        print(f'  MD: {out_path}')
+        try:
+            template = env.get_template(str(rel))
+            rendered = template.render(data=context, **context)
+            out_path.write_text(rendered)
+            generated.append(out_path)
+            print(f'  MD: {out_path}')
+        except Exception as e:
+            print(f'  WARNING: Skipping {rel} due to template error: {e}')
     return generated
 
 
@@ -144,7 +160,7 @@ def main():
     # Load data
     print('Loading YAML data...')
     context = load_all_data()
-    print(f'Loaded {len(context)} data files')
+    print(f'Loaded {len(context)} data keys')
 
     # Stage 1: Compile Markdown
     print('\nCompiling Markdown...')
@@ -170,9 +186,9 @@ def main():
 
     print(f'\nCompilation complete.')
     print(f'  Markdown: {len(md_files)} files')
-    print(f'  DOCX: {len(docx_files)} files')
-    print(f'  PDF: {len(pdf_files)} files')
-    print(f'  HTML: {len(html_files)} files')
+    print(f'  DOCX:     {len(docx_files)} files')
+    print(f'  PDF:      {len(pdf_files)} files')
+    print(f'  HTML:     {len(html_files)} files')
 
 
 if __name__ == '__main__':
