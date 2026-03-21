@@ -1,3 +1,12 @@
+## [0.18.1](https://github.com/WhalerMike/uiao-core/compare/v0.18.0...v0.18.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* **ci:** add mkdocs-mermaid2-plugin and pymdown-extensions to requirements.txt ([f6ffa6a](https://github.com/WhalerMike/uiao-core/commit/f6ffa6a00786423bf655ffc015f360a555c3c7c4))
+
+
+
 # [0.18.0](https://github.com/WhalerMike/uiao-core/compare/v0.17.0...v0.18.0) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **config:** fix mermaid fence format in mkdocs.yml ([c23a53f](https://github.com/WhalerMike/uiao-core/commit/c23a53fdc52f67305f4ff13b36d5776320b24652))
-
-
-
-# [0.15.0](https://github.com/WhalerMike/uiao-core/compare/v0.14.1...v0.15.0) (2026-03-21)
-
-
-### Features
-
-* **docs:** finalize Phase 1 - Strategic Vision, Glossary nav, security anchors in templates ([4e053ab](https://github.com/WhalerMike/uiao-core/commit/4e053ab5dcaf6f1a9a0ab411c181552ed3798afc))
 
 
 
