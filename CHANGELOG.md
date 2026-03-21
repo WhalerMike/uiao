@@ -1,3 +1,12 @@
+## [0.20.6](https://github.com/WhalerMike/uiao-core/compare/v0.20.5...v0.20.6) (2026-03-21)
+
+
+### Bug Fixes
+
+* **canon:** add missing subtitle key to pitch deck YAML ([73e0cc8](https://github.com/WhalerMike/uiao-core/commit/73e0cc8478bf693319a09e818a058c7805997bb5))
+
+
+
 ## [0.20.5](https://github.com/WhalerMike/uiao-core/compare/v0.20.4...v0.20.5) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **compliance:** replace FedRAMP 22 with FedRAMP 20x Phase 2 in fedramp summary template ([ccba84b](https://github.com/WhalerMike/uiao-core/commit/ccba84b18127efcc5922dcb2d0a0c73fd01d7fdc))
-
-
-
-## [0.20.1](https://github.com/WhalerMike/uiao-core/compare/v0.20.0...v0.20.1) (2026-03-21)
-
-
-### Bug Fixes
-
-* **compliance:** replace FedRAMP 22/Rev. 22 with FedRAMP 20x Phase 2 in docs/index.html ([f5c54ff](https://github.com/WhalerMike/uiao-core/commit/f5c54ff80832bbd4e0561c649034850d0b52daf9))
 
 
 
