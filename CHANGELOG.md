@@ -1,3 +1,12 @@
+# [0.18.0](https://github.com/WhalerMike/uiao-core/compare/v0.17.0...v0.18.0) (2026-03-21)
+
+
+### Features
+
+* **governance:** update schema.json with conditional validation - BA- security appendices require sgt_id ([576bb18](https://github.com/WhalerMike/uiao-core/commit/576bb182d71dc037b9cf190ae9a557a95267328b))
+
+
+
 # [0.17.0](https://github.com/WhalerMike/uiao-core/compare/v0.16.0...v0.17.0) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **docs:** finalize Phase 1 - Strategic Vision, Glossary nav, security anchors in templates ([4e053ab](https://github.com/WhalerMike/uiao-core/commit/4e053ab5dcaf6f1a9a0ab411c181552ed3798afc))
-
-
-
-## [0.14.1](https://github.com/WhalerMike/uiao-core/compare/v0.14.0...v0.14.1) (2026-03-21)
-
-
-### Bug Fixes
-
-* **data:** fix YAML indentation in appendices.yml for BA-01, A-04, BA-02 ([a353a78](https://github.com/WhalerMike/uiao-core/commit/a353a780ec9fdd2ed69feef5e1c088691487e395))
 
 
 
