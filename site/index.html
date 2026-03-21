@@ -395,6 +395,43 @@
                 btn.onclick = function() { downloadAs(slug, fmt); };
             }
         });
+
+                // Override downloadAs to use pre-built exports for DOCX/PDF/HTML
+        var _originalDownloadAs = downloadAs;
+        downloadAs = async function(slug, fmt) {
+            if (fmt === 'md') {
+                return _originalDownloadAs(slug, fmt);
+            }
+            // For docx, pdf, html: fetch pre-built file from exports/
+            var exportSlug = slug.replace(/_/g, '-');
+            var ext = fmt === 'docx' ? 'docx' : fmt === 'pdf' ? 'pdf' : 'html';
+            var url = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/exports/' + exportSlug + '.' + ext;
+            try {
+                var resp = await fetch(url);
+                if (!resp.ok) throw new Error('Not found in exports');
+                var blob = await resp.blob();
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = exportSlug + '.' + ext;
+                a.click();
+            } catch(e) {
+                // Fallback to client-side conversion
+                return _originalDownloadAs(slug, fmt);
+            }
+        };
+
+        // Wire sidebar document links
+        document.querySelectorAll('.sidebar ul:first-of-type a').forEach(function(a) {
+            var text = a.textContent.trim();
+            var slug = text.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            a.href = '#';
+            a.onclick = function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.sidebar a').forEach(function(el) { el.classList.remove('active'); });
+                a.classList.add('active');
+                loadDoc(slug);
+            };
+        });
     </script>
 </body>
 </html>
