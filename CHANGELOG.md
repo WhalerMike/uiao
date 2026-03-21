@@ -1,3 +1,12 @@
+## [0.20.5](https://github.com/WhalerMike/uiao-core/compare/v0.20.4...v0.20.5) (2026-03-21)
+
+
+### Bug Fixes
+
+* **docs:** correct Executive FAQ nav indentation in mkdocs.yml ([86ff253](https://github.com/WhalerMike/uiao-core/commit/86ff2539c0ad8fc8b53ff088e51130f8a273dc7c))
+
+
+
 ## [0.20.4](https://github.com/WhalerMike/uiao-core/compare/v0.20.3...v0.20.4) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **compliance:** replace FedRAMP 22/Rev. 22 with FedRAMP 20x Phase 2 in docs/index.html ([f5c54ff](https://github.com/WhalerMike/uiao-core/commit/f5c54ff80832bbd4e0561c649034850d0b52daf9))
-
-
-
-# [0.20.0](https://github.com/WhalerMike/uiao-core/compare/v0.19.0...v0.20.0) (2026-03-21)
-
-
-### Features
-
-* **docs:** add Executive FAQ to MkDocs navigation ([19eabeb](https://github.com/WhalerMike/uiao-core/commit/19eabebbe4ab35e0d31f8b07c70f09a4a47061c8))
 
 
 
