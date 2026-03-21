@@ -1,437 +1,1709 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UIAO-Core | Document Compiler</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uswds/3.7.1/css/uswds.min.css">
-            <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <style>
-        :root {
-            --uiao-primary: #1b3a4b;
-            --uiao-accent: #2e8bc0;
-            --uiao-light: #f0f4f8;
-            --uiao-success: #00a91c;
-            --uiao-warning: #e5a000;
-        }
-        body { font-family: 'Source Sans Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 0; background: var(--uiao-light); }
-        .site-header { background: var(--uiao-primary); color: #fff; padding: 16px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-        .site-header__inner { max-width: 1200px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; }
-        .site-header h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px; }
-        .site-header p { margin: 4px 0 0; font-size: 14px; opacity: 0.85; }
-        .site-nav { display: flex; gap: 24px; }
-        .site-nav a { color: #fff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 4px 0; border-bottom: 2px solid transparent; transition: border-color 0.2s; }
-        .site-nav a:hover, .site-nav a.active { border-bottom-color: var(--uiao-accent); }
-        .main-content { max-width: 1200px; margin: 0 auto; padding: 32px 16px; }
-        .dashboard-grid { display: grid; grid-template-columns: 280px 1fr; gap: 24px; }
-        .sidebar { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-        .sidebar h3 { margin: 0 0 16px; font-size: 16px; color: var(--uiao-primary); border-bottom: 2px solid var(--uiao-accent); padding-bottom: 8px; }
-        .sidebar ul { list-style: none; padding: 0; margin: 0; }
-        .sidebar li { margin-bottom: 4px; }
-        .sidebar a { display: block; padding: 8px 12px; color: #1b1b1b; text-decoration: none; border-radius: 4px; font-size: 14px; transition: background 0.15s; }
-        .sidebar a:hover { background: var(--uiao-light); }
-        .sidebar a.active { background: var(--uiao-accent); color: #fff; }
-        .content-area { display: flex; flex-direction: column; gap: 24px; }
-        .card { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-        .card h2 { margin: 0 0 16px; font-size: 20px; color: var(--uiao-primary); }
-        .card p { margin: 0 0 12px; color: #565c65; line-height: 1.6; }
-        .status-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
-        .status-badge.success { background: #d4edda; color: #155724; }
-        .status-badge.pending { background: #fff3cd; color: #856404; }
-        .status-badge.error { background: #f8d7da; color: #721c24; }
-        .doc-table { width: 100%; border-collapse: collapse; }
-        .doc-table th { text-align: left; padding: 10px 12px; background: var(--uiao-primary); color: #fff; font-size: 13px; font-weight: 600; }
-        .doc-table td { padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 14px; }
-        .doc-table tr:hover { background: var(--uiao-light); }
-        .btn { display: inline-block; padding: 8px 20px; border: none; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s; }
-        .btn-primary { background: var(--uiao-accent); color: #fff; }
-        .btn-primary:hover { background: #2577a3; }
-        .btn-secondary { background: #dfe1e2; color: #1b1b1b; }
-        .btn-secondary:hover { background: #c6cace; }
-        .btn-sm { padding: 4px 12px; font-size: 12px; }
-        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-        .generate-section { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--uiao-light); border-radius: 6px; margin-bottom: 16px; }
-        .generate-section select { padding: 8px 12px; border: 1px solid #c6cace; border-radius: 4px; font-size: 14px; }
-        .doc-viewer { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 32px; min-height: 400px; font-size: 15px; line-height: 1.8; }
-        .doc-viewer h1 { color: var(--uiao-primary); border-bottom: 3px solid var(--uiao-accent); padding-bottom: 8px; }
-        .doc-viewer h2 { color: var(--uiao-primary); margin-top: 24px; }
-        .pipeline-steps { display: flex; gap: 0; align-items: center; margin: 16px 0; }
-        .pipeline-step { background: #fff; border: 2px solid #dfe1e2; padding: 12px 20px; text-align: center; min-width: 140px; position: relative; }
-        .pipeline-step.active { border-color: var(--uiao-accent); background: #e8f4fd; }
-        .pipeline-step.done { border-color: var(--uiao-success); background: #d4edda; }
-        .pipeline-arrow { font-size: 24px; color: #aeb0b5; margin: 0 4px; }
-        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-        .stat-card { background: #fff; border-radius: 8px; padding: 16px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-top: 3px solid var(--uiao-accent); }
-        .stat-card .stat-num { font-size: 32px; font-weight: 700; color: var(--uiao-primary); }
-        .stat-card .stat-label { font-size: 12px; color: #71767a; text-transform: uppercase; letter-spacing: 0.5px; }
-        .footer { background: var(--uiao-primary); color: rgba(255,255,255,0.7); padding: 24px 0; margin-top: 48px; text-align: center; font-size: 13px; }
-        #loading { display: none; }
-        .spinner { border: 3px solid #dfe1e2; border-top: 3px solid var(--uiao-accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } .stats-row { grid-template-columns: repeat(2, 1fr); } .site-header__inner { flex-direction: column; text-align: center; } .site-nav { flex-wrap: wrap; justify-content: center; gap: 12px; } .pipeline-steps { flex-wrap: wrap; justify-content: center; } .pipeline-arrow { display: none; } .doc-table { font-size: 12px; } .doc-table th, .doc-table td { padding: 6px 8px; } .btn-group { flex-wrap: wrap; } .generate-section { flex-direction: column; align-items: stretch; } .card { padding: 16px; } .main-content { padding: 16px 8px; } }
-    </style>
-</head>
-<body>
-    <header class="site-header"><div class="site-header__inner">
-        <div>
-            <h1>UIAO-Core</h1>
-            <p>Unified Identity-Addressing-Overlay Architecture — Document Compiler</p>
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Unified Identity-Addressing-Overlay Architecture - Leadership Canon and Modernization">
+      
+      
+        <meta name="author" content="UIAO Modernization Program">
+      
+      
+      
+      
+        <link rel="next" href="leadership_briefing_v1.0/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>UIAO Document Compiler v1.0</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#modernization-atlas-project-uiao-core" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="UIAO Document Compiler v1.0" class="md-header__button md-logo" aria-label="UIAO Document Compiler v1.0" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            UIAO Document Compiler v1.0
+          </span>
         </div>
-        <nav class="site-nav">
-            <a href="#" class="active" onclick="showPage('dashboard', this)">Dashboard</a>
-            <a href="#" onclick="showPage('documents', this)">Documents</a>
-            <a href="#" onclick="showPage('pipeline', this)">Pipeline</a>
-            <a href="#" onclick="showPage('viewer', this)">Viewer</a>
-            <a href="https://github.com/WhalerMike/uiao-core" target="_blank">GitHub</a>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Home
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/WhalerMike/uiao-core" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    uiao-core
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="UIAO Document Compiler v1.0" class="md-nav__button md-logo" aria-label="UIAO Document Compiler v1.0" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    UIAO Document Compiler v1.0
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/WhalerMike/uiao-core" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    uiao-core
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="." class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#mission-to-tech-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mission-to-Tech Alignment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mission-to-Tech Alignment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-strategic-pillars" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Strategic Pillars
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Leadership Briefing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Leadership Briefing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="leadership_briefing_v1.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UIAO Leadership Briefing v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
         </nav>
-    </div></header>
+      
+    </li>
+  
 
-    <main class="main-content">
-        <!-- Stats Row -->
-        <div class="stats-row">
-            <div class="stat-card"><div class="stat-num">12</div><div class="stat-label">Data Files</div></div>
-            <div class="stat-card"><div class="stat-num">24</div><div class="stat-label">Templates</div></div>
-            <div class="stat-card"><div class="stat-num">26</div><div class="stat-label">Generated Docs</div></div>
-            <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">Output Formats</div></div>
-        </div>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Program Vision
+  
 
-        <!-- FedRAMP Compliance Banner -->
-        <div style="background:linear-gradient(135deg, var(--uiao-primary) 0%, #264e63 100%); border-radius:8px; padding:24px 32px; margin-bottom:24px; color:#fff; display:flex; align-items:center; gap:24px; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
-            <div style="min-width:64px; height:64px; background:rgba(255,255,255,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:28px;">&#x1f6e1;</div>
-            <div>
-                <h3 style="margin:0 0 8px; font-size:18px; font-weight:700; color:#fff;">FedRAMP Rev. 22 Compliant — SaaS System</h3>
-                <p style="margin:0; font-size:14px; line-height:1.6; opacity:0.92;">Currently under development... UIAO is FedRAMP 22 designed to be compliant as a Software-as-a-Service System, inheriting CSP controls, implementing SCuBA baselines, and documenting compensating controls for GCC-Moderate telemetry and analytics limitations.</p>
-                <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">
-                    <span style="background:rgba(255,255,255,0.2); padding:3px 12px; border-radius:12px; font-size:11px; font-weight:600;">CSP Control Inheritance</span>
-                    <span style="background:rgba(255,255,255,0.2); padding:3px 12px; border-radius:12px; font-size:11px; font-weight:600;">SCuBA Baselines</span>
-                    <span style="background:rgba(255,255,255,0.2); padding:3px 12px; border-radius:12px; font-size:11px; font-weight:600;">GCC-Moderate</span>
-                    <span style="background:rgba(255,255,255,0.2); padding:3px 12px; border-radius:12px; font-size:11px; font-weight:600;">Compensating Controls</span>
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Program Vision
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="program_vision_v1.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Program Vision v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Unified Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="unified_architecture_v1.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unified Architecture v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TIC 3.0 Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    TIC 3.0 Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tic3_roadmap_v1.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TIC 3.0 Roadmap v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modernization Timeline
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Modernization Timeline
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="modernization_timeline_v1.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modernization Timeline v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FedRAMP 22
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    FedRAMP 22
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="fedramp22_summary_v1.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FedRAMP 22 Summary v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zero Trust
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Zero Trust
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="zero_trust_narrative_v1.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zero Trust Narrative v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Dives
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deep Dives
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="identity_plane_deep_dive_v1.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Identity Plane Deep Dive v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="telemetry_plane_deep_dive_v1.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Telemetry Plane Deep Dive v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pitch Deck
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pitch Deck
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="pitch_deck_v1.0.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pitch Deck v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operational Handover
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operational Handover
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="operational_handover_v1.0.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operational Handover v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Implementation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Implementation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="project_plan_v1.0.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Plan v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="jml_logic_v1.0.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JML Logic Rules v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="visual_manifest_v1.0.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visual Manifest v1.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compliance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="compliance_readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCC-Moderate Readiness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="kql_alerts.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KQL Alert Definitions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Executive
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Executive
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="leadership_briefing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Leadership Briefing (1-Pager)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
                 </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#mission-to-tech-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mission-to-Tech Alignment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mission-to-Tech Alignment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-strategic-pillars" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Strategic Pillars
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="modernization-atlas-project-uiao-core">Modernization Atlas: Project uiao-core</h1>
+<p>Welcome to the authoritative guide for the agency's infrastructure transformation. The <strong>uiao-core</strong> initiative replaces legacy, fragmented silos with a unified, programmable architecture.</p>
+<h2 id="mission-to-tech-alignment">Mission-to-Tech Alignment</h2>
+<p>Our modernization strategy is built to deliver three primary outcomes: <strong>Agility</strong>, <strong>Security</strong>, and <strong>Compliance</strong>.</p>
+<p><img alt="Mission Mapping" src="./images/mission_tech_mapping.png" /></p>
+<h3 id="core-strategic-pillars">Core Strategic Pillars</h3>
+<ul>
+<li><strong>Identity Plane:</strong> Moving to a Zero-Trust identity model via Azure AD and Cisco ISE.</li>
+<li><strong>Addressing Plane:</strong> Automating the lifecycle of every IP and DNS record via Infoblox.</li>
+<li><strong>Overlay Plane:</strong> Implementing a programmable fabric that abstracts the physical network.</li>
+<li><strong>Telemetry Plane:</strong> Creating a closed-loop feedback system using Splunk and Azure Monitor.</li>
+</ul>
+<hr />
+<blockquote>
+<p><strong>Executive Summary:</strong> This Atlas is a "Living Document." It is generated directly from our codebase, ensuring that the documentation is always synchronized with the authoritative technical standards.</p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
             </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
-
-        <!-- Dashboard Grid -->
-        <div class="dashboard-grid">
-            <!-- Sidebar -->
-            <div class="sidebar">
-                <h3>Documents</h3>
-                <ul>
-                    <li><a href="#" class="active" onclick="loadDoc('leadership-briefing')">Leadership Briefing</a></li>
-                    <li><a href="#" onclick="loadDoc('program-vision')">Program Vision</a></li>
-                    <li><a href="#" onclick="loadDoc('unified-architecture')">Unified Architecture</a></li>
-                    <li><a href="#" onclick="loadDoc('tic3-roadmap')">TIC 3.0 Roadmap</a></li>
-                    <li><a href="#" onclick="loadDoc('modernization-timeline')">Modernization Timeline</a></li>
-                    <li><a href="#" onclick="loadDoc('canon-spec')">Canon Spec</a></li>
-                    <li><a href="#" onclick="loadDoc('control-plane-architecture')">Control-Plane Architecture</a></li>
-                    <li><a href="#" onclick="loadDoc('crosswalk-index')">Crosswalk Index</a></li>
-                    <li><a href="#" onclick="loadDoc('fedramp-crosswalk')">FedRAMP Crosswalk</a></li>
-                    <li><a href="#" onclick="loadDoc('fedramp22_summary_v1.0')">FedRAMP 22 Summary</a></li>
-                                        <li><a href="#" onclick="loadDoc('vendor-stack')">Vendor Stack</a></li>
-                    <li><a href="#" onclick="loadDoc('project-plans-summary')">Project Plans Summary</a></li>                     <li><a href="#" onclick="loadDoc('vendor-stack')">Vendor Stack</a></li>                     <li><a href="#" onclick="loadDoc('management-stack')">Management Stack</a></li>
-                                        <li><a href="#" onclick="loadDoc('seven-layer-model')">Seven-Layer Model</a></li>
-                </ul>
-                <h3 style="margin-top:24px;">Data Sources</h3>
-                <ul>
-                    <li><a href="#">program.yml</a></li>
-                    <li><a href="#">roadmap.yml</a></li>
-                    <li><a href="#">appendices.yml</a></li>
-                                        <li><a href="#">canon-spec.yml</a></li>
-                    <li><a href="#">control-planes.yml</a></li>
-                    <li><a href="#">crosswalk-index.yml</a></li>
-                    <li><a href="#">diagrams.yml</a></li>
-                    <li><a href="#">fedramp-20x.yml</a></li>
-                    <li><a href="#">leadership-briefing.yml</a></li>
-                    <li><a href="#">management-stack.yml</a></li>
-                    <li><a href="#">project-plans.yml</a></li>
-                    <li><a href="#">vendor-stack.yml</a></li>
-                </ul>
-                <h3 style="margin-top:24px;">Schemas</h3>
-                <ul>
-                    <li><a href="#">udc_metadata</a></li>
-                    <li><a href="#">udc_templates</a></li>
-                    <li><a href="#">udc_pipeline</a></li>
-                    <li><a href="#">udc_export</a></li>
-                </ul>
-            </div>
-
-            <!-- Content Area -->
-            <div class="content-area">
-                <!-- PAGE: Dashboard -->
-                <div id="page-dashboard">
-                    <div class="card">
-                        <h2>Generate Documents</h2>
-                        <div class="generate-section">
-                            <select id="docSelect">
-                                <option value="all">All Documents</option>
-                                <option value="leadership-briefing">Leadership Briefing</option>
-                                <option value="program-vision">Program Vision</option>
-                                <option value="unified-architecture">Unified Architecture</option>
-                                <option value="tic3-roadmap">TIC 3.0 Roadmap</option>
-                                <option value="modernization-timeline">Modernization Timeline</option>
-                                <option value="canon-spec">Canon Spec</option>
-                                <option value="control-plane-architecture">Control-Plane Architecture</option>
-                                <option value="crosswalk-index">Crosswalk Index</option>
-                                <option value="fedramp-crosswalk">FedRAMP Crosswalk</option>
-                                <option value="fedramp22_summary_v1.0">FedRAMP 22 Summary</option>
-                                <option value="project-plans-summary">Project Plans Summary</option> <option value="vendor-stack">Vendor Stack</option> <option value="management-stack">Management Stack</option> <option value="seven-layer-model">Seven-Layer Model</option>
-                            </select>
-                            <select id="formatSelect">
-                                <option value="md">Markdown</option>
-                                <option value="docx">Word (DOCX)</option>
-                                <option value="pdf">PDF</option>
-                                <option value="html">HTML</option>
-                            </select>
-                            <button class="btn btn-primary" onclick="generateDoc()">Generate</button>
-                            <span id="loading"><span class="spinner"></span>Generating...</span>
-                        </div>
-                        <h2>Pipeline Status</h2>
-                        <div class="pipeline-steps">
-                            <div class="pipeline-step done"><strong>Validate</strong><br><small>Schemas OK</small></div>
-                            <span class="pipeline-arrow">&rarr;</span>
-                            <div class="pipeline-step done"><strong>Normalize</strong><br><small>Ordered</small></div>
-                            <span class="pipeline-arrow">&rarr;</span>
-                            <div class="pipeline-step done"><strong>Compile</strong><br><small>27 docs</small></div>
-                            <span class="pipeline-arrow">&rarr;</span>
-                            <div class="pipeline-step done"><strong>Export</strong><br><small>Ready</small></div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <h2>Recent Documents</h2>
-                        <table class="doc-table">
-                            <thead><tr><th>Document</th><th>Template</th><th>Last Generated</th><th>Status</th><th>Actions</th></tr></thead>
-                            <tbody>
-                                <tr><td>Leadership Briefing</td><td>leadership-briefing.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('leadership-briefing')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('leadership-briefing','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('leadership-briefing','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Program Vision</td><td>program-vision.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('program-vision')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('program-vision','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('program-vision','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Unified Architecture</td><td>unified-architecture.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('unified-architecture')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('unified-architecture','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('unified-architecture','pdf')">PDF</button></div></td></tr>
-                                <tr><td>TIC 3.0 Roadmap</td><td>tic3-roadmap.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('tic3-roadmap')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('tic3-roadmap','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('tic3-roadmap','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Modernization Timeline</td><td>modernization-timeline.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('modernization-timeline')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('modernization-timeline','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('modernization-timeline','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Canon Spec</td><td>canon-spec.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('canon-spec')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('canon-spec','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('canon-spec','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Control-Plane Architecture</td><td>control-plane-architecture.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('control-plane-architecture')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('control-plane-architecture','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('control-plane-architecture','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Crosswalk Index</td><td>crosswalk-index.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('crosswalk-index')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('crosswalk-index','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('crosswalk-index','pdf')">PDF</button></div></td></tr>
-                                <tr><td>FedRAMP Crosswalk</td><td>fedramp-crosswalk.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('fedramp-crosswalk')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','pdf')">PDF</button></div></td></tr>
-                                <tr><td>FedRAMP 22 Summary</td><td>fedramp22_summary_v1.0.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('fedramp22_summary_v1.0')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Project Plans Summary</td><td>project-plans-summary.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('project-plans-summary')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','pdf')">PDF</button></div></td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                                    <tr><td>Seven-Layer Model</td><td>seven-layer-model.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('seven-layer-model')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadDoc('seven-layer-model')">Download</button></div></td></tr>
-
-                <!-- PAGE: Viewer -->
-                <div id="page-viewer" style="display:none;">
-                    <div class="card">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                            <h2 id="viewer-title">Document Viewer</h2>
-                            <div class="btn-group">
-                                <button class="btn btn-secondary btn-sm" onclick="window.print()">Print</button>
-                                <button class="btn btn-primary btn-sm" onclick="showPage('dashboard', this)">Back</button>
-                            </div>
-                        </div>
-                        <div id="doc-viewer" class="doc-viewer">
-                            <p style="color:#71767a;text-align:center;padding:60px 0;">Select a document from the sidebar to view it here.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- PAGE: Pipeline -->
-                <div id="page-pipeline" style="display:none;">
-                    <div class="card">
-                        <h2>UDC Pipeline</h2>
-                        <p>The UIAO Document Compiler runs a three-stage pipeline on every push to <code>main</code>.</p>
-                        <table class="doc-table">
-                            <thead><tr><th>Stage</th><th>Script</th><th>Output</th><th>Status</th></tr></thead>
-                            <tbody>
-                                <tr><td><strong>1. Validate</strong></td><td>scripts/validate_schemas.py</td><td>Pass/fail against JSON schemas</td><td><span class="status-badge success">Pass</span></td></tr>
-                                <tr><td><strong>2. Normalize</strong></td><td>scripts/normalize_artifacts.py</td><td>Canonical ordering in normalized/</td><td><span class="status-badge success">Pass</span></td></tr>
-                                <tr><td><strong>3. Compile</strong></td><td>scripts/compile_documents.py</td><td>MD, DOCX, PDF, HTML output</td><td><span class="status-badge success">Pass</span></td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- PAGE: Documents List -->
-                <div id="page-documents" style="display:none;">
-                    <div class="card">
-                        <h2>Document Library</h2>
-                        <p>All generated documents from the UIAO-Core data layer.</p>
-                        <table class="doc-table">
-                            <thead><tr><th>Document</th><th>Description</th><th>Formats</th></tr></thead>
-                            <tbody>
-                                <tr><td><strong>Leadership Briefing</strong></td><td>Executive summary for CIO/CISO audience</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('leadership-briefing','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('leadership-briefing','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('leadership-briefing','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('leadership-briefing','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Program Vision</strong></td><td>Full architectural vision and core thesis</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('program-vision','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('program-vision','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('program-vision','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('program-vision','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Unified Architecture</strong></td><td>Seven-concept model and layer details</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('unified-architecture','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('unified-architecture','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('unified-architecture','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('unified-architecture','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>TIC 3.0 Roadmap</strong></td><td>Phase-by-phase implementation plan</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('tic3-roadmap','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('tic3-roadmap','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('tic3-roadmap','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('tic3-roadmap','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Modernization Timeline</strong></td><td>Workstream milestones and dependencies</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('modernization-timeline','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('modernization-timeline','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('modernization-timeline','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('modernization-timeline','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Canon Spec</strong></td><td>Canonical specification for UIAO architecture</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('canon-spec','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('canon-spec','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('canon-spec','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('canon-spec','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Control-Plane Architecture</strong></td><td>Control plane design and integration points</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('control-plane-architecture','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('control-plane-architecture','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('control-plane-architecture','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('control-plane-architecture','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Crosswalk Index</strong></td><td>Cross-reference index across frameworks</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('crosswalk-index','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('crosswalk-index','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('crosswalk-index','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('crosswalk-index','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>FedRAMP Crosswalk</strong></td><td>FedRAMP control mapping and crosswalk</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>FedRAMP 22 Summary</strong></td><td>FedRAMP Rev. 22 compliance summary</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Project Plans Summary</strong></td><td>Project planning and milestone overview</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','html')">HTML</button></div></td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div><!-- /content-area -->
-        </div><!-- /dashboard-grid -->
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div>UIAO-Core &mdash; Unified Identity-Addressing-Overlay Architecture</div>
-        <div style="margin-top:4px;">Personal experiment &bull; Machine-generated via UDC Pipeline</div>
-    </footer>
-
-    <!-- Markdown renderer -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script>
-        const REPO = 'WhalerMike/uiao-core';
-        const BRANCH = 'main';
-        const ALL_DOCS = ['leadership-briefing','program-vision','unified-architecture','tic3-roadmap','modernization-timeline','canon-spec','control-plane-architecture','crosswalk-index','fedramp-crosswalk','fedramp22_summary_v1.0','project-plans-summary','vendor-stack'];
-
-        function showPage(page, el) {
-            document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
-            const target = document.getElementById('page-' + page);
-            if (target) target.style.display = 'block';
-            document.querySelectorAll('.site-nav a').forEach(a => a.classList.remove('active'));
-            if(el) el.classList.add('active');
-        }
-
-        async function loadDoc(slug) {
-            showPageDirect('viewer');
-            const viewer = document.getElementById('doc-viewer');
-            const title = document.getElementById('viewer-title');
-            viewer.innerHTML = '<p style="text-align:center;padding:40px;"><span class="spinner"></span> Loading document...</p>';
-            title.textContent = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            try {
-                const url = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/docs/' + slug.replace(/-/g, '_') + '.md';
-                const resp = await fetch(url);
-                if (!resp.ok) throw new Error('Not found');
-                const md = await resp.text();
-                viewer.innerHTML = marked.parse(md);
-            } catch(e) {
-                viewer.innerHTML = '<p style="color:#d54309;text-align:center;padding:40px;">Could not load document: ' + slug + '.md<br><small>' + e.message + '</small></p>';
-            }
-        }
-
-        function showPageDirect(page) {
-            document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
-            const target = document.getElementById('page-' + page);
-            if (target) target.style.display = 'block';
-        }
-
-        async function downloadAs(slug, fmt) {
-            const url = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/docs/' + slug.replace(/-/g, '_') + '.md';
-            const resp = await fetch(url);
-            if (!resp.ok) { alert('Could not fetch: ' + slug); return; }
-            const md = await resp.text();
-            if (fmt === 'md') {
-                const blob = new Blob([md], {type:'text/markdown'});
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = slug + '.md'; a.click();
-            } else if (fmt === 'html') {
-                const html = '<html><head><style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6;}</style></head><body>' + marked.parse(md) + '</body></html>';
-                const blob = new Blob([html], {type:'text/html'});
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = slug + '.html'; a.click();
-            } else if (fmt === 'pdf') {
-                const container = document.createElement('div');
-                container.style.cssText = 'font-family:sans-serif;max-width:750px;margin:0 auto;padding:40px;line-height:1.6;';
-                container.innerHTML = marked.parse(md);
-                document.body.appendChild(container);
-                html2pdf().set({margin:0.75,filename:slug+'.pdf',image:{type:'jpeg',quality:0.98},html2canvas:{scale:2},jsPDF:{unit:'in',format:'letter',orientation:'portrait'}}).from(container).save().then(function(){document.body.removeChild(container);});
-            } else if (fmt === 'docx') {
-                const html = '<html><body style="font-family:Calibri,sans-serif;line-height:1.6;">' + marked.parse(md) + '</body></html>';
-                const blob = new Blob(['\ufeff' + html], {type:'application/msword'});
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = slug + '.doc'; a.click();
-            }
-        }
-
-        function generateDoc() {
-            const doc = document.getElementById('docSelect').value;
-            const fmt = document.getElementById('formatSelect').value;
-            const loading = document.getElementById('loading');
-            loading.style.display = 'inline';
-            setTimeout(() => {
-                loading.style.display = 'none';
-                if (doc === 'all') {
-                    ALL_DOCS.forEach(function(s){ downloadAs(s, fmt); });
-                } else {
-                    downloadAs(doc, fmt);
-                }
-            }, 2000);
-        }
-
-                // Attach onclick handlers to Recent Documents table buttons
-                document.querySelectorAll('.doc-table td .btn').forEach(function(btn) {
-            var row = btn.closest('tr');
-            if (!row) return;
-            var templateCell = row.querySelectorAll('td')[1];
-            if (!templateCell) return;
-            var templateName = templateCell.textContent.trim();
-            var slug = templateName.replace('.md.j2', '').replace(/_/g, '-');
-            var label = btn.textContent.trim();
-            if (label === 'View') {
-                btn.onclick = function() { loadDoc(slug); };
-            } else if (label === 'DOCX') {
-                btn.onclick = function() { downloadAs(slug, 'docx'); };
-            } else if (label === 'PDF') {
-                btn.onclick = function() { downloadAs(slug, 'pdf'); };
-            }
-        });
-
-        // Also attach handlers to Document Library format buttons
-                document.querySelectorAll('.card td .btn-sm').forEach(function(btn) {
-            var row = btn.closest('tr');
-            if (!row) return;
-            var docName = row.querySelector('strong');
-            if (!docName) return;
-            var slug = docName.textContent.trim().toLowerCase().replace(/\s+/g, '-');
-            var label = btn.textContent.trim();
-            var fmtMap = {'MD':'md','DOCX':'docx','PDF':'pdf','HTML':'html'};
-            var fmt = fmtMap[label];
-            if (fmt) {
-                btn.onclick = function() { downloadAs(slug, fmt); };
-            }
-        });
-
-                // Override downloadAs to use pre-built exports for DOCX/PDF/HTML
-        var _originalDownloadAs = downloadAs;
-        downloadAs = async function(slug, fmt) {
-            if (fmt === 'md') {
-                return _originalDownloadAs(slug, fmt);
-            }
-            // For docx, pdf, html: fetch pre-built file from exports/
-            var exportSlug = slug.replace(/_/g, '-');
-            var ext = fmt === 'docx' ? 'docx' : fmt === 'pdf' ? 'pdf' : 'html';
-            var url = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/exports/' + exportSlug + '.' + ext;
-            try {
-                var resp = await fetch(url);
-                if (!resp.ok) throw new Error('Not found in exports');
-                var blob = await resp.blob();
-                var a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = exportSlug + '.' + ext;
-                a.click();
-            } catch(e) {
-                // Fallback to client-side conversion
-                return _originalDownloadAs(slug, fmt);
-            }
-        };
-
-        // Wire sidebar document links
-        document.querySelectorAll('.sidebar ul:first-of-type a').forEach(function(a) {
-            var text = a.textContent.trim();
-            var slug = text.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            a.href = '#';
-            a.onclick = function(e) {
-                e.preventDefault();
-                document.querySelectorAll('.sidebar a').forEach(function(el) { el.classList.remove('active'); });
-                a.classList.add('active');
-                loadDoc(slug);
-            };
-        });
-    </script>
-</body>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
 </html>
