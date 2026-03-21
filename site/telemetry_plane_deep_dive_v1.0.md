@@ -28,7 +28,7 @@ The agency’s current environment reflects a series of disconnected legacy syst
 ---
 
 # Telemetry‑Driven Outcomes
-UIAO delivers measurable improvements across performance, security, compliance, and mission readiness. Cloud-first routing and identity- driven segmentation reduce latency and improve M365 performance. Stronger identity governance and deterministic addressing enhance Zero Trust enforcement. Unified telemetry enables accurate location inference, conversation-level visibility, and real-time decision-making. The architecture aligns the agency with TIC 3.0, FedRAMP 22, and NIST 800-63 requirements, reducing compliance risk. Most importantly, the modernization improves citizen experience by delivering faster, more reliable, and more secure services.
+UIAO delivers measurable improvements across performance, security, compliance, and mission readiness. Cloud-first routing and identity- driven segmentation reduce latency and improve M365 performance. Stronger identity governance and deterministic addressing enhance Zero Trust enforcement. Unified telemetry enables accurate location inference, conversation-level visibility, and real-time decision-making. The architecture aligns the agency with TIC 3.0, FedRAMP 20x Phase 2, and NIST 800-63 requirements, reducing compliance risk. Most importantly, the modernization improves citizen experience by delivering faster, more reliable, and more secure services.
 
   management_and_governance:
 narrative: >
