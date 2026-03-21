@@ -1,3 +1,12 @@
+# [0.11.0](https://github.com/WhalerMike/uiao-core/compare/v0.10.2...v0.11.0) (2026-03-21)
+
+
+### Features
+
+* **docs:** wire Mermaid diagrams into zero_trust_narrative and operational_handover ([5a5e7e5](https://github.com/WhalerMike/uiao-core/commit/5a5e7e518c19a9ce4adf81e4b91ebbcad435ad9d))
+
+
+
 ## [0.10.2](https://github.com/WhalerMike/uiao-core/compare/v0.10.1...v0.10.2) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * correct CSS selectors for button onclick handlers (td not btn-group) ([f9c3aba](https://github.com/WhalerMike/uiao-core/commit/f9c3aba6ab1412130a3282c7148c95b357e78e0a))
-
-
-
-## [0.9.5](https://github.com/WhalerMike/uiao-core/compare/v0.9.4...v0.9.5) (2026-03-21)
-
-
-### Bug Fixes
-
-* add marked.js and html2pdf.js CDN scripts for download functionality ([6124164](https://github.com/WhalerMike/uiao-core/commit/6124164ab5d3bef3b1ecab8dde465a9f5eedcfdf))
 
 
 
