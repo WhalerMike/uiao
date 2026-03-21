@@ -39,7 +39,7 @@ def create_pptx():
         tf = body_shape.text_frame
         tf.text = slide_data.get('content', 'Key Objectives:')
 
-        for point in slide_data['points']:
+        for point in slide_data.get('points', []):
             p = tf.add_paragraph()
             p.text = point
             p.level = 1
