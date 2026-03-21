@@ -1,3 +1,12 @@
+# [0.12.0](https://github.com/WhalerMike/uiao-core/compare/v0.11.3...v0.12.0) (2026-03-21)
+
+
+### Features
+
+* use pre-built exports for downloads, wire sidebar links ([e77d7ae](https://github.com/WhalerMike/uiao-core/commit/e77d7ae5519309f5fcf4778d7b45e7c73c69f6f4))
+
+
+
 ## [0.11.3](https://github.com/WhalerMike/uiao-core/compare/v0.11.2...v0.11.3) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **docs:** wire Mermaid diagrams into zero_trust_narrative and operational_handover ([5a5e7e5](https://github.com/WhalerMike/uiao-core/commit/5a5e7e518c19a9ce4adf81e4b91ebbcad435ad9d))
-
-
-
-## [0.10.2](https://github.com/WhalerMike/uiao-core/compare/v0.10.1...v0.10.2) (2026-03-21)
-
-
-### Bug Fixes
-
-* change fetch URL from site/ to docs/ with underscore slug conversion ([c8b5584](https://github.com/WhalerMike/uiao-core/commit/c8b5584a8d467674c18461d28402f2dbe10d6352))
 
 
 
