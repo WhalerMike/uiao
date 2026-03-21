@@ -1,3 +1,12 @@
+## [0.11.1](https://github.com/WhalerMike/uiao-core/compare/v0.11.0...v0.11.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* add canon/** to workflow path triggers ([cf7124f](https://github.com/WhalerMike/uiao-core/commit/cf7124ff5efe66a5af9d5c96f708496c40953ec7))
+
+
+
 # [0.11.0](https://github.com/WhalerMike/uiao-core/compare/v0.10.2...v0.11.0) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **visuals:** rename V2 V3 V4 PNGs to canonical names and add ZT Journey and Escalation Tree Mermaid diagrams ([a2138be](https://github.com/WhalerMike/uiao-core/commit/a2138bef519f2680ba28f187545c43df928e5d44))
-
-
-
-## [0.9.6](https://github.com/WhalerMike/uiao-core/compare/v0.9.5...v0.9.6) (2026-03-21)
-
-
-### Bug Fixes
-
-* correct CSS selectors for button onclick handlers (td not btn-group) ([f9c3aba](https://github.com/WhalerMike/uiao-core/commit/f9c3aba6ab1412130a3282c7148c95b357e78e0a))
 
 
 
