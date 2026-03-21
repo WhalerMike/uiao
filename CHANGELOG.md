@@ -1,3 +1,12 @@
+## [0.11.2](https://github.com/WhalerMike/uiao-core/compare/v0.11.1...v0.11.2) (2026-03-21)
+
+
+### Bug Fixes
+
+* guard integration_matrix with is defined check in control-plane-architecture template ([9013821](https://github.com/WhalerMike/uiao-core/commit/9013821ab7124cd236530442813187640fdb04c2))
+
+
+
 ## [0.11.1](https://github.com/WhalerMike/uiao-core/compare/v0.11.0...v0.11.1) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * replace git rebase with merge --strategy-option ours to resolve binary conflicts ([6ae7555](https://github.com/WhalerMike/uiao-core/commit/6ae75553d05cd35f27ffc1f91d15b05d8e88e36d))
-
-
-
-# [0.10.0](https://github.com/WhalerMike/uiao-core/compare/v0.9.6...v0.10.0) (2026-03-21)
-
-
-### Features
-
-* **visuals:** rename V2 V3 V4 PNGs to canonical names and add ZT Journey and Escalation Tree Mermaid diagrams ([a2138be](https://github.com/WhalerMike/uiao-core/commit/a2138bef519f2680ba28f187545c43df928e5d44))
 
 
 
