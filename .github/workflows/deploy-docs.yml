@@ -1,0 +1,46 @@
+name: Deploy Modernization Atlas
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install jsonschema mkdocs-material mkdocs-mermaid2-plugin jinja2 pyyaml
+
+      # STEP 1: Schema Validation (Knocking out the "Red" stoplight)
+      - name: Validate Appendices Schema
+        run: |
+          python -c "import jsonschema, yaml, json; \
+          schema = json.load(open('data/schema.json')); \
+          data = yaml.safe_load(open('data/atlas-appendices.yml')); \
+          jsonschema.validate(instance=data, schema=schema)"
+
+      # STEP 2: Generate Atlas Documentation
+      - name: Run Atlas generate pipeline
+        run: python scripts/generate_atlas.py
+
+      # STEP 3: Build and Deploy MkDocs
+      - name: Build & Deploy to GitHub Pages
+        run: mkdocs gh-deploy --force
