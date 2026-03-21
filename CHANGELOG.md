@@ -1,3 +1,12 @@
+## [0.20.2](https://github.com/WhalerMike/uiao-core/compare/v0.20.1...v0.20.2) (2026-03-21)
+
+
+### Bug Fixes
+
+* **compliance:** replace FedRAMP 22 with FedRAMP 20x Phase 2 in fedramp summary template ([ccba84b](https://github.com/WhalerMike/uiao-core/commit/ccba84b18127efcc5922dcb2d0a0c73fd01d7fdc))
+
+
+
 ## [0.20.1](https://github.com/WhalerMike/uiao-core/compare/v0.20.0...v0.20.1) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **ci:** add mkdocs-mermaid2-plugin and pymdown-extensions to requirements.txt ([f6ffa6a](https://github.com/WhalerMike/uiao-core/commit/f6ffa6a00786423bf655ffc015f360a555c3c7c4))
-
-
-
-# [0.18.0](https://github.com/WhalerMike/uiao-core/compare/v0.17.0...v0.18.0) (2026-03-21)
-
-
-### Features
-
-* **governance:** update schema.json with conditional validation - BA- security appendices require sgt_id ([576bb18](https://github.com/WhalerMike/uiao-core/commit/576bb182d71dc037b9cf190ae9a557a95267328b))
 
 
 
