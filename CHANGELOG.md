@@ -1,3 +1,12 @@
+# [0.16.0](https://github.com/WhalerMike/uiao-core/compare/v0.15.1...v0.16.0) (2026-03-21)
+
+
+### Features
+
+* **docs:** add Addressing/Overlay Pillar deep-dives and Group AA/CA appendices (AA-01, AA-02, CA-01) with FedRAMP 20x Phase 2 terminology ([1a8eb82](https://github.com/WhalerMike/uiao-core/commit/1a8eb8272de8812bf204ced1aa8d065a91aaf23b))
+
+
+
 ## [0.15.1](https://github.com/WhalerMike/uiao-core/compare/v0.15.0...v0.15.1) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **docs:** add BA-01, A-04, BA-02 appendices + glossary + security anchor ([dcb073c](https://github.com/WhalerMike/uiao-core/commit/dcb073c517fa4f932698fb935bb729a098c886b6))
-
-
-
-# [0.13.0](https://github.com/WhalerMike/uiao-core/compare/v0.12.2...v0.13.0) (2026-03-21)
-
-
-### Features
-
-* **assets:** add 7 Modernization Atlas diagram images from Gemini ([1acbca1](https://github.com/WhalerMike/uiao-core/commit/1acbca1e52f4d8949c341c802733316124410399))
 
 
 
