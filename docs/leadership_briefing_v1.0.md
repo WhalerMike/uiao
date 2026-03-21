@@ -11,7 +11,7 @@ audience: "CIO, CISO, CTO, PMO, Network Leadership, Identity Leadership"
 
 # Executive Summary
 The Unified Identity-Addressing-Overlay Architecture (UIAO) establishes a modern federal enterprise built on identity, telemetry, and cloud-first routing. It replaces fragmented legacy systems with a coherent, Zero Trust-aligned architecture that treats identity as the perimeter, telemetry as the authoritative truth source, and governance as an automated workflow rather than a manual process. UIAO is not a technology refresh; it is a structural modernization of how the agency authenticates, addresses, routes, observes, and governs every digital interaction.
-The agency’s current environment is constrained by TIC 2.0 hairpinning, on-premises Active Directory dependencies, fragmented IPAM, inconsistent Zero Trust enforcement, and incomplete telemetry. These limitations degrade M365 performance, increase cyber risk, and create compliance gaps with TIC 3.0, FedRAMP 22, SCuBA, and NIST 800-63. UIAO directly addresses these issues by unifying identity, addressing, routing, and telemetry into a single architectural fabric.
+The agency’s current environment is constrained by TIC 2.0 hairpinning, on-premises Active Directory dependencies, fragmented IPAM, inconsistent Zero Trust enforcement, and incomplete telemetry. These limitations degrade M365 performance, increase cyber risk, and create compliance gaps with TIC 3.0, FedRAMP 20x Phase 2, SCuBA, and NIST 800-63. UIAO directly addresses these issues by unifying identity, addressing, routing, and telemetry into a single architectural fabric.
 The vision is a cloud-optimized, identity-driven enterprise where every resource—from IP addresses to certificates to routing paths—is derived from or bound to identity. Telemetry becomes a real-time control input for routing and security decisions. Addressing becomes deterministic and policy-driven. Routing becomes cloud-first and performance-optimized. Governance becomes embedded and automated. Above all, modernization is guided by a simple principle: if a change degrades citizen experience, it does not ship.
 UIAO organizes the modernized enterprise into five coordinated control planes and seven core concepts that define how the architecture operates. These planes and concepts work together to deliver conversation-level visibility, identity-aware segmentation, accurate location inference, and automated policy enforcement. The frozen state analysis reveals a legacy environment that cannot support modern mission requirements. UIAO resolves these issues by establishing a unified, authoritative, and automated architecture that improves performance, strengthens security, reduces compliance risk, and enhances citizen-facing services.
 UIAO delivers measurable outcomes: reduced latency, improved M365 performance, stronger identity governance, deterministic addressing, real-time telemetry correlation, and alignment with federal modernization mandates. It provides the foundation for a resilient, scalable, and future-ready federal enterprise.
@@ -28,7 +28,7 @@ The strategic goal is to transform the agency into a modern federal network wher
 
 # Why Modernization Is Required
 The agency’s current environment is constrained by legacy TIC 2.0 routing patterns that force traffic through centralized bottlenecks, degrading performance and limiting cloud adoption. Identity remains anchored in on-premises Active Directory, creating governance gaps and inconsistent enforcement across divisions. Addressing is fragmented across spreadsheets and disconnected IPAM tools, making it difficult to correlate identity, device, and network activity. Telemetry is incomplete and siloed, preventing conversation-level visibility and limiting the agency’s ability to support INR, E911, or Zero Trust enforcement.
-These limitations have direct mission impact. M365 performance is degraded by unnecessary hairpinning. Cyber risk increases when identity governance is inconsistent and telemetry is incomplete. Compliance gaps emerge when the agency cannot meet TIC 3.0, FedRAMP 22, or SCuBA expectations. Operational inefficiencies multiply when governance depends on manual tickets instead of automated workflows. Modernization is required to support mission readiness, cyber resilience, and citizen-facing services.
+These limitations have direct mission impact. M365 performance is degraded by unnecessary hairpinning. Cyber risk increases when identity governance is inconsistent and telemetry is incomplete. Compliance gaps emerge when the agency cannot meet TIC 3.0, FedRAMP 20x Phase 2, or SCuBA expectations. Operational inefficiencies multiply when governance depends on manual tickets instead of automated workflows. Modernization is required to support mission readiness, cyber resilience, and citizen-facing services.
 
 
 ---
@@ -63,7 +63,7 @@ The Telemetry and Location Control Plane consolidates signals from M365, SD-WAN,
 
 
 ### 5. Security & Compliance Plane
-The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Trust, FedRAMP 22, NIST 800-63, and ICAM governance. Security becomes embedded in the architecture rather than bolted on, with automated enforcement replacing manual review.
+The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Trust, FedRAMP 20x Phase 2, NIST 800-63, and ICAM governance. Security becomes embedded in the architecture rather than bolted on, with automated enforcement replacing manual review.
 
 
 
@@ -117,7 +117,7 @@ The agency’s current environment reflects a series of disconnected legacy syst
 ---
 
 # Program Outcomes
-UIAO delivers measurable improvements across performance, security, compliance, and mission readiness. Cloud-first routing and identity- driven segmentation reduce latency and improve M365 performance. Stronger identity governance and deterministic addressing enhance Zero Trust enforcement. Unified telemetry enables accurate location inference, conversation-level visibility, and real-time decision-making. The architecture aligns the agency with TIC 3.0, FedRAMP 22, and NIST 800-63 requirements, reducing compliance risk. Most importantly, the modernization improves citizen experience by delivering faster, more reliable, and more secure services.
+UIAO delivers measurable improvements across performance, security, compliance, and mission readiness. Cloud-first routing and identity- driven segmentation reduce latency and improve M365 performance. Stronger identity governance and deterministic addressing enhance Zero Trust enforcement. Unified telemetry enables accurate location inference, conversation-level visibility, and real-time decision-making. The architecture aligns the agency with TIC 3.0, FedRAMP 20x Phase 2, and NIST 800-63 requirements, reducing compliance risk. Most importantly, the modernization improves citizen experience by delivering faster, more reliable, and more secure services.
 
   management_and_governance:
 narrative: >
