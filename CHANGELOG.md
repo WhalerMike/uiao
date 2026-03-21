@@ -1,3 +1,12 @@
+## [0.12.2](https://github.com/WhalerMike/uiao-core/compare/v0.12.1...v0.12.2) (2026-03-21)
+
+
+### Bug Fixes
+
+* loadDoc tries _v1.0.md fallback for versioned doc filenames ([207fd89](https://github.com/WhalerMike/uiao-core/commit/207fd894d1cca9a10ea8f3d37ef3f8b41d8774b1))
+
+
+
 ## [0.12.1](https://github.com/WhalerMike/uiao-core/compare/v0.12.0...v0.12.1) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * guard integration_matrix with is defined check in control-plane-architecture template ([9013821](https://github.com/WhalerMike/uiao-core/commit/9013821ab7124cd236530442813187640fdb04c2))
-
-
-
-## [0.11.1](https://github.com/WhalerMike/uiao-core/compare/v0.11.0...v0.11.1) (2026-03-21)
-
-
-### Bug Fixes
-
-* add canon/** to workflow path triggers ([cf7124f](https://github.com/WhalerMike/uiao-core/commit/cf7124ff5efe66a5af9d5c96f708496c40953ec7))
 
 
 
