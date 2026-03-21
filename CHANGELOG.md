@@ -1,3 +1,12 @@
+## [0.9.1](https://github.com/WhalerMike/uiao-core/compare/v0.9.0...v0.9.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* add pandoc/DOCX/PDF export step and fix git push race condition ([26dd629](https://github.com/WhalerMike/uiao-core/commit/26dd6294f14fff3cc1b7c1e76b20bcb841cf7b11))
+
+
+
 # [0.9.0](https://github.com/WhalerMike/uiao-core/compare/v0.8.0...v0.9.0) (2026-03-20)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * align visuals README filenames - V2 maps to telemetry_fabric_mesh.png, V3 maps to atlas_vision_outcome.png ([20c373d](https://github.com/WhalerMike/uiao-core/commit/20c373d278e1762b2f09568be2002aa993c30001))
-
-
-
-# [0.6.0](https://github.com/WhalerMike/uiao-core/compare/v0.5.0...v0.6.0) (2026-03-20)
-
-
-### Features
-
-* add .env.example with all Atlas environment variables ([7317b97](https://github.com/WhalerMike/uiao-core/commit/7317b970de41a5376e0e629087f72c24dae6dfea))
 
 
 
