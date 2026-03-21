@@ -1,3 +1,12 @@
+# [0.17.0](https://github.com/WhalerMike/uiao-core/compare/v0.16.0...v0.17.0) (2026-03-21)
+
+
+### Features
+
+* **compliance:** add NIST 800-53 Rev. 5 Control Family Mappings for all four architecture planes ([4c26bc5](https://github.com/WhalerMike/uiao-core/commit/4c26bc5b811ef5df1f39fe34e1a7e9f0e2defe54))
+
+
+
 # [0.16.0](https://github.com/WhalerMike/uiao-core/compare/v0.15.1...v0.16.0) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **data:** fix YAML indentation in appendices.yml for BA-01, A-04, BA-02 ([a353a78](https://github.com/WhalerMike/uiao-core/commit/a353a780ec9fdd2ed69feef5e1c088691487e395))
-
-
-
-# [0.14.0](https://github.com/WhalerMike/uiao-core/compare/v0.13.0...v0.14.0) (2026-03-21)
-
-
-### Features
-
-* **docs:** add BA-01, A-04, BA-02 appendices + glossary + security anchor ([dcb073c](https://github.com/WhalerMike/uiao-core/commit/dcb073c517fa4f932698fb935bb729a098c886b6))
 
 
 
