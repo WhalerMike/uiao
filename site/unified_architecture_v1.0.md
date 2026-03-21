@@ -65,7 +65,7 @@ The Telemetry and Location Control Plane consolidates signals from M365, SD-WAN,
 
 
 ### 5. Security & Compliance Plane
-The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Trust, FedRAMP 22, NIST 800-63, and ICAM governance. Security becomes embedded in the architecture rather than bolted on, with automated enforcement replacing manual review.
+The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Trust, FedRAMP 20x Phase 2, NIST 800-63, and ICAM governance. Security becomes embedded in the architecture rather than bolted on, with automated enforcement replacing manual review.
 
 
 
@@ -114,7 +114,7 @@ Citizen experience, accessibility, and privacy remain top-level design constrain
 
 # Architectural Rationale
 The agency’s current environment is constrained by legacy TIC 2.0 routing patterns that force traffic through centralized bottlenecks, degrading performance and limiting cloud adoption. Identity remains anchored in on-premises Active Directory, creating governance gaps and inconsistent enforcement across divisions. Addressing is fragmented across spreadsheets and disconnected IPAM tools, making it difficult to correlate identity, device, and network activity. Telemetry is incomplete and siloed, preventing conversation-level visibility and limiting the agency’s ability to support INR, E911, or Zero Trust enforcement.
-These limitations have direct mission impact. M365 performance is degraded by unnecessary hairpinning. Cyber risk increases when identity governance is inconsistent and telemetry is incomplete. Compliance gaps emerge when the agency cannot meet TIC 3.0, FedRAMP 22, or SCuBA expectations. Operational inefficiencies multiply when governance depends on manual tickets instead of automated workflows. Modernization is required to support mission readiness, cyber resilience, and citizen-facing services.
+These limitations have direct mission impact. M365 performance is degraded by unnecessary hairpinning. Cyber risk increases when identity governance is inconsistent and telemetry is incomplete. Compliance gaps emerge when the agency cannot meet TIC 3.0, FedRAMP 20x Phase 2, or SCuBA expectations. Operational inefficiencies multiply when governance depends on manual tickets instead of automated workflows. Modernization is required to support mission readiness, cyber resilience, and citizen-facing services.
 
 
 ---
