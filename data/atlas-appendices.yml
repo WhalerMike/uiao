@@ -1,0 +1,77 @@
+# Modernization Atlas Appendices - Schema-Validated Entries
+# These entries follow the data/schema.json format for pipeline validation
+# Used by templates/appendices.j2 and templates/scaling.j2
+
+appendices:
+  # A-01: GLOBAL NAMING CONVENTION
+  A-01:
+    title: "Global Naming Convention"
+    status: "Approved"
+    owner: "Infrastructure Architecture Board"
+    last_updated: "2026-03-21"
+    description: "Establishes a deterministic, function-first nomenclature for all physical and logical assets. This standard ensures that every device hostname, interface label, and VLAN name contains enough context for rapid identification and troubleshooting without requiring a CMDB lookup."
+    source_file: "standards/IA-Naming-v4.2.pdf"
+    config_snippet: |
+      naming_logic:
+        format: "{region}-{site}-{function}-{index}"
+        patterns:
+          hostname: "^[a-z]{3}-[a-z0-9]{4}-(sw|rtr|srv|fw)-[0-9]{2}$"
+          interface: "{media}{slot}/{port}.{subinterface}"
+          vlan_name: "VL-{id}-{description}"
+        site_codes:
+          hq: "BALT"
+          regional_hub: "RDC1"
+          branch: "BR01"
+        role_codes:
+          core_switch: "csw"
+          dist_switch: "dsw"
+          access_switch: "asw"
+          border_router: "brt"
+          firewall: "fwa"
+
+  # A-02: GLOBAL IP ADDRESSING STANDARD
+  A-02:
+    title: "Global IP Addressing Standard"
+    status: "Approved"
+    owner: "Network Operations (NetOps)"
+    last_updated: "2026-03-21"
+    description: "Defines the hierarchical IPAM allocation strategy for RFC 1918 space. This standard ensures maximum route summarization efficiency and provides a deterministic subnetting model that can be automated via Infoblox."
+    source_file: "standards/IA-IPAM-Strategy-v2.1.pdf"
+    config_snippet: |
+      ipam_hierarchy:
+        global_prefix: "10.0.0.0/8"
+        site_allocation: "/16"
+        subnet_masks:
+          management: "/24"
+          vmotion: "/24"
+          vtep_overlay: "/22"
+          user_data: "/23"
+          voice_voip: "/24"
+        reserved_offsets:
+          gateway: ".1"
+          hsrp_vip: ".254"
+          static_range: ".10-.50"
+          dhcp_pool: ".51-.250"
+
+  # A-03: GLOBAL VLAN ASSIGNMENT STANDARD
+  A-03:
+    title: "Global VLAN Assignment Standard"
+    status: "Approved"
+    owner: "Infrastructure Architecture Board"
+    last_updated: "2026-03-21"
+    description: "Establishes deterministic VLAN ID ranges to maintain configuration consistency across the agency's entire switching fabric. Prevents VLAN ID collision between sites and simplifies trunk policy management."
+    source_file: "standards/IA-VLAN-Matrix-v3.0.pdf"
+    config_snippet: |
+      vlan_matrix:
+        system_reserved: "1, 1002-1005"
+        ranges:
+          infrastructure_mgmt: "10-99"
+          server_farm_dmz: "100-499"
+          user_access: "500-899"
+          voice_video: "900-999"
+          guest_wifi: "1000-1099"
+          sd_access_fabric: "2000-2999"
+        default_assignments:
+          native_vlan: 999
+          dead_vlan: 666
+          mgmt_vlan: 10
