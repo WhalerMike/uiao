@@ -1,3 +1,12 @@
+## [0.9.4](https://github.com/WhalerMike/uiao-core/compare/v0.9.3...v0.9.4) (2026-03-21)
+
+
+### Bug Fixes
+
+* wire DOCX/PDF/View buttons to downloadAs handlers ([e492ed0](https://github.com/WhalerMike/uiao-core/commit/e492ed00f1bf1cdcf62b45fd49f69241172f3cd1))
+
+
+
 ## [0.9.3](https://github.com/WhalerMike/uiao-core/compare/v0.9.2...v0.9.3) (2026-03-21)
 
 
@@ -32,15 +41,6 @@
 ### Features
 
 * add Sentinel Workbook JSON for Atlas health dashboard ([dc6255d](https://github.com/WhalerMike/uiao-core/commit/dc6255d3c19303264bd21ed8999bafd11155970d))
-
-
-
-# [0.8.0](https://github.com/WhalerMike/uiao-core/compare/v0.7.0...v0.8.0) (2026-03-20)
-
-
-### Features
-
-* add Sentinel IaC Bicep template with 3 KQL alert rules ([f7ca966](https://github.com/WhalerMike/uiao-core/commit/f7ca966e4c32807aca22fc5f8cfa2597953ade5a))
 
 
 
