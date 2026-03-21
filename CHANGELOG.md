@@ -1,3 +1,12 @@
+## [0.20.7](https://github.com/WhalerMike/uiao-core/compare/v0.20.6...v0.20.7) (2026-03-21)
+
+
+### Bug Fixes
+
+* **scripts:** handle missing points key in generate_pptx.py ([3af5c8a](https://github.com/WhalerMike/uiao-core/commit/3af5c8a66aeaf37e5f211b72d9b1e32382f112dd))
+
+
+
 ## [0.20.6](https://github.com/WhalerMike/uiao-core/compare/v0.20.5...v0.20.6) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **compliance:** replace FedRAMP 22 with FedRAMP 20x Phase 2 in canon leadership briefing ([b865516](https://github.com/WhalerMike/uiao-core/commit/b8655169321f124d953c18f9d66e5661d5745515))
-
-
-
-## [0.20.2](https://github.com/WhalerMike/uiao-core/compare/v0.20.1...v0.20.2) (2026-03-21)
-
-
-### Bug Fixes
-
-* **compliance:** replace FedRAMP 22 with FedRAMP 20x Phase 2 in fedramp summary template ([ccba84b](https://github.com/WhalerMike/uiao-core/commit/ccba84b18127efcc5922dcb2d0a0c73fd01d7fdc))
 
 
 
