@@ -61,7 +61,7 @@ def create_pptx():
     slide = prs.slides.add_slide(summary_layout)
     slide.shapes.title.text = "Executive Summary"
     tf = slide.placeholders[1].text_frame
-    tf.text = data['pitch_deck']['summary']['text']
+    tf.text = data['pitch_deck'].get('executive_summary', 'No executive summary available.')
 
     prs.save(OUTPUT_PATH)
     print(f"PowerPoint generated successfully at: {OUTPUT_PATH}")
