@@ -1,3 +1,12 @@
+# [0.20.0](https://github.com/WhalerMike/uiao-core/compare/v0.19.0...v0.20.0) (2026-03-21)
+
+
+### Features
+
+* **docs:** add Executive FAQ to MkDocs navigation ([19eabeb](https://github.com/WhalerMike/uiao-core/commit/19eabebbe4ab35e0d31f8b07c70f09a4a47061c8))
+
+
+
 # [0.19.0](https://github.com/WhalerMike/uiao-core/compare/v0.18.1...v0.19.0) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **compliance:** add NIST 800-53 Rev. 5 Control Family Mappings for all four architecture planes ([4c26bc5](https://github.com/WhalerMike/uiao-core/commit/4c26bc5b811ef5df1f39fe34e1a7e9f0e2defe54))
-
-
-
-# [0.16.0](https://github.com/WhalerMike/uiao-core/compare/v0.15.1...v0.16.0) (2026-03-21)
-
-
-### Features
-
-* **docs:** add Addressing/Overlay Pillar deep-dives and Group AA/CA appendices (AA-01, AA-02, CA-01) with FedRAMP 20x Phase 2 terminology ([1a8eb82](https://github.com/WhalerMike/uiao-core/commit/1a8eb8272de8812bf204ced1aa8d065a91aaf23b))
 
 
 
