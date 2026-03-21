@@ -307,16 +307,20 @@
             viewer.innerHTML = '<p style="text-align:center;padding:40px;"><span class="spinner"></span> Loading document...</p>';
             title.textContent = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
             try {
-                const url = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/docs/' + slug.replace(/-/g, '_') + '.md';
-                const resp = await fetch(url);
-                if (!resp.ok) throw new Error('Not found');
-                const md = await resp.text();
+                const base = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/docs/';
+                const fileBase = slug.replace(/-/g, '_');
+                const urls = [base + fileBase + '.md', base + fileBase + '_v1.0.md'];
+                var md = null;
+                for (var i = 0; i < urls.length; i++) {
+                    var resp = await fetch(urls[i]);
+                    if (resp.ok) { md = await resp.text(); break; }
+                }
+                if (!md) throw new Error('Not found');
                 viewer.innerHTML = marked.parse(md);
             } catch(e) {
                 viewer.innerHTML = '<p style="color:#d54309;text-align:center;padding:40px;">Could not load document: ' + slug + '.md<br><small>' + e.message + '</small></p>';
             }
-        }
-
+                    }
         function showPageDirect(page) {
             document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
             const target = document.getElementById('page-' + page);
