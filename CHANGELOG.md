@@ -1,3 +1,12 @@
+## [0.20.3](https://github.com/WhalerMike/uiao-core/compare/v0.20.2...v0.20.3) (2026-03-21)
+
+
+### Bug Fixes
+
+* **compliance:** replace FedRAMP 22 with FedRAMP 20x Phase 2 in canon leadership briefing ([b865516](https://github.com/WhalerMike/uiao-core/commit/b8655169321f124d953c18f9d66e5661d5745515))
+
+
+
 ## [0.20.2](https://github.com/WhalerMike/uiao-core/compare/v0.20.1...v0.20.2) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **docs:** add Executive FAQ template for SES leadership briefing ([9abd592](https://github.com/WhalerMike/uiao-core/commit/9abd5924e4b4ba67c4677a3ed34da09e6d8ac2a3))
-
-
-
-## [0.18.1](https://github.com/WhalerMike/uiao-core/compare/v0.18.0...v0.18.1) (2026-03-21)
-
-
-### Bug Fixes
-
-* **ci:** add mkdocs-mermaid2-plugin and pymdown-extensions to requirements.txt ([f6ffa6a](https://github.com/WhalerMike/uiao-core/commit/f6ffa6a00786423bf655ffc015f360a555c3c7c4))
 
 
 
