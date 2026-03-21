@@ -1,3 +1,12 @@
+## [0.20.1](https://github.com/WhalerMike/uiao-core/compare/v0.20.0...v0.20.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* **compliance:** replace FedRAMP 22/Rev. 22 with FedRAMP 20x Phase 2 in docs/index.html ([f5c54ff](https://github.com/WhalerMike/uiao-core/commit/f5c54ff80832bbd4e0561c649034850d0b52daf9))
+
+
+
 # [0.20.0](https://github.com/WhalerMike/uiao-core/compare/v0.19.0...v0.20.0) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **governance:** update schema.json with conditional validation - BA- security appendices require sgt_id ([576bb18](https://github.com/WhalerMike/uiao-core/commit/576bb182d71dc037b9cf190ae9a557a95267328b))
-
-
-
-# [0.17.0](https://github.com/WhalerMike/uiao-core/compare/v0.16.0...v0.17.0) (2026-03-21)
-
-
-### Features
-
-* **compliance:** add NIST 800-53 Rev. 5 Control Family Mappings for all four architecture planes ([4c26bc5](https://github.com/WhalerMike/uiao-core/commit/4c26bc5b811ef5df1f39fe34e1a7e9f0e2defe54))
 
 
 
