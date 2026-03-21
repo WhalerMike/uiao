@@ -1,3 +1,12 @@
+## [0.15.1](https://github.com/WhalerMike/uiao-core/compare/v0.15.0...v0.15.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* **config:** fix mermaid fence format in mkdocs.yml ([c23a53f](https://github.com/WhalerMike/uiao-core/commit/c23a53fdc52f67305f4ff13b36d5776320b24652))
+
+
+
 # [0.15.0](https://github.com/WhalerMike/uiao-core/compare/v0.14.1...v0.15.0) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **assets:** add 7 Modernization Atlas diagram images from Gemini ([1acbca1](https://github.com/WhalerMike/uiao-core/commit/1acbca1e52f4d8949c341c802733316124410399))
-
-
-
-## [0.12.2](https://github.com/WhalerMike/uiao-core/compare/v0.12.1...v0.12.2) (2026-03-21)
-
-
-### Bug Fixes
-
-* loadDoc tries _v1.0.md fallback for versioned doc filenames ([207fd89](https://github.com/WhalerMike/uiao-core/commit/207fd894d1cca9a10ea8f3d37ef3f8b41d8774b1))
 
 
 
