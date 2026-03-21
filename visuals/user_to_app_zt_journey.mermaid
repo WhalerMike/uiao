@@ -1,0 +1,28 @@
+graph TD
+  %% Define User
+  User[Sarah Miller<br/>GFE Laptop + PIV]
+
+  %% Certificate Authority
+  subgraph "Identity & Trust"
+    UserCA[User Certificate<br/>PIV Auth]
+    DeviceCA[Device Certificate<br/>MDM Enrolled]
+    GFE_CA[Federal Device CA]
+    UserCA --> User
+    DeviceCA --> User
+  end
+
+  %% Define Network Path
+  subgraph "Overlay & Control"
+    EdgeGw[INR-001<br/>Cisco Catalyst Edge]
+    Federal_OCSP[Federal Trust Anchor<br/>OCSP Responder]
+    ABAC[ABAC Policy Engine]
+    AppServer[Target Application]
+  end
+
+  %% Flow
+  User -- "Sends certificates" --> EdgeGw
+  EdgeGw -- "Require mTLS" --> User
+  EdgeGw -- "Cert Status -> OCSP" --> Federal_OCSP
+  EdgeGw -- "Verify Policy" --> ABAC
+  ABAC -- "Attribute: DEPT=800<br/>ROLE=Analyst" --> EdgeGw
+  EdgeGw -- "Encrypted Traffic" --> AppServer
