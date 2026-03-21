@@ -1,3 +1,12 @@
+## [0.10.1](https://github.com/WhalerMike/uiao-core/compare/v0.10.0...v0.10.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* replace git rebase with merge --strategy-option ours to resolve binary conflicts ([6ae7555](https://github.com/WhalerMike/uiao-core/commit/6ae75553d05cd35f27ffc1f91d15b05d8e88e36d))
+
+
+
 # [0.10.0](https://github.com/WhalerMike/uiao-core/compare/v0.9.6...v0.10.0) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * wire DOCX/PDF/View buttons to downloadAs handlers ([e492ed0](https://github.com/WhalerMike/uiao-core/commit/e492ed00f1bf1cdcf62b45fd49f69241172f3cd1))
-
-
-
-## [0.9.3](https://github.com/WhalerMike/uiao-core/compare/v0.9.2...v0.9.3) (2026-03-21)
-
-
-### Bug Fixes
-
-* add error handling to compile_documents.py and merge data context properly ([fb715ee](https://github.com/WhalerMike/uiao-core/commit/fb715eee1c9b3f7057d242784eb73f334428d7dd))
 
 
 
