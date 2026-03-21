@@ -134,4 +134,33 @@ leaver_scenario:
 
 ---
 
+
+---
+
+# User-to-App Zero Trust Journey
+
+The following diagram illustrates the enforcement path for a typical user request through the UIAO architecture.
+
+```mermaid
+graph TD
+  User[Sarah Miller]
+  subgraph Identity
+    UserCA[User Certificate PIV Auth]
+    DeviceCA[Device Certificate MDM]
+    UserCA --> User
+    DeviceCA --> User
+  end
+  subgraph Overlay
+    EdgeGw[INR-001 Cisco Catalyst]
+    OCSP[Federal Trust Anchor]
+    ABAC[ABAC Policy Engine]
+    App[Target Application]
+  end
+  User --> EdgeGw
+  EdgeGw --> OCSP
+  EdgeGw --> ABAC
+  ABAC --> EdgeGw
+  EdgeGw --> App
+```
+
 *End of Zero Trust Narrative v1.0*
