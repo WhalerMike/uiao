@@ -1,10 +1,10 @@
 ---
-title: "UIAO FedRAMP 22 Compliance Summary"
+title: "UIAO FedRAMP 20x Phase 2 Compliance Summary"
 version: "1.0"
 classification: "CUI/FOUO"
 ---
 
-# UIAO FedRAMP 22 Compliance Summary  
+# UIAO FedRAMP 20x Phase 2 Compliance Summary  
 **Version 1.0**
 
 ---
@@ -16,7 +16,7 @@ These limitations have direct mission impact. M365 performance is degraded by un
 
 ---
 
-# Architecture Supporting FedRAMP 22
+# Architecture Supporting FedRAMP 20x Phase 2
 
 ### 1. Identity Control Plane
 The Identity Control Plane is anchored in Entra ID and reinforced by ICAM governance, Conditional Access, Privileged Identity Management, and lifecycle automation. Identity becomes the authoritative source for access, addressing, certificates, and policy.
@@ -46,7 +46,7 @@ The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Tru
 
 ---
 
-# Core Concepts Supporting FedRAMP 22
+# Core Concepts Supporting FedRAMP 20x Phase 2
 
 ### 1. Conversation as the Atomic Unit
 Every interaction—identity, certificate, addressing, path, QoS, and telemetry—is treated as a single, correlated conversation rather than isolated events.
@@ -192,4 +192,4 @@ leaver_scenario:
 
 ---
 
-*End of FedRAMP 22 Compliance Summary v1.0*
+*End of FedRAMP 20x Phase 2 Compliance Summary v1.0*
