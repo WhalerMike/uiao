@@ -4,10 +4,10 @@
 control_planes:
   - id: identity
     name: "Identity Control Plane"
-    subtitle: "Entra ID + ICAM + Zero Trust"
+    subtitle: "Identity Provider + ICAM + Zero Trust"
     description: "The authoritative identity control plane for the Unified Modernization Program"
     components:
-      - name: "Microsoft Entra ID"
+      - name: "Identity Provider"
         role: "Primary Identity Provider"
         capabilities:
           - Conditional Access (CA)
@@ -43,10 +43,10 @@ control_planes:
 
   - id: addressing
     name: "Addressing Control Plane"
-    subtitle: "InfoBlox IPAM"
+    subtitle: "IPAM Platform"
     description: "The authoritative source of truth for identity-anchored addressing, DNS, DHCP, and cross-cloud reconciliation"
     components:
-      - name: "InfoBlox IPAM"
+      - name: "IPAM Platform"
         role: "Authoritative Source of Truth"
         capabilities:
           - IP address allocation and tracking
@@ -56,7 +56,7 @@ control_planes:
       - name: "DNS Management"
         role: "Authoritative DNS zones"
         capabilities:
-          - Internal zones managed by InfoBlox
+          - Internal zones managed by IPAM platform
           - Split-horizon DNS
           - DNS evidence tied to identity/subnet/location
       - name: "DHCP Management"
@@ -69,7 +69,7 @@ control_planes:
         role: "Multi-cloud addressing truth"
         platforms: [Azure VNets, AWS VPCs, GCP VPCs]
         requirements:
-          - All cloud subnets registered in InfoBlox
+          - All cloud subnets registered in IPAM
           - Cloud IP assignments reconciled daily
           - Conflicts trigger alerts and remediation
     core_responsibilities:
@@ -85,26 +85,26 @@ control_planes:
       - All DNS/DHCP changes require auditable workflows
     integrations: [identity, network, telemetry]
     notes:
-      - "InfoBlox is the single source of truth; cloud IPAMs are reconciled, not authoritative"
+      - "IPAM Platform is the single source of truth; cloud IPAMs are reconciled, not authoritative"
       - "DNS and DHCP are identity and location evidence systems"
       - "IP-to-location inference is foundational for Zero Trust, INR, and compliance"
 
   - id: network
     name: "Network Control Plane"
-    subtitle: "Cisco Catalyst SD-WAN (Viptela/vManage)"
+    subtitle: "SD-WAN Platform"
     description: "A governed, identity-anchored, telemetry-driven routing and segmentation system"
     components:
-      - name: vManage
+      - name: "SD-WAN Policy Engine"
         role: "Centralized policy engine"
         capabilities:
           - Pushes routing/segmentation/security policies to WAN edges
           - Integrates with identity and telemetry for INR
-      - name: vSmart
+      - name: "SD-WAN Control Orchestrator"
         role: "Control-plane orchestrator"
         capabilities:
           - OMP route distribution
           - Security and segmentation policy distribution
-      - name: vBond
+      - name: "SD-WAN Orchestration Controller"
         role: "Secure orchestration"
         capabilities:
           - Secure control-plane connections
@@ -148,15 +148,15 @@ control_planes:
     subtitle: "Detection, diagnosis, governance, and automation"
     description: "The substrate of truth for detection, diagnosis, governance, and automation"
     components:
-      - name: "Splunk / Sentinel"
+      - name: "SIEM Platform"
         role: "Aggregation, correlation, compliance"
-      - name: "Azure Monitor / CloudWatch"
+      - name: "Cloud Monitoring Platform"
         role: "Cloud-native telemetry"
-      - name: "ThousandEyes / Riverbed"
+      - name: "Network Performance Monitor"
         role: "Network path truth"
-      - name: "InfoBlox"
+      - name: "IPAM Platform"
         role: "DNS/DHCP/IPAM evidence"
-      - name: "Defender / MINR"
+      - name: "Endpoint Detection Platform"
         role: "Endpoint truth"
     domains:
       endpoint: ["OS/process/resource metrics", "Defender/MINR signals", "File integrity events"]
@@ -192,11 +192,11 @@ control_planes:
     description: "The identity-anchored, telemetry-driven governance layer for all devices"
     device_types: [laptops, servers, mobile_devices, VMs, containers]
     components:
-      - name: "Defender / MINR"
+      - name: "Endpoint Detection Platform"
         role: "Endpoint detection and response"
-      - name: "Intune"
+      - name: "Endpoint Management Platform"
         role: "Configuration and compliance management"
-      - name: "Entra ID Device Objects"
+      - name: "Identity Provider Device Objects"
         role: "Device identity anchoring"
     core_responsibilities:
       - Device identity and compliance posture
@@ -206,7 +206,7 @@ control_planes:
       - Provide device evidence to Identity and Network planes
       - Support Zero Trust segmentation and INR
     device_identity:
-      anchored_in: ["Entra ID device objects", "Certificates (TPM-backed)", "Intune compliance state"]
+      anchored_in: ["Identity provider device objects", "Certificates (TPM-backed)", "Endpoint management compliance state"]
       used_for: ["Conditional Access", "INR routing decisions", "Segmentation boundaries"]
     patch_management:
       cadence: "Monthly baseline"
@@ -237,7 +237,7 @@ control_planes:
         - "Telemetry Plane for behavioral evidence"
       policies: [Conditional_Access, Micro-segmentation, Least_privilege, Continuous_validation]
     threat_detection:
-      sources: [Defender_ATP, Entra_ID_Protection, "SIEM (Splunk/Sentinel)", "Network telemetry (SD-WAN, TE, Riverbed)", DNS/DHCP/IPAM_evidence]
+      sources: [Endpoint_Detection_Platform, Identity_Protection, "SIEM Platform (SIEM/SOAR)", "Network telemetry (SD-WAN, Network Performance Monitor)", DNS/DHCP/IPAM_evidence]
       response_actions: [Automated_containment, Session_revocation, Device_quarantine, Network_isolation]
     integrations: [identity, network, addressing, telemetry, endpoint]
     notes:
@@ -263,27 +263,27 @@ fedramp_20x_control_plane_alignment:
   - plane_id: identity
     nist_rev5_control: "IA-2 / AC-2"
     ksi_category: "KSI-IAM"
-    evidence_source: "Microsoft Entra ID sign-in and risk logs"
+    evidence_source: "Identity Provider sign-in and risk logs"
     fedramp_note: "Phishing-resistant MFA (FIDO2/PIV) required by M-24-15"
   - plane_id: addressing
     nist_rev5_control: "CM-8 / AC-4"
     ksi_category: "KSI-PIY"
-    evidence_source: "Infoblox BloxOne DDI API - deterministic IP inventory"
+    evidence_source: "IPAM Platform API - deterministic IP inventory"
     fedramp_note: "Deterministic IPAM satisfies KSI-PIY inventory validation"
   - plane_id: network
     nist_rev5_control: "SC-8 / CA-7"
     ksi_category: "KSI-CNA"
-    evidence_source: "Cisco Catalyst SD-WAN telemetry + Microsoft INR feed"
+    evidence_source: "SD-WAN Platform telemetry + Network Routing telemetry"
     fedramp_note: "mTLS overlay + INR telemetry satisfies KSI-CNA and continuous monitoring"
   - plane_id: telemetry
     nist_rev5_control: "CA-7 / SI-4"
     ksi_category: "KSI-MLA"
-    evidence_source: "SIEM correlated feeds (Splunk/Sentinel + SD-WAN + Entra)"
+    evidence_source: "SIEM correlated feeds (SD-WAN + Identity Provider)"
     fedramp_note: "Telemetry-as-control replaces annual audit narratives with live KSI signals"
   - plane_id: endpoint
     nist_rev5_control: "CM-8 / IA-3"
     ksi_category: "KSI-PIY"
-    evidence_source: "Intune compliance state + Defender ATP posture signals"
+    evidence_source: "Endpoint management compliance state + Endpoint detection posture signals"
     fedramp_note: "Device identity anchored by TPM-backed certificates per M-24-15"
   - plane_id: security
     nist_rev5_control: "CM-2 / AC-4"
