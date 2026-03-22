@@ -28,7 +28,13 @@ jobs:
       - name: Run secret scanning (GitHub MCP Server)
         run: |
           gh extension install github/gh-mcp-server
-          gh mcp run-secret-scanning --pr ${{ github.event.pull_request.number }}
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "Running secret scanning for PR #${{ github.event.pull_request.number }}"
+            gh mcp run-secret-scanning --pr ${{ github.event.pull_request.number }}
+          else
+            echo "Running secret scanning for branch: ${{ github.ref_name }}"
+            gh mcp run-secret-scanning --ref ${{ github.ref_name }}
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
