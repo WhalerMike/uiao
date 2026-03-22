@@ -1,3 +1,12 @@
+## [0.23.1](https://github.com/WhalerMike/uiao-core/compare/v0.23.0...v0.23.1) (2026-03-22)
+
+
+### Bug Fixes
+
+* harden generate_oscal.py against non-dict entries; fix datetime deprecation ([618db72](https://github.com/WhalerMike/uiao-core/commit/618db723ebf6a71e26b196c1e20aa03ce65ef0b8))
+
+
+
 # [0.23.0](https://github.com/WhalerMike/uiao-core/compare/v0.22.0...v0.23.0) (2026-03-22)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **ci:** add git pull --rebase before artifact commit to prevent push conflicts ([72df296](https://github.com/WhalerMike/uiao-core/commit/72df29637d84f6b253051c4306d3cea4cec06c54))
-
-
-
-## [0.20.8](https://github.com/WhalerMike/uiao-core/compare/v0.20.7...v0.20.8) (2026-03-21)
-
-
-### Bug Fixes
-
-* **scripts:** use executive_summary key in generate_pptx.py ([afe9a80](https://github.com/WhalerMike/uiao-core/commit/afe9a80a37e00f107120f917830f9b51870b5598))
 
 
 
