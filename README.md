@@ -29,3 +29,48 @@ Located in `templates/`:
    ```bash
    python scripts/generate_docs.py
    mkdocs build
+
+```
+
+3. Outputs land in `docs/`.
+
+## OSCAL & GRC Compliance
+
+The CI/CD pipeline automatically generates NIST OSCAL artifacts on every push to `main`:
+
+### Generated Artifacts
+
+| Artifact | Script | Output |
+|----------|--------|--------|
+| Component Definition | `scripts/generate_component_def.py` | `exports/oscal/component-definition.json` |
+| Plan of Action & Milestones | `scripts/generate_poam.py` | `exports/oscal/poam.json` |
+| System Security Plan | `scripts/generate_ssp.py` | `exports/oscal/ssp.json` |
+
+### Data Sources
+
+- `data/poam-findings.yml` — POA&M findings and milestones
+- `canon/uiao_leadership_briefing_v1.0.yaml` — Canonical content graph
+
+### Running Locally
+
+```bash
+pip install pyyaml
+python scripts/generate_component_def.py
+python scripts/generate_poam.py
+python scripts/generate_ssp.py
+```
+
+OSCAL outputs are written to `exports/oscal/` and committed automatically by the workflow.
+
+## Exports
+
+All generated documents are stored in `exports/`:
+
+- `exports/markdown/` — Rendered Markdown documents
+- `exports/docx/` — Word documents (via Pandoc)
+- `exports/pdf/` — PDF documents (via Pandoc)
+- `exports/oscal/` — NIST OSCAL JSON artifacts
+
+## License
+
+See [LICENSE](LICENSE) for details.
