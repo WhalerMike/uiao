@@ -13,14 +13,14 @@ def load_context():
         key = yml_file.stem.replace("-", "_")
         with open(yml_file, encoding="utf-8") as f:
             content = yaml.safe_load(f)
-            if content and isinstance(content, dict):
-                context.update(content)
-                context[f"_src_{key}"] = content
+        if content and isinstance(content, dict):
+            context.update(content)
+            context[f"_src_{key}"] = content
 
     # Load canon briefing for metadata
     with open("canon/uiao_leadership_briefing_v1.0.yaml", encoding="utf-8") as f:
         canon = yaml.safe_load(f)
-        context.update(canon)
+    context.update(canon)
 
     return context
 
@@ -34,20 +34,26 @@ def build_ssp_skeleton(context):
     if not isinstance(inventory_items, list):
         inventory_items = []
 
+    now_iso = datetime.utcnow().isoformat() + "Z"
+    now_date = datetime.utcnow().strftime("%Y-%m-%d")
+
     ssp = {
         "uuid": str(uuid.uuid4()),
         "metadata": {
             "title": f"{briefing.get('title', 'UIAO Unified Identity-Addressing-Overlay Architecture')} - System Security Plan (FedRAMP Moderate Skeleton)",
-            "last-modified": datetime.utcnow().isoformat() + "Z",
+            "published": now_iso,
+            "last-modified": now_iso,
             "version": "1.0-skeleton",
-            "oscal-version": "1.0.0",
+            "oscal-version": "1.0.4",
             "props": [
                 {"name": "impact-level", "value": "moderate", "ns": "https://fedramp.gov/ns/oscal"},
-                {"name": "compliance-strategy", "value": fedramp_cfg.get("compliance_strategy", "OSCAL-based Telemetry Validation")}
+                {"name": "publication-date", "value": now_date, "ns": "https://fedramp.gov/ns/oscal"},
+                {"name": "markup-type", "value": "json", "ns": "https://fedramp.gov/ns/oscal"},
+                {"name": "compliance-strategy", "value": fedramp_cfg.get("compliance_strategy", "OSCAL-based Telemetry Validation"), "ns": "https://fedramp.gov/ns/oscal"}
             ]
         },
         "import-profile": {
-            "href": "https://github.com/GSA/fedramp-automation/raw/main/dist/content/rev5/baselines/json/FedRAMP_rev5_MODERATE-baseline_profile.json"
+            "href": "https://github.com/GSA/fedramp-automation/raw/fedramp-2.0.0-oscal-1.0.4/dist/content/rev5/baselines/json/FedRAMP_rev5_MODERATE-baseline_profile.json"
         },
         "system-characteristics": {
             "system-ids": [{"id": "uiao-modernized-cloud"}],
@@ -117,7 +123,6 @@ def build_ssp_skeleton(context):
             for prop in item.get("props", []):
                 if isinstance(prop, dict):
                     item_props.append({"name": prop.get("name", ""), "value": prop.get("value", "")})
-
             # Resolve implemented-components to SSP component UUIDs
             impl_components = []
             for comp_ref in item.get("implemented_components", []):
@@ -125,8 +130,7 @@ def build_ssp_skeleton(context):
                 if comp_uuid:
                     impl_components.append({"component-uuid": comp_uuid})
                 else:
-                    print(f"  [WARN] Inventory item '{item_id}' references unknown component '{comp_ref}'")
-
+                    print(f" [WARN] Inventory item '{item_id}' references unknown component '{comp_ref}'")
             oscal_item = {
                 "uuid": str(uuid.uuid4()),
                 "description": item.get("description", ""),
@@ -181,9 +185,7 @@ def main():
 
     OSCAL_OUT = Path("exports/oscal")
     OSCAL_OUT.mkdir(parents=True, exist_ok=True)
-
     json_path = OSCAL_OUT / "uiao-ssp-skeleton.json"
-
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(
             {"system-security-plan": ssp_data},
