@@ -1,0 +1,67 @@
+name: AI Security Audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run every Monday at 08:00 UTC
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: read
+
+jobs:
+  secret-scanning:
+    name: Secret Scanning via GitHub MCP Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Run secret scanning (GitHub MCP Server v1)
+        uses: github/mcp-server@v1
+        with:
+          tool: secret_scanning
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+
+  vulnerability-triage:
+    name: AI-Powered Vulnerability Triage
+    runs-on: ubuntu-latest
+    needs: secret-scanning
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run schema validation (compliance gate)
+        run: python scripts/validate_schemas.py
+
+      - name: Run build-readiness safety gate
+        run: python scripts/validate_build_readiness.py
+
+      - name: Validate OSCAL artifacts
+        run: python scripts/validate_oscal.py
+
+      - name: Upload security audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-results
+          path: |
+            exports/oscal/
+          retention-days: 90
