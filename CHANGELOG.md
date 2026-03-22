@@ -1,3 +1,12 @@
+# [0.22.0](https://github.com/WhalerMike/uiao-core/compare/v0.21.0...v0.22.0) (2026-03-22)
+
+
+### Features
+
+* **oscal:** add OSCAL POA&M template with gap detection ([62f8cf3](https://github.com/WhalerMike/uiao-core/commit/62f8cf3ea93462e18b2205df44835488a8e4277f))
+
+
+
 # [0.21.0](https://github.com/WhalerMike/uiao-core/compare/v0.20.9...v0.21.0) (2026-03-22)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **scripts:** handle missing points key in generate_pptx.py ([3af5c8a](https://github.com/WhalerMike/uiao-core/commit/3af5c8a66aeaf37e5f211b72d9b1e32382f112dd))
-
-
-
-## [0.20.6](https://github.com/WhalerMike/uiao-core/compare/v0.20.5...v0.20.6) (2026-03-21)
-
-
-### Bug Fixes
-
-* **canon:** add missing subtitle key to pitch deck YAML ([73e0cc8](https://github.com/WhalerMike/uiao-core/commit/73e0cc8478bf693319a09e818a058c7805997bb5))
 
 
 
