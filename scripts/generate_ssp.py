@@ -110,7 +110,7 @@ def build_ssp_skeleton(context):
             "props": props
         })
 
-    # Populate system-inventory from inventory-items.yml
+    # Populate inventory-items from inventory-items.yml
     if inventory_items:
         oscal_inventory = []
         for item in inventory_items:
@@ -141,7 +141,7 @@ def build_ssp_skeleton(context):
                 "implemented-components": impl_components
             }
             oscal_inventory.append(oscal_item)
-        ssp["system-implementation"]["system-inventory"] = oscal_inventory
+        ssp["system-implementation"]["inventory-items"] = oscal_inventory
 
     # Build a lookup: control-id -> KSI mapping (first match wins)
     ksi_mappings = context.get("ksi_mappings", [])
@@ -191,7 +191,7 @@ def main():
             {"system-security-plan": ssp_data},
             f, indent=2)
 
-    inventory = ssp_data.get("system-implementation", {}).get("system-inventory", [])
+    inventory = ssp_data.get("system-implementation", {}).get("inventory-items", [])
     print(f"OSCAL SSP skeleton exported to {json_path}")
     print(f"  System inventory items : {len(inventory)}")
     print("  Ready for FedRAMP 20x Moderate authorization")
