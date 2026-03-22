@@ -1,3 +1,12 @@
+# [0.26.0](https://github.com/WhalerMike/uiao-core/compare/v0.25.0...v0.26.0) (2026-03-22)
+
+
+### Features
+
+* Add OSCAL Exports section to Pages dashboard and enforce validation in CI ([1053ed0](https://github.com/WhalerMike/uiao-core/commit/1053ed0732ecc6f2064766cdece1be931828a6dc))
+
+
+
 # [0.25.0](https://github.com/WhalerMike/uiao-core/compare/v0.24.0...v0.25.0) (2026-03-22)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * harden generate_oscal.py against non-dict entries; fix datetime deprecation ([618db72](https://github.com/WhalerMike/uiao-core/commit/618db723ebf6a71e26b196c1e20aa03ce65ef0b8))
-
-
-
-# [0.23.0](https://github.com/WhalerMike/uiao-core/compare/v0.22.0...v0.23.0) (2026-03-22)
-
-
-### Features
-
-* **oscal:** add SSP skeleton generation script (FedRAMP Moderate) ([f33bcbc](https://github.com/WhalerMike/uiao-core/commit/f33bcbc1b0aa1da1776676cc3a9fc9e4d46242d0))
 
 
 
