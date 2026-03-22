@@ -25,6 +25,17 @@ Auto-generated machine-readable compliance artifacts:
 - [POA&M Template](https://github.com/WhalerMike/uiao-core/blob/main/exports/oscal/uiao-poam-template.json)
 - [SSP Skeleton](https://github.com/WhalerMike/uiao-core/blob/main/exports/oscal/uiao-ssp-skeleton.json)
 
+### SSP Inventory
+
+The SSP `system-inventory` section is auto-generated from [`data/inventory-items.yml`](https://github.com/WhalerMike/uiao-core/blob/main/data/inventory-items.yml).
+Each inventory item links back to a component in the Component Definition via its `component-id` prop.
+
+| Inventory ID | Description | Component Link | Vendor |
+|---|---|---|---|
+| `inv-entra-id` | Microsoft Entra ID - Identity Provider | `component-identity` | Microsoft |
+| `inv-sentinel` | Microsoft Sentinel - SIEM Platform | `component-telemetry` | Microsoft |
+| `inv-cisco-sdwan` | Cisco SD-WAN - Network Segmentation | `component-network` | Cisco |
+| `inv-infoblox-ddi` | InfoBlox DDI - DNS/DHCP/IPAM | `component-addressing` | InfoBlox |
 ---
 
 ## Continuous Monitoring
