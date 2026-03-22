@@ -1,3 +1,12 @@
+# [0.27.0](https://github.com/WhalerMike/uiao-core/compare/v0.26.0...v0.27.0) (2026-03-22)
+
+
+### Features
+
+* Add compliance-trestle OSCAL validation and fix schema compliance ([ded4b21](https://github.com/WhalerMike/uiao-core/commit/ded4b2191059eb28426869f2124db5c8f2b95dd9))
+
+
+
 # [0.26.0](https://github.com/WhalerMike/uiao-core/compare/v0.25.0...v0.26.0) (2026-03-22)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * harden generate_poam.py against non-dict entries; fix datetime deprecation ([1acce82](https://github.com/WhalerMike/uiao-core/commit/1acce82f4c3304970da72160bc7c337c1342f7b4))
-
-
-
-## [0.23.1](https://github.com/WhalerMike/uiao-core/compare/v0.23.0...v0.23.1) (2026-03-22)
-
-
-### Bug Fixes
-
-* harden generate_oscal.py against non-dict entries; fix datetime deprecation ([618db72](https://github.com/WhalerMike/uiao-core/commit/618db723ebf6a71e26b196c1e20aa03ce65ef0b8))
 
 
 
