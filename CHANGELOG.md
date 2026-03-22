@@ -1,3 +1,12 @@
+# [0.28.0](https://github.com/WhalerMike/uiao-core/compare/v0.27.0...v0.28.0) (2026-03-22)
+
+
+### Features
+
+* Add vendor-neutral abstraction layer with optional technology overlays ([6ec29d3](https://github.com/WhalerMike/uiao-core/commit/6ec29d3f95075d2fa31393c6bfe417aa52a577e2))
+
+
+
 # [0.27.0](https://github.com/WhalerMike/uiao-core/compare/v0.26.0...v0.27.0) (2026-03-22)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **ci:** add OSCAL artifact validation script for CI pipeline ([c54622b](https://github.com/WhalerMike/uiao-core/commit/c54622b8582823c7fbfc9641ee0061511c8ed4a1))
-
-
-
-## [0.23.2](https://github.com/WhalerMike/uiao-core/compare/v0.23.1...v0.23.2) (2026-03-22)
-
-
-### Bug Fixes
-
-* harden generate_poam.py against non-dict entries; fix datetime deprecation ([1acce82](https://github.com/WhalerMike/uiao-core/commit/1acce82f4c3304970da72160bc7c337c1342f7b4))
 
 
 
