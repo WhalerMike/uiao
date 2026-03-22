@@ -1,0 +1,47 @@
+# Infoblox DDI Overlay
+# Restores Infoblox BloxOne DDI-specific details for the Addressing control plane.
+# Remove 'infoblox' from data/overlay-config.yml to use generic placeholder names instead.
+
+overlay_meta:
+  vendor: infoblox
+  product: ddi
+  description: "Infoblox BloxOne DDI (DNS, DHCP, IPAM) addressing platform overlay"
+
+control_plane_overrides:
+  - id: addressing
+    subtitle: "InfoBlox IPAM"
+    components:
+      - name: "InfoBlox IPAM"
+        role: "Authoritative Source of Truth"
+        capabilities:
+          - IP address allocation and tracking
+          - Subnet creation and lifecycle management
+          - DNS zone management and record authority
+          - DHCP scope governance and lease evidence
+      - name: "DNS Management"
+        role: "Authoritative DNS zones"
+        capabilities:
+          - Internal zones managed by InfoBlox
+          - Split-horizon DNS
+          - DNS evidence tied to identity/subnet/location
+      - name: "DHCP Management"
+        role: "Scope governance"
+        capabilities:
+          - Scopes defined and owned by IPAM
+          - Lease durations aligned with device identity
+          - Automatic DNS record creation from DHCP leases
+      - name: "Cloud IPAM Reconciliation"
+        role: "Multi-cloud addressing truth"
+        platforms: [Azure VNets, AWS VPCs, GCP VPCs]
+        requirements:
+          - All cloud subnets registered in InfoBlox
+          - Cloud IP assignments reconciled daily
+          - Conflicts trigger alerts and remediation
+    notes:
+      - "InfoBlox is the single source of truth; cloud IPAMs are reconciled, not authoritative"
+      - "DNS and DHCP are identity and location evidence systems"
+      - "IP-to-location inference is foundational for Zero Trust, INR, and compliance"
+
+fedramp_alignment_overrides:
+  - plane_id: addressing
+    evidence_source: "Infoblox BloxOne DDI API - deterministic IP inventory"
