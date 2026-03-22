@@ -212,7 +212,7 @@
                                 <tr><td>FedRAMP Crosswalk</td><td>fedramp-crosswalk.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('fedramp-crosswalk')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','pdf')">PDF</button></div></td></tr>
                                 <tr><td>FedRAMP 20x Phase 2 Summary</td><td>fedramp22_summary_v1.0.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('fedramp22_summary_v1.0')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','pdf')">PDF</button></div></td></tr>
                                 <tr><td>Project Plans Summary</td><td>project-plans-summary.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('project-plans-summary')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Seven-Layer Model</td><td>seven-layer-model.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('seven-layer-model')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadDoc('seven-layer-model')">Download</button></div></td></tr>
+                                <tr><td>Seven-Layer Model</td><td>seven-layer-model.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('seven-layer-model')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('seven-layer-model')">DOCX</button></div></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -406,21 +406,23 @@
                 return _originalDownloadAs(slug, fmt);
             }
             // For docx, pdf, html: fetch pre-built file from exports/
-            var exportSlug = slug.replace(/_/g, '-');
-            var ext = fmt === 'docx' ? 'docx' : fmt === 'pdf' ? 'pdf' : 'html';
-            var url = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/exports/' + exportSlug + '.' + ext;
-            try {
-                var resp = await fetch(url);
-                if (!resp.ok) throw new Error('Not found in exports');
-                var blob = await resp.blob();
-                var a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = exportSlug + '.' + ext;
-                a.click();
-            } catch(e) {
-                // Fallback to client-side conversion
-                return _originalDownloadAs(slug, fmt);
+                        var ext = fmt === 'docx' ? 'docx' : fmt === 'pdf' ? 'pdf' : 'html';
+            var candidates = [slug, slug.replace(/-/g, '_') + '_v1.0', slug.replace(/-/g, '_')];
+            var base = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/exports/';
+            for (var i = 0; i < candidates.length; i++) {
+                try {
+                    var resp = await fetch(base + candidates[i] + '.' + ext);
+                    if (resp.ok) {
+                        var blob = await resp.blob();
+                        var a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = slug + '.' + ext;
+                        a.click();
+                        return;
+                    }
+                } catch(e) { continue; }
             }
+            return _originalDownloadAs(slug, fmt);
         };
 
         // Wire sidebar document links
