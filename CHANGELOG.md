@@ -1,3 +1,12 @@
+## [0.23.2](https://github.com/WhalerMike/uiao-core/compare/v0.23.1...v0.23.2) (2026-03-22)
+
+
+### Bug Fixes
+
+* harden generate_poam.py against non-dict entries; fix datetime deprecation ([1acce82](https://github.com/WhalerMike/uiao-core/commit/1acce82f4c3304970da72160bc7c337c1342f7b4))
+
+
+
 ## [0.23.1](https://github.com/WhalerMike/uiao-core/compare/v0.23.0...v0.23.1) (2026-03-22)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **oscal:** add OSCAL Component Definition export script (FedRAMP 20x) ([d2b1bc3](https://github.com/WhalerMike/uiao-core/commit/d2b1bc3b6c2570b68654d4a1647fc8761587e769))
-
-
-
-## [0.20.9](https://github.com/WhalerMike/uiao-core/compare/v0.20.8...v0.20.9) (2026-03-21)
-
-
-### Bug Fixes
-
-* **ci:** add git pull --rebase before artifact commit to prevent push conflicts ([72df296](https://github.com/WhalerMike/uiao-core/commit/72df29637d84f6b253051c4306d3cea4cec06c54))
 
 
 
