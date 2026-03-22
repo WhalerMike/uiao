@@ -131,15 +131,16 @@ def build_component_definition(context):
                 "capabilities": sub.get("capabilities", [])
             })
 
+        props = [{"name": "uiao-pillar", "value": str(plane_id).upper()}]
+        subtitle = str(plane.get("subtitle", "")).strip()
+        if subtitle:
+            props.append({"name": "subtitle", "value": subtitle})
         cd["components"].append({
             "uuid": comp_uuid,
             "type": "service",
             "title": plane.get("name", plane_id),
             "description": plane.get("description", ""),
-            "props": [
-                {"name": "uiao-pillar", "value": str(plane_id).upper()},
-                {"name": "subtitle", "value": plane.get("subtitle", "")}
-            ],
+            "props": props,
             "remarks": json.dumps(sub_components)
         })
 
@@ -183,7 +184,11 @@ def build_component_definition(context):
                 "implemented-requirements": imp_reqs
             })
 
-    cd["control-implementations"] = control_implementations
+    # Attach control implementations to the first component (OSCAL requires
+    # control-implementations to be nested inside a DefinedComponent, not at
+    # the ComponentDefinition root level).
+    if control_implementations and cd["components"]:
+        cd["components"][0]["control-implementations"] = control_implementations
 
     # Add FedRAMP 20x core_mappings as a capability
     if core_mappings:
@@ -219,9 +224,13 @@ def main():
     json_path = OSCAL_OUT / "uiao-component-definition.json"
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump({"component-definition": cd}, f, indent=2)
+    ctrl_impl_count = (
+        len(cd["components"][0].get("control-implementations", []))
+        if cd["components"] else 0
+    )
     print(f"OSCAL Component Definition exported -> {json_path}")
     print(f"  Components             : {len(cd['components'])}")
-    print(f"  Control Implementations: {len(cd['control-implementations'])}")
+    print(f"  Control Implementations: {ctrl_impl_count}")
     print(f"  Capabilities           : {len(cd['capabilities'])}")
     print("  Ready for FedRAMP 20x Moderate import")
 

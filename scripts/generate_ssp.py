@@ -47,16 +47,31 @@ def build_ssp_skeleton(context):
             "href": "https://github.com/GSA/fedramp-automation/raw/main/dist/content/rev5/baselines/json/FedRAMP_rev5_MODERATE-baseline_profile.json"
         },
         "system-characteristics": {
+            "system-ids": [{"id": "uiao-modernized-cloud"}],
             "system-name": "UIAO-Modernized Cloud Environment",
             "system-name-short": "UIAO",
             "description": briefing.get("overview", "Reference architecture for TIC 3.0 migration using unified identity, addressing, and telemetry planes."),
+            "system-information": {
+                "information-types": [{
+                    "title": "Operational Information",
+                    "description": "General operational data supporting UIAO TIC 3.0 mission.",
+                    "confidentiality-impact": {"base": "fips-199-moderate"},
+                    "integrity-impact": {"base": "fips-199-moderate"},
+                    "availability-impact": {"base": "fips-199-moderate"}
+                }]
+            },
             "security-impact-level": {
                 "security-objective-confidentiality": "moderate",
                 "security-objective-integrity": "moderate",
                 "security-objective-availability": "moderate"
+            },
+            "status": {"state": "operational"},
+            "authorization-boundary": {
+                "description": "Cloud-hosted UIAO architecture boundary spanning identity, addressing, and telemetry planes."
             }
         },
-        "system-implementations": {
+        "system-implementation": {
+            "users": [{"uuid": str(uuid.uuid4()), "title": "System Administrators", "role-ids": ["admin"]}],
             "components": []
         },
         "control-implementation": {
@@ -67,15 +82,17 @@ def build_ssp_skeleton(context):
 
     # Populate components from control_planes.yml
     for plane in planes:
-        ssp["system-implementations"]["components"].append({
+        props = [{"name": "pillar", "value": plane.get("id", "").upper()}]
+        subtitle = str(plane.get("subtitle", "")).strip()
+        if subtitle:
+            props.append({"name": "subtitle", "value": subtitle})
+        ssp["system-implementation"]["components"].append({
             "uuid": str(uuid.uuid4()),
             "type": "service",
             "title": plane.get("name", plane.get("id", "Unnamed Plane")),
             "description": plane.get("description", ""),
-            "props": [
-                {"name": "pillar", "value": plane.get("id", "").upper()},
-                {"name": "subtitle", "value": plane.get("subtitle", "")}
-            ]
+            "status": {"state": "operational"},
+            "props": props
         })
 
     # Build a lookup: control-id -> KSI mapping (first match wins)
@@ -98,7 +115,6 @@ def build_ssp_skeleton(context):
             req = {
                 "uuid": str(uuid.uuid4()),
                 "control-id": ctrl_id,
-                "description": entry.get("impact_statement", "Implemented via UIAO plane"),
                 "remarks": (
                     f"{base_remarks} | KSI Evidence: {ksi['evidence_source']}"
                     if ksi else base_remarks
