@@ -80,8 +80,9 @@ def build_component_definition(context):
             "title": _safe_get(briefing, "title",
                                "UIAO Unified Identity-Addressing-Overlay Architecture"),
             "version": "1.0",
-            "oscal-version": "1.0.0",
+            "oscal-version": "1.0.4",
             "last-modified": now_iso,
+                        "published": now_iso,
             "props": [
                 {
                     "name": "fedramp-impact",
@@ -91,7 +92,8 @@ def build_component_definition(context):
                 {
                     "name": "compliance-strategy",
                     "value": cfg.get("compliance_strategy",
-                                     "OSCAL-based Telemetry Validation")
+                                     "OSCAL-based Telemetry Validation"),
+                    "ns": "https://fedramp.gov/ns/oscal"
                 },
                 {
                     "name": "ksi-dashboard",
@@ -100,6 +102,11 @@ def build_component_definition(context):
                 {
                     "name": "framework-version",
                     "value": cfg.get("framework_version", "2026.1")
+                },
+                {
+                    "name": "markup-type",
+                    "value": "json",
+                    "ns": "https://fedramp.gov/ns/oscal"
                 }
             ]
         },
