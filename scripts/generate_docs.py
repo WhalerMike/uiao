@@ -26,7 +26,7 @@ def load_data_files():
                     if isinstance(content, dict):
                         data.update(content)
                     # Then set stem key (overwrites any collision with full dict)
-                    data[key] = content
+                    data['_src_' + key] = content
     return data
 
 def render_template(env, template_name, context, output_name):
