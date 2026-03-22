@@ -38,7 +38,7 @@ def load_all_data():
             if content:
                 if isinstance(content, dict):
                     context.update(content)
-                context[key] = content
+                context['_src_' + key] = content
     for yaml_file in sorted(DATA_DIR.rglob('*.yaml')):
         key = yaml_file.stem.replace('-', '_')
         with open(yaml_file) as f:
@@ -46,7 +46,7 @@ def load_all_data():
             if content:
                 if isinstance(content, dict):
                     context.update(content)
-                context[key] = content
+                context['_src_' + key] = content
     canon_dir = Path('canon')
     if canon_dir.exists():
         for yaml_file in sorted(canon_dir.rglob('*.yaml')):
@@ -100,8 +100,8 @@ def render_mermaid_blocks(md_text, out_dir):
             os.unlink(tmp_path)
             return f'![Diagram {counter[0]}]({img_path})'
         except Exception as e:
-            print(f'    WARNING: Mermaid render failed: {e}')
-            return '> *[Diagram: Mermaid chart — render failed]*'
+                        print(f'    WARNING: Mermaid render failed: {e}')
+                        return '> *[Diagram: Mermaid chart — render failed]*'
 
     return re.sub(r'```mermaid\n(.*?)```', replace_with_image, md_text, flags=re.DOTALL)
 
