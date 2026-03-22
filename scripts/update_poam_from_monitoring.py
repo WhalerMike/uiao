@@ -58,8 +58,17 @@ def enrich_poam_items(poam_items, signal_index, now_iso):
     """
     changes = []
     for item in poam_items:
-        related = item.get("related-controls", {})
-        control_ids = related.get("control-ids", [])
+        # Support both old (related-controls list) and new (remarks-embedded)
+        # OSCAL item schemas.
+        control_ids = item.get("related-controls", {}).get("control-ids", [])
+        if not control_ids:
+            remarks = item.get("remarks", "")
+            for segment in remarks.split("|"):
+                segment = segment.strip()
+                if segment.startswith("Controls:"):
+                    raw = segment[len("Controls:"):].strip()
+                    control_ids = [c.strip() for c in raw.split(",") if c.strip()]
+                    break
 
         for ctrl_id in control_ids:
             if ctrl_id not in signal_index:
