@@ -3,6 +3,10 @@
 Validates that generated OSCAL JSON files in exports/oscal/ are
 well-formed JSON with expected root keys and required fields.
 No external dependencies required (pure stdlib).
+
+Note: This script performs lightweight structural pre-checks only.
+For full OSCAL 1.0 schema compliance, see scripts/validate_with_trestle.py
+which uses compliance-trestle Pydantic models.
 """
 import json
 import sys
