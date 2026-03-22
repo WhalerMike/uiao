@@ -6,7 +6,7 @@ classification: "CUI/FOUO"
 
 # The UIAO Seven-Layer Model
 
-This model defines the architectural stack for the modernization efforts at . Each layer represents a functional domain, and the three UIAO pillars (Identity, Addressing, Overlay) are highlighted to show where vendor-specific integration occurs.
+This model defines the architectural stack for the modernization efforts at Unified Identity-Addressing-Overlay Architecture. Each layer represents a functional domain, and the three UIAO pillars (Identity, Addressing, Overlay) are highlighted to show where vendor-specific integration occurs.
 
 ```mermaid
 graph TD
