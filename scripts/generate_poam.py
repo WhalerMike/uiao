@@ -12,7 +12,7 @@ continuous-monitoring props/remarks.
 import yaml
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 import os
@@ -183,8 +183,8 @@ def build_poam_template(context):
                  "value": "UIAO Canon Gap Detection"}
             ]
         },
-        "import": {
-            "href": "../oscal/uiao-component-definition.json"
+        "import-ssp": {
+            "href": "../oscal/uiao-ssp-skeleton.json"
         },
         "poam-items": []
     }
@@ -196,24 +196,13 @@ def build_poam_template(context):
             "uuid": str(uuid.uuid4()),
             "title": gap.get("title", "Unknown gap"),
             "description": gap.get("description", ""),
-            "related-controls": {
-                "control-ids": gap.get("control-ids", [])},
-            "risk": {
-                "rating": gap.get("severity", "medium"),
-                "description": f"Detected via {gap.get('source', 'unknown')}"
-            },
-            "remediations": [{
-                "uuid": str(uuid.uuid4()),
-                "description": gap.get("remediation", ""),
-                "schedule": {
-                    "expected-completion":
-                    (now + timedelta(days=90)
-                     ).isoformat().replace("+00:00", "Z")
-                },
-                "status": {"state": "planned"}
-            }],
-            "remarks": f"Auto-generated from canon on "
-            f"{now.date()}"
+            "remarks": (
+                f"Auto-generated from canon on {now.date()} | "
+                f"Severity: {gap.get('severity', 'medium')} | "
+                f"Controls: {', '.join(gap.get('control-ids', []))} | "
+                f"Remediation: {gap.get('remediation', '')} | "
+                f"Source: {gap.get('source', 'unknown')}"
+            )
         }
         if gap.get("ksi_id"):
             item["props"] = [{
@@ -270,8 +259,19 @@ def apply_monitoring_enrichment(poam_data, monitoring_enabled=True):
     count = 0
 
     for item in poam_data.get("poam-items", []):
+        # New schema: control IDs are embedded in the remarks string
+        # e.g. "… | Controls: SC-7, AC-2 | …"
+        # Fall back to the old related-controls list for compatibility.
         control_ids = item.get(
             "related-controls", {}).get("control-ids", [])
+        if not control_ids:
+            remarks = item.get("remarks", "")
+            for segment in remarks.split("|"):
+                segment = segment.strip()
+                if segment.startswith("Controls:"):
+                    raw = segment[len("Controls:"):].strip()
+                    control_ids = [c.strip() for c in raw.split(",") if c.strip()]
+                    break
         for ctrl_id in control_ids:
             if ctrl_id not in signal_index:
                 continue
