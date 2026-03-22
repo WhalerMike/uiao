@@ -7,7 +7,7 @@ Exports OSCAL 1.0 Plan of Action & Milestones JSON.
 import yaml
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -172,8 +172,8 @@ def build_poam_template(context):
                  "value": "UIAO Canon Gap Detection"}
             ]
         },
-        "import": {
-            "href": "../oscal/uiao-component-definition.json"
+        "import-ssp": {
+            "href": "../oscal/uiao-ssp-skeleton.json"
         },
         "poam-items": []
     }
@@ -185,24 +185,13 @@ def build_poam_template(context):
             "uuid": str(uuid.uuid4()),
             "title": gap.get("title", "Unknown gap"),
             "description": gap.get("description", ""),
-            "related-controls": {
-                "control-ids": gap.get("control-ids", [])},
-            "risk": {
-                "rating": gap.get("severity", "medium"),
-                "description": f"Detected via {gap.get('source', 'unknown')}"
-            },
-            "remediations": [{
-                "uuid": str(uuid.uuid4()),
-                "description": gap.get("remediation", ""),
-                "schedule": {
-                    "expected-completion":
-                    (now + timedelta(days=90)
-                     ).isoformat().replace("+00:00", "Z")
-                },
-                "status": {"state": "planned"}
-            }],
-            "remarks": f"Auto-generated from canon on "
-            f"{now.date()}"
+            "remarks": (
+                f"Auto-generated from canon on {now.date()} | "
+                f"Severity: {gap.get('severity', 'medium')} | "
+                f"Controls: {', '.join(gap.get('control-ids', []))} | "
+                f"Remediation: {gap.get('remediation', '')} | "
+                f"Source: {gap.get('source', 'unknown')}"
+            )
         }
         if gap.get("ksi_id"):
             item["props"] = [{
