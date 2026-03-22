@@ -143,6 +143,18 @@ def build_ssp_skeleton(context):
             oscal_inventory.append(oscal_item)
         ssp["system-implementation"]["inventory-items"] = oscal_inventory
 
+        # Add minimal parties/roles for OSCAL validation
+    agency_party_uuid = str(uuid.uuid4())
+    ssp["metadata"]["roles"] = [
+        {"id": "admin", "title": "System Administrator"},
+        {"id": "agency-admin", "title": "Agency Administrator"}
+    ]
+    ssp["metadata"]["parties"] = [
+        {"uuid": agency_party_uuid, "type": "organization", "name": "UIAO Program Office"}
+    ]
+    for inv_item in ssp.get("system-implementation", {}).get("inventory-items", []):
+        for rp in inv_item.get("responsible-parties", []):
+            rp["party-uuids"] = [agency_party_uuid]
     # Build a lookup: control-id -> KSI mapping (first match wins)
     ksi_mappings = context.get("ksi_mappings", [])
     if not isinstance(ksi_mappings, list):
