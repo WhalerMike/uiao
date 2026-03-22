@@ -1,3 +1,12 @@
+# [0.24.0](https://github.com/WhalerMike/uiao-core/compare/v0.23.2...v0.24.0) (2026-03-22)
+
+
+### Features
+
+* **ci:** add OSCAL artifact validation script for CI pipeline ([c54622b](https://github.com/WhalerMike/uiao-core/commit/c54622b8582823c7fbfc9641ee0061511c8ed4a1))
+
+
+
 ## [0.23.2](https://github.com/WhalerMike/uiao-core/compare/v0.23.1...v0.23.2) (2026-03-22)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **oscal:** add OSCAL POA&M template with gap detection ([62f8cf3](https://github.com/WhalerMike/uiao-core/commit/62f8cf3ea93462e18b2205df44835488a8e4277f))
-
-
-
-# [0.21.0](https://github.com/WhalerMike/uiao-core/compare/v0.20.9...v0.21.0) (2026-03-22)
-
-
-### Features
-
-* **oscal:** add OSCAL Component Definition export script (FedRAMP 20x) ([d2b1bc3](https://github.com/WhalerMike/uiao-core/commit/d2b1bc3b6c2570b68654d4a1647fc8761587e769))
 
 
 
