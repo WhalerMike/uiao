@@ -138,7 +138,8 @@ def build_component_definition(context):
             "description": plane.get("description", ""),
             "props": [
                 {"name": "uiao-pillar", "value": str(plane_id).upper()},
-                {"name": "subtitle", "value": plane.get("subtitle", "")}
+                {"name": "subtitle", "value": plane.get("subtitle", "")},
+                {"name": "component-id", "value": f"component-{plane_id}"}
             ],
             "remarks": json.dumps(sub_components)
         })
@@ -208,6 +209,29 @@ def build_component_definition(context):
     return cd
 
 
+def validate_inventory_component_refs(context, cd):
+    """Warn if any inventory item references a component-id not present in the Component Definition."""
+    inventory_items = context.get("inventory_items", [])
+    if not isinstance(inventory_items, list) or not inventory_items:
+        return
+
+    known_ids = set()
+    for comp in cd.get("components", []):
+        for prop in comp.get("props", []):
+            if isinstance(prop, dict) and prop.get("name") == "component-id":
+                known_ids.add(prop.get("value", ""))
+
+    for item in inventory_items:
+        if not isinstance(item, dict):
+            continue
+        for comp_ref in item.get("implemented_components", []):
+            if comp_ref not in known_ids:
+                print(
+                    f"  [WARN] Inventory item '{item.get('id', '?')}' references "
+                    f"unknown component '{comp_ref}' (not found in Component Definition)"
+                )
+
+
 def main():
     print("Loading UIAO context...")
     context = load_context()
@@ -215,6 +239,8 @@ def main():
     print(f"  compliance_matrix rows : {len(context.get('unified_compliance_matrix', []))}")
     print("Building OSCAL Component Definition...")
     cd = build_component_definition(context)
+    print("Validating inventory cross-references...")
+    validate_inventory_component_refs(context, cd)
     OSCAL_OUT.mkdir(parents=True, exist_ok=True)
     json_path = OSCAL_OUT / "uiao-component-definition.json"
     with open(json_path, "w", encoding="utf-8") as f:
