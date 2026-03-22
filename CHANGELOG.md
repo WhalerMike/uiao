@@ -1,3 +1,12 @@
+# [0.23.0](https://github.com/WhalerMike/uiao-core/compare/v0.22.0...v0.23.0) (2026-03-22)
+
+
+### Features
+
+* **oscal:** add SSP skeleton generation script (FedRAMP Moderate) ([f33bcbc](https://github.com/WhalerMike/uiao-core/commit/f33bcbc1b0aa1da1776676cc3a9fc9e4d46242d0))
+
+
+
 # [0.22.0](https://github.com/WhalerMike/uiao-core/compare/v0.21.0...v0.22.0) (2026-03-22)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **scripts:** use executive_summary key in generate_pptx.py ([afe9a80](https://github.com/WhalerMike/uiao-core/commit/afe9a80a37e00f107120f917830f9b51870b5598))
-
-
-
-## [0.20.7](https://github.com/WhalerMike/uiao-core/compare/v0.20.6...v0.20.7) (2026-03-21)
-
-
-### Bug Fixes
-
-* **scripts:** handle missing points key in generate_pptx.py ([3af5c8a](https://github.com/WhalerMike/uiao-core/commit/3af5c8a66aeaf37e5f211b72d9b1e32382f112dd))
 
 
 
