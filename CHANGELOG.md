@@ -1,3 +1,12 @@
+# [0.21.0](https://github.com/WhalerMike/uiao-core/compare/v0.20.9...v0.21.0) (2026-03-22)
+
+
+### Features
+
+* **oscal:** add OSCAL Component Definition export script (FedRAMP 20x) ([d2b1bc3](https://github.com/WhalerMike/uiao-core/commit/d2b1bc3b6c2570b68654d4a1647fc8761587e769))
+
+
+
 ## [0.20.9](https://github.com/WhalerMike/uiao-core/compare/v0.20.8...v0.20.9) (2026-03-21)
 
 
@@ -31,15 +40,6 @@
 ### Bug Fixes
 
 * **canon:** add missing subtitle key to pitch deck YAML ([73e0cc8](https://github.com/WhalerMike/uiao-core/commit/73e0cc8478bf693319a09e818a058c7805997bb5))
-
-
-
-## [0.20.5](https://github.com/WhalerMike/uiao-core/compare/v0.20.4...v0.20.5) (2026-03-21)
-
-
-### Bug Fixes
-
-* **docs:** correct Executive FAQ nav indentation in mkdocs.yml ([86ff253](https://github.com/WhalerMike/uiao-core/commit/86ff2539c0ad8fc8b53ff088e51130f8a273dc7c))
 
 
 
