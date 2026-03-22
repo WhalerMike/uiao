@@ -112,7 +112,35 @@ def detect_gaps(context):
                 "source": "fedramp-20x_config"
             })
 
-    # 4. Optional manual findings
+    # 4. KSI mappings with status != "Implemented"
+    # context[key] = content in the loader overwrites the list set by
+    # context.update(content) when the YAML top-level key matches the file
+    # stem (e.g. ksi-mappings.yml → key "ksi_mappings"). Unwrap if needed.
+    ksi_raw = context.get("ksi_mappings", [])
+    ksi_mappings = (
+        ksi_raw.get("ksi_mappings", []) if isinstance(ksi_raw, dict)
+        else ksi_raw if isinstance(ksi_raw, list) else []
+    )
+    for ksi in ksi_mappings:
+        if not isinstance(ksi, dict):
+            continue
+        status = ksi.get("status", "Planned")
+        if status != "Implemented":
+            gaps.append({
+                "title": f"KSI Gap: {ksi.get('title', ksi.get('ksi_id'))}",
+                "control-ids": ksi.get("control_ids", []),
+                "description": ksi.get("description", ""),
+                "severity": "high" if status == "Partial" else "medium",
+                "remediation": (
+                    f"Implement {ksi.get('ksi_id')} to achieve "
+                    "FedRAMP 20x KSI compliance"
+                ),
+                "source": "ksi_mappings",
+                "ksi_id": ksi.get("ksi_id"),
+                "evidence_source": ksi.get("evidence_source", "")
+            })
+
+    # 5. Optional manual findings
     manual_file = DATA_DIR / "poam-findings.yml"
     if manual_file.exists():
         with manual_file.open("r", encoding="utf-8") as f:
@@ -176,6 +204,12 @@ def build_poam_template(context):
             "remarks": f"Auto-generated from canon on "
             f"{now.date()}"
         }
+        if gap.get("ksi_id"):
+            item["props"] = [{
+                "name": "ksi-id",
+                "value": gap["ksi_id"],
+                "ns": "https://fedramp.gov/ns/oscal"
+            }]
         poam["poam-items"].append(item)
 
     return poam
