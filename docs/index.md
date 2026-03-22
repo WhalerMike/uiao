@@ -17,3 +17,10 @@ Our modernization strategy is built to deliver three primary outcomes: **Agility
 ---
 
 > **Executive Summary:** This Atlas is a "Living Document." It is generated directly from our codebase, ensuring that the documentation is always synchronized with the authoritative technical standards.
+
+## OSCAL Exports (FedRAMP 20x Ready)
+
+Auto-generated machine-readable compliance artifacts:
+- [Component Definition](https://github.com/WhalerMike/uiao-core/blob/main/exports/oscal/uiao-component-definition.json)
+- [POA&M Template](https://github.com/WhalerMike/uiao-core/blob/main/exports/oscal/uiao-poam-template.json)
+- [SSP Skeleton](https://github.com/WhalerMike/uiao-core/blob/main/exports/oscal/uiao-ssp-skeleton.json)
