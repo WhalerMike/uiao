@@ -78,16 +78,39 @@ def build_ssp_skeleton(context):
             ]
         })
 
+    # Build a lookup: control-id -> KSI mapping (first match wins)
+    ksi_mappings = context.get("ksi_mappings", [])
+    if not isinstance(ksi_mappings, list):
+        ksi_mappings = []
+    ksi_by_control = {}
+    for ksi in ksi_mappings:
+        for ctrl in ksi.get("control_ids", []):
+            if ctrl not in ksi_by_control:
+                ksi_by_control[ctrl] = ksi
+
     # Stub implemented-requirements from matrix
     for entry in matrix[:10]:
         ctrl_ids = entry.get("nist_controls", [])
         if ctrl_ids:
-            ssp["control-implementation"]["implemented-requirements"].append({
+            ctrl_id = ctrl_ids[0]
+            base_remarks = f"Pillar: {entry.get('pillar', 'N/A')}"
+            ksi = ksi_by_control.get(ctrl_id)
+            req = {
                 "uuid": str(uuid.uuid4()),
-                "control-id": ctrl_ids[0],
+                "control-id": ctrl_id,
                 "description": entry.get("impact_statement", "Implemented via UIAO plane"),
-                "remarks": f"Pillar: {entry.get('pillar', 'N/A')}"
-            })
+                "remarks": (
+                    f"{base_remarks} | KSI Evidence: {ksi['evidence_source']}"
+                    if ksi else base_remarks
+                )
+            }
+            if ksi:
+                req["props"] = [{
+                    "name": "ksi-id",
+                    "value": ksi["ksi_id"],
+                    "ns": "https://fedramp.gov/ns/oscal"
+                }]
+            ssp["control-implementation"]["implemented-requirements"].append(req)
 
     return ssp
 
