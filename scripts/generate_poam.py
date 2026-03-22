@@ -3,12 +3,23 @@
 Auto-detects gaps from unified_compliance_matrix (cisa_maturity),
 fedramp-20x mandatory requirements, and optional manual findings.
 Exports OSCAL 1.0 Plan of Action & Milestones JSON.
+
+When monitoring_enabled=True (the default) the script also enriches each
+POA&M item whose related controls match a signal defined in
+data/monitoring-sources.yml, adding monitoring-source, signal-type, and
+continuous-monitoring props/remarks.
 """
 import yaml
 import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+import sys
+import os
+
+# Allow importing from sibling scripts
+sys.path.insert(0, os.path.dirname(__file__))
+from update_poam_from_monitoring import build_cm_remark  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
@@ -204,9 +215,117 @@ def build_poam_template(context):
     return poam
 
 
+def apply_monitoring_enrichment(poam_data, monitoring_enabled=True):
+    """Optionally enrich POA&M items with continuous monitoring metadata.
+
+    Loads data/monitoring-sources.yml and adds monitoring-source,
+    signal-type, last-signal-date props plus a continuous-monitoring remark
+    to any POA&M item whose related controls match an active signal.
+
+    Args:
+        poam_data: The POA&M dict (the value under
+            "plan-of-action-and-milestones").
+        monitoring_enabled: When False, skip enrichment silently.
+
+    Returns:
+        Number of enrichment updates applied.
+    """
+    if not monitoring_enabled:
+        return 0
+
+    monitoring_file = DATA_DIR / "monitoring-sources.yml"
+    if not monitoring_file.exists():
+        return 0
+
+    with monitoring_file.open("r", encoding="utf-8") as f:
+        monitoring_data = yaml.safe_load(f)
+
+    sources = (
+        monitoring_data.get("monitoring_sources", [])
+        if isinstance(monitoring_data, dict) else []
+    )
+
+    # Build control-id → [(source_name, signal), …] index
+    signal_index = {}
+    for source in sources:
+        source_name = source.get("name", "Unknown")
+        for signal in source.get("telemetry", []):
+            ctrl = signal.get("maps_to_control")
+            if ctrl:
+                signal_index.setdefault(ctrl, []).append(
+                    (source_name, signal))
+
+    now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    count = 0
+
+    for item in poam_data.get("poam-items", []):
+        # New schema: control IDs are embedded in the remarks string
+        # e.g. "… | Controls: SC-7, AC-2 | …"
+        # Fall back to the old related-controls list for compatibility.
+        control_ids = item.get(
+            "related-controls", {}).get("control-ids", [])
+        if not control_ids:
+            remarks = item.get("remarks", "")
+            for segment in remarks.split("|"):
+                segment = segment.strip()
+                if segment.startswith("Controls:"):
+                    raw = segment[len("Controls:"):].strip()
+                    control_ids = [c.strip() for c in raw.split(",") if c.strip()]
+                    break
+        for ctrl_id in control_ids:
+            if ctrl_id not in signal_index:
+                continue
+            for source_name, signal in signal_index[ctrl_id]:
+                if signal.get("poam_status_trigger") != "open":
+                    continue
+
+                props = item.setdefault("props", [])
+                existing_names = {p.get("name") for p in props}
+
+                new_props = []
+                if "monitoring-source" not in existing_names:
+                    new_props.append({
+                        "name": "monitoring-source",
+                        "value": source_name,
+                        "ns": "https://fedramp.gov/ns/oscal"
+                    })
+                if "signal-type" not in existing_names:
+                    new_props.append({
+                        "name": "signal-type",
+                        "value": signal.get("signal", ""),
+                        "ns": "https://fedramp.gov/ns/oscal"
+                    })
+
+                # Refresh last-signal-date on every run
+                props[:] = [
+                    p for p in props
+                    if p.get("name") != "last-signal-date"
+                ]
+                new_props.append({
+                    "name": "last-signal-date",
+                    "value": now_iso,
+                    "ns": "https://fedramp.gov/ns/oscal"
+                })
+                props.extend(new_props)
+
+                # Append continuous-monitoring remark (once per signal)
+                cm_note = build_cm_remark(source_name, signal)
+                existing = item.get("remarks", "")
+                if cm_note not in existing:
+                    item["remarks"] = (
+                        f"{existing}\n{cm_note}".strip()
+                    )
+
+                count += 1
+
+    return count
+
+
 def main():
     context = load_context()
     poam_data = build_poam_template(context)
+
+    enriched = apply_monitoring_enrichment(poam_data, monitoring_enabled=True)
 
     OSCAL_OUT.mkdir(parents=True, exist_ok=True)
     json_path = OSCAL_OUT / "uiao-poam-template.json"
@@ -219,6 +338,9 @@ def main():
     count = len(poam_data["poam-items"])
     print(f"OSCAL POA&M exported with {count} "
           f"auto-detected gaps -> {json_path}")
+    if enriched:
+        print(f"  Continuous monitoring: {enriched} item(s) enriched "
+              "with telemetry metadata")
     print("  Ready for FedRAMP 20x Moderate "
           "continuous monitoring")
 
