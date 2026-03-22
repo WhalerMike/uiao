@@ -20,10 +20,101 @@ Our modernization strategy is built to deliver three primary outcomes: **Agility
 
 ## OSCAL Exports (FedRAMP 20x Ready)
 
-Auto-generated machine-readable compliance artifacts:
-- [Component Definition](https://github.com/WhalerMike/uiao-core/blob/main/exports/oscal/uiao-component-definition.json)
-- [POA&M Template](https://github.com/WhalerMike/uiao-core/blob/main/exports/oscal/uiao-poam-template.json)
-- [SSP Skeleton](https://github.com/WhalerMike/uiao-core/blob/main/exports/oscal/uiao-ssp-skeleton.json)
+Auto-generated machine-readable compliance artifacts. Use the **Download** buttons to retrieve each JSON file directly, or expand the preview panels to inspect key metadata inline.
+
+---
+
+### SSP Skeleton
+
+[⬇ Download SSP Skeleton JSON](https://raw.githubusercontent.com/WhalerMike/uiao-core/main/exports/oscal/uiao-ssp-skeleton.json){ .md-button }
+
+??? example "JSON Preview — SSP Skeleton"
+
+    ```json
+    {
+      "system-security-plan": {
+        "uuid": "bca56052-5f31-4e02-904b-89aa87261f1f",
+        "metadata": {
+          "title": "UIAO Unified Identity-Addressing-Overlay Architecture - System Security Plan (FedRAMP Moderate Skeleton)",
+          "last-modified": "2026-03-22T19:19:12.593713Z",
+          "version": "1.0-skeleton",
+          "oscal-version": "1.0.0",
+          "props": [
+            { "name": "impact-level", "value": "moderate", "ns": "https://fedramp.gov/ns/oscal" },
+            { "name": "compliance-strategy", "value": "OSCAL-based Telemetry Validation" }
+          ]
+        },
+        "import-profile": {
+          "href": "https://github.com/GSA/fedramp-automation/raw/main/dist/content/rev5/baselines/json/FedRAMP_rev5_MODERATE-baseline_profile.json"
+        },
+        "..."
+      }
+    }
+    ```
+
+    > Full file: [uiao-ssp-skeleton.json](https://raw.githubusercontent.com/WhalerMike/uiao-core/main/exports/oscal/uiao-ssp-skeleton.json)
+
+---
+
+### Component Definition
+
+[⬇ Download Component Definition JSON](https://raw.githubusercontent.com/WhalerMike/uiao-core/main/exports/oscal/uiao-component-definition.json){ .md-button }
+
+??? example "JSON Preview — Component Definition"
+
+    ```json
+    {
+      "component-definition": {
+        "uuid": "4fd8ae60-ce43-4079-93be-ee53425a91db",
+        "metadata": {
+          "title": "UIAO Unified Identity-Addressing-Overlay Architecture",
+          "last-modified": "2026-03-22T18:59:48.718579Z",
+          "version": "1.0",
+          "oscal-version": "1.0.0",
+          "props": [
+            { "name": "fedramp-impact", "value": "Moderate", "ns": "https://fedramp.gov/ns/oscal" },
+            { "name": "compliance-strategy", "value": "OSCAL-based Telemetry Validation" },
+            { "name": "ksi-dashboard", "value": "Operational" }
+          ]
+        },
+        "components": [ "... 5 components defined ..." ],
+        "..."
+      }
+    }
+    ```
+
+    > Full file: [uiao-component-definition.json](https://raw.githubusercontent.com/WhalerMike/uiao-core/main/exports/oscal/uiao-component-definition.json)
+
+---
+
+### POA&M Template
+
+[⬇ Download POA&M Template JSON](https://raw.githubusercontent.com/WhalerMike/uiao-core/main/exports/oscal/uiao-poam-template.json){ .md-button }
+
+??? example "JSON Preview — POA&amp;M Template"
+
+    ```json
+    {
+      "plan-of-action-and-milestones": {
+        "uuid": "39a67b22-78ed-41d2-80a1-6a72e11eaaa7",
+        "metadata": {
+          "title": "UIAO Modernization POA&M - Auto-Detected Gaps (FedRAMP Moderate)",
+          "last-modified": "2026-03-22T19:19:12.316140Z",
+          "version": "1.0",
+          "oscal-version": "1.0.0",
+          "props": [
+            { "name": "impact-level", "value": "moderate", "ns": "https://fedramp.gov/ns/oscal" },
+            { "name": "generated-from", "value": "UIAO Canon Gap Detection" }
+          ]
+        },
+        "import-ssp": { "href": "../oscal/uiao-ssp-skeleton.json" },
+        "poam-items": [ "... 7 items ..." ],
+        "..."
+      }
+    }
+    ```
+
+    > Full file: [uiao-poam-template.json](https://raw.githubusercontent.com/WhalerMike/uiao-core/main/exports/oscal/uiao-poam-template.json)
 
 ### SSP Inventory
 
