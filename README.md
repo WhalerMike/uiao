@@ -62,6 +62,20 @@ python scripts/generate_ssp.py
 
 OSCAL outputs are written to `exports/oscal/` and committed automatically by the workflow.
 
+## Agency Adoption Quick Start
+
+1. **Fork/clone** this repository
+2. **Customize** `canon/uiao_leadership_briefing_v1.0.yaml` with your program's details
+3. **Edit** `data/*.yml` files to match your agency's control environment
+4. **Push** to main — GitHub Actions automatically:
+   - Generates 26+ documents (DOCX, PDF, Markdown)
+   - Produces 3 OSCAL artifacts (Component Definition, SSP, POA&M)
+   - Validates all OSCAL against schema
+   - Deploys updated Pages dashboard
+5. **Import** OSCAL JSONs from `exports/oscal/` into your agency's GRC tools
+
+**Live Demo**: https://whalermike.github.io/uiao-core/
+
 ## Exports
 
 All generated documents are stored in `exports/`:
@@ -70,6 +84,21 @@ All generated documents are stored in `exports/`:
 - `exports/docx/` — Word documents (via Pandoc)
 - `exports/pdf/` — PDF documents (via Pandoc)
 - `exports/oscal/` — NIST OSCAL JSON artifacts
+
+## Known Limitations & Roadmap
+
+### Current Limitations
+- SSP is a skeleton — full control narrative requires agency-specific customization
+- POA&M gap detection is heuristic-based; manual `data/poam-findings.yml` recommended for production
+- Public GitHub.com is not FedRAMP Moderate authorized for CUI; migrate to GitHub Enterprise for production
+- No compliance-trestle integration yet (planned)
+
+### Roadmap
+- [ ] Demo GIF showing end-to-end pipeline flow
+- [ ] compliance-trestle integration for full OSCAL validation/assemble
+- [ ] Vendor-neutral abstraction layer (move Entra/Cisco specifics to overlays)
+- [ ] Continuous monitoring hooks (Sentinel telemetry -> POA&M status updates)
+- [ ] Inventory linking in SSP (from core-stack.yml)
 
 ## License
 
