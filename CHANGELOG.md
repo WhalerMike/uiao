@@ -1,3 +1,12 @@
+# [0.29.0](https://github.com/WhalerMike/uiao-core/compare/v0.28.1...v0.29.0) (2026-03-22)
+
+
+### Features
+
+* Add continuous monitoring hooks for Sentinel telemetry to POA&M status updates ([ba65f5a](https://github.com/WhalerMike/uiao-core/commit/ba65f5a30ef26d8f9ac4a1c0c9482f9a72181752))
+
+
+
 ## [0.28.1](https://github.com/WhalerMike/uiao-core/compare/v0.28.0...v0.28.1) (2026-03-22)
 
 
@@ -34,15 +43,6 @@
 ### Features
 
 * Add OSCAL Exports section to Pages dashboard and enforce validation in CI ([1053ed0](https://github.com/WhalerMike/uiao-core/commit/1053ed0732ecc6f2064766cdece1be931828a6dc))
-
-
-
-# [0.25.0](https://github.com/WhalerMike/uiao-core/compare/v0.24.0...v0.25.0) (2026-03-22)
-
-
-### Features
-
-* Add FedRAMP 20x KSI mappings and inject into SSP/POA&M scripts ([26bd98d](https://github.com/WhalerMike/uiao-core/commit/26bd98d9b48d57be1fd373442ffe6314a18785bb))
 
 
 
