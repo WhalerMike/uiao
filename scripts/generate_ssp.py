@@ -30,6 +30,9 @@ def build_ssp_skeleton(context):
     fedramp_cfg = context.get("fedramp_20x_config", {})
     planes = context.get("control_planes", [])
     matrix = context.get("unified_compliance_matrix", [])
+    inventory_items = context.get("inventory_items", [])
+    if not isinstance(inventory_items, list):
+        inventory_items = []
 
     ssp = {
         "uuid": str(uuid.uuid4()),
@@ -80,20 +83,61 @@ def build_ssp_skeleton(context):
         }
     }
 
-    # Populate components from control_planes.yml
+    # Populate components from control_planes.yml; track component-id -> uuid mapping
+    component_id_to_uuid = {}
     for plane in planes:
-        props = [{"name": "pillar", "value": plane.get("id", "").upper()}]
+        comp_uuid = str(uuid.uuid4())
+        plane_id = plane.get("id", "")
+        component_id = f"component-{plane_id}"
+        component_id_to_uuid[component_id] = comp_uuid
+        props = [{"name": "pillar", "value": plane_id.upper()}]
         subtitle = str(plane.get("subtitle", "")).strip()
         if subtitle:
             props.append({"name": "subtitle", "value": subtitle})
+        props.append({"name": "component-id", "value": component_id})
         ssp["system-implementation"]["components"].append({
-            "uuid": str(uuid.uuid4()),
+            "uuid": comp_uuid,
             "type": "service",
             "title": plane.get("name", plane.get("id", "Unnamed Plane")),
             "description": plane.get("description", ""),
             "status": {"state": "operational"},
             "props": props
         })
+
+    # Populate system-inventory from inventory-items.yml
+    if inventory_items:
+        oscal_inventory = []
+        for item in inventory_items:
+            if not isinstance(item, dict):
+                continue
+            item_id = item.get("id", "")
+            item_props = [
+                {"name": "asset-type", "value": item.get("asset_type", "software")}
+            ]
+            for prop in item.get("props", []):
+                if isinstance(prop, dict):
+                    item_props.append({"name": prop.get("name", ""), "value": prop.get("value", "")})
+
+            # Resolve implemented-components to SSP component UUIDs
+            impl_components = []
+            for comp_ref in item.get("implemented_components", []):
+                comp_uuid = component_id_to_uuid.get(comp_ref)
+                if comp_uuid:
+                    impl_components.append({"component-uuid": comp_uuid})
+                else:
+                    print(f"  [WARN] Inventory item '{item_id}' references unknown component '{comp_ref}'")
+
+            oscal_item = {
+                "uuid": str(uuid.uuid4()),
+                "description": item.get("description", ""),
+                "props": item_props,
+                "responsible-parties": [
+                    {"role-id": item.get("responsible_party", "agency-admin")}
+                ],
+                "implemented-components": impl_components
+            }
+            oscal_inventory.append(oscal_item)
+        ssp["system-implementation"]["system-inventory"] = oscal_inventory
 
     # Build a lookup: control-id -> KSI mapping (first match wins)
     ksi_mappings = context.get("ksi_mappings", [])
@@ -145,7 +189,9 @@ def main():
             {"system-security-plan": ssp_data},
             f, indent=2)
 
+    inventory = ssp_data.get("system-implementation", {}).get("system-inventory", [])
     print(f"OSCAL SSP skeleton exported to {json_path}")
+    print(f"  System inventory items : {len(inventory)}")
     print("  Ready for FedRAMP 20x Moderate authorization")
 
 
