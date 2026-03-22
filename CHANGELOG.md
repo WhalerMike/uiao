@@ -1,3 +1,12 @@
+# [0.25.0](https://github.com/WhalerMike/uiao-core/compare/v0.24.0...v0.25.0) (2026-03-22)
+
+
+### Features
+
+* Add FedRAMP 20x KSI mappings and inject into SSP/POA&M scripts ([26bd98d](https://github.com/WhalerMike/uiao-core/commit/26bd98d9b48d57be1fd373442ffe6314a18785bb))
+
+
+
 # [0.24.0](https://github.com/WhalerMike/uiao-core/compare/v0.23.2...v0.24.0) (2026-03-22)
 
 
@@ -31,15 +40,6 @@
 ### Features
 
 * **oscal:** add SSP skeleton generation script (FedRAMP Moderate) ([f33bcbc](https://github.com/WhalerMike/uiao-core/commit/f33bcbc1b0aa1da1776676cc3a9fc9e4d46242d0))
-
-
-
-# [0.22.0](https://github.com/WhalerMike/uiao-core/compare/v0.21.0...v0.22.0) (2026-03-22)
-
-
-### Features
-
-* **oscal:** add OSCAL POA&M template with gap detection ([62f8cf3](https://github.com/WhalerMike/uiao-core/commit/62f8cf3ea93462e18b2205df44835488a8e4277f))
 
 
 
