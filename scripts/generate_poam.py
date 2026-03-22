@@ -175,12 +175,19 @@ def build_poam_template(context):
             "Auto-Detected Gaps (FedRAMP Moderate)",
             "last-modified": now.isoformat().replace("+00:00", "Z"),
             "version": "1.0",
-            "oscal-version": "1.0.0",
+            "oscal-version": "1.0.4",
+                    "published": now.isoformat().replace("+00:00", "Z"),
             "props": [
                 {"name": "impact-level", "value": "moderate",
                  "ns": "https://fedramp.gov/ns/oscal"},
                 {"name": "generated-from",
-                 "value": "UIAO Canon Gap Detection"}
+                 "value": "UIAO Canon Gap Detection",
+                 "ns": "https://fedramp.gov/ns/oscal"},
+                                {"name": "publication-date",
+                 "value": now.isoformat().replace("+00:00", "Z"),
+                 "ns": "https://fedramp.gov/ns/oscal"},
+                {"name": "markup-type", "value": "json",
+                 "ns": "https://fedramp.gov/ns/oscal"}
             ]
         },
         "import-ssp": {
