@@ -163,11 +163,11 @@ def build_docs(
     """
     settings = get_settings()
     if templates_dir is None:
-        templates_dir = settings.project_root / "templates"
+        templates_dir = settings.root_dir / "templates"
     if docs_dir is None:
-        docs_dir = settings.project_root / "docs"
+        docs_dir = settings.root_dir / "docs"
     if site_dir is None:
-        site_dir = settings.project_root / "site"
+        site_dir = settings.root_dir / "site"
     if template_mapping is None:
         template_mapping = DEFAULT_TEMPLATE_MAPPING
 
