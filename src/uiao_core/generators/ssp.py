@@ -4,12 +4,12 @@ Migrated from scripts/generate_ssp.py into the uiao_core package.
 Builds OSCAL-compliant SSP JSON from canon YAML and data sources.
 """
 from __future__ import annotations
+
 import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-
 
 from uiao_core.utils.context import get_settings, load_context
 
