@@ -1,0 +1,119 @@
+name: Create Roadmap Issues
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (print issues without creating them)"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  issues: write
+
+jobs:
+  create-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure 'packaging' label exists
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create packaging \
+            --color "e4e669" \
+            --description "Packaging and distribution" \
+            --repo "${{ github.repository }}" \
+            2>/dev/null || echo "'packaging' label already exists."
+
+      - name: Create Issue 1 – FedRAMP Tool Comparison Table
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Add FedRAMP Tool Comparison Table to README and GitHub Pages" \
+            --body "Add a comparison table showing uiao-core vs other FedRAMP/OSCAL tools (Compliance Trestle, GoComply, GovReady-Q, GSA fedramp-automation, Paramify, Xacta). Highlight uiao-core's unique value: synchronized leadership briefings (PPTX) + OSCAL from a single YAML canon. Add to both README.md and the GitHub Pages site." \
+            --label "documentation" \
+            --label "enhancement"
+
+      - name: Create Issue 2 – Demo GIF for README
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Create end-to-end Demo GIF for README" \
+            --body "Record a 30-45 second screen capture of \`uiao generate-all\` showing the full pipeline from YAML canon to generated outputs. Embed at top of README and GitHub Pages homepage. This is Roadmap item #1." \
+            --label "documentation"
+
+      - name: Create Issue 3 – Vendor-neutral abstraction layer
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Vendor-neutral abstraction layer" \
+            --body "Move Entra ID / Cisco specifics into optional overlays so the core canon stays TIC 3.0 / Zero Trust / GCC-Moderate agnostic. This is Roadmap item #2." \
+            --label "enhancement"
+
+      - name: Create Issue 4 – Continuous monitoring hooks
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Continuous monitoring hooks - Sentinel telemetry to auto POA&M" \
+            --body "Implement Sentinel telemetry integration for automatic POA&M status updates. This turns the tool from \"generate once\" into a live compliance overlay, aligning with FedRAMP 20x Phase 2 and OMB M-22-09. Roadmap item #3." \
+            --label "enhancement"
+
+      - name: Create Issue 5 – Inventory linking in SSP
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Inventory linking in SSP from core-stack.yml" \
+            --body "Pull from core-stack.yml into the trestle-generated SSP Component Definition and POA&M. Closes the loop on the machine-readable data layer. Roadmap item #4." \
+            --label "enhancement"
+
+      - name: Create Issue 6 – Publish to PyPI
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Publish to PyPI (pip install uiao-core)" \
+            --body "Publish uiao-core to PyPI so federal teams can install with \`pip install uiao-core\`. The pyproject.toml entrypoint already exists. Add a GitHub Actions workflow for automated PyPI publishing on release tags." \
+            --label "enhancement" \
+            --label "packaging"
+
+      - name: Dry-run summary
+        if: ${{ inputs.dry_run == 'true' }}
+        run: |
+          echo "=== DRY RUN – issues that would be created ==="
+          echo ""
+          echo "1. Add FedRAMP Tool Comparison Table to README and GitHub Pages"
+          echo "   Labels: documentation, enhancement"
+          echo ""
+          echo "2. Create end-to-end Demo GIF for README"
+          echo "   Labels: documentation"
+          echo ""
+          echo "3. Vendor-neutral abstraction layer"
+          echo "   Labels: enhancement"
+          echo ""
+          echo "4. Continuous monitoring hooks - Sentinel telemetry to auto POA&M"
+          echo "   Labels: enhancement"
+          echo ""
+          echo "5. Inventory linking in SSP from core-stack.yml"
+          echo "   Labels: enhancement"
+          echo ""
+          echo "6. Publish to PyPI (pip install uiao-core)"
+          echo "   Labels: enhancement, packaging"
