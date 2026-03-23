@@ -4,9 +4,8 @@ Generates a machine-readable OSCAL 1.0 Component Definition JSON
 from the UIAO YAML canon (control-planes, unified_compliance_matrix,
 fedramp-20x config). Aligns with FedRAMP 20x Phase 2 Moderate.
 
-Enhanced: by-components linkage maps each control-implementation
-to the specific component (plane) that satisfies it, enabling
-full inventory-to-control traceability per OSCAL 1.0.4 best practices.
+Each control plane becomes a component with per-component
+control-implementations mapping NIST controls to KSI categories.
 """
 import yaml
 import json
@@ -60,12 +59,18 @@ def _unwrap(val, key):
     return val
 
 
+def _nonempty(val, fallback="N/A"):
+    """Ensure a string is non-empty for OSCAL regex compliance."""
+    s = str(val).strip()
+    return s if s else fallback
+
+
 def build_component_definition(context):
     """Build OSCAL Component Definition from UIAO canon data.
 
-    Enhanced with by-components linkage: each component gets its own
-    control-implementations with by-components entries that reference
-    the component UUID, enabling inventory-to-control traceability.
+    Each control plane becomes a component. For each matrix entry,
+    per-component control-implementations are generated with
+    implemented-requirements linking NIST controls to KSI categories.
     """
     cfg = context.get("fedramp_20x_config", {})
     if not isinstance(cfg, dict):
@@ -159,7 +164,8 @@ def build_component_definition(context):
             props.append({"name": "subtitle", "value": subtitle})
         props.append({"name": "component-id", "value": f"component-{plane_id}"})
 
-        # Build per-component control-implementations with by-components
+        # Build per-component control-implementations (no by-components;
+        # by-components belong in the SSP, not in the component-definition)
         control_imps = []
 
         for entry in matrix:
@@ -169,44 +175,31 @@ def build_component_definition(context):
             for ctrl_id in entry.get("nist_controls", []):
                 # Find matching KSI from core_mappings
                 ksi_cat = "KSI-UNKNOWN"
-                evidence = ""
+                evidence = "N/A"
                 for m in core_mappings:
                     if not isinstance(m, dict):
                         continue
                     if ctrl_id in m.get("nist_rev5_control", ""):
                         ksi_cat = m.get("ksi_category", ksi_cat)
-                        evidence = m.get("evidence_source", evidence)
+                        ev = m.get("evidence_source", "")
+                        if ev and str(ev).strip():
+                            evidence = str(ev).strip()
                         break
 
                 imp_req = {
                     "uuid": str(uuid.uuid4()),
                     "control-id": ctrl_id,
-                    "description": entry.get("impact_statement", ""),
+                    "description": _nonempty(
+                        entry.get("impact_statement", ""),
+                        f"Control {ctrl_id} implementation"
+                    ),
                     "props": [
-                        {"name": "ksi-category", "value": ksi_cat},
+                        {"name": "ksi-category", "value": _nonempty(ksi_cat)},
                         {"name": "cisa-maturity",
-                         "value": entry.get("cisa_maturity", "Advanced")},
-                        {"name": "evidence-source", "value": evidence}
+                         "value": _nonempty(entry.get("cisa_maturity", "Advanced"))},
+                        {"name": "evidence-source", "value": _nonempty(evidence)}
                     ],
-                    "remarks": f"Implemented by {plane.get('name')} inventory item",
-                    "by-components": [{
-                        "component-uuid": comp_uuid,
-                        "uuid": str(uuid.uuid4()),
-                        "description": (
-                            f"{plane.get('name')} satisfies {ctrl_id} "
-                            f"via {plane.get('vendor', 'neutral')} implementation"
-                        ),
-                        "props": [
-                            {
-                                "name": "inventory-item-ref",
-                                "value": f"inv-{plane_id}",
-                                "ns": "https://fedramp.gov/ns/oscal"
-                            }
-                        ],
-                        "responsible-roles": [{
-                            "role-id": "system-administrator"
-                        }]
-                    }]
+                    "remarks": f"Implemented by {plane.get('name', plane_id)}"
                 }
                 imp_reqs.append(imp_req)
 
@@ -219,7 +212,7 @@ def build_component_definition(context):
                         "FedRAMP_rev5_MODERATE-baseline_profile.json"
                     ),
                     "description": (
-                        f"Control implementations for {plane.get('name')}"
+                        f"Control implementations for {plane.get('name', plane_id)}"
                     ),
                     "implemented-requirements": imp_reqs
                 })
@@ -227,8 +220,11 @@ def build_component_definition(context):
         cd["components"].append({
             "uuid": comp_uuid,
             "type": "service",
-            "title": plane.get("name", plane_id),
-            "description": plane.get("description", ""),
+            "title": _nonempty(plane.get("name", plane_id)),
+            "description": _nonempty(
+                plane.get("description", ""),
+                f"UIAO {plane.get('name', plane_id)} control plane"
+            ),
             "props": props,
             "remarks": json.dumps(sub_components),
             "control-implementations": control_imps
@@ -295,7 +291,7 @@ def main():
     print(f"  control_planes entries : {len(planes)}")
     print(f"  compliance_matrix rows : {len(matrix)}")
 
-    print("Building OSCAL Component Definition (with by-components linkage)...")
+    print("Building OSCAL Component Definition...")
     cd = build_component_definition(context)
 
     print("Validating inventory cross-references...")
@@ -311,20 +307,19 @@ def main():
         len(comp.get("control-implementations", []))
         for comp in cd["components"]
     )
-    total_by_comps = sum(
+    total_imp_reqs = sum(
         sum(
-            len(req.get("by-components", []))
+            len(ci.get("implemented-requirements", []))
             for ci in comp.get("control-implementations", [])
-            for req in ci.get("implemented-requirements", [])
         )
         for comp in cd["components"]
     )
 
     print(f"OSCAL Component Definition exported -> {json_path}")
-    print(f"  Components              : {len(cd['components'])}")
-    print(f"  Control Implementations : {total_ctrl_imps}")
-    print(f"  by-components linkages  : {total_by_comps}")
-    print(f"  Capabilities            : {len(cd['capabilities'])}")
+    print(f"  Components                : {len(cd['components'])}")
+    print(f"  Control Implementations   : {total_ctrl_imps}")
+    print(f"  Implemented Requirements  : {total_imp_reqs}")
+    print(f"  Capabilities              : {len(cd['capabilities'])}")
     print("  Ready for FedRAMP 20x Moderate import")
 
 
