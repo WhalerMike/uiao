@@ -1,13 +1,13 @@
+import os
 import warnings
+
+import yaml
+
 warnings.warn(
     "scripts/generate_decommissioning_checklist.py is deprecated. Use `uiao` CLI instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-import yaml
-import os
-
 def generate_checklist():
   input_file = 'data/perimeter_collapse.yml'
   output_file = 'exports/decommissioning_checklist.md'
@@ -15,7 +15,7 @@ def generate_checklist():
   if not os.path.exists('exports'):
     os.makedirs('exports')
 
-  with open(input_file, 'r') as f:
+  with open(input_file) as f:
     data = yaml.safe_load(f)
 
   with open(output_file, 'w') as f:

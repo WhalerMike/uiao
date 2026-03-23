@@ -1,10 +1,3 @@
-import warnings
-warnings.warn(
-    "scripts/update_poam_from_monitoring.py is deprecated. Use `uiao` CLI instead.",
-    DeprecationWarning,
-    stacklevel=1,
-)
-
 """Update POA&M entries from continuous monitoring signals.
 
 Loads data/monitoring-sources.yml and exports/oscal/uiao-poam-template.json,
@@ -14,9 +7,17 @@ affected observations. Use --dry-run to preview changes without writing.
 """
 import argparse
 import json
-import yaml
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
+
+import yaml
+
+warnings.warn(
+    "scripts/update_poam_from_monitoring.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 MONITORING_SOURCES_PATH = ROOT / "data" / "monitoring-sources.yml"

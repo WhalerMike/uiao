@@ -1,10 +1,3 @@
-import warnings
-warnings.warn(
-    "scripts/validate_fedramp.py is deprecated. Use `uiao` CLI instead.",
-    DeprecationWarning,
-    stacklevel=1,
-)
-
 #!/usr/bin/env python3
 """FedRAMP Rev 5 OSCAL validation using trestle + fedramp plugin.
 Run after generation to enforce compliance in CI/local.
@@ -12,7 +5,14 @@ Run after generation to enforce compliance in CI/local.
 
 import subprocess
 import sys
+import warnings
 from pathlib import Path
+
+warnings.warn(
+    "scripts/validate_fedramp.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
 
 # Paths relative to repo root
 EXPORTS_DIR = Path(__file__).parent.parent / "exports" / "oscal"

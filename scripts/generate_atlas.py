@@ -5,19 +5,19 @@ Renders Atlas docs from YAML data + Jinja2 templates (.j2).
 Copies images from assets/images/ to docs/images/ for MkDocs.
 """
 
+import os
+import re
+import shutil
 import warnings
+
+import yaml
+from jinja2 import Environment, FileSystemLoader
+
 warnings.warn(
     "scripts/generate_atlas.py is deprecated. Use `uiao generate-atlas` instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-import os
-import re
-import yaml
-import shutil
-from jinja2 import Environment, FileSystemLoader
-
 # --- CONFIGURATION ---
 DATA_DIR = 'data'
 TEMPLATE_DIR = 'templates'
@@ -63,7 +63,7 @@ def load_data():
         if filename.endswith(('.yml', '.yaml')):
             key = filename.rsplit('.', 1)[0].replace('-', '_')
             path = os.path.join(DATA_DIR, filename)
-            with open(path, 'r') as f:
+            with open(path) as f:
                 loaded = yaml.safe_load(f)
                 if loaded:
                     data[key] = loaded
