@@ -24,6 +24,7 @@
 * Add vendor-neutral overlay example template (closes [#22](https://github.com/WhalerMike/uiao-core/issues/22)) ([f974580](https://github.com/WhalerMike/uiao-core/commit/f974580aadecd611f28f640ce99f6026cff221e8))
 * **build:** add pyproject.toml with PEP 621 metadata and src-layout (ADR-0001) ([9ff91e3](https://github.com/WhalerMike/uiao-core/commit/9ff91e34605bbe2bcf8808a786772fb11e886d70))
 * **cli:** update generate-ssp command with --canon, --data-dir, --output (ADR-0002) ([860ad45](https://github.com/WhalerMike/uiao-core/commit/860ad4520b8c213fd280eefd2b1ce2bda15b7a77))
+* **generators:** migrate docs generator into uiao_core package (ADR-0003) ([d7084ce](https://github.com/WhalerMike/uiao-core/commit/d7084ce84e72836b533338bd1671e17d214211dc))
 * Link SSP inventory section to core-stack component data ([d0273fc](https://github.com/WhalerMike/uiao-core/commit/d0273fc5d8e0cc2b4081f3a11590a474a6bcaa20))
 * Link SSP inventory section to core-stack component data ([1badd29](https://github.com/WhalerMike/uiao-core/commit/1badd29bca20b892310e5b6141a1c6a20ec69156))
 * **oscal:** add by-components control linkage per plane ([b60bc42](https://github.com/WhalerMike/uiao-core/commit/b60bc42f5f99fc011468ed7c20caa11c8cd1cadf))
