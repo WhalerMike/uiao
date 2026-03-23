@@ -1,15 +1,14 @@
+import logging
+import os
 import warnings
+
+import requests
+
 warnings.warn(
     "scripts/enforcement_orchestrator.py is deprecated. Use `uiao` CLI instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-import os
-import requests
-import logging
-import argparse
-
 # --- Configuration ---
 # Cisco vManage (SD-WAN)
 VMANAGE_URL = os.getenv('VMANAGE_URL')
@@ -41,8 +40,8 @@ class NetworkEnforcer:
         or apply a specific security policy tag.
         """
         logging.info(f"SD-WAN: Applying quarantine policy to {ip_address}")
-        endpoint = f"{VMANAGE_URL}/dataservice/ext-api/v1/policy/enforcement"
-        payload = {
+        _endpoint = f"{VMANAGE_URL}/dataservice/ext-api/v1/policy/enforcement"
+        _payload = {
             "ip": ip_address,
             "action": "deny",
             "tag": "Atlas-Quarantine"
@@ -61,8 +60,8 @@ class NetworkEnforcer:
         else:
             cmd = f"<uid-message><type>update</type><payload><unregister><entry ip='{ip_address}'><tag><member>{tag}</member></tag></entry></unregister></payload></uid-message>"
 
-        url = f"https://{PANORAMA_URL}/api/"
-        params = {
+        _url = f"https://{PANORAMA_URL}/api/"
+        _params = {
             "type": "user-id",
             "cmd": cmd,
             "key": PAN_API_KEY

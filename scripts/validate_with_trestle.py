@@ -5,18 +5,17 @@ import ``validate_oscal_artifacts`` from ``uiao_core.generators.trestle``.
 
 Deprecated: Use `uiao validate-ssp` CLI command instead.
 """
+import logging
 import sys
 import warnings
-import logging
+
+from uiao_core.generators.trestle import validate_oscal_artifacts
 
 warnings.warn(
     "scripts/validate_with_trestle.py is deprecated. Use `uiao validate-ssp` instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-from uiao_core.generators.trestle import validate_oscal_artifacts
-
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 if __name__ == "__main__":

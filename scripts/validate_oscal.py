@@ -1,10 +1,3 @@
-import warnings
-warnings.warn(
-    "scripts/validate_oscal.py is deprecated. Use `uiao` CLI instead.",
-    DeprecationWarning,
-    stacklevel=1,
-)
-
 """Basic OSCAL artifact validation for CI.
 
 Validates that generated OSCAL JSON files in exports/oscal/ are
@@ -17,7 +10,14 @@ which uses compliance-trestle Pydantic models.
 """
 import json
 import sys
+import warnings
 from pathlib import Path
+
+warnings.warn(
+    "scripts/validate_oscal.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 OSCAL_DIR = ROOT / "exports" / "oscal"
@@ -34,7 +34,7 @@ def validate_file(file_path):
     """Validate a single OSCAL JSON file."""
     errors = []
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
         return [f"Invalid JSON: {e}"]

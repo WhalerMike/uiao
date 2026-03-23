@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typer.testing import CliRunner
+
 from uiao_core.cli.app import app
 
 runner = CliRunner()

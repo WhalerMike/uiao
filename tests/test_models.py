@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+
 from uiao_core.models.canon import CanonEntry
 
 
