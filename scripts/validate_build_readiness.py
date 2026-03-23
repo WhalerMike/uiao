@@ -1,3 +1,10 @@
+import warnings
+warnings.warn(
+    "scripts/validate_build_readiness.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
+
 """UIAO Build Readiness Validator
 
 Pre-flight check to ensure all critical architectural assets exist
