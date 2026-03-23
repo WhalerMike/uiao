@@ -3,7 +3,6 @@
 Provides command-line interface for OSCAL document generation,
 validation, and canon management.
 """
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -174,8 +173,9 @@ def generate_gemini(
     else:
         console.print("[bold]Generating all Gemini images...[/bold]")
         results = generate_all_gemini_images(output_dir, force=force)
-                console.print(f"[green]Generated {len(results)} image(s) to {output_dir}[/green]")
-        
+        console.print(f"[green]Generated {len(results)} image(s) to {output_dir}[/green]")
+
+
 @app.command()
 def generate_pptx(
     canon_path: str = typer.Option(
@@ -207,5 +207,7 @@ def generate_pptx(
         exports_dir=Path(exports_dir),
     )
     console.print(f"[green]PPTX exported to {out}[/green]")
-        
-app()
+
+
+if __name__ == "__main__":
+    app()
