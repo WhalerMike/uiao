@@ -1,7 +1,94 @@
-[tool.mypy]
-files = ["*.py"]
-ignore_missing_imports = true
-show_error_codes = true
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.mypy.paths]
-local_file_types = ["*.py"]
+[project]
+name = "uiao-core"
+version = "0.1.0"
+description = "UIAO Core - Unified Identity-Addressing-Overlay Architecture for FedRAMP modernization pipelines"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [{name = "WhalerMike"}]
+keywords = ["fedramp", "oscal", "trestle", "zero-trust", "tic-3.0", "compliance", "uiao"]
+dependencies = [
+    "jinja2>=3.1.0",
+    "pyyaml>=6.0",
+    "jsonschema>=4.17.0",
+    "markdown>=3.4.0",
+    "python-docx>=0.8.11",
+    "docxtpl>=0.16.0",
+    "python-pptx>=0.6.21",
+    "openpyxl>=3.1.0",
+    "matplotlib>=3.8.0",
+    "numpy>=1.24.0",
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-mermaid2-plugin>=0.6.0",
+    "pymdown-extensions>=10.0",
+    "compliance-trestle>=4.0.0",
+    "compliance-trestle-fedramp",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.0",
+    "typer[all]>=0.12.3",
+    "rich>=13.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "pre-commit>=3.7.0",
+]
+visuals = [
+    "google-genai>=1.0.0",
+    "playwright>=1.40.0",
+]
+
+[project.scripts]
+uiao = "uiao_core.cli.app:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["uiao_core*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["uiao_core"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+warn_return_any = true
+exclude = [
+    "^scripts/",
+    "^tests/",
+]
+
+[[tool.mypy.overrides]]
+module = ["compliance_trestle.*", "trestle.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["matplotlib.*", "numpy.*", "docxtpl.*", "pptx.*", "openpyxl.*", "mkdocs.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["docx.*", "jinja2.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
