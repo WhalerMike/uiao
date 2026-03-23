@@ -1,3 +1,37 @@
+# [0.30.0](https://github.com/WhalerMike/uiao-core/compare/v0.29.0...v0.30.0) (2026-03-23)
+
+
+### Bug Fixes
+
+* AI Security Audit handles both PRs and direct pushes to main ([6bc9f42](https://github.com/WhalerMike/uiao-core/commit/6bc9f42d648ba2c0fd97b42908ffff238fe66f14))
+* **ci:** add skip-tag to changelog - tag v0.30.0 already exists ([fac84fd](https://github.com/WhalerMike/uiao-core/commit/fac84fdff597837d42c1806c26d01a731ef50982))
+* **ci:** fix changelog workflow git push failure (exit code 128) ([cd7fb73](https://github.com/WhalerMike/uiao-core/commit/cd7fb7375315a531b072477dd8f46ec673576cdc))
+* **ci:** replace broken gh-mcp-server with TruffleHog for secret scanning ([0ddb737](https://github.com/WhalerMike/uiao-core/commit/0ddb737b64362943d92e4a4439606b73d090b87f))
+* **oscal:** load canon before data files so control_planes and matrix resolve correctly ([5306b03](https://github.com/WhalerMike/uiao-core/commit/5306b03e9a1560a1eb9961b069d462e5b1f8471b))
+* **oscal:** remove by-components from CD, fix empty prop values for trestle ([dee45f8](https://github.com/WhalerMike/uiao-core/commit/dee45f86473f26d48413bcc8ee9c6dd38e424e20))
+* **oscal:** update component-definition metadata for FedRAMP Rev 5 OSCAL 1.0.4 ([81eb807](https://github.com/WhalerMike/uiao-core/commit/81eb80745d188e39bfc75145bb6d676227395077))
+* **poam:** update metadata for FedRAMP Rev 5 OSCAL 1.0.4 compliance ([ec11443](https://github.com/WhalerMike/uiao-core/commit/ec11443dd5a9b0cb38c81944ba58ff2ed47c2253))
+* **ssp:** add parties/roles and party-uuids for OSCAL trestle validation ([be501c8](https://github.com/WhalerMike/uiao-core/commit/be501c8624586717a2ff65c093658a7403d4156d))
+* **ssp:** rename system-inventory to inventory-items for OSCAL 1.0.x compliance ([1131341](https://github.com/WhalerMike/uiao-core/commit/11313410e1eaefb64655cc68db94da8f6728c42e))
+
+
+### Features
+
+* Add compliance-trestle assemble script (closes [#20](https://github.com/WhalerMike/uiao-core/issues/20)) ([3cca209](https://github.com/WhalerMike/uiao-core/commit/3cca2091419345673c7745696cccd9f96e87ae2d))
+* Add rich DOCX generator with native Word styles and compliance tables ([18995c9](https://github.com/WhalerMike/uiao-core/commit/18995c98f3d953b58435e39d53740c2ed75b58bd))
+* Add vendor-neutral overlay example template (closes [#22](https://github.com/WhalerMike/uiao-core/issues/22)) ([f974580](https://github.com/WhalerMike/uiao-core/commit/f974580aadecd611f28f640ce99f6026cff221e8))
+* Link SSP inventory section to core-stack component data ([d0273fc](https://github.com/WhalerMike/uiao-core/commit/d0273fc5d8e0cc2b4081f3a11590a474a6bcaa20))
+* Link SSP inventory section to core-stack component data ([1badd29](https://github.com/WhalerMike/uiao-core/commit/1badd29bca20b892310e5b6141a1c6a20ec69156))
+* **oscal:** add by-components control linkage per plane ([b60bc42](https://github.com/WhalerMike/uiao-core/commit/b60bc42f5f99fc011468ed7c20caa11c8cd1cadf))
+* **overlay:** add Okta Identity Cloud overlay for vendor-neutral test ([6638bec](https://github.com/WhalerMike/uiao-core/commit/6638bec0fbcfc5dcd28ac2e19bbc09dec3eaf763))
+
+
+### Reverts
+
+* **overlay:** restore microsoft as active overlay after successful Okta test ([8b79d88](https://github.com/WhalerMike/uiao-core/commit/8b79d88512809f02585468c2a947c4b0cb39b673))
+
+
+
 # [0.29.0](https://github.com/WhalerMike/uiao-core/compare/v0.28.1...v0.29.0) (2026-03-22)
 
 
@@ -34,15 +68,6 @@
 ### Features
 
 * Add compliance-trestle OSCAL validation and fix schema compliance ([ded4b21](https://github.com/WhalerMike/uiao-core/commit/ded4b2191059eb28426869f2124db5c8f2b95dd9))
-
-
-
-# [0.26.0](https://github.com/WhalerMike/uiao-core/compare/v0.25.0...v0.26.0) (2026-03-22)
-
-
-### Features
-
-* Add OSCAL Exports section to Pages dashboard and enforce validation in CI ([1053ed0](https://github.com/WhalerMike/uiao-core/commit/1053ed0732ecc6f2064766cdece1be931828a6dc))
 
 
 
