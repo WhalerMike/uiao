@@ -7,6 +7,7 @@ properly formatted compliance tables.
 
 References: ADR-0004
 """
+# isort: skip_file
 from __future__ import annotations
 
 import logging
