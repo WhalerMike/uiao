@@ -1,0 +1,97 @@
+"""Shared context-loading utilities for UIAO-Core generators.
+
+Extracted from individual generator modules (oscal.py, poam.py, charts.py,
+ssp.py, docs.py) to eliminate DRY violations (ADR-0004).
+"""
+from __future__ import annotations
+
+import yaml
+from pathlib import Path
+from typing import Any
+
+from uiao_core.config import Settings
+
+
+def get_settings() -> Settings:
+    """Get or create a Settings instance.
+
+    Falls back to a Settings object with no .env file if the default
+    initialization fails (e.g., missing .env in CI).
+    """
+    try:
+        return Settings()
+    except Exception:
+        return Settings(_env_file=None)
+
+
+def load_context(
+    canon_path: str | Path | None = None,
+    data_dir: str | Path | None = None,
+) -> dict[str, Any]:
+    """Load canon YAML and data/*.yml files into a merged context dict.
+
+    Loads data directory files first (sorted alphabetically), then overlays
+    the canon YAML on top so canon values take precedence.
+
+    Args:
+        canon_path: Path to the canon YAML file. Defaults to
+            ``settings.canon_dir / 'uiao_leadership_briefing_v1.0.yaml'``.
+        data_dir: Path to the data directory containing .yml overlays.
+            Defaults to ``settings.data_dir``.
+
+    Returns:
+        Merged context dictionary.
+    """
+    settings = get_settings()
+    if canon_path is None:
+        canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
+    if data_dir is None:
+        data_dir = settings.data_dir
+    canon_path = Path(canon_path)
+    data_dir = Path(data_dir)
+
+    context: dict[str, Any] = {}
+
+    # Load data/*.yml files first
+    if data_dir.exists():
+        for yml_file in sorted(data_dir.glob("*.yml")):
+            key = yml_file.stem.replace("-", "_")
+            with yml_file.open("r", encoding="utf-8") as f:
+                content = yaml.safe_load(f)
+            if content and isinstance(content, dict):
+                context.update(content)
+                context[key] = content
+
+    # Canon overrides data
+    if canon_path.exists():
+        with canon_path.open("r", encoding="utf-8") as f:
+            canon = yaml.safe_load(f)
+        if canon:
+            context.update(canon)
+
+    return context
+
+
+def load_canon(
+    canon_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Load only the canon YAML file.
+
+    A simpler variant of :func:`load_context` used by the docs generator
+    when only canon data is needed (no data-directory overlay).
+
+    Args:
+        canon_path: Path to the canon YAML file. Defaults to
+            ``settings.canon_dir / 'uiao_leadership_briefing_v1.0.yaml'``.
+
+    Returns:
+        Parsed canon dictionary, or empty dict if the file is missing.
+    """
+    if canon_path is None:
+        settings = get_settings()
+        canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
+    canon_path = Path(canon_path)
+    if not canon_path.exists():
+        return {}
+    with canon_path.open("r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
