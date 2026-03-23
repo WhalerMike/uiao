@@ -16,6 +16,7 @@ from typing import Any
 
 from trestle.oscal.ssp import SystemSecurityPlan
 from trestle.oscal.component import ComponentDefinition
+from trestle.oscal.poam import PlanOfActionAndMilestones
 
 from uiao_core.utils.context import get_settings
 
@@ -132,3 +133,64 @@ def assemble_ssp(
     _validate_ssp(assembled)
     logger.info("Done. Ready for FedRAMP 20x import.")
     return output_path
+
+
+
+# ---------------------------------------------------------------------------
+# Artifact model map
+# ---------------------------------------------------------------------------
+
+ARTIFACT_MODELS: dict[str, type] = {
+    "component-definition": ComponentDefinition,
+    "system-security-plan": SystemSecurityPlan,
+    "plan-of-action-and-milestones": PlanOfActionAndMilestones,
+}
+
+
+def validate_oscal_artifacts(
+    oscal_dir: Path | None = None,
+) -> int:
+    """Validate all OSCAL JSON artifacts against trestle Pydantic models.
+
+    Returns the number of failures (0 means all passed).
+    """
+    if oscal_dir is None:
+        oscal_dir = get_settings().exports_dir / "oscal"
+
+    json_files = sorted(oscal_dir.glob("*.json"))
+    if not json_files:
+        logger.info("No JSON files found in %s – skipping validation.", oscal_dir)
+        return 0
+
+    failures = 0
+    for json_path in json_files:
+        try:
+            data = _load_json(json_path)
+        except (json.JSONDecodeError, FileNotFoundError) as exc:
+            logger.error("FAIL: %s – %s", json_path.name, exc)
+            failures += 1
+            continue
+
+        if not isinstance(data, dict) or not data:
+            logger.error("FAIL: %s – not a JSON object or empty", json_path.name)
+            failures += 1
+            continue
+
+        root_key = next(iter(data))
+        model_class = ARTIFACT_MODELS.get(root_key)
+
+        if model_class is None:
+            logger.info("SKIP: %s – unknown OSCAL type '%s'", json_path.name, root_key)
+            continue
+
+        try:
+            model_class.parse_obj(data[root_key])
+            logger.info("PASS: %s", json_path.name)
+        except Exception as exc:
+            logger.error("FAIL: %s", json_path.name)
+            logger.error("  %s", exc)
+            failures += 1
+
+    total = len(json_files)
+    logger.info("Trestle validation complete: %d file(s), %d failure(s)", total, failures)
+    return failures
