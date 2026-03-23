@@ -3,18 +3,23 @@
 Provides command-line interface for OSCAL document generation,
 validation, and canon management.
 """
+
 from __future__ import annotations
+
+from pathlib import Path
 
 import typer
 from rich.console import Console
 
 from uiao_core.__version__ import __version__
+from uiao_core.generators.trestle import validate_oscal_artifacts
 
 app = typer.Typer(
     name="uiao",
     help="UIAO-Core: OSCAL compliance toolkit for US Government systems.",
     add_completion=False,
 )
+
 console = Console()
 
 
@@ -43,17 +48,20 @@ def main(
 def generate_ssp(
     canon_path: str = typer.Option(
         "canon/uiao_leadership_briefing_v1.0.yaml",
-        "--canon", "-c",
+        "--canon",
+        "-c",
         help="Path to canon YAML file.",
     ),
     data_dir: str = typer.Option(
         "data",
-        "--data-dir", "-d",
+        "--data-dir",
+        "-d",
         help="Path to data YAML directory.",
     ),
     output: str = typer.Option(
         "exports/oscal/uiao-ssp-skeleton.json",
-        "--output", "-o",
+        "--output",
+        "-o",
         help="Output SSP JSON path.",
     ),
 ) -> None:
@@ -87,14 +95,12 @@ def canon_check(
 def validate_ssp(
     oscal_dir: str = typer.Option(
         "exports/oscal",
-        "--oscal-dir", "-d",
+        "--oscal-dir",
+        "-d",
         help="Directory containing OSCAL JSON artifacts.",
     ),
 ) -> None:
     """Validate OSCAL artifacts with compliance-trestle Pydantic models."""
-    from pathlib import Path
-    from uiao_core.generators.trestle import validate_oscal_artifacts
-
     console.print(f"[bold]Validating OSCAL artifacts in {oscal_dir}...[/bold]")
     failures = validate_oscal_artifacts(Path(oscal_dir))
     if failures:
