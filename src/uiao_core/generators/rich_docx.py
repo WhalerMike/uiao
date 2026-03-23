@@ -8,7 +8,6 @@ properly formatted compliance tables.
 References: ADR-0004
 """
 from __future__ import annotations
-
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -29,6 +28,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_IMAGE_WIDTH: Any = Inches(5.5)  # module-level singleton for ruff B008
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -75,7 +75,7 @@ def _add_narrative(doc: Document, text: Any) -> None:
 
 
 def _add_image_safe(
-    doc: Document, image_name: str, visuals_dir: Path, width=Inches(5.5)
+        doc: Document, image_name: str, visuals_dir: Path, width: Any = _DEFAULT_IMAGE_WIDTH
 ) -> bool:
     """Add an image if it exists, skip gracefully if not."""
     img_path = visuals_dir / image_name
