@@ -83,5 +83,25 @@ def canon_check(
     console.print("[yellow]Canon check not yet implemented (Week 3).[/yellow]")
 
 
+@app.command()
+def validate_ssp(
+    oscal_dir: str = typer.Option(
+        "exports/oscal",
+        "--oscal-dir", "-d",
+        help="Directory containing OSCAL JSON artifacts.",
+    ),
+) -> None:
+    """Validate OSCAL artifacts with compliance-trestle Pydantic models."""
+    from pathlib import Path
+    from uiao_core.generators.trestle import validate_oscal_artifacts
+
+    console.print(f"[bold]Validating OSCAL artifacts in {oscal_dir}...[/bold]")
+    failures = validate_oscal_artifacts(Path(oscal_dir))
+    if failures:
+        console.print(f"[red]{failures} validation failure(s)[/red]")
+        raise typer.Exit(code=1)
+    console.print("[green]All artifacts passed validation.[/green]")
+
+
 if __name__ == "__main__":
     app()
