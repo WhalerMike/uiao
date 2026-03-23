@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   secret-scanning:
-    name: Secret Scanning via GitHub MCP Server
+    name: Secret Scanning via TruffleHog
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -25,18 +25,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run secret scanning (GitHub MCP Server)
-        run: |
-          gh extension install github/gh-mcp-server
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "Running secret scanning for PR #${{ github.event.pull_request.number }}"
-            gh mcp run-secret-scanning --pr ${{ github.event.pull_request.number }}
-          else
-            echo "Running secret scanning for branch: ${{ github.ref_name }}"
-            gh mcp run-secret-scanning --ref ${{ github.ref_name }}
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run TruffleHog secret scanning
+        uses: trufflesecurity/trufflehog@v3.88.0
+        with:
+          extra_args: --only-verified
 
   vulnerability-triage:
     name: AI-Powered Vulnerability Triage
