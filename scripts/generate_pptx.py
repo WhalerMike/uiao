@@ -1,15 +1,15 @@
+import os
 import warnings
+
+import yaml
+from pptx import Presentation
+from pptx.util import Inches
+
 warnings.warn(
     "scripts/generate_pptx.py is deprecated. Use `uiao generate-pptx` instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-import yaml
-import os
-from pptx import Presentation
-from pptx.util import Inches, Pt
-
 # Paths
 CANON_PATH = 'canon/uiao_pitch_deck_v1.0.yaml'
 OUTPUT_PATH = 'docs/modernization_atlas_pitch.pptx'
@@ -18,7 +18,7 @@ VISUALS_DIR = 'visuals/'
 
 def create_pptx():
     # Load the YAML canon
-    with open(CANON_PATH, 'r') as file:
+    with open(CANON_PATH) as file:
         data = yaml.safe_load(file)
 
     prs = Presentation()

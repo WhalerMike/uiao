@@ -5,17 +5,16 @@ import ``build_oscal`` from ``uiao_core.generators.oscal``.
 
 Deprecated: Use `uiao generate-oscal` CLI command instead.
 """
-import warnings
 import logging
+import warnings
+
+from uiao_core.generators.oscal import build_oscal
 
 warnings.warn(
     "scripts/generate_oscal.py is deprecated. Use `uiao generate-oscal` instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-from uiao_core.generators.oscal import build_oscal
-
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 if __name__ == "__main__":

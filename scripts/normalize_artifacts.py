@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """UDC Artifact Normalizer - Canonical ordering, metadata expansion, field completion."""
 
+import copy
+import datetime
 import warnings
+from pathlib import Path
+
+import yaml
+
 warnings.warn(
     "scripts/normalize_artifacts.py is deprecated. Use `uiao` CLI instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-import copy
-import datetime
-from pathlib import Path
-import yaml
-
 DATA_DIR = Path('data')
 NORMALIZED_DIR = Path('normalized')
 

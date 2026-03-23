@@ -1,10 +1,3 @@
-import warnings
-warnings.warn(
-    "scripts/validate_build_readiness.py is deprecated. Use `uiao` CLI instead.",
-    DeprecationWarning,
-    stacklevel=1,
-)
-
 """UIAO Build Readiness Validator
 
 Pre-flight check to ensure all critical architectural assets exist
@@ -13,7 +6,13 @@ visuals or data files are still being committed.
 """
 import os
 import sys
+import warnings
 
+warnings.warn(
+    "scripts/validate_build_readiness.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
 
 REQUIRED_FILES = [
     "data/nist_crosswalk.yml",
