@@ -1,3 +1,10 @@
+import warnings
+warnings.warn(
+    "scripts/update_poam_from_monitoring.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
+
 """Update POA&M entries from continuous monitoring signals.
 
 Loads data/monitoring-sources.yml and exports/oscal/uiao-poam-template.json,
