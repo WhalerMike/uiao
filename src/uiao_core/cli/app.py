@@ -174,6 +174,39 @@ def generate_gemini(
     else:
         console.print("[bold]Generating all Gemini images...[/bold]")
         results = generate_all_gemini_images(output_dir, force=force)
+        
+@app.command()
+def generate_pptx(
+    canon_path: str = typer.Option(
+        "canon/uiao_leadership_briefing_v1.0.yaml",
+        "--canon",
+        "-c",
+        help="Path to canon YAML file.",
+    ),
+    data_dir: str = typer.Option(
+        "data",
+        "--data-dir",
+        "-d",
+        help="Path to data YAML directory.",
+    ),
+    exports_dir: str = typer.Option(
+        "exports",
+        "--exports-dir",
+        "-e",
+        help="Output exports directory.",
+    ),
+) -> None:
+    """Generate a leadership briefing PPTX deck."""
+    from uiao_core.generators.pptx import build_pptx
+
+    console.print("[bold]Generating leadership briefing PPTX...[/bold]")
+    out = build_pptx(
+        canon_path=Path(canon_path),
+        data_dir=Path(data_dir),
+        exports_dir=Path(exports_dir),
+    )
+    console.print(f"[green]PPTX exported to {out}[/green]")
+        
         console.print(f"[green]Generated {len(results)} image(s) to {output_dir}[/green]")
 if __name__ == "__main__":
     app()
