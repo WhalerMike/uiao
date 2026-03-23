@@ -34,6 +34,7 @@
 * Add rich DOCX generator with native Word styles and compliance tables ([18995c9](https://github.com/WhalerMike/uiao-core/commit/18995c98f3d953b58435e39d53740c2ed75b58bd))
 * Add vendor-neutral overlay example template (closes [#22](https://github.com/WhalerMike/uiao-core/issues/22)) ([f974580](https://github.com/WhalerMike/uiao-core/commit/f974580aadecd611f28f640ce99f6026cff221e8))
 * **build:** add pyproject.toml with PEP 621 metadata and src-layout (ADR-0001) ([9ff91e3](https://github.com/WhalerMike/uiao-core/commit/9ff91e34605bbe2bcf8808a786772fb11e886d70))
+* **cli:** add generate-gemini command with --name and --force-visuals flags (ADR-0005) ([f20aee0](https://github.com/WhalerMike/uiao-core/commit/f20aee0739acdd8553ff4ba58c05495aad16247e))
 * **cli:** add generate-visuals command with --force-visuals flag (ADR-0005) ([ff10509](https://github.com/WhalerMike/uiao-core/commit/ff105092898ca4b2d9f3fad4fa2334a2ad74e6b5))
 * **cli:** add validate-ssp command wiring to validate_oscal_artifacts (ADR-0004) ([2f267b4](https://github.com/WhalerMike/uiao-core/commit/2f267b40f1549d19daa56eb300b8d77a6eff7711))
 * **cli:** update generate-ssp command with --canon, --data-dir, --output (ADR-0002) ([860ad45](https://github.com/WhalerMike/uiao-core/commit/860ad4520b8c213fd280eefd2b1ce2bda15b7a77))
