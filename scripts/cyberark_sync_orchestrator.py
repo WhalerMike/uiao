@@ -1,3 +1,10 @@
+import warnings
+warnings.warn(
+    "scripts/cyberark_sync_orchestrator.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
+
 import os
 import requests
 import logging
