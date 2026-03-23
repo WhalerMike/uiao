@@ -8,6 +8,7 @@
 * **ci:** fix changelog workflow git push failure (exit code 128) ([cd7fb73](https://github.com/WhalerMike/uiao-core/commit/cd7fb7375315a531b072477dd8f46ec673576cdc))
 * **ci:** replace broken gh-mcp-server with TruffleHog for secret scanning ([0ddb737](https://github.com/WhalerMike/uiao-core/commit/0ddb737b64362943d92e4a4439606b73d090b87f))
 * **cli:** restore gemini print and remove stray line in app.py ([6a33071](https://github.com/WhalerMike/uiao-core/commit/6a3307104925fd55bd68b66055ff3b7d296fc501))
+* **cli:** rewrite app.py with correct indentation and __main__ guard ([6819078](https://github.com/WhalerMike/uiao-core/commit/6819078cdc53036552874a36f5ef12a25b91d3c0))
 * **generators:** fix indentation and remove duplicate radar chart in rich_docx.py ([ed2654c](https://github.com/WhalerMike/uiao-core/commit/ed2654cebe78b749fdb9ac42cb7f809c9dd75588))
 * **generators:** fix indentation in rich_docx.py radar chart section ([e773e36](https://github.com/WhalerMike/uiao-core/commit/e773e36176f4c47f12098b0f9ee99ff71cfc8777))
 * **generators:** sort imports in rich_docx.py for ruff I001 ([2599395](https://github.com/WhalerMike/uiao-core/commit/259939592f820de8061f0b72d38b38f2523a4ce5))
