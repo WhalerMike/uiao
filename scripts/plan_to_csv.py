@@ -1,3 +1,10 @@
+import warnings
+warnings.warn(
+    "scripts/plan_to_csv.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
+
 import yaml
 import csv
 import os
