@@ -9,25 +9,24 @@ Improvements:
 - Adds PDF formatting: TOC, geometry, colored links
 """
 
-import warnings
-warnings.warn(
-    "scripts/compile_documents.py is deprecated. Use `uiao` CLI instead.",
-    DeprecationWarning,
-    stacklevel=1,
-)
-
 import hashlib
 import json
 import os
 import re
-import subprocess
 import shutil
+import subprocess
 import tempfile
+import warnings
 from pathlib import Path
 
 import yaml
 from jinja2 import Environment, FileSystemLoader, Undefined
 
+warnings.warn(
+    "scripts/compile_documents.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
 ROOT = Path.cwd()
 DATA_DIR = Path('data')
 TEMPLATE_DIR = Path('templates')
@@ -249,7 +248,7 @@ def compile_html(md_files):
             )
             generated.append(out_path)
             print(f'  HTML: {out_path}')
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             # Retry without --self-contained (older pandoc)
             try:
                 subprocess.run(
@@ -315,7 +314,7 @@ def main():
         print('\nGenerating integrity manifest...')
         generate_manifest(all_exports)
 
-    print(f'\nCompilation complete.')
+    print('\nCompilation complete.')
     print(f'  Markdown: {len(md_files)} files')
     print(f'  DOCX:     {len(docx_files)} files')
     print(f'  PDF:      {len(pdf_files)} files')

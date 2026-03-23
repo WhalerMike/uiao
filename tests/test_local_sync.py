@@ -1,10 +1,11 @@
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from scripts.sync_orchestrator import SyncOrchestrator
 
 
 def load_mock(filename):
-    with open(filename, 'r') as f:
+    with open(filename) as f:
         return json.load(f)
 
 
