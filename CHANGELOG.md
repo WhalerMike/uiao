@@ -7,6 +7,7 @@
 * **ci:** add skip-tag to changelog - tag v0.30.0 already exists ([fac84fd](https://github.com/WhalerMike/uiao-core/commit/fac84fdff597837d42c1806c26d01a731ef50982))
 * **ci:** fix changelog workflow git push failure (exit code 128) ([cd7fb73](https://github.com/WhalerMike/uiao-core/commit/cd7fb7375315a531b072477dd8f46ec673576cdc))
 * **ci:** replace broken gh-mcp-server with TruffleHog for secret scanning ([0ddb737](https://github.com/WhalerMike/uiao-core/commit/0ddb737b64362943d92e4a4439606b73d090b87f))
+* **generators:** fix indentation in rich_docx.py radar chart section ([e773e36](https://github.com/WhalerMike/uiao-core/commit/e773e36176f4c47f12098b0f9ee99ff71cfc8777))
 * **lint:** add blank line after __future__ import in charts.py (ruff I001, ADR-0004) ([11bfbfb](https://github.com/WhalerMike/uiao-core/commit/11bfbfb1ce485fdec12f0fa73323666e36e85605))
 * **lint:** add blank line after __future__ import in rich_docx.py (ruff I001, ADR-0004) ([3e2dead](https://github.com/WhalerMike/uiao-core/commit/3e2deadb4bf7509a4a86a1bc8c2f5651ff7e9e86))
 * **lint:** add blank line after __future__ import in ssp.py (ruff I001, ADR-0004) ([d2e511a](https://github.com/WhalerMike/uiao-core/commit/d2e511aa5799c072ec5b8a5edb7c67faf68e8678))
