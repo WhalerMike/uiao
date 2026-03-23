@@ -1,3 +1,10 @@
+import warnings
+warnings.warn(
+    "scripts/generate_decommissioning_checklist.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
+
 import yaml
 import os
 
