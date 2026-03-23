@@ -3,10 +3,11 @@
 Uses extra='allow' for Week 1 flexibility; will be tightened
 with strict nested models and field validators in Week 2.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict
@@ -18,6 +19,7 @@ settings = Settings()
 
 class CanonEntry(BaseModel):
     """Generic canon entry with flexible extra fields."""
+
     id: str
     name: str
     description: str = ""
@@ -27,21 +29,23 @@ class CanonEntry(BaseModel):
 
 class LeadershipBriefing(BaseModel):
     """Top-level leadership briefing from canon YAML."""
+
     executive_summary: str = ""
     program_overview: str = ""
     modernization_need: str = ""
     program_vision: str = ""
-    control_planes: List[Dict[str, Any]] = []
-    core_concepts: List[Dict[str, Any]] = []
+    control_planes: list[dict[str, Any]] = []
+    core_concepts: list[dict[str, Any]] = []
     model_config = ConfigDict(extra="allow")
 
 
 class CanonModel(BaseModel):
     """Full canon document model."""
+
     version: str = ""
     document: str = ""
     classification: str = ""
-    audience: List[str] = []
+    audience: list[str] = []
     leadership_briefing: LeadershipBriefing = LeadershipBriefing()
     model_config = ConfigDict(extra="allow")
 
