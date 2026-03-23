@@ -25,6 +25,54 @@ def load_context():
     return context
 
 
+def build_set_parameters(context):
+    """Build OSCAL set-parameters from data/parameters.yml.
+
+    Returns a list of set-parameter dicts and a mapping of
+    nist_control -> list[param_id] for per-requirement linkage.
+    """
+    params_cfg = context.get("parameters", {})
+    if not isinstance(params_cfg, dict):
+        return [], {}
+
+    set_params = []
+    ctrl_to_params = {}  # nist_control -> [param-id, ...]
+
+    for category, items in params_cfg.items():
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            param_id = item.get("id", "")
+            if not param_id:
+                continue
+            ctrl = item.get("nist_control", "")
+            # Build the OSCAL set-parameter entry
+            sp = {
+                "param-id": param_id,
+                "values": [item.get("value", "")]
+            }
+            # Add remarks with all extra metadata
+            remarks_parts = []
+            for key in ["name", "method", "scope", "retention",
+                        "lockout_duration", "evidence_source"]:
+                val = item.get(key)
+                if val:
+                    remarks_parts.append(f"{key}: {val}")
+            if remarks_parts:
+                sp["remarks"] = " | ".join(remarks_parts)
+            set_params.append(sp)
+
+            # Map each referenced control to this param
+            for c in ctrl.split("/"):
+                c = c.strip()
+                if c:
+                    ctrl_to_params.setdefault(c, []).append(param_id)
+
+    return set_params, ctrl_to_params
+
+
 def build_ssp_skeleton(context):
     briefing = context.get("leadership_briefing", {})
     fedramp_cfg = context.get("fedramp_20x_config", {})
@@ -33,6 +81,9 @@ def build_ssp_skeleton(context):
     inventory_items = context.get("inventory_items", [])
     if not isinstance(inventory_items, list):
         inventory_items = []
+
+    # Build set-parameters from parameters.yml
+    set_params, ctrl_to_params = build_set_parameters(context)
 
     now_iso = datetime.utcnow().isoformat() + "Z"
     now_date = datetime.utcnow().strftime("%Y-%m-%d")
@@ -85,11 +136,12 @@ def build_ssp_skeleton(context):
         },
         "control-implementation": {
             "description": "Control implementations leveraged from UIAO components and compliance matrix",
+            "set-parameters": set_params,
             "implemented-requirements": []
         }
     }
 
-    # Populate components from control_planes.yml; track component-id -> uuid mapping
+    # Populate components from control_planes.yml
     component_id_to_uuid = {}
     for plane in planes:
         comp_uuid = str(uuid.uuid4())
@@ -123,14 +175,13 @@ def build_ssp_skeleton(context):
             for prop in item.get("props", []):
                 if isinstance(prop, dict):
                     item_props.append({"name": prop.get("name", ""), "value": prop.get("value", "")})
-            # Resolve implemented-components to SSP component UUIDs
             impl_components = []
             for comp_ref in item.get("implemented_components", []):
                 comp_uuid = component_id_to_uuid.get(comp_ref)
                 if comp_uuid:
                     impl_components.append({"component-uuid": comp_uuid})
                 else:
-                    print(f" [WARN] Inventory item '{item_id}' references unknown component '{comp_ref}'")
+                    print(f"  [WARN] Inventory item '{item_id}' references unknown component '{comp_ref}'")
             oscal_item = {
                 "uuid": str(uuid.uuid4()),
                 "description": item.get("description", ""),
@@ -143,7 +194,7 @@ def build_ssp_skeleton(context):
             oscal_inventory.append(oscal_item)
         ssp["system-implementation"]["inventory-items"] = oscal_inventory
 
-        # Add minimal parties/roles for OSCAL validation
+    # Add minimal parties/roles for OSCAL validation
     agency_party_uuid = str(uuid.uuid4())
     ssp["metadata"]["roles"] = [
         {"id": "admin", "title": "System Administrator"},
@@ -155,7 +206,8 @@ def build_ssp_skeleton(context):
     for inv_item in ssp.get("system-implementation", {}).get("inventory-items", []):
         for rp in inv_item.get("responsible-parties", []):
             rp["party-uuids"] = [agency_party_uuid]
-    # Build a lookup: control-id -> KSI mapping (first match wins)
+
+    # Build a lookup: control-id -> KSI mapping
     ksi_mappings = context.get("ksi_mappings", [])
     if not isinstance(ksi_mappings, list):
         ksi_mappings = []
@@ -165,7 +217,7 @@ def build_ssp_skeleton(context):
             if ctrl not in ksi_by_control:
                 ksi_by_control[ctrl] = ksi
 
-    # Stub implemented-requirements from matrix
+    # Stub implemented-requirements from matrix with per-requirement set-parameters
     for entry in matrix[:10]:
         ctrl_ids = entry.get("nist_controls", [])
         if ctrl_ids:
@@ -186,6 +238,15 @@ def build_ssp_skeleton(context):
                     "value": ksi["ksi_id"],
                     "ns": "https://fedramp.gov/ns/oscal"
                 }]
+            # Attach per-requirement set-parameters if any params map to this control
+            req_params = ctrl_to_params.get(ctrl_id, [])
+            if req_params:
+                req["set-parameters"] = [
+                    {"param-id": pid, "values": [sp["values"][0]]}
+                    for pid in req_params
+                    for sp in set_params
+                    if sp["param-id"] == pid
+                ]
             ssp["control-implementation"]["implemented-requirements"].append(req)
 
     return ssp
@@ -204,8 +265,10 @@ def main():
             f, indent=2)
 
     inventory = ssp_data.get("system-implementation", {}).get("inventory-items", [])
+    set_params = ssp_data.get("control-implementation", {}).get("set-parameters", [])
     print(f"OSCAL SSP skeleton exported to {json_path}")
     print(f"  System inventory items : {len(inventory)}")
+    print(f"  Set-parameters         : {len(set_params)}")
     print("  Ready for FedRAMP 20x Moderate authorization")
 
 
