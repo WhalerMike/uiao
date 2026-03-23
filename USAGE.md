@@ -1,38 +1,95 @@
-# UIAO Document Compiler (UDC) - Usage Guide
+# UIAO Core - Usage Guide
 
-This guide covers how to use the UDC pipeline to author, validate, and compile UIAO canon artifacts into publication-ready documents.
+This guide covers how to use the `uiao` CLI and package to generate OSCAL compliance artifacts and documentation from YAML canon sources.
 
 ---
 
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Repository Layout](#repository-layout)
-3. [Authoring YAML Data Files](#authoring-yaml-data-files)
-4. [Creating Templates](#creating-templates)
-5. [UDC Schemas](#udc-schemas)
-6. [Running Locally](#running-locally)
-7. [GitHub Actions Pipeline](#github-actions-pipeline)
-8. [Retrieving Compiled Documents](#retrieving-compiled-documents)
-9. [Adding a New Document](#adding-a-new-document)
-10. [Troubleshooting](#troubleshooting)
+2. [Installation](#installation)
+3. [CLI Reference](#cli-reference)
+4. [Repository Layout](#repository-layout)
+5. [Authoring YAML Data Files](#authoring-yaml-data-files)
+6. [Creating Templates](#creating-templates)
+7. [Running Locally](#running-locally)
+8. [GitHub Actions Pipeline](#github-actions-pipeline)
+9. [Retrieving Compiled Documents](#retrieving-compiled-documents)
+10. [Adding a New Document](#adding-a-new-document)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Quick Start
 
-**Automatic (CI/CD):** Push changes to `data/`, `templates/`, `schemas/`, or `scripts/` on the `main` branch. GitHub Actions will automatically validate, normalize, compile, and commit outputs.
+**Automatic (CI/CD):** Push changes to `data/`, `templates/`, `canon/`, or `src/` on the `main` branch. GitHub Actions will automatically validate, generate, and commit outputs.
 
-**Manual trigger:** Go to **Actions > Generate UIAO Documents > Run workflow** in GitHub.
+**Manual trigger:** Go to **Actions > CI > Run workflow** in GitHub.
 
 **Local development:**
 ```bash
 git clone https://github.com/WhalerMike/uiao-core.git
 cd uiao-core
-pip install -r requirements.txt
-python scripts/validate_schemas.py
-python scripts/normalize_artifacts.py
-python scripts/compile_documents.py
+pip install -e .[dev]
+
+# Generate OSCAL SSP + artifacts
+uiao generate-ssp
+
+# Generate compliance docs
+uiao generate-docs
+
+# Generate charts
+uiao generate-charts
+
+# Generate rich DOCX
+uiao generate-rich-docx
+
+# Assemble SSP with compliance-trestle
+uiao assemble-ssp
+
+# Validate OSCAL artifacts
+uiao validate-ssp
+```
+
+---
+
+## Installation
+
+```bash
+# Install with dev dependencies (recommended for local dev)
+pip install -e .[dev]
+
+# Install in production (minimal dependencies)
+pip install uiao-core
+
+# Verify install
+uiao --version
+```
+
+---
+
+## CLI Reference
+
+All commands use the `uiao` entry point:
+
+```bash
+uiao --help                  # Full help
+uiao --version               # Show version
+
+# Generation
+uiao generate-ssp            # Generate OSCAL SSP from canon YAML
+uiao generate-docs           # Render Jinja2 templates into Markdown/HTML docs
+uiao generate-charts         # Generate CISA ZT Maturity and compliance charts
+uiao generate-rich-docx      # Generate rich formatted DOCX report
+
+# Assembly & Validation
+uiao assemble-ssp            # Assemble SSP with compliance-trestle
+uiao validate-ssp            # Validate OSCAL JSON artifacts with trestle models
+
+# Legacy (still work but deprecated)
+python scripts/generate_ssp.py      # Calls uiao generate-ssp internally
+python scripts/generate_docs.py     # Calls uiao generate-docs internally
+python scripts/validate_schemas.py  # Deprecated; use uiao validate-ssp
 ```
 
 ---
@@ -41,244 +98,129 @@ python scripts/compile_documents.py
 
 ```
 uiao-core/
-  data/                  # YAML canon artifacts (single source of truth)
-  templates/             # Jinja2 templates (.md.j2 files)
-  schemas/udc/           # UDC validation schemas (YAML + JSON pairs)
-  scripts/
-    generate.py          # Original Jinja2 renderer (YAML -> Markdown)
-    validate_schemas.py  # Validates YAML against JSON schemas
-    normalize_artifacts.py # Canonical ordering and metadata expansion
-    compile_documents.py # Multi-format compilation (MD, DOCX, PDF, HTML)
-  site/                  # Auto-generated Markdown output (do not edit)
-  exports/               # Compiled publication documents (DOCX, PDF, HTML)
-  .github/workflows/     # CI/CD pipeline definition
-  requirements.txt       # Python dependencies
+  canon/                # YAML source of truth (leadership briefing canon)
+  data/                 # YAML data files (controls, findings, etc.)
+  templates/            # Jinja2 templates (.md.j2 files)
+  src/uiao_core/        # Python package
+    cli/app.py          # CLI entry point (uiao command)
+    generators/         # Generator modules (ssp, docs, charts, etc.)
+    utils/              # Context and settings utilities
+  scripts/              # Legacy shims (deprecated, use uiao CLI)
+  tests/                # pytest test suite
+  exports/              # Generated outputs (committed by CI)
+    oscal/              # NIST OSCAL JSON artifacts
+    markdown/           # Rendered Markdown documents
+    docx/               # Word documents
+    pdf/                # PDF documents
+  docs/                 # MkDocs site sources
+  site/                 # Built MkDocs HTML site
 ```
 
 ---
 
 ## Authoring YAML Data Files
 
-All program data lives in `data/` as YAML files. Each file is loaded by its filename (hyphens become underscores).
+Data files live in `data/` and are merged with the canon at generation time.
 
-**Example:** `data/program.yml` is available in templates as `{{ program }}`.
-
-### UDC Metadata Fields
-
-For files that should be schema-validated, include these metadata fields:
-
-```yaml
-id: UIAO-SPEC-001
-title: UIAO Canon Specification
-version: 1.0.0
-status: draft          # draft | review | approved | published | deprecated
-authors:
-  - name: Your Name
-    role: Author
-    organization: Your Org
-canonical_path: data/canon-spec.yml
-classification: unclassified   # unclassified | cui | confidential
-tags:
-  - architecture
-  - canon
-```
+Key files:
+- `data/poam-findings.yml` - POA&M findings and milestones
+- `data/controls.yml` - Control implementation status
+- `canon/uiao_leadership_briefing_v1.0.yaml` - Master canon (source of truth)
 
 ---
 
 ## Creating Templates
 
-Templates use Jinja2 syntax and live in `templates/` with the `.md.j2` extension.
+Templates use Jinja2 syntax and live in `templates/`.
 
-**Example template** (`templates/my-document.md.j2`):
-```jinja2
-# {{ program.title }}
-
-**Version:** {{ program.version }}
-**Status:** {{ program.status }}
-
-## Architecture Overview
-
-{% for concept in program.architecture.concepts %}
-### {{ concept.name }}
-{{ concept.description }}
-{% endfor %}
-```
-
-All data files are available as template variables using their filename (with hyphens converted to underscores).
-
----
-
-## UDC Schemas
-
-Four schema pairs live in `schemas/udc/` (YAML definition + JSON Schema for validation):
-
-| Schema | Purpose |
-|--------|--------|
-| `udc_metadata` | Document identity: id, title, version, status, authors |
-| `udc_templates` | Template bindings: format type, file path, field mappings |
-| `udc_pipeline` | Pipeline stages: validate, normalize, compile, hash |
-| `udc_export` | Export config: formats, naming, hashing, immutability |
-
-The validator auto-detects which schema applies based on the content of each YAML file.
+- Files ending in `.md.j2` are rendered to Markdown
+- Variables come from the canon + data YAML files
+- Example: `{{ program_name }}`, `{{ pillars | length }}`
 
 ---
 
 ## Running Locally
 
-### Prerequisites
-
-- Python 3.12+
-- pandoc (for DOCX/PDF/HTML export)
-- LaTeX (optional, for PDF export via xelatex)
-
-### Install Dependencies
-
 ```bash
-pip install -r requirements.txt
+# Install
+pip install -e .[dev]
 
-# For DOCX/HTML export:
-sudo apt-get install pandoc     # Linux
-brew install pandoc             # macOS
+# Run all generators
+uiao generate-ssp
+uiao generate-docs
+uiao generate-charts
+uiao generate-rich-docx
 
-# For PDF export (optional):
-sudo apt-get install texlive-xetex  # Linux
-brew install --cask mactex          # macOS
+# Validate OSCAL
+uiao validate-ssp
+
+# Run tests
+pytest tests/
+
+# Lint
+ruff check src/ tests/
 ```
-
-### Step 1: Validate
-
-```bash
-python scripts/validate_schemas.py
-```
-
-Validates all YAML files in `data/` against matching UDC JSON schemas. Files without matching schemas are skipped. Exit code 1 on validation failure.
-
-### Step 2: Normalize
-
-```bash
-python scripts/normalize_artifacts.py
-```
-
-Reads `data/` files and writes normalized versions to `normalized/` with:
-- Canonical key ordering (id, title, version, status first)
-- Default metadata expansion (modified_date, classification, status)
-- Consistent YAML formatting
-
-### Step 3: Compile
-
-```bash
-python scripts/compile_documents.py
-```
-
-Runs the full compilation pipeline:
-1. Loads all YAML data from `data/`
-2. Renders Jinja2 templates to Markdown in `site/`
-3. Converts Markdown to DOCX in `exports/` (requires pandoc)
-4. Converts Markdown to PDF in `exports/` (requires pandoc + LaTeX)
-5. Converts Markdown to HTML in `exports/`
-6. Generates `exports/manifest.json` with SHA-256 hashes
-
-### Legacy Generate (Markdown only)
-
-```bash
-python scripts/generate.py
-```
-
-The original renderer. Generates Markdown files in `site/` only.
 
 ---
 
 ## GitHub Actions Pipeline
 
-The workflow (`.github/workflows/generate-docs.yml`) triggers on:
-- Push to `main` branch affecting `data/`, `templates/`, `schemas/`, or `scripts/`
-- Manual dispatch via GitHub Actions UI
+The CI pipeline (`.github/workflows/ci.yml`) runs on every push to `main`:
 
-### Pipeline Stages
-
-| Stage | Script | Description |
-|-------|--------|-------------|
-| Install | `pip install -r requirements.txt` | Install Python deps + pandoc |
-| Validate | `validate_schemas.py` | Check YAML against JSON schemas |
-| Normalize | `normalize_artifacts.py` | Canonical ordering + metadata defaults |
-| Compile | `compile_documents.py` | Generate MD, DOCX, PDF, HTML |
-| Upload | `actions/upload-artifact@v4` | Upload exports as downloadable artifacts (90-day retention) |
-| Commit | `git push` | Commit generated files to `site/` and `exports/` |
+1. **Install**: `pip install -e .[dev]`
+2. **Lint**: `ruff check src/ tests/`
+3. **Type check**: `mypy src/`
+4. **Test**: `pytest tests/`
+5. **Generate**: Runs all generators if tests pass
+6. **Commit outputs**: Commits any updated `exports/` files back to `main`
 
 ---
 
 ## Retrieving Compiled Documents
 
-### From GitHub Actions
+All generated documents are committed to the repo in `exports/`:
 
-1. Go to **Actions** tab in the repository
-2. Click the latest successful workflow run
-3. Scroll to **Artifacts** section
-4. Download **udc-exports** zip file
-5. Extract to get DOCX, PDF, HTML files + manifest.json
+- OSCAL JSON: `exports/oscal/`
+- Markdown: `exports/markdown/`
+- DOCX: `exports/docx/`
+- PDF: `exports/pdf/`
 
-### From the Repository
-
-Compiled documents are also committed to:
-- `site/` - Markdown versions
-- `exports/` - DOCX, PDF, HTML versions
-
-### Integrity Verification
-
-Each compilation generates `exports/manifest.json` containing SHA-256 hashes for every exported file. To verify:
-
-```bash
-# Linux/macOS
-sha256sum exports/my-document.docx
-# Compare against manifest.json entry
-```
+Or view the live site: https://whalermike.github.io/uiao-core/
 
 ---
 
 ## Adding a New Document
 
-1. **Add data** (if needed): Create or update a YAML file in `data/`
-2. **Create template**: Add a `.md.j2` file in `templates/`
-3. **Push to main**: GitHub Actions auto-generates all output formats
-4. **Download**: Get compiled DOCX/PDF/HTML from Actions artifacts or `exports/`
-
-### Example: Adding a FedRAMP Boundary Document
-
-```bash
-# 1. Add data
-vi data/fedramp-boundary.yml
-
-# 2. Create template
-vi templates/fedramp-boundary.md.j2
-
-# 3. Push
-git add .
-git commit -m "Add FedRAMP boundary document"
-git push origin main
-
-# 4. Wait for Actions to complete, then check exports/
-```
+1. Create a Jinja2 template in `templates/my-doc.md.j2`
+2. Add any new data to `data/my-data.yml`
+3. Update the canon in `canon/uiao_leadership_briefing_v1.0.yaml` if needed
+4. Run `uiao generate-docs` to test locally
+5. Push to `main` - CI will generate and commit the output
 
 ---
 
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| Validation fails | Check YAML syntax and ensure required fields match the UDC metadata schema |
-| DOCX not generated | Ensure `pandoc` is installed (`pandoc --version`) |
-| PDF not generated | Install LaTeX: `sudo apt-get install texlive-xetex` |
-| Template render error | Check Jinja2 syntax; ensure data file keys match template variables |
-| Workflow not triggering | Verify changes are in watched paths: `data/`, `templates/`, `schemas/`, `scripts/` |
-| Empty exports/ | Run `python scripts/compile_documents.py` locally to see error output |
+**`uiao: command not found`**
+```bash
+pip install -e .[dev]
+# or
+python -m uiao_core.cli.app
+```
 
----
+**`ModuleNotFoundError: uiao_core`**
+```bash
+pip install -e .
+```
 
-## Script Reference
+**`trestle validation errors`**
+```bash
+uiao validate-ssp --oscal-dir exports/oscal
+```
+Check that OSCAL JSON files in `exports/oscal/` match the expected schema.
 
-| Script | Purpose | Input | Output |
-|--------|---------|-------|--------|
-| `generate.py` | Jinja2 render (legacy) | `data/` + `templates/` | `site/*.md` |
-| `validate_schemas.py` | Schema validation | `data/` + `schemas/udc/` | Pass/fail report |
-| `normalize_artifacts.py` | Canonical normalization | `data/` | `normalized/` |
-| `compile_documents.py` | Multi-format compilation | `data/` + `templates/` | `site/` + `exports/` |
+**Legacy script deprecation warnings**
+```
+DeprecationWarning: scripts/generate_xxx.py is deprecated. Use `uiao` CLI instead.
+```
+Migrate to the `uiao` CLI commands listed in the [CLI Reference](#cli-reference).
