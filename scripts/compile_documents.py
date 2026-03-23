@@ -8,6 +8,14 @@ Improvements:
 - Adds DOCX formatting: TOC, margins, metadata
 - Adds PDF formatting: TOC, geometry, colored links
 """
+
+import warnings
+warnings.warn(
+    "scripts/compile_documents.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
+
 import hashlib
 import json
 import os
