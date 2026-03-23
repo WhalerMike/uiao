@@ -7,26 +7,34 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from uiao_core.config import Settings
+
+
+def _get_settings() -> Settings:
+    """Get or create Settings instance."""
+    try:
+        return Settings()
+    except Exception:
+        return Settings(_env_file=None)
+
 
 def load_context(
-    data_dir: str | Path = "data",
-    canon_path: str | Path = "canon/uiao_leadership_briefing_v1.0.yaml",
+    data_dir: str | Path | None = None,
+    canon_path: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Load all YAML data files and canon briefing into a merged context dict.
+    """Load all YAML data files and canon briefing into a merged context dict."""
+    settings = _get_settings()
+    if data_dir is None:
+        data_dir = settings.data_dir
+    if canon_path is None:
+        canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
 
-    Args:
-        data_dir: Directory containing data YAML files.
-        canon_path: Path to the canon leadership briefing YAML.
-
-    Returns:
-        Merged context dictionary.
-    """
     context: dict[str, Any] = {}
     data_path = Path(data_dir)
     for yml_file in sorted(data_path.glob("*.yml")):
@@ -49,16 +57,14 @@ def load_context(
 def build_set_parameters(
     context: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], dict[str, list[str]]]:
-    """Build OSCAL set-parameters from data/parameters.yml.
-
-    Returns:
-        Tuple of (set_params list, ctrl_to_params mapping).
-    """
+    """Build OSCAL set-parameters from data/parameters.yml."""
     params_cfg = context.get("parameters", {})
     if not isinstance(params_cfg, dict):
         return [], {}
+
     set_params: list[dict[str, Any]] = []
     ctrl_to_params: dict[str, list[str]] = {}
+
     for category, items in params_cfg.items():
         if not isinstance(items, list):
             continue
@@ -86,18 +92,12 @@ def build_set_parameters(
                 c = c.strip()
                 if c:
                     ctrl_to_params.setdefault(c, []).append(param_id)
+
     return set_params, ctrl_to_params
 
 
 def build_ssp_skeleton(context: dict[str, Any]) -> dict[str, Any]:
-    """Build the OSCAL SSP skeleton dict from context.
-
-    Args:
-        context: Merged data context from load_context().
-
-    Returns:
-        SSP dictionary ready for JSON serialization.
-    """
+    """Build the OSCAL SSP skeleton dict from context."""
     briefing = context.get("leadership_briefing", {})
     fedramp_cfg = context.get("fedramp_20x_config", {})
     planes = context.get("control_planes", [])
@@ -107,8 +107,8 @@ def build_ssp_skeleton(context: dict[str, Any]) -> dict[str, Any]:
         inventory_items = []
 
     set_params, ctrl_to_params = build_set_parameters(context)
-    now_iso = datetime.utcnow().isoformat() + "Z"
-    now_date = datetime.utcnow().strftime("%Y-%m-%d")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    now_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     ssp: dict[str, Any] = {
         "uuid": str(uuid.uuid4()),
@@ -190,7 +190,6 @@ def build_ssp_skeleton(context: dict[str, Any]) -> dict[str, Any]:
         for item in inventory_items:
             if not isinstance(item, dict):
                 continue
-            item_id = item.get("id", "")
             item_props = [{"name": "asset-type", "value": item.get("asset_type", "software")}]
             for prop in item.get("props", []):
                 if isinstance(prop, dict):
@@ -261,22 +260,19 @@ def build_ssp_skeleton(context: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_ssp(
-    canon_path: str | Path = "canon/uiao_leadership_briefing_v1.0.yaml",
-    data_dir: str | Path = "data",
-    output_path: str | Path = "exports/oscal/uiao-ssp-skeleton.json",
+    canon_path: str | Path | None = None,
+    data_dir: str | Path | None = None,
+    output_path: str | Path | None = None,
 ) -> Path:
-    """Generate an OSCAL SSP JSON file from canon and data sources.
+    """Generate an OSCAL SSP JSON file from canon and data sources."""
+    settings = _get_settings()
+    if canon_path is None:
+        canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
+    if data_dir is None:
+        data_dir = settings.data_dir
+    if output_path is None:
+        output_path = settings.exports_dir / "oscal" / "uiao-ssp-skeleton.json"
 
-    This is the primary entry point for SSP generation, used by the CLI.
-
-    Args:
-        canon_path: Path to the canon leadership briefing YAML.
-        data_dir: Directory containing data YAML files.
-        output_path: Destination for the generated SSP JSON.
-
-    Returns:
-        Path to the written SSP file.
-    """
     context = load_context(data_dir=data_dir, canon_path=canon_path)
     ssp_data = build_ssp_skeleton(context)
 
