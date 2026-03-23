@@ -11,6 +11,7 @@
 * **cli:** rewrite app.py with correct indentation and __main__ guard ([6819078](https://github.com/WhalerMike/uiao-core/commit/6819078cdc53036552874a36f5ef12a25b91d3c0))
 * **generators:** fix indentation and remove duplicate radar chart in rich_docx.py ([ed2654c](https://github.com/WhalerMike/uiao-core/commit/ed2654cebe78b749fdb9ac42cb7f809c9dd75588))
 * **generators:** fix indentation in rich_docx.py radar chart section ([e773e36](https://github.com/WhalerMike/uiao-core/commit/e773e36176f4c47f12098b0f9ee99ff71cfc8777))
+* **generators:** sort imports in rich_docx.py for ruff I001 ([873356a](https://github.com/WhalerMike/uiao-core/commit/873356a252f1d1a871b8223d91cd076db84b8d86))
 * **generators:** sort imports in rich_docx.py for ruff I001 ([2599395](https://github.com/WhalerMike/uiao-core/commit/259939592f820de8061f0b72d38b38f2523a4ce5))
 * **generators:** sort pptx.py imports for ruff I001 ([ffa4da5](https://github.com/WhalerMike/uiao-core/commit/ffa4da5b293b8754323340e4af9b74c019c24e44))
 * **generators:** suppress I001 in charts.py for matplotlib backend setup ([426e6e5](https://github.com/WhalerMike/uiao-core/commit/426e6e59d31636843b79b5ec49691debb637047a))
