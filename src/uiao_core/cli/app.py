@@ -136,5 +136,44 @@ def generate_visuals(
     results = render_all_mermaid(visuals_dir, output_dir, force=force)
     console.print(f"[green]Rendered {len(results)} diagram(s) to {output_dir}[/green]")
 
+
+@app.command()
+def generate_gemini(
+    output_dir: str = typer.Option(
+        "assets/images/gemini",
+        "--output-dir",
+        "-o",
+        help="Output directory for generated Gemini images.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force-visuals",
+        help="Force regeneration of all images (ignore cache).",
+    ),
+    name: str = typer.Option(
+        "",
+        "--name",
+        "-n",
+        help="Generate a single named image (default: all).",
+    ),
+) -> None:
+    """Generate images via Gemini API (requires GEMINI_API_KEY)."""
+    from uiao_core.generators.gemini_visuals import (
+        generate_all_gemini_images,
+        generate_gemini_image,
+    )
+
+    if name:
+        console.print(f"[bold]Generating Gemini image: {name}...[/bold]")
+        result = generate_gemini_image(name, output_dir=output_dir, force=force)
+        if result:
+            console.print(f"[green]Generated {result}[/green]")
+        else:
+            console.print(f"[red]Failed to generate {name}[/red]")
+            raise typer.Exit(code=1)
+    else:
+        console.print("[bold]Generating all Gemini images...[/bold]")
+        results = generate_all_gemini_images(output_dir, force=force)
+        console.print(f"[green]Generated {len(results)} image(s) to {output_dir}[/green]")
 if __name__ == "__main__":
     app()
