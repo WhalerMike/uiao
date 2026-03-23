@@ -41,15 +41,28 @@ def main(
 
 @app.command()
 def generate_ssp(
-    canon_path: str = typer.Argument(..., help="Path to canon YAML directory."),
-    output: str = typer.Option("exports/ssp.json", "--output", "-o", help="Output SSP path."),
+    canon_path: str = typer.Option(
+        "canon/uiao_leadership_briefing_v1.0.yaml",
+        "--canon", "-c",
+        help="Path to canon YAML file.",
+    ),
+    data_dir: str = typer.Option(
+        "data",
+        "--data-dir", "-d",
+        help="Path to data YAML directory.",
+    ),
+    output: str = typer.Option(
+        "exports/oscal/uiao-ssp-skeleton.json",
+        "--output", "-o",
+        help="Output SSP JSON path.",
+    ),
 ) -> None:
-    """Generate an OSCAL SSP from canon YAML files."""
+    """Generate an OSCAL SSP from canon YAML and data files."""
     from uiao_core.generators.ssp import build_ssp
 
     console.print(f"[bold]Generating SSP from {canon_path}...[/bold]")
-    build_ssp(canon_path=canon_path, output_path=output)
-    console.print(f"[green]SSP written to {output}[/green]")
+    out = build_ssp(canon_path=canon_path, data_dir=data_dir, output_path=output)
+    console.print(f"[green]SSP written to {out}[/green]")
 
 
 @app.command()
@@ -58,7 +71,7 @@ def validate(
 ) -> None:
     """Validate an OSCAL document against its schema."""
     console.print(f"[bold]Validating {path}...[/bold]")
-    console.print("[yellow]Validation not yet implemented (Week 2).[/yellow]")
+    console.print("[yellow]Validation not yet implemented (Week 3).[/yellow]")
 
 
 @app.command()
@@ -67,7 +80,7 @@ def canon_check(
 ) -> None:
     """Check canon YAML files for consistency."""
     console.print(f"[bold]Checking canon at {canon_dir}...[/bold]")
-    console.print("[yellow]Canon check not yet implemented (Week 2).[/yellow]")
+    console.print("[yellow]Canon check not yet implemented (Week 3).[/yellow]")
 
 
 if __name__ == "__main__":
