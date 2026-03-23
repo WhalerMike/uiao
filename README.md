@@ -6,6 +6,36 @@
 
 **UIAO Core** - A FedRAMP Moderate / 20x-aligned modernization pipeline that turns a single YAML canon into synchronized leadership documents **and** machine-readable OSCAL artifacts.
 
+## FedRAMP Pilot Quickstart (5 minutes)
+
+```bash
+# 1. Clone and install
+git clone https://github.com/WhalerMike/uiao-core.git
+cd uiao-core
+pip install -e .[dev]
+
+# 2. Generate OSCAL SSP
+uiao generate-ssp
+
+# 3. Generate all compliance documents
+uiao generate-docs
+
+# 4. Generate compliance charts
+uiao generate-charts
+
+# 5. Generate rich DOCX report
+uiao generate-rich-docx
+
+# 6. Assemble and validate SSP with compliance-trestle
+uiao assemble-ssp
+uiao validate-ssp
+
+# 7. View all available commands
+uiao --help
+```
+
+All outputs land in `exports/` and are ready for FedRAMP 20x Phase 2 import.
+
 ## Quick Demo - One Change, Everything Updates
 
 This pipeline solves the #1 pain in federal cloud modernization: keeping 10-15 documents (executive briefings, TIC 3.0 roadmaps, Zero Trust narratives, FedRAMP summaries, etc.) perfectly in sync while generating compliant OSCAL artifacts.
@@ -14,11 +44,11 @@ This pipeline solves the #1 pain in federal cloud modernization: keeping 10-15 d
 1. Edit a single value in the canon (e.g., update a maturity level in `unified_compliance_matrix.yml` or a narrative in `leadership_briefing_v1.0.yaml`).
 2. Push -> GitHub Actions runs the generators.
 3. In seconds:
-   - All Markdown, DOCX, PDF, HTML documents update in `site/` and `exports/`.
-   - Three OSCAL 1.0.4 artifacts regenerate in `exports/oscal/`:
-     - Component Definition (reusable UIAO planes)
-     - SSP skeleton (Moderate baseline reference)
-     - POA&M template (auto-detected gaps + remediation stubs)
+    - All Markdown, DOCX, PDF, HTML documents update in `site/` and `exports/`.
+    - Three OSCAL 1.0.4 artifacts regenerate in `exports/oscal/`:
+      - Component Definition (reusable UIAO planes)
+      - SSP skeleton (Moderate baseline reference)
+      - POA&M template (auto-detected gaps + remediation stubs)
 4. All three JSON files pass `trestle validate` - ready for import into agency tools (compliance-trestle, RegScale, etc.).
 
 **Agency value**: Eliminates version drift, cuts update cycles from days to minutes, and produces machine-readable evidence that aligns with FedRAMP 20x Phase 2 continuous validation goals.
@@ -49,10 +79,10 @@ Located in `templates/`:
 1. Update the YAML canon in `canon/uiao_leadership_briefing_v1.0.yaml`.
 2. Run:
 
-   ```bash
-   python scripts/generate_docs.py
-   mkdocs build
-   ```
+```bash
+uiao generate-docs
+mkdocs build
+```
 
 3. Outputs land in `docs/`.
 
@@ -62,11 +92,11 @@ UIAO Core generates **validated OSCAL 1.0.4 artifacts** directly from the YAML c
 
 ### Generated Artifacts
 
-| Artifact | Script | Output |
-|----------|--------|--------|
-| Component Definition | `scripts/generate_oscal.py` | `exports/oscal/uiao-component-definition.json` |
-| Plan of Action & Milestones | `scripts/generate_poam.py` | `exports/oscal/uiao-poam-template.json` |
-| System Security Plan | `scripts/generate_ssp.py` | `exports/oscal/uiao-ssp-skeleton.json` |
+| Artifact | CLI Command | Output |
+|----------|-------------|--------|
+| Component Definition | `uiao generate-ssp` | `exports/oscal/uiao-component-definition.json` |
+| Plan of Action & Milestones | `uiao generate-ssp` | `exports/oscal/uiao-poam-template.json` |
+| System Security Plan | `uiao generate-ssp` | `exports/oscal/uiao-ssp-skeleton.json` |
 
 All artifacts include:
 - `oscal-version: "1.0.4"`
@@ -97,10 +127,9 @@ Built for Moderate civilian agencies:
 ### Running Locally
 
 ```bash
-pip install pyyaml
-python scripts/generate_oscal.py
-python scripts/generate_poam.py
-python scripts/generate_ssp.py
+pip install -e .[dev]
+uiao generate-ssp
+uiao validate-ssp
 ```
 
 OSCAL outputs are written to `exports/oscal/` and committed automatically by the workflow.
@@ -116,6 +145,24 @@ OSCAL outputs are written to `exports/oscal/` and committed automatically by the
    - Validates all OSCAL against schema
    - Deploys updated Pages dashboard
 5. **Import** OSCAL JSONs from `exports/oscal/` into your agency's GRC tools
+
+## CLI Reference
+
+After `pip install -e .[dev]`, the `uiao` command is available:
+
+```bash
+uiao --version           # Show version
+uiao generate-ssp        # Generate OSCAL SSP, component definition, and POA&M
+uiao generate-docs       # Render Jinja2 templates into Markdown/DOCX docs
+uiao generate-charts     # Generate CISA ZT Maturity radar and coverage charts
+uiao generate-rich-docx  # Generate rich formatted DOCX report
+uiao assemble-ssp        # Assemble SSP with compliance-trestle
+uiao validate-ssp        # Validate OSCAL artifacts with compliance-trestle
+uiao --help              # Full command reference
+```
+
+> **Note**: Legacy `python scripts/generate_*.py` commands still work but emit
+> `DeprecationWarning`. Migrate to `uiao` CLI commands for new automation.
 
 ## Exports
 
@@ -133,12 +180,10 @@ All generated documents are stored in `exports/`:
 - SSP is a skeleton - full control narrative requires agency-specific customization
 - POA&M gap detection is heuristic-based; manual `data/poam-findings.yml` recommended for production
 - Public GitHub.com is not FedRAMP Moderate authorized for CUI; migrate to GitHub Enterprise for production
-- No compliance-trestle integration yet (planned)
 
 ### Roadmap
 
 - [ ] Demo GIF showing end-to-end pipeline flow
-- [ ] compliance-trestle integration for full OSCAL validation/assemble
 - [ ] Vendor-neutral abstraction layer (move Entra/Cisco specifics to overlays)
 - [ ] Continuous monitoring hooks (Sentinel telemetry -> POA&M status updates)
 - [ ] Inventory linking in SSP (from core-stack.yml)
