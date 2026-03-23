@@ -30,6 +30,7 @@
 * **pkg:** add cli/__init__.py (ADR-0001) ([3ba631c](https://github.com/WhalerMike/uiao-core/commit/3ba631c27788f93df7e4a99fcbf456189452bd5e))
 * **pkg:** add config.py with Pydantic Settings (ADR-0001) ([41fce83](https://github.com/WhalerMike/uiao-core/commit/41fce8390175cb7cc9b0c4da25c7bc5765192cf1))
 * **pkg:** add generators/__init__.py (ADR-0001) ([96a0caa](https://github.com/WhalerMike/uiao-core/commit/96a0caa757c69b7f8f243413dc0788043d963ef4))
+* **pkg:** add generators/ssp.py stub with build_ssp() (ADR-0001) ([03b1f77](https://github.com/WhalerMike/uiao-core/commit/03b1f77dc5435cb9940ee0da21400c9ef4d1c02f))
 * **pkg:** add models/__init__.py (ADR-0001) ([72d15ca](https://github.com/WhalerMike/uiao-core/commit/72d15ca74f52edd713171b978ee259fb0a301aa5))
 * **pkg:** add py.typed PEP 561 marker (ADR-0001) ([32a069c](https://github.com/WhalerMike/uiao-core/commit/32a069c75fcc039032b1fe2cf9a826789ed58479))
 * **pkg:** add Pydantic canon model with load_canon() (ADR-0001) ([0340538](https://github.com/WhalerMike/uiao-core/commit/034053893ad6c98d2a8fd5faa98b55b8287336aa))
