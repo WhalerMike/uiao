@@ -1,3 +1,10 @@
+import warnings
+warnings.warn(
+    "scripts/validate_oscal.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
+
 """Basic OSCAL artifact validation for CI.
 
 Validates that generated OSCAL JSON files in exports/oscal/ are
