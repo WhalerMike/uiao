@@ -209,5 +209,90 @@ def generate_pptx(
     console.print(f"[green]PPTX exported to {out}[/green]")
 
 
+@app.command()
+def generate_docx(
+    canon_path: str = typer.Option(
+        "canon/uiao_leadership_briefing_v1.0.yaml",
+        "--canon",
+        "-c",
+        help="Path to canon YAML file.",
+    ),
+    data_dir: str = typer.Option(
+        "data",
+        "--data-dir",
+        "-d",
+        help="Path to data YAML directory.",
+    ),
+    exports_dir: str = typer.Option(
+        "exports",
+        "--exports-dir",
+        "-e",
+        help="Output exports directory.",
+    ),
+) -> None:
+    """Generate a rich DOCX leadership briefing with embedded visuals."""
+    from uiao_core.generators.rich_docx import build_rich_docx
+
+    console.print("[bold]Generating leadership briefing DOCX...[/bold]")
+    out = build_rich_docx(
+        canon_path=Path(canon_path),
+        data_dir=Path(data_dir),
+        exports_dir=Path(exports_dir),
+    )
+    console.print(f"[green]DOCX exported to {out}[/green]")
+
+
+@app.command()
+def generate_artifacts(
+    canon_path: str = typer.Option(
+        "canon/uiao_leadership_briefing_v1.0.yaml",
+        "--canon",
+        "-c",
+        help="Path to canon YAML file.",
+    ),
+    data_dir: str = typer.Option(
+        "data",
+        "--data-dir",
+        "-d",
+        help="Path to data YAML directory.",
+    ),
+    exports_dir: str = typer.Option(
+        "exports",
+        "--exports-dir",
+        "-e",
+        help="Output exports directory.",
+    ),
+    force_visuals: bool = typer.Option(
+        False,
+        "--force-visuals",
+        help="Force regeneration of all visuals (ignore cache).",
+    ),
+) -> None:
+    """Generate DOCX + PPTX with embedded Mermaid and Gemini visuals."""
+    from uiao_core.generators.mermaid import render_all_mermaid
+    from uiao_core.generators.pptx import build_pptx
+    from uiao_core.generators.rich_docx import build_rich_docx
+
+    console.print("[bold]Rendering Mermaid visuals...[/bold]")
+    pngs = render_all_mermaid(force=force_visuals)
+    console.print(f"[green]Rendered {len(pngs)} diagram(s)[/green]")
+
+    console.print("[bold]Generating DOCX...[/bold]")
+    docx_out = build_rich_docx(
+        canon_path=Path(canon_path),
+        data_dir=Path(data_dir),
+        exports_dir=Path(exports_dir),
+    )
+    console.print(f"[green]DOCX exported to {docx_out}[/green]")
+
+    console.print("[bold]Generating PPTX...[/bold]")
+    pptx_out = build_pptx(
+        canon_path=Path(canon_path),
+        data_dir=Path(data_dir),
+        exports_dir=Path(exports_dir),
+    )
+    console.print(f"[green]PPTX exported to {pptx_out}[/green]")
+    console.print("[bold green]All artifacts generated with embedded visuals.[/bold green]")
+
 if __name__ == "__main__":
     app()
