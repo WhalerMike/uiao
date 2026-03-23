@@ -26,6 +26,7 @@
 * **cli:** update generate-ssp command with --canon, --data-dir, --output (ADR-0002) ([860ad45](https://github.com/WhalerMike/uiao-core/commit/860ad4520b8c213fd280eefd2b1ce2bda15b7a77))
 * **generators:** migrate docs generator into uiao_core package (ADR-0003) ([d7084ce](https://github.com/WhalerMike/uiao-core/commit/d7084ce84e72836b533338bd1671e17d214211dc))
 * **generators:** migrate OSCAL component-definition generator (ADR-0003) ([622a264](https://github.com/WhalerMike/uiao-core/commit/622a264050e270e8fe16bb4fa528ea9c50a2ee2a))
+* **generators:** migrate POA&M generator into uiao_core package (ADR-0003) ([90f37b2](https://github.com/WhalerMike/uiao-core/commit/90f37b26816e77a084cecb042d013230a0636a15))
 * Link SSP inventory section to core-stack component data ([d0273fc](https://github.com/WhalerMike/uiao-core/commit/d0273fc5d8e0cc2b4081f3a11590a474a6bcaa20))
 * Link SSP inventory section to core-stack component data ([1badd29](https://github.com/WhalerMike/uiao-core/commit/1badd29bca20b892310e5b6141a1c6a20ec69156))
 * **oscal:** add by-components control linkage per plane ([b60bc42](https://github.com/WhalerMike/uiao-core/commit/b60bc42f5f99fc011468ed7c20caa11c8cd1cadf))
