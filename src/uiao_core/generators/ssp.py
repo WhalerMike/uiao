@@ -13,45 +13,7 @@ from typing import Any
 
 import yaml
 
-from uiao_core.config import Settings
-
-
-def _get_settings() -> Settings:
-    """Get or create Settings instance."""
-    try:
-        return Settings()
-    except Exception:
-        return Settings(_env_file=None)
-
-
-def load_context(
-    data_dir: str | Path | None = None,
-    canon_path: str | Path | None = None,
-) -> dict[str, Any]:
-    """Load all YAML data files and canon briefing into a merged context dict."""
-    settings = _get_settings()
-    if data_dir is None:
-        data_dir = settings.data_dir
-    if canon_path is None:
-        canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
-
-    context: dict[str, Any] = {}
-    data_path = Path(data_dir)
-    for yml_file in sorted(data_path.glob("*.yml")):
-        key = yml_file.stem.replace("-", "_")
-        with open(yml_file, encoding="utf-8") as f:
-            content = yaml.safe_load(f)
-        if content and isinstance(content, dict):
-            context.update(content)
-            context[f"_src_{key}"] = content
-
-    canon_file = Path(canon_path)
-    if canon_file.exists():
-        with open(canon_file, encoding="utf-8") as f:
-            canon = yaml.safe_load(f)
-        context.update(canon)
-
-    return context
+from uiao_core.utils.context import get_settings, load_context
 
 
 def build_set_parameters(
@@ -80,8 +42,7 @@ def build_set_parameters(
                 "values": [item.get("value", "")],
             }
             remarks_parts = []
-            for key in ["name", "method", "scope", "retention",
-                        "lockout_duration", "evidence_source"]:
+            for key in ["name", "method", "scope", "retention", "lockout_duration", "evidence_source"]:
                 val = item.get(key)
                 if val:
                     remarks_parts.append(f"{key}: {val}")
@@ -170,11 +131,13 @@ def build_ssp_skeleton(context: dict[str, Any]) -> dict[str, Any]:
         plane_id = plane.get("id", "")
         component_id = f"component-{plane_id}"
         component_id_to_uuid[component_id] = comp_uuid
+
         props = [{"name": "pillar", "value": plane_id.upper()}]
         subtitle = str(plane.get("subtitle", "")).strip()
         if subtitle:
             props.append({"name": "subtitle", "value": subtitle})
         props.append({"name": "component-id", "value": component_id})
+
         ssp["system-implementation"]["components"].append({
             "uuid": comp_uuid,
             "type": "service",
@@ -265,7 +228,7 @@ def build_ssp(
     output_path: str | Path | None = None,
 ) -> Path:
     """Generate an OSCAL SSP JSON file from canon and data sources."""
-    settings = _get_settings()
+    settings = get_settings()
     if canon_path is None:
         canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
     if data_dir is None:
@@ -273,12 +236,11 @@ def build_ssp(
     if output_path is None:
         output_path = settings.exports_dir / "oscal" / "uiao-ssp-skeleton.json"
 
-    context = load_context(data_dir=data_dir, canon_path=canon_path)
+    context = load_context(canon_path=canon_path, data_dir=data_dir)
     ssp_data = build_ssp_skeleton(context)
 
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
         json.dump({"system-security-plan": ssp_data}, f, indent=2)
-
     return out
