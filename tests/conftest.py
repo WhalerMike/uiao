@@ -1,8 +1,9 @@
 """Shared pytest fixtures for uiao-core tests."""
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 @pytest.fixture

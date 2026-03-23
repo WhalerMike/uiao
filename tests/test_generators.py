@@ -4,8 +4,6 @@ Verifies that all generator modules can be imported and that their
 core builder functions work with minimal/empty context data.
 """
 import json
-import pytest
-from pathlib import Path
 
 
 class TestGeneratorImports:
@@ -37,10 +35,10 @@ class TestGeneratorImports:
 
     def test_import_package_init(self):
         from uiao_core.generators import (
-            build_ssp,
+            build_docs,
             build_oscal,
             build_poam_export,
-            build_docs,
+            build_ssp,
         )
         assert callable(build_ssp)
         assert callable(build_oscal)
@@ -106,7 +104,7 @@ class TestSSPBuilder:
     def test_build_ssp_empty_context(self, tmp_path):
         from uiao_core.generators.ssp import build_ssp
         output = tmp_path / "ssp.json"
-        result = build_ssp(
+        _result = build_ssp(
             canon_path=tmp_path / "nonexistent.yaml",
             data_dir=tmp_path,
             output=output,

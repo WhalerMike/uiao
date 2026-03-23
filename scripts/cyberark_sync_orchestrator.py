@@ -1,17 +1,15 @@
+import argparse
+import logging
+import os
 import warnings
+
+import requests
+
 warnings.warn(
     "scripts/cyberark_sync_orchestrator.py is deprecated. Use `uiao` CLI instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-import os
-import requests
-import logging
-import json
-import argparse
-from datetime import datetime
-
 # --- Configuration ---
 # CyberArk PAS (Privileged Access Security) API
 CYBERARK_BASE_URL = os.getenv('CYBERARK_VAULT_URL')  # e.g., https://vault.agency.gov
