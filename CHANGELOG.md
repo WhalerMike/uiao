@@ -12,6 +12,7 @@
 * **generators:** fix indentation in rich_docx.py radar chart section ([e773e36](https://github.com/WhalerMike/uiao-core/commit/e773e36176f4c47f12098b0f9ee99ff71cfc8777))
 * **generators:** sort imports in rich_docx.py for ruff I001 ([2599395](https://github.com/WhalerMike/uiao-core/commit/259939592f820de8061f0b72d38b38f2523a4ce5))
 * **generators:** sort pptx.py imports for ruff I001 ([ffa4da5](https://github.com/WhalerMike/uiao-core/commit/ffa4da5b293b8754323340e4af9b74c019c24e44))
+* **generators:** suppress I001 in charts.py for matplotlib backend setup ([426e6e5](https://github.com/WhalerMike/uiao-core/commit/426e6e59d31636843b79b5ec49691debb637047a))
 * **lint:** add blank line after __future__ import in charts.py (ruff I001, ADR-0004) ([11bfbfb](https://github.com/WhalerMike/uiao-core/commit/11bfbfb1ce485fdec12f0fa73323666e36e85605))
 * **lint:** add blank line after __future__ import in rich_docx.py (ruff I001, ADR-0004) ([3e2dead](https://github.com/WhalerMike/uiao-core/commit/3e2deadb4bf7509a4a86a1bc8c2f5651ff7e9e86))
 * **lint:** add blank line after __future__ import in ssp.py (ruff I001, ADR-0004) ([d2e511a](https://github.com/WhalerMike/uiao-core/commit/d2e511aa5799c072ec5b8a5edb7c67faf68e8678))
