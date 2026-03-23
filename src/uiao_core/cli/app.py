@@ -109,5 +109,32 @@ def validate_ssp(
     console.print("[green]All artifacts passed validation.[/green]")
 
 
+@app.command()
+def generate_visuals(
+    visuals_dir: str = typer.Option(
+        "visuals",
+        "--visuals-dir",
+        "-v",
+        help="Directory containing .mermaid source files.",
+    ),
+    output_dir: str = typer.Option(
+        "assets/images/mermaid",
+        "--output-dir",
+        "-o",
+        help="Output directory for rendered PNGs.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force-visuals",
+        help="Force regeneration of all visuals (ignore cache).",
+    ),
+) -> None:
+    """Render Mermaid diagrams to PNG for DOCX/PPTX embedding."""
+    from uiao_core.generators.mermaid import render_all_mermaid
+
+    console.print(f"[bold]Rendering Mermaid visuals from {visuals_dir}...[/bold]")
+    results = render_all_mermaid(visuals_dir, output_dir, force=force)
+    console.print(f"[green]Rendered {len(results)} diagram(s) to {output_dir}[/green]")
+
 if __name__ == "__main__":
     app()
