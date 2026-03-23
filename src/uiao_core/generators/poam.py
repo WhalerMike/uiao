@@ -8,66 +8,24 @@ from __future__ import annotations
 
 import json
 import uuid
-import yaml
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from uiao_core.config import Settings
-
-
-def _get_settings() -> Settings:
-    """Get or create Settings instance."""
-    try:
-        return Settings()
-    except Exception:
-        return Settings(_env_file=None)
-
-
-# ---------------------------------------------------------------------------
-# Data loading (same pattern as oscal.py)
-# ---------------------------------------------------------------------------
-
-def load_context(
-    canon_path: str | Path | None = None,
-    data_dir: str | Path | None = None,
-) -> dict[str, Any]:
-    """Load data/*.yml files and canon YAML into merged context."""
-    settings = _get_settings()
-    if canon_path is None:
-        canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
-    if data_dir is None:
-        data_dir = settings.data_dir
-    canon_path = Path(canon_path)
-    data_dir = Path(data_dir)
-
-    context: dict[str, Any] = {}
-    if data_dir.exists():
-        for yml_file in sorted(data_dir.glob("*.yml")):
-            key = yml_file.stem.replace("-", "_")
-            with yml_file.open("r", encoding="utf-8") as f:
-                content = yaml.safe_load(f)
-            if content and isinstance(content, dict):
-                context.update(content)
-                context[key] = content
-    if canon_path.exists():
-        with canon_path.open("r", encoding="utf-8") as f:
-            canon = yaml.safe_load(f)
-        if canon:
-            context.update(canon)
-    return context
+from uiao_core.utils.context import get_settings, load_context
 
 
 # ---------------------------------------------------------------------------
 # Gap detection
 # ---------------------------------------------------------------------------
-
 def detect_gaps(context: dict[str, Any]) -> list[dict[str, Any]]:
     """Auto-detect gaps from canon data."""
     gaps: list[dict[str, Any]] = []
+
     matrix = context.get("unified_compliance_matrix", [])
     if not isinstance(matrix, list):
         matrix = []
+
     fedramp = context.get("fedramp_20x_config", {})
     if not isinstance(fedramp, dict):
         fedramp = {}
@@ -115,13 +73,13 @@ def detect_gaps(context: dict[str, Any]) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # POA&M builder
 # ---------------------------------------------------------------------------
-
 def build_poam(
     context: dict[str, Any],
     manual_findings: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build OSCAL POA&M from detected gaps and optional manual findings."""
     now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
     gaps = detect_gaps(context)
     if manual_findings:
         gaps.extend(manual_findings)
@@ -163,7 +121,7 @@ def build_poam_export(
     manual_findings: list[dict[str, Any]] | None = None,
 ) -> Path:
     """Build and export POA&M JSON. Returns path to generated file."""
-    settings = _get_settings()
+    settings = get_settings()
     if output_dir is None:
         output_dir = settings.project_root / "exports" / "oscal"
     output_dir = Path(output_dir)
@@ -175,5 +133,4 @@ def build_poam_export(
     json_path = output_dir / "uiao-poam.json"
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump({"plan-of-action-and-milestones": poam}, f, indent=2)
-
     return json_path
