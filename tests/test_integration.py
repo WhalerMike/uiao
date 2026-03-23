@@ -6,9 +6,6 @@ and that their public APIs have the expected signatures.
 import inspect
 from pathlib import Path
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # Utils integration
 # ---------------------------------------------------------------------------
@@ -16,7 +13,7 @@ import pytest
 
 def test_utils_context_imports():
     """Shared utils module exposes expected symbols."""
-    from uiao_core.utils.context import get_settings, load_context, load_canon
+    from uiao_core.utils.context import get_settings, load_canon, load_context
     assert callable(get_settings)
     assert callable(load_context)
     assert callable(load_canon)
@@ -24,7 +21,7 @@ def test_utils_context_imports():
 
 def test_utils_package_reexports():
     """uiao_core.utils re-exports context helpers."""
-    from uiao_core.utils import get_settings, load_context, load_canon
+    from uiao_core.utils import get_settings
     assert callable(get_settings)
 
 

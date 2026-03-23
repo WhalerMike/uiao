@@ -1,17 +1,16 @@
+import argparse
+import logging
+import os
 import warnings
+from datetime import datetime
+
+import requests
+
 warnings.warn(
     "scripts/sync_orchestrator.py is deprecated. Use `uiao` CLI instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-import os
-import requests
-import logging
-import json
-import argparse
-from datetime import datetime
-
 # --- Configuration ---
 INFOBLOX_KEY = os.getenv('INFOBLOX_PORTAL_KEY')
 INFOBLOX_URL = "https://csp.infoblox.com/api/ddi/v1"

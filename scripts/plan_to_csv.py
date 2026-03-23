@@ -1,14 +1,14 @@
+import csv
+import os
 import warnings
+
+import yaml
+
 warnings.warn(
     "scripts/plan_to_csv.py is deprecated. Use `uiao` CLI instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-import yaml
-import csv
-import os
-
 # Paths
 PLAN_YAML = 'canon/uiao_project_plan_v1.0.yaml'
 PLAN_CSV = 'docs/modernization_atlas_planner_import.csv'
@@ -19,7 +19,7 @@ def yaml_to_planner_csv():
         print(f"Error: {PLAN_YAML} not found.")
         return
 
-    with open(PLAN_YAML, 'r') as file:
+    with open(PLAN_YAML) as file:
         data = yaml.safe_load(file)
 
     # MS Planner Import Headers

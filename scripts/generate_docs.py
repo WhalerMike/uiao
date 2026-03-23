@@ -5,17 +5,16 @@ import ``build_docs`` from ``uiao_core.generators.docs``.
 
 Deprecated: Use `uiao generate-docs` CLI command instead.
 """
-import warnings
 import logging
+import warnings
+
+from uiao_core.generators.docs import build_docs
 
 warnings.warn(
     "scripts/generate_docs.py is deprecated. Use `uiao generate-docs` instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-from uiao_core.generators.docs import build_docs
-
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 if __name__ == "__main__":

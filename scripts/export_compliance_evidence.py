@@ -1,15 +1,14 @@
+import csv
 import warnings
+from datetime import datetime
+
+import yaml
+
 warnings.warn(
     "scripts/export_compliance_evidence.py is deprecated. Use `uiao` CLI instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-import yaml
-import csv
-import os
-from datetime import datetime
-
 def export_master_evidence():
   # Load multiple data sources for cross-referencing
   sources = {
@@ -18,7 +17,7 @@ def export_master_evidence():
   }
   data_context = {}
   for key, path in sources.items():
-    with open(path, 'r') as f:
+    with open(path) as f:
       data_context[key] = yaml.safe_load(f)
 
   output_file = 'exports/uiao_master_compliance_report.csv'
