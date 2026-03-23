@@ -6,13 +6,13 @@ Markdown documents for docs/ and site/ directories.
 """
 from __future__ import annotations
 
-import yaml
-from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
 from typing import Any
 
-from uiao_core.utils.context import get_settings, load_canon
+import yaml
+from jinja2 import Environment, FileSystemLoader
 
+from uiao_core.utils.context import get_settings, load_canon
 
 # ---------------------------------------------------------------------------
 # Template mapping: template -> (docs_name, site_name)
