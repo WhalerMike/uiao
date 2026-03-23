@@ -4,6 +4,14 @@ UIAO Modernization Atlas Generator
 Renders Atlas docs from YAML data + Jinja2 templates (.j2).
 Copies images from assets/images/ to docs/images/ for MkDocs.
 """
+
+import warnings
+warnings.warn(
+    "scripts/generate_atlas.py is deprecated. Use `uiao generate-atlas` instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
+
 import os
 import re
 import yaml
