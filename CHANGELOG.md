@@ -31,6 +31,7 @@
 * **pkg:** add models/__init__.py (ADR-0001) ([72d15ca](https://github.com/WhalerMike/uiao-core/commit/72d15ca74f52edd713171b978ee259fb0a301aa5))
 * **pkg:** add Pydantic canon model with load_canon() (ADR-0001) ([0340538](https://github.com/WhalerMike/uiao-core/commit/034053893ad6c98d2a8fd5faa98b55b8287336aa))
 * **pkg:** add src/uiao_core/__init__.py package init (ADR-0001) ([4773e6f](https://github.com/WhalerMike/uiao-core/commit/4773e6f1aa2e71cbdc3893d141d05bfa621966cb))
+* **pkg:** add Typer CLI entry point with generate-ssp, validate, canon-check (ADR-0001) ([d95016d](https://github.com/WhalerMike/uiao-core/commit/d95016d28bdc83a3d6786575c260114eeaa57c6e))
 
 
 ### Reverts
