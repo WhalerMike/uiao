@@ -254,7 +254,7 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
         _add_image_safe(doc, "dynamic-maturity-radar.png", visuals_dir)
 
     # Mermaid-rendered architecture diagrams
-mermaid_dir = visuals_dir.parent / "mermaid"
+    mermaid_dir = visuals_dir.parent / "mermaid"
     if mermaid_dir.is_dir():
         mermaid_pngs = sorted(mermaid_dir.glob("*.png"))
         if mermaid_pngs:
@@ -274,9 +274,6 @@ mermaid_dir = visuals_dir.parent / "mermaid"
             for png in gemini_pngs:
                 _add_heading(doc, png.stem.replace("-", " ").title(), level=2)
                 _add_image_safe(doc, png.name, gemini_dir)
-        doc.add_page_break()
-        _add_heading(doc, "CISA Zero Trust Maturity Assessment")
-        _add_image_safe(doc, "dynamic-maturity-radar.png", visuals_dir)
 
     # FedRAMP Evidence Summary
     doc.add_page_break()
