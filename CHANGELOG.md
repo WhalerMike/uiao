@@ -26,6 +26,7 @@
 * **lint:** properly group imports in docs.py, oscal.py, rich_docx.py, ssp.py for ruff isort (ADR-0004) ([d2bf67f](https://github.com/WhalerMike/uiao-core/commit/d2bf67fb1ebc1f14ddb87d2eb9373a15a131a02f))
 * **lint:** remove blank line after __future__ import in charts.py (ruff I001, ADR-0004) ([74792ad](https://github.com/WhalerMike/uiao-core/commit/74792ad60bfa38b12210e126e253f77017521ce4))
 * **lint:** remove unused yaml import in oscal.py (ruff F401, ADR-0004) ([a510cda](https://github.com/WhalerMike/uiao-core/commit/a510cda6d03a0746bc0c05329efc4d3320fe175b))
+* **lint:** revert force-sort-within-sections that broke other files ([9eb9b1b](https://github.com/WhalerMike/uiao-core/commit/9eb9b1be116bed9ed21e69645e45899d0d020c48))
 * **lint:** sort imports alphabetically in generators/__init__.py (ruff I001, ADR-0004) ([486804c](https://github.com/WhalerMike/uiao-core/commit/486804cb67893dfc07b44d8771621d7f8e0a02a6))
 * **lint:** sort imports and __all__ in utils/__init__.py (ruff I001, ADR-0004) ([5364b18](https://github.com/WhalerMike/uiao-core/commit/5364b18fb288d361bd280a4f175bf208ecb7018a))
 * **models:** add CanonEntry class to fix test import (ADR-0002) ([2d121bb](https://github.com/WhalerMike/uiao-core/commit/2d121bb88c0ca5b3e8bb40ef35f75d1b5a18e9b0))
