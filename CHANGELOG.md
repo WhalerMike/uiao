@@ -29,6 +29,7 @@
 * **pkg:** add __version__.py v0.1.0 (ADR-0001) ([7dbcca3](https://github.com/WhalerMike/uiao-core/commit/7dbcca3200ef4d62504641bac37e8dd421e8627a))
 * **pkg:** add config.py with Pydantic Settings (ADR-0001) ([41fce83](https://github.com/WhalerMike/uiao-core/commit/41fce8390175cb7cc9b0c4da25c7bc5765192cf1))
 * **pkg:** add models/__init__.py (ADR-0001) ([72d15ca](https://github.com/WhalerMike/uiao-core/commit/72d15ca74f52edd713171b978ee259fb0a301aa5))
+* **pkg:** add Pydantic canon model with load_canon() (ADR-0001) ([0340538](https://github.com/WhalerMike/uiao-core/commit/034053893ad6c98d2a8fd5faa98b55b8287336aa))
 * **pkg:** add src/uiao_core/__init__.py package init (ADR-0001) ([4773e6f](https://github.com/WhalerMike/uiao-core/commit/4773e6f1aa2e71cbdc3893d141d05bfa621966cb))
 
 
