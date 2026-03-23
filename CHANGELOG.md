@@ -10,6 +10,7 @@
 * **lint:** fix I001 import order + move Inches default to module constant in rich_docx.py (ADR-0004) ([56647e4](https://github.com/WhalerMike/uiao-core/commit/56647e4276feace4e617856473a4d9b542659930))
 * **lint:** fix I001 import order + remove unused typing.Any in trestle.py (ADR-0004) ([9914e61](https://github.com/WhalerMike/uiao-core/commit/9914e61b87507c9847cf25a2ac77271ac52452b6))
 * **lint:** properly group and sort imports in trestle.py for ruff isort (ADR-0004) ([91504fa](https://github.com/WhalerMike/uiao-core/commit/91504fa0f4b4f59c8030806d431542a41c623297))
+* **lint:** properly group imports in docs.py, oscal.py, rich_docx.py, ssp.py for ruff isort (ADR-0004) ([d2bf67f](https://github.com/WhalerMike/uiao-core/commit/d2bf67fb1ebc1f14ddb87d2eb9373a15a131a02f))
 * **lint:** remove blank line after __future__ import in charts.py (ruff I001, ADR-0004) ([74792ad](https://github.com/WhalerMike/uiao-core/commit/74792ad60bfa38b12210e126e253f77017521ce4))
 * **lint:** sort imports alphabetically in generators/__init__.py (ruff I001, ADR-0004) ([486804c](https://github.com/WhalerMike/uiao-core/commit/486804cb67893dfc07b44d8771621d7f8e0a02a6))
 * **lint:** sort imports and __all__ in utils/__init__.py (ruff I001, ADR-0004) ([5364b18](https://github.com/WhalerMike/uiao-core/commit/5364b18fb288d361bd280a4f175bf208ecb7018a))
