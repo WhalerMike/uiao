@@ -42,6 +42,7 @@
 * **generators:** add gemini_visuals.py for on-demand Gemini image generation (ADR-0005) ([d8a82e3](https://github.com/WhalerMike/uiao-core/commit/d8a82e351bafac464b0dc14a9abdd9ba61466883))
 * **generators:** add mermaid.py for server-side Mermaid-to-PNG rendering (ADR-0005) ([c70c5ad](https://github.com/WhalerMike/uiao-core/commit/c70c5ad8eb93898af424163823a2b5a9b9641be6))
 * **generators:** add pptx.py leadership briefing generator ([a90789c](https://github.com/WhalerMike/uiao-core/commit/a90789c212de0c433660a2283cbbb7bc4c77d650))
+* **generators:** embed Mermaid PNGs and Gemini images in rich_docx.py ([7f7b1c2](https://github.com/WhalerMike/uiao-core/commit/7f7b1c267dc9cf018a62303a95a8d3c3649f5443))
 * **generators:** export build_gemini_visuals from __init__.py (ADR-0005) ([ec1b392](https://github.com/WhalerMike/uiao-core/commit/ec1b39267fb0e49c90820c2ca80899ffb707e495))
 * **generators:** export build_mermaid_visuals from __init__.py (ADR-0005) ([2770a42](https://github.com/WhalerMike/uiao-core/commit/2770a4298a65bc936f8d54ce54733efaa2880a8d))
 * **generators:** export build_pptx from __init__.py ([b80811b](https://github.com/WhalerMike/uiao-core/commit/b80811b439ddd54ad19113071b162bdaf80e01b3))
