@@ -1,3 +1,10 @@
+import warnings
+warnings.warn(
+    "scripts/generate_pptx.py is deprecated. Use `uiao generate-pptx` instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
+
 import yaml
 import os
 from pptx import Presentation
