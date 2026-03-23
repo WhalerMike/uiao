@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import Any
 
 from pptx import Presentation
-from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
+from pptx.util import Inches, Pt
 
 from uiao_core.utils.context import get_settings, load_context
 
