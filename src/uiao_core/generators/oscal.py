@@ -13,53 +13,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from uiao_core.config import Settings
-
-
-def _get_settings() -> Settings:
-    """Get or create Settings instance."""
-    try:
-        return Settings()
-    except Exception:
-        return Settings(_env_file=None)
-
-
-# ---------------------------------------------------------------------------
-# Data loading
-# ---------------------------------------------------------------------------
-
-def load_context(
-    canon_path: str | Path | None = None,
-    data_dir: str | Path | None = None,
-) -> dict[str, Any]:
-    """Load canon first, then data/*.yml files override canon keys."""
-    settings = _get_settings()
-    if canon_path is None:
-        canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
-    if data_dir is None:
-        data_dir = settings.data_dir
-    canon_path = Path(canon_path)
-    data_dir = Path(data_dir)
-
-    context: dict[str, Any] = {}
-    if canon_path.exists():
-        with canon_path.open("r", encoding="utf-8") as f:
-            canon = yaml.safe_load(f)
-        if canon:
-            context.update(canon)
-    if data_dir.exists():
-        for yml_file in sorted(data_dir.glob("*.yml")):
-            with yml_file.open("r", encoding="utf-8") as f:
-                content = yaml.safe_load(f)
-            if content and isinstance(content, dict):
-                context.update(content)
-    return context
+from uiao_core.utils.context import get_settings, load_context
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
 def _as_dict(obj: Any, name_key: str = "name") -> dict[str, Any]:
     """Normalize a component entry that may be a str or dict."""
     if isinstance(obj, dict):
@@ -90,7 +49,6 @@ def _nonempty(val: Any, fallback: str = "N/A") -> str:
 # ---------------------------------------------------------------------------
 # Builder
 # ---------------------------------------------------------------------------
-
 def build_component_definition(
     context: dict[str, Any],
 ) -> dict[str, Any]:
@@ -98,18 +56,22 @@ def build_component_definition(
     cfg = context.get("fedramp_20x_config", {})
     if not isinstance(cfg, dict):
         cfg = {}
+
     planes = _unwrap(context.get("control_planes", []), "control_planes")
     if not isinstance(planes, list):
         planes = []
+
     matrix = _unwrap(
         context.get("unified_compliance_matrix", []),
         "unified_compliance_matrix",
     )
     if not isinstance(matrix, list):
         matrix = []
+
     core_mappings = cfg.get("core_mappings", []) if isinstance(cfg, dict) else []
     if not isinstance(core_mappings, list):
         core_mappings = []
+
     briefing = context.get("leadership_briefing", {})
     if not isinstance(briefing, dict):
         briefing = {}
@@ -120,7 +82,8 @@ def build_component_definition(
         "uuid": str(uuid.uuid4()),
         "metadata": {
             "title": _safe_get(
-                briefing, "title",
+                briefing,
+                "title",
                 "UIAO Unified Identity-Addressing-Overlay Architecture",
             ),
             "version": "1.0",
@@ -309,7 +272,7 @@ def build_oscal(
 
     Returns path to the generated JSON file.
     """
-    settings = _get_settings()
+    settings = get_settings()
     if output_dir is None:
         output_dir = settings.project_root / "exports" / "oscal"
     output_dir = Path(output_dir)
@@ -322,5 +285,4 @@ def build_oscal(
     json_path = output_dir / "uiao-component-definition.json"
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump({"component-definition": cd}, f, indent=2)
-
     return json_path
