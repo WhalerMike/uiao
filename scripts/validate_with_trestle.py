@@ -1,3 +1,10 @@
+import warnings
+warnings.warn(
+    "scripts/validate_with_trestle.py is deprecated. Use `uiao validate-ssp` instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
+
 """Full OSCAL schema validation using compliance-trestle.
 
 Validates OSCAL JSON artifacts in exports/oscal/ against NIST's
