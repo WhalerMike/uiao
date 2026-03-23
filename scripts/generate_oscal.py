@@ -21,21 +21,21 @@ OSCAL_OUT = ROOT / "exports" / "oscal"
 
 
 def load_context():
-    """Load all data/*.yml files + canon, same pattern as generate_docs.py."""
+    """Load canon first, then data/*.yml files override canon keys."""
     context = {}
-    if DATA_DIR.exists():
-        for yml_file in sorted(DATA_DIR.glob("*.yml")):
-            key = yml_file.stem.replace("-", "_")
-            with yml_file.open("r", encoding="utf-8") as f:
-                content = yaml.safe_load(f)
-            if content and isinstance(content, dict):
-                context.update(content)
-                context[key] = content
+    # Load canon FIRST so data files can override shared keys
     if CANON.exists():
         with CANON.open("r", encoding="utf-8") as f:
             canon = yaml.safe_load(f)
         if canon:
             context.update(canon)
+    # Load data files SECOND — they override canon for shared keys
+    if DATA_DIR.exists():
+        for yml_file in sorted(DATA_DIR.glob("*.yml")):
+            with yml_file.open("r", encoding="utf-8") as f:
+                content = yaml.safe_load(f)
+            if content and isinstance(content, dict):
+                context.update(content)
     return context
 
 
@@ -43,7 +43,6 @@ def _as_dict(obj, name_key="name"):
     """Normalize a component entry that may be a str or dict."""
     if isinstance(obj, dict):
         return obj
-    # If it's a plain string, wrap it as a minimal dict
     return {name_key: str(obj), "role": "", "capabilities": []}
 
 
@@ -52,6 +51,13 @@ def _safe_get(obj, key, default=""):
     if isinstance(obj, dict):
         return obj.get(key, default)
     return default
+
+
+def _unwrap(val, key):
+    """Unwrap a value that might be a dict wrapping a list under its own key."""
+    if isinstance(val, dict) and key in val:
+        return val[key]
+    return val
 
 
 def build_component_definition(context):
@@ -65,11 +71,11 @@ def build_component_definition(context):
     if not isinstance(cfg, dict):
         cfg = {}
 
-    planes = context.get("control_planes", [])
+    planes = _unwrap(context.get("control_planes", []), "control_planes")
     if not isinstance(planes, list):
         planes = []
 
-    matrix = context.get("unified_compliance_matrix", [])
+    matrix = _unwrap(context.get("unified_compliance_matrix", []), "unified_compliance_matrix")
     if not isinstance(matrix, list):
         matrix = []
 
@@ -87,7 +93,7 @@ def build_component_definition(context):
         "uuid": str(uuid.uuid4()),
         "metadata": {
             "title": _safe_get(briefing, "title",
-                "UIAO Unified Identity-Addressing-Overlay Architecture"),
+                               "UIAO Unified Identity-Addressing-Overlay Architecture"),
             "version": "1.0",
             "oscal-version": "1.0.4",
             "last-modified": now_iso,
@@ -101,7 +107,7 @@ def build_component_definition(context):
                 {
                     "name": "compliance-strategy",
                     "value": cfg.get("compliance_strategy",
-                        "OSCAL-based Telemetry Validation"),
+                                     "OSCAL-based Telemetry Validation"),
                     "ns": "https://fedramp.gov/ns/oscal"
                 },
                 {
@@ -155,6 +161,7 @@ def build_component_definition(context):
 
         # Build per-component control-implementations with by-components
         control_imps = []
+
         for entry in matrix:
             if not isinstance(entry, dict):
                 continue
@@ -251,7 +258,7 @@ def build_component_definition(context):
 
 
 def validate_inventory_component_refs(context, cd):
-    """Warn if any inventory item references a component-id not present in the Component Definition."""
+    """Warn if any inventory item references a component-id not in the CD."""
     inventory_items = context.get("inventory_items", [])
     if not isinstance(inventory_items, list) or not inventory_items:
         return
@@ -261,6 +268,7 @@ def validate_inventory_component_refs(context, cd):
         for prop in comp.get("props", []):
             if isinstance(prop, dict) and prop.get("name") == "component-id":
                 known_ids.add(prop.get("value", ""))
+
     for item in inventory_items:
         if not isinstance(item, dict):
             continue
@@ -268,15 +276,24 @@ def validate_inventory_component_refs(context, cd):
             if comp_ref not in known_ids:
                 print(
                     f"  [WARN] Inventory item '{item.get('id', '?')}' references "
-                    f"unknown component '{comp_ref}' (not found in Component Definition)"
+                    f"unknown component '{comp_ref}' (not found in CD)"
                 )
 
 
 def main():
     print("Loading UIAO context...")
     context = load_context()
-    print(f"  control_planes entries : {len(context.get('control_planes', []))}")
-    print(f"  compliance_matrix rows : {len(context.get('unified_compliance_matrix', []))}")
+
+    planes = _unwrap(context.get("control_planes", []), "control_planes")
+    if not isinstance(planes, list):
+        planes = []
+    matrix = _unwrap(context.get("unified_compliance_matrix", []),
+                     "unified_compliance_matrix")
+    if not isinstance(matrix, list):
+        matrix = []
+
+    print(f"  control_planes entries : {len(planes)}")
+    print(f"  compliance_matrix rows : {len(matrix)}")
 
     print("Building OSCAL Component Definition (with by-components linkage)...")
     cd = build_component_definition(context)
