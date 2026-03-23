@@ -249,12 +249,12 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
     # Maturity radar chart
     radar_path = visuals_dir / "dynamic-maturity-radar.png"
     if radar_path.exists():
-                doc.add_page_break()
+        doc.add_page_break()
         _add_heading(doc, "CISA Zero Trust Maturity Assessment")
         _add_image_safe(doc, "dynamic-maturity-radar.png", visuals_dir)
 
     # Mermaid-rendered architecture diagrams
-    mermaid_dir = visuals_dir.parent / "mermaid"
+mermaid_dir = visuals_dir.parent / "mermaid"
     if mermaid_dir.is_dir():
         mermaid_pngs = sorted(mermaid_dir.glob("*.png"))
         if mermaid_pngs:
