@@ -18,14 +18,15 @@ from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
-
-from uiao_core.utils.context import get_settings, load_context
-
 try:
     from docxtpl import DocxTemplate
     HAS_DOCXTPL = True
 except ImportError:
     HAS_DOCXTPL = False
+
+from uiao_core.utils.context import get_settings, load_context
+
+
 
 logger = logging.getLogger(__name__)
 
