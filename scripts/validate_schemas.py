@@ -1,3 +1,10 @@
+import warnings
+warnings.warn(
+    "scripts/validate_schemas.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
+
 #!/usr/bin/env python3
 """UDC Schema Validator - Validates YAML data files against UDC JSON schemas."""
 import json
