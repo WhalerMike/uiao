@@ -1,3 +1,10 @@
+import warnings
+warnings.warn(
+    "scripts/export_compliance_evidence.py is deprecated. Use `uiao` CLI instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
+
 import yaml
 import csv
 import os
