@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 import math
-import yaml
 from pathlib import Path
 from typing import Any
 
@@ -19,9 +18,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
-from uiao_core.config import Settings
+from uiao_core.utils.context import get_settings, load_context
 
 logger = logging.getLogger(__name__)
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -39,59 +39,16 @@ UIAO_GREEN = "#2E7D32"
 UIAO_GOLD = "#F9A825"
 
 
-def _get_settings() -> Settings:
-    try:
-        return Settings()
-    except Exception:
-        return Settings(_env_file=None)
-
-
-# ---------------------------------------------------------------------------
-# Data loading
-# ---------------------------------------------------------------------------
-
-def load_context(
-    canon_path: str | Path | None = None,
-    data_dir: str | Path | None = None,
-) -> dict[str, Any]:
-    """Load data/*.yml and canon into merged context."""
-    settings = _get_settings()
-    if canon_path is None:
-        canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
-    if data_dir is None:
-        data_dir = settings.data_dir
-    canon_path = Path(canon_path)
-    data_dir = Path(data_dir)
-
-    context: dict[str, Any] = {}
-    if data_dir.exists():
-        for yml_file in sorted(data_dir.glob("*.yml")):
-            key = yml_file.stem.replace("-", "_")
-            with yml_file.open("r", encoding="utf-8") as f:
-                content = yaml.safe_load(f)
-            if content:
-                if isinstance(content, dict):
-                    context.update(content)
-                context[key] = content
-    if canon_path.exists():
-        with canon_path.open("r", encoding="utf-8") as f:
-            canon = yaml.safe_load(f)
-        if canon:
-            context.update(canon)
-    return context
-
-
 # ---------------------------------------------------------------------------
 # Chart builders
 # ---------------------------------------------------------------------------
-
 def generate_maturity_radar(
     context: dict[str, Any],
     output_dir: Path | None = None,
 ) -> Path | None:
     """Generate CISA Zero Trust Maturity radar chart."""
     if output_dir is None:
-        output_dir = _get_settings().project_root / "visuals"
+        output_dir = get_settings().project_root / "visuals"
     output_dir = Path(output_dir)
 
     mapping = context.get("cisa_zt_maturity_mapping", [])
@@ -125,7 +82,8 @@ def generate_maturity_radar(
     ax.set_yticks([1, 2, 3, 4])
     ax.set_yticklabels(
         ["Traditional", "Initial", "Advanced", "Optimal"],
-        fontsize=7, color="#666",
+        fontsize=7,
+        color="#666",
     )
 
     target = [4] * n + [4]
@@ -136,7 +94,10 @@ def generate_maturity_radar(
 
     ax.set_title(
         "CISA Zero Trust Maturity Assessment\nUIAO Architecture",
-        fontsize=14, fontweight="bold", color=UIAO_NAVY, pad=20,
+        fontsize=14,
+        fontweight="bold",
+        color=UIAO_NAVY,
+        pad=20,
     )
     ax.legend(loc="lower right", bbox_to_anchor=(1.15, -0.05), fontsize=9)
 
@@ -155,7 +116,7 @@ def generate_compliance_coverage(
 ) -> Path | None:
     """Generate compliance coverage bar chart."""
     if output_dir is None:
-        output_dir = _get_settings().project_root / "visuals"
+        output_dir = get_settings().project_root / "visuals"
     output_dir = Path(output_dir)
 
     matrix = context.get("unified_compliance_matrix", [])
@@ -215,12 +176,16 @@ def build_charts(
     """Build all charts. Returns list of generated file paths."""
     if output_dir is not None:
         output_dir = Path(output_dir)
+
     context = load_context(canon_path, data_dir)
     charts: list[Path] = []
+
     radar = generate_maturity_radar(context, output_dir)
     if radar:
         charts.append(radar)
+
     coverage = generate_compliance_coverage(context, output_dir)
     if coverage:
         charts.append(coverage)
+
     return charts
