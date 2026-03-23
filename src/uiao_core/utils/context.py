@@ -3,11 +3,13 @@
 Extracted from individual generator modules (oscal.py, poam.py, charts.py,
 ssp.py, docs.py) to eliminate DRY violations (ADR-0004).
 """
+
 from __future__ import annotations
 
-import yaml
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from uiao_core.config import Settings
 
@@ -57,17 +59,13 @@ def load_context(
         for yml_file in sorted(data_dir.glob("*.yml")):
             key = yml_file.stem.replace("-", "_")
             with yml_file.open("r", encoding="utf-8") as f:
-                content = yaml.safe_load(f)
-            if content and isinstance(content, dict):
-                context.update(content)
-                context[key] = content
+                context[key] = yaml.safe_load(f) or {}
 
-    # Canon overrides data
+    # Overlay canon YAML on top
     if canon_path.exists():
         with canon_path.open("r", encoding="utf-8") as f:
-            canon = yaml.safe_load(f)
-        if canon:
-            context.update(canon)
+            canon_data = yaml.safe_load(f) or {}
+        context.update(canon_data)
 
     return context
 
@@ -75,23 +73,18 @@ def load_context(
 def load_canon(
     canon_path: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Load only the canon YAML file.
-
-    A simpler variant of :func:`load_context` used by the docs generator
-    when only canon data is needed (no data-directory overlay).
+    """Load a canon YAML file and return its contents as a dict.
 
     Args:
         canon_path: Path to the canon YAML file. Defaults to
             ``settings.canon_dir / 'uiao_leadership_briefing_v1.0.yaml'``.
 
     Returns:
-        Parsed canon dictionary, or empty dict if the file is missing.
+        Canon data dictionary.
     """
+    settings = get_settings()
     if canon_path is None:
-        settings = get_settings()
         canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
     canon_path = Path(canon_path)
-    if not canon_path.exists():
-        return {}
     with canon_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
