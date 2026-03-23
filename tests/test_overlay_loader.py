@@ -1,15 +1,12 @@
 """Tests for the vendor overlay loader in scripts/generate_docs.py."""
 
-import sys
 import os
-import pytest
-import yaml
+import sys
 
 # Ensure the scripts directory is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
-from generate_docs import _merge_by_key, apply_overlay, load_overlays, load_data_files, DATA_DIR
-
+from generate_docs import DATA_DIR, _merge_by_key, apply_overlay, load_overlays
 
 # ---------------------------------------------------------------------------
 # Unit tests: _merge_by_key
@@ -144,7 +141,7 @@ class TestOverlayIntegration:
         being overwritten by program.yml's spread keys.
         """
         import yaml as _yaml
-        with open(DATA_DIR / "control-planes.yml", "r", encoding="utf-8") as fh:
+        with open(DATA_DIR / "control-planes.yml", encoding="utf-8") as fh:
             content = _yaml.safe_load(fh)
 
         # Mirror generate_atlas.py's loading style
@@ -183,7 +180,7 @@ class TestOverlayIntegration:
         control-planes.yml's keys at the top level of the context dict.
         """
         import yaml as _yaml
-        with open(DATA_DIR / "control-planes.yml", "r", encoding="utf-8") as fh:
+        with open(DATA_DIR / "control-planes.yml", encoding="utf-8") as fh:
             content = _yaml.safe_load(fh)
         # Simulate generate_docs.py: spread keys at top level
         context = dict(content)

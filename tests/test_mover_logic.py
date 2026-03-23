@@ -3,9 +3,10 @@
 Validates that the JML canon correctly defines the revoke/grant actions
 for an internal department transfer scenario.
 """
-import unittest
-import yaml
 import os
+import unittest
+
+import yaml
 
 
 class TestMoverLogic(unittest.TestCase):
@@ -17,7 +18,7 @@ class TestMoverLogic(unittest.TestCase):
         canon_path = os.path.join(
             os.path.dirname(__file__), '..', 'canon', 'uiao_jml_logic_v1.0.yaml'
         )
-        with open(canon_path, 'r') as f:
+        with open(canon_path) as f:
             cls.logic = yaml.safe_load(f)
 
     def test_mover_trigger_is_department_change(self):

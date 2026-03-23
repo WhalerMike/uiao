@@ -1,17 +1,18 @@
+#!/usr/bin/env python3
+"""UDC Schema Validator - Validates YAML data files against UDC JSON schemas."""
+import json
+import sys
 import warnings
+from pathlib import Path
+
+import yaml
+from jsonschema import SchemaError, ValidationError, validate
+
 warnings.warn(
     "scripts/validate_schemas.py is deprecated. Use `uiao` CLI instead.",
     DeprecationWarning,
     stacklevel=1,
 )
-
-#!/usr/bin/env python3
-"""UDC Schema Validator - Validates YAML data files against UDC JSON schemas."""
-import json
-import sys
-from pathlib import Path
-import yaml
-from jsonschema import validate, ValidationError, SchemaError
 
 DATA_DIR = Path('data')
 SCHEMA_DIR = Path('schemas/udc')
