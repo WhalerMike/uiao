@@ -42,6 +42,7 @@
 
 ### Features
 
+* add build_rich_docx to generators __init__ exports ([a5e3cef](https://github.com/WhalerMike/uiao-core/commit/a5e3cef760490c96a2eeca4c6477d6c8fc965ba9))
 * Add compliance-trestle assemble script (closes [#20](https://github.com/WhalerMike/uiao-core/issues/20)) ([3cca209](https://github.com/WhalerMike/uiao-core/commit/3cca2091419345673c7745696cccd9f96e87ae2d))
 * Add rich DOCX generator with native Word styles and compliance tables ([18995c9](https://github.com/WhalerMike/uiao-core/commit/18995c98f3d953b58435e39d53740c2ed75b58bd))
 * Add vendor-neutral overlay example template (closes [#22](https://github.com/WhalerMike/uiao-core/issues/22)) ([f974580](https://github.com/WhalerMike/uiao-core/commit/f974580aadecd611f28f640ce99f6026cff221e8))
