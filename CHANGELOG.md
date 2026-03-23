@@ -36,6 +36,7 @@
 * **build:** add pyproject.toml with PEP 621 metadata and src-layout (ADR-0001) ([9ff91e3](https://github.com/WhalerMike/uiao-core/commit/9ff91e34605bbe2bcf8808a786772fb11e886d70))
 * **cli:** add validate-ssp command wiring to validate_oscal_artifacts (ADR-0004) ([2f267b4](https://github.com/WhalerMike/uiao-core/commit/2f267b40f1549d19daa56eb300b8d77a6eff7711))
 * **cli:** update generate-ssp command with --canon, --data-dir, --output (ADR-0002) ([860ad45](https://github.com/WhalerMike/uiao-core/commit/860ad4520b8c213fd280eefd2b1ce2bda15b7a77))
+* **generators:** add mermaid.py for server-side Mermaid-to-PNG rendering (ADR-0005) ([c70c5ad](https://github.com/WhalerMike/uiao-core/commit/c70c5ad8eb93898af424163823a2b5a9b9641be6))
 * **generators:** migrate charts generator with matplotlib visuals (ADR-0003) ([a617239](https://github.com/WhalerMike/uiao-core/commit/a617239c0389121a1672f094b97c7ae18a84fff7))
 * **generators:** migrate docs generator into uiao_core package (ADR-0003) ([d7084ce](https://github.com/WhalerMike/uiao-core/commit/d7084ce84e72836b533338bd1671e17d214211dc))
 * **generators:** migrate OSCAL component-definition generator (ADR-0003) ([622a264](https://github.com/WhalerMike/uiao-core/commit/622a264050e270e8fe16bb4fa528ea9c50a2ee2a))
