@@ -7,14 +7,15 @@ assembled System Security Plan.
 References: ADR-0004
 """
 from __future__ import annotations
+
 import json
 import logging
 from copy import deepcopy
 from pathlib import Path
 
-from trestle.oscal.ssp import SystemSecurityPlan
 from trestle.oscal.component import ComponentDefinition
 from trestle.oscal.poam import PlanOfActionAndMilestones
+from trestle.oscal.ssp import SystemSecurityPlan
 
 from uiao_core.utils.context import get_settings
 
