@@ -27,7 +27,7 @@ class TestCanonEntry:
 
     def test_missing_required_field_raises(self) -> None:
         """CanonEntry requires id and name."""
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             CanonEntry(description="no id or name")
 
 
