@@ -11,7 +11,7 @@ from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
 from typing import Any
 
-from uiao_core.config import Settings
+from uiao_core.utils.context import get_settings, load_canon
 
 
 # ---------------------------------------------------------------------------
@@ -32,38 +32,15 @@ DEFAULT_TEMPLATE_MAPPING: dict[str, tuple[str, str]] = {
 }
 
 
-def _get_settings() -> Settings:
-    """Get or create Settings instance."""
-    try:
-        return Settings()
-    except Exception:
-        return Settings(_env_file=None)
-
-
 # ---------------------------------------------------------------------------
 # Data loading helpers
 # ---------------------------------------------------------------------------
-
-def load_canon(
-    canon_path: str | Path | None = None,
-) -> dict[str, Any]:
-    """Load the canon YAML file."""
-    if canon_path is None:
-        settings = _get_settings()
-        canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
-    canon_path = Path(canon_path)
-    if not canon_path.exists():
-        return {}
-    with canon_path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
-
-
 def load_data_files(
     data_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     """Load all YAML files from data/ directory and merge into context."""
     if data_dir is None:
-        settings = _get_settings()
+        settings = get_settings()
         data_dir = settings.data_dir
     data_dir = Path(data_dir)
     data: dict[str, Any] = {}
@@ -132,7 +109,7 @@ def load_overlays(
 ) -> dict[str, Any]:
     """Load vendor overlays and apply them to the context."""
     if data_dir is None:
-        settings = _get_settings()
+        settings = get_settings()
         data_dir = settings.data_dir
     data_dir = Path(data_dir)
     overlays_dir = data_dir / "overlays"
@@ -159,7 +136,6 @@ def load_overlays(
 # ---------------------------------------------------------------------------
 # Rendering
 # ---------------------------------------------------------------------------
-
 def render_template(
     env: Environment,
     template_name: str,
@@ -185,7 +161,7 @@ def build_docs(
 
     Returns list of generated file paths.
     """
-    settings = _get_settings()
+    settings = get_settings()
     if templates_dir is None:
         templates_dir = settings.project_root / "templates"
     if docs_dir is None:
@@ -209,7 +185,6 @@ def build_docs(
         loader=FileSystemLoader(str(templates_dir)),
         autoescape=False,
     )
-
     docs_dir.mkdir(exist_ok=True)
     site_dir.mkdir(exist_ok=True)
 
