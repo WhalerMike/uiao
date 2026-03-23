@@ -40,6 +40,7 @@
 * **cli:** update generate-ssp command with --canon, --data-dir, --output (ADR-0002) ([860ad45](https://github.com/WhalerMike/uiao-core/commit/860ad4520b8c213fd280eefd2b1ce2bda15b7a77))
 * **generators:** add gemini_visuals.py for on-demand Gemini image generation (ADR-0005) ([d8a82e3](https://github.com/WhalerMike/uiao-core/commit/d8a82e351bafac464b0dc14a9abdd9ba61466883))
 * **generators:** add mermaid.py for server-side Mermaid-to-PNG rendering (ADR-0005) ([c70c5ad](https://github.com/WhalerMike/uiao-core/commit/c70c5ad8eb93898af424163823a2b5a9b9641be6))
+* **generators:** add pptx.py leadership briefing generator ([a90789c](https://github.com/WhalerMike/uiao-core/commit/a90789c212de0c433660a2283cbbb7bc4c77d650))
 * **generators:** export build_gemini_visuals from __init__.py (ADR-0005) ([ec1b392](https://github.com/WhalerMike/uiao-core/commit/ec1b39267fb0e49c90820c2ca80899ffb707e495))
 * **generators:** export build_mermaid_visuals from __init__.py (ADR-0005) ([2770a42](https://github.com/WhalerMike/uiao-core/commit/2770a4298a65bc936f8d54ce54733efaa2880a8d))
 * **generators:** migrate charts generator with matplotlib visuals (ADR-0003) ([a617239](https://github.com/WhalerMike/uiao-core/commit/a617239c0389121a1672f094b97c7ae18a84fff7))
