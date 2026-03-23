@@ -5,6 +5,7 @@ validation, and canon management.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import typer
@@ -276,6 +277,17 @@ def generate_artifacts(
     console.print("[bold]Rendering Mermaid visuals...[/bold]")
     pngs = render_all_mermaid(force=force_visuals)
     console.print(f"[green]Rendered {len(pngs)} diagram(s)[/green]")
+
+    if os.environ.get("GEMINI_API_KEY", "").strip():
+        from uiao_core.generators.gemini_visuals import generate_all_gemini_images
+
+        console.print("[bold]Generating Gemini images...[/bold]")
+        gemini_results = generate_all_gemini_images(force=force_visuals)
+        console.print(f"[green]Generated {len(gemini_results)} Gemini image(s)[/green]")
+    else:
+        console.print(
+            "[yellow]GEMINI_API_KEY not set — skipping Gemini image generation.[/yellow]"
+        )
 
     console.print("[bold]Generating DOCX...[/bold]")
     docx_out = build_rich_docx(
