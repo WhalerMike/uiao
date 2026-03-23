@@ -6,7 +6,7 @@ using matplotlib. Uses Agg backend for CI/CD compatibility.
 
 NOTE: Only USA/territories visuals are generated (no world maps).
 """
-from __future__ import annotations
+from __future__ import annotations  # noqa: I001
 
 import logging
 import math
