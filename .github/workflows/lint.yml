@@ -1,0 +1,38 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install linters
+        run: pip install ruff mypy
+
+      - name: Ruff check
+        run: ruff check src/ tests/ scripts/
+
+      - name: Ruff format check
+        run: ruff format --check src/ tests/ scripts/
+
+      - name: Mypy (package only)
+        run: mypy src/uiao_core --ignore-missing-imports
