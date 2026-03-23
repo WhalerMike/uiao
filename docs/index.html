@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UIAO-Core | Document Compiler</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uswds/3.7.1/css/uswds.min.css">
-            <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
             --uiao-primary: #1b3a4b;
@@ -17,91 +17,116 @@
         }
         body { font-family: 'Source Sans Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 0; background: var(--uiao-light); }
         .site-header { background: var(--uiao-primary); color: #fff; padding: 16px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-        .site-header__inner { max-width: 1200px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; }
+        .site-header__inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; }
         .site-header h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px; }
         .site-header p { margin: 4px 0 0; font-size: 14px; opacity: 0.85; }
         .site-nav { display: flex; gap: 24px; }
         .site-nav a { color: #fff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 4px 0; border-bottom: 2px solid transparent; transition: border-color 0.2s; }
         .site-nav a:hover, .site-nav a.active { border-bottom-color: var(--uiao-accent); }
-        .main-content { max-width: 1200px; margin: 0 auto; padding: 32px 16px; }
-        .dashboard-grid { display: grid; grid-template-columns: 280px 1fr; gap: 24px; }
-        .sidebar { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-        .sidebar h3 { margin: 0 0 16px; font-size: 16px; color: var(--uiao-primary); border-bottom: 2px solid var(--uiao-accent); padding-bottom: 8px; }
-        .sidebar ul { list-style: none; padding: 0; margin: 0; }
-        .sidebar li { margin-bottom: 4px; }
-        .sidebar a { display: block; padding: 8px 12px; color: #1b1b1b; text-decoration: none; border-radius: 4px; font-size: 14px; transition: background 0.15s; }
-        .sidebar a:hover { background: var(--uiao-light); }
-        .sidebar a.active { background: var(--uiao-accent); color: #fff; }
-        .content-area { display: flex; flex-direction: column; gap: 24px; }
-        .card { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .main-content { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+        .card { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
         .card h2 { margin: 0 0 16px; font-size: 20px; color: var(--uiao-primary); }
         .card p { margin: 0 0 12px; color: #565c65; line-height: 1.6; }
-        .status-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
-        .status-badge.success { background: #d4edda; color: #155724; }
-        .status-badge.pending { background: #fff3cd; color: #856404; }
-        .status-badge.error { background: #f8d7da; color: #721c24; }
-        .doc-table { width: 100%; border-collapse: collapse; }
-        .doc-table th { text-align: left; padding: 10px 12px; background: var(--uiao-primary); color: #fff; font-size: 13px; font-weight: 600; }
-        .doc-table td { padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 14px; }
-        .doc-table tr:hover { background: var(--uiao-light); }
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: #fff; border-radius: 8px; padding: 20px 16px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-top: 3px solid var(--uiao-accent); }
+        .stat-card .stat-num { font-size: 36px; font-weight: 700; color: var(--uiao-primary); line-height: 1; }
+        .stat-card .stat-label { font-size: 12px; color: #71767a; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 6px; }
+        .pipeline-steps { display: flex; gap: 0; align-items: center; margin: 16px 0; }
+        .pipeline-step { background: #fff; border: 2px solid #dfe1e2; padding: 14px 24px; text-align: center; min-width: 140px; border-radius: 4px; }
+        .pipeline-step.done { border-color: var(--uiao-success); background: #d4edda; }
+        .pipeline-arrow { font-size: 24px; color: #aeb0b5; margin: 0 8px; }
+        .generate-section { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--uiao-light); border-radius: 6px; margin-bottom: 0; flex-wrap: wrap; }
+        .generate-section label { font-size: 14px; font-weight: 600; color: var(--uiao-primary); white-space: nowrap; }
+        .generate-section select { padding: 8px 12px; border: 1px solid #c6cace; border-radius: 4px; font-size: 14px; min-width: 200px; }
         .btn { display: inline-block; padding: 8px 20px; border: none; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s; }
         .btn-primary { background: var(--uiao-accent); color: #fff; }
         .btn-primary:hover { background: #2577a3; }
         .btn-secondary { background: #dfe1e2; color: #1b1b1b; }
         .btn-secondary:hover { background: #c6cace; }
-        .btn-sm { padding: 4px 12px; font-size: 12px; }
-        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-        .generate-section { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--uiao-light); border-radius: 6px; margin-bottom: 16px; }
-        .generate-section select { padding: 8px 12px; border: 1px solid #c6cace; border-radius: 4px; font-size: 14px; }
-        .doc-viewer { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 32px; min-height: 400px; font-size: 15px; line-height: 1.8; }
-        .doc-viewer h1 { color: var(--uiao-primary); border-bottom: 3px solid var(--uiao-accent); padding-bottom: 8px; }
-        .doc-viewer h2 { color: var(--uiao-primary); margin-top: 24px; }
-        .pipeline-steps { display: flex; gap: 0; align-items: center; margin: 16px 0; }
-        .pipeline-step { background: #fff; border: 2px solid #dfe1e2; padding: 12px 20px; text-align: center; min-width: 140px; position: relative; }
-        .pipeline-step.active { border-color: var(--uiao-accent); background: #e8f4fd; }
-        .pipeline-step.done { border-color: var(--uiao-success); background: #d4edda; }
-        .pipeline-arrow { font-size: 24px; color: #aeb0b5; margin: 0 4px; }
-        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-        .stat-card { background: #fff; border-radius: 8px; padding: 16px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-top: 3px solid var(--uiao-accent); }
-        .stat-card .stat-num { font-size: 32px; font-weight: 700; color: var(--uiao-primary); }
-        .stat-card .stat-label { font-size: 12px; color: #71767a; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn-outline { background: transparent; color: var(--uiao-accent); border: 1px solid var(--uiao-accent); }
+        .btn-outline:hover { background: var(--uiao-accent); color: #fff; }
+        .btn-sm { padding: 5px 14px; font-size: 12px; }
+        .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+        .doc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .doc-card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-left: 4px solid var(--uiao-accent); display: flex; flex-direction: column; gap: 12px; transition: box-shadow 0.2s; }
+        .doc-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+        .doc-card__title { font-size: 15px; font-weight: 700; color: var(--uiao-primary); margin: 0; line-height: 1.3; }
+        .doc-card__desc { font-size: 13px; color: #565c65; margin: 0; flex: 1; line-height: 1.5; }
+        .doc-card__meta { font-size: 12px; color: #71767a; }
+        .doc-card__actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+        .doc-viewer-wrap { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 32px; min-height: 400px; font-size: 15px; line-height: 1.8; }
+        .doc-viewer-wrap h1 { color: var(--uiao-primary); border-bottom: 3px solid var(--uiao-accent); padding-bottom: 8px; }
+        .doc-viewer-wrap h2 { color: var(--uiao-primary); margin-top: 24px; }
+        .status-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .status-badge.success { background: #d4edda; color: #155724; }
+        .doc-table { width: 100%; border-collapse: collapse; }
+        .doc-table th { text-align: left; padding: 10px 12px; background: var(--uiao-primary); color: #fff; font-size: 13px; font-weight: 600; }
+        .doc-table td { padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 14px; }
+        .doc-table tr:hover { background: var(--uiao-light); }
         .footer { background: var(--uiao-primary); color: rgba(255,255,255,0.7); padding: 24px 0; margin-top: 48px; text-align: center; font-size: 13px; }
         #loading { display: none; }
         .spinner { border: 3px solid #dfe1e2; border-top: 3px solid var(--uiao-accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } .stats-row { grid-template-columns: repeat(2, 1fr); } .site-header__inner { flex-direction: column; text-align: center; } .site-nav { flex-wrap: wrap; justify-content: center; gap: 12px; } .pipeline-steps { flex-wrap: wrap; justify-content: center; } .pipeline-arrow { display: none; } .doc-table { font-size: 12px; } .doc-table th, .doc-table td { padding: 6px 8px; } .btn-group { flex-wrap: wrap; } .generate-section { flex-direction: column; align-items: stretch; } .card { padding: 16px; } .main-content { padding: 16px 8px; } }
+        @media (max-width: 900px) {
+            .doc-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .site-header__inner { flex-direction: column; text-align: center; gap: 12px; }
+            .site-nav { flex-wrap: wrap; justify-content: center; gap: 12px; }
+            .pipeline-steps { flex-wrap: wrap; justify-content: center; }
+            .pipeline-arrow { display: none; }
+            .doc-grid { grid-template-columns: 1fr; }
+            .generate-section { flex-direction: column; align-items: stretch; }
+            .card { padding: 16px; }
+            .main-content { padding: 16px 12px; }
+        }
     </style>
 </head>
 <body>
-    <header class="site-header"><div class="site-header__inner">
-        <div>
-            <h1>UIAO-Core</h1>
-            <p>Unified Identity-Addressing-Overlay Architecture — Document Compiler</p>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <div>
+                <h1>UIAO-Core</h1>
+                <p>Unified Identity-Addressing-Overlay Architecture &mdash; Document Compiler</p>
+            </div>
+            <nav class="site-nav">
+                <a href="#" class="active" onclick="showSection('dashboard', this); return false;">Dashboard</a>
+                <a href="#" onclick="showSection('viewer', this); return false;">Viewer</a>
+                <a href="#" onclick="showSection('pipeline', this); return false;">Pipeline</a>
+                <a href="https://github.com/WhalerMike/uiao-core" target="_blank" rel="noopener">GitHub</a>
+            </nav>
         </div>
-        <nav class="site-nav">
-            <a href="#" class="active" onclick="showPage('dashboard', this)">Dashboard</a>
-            <a href="#" onclick="showPage('documents', this)">Documents</a>
-            <a href="#" onclick="showPage('pipeline', this)">Pipeline</a>
-            <a href="#" onclick="showPage('viewer', this)">Viewer</a>
-            <a href="https://github.com/WhalerMike/uiao-core" target="_blank">GitHub</a>
-        </nav>
-    </div></header>
+    </header>
 
     <main class="main-content">
+
         <!-- Stats Row -->
         <div class="stats-row">
-            <div class="stat-card"><div class="stat-num">12</div><div class="stat-label">Data Files</div></div>
-            <div class="stat-card"><div class="stat-num">24</div><div class="stat-label">Templates</div></div>
-            <div class="stat-card"><div class="stat-num">26</div><div class="stat-label">Generated Docs</div></div>
-            <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">Output Formats</div></div>
+            <div class="stat-card">
+                <div class="stat-num">26</div>
+                <div class="stat-label">Data Files</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num">40</div>
+                <div class="stat-label">Templates</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num">25</div>
+                <div class="stat-label">Generated Docs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num">4</div>
+                <div class="stat-label">Output Formats</div>
+            </div>
         </div>
 
         <!-- FedRAMP Compliance Banner -->
         <div style="background:linear-gradient(135deg, var(--uiao-primary) 0%, #264e63 100%); border-radius:8px; padding:24px 32px; margin-bottom:24px; color:#fff; display:flex; align-items:center; gap:24px; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
-            <div style="min-width:64px; height:64px; background:rgba(255,255,255,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:28px;">&#x1f6e1;</div>
+            <div style="min-width:64px; height:64px; background:rgba(255,255,255,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:28px; flex-shrink:0;">&#x1f6e1;</div>
             <div>
-                <h3 style="margin:0 0 8px; font-size:18px; font-weight:700; color:#fff;">FedRAMP 20x Phase 2 Compliant — SaaS System</h3>
-                <p style="margin:0; font-size:14px; line-height:1.6; opacity:0.92;">Currently under development... UIAO is FedRAMP 20x Phase 2 designed to be compliant as a Software-as-a-Service System, inheriting CSP controls, implementing SCuBA baselines, and documenting compensating controls for GCC-Moderate telemetry and analytics limitations.</p>
+                <h3 style="margin:0 0 8px; font-size:18px; font-weight:700; color:#fff;">FedRAMP 20x Phase 2 Compliant &mdash; SaaS System</h3>
+                <p style="margin:0; font-size:14px; line-height:1.6; opacity:0.92;">Currently under development&hellip; UIAO is FedRAMP 20x Phase 2 designed to be compliant as a Software-as-a-Service System, inheriting CSP controls, implementing SCuBA baselines, and documenting compensating controls for GCC-Moderate telemetry and analytics limitations.</p>
                 <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">
                     <span style="background:rgba(255,255,255,0.2); padding:3px 12px; border-radius:12px; font-size:11px; font-weight:600;">CSP Control Inheritance</span>
                     <span style="background:rgba(255,255,255,0.2); padding:3px 12px; border-radius:12px; font-size:11px; font-weight:600;">SCuBA Baselines</span>
@@ -111,204 +136,173 @@
             </div>
         </div>
 
-        <!-- Dashboard Grid -->
-        <div class="dashboard-grid">
-            <!-- Sidebar -->
-            <div class="sidebar">
-                <h3>Documents</h3>
-                <ul>
-                    <li><a href="#" class="active" onclick="loadDoc('leadership-briefing')">Leadership Briefing</a></li>
-                    <li><a href="#" onclick="loadDoc('program-vision')">Program Vision</a></li>
-                    <li><a href="#" onclick="loadDoc('unified-architecture')">Unified Architecture</a></li>
-                    <li><a href="#" onclick="loadDoc('tic3-roadmap')">TIC 3.0 Roadmap</a></li>
-                    <li><a href="#" onclick="loadDoc('modernization-timeline')">Modernization Timeline</a></li>
-                    <li><a href="#" onclick="loadDoc('canon-spec')">Canon Spec</a></li>
-                    <li><a href="#" onclick="loadDoc('control-plane-architecture')">Control-Plane Architecture</a></li>
-                    <li><a href="#" onclick="loadDoc('crosswalk-index')">Crosswalk Index</a></li>
-                    <li><a href="#" onclick="loadDoc('fedramp-crosswalk')">FedRAMP Crosswalk</a></li>
-                    <li><a href="#" onclick="loadDoc('fedramp22_summary_v1.0')">FedRAMP 20x Phase 2 Summary</a></li>
-                                        <li><a href="#" onclick="loadDoc('vendor-stack')">Vendor Stack</a></li>
-                    <li><a href="#" onclick="loadDoc('project-plans-summary')">Project Plans Summary</a></li>                     <li><a href="#" onclick="loadDoc('vendor-stack')">Vendor Stack</a></li>                     <li><a href="#" onclick="loadDoc('management-stack')">Management Stack</a></li>
-                                        <li><a href="#" onclick="loadDoc('seven-layer-model')">Seven-Layer Model</a></li>
-                </ul>
-                <h3 style="margin-top:24px;">Data Sources</h3>
-                <ul>
-                    <li><a href="#">program.yml</a></li>
-                    <li><a href="#">roadmap.yml</a></li>
-                    <li><a href="#">appendices.yml</a></li>
-                                        <li><a href="#">canon-spec.yml</a></li>
-                    <li><a href="#">control-planes.yml</a></li>
-                    <li><a href="#">crosswalk-index.yml</a></li>
-                    <li><a href="#">diagrams.yml</a></li>
-                    <li><a href="#">fedramp-20x.yml</a></li>
-                    <li><a href="#">leadership-briefing.yml</a></li>
-                    <li><a href="#">management-stack.yml</a></li>
-                    <li><a href="#">project-plans.yml</a></li>
-                    <li><a href="#">vendor-stack.yml</a></li>
-                </ul>
-                <h3 style="margin-top:24px;">Schemas</h3>
-                <ul>
-                    <li><a href="#">udc_metadata</a></li>
-                    <li><a href="#">udc_templates</a></li>
-                    <li><a href="#">udc_pipeline</a></li>
-                    <li><a href="#">udc_export</a></li>
-                </ul>
+        <!-- SECTION: Dashboard -->
+        <div id="section-dashboard">
+
+            <!-- Pipeline Status -->
+            <div class="card">
+                <h2>Pipeline Status</h2>
+                <div class="pipeline-steps">
+                    <div class="pipeline-step done"><strong>Validate</strong><br><small>Schemas OK</small></div>
+                    <span class="pipeline-arrow">&rarr;</span>
+                    <div class="pipeline-step done"><strong>Normalize</strong><br><small>Ordered</small></div>
+                    <span class="pipeline-arrow">&rarr;</span>
+                    <div class="pipeline-step done"><strong>Compile</strong><br><small>25 docs</small></div>
+                    <span class="pipeline-arrow">&rarr;</span>
+                    <div class="pipeline-step done"><strong>Export</strong><br><small>Ready</small></div>
+                </div>
             </div>
 
-            <!-- Content Area -->
-            <div class="content-area">
-                <!-- PAGE: Dashboard -->
-                <div id="page-dashboard">
-                    <div class="card">
-                        <h2>Generate Documents</h2>
-                        <div class="generate-section">
-                            <select id="docSelect">
-                                <option value="all">All Documents</option>
-                                <option value="leadership-briefing">Leadership Briefing</option>
-                                <option value="program-vision">Program Vision</option>
-                                <option value="unified-architecture">Unified Architecture</option>
-                                <option value="tic3-roadmap">TIC 3.0 Roadmap</option>
-                                <option value="modernization-timeline">Modernization Timeline</option>
-                                <option value="canon-spec">Canon Spec</option>
-                                <option value="control-plane-architecture">Control-Plane Architecture</option>
-                                <option value="crosswalk-index">Crosswalk Index</option>
-                                <option value="fedramp-crosswalk">FedRAMP Crosswalk</option>
-                                <option value="fedramp22_summary_v1.0">FedRAMP 20x Phase 2 Summary</option>
-                                <option value="project-plans-summary">Project Plans Summary</option> <option value="vendor-stack">Vendor Stack</option> <option value="management-stack">Management Stack</option> <option value="seven-layer-model">Seven-Layer Model</option>
-                            </select>
-                            <select id="formatSelect">
-                                <option value="md">Markdown</option>
-                                <option value="docx">Word (DOCX)</option>
-                                <option value="pdf">PDF</option>
-                                <option value="html">HTML</option>
-                            </select>
-                            <button class="btn btn-primary" onclick="generateDoc()">Generate</button>
-                            <span id="loading"><span class="spinner"></span>Generating...</span>
-                        </div>
-                        <h2>Pipeline Status</h2>
-                        <div class="pipeline-steps">
-                            <div class="pipeline-step done"><strong>Validate</strong><br><small>Schemas OK</small></div>
-                            <span class="pipeline-arrow">&rarr;</span>
-                            <div class="pipeline-step done"><strong>Normalize</strong><br><small>Ordered</small></div>
-                            <span class="pipeline-arrow">&rarr;</span>
-                            <div class="pipeline-step done"><strong>Compile</strong><br><small>27 docs</small></div>
-                            <span class="pipeline-arrow">&rarr;</span>
-                            <div class="pipeline-step done"><strong>Export</strong><br><small>Ready</small></div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <h2>Recent Documents</h2>
-                        <table class="doc-table">
-                            <thead><tr><th>Document</th><th>Template</th><th>Last Generated</th><th>Status</th><th>Actions</th></tr></thead>
-                            <tbody>
-                                <tr><td>Leadership Briefing</td><td>leadership-briefing.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('leadership-briefing')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('leadership-briefing','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('leadership-briefing','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Program Vision</td><td>program-vision.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('program-vision')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('program-vision','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('program-vision','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Unified Architecture</td><td>unified-architecture.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('unified-architecture')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('unified-architecture','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('unified-architecture','pdf')">PDF</button></div></td></tr>
-                                <tr><td>TIC 3.0 Roadmap</td><td>tic3-roadmap.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('tic3-roadmap')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('tic3-roadmap','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('tic3-roadmap','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Modernization Timeline</td><td>modernization-timeline.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('modernization-timeline')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('modernization-timeline','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('modernization-timeline','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Canon Spec</td><td>canon-spec.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('canon-spec')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('canon-spec','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('canon-spec','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Control-Plane Architecture</td><td>control-plane-architecture.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('control-plane-architecture')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('control-plane-architecture','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('control-plane-architecture','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Crosswalk Index</td><td>crosswalk-index.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('crosswalk-index')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('crosswalk-index','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('crosswalk-index','pdf')">PDF</button></div></td></tr>
-                                <tr><td>FedRAMP Crosswalk</td><td>fedramp-crosswalk.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('fedramp-crosswalk')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','pdf')">PDF</button></div></td></tr>
-                                <tr><td>FedRAMP 20x Phase 2 Summary</td><td>fedramp22_summary_v1.0.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('fedramp22_summary_v1.0')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Project Plans Summary</td><td>project-plans-summary.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('project-plans-summary')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','pdf')">PDF</button></div></td></tr>
-                                <tr><td>Seven-Layer Model</td><td>seven-layer-model.md.j2</td><td>2026-03-19</td><td><span class="status-badge success">Current</span></td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="loadDoc('seven-layer-model')">View</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('seven-layer-model')">DOCX</button></div></td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+            <!-- Generate Documents -->
+            <div class="card">
+                <h2>Generate Documents</h2>
+                <div class="generate-section">
+                    <label for="docSelect">Document</label>
+                    <select id="docSelect">
+                        <option value="all">All Documents</option>
+                        <option value="leadership-briefing">Leadership Briefing</option>
+                        <option value="program-vision">Program Vision</option>
+                        <option value="unified-architecture">Unified Architecture</option>
+                        <option value="tic3-roadmap">TIC 3.0 Roadmap</option>
+                        <option value="modernization-timeline">Modernization Timeline</option>
+                        <option value="canon-spec">Canon Spec</option>
+                        <option value="control-plane-architecture">Control-Plane Architecture</option>
+                        <option value="crosswalk-index">Crosswalk Index</option>
+                        <option value="fedramp-crosswalk">FedRAMP Crosswalk</option>
+                        <option value="fedramp22_summary_v1.0">FedRAMP 20x Phase 2 Summary</option>
+                        <option value="project-plans-summary">Project Plans Summary</option>
+                        <option value="vendor-stack">Vendor Stack</option>
+                        <option value="management-stack">Management Stack</option>
+                        <option value="seven-layer-model">Seven-Layer Model</option>
+                    </select>
+                    <label for="formatSelect">Format</label>
+                    <select id="formatSelect">
+                        <option value="md">Markdown</option>
+                        <option value="docx">Word (DOCX)</option>
+                        <option value="pdf">PDF</option>
+                        <option value="html">HTML</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="generateDoc()">Generate</button>
+                    <span id="loading"><span class="spinner"></span>Generating&hellip;</span>
                 </div>
-                                
-                <div id="page-viewer" style="display:none;">
-                    <div class="card">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                            <h2 id="viewer-title">Document Viewer</h2>
-                            <div class="btn-group">
-                                <button class="btn btn-secondary btn-sm" onclick="window.print()">Print</button>
-                                <button class="btn btn-primary btn-sm" onclick="showPage('dashboard', this)">Back</button>
-                            </div>
-                        </div>
-                        <div id="doc-viewer" class="doc-viewer">
-                            <p style="color:#71767a;text-align:center;padding:60px 0;">Select a document from the sidebar to view it here.</p>
-                        </div>
-                    </div>
-                </div>
+            </div>
 
-                <!-- PAGE: Pipeline -->
-                <div id="page-pipeline" style="display:none;">
-                    <div class="card">
-                        <h2>UDC Pipeline</h2>
-                        <p>The UIAO Document Compiler runs a three-stage pipeline on every push to <code>main</code>.</p>
-                        <table class="doc-table">
-                            <thead><tr><th>Stage</th><th>Script</th><th>Output</th><th>Status</th></tr></thead>
-                            <tbody>
-                                <tr><td><strong>1. Validate</strong></td><td>scripts/validate_schemas.py</td><td>Pass/fail against JSON schemas</td><td><span class="status-badge success">Pass</span></td></tr>
-                                <tr><td><strong>2. Normalize</strong></td><td>scripts/normalize_artifacts.py</td><td>Canonical ordering in normalized/</td><td><span class="status-badge success">Pass</span></td></tr>
-                                <tr><td><strong>3. Compile</strong></td><td>scripts/compile_documents.py</td><td>MD, DOCX, PDF, HTML output</td><td><span class="status-badge success">Pass</span></td></tr>
-                            </tbody>
-                        </table>
+            <!-- Document Cards -->
+            <div class="card">
+                <h2>Documents</h2>
+                <div class="doc-grid" id="doc-grid">
+                    <!-- Cards injected by JS -->
+                </div>
+            </div>
+
+        </div><!-- /section-dashboard -->
+
+        <!-- SECTION: Viewer -->
+        <div id="section-viewer" style="display:none;">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                    <h2 id="viewer-title">Document Viewer</h2>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary btn-sm" onclick="window.print()">Print</button>
+                        <button class="btn btn-primary btn-sm" onclick="showSection('dashboard', null)">&#8592; Back</button>
                     </div>
                 </div>
-
-                <!-- PAGE: Documents List -->
-                <div id="page-documents" style="display:none;">
-                    <div class="card">
-                        <h2>Document Library</h2>
-                        <p>All generated documents from the UIAO-Core data layer.</p>
-                        <table class="doc-table">
-                            <thead><tr><th>Document</th><th>Description</th><th>Formats</th></tr></thead>
-                            <tbody>
-                                <tr><td><strong>Leadership Briefing</strong></td><td>Executive summary for CIO/CISO audience</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('leadership-briefing','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('leadership-briefing','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('leadership-briefing','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('leadership-briefing','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Program Vision</strong></td><td>Full architectural vision and core thesis</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('program-vision','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('program-vision','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('program-vision','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('program-vision','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Unified Architecture</strong></td><td>Seven-concept model and layer details</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('unified-architecture','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('unified-architecture','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('unified-architecture','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('unified-architecture','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>TIC 3.0 Roadmap</strong></td><td>Phase-by-phase implementation plan</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('tic3-roadmap','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('tic3-roadmap','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('tic3-roadmap','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('tic3-roadmap','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Modernization Timeline</strong></td><td>Workstream milestones and dependencies</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('modernization-timeline','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('modernization-timeline','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('modernization-timeline','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('modernization-timeline','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Canon Spec</strong></td><td>Canonical specification for UIAO architecture</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('canon-spec','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('canon-spec','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('canon-spec','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('canon-spec','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Control-Plane Architecture</strong></td><td>Control plane design and integration points</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('control-plane-architecture','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('control-plane-architecture','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('control-plane-architecture','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('control-plane-architecture','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Crosswalk Index</strong></td><td>Cross-reference index across frameworks</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('crosswalk-index','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('crosswalk-index','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('crosswalk-index','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('crosswalk-index','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>FedRAMP Crosswalk</strong></td><td>FedRAMP control mapping and crosswalk</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp-crosswalk','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>FedRAMP 20x Phase 2 Summary</strong></td><td>FedRAMP 20x Phase 2 compliance summary</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('fedramp22_summary_v1.0','html')">HTML</button></div></td></tr>
-                                <tr><td><strong>Project Plans Summary</strong></td><td>Project planning and milestone overview</td><td><div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','md')">MD</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','docx')">DOCX</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','pdf')">PDF</button><button class="btn btn-secondary btn-sm" onclick="downloadAs('project-plans-summary','html')">HTML</button></div></td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div id="doc-viewer" class="doc-viewer-wrap">
+                    <p style="color:#71767a; text-align:center; padding:60px 0;">Select a document from the Dashboard to view it here.</p>
                 </div>
+            </div>
+        </div>
 
-            </div><!-- /content-area -->
-        </div><!-- /dashboard-grid -->
+        <!-- SECTION: Pipeline Detail -->
+        <div id="section-pipeline" style="display:none;">
+            <div class="card">
+                <h2>UDC Pipeline</h2>
+                <p>The UIAO Document Compiler runs a three-stage pipeline on every push to <code>main</code>.</p>
+                <table class="doc-table">
+                    <thead>
+                        <tr><th>Stage</th><th>Script</th><th>Output</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>1. Validate</strong></td><td>scripts/validate_schemas.py</td><td>Pass/fail against JSON schemas</td><td><span class="status-badge success">Pass</span></td></tr>
+                        <tr><td><strong>2. Normalize</strong></td><td>scripts/normalize_artifacts.py</td><td>Canonical ordering in normalized/</td><td><span class="status-badge success">Pass</span></td></tr>
+                        <tr><td><strong>3. Compile</strong></td><td>scripts/compile_documents.py</td><td>MD, DOCX, PDF, HTML output</td><td><span class="status-badge success">Pass</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </main>
 
-    <!-- Footer -->
     <footer class="footer">
         <div>UIAO-Core &mdash; Unified Identity-Addressing-Overlay Architecture</div>
         <div style="margin-top:4px;">Personal experiment &bull; Machine-generated via UDC Pipeline</div>
     </footer>
 
-    <!-- Markdown renderer -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
         const REPO = 'WhalerMike/uiao-core';
         const BRANCH = 'main';
-        const ALL_DOCS = ['leadership-briefing','program-vision','unified-architecture','tic3-roadmap','modernization-timeline','canon-spec','control-plane-architecture','crosswalk-index','fedramp-crosswalk','fedramp22_summary_v1.0','project-plans-summary','vendor-stack','seven-layer-model','management-stack'];
+        const ALL_DOCS = [
+            'leadership-briefing', 'program-vision', 'unified-architecture',
+            'tic3-roadmap', 'modernization-timeline', 'canon-spec',
+            'control-plane-architecture', 'crosswalk-index', 'fedramp-crosswalk',
+            'fedramp22_summary_v1.0', 'project-plans-summary', 'vendor-stack',
+            'management-stack', 'seven-layer-model'
+        ];
 
-        function showPage(page, el) {
-            document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
-            const target = document.getElementById('page-' + page);
+        const DOC_META = [
+            { slug: 'leadership-briefing', title: 'Leadership Briefing', desc: 'Executive summary for CIO/CISO audience', date: '2026-03-19' },
+            { slug: 'program-vision', title: 'Program Vision', desc: 'Full architectural vision and core thesis', date: '2026-03-19' },
+            { slug: 'unified-architecture', title: 'Unified Architecture', desc: 'Seven-concept model and layer details', date: '2026-03-19' },
+            { slug: 'tic3-roadmap', title: 'TIC 3.0 Roadmap', desc: 'Phase-by-phase implementation plan', date: '2026-03-19' },
+            { slug: 'modernization-timeline', title: 'Modernization Timeline', desc: 'Workstream milestones and dependencies', date: '2026-03-19' },
+            { slug: 'canon-spec', title: 'Canon Spec', desc: 'Canonical specification for UIAO architecture', date: '2026-03-19' },
+            { slug: 'control-plane-architecture', title: 'Control-Plane Architecture', desc: 'Control plane design and integration points', date: '2026-03-19' },
+            { slug: 'crosswalk-index', title: 'Crosswalk Index', desc: 'Cross-reference index across frameworks', date: '2026-03-19' },
+            { slug: 'fedramp-crosswalk', title: 'FedRAMP Crosswalk', desc: 'FedRAMP control mapping and crosswalk', date: '2026-03-19' },
+            { slug: 'fedramp22_summary_v1.0', title: 'FedRAMP 20x Phase 2 Summary', desc: 'FedRAMP 20x Phase 2 compliance summary', date: '2026-03-19' },
+            { slug: 'project-plans-summary', title: 'Project Plans Summary', desc: 'Project planning and milestone overview', date: '2026-03-19' },
+            { slug: 'vendor-stack', title: 'Vendor Stack', desc: 'Approved vendor technologies and stack components', date: '2026-03-19' },
+            { slug: 'management-stack', title: 'Management Stack', desc: 'Management layer tooling and integration architecture', date: '2026-03-19' },
+            { slug: 'seven-layer-model', title: 'Seven-Layer Model', desc: 'Detailed seven-layer UIAO model specification', date: '2026-03-19' }
+        ];
+
+        function buildDocCards() {
+            var grid = document.getElementById('doc-grid');
+            grid.innerHTML = DOC_META.map(function(doc) {
+                return '<div class="doc-card">' +
+                    '<p class="doc-card__title">' + doc.title + '</p>' +
+                    '<p class="doc-card__desc">' + doc.desc + '</p>' +
+                    '<div class="doc-card__meta">Last generated: ' + doc.date + '</div>' +
+                    '<div class="doc-card__actions">' +
+                        '<button class="btn btn-outline btn-sm" onclick="loadDoc(\'' + doc.slug + '\')">View</button>' +
+                        '<button class="btn btn-secondary btn-sm" onclick="downloadAs(\'' + doc.slug + '\',\'docx\')">DOCX</button>' +
+                        '<button class="btn btn-secondary btn-sm" onclick="downloadAs(\'' + doc.slug + '\',\'pdf\')">PDF</button>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function showSection(name, el) {
+            document.querySelectorAll('[id^="section-"]').forEach(function(s) { s.style.display = 'none'; });
+            var target = document.getElementById('section-' + name);
             if (target) target.style.display = 'block';
-            document.querySelectorAll('.site-nav a').forEach(a => a.classList.remove('active'));
-            if(el) el.classList.add('active');
+            document.querySelectorAll('.site-nav a').forEach(function(a) { a.classList.remove('active'); });
+            if (el) el.classList.add('active');
         }
 
         async function loadDoc(slug) {
-            showPageDirect('viewer');
-            const viewer = document.getElementById('doc-viewer');
-            const title = document.getElementById('viewer-title');
-            viewer.innerHTML = '<p style="text-align:center;padding:40px;"><span class="spinner"></span> Loading document...</p>';
-            title.textContent = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            showSection('viewer', null);
+            document.querySelectorAll('.site-nav a').forEach(function(a) { a.classList.remove('active'); });
+            var viewerLink = document.querySelector('.site-nav a[onclick*="viewer"]');
+            if (viewerLink) viewerLink.classList.add('active');
+            var viewer = document.getElementById('doc-viewer');
+            var title = document.getElementById('viewer-title');
+            viewer.innerHTML = '<p style="text-align:center;padding:40px;"><span class="spinner"></span> Loading document\u2026</p>';
+            title.textContent = slug.replace(/-/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
             try {
-                const base = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/docs/';
-                const fileBase = slug.replace(/-/g, '_');
-                const urls = [base + fileBase + '.md', base + fileBase + '_v1.0.md'];
+                var base = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/docs/';
+                var fileBase = slug.replace(/-/g, '_');
+                var urls = [base + fileBase + '.md', base + fileBase + '_v1.0.md'];
                 var md = null;
                 for (var i = 0; i < urls.length; i++) {
                     var resp = await fetch(urls[i]);
@@ -319,124 +313,67 @@
             } catch(e) {
                 viewer.innerHTML = '<p style="color:#d54309;text-align:center;padding:40px;">Could not load document: ' + slug + '.md<br><small>' + e.message + '</small></p>';
             }
-                    }
-        function showPageDirect(page) {
-            document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
-            const target = document.getElementById('page-' + page);
-            if (target) target.style.display = 'block';
         }
 
         async function downloadAs(slug, fmt) {
-            const url = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/docs/' + slug.replace(/-/g, '_') + '.md';
-            const resp = await fetch(url);
+            if (fmt !== 'md') {
+                var ext = fmt;
+                var candidates = [slug, slug.replace(/-/g, '_') + '_v1.0', slug.replace(/-/g, '_')];
+                var base = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/exports/';
+                for (var i = 0; i < candidates.length; i++) {
+                    try {
+                        var resp = await fetch(base + candidates[i] + '.' + ext);
+                        if (resp.ok) {
+                            var blob = await resp.blob();
+                            var a = document.createElement('a');
+                            a.href = URL.createObjectURL(blob);
+                            a.download = slug + '.' + ext;
+                            a.click();
+                            return;
+                        }
+                    } catch(e) { continue; }
+                }
+            }
+            var url = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/docs/' + slug.replace(/-/g, '_') + '.md';
+            var resp = await fetch(url);
             if (!resp.ok) { alert('Could not fetch: ' + slug); return; }
-            const md = await resp.text();
+            var md = await resp.text();
             if (fmt === 'md') {
-                const blob = new Blob([md], {type:'text/markdown'});
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = slug + '.md'; a.click();
+                var blob = new Blob([md], {type:'text/markdown'});
+                var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = slug + '.md'; a.click();
             } else if (fmt === 'html') {
-                const html = '<html><head><style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6;}</style></head><body>' + marked.parse(md) + '</body></html>';
-                const blob = new Blob([html], {type:'text/html'});
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = slug + '.html'; a.click();
+                var html = '<html><head><style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6;}</style></head><body>' + marked.parse(md) + '</body></html>';
+                var blob = new Blob([html], {type:'text/html'});
+                var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = slug + '.html'; a.click();
             } else if (fmt === 'pdf') {
-                const container = document.createElement('div');
+                var container = document.createElement('div');
                 container.style.cssText = 'font-family:sans-serif;max-width:750px;margin:0 auto;padding:40px;line-height:1.6;';
                 container.innerHTML = marked.parse(md);
                 document.body.appendChild(container);
-                html2pdf().set({margin:0.75,filename:slug+'.pdf',image:{type:'jpeg',quality:0.98},html2canvas:{scale:2},jsPDF:{unit:'in',format:'letter',orientation:'portrait'}}).from(container).save().then(function(){document.body.removeChild(container);});
+                html2pdf().set({margin:0.75, filename:slug+'.pdf', image:{type:'jpeg',quality:0.98}, html2canvas:{scale:2}, jsPDF:{unit:'in',format:'letter',orientation:'portrait'}}).from(container).save().then(function(){ document.body.removeChild(container); });
             } else if (fmt === 'docx') {
-                const html = '<html><body style="font-family:Calibri,sans-serif;line-height:1.6;">' + marked.parse(md) + '</body></html>';
-                const blob = new Blob(['\ufeff' + html], {type:'application/msword'});
-                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = slug + '.doc'; a.click();
+                var html = '<html><body style="font-family:Calibri,sans-serif;line-height:1.6;">' + marked.parse(md) + '</body></html>';
+                var blob = new Blob(['\ufeff' + html], {type:'application/msword'});
+                var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = slug + '.doc'; a.click();
             }
         }
 
         function generateDoc() {
-            const doc = document.getElementById('docSelect').value;
-            const fmt = document.getElementById('formatSelect').value;
-            const loading = document.getElementById('loading');
+            var doc = document.getElementById('docSelect').value;
+            var fmt = document.getElementById('formatSelect').value;
+            var loading = document.getElementById('loading');
             loading.style.display = 'inline';
-            setTimeout(() => {
+            setTimeout(function() {
                 loading.style.display = 'none';
                 if (doc === 'all') {
-                    ALL_DOCS.forEach(function(s){ downloadAs(s, fmt); });
+                    ALL_DOCS.forEach(function(s) { downloadAs(s, fmt); });
                 } else {
                     downloadAs(doc, fmt);
                 }
             }, 2000);
         }
 
-                // Attach onclick handlers to Recent Documents table buttons
-                document.querySelectorAll('.doc-table td .btn').forEach(function(btn) {
-            var row = btn.closest('tr');
-            if (!row) return;
-            var templateCell = row.querySelectorAll('td')[1];
-            if (!templateCell) return;
-            var templateName = templateCell.textContent.trim();
-            var slug = templateName.replace('.md.j2', '').replace(/_/g, '-');
-            var label = btn.textContent.trim();
-            if (label === 'View') {
-                btn.onclick = function() { loadDoc(slug); };
-            } else if (label === 'DOCX') {
-                btn.onclick = function() { downloadAs(slug, 'docx'); };
-            } else if (label === 'PDF') {
-                btn.onclick = function() { downloadAs(slug, 'pdf'); };
-            }
-        });
-
-        // Also attach handlers to Document Library format buttons
-                document.querySelectorAll('.card td .btn-sm').forEach(function(btn) {
-            var row = btn.closest('tr');
-            if (!row) return;
-            var docName = row.querySelector('strong');
-            if (!docName) return;
-            var slug = docName.textContent.trim().toLowerCase().replace(/\s+/g, '-');
-            var label = btn.textContent.trim();
-            var fmtMap = {'MD':'md','DOCX':'docx','PDF':'pdf','HTML':'html'};
-            var fmt = fmtMap[label];
-            if (fmt) {
-                btn.onclick = function() { downloadAs(slug, fmt); };
-            }
-        });
-
-                // Override downloadAs to use pre-built exports for DOCX/PDF/HTML
-        var _originalDownloadAs = downloadAs;
-        downloadAs = async function(slug, fmt) {
-            if (fmt === 'md') {
-                return _originalDownloadAs(slug, fmt);
-            }
-            // For docx, pdf, html: fetch pre-built file from exports/
-                        var ext = fmt === 'docx' ? 'docx' : fmt === 'pdf' ? 'pdf' : 'html';
-            var candidates = [slug, slug.replace(/-/g, '_') + '_v1.0', slug.replace(/-/g, '_')];
-            var base = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/exports/';
-            for (var i = 0; i < candidates.length; i++) {
-                try {
-                    var resp = await fetch(base + candidates[i] + '.' + ext);
-                    if (resp.ok) {
-                        var blob = await resp.blob();
-                        var a = document.createElement('a');
-                        a.href = URL.createObjectURL(blob);
-                        a.download = slug + '.' + ext;
-                        a.click();
-                        return;
-                    }
-                } catch(e) { continue; }
-            }
-            return _originalDownloadAs(slug, fmt);
-        };
-
-        // Wire sidebar document links
-        document.querySelectorAll('.sidebar ul:first-of-type a').forEach(function(a) {
-            var text = a.textContent.trim();
-            var slug = text.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            a.href = '#';
-            a.onclick = function(e) {
-                e.preventDefault();
-                document.querySelectorAll('.sidebar a').forEach(function(el) { el.classList.remove('active'); });
-                a.classList.add('active');
-                loadDoc(slug);
-            };
-        });
+        buildDocCards();
     </script>
 </body>
 </html>
