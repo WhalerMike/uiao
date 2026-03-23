@@ -174,6 +174,7 @@ def generate_gemini(
     else:
         console.print("[bold]Generating all Gemini images...[/bold]")
         results = generate_all_gemini_images(output_dir, force=force)
+                console.print(f"[green]Generated {len(results)} image(s) to {output_dir}[/green]")
         
 @app.command()
 def generate_pptx(
@@ -207,6 +208,4 @@ def generate_pptx(
     )
     console.print(f"[green]PPTX exported to {out}[/green]")
         
-        console.print(f"[green]Generated {len(results)} image(s) to {output_dir}[/green]")
-if __name__ == "__main__":
-    app()
+app()
