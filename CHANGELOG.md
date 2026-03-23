@@ -7,6 +7,7 @@
 * **ci:** add skip-tag to changelog - tag v0.30.0 already exists ([fac84fd](https://github.com/WhalerMike/uiao-core/commit/fac84fdff597837d42c1806c26d01a731ef50982))
 * **ci:** fix changelog workflow git push failure (exit code 128) ([cd7fb73](https://github.com/WhalerMike/uiao-core/commit/cd7fb7375315a531b072477dd8f46ec673576cdc))
 * **ci:** replace broken gh-mcp-server with TruffleHog for secret scanning ([0ddb737](https://github.com/WhalerMike/uiao-core/commit/0ddb737b64362943d92e4a4439606b73d090b87f))
+* **lint:** fix I001 import order + move Inches default to module constant in rich_docx.py (ADR-0004) ([56647e4](https://github.com/WhalerMike/uiao-core/commit/56647e4276feace4e617856473a4d9b542659930))
 * **lint:** fix I001 import order + remove unused typing.Any in trestle.py (ADR-0004) ([9914e61](https://github.com/WhalerMike/uiao-core/commit/9914e61b87507c9847cf25a2ac77271ac52452b6))
 * **lint:** remove blank line after __future__ import in charts.py (ruff I001, ADR-0004) ([74792ad](https://github.com/WhalerMike/uiao-core/commit/74792ad60bfa38b12210e126e253f77017521ce4))
 * **lint:** sort imports alphabetically in generators/__init__.py (ruff I001, ADR-0004) ([486804c](https://github.com/WhalerMike/uiao-core/commit/486804cb67893dfc07b44d8771621d7f8e0a02a6))
