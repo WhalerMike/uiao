@@ -5,6 +5,7 @@
 
 * AI Security Audit handles both PRs and direct pushes to main ([6bc9f42](https://github.com/WhalerMike/uiao-core/commit/6bc9f42d648ba2c0fd97b42908ffff238fe66f14))
 * **ci:** add skip-tag to changelog - tag v0.30.0 already exists ([fac84fd](https://github.com/WhalerMike/uiao-core/commit/fac84fdff597837d42c1806c26d01a731ef50982))
+* **ci:** correct --tb=shortcom typo to --tb=short in ci.yml ([0aa5374](https://github.com/WhalerMike/uiao-core/commit/0aa537478517632da8c8e032b492b4b922ac69ec))
 * **ci:** fix changelog workflow git push failure (exit code 128) ([cd7fb73](https://github.com/WhalerMike/uiao-core/commit/cd7fb7375315a531b072477dd8f46ec673576cdc))
 * **ci:** replace broken gh-mcp-server with TruffleHog for secret scanning ([0ddb737](https://github.com/WhalerMike/uiao-core/commit/0ddb737b64362943d92e4a4439606b73d090b87f))
 * **cli:** restore gemini print and remove stray line in app.py ([6a33071](https://github.com/WhalerMike/uiao-core/commit/6a3307104925fd55bd68b66055ff3b7d296fc501))
