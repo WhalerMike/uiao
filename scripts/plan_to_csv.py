@@ -10,8 +10,8 @@ warnings.warn(
     stacklevel=1,
 )
 # Paths
-PLAN_YAML = 'canon/uiao_project_plan_v1.0.yaml'
-PLAN_CSV = 'docs/modernization_atlas_planner_import.csv'
+PLAN_YAML = "canon/uiao_project_plan_v1.0.yaml"
+PLAN_CSV = "docs/modernization_atlas_planner_import.csv"
 
 
 def yaml_to_planner_csv():
@@ -23,23 +23,25 @@ def yaml_to_planner_csv():
         data = yaml.safe_load(file)
 
     # MS Planner Import Headers
-    headers = ['Task Name', 'Bucket', 'Progress', 'Priority', 'Start Date', 'Due Date', 'Description']
+    headers = ["Task Name", "Bucket", "Progress", "Priority", "Start Date", "Due Date", "Description"]
 
-    with open(PLAN_CSV, 'w', newline='') as csvfile:
+    with open(PLAN_CSV, "w", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=headers)
         writer.writeheader()
 
-        for phase in data['project_plan']['phases']:
-            for task in phase['tasks']:
-                writer.writerow({
-                    'Task Name': task['name'],
-                    'Bucket': task['bucket'],
-                    'Progress': 'Not started',
-                    'Priority': 'Medium',
-                    'Start Date': task['start'],
-                    'Due Date': task['due'],
-                    'Description': f"Phase: {phase['phase']} | Owner: {task['owner']}"
-                })
+        for phase in data["project_plan"]["phases"]:
+            for task in phase["tasks"]:
+                writer.writerow(
+                    {
+                        "Task Name": task["name"],
+                        "Bucket": task["bucket"],
+                        "Progress": "Not started",
+                        "Priority": "Medium",
+                        "Start Date": task["start"],
+                        "Due Date": task["due"],
+                        "Description": f"Phase: {phase['phase']} | Owner: {task['owner']}",
+                    }
+                )
 
     print(f"Successfully exported project plan to: {PLAN_CSV}")
 

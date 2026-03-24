@@ -9,6 +9,7 @@ Strategy:
   3. Cache: PNGs are cached in ``assets/images/mermaid/`` and only regenerated
      when the source ``.mermaid`` file changes or ``--force-visuals`` is set.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -70,8 +71,17 @@ def _render_mmdc(mmd_path: Path, png_path: Path) -> bool:
         if not npx:
             return False
         cmd = [
-            npx, "--yes", "@mermaid-js/mermaid-cli",
-            "-i", str(mmd_path), "-o", str(png_path), "-b", "white", "-s", "2",
+            npx,
+            "--yes",
+            "@mermaid-js/mermaid-cli",
+            "-i",
+            str(mmd_path),
+            "-o",
+            str(png_path),
+            "-b",
+            "white",
+            "-s",
+            "2",
         ]
     try:
         result = subprocess.run(cmd, capture_output=True, timeout=60, check=False)

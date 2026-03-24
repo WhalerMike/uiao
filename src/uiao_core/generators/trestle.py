@@ -6,6 +6,7 @@ assembled System Security Plan.
 
 References: ADR-0004
 """
+
 from __future__ import annotations
 
 import json
@@ -67,14 +68,16 @@ def _assemble(ssp_data: dict, cd_data: dict) -> dict:
     cd_components = cd.get("components", [])
 
     for comp in cd_components:
-        existing_components.append({
-            "uuid": comp.get("uuid", ""),
-            "type": comp.get("type", "service"),
-            "title": comp.get("title", ""),
-            "description": comp.get("description", ""),
-            "props": comp.get("props", []),
-            "status": {"state": "operational"},
-        })
+        existing_components.append(
+            {
+                "uuid": comp.get("uuid", ""),
+                "type": comp.get("type", "service"),
+                "title": comp.get("title", ""),
+                "description": comp.get("description", ""),
+                "props": comp.get("props", []),
+                "status": {"state": "operational"},
+            }
+        )
     logger.info("Merged %d components into system-implementation.", len(cd_components))
 
     # Merge control-implementations
@@ -132,7 +135,6 @@ def assemble_ssp(
     _validate_ssp(assembled)
     logger.info("Done. Ready for FedRAMP 20x import.")
     return output_path
-
 
 
 # ---------------------------------------------------------------------------

@@ -5,9 +5,8 @@ from scripts.enforcement_orchestrator import AtlasEnforcer
 
 
 class TestE2EAtlasFlow(unittest.TestCase):
-
-    @patch('scripts.enforcement_orchestrator.AtlasEnforcer.update_palo_alto_dag')
-    @patch('scripts.enforcement_orchestrator.AtlasEnforcer.quarantine_sdwan')
+    @patch("scripts.enforcement_orchestrator.AtlasEnforcer.update_palo_alto_dag")
+    @patch("scripts.enforcement_orchestrator.AtlasEnforcer.quarantine_sdwan")
     def test_leaver_quarantine_flow(self, mock_sdwan, mock_palo):
         # 1. Simulate a Sentinel "Leaver" signal for James Vance (Slide 6)
         mock_ip = "10.50.22.101"

@@ -5,6 +5,7 @@ import ``build_ssp`` from ``uiao_core.generators.ssp``.
 
 Deprecated: Use `uiao generate-ssp` CLI command instead.
 """
+
 import logging
 import warnings
 

@@ -3,6 +3,7 @@
 Provides command-line interface for OSCAL document generation,
 validation, and canon management.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -293,6 +294,7 @@ def generate_artifacts(
     )
     console.print(f"[green]PPTX exported to {pptx_out}[/green]")
     console.print("[bold green]All artifacts generated with embedded visuals.[/bold green]")
+
 
 if __name__ == "__main__":
     app()

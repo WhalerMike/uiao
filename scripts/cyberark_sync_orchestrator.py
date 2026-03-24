@@ -12,18 +12,18 @@ warnings.warn(
 )
 # --- Configuration ---
 # CyberArk PAS (Privileged Access Security) API
-CYBERARK_BASE_URL = os.getenv('CYBERARK_VAULT_URL')  # e.g., https://vault.agency.gov
-CYBERARK_USER = os.getenv('CYBERARK_SVC_USER')
-CYBERARK_PASS = os.getenv('CYBERARK_SVC_PASS')
+CYBERARK_BASE_URL = os.getenv("CYBERARK_VAULT_URL")  # e.g., https://vault.agency.gov
+CYBERARK_USER = os.getenv("CYBERARK_SVC_USER")
+CYBERARK_PASS = os.getenv("CYBERARK_SVC_PASS")
 
 # ServiceNow GCC-Moderate
-SN_INSTANCE = os.getenv('SN_INSTANCE_NAME')
+SN_INSTANCE = os.getenv("SN_INSTANCE_NAME")
 SN_BASE_URL = f"https://{SN_INSTANCE}.servicenowservices.gov/api/now/table"
-SN_USER = os.getenv('SN_SVC_USER')
-SN_PASS = os.getenv('SN_SVC_PASS')
-TEAMS_WEBHOOK_URL = os.getenv('TEAMS_WEBHOOK_URL')
+SN_USER = os.getenv("SN_SVC_USER")
+SN_PASS = os.getenv("SN_SVC_PASS")
+TEAMS_WEBHOOK_URL = os.getenv("TEAMS_WEBHOOK_URL")
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 class SyncSummary:
@@ -37,7 +37,9 @@ class SyncSummary:
     def report(self):
         mode = "DRY RUN" if self.dry_run else "LIVE SYNC"
         print(f"\n{'=' * 40}\nCYBERARK ATLAS SYNC - {mode}\n{'=' * 40}")
-        print(f"Total: {self.total_processed} | Created: {self.created} | Updated: {self.updated} | Failed: {self.failed}\n")
+        print(
+            f"Total: {self.total_processed} | Created: {self.created} | Updated: {self.updated} | Failed: {self.failed}\n"
+        )
         self.send_teams_notification()
 
     def send_teams_notification(self):
@@ -45,22 +47,27 @@ class SyncSummary:
             return
         payload = {
             "type": "message",
-            "attachments": [{
-                "contentType": "application/vnd.microsoft.card.adaptive",
-                "content": {
-                    "type": "AdaptiveCard",
-                    "version": "1.4",
-                    "body": [
-                        {"type": "TextBlock", "text": "Atlas: CyberArk to ServiceNow Sync", "weight": "Bolder"},
-                        {"type": "FactSet", "facts": [
-                            {"title": "Mode", "value": "Dry Run" if self.dry_run else "Live"},
-                            {"title": "Privileged Accounts", "value": str(self.total_processed)},
-                            {"title": "Updates/Creates", "value": f"{self.updated}/{self.created}"},
-                            {"title": "Failures", "value": str(self.failed)}
-                        ]}
-                    ]
+            "attachments": [
+                {
+                    "contentType": "application/vnd.microsoft.card.adaptive",
+                    "content": {
+                        "type": "AdaptiveCard",
+                        "version": "1.4",
+                        "body": [
+                            {"type": "TextBlock", "text": "Atlas: CyberArk to ServiceNow Sync", "weight": "Bolder"},
+                            {
+                                "type": "FactSet",
+                                "facts": [
+                                    {"title": "Mode", "value": "Dry Run" if self.dry_run else "Live"},
+                                    {"title": "Privileged Accounts", "value": str(self.total_processed)},
+                                    {"title": "Updates/Creates", "value": f"{self.updated}/{self.created}"},
+                                    {"title": "Failures", "value": str(self.failed)},
+                                ],
+                            },
+                        ],
+                    },
                 }
-            }]
+            ],
         }
         requests.post(TEAMS_WEBHOOK_URL, json=payload)
 
@@ -84,7 +91,7 @@ class CyberArkClient:
         headers = {"Authorization": self.token, "Content-Type": "application/json"}
         res = requests.get(f"{self.base_url}/Accounts", headers=headers)
         res.raise_for_status()
-        return res.json().get('value', [])
+        return res.json().get("value", [])
 
 
 class ServiceNowClient:
@@ -95,41 +102,37 @@ class ServiceNowClient:
         self.table = "cmdb_ci_privileged_id"
 
     def upsert_account(self, account, summary):
-        account_id = account.get('id')
-        name = account.get('name')
+        account_id = account.get("id")
+        name = account.get("name")
         try:
             query = f"correlation_id={account_id}"
             res = requests.get(
-                f"{SN_BASE_URL}/{self.table}",
-                auth=self.auth, headers=self.headers,
-                params={'sysparm_query': query}
+                f"{SN_BASE_URL}/{self.table}", auth=self.auth, headers=self.headers, params={"sysparm_query": query}
             )
             res.raise_for_status()
-            existing = res.json().get('result', [])
+            existing = res.json().get("result", [])
 
             payload = {
                 "name": name,
                 "correlation_id": account_id,
-                "u_safe_name": account.get('safeName'),
-                "u_platform": account.get('platformId'),
+                "u_safe_name": account.get("safeName"),
+                "u_platform": account.get("platformId"),
                 "u_source": "CyberArk Vault",
-                "short_description": "Privileged Access Managed by CyberArk"
+                "short_description": "Privileged Access Managed by CyberArk",
             }
 
             if existing:
                 if not self.dry_run:
-                    sys_id = existing[0]['sys_id']
+                    sys_id = existing[0]["sys_id"]
                     requests.patch(
-                        f"{SN_BASE_URL}/{self.table}/{sys_id}",
-                        auth=self.auth, headers=self.headers, json=payload
+                        f"{SN_BASE_URL}/{self.table}/{sys_id}", auth=self.auth, headers=self.headers, json=payload
                     ).raise_for_status()
                 logging.info(f"UPDATED: {name}")
                 summary.updated += 1
             else:
                 if not self.dry_run:
                     requests.post(
-                        f"{SN_BASE_URL}/{self.table}",
-                        auth=self.auth, headers=self.headers, json=payload
+                        f"{SN_BASE_URL}/{self.table}", auth=self.auth, headers=self.headers, json=payload
                     ).raise_for_status()
                 logging.info(f"CREATED: {name}")
                 summary.created += 1
@@ -156,7 +159,7 @@ class SyncOrchestrator:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     if all([CYBERARK_BASE_URL, CYBERARK_USER, SN_INSTANCE]):
         SyncOrchestrator(dry_run=args.dry_run).run()

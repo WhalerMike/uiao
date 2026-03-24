@@ -5,6 +5,7 @@ import ``build_poam_export`` from ``uiao_core.generators.poam``.
 
 Deprecated: Use `uiao generate-poam` CLI command instead.
 """
+
 import logging
 import warnings
 

@@ -5,6 +5,7 @@ import ``build_oscal`` from ``uiao_core.generators.oscal``.
 
 Deprecated: Use `uiao generate-oscal` CLI command instead.
 """
+
 import logging
 import warnings
 

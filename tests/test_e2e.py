@@ -6,6 +6,7 @@ to avoid polluting the real project tree.
 
 References: ADR-0004 (Week 4 – 100% completion checklist)
 """
+
 from __future__ import annotations
 
 import json
@@ -16,6 +17,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _setup_minimal_canon(tmp_path: Path) -> tuple[Path, Path]:
     """Create minimal canon + data files so generators can run."""
@@ -35,10 +37,7 @@ def _setup_minimal_canon(tmp_path: Path) -> tuple[Path, Path]:
     data_dir.mkdir()
     data_file = data_dir / "controls.yaml"
     data_file.write_text(
-        "controls:\n"
-        "  - id: AC-2\n"
-        "    title: Account Management\n"
-        "    status: implemented\n",
+        "controls:\n  - id: AC-2\n    title: Account Management\n    status: implemented\n",
         encoding="utf-8",
     )
     return canon_file, data_dir
@@ -79,9 +78,7 @@ def _setup_oscal_artifacts(tmp_path: Path) -> Path:
             },
         }
     }
-    (oscal_dir / "uiao-ssp-skeleton.json").write_text(
-        json.dumps(ssp, indent=2), encoding="utf-8"
-    )
+    (oscal_dir / "uiao-ssp-skeleton.json").write_text(json.dumps(ssp, indent=2), encoding="utf-8")
     return oscal_dir
 
 
