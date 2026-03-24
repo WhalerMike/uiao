@@ -245,6 +245,46 @@ def generate_docx(
 
 
 @app.command()
+def generate_docs(
+    canon_path: str = typer.Option(
+        "canon/uiao_leadership_briefing_v1.0.yaml",
+        "--canon",
+        "-c",
+        help="Path to canon YAML file.",
+    ),
+    data_dir: str = typer.Option(
+        "data",
+        "--data-dir",
+        "-d",
+        help="Path to data YAML directory.",
+    ),
+    templates_dir: str = typer.Option(
+        "templates",
+        "--templates-dir",
+        "-t",
+        help="Path to Jinja2 templates directory.",
+    ),
+    output_dir: str = typer.Option(
+        "docs",
+        "--output-dir",
+        "-o",
+        help="Output directory for generated Markdown documents.",
+    ),
+) -> None:
+    """Render Jinja2 templates into Markdown docs using canon YAML and data files."""
+    from uiao_core.generators.docs import build_docs
+
+    console.print(f"[bold]Generating docs from {canon_path}...[/bold]")
+    generated = build_docs(
+        canon_path=Path(canon_path),
+        data_dir=Path(data_dir),
+        templates_dir=Path(templates_dir),
+        docs_dir=Path(output_dir),
+    )
+    console.print(f"[green]Generated {len(generated)} document(s) to {output_dir}[/green]")
+
+
+@app.command()
 def generate_artifacts(
     canon_path: str = typer.Option(
         "canon/uiao_leadership_briefing_v1.0.yaml",
