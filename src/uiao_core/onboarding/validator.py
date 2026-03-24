@@ -46,6 +46,7 @@ _VALID_FIPS = {"low", "moderate", "high"}
 # Result types
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ValidationIssue:
     """A single validation finding."""
@@ -80,6 +81,7 @@ class ValidationResult:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_nested(data: dict[str, Any], dotted_key: str) -> tuple[bool, Any]:
     """Return (found, value) for a dot-separated key path."""
     parts = dotted_key.split(".")
@@ -112,33 +114,27 @@ def _check_value_constraints(data: dict[str, Any]) -> list[ValidationIssue]:
 
     # deployment_model
     found, dm = _get_nested(data, "deployment_model")
-    if found and dm:
-        if str(dm).lower() not in _VALID_DEPLOYMENT_MODELS:
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    field="deployment_model",
-                    message=f"Invalid deployment_model value: '{dm}'",
-                    suggestion=(
-                        f"Allowed values: {', '.join(sorted(_VALID_DEPLOYMENT_MODELS))}"
-                    ),
-                )
+    if found and dm and str(dm).lower() not in _VALID_DEPLOYMENT_MODELS:
+        issues.append(
+            ValidationIssue(
+                severity="error",
+                field="deployment_model",
+                message=f"Invalid deployment_model value: '{dm}'",
+                suggestion=(f"Allowed values: {', '.join(sorted(_VALID_DEPLOYMENT_MODELS))}"),
             )
+        )
 
     # fips_categorization
     found, fips = _get_nested(data, "leadership_briefing.fips_categorization")
-    if found and fips:
-        if str(fips).lower() not in _VALID_FIPS:
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    field="leadership_briefing.fips_categorization",
-                    message=f"Invalid fips_categorization value: '{fips}'",
-                    suggestion=(
-                        f"Allowed values: {', '.join(sorted(_VALID_FIPS))}"
-                    ),
-                )
+    if found and fips and str(fips).lower() not in _VALID_FIPS:
+        issues.append(
+            ValidationIssue(
+                severity="error",
+                field="leadership_briefing.fips_categorization",
+                message=f"Invalid fips_categorization value: '{fips}'",
+                suggestion=(f"Allowed values: {', '.join(sorted(_VALID_FIPS))}"),
             )
+        )
 
     # audience must be a list
     found, audience = _get_nested(data, "audience")
@@ -188,6 +184,7 @@ def _check_optional_sections(data: dict[str, Any]) -> list[ValidationIssue]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def validate_canon(canon_path: Path) -> ValidationResult:
     """Validate a canon YAML file and return a :class:`ValidationResult`.
@@ -284,10 +281,6 @@ def print_validation_report(result: ValidationResult) -> None:
 
     console.print("\n" + "  ".join(parts))
     if not result.passed:
-        console.print(
-            "[red]Validation failed. Fix the errors above before running generators.[/red]"
-        )
+        console.print("[red]Validation failed. Fix the errors above before running generators.[/red]")
     else:
-        console.print(
-            "[green]Validation passed with warnings. Review suggestions above.[/green]"
-        )
+        console.print("[green]Validation passed with warnings. Review suggestions above.[/green]")
