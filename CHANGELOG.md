@@ -1,14 +1,3 @@
-# [1.1.0](https://github.com/WhalerMike/uiao-core/compare/v0.30.0...v1.1.0) (2026-03-23)
-
-
-### Features
-
-* Version sync to 1.1.0
-* Added README badges (CI status, License, Python version, version)
-* Added FedRAMP tool comparison table
-
-
-
 # [0.30.0](https://github.com/WhalerMike/uiao-core/compare/v0.29.0...v0.30.0) (2026-03-24)
 
 
@@ -102,6 +91,7 @@
 * **pkg:** add src/uiao_core/__init__.py package init (ADR-0001) ([4773e6f](https://github.com/WhalerMike/uiao-core/commit/4773e6f1aa2e71cbdc3893d141d05bfa621966cb))
 * **pkg:** add Typer CLI entry point with generate-ssp, validate, canon-check (ADR-0001) ([d95016d](https://github.com/WhalerMike/uiao-core/commit/d95016d28bdc83a3d6786575c260114eeaa57c6e))
 * redesign docs/index.html for clean executive-friendly layout ([5a926f3](https://github.com/WhalerMike/uiao-core/commit/5a926f3f84190865850f5b77e4117ce799cb1db4))
+* Release v1.1.0 - version sync, README badges, and changelog ([7cd5a73](https://github.com/WhalerMike/uiao-core/commit/7cd5a73fd69b7989c91798360b60246605a40153))
 * **ssp:** migrate generate_ssp.py logic into uiao_core.generators.ssp (ADR-0002) ([d891b02](https://github.com/WhalerMike/uiao-core/commit/d891b02b2897aa2fdc47d0171b95f5c123c54321))
 * **trestle:** add validate_oscal_artifacts() + PlanOfActionAndMilestones support (ADR-0004) ([c47f6ce](https://github.com/WhalerMike/uiao-core/commit/c47f6ce74af8829ffbca66b6b04c5a16d6a0b6d8))
 * **utils:** add utils package with __init__.py (ADR-0004) ([1442961](https://github.com/WhalerMike/uiao-core/commit/1442961fe39a261e32414e48b1a0c4bd9d33ba89))
