@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -14,10 +17,10 @@ jobs:
         python-version: ["3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -35,18 +38,44 @@ jobs:
       - name: Lint with ruff
         run: |
           ruff check src/
-        
+
       - name: Type-check with mypy
         run: |
           mypy src/uiao_core/
         continue-on-error: true
 
-      - name: Dependency vulnerability audit (pip-audit)
-        run: |
-          pip install pip-audit
-          pip-audit .
-        continue-on-error: true
-
       - name: Run tests
         run: |
           pytest tests/test_models.py tests/test_cli.py -v --tb=short
+
+      - name: Install audit tools
+        run: pip install pip-audit safety
+
+      - name: Dependency vulnerability audit (pip-audit)
+        run: pip-audit --format json --output pip-audit-report.json || pip-audit
+
+      - name: Dependency vulnerability audit (safety)
+        run: safety check --json --output safety-report.json || safety check
+        continue-on-error: true
+
+      - name: Upload audit reports
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882  # v4.4.3
+        if: always()
+        with:
+          name: dep-audit-py${{ matrix.python-version }}
+          path: |
+            pip-audit-report.json
+            safety-report.json
+          retention-days: 30
+
+      - name: Generate SBOM
+        if: matrix.python-version == '3.12'
+        run: uiao generate-sbom --output sbom.cyclonedx.json
+
+      - name: Upload SBOM
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882  # v4.4.3
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cyclonedx.json
+          retention-days: 90
