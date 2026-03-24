@@ -1,0 +1,234 @@
+"""Tests for the diagram automation feature.
+
+Covers:
+- Loading canon/diagrams.yaml
+- generate_diagrams_from_canon() creating .mermaid files
+- replace_mermaid_blocks_with_images() post-processing
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import yaml
+
+_REPO_ROOT = Path(__file__).parent.parent
+_DIAGRAMS_CANON = _REPO_ROOT / "canon" / "diagrams.yaml"
+
+
+# ---------------------------------------------------------------------------
+# Canon YAML loading
+# ---------------------------------------------------------------------------
+class TestDiagramsCanon:
+    """Verify that canon/diagrams.yaml loads and is well-formed."""
+
+    def test_file_exists(self) -> None:
+        assert _DIAGRAMS_CANON.exists(), f"canon/diagrams.yaml not found at {_DIAGRAMS_CANON}"
+
+    def test_loads_as_yaml(self) -> None:
+        data = yaml.safe_load(_DIAGRAMS_CANON.read_text(encoding="utf-8"))
+        assert isinstance(data, dict), "Top-level YAML must be a mapping"
+
+    def test_diagrams_section_present(self) -> None:
+        data = yaml.safe_load(_DIAGRAMS_CANON.read_text(encoding="utf-8"))
+        assert "diagrams" in data, "'diagrams' key must exist in canon/diagrams.yaml"
+
+    def test_expected_diagram_keys(self) -> None:
+        data = yaml.safe_load(_DIAGRAMS_CANON.read_text(encoding="utf-8"))
+        diagrams = data["diagrams"]
+        expected = {
+            "architecture_overview",
+            "authorization_boundary",
+            "data_flow",
+            "uiao_planes",
+            "generation_pipeline",
+            "zero_trust_journey",
+        }
+        assert expected.issubset(set(diagrams.keys())), (
+            f"Missing diagram keys: {expected - set(diagrams.keys())}"
+        )
+
+    def test_each_diagram_has_required_fields(self) -> None:
+        data = yaml.safe_load(_DIAGRAMS_CANON.read_text(encoding="utf-8"))
+        for key, meta in data["diagrams"].items():
+            assert "type" in meta, f"Diagram '{key}' missing 'type'"
+            assert "title" in meta, f"Diagram '{key}' missing 'title'"
+            assert "description" in meta, f"Diagram '{key}' missing 'description'"
+            assert "content" in meta, f"Diagram '{key}' missing 'content'"
+            assert meta["content"].strip(), f"Diagram '{key}' has empty 'content'"
+
+    def test_load_diagrams_canon_function(self) -> None:
+        from uiao_core.generators.diagrams import load_diagrams_canon
+
+        diagrams = load_diagrams_canon(_DIAGRAMS_CANON)
+        assert isinstance(diagrams, dict)
+        assert len(diagrams) >= 6
+
+    def test_load_diagrams_canon_missing_file(self, tmp_path: Path) -> None:
+        from uiao_core.generators.diagrams import load_diagrams_canon
+
+        result = load_diagrams_canon(tmp_path / "nonexistent.yaml")
+        assert result == {}
+
+
+# ---------------------------------------------------------------------------
+# generate_diagrams_from_canon()
+# ---------------------------------------------------------------------------
+class TestGenerateDiagramsFromCanon:
+    """Verify that generate_diagrams_from_canon() writes .mermaid files."""
+
+    def test_creates_mermaid_files(self, tmp_path: Path) -> None:
+        from uiao_core.generators.diagrams import generate_diagrams_from_canon
+
+        visuals_dir = tmp_path / "visuals"
+        output_dir = tmp_path / "images"
+
+        # Skip PNG rendering (no mmdc/Playwright in CI) — only check .mermaid writes
+        import unittest.mock as mock
+
+        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None):
+            generate_diagrams_from_canon(
+                canon_path=_DIAGRAMS_CANON,
+                visuals_dir=visuals_dir,
+                output_dir=output_dir,
+            )
+
+        mermaid_files = list(visuals_dir.glob("*.mermaid"))
+        assert len(mermaid_files) >= 6, f"Expected ≥6 .mermaid files, got {len(mermaid_files)}"
+
+    def test_mermaid_file_names_match_keys(self, tmp_path: Path) -> None:
+        from uiao_core.generators.diagrams import generate_diagrams_from_canon
+
+        visuals_dir = tmp_path / "visuals"
+
+        import unittest.mock as mock
+
+        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None):
+            generate_diagrams_from_canon(
+                canon_path=_DIAGRAMS_CANON,
+                visuals_dir=visuals_dir,
+                output_dir=tmp_path / "images",
+            )
+
+        stems = {p.stem for p in visuals_dir.glob("*.mermaid")}
+        expected = {
+            "architecture_overview",
+            "authorization_boundary",
+            "data_flow",
+            "uiao_planes",
+            "generation_pipeline",
+            "zero_trust_journey",
+        }
+        assert expected.issubset(stems), f"Missing .mermaid files: {expected - stems}"
+
+    def test_mermaid_file_content_is_nonempty(self, tmp_path: Path) -> None:
+        from uiao_core.generators.diagrams import generate_diagrams_from_canon
+
+        visuals_dir = tmp_path / "visuals"
+
+        import unittest.mock as mock
+
+        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None):
+            generate_diagrams_from_canon(
+                canon_path=_DIAGRAMS_CANON,
+                visuals_dir=visuals_dir,
+                output_dir=tmp_path / "images",
+            )
+
+        for mmd in visuals_dir.glob("*.mermaid"):
+            assert mmd.read_text(encoding="utf-8").strip(), f"{mmd.name} is empty"
+
+    def test_returns_empty_list_for_missing_canon(self, tmp_path: Path) -> None:
+        from uiao_core.generators.diagrams import generate_diagrams_from_canon
+
+        result = generate_diagrams_from_canon(
+            canon_path=tmp_path / "nonexistent.yaml",
+            visuals_dir=tmp_path / "visuals",
+            output_dir=tmp_path / "images",
+        )
+        assert result == []
+
+    def test_build_diagrams_returns_output_dir(self, tmp_path: Path) -> None:
+        import unittest.mock as mock
+
+        from uiao_core.generators.diagrams import build_diagrams
+
+        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None):
+            result = build_diagrams(
+                canon_path=_DIAGRAMS_CANON,
+                visuals_dir=tmp_path / "visuals",
+                output_dir=tmp_path / "images",
+            )
+
+        assert result == tmp_path / "images"
+
+
+# ---------------------------------------------------------------------------
+# replace_mermaid_blocks_with_images()
+# ---------------------------------------------------------------------------
+class TestReplaceMermaidBlocks:
+    """Verify the Mermaid fence → <img> post-processing helper."""
+
+    def test_replaces_single_block(self) -> None:
+        from uiao_core.generators.docs import replace_mermaid_blocks_with_images
+
+        md = "# Title\n\n```mermaid\nflowchart TD\n    A --> B\n```\n\nEnd."
+        result = replace_mermaid_blocks_with_images(md)
+        assert "```mermaid" not in result
+        assert "<img" in result
+        assert ".png" in result
+
+    def test_replaces_multiple_blocks(self) -> None:
+        from uiao_core.generators.docs import replace_mermaid_blocks_with_images
+
+        md = (
+            "```mermaid\nflowchart LR\n    A --> B\n```\n\n"
+            "```mermaid\nflowchart TD\n    C --> D\n```\n"
+        )
+        result = replace_mermaid_blocks_with_images(md)
+        assert result.count("<img") == 2
+        assert "```mermaid" not in result
+
+    def test_leaves_non_mermaid_fences_intact(self) -> None:
+        from uiao_core.generators.docs import replace_mermaid_blocks_with_images
+
+        md = "```python\nprint('hello')\n```\n"
+        result = replace_mermaid_blocks_with_images(md)
+        assert result == md
+
+    def test_no_mermaid_blocks_unchanged(self) -> None:
+        from uiao_core.generators.docs import replace_mermaid_blocks_with_images
+
+        md = "# No diagrams here\n\nJust text."
+        assert replace_mermaid_blocks_with_images(md) == md
+
+    def test_img_contains_images_dir(self) -> None:
+        from uiao_core.generators.docs import replace_mermaid_blocks_with_images
+
+        md = "```mermaid\nflowchart TD\n    A --> B\n```"
+        result = replace_mermaid_blocks_with_images(md, images_dir="custom/dir")
+        assert "custom/dir" in result
+
+    def test_empty_string_unchanged(self) -> None:
+        from uiao_core.generators.docs import replace_mermaid_blocks_with_images
+
+        assert replace_mermaid_blocks_with_images("") == ""
+
+
+# ---------------------------------------------------------------------------
+# Module import checks
+# ---------------------------------------------------------------------------
+class TestDiagramsModuleImports:
+    """Verify diagrams module exports the expected symbols."""
+
+    def test_import_diagrams_module(self) -> None:
+        from uiao_core.generators import diagrams
+
+        assert hasattr(diagrams, "generate_diagrams_from_canon")
+        assert hasattr(diagrams, "build_diagrams")
+        assert hasattr(diagrams, "load_diagrams_canon")
+
+    def test_build_diagrams_in_package(self) -> None:
+        from uiao_core.generators import build_diagrams
+
+        assert callable(build_diagrams)
