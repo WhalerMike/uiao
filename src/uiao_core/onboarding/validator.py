@@ -112,33 +112,31 @@ def _check_value_constraints(data: dict[str, Any]) -> list[ValidationIssue]:
 
     # deployment_model
     found, dm = _get_nested(data, "deployment_model")
-    if found and dm:
-        if str(dm).lower() not in _VALID_DEPLOYMENT_MODELS:
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    field="deployment_model",
-                    message=f"Invalid deployment_model value: '{dm}'",
-                    suggestion=(
-                        f"Allowed values: {', '.join(sorted(_VALID_DEPLOYMENT_MODELS))}"
-                    ),
-                )
+    if found and dm and str(dm).lower() not in _VALID_DEPLOYMENT_MODELS:
+        issues.append(
+            ValidationIssue(
+                severity="error",
+                field="deployment_model",
+                message=f"Invalid deployment_model value: '{dm}'",
+                suggestion=(
+                    f"Allowed values: {', '.join(sorted(_VALID_DEPLOYMENT_MODELS))}"
+                ),
             )
+        )
 
     # fips_categorization
     found, fips = _get_nested(data, "leadership_briefing.fips_categorization")
-    if found and fips:
-        if str(fips).lower() not in _VALID_FIPS:
-            issues.append(
-                ValidationIssue(
-                    severity="error",
-                    field="leadership_briefing.fips_categorization",
-                    message=f"Invalid fips_categorization value: '{fips}'",
-                    suggestion=(
-                        f"Allowed values: {', '.join(sorted(_VALID_FIPS))}"
-                    ),
-                )
+    if found and fips and str(fips).lower() not in _VALID_FIPS:
+        issues.append(
+            ValidationIssue(
+                severity="error",
+                field="leadership_briefing.fips_categorization",
+                message=f"Invalid fips_categorization value: '{fips}'",
+                suggestion=(
+                    f"Allowed values: {', '.join(sorted(_VALID_FIPS))}"
+                ),
             )
+        )
 
     # audience must be a list
     found, audience = _get_nested(data, "audience")
