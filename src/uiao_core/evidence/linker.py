@@ -8,6 +8,7 @@ OSCAL schema validation is performed externally via ``make validate-oscal``
 This module generates conformant structures; it does not invoke the validator
 itself.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -80,13 +81,13 @@ class EvidenceLinker:
             props: list[dict[str, Any]] = [
                 {
                     "name": "id",
-                    "uuid": str(uuid.uuid4()),   # prop:id — fresh UUIDv4
+                    "uuid": str(uuid.uuid4()),  # prop:id — fresh UUIDv4
                     "value": artifact.uuid,
                     "ns": FEDRAMP_NS,
                 },
                 {
                     "name": "type",
-                    "uuid": str(uuid.uuid4()),   # prop:id — fresh UUIDv4
+                    "uuid": str(uuid.uuid4()),  # prop:id — fresh UUIDv4
                     "value": "evidence",
                     "ns": FEDRAMP_NS,
                 },
@@ -95,7 +96,7 @@ class EvidenceLinker:
                 props.append(
                     {
                         "name": "control-ref",
-                        "uuid": str(uuid.uuid4()),   # prop:id — fresh UUIDv4 per ref
+                        "uuid": str(uuid.uuid4()),  # prop:id — fresh UUIDv4 per ref
                         "value": control_ref.lower(),
                         "ns": FEDRAMP_NS,
                     }

@@ -8,6 +8,7 @@ The API key is read from the ``GEMINI_API_KEY`` environment variable
 (stored as a GitHub Secret for CI). No runtime API calls appear in
 final artifacts -- all images are pre-generated static PNGs.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -111,20 +112,14 @@ def _generate_image(
     """Call Gemini API to generate an image from a text prompt."""
     api_key = _get_api_key()
     if not api_key:
-        logger.error(
-            "GEMINI_API_KEY not set. Set it via environment variable "
-            "or GitHub Secret."
-        )
+        logger.error("GEMINI_API_KEY not set. Set it via environment variable or GitHub Secret.")
         return False
 
     try:
         from google import genai  # type: ignore[import-untyped]
         from google.genai import types  # type: ignore[import-untyped]
     except ImportError:
-        logger.error(
-            "google-genai not installed. "
-            "Run: pip install google-genai"
-        )
+        logger.error("google-genai not installed. Run: pip install google-genai")
         return False
 
     try:
@@ -239,15 +234,19 @@ def generate_all_gemini_images(
     results: list[Path] = []
     for name, prompt in sorted(all_prompts.items()):
         png = generate_gemini_image(
-            name, prompt=prompt, output_dir=output_dir,
-            force=force, model=model,
+            name,
+            prompt=prompt,
+            output_dir=output_dir,
+            force=force,
+            model=model,
         )
         if png:
             results.append(png)
 
     logger.info(
         "Generated %d/%d Gemini image(s).",
-        len(results), len(all_prompts),
+        len(results),
+        len(all_prompts),
     )
     return results
 

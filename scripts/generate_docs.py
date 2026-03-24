@@ -5,6 +5,7 @@ import ``build_docs`` from ``uiao_core.generators.docs``.
 
 Deprecated: Use `uiao generate-docs` CLI command instead.
 """
+
 import logging
 import warnings
 

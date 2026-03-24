@@ -11,9 +11,9 @@ warnings.warn(
     stacklevel=1,
 )
 # Paths
-CANON_PATH = 'canon/uiao_pitch_deck_v1.0.yaml'
-OUTPUT_PATH = 'docs/modernization_atlas_pitch.pptx'
-VISUALS_DIR = 'visuals/'
+CANON_PATH = "canon/uiao_pitch_deck_v1.0.yaml"
+OUTPUT_PATH = "docs/modernization_atlas_pitch.pptx"
+VISUALS_DIR = "visuals/"
 
 
 def create_pptx():
@@ -28,32 +28,32 @@ def create_pptx():
     slide = prs.slides.add_slide(title_slide_layout)
     title = slide.shapes.title
     subtitle = slide.placeholders[1]
-    title.text = data['pitch_deck']['title']
-    subtitle.text = data['pitch_deck']['subtitle']
+    title.text = data["pitch_deck"]["title"]
+    subtitle.text = data["pitch_deck"]["subtitle"]
 
     # Loop through slides defined in YAML
-    for slide_data in data['pitch_deck']['slides']:
+    for slide_data in data["pitch_deck"]["slides"]:
         bullet_layout = prs.slide_layouts[1]
         slide = prs.slides.add_slide(bullet_layout)
 
         # Set Title
         shapes = slide.shapes
         title_shape = shapes.title
-        title_shape.text = slide_data['title']
+        title_shape.text = slide_data["title"]
 
         # Set Body/Bullets
         body_shape = shapes.placeholders[1]
         tf = body_shape.text_frame
-        tf.text = slide_data.get('content', 'Key Objectives:')
+        tf.text = slide_data.get("content", "Key Objectives:")
 
-        for point in slide_data.get('points', []):
+        for point in slide_data.get("points", []):
             p = tf.add_paragraph()
             p.text = point
             p.level = 1
 
         # Placeholder for Visuals
-        if 'visual' in slide_data:
-            img_path = os.path.join(VISUALS_DIR, slide_data['visual'])
+        if "visual" in slide_data:
+            img_path = os.path.join(VISUALS_DIR, slide_data["visual"])
             if os.path.exists(img_path):
                 # Add the actual image if it exists
                 slide.shapes.add_picture(img_path, Inches(6), Inches(1.5), height=Inches(4))
@@ -68,7 +68,7 @@ def create_pptx():
     slide = prs.slides.add_slide(summary_layout)
     slide.shapes.title.text = "Executive Summary"
     tf = slide.placeholders[1].text_frame
-    tf.text = data['pitch_deck'].get('executive_summary', 'No executive summary available.')
+    tf.text = data["pitch_deck"].get("executive_summary", "No executive summary available.")
 
     prs.save(OUTPUT_PATH)
     print(f"PowerPoint generated successfully at: {OUTPUT_PATH}")

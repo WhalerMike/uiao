@@ -6,6 +6,7 @@ using matplotlib. Uses Agg backend for CI/CD compatibility.
 
 NOTE: Only USA/territories visuals are generated (no world maps).
 """
+
 from __future__ import annotations  # noqa: I001
 
 import logging
@@ -14,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
@@ -132,7 +134,7 @@ def generate_compliance_coverage(
     x = np.arange(len(pillars))
     width = 0.35
 
-    bars1 = ax1.bar(x - width/2, control_counts, width, label="NIST Controls Mapped", color=UIAO_BLUE, alpha=0.85)
+    bars1 = ax1.bar(x - width / 2, control_counts, width, label="NIST Controls Mapped", color=UIAO_BLUE, alpha=0.85)
     ax1.set_xlabel("UIAO Pillars", fontsize=11, fontweight="bold")
     ax1.set_ylabel("NIST 800-53 Controls", color=UIAO_BLUE, fontsize=11)
     ax1.set_xticks(x)
@@ -140,7 +142,7 @@ def generate_compliance_coverage(
     ax1.tick_params(axis="y", labelcolor=UIAO_BLUE)
 
     ax2 = ax1.twinx()
-    bars2 = ax2.bar(x + width/2, maturities, width, label="CISA Maturity Level", color=UIAO_GREEN, alpha=0.7)
+    bars2 = ax2.bar(x + width / 2, maturities, width, label="CISA Maturity Level", color=UIAO_GREEN, alpha=0.7)
     ax2.set_ylabel("Maturity Level", color=UIAO_GREEN, fontsize=11)
     ax2.set_ylim(0, 5)
     ax2.set_yticks([1, 2, 3, 4])
@@ -149,12 +151,30 @@ def generate_compliance_coverage(
 
     for bar in bars1:
         h = bar.get_height()
-        ax1.text(bar.get_x() + bar.get_width()/2., h + 0.1, f"{int(h)}", ha="center", va="bottom", fontsize=9, color=UIAO_BLUE)
+        ax1.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            h + 0.1,
+            f"{int(h)}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            color=UIAO_BLUE,
+        )
     for bar in bars2:
         h = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width()/2., h + 0.05, ["?", "Trad", "Init", "Adv", "Opt"][int(h)], ha="center", va="bottom", fontsize=8, color=UIAO_GREEN)
+        ax2.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            h + 0.05,
+            ["?", "Trad", "Init", "Adv", "Opt"][int(h)],
+            ha="center",
+            va="bottom",
+            fontsize=8,
+            color=UIAO_GREEN,
+        )
 
-    ax1.set_title("UIAO Compliance Coverage & Maturity Assessment", fontsize=14, fontweight="bold", color=UIAO_NAVY, pad=15)
+    ax1.set_title(
+        "UIAO Compliance Coverage & Maturity Assessment", fontsize=14, fontweight="bold", color=UIAO_NAVY, pad=15
+    )
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left", fontsize=9)

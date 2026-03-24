@@ -5,6 +5,7 @@ evaluates them against control requirements loaded from
 ``data/monitoring-sources.yml``, and generates findings when
 events indicate control failures.
 """
+
 from __future__ import annotations
 
 import logging
@@ -32,9 +33,7 @@ class IncomingEvent:
     title: str
     description: str
     raw_payload: dict[str, Any] = field(default_factory=dict)
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 @dataclass
@@ -48,9 +47,7 @@ class Finding:
     description: str
     severity: str
     source: str
-    detected_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    detected_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_poam_dict(self) -> dict[str, Any]:
         """Convert this finding to a POA&M entry dict.
@@ -98,9 +95,7 @@ class EventProcessor:
         """Build signal → control/description mapping."""
         p = Path(path)
         if not p.exists():
-            logger.warning(
-                "monitoring-sources.yml not found at %s; signal map empty", p
-            )
+            logger.warning("monitoring-sources.yml not found at %s; signal map empty", p)
             return
         raw = yaml.safe_load(p.read_text())
         for source in raw.get("monitoring_sources", []):
@@ -113,9 +108,7 @@ class EventProcessor:
     # Event normalisation
     # ------------------------------------------------------------------
 
-    def normalise_event(
-        self, payload: dict[str, Any], source: str = "generic"
-    ) -> IncomingEvent:
+    def normalise_event(self, payload: dict[str, Any], source: str = "generic") -> IncomingEvent:
         """Normalise a raw webhook payload into an IncomingEvent.
 
         Supports Sentinel, Defender, and generic schemas.
@@ -125,15 +118,11 @@ class EventProcessor:
         if source == "sentinel":
             props = payload.get("properties", payload)
             return IncomingEvent(
-                event_id=str(
-                    props.get("systemAlertId", props.get("alert_id", "unknown"))
-                ),
+                event_id=str(props.get("systemAlertId", props.get("alert_id", "unknown"))),
                 source="sentinel",
                 signal=self._extract_signal(props),
                 severity=props.get("severity", "Medium"),
-                title=props.get(
-                    "alertDisplayName", props.get("title", "Unknown")
-                ),
+                title=props.get("alertDisplayName", props.get("title", "Unknown")),
                 description=props.get("description", ""),
                 raw_payload=payload,
                 timestamp=props.get(
@@ -151,9 +140,7 @@ class EventProcessor:
                 title=payload.get("title", "Unknown"),
                 description=payload.get("description", ""),
                 raw_payload=payload,
-                timestamp=payload.get(
-                    "creationTime", datetime.now(timezone.utc).isoformat()
-                ),
+                timestamp=payload.get("creationTime", datetime.now(timezone.utc).isoformat()),
             )
 
         # generic fallback
@@ -165,9 +152,7 @@ class EventProcessor:
             title=payload.get("title", "Unknown Event"),
             description=payload.get("description", ""),
             raw_payload=payload,
-            timestamp=payload.get(
-                "timestamp", datetime.now(timezone.utc).isoformat()
-            ),
+            timestamp=payload.get("timestamp", datetime.now(timezone.utc).isoformat()),
         )
 
     def _extract_signal(self, props: dict[str, Any]) -> str:
@@ -176,9 +161,7 @@ class EventProcessor:
         if "signal" in props:
             return str(props["signal"])
         # Derive from title / rule name via signal map keys
-        title_lower = props.get(
-            "alertDisplayName", props.get("title", "")
-        ).lower()
+        title_lower = props.get("alertDisplayName", props.get("title", "")).lower()
         for signal in self._signal_map:
             if signal in title_lower:
                 return signal
@@ -205,8 +188,7 @@ class EventProcessor:
                     signal=event.signal,
                     control_id=meta.get("maps_to_control", "SI-4"),
                     title=event.title or meta.get("description", event.signal),
-                    description=event.description
-                    or meta.get("description", "Control failure detected"),
+                    description=event.description or meta.get("description", "Control failure detected"),
                     severity=event.severity.lower(),
                     source=event.source,
                     detected_at=event.timestamp,
@@ -237,9 +219,7 @@ class EventProcessor:
     # High-level processing
     # ------------------------------------------------------------------
 
-    def process(
-        self, payload: dict[str, Any], source: str = "generic"
-    ) -> list[Finding]:
+    def process(self, payload: dict[str, Any], source: str = "generic") -> list[Finding]:
         """Normalise *payload* then evaluate it; return findings."""
         event = self.normalise_event(payload, source=source)
         return self.evaluate(event)

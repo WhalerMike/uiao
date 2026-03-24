@@ -4,6 +4,7 @@ ADR-0005: Produces a styled PowerPoint deck from UIAO canon data,
 embedding Mermaid-rendered PNGs, Gemini-generated images, and
 matplotlib charts. Designed for agency leadership presentations.
 """
+
 from __future__ import annotations
 
 import logging
@@ -154,9 +155,12 @@ def _add_table_slide(
     n_rows = min(len(rows) + 1, 15)  # cap at 15 rows per slide
     n_cols = len(headers)
     table_shape = slide.shapes.add_table(
-        n_rows, n_cols,
-        Inches(0.5), Inches(1.2),
-        Inches(12.3), Inches(5.5),
+        n_rows,
+        n_cols,
+        Inches(0.5),
+        Inches(1.2),
+        Inches(12.3),
+        Inches(5.5),
     )
     table = table_shape.table
 
@@ -172,7 +176,7 @@ def _add_table_slide(
         cell.fill.fore_color.rgb = _NAVY
 
     # Data rows
-    for r_idx, row_data in enumerate(rows[:n_rows - 1]):
+    for r_idx, row_data in enumerate(rows[: n_rows - 1]):
         for c_idx, val in enumerate(row_data):
             cell = table.cell(r_idx + 1, c_idx)
             cell.text = str(val)
@@ -205,15 +209,11 @@ def _build_pptx(context: dict[str, Any], settings: Any) -> Presentation:
 
     # --- Executive Summary ---
     exec_summary = str(lb.get("executive_summary", ""))[:500]
-    _add_content_slide(prs, "Executive Summary", [
-        s.strip() for s in exec_summary.split(".") if s.strip()
-    ][:6])
+    _add_content_slide(prs, "Executive Summary", [s.strip() for s in exec_summary.split(".") if s.strip()][:6])
 
     # --- Program Vision ---
     vision = str(lb.get("program_vision", ""))[:400]
-    _add_content_slide(prs, "Program Vision", [
-        s.strip() for s in vision.split(".") if s.strip()
-    ][:5])
+    _add_content_slide(prs, "Program Vision", [s.strip() for s in vision.split(".") if s.strip()][:5])
 
     # --- Control Planes ---
     planes = lb.get("control_planes", [])
@@ -264,13 +264,15 @@ def _build_pptx(context: dict[str, Any], settings: Any) -> Presentation:
             if isinstance(entry, dict):
                 controls = entry.get("nist_controls", [])
                 ctrl_str = ", ".join(controls) if isinstance(controls, list) else str(controls)
-                rows.append([
-                    entry.get("pillar", ""),
-                    entry.get("cisa_pillar", ""),
-                    entry.get("cisa_maturity", ""),
-                    ctrl_str,
-                    entry.get("impact_statement", "")[:60],
-                ])
+                rows.append(
+                    [
+                        entry.get("pillar", ""),
+                        entry.get("cisa_pillar", ""),
+                        entry.get("cisa_maturity", ""),
+                        ctrl_str,
+                        entry.get("impact_statement", "")[:60],
+                    ]
+                )
         if rows:
             _add_table_slide(prs, "Unified Compliance Matrix", headers, rows)
 
