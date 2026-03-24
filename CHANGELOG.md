@@ -1,17 +1,3 @@
-# [0.31.0] (2026-03-24)
-
-
-### Features
-
-* **diagrams:** add `canon/diagrams.yaml` with 6 canonical Mermaid diagram definitions
-* **diagrams:** add `src/uiao_core/generators/diagrams.py` — canon-driven diagram generator with `generate_diagrams_from_canon()` and `build_diagrams()` entry points
-* **docs:** `build_docs()` now auto-generates diagrams from canon before template rendering and replaces `mermaid` fenced blocks with `<img>` references for DOCX/PPTX/PDF compatibility
-* **cli:** add `generate-diagrams` CLI command that writes `.mermaid` files and renders all PNGs
-* **cli:** `generate-docs` command gains `--skip-diagrams` and `--force-visuals` flags
-* **mkdocs:** add Mermaid 10 ESM CDN entry to `extra_javascript` for live browser rendering
-* **tests:** add `tests/test_diagrams.py` with 20 tests covering canon loading, `.mermaid` file creation, and Mermaid block post-processing
-
-
 # [0.30.0](https://github.com/WhalerMike/uiao-core/compare/v0.29.0...v0.30.0) (2026-03-24)
 
 
@@ -19,6 +5,7 @@
 
 * add pip-audit CI step (continue-on-error) and tighten dep minimums ([10b052c](https://github.com/WhalerMike/uiao-core/commit/10b052c3aaf73ca81daf6bd9852dabbdee6c82ea))
 * add project_root to Settings and fix generate-artifacts workflow permissions ([884c755](https://github.com/WhalerMike/uiao-core/commit/884c75584a77a6d8db220e968ef61d90bd543945))
+* address code review — strict mode, Mermaid syntax tests, lint ([c5cea3b](https://github.com/WhalerMike/uiao-core/commit/c5cea3b4e70ec59cfb792674a24b6a4425d2d730))
 * AI Security Audit handles both PRs and direct pushes to main ([6bc9f42](https://github.com/WhalerMike/uiao-core/commit/6bc9f42d648ba2c0fd97b42908ffff238fe66f14))
 * **ci:** add skip-tag to changelog - tag v0.30.0 already exists ([fac84fd](https://github.com/WhalerMike/uiao-core/commit/fac84fdff597837d42c1806c26d01a731ef50982))
 * **ci:** correct --tb=shortcom typo to --tb=short in ci.yml ([0aa5374](https://github.com/WhalerMike/uiao-core/commit/0aa537478517632da8c8e032b492b4b922ac69ec))
@@ -84,6 +71,7 @@
 * **cli:** add generate-visuals command with --force-visuals flag (ADR-0005) ([ff10509](https://github.com/WhalerMike/uiao-core/commit/ff105092898ca4b2d9f3fad4fa2334a2ad74e6b5))
 * **cli:** add validate-ssp command wiring to validate_oscal_artifacts (ADR-0004) ([2f267b4](https://github.com/WhalerMike/uiao-core/commit/2f267b40f1549d19daa56eb300b8d77a6eff7711))
 * **cli:** update generate-ssp command with --canon, --data-dir, --output (ADR-0002) ([860ad45](https://github.com/WhalerMike/uiao-core/commit/860ad4520b8c213fd280eefd2b1ce2bda15b7a77))
+* **diagrams:** automated diagram generation for generate-docs ([b460ea8](https://github.com/WhalerMike/uiao-core/commit/b460ea8aaaad381c8fa02a7c208109f6859f28ec))
 * FedRAMP Rev 5 SSP template alignment (Sections 1-12 + Appendix A) ([c90d87a](https://github.com/WhalerMike/uiao-core/commit/c90d87af73ea7bfbd6c8da5188d383376191c75e))
 * **generators:** add gemini_visuals.py for on-demand Gemini image generation (ADR-0005) ([d8a82e3](https://github.com/WhalerMike/uiao-core/commit/d8a82e351bafac464b0dc14a9abdd9ba61466883))
 * **generators:** add mermaid.py for server-side Mermaid-to-PNG rendering (ADR-0005) ([c70c5ad](https://github.com/WhalerMike/uiao-core/commit/c70c5ad8eb93898af424163823a2b5a9b9641be6))
