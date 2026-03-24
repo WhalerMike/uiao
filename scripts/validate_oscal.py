@@ -8,6 +8,7 @@ Note: This script performs lightweight structural pre-checks only.
 For full OSCAL 1.0 schema compliance, see scripts/validate_with_trestle.py
 which uses compliance-trestle Pydantic models.
 """
+
 import json
 import sys
 import warnings
@@ -93,8 +94,7 @@ def main():
         else:
             print(f"  PASS: {jf.name}")
 
-    print(f"\nValidation complete: {len(json_files)} files, "
-          f"{total_errors} errors")
+    print(f"\nValidation complete: {len(json_files)} files, {total_errors} errors")
 
     if total_errors > 0:
         return 1

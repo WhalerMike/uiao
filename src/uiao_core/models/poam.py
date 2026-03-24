@@ -3,6 +3,7 @@
 Defines POAMEntry, ScanFinding, RemediationMilestone, and POAMRule models
 used by the rule engine, scan importer, and POA&M generator.
 """
+
 from __future__ import annotations
 
 import uuid as _uuid_mod
@@ -62,7 +63,7 @@ class POAMRule(BaseModel):
     id: str
     name: str
     description: str = ""
-    condition_type: str = ""   # missing_control | low_maturity | missing_evidence | custom
+    condition_type: str = ""  # missing_control | low_maturity | missing_evidence | custom
     condition_value: str = ""  # value to match against
     risk_rating: RiskRating = RiskRating.MODERATE
     recommendation: str = ""
@@ -106,7 +107,11 @@ class POAMEntry(BaseModel):
             props.append({"uuid": str(_uuid_mod.uuid4()), "name": "source", "value": self.source})
         if self.scheduled_completion_date:
             props.append(
-                {"uuid": str(_uuid_mod.uuid4()), "name": "scheduled-completion-date", "value": str(self.scheduled_completion_date)}
+                {
+                    "uuid": str(_uuid_mod.uuid4()),
+                    "name": "scheduled-completion-date",
+                    "value": str(self.scheduled_completion_date),
+                }
             )
 
         item: dict[str, Any] = {

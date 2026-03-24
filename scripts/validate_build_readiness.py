@@ -4,6 +4,7 @@ Pre-flight check to ensure all critical architectural assets exist
 before running generate_docs.py. This prevents broken builds when
 visuals or data files are still being committed.
 """
+
 import os
 import sys
 import warnings

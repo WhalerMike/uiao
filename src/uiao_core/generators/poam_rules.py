@@ -3,6 +3,7 @@
 Loads rule definitions from data/poam_rules.yaml and evaluates them against
 the loaded UIAO context to produce POAMEntry objects.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -17,6 +18,7 @@ from uiao_core.models.poam import POAMEntry, POAMRule
 # Rule loading
 # ---------------------------------------------------------------------------
 
+
 def load_rules(rules_path: str | Path | None = None) -> list[POAMRule]:
     """Load POA&M rules from a YAML file.
 
@@ -29,6 +31,7 @@ def load_rules(rules_path: str | Path | None = None) -> list[POAMRule]:
     """
     if rules_path is None:
         from uiao_core.utils.context import get_settings
+
         settings = get_settings()
         rules_path = settings.data_dir / "poam_rules.yaml"
 
@@ -51,6 +54,7 @@ def load_rules(rules_path: str | Path | None = None) -> list[POAMRule]:
 # Rule evaluation helpers
 # ---------------------------------------------------------------------------
 
+
 def _evaluate_low_maturity(
     rule: POAMRule,
     context: dict[str, Any],
@@ -66,11 +70,13 @@ def _evaluate_low_maturity(
             continue
         maturity = entry.get("cisa_maturity", "")
         if maturity == rule.condition_value:
-            gaps.append({
-                "category": entry.get("category", "Unknown"),
-                "maturity": maturity,
-                "nist_controls": entry.get("nist_controls", []),
-            })
+            gaps.append(
+                {
+                    "category": entry.get("category", "Unknown"),
+                    "maturity": maturity,
+                    "nist_controls": entry.get("nist_controls", []),
+                }
+            )
     return gaps
 
 
@@ -92,10 +98,12 @@ def _evaluate_missing_evidence(
             continue
         evidence = m.get("evidence_source", "")
         if not evidence or str(evidence).strip() == "":
-            gaps.append({
-                "concept": m.get("concept", "Unknown"),
-                "control": m.get("nist_rev5_control", ""),
-            })
+            gaps.append(
+                {
+                    "concept": m.get("concept", "Unknown"),
+                    "control": m.get("nist_rev5_control", ""),
+                }
+            )
     return gaps
 
 
@@ -134,6 +142,7 @@ def _evaluate_missing_control(
 # ---------------------------------------------------------------------------
 # Main evaluation entry point
 # ---------------------------------------------------------------------------
+
 
 def evaluate_rules(
     context: dict[str, Any],
@@ -218,8 +227,7 @@ def evaluate_rules(
                         finding_id=f"POAM-UIAO-{counter:04d}",
                         title=f"[{rule.id}] Missing control: {gap['control']}",
                         description=(
-                            f"Required control '{gap['control']}' is not present in any mapping. "
-                            f"{rule.description}"
+                            f"Required control '{gap['control']}' is not present in any mapping. {rule.description}"
                         ),
                         risk_rating=rule.risk_rating,
                         related_controls=[gap["control"]],

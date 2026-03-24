@@ -12,6 +12,7 @@ from generate_docs import DATA_DIR, _merge_by_key, apply_overlay, load_overlays
 # Unit tests: _merge_by_key
 # ---------------------------------------------------------------------------
 
+
 class TestMergeByKey:
     def test_updates_matching_entry(self):
         base = [{"id": "identity", "subtitle": "Generic IdP", "foo": "bar"}]
@@ -56,6 +57,7 @@ class TestMergeByKey:
 # Unit tests: apply_overlay
 # ---------------------------------------------------------------------------
 
+
 class TestApplyOverlay:
     def _make_context(self):
         """Return a minimal context dict with a control_planes structure."""
@@ -74,11 +76,7 @@ class TestApplyOverlay:
 
     def test_control_plane_subtitle_overridden(self):
         ctx = self._make_context()
-        overlay = {
-            "control_plane_overrides": [
-                {"id": "identity", "subtitle": "Entra ID + ICAM + Zero Trust"}
-            ]
-        }
+        overlay = {"control_plane_overrides": [{"id": "identity", "subtitle": "Entra ID + ICAM + Zero Trust"}]}
         apply_overlay(ctx, overlay)
         planes = ctx["control_planes"]["control_planes"]
         identity = next(p for p in planes if p["id"] == "identity")
@@ -107,11 +105,7 @@ class TestApplyOverlay:
 
     def test_non_overlapping_plane_unchanged(self):
         ctx = self._make_context()
-        overlay = {
-            "control_plane_overrides": [
-                {"id": "identity", "subtitle": "Entra ID"}
-            ]
-        }
+        overlay = {"control_plane_overrides": [{"id": "identity", "subtitle": "Entra ID"}]}
         apply_overlay(ctx, overlay)
         planes = ctx["control_planes"]["control_planes"]
         network = next(p for p in planes if p["id"] == "network")
@@ -132,6 +126,7 @@ class TestApplyOverlay:
 # Integration test: all overlays active → original vendor names restored
 # ---------------------------------------------------------------------------
 
+
 class TestOverlayIntegration:
     def test_all_overlays_restore_vendor_names(self):
         """With all default overlays active, vendor-specific names should be present.
@@ -141,6 +136,7 @@ class TestOverlayIntegration:
         being overwritten by program.yml's spread keys.
         """
         import yaml as _yaml
+
         with open(DATA_DIR / "control-planes.yml", encoding="utf-8") as fh:
             content = _yaml.safe_load(fh)
 
@@ -180,6 +176,7 @@ class TestOverlayIntegration:
         control-planes.yml's keys at the top level of the context dict.
         """
         import yaml as _yaml
+
         with open(DATA_DIR / "control-planes.yml", encoding="utf-8") as fh:
             content = _yaml.safe_load(fh)
         # Simulate generate_docs.py: spread keys at top level
@@ -198,12 +195,14 @@ class TestOverlayIntegration:
         cfg.write_text("active_overlays: []\n", encoding="utf-8")
 
         import generate_docs as gd
+
         original_data_dir = gd.DATA_DIR
         monkeypatch.setattr(gd, "DATA_DIR", tmp_path)
         monkeypatch.setattr(gd, "OVERLAYS_DIR", tmp_path / "overlays")
 
         # Load control-planes.yml directly and apply empty overlays
         import yaml as _yaml
+
         real_cp = original_data_dir / "control-planes.yml"
         with real_cp.open("r", encoding="utf-8") as fh:
             content = _yaml.safe_load(fh)
