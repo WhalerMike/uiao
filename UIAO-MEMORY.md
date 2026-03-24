@@ -6,6 +6,7 @@ Update after EVERY run (success or failure).
 
 | Date | Task | Outcome | Issue / Error Summary | Correction Rule |
 |------|------|---------|----------------------|----------------|
+| 2026-03-24 | Validation target repo | New architecture | ALWAYS point SSP/OSCAL/POA&M/monitoring agents at uiao-validation-targets. Endpoint: http://localhost:8000 (local) or https://github.com/WhalerMike/uiao-validation-targets (CI). Max 12 agents across BOTH repos. |
 | 2026-03-23 | Security CI/CD hardening | SUCCESS (#44) | +382/-23, passed all checks | Keep strict security/ dir structure and fedramp-rev5 baseline checks |
 | 2026-03-23 | Inventory linking | SUCCESS (#42) | +260/-3, diagrams rendered | Always generate both JSON manifest + Mermaid/PNG diagrams in same PR |
 | 2026-03-23 | SSP templating | FAILED | Rate limit + unresolved variables | ALWAYS resolve all {{var}} placeholders from inventory.json first |
