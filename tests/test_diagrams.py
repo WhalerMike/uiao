@@ -45,9 +45,7 @@ class TestDiagramsCanon:
             "generation_pipeline",
             "zero_trust_journey",
         }
-        assert expected.issubset(set(diagrams.keys())), (
-            f"Missing diagram keys: {expected - set(diagrams.keys())}"
-        )
+        assert expected.issubset(set(diagrams.keys())), f"Missing diagram keys: {expected - set(diagrams.keys())}"
 
     def test_each_diagram_has_required_fields(self) -> None:
         data = yaml.safe_load(_DIAGRAMS_CANON.read_text(encoding="utf-8"))
@@ -219,10 +217,7 @@ class TestReplaceMermaidBlocks:
     def test_replaces_multiple_blocks(self) -> None:
         from uiao_core.generators.docs import replace_mermaid_blocks_with_images
 
-        md = (
-            "```mermaid\nflowchart LR\n    A --> B\n```\n\n"
-            "```mermaid\nflowchart TD\n    C --> D\n```\n"
-        )
+        md = "```mermaid\nflowchart LR\n    A --> B\n```\n\n```mermaid\nflowchart TD\n    C --> D\n```\n"
         result = replace_mermaid_blocks_with_images(md)
         assert result.count("<img") == 2
         assert "```mermaid" not in result
@@ -270,3 +265,124 @@ class TestDiagramsModuleImports:
         from uiao_core.generators import build_diagrams
 
         assert callable(build_diagrams)
+
+
+# ---------------------------------------------------------------------------
+# build_docs integration: canon_path + force_visuals passthrough
+# ---------------------------------------------------------------------------
+class TestBuildDocsDiagramIntegration:
+    """Verify build_docs passes canon_path and force_visuals to generate_diagrams_from_canon."""
+
+    def test_build_docs_calls_generate_diagrams_with_canon_path(self, tmp_path: Path) -> None:
+        """build_docs(..., generate_diagrams=True) forwards canon_path to the compiler."""
+        import unittest.mock as mock
+
+        import yaml
+
+        from uiao_core.generators.docs import build_docs
+
+        # Minimal template and context so build_docs can complete
+        templates_dir = tmp_path / "templates"
+        templates_dir.mkdir()
+        docs_dir = tmp_path / "docs"
+        site_dir = tmp_path / "site"
+        canon_file = tmp_path / "test_canon.yaml"
+        canon_file.write_text(yaml.dump({"version": "1.0", "diagrams": {}}), encoding="utf-8")
+
+        with mock.patch(
+            "uiao_core.generators.diagrams.generate_diagrams_from_canon",
+            return_value=[],
+        ) as mock_gen:
+            build_docs(
+                canon_path=canon_file,
+                templates_dir=templates_dir,
+                docs_dir=docs_dir,
+                site_dir=site_dir,
+                template_mapping={},
+                generate_diagrams=True,
+                force_visuals=False,
+            )
+
+        mock_gen.assert_called_once_with(canon_path=canon_file, force=False)
+
+    def test_build_docs_honors_force_visuals(self, tmp_path: Path) -> None:
+        """build_docs(..., force_visuals=True) passes force=True to generate_diagrams_from_canon."""
+        import unittest.mock as mock
+
+        import yaml
+
+        from uiao_core.generators.docs import build_docs
+
+        templates_dir = tmp_path / "templates"
+        templates_dir.mkdir()
+        canon_file = tmp_path / "test_canon.yaml"
+        canon_file.write_text(yaml.dump({"version": "1.0", "diagrams": {}}), encoding="utf-8")
+
+        with mock.patch(
+            "uiao_core.generators.diagrams.generate_diagrams_from_canon",
+            return_value=[],
+        ) as mock_gen:
+            build_docs(
+                canon_path=canon_file,
+                templates_dir=templates_dir,
+                docs_dir=tmp_path / "docs",
+                site_dir=tmp_path / "site",
+                template_mapping={},
+                generate_diagrams=True,
+                force_visuals=True,
+            )
+
+        mock_gen.assert_called_once_with(canon_path=canon_file, force=True)
+
+    def test_build_docs_skips_diagrams_when_disabled(self, tmp_path: Path) -> None:
+        """build_docs(..., generate_diagrams=False) does not call generate_diagrams_from_canon."""
+        import unittest.mock as mock
+
+        import yaml
+
+        from uiao_core.generators.docs import build_docs
+
+        templates_dir = tmp_path / "templates"
+        templates_dir.mkdir()
+        canon_file = tmp_path / "test_canon.yaml"
+        canon_file.write_text(yaml.dump({"version": "1.0", "diagrams": {}}), encoding="utf-8")
+
+        with mock.patch(
+            "uiao_core.generators.diagrams.generate_diagrams_from_canon",
+            return_value=[],
+        ) as mock_gen:
+            build_docs(
+                canon_path=canon_file,
+                templates_dir=templates_dir,
+                docs_dir=tmp_path / "docs",
+                site_dir=tmp_path / "site",
+                template_mapping={},
+                generate_diagrams=False,
+            )
+
+        mock_gen.assert_not_called()
+
+    def test_load_diagrams_from_leadership_briefing_canon(self) -> None:
+        """generate_diagrams_from_canon reads diagrams from the main leadership briefing canon."""
+        import unittest.mock as mock
+
+        from uiao_core.generators.diagrams import generate_diagrams_from_canon
+
+        leadership_canon = _REPO_ROOT / "canon" / "uiao_leadership_briefing_v1.0.yaml"
+        assert leadership_canon.exists(), f"Canon not found: {leadership_canon}"
+
+        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None) as mock_render:
+            import tempfile
+
+            with tempfile.TemporaryDirectory() as td:
+                visuals_dir = Path(td) / "visuals"
+                output_dir = Path(td) / "images"
+                generate_diagrams_from_canon(
+                    canon_path=leadership_canon,
+                    visuals_dir=visuals_dir,
+                    output_dir=output_dir,
+                )
+
+        # At least one .mermaid file should have been targeted for rendering
+        # (render_mermaid_file was called at least once)
+        assert mock_render.call_count >= 1

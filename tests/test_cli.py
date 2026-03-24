@@ -89,4 +89,6 @@ class TestCLIBasics:
                 data_dir=Path(str(tmp_path / "data")),
                 templates_dir=Path(str(tmp_path / "templates")),
                 docs_dir=Path(str(tmp_path / "docs")),
+                generate_diagrams=True,
+                force_visuals=False,
             )
