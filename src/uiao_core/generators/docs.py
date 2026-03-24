@@ -285,4 +285,3 @@ def build_docs(
         generated.append(str(out_path))
 
     return generated
-
