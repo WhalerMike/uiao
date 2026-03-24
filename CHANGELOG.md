@@ -28,6 +28,7 @@
 * **lint:** enable force-sort-within-sections for ruff isort ([8790bf3](https://github.com/WhalerMike/uiao-core/commit/8790bf3d889ae9da7e578d7afdacd3674fe3ad30))
 * **lint:** fix I001 import order + move Inches default to module constant in rich_docx.py (ADR-0004) ([56647e4](https://github.com/WhalerMike/uiao-core/commit/56647e4276feace4e617856473a4d9b542659930))
 * **lint:** fix I001 import order + remove unused typing.Any in trestle.py (ADR-0004) ([9914e61](https://github.com/WhalerMike/uiao-core/commit/9914e61b87507c9847cf25a2ac77271ac52452b6))
+* **lint:** I001 move inline imports to top in tests/test_cli.py ([4ee90e7](https://github.com/WhalerMike/uiao-core/commit/4ee90e747f07d5bb223e0aa0c29053df2a3ffabb))
 * **lint:** properly group and sort imports in trestle.py for ruff isort (ADR-0004) ([91504fa](https://github.com/WhalerMike/uiao-core/commit/91504fa0f4b4f59c8030806d431542a41c623297))
 * **lint:** properly group imports in docs.py, oscal.py, rich_docx.py, ssp.py for ruff isort (ADR-0004) ([d2bf67f](https://github.com/WhalerMike/uiao-core/commit/d2bf67fb1ebc1f14ddb87d2eb9373a15a131a02f))
 * **lint:** remove blank line after __future__ import in charts.py (ruff I001, ADR-0004) ([74792ad](https://github.com/WhalerMike/uiao-core/commit/74792ad60bfa38b12210e126e253f77017521ce4))
