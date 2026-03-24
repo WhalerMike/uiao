@@ -5,6 +5,7 @@ import ``build_charts`` from ``uiao_core.generators.charts``.
 
 Deprecated: Use `uiao generate-charts` CLI command instead.
 """
+
 import logging
 import warnings
 

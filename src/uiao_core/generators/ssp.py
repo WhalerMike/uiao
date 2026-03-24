@@ -4,6 +4,7 @@ Migrated from scripts/generate_ssp.py into the uiao_core package.
 Builds OSCAL-compliant SSP JSON from canon YAML and data sources,
 aligned with FedRAMP Rev 5 Sections 1-12 + Appendix A (Moderate).
 """
+
 from __future__ import annotations
 
 import json
@@ -101,11 +102,13 @@ def _build_metadata_props(template: dict[str, Any], now_date: str, fedramp_cfg: 
         value = now_date if prop.get("value") == "PLACEHOLDER_DATE" else prop.get("value", "")
         props.append({"name": prop["name"], "value": value, "ns": prop.get("ns", "https://fedramp.gov/ns/oscal")})
     # Always include compliance-strategy from fedramp config
-    props.append({
-        "name": "compliance-strategy",
-        "value": fedramp_cfg.get("compliance_strategy", "OSCAL-based Telemetry Validation"),
-        "ns": "https://fedramp.gov/ns/oscal",
-    })
+    props.append(
+        {
+            "name": "compliance-strategy",
+            "value": fedramp_cfg.get("compliance_strategy", "OSCAL-based Telemetry Validation"),
+            "ns": "https://fedramp.gov/ns/oscal",
+        }
+    )
     return props
 
 
@@ -114,7 +117,13 @@ def _build_system_characteristics_props(template: dict[str, Any]) -> list[dict[s
     props = []
     for prop in template.get("required_system_props", []):
         if isinstance(prop, dict):
-            props.append({"name": prop["name"], "value": prop.get("value", ""), "ns": prop.get("ns", "https://fedramp.gov/ns/oscal")})
+            props.append(
+                {
+                    "name": prop["name"],
+                    "value": prop.get("value", ""),
+                    "ns": prop.get("ns", "https://fedramp.gov/ns/oscal"),
+                }
+            )
     return props
 
 
@@ -144,7 +153,9 @@ def build_ssp_skeleton(context: dict[str, Any], data_dir: Path | None = None) ->
     template = _load_ssp_template(Path(data_dir))
     briefing = _unwrap(context.get("leadership_briefing", {}), "leadership_briefing")
     # fedramp_20x_config may be nested under fedramp_20x (file-loaded) or flat (test context)
-    fedramp_cfg = context.get("fedramp_20x_config") or _unwrap(context.get("fedramp_20x", {}), "fedramp_20x_config") or {}
+    fedramp_cfg = (
+        context.get("fedramp_20x_config") or _unwrap(context.get("fedramp_20x", {}), "fedramp_20x_config") or {}
+    )
     planes = _unwrap(context.get("control_planes", []), "control_planes")
     matrix = _unwrap(context.get("unified_compliance_matrix", []), "unified_compliance_matrix")
     inventory_items = _unwrap(context.get("inventory_items", []), "inventory_items")
@@ -207,15 +218,22 @@ def build_ssp_skeleton(context: dict[str, Any], data_dir: Path | None = None) ->
             "description": briefing.get("overview", "Reference architecture for TIC 3.0 migration."),
             # Section 2: FIPS 199 information types and security categorization
             "system-information": {
-                "information-types": [{
-                    "uuid": str(uuid.uuid4()),
-                    "title": "Operational Information",
-                    "description": "General operational data supporting UIAO TIC 3.0 mission.",
-                    "categorizations": [{"system": "https://doi.org/10.6028/NIST.SP.800-60v2r1", "information-type-ids": ["C.3.5.8"]}],
-                    "confidentiality-impact": {"base": "fips-199-moderate"},
-                    "integrity-impact": {"base": "fips-199-moderate"},
-                    "availability-impact": {"base": "fips-199-moderate"},
-                }],
+                "information-types": [
+                    {
+                        "uuid": str(uuid.uuid4()),
+                        "title": "Operational Information",
+                        "description": "General operational data supporting UIAO TIC 3.0 mission.",
+                        "categorizations": [
+                            {
+                                "system": "https://doi.org/10.6028/NIST.SP.800-60v2r1",
+                                "information-type-ids": ["C.3.5.8"],
+                            }
+                        ],
+                        "confidentiality-impact": {"base": "fips-199-moderate"},
+                        "integrity-impact": {"base": "fips-199-moderate"},
+                        "availability-impact": {"base": "fips-199-moderate"},
+                    }
+                ],
             },
             # Section 2: overall security impact level
             "security-impact-level": {
@@ -286,14 +304,16 @@ def build_ssp_skeleton(context: dict[str, Any], data_dir: Path | None = None) ->
             props.append({"name": "subtitle", "value": subtitle})
         props.append({"name": "component-id", "value": component_id})
 
-        ssp["system-implementation"]["components"].append({
-            "uuid": comp_uuid,
-            "type": "service",
-            "title": plane.get("name", plane.get("id", "Unnamed Plane")),
-            "description": plane.get("description", ""),
-            "status": {"state": "operational"},
-            "props": props,
-        })
+        ssp["system-implementation"]["components"].append(
+            {
+                "uuid": comp_uuid,
+                "type": "service",
+                "title": plane.get("name", plane.get("id", "Unnamed Plane")),
+                "description": plane.get("description", ""),
+                "status": {"state": "operational"},
+                "props": props,
+            }
+        )
 
     # Section 11: Populate inventory-items
     if inventory_items:

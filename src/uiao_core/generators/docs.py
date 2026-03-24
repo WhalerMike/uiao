@@ -4,6 +4,7 @@ Migrated from scripts/generate_docs.py into the uiao_core package.
 Renders Jinja2 templates against canon YAML + data overlays to produce
 Markdown documents for docs/ and site/ directories.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

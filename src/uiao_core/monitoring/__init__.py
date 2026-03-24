@@ -3,6 +3,7 @@
 Provides Sentinel telemetry hooks, event processing, and ongoing
 authorization artifact generation for FedRAMP 20x Phase 2 ConMon.
 """
+
 from __future__ import annotations
 
 from uiao_core.monitoring.event_processor import EventProcessor
