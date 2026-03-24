@@ -323,3 +323,184 @@ class TestSSPBuilder:
         # Verify section numbers 1-12
         section_numbers = {s["number"] for s in template["sections"]}
         assert section_numbers == {str(i) for i in range(1, 13)}
+
+
+class TestInventoryFromCoreStack:
+    """Test inventory_items_from_core_stack helper in ssp.py."""
+
+    def test_empty_list_returns_empty(self):
+        from uiao_core.generators.ssp import inventory_items_from_core_stack
+
+        assert inventory_items_from_core_stack([]) == []
+
+    def test_basic_component_becomes_inventory_item(self):
+        from uiao_core.generators.ssp import inventory_items_from_core_stack
+
+        core_stack = [{"id": "INR", "name": "Microsoft INR", "pillar": "identity"}]
+        items = inventory_items_from_core_stack(core_stack)
+        assert len(items) == 1
+        item = items[0]
+        assert item["id"] == "inv-inr"
+        assert item["description"] == "Microsoft INR"
+        assert item["asset_type"] == "software"
+        assert "component-identity" in item["implemented_components"]
+
+    def test_pillar_prop_is_included(self):
+        from uiao_core.generators.ssp import inventory_items_from_core_stack
+
+        items = inventory_items_from_core_stack(
+            [{"id": "IB", "name": "Infoblox IPAM", "pillar": "addressing"}]
+        )
+        prop_names = [p["name"] for p in items[0]["props"]]
+        assert "uiao-pillar" in prop_names
+        pillar_val = next(p["value"] for p in items[0]["props"] if p["name"] == "uiao-pillar")
+        assert pillar_val == "addressing"
+
+    def test_vendor_prop_is_included_when_present(self):
+        from uiao_core.generators.ssp import inventory_items_from_core_stack
+
+        items = inventory_items_from_core_stack(
+            [{"id": "INR", "name": "Microsoft INR", "pillar": "identity", "vendor": "Microsoft"}]
+        )
+        vendor_val = next((p["value"] for p in items[0]["props"] if p["name"] == "vendor"), None)
+        assert vendor_val == "Microsoft"
+
+    def test_missing_pillar_produces_empty_implemented_components(self):
+        from uiao_core.generators.ssp import inventory_items_from_core_stack
+
+        items = inventory_items_from_core_stack([{"id": "UNKNOWN", "name": "Unknown Component"}])
+        assert items[0]["implemented_components"] == []
+
+    def test_entry_without_id_is_skipped(self):
+        from uiao_core.generators.ssp import inventory_items_from_core_stack
+
+        items = inventory_items_from_core_stack([{"name": "No ID Component", "pillar": "identity"}])
+        assert items == []
+
+    def test_non_dict_entries_are_skipped(self):
+        from uiao_core.generators.ssp import inventory_items_from_core_stack
+
+        items = inventory_items_from_core_stack(["not-a-dict", None, {"id": "OK", "name": "OK"}])
+        assert len(items) == 1
+        assert items[0]["id"] == "inv-ok"
+
+
+class TestSSPInventoryMerge:
+    """Test that build_ssp_skeleton merges core-stack and inventory-items correctly."""
+
+    def test_core_stack_items_appear_in_ssp_inventory(self, tmp_path):
+        from uiao_core.generators.ssp import build_ssp_skeleton
+
+        context = {
+            "core_stack": [{"id": "INR", "name": "Microsoft INR", "pillar": "identity"}],
+            "control_planes": [{"id": "identity", "name": "Identity Plane", "description": "ID plane"}],
+        }
+        ssp = build_ssp_skeleton(context, data_dir=tmp_path)
+        inv_items = ssp["system-implementation"].get("inventory-items", [])
+        assert len(inv_items) >= 1
+        descriptions = [i["description"] for i in inv_items]
+        assert any("Microsoft INR" in d for d in descriptions)
+
+    def test_manual_inventory_items_take_precedence_over_core_stack(self, tmp_path):
+        from uiao_core.generators.ssp import build_ssp_skeleton
+
+        context = {
+            "inventory_items": [
+                {"id": "inv-inr", "description": "Manual INR override", "asset_type": "hardware",
+                 "responsible_party": "agency-admin", "implemented_components": ["component-identity"], "props": []}
+            ],
+            "core_stack": [{"id": "INR", "name": "Microsoft INR", "pillar": "identity"}],
+        }
+        ssp = build_ssp_skeleton(context, data_dir=tmp_path)
+        inv_items = ssp["system-implementation"].get("inventory-items", [])
+        descriptions = [i["description"] for i in inv_items]
+        # Manual entry must be present; auto-generated duplicate must not appear
+        assert "Manual INR override" in descriptions
+        assert "Microsoft INR" not in descriptions
+
+    def test_inventory_item_links_to_component_uuid(self, tmp_path):
+        """Inventory items from core-stack must link to a valid component uuid via implemented-components."""
+        from uiao_core.generators.ssp import build_ssp_skeleton
+
+        context = {
+            "core_stack": [{"id": "INR", "name": "Microsoft INR", "pillar": "identity"}],
+            "control_planes": [{"id": "identity", "name": "Identity Plane", "description": ""}],
+        }
+        ssp = build_ssp_skeleton(context, data_dir=tmp_path)
+        inv_items = ssp["system-implementation"].get("inventory-items", [])
+        inr_item = next((i for i in inv_items if "Microsoft INR" in i.get("description", "")), None)
+        assert inr_item is not None, "INR inventory item not found"
+        comp_uuids = [ic["component-uuid"] for ic in inr_item.get("implemented-components", [])]
+        # The component UUID should match the identity plane component uuid
+        components = ssp["system-implementation"]["components"]
+        identity_comp = next((c for c in components if c["title"] == "Identity Plane"), None)
+        assert identity_comp is not None
+        assert identity_comp["uuid"] in comp_uuids
+
+
+class TestDetectInventoryGaps:
+    """Test detect_inventory_gaps in poam.py."""
+
+    def test_empty_context_returns_empty(self):
+        from uiao_core.generators.poam import detect_inventory_gaps
+
+        assert detect_inventory_gaps({}) == []
+
+    def test_known_pillar_produces_no_gap(self):
+        from uiao_core.generators.poam import detect_inventory_gaps
+
+        context = {
+            "core_stack": [{"id": "INR", "name": "Microsoft INR", "pillar": "identity"}],
+            "control_planes": [{"id": "identity", "name": "Identity Plane"}],
+        }
+        gaps = detect_inventory_gaps(context)
+        assert gaps == []
+
+    def test_unknown_pillar_produces_gap(self):
+        from uiao_core.generators.poam import detect_inventory_gaps
+
+        context = {
+            "core_stack": [{"id": "CAT", "name": "Cisco Catalyst", "pillar": "overlay"}],
+            "control_planes": [{"id": "identity"}, {"id": "network"}],
+        }
+        gaps = detect_inventory_gaps(context)
+        assert len(gaps) == 1
+        assert "CAT" in gaps[0]["title"]
+        assert "overlay" in gaps[0]["description"]
+        assert "CM-8" in gaps[0]["related_controls"]
+
+    def test_multiple_unknown_pillars(self):
+        from uiao_core.generators.poam import detect_inventory_gaps
+
+        context = {
+            "core_stack": [
+                {"id": "A", "name": "A", "pillar": "unknown1"},
+                {"id": "B", "name": "B", "pillar": "unknown2"},
+                {"id": "C", "name": "C", "pillar": "identity"},
+            ],
+            "control_planes": [{"id": "identity"}],
+        }
+        gaps = detect_inventory_gaps(context)
+        assert len(gaps) == 2
+
+    def test_detect_gaps_includes_inventory_gaps(self):
+        from uiao_core.generators.poam import detect_gaps
+
+        context = {
+            "core_stack": [{"id": "CAT", "name": "Cisco Catalyst", "pillar": "overlay"}],
+            "control_planes": [{"id": "identity"}],
+        }
+        gaps = detect_gaps(context)
+        inventory_gaps = [g for g in gaps if "overlay" in g.get("description", "")]
+        assert len(inventory_gaps) >= 1
+
+    def test_component_without_pillar_is_not_flagged(self):
+        from uiao_core.generators.poam import detect_inventory_gaps
+
+        context = {
+            "core_stack": [{"id": "MISC", "name": "Misc Component"}],
+            "control_planes": [{"id": "identity"}],
+        }
+        # Missing pillar means no component link attempted; should not be a gap
+        gaps = detect_inventory_gaps(context)
+        assert gaps == []
