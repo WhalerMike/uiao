@@ -33,6 +33,104 @@ class TestCanonEntry:
             CanonEntry(description="no id or name")
 
 
+class TestDiagramDefinition:
+    """Tests for the DiagramDefinition Pydantic model."""
+
+    def test_create_minimal_diagram(self) -> None:
+        """DiagramDefinition can be created with only content."""
+        from uiao_core.models.canon import DiagramDefinition
+
+        d = DiagramDefinition(content="flowchart TD\n    A --> B")
+        assert d.content == "flowchart TD\n    A --> B"
+        assert d.title == ""
+        assert d.type == ""
+        assert d.include_in == []
+
+    def test_create_full_diagram(self) -> None:
+        """DiagramDefinition accepts all documented fields."""
+        from uiao_core.models.canon import DiagramDefinition
+
+        d = DiagramDefinition(
+            title="My Diagram",
+            type="flowchart",
+            description="A test diagram.",
+            include_in=["doc1.md", "doc2.md"],
+            content="flowchart TD\n    A --> B",
+        )
+        assert d.title == "My Diagram"
+        assert d.type == "flowchart"
+        assert d.include_in == ["doc1.md", "doc2.md"]
+
+    def test_extra_fields_allowed(self) -> None:
+        """DiagramDefinition allows extra fields (permissive mode)."""
+        from uiao_core.models.canon import DiagramDefinition
+
+        d = DiagramDefinition(content="flowchart TD\n    A --> B", author="alice")
+        assert d.author == "alice"  # type: ignore[attr-defined]
+
+    def test_empty_diagram_is_valid(self) -> None:
+        """DiagramDefinition with no fields is valid (all default to empty)."""
+        from uiao_core.models.canon import DiagramDefinition
+
+        d = DiagramDefinition()
+        assert d.content == ""
+        assert d.title == ""
+
+
+class TestCanonModelDiagrams:
+    """Tests for the CanonModel.diagrams field."""
+
+    def test_canon_model_has_diagrams_field(self) -> None:
+        """CanonModel exposes a 'diagrams' dict field defaulting to empty."""
+        from uiao_core.models.canon import CanonModel
+
+        model = CanonModel()
+        assert hasattr(model, "diagrams")
+        assert model.diagrams == {}
+
+    def test_canon_model_validates_diagrams(self) -> None:
+        """CanonModel correctly validates a diagrams mapping."""
+        from uiao_core.models.canon import CanonModel
+
+        data = {
+            "version": "1.0",
+            "diagrams": {
+                "my_diagram": {
+                    "title": "Test",
+                    "type": "flowchart",
+                    "content": "flowchart TD\n    A --> B",
+                }
+            },
+        }
+        model = CanonModel.model_validate(data)
+        assert "my_diagram" in model.diagrams
+        assert model.diagrams["my_diagram"].title == "Test"
+        assert "flowchart" in model.diagrams["my_diagram"].content
+
+    def test_canon_model_backward_compatible_without_diagrams(self) -> None:
+        """Existing canon YAML without 'diagrams' still validates."""
+        from uiao_core.models.canon import CanonModel
+
+        data = {"version": "1.0", "document": "Test Canon"}
+        model = CanonModel.model_validate(data)
+        assert model.diagrams == {}
+
+    def test_leadership_briefing_canon_loads_with_diagrams(self, canon_dir) -> None:
+        """canon/uiao_leadership_briefing_v1.0.yaml loads cleanly and has diagrams."""
+        import yaml
+
+        from uiao_core.models.canon import CanonModel
+
+        canon_path = canon_dir / "uiao_leadership_briefing_v1.0.yaml"
+        assert canon_path.exists(), f"Canon file not found: {canon_path}"
+        data = yaml.safe_load(canon_path.read_text(encoding="utf-8"))
+        model = CanonModel.model_validate(data)
+        assert isinstance(model.diagrams, dict)
+        assert len(model.diagrams) >= 1, "Expected at least one diagram in leadership briefing canon"
+        for key, diagram in model.diagrams.items():
+            assert diagram.content.strip(), f"Diagram '{key}' has empty content"
+
+
 class TestCanonLoading:
     """Tests for loading canon YAML files from disk."""
 
