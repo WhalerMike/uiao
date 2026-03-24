@@ -1,7 +1,9 @@
 # UIAO Core - FedRAMP Moderate Modernization Pipeline
 
+[![CI Status](https://github.com/WhalerMike/uiao-core/actions/workflows/ci.yml/badge.svg)](https://github.com/WhalerMike/uiao-core/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![CI Status](https://github.com/WhalerMike/uiao-core/actions/workflows/build.yml/badge.svg)](https://github.com/WhalerMike/uiao-core/actions)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)](https://github.com/WhalerMike/uiao-core/releases)
 [![OSCAL Validation](https://img.shields.io/badge/OSCAL%20Validation-Passing-green)](https://pages.nist.gov/OSCAL/)
 
 **UIAO Core** - A FedRAMP Moderate / 20x-aligned modernization pipeline that turns a single YAML canon into synchronized leadership documents **and** machine-readable OSCAL artifacts.
