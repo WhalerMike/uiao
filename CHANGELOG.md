@@ -35,6 +35,7 @@
 * **lint:** remove blank line after __future__ import in charts.py (ruff I001, ADR-0004) ([74792ad](https://github.com/WhalerMike/uiao-core/commit/74792ad60bfa38b12210e126e253f77017521ce4))
 * **lint:** remove unused yaml import in oscal.py (ruff F401, ADR-0004) ([a510cda](https://github.com/WhalerMike/uiao-core/commit/a510cda6d03a0746bc0c05329efc4d3320fe175b))
 * **lint:** revert force-sort-within-sections that broke other files ([9eb9b1b](https://github.com/WhalerMike/uiao-core/commit/9eb9b1be116bed9ed21e69645e45899d0d020c48))
+* **lint:** SIM102 collapse nested ifs in onboarding/validator.py ([34ee6fe](https://github.com/WhalerMike/uiao-core/commit/34ee6fea4d130a54e6bef960b887e26cb4a9adba))
 * **lint:** sort imports alphabetically in generators/__init__.py (ruff I001, ADR-0004) ([486804c](https://github.com/WhalerMike/uiao-core/commit/486804cb67893dfc07b44d8771621d7f8e0a02a6))
 * **lint:** sort imports and __all__ in utils/__init__.py (ruff I001, ADR-0004) ([5364b18](https://github.com/WhalerMike/uiao-core/commit/5364b18fb288d361bd280a4f175bf208ecb7018a))
 * **lint:** UP037 remove quotes from SentinelConfig return annotation ([ad69dcf](https://github.com/WhalerMike/uiao-core/commit/ad69dcf9563d89e4c731bcbe0e13add700a2f164))
