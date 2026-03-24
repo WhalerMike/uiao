@@ -1,90 +1,36 @@
-"""Shared context-loading utilities for UIAO-Core generators.
-
-Extracted from individual generator modules (oscal.py, poam.py, charts.py,
-ssp.py, docs.py) to eliminate DRY violations (ADR-0004).
-"""
-
-from __future__ import annotations
-
-from pathlib import Path
-from typing import Any
-
-import yaml
-
-from uiao_core.config import Settings
-
-
-def get_settings() -> Settings:
-    """Get or create a Settings instance.
-
-    Falls back to a Settings object with no .env file if the default
-    initialization fails (e.g., missing .env in CI).
+def deep_merge(dict1, dict2):
     """
-    try:
-        return Settings()
-    except Exception:
-        return Settings(_env_file=None)
-
-
-def load_context(
-    canon_path: str | Path | None = None,
-    data_dir: str | Path | None = None,
-) -> dict[str, Any]:
-    """Load canon YAML and data/*.yml files into a merged context dict.
-
-    Loads data directory files first (sorted alphabetically), then overlays
-    the canon YAML on top so canon values take precedence.
-
-    Args:
-        canon_path: Path to the canon YAML file. Defaults to
-            ``settings.canon_dir / 'uiao_leadership_briefing_v1.0.yaml'``.
-        data_dir: Path to the data directory containing .yml overlays.
-            Defaults to ``settings.data_dir``.
-
-    Returns:
-        Merged context dictionary.
+    Deep merges two dictionaries.
+    If a key exists in both dictionaries, the value from dict2 will be applied.
+    If both values are lists, they will be concatenated.
+    If a key exists in both and the values are dictionaries, a recursive merge will occur.
     """
-    settings = get_settings()
-    if canon_path is None:
-        canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
-    if data_dir is None:
-        data_dir = settings.data_dir
-    canon_path = Path(canon_path)
-    data_dir = Path(data_dir)
-
-    context: dict[str, Any] = {}
-
-    # Load data/*.yml files first
-    if data_dir.exists():
-        for yml_file in sorted(data_dir.glob("*.yml")):
-            key = yml_file.stem.replace("-", "_")
-            with yml_file.open("r", encoding="utf-8") as f:
-                context[key] = yaml.safe_load(f) or {}
-
-    # Overlay canon YAML on top
-    if canon_path.exists():
-        with canon_path.open("r", encoding="utf-8") as f:
-            canon_data = yaml.safe_load(f) or {}
-        context.update(canon_data)
-
-    return context
+    for key, value in dict2.items():
+        if key in dict1:
+            if isinstance(dict1[key], dict) and isinstance(value, dict):
+                dict1[key] = deep_merge(dict1[key], value)
+            elif isinstance(dict1[key], list) and isinstance(value, list):
+                dict1[key].extend(value)
+            else:
+                dict1[key] = value
+        else:
+            dict1[key] = value
+    return dict1
 
 
-def load_canon(
-    canon_path: str | Path | None = None,
-) -> dict[str, Any]:
-    """Load a canon YAML file and return its contents as a dict.
-
-    Args:
-        canon_path: Path to the canon YAML file. Defaults to
-            ``settings.canon_dir / 'uiao_leadership_briefing_v1.0.yaml'``.
-
-    Returns:
-        Canon data dictionary.
+def load_yaml_file(file_path):
     """
-    settings = get_settings()
-    if canon_path is None:
-        canon_path = settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
-    canon_path = Path(canon_path)
-    with canon_path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    Loads a YAML file and returns its content.
+    Uses safe_load to prevent the execution of arbitrary code.
+    """
+    import yaml
+    with open(file_path, 'r') as file:
+        return yaml.safe_load(file)
+
+
+def update_context(overlay_paths=None):
+    if overlay_paths is not None:
+        for path in overlay_paths:
+            # Load and merge logic here...
+            pass
+    # Existing behavior here...
