@@ -5,8 +5,7 @@ from __future__ import annotations
 import pytest
 
 from uiao_core.abstractions import DNSProvider, IdentityProvider, NetworkEdge
-from uiao_core.abstractions.providers import BaseProvider, Capability
-
+from uiao_core.abstractions.providers import Capability
 
 # ---------------------------------------------------------------------------
 # Smoke-test: public API is importable
