@@ -256,7 +256,7 @@ def build_docs(
     if generate_diagrams:
         from uiao_core.generators.diagrams import generate_diagrams_from_canon
 
-        generate_diagrams_from_canon(force=force_visuals)
+        generate_diagrams_from_canon(canon_path=canon_path, force=force_visuals)
 
     # Load context: data files first, then overlays, then canon overwrites
     context = load_data_files(data_dir)
@@ -285,4 +285,3 @@ def build_docs(
         generated.append(str(out_path))
 
     return generated
-
