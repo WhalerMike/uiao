@@ -70,10 +70,14 @@ class TestCLIBasics:
                 app,
                 [
                     "generate-docs",
-                    "--canon", "canon/test.yaml",
-                    "--data-dir", str(tmp_path / "data"),
-                    "--templates-dir", str(tmp_path / "templates"),
-                    "--output-dir", str(tmp_path / "docs"),
+                    "--canon",
+                    "canon/test.yaml",
+                    "--data-dir",
+                    str(tmp_path / "data"),
+                    "--templates-dir",
+                    str(tmp_path / "templates"),
+                    "--output-dir",
+                    str(tmp_path / "docs"),
                 ],
             )
         assert result.exit_code == 0
