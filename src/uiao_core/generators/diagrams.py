@@ -93,6 +93,7 @@ def generate_diagrams_from_canon(
     visuals_dir: str | Path | None = None,
     output_dir: str | Path | None = None,
     force: bool = False,
+    strict: bool = False,
 ) -> list[Path]:
     """Generate ``.mermaid`` files and render them to PNG from canon YAML.
 
@@ -108,9 +109,16 @@ def generate_diagrams_from_canon(
         output_dir: Directory for rendered PNG files.
             Defaults to ``<project_root>/assets/images/mermaid``.
         force: If ``True``, re-render even if a cached PNG exists.
+        strict: If ``True``, raise :exc:`RuntimeError` when any diagram
+            fails to render (useful for CI pipelines). Defaults to ``False``
+            so that missing renderers are treated as non-fatal warnings.
 
     Returns:
         List of successfully rendered PNG :class:`~pathlib.Path` objects.
+
+    Raises:
+        RuntimeError: When *strict* is ``True`` and at least one diagram
+            fails to render.
     """
     settings = get_settings()
 
@@ -129,6 +137,7 @@ def generate_diagrams_from_canon(
 
     logger.info("Generating %d diagram(s) from canon.", len(diagrams))
     rendered: list[Path] = []
+    failures: list[str] = []
 
     for key, meta in diagrams.items():
         content: str = meta.get("content", "")
@@ -143,8 +152,17 @@ def generate_diagrams_from_canon(
             rendered.append(png_path)
         else:
             logger.warning("Failed to render diagram '%s'.", key)
+            failures.append(key)
 
     logger.info("Rendered %d/%d diagram(s).", len(rendered), len(diagrams))
+
+    if strict and failures:
+        raise RuntimeError(
+            f"Failed to render {len(failures)} diagram(s): {', '.join(failures)}. "
+            "Install mmdc (`npm i -g @mermaid-js/mermaid-cli`) or playwright "
+            "(`pip install playwright && playwright install chromium`)."
+        )
+
     return rendered
 
 
