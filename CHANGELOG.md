@@ -37,6 +37,7 @@
 * **oscal:** update component-definition metadata for FedRAMP Rev 5 OSCAL 1.0.4 ([81eb807](https://github.com/WhalerMike/uiao-core/commit/81eb80745d188e39bfc75145bb6d676227395077))
 * **poam:** update metadata for FedRAMP Rev 5 OSCAL 1.0.4 compliance ([ec11443](https://github.com/WhalerMike/uiao-core/commit/ec11443dd5a9b0cb38c81944ba58ff2ed47c2253))
 * resolve all 156 ruff lint errors on copilot/add-gemini-image-generation ([3fd52f9](https://github.com/WhalerMike/uiao-core/commit/3fd52f9216536fcdcc10f80a177b9b738765f542))
+* resolve PR [#45](https://github.com/WhalerMike/uiao-core/issues/45) POA&M rule engine CI failures and MEMORY compliance ([5a5e984](https://github.com/WhalerMike/uiao-core/commit/5a5e9841a76323e705973c83c3678c4999cb579b))
 * sort imports for ruff I001 compliance in generators __init__ ([d437137](https://github.com/WhalerMike/uiao-core/commit/d437137ae6e2bbbc94b91cd9e32d93ae5f3268bd))
 * **ssp:** add parties/roles and party-uuids for OSCAL trestle validation ([be501c8](https://github.com/WhalerMike/uiao-core/commit/be501c8624586717a2ff65c093658a7403d4156d))
 * **ssp:** inject Settings, fix datetime.utcnow() -> datetime.now(timezone.utc) (ADR-0003) ([305a322](https://github.com/WhalerMike/uiao-core/commit/305a32203ac6c46d7aae9d510eec72814854fcc5))
