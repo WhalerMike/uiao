@@ -55,3 +55,44 @@ When writing Jinja2 templates (`.j2`), remember that the pipeline normalizes YAM
 2. Update `data/atlas-appendices.yml`
 3. Verify the local build: `python scripts/generate_atlas.py`
 4. Submit a Pull Request. The CI/CD pipeline will fail if your entry does not match the `schema.json`.
+
+## Signed Commits (GPG)
+
+This project follows FedRAMP Moderate supply-chain requirements. Commit signatures are checked on every PR via `.github/workflows/verify-signatures.yml`. While advisory today, repository admins may promote the rule to a hard branch-protection gate at any time.
+
+### One-time GPG setup
+
+```bash
+# 1. Generate a new RSA-4096 key (or reuse an existing one)
+gpg --full-generate-key
+# Choose: (1) RSA and RSA, keysize 4096, no expiry (or set an expiry date)
+
+# 2. List your keys to find the key ID
+gpg --list-secret-keys --keyid-format=long
+# Example output:
+#   sec   rsa4096/ABCDEF1234567890 2024-01-01 [SC]
+
+# 3. Export your public key and add it to GitHub
+gpg --armor --export ABCDEF1234567890
+# Copy the output, then go to:
+# GitHub → Settings → SSH and GPG keys → New GPG key → Paste
+
+# 4. Tell Git to use your key
+git config --global user.signingkey ABCDEF1234567890
+git config --global commit.gpgsign true
+
+# (macOS only) point Git at the system gpg binary
+git config --global gpg.program gpg
+```
+
+### Verifying locally
+
+```bash
+# Verify the last commit
+git log --show-signature -1
+
+# Check all unsigned commits on your branch vs main
+git log --format="%H %G?" origin/main..HEAD
+```
+
+A status of `G` means a good signature; `N` means unsigned.
