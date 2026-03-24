@@ -3,6 +3,7 @@
 Loads KSI mappings from ``data/ksi-mappings.yml`` and evaluates
 compliance status for FedRAMP 20x Phase 2 continuous monitoring.
 """
+
 from __future__ import annotations
 
 import logging
@@ -15,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 # Ordered status values (ascending maturity)
 KSI_STATUS_ORDER = ("Planned", "Partial", "Implemented")
-
 
 
 class KSICalculator:

@@ -5,6 +5,7 @@ that cross-reference each monitored NIST 800-53 / FedRAMP Rev 5 control
 to its telemetry evidence source, satisfying the FedRAMP 20x Phase 2
 ConMon requirement for machine-readable control evidence.
 """
+
 from __future__ import annotations
 
 import json
@@ -49,9 +50,7 @@ class OngoingAuthGenerator:
     def _load_signal_map(self) -> None:
         """Build signal → control mapping from monitoring-sources.yml."""
         if not self._monitoring_path.exists():
-            logger.warning(
-                "monitoring-sources.yml not found at %s", self._monitoring_path
-            )
+            logger.warning("monitoring-sources.yml not found at %s", self._monitoring_path)
             return
         raw = yaml.safe_load(self._monitoring_path.read_text())
         for source in raw.get("monitoring_sources", []):

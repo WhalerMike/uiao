@@ -7,6 +7,7 @@ Covers:
 - EvidenceCollector: aggregation of multiple connectors
 - UIAO-MEMORY rule: every prop in back-matter carries a fresh UUIDv4 (prop:id)
 """
+
 from __future__ import annotations
 
 import json
@@ -213,9 +214,7 @@ class TestEvidenceLinker:
             for prop in resource["props"]:
                 assert prop.get("ns") == FEDRAMP_NS, f"prop missing FedRAMP ns: {prop}"
 
-    def test_inject_into_ssp_adds_resources(
-        self, two_artifacts: list[EvidenceArtifact]
-    ) -> None:
+    def test_inject_into_ssp_adds_resources(self, two_artifacts: list[EvidenceArtifact]) -> None:
         from uiao_core.evidence.linker import EvidenceLinker
 
         ssp: dict = {"system-security-plan": {"metadata": {}, "back-matter": {"resources": []}}}
@@ -292,9 +291,7 @@ class TestEvidenceBundler:
             assert "manifest.json" in names
             assert "oscal-back-matter.json" in names
 
-    def test_zip_oscal_back_matter_has_prop_ids(
-        self, two_artifacts: list[EvidenceArtifact]
-    ) -> None:
+    def test_zip_oscal_back_matter_has_prop_ids(self, two_artifacts: list[EvidenceArtifact]) -> None:
         """ZIP's oscal-back-matter.json must follow the prop:id rule."""
         import zipfile
 
@@ -311,9 +308,7 @@ class TestEvidenceBundler:
                 assert "uuid" in prop
                 uuid.UUID(prop["uuid"])
 
-    def test_write_zip_include_files_skips_missing(
-        self, two_artifacts: list[EvidenceArtifact]
-    ) -> None:
+    def test_write_zip_include_files_skips_missing(self, two_artifacts: list[EvidenceArtifact]) -> None:
         """include_files=True silently skips non-existent files."""
         from uiao_core.evidence.bundler import EvidenceBundler
 
@@ -425,11 +420,7 @@ class TestOSCALSSPBackMatter:
             pytest.skip("OSCAL SSP skeleton not found")
         with ssp_path.open() as f:
             ssp = json.load(f)
-        resources = (
-            ssp.get("system-security-plan", {})
-            .get("back-matter", {})
-            .get("resources", [])
-        )
+        resources = ssp.get("system-security-plan", {}).get("back-matter", {}).get("resources", [])
         assert len(resources) > 0, "back-matter resources should not be empty"
 
     def test_ssp_back_matter_props_have_uuid(self) -> None:
@@ -439,11 +430,7 @@ class TestOSCALSSPBackMatter:
             pytest.skip("OSCAL SSP skeleton not found")
         with ssp_path.open() as f:
             ssp = json.load(f)
-        resources = (
-            ssp.get("system-security-plan", {})
-            .get("back-matter", {})
-            .get("resources", [])
-        )
+        resources = ssp.get("system-security-plan", {}).get("back-matter", {}).get("resources", [])
         for resource in resources:
             for prop in resource.get("props", []):
                 assert "uuid" in prop, f"prop missing uuid in resource {resource['uuid']}: {prop}"

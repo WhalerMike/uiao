@@ -7,6 +7,7 @@ properly formatted compliance tables.
 
 References: ADR-0004
 """
+
 # isort: skip_file
 from __future__ import annotations
 
@@ -19,14 +20,15 @@ from docx import Document
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt, RGBColor
+
 try:
     from docxtpl import DocxTemplate
+
     HAS_DOCXTPL = True
 except ImportError:
     HAS_DOCXTPL = False
 
 from uiao_core.utils.context import get_settings, load_context
-
 
 
 logger = logging.getLogger(__name__)
@@ -77,9 +79,7 @@ def _add_narrative(doc: Document, text: Any) -> None:
             run.font.size = Pt(11)
 
 
-def _add_image_safe(
-        doc: Document, image_name: str, visuals_dir: Path, width: Any = _DEFAULT_IMAGE_WIDTH
-) -> bool:
+def _add_image_safe(doc: Document, image_name: str, visuals_dir: Path, width: Any = _DEFAULT_IMAGE_WIDTH) -> bool:
     """Add an image if it exists, skip gracefully if not."""
     img_path = visuals_dir / image_name
     if img_path.exists():
@@ -93,8 +93,11 @@ def _add_image_safe(
 def _add_compliance_table(doc: Document, matrix: list[dict]) -> None:
     """Add the Unified Compliance Matrix as a formatted Word table."""
     headers = [
-        "UIAO Pillar", "CISA ZT Pillar", "Target Maturity",
-        "NIST 800-53 Controls", "Mission Impact",
+        "UIAO Pillar",
+        "CISA ZT Pillar",
+        "Target Maturity",
+        "NIST 800-53 Controls",
+        "Mission Impact",
     ]
     table = doc.add_table(rows=1, cols=len(headers))
     table.style = "Medium Shading 1 Accent 1"
@@ -115,9 +118,7 @@ def _add_compliance_table(doc: Document, matrix: list[dict]) -> None:
         row.cells[1].text = entry.get("cisa_pillar", "")
         row.cells[2].text = entry.get("cisa_maturity", "")
         controls = entry.get("nist_controls", [])
-        row.cells[3].text = (
-            ", ".join(controls) if isinstance(controls, list) else str(controls)
-        )
+        row.cells[3].text = ", ".join(controls) if isinstance(controls, list) else str(controls)
         row.cells[4].text = entry.get("impact_statement", "")
         for cell in row.cells:
             for p in cell.paragraphs:
@@ -171,18 +172,14 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
     # Title page
     title = doc.add_paragraph()
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = title.add_run(
-        "Unified Identity-Addressing-Overlay Architecture (UIAO)"
-    )
+    run = title.add_run("Unified Identity-Addressing-Overlay Architecture (UIAO)")
     run.font.size = Pt(22)
     run.font.color.rgb = RGBColor(0x1B, 0x3A, 0x5C)
     run.bold = True
 
     subtitle = doc.add_paragraph()
     subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    sr = subtitle.add_run(
-        f"Leadership Briefing - Version {context.get('version', '1.0')}"
-    )
+    sr = subtitle.add_run(f"Leadership Briefing - Version {context.get('version', '1.0')}")
     sr.font.size = Pt(14)
     sr.font.color.rgb = RGBColor(0x44, 0x72, 0xC4)
 
@@ -196,9 +193,7 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
     # TOC placeholder
     _add_heading(doc, "Table of Contents", level=1)
     toc_p = doc.add_paragraph()
-    toc_p.add_run(
-        "[Table of Contents - right-click and select 'Update Field' in Word]"
-    )
+    toc_p.add_run("[Table of Contents - right-click and select 'Update Field' in Word]")
     toc_p.runs[0].font.size = Pt(9)
     toc_p.runs[0].font.italic = True
     doc.add_page_break()
@@ -339,9 +334,7 @@ def build_rich_docx(
         logger.info("Using docxtpl template: %s", tpl_path)
         tpl = DocxTemplate(str(tpl_path))
         context["today"] = datetime.now().strftime("%B %d, %Y")
-        context["compliance_table"] = context.get(
-            "unified_compliance_matrix", []
-        )
+        context["compliance_table"] = context.get("unified_compliance_matrix", [])
         tpl.render(context)
         tpl.save(str(out_path))
     else:
