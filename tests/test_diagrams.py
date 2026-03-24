@@ -45,9 +45,7 @@ class TestDiagramsCanon:
             "generation_pipeline",
             "zero_trust_journey",
         }
-        assert expected.issubset(set(diagrams.keys())), (
-            f"Missing diagram keys: {expected - set(diagrams.keys())}"
-        )
+        assert expected.issubset(set(diagrams.keys())), f"Missing diagram keys: {expected - set(diagrams.keys())}"
 
     def test_each_diagram_has_required_fields(self) -> None:
         data = yaml.safe_load(_DIAGRAMS_CANON.read_text(encoding="utf-8"))
@@ -219,10 +217,7 @@ class TestReplaceMermaidBlocks:
     def test_replaces_multiple_blocks(self) -> None:
         from uiao_core.generators.docs import replace_mermaid_blocks_with_images
 
-        md = (
-            "```mermaid\nflowchart LR\n    A --> B\n```\n\n"
-            "```mermaid\nflowchart TD\n    C --> D\n```\n"
-        )
+        md = "```mermaid\nflowchart LR\n    A --> B\n```\n\n```mermaid\nflowchart TD\n    C --> D\n```\n"
         result = replace_mermaid_blocks_with_images(md)
         assert result.count("<img") == 2
         assert "```mermaid" not in result
@@ -292,9 +287,7 @@ class TestBuildDocsDiagramIntegration:
         docs_dir = tmp_path / "docs"
         site_dir = tmp_path / "site"
         canon_file = tmp_path / "test_canon.yaml"
-        canon_file.write_text(
-            yaml.dump({"version": "1.0", "diagrams": {}}), encoding="utf-8"
-        )
+        canon_file.write_text(yaml.dump({"version": "1.0", "diagrams": {}}), encoding="utf-8")
 
         with mock.patch(
             "uiao_core.generators.diagrams.generate_diagrams_from_canon",
@@ -323,9 +316,7 @@ class TestBuildDocsDiagramIntegration:
         templates_dir = tmp_path / "templates"
         templates_dir.mkdir()
         canon_file = tmp_path / "test_canon.yaml"
-        canon_file.write_text(
-            yaml.dump({"version": "1.0", "diagrams": {}}), encoding="utf-8"
-        )
+        canon_file.write_text(yaml.dump({"version": "1.0", "diagrams": {}}), encoding="utf-8")
 
         with mock.patch(
             "uiao_core.generators.diagrams.generate_diagrams_from_canon",
@@ -354,9 +345,7 @@ class TestBuildDocsDiagramIntegration:
         templates_dir = tmp_path / "templates"
         templates_dir.mkdir()
         canon_file = tmp_path / "test_canon.yaml"
-        canon_file.write_text(
-            yaml.dump({"version": "1.0", "diagrams": {}}), encoding="utf-8"
-        )
+        canon_file.write_text(yaml.dump({"version": "1.0", "diagrams": {}}), encoding="utf-8")
 
         with mock.patch(
             "uiao_core.generators.diagrams.generate_diagrams_from_canon",
@@ -382,9 +371,7 @@ class TestBuildDocsDiagramIntegration:
         leadership_canon = _REPO_ROOT / "canon" / "uiao_leadership_briefing_v1.0.yaml"
         assert leadership_canon.exists(), f"Canon not found: {leadership_canon}"
 
-        with mock.patch(
-            "uiao_core.generators.diagrams.render_mermaid_file", return_value=None
-        ) as mock_render:
+        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None) as mock_render:
             import tempfile
 
             with tempfile.TemporaryDirectory() as td:
