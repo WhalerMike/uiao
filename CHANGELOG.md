@@ -11,6 +11,8 @@
 * **ci:** replace broken gh-mcp-server with TruffleHog for secret scanning ([0ddb737](https://github.com/WhalerMike/uiao-core/commit/0ddb737b64362943d92e4a4439606b73d090b87f))
 * **cli:** restore gemini print and remove stray line in app.py ([6a33071](https://github.com/WhalerMike/uiao-core/commit/6a3307104925fd55bd68b66055ff3b7d296fc501))
 * **cli:** rewrite app.py with correct indentation and __main__ guard ([6819078](https://github.com/WhalerMike/uiao-core/commit/6819078cdc53036552874a36f5ef12a25b91d3c0))
+* **evidence:** add missing linker.py + bundler.py, prop:id on OSCAL back-matter, 34 tests (refs UIAO-MEMORY.md) ([2f07a41](https://github.com/WhalerMike/uiao-core/commit/2f07a41f3857beb3ee3ea52179b390d228d3270b))
+* **evidence:** address code review — improve error logging, clarify OSCAL validation comment, add round-trip test ([5d5b711](https://github.com/WhalerMike/uiao-core/commit/5d5b7110f36ce844f5f1d605913b54b12b27ca91))
 * **generators:** add isort skip_file to rich_docx.py for try/except imports ([19744ca](https://github.com/WhalerMike/uiao-core/commit/19744caf9eb7cef84f35e6e0ea678d5bff8e7dd9))
 * **generators:** fix indentation and remove duplicate radar chart in rich_docx.py ([ed2654c](https://github.com/WhalerMike/uiao-core/commit/ed2654cebe78b749fdb9ac42cb7f809c9dd75588))
 * **generators:** fix indentation in rich_docx.py radar chart section ([e773e36](https://github.com/WhalerMike/uiao-core/commit/e773e36176f4c47f12098b0f9ee99ff71cfc8777))
