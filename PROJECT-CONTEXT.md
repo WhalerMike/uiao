@@ -15,15 +15,17 @@
 
 ## AI Orchestration Rules (All Agents Must Follow)
 
-1. **Hierarchy**
-   - **Comet-Perplexity**: Top-level orchestrator and task assigner
-   - **Claude Code**: Senior planner + harsh reviewer (use Plan Mode, update CLAUDE.md after every correction)
-   - **GitHub Copilot (copilot-swe-agent)**: Fast implementation and auto-fixing only — never the primary decision maker
+1. **AI HIERARCHY (single source of truth)**
+   - **Comet-Perplexity** = Top-level orchestrator and task queue manager.
+   - **Grok** = Strategic Advisor / Architect / Grill Master (provides high-level plans, memory entries, review prompts).
+   - **Claude Code** = Senior Planner + Harsh Reviewer (optional parallel reviewer).
+   - **GitHub Copilot** = Fast implementation layer only (never makes primary decisions).
 
 2. **Memory & Context**
    - Always read this file + AGENTS.md + CLAUDE.md + UIAO-MEMORY.md before starting work
    - After any significant change or mistake, update the relevant memory file and this PROJECT-CONTEXT.md if architecture decisions change
    - Never assume context from previous sessions — explicitly reference files
+   - **Role separation**: UIAO-MEMORY.md is the live append-only correction log; PROJECT-CONTEXT.md is the static governance doc. Do not mix their roles.
 
 3. **Quality Gates (Non-Negotiable)**
    - All code must pass ruff linting, pip-audit, and existing CI
@@ -31,6 +33,7 @@
    - Evidence sent to validation-targets must include proper `prop:id`
    - Before any PR/merge: Claude harsh review (Tip 6 from whiteboard)
    - Use parallel Git worktrees for complex tasks (Tip 1)
+   - **Agent rate-limit rule**: ALWAYS enforce <=8 concurrent Copilot/Comet agents. Queue remaining tasks in waves.
 
 4. **Current Priorities (March 2026)**
    - Tight integration between uiao-core and uiao-validation-targets (CLI commands to test against live target)
@@ -47,6 +50,7 @@
 - Public repo rule: Never commit CUI or production artifacts here
 
 ## Decision Log (Add new entries at top)
+- 2026-03-24: Grill Master RE-PLAN fix-PR merge loop proven at scale (PRs #52, #54, #55, #56).
 - 2026-03-24: Created PROJECT-CONTEXT.md to prevent context collision across Comet/Copilot/Claude layers
 - 2026-03-24: uiao-validation-targets bootstrapped as live mock telemetry endpoint
 - 2026-03-23: Agentic workflow bootstrapped with AGENTS.md
