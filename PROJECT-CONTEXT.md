@@ -43,13 +43,32 @@
    - Migrate pipeline to secure/GitHub Enterprise-ready setup
    - Expand validation-targets with more scenarios (failure injection, high-volume telemetry, scan imports)
 
-## FedRAMP-Specific Constraints
+## Automated Diagram Generation
+
+Diagrams are defined in `canon/diagrams.yaml` (single source of truth) and rendered via the pipeline below:
+
+```
+canon/diagrams.yaml
+    └─ generate_diagrams_from_canon()
+           ├─ writes visuals/<key>.mermaid
+           └─ render_mermaid_file() → assets/images/mermaid/<key>.png
+                                            └─ embedded in DOCX / PPTX
+```
+
+- **CLI**: `uiao generate-diagrams` — writes `.mermaid` files and renders all PNGs.
+- **Auto-integration**: `uiao generate-docs` calls diagram generation automatically (pass `--skip-diagrams` to opt out).
+- **Post-processing**: `replace_mermaid_blocks_with_images()` in `docs.py` replaces fenced `mermaid` blocks with `<img>` tags so DOCX/PPTX/PDF renderers can embed the PNGs.
+- **Live site**: `mkdocs.yml` loads Mermaid 10 ESM from CDN for real-time browser rendering on GitHub Pages.
+- **Six canonical diagrams**: `architecture_overview`, `authorization_boundary`, `data_flow`, `uiao_planes`, `generation_pipeline`, `zero_trust_journey`.
+
+
 - Target: FedRAMP Moderate Rev 5 baseline
 - Focus: 20x Phase 2 (machine-readable evidence over narrative bloat, continuous monitoring, KSI mapping)
 - POA&M statuses allowed: open, closed, risk-accepted, false-positive, operational-requirement, vendor-dependency, not-applicable
 - Public repo rule: Never commit CUI or production artifacts here
 
 ## Decision Log (Add new entries at top)
+- 2026-03-24: Automated diagram generation implemented (copilot/diagram-automation). `canon/diagrams.yaml` is now the single source of truth for all Mermaid diagrams. `generate-docs` auto-generates PNGs; `generate-diagrams` CLI command available for standalone use. Mermaid fences post-processed to `<img>` tags in Markdown for DOCX/PPTX/PDF pipelines.
 - 2026-03-24: Grill Master RE-PLAN fix-PR merge loop proven at scale (PRs #52, #54, #55, #56).
 - 2026-03-24: Created PROJECT-CONTEXT.md to prevent context collision across Comet/Copilot/Claude layers
 - 2026-03-24: uiao-validation-targets bootstrapped as live mock telemetry endpoint
