@@ -63,11 +63,8 @@ class TestCLIBasics:
 
     def test_generate_docs_runs(self, tmp_path) -> None:
         """generate-docs runs without crashing on a minimal project structure."""
-        with patch(
-            "uiao_core.generators.docs.build_docs",
-            return_value=["docs/test.md"],
-        ) as mock_build:
-            result = runner.invoke(
+                with patch("uiao_core.generators.docs.build_docs", return_value=["docs/test.md"]) as mock_build:
+    result = runner.invoke(
                 app,
                 [
                     "generate-docs",
