@@ -1,8 +1,12 @@
 """OSCAL evidence linker — maps EvidenceArtifacts to OSCAL back-matter resources.
 
 UIAO-MEMORY correction rule (2026-03-23):
-  ALWAYS add prop:id on every link, generate fresh UUIDv4,
-  validate against OSCAL 1.0.4 schema (matches current repo baseline).
+  ALWAYS add prop:id on every link, generate fresh UUIDv4.
+
+OSCAL schema validation is performed externally via ``make validate-oscal``
+(compliance-trestle) against the OSCAL 1.0.4 baseline used by this repo.
+This module generates conformant structures; it does not invoke the validator
+itself.
 """
 from __future__ import annotations
 

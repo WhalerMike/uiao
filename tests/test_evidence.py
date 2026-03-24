@@ -96,6 +96,14 @@ class TestEvidenceArtifact:
         art = EvidenceArtifact(uuid=str(uuid.uuid4()), title="Extra", custom_field="x")
         assert art.custom_field == "x"  # type: ignore[attr-defined]
 
+    def test_extra_fields_round_trip(self) -> None:
+        """Extra fields survive model_dump/model_validate round-trip."""
+        art = EvidenceArtifact(uuid=str(uuid.uuid4()), title="Round-trip", custom_field="y")
+        d = art.model_dump()
+        assert d["custom_field"] == "y"
+        art2 = EvidenceArtifact.model_validate(d)
+        assert art2.custom_field == "y"  # type: ignore[attr-defined]
+
 
 class TestEvidenceMap:
     def test_create_with_artifacts(self, sample_artifact: EvidenceArtifact) -> None:

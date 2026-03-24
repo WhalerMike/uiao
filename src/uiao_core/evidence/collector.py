@@ -360,5 +360,11 @@ class EvidenceCollector:
                 logger.info("Connector '%s' returned %d artifact(s).", connector.name, len(results))
                 all_artifacts.extend(results)
             except Exception as exc:  # noqa: BLE001
-                logger.error("Connector '%s' raised an error: %s", connector.name, exc)
+                logger.error(
+                    "Connector '%s' raised %s: %s",
+                    connector.name,
+                    type(exc).__name__,
+                    exc,
+                    exc_info=True,
+                )
         return all_artifacts
