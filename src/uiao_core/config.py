@@ -16,6 +16,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    project_root: Path = Path.cwd()
     root_dir: Path = Path.cwd()
     canon_dir: Path = Path("canon")
     templates_dir: Path = Path("templates")
