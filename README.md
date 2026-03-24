@@ -173,6 +173,20 @@ All generated documents are stored in `exports/`:
 - `exports/pdf/` - PDF documents (via Pandoc)
 - `exports/oscal/` - NIST OSCAL JSON artifacts
 
+## Validation Targets Submodule
+
+The `validation-targets` directory is a git submodule pointing to [uiao-validation-targets](https://github.com/WhalerMike/uiao-validation-targets). This submodule enforces all whiteboard rules (memory, Plan Mode, Grill Master) and serves as the live FedRAMP validation target for SSP, OSCAL, POA&M, and continuous monitoring agents.
+
+After cloning, initialize the submodule:
+
+```bash
+git submodule update --init --recursive
+```
+
+- **Local endpoint**: `http://localhost:8000`
+- **CI endpoint**: `https://github.com/WhalerMike/uiao-validation-targets`
+- **Agent limit**: Max 12 agents across both `uiao-core` and `uiao-validation-targets` combined.
+
 ## Known Limitations & Roadmap
 
 ### Current Limitations
