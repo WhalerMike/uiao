@@ -61,7 +61,7 @@ class SentinelConfig:
     poam_data_path: str = "data/poam-findings.yml"
 
     @classmethod
-    def from_yaml(cls, config_path: str | Path) -> "SentinelConfig":
+    def from_yaml(cls, config_path: str | Path) -> SentinelConfig:
         """Load Sentinel configuration from YAML file."""
         path = Path(config_path)
         if not path.exists():
