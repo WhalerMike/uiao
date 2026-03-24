@@ -6,6 +6,7 @@ Update after EVERY run (success or failure).
 
 | Date | Task | Outcome | Issue / Error Summary | Correction Rule |
 |------|------|---------|----------------------|----------------|
+| 2026-03-24 | Validation target repo | New architecture | ALWAYS point SSP/OSCAL/POA&M/monitoring agents at uiao-validation-targets. Endpoint: http://localhost:8000 (local) or https://github.com/WhalerMike/uiao-validation-targets (CI). Max 12 agents across BOTH repos. |
 | 2026-03-24 | Continuous monitoring review + fixes | SUCCESS (#48 review PR) | Missing dashboard/ksi.py, dashboard/export.py, monitoring/ongoing_auth.py; POA&M lacked POAM-UIAO- prefix + Open/In-Progress/Closed status enum; no OSCAL evidence cross-links; no tests | ALWAYS create all modules referenced in __init__.py; ALWAYS add POAM-UIAO- prefix + FedRAMP status enum; ALWAYS generate OA evidence cross-links; ALWAYS write tests |
 | 2026-03-24 | OSCAL evidence linking review + fixes (PR #47) | SUCCESS | RE-PLAN applied: added missing linker.py + bundler.py, added prop:id on every back-matter prop, added 34 tests (all pass), updated SSP back-matter | linker.py and bundler.py are REQUIRED companions to collector.py; never ship __init__.py that imports modules not in the PR |
 | 2026-03-23 | Security CI/CD hardening | SUCCESS (#44) | +382/-23, passed all checks | Keep strict security/ dir structure and fedramp-rev5 baseline checks |
