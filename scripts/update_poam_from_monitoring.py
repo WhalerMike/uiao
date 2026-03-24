@@ -5,6 +5,7 @@ then enriches POA&M entries whose related controls match a monitoring signal.
 Adds 'monitoring-source', 'signal-type', and 'last-signal-date' props to
 affected observations. Use --dry-run to preview changes without writing.
 """
+
 import argparse
 import json
 import warnings
@@ -74,7 +75,7 @@ def enrich_poam_items(poam_items, signal_index, now_iso):
             for segment in remarks.split("|"):
                 segment = segment.strip()
                 if segment.startswith("Controls:"):
-                    raw = segment[len("Controls:"):].strip()
+                    raw = segment[len("Controls:") :].strip()
                     control_ids = [c.strip() for c in raw.split(",") if c.strip()]
                     break
 
@@ -92,27 +93,17 @@ def enrich_poam_items(poam_items, signal_index, now_iso):
                 new_props = []
 
                 if "monitoring-source" not in existing_names:
-                    new_props.append({
-                        "name": "monitoring-source",
-                        "value": source_name,
-                        "ns": "https://fedramp.gov/ns/oscal"
-                    })
+                    new_props.append(
+                        {"name": "monitoring-source", "value": source_name, "ns": "https://fedramp.gov/ns/oscal"}
+                    )
                 if "signal-type" not in existing_names:
-                    new_props.append({
-                        "name": "signal-type",
-                        "value": signal.get("signal", ""),
-                        "ns": "https://fedramp.gov/ns/oscal"
-                    })
+                    new_props.append(
+                        {"name": "signal-type", "value": signal.get("signal", ""), "ns": "https://fedramp.gov/ns/oscal"}
+                    )
 
                 # Always update last-signal-date
-                props[:] = [
-                    p for p in props if p.get("name") != "last-signal-date"
-                ]
-                new_props.append({
-                    "name": "last-signal-date",
-                    "value": now_iso,
-                    "ns": "https://fedramp.gov/ns/oscal"
-                })
+                props[:] = [p for p in props if p.get("name") != "last-signal-date"]
+                new_props.append({"name": "last-signal-date", "value": now_iso, "ns": "https://fedramp.gov/ns/oscal"})
 
                 props.extend(new_props)
 
@@ -120,9 +111,7 @@ def enrich_poam_items(poam_items, signal_index, now_iso):
                 existing_remarks = item.get("remarks", "")
                 cm_note = build_cm_remark(source_name, signal)
                 if cm_note not in existing_remarks:
-                    item["remarks"] = (
-                        f"{existing_remarks}\n{cm_note}".strip()
-                    )
+                    item["remarks"] = f"{existing_remarks}\n{cm_note}".strip()
 
                 changes.append(
                     f"  Enriched '{item.get('title')}' "
@@ -134,14 +123,8 @@ def enrich_poam_items(poam_items, signal_index, now_iso):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Update POA&M entries from continuous monitoring signals."
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Print proposed changes without writing to disk."
-    )
+    parser = argparse.ArgumentParser(description="Update POA&M entries from continuous monitoring signals.")
+    parser.add_argument("--dry-run", action="store_true", help="Print proposed changes without writing to disk.")
     args = parser.parse_args()
 
     monitoring_sources = load_monitoring_sources()

@@ -7,6 +7,7 @@ Covers:
 - KSICalculator: score computation
 - DashboardExporter: JSON/YAML export
 """
+
 from __future__ import annotations
 
 import json
@@ -20,6 +21,7 @@ import yaml
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def monitoring_sources_yml(tmp_path: Path) -> Path:
@@ -101,6 +103,7 @@ def sentinel_payload() -> dict:
 # EventProcessor tests
 # ===========================================================================
 
+
 class TestEventProcessor:
     def test_normalise_generic_event(self, monitoring_sources_yml: Path) -> None:
         from uiao_core.monitoring.event_processor import EventProcessor
@@ -175,10 +178,9 @@ class TestEventProcessor:
 # SentinelHook tests
 # ===========================================================================
 
+
 class TestSentinelHook:
-    def test_parse_alert_native_schema(
-        self, monitoring_sources_yml: Path, sentinel_payload: dict
-    ) -> None:
+    def test_parse_alert_native_schema(self, monitoring_sources_yml: Path, sentinel_payload: dict) -> None:
         from uiao_core.monitoring.sentinel_hook import SentinelHook
 
         hook = SentinelHook(monitoring_sources_path=monitoring_sources_yml)
@@ -187,9 +189,7 @@ class TestSentinelHook:
         assert alert.severity == "High"
         assert alert.impact_level == "high"
 
-    def test_build_poam_entry_has_fedramp_fields(
-        self, monitoring_sources_yml: Path, sentinel_payload: dict
-    ) -> None:
+    def test_build_poam_entry_has_fedramp_fields(self, monitoring_sources_yml: Path, sentinel_payload: dict) -> None:
         from uiao_core.monitoring.sentinel_hook import SentinelHook
 
         hook = SentinelHook(monitoring_sources_path=monitoring_sources_yml)
@@ -202,9 +202,7 @@ class TestSentinelHook:
         assert entry["status"] in ("Open", "In-Progress", "Closed")
         assert entry["control-ids"] == ["AC-2"]
 
-    def test_map_controls_returns_list(
-        self, monitoring_sources_yml: Path, sentinel_payload: dict
-    ) -> None:
+    def test_map_controls_returns_list(self, monitoring_sources_yml: Path, sentinel_payload: dict) -> None:
         from uiao_core.monitoring.sentinel_hook import SentinelHook
 
         hook = SentinelHook(monitoring_sources_path=monitoring_sources_yml)
@@ -243,9 +241,7 @@ class TestSentinelHook:
         # Same alert ID → should not grow beyond 1 entry
         assert len(findings) == 1
 
-    def test_handle_webhook_returns_summary(
-        self, monitoring_sources_yml: Path, sentinel_payload: dict
-    ) -> None:
+    def test_handle_webhook_returns_summary(self, monitoring_sources_yml: Path, sentinel_payload: dict) -> None:
         from uiao_core.monitoring.sentinel_hook import SentinelHook
 
         hook = SentinelHook(monitoring_sources_path=monitoring_sources_yml)
@@ -259,10 +255,9 @@ class TestSentinelHook:
 # OngoingAuthGenerator tests
 # ===========================================================================
 
+
 class TestOngoingAuthGenerator:
-    def test_generate_returns_oscal_structure(
-        self, monitoring_sources_yml: Path, ksi_mappings_yml: Path
-    ) -> None:
+    def test_generate_returns_oscal_structure(self, monitoring_sources_yml: Path, ksi_mappings_yml: Path) -> None:
         from uiao_core.monitoring.ongoing_auth import OngoingAuthGenerator
 
         gen = OngoingAuthGenerator(monitoring_sources_yml, ksi_mappings_yml)
@@ -272,9 +267,7 @@ class TestOngoingAuthGenerator:
         assert "observations" in oa
         assert len(oa["observations"]) > 0
 
-    def test_observations_have_control_id_prop(
-        self, monitoring_sources_yml: Path, ksi_mappings_yml: Path
-    ) -> None:
+    def test_observations_have_control_id_prop(self, monitoring_sources_yml: Path, ksi_mappings_yml: Path) -> None:
         from uiao_core.monitoring.ongoing_auth import OngoingAuthGenerator
 
         gen = OngoingAuthGenerator(monitoring_sources_yml, ksi_mappings_yml)
@@ -284,9 +277,7 @@ class TestOngoingAuthGenerator:
             prop_names = [p["name"] for p in ob.get("props", [])]
             assert "control-id" in prop_names, f"Missing control-id prop in {ob['title']}"
 
-    def test_relevant_evidence_has_prop_id(
-        self, monitoring_sources_yml: Path, ksi_mappings_yml: Path
-    ) -> None:
+    def test_relevant_evidence_has_prop_id(self, monitoring_sources_yml: Path, ksi_mappings_yml: Path) -> None:
         """UIAO-MEMORY rule: every link must have prop:id."""
         from uiao_core.monitoring.ongoing_auth import OngoingAuthGenerator
 
@@ -296,9 +287,7 @@ class TestOngoingAuthGenerator:
         for ob in obs:
             for ev in ob.get("relevant-evidence", []):
                 ev_prop_names = [p["name"] for p in ev.get("props", [])]
-                assert "prop:id" in ev_prop_names, (
-                    f"Missing prop:id on relevant-evidence in {ob['title']}"
-                )
+                assert "prop:id" in ev_prop_names, f"Missing prop:id on relevant-evidence in {ob['title']}"
 
     def test_export_writes_valid_json(
         self, monitoring_sources_yml: Path, ksi_mappings_yml: Path, tmp_path: Path
@@ -315,9 +304,7 @@ class TestOngoingAuthGenerator:
     def test_missing_files_do_not_raise(self, tmp_path: Path) -> None:
         from uiao_core.monitoring.ongoing_auth import OngoingAuthGenerator
 
-        gen = OngoingAuthGenerator(
-            tmp_path / "no-monitoring.yml", tmp_path / "no-ksi.yml"
-        )
+        gen = OngoingAuthGenerator(tmp_path / "no-monitoring.yml", tmp_path / "no-ksi.yml")
         doc = gen.generate()
         assert doc["ongoing-authorization"]["observations"] == []
 
@@ -325,6 +312,7 @@ class TestOngoingAuthGenerator:
 # ===========================================================================
 # KSICalculator tests
 # ===========================================================================
+
 
 class TestKSICalculator:
     def test_score_returns_correct_counts(self, ksi_mappings_yml: Path) -> None:
@@ -365,10 +353,9 @@ class TestKSICalculator:
 # DashboardExporter tests
 # ===========================================================================
 
+
 class TestDashboardExporter:
-    def test_export_json_creates_file(
-        self, ksi_mappings_yml: Path, tmp_path: Path
-    ) -> None:
+    def test_export_json_creates_file(self, ksi_mappings_yml: Path, tmp_path: Path) -> None:
         from uiao_core.dashboard.export import DashboardExporter
 
         exporter = DashboardExporter(ksi_mappings_yml)
@@ -379,9 +366,7 @@ class TestDashboardExporter:
         assert "ksi_summary" in data
         assert "ksi_items" in data
 
-    def test_export_yaml_creates_file(
-        self, ksi_mappings_yml: Path, tmp_path: Path
-    ) -> None:
+    def test_export_yaml_creates_file(self, ksi_mappings_yml: Path, tmp_path: Path) -> None:
         from uiao_core.dashboard.export import DashboardExporter
 
         exporter = DashboardExporter(ksi_mappings_yml)
@@ -391,9 +376,7 @@ class TestDashboardExporter:
         data = yaml.safe_load(path.read_text())
         assert "ksi_summary" in data
 
-    def test_report_contains_fedramp_fields(
-        self, ksi_mappings_yml: Path
-    ) -> None:
+    def test_report_contains_fedramp_fields(self, ksi_mappings_yml: Path) -> None:
         from uiao_core.dashboard.export import DashboardExporter
 
         exporter = DashboardExporter(ksi_mappings_yml)

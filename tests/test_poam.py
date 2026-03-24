@@ -1,4 +1,5 @@
 """Tests for uiao_core.models.poam and uiao_core.generators.poam_rules."""
+
 from __future__ import annotations
 
 import uuid
@@ -158,7 +159,9 @@ class TestLoadRules:
 
 class TestEvaluateLowMaturity:
     def _make_rule(self, value: str) -> POAMRule:
-        return POAMRule(id="R1", name="test", condition_type="low_maturity", condition_value=value, risk_rating=RiskRating.HIGH)
+        return POAMRule(
+            id="R1", name="test", condition_type="low_maturity", condition_value=value, risk_rating=RiskRating.HIGH
+        )
 
     def test_no_matrix_returns_empty(self) -> None:
         rule = self._make_rule("Initial")
@@ -189,7 +192,9 @@ class TestEvaluateLowMaturity:
 
 class TestEvaluateMissingEvidence:
     def _make_rule(self) -> POAMRule:
-        return POAMRule(id="R2", name="test", condition_type="missing_evidence", condition_value="", risk_rating=RiskRating.MODERATE)
+        return POAMRule(
+            id="R2", name="test", condition_type="missing_evidence", condition_value="", risk_rating=RiskRating.MODERATE
+        )
 
     def test_no_fedramp_config_returns_empty(self) -> None:
         rule = self._make_rule()
@@ -224,7 +229,13 @@ class TestEvaluateMissingEvidence:
 
 class TestEvaluateMissingControl:
     def _make_rule(self, control: str) -> POAMRule:
-        return POAMRule(id="R3", name="test", condition_type="missing_control", condition_value=control, risk_rating=RiskRating.CRITICAL)
+        return POAMRule(
+            id="R3",
+            name="test",
+            condition_type="missing_control",
+            condition_value=control,
+            risk_rating=RiskRating.CRITICAL,
+        )
 
     def test_control_absent_from_context(self) -> None:
         rule = self._make_rule("IA-5(1)")
@@ -234,21 +245,13 @@ class TestEvaluateMissingControl:
 
     def test_control_present_in_matrix(self) -> None:
         rule = self._make_rule("IA-5(1)")
-        context = {
-            "unified_compliance_matrix": [
-                {"nist_controls": ["IA-5(1)", "AC-2"]}
-            ]
-        }
+        context = {"unified_compliance_matrix": [{"nist_controls": ["IA-5(1)", "AC-2"]}]}
         gaps = _evaluate_missing_control(rule, context)
         assert gaps == []
 
     def test_control_present_in_fedramp_mappings(self) -> None:
         rule = self._make_rule("CA-7")
-        context = {
-            "fedramp_20x_config": {
-                "core_mappings": [{"nist_rev5_control": "CA-7"}]
-            }
-        }
+        context = {"fedramp_20x_config": {"core_mappings": [{"nist_rev5_control": "CA-7"}]}}
         gaps = _evaluate_missing_control(rule, context)
         assert gaps == []
 
@@ -261,7 +264,13 @@ class TestEvaluateMissingControl:
 class TestEvaluateRules:
     @staticmethod
     def _missing_mfa_rule() -> POAMRule:
-        return POAMRule(id="RULE-004", name="Missing MFA", condition_type="missing_control", condition_value="IA-5(1)", risk_rating=RiskRating.CRITICAL)
+        return POAMRule(
+            id="RULE-004",
+            name="Missing MFA",
+            condition_type="missing_control",
+            condition_value="IA-5(1)",
+            risk_rating=RiskRating.CRITICAL,
+        )
 
     def test_empty_rules_returns_empty(self) -> None:
         entries = evaluate_rules({}, rules=[])
@@ -274,8 +283,20 @@ class TestEvaluateRules:
 
     def test_finding_id_sequential(self) -> None:
         rules = [
-            POAMRule(id="R1", name="R1", condition_type="missing_control", condition_value="IA-5(1)", risk_rating=RiskRating.HIGH),
-            POAMRule(id="R2", name="R2", condition_type="missing_control", condition_value="CA-7", risk_rating=RiskRating.HIGH),
+            POAMRule(
+                id="R1",
+                name="R1",
+                condition_type="missing_control",
+                condition_value="IA-5(1)",
+                risk_rating=RiskRating.HIGH,
+            ),
+            POAMRule(
+                id="R2",
+                name="R2",
+                condition_type="missing_control",
+                condition_value="CA-7",
+                risk_rating=RiskRating.HIGH,
+            ),
         ]
         entries = evaluate_rules({}, rules=rules)
         assert len(entries) == 2
@@ -290,12 +311,16 @@ class TestEvaluateRules:
         assert parsed.version == 4
 
     def test_unknown_condition_type_produces_no_entries(self) -> None:
-        rule = POAMRule(id="RULE-999", name="Custom", condition_type="custom", condition_value="foo", risk_rating=RiskRating.LOW)
+        rule = POAMRule(
+            id="RULE-999", name="Custom", condition_type="custom", condition_value="foo", risk_rating=RiskRating.LOW
+        )
         entries = evaluate_rules({}, rules=[rule])
         assert entries == []
 
     def test_low_maturity_entry_source_is_rule_engine(self) -> None:
-        rule = POAMRule(id="R1", name="R1", condition_type="low_maturity", condition_value="Initial", risk_rating=RiskRating.HIGH)
+        rule = POAMRule(
+            id="R1", name="R1", condition_type="low_maturity", condition_value="Initial", risk_rating=RiskRating.HIGH
+        )
         context = {
             "unified_compliance_matrix": [
                 {"category": "Access Control", "cisa_maturity": "Initial", "nist_controls": ["AC-2"]}
