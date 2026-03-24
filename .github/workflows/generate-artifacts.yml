@@ -12,25 +12,35 @@ on:
       - 'src/uiao_core/generators/**'
 
 jobs:
-  generate:
+  approve:
+    name: Await Production Approval
     runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Approval granted
+        run: echo "Deployment to production approved."
+
+  generate:
+    name: Generate and Upload Artifacts
+    runs-on: ubuntu-latest
+    needs: approve
     permissions:
       contents: write
       pages: write
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: '3.12'
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af  # v4.1.0
         with:
           node-version: '24'
 
@@ -54,7 +64,7 @@ jobs:
           git push
 
       - name: Upload exports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882  # v4.4.3
         with:
           name: uiao-exports
           path: exports/

@@ -348,5 +348,22 @@ def generate_artifacts(
     console.print("[bold green]All artifacts generated with embedded visuals.[/bold green]")
 
 
+@app.command()
+def generate_sbom(
+    output: str = typer.Option(
+        "exports/sbom/sbom.cyclonedx.json",
+        "--output",
+        "-o",
+        help="Output path for the CycloneDX JSON SBOM.",
+    ),
+) -> None:
+    """Generate a CycloneDX 1.4 Software Bill of Materials (SBOM)."""
+    from uiao_core.generators.sbom import build_sbom
+
+    console.print("[bold]Generating CycloneDX SBOM...[/bold]")
+    out = build_sbom(output_path=output)
+    console.print(f"[green]SBOM written to {out}[/green]")
+
+
 if __name__ == "__main__":
     app()
