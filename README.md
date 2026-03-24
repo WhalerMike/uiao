@@ -121,10 +121,48 @@ Built for Moderate civilian agencies:
 - Supports continuous monitoring POA&M updates
 - Vendor-neutral core + optional overlays for Microsoft-heavy or hybrid environments
 
+### Vendor-Neutral Overlay Pattern
+
+UIAO-Core ships with abstract component types (`IdentityProvider`, `NetworkEdge`,
+`DNSProvider`) defined in `src/uiao_core/abstractions/`.  All generators consume
+these abstract names so the same codebase works across agencies running
+Microsoft Entra, Okta, AWS GovCloud, Palo Alto, Zscaler, and others.
+
+To activate a concrete vendor stack, drop a YAML overlay file into
+`data/vendor-overlays/`.  Files there are automatically deep-merged on top of
+the base context at generation time (overlays win over canon + data).
+
+**Included overlays**
+
+| File | Stack |
+|---|---|
+| `data/vendor-overlays/microsoft.yaml` | Microsoft Entra ID + Cisco Secure Access + InfoBlox |
+| `data/vendor-overlays/example.yaml` | Okta + Palo Alto Prisma Access (reference template) |
+
+**Add your own overlay**
+
+```yaml
+# data/vendor-overlays/my-agency.yaml
+control_planes:
+  identity_provider:
+    name: Google Workspace
+    vendor: Google
+    abstract_type: IdentityProvider
+    capabilities: [SSO, MFA, SCIM]
+  network_edge:
+    name: Zscaler Private Access
+    vendor: Zscaler
+    abstract_type: NetworkEdge
+    capabilities: [ZTNA, SWG, CASB]
+```
+
+Remove or rename any overlay file to fall back to abstract/generic names.
+
 ### Data Sources
 
 - `data/poam-findings.yml` - POA&M findings and milestones
 - `canon/uiao_leadership_briefing_v1.0.yaml` - Canonical content graph
+- `data/vendor-overlays/` - Vendor-specific overlays (optional, deep-merged last)
 
 ### Running Locally
 
@@ -200,7 +238,7 @@ git submodule update --init --recursive
 ### Roadmap
 
 - [ ] Demo GIF showing end-to-end pipeline flow
-- [ ] Vendor-neutral abstraction layer (move Entra/Cisco specifics to overlays)
+- [x] Vendor-neutral abstraction layer (move Entra/Cisco specifics to overlays)
 - [ ] Continuous monitoring hooks (Sentinel telemetry -> POA&M status updates)
 - [ ] Inventory linking in SSP (from core-stack.yml)
 
