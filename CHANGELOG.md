@@ -26,6 +26,7 @@
 * **lint:** add blank line after __future__ import in rich_docx.py (ruff I001, ADR-0004) ([3e2dead](https://github.com/WhalerMike/uiao-core/commit/3e2deadb4bf7509a4a86a1bc8c2f5651ff7e9e86))
 * **lint:** add blank line after __future__ import in ssp.py (ruff I001, ADR-0004) ([d2e511a](https://github.com/WhalerMike/uiao-core/commit/d2e511aa5799c072ec5b8a5edb7c67faf68e8678))
 * **lint:** enable force-sort-within-sections for ruff isort ([8790bf3](https://github.com/WhalerMike/uiao-core/commit/8790bf3d889ae9da7e578d7afdacd3674fe3ad30))
+* **lint:** F401 remove unused import tempfile in test_monitoring_dashboard.py ([01bc145](https://github.com/WhalerMike/uiao-core/commit/01bc145236a8e52b9d0e40794c072f0aa42cd8df))
 * **lint:** fix I001 import order + move Inches default to module constant in rich_docx.py (ADR-0004) ([56647e4](https://github.com/WhalerMike/uiao-core/commit/56647e4276feace4e617856473a4d9b542659930))
 * **lint:** fix I001 import order + remove unused typing.Any in trestle.py (ADR-0004) ([9914e61](https://github.com/WhalerMike/uiao-core/commit/9914e61b87507c9847cf25a2ac77271ac52452b6))
 * **lint:** I001 move inline imports to top in tests/test_cli.py ([4ee90e7](https://github.com/WhalerMike/uiao-core/commit/4ee90e747f07d5bb223e0aa0c29053df2a3ffabb))
