@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
+from unittest.mock import patch
 
 from typer.testing import CliRunner
 
@@ -50,8 +52,6 @@ class TestCLIBasics:
 
     def test_generate_docs_help(self) -> None:
         """generate-docs --help shows subcommand help with expected options."""
-        import re
-
         result = runner.invoke(app, ["generate-docs", "--help"])
         assert result.exit_code == 0
         # Strip ANSI escape codes before checking for option names
@@ -63,9 +63,10 @@ class TestCLIBasics:
 
     def test_generate_docs_runs(self, tmp_path) -> None:
         """generate-docs runs without crashing on a minimal project structure."""
-        from unittest.mock import patch
-
-        with patch("uiao_core.generators.docs.build_docs", return_value=["docs/test.md"]) as mock_build:
+        with patch(
+            "uiao_core.generators.docs.build_docs",
+            return_value=["docs/test.md"],
+        ) as mock_build:
             result = runner.invoke(
                 app,
                 [
@@ -76,12 +77,12 @@ class TestCLIBasics:
                     "--output-dir", str(tmp_path / "docs"),
                 ],
             )
-        assert result.exit_code == 0
-        assert "Generated" in result.stdout
-        assert "1" in result.stdout
-        mock_build.assert_called_once_with(
-            canon_path=Path("canon/test.yaml"),
-            data_dir=Path(str(tmp_path / "data")),
-            templates_dir=Path(str(tmp_path / "templates")),
-            docs_dir=Path(str(tmp_path / "docs")),
-        )
+            assert result.exit_code == 0
+            assert "Generated" in result.stdout
+            assert "1" in result.stdout
+            mock_build.assert_called_once_with(
+                canon_path=Path("canon/test.yaml"),
+                data_dir=Path(str(tmp_path / "data")),
+                templates_dir=Path(str(tmp_path / "templates")),
+                docs_dir=Path(str(tmp_path / "docs")),
+            )
