@@ -1,4 +1,5 @@
 """SBOM (Software Bill of Materials) generator in CycloneDX JSON format."""
+
 from __future__ import annotations
 
 import importlib.metadata
