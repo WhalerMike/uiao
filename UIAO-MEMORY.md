@@ -17,6 +17,7 @@ Update after EVERY run (success or failure).
 | 2026-03-23 | Continuous monitoring | FAILED | Rate limit + missing control mappings | ALWAYS cross-reference every monitored control to an OSCAL evidence record |
 | 2026-03-23 | FedRAMP Rev 5 SSP | FAILED | Rate limit before code generation | ALWAYS start from templates/fedramp-rev5-ssp.yaml |
 | 2026-03-23 | Visual manifest | FAILED | Rate limit + out-of-sync with Git tree | ALWAYS regenerate manifest from git ls-tree + inventory.json |
+| 2025-06-24 | PROJECT-CONTEXT.md governance + throttle | 55-agent spike | Throttled to <=8 concurrent. PROJECT-CONTEXT.md merged (#58). Grill Master fix-PR loop proven. | |
 
 ## Quick Reference Rules
 - Never ship without running make validate-oscal locally
