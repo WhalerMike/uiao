@@ -8,6 +8,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+def _first_project_url(meta: importlib.metadata.PackageMetadata) -> str:
+    """Extract the first URL from Project-URL metadata (format: 'Label, url')."""
+    raw = meta.get_all("Project-URL") or []
+    for entry in raw:
+        parts = entry.split(",", 1)
+        if len(parts) == 2:
+            return parts[1].strip()
+    return ""
+
+
 def _get_installed_packages() -> list[dict[str, str]]:
     """Return a list of installed packages with name, version, and metadata."""
     packages = []
@@ -21,7 +31,7 @@ def _get_installed_packages() -> list[dict[str, str]]:
                     "name": name,
                     "version": version,
                     "description": meta.get("Summary", ""),
-                    "homepage": meta.get("Home-page", "") or meta.get("Project-URL", ""),
+                    "homepage": meta.get("Home-page", "") or _first_project_url(meta),
                     "license": meta.get("License", ""),
                 }
             )
