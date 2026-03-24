@@ -5,7 +5,8 @@ used by the rule engine, scan importer, and POA&M generator.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+import uuid as _uuid_mod
+from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -25,7 +26,7 @@ class RemediationStatus(str, Enum):
     """Current remediation lifecycle status."""
 
     OPEN = "Open"
-    IN_PROGRESS = "In Progress"
+    IN_PROGRESS = "In-Progress"
     CLOSED = "Closed"
     DELAYED = "Delayed"
 
@@ -93,19 +94,19 @@ class POAMEntry(BaseModel):
     def to_oscal_item(self) -> dict[str, Any]:
         """Serialize this entry as an OSCAL POA&M item dict."""
         props: list[dict[str, str]] = [
-            {"name": "risk-rating", "value": self.risk_rating.value},
-            {"name": "finding-id", "value": self.finding_id},
-            {"name": "remediation-status", "value": self.remediation_status.value},
+            {"uuid": str(_uuid_mod.uuid4()), "name": "risk-rating", "value": self.risk_rating.value},
+            {"uuid": str(_uuid_mod.uuid4()), "name": "finding-id", "value": self.finding_id},
+            {"uuid": str(_uuid_mod.uuid4()), "name": "remediation-status", "value": self.remediation_status.value},
         ]
         if self.responsible_party:
-            props.append({"name": "responsible-party", "value": self.responsible_party})
+            props.append({"uuid": str(_uuid_mod.uuid4()), "name": "responsible-party", "value": self.responsible_party})
         if self.affected_asset:
-            props.append({"name": "affected-asset", "value": self.affected_asset})
+            props.append({"uuid": str(_uuid_mod.uuid4()), "name": "affected-asset", "value": self.affected_asset})
         if self.source:
-            props.append({"name": "source", "value": self.source})
+            props.append({"uuid": str(_uuid_mod.uuid4()), "name": "source", "value": self.source})
         if self.scheduled_completion_date:
             props.append(
-                {"name": "scheduled-completion-date", "value": str(self.scheduled_completion_date)}
+                {"uuid": str(_uuid_mod.uuid4()), "name": "scheduled-completion-date", "value": str(self.scheduled_completion_date)}
             )
 
         item: dict[str, Any] = {
@@ -136,7 +137,7 @@ class POAMEntry(BaseModel):
             "Scheduled Completion Date": str(self.scheduled_completion_date) if self.scheduled_completion_date else "",
             "Milestones with Completion Dates": self.milestone_description,
             "Milestone Changes": "",
-            "Status Date": str(datetime.utcnow().date()),
+            "Status Date": str(datetime.now(tz=timezone.utc).date()),
             "CVSS Score": "",
             "Risk Rating": self.risk_rating.value,
             "Remediation Status": self.remediation_status.value,

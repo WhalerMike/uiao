@@ -11,8 +11,7 @@ from typing import Any
 
 import yaml
 
-from uiao_core.models.poam import POAMEntry, POAMRule, RiskRating
-
+from uiao_core.models.poam import POAMEntry, POAMRule
 
 # ---------------------------------------------------------------------------
 # Rule loading
@@ -157,6 +156,7 @@ def evaluate_rules(
         rules = load_rules(rules_path)
 
     entries: list[POAMEntry] = []
+    counter = 0
 
     for rule in rules:
         ctype = rule.condition_type
@@ -164,9 +164,11 @@ def evaluate_rules(
         if ctype == "low_maturity":
             gaps = _evaluate_low_maturity(rule, context)
             for gap in gaps:
+                counter += 1
                 entries.append(
                     POAMEntry(
                         uuid=str(uuid.uuid4()),
+                        finding_id=f"POAM-UIAO-{counter:04d}",
                         title=f"[{rule.id}] Low maturity: {gap['category']}",
                         description=(
                             f"CISA maturity is '{gap['maturity']}' for category "
@@ -185,10 +187,12 @@ def evaluate_rules(
         elif ctype == "missing_evidence":
             gaps = _evaluate_missing_evidence(rule, context)
             for gap in gaps:
+                counter += 1
                 controls = [gap["control"]] if gap.get("control") else []
                 entries.append(
                     POAMEntry(
                         uuid=str(uuid.uuid4()),
+                        finding_id=f"POAM-UIAO-{counter:04d}",
                         title=f"[{rule.id}] Missing evidence: {gap['concept']}",
                         description=(
                             f"No evidence source defined for KSI concept "
@@ -207,9 +211,11 @@ def evaluate_rules(
         elif ctype == "missing_control":
             gaps = _evaluate_missing_control(rule, context)
             for gap in gaps:
+                counter += 1
                 entries.append(
                     POAMEntry(
                         uuid=str(uuid.uuid4()),
+                        finding_id=f"POAM-UIAO-{counter:04d}",
                         title=f"[{rule.id}] Missing control: {gap['control']}",
                         description=(
                             f"Required control '{gap['control']}' is not present in any mapping. "
