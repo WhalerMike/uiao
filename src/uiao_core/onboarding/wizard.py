@@ -47,33 +47,28 @@ class _SystemInfo(BaseModel):
     @classmethod
     def slug_format(cls, v: str) -> str:
         if not re.match(r"^[a-z0-9_]+$", v):
-            raise ValueError(
-                "Slug must contain only lowercase letters, digits, and underscores."
-            )
+            raise ValueError("Slug must contain only lowercase letters, digits, and underscores.")
         return v
 
     @field_validator("fips_categorization")
     @classmethod
     def fips_valid(cls, v: str) -> str:
         if v.lower() not in _FIPS_LEVELS:
-            raise ValueError(
-                f"FIPS categorization must be one of: {', '.join(sorted(_FIPS_LEVELS))}"
-            )
+            raise ValueError(f"FIPS categorization must be one of: {', '.join(sorted(_FIPS_LEVELS))}")
         return v.lower()
 
     @field_validator("deployment_model")
     @classmethod
     def deployment_valid(cls, v: str) -> str:
         if v.lower() not in _DEPLOYMENT_MODELS:
-            raise ValueError(
-                f"Deployment model must be one of: {', '.join(sorted(_DEPLOYMENT_MODELS))}"
-            )
+            raise ValueError(f"Deployment model must be one of: {', '.join(sorted(_DEPLOYMENT_MODELS))}")
         return v.lower()
 
 
 # ---------------------------------------------------------------------------
 # Helper utilities
 # ---------------------------------------------------------------------------
+
 
 def _prompt(label: str, default: str = "", hint: str = "") -> str:
     """Prompt for a non-empty value, retrying on blank input."""
@@ -94,10 +89,7 @@ def _prompt_choice(label: str, choices: list[str], default: str = "") -> str:
         val = Prompt.ask(f"  [cyan]{label}[/cyan]", default=default).strip().lower()
         if val in choices:
             return val
-        console.print(
-            f"  [red]Invalid choice '[yellow]{val}[/yellow]'. "
-            f"Choose from: {', '.join(choices)}[/red]"
-        )
+        console.print(f"  [red]Invalid choice '[yellow]{val}[/yellow]'. Choose from: {', '.join(choices)}[/red]")
 
 
 def _validate_field(model: type[BaseModel], field: str, value: Any) -> str | None:
@@ -127,6 +119,7 @@ def _collect_components() -> list[dict[str, str]]:
 # ---------------------------------------------------------------------------
 # Main wizard logic
 # ---------------------------------------------------------------------------
+
 
 def run_wizard(output_dir: Path = Path("canon")) -> Path:
     """Run the interactive onboarding wizard and write a canon YAML file.
@@ -168,9 +161,7 @@ def run_wizard(output_dir: Path = Path("canon")) -> Path:
     )
     # Validate slug format
     while not re.match(r"^[a-z0-9_]+$", system_slug):
-        console.print(
-            "  [red]Slug must contain only lowercase letters, digits, and underscores.[/red]"
-        )
+        console.print("  [red]Slug must contain only lowercase letters, digits, and underscores.[/red]")
         system_slug = _prompt("System slug", default=slug_default)
 
     organization = _prompt(
