@@ -326,9 +326,7 @@ def generate_artifacts(
         gemini_results = generate_all_gemini_images(force=force_visuals)
         console.print(f"[green]Generated {len(gemini_results)} Gemini image(s)[/green]")
     else:
-        console.print(
-            "[yellow]GEMINI_API_KEY not set — skipping Gemini image generation.[/yellow]"
-        )
+        console.print("[yellow]GEMINI_API_KEY not set — skipping Gemini image generation.[/yellow]")
 
     console.print("[bold]Generating DOCX...[/bold]")
     docx_out = build_rich_docx(
