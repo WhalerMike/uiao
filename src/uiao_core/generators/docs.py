@@ -37,6 +37,19 @@ DEFAULT_TEMPLATE_MAPPING: dict[str, tuple[str, str]] = {
     "telemetry_plane_deep_dive_v1.0.md.j2": ("telemetry_plane_deep_dive_v1.0.md", "telemetry_plane_deep_dive_v1.0.md"),
     "vendor_stack_v1.0.md.j2": ("vendor_stack_v1.0.md", "vendor-stack.md"),
     "seven_layer_model_v1.0.md.j2": ("seven_layer_model_v1.0.md", "seven-layer-model.md"),
+    "executive_summary_v1.0.md.j2": ("executive_summary_v1.0.md", "executive-summary.md"),
+    "fedramp_ssp_narrative_full_v1.0.md.j2": (
+        "fedramp_ssp_narrative_full_v1.0.md",
+        "fedramp-ssp-narrative.md",
+    ),
+    "authorization_boundary_v1.0.md.j2": (
+        "authorization_boundary_v1.0.md",
+        "authorization-boundary.md",
+    ),
+    "system_inventory_and_components_v1.0.md.j2": (
+        "system_inventory_and_components_v1.0.md",
+        "system-inventory.md",
+    ),
 }
 
 
