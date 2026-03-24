@@ -192,12 +192,22 @@ class SentinelHook:
     def build_poam_entry(
         self, alert: SentinelAlert, control_ids: list[str]
     ) -> dict[str, Any]:
-        """Build a POA&M finding dict from a Sentinel alert."""
+        """Build a POA&M finding dict from a Sentinel alert.
+
+        Uses the UIAO-required ``POAM-UIAO-`` ID prefix and the exact
+        FedRAMP POA&M status enum values: ``Open``, ``In-Progress``,
+        ``Closed``.
+        """
+        import uuid as _uuid
+
+        poam_id = f"POAM-UIAO-{_uuid.uuid4().hex[:8].upper()}"
         return {
+            "id": poam_id,
             "title": f"[Sentinel] {alert.title}",
             "control-ids": control_ids or ["SI-4"],
             "description": alert.description or alert.title,
             "severity": alert.impact_level,
+            "status": "Open",
             "remediation": "Investigate and remediate per Sentinel playbook",
             "source": f"sentinel:{alert.alert_id}",
             "detected_at": alert.timestamp,
