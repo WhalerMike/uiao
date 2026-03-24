@@ -52,6 +52,7 @@
 * **oscal:** remove by-components from CD, fix empty prop values for trestle ([dee45f8](https://github.com/WhalerMike/uiao-core/commit/dee45f86473f26d48413bcc8ee9c6dd38e424e20))
 * **oscal:** update component-definition metadata for FedRAMP Rev 5 OSCAL 1.0.4 ([81eb807](https://github.com/WhalerMike/uiao-core/commit/81eb80745d188e39bfc75145bb6d676227395077))
 * **poam:** update metadata for FedRAMP Rev 5 OSCAL 1.0.4 compliance ([ec11443](https://github.com/WhalerMike/uiao-core/commit/ec11443dd5a9b0cb38c81944ba58ff2ed47c2253))
+* remove unused field import to fix CI lint errors ([dcfd606](https://github.com/WhalerMike/uiao-core/commit/dcfd606cb0782e6bbaa9fd898f24ea55e066b745))
 * remove unused tempfile import (ruff F401, I001) ([693605a](https://github.com/WhalerMike/uiao-core/commit/693605a30e34973b5dbed0c67f2d27847ccedfd3))
 * resolve all 156 ruff lint errors on copilot/add-gemini-image-generation ([3fd52f9](https://github.com/WhalerMike/uiao-core/commit/3fd52f9216536fcdcc10f80a177b9b738765f542))
 * resolve PR [#45](https://github.com/WhalerMike/uiao-core/issues/45) POA&M rule engine CI failures and MEMORY compliance ([5a5e984](https://github.com/WhalerMike/uiao-core/commit/5a5e9841a76323e705973c83c3678c4999cb579b))
