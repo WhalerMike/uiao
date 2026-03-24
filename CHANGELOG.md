@@ -1,3 +1,14 @@
+# [1.1.0](https://github.com/WhalerMike/uiao-core/compare/v0.30.0...v1.1.0) (2026-03-23)
+
+
+### Features
+
+* Version sync to 1.1.0
+* Added README badges (CI status, License, Python version, version)
+* Added FedRAMP tool comparison table
+
+
+
 # [0.30.0](https://github.com/WhalerMike/uiao-core/compare/v0.29.0...v0.30.0) (2026-03-24)
 
 
