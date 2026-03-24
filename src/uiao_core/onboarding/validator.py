@@ -46,6 +46,7 @@ _VALID_FIPS = {"low", "moderate", "high"}
 # Result types
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ValidationIssue:
     """A single validation finding."""
@@ -79,6 +80,7 @@ class ValidationResult:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _get_nested(data: dict[str, Any], dotted_key: str) -> tuple[bool, Any]:
     """Return (found, value) for a dot-separated key path."""
@@ -118,9 +120,7 @@ def _check_value_constraints(data: dict[str, Any]) -> list[ValidationIssue]:
                 severity="error",
                 field="deployment_model",
                 message=f"Invalid deployment_model value: '{dm}'",
-                suggestion=(
-                    f"Allowed values: {', '.join(sorted(_VALID_DEPLOYMENT_MODELS))}"
-                ),
+                suggestion=(f"Allowed values: {', '.join(sorted(_VALID_DEPLOYMENT_MODELS))}"),
             )
         )
 
@@ -132,9 +132,7 @@ def _check_value_constraints(data: dict[str, Any]) -> list[ValidationIssue]:
                 severity="error",
                 field="leadership_briefing.fips_categorization",
                 message=f"Invalid fips_categorization value: '{fips}'",
-                suggestion=(
-                    f"Allowed values: {', '.join(sorted(_VALID_FIPS))}"
-                ),
+                suggestion=(f"Allowed values: {', '.join(sorted(_VALID_FIPS))}"),
             )
         )
 
@@ -186,6 +184,7 @@ def _check_optional_sections(data: dict[str, Any]) -> list[ValidationIssue]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def validate_canon(canon_path: Path) -> ValidationResult:
     """Validate a canon YAML file and return a :class:`ValidationResult`.
@@ -282,10 +281,6 @@ def print_validation_report(result: ValidationResult) -> None:
 
     console.print("\n" + "  ".join(parts))
     if not result.passed:
-        console.print(
-            "[red]Validation failed. Fix the errors above before running generators.[/red]"
-        )
+        console.print("[red]Validation failed. Fix the errors above before running generators.[/red]")
     else:
-        console.print(
-            "[green]Validation passed with warnings. Review suggestions above.[/green]"
-        )
+        console.print("[green]Validation passed with warnings. Review suggestions above.[/green]")
