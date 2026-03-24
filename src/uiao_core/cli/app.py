@@ -245,6 +245,50 @@ def generate_docx(
 
 
 @app.command()
+def generate_diagrams(
+    canon_path: str = typer.Option(
+        "canon/diagrams.yaml",
+        "--canon",
+        "-c",
+        help="Path to diagrams canon YAML file.",
+    ),
+    visuals_dir: str = typer.Option(
+        "visuals",
+        "--visuals-dir",
+        "-v",
+        help="Directory to write .mermaid source files.",
+    ),
+    output_dir: str = typer.Option(
+        "assets/images/mermaid",
+        "--output-dir",
+        "-o",
+        help="Output directory for rendered PNG files.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force-visuals",
+        help="Force regeneration of all visuals (ignore cache).",
+    ),
+) -> None:
+    """Generate Mermaid .mermaid files and render them to PNG from canon YAML."""
+    from uiao_core.generators.diagrams import generate_diagrams_from_canon
+    from uiao_core.generators.mermaid import render_all_mermaid
+
+    console.print(f"[bold]Generating diagrams from {canon_path}...[/bold]")
+    rendered = generate_diagrams_from_canon(
+        canon_path=canon_path,
+        visuals_dir=visuals_dir,
+        output_dir=output_dir,
+        force=force,
+    )
+    console.print(f"[green]Generated {len(rendered)} diagram(s) from canon.[/green]")
+
+    console.print(f"[bold]Rendering all Mermaid files in {visuals_dir}...[/bold]")
+    all_pngs = render_all_mermaid(visuals_dir=visuals_dir, output_dir=output_dir, force=force)
+    console.print(f"[green]Rendered {len(all_pngs)} total diagram(s) to {output_dir}[/green]")
+
+
+@app.command()
 def generate_docs(
     canon_path: str = typer.Option(
         "canon/uiao_leadership_briefing_v1.0.yaml",
@@ -270,9 +314,26 @@ def generate_docs(
         "-o",
         help="Output directory for generated Markdown documents.",
     ),
+    skip_diagrams: bool = typer.Option(
+        False,
+        "--skip-diagrams",
+        help="Skip automatic diagram generation (faster, for template-only runs).",
+    ),
+    force_visuals: bool = typer.Option(
+        False,
+        "--force-visuals",
+        help="Force regeneration of all visuals (ignore cache).",
+    ),
 ) -> None:
-    """Render Jinja2 templates into Markdown docs using canon YAML and data files."""
+    """Render Jinja2 templates into Markdown docs using canon YAML and data files.
+
+    Automatically generates diagrams from canon/diagrams.yaml before rendering
+    templates (unless --skip-diagrams is set).
+    """
     from uiao_core.generators.docs import build_docs
+
+    if not skip_diagrams:
+        console.print("[bold]Auto-generating diagrams from canon/diagrams.yaml...[/bold]")
 
     console.print(f"[bold]Generating docs from {canon_path}...[/bold]")
     generated = build_docs(
@@ -280,6 +341,8 @@ def generate_docs(
         data_dir=Path(data_dir),
         templates_dir=Path(templates_dir),
         docs_dir=Path(output_dir),
+        generate_diagrams=not skip_diagrams,
+        force_visuals=force_visuals,
     )
     console.print(f"[green]Generated {len(generated)} document(s) to {output_dir}[/green]")
 

@@ -2,9 +2,11 @@
 
 Contains OSCAL document generators (SSP, OSCAL CD, POA&M),
 documentation generators, chart/visualization builders,
-Mermaid-to-PNG rendering, and Gemini AI image generation.
+Mermaid-to-PNG rendering, Gemini AI image generation,
+and canon-driven diagram automation.
 """
 
+from uiao_core.generators.diagrams import build_diagrams
 from uiao_core.generators.docs import build_docs
 from uiao_core.generators.gemini_visuals import build_gemini_visuals
 from uiao_core.generators.mermaid import build_mermaid_visuals
@@ -15,6 +17,7 @@ from uiao_core.generators.rich_docx import build_rich_docx
 from uiao_core.generators.ssp import build_ssp
 
 __all__ = [
+    "build_diagrams",
     "build_docs",
     "build_gemini_visuals",
     "build_mermaid_visuals",

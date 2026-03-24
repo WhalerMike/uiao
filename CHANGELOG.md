@@ -1,3 +1,17 @@
+# [0.31.0] (2026-03-24)
+
+
+### Features
+
+* **diagrams:** add `canon/diagrams.yaml` with 6 canonical Mermaid diagram definitions
+* **diagrams:** add `src/uiao_core/generators/diagrams.py` — canon-driven diagram generator with `generate_diagrams_from_canon()` and `build_diagrams()` entry points
+* **docs:** `build_docs()` now auto-generates diagrams from canon before template rendering and replaces `mermaid` fenced blocks with `<img>` references for DOCX/PPTX/PDF compatibility
+* **cli:** add `generate-diagrams` CLI command that writes `.mermaid` files and renders all PNGs
+* **cli:** `generate-docs` command gains `--skip-diagrams` and `--force-visuals` flags
+* **mkdocs:** add Mermaid 10 ESM CDN entry to `extra_javascript` for live browser rendering
+* **tests:** add `tests/test_diagrams.py` with 20 tests covering canon loading, `.mermaid` file creation, and Mermaid block post-processing
+
+
 # [0.30.0](https://github.com/WhalerMike/uiao-core/compare/v0.29.0...v0.30.0) (2026-03-24)
 
 
