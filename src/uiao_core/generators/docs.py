@@ -3,10 +3,17 @@
 Migrated from scripts/generate_docs.py into the uiao_core package.
 Renders Jinja2 templates against canon YAML + data overlays to produce
 Markdown documents for docs/ and site/ directories.
+
+After template rendering, diagram generation is triggered automatically via
+:func:`generate_diagrams_from_canon`. A post-processing step then replaces
+``mermaid`` fenced code blocks in rendered Markdown with ``<img>`` references
+to the pre-rendered PNGs, enabling DOCX/PPTX/PDF compatibility where live JS
+is unavailable.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -150,6 +157,56 @@ def render_template(
     return output
 
 
+# ---------------------------------------------------------------------------
+# Mermaid block post-processing
+# ---------------------------------------------------------------------------
+_MERMAID_FENCE_RE = re.compile(
+    r"```mermaid\n(.*?)```",
+    re.DOTALL,
+)
+
+
+def replace_mermaid_blocks_with_images(
+    markdown_text: str,
+    images_dir: str = "assets/images/mermaid",
+    alt_prefix: str = "diagram",
+) -> str:
+    """Replace fenced ``mermaid`` code blocks with ``<img>`` references.
+
+    This post-processing step enables DOCX/PPTX/PDF renderers (which cannot
+    execute JavaScript) to embed pre-rendered PNG images in place of raw
+    Mermaid source blocks.
+
+    The replacement uses an HTML ``<img>`` tag rather than a Markdown
+    ``![]()`` shorthand so that the ``alt`` attribute is preserved verbatim
+    and works across both MkDocs HTML and python-docx pipelines.
+
+    Args:
+        markdown_text: The Markdown content to process.
+        images_dir: Relative path prefix for PNG image URLs.
+        alt_prefix: Fallback prefix for ``alt`` text when no title can be
+            inferred from the diagram source.
+
+    Returns:
+        Markdown text with each ``mermaid`` fence replaced by an ``<img>``
+        referencing ``<images_dir>/<alt_prefix>_<n>.png`` where *n* is the
+        1-based occurrence index.
+    """
+    counter = 0
+
+    def _replace(match: re.Match[str]) -> str:
+        nonlocal counter
+        counter += 1
+        src = match.group(1).strip()
+        # Try to infer a slug from the first non-empty line of the source
+        first_line = next((ln.strip() for ln in src.splitlines() if ln.strip()), "")
+        slug = re.sub(r"[^a-z0-9_-]", "_", first_line.lower())[:40].strip("_") or f"{alt_prefix}_{counter}"
+        img_url = f"{images_dir}/{slug}.png"
+        return f'<img src="{img_url}" alt="{slug}" />'
+
+    return _MERMAID_FENCE_RE.sub(_replace, markdown_text)
+
+
 def build_docs(
     canon_path: str | Path | None = None,
     data_dir: str | Path | None = None,
@@ -157,10 +214,29 @@ def build_docs(
     docs_dir: str | Path | None = None,
     site_dir: str | Path | None = None,
     template_mapping: dict[str, tuple[str, str]] | None = None,
+    generate_diagrams: bool = True,
+    force_visuals: bool = False,
 ) -> list[str]:
     """Build all documentation from templates.
 
-    Returns list of generated file paths.
+    After rendering templates, optionally auto-generates Mermaid diagrams
+    from ``canon/diagrams.yaml`` and replaces fenced ``mermaid`` blocks in
+    the rendered Markdown with ``<img>`` references to pre-rendered PNGs.
+
+    Args:
+        canon_path: Path to the canon YAML file.
+        data_dir: Path to the data YAML directory.
+        templates_dir: Path to Jinja2 templates directory.
+        docs_dir: Output directory for Markdown documents.
+        site_dir: Output directory for site copies.
+        template_mapping: Override the default template→output mapping.
+        generate_diagrams: When ``True`` (default), call
+            :func:`generate_diagrams_from_canon` before template rendering.
+        force_visuals: Passed through to the diagram renderer; forces
+            re-render even when a cached PNG already exists.
+
+    Returns:
+        List of generated file paths (docs/*.md).
     """
     settings = get_settings()
     if templates_dir is None:
@@ -175,6 +251,12 @@ def build_docs(
     templates_dir = Path(templates_dir)
     docs_dir = Path(docs_dir)
     site_dir = Path(site_dir)
+
+    # Auto-generate diagrams from canon before rendering templates
+    if generate_diagrams:
+        from uiao_core.generators.diagrams import generate_diagrams_from_canon
+
+        generate_diagrams_from_canon(force=force_visuals)
 
     # Load context: data files first, then overlays, then canon overwrites
     context = load_data_files(data_dir)
@@ -193,10 +275,14 @@ def build_docs(
     for tpl_name, (docs_name, site_name) in template_mapping.items():
         out_path = docs_dir / docs_name
         output = render_template(env, tpl_name, context, out_path)
+        # Post-process: replace mermaid fences with <img> tags for PDF/DOCX
+        processed = replace_mermaid_blocks_with_images(output)
+        out_path.write_text(processed, encoding="utf-8")
         # Also write to site/ with hyphenated name
-        (site_dir / site_name).write_text(output, encoding="utf-8")
+        (site_dir / site_name).write_text(processed, encoding="utf-8")
         # Also write versioned copy to site/
-        (site_dir / docs_name).write_text(output, encoding="utf-8")
+        (site_dir / docs_name).write_text(processed, encoding="utf-8")
         generated.append(str(out_path))
 
     return generated
+
