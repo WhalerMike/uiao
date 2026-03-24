@@ -37,6 +37,7 @@
 * **lint:** revert force-sort-within-sections that broke other files ([9eb9b1b](https://github.com/WhalerMike/uiao-core/commit/9eb9b1be116bed9ed21e69645e45899d0d020c48))
 * **lint:** sort imports alphabetically in generators/__init__.py (ruff I001, ADR-0004) ([486804c](https://github.com/WhalerMike/uiao-core/commit/486804cb67893dfc07b44d8771621d7f8e0a02a6))
 * **lint:** sort imports and __all__ in utils/__init__.py (ruff I001, ADR-0004) ([5364b18](https://github.com/WhalerMike/uiao-core/commit/5364b18fb288d361bd280a4f175bf208ecb7018a))
+* **lint:** UP037 remove quotes from SentinelConfig return annotation ([ad69dcf](https://github.com/WhalerMike/uiao-core/commit/ad69dcf9563d89e4c731bcbe0e13add700a2f164))
 * **models:** add CanonEntry class to fix test import (ADR-0002) ([2d121bb](https://github.com/WhalerMike/uiao-core/commit/2d121bb88c0ca5b3e8bb40ef35f75d1b5a18e9b0))
 * **oscal:** load canon before data files so control_planes and matrix resolve correctly ([5306b03](https://github.com/WhalerMike/uiao-core/commit/5306b03e9a1560a1eb9961b069d462e5b1f8471b))
 * **oscal:** remove by-components from CD, fix empty prop values for trestle ([dee45f8](https://github.com/WhalerMike/uiao-core/commit/dee45f86473f26d48413bcc8ee9c6dd38e424e20))
