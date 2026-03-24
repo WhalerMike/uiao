@@ -79,6 +79,7 @@ uiao --version               # Show version
 # Generation
 uiao generate-ssp            # Generate OSCAL SSP from canon YAML
 uiao generate-docs           # Render Jinja2 templates into Markdown/HTML docs
+uiao generate-diagrams       # Generate Mermaid .mermaid files and render to PNG
 uiao generate-charts         # Generate CISA ZT Maturity and compliance charts
 uiao generate-rich-docx      # Generate rich formatted DOCX report
 
@@ -92,6 +93,73 @@ python scripts/generate_docs.py     # Calls uiao generate-docs internally
 python scripts/validate_schemas.py  # Deprecated; use uiao validate-ssp
 ```
 
+### `uiao generate-docs` options
+
+| Option | Default | Description |
+|---|---|---|
+| `--canon` / `-c` | `canon/uiao_leadership_briefing_v1.0.yaml` | Path to canon YAML file |
+| `--data-dir` / `-d` | `data` | Path to data YAML directory |
+| `--templates-dir` / `-t` | `templates` | Path to Jinja2 templates directory |
+| `--output-dir` / `-o` | `docs` | Output directory for generated Markdown |
+| `--skip-diagrams` | `False` | Skip automatic diagram generation (faster, template-only runs) |
+| `--force-visuals` | `False` | Force re-render of diagram PNGs, ignoring the cache |
+
+**Example:**
+```bash
+# Generate docs with fresh diagram renders
+uiao generate-docs --force-visuals
+
+# Generate docs without triggering diagram generation
+uiao generate-docs --skip-diagrams
+```
+
+---
+
+## Canon Diagram Definitions
+
+Diagrams can be defined as a first-class top-level `diagrams:` section in any
+canon YAML file (including `canon/uiao_leadership_briefing_v1.0.yaml`).
+
+### Schema
+
+```yaml
+diagrams:
+  <diagram_id>:
+    title: "Human-readable title"
+    type: flowchart          # Mermaid diagram type (informational only)
+    description: >
+      Optional prose description of the diagram.
+    include_in:              # Optional list of output docs that reference this diagram
+      - leadership_briefing_v1.0.md
+    content: |               # Required: raw Mermaid source
+      flowchart TD
+          A["Node A"] --> B["Node B"]
+```
+
+### How it works
+
+When `uiao generate-docs` runs (with `generate_diagrams=True`, the default):
+
+1. The canon YAML is loaded and the `diagrams:` mapping is read.
+2. For each diagram entry, a `.mermaid` file is written to `visuals/<id>.mermaid`.
+3. Each `.mermaid` file is rendered to `assets/images/mermaid/<id>.png` using the
+   cached Mermaid CLI renderer (re-renders only when the source has changed, or
+   when `--force-visuals` is set).
+4. Fenced `` ```mermaid ``` `` blocks in rendered Markdown are replaced with
+   `<img src="assets/images/mermaid/...png" />` tags, making the output
+   compatible with DOCX, PPTX, and PDF export pipelines.
+
+### Standalone diagram generation
+
+You can also generate diagrams independently from the `canon/diagrams.yaml`
+file using the dedicated command:
+
+```bash
+uiao generate-diagrams                          # Use default canon/diagrams.yaml
+uiao generate-diagrams --canon path/to/file.yaml  # Use a custom canon file
+uiao generate-diagrams --force-visuals          # Force re-render all PNGs
+```
+
 ---
 
 ## Repository Layout
@@ -99,11 +167,16 @@ python scripts/validate_schemas.py  # Deprecated; use uiao validate-ssp
 ```
 uiao-core/
   canon/                # YAML source of truth (leadership briefing canon)
+    uiao_leadership_briefing_v1.0.yaml  # Main canon (includes diagrams: section)
+    diagrams.yaml       # Standalone diagram definitions canon
   data/                 # YAML data files (controls, findings, etc.)
   templates/            # Jinja2 templates (.md.j2 files)
+  visuals/              # Generated .mermaid source files (from canon)
+  assets/images/mermaid/  # Rendered PNG diagram images (from visuals/)
   src/uiao_core/        # Python package
     cli/app.py          # CLI entry point (uiao command)
-    generators/         # Generator modules (ssp, docs, charts, etc.)
+    generators/         # Generator modules (ssp, docs, diagrams, charts, etc.)
+    models/canon.py     # Pydantic models (CanonModel, DiagramDefinition, …)
     utils/              # Context and settings utilities
   scripts/              # Legacy shims (deprecated, use uiao CLI)
   tests/                # pytest test suite

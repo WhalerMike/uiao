@@ -27,6 +27,17 @@ class CanonEntry(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class DiagramDefinition(BaseModel):
+    """Definition of a single Mermaid diagram in the canon ``diagrams:`` section."""
+
+    title: str = ""
+    type: str = ""
+    description: str = ""
+    include_in: list[str] = []
+    content: str = ""
+    model_config = ConfigDict(extra="allow")
+
+
 class LeadershipBriefing(BaseModel):
     """Top-level leadership briefing from canon YAML."""
 
@@ -47,6 +58,7 @@ class CanonModel(BaseModel):
     classification: str = ""
     audience: list[str] = []
     leadership_briefing: LeadershipBriefing = LeadershipBriefing()
+    diagrams: dict[str, DiagramDefinition] = {}
     model_config = ConfigDict(extra="allow")
 
 
