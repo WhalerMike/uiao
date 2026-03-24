@@ -53,12 +53,22 @@ class Finding:
     )
 
     def to_poam_dict(self) -> dict[str, Any]:
-        """Convert this finding to a POA&M entry dict."""
+        """Convert this finding to a POA&M entry dict.
+
+        Uses the UIAO-required ``POAM-UIAO-`` ID prefix and the exact
+        FedRAMP POA&M status enum values: ``Open``, ``In-Progress``,
+        ``Closed``.
+        """
+        import uuid as _uuid
+
+        poam_id = f"POAM-UIAO-{_uuid.uuid4().hex[:8].upper()}"
         return {
+            "id": poam_id,
             "title": f"[{self.source.upper()}] {self.title}",
             "control-ids": [self.control_id],
             "description": self.description,
             "severity": self.severity,
+            "status": "Open",
             "remediation": "Investigate and remediate per incident response procedure",
             "source": f"{self.source}:{self.event_id}",
             "detected_at": self.detected_at,
