@@ -22,5 +22,6 @@ Update after EVERY run (success or failure).
 - If error matches any row above, auto-apply correction rule before retry
 - ALWAYS ship linker.py + bundler.py together with collector.py (they are a triad)
 - ALWAYS add prop:id (uuid field) on every prop in OSCAL back-matter resources
+- OSCAL schema validation runs via `make validate-oscal` (compliance-trestle); linker.py generates conformant structures but does not call the validator inline
 - ALWAYS populate back-matter resources in SSP before marking PR as review-ready
 - pip-audit currently shows CVEs in environment system packages (urllib3, setuptools, pip, pyopenssl); these are transitive/system-level — not direct project deps — but monitor for resolution in compliance-trestle upgrades
