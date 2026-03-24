@@ -3,6 +3,7 @@
 This script is kept for backward compatibility. New code should
 import ``build_rich_docx`` from ``uiao_core.generators.rich_docx``.
 """
+
 import logging
 
 from uiao_core.generators.rich_docx import build_rich_docx

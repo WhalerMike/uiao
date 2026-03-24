@@ -12,6 +12,7 @@ Supported connectors (stubs):
 - :class:`VulnScanCollector`       — Vulnerability scan result attachment (Nessus/Qualys)
 - :class:`ManualUploadCollector`   — Manual upload registry from ``data/evidence_uploads.yaml``
 """
+
 from __future__ import annotations
 
 import logging
@@ -89,10 +90,7 @@ class AzureSentinelCollector(BaseCollector):
                 f"{self.config.get('workspace_id', '<workspace_id>')}. "
                 "Supports AU-2, AU-9, IR-4, SI-4 controls."
             ),
-            file_path=str(
-                Path(self.config.get("output_dir", "exports/evidence"))
-                / "azure_sentinel_export.json"
-            ),
+            file_path=str(Path(self.config.get("output_dir", "exports/evidence")) / "azure_sentinel_export.json"),
             media_type="application/json",
             control_refs=["au-2", "au-9", "ir-4", "si-4"],
         )
@@ -138,10 +136,7 @@ class AzurePolicyCollector(BaseCollector):
                 f"{self.config.get('subscription_id', '<subscription_id>')}. "
                 "Supports CM-6, CM-7, SA-10 controls."
             ),
-            file_path=str(
-                Path(self.config.get("output_dir", "exports/evidence"))
-                / "azure_policy_compliance.json"
-            ),
+            file_path=str(Path(self.config.get("output_dir", "exports/evidence")) / "azure_policy_compliance.json"),
             media_type="application/json",
             control_refs=["cm-6", "cm-7", "sa-10"],
         )
@@ -186,10 +181,7 @@ class AWSConfigCollector(BaseCollector):
                 f"{self.config.get('aws_region', '<aws_region>')}. "
                 "Supports CM-8, CM-6, AC-3 controls."
             ),
-            file_path=str(
-                Path(self.config.get("output_dir", "exports/evidence"))
-                / "aws_config_snapshot.json"
-            ),
+            file_path=str(Path(self.config.get("output_dir", "exports/evidence")) / "aws_config_snapshot.json"),
             media_type="application/json",
             control_refs=["cm-8", "cm-6", "ac-3"],
         )
@@ -230,8 +222,7 @@ class VulnScanCollector(BaseCollector):
                 self._make_artifact(
                     title="Vulnerability Scan Results (Stub)",
                     description=(
-                        "Placeholder for Nessus or Qualys vulnerability scan output. "
-                        "Supports RA-5, SI-2 controls."
+                        "Placeholder for Nessus or Qualys vulnerability scan output. Supports RA-5, SI-2 controls."
                     ),
                     file_path="exports/evidence/vuln_scan_results.xml",
                     media_type="application/xml",
@@ -281,13 +272,9 @@ class ManualUploadCollector(BaseCollector):
 
     def collect(self) -> list[EvidenceArtifact]:
         """Load manual upload entries from the YAML registry."""
-        uploads_yaml = Path(
-            self.config.get("uploads_yaml", "data/evidence_uploads.yaml")
-        )
+        uploads_yaml = Path(self.config.get("uploads_yaml", "data/evidence_uploads.yaml"))
         if not uploads_yaml.exists():
-            logger.warning(
-                "[manual-upload] Registry not found at %s — returning empty list.", uploads_yaml
-            )
+            logger.warning("[manual-upload] Registry not found at %s — returning empty list.", uploads_yaml)
             return []
 
         with uploads_yaml.open(encoding="utf-8") as fh:

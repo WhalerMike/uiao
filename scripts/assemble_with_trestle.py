@@ -3,6 +3,7 @@
 This script is kept for backward compatibility. New code should
 import ``assemble_ssp`` from ``uiao_core.generators.trestle``.
 """
+
 import logging
 
 from uiao_core.generators.trestle import assemble_ssp

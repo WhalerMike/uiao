@@ -52,9 +52,7 @@ class CanonModel(BaseModel):
 
 def load_canon(canon_path: Path | None = None) -> CanonModel:
     """Load and validate a canon YAML file."""
-    path = canon_path or (
-        settings.root_dir / settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml"
-    )
+    path = canon_path or (settings.root_dir / settings.canon_dir / "uiao_leadership_briefing_v1.0.yaml")
     with path.open(encoding="utf-8") as f:
         data = yaml.safe_load(f)
     return CanonModel.model_validate(data)
