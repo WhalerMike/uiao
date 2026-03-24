@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 _REPO_ROOT = Path(__file__).parent.parent
@@ -137,6 +138,43 @@ class TestGenerateDiagramsFromCanon:
 
         for mmd in visuals_dir.glob("*.mermaid"):
             assert mmd.read_text(encoding="utf-8").strip(), f"{mmd.name} is empty"
+
+    def test_mermaid_file_content_is_valid_mermaid(self, tmp_path: Path) -> None:
+        """Each generated .mermaid file must contain Mermaid flowchart keywords."""
+        import unittest.mock as mock
+
+        from uiao_core.generators.diagrams import generate_diagrams_from_canon
+
+        visuals_dir = tmp_path / "visuals"
+
+        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None):
+            generate_diagrams_from_canon(
+                canon_path=_DIAGRAMS_CANON,
+                visuals_dir=visuals_dir,
+                output_dir=tmp_path / "images",
+            )
+
+        for mmd in visuals_dir.glob("*.mermaid"):
+            text = mmd.read_text(encoding="utf-8")
+            # All canon diagrams are flowcharts with edges
+            assert "flowchart" in text.lower(), f"{mmd.name} missing 'flowchart' keyword"
+            assert "-->" in text, f"{mmd.name} missing '-->' edge syntax"
+
+    def test_strict_mode_raises_on_render_failure(self, tmp_path: Path) -> None:
+        import unittest.mock as mock
+
+        from uiao_core.generators.diagrams import generate_diagrams_from_canon
+
+        with (
+            mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None),
+            pytest.raises(RuntimeError, match="Failed to render"),
+        ):
+            generate_diagrams_from_canon(
+                canon_path=_DIAGRAMS_CANON,
+                visuals_dir=tmp_path / "visuals",
+                output_dir=tmp_path / "images",
+                strict=True,
+            )
 
     def test_returns_empty_list_for_missing_canon(self, tmp_path: Path) -> None:
         from uiao_core.generators.diagrams import generate_diagrams_from_canon
