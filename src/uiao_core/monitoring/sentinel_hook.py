@@ -4,6 +4,7 @@ Provides a webhook/API interface for receiving Sentinel alerts,
 mapping alert severity to POA&M impact levels, and auto-creating
 or updating POA&M entries when alerts fire.
 """
+
 from __future__ import annotations
 
 import json
@@ -38,9 +39,7 @@ class SentinelAlert:
     entities: list[dict[str, Any]] = field(default_factory=list)
     tactics: list[str] = field(default_factory=list)
     techniques: list[str] = field(default_factory=list)
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     source: str = "sentinel"
 
     @property
@@ -57,9 +56,7 @@ class SentinelConfig:
     subscription_id: str
     resource_group: str
     alert_rules: list[str] = field(default_factory=list)
-    severity_mapping: dict[str, str] = field(
-        default_factory=lambda: dict(SEVERITY_TO_IMPACT)
-    )
+    severity_mapping: dict[str, str] = field(default_factory=lambda: dict(SEVERITY_TO_IMPACT))
     poam_auto_create: bool = True
     poam_data_path: str = "data/poam-findings.yml"
 
@@ -130,17 +127,11 @@ class SentinelHook:
         # Native Sentinel Logic App schema (AlertsV3)
         props = payload.get("properties", payload)
         return SentinelAlert(
-            alert_id=str(
-                props.get("systemAlertId", props.get("alert_id", "unknown"))
-            ),
+            alert_id=str(props.get("systemAlertId", props.get("alert_id", "unknown"))),
             title=props.get("alertDisplayName", props.get("title", "Unknown Alert")),
             severity=props.get("severity", props.get("severity", "Medium")),
-            rule_name=props.get(
-                "productName", props.get("rule_name", "Unknown Rule")
-            ),
-            description=props.get(
-                "description", props.get("description", "")
-            ),
+            rule_name=props.get("productName", props.get("rule_name", "Unknown Rule")),
+            description=props.get("description", props.get("description", "")),
             entities=props.get("entities", []),
             tactics=props.get("tactics", []),
             techniques=props.get("techniques", []),
@@ -189,9 +180,7 @@ class SentinelHook:
     # POA&M integration
     # ------------------------------------------------------------------
 
-    def build_poam_entry(
-        self, alert: SentinelAlert, control_ids: list[str]
-    ) -> dict[str, Any]:
+    def build_poam_entry(self, alert: SentinelAlert, control_ids: list[str]) -> dict[str, Any]:
         """Build a POA&M finding dict from a Sentinel alert.
 
         Uses the UIAO-required ``POAM-UIAO-`` ID prefix and the exact
@@ -224,10 +213,7 @@ class SentinelHook:
         entry for this alert ID already exists (by ``source`` field),
         and appends or updates accordingly.  Returns the entry dict.
         """
-        p = Path(
-            poam_path
-            or (self.config.poam_data_path if self.config else "data/poam-findings.yml")
-        )
+        p = Path(poam_path or (self.config.poam_data_path if self.config else "data/poam-findings.yml"))
         control_ids = self.map_alert_to_controls(alert)
         entry = self.build_poam_entry(alert, control_ids)
 
@@ -247,9 +233,7 @@ class SentinelHook:
         if not updated:
             findings.append(entry)
 
-        p.write_text(
-            yaml.dump(findings, default_flow_style=False, allow_unicode=True)
-        )
+        p.write_text(yaml.dump(findings, default_flow_style=False, allow_unicode=True))
         action = "Updated" if updated else "Created"
         logger.info("%s POA&M entry for alert %s", action, alert.alert_id)
         return entry

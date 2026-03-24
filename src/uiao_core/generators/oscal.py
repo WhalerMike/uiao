@@ -4,6 +4,7 @@ Migrated from scripts/generate_oscal.py into the uiao_core package.
 Builds OSCAL 1.0 Component Definition JSON from UIAO YAML canon data,
 aligned with FedRAMP 20x Phase 2 Moderate.
 """
+
 from __future__ import annotations
 
 import json
@@ -135,11 +136,13 @@ def build_component_definition(
         sub_components = []
         for raw_sub in raw_subs:
             sub = _as_dict(raw_sub)
-            sub_components.append({
-                "name": sub.get("name", ""),
-                "role": sub.get("role", ""),
-                "capabilities": sub.get("capabilities", []),
-            })
+            sub_components.append(
+                {
+                    "name": sub.get("name", ""),
+                    "role": sub.get("role", ""),
+                    "capabilities": sub.get("capabilities", []),
+                }
+            )
 
         props: list[dict[str, str]] = [
             {"name": "uiao-pillar", "value": str(plane_id).upper()},
@@ -166,52 +169,55 @@ def build_component_definition(
                         if ev and str(ev).strip():
                             evidence = str(ev).strip()
                         break
-                imp_reqs.append({
-                    "uuid": str(uuid.uuid4()),
-                    "control-id": ctrl_id,
-                    "description": _nonempty(
-                        entry.get("impact_statement", ""),
-                        f"Control {ctrl_id} implementation",
-                    ),
-                    "props": [
-                        {"name": "ksi-category", "value": _nonempty(ksi_cat)},
-                        {
-                            "name": "cisa-maturity",
-                            "value": _nonempty(
-                                entry.get("cisa_maturity", "Advanced"),
-                            ),
-                        },
-                        {"name": "evidence-source", "value": _nonempty(evidence)},
-                    ],
-                    "remarks": f"Implemented by {plane.get('name', plane_id)}",
-                })
+                imp_reqs.append(
+                    {
+                        "uuid": str(uuid.uuid4()),
+                        "control-id": ctrl_id,
+                        "description": _nonempty(
+                            entry.get("impact_statement", ""),
+                            f"Control {ctrl_id} implementation",
+                        ),
+                        "props": [
+                            {"name": "ksi-category", "value": _nonempty(ksi_cat)},
+                            {
+                                "name": "cisa-maturity",
+                                "value": _nonempty(
+                                    entry.get("cisa_maturity", "Advanced"),
+                                ),
+                            },
+                            {"name": "evidence-source", "value": _nonempty(evidence)},
+                        ],
+                        "remarks": f"Implemented by {plane.get('name', plane_id)}",
+                    }
+                )
             if imp_reqs:
-                control_imps.append({
-                    "uuid": str(uuid.uuid4()),
-                    "source": (
-                        "https://github.com/GSA/fedramp-automation/"
-                        "raw/main/dist/content/rev5/baselines/json/"
-                        "FedRAMP_rev5_MODERATE-baseline_profile.json"
-                    ),
-                    "description": (
-                        f"Control implementations for "
-                        f"{plane.get('name', plane_id)}"
-                    ),
-                    "implemented-requirements": imp_reqs,
-                })
+                control_imps.append(
+                    {
+                        "uuid": str(uuid.uuid4()),
+                        "source": (
+                            "https://github.com/GSA/fedramp-automation/"
+                            "raw/main/dist/content/rev5/baselines/json/"
+                            "FedRAMP_rev5_MODERATE-baseline_profile.json"
+                        ),
+                        "description": (f"Control implementations for {plane.get('name', plane_id)}"),
+                        "implemented-requirements": imp_reqs,
+                    }
+                )
 
-        cd["components"].append({
-            "uuid": comp_uuid,
-            "type": "service",
-            "title": _nonempty(plane.get("name", plane_id)),
-            "description": _nonempty(
-                plane.get("description", ""),
-                f"UIAO {plane.get('name', plane_id)} control plane",
-            ),
-            "props": props,
-            "remarks": json.dumps(sub_components),
-            "control-implementations": control_imps,
-        })
+        cd["components"].append(
+            {
+                "uuid": comp_uuid,
+                "type": "service",
+                "title": _nonempty(plane.get("name", plane_id)),
+                "description": _nonempty(
+                    plane.get("description", ""),
+                    f"UIAO {plane.get('name', plane_id)} control plane",
+                ),
+                "props": props,
+                "remarks": json.dumps(sub_components),
+                "control-implementations": control_imps,
+            }
+        )
 
     # Add FedRAMP 20x core_mappings as a capability
     if core_mappings:
@@ -219,19 +225,23 @@ def build_component_definition(
         for m in core_mappings:
             if not isinstance(m, dict):
                 continue
-            cap_reqs.append({
-                "concept": m.get("concept", ""),
-                "nist-control": m.get("nist_rev5_control", ""),
-                "ksi-category": m.get("ksi_category", ""),
-                "evidence-source": m.get("evidence_source", ""),
-            })
-        cd["capabilities"].append({
-            "uuid": str(uuid.uuid4()),
-            "name": "FedRAMP 20x KSI Alignment",
-            "description": "Key Security Indicator mappings from UIAO canon",
-            "props": [{"name": "ksi-count", "value": str(len(core_mappings))}],
-            "remarks": json.dumps(cap_reqs),
-        })
+            cap_reqs.append(
+                {
+                    "concept": m.get("concept", ""),
+                    "nist-control": m.get("nist_rev5_control", ""),
+                    "ksi-category": m.get("ksi_category", ""),
+                    "evidence-source": m.get("evidence_source", ""),
+                }
+            )
+        cd["capabilities"].append(
+            {
+                "uuid": str(uuid.uuid4()),
+                "name": "FedRAMP 20x KSI Alignment",
+                "description": "Key Security Indicator mappings from UIAO canon",
+                "props": [{"name": "ksi-count", "value": str(len(core_mappings))}],
+                "remarks": json.dumps(cap_reqs),
+            }
+        )
 
     return cd
 
@@ -255,10 +265,7 @@ def validate_inventory_component_refs(
             continue
         for comp_ref in item.get("implemented_components", []):
             if comp_ref not in known_ids:
-                warnings.append(
-                    f"Inventory item '{item.get('id', '?')}' references "
-                    f"unknown component '{comp_ref}'"
-                )
+                warnings.append(f"Inventory item '{item.get('id', '?')}' references unknown component '{comp_ref}'")
     return warnings
 
 

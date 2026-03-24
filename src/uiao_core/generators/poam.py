@@ -4,6 +4,7 @@ Migrated from scripts/generate_poam.py into the uiao_core package.
 Auto-detects gaps from unified_compliance_matrix and fedramp-20x
 mandatory requirements, then exports OSCAL 1.0 POA&M JSON.
 """
+
 from __future__ import annotations
 
 import json
@@ -39,16 +40,18 @@ def detect_gaps(context: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         maturity = entry.get("cisa_maturity", "")
         if maturity in ("Initial", "Developing", ""):
-            gaps.append({
-                "title": f"Low maturity: {entry.get('category', 'Unknown')}",
-                "description": (
-                    f"CISA maturity is '{maturity}' for category "
-                    f"'{entry.get('category', 'N/A')}'. "
-                    f"Controls: {entry.get('nist_controls', [])}"
-                ),
-                "risk_level": "moderate" if maturity == "Developing" else "high",
-                "related_controls": entry.get("nist_controls", []),
-            })
+            gaps.append(
+                {
+                    "title": f"Low maturity: {entry.get('category', 'Unknown')}",
+                    "description": (
+                        f"CISA maturity is '{maturity}' for category "
+                        f"'{entry.get('category', 'N/A')}'. "
+                        f"Controls: {entry.get('nist_controls', [])}"
+                    ),
+                    "risk_level": "moderate" if maturity == "Developing" else "high",
+                    "related_controls": entry.get("nist_controls", []),
+                }
+            )
 
     # Detect missing KSI evidence
     for m in core_mappings:
@@ -56,16 +59,18 @@ def detect_gaps(context: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         evidence = m.get("evidence_source", "")
         if not evidence or str(evidence).strip() == "":
-            gaps.append({
-                "title": f"Missing evidence: {m.get('concept', 'Unknown')}",
-                "description": (
-                    f"No evidence source defined for KSI concept "
-                    f"'{m.get('concept', 'N/A')}' "
-                    f"(control: {m.get('nist_rev5_control', 'N/A')})"
-                ),
-                "risk_level": "moderate",
-                "related_controls": [m.get("nist_rev5_control", "")],
-            })
+            gaps.append(
+                {
+                    "title": f"Missing evidence: {m.get('concept', 'Unknown')}",
+                    "description": (
+                        f"No evidence source defined for KSI concept "
+                        f"'{m.get('concept', 'N/A')}' "
+                        f"(control: {m.get('nist_rev5_control', 'N/A')})"
+                    ),
+                    "risk_level": "moderate",
+                    "related_controls": [m.get("nist_rev5_control", "")],
+                }
+            )
 
     return gaps
 
@@ -87,18 +92,20 @@ def build_poam(
     poam_items: list[dict[str, Any]] = []
     for i, gap in enumerate(gaps, start=1):
         related = gap.get("related_controls", [])
-        poam_items.append({
-            "uuid": str(uuid.uuid4()),
-            "title": gap.get("title", f"Finding {i}"),
-            "description": gap.get("description", "No description"),
-            "props": [
-                {"name": "risk-level", "value": gap.get("risk_level", "moderate")},
-                {"name": "finding-id", "value": f"POAM-{i:04d}"},
-            ],
-            "related-observations": [
-                {"description": f"Related NIST controls: {', '.join(related)}"}
-            ] if related else [],
-        })
+        poam_items.append(
+            {
+                "uuid": str(uuid.uuid4()),
+                "title": gap.get("title", f"Finding {i}"),
+                "description": gap.get("description", "No description"),
+                "props": [
+                    {"name": "risk-level", "value": gap.get("risk_level", "moderate")},
+                    {"name": "finding-id", "value": f"POAM-{i:04d}"},
+                ],
+                "related-observations": [{"description": f"Related NIST controls: {', '.join(related)}"}]
+                if related
+                else [],
+            }
+        )
 
     poam: dict[str, Any] = {
         "uuid": str(uuid.uuid4()),

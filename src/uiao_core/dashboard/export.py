@@ -3,6 +3,7 @@
 Renders the KSI score report as a JSON or YAML artefact suitable for
 FedRAMP 20x Phase 2 continuous monitoring evidence submission.
 """
+
 from __future__ import annotations
 
 import json
@@ -95,8 +96,6 @@ class DashboardExporter:
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         report = self._build_report()
-        path.write_text(
-            yaml.dump(report, default_flow_style=False, allow_unicode=True)
-        )
+        path.write_text(yaml.dump(report, default_flow_style=False, allow_unicode=True))
         logger.info("KSI dashboard exported to %s", path)
         return path
