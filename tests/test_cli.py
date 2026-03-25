@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import re
 from pathlib import Path
 from unittest.mock import patch
@@ -92,3 +93,96 @@ class TestCLIBasics:
                 generate_diagrams=True,
                 force_visuals=False,
             )
+
+
+class TestGenerateAll:
+    """Tests for the generate-all orchestration command."""
+
+    def test_generate_all_in_help(self) -> None:
+        """generate-all appears in top-level --help."""
+        result = runner.invoke(app, ["--help"])
+        assert result.exit_code == 0
+        assert "generate-all" in result.stdout
+
+    def test_generate_all_help(self) -> None:
+        """generate-all --help shows expected options."""
+        result = runner.invoke(app, ["generate-all", "--help"])
+        assert result.exit_code == 0
+        plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout).lower()
+        assert "canon" in plain
+        assert "data-dir" in plain
+        assert "exports-dir" in plain
+
+    def test_generate_all_runs_all_steps(self, tmp_path) -> None:
+        """generate-all invokes every generator and reports success."""
+        patches = [
+            patch("uiao_core.generators.mermaid.render_all_mermaid", return_value=["img1.png", "img2.png"]),
+            patch("uiao_core.generators.docs.build_docs", return_value=["docs/a.md", "docs/b.md"]),
+            patch("uiao_core.generators.oscal.build_oscal", return_value=tmp_path / "oscal.json"),
+            patch("uiao_core.generators.ssp.build_ssp", return_value=tmp_path / "ssp.json"),
+            patch("uiao_core.generators.poam.build_poam_export", return_value=tmp_path / "poam.json"),
+            patch("uiao_core.generators.rich_docx.build_rich_docx", return_value=tmp_path / "brief.docx"),
+            patch("uiao_core.generators.pptx.build_pptx", return_value=tmp_path / "deck.pptx"),
+            patch("uiao_core.generators.sbom.build_sbom", return_value=tmp_path / "sbom.json"),
+        ]
+
+        with contextlib.ExitStack() as stack:
+            for cm in patches:
+                stack.enter_context(cm)
+
+            result = runner.invoke(
+                app,
+                [
+                    "generate-all",
+                    "--canon", "canon/test.yaml",
+                    "--data-dir", str(tmp_path / "data"),
+                    "--exports-dir", str(tmp_path / "exports"),
+                ],
+            )
+
+        plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+        assert result.exit_code == 0, plain
+        assert "All artifacts generated" in plain
+
+    def test_generate_all_skip_sbom(self, tmp_path) -> None:
+        """--skip-sbom skips SBOM generation and still exits 0."""
+        patches = [
+            patch("uiao_core.generators.mermaid.render_all_mermaid", return_value=[]),
+            patch("uiao_core.generators.docs.build_docs", return_value=[]),
+            patch("uiao_core.generators.oscal.build_oscal", return_value=tmp_path / "o.json"),
+            patch("uiao_core.generators.ssp.build_ssp", return_value=tmp_path / "s.json"),
+            patch("uiao_core.generators.poam.build_poam_export", return_value=tmp_path / "p.json"),
+            patch("uiao_core.generators.rich_docx.build_rich_docx", return_value=tmp_path / "d.docx"),
+            patch("uiao_core.generators.pptx.build_pptx", return_value=tmp_path / "p.pptx"),
+        ]
+
+        with contextlib.ExitStack() as stack:
+            for cm in patches:
+                stack.enter_context(cm)
+            result = runner.invoke(app, ["generate-all", "--skip-sbom"])
+
+        plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+        assert result.exit_code == 0, plain
+        assert "SBOM skipped" in plain
+
+    def test_generate_all_partial_failure_exits_nonzero(self, tmp_path) -> None:
+        """generate-all exits with code 1 and reports errors when a generator raises."""
+        patches = [
+            patch("uiao_core.generators.mermaid.render_all_mermaid", return_value=[]),
+            patch("uiao_core.generators.docs.build_docs", side_effect=RuntimeError("template missing")),
+            patch("uiao_core.generators.oscal.build_oscal", return_value=tmp_path / "o.json"),
+            patch("uiao_core.generators.ssp.build_ssp", return_value=tmp_path / "s.json"),
+            patch("uiao_core.generators.poam.build_poam_export", return_value=tmp_path / "p.json"),
+            patch("uiao_core.generators.rich_docx.build_rich_docx", return_value=tmp_path / "d.docx"),
+            patch("uiao_core.generators.pptx.build_pptx", return_value=tmp_path / "p.pptx"),
+            patch("uiao_core.generators.sbom.build_sbom", return_value=tmp_path / "sbom.json"),
+        ]
+
+        with contextlib.ExitStack() as stack:
+            for cm in patches:
+                stack.enter_context(cm)
+            result = runner.invoke(app, ["generate-all"])
+
+        plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+        assert result.exit_code == 1, plain
+        assert "template missing" in plain
