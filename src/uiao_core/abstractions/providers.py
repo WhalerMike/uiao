@@ -103,3 +103,16 @@ class DNSProvider(BaseProvider):
 
     abstract_name = "DNS / IPAM"
     abstract_capabilities = ["DNS", "DHCP", "IPAM", "DNSSEC"]
+
+
+class PIVAuthenticationService(BaseProvider):
+    """Abstract PIV/CAC Authentication Service.
+
+    Validates Personal Identity Verification (PIV) and Common Access Card (CAC)
+    credentials against the Federal PKI trust anchor for federal personnel.
+
+    Concrete examples: GSA USAccess, DoD DMDC, agency-operated OCSP responders.
+    """
+
+    abstract_name = "PIV Authentication Service"
+    abstract_capabilities = ["PIV", "CAC", "FPKI", "CRL", "OCSP"]
