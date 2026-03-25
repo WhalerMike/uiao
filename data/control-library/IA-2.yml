@@ -1,57 +1,67 @@
-# NIST SP 800-53 Rev 5 Control Narrative
-# Control: IA-2 — Identification and Authentication (Organizational Users)
-# Schema: control-library v1.0
+# NIST SP 800-53 Rev 5 — Control Narrative
+# Control ID : IA-2
+# Title      : Identification and Authentication (Organizational Users)
+# Schema     : data/control-library (uiao-core canonical format)
 
 control_id: IA-2
-title: "Identification and Authentication (Organizational Users)"
+title: Identification and Authentication (Organizational Users)
 status: implemented
-family: IA
-
-narrative: |
-  {{ organization.name }} uniquely identifies and authenticates all organizational
-  users prior to granting access to any system resource. Multi-factor authentication
-  (MFA) is enforced for all accounts in accordance with {{ parameters.mfa-requirement }}.
-
-  The IdentityProvider role is fulfilled by the CyberArk Identity Vault, which serves
-  as the primary identity and credential management platform. CyberArk Identity Vault
-  enforces phishing-resistant MFA mechanisms — including FIDO2 hardware security keys
-  and PIV/CAC smart cards — for all privileged accounts and for all users accessing
-  high-value assets. Conditional access policies within CyberArk Identity Vault ensure
-  that non-privileged accounts are also subject to phishing-resistant MFA.
-
-  The PIVAuthenticationService role is fulfilled by the Federal PIV/CAC Trust Chain.
-  PIV and CAC enforcement for federal personnel is managed through the Federal PIV/CAC
-  Trust Chain, which validates certificate chains against the Federal PKI (FPKI) trust
-  anchor using OCSP and CRL revocation checks. All federal personnel accessing federal
-  systems must authenticate using a valid PIV or CAC credential issued by a certified
-  Federal PKI issuer.
-
-  Shared or group accounts are prohibited; every user is assigned a unique identifier
-  that cannot be reused across the system lifecycle.
-
-  Authentication-related security findings are subject to SLA-based remediation timelines:
-    - Critical: remediated or mitigated within 15 days of discovery
-    - High: remediated or mitigated within 30 days of discovery
 
 implemented_by:
   - IdentityProvider
   - PIVAuthenticationService
 
-parameters:
-  - id: mfa-requirement
-    value: "Phishing-resistant MFA (FIDO2 / PIV / CAC) for all accounts"
-  - id: piv-requirement
-    value: "PIV/CAC required for all federal personnel and privileged users"
-  - id: critical-sla-days
-    value: 15
-  - id: high-sla-days
-    value: 30
-
 evidence:
   - mfa-enrollment-report
+  - piv-cac-authentication-log
+  - conditional-access-policy-export
 
-references:
-  - NIST SP 800-53 Rev 5, IA-2
-  - M-22-09 (Zero Trust Strategy)
-  - M-24-15 (Phishing-Resistant MFA)
-  - FIPS 201-3 (PIV Standard)
+parameters:
+  - id: mfa-requirement
+    description: >-
+      Specifies the phishing-resistant multi-factor authentication methods
+      required for all organizational user accounts before any system
+      resource access is granted.
+    value: "{{ parameters['mfa-requirement'] }}"
+  - id: piv-enforcement-scope
+    description: >-
+      Defines the scope of mandatory PIV/CAC credential enforcement,
+      including which user populations and system tiers require hardware-
+      based authenticator presentation.
+    value: "{{ parameters['piv-enforcement-scope'] }}"
+
+narrative: |
+  {{ organization.name }} uniquely identifies and authenticates all organizational users prior to granting access to any information system resource, in accordance with NIST SP 800-53 Rev 5 IA-2 and OMB M-22-09 Zero Trust requirements.
+
+  **Phishing-Resistant Multi-Factor Authentication**
+
+  All organizational user accounts are required to authenticate using phishing-resistant multi-factor authentication (MFA) as specified by {{ parameters['mfa-requirement'] }}. The IdentityProvider enforces conditional-access policies that mandate FIDO2 hardware security keys or PIV/CAC smart cards as the primary authenticator for every interactive logon. Software-based one-time-password (OTP) and SMS-based authenticators are explicitly prohibited for access to federal data within the authorization boundary. MFA enrollment status for every active account is tracked in the mfa-enrollment-report artefact and surfaced on the continuous-monitoring (ConMon) dashboard.
+
+  **PIV/CAC Credential Enforcement**
+
+  Federal personnel and privileged users are required to authenticate using a valid Personal Identity Verification (PIV) or Common Access Card (CAC) credential issued by a certified Federal PKI issuer, in accordance with FIPS 201-3 and {{ parameters['piv-enforcement-scope'] }}. The PIVAuthenticationService validates each certificate chain against the Federal PKI (FPKI) trust anchor using Online Certificate Status Protocol (OCSP) and Certificate Revocation List (CRL) checks at every authentication event. Credentials that fail chain validation, have been revoked, or have expired are rejected immediately, and the authentication attempt is logged in the piv-cac-authentication-log artefact.
+
+  **Conditional Access Policies**
+
+  {{ organization.name }} implements risk-based conditional-access policies within the IdentityProvider that evaluate device compliance, network location, sign-in risk score, and user role before granting a session token. Privileged accounts are subject to additional constraints including device-bound credentials, compliant-device attestation, and geographic restrictions. Conditional-access policy configurations are exported monthly to the conditional-access-policy-export artefact and reviewed by the ISSO to ensure alignment with the approved security baseline.
+
+  **Account Uniqueness and Shared Account Prohibition**
+
+  Shared and group accounts are prohibited within the authorization boundary. Every organizational user is assigned a globally unique identifier that persists across the identity lifecycle and cannot be reassigned or reused. Service accounts are managed through the PrivilegedAccessManagement vault with unique credentials per service instance, and their authentication events are logged and reviewed on the same cadence as human-user accounts.
+
+  **Evidence and Audit Artefacts**
+
+  Authentication compliance evidence is maintained as follows:
+  - mfa-enrollment-report: A monthly export from the IdentityProvider listing every active user account, enrolled MFA methods, enrollment date, and any accounts with no phishing-resistant authenticator on record.
+  - piv-cac-authentication-log: A continuous log of all PIV/CAC authentication events including certificate serial numbers, chain validation results, and OCSP/CRL check outcomes.
+  - conditional-access-policy-export: A monthly snapshot of all active conditional-access policies, their scope, grant/block conditions, and any recent policy changes.
+
+  All artefacts are available to the 3PAO during annual assessments and continuous-monitoring reviews, satisfying the evidence requirements for IA-2 under the FedRAMP Moderate baseline.
+
+related_controls:
+  - IA-4   # Identifier Management
+  - IA-5   # Authenticator Management
+  - IA-8   # Identification and Authentication (Non-Organizational Users)
+  - AC-2   # Account Management
+  - AC-7   # Unsuccessful Logon Attempts
+  - AC-14  # Permitted Actions without Identification or Authentication
