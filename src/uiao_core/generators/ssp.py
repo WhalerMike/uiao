@@ -144,6 +144,50 @@ def _build_back_matter(template: dict[str, Any]) -> dict[str, Any]:
     return {"resources": resources} if resources else {}
 
 
+def inventory_items_from_core_stack(
+    core_stack: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Convert ``core-stack.yml`` components to inventory-item dicts.
+
+    Each core-stack entry becomes an inventory item that links back to a
+    control-plane component via ``implemented_components: [component-{pillar}]``.
+    Items generated here are merged into the SSP inventory in
+    :func:`build_ssp_skeleton`; manually defined entries in
+    ``inventory-items.yml`` take precedence (keyed by ``id``).
+
+    Args:
+        core_stack: List of component dicts loaded from ``data/core-stack.yml``.
+
+    Returns:
+        List of inventory-item dicts compatible with :func:`build_ssp_skeleton`.
+    """
+    items: list[dict[str, Any]] = []
+    for comp in core_stack:
+        if not isinstance(comp, dict):
+            continue
+        comp_id = str(comp.get("id", "")).strip()
+        name = str(comp.get("name", comp_id)).strip()
+        pillar = str(comp.get("pillar", "")).strip()
+        if not comp_id:
+            continue
+        item_props: list[dict[str, str]] = []
+        if pillar:
+            item_props.append({"name": "uiao-pillar", "value": pillar})
+        vendor = str(comp.get("vendor", "")).strip()
+        if vendor:
+            item_props.append({"name": "vendor", "value": vendor})
+        item: dict[str, Any] = {
+            "id": f"inv-{comp_id.lower()}",
+            "asset_type": comp.get("asset_type", "software"),
+            "description": name,
+            "responsible_party": comp.get("responsible_party", "agency-admin"),
+            "implemented_components": [f"component-{pillar}"] if pillar else [],
+            "props": item_props,
+        }
+        items.append(item)
+    return items
+
+
 def build_ssp_skeleton(context: dict[str, Any], data_dir: Path | None = None) -> dict[str, Any]:
     """Build the OSCAL SSP skeleton dict from context, aligned with FedRAMP Rev 5 Sections 1-12."""
     if data_dir is None:
@@ -161,6 +205,17 @@ def build_ssp_skeleton(context: dict[str, Any], data_dir: Path | None = None) ->
     inventory_items = _unwrap(context.get("inventory_items", []), "inventory_items")
     if not isinstance(inventory_items, list):
         inventory_items = []
+
+    # Auto-generate inventory items from core-stack.yml and merge with explicit items.
+    # Manually defined entries in inventory-items.yml win (deduplication by id).
+    core_stack = _unwrap(context.get("core_stack", []), "core_stack")
+    if not isinstance(core_stack, list):
+        core_stack = []
+    existing_inv_ids = {item.get("id") for item in inventory_items if isinstance(item, dict)}
+    for cs_item in inventory_items_from_core_stack(core_stack):
+        if cs_item.get("id") not in existing_inv_ids:
+            inventory_items = list(inventory_items) + [cs_item]
+            existing_inv_ids.add(cs_item["id"])
 
     set_params, ctrl_to_params = build_set_parameters(context)
     now_iso = datetime.now(timezone.utc).isoformat()
