@@ -120,3 +120,30 @@ class PolicyEnforcementPoint(BaseProvider):
 
     abstract_name = "Policy Enforcement Point"
     abstract_capabilities = ["RBAC", "ABAC", "least-privilege", "policy-evaluation"]
+
+
+class PIVAuthenticationService(BaseProvider):
+    """Abstract PIV/CAC Authentication Service.
+
+    Validates Personal Identity Verification (PIV) and Common Access Card (CAC)
+    credentials against the Federal PKI trust anchor for federal personnel.
+
+    Concrete examples: GSA USAccess, DoD DMDC, agency-operated OCSP responders.
+    """
+
+    abstract_name = "PIV Authentication Service"
+    abstract_capabilities = ["PIV", "CAC", "FPKI", "CRL", "OCSP"]
+
+
+class VulnerabilityScanner(BaseProvider):
+    """Abstract Vulnerability Scanner.
+
+    Performs authenticated vulnerability scans against in-scope systems and
+    produces findings aligned to NIST SP 800-40 flaw remediation requirements.
+
+    Concrete examples: Tenable Nessus, Qualys VMDR, Rapid7 InsightVM,
+    Amazon Inspector.
+    """
+
+    abstract_name = "Vulnerability Scanner"
+    abstract_capabilities = ["authenticated-scan", "CVE-detection", "CVSS-scoring", "patch-validation"]
