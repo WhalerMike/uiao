@@ -93,6 +93,7 @@
 * create data/control-library/AC-17.yml for Remote Access control ([472f336](https://github.com/WhalerMike/uiao-core/commit/472f3361c106afe621b7a349c10776ba1f31f934))
 * create data/control-library/AC-2.yml for Account Management control ([24c8a97](https://github.com/WhalerMike/uiao-core/commit/24c8a97c7cdc19976b62a160ca40f5cc4851dc88))
 * create data/control-library/IA-5.yml for Authenticator Management ([58d36bb](https://github.com/WhalerMike/uiao-core/commit/58d36bbdd659314c11c198d30455cfcfb39bef68))
+* create data/control-library/IA-8.yml for non-org user identification and authentication ([950ba21](https://github.com/WhalerMike/uiao-core/commit/950ba21b8d7a02260e2cd233f240cad344d02e09))
 * Create data/control-library/SI-2.yml (Flaw Remediation) ([e00ce2d](https://github.com/WhalerMike/uiao-core/commit/e00ce2d1598905c27083d49c7d1304c369f55f30))
 * **diagrams:** automated diagram generation for generate-docs ([b460ea8](https://github.com/WhalerMike/uiao-core/commit/b460ea8aaaad381c8fa02a7c208109f6859f28ec))
 * FedRAMP Rev 5 SSP template alignment (Sections 1-12 + Appendix A) ([c90d87a](https://github.com/WhalerMike/uiao-core/commit/c90d87af73ea7bfbd6c8da5188d383376191c75e))
