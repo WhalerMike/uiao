@@ -27,10 +27,10 @@ class _TBDUndefined(Undefined):
 
     # Support subscript / attribute access on undefined so that
     # ``{{ parameters['missing-key'] }}`` also renders as ``[TBD]``.
-    def __getitem__(self, key: Any) -> "_TBDUndefined":  # type: ignore[override]
+    def __getitem__(self, key: Any) -> _TBDUndefined:  # type: ignore[override]
         return _TBDUndefined()
 
-    def __getattr__(self, name: str) -> "_TBDUndefined":  # noqa: D105
+    def __getattr__(self, name: str) -> _TBDUndefined:  # noqa: D105
         if name.startswith("_"):
             raise AttributeError(name)
         return _TBDUndefined()
@@ -78,7 +78,7 @@ def _render_narrative(raw: str, org_name: str, parameters: dict[str, str]) -> st
         def __init__(self, name: str) -> None:
             self.name = name
 
-        def __getattr__(self, key: str) -> "_TBDUndefined":
+        def __getattr__(self, key: str) -> _TBDUndefined:
             if key.startswith("_"):
                 raise AttributeError(key)
             return _TBDUndefined()
