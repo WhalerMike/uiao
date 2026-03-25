@@ -144,8 +144,65 @@ def _build_back_matter(template: dict[str, Any]) -> dict[str, Any]:
     return {"resources": resources} if resources else {}
 
 
-def build_ssp_skeleton(context: dict[str, Any], data_dir: Path | None = None) -> dict[str, Any]:
-    """Build the OSCAL SSP skeleton dict from context, aligned with FedRAMP Rev 5 Sections 1-12."""
+def inventory_items_from_core_stack(
+    core_stack: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Convert ``core-stack.yml`` components to inventory-item dicts.
+
+    Each core-stack entry becomes an inventory item that links back to a
+    control-plane component via ``implemented_components: [component-{pillar}]``.
+    Items generated here are merged into the SSP inventory in
+    :func:`build_ssp_skeleton`; manually defined entries in
+    ``inventory-items.yml`` take precedence (keyed by ``id``).
+
+    Args:
+        core_stack: List of component dicts loaded from ``data/core-stack.yml``.
+
+    Returns:
+        List of inventory-item dicts compatible with :func:`build_ssp_skeleton`.
+    """
+    items: list[dict[str, Any]] = []
+    for comp in core_stack:
+        if not isinstance(comp, dict):
+            continue
+        comp_id = str(comp.get("id", "")).strip()
+        name = str(comp.get("name", comp_id)).strip()
+        pillar = str(comp.get("pillar", "")).strip()
+        if not comp_id:
+            continue
+        item_props: list[dict[str, str]] = []
+        if pillar:
+            item_props.append({"name": "uiao-pillar", "value": pillar})
+        vendor = str(comp.get("vendor", "")).strip()
+        if vendor:
+            item_props.append({"name": "vendor", "value": vendor})
+        item: dict[str, Any] = {
+            "id": f"inv-{comp_id.lower()}",
+            "asset_type": comp.get("asset_type", "software"),
+            "description": name,
+            "responsible_party": comp.get("responsible_party", "agency-admin"),
+            "implemented_components": [f"component-{pillar}"] if pillar else [],
+            "props": item_props,
+        }
+        items.append(item)
+    return items
+
+
+def build_ssp_skeleton(
+    context: dict[str, Any],
+    data_dir: Path | None = None,
+    enhanced: bool = False,
+) -> dict[str, Any]:
+    """Build the OSCAL SSP skeleton dict from context, aligned with FedRAMP Rev 5 Sections 1-12.
+
+    Args:
+        context: Merged context dict produced by ``load_context()``.
+        data_dir: Path to the data directory. Defaults to ``settings.data_dir``.
+        enhanced: When *True*, load control-library narratives from
+            ``data/control-library/*.yml`` and inject them as OSCAL
+            ``statements`` and ``by-components`` entries.  When *False*
+            (default) the existing behaviour is preserved.
+    """
     if data_dir is None:
         settings = get_settings()
         data_dir = settings.data_dir
@@ -161,6 +218,17 @@ def build_ssp_skeleton(context: dict[str, Any], data_dir: Path | None = None) ->
     inventory_items = _unwrap(context.get("inventory_items", []), "inventory_items")
     if not isinstance(inventory_items, list):
         inventory_items = []
+
+    # Auto-generate inventory items from core-stack.yml and merge with explicit items.
+    # Manually defined entries in inventory-items.yml win (deduplication by id).
+    core_stack = _unwrap(context.get("core_stack", []), "core_stack")
+    if not isinstance(core_stack, list):
+        core_stack = []
+    existing_inv_ids = {item.get("id") for item in inventory_items if isinstance(item, dict)}
+    for cs_item in inventory_items_from_core_stack(core_stack):
+        if cs_item.get("id") not in existing_inv_ids:
+            inventory_items = list(inventory_items) + [cs_item]
+            existing_inv_ids.add(cs_item["id"])
 
     set_params, ctrl_to_params = build_set_parameters(context)
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -385,6 +453,78 @@ def build_ssp_skeleton(context: dict[str, Any], data_dir: Path | None = None) ->
                 ]
             ssp["control-implementation"]["implemented-requirements"].append(req)
 
+    # Enhanced mode: inject control-library narratives.
+    if enhanced:
+        from uiao_core.generators.narrative_loader import load_control_library
+
+        narratives = load_control_library(data_dir=data_dir, context=context)
+
+        # Index existing implemented-requirements by control-id for fast lookup.
+        req_by_ctrl: dict[str, dict[str, Any]] = {}
+        for req in ssp["control-implementation"]["implemented-requirements"]:
+            req_by_ctrl[req["control-id"]] = req
+
+        for ctrl_id, nar in narratives.items():
+            rendered = nar.get("narrative", "")
+            status = nar.get("status", "implemented")
+            impl_by = nar.get("implemented_by", [])
+
+            # Build OSCAL statements list.
+            stmt_uuid = str(uuid.uuid4())
+            statement: dict[str, Any] = {
+                "statement-id": f"{ctrl_id}_smt",
+                "uuid": stmt_uuid,
+                "description": rendered,
+            }
+
+            # Build by-components entries.
+            by_components: list[dict[str, Any]] = []
+            for impl_item in impl_by:
+                comp_name = impl_item.get("type", "")
+                # Try to resolve to a component UUID via the existing mapping.
+                # Components are registered as "component-{plane_id.lower()}".
+                comp_key = f"component-{comp_name.lower()}"
+                comp_uuid_val = component_id_to_uuid.get(comp_key)
+                if comp_uuid_val:
+                    bc: dict[str, Any] = {
+                        "component-uuid": comp_uuid_val,
+                        "uuid": str(uuid.uuid4()),
+                        "description": impl_item.get("description", ""),
+                    }
+                    by_components.append(bc)
+
+            if by_components:
+                statement["by-components"] = by_components
+
+            # Implementation-status prop.
+            status_prop = {
+                "name": "implementation-status",
+                "value": status,
+                "ns": "https://fedramp.gov/ns/oscal",
+            }
+
+            if ctrl_id in req_by_ctrl:
+                # Enrich the existing requirement.
+                existing_req = req_by_ctrl[ctrl_id]
+                existing_req.setdefault("statements", [])
+                if not existing_req["statements"]:
+                    existing_req["statements"].append(statement)
+                existing_req.setdefault("props", [])
+                # Avoid duplicate implementation-status props.
+                if not any(p.get("name") == "implementation-status" for p in existing_req["props"]):
+                    existing_req["props"].append(status_prop)
+            else:
+                # Append a new implemented-requirement for controls only in
+                # the control-library (not in the compliance matrix).
+                new_req: dict[str, Any] = {
+                    "uuid": str(uuid.uuid4()),
+                    "control-id": ctrl_id,
+                    "remarks": f"Narrative sourced from control-library/{ctrl_id}.yml",
+                    "props": [status_prop],
+                    "statements": [statement],
+                }
+                ssp["control-implementation"]["implemented-requirements"].append(new_req)
+
     # Section 12: back-matter with laws and regulations
     back_matter = _build_back_matter(template)
     if back_matter:
@@ -398,6 +538,7 @@ def build_ssp(
     data_dir: str | Path | None = None,
     output: str | Path | None = None,
     output_path: str | Path | None = None,
+    enhanced: bool = False,
 ) -> Path:
     """Generate an OSCAL SSP JSON file from canon and data sources.
 
@@ -408,6 +549,8 @@ def build_ssp(
             precedence over ``output_path`` when both are provided.
         output_path: Deprecated alias for ``output``. Use ``output``
             instead.
+        enhanced: When *True*, inject control-library narratives into the
+            ``implemented-requirements`` entries.
 
     Returns:
         Path to the generated SSP JSON file.
@@ -423,7 +566,7 @@ def build_ssp(
         resolved_output = settings.exports_dir / "oscal" / "uiao-ssp-skeleton.json"
 
     context = load_context(canon_path=canon_path, data_dir=data_dir)
-    ssp_data = build_ssp_skeleton(context, data_dir=Path(data_dir))
+    ssp_data = build_ssp_skeleton(context, data_dir=Path(data_dir), enhanced=enhanced)
 
     out = Path(resolved_output)
     out.parent.mkdir(parents=True, exist_ok=True)

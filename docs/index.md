@@ -2,6 +2,15 @@
 
 Welcome to the authoritative guide for the agency's infrastructure transformation. The **uiao-core** initiative replaces legacy, fragmented silos with a unified, programmable architecture.
 
+## End-to-End Demo
+
+![UIAO generate-all demo](../assets/demo.svg)
+
+> Run `uiao generate-all` to transform YAML canon into OSCAL JSON, Markdown docs, DOCX, PPTX, and a CycloneDX SBOM in a single command.  
+> See the [Pipeline documentation](pipeline.md) for a full stage-by-stage breakdown.
+
+---
+
 ## Mission-to-Tech Alignment
 Our modernization strategy is built to deliver three primary outcomes: **Agility**, **Security**, and **Compliance**.
 
@@ -17,6 +26,24 @@ Our modernization strategy is built to deliver three primary outcomes: **Agility
 ---
 
 > **Executive Summary:** This Atlas is a "Living Document." It is generated directly from our codebase, ensuring that the documentation is always synchronized with the authoritative technical standards.
+
+## FedRAMP / OSCAL Tool Comparison
+
+| Capability | **uiao-core** | Compliance Trestle | GoComply | GovReady-Q | GSA fedramp-automation | Paramify | Xacta |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| OSCAL SSP generation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| OSCAL POA&M generation | ✅ | ✅ | ⚠️ partial | ✅ | ✅ | ✅ | ✅ |
+| OSCAL Component Definition | ✅ | ✅ | ✅ | ⚠️ partial | ✅ | ⚠️ partial | ⚠️ partial |
+| **Single YAML canon → OSCAL + PPTX** | ✅ **unique** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Leadership briefings (PPTX) auto-sync** | ✅ **unique** | ❌ | ❌ | ❌ | ❌ | ⚠️ manual | ❌ |
+| FedRAMP Rev 5 baseline | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Continuous monitoring / telemetry | ✅ | ⚠️ partial | ❌ | ⚠️ partial | ❌ | ⚠️ partial | ✅ |
+| Open-source | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Zero-Trust architecture codified | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ⚠️ partial |
+
+> **uiao-core's unique value:** A single YAML canon simultaneously renders machine-readable OSCAL compliance artifacts *and* synchronized executive/leadership briefings (PPTX), keeping security documentation and leadership communications always in sync — no other tool in this space does both.
+
+---
 
 ## OSCAL Exports (FedRAMP 20x Ready)
 
