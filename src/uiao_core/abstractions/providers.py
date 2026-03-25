@@ -103,3 +103,18 @@ class DNSProvider(BaseProvider):
 
     abstract_name = "DNS / IPAM"
     abstract_capabilities = ["DNS", "DHCP", "IPAM", "DNSSEC"]
+
+
+class PolicyEnforcementPoint(BaseProvider):
+    """Abstract Policy Enforcement Point (PEP).
+
+    Evaluates access requests against policy rules and enforces permit/deny
+    decisions at application and infrastructure layers.  Implements RBAC and
+    attribute-based access control (ABAC) aligned with NIST AC-3.
+
+    Concrete examples: Open Policy Agent (OPA), AWS IAM, Azure RBAC,
+    Cisco ISE, Zero Trust Policy Engine.
+    """
+
+    abstract_name = "Policy Enforcement Point"
+    abstract_capabilities = ["RBAC", "ABAC", "least-privilege", "policy-evaluation"]

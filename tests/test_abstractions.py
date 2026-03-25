@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from uiao_core.abstractions import DNSProvider, IdentityProvider, NetworkEdge
+from uiao_core.abstractions import DNSProvider, IdentityProvider, NetworkEdge, PolicyEnforcementPoint
 from uiao_core.abstractions.providers import Capability
 
 # ---------------------------------------------------------------------------
@@ -15,6 +15,7 @@ def test_imports():
     assert IdentityProvider
     assert NetworkEdge
     assert DNSProvider
+    assert PolicyEnforcementPoint
 
 
 # ---------------------------------------------------------------------------
@@ -51,6 +52,11 @@ def test_network_edge_is_abstract():
 def test_dns_provider_is_abstract():
     with pytest.raises(TypeError):
         DNSProvider()  # type: ignore[abstract]
+
+
+def test_policy_enforcement_point_is_abstract():
+    with pytest.raises(TypeError):
+        PolicyEnforcementPoint()  # type: ignore[abstract]
 
 
 # ---------------------------------------------------------------------------
@@ -99,9 +105,12 @@ def test_abstract_names():
     assert IdentityProvider.abstract_name == "Identity Provider"
     assert NetworkEdge.abstract_name == "Network Edge / ZTNA"
     assert DNSProvider.abstract_name == "DNS / IPAM"
+    assert PolicyEnforcementPoint.abstract_name == "Policy Enforcement Point"
 
 
 def test_abstract_capabilities_include_expected_tags():
     assert "MFA" in IdentityProvider.abstract_capabilities
     assert "ZTNA" in NetworkEdge.abstract_capabilities
     assert "DNS" in DNSProvider.abstract_capabilities
+    assert "RBAC" in PolicyEnforcementPoint.abstract_capabilities
+    assert "least-privilege" in PolicyEnforcementPoint.abstract_capabilities

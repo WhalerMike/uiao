@@ -17,10 +17,12 @@ from uiao_core.abstractions.providers import (
     DNSProvider,
     IdentityProvider,
     NetworkEdge,
+    PolicyEnforcementPoint,
 )
 
 __all__ = [
     "DNSProvider",
     "IdentityProvider",
     "NetworkEdge",
+    "PolicyEnforcementPoint",
 ]
