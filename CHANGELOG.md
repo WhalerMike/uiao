@@ -105,6 +105,7 @@
 * **context:** add vendor overlay deep-merge support ([6a5723f](https://github.com/WhalerMike/uiao-core/commit/6a5723f66781ee67dfbf846e13565bfb5fe361fa))
 * **context:** support vendor overlay deep merge in load_context ([f8790f8](https://github.com/WhalerMike/uiao-core/commit/f8790f8afe6aaa325fd55af37d440e05fb6c3e33))
 * **control-library:** add Batch 1 of 15 Gold Standard control narratives ([016a02e](https://github.com/WhalerMike/uiao-core/commit/016a02e35fe493ab7b856b1163a4d964ebb98352))
+* **control-library:** Batch 2 Gold Standard re-introduction ([a4c7726](https://github.com/WhalerMike/uiao-core/commit/a4c7726f795204bc111a94ea62ffe44c363c18f2))
 * create data/control-library/AC-17.yml for Remote Access control ([472f336](https://github.com/WhalerMike/uiao-core/commit/472f3361c106afe621b7a349c10776ba1f31f934))
 * create data/control-library/AC-2.yml for Account Management control ([24c8a97](https://github.com/WhalerMike/uiao-core/commit/24c8a97c7cdc19976b62a160ca40f5cc4851dc88))
 * create data/control-library/IA-5.yml for Authenticator Management ([58d36bb](https://github.com/WhalerMike/uiao-core/commit/58d36bbdd659314c11c198d30455cfcfb39bef68))
