@@ -134,6 +134,7 @@
 * link inventory from core-stack.yml into OSCAL SSP and POA&M ([fb2370a](https://github.com/WhalerMike/uiao-core/commit/fb2370adad04dded625a6f772c1db20e52058ee5))
 * Link SSP inventory section to core-stack component data ([d0273fc](https://github.com/WhalerMike/uiao-core/commit/d0273fc5d8e0cc2b4081f3a11590a474a6bcaa20))
 * Link SSP inventory section to core-stack component data ([1badd29](https://github.com/WhalerMike/uiao-core/commit/1badd29bca20b892310e5b6141a1c6a20ec69156))
+* narrative_loader.py v2 – robust params, OSCAL output, validation ([4feb488](https://github.com/WhalerMike/uiao-core/commit/4feb4883b81d435232ab209b11de9fa148c2b76a))
 * **oscal:** add by-components control linkage per plane ([b60bc42](https://github.com/WhalerMike/uiao-core/commit/b60bc42f5f99fc011468ed7c20caa11c8cd1cadf))
 * **oscal:** add SSP set-parameters from parameters.yml ([cdd222f](https://github.com/WhalerMike/uiao-core/commit/cdd222ffb6f3c6d22ed77e22a9521ca78b80e5a2))
 * **overlay:** add Okta Identity Cloud overlay for vendor-neutral test ([6638bec](https://github.com/WhalerMike/uiao-core/commit/6638bec0fbcfc5dcd28ac2e19bbc09dec3eaf763))
