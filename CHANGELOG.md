@@ -126,6 +126,7 @@
 * **generators:** migrate POA&M generator into uiao_core package (ADR-0003) ([90f37b2](https://github.com/WhalerMike/uiao-core/commit/90f37b26816e77a084cecb042d013230a0636a15))
 * **generators:** update __init__.py with all migrated generator exports (ADR-0003) ([3b65ba2](https://github.com/WhalerMike/uiao-core/commit/3b65ba26fda099adae0c7eed9d252affb39636b7))
 * Gold Standard AC-6 Least Privilege JIT/PIM narrative ([e17328e](https://github.com/WhalerMike/uiao-core/commit/e17328e0955df669d01d43b232479fd1eef71b2d))
+* Gold Standard AT-3 Role-Based Security Training narrative ([726b95c](https://github.com/WhalerMike/uiao-core/commit/726b95c464863ae8ac4c24da62eb63d04907b296))
 * Gold Standard CM-2 Baseline Configuration narrative ([1c383f2](https://github.com/WhalerMike/uiao-core/commit/1c383f2cc5a718968017702c0abc2c326a835665))
 * Gold Standard SI-4 Sentinel/KQL monitoring narrative ([0fc8c29](https://github.com/WhalerMike/uiao-core/commit/0fc8c295d0d204f64155a11f63b40f97621999e6))
 * harden GitHub Actions pipeline with security scanning, SBOM, and supply chain controls ([6520738](https://github.com/WhalerMike/uiao-core/commit/6520738f43f7364f25c929024701bfdda0a150e2))
