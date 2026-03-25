@@ -75,6 +75,7 @@
 * add generate-docx and generate-artifacts CLI commands ([6e2ecf1](https://github.com/WhalerMike/uiao-core/commit/6e2ecf1adc4708847257df38b90c2a4acb0fe582))
 * add PyPI classifiers, URLs, and publish workflow ([9e82c39](https://github.com/WhalerMike/uiao-core/commit/9e82c398b6b661278bce598abe08e88ab61184e8))
 * Add rich DOCX generator with native Word styles and compliance tables ([18995c9](https://github.com/WhalerMike/uiao-core/commit/18995c98f3d953b58435e39d53740c2ed75b58bd))
+* add SC-8 Transmission Confidentiality and Integrity control narrative ([71b7f31](https://github.com/WhalerMike/uiao-core/commit/71b7f319b1d2dd88eef2356884b110962a881d2d))
 * add UIAO-7DAY-GRADING-RUBRIC.md - Strategic Advisor grading standard ([86de938](https://github.com/WhalerMike/uiao-core/commit/86de938aba91667999e5f7f676968d400a0f7feb))
 * add vendor-neutral abstraction layer with base provider interfaces and overlay support ([0eb39d2](https://github.com/WhalerMike/uiao-core/commit/0eb39d2acb9d52b71aa45578695f4c9ab32b80aa))
 * Add vendor-neutral overlay example template (closes [#22](https://github.com/WhalerMike/uiao-core/issues/22)) ([f974580](https://github.com/WhalerMike/uiao-core/commit/f974580aadecd611f28f640ce99f6026cff221e8))
