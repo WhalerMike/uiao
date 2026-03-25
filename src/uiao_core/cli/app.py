@@ -568,6 +568,9 @@ def conmon_dashboard(
         out = exporter.export_json(output)
 
     console.print(f"[green]KSI dashboard written to {out}[/green]")
+
+
+@app.command()
 def generate_all(
     canon_path: str = typer.Option(
         "canon/uiao_leadership_briefing_v1.0.yaml",
