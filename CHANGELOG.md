@@ -90,6 +90,7 @@
 * **cli:** update generate-ssp command with --canon, --data-dir, --output (ADR-0002) ([860ad45](https://github.com/WhalerMike/uiao-core/commit/860ad4520b8c213fd280eefd2b1ce2bda15b7a77))
 * **context:** add vendor overlay deep-merge support ([6a5723f](https://github.com/WhalerMike/uiao-core/commit/6a5723f66781ee67dfbf846e13565bfb5fe361fa))
 * **context:** support vendor overlay deep merge in load_context ([f8790f8](https://github.com/WhalerMike/uiao-core/commit/f8790f8afe6aaa325fd55af37d440e05fb6c3e33))
+* create data/control-library/AC-17.yml for Remote Access control ([472f336](https://github.com/WhalerMike/uiao-core/commit/472f3361c106afe621b7a349c10776ba1f31f934))
 * create data/control-library/AC-2.yml for Account Management control ([24c8a97](https://github.com/WhalerMike/uiao-core/commit/24c8a97c7cdc19976b62a160ca40f5cc4851dc88))
 * create data/control-library/IA-5.yml for Authenticator Management ([58d36bb](https://github.com/WhalerMike/uiao-core/commit/58d36bbdd659314c11c198d30455cfcfb39bef68))
 * Create data/control-library/SI-2.yml (Flaw Remediation) ([e00ce2d](https://github.com/WhalerMike/uiao-core/commit/e00ce2d1598905c27083d49c7d1304c369f55f30))
