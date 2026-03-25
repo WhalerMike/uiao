@@ -5,6 +5,14 @@ Modernizing federal systems with machine-readable Zero Trust and FedRAMP complia
 
 ---
 
+## End-to-End Demo
+
+![UIAO generate-all demo](assets/demo.svg)
+
+> Run `uiao generate-all` to transform your YAML canon into OSCAL JSON, Markdown docs, DOCX, PPTX, and a CycloneDX SBOM in a single command.
+
+---
+
 ## Modernization Atlas
 
 ![Unified Zero Trust Architecture & Automation](assets/images/modernization-atlas-unified-zero-trust-architecture-and-automation.png)
