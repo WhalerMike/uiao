@@ -23,6 +23,13 @@ from jinja2 import Environment, FileSystemLoader
 from uiao_core.utils.context import get_settings, load_canon
 
 # ---------------------------------------------------------------------------
+# Module-level path constants (overridable for testing via monkeypatch)
+# ---------------------------------------------------------------------------
+_settings = get_settings()
+DATA_DIR: Path = _settings.data_dir
+OVERLAYS_DIR: Path = DATA_DIR / "overlays"
+
+# ---------------------------------------------------------------------------
 # Template mapping: template -> (docs_name, site_name)
 # ---------------------------------------------------------------------------
 DEFAULT_TEMPLATE_MAPPING: dict[str, tuple[str, str]] = {
@@ -130,8 +137,7 @@ def load_overlays(
 ) -> dict[str, Any]:
     """Load vendor overlays and apply them to the context."""
     if data_dir is None:
-        settings = get_settings()
-        data_dir = settings.data_dir
+        data_dir = DATA_DIR
     data_dir = Path(data_dir)
     overlays_dir = data_dir / "overlays"
     config_path = data_dir / "overlay-config.yml"

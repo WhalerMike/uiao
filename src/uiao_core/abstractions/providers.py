@@ -22,6 +22,7 @@ from typing import Any
 # Shared capability descriptor
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Capability:
     """A single discrete capability advertised by a provider."""
@@ -34,6 +35,7 @@ class Capability:
 # ---------------------------------------------------------------------------
 # Abstract base classes
 # ---------------------------------------------------------------------------
+
 
 class BaseProvider(ABC):
     """Common contract for all vendor-neutral provider abstractions."""
@@ -103,3 +105,45 @@ class DNSProvider(BaseProvider):
 
     abstract_name = "DNS / IPAM"
     abstract_capabilities = ["DNS", "DHCP", "IPAM", "DNSSEC"]
+
+
+class PolicyEnforcementPoint(BaseProvider):
+    """Abstract Policy Enforcement Point (PEP).
+
+    Evaluates access requests against policy rules and enforces permit/deny
+    decisions at application and infrastructure layers.  Implements RBAC and
+    attribute-based access control (ABAC) aligned with NIST AC-3.
+
+    Concrete examples: Open Policy Agent (OPA), AWS IAM, Azure RBAC,
+    Cisco ISE, Zero Trust Policy Engine.
+    """
+
+    abstract_name = "Policy Enforcement Point"
+    abstract_capabilities = ["RBAC", "ABAC", "least-privilege", "policy-evaluation"]
+
+
+class PIVAuthenticationService(BaseProvider):
+    """Abstract PIV/CAC Authentication Service.
+
+    Validates Personal Identity Verification (PIV) and Common Access Card (CAC)
+    credentials against the Federal PKI trust anchor for federal personnel.
+
+    Concrete examples: GSA USAccess, DoD DMDC, agency-operated OCSP responders.
+    """
+
+    abstract_name = "PIV Authentication Service"
+    abstract_capabilities = ["PIV", "CAC", "FPKI", "CRL", "OCSP"]
+
+
+class VulnerabilityScanner(BaseProvider):
+    """Abstract Vulnerability Scanner.
+
+    Performs authenticated vulnerability scans against in-scope systems and
+    produces findings aligned to NIST SP 800-40 flaw remediation requirements.
+
+    Concrete examples: Tenable Nessus, Qualys VMDR, Rapid7 InsightVM,
+    Amazon Inspector.
+    """
+
+    abstract_name = "Vulnerability Scanner"
+    abstract_capabilities = ["authenticated-scan", "CVE-detection", "CVSS-scoring", "patch-validation"]
