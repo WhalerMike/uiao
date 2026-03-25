@@ -122,6 +122,7 @@
 * **oscal:** add by-components control linkage per plane ([b60bc42](https://github.com/WhalerMike/uiao-core/commit/b60bc42f5f99fc011468ed7c20caa11c8cd1cadf))
 * **oscal:** add SSP set-parameters from parameters.yml ([cdd222f](https://github.com/WhalerMike/uiao-core/commit/cdd222ffb6f3c6d22ed77e22a9521ca78b80e5a2))
 * **overlay:** add Okta Identity Cloud overlay for vendor-neutral test ([6638bec](https://github.com/WhalerMike/uiao-core/commit/6638bec0fbcfc5dcd28ac2e19bbc09dec3eaf763))
+* pin all GitHub Actions SHAs in publish.yml and fix download-artifact version ([49921f9](https://github.com/WhalerMike/uiao-core/commit/49921f9761d6d0e41f7a01670cc539560ed1deb4))
 * **pkg:** add __version__.py v0.1.0 (ADR-0001) ([7dbcca3](https://github.com/WhalerMike/uiao-core/commit/7dbcca3200ef4d62504641bac37e8dd421e8627a))
 * **pkg:** add cli/__init__.py (ADR-0001) ([3ba631c](https://github.com/WhalerMike/uiao-core/commit/3ba631c27788f93df7e4a99fcbf456189452bd5e))
 * **pkg:** add config.py with Pydantic Settings (ADR-0001) ([41fce83](https://github.com/WhalerMike/uiao-core/commit/41fce8390175cb7cc9b0c4da25c7bc5765192cf1))
