@@ -1,0 +1,53 @@
+# NIST 800-53 Rev. 5 — IA-8 Control Narrative
+# Identification and Authentication (Non-Organizational Users)
+#
+# This file is part of the uiao-core control library.
+# Narrative is rendered via Jinja2; use {{ variable }} syntax for template vars.
+# Schema: data/control-library/<CONTROL-ID>.yml
+
+control-id: IA-8
+title: "Identification and Authentication (Non-Organizational Users)"
+status: implemented
+
+implemented-by:
+  - IdentityProvider
+  - FederatedIdPGateway
+
+evidence:
+  - federated-idp-config
+
+narrative: |
+  {{ organization.name }} enforces identification and authentication for all
+  non-organizational users (contractors, partners, and external agency personnel)
+  through a Federated Identity Gateway that brokers trust via industry-standard
+  protocols — SAML 2.0 and OpenID Connect (OIDC).
+
+  All external identity assertions are validated against an approved vendor
+  overlay before access is granted:
+
+  1. **Federated Identity Brokering** — The FederatedIdPGateway accepts inbound
+     SAML 2.0 assertions and OIDC ID tokens from pre-approved external Identity
+     Providers. Each external IdP must be registered and have a signed metadata
+     exchange on file with {{ organization.name }}'s ICAM governance team.
+
+  2. **Assertion Validation** — Incoming tokens are inspected for required
+     claims (subject, issuer, audience, expiry) and checked against the
+     approved-vendor overlay. Tokens from unregistered or revoked issuers are
+     rejected at the gateway boundary.
+
+  3. **Attribute Mapping & Provisioning** — The IdentityProvider maps external
+     subject identifiers to internal {{ organization.name }} guest accounts,
+     applying the principle of least privilege. Only the minimum attribute set
+     required for the requested access is consumed from the external assertion.
+
+  4. **Session Controls** — Non-organizational user sessions are time-bounded
+     (maximum 8-hour session lifetime) and subject to continuous evaluation.
+     Phishing-resistant MFA (FIDO2 or PIV) is required for privileged access
+     scopes; standard scopes enforce at least one authenticator factor from the
+     external IdP assertion.
+
+  5. **Audit & Evidence** — All federated authentication events are logged to
+     the SIEM with the external issuer, subject identifier, granted scopes, and
+     assertion validity window. Logs are retained per the {{ organization.name }}
+     audit-log retention policy and are available as evidence artifact
+     `federated-idp-config`.
