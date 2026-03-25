@@ -22,6 +22,7 @@ from typing import Any
 # Shared capability descriptor
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Capability:
     """A single discrete capability advertised by a provider."""
@@ -34,6 +35,7 @@ class Capability:
 # ---------------------------------------------------------------------------
 # Abstract base classes
 # ---------------------------------------------------------------------------
+
 
 class BaseProvider(ABC):
     """Common contract for all vendor-neutral provider abstractions."""
@@ -131,3 +133,17 @@ class PIVAuthenticationService(BaseProvider):
 
     abstract_name = "PIV Authentication Service"
     abstract_capabilities = ["PIV", "CAC", "FPKI", "CRL", "OCSP"]
+
+
+class VulnerabilityScanner(BaseProvider):
+    """Abstract Vulnerability Scanner.
+
+    Performs authenticated vulnerability scans against in-scope systems and
+    produces findings aligned to NIST SP 800-40 flaw remediation requirements.
+
+    Concrete examples: Tenable Nessus, Qualys VMDR, Rapid7 InsightVM,
+    Amazon Inspector.
+    """
+
+    abstract_name = "Vulnerability Scanner"
+    abstract_capabilities = ["authenticated-scan", "CVE-detection", "CVSS-scoring", "patch-validation"]
