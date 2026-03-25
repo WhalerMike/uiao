@@ -146,6 +146,7 @@
 * Release v1.1.0 - version sync, README badges, and changelog ([7cd5a73](https://github.com/WhalerMike/uiao-core/commit/7cd5a73fd69b7989c91798360b60246605a40153))
 * **ssp:** migrate generate_ssp.py logic into uiao_core.generators.ssp (ADR-0002) ([d891b02](https://github.com/WhalerMike/uiao-core/commit/d891b02b2897aa2fdc47d0171b95f5c123c54321))
 * **trestle:** add validate_oscal_artifacts() + PlanOfActionAndMilestones support (ADR-0004) ([c47f6ce](https://github.com/WhalerMike/uiao-core/commit/c47f6ce74af8829ffbca66b6b04c5a16d6a0b6d8))
+* upgrade IA-2 + add SC-12 AT-3 SI-4 control YAMLs + README What's New (closes [#123](https://github.com/WhalerMike/uiao-core/issues/123)) ([d214e83](https://github.com/WhalerMike/uiao-core/commit/d214e83bdf077a0c56b50b1e1068d01fedd74591))
 * **utils:** add utils package with __init__.py (ADR-0004) ([1442961](https://github.com/WhalerMike/uiao-core/commit/1442961fe39a261e32414e48b1a0c4bd9d33ba89))
 * Wire control-library narratives into SSP generator with narrative_loader + enhanced CLI ([f7fd4ba](https://github.com/WhalerMike/uiao-core/commit/f7fd4bac38ffbc27335f9e5b4bccd7208d5c1f46))
 * wire Gemini image generation into generate-artifacts pipeline ([2b64912](https://github.com/WhalerMike/uiao-core/commit/2b64912931f3c4348d3c5b87289961e24271e5da))
