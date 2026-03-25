@@ -1,0 +1,73 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-12
+# Title      : Cryptographic Key Establishment and Management
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SC-12
+title: Cryptographic Key Establishment and Management
+status: implemented
+
+implemented_by:
+  - IdentityProvider
+  - OverlayPlane
+
+evidence:
+  - key-management-policy-document
+  - certificate-lifecycle-audit-report
+  - hsm-configuration-export
+
+parameters:
+  - id: key-rotation-interval
+    description: >-
+      Maximum number of calendar days before symmetric and asymmetric
+      cryptographic keys used for data protection and authentication
+      must be rotated or re-issued.
+    value: "{{ parameters['key-rotation-interval'] }}"
+  - id: certificate-validity-period
+    description: >-
+      Maximum validity period in days for TLS and code-signing
+      certificates issued by the internal PKI.
+    value: "{{ parameters['certificate-validity-period'] }}"
+
+narrative: |
+  {{ organization.name }} establishes and manages cryptographic keys
+  in accordance with NIST SP 800-57 and agency key-management policy
+  to protect the confidentiality and integrity of all sensitive data
+  in transit and at rest.
+
+  **Key Generation and Storage**
+  All cryptographic keys are generated inside FIPS 140-2 Level 2 (or
+  higher) validated hardware security modules (HSMs) or cloud-managed
+  key vaults that meet equivalent standards.  Private keys are never
+  exported in plaintext.  Symmetric keys for data-at-rest encryption
+  use AES-256; asymmetric keys for authentication and signing use
+  RSA-2048 or ECDSA P-256 at minimum.
+
+  **Key Rotation and Revocation**
+  Symmetric keys are rotated at least every
+  {{ parameters['key-rotation-interval'] }} days.  TLS certificates
+  are reissued before reaching
+  {{ parameters['certificate-validity-period'] }} days of validity.
+  Compromised or suspected-compromised keys are revoked within 24
+  hours via the internal certificate revocation list (CRL) and OCSP
+  responder.  Automated alerting triggers when certificates approach
+  expiration.
+
+  **Key Distribution**
+  Key material is distributed only through encrypted channels (TLS
+  1.2+ or IPsec).  Split-knowledge and dual-control procedures are
+  used for root CA key ceremonies.  Key-escrow is maintained for
+  recovery purposes and stored in a separate security domain from
+  operational key stores.
+
+  **Audit and Accountability**
+  All key lifecycle events (generation, rotation, distribution,
+  revocation, destruction) are logged to the TelemetryPlane and
+  retained for a minimum of three years.  Quarterly reviews verify
+  that no expired or weak keys remain in production.
+
+related_controls:
+  - SC-13  # Cryptographic Protection
+  - SC-28  # Protection of Information at Rest
+  - IA-5   # Authenticator Management
+  - SC-8   # Transmission Confidentiality and Integrity
