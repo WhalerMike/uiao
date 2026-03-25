@@ -90,6 +90,7 @@
 * **cli:** update generate-ssp command with --canon, --data-dir, --output (ADR-0002) ([860ad45](https://github.com/WhalerMike/uiao-core/commit/860ad4520b8c213fd280eefd2b1ce2bda15b7a77))
 * **context:** add vendor overlay deep-merge support ([6a5723f](https://github.com/WhalerMike/uiao-core/commit/6a5723f66781ee67dfbf846e13565bfb5fe361fa))
 * **context:** support vendor overlay deep merge in load_context ([f8790f8](https://github.com/WhalerMike/uiao-core/commit/f8790f8afe6aaa325fd55af37d440e05fb6c3e33))
+* create data/control-library/IA-5.yml for Authenticator Management ([58d36bb](https://github.com/WhalerMike/uiao-core/commit/58d36bbdd659314c11c198d30455cfcfb39bef68))
 * **diagrams:** automated diagram generation for generate-docs ([b460ea8](https://github.com/WhalerMike/uiao-core/commit/b460ea8aaaad381c8fa02a7c208109f6859f28ec))
 * FedRAMP Rev 5 SSP template alignment (Sections 1-12 + Appendix A) ([c90d87a](https://github.com/WhalerMike/uiao-core/commit/c90d87af73ea7bfbd6c8da5188d383376191c75e))
 * **generators:** add gemini_visuals.py for on-demand Gemini image generation (ADR-0005) ([d8a82e3](https://github.com/WhalerMike/uiao-core/commit/d8a82e351bafac464b0dc14a9abdd9ba61466883))
