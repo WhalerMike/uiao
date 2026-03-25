@@ -22,6 +22,7 @@ from typing import Any
 # Shared capability descriptor
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Capability:
     """A single discrete capability advertised by a provider."""
@@ -34,6 +35,7 @@ class Capability:
 # ---------------------------------------------------------------------------
 # Abstract base classes
 # ---------------------------------------------------------------------------
+
 
 class BaseProvider(ABC):
     """Common contract for all vendor-neutral provider abstractions."""
