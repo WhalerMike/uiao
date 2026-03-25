@@ -127,6 +127,7 @@
 * **generators:** update __init__.py with all migrated generator exports (ADR-0003) ([3b65ba2](https://github.com/WhalerMike/uiao-core/commit/3b65ba26fda099adae0c7eed9d252affb39636b7))
 * Gold Standard AC-6 Least Privilege JIT/PIM narrative ([e17328e](https://github.com/WhalerMike/uiao-core/commit/e17328e0955df669d01d43b232479fd1eef71b2d))
 * Gold Standard CM-2 Baseline Configuration narrative ([1c383f2](https://github.com/WhalerMike/uiao-core/commit/1c383f2cc5a718968017702c0abc2c326a835665))
+* Gold Standard SI-4 Sentinel/KQL monitoring narrative ([0fc8c29](https://github.com/WhalerMike/uiao-core/commit/0fc8c295d0d204f64155a11f63b40f97621999e6))
 * harden GitHub Actions pipeline with security scanning, SBOM, and supply chain controls ([6520738](https://github.com/WhalerMike/uiao-core/commit/6520738f43f7364f25c929024701bfdda0a150e2))
 * **ia-2:** link IdentityProvider to CyberArk Identity Vault, PIVAuthenticationService to Federal PIV/CAC Trust Chain, add Critical/High SLAs" ([75a0ed7](https://github.com/WhalerMike/uiao-core/commit/75a0ed73c3709c976c6fec3491f91367ef87ed59))
 * link inventory from core-stack.yml into OSCAL SSP and POA&M ([fb2370a](https://github.com/WhalerMike/uiao-core/commit/fb2370adad04dded625a6f772c1db20e52058ee5))
