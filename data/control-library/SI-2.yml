@@ -1,7 +1,7 @@
-# NIST SP 800-53 Rev 5 Control Narrative
-# Control: SI-2 — Flaw Remediation
-# Schema: data/control-library
-# Do NOT edit generated artifacts in docs/ or exports/; edit this file instead.
+# NIST SP 800-53 Rev 5 — Control Narrative
+# Control ID : SI-2
+# Title      : Flaw Remediation
+# Schema     : data/control-library (uiao-core canonical format)
 
 control_id: SI-2
 title: Flaw Remediation
@@ -13,44 +13,85 @@ implemented_by:
 
 evidence:
   - poam-findings.yml
-
-narrative: |
-  {{ organization.name }} implements SI-2 Flaw Remediation through an integrated
-  vulnerability management and POA&M tracking capability.
-
-  Vulnerability scanning is performed on a defined schedule using the designated
-  VulnerabilityScanner component. Authenticated scans cover all in-scope system
-  components within the authorization boundary and produce findings that are
-  ingested into the POA&M tracking workflow.
-
-  All findings are cross-referenced against the POA&M register maintained in
-  poam-findings.yml by the POAMTracker component. Critical and high findings are
-  subject to SLA-based remediation timelines:
-    - Critical: remediated or mitigated within 15 days of discovery
-    - High: remediated or mitigated within 30 days of discovery
-    - Moderate: remediated or mitigated within 90 days of discovery
-    - Low: remediated or mitigated within 180 days of discovery
-
-  {{ organization.name }} reviews vulnerability scan results and POA&M status on
-  a monthly basis. Findings that cannot be remediated within the defined SLA are
-  escalated to the ISSO and documented with an approved deviation or risk
-  acceptance in the POA&M register.
-
-  Patches and updates are tested in a staging environment prior to deployment to
-  production. Emergency patches for Critical findings may be applied directly to
-  production following change-control expedited approval and are back-documented
-  within 72 hours.
+  - vulnerability-scan-report
+  - patch-deployment-log
 
 parameters:
-  scan_schedule: "weekly"
-  critical_sla_days: 15
-  high_sla_days: 30
-  moderate_sla_days: 90
-  low_sla_days: 180
+  - id: vuln-scan-frequency
+    description: >-
+      Frequency at which authenticated vulnerability scans are executed
+      against all in-scope system components within the authorization
+      boundary, using the designated VulnerabilityScanner.
+    value: "{{ parameters['vuln-scan-frequency'] }}"
+  - id: critical-remediation-sla-days
+    description: >-
+      Maximum number of calendar days within which a Critical-severity
+      vulnerability finding must be fully remediated or have an approved
+      mitigation documented in the POA&M register.
+    value: "{{ parameters['critical-remediation-sla-days'] }}"
+
+narrative: |
+  {{ organization.name }} implements SI-2 Flaw Remediation through an
+  integrated vulnerability management and POA&M tracking capability,
+  ensuring that system flaws are identified, documented, and remediated
+  within defined SLA windows in accordance with NIST SP 800-53 Rev 5.
+
+  **Vulnerability Scanning**
+  Authenticated vulnerability scans are executed on a
+  {{ parameters['vuln-scan-frequency'] }} schedule against all in-scope
+  components within the authorization boundary using the VulnerabilityScanner.
+  Scans cover operating systems, application runtimes, container images,
+  and network-facing services.  Scan results are ingested automatically into
+  the POAMTracker workflow and reconciled against the authoritative asset
+  inventory to ensure complete coverage.  Scan reports are retained in the
+  vulnerability-scan-report artifact and reviewed by the ISSO within 5
+  business days of each scan cycle.
+
+  **SLA-Based Remediation Tracking**
+  All findings are cross-referenced against the POA&M register maintained
+  in poam-findings.yml by the POAMTracker.  Remediation SLAs are enforced
+  based on CVSS-derived severity:
+  - Critical: remediated or mitigated within {{ parameters['critical-remediation-sla-days'] }} days of discovery
+  - High: remediated or mitigated within 30 days of discovery
+  - Moderate: remediated or mitigated within 90 days of discovery
+  - Low: remediated or mitigated within 180 days of discovery
+  Findings approaching or breaching their SLA trigger automated alerts in
+  Microsoft Sentinel, which are routed to the ISSO and documented in the
+  POA&M register with a corrective-action plan.
+
+  **Patch Testing and Deployment**
+  Patches and updates are tested in a staging environment prior to
+  production deployment to verify compatibility and avoid service
+  disruption.  Emergency patches for Critical findings may be applied
+  directly to production following expedited change-control approval and
+  are back-documented within 72 hours.  All patch deployments are recorded
+  in the patch-deployment-log artifact, capturing the target component,
+  CVE references, patch version, deployment timestamp, and authorizing
+  change-control record.
+
+  **Monthly Review and Escalation**
+  {{ organization.name }} reviews vulnerability scan results and POA&M
+  status on a monthly basis with the ISSO, system owner, and 3PAO
+  representative.  Findings that cannot be remediated within the defined
+  SLA are escalated to senior leadership and documented with an approved
+  risk acceptance or deviation in the POA&M register.  Accepted risks are
+  re-evaluated at each monthly review cycle and at every annual assessment.
+
+  **Evidence and Audit Artefacts**
+  - poam-findings.yml: The authoritative POA&M register tracking all open
+    and closed vulnerability findings, remediation actions, milestones, and
+    risk acceptance decisions.
+  - vulnerability-scan-report: Periodic export of all authenticated scan
+    results, including CVE identifiers, CVSS scores, affected components,
+    and remediation status.
+  - patch-deployment-log: Continuous record of all patch and remediation
+    deployments, linking each deployment to the originating POA&M finding
+    and the authorizing change-control record.
 
 related_controls:
   - RA-5   # Vulnerability Monitoring and Scanning
   - CA-7   # Continuous Monitoring
   - CM-6   # Configuration Settings
+  - CM-2   # Baseline Configuration
   - IR-4   # Incident Handling
   - SA-11  # Developer Testing and Evaluation

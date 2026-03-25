@@ -1,75 +1,96 @@
-# NIST SP 800-53 Rev 5 Control Narrative
-# Control: SC-7 — Boundary Protection
-# Source of Truth: data/control-library/SC-7.yml
-# Referenced by: SSP narrative, OSCAL Component Definition, FedRAMP 20x evidence package
+# NIST SP 800-53 Rev 5 — Control Narrative
+# Control ID : SC-7
+# Title      : Boundary Protection
+# Schema     : data/control-library (uiao-core canonical format)
 
 control_id: SC-7
 title: Boundary Protection
 status: implemented
 
 implemented_by:
-  - type: NetworkOverlay
-    description: >-
-      The UIAO overlay fabric implements macro-segmentation via Virtual Routing and
-      Forwarding (VRF) instances on Cisco Catalyst SD-WAN, creating cryptographically
-      enforced, immutable boundaries between security zones. All inter-zone traffic
-      traverses the overlay and is subject to policy enforcement.
-  - type: FirewallCluster
-    description: >-
-      A highly available firewall cluster enforces stateful ingress and egress
-      inspection at each authorization boundary. Policies are defined declaratively
-      and version-controlled, ensuring audit-ready boundary enforcement aligned
-      with the approved traffic matrix.
-
-parameters:
-  - id: inventory-source
-    description: >-
-      Authoritative asset inventory source used to validate boundary membership and
-      enforce deny-by-default posture for unrecognized endpoints.
-    value: "{{ parameters['inventory-source'] }}"
+  - NetworkOverlay
+  - FirewallCluster
 
 evidence:
-  - id: network-boundary-diagram
-    title: Network Boundary and Segmentation Diagram
+  - network-boundary-diagram
+  - firewall-rule-baseline
+  - boundary-crossing-event-log
+
+parameters:
+  - id: boundary-rule-review-frequency
     description: >-
-      Architectural diagram depicting all external and internal authorization
-      boundaries, demarcation points, firewall cluster placement, and overlay
-      VRF topology.
-    media_type: application/pdf
-    control_refs:
-      - SC-7
+      Frequency at which firewall and boundary-protection policy rules are
+      formally reviewed against the approved traffic matrix and updated to
+      reflect current mission requirements.
+    value: "{{ parameters['boundary-rule-review-frequency'] }}"
+  - id: inventory-source
+    description: >-
+      Authoritative asset inventory source used to validate boundary
+      membership and enforce deny-by-default posture for unrecognised
+      endpoints attempting to traverse an authorization boundary.
+    value: "{{ parameters['inventory-source'] }}"
 
 narrative: |
   {{ organization.name }} enforces boundary protection at all external and
-  internal network demarcation points in accordance with NIST SP 800-53 Rev 5
-  SC-7. The following mechanisms are in place:
+  internal network demarcation points in accordance with NIST SP 800-53
+  Rev 5 SC-7.  The overlay-based architecture provides cryptographically
+  enforced, auditable boundaries between all security zones.
 
   **External Boundary Monitoring**
-  All ingress and egress traffic crossing the authorization boundary is inspected
-  by the firewall cluster. The cluster enforces an explicit-deny posture: only
-  traffic matching approved rules in the agency traffic matrix is permitted.
-  Anomalous flows are forwarded to the telemetry plane (Microsoft Sentinel) for
-  near-real-time alerting and automated incident response.
+  All ingress and egress traffic crossing the authorization boundary is
+  inspected by the FirewallCluster, which enforces an explicit-deny posture:
+  only traffic matching approved rules in the agency traffic matrix is
+  permitted.  The cluster performs stateful deep-packet inspection and
+  forwards anomalous flows to the telemetry plane (Microsoft Sentinel) for
+  near-real-time alerting and automated incident response.  Firewall policy
+  rules are reviewed on a {{ parameters['boundary-rule-review-frequency'] }}
+  cadence, version-controlled, and documented in the firewall-rule-baseline
+  artifact.
 
   **Internal Boundary Segmentation**
-  The UIAO overlay architecture partitions the network into discrete security
-  zones using VRF-based macro-segmentation on Cisco Catalyst SD-WAN. Each VRF
+  The UIAO NetworkOverlay partitions the network into discrete security zones
+  using VRF-based macro-segmentation on Cisco Catalyst SD-WAN.  Each VRF
   represents an authorization boundary segment (e.g., management, production,
-  guest). Inter-VRF routing is denied by default; approved flows require an
-  explicit policy statement reviewed during each change management cycle.
+  guest).  Inter-VRF routing is denied by default; approved flows require an
+  explicit policy statement reviewed during each change-management cycle.
+  This architecture ensures that a breach in one zone cannot propagate
+  laterally without traversing a monitored boundary checkpoint.
 
-  **Overlay Architecture and Network Segmentation**
-  The overlay fabric provides a logical boundary layer that is independent of
-  the underlying physical topology. mTLS-anchored tunnels carry all inter-site
-  traffic, ensuring that boundary traversal is authenticated, encrypted (AES-256-
-  GCM), and auditable. Boundary crossing events are correlated with the
-  deterministic asset inventory sourced from {{ parameters['inventory-source'] }},
-  enabling {{ organization.name }} to detect and quarantine unauthorized endpoints
-  before they can traverse a boundary.
+  **Overlay Architecture and mTLS Enforcement**
+  The NetworkOverlay provides a logical boundary layer independent of the
+  physical topology.  All inter-site traffic is carried over mTLS-anchored
+  tunnels (AES-256-GCM), ensuring that boundary traversal is authenticated,
+  encrypted, and auditable.  Boundary-crossing events are correlated with
+  the deterministic asset inventory sourced from
+  {{ parameters['inventory-source'] }}, enabling {{ organization.name }}
+  to detect and quarantine unauthorized endpoints before they traverse a
+  boundary.  Endpoints absent from the authoritative inventory are
+  automatically blocked and flagged for investigation.
 
-  **Ingress and Egress Inspection**
-  The firewall cluster provides deep-packet inspection for all ingress and egress
-  flows at the perimeter. Traffic policy is reviewed quarterly and after each
-  significant architecture change. Evidence of inspection capability is maintained
-  in the network-boundary-diagram artifact and reviewed during FedRAMP annual
-  assessments.
+  **Deny-by-Default and Change Control**
+  Every boundary policy begins from a deny-all baseline.  Permitted traffic
+  flows are individually documented, justified in a change-control record,
+  and approved by a designated network-security authorizer before activation.
+  Emergency rule additions follow an expedited change-control process and
+  are back-documented within 24 hours.  The complete rule history is
+  retained in version control and forms part of the firewall-rule-baseline
+  evidence artifact.
+
+  **Evidence and Audit Artefacts**
+  - network-boundary-diagram: Architectural diagram depicting all external
+    and internal authorization boundaries, demarcation points, FirewallCluster
+    placement, and NetworkOverlay VRF topology.
+  - firewall-rule-baseline: Version-controlled export of all boundary
+    protection rules, their justifications, approval records, and last-review
+    dates.
+  - boundary-crossing-event-log: Continuous SIEM log of all boundary traversal
+    events, permit/deny decisions, and quarantine actions keyed to the
+    authoritative asset inventory.
+
+related_controls:
+  - AC-3   # Access Enforcement
+  - AC-4   # Information Flow Enforcement
+  - AC-17  # Remote Access
+  - SC-8   # Transmission Confidentiality and Integrity
+  - SC-28  # Protection of Information at Rest
+  - SI-4   # System Monitoring
