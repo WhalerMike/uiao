@@ -111,6 +111,8 @@
 * **control-library:** Batch 5 Gold Standard Resilience (CP/IR) ([7acd458](https://github.com/WhalerMike/uiao-core/commit/7acd458a2d931223e4f5c54c7695fef036892593))
 * **control-library:** Grok Batch 2 – Access Control Gold Standard narratives ([6eb907b](https://github.com/WhalerMike/uiao-core/commit/6eb907bc14891346355b142c0cc60defc3c1ca94))
 * **control-library:** Grok Batch 3 – Audit & System Monitoring Gold Standards ([66685f1](https://github.com/WhalerMike/uiao-core/commit/66685f12b320d54af91f1cb9bcf1fe514ac9cf5d))
+* **control-library:** Grok Batch 4 – Configuration Management & DoS Protection Gold Standards ([6dda395](https://github.com/WhalerMike/uiao-core/commit/6dda39503b07216a80c9b1e912b30685bb0a8172))
+* **control-library:** Grok Batch 5 – Contingency Planning & Incident Response Gold Standards ([6cb52f5](https://github.com/WhalerMike/uiao-core/commit/6cb52f5f994d4d6c26af6993c374983703b2ad97))
 * create data/control-library/AC-17.yml for Remote Access control ([472f336](https://github.com/WhalerMike/uiao-core/commit/472f3361c106afe621b7a349c10776ba1f31f934))
 * create data/control-library/AC-2.yml for Account Management control ([24c8a97](https://github.com/WhalerMike/uiao-core/commit/24c8a97c7cdc19976b62a160ca40f5cc4851dc88))
 * create data/control-library/IA-5.yml for Authenticator Management ([58d36bb](https://github.com/WhalerMike/uiao-core/commit/58d36bbdd659314c11c198d30455cfcfb39bef68))
