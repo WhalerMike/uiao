@@ -98,7 +98,6 @@ class TestCLIBasics:
             )
 
 
-copilot/implement-sentinel-telemetry
 # ---------------------------------------------------------------------------
 # Fixtures shared by conmon tests
 # ---------------------------------------------------------------------------
