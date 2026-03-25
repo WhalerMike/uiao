@@ -35,6 +35,24 @@ Modernizing federal systems with machine-readable Zero Trust and FedRAMP complia
 
 ---
 
+## FedRAMP / OSCAL Tool Comparison
+
+| Capability | **uiao-core** | Compliance Trestle | GoComply | GovReady-Q | GSA fedramp-automation | Paramify | Xacta |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| OSCAL SSP generation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| OSCAL POA&M generation | ✅ | ✅ | ⚠️ partial | ✅ | ✅ | ✅ | ✅ |
+| OSCAL Component Definition | ✅ | ✅ | ✅ | ⚠️ partial | ✅ | ⚠️ partial | ⚠️ partial |
+| **Single YAML canon → OSCAL + PPTX** | ✅ **unique** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Leadership briefings (PPTX) auto-sync** | ✅ **unique** | ❌ | ❌ | ❌ | ❌ | ⚠️ manual | ❌ |
+| FedRAMP Rev 5 baseline | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Continuous monitoring / telemetry | ✅ | ⚠️ partial | ❌ | ⚠️ partial | ❌ | ⚠️ partial | ✅ |
+| Open-source | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Zero-Trust architecture codified | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ⚠️ partial |
+
+> **uiao-core's unique value:** A single YAML canon simultaneously renders machine-readable OSCAL compliance artifacts *and* synchronized executive/leadership briefings (PPTX), keeping security documentation and leadership communications always in sync — no other tool in this space does both.
+
+---
+
 ## Features
 
 - Single source of truth YAML canon → OSCAL artifacts
