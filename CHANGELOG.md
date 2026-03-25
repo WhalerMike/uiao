@@ -73,6 +73,7 @@
 * Add compliance-trestle assemble script (closes [#20](https://github.com/WhalerMike/uiao-core/issues/20)) ([3cca209](https://github.com/WhalerMike/uiao-core/commit/3cca2091419345673c7745696cccd9f96e87ae2d))
 * add data/control-library/SC-28.yml (Protection of Information at Rest) ([801b746](https://github.com/WhalerMike/uiao-core/commit/801b7468dcb9d992ea250a0eebe155e873ce7896))
 * add data/control-library/SC-7.yml (Boundary Protection) ([2773618](https://github.com/WhalerMike/uiao-core/commit/2773618b15b95bbb531fc2034680c9f914cba992))
+* add generate-all CLI command and animated SVG demo for README ([#1](https://github.com/WhalerMike/uiao-core/issues/1)) ([dd77d57](https://github.com/WhalerMike/uiao-core/commit/dd77d5793c4e90d3790399c8c304237a8d248435))
 * add generate-docs CLI command and fix settings.root_dir bug ([e618e36](https://github.com/WhalerMike/uiao-core/commit/e618e3663cf7dfdfd79836fe00b3783c5f0c127e))
 * add generate-docx and generate-artifacts CLI commands ([6e2ecf1](https://github.com/WhalerMike/uiao-core/commit/6e2ecf1adc4708847257df38b90c2a4acb0fe582))
 * add PyPI classifiers, URLs, and publish workflow ([9e82c39](https://github.com/WhalerMike/uiao-core/commit/9e82c398b6b661278bce598abe08e88ab61184e8))
