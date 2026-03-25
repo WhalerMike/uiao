@@ -79,6 +79,7 @@
 * Add vendor-neutral overlay example template (closes [#22](https://github.com/WhalerMike/uiao-core/issues/22)) ([f974580](https://github.com/WhalerMike/uiao-core/commit/f974580aadecd611f28f640ce99f6026cff221e8))
 * **assets:** add 15 clean-named Modernization Atlas diagrams ([6d6b1b8](https://github.com/WhalerMike/uiao-core/commit/6d6b1b8e74f81c6015bbc5bc84e5ebf4118f1ce1))
 * **assets:** add 15 new Modernization Atlas diagrams ([c29a93a](https://github.com/WhalerMike/uiao-core/commit/c29a93a7e370463ac5038ed2fee516ce5769cb23))
+* **assets:** add full set of 15 clean Modernization Atlas diagrams ([02e75bf](https://github.com/WhalerMike/uiao-core/commit/02e75bfe67aea3e9a0413ebf78832c4d7220a055))
 * **build:** add pyproject.toml with PEP 621 metadata and src-layout (ADR-0001) ([9ff91e3](https://github.com/WhalerMike/uiao-core/commit/9ff91e34605bbe2bcf8808a786772fb11e886d70))
 * **cli:** add generate-gemini command with --name and --force-visuals flags (ADR-0005) ([f20aee0](https://github.com/WhalerMike/uiao-core/commit/f20aee0739acdd8553ff4ba58c05495aad16247e))
 * **cli:** add generate-pptx command for leadership briefing ([5fa7bba](https://github.com/WhalerMike/uiao-core/commit/5fa7bbafc3e030f291b03051339003c92bb29b98))
