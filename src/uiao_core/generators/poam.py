@@ -19,6 +19,59 @@ from uiao_core.utils.context import get_settings, load_context
 # ---------------------------------------------------------------------------
 # Gap detection
 # ---------------------------------------------------------------------------
+def detect_inventory_gaps(context: dict[str, Any]) -> list[dict[str, Any]]:
+    """Detect POA&M gaps from core-stack.yml inventory against known control planes.
+
+    Returns a gap entry for every core-stack component whose ``pillar`` field
+    does not match any known control-plane ``id``.  These gaps indicate that a
+    concrete system component has no associated OSCAL SSP component and cannot
+    be linked in the system inventory.
+
+    Args:
+        context: Merged UIAO context dict (from :func:`load_context`).
+
+    Returns:
+        List of gap dicts compatible with :func:`detect_gaps`.
+    """
+    gaps: list[dict[str, Any]] = []
+
+    core_stack = context.get("core_stack", [])
+    if isinstance(core_stack, dict):
+        core_stack = core_stack.get("core_stack", [])
+    if not isinstance(core_stack, list):
+        return gaps
+
+    planes = context.get("control_planes", [])
+    if isinstance(planes, dict):
+        planes = planes.get("control_planes", [])
+    if not isinstance(planes, list):
+        planes = []
+    known_plane_ids: set[str] = {p.get("id", "") for p in planes if isinstance(p, dict)}
+
+    for comp in core_stack:
+        if not isinstance(comp, dict):
+            continue
+        pillar = str(comp.get("pillar", "")).strip()
+        comp_id = str(comp.get("id", "?"))
+        name = str(comp.get("name", comp_id))
+        if pillar and pillar not in known_plane_ids:
+            gaps.append(
+                {
+                    "title": f"Inventory component links to unknown plane: {comp_id}",
+                    "description": (
+                        f"Core-stack component '{name}' (id: {comp_id}) references pillar '{pillar}' "
+                        f"which does not match any known control-plane id. "
+                        f"Known planes: {sorted(known_plane_ids)}"
+                    ),
+                    "risk_level": "moderate",
+                    "related_controls": ["CM-8"],
+                    "source": "inventory",
+                }
+            )
+
+    return gaps
+
+
 def detect_gaps(context: dict[str, Any]) -> list[dict[str, Any]]:
     """Auto-detect gaps from canon data."""
     gaps: list[dict[str, Any]] = []
@@ -71,6 +124,9 @@ def detect_gaps(context: dict[str, Any]) -> list[dict[str, Any]]:
                     "related_controls": [m.get("nist_rev5_control", "")],
                 }
             )
+
+    # Detect inventory gaps from core-stack.yml vs control planes
+    gaps.extend(detect_inventory_gaps(context))
 
     return gaps
 
