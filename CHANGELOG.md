@@ -125,6 +125,7 @@
 * **generators:** migrate OSCAL component-definition generator (ADR-0003) ([622a264](https://github.com/WhalerMike/uiao-core/commit/622a264050e270e8fe16bb4fa528ea9c50a2ee2a))
 * **generators:** migrate POA&M generator into uiao_core package (ADR-0003) ([90f37b2](https://github.com/WhalerMike/uiao-core/commit/90f37b26816e77a084cecb042d013230a0636a15))
 * **generators:** update __init__.py with all migrated generator exports (ADR-0003) ([3b65ba2](https://github.com/WhalerMike/uiao-core/commit/3b65ba26fda099adae0c7eed9d252affb39636b7))
+* Gold Standard CM-2 Baseline Configuration narrative ([1c383f2](https://github.com/WhalerMike/uiao-core/commit/1c383f2cc5a718968017702c0abc2c326a835665))
 * harden GitHub Actions pipeline with security scanning, SBOM, and supply chain controls ([6520738](https://github.com/WhalerMike/uiao-core/commit/6520738f43f7364f25c929024701bfdda0a150e2))
 * **ia-2:** link IdentityProvider to CyberArk Identity Vault, PIVAuthenticationService to Federal PIV/CAC Trust Chain, add Critical/High SLAs" ([75a0ed7](https://github.com/WhalerMike/uiao-core/commit/75a0ed73c3709c976c6fec3491f91367ef87ed59))
 * link inventory from core-stack.yml into OSCAL SSP and POA&M ([fb2370a](https://github.com/WhalerMike/uiao-core/commit/fb2370adad04dded625a6f772c1db20e52058ee5))
