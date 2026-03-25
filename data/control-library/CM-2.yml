@@ -1,97 +1,42 @@
-# NIST SP 800-53 Rev 5 — Control Narrative
+# NIST SP 800-53 Rev 5 - Control Narrative
 # Control ID : CM-2
 # Title      : Baseline Configuration
 # Schema     : data/control-library (uiao-core canonical format)
 
 control_id: CM-2
 title: Baseline Configuration
+family: Configuration Management
 status: implemented
 
 implemented_by:
-  - ConfigurationManagementSystem
-  - TelemetryPlane
+  - terraform-iac-templates
+  - github-actions-cicd
 
 evidence:
-  - configuration-baseline-export
-  - baseline-deviation-report
-  - change-control-log
+  - git-commit-history
+  - configuration-drift-reports
 
 parameters:
-  - id: baseline-scan-frequency
+  - id: cm_2_review_policy
     description: >-
-      Frequency at which the ConfigurationManagementSystem compares the
-      running configuration of all in-scope components against the approved
-      baseline and generates a deviation report for ISSO review.
-    value: "{{ parameters['baseline-scan-frequency'] }}"
-  - id: baseline-review-frequency
-    description: >-
-      Frequency at which the approved configuration baseline is formally
-      reviewed and updated to incorporate approved architecture changes,
-      vendor security advisories, and STIG/CIS benchmark updates.
-    value: "{{ parameters['baseline-review-frequency'] }}"
+      Requirement for at least one independent maintainer to approve
+      baseline changes.
+    value: "Mandatory peer review"
 
 narrative: |
-  {{ organization.name }} establishes, maintains, and enforces baseline
-  configurations for all in-scope information system components in accordance
-  with NIST SP 800-53 Rev 5 CM-2.  Baselines are defined using STIG/CIS
-  benchmark guidance, version-controlled, and continuously monitored by the
-  ConfigurationManagementSystem and TelemetryPlane.
+  **Infrastructure as Code (IaC) Source of Truth**
+  The authoritative baseline for the information system is maintained as
+  **Terraform and Bicep** templates within the version-controlled `uiao-core`
+  repository.
 
-  **Baseline Definition and Approval**
-  A documented baseline configuration is established for every component
-  category within the authorization boundary: operating systems, hypervisors,
-  container runtimes, network devices, and application platforms.  Each
-  baseline incorporates applicable DISA STIG or CIS Benchmark hardening
-  guidance, supplemented by {{ organization.name }}-specific security
-  requirements.  Baselines are stored in version control and must receive
-  formal approval from the ISSO and system owner before activation.  The
-  current approved baseline is exported as the configuration-baseline-export
-  artifact on each pipeline run.
-
-  **Automated Baseline Scanning**
-  The ConfigurationManagementSystem scans all in-scope components on a
-  {{ parameters['baseline-scan-frequency'] }} schedule, comparing running
-  configurations against the approved baseline.  Deviations — whether from
-  unauthorised changes, software updates, or configuration drift — are
-  captured in the baseline-deviation-report artifact and forwarded to the
-  TelemetryPlane for alerting.  Critical deviations trigger a Microsoft
-  Sentinel alert routed to the ISSO for immediate investigation and
-  corrective action.
-
-  **Change Control and Baseline Updates**
-  All changes to approved baselines follow the {{ organization.name }}
-  change-management process.  Proposed changes are documented with a
-  security impact analysis, tested in a staging environment, and approved
-  by the change advisory board (CAB) before deployment to production.
-  Emergency changes may bypass the CAB with ISSO approval and are
-  back-documented within 24 hours.  Every approved change is committed to
-  version control and recorded in the change-control-log artifact, maintaining
-  a complete audit history of every baseline modification.
-
-  **Baseline Currency and Periodic Review**
-  The approved baseline is reviewed on a {{ parameters['baseline-review-frequency'] }}
-  schedule to incorporate applicable STIG updates, vendor security advisories,
-  CVE-driven hardening changes, and lessons learned from POA&M findings.
-  {{ organization.name }} subscribes to vendor security bulletin feeds and
-  CISA Known Exploited Vulnerabilities (KEV) notifications; any advisory that
-  affects a baseline component triggers an out-of-cycle baseline review within
-  5 business days of the advisory publication.
-
-  **Evidence and Audit Artefacts**
-  - configuration-baseline-export: Machine-readable export of the current
-    approved baseline configuration for all component categories, generated
-    automatically on each deployment pipeline run.
-  - baseline-deviation-report: Periodic report listing all components whose
-    running configuration deviates from the approved baseline, including
-    severity classification and assigned remediation owner.
-  - change-control-log: Version-controlled record of every approved baseline
-    change, including security impact analysis, CAB approval record, test
-    results, and deployment timestamps.
+  **Change Control and Integrity**
+  Any deviation from the baseline requires a formal **Pull Request (PR)**.
+  Automated GitHub Actions workflows perform security linting and
+  plan-validation before any change is applied.  The "as-deployed" state is
+  verified against this baseline daily to detect configuration drift, with
+  all discrepancies logged in **Microsoft Sentinel**.
 
 related_controls:
-  - CM-6   # Configuration Settings
-  - CM-8   # System Component Inventory
-  - SI-2   # Flaw Remediation
-  - RA-5   # Vulnerability Monitoring and Scanning
-  - SA-10  # Developer Configuration Management
-  - SC-28  # Protection of Information at Rest
+  - CM-3  # Configuration Change Control
+  - CM-6  # Configuration Settings
+  - SA-10 # Developer Configuration Management
