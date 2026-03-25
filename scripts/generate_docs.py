@@ -11,11 +11,13 @@ from __future__ import annotations
 import logging
 import warnings
 from pathlib import Path
-from typing import Any
+from typing import Any  # noqa: F401
 
 from uiao_core.generators.docs import (
     DATA_DIR,
     build_docs,
+)
+from uiao_core.generators.docs import (
     load_overlays as _load_overlays_impl,
 )
 
