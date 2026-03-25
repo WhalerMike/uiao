@@ -13,29 +13,79 @@ implemented_by:
 
 evidence:
   - access-control-policy-v1
+  - rbac-role-assignment-report
+  - jit-elevation-audit-log
 
-narrative: >
-  {{ organization.name }} enforces access control decisions through a layered
-  Role-Based Access Control (RBAC) model applied at both the application and
-  infrastructure layers.  All access requests are evaluated by the Policy
-  Enforcement Point before resources are made available; permit or deny
-  decisions are derived from the subject's assigned roles and the
-  least-privilege principle.
+parameters:
+  - id: rbac-review-frequency
+    description: >-
+      Frequency at which role assignments and group memberships are formally
+      reviewed and re-attested by resource owners to detect accumulation of
+      excess privileges.
+    value: "{{ parameters['rbac-review-frequency'] }}"
+  - id: jit-elevation-window
+    description: >-
+      Maximum duration (in hours) for which a just-in-time privileged
+      elevation remains active before it is automatically revoked and
+      requires re-approval.
+    value: "{{ parameters['jit-elevation-window'] }}"
 
-  At the application layer, the Identity Provider issues cryptographically
-  signed tokens that carry role assertions (e.g., reader, contributor, admin).
-  Every service validates these tokens on each request and refuses access when
-  the required role is absent.  Role assignments are reviewed quarterly and
-  automatically revoked when a user's job function changes (mover/leaver
-  lifecycle events).
+narrative: |
+  {{ organization.name }} enforces access control decisions in accordance with
+  NIST SP 800-53 Rev 5 AC-3 through a layered Role-Based Access Control (RBAC)
+  model evaluated by the PolicyEnforcementPoint at every access request.
+  Permit or deny decisions are derived exclusively from the subject's assigned
+  roles and the principle of least privilege; no implicit access is granted.
 
-  At the infrastructure layer, {{ organization.name }} enforces network-segment
-  access through policy rules that deny traffic by default and permit only the
-  minimum connectivity required for each workload.  Privileged administrative
-  access to infrastructure components is gated behind just-in-time (JIT)
-  elevation workflows, ensuring that elevated rights are time-bound and fully
-  audited.
+  **RBAC Token Enforcement**
+  The IdentityProvider issues cryptographically signed tokens (JWT/SAML
+  assertions) that carry role assertions (e.g., reader, contributor, admin)
+  scoped to specific resource namespaces.  Every service and API endpoint
+  validates these tokens on each request using the IdentityProvider's published
+  JWKS endpoint.  Access is refused when the required role claim is absent,
+  the token is expired, or the token audience does not match the target
+  resource.  Role assignments are reviewed on a {{ parameters['rbac-review-frequency'] }}
+  cadence and automatically revoked during mover/leaver lifecycle events.
 
-  Together these controls satisfy the AC-3 requirement that the information
-  system enforces approved authorizations for logical access to information
-  and system resources in accordance with applicable access control policies.
+  **Infrastructure-Layer Access Enforcement**
+  At the network infrastructure layer, {{ organization.name }} enforces
+  segment-to-segment access through deny-by-default policy rules applied
+  by the PolicyEnforcementPoint.  Only traffic matching an explicit permit
+  statement in the approved connectivity matrix is allowed to traverse a
+  security-zone boundary.  Policy changes require a documented change-control
+  record and are committed to version control, providing a full audit history
+  of every rule modification.
+
+  **Just-in-Time Privileged Elevation**
+  Privileged administrative access to infrastructure components and sensitive
+  data stores is gated behind a just-in-time (JIT) elevation workflow.
+  Elevation requests are approved by a designated authorizer, scoped to the
+  minimum required permissions, and time-bounded to
+  {{ parameters['jit-elevation-window'] }} hours.  All elevation events are
+  logged in the jit-elevation-audit-log artifact and reviewed by the ISSO
+  monthly.  Elevated rights are automatically revoked at expiry without
+  requiring manual intervention.
+
+  **Periodic Access Certification**
+  {{ organization.name }} conducts formal access certification reviews on the
+  defined {{ parameters['rbac-review-frequency'] }} schedule.  Resource owners
+  attest to the continued need for each role assignment via the IdentityProvider
+  access-certification workflow.  Accounts that fail attestation are disabled
+  within five business days of the review period close, and the outcome is
+  recorded in the rbac-role-assignment-report artifact.
+
+  **Evidence and Audit Artefacts**
+  - access-control-policy-v1: The authoritative policy document defining the
+    RBAC model, role taxonomy, and enforcement requirements.
+  - rbac-role-assignment-report: Quarterly export of all role assignments,
+    group memberships, and certification outcomes from the IdentityProvider.
+  - jit-elevation-audit-log: Continuous log of all JIT elevation requests,
+    approvals, denials, and automatic revocations.
+
+related_controls:
+  - AC-2   # Account Management
+  - AC-6   # Least Privilege
+  - AC-17  # Remote Access
+  - IA-2   # Identification and Authentication (Organizational Users)
+  - IA-5   # Authenticator Management
+  - SC-7   # Boundary Protection
