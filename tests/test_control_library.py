@@ -25,6 +25,7 @@ def load_yaml(path: Path) -> dict:
 # SC-8.yml tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def sc8() -> dict:
     return yaml.safe_load(SC8_PATH.read_text())
