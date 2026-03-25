@@ -1,39 +1,94 @@
-# NIST 800-53 Rev 5 Control Narrative — IA-5 Authenticator Management
-# Generated for: {{ organization.name }}
-# Schema: control-library v1.0
+# NIST SP 800-53 Rev 5 — Control Narrative
+# Control ID : IA-5
+# Title      : Authenticator Management
+# Schema     : data/control-library (uiao-core canonical format)
 
-control-id: IA-5
+control_id: IA-5
 title: Authenticator Management
 status: implemented
 
-implemented-by:
-  - abstract-type: IdentityProvider
+implemented_by:
+  - IdentityProvider
+  - PrivilegedAccessManagement
 
 evidence:
   - authenticator-management-policy
+  - mfa-enrollment-report
+  - credential-rotation-audit-log
+
+parameters:
+  - id: password-min-length
+    description: >-
+      Minimum number of characters required for all human-account passwords,
+      enforced at account creation and every password-change event by the
+      IdentityProvider authentication methods policy.
+    value: "{{ parameters['password-min-length'] }}"
+  - id: privileged-credential-rotation-days
+    description: >-
+      Maximum number of days between mandatory credential rotations for
+      privileged accounts and service accounts managed by the Privileged
+      Access Management vault.
+    value: "{{ parameters['privileged-credential-rotation-days'] }}"
 
 narrative: |
-  {{ organization.name }} manages information system authenticators by verifying
-  the identity of individuals, groups, or devices before distributing
-  authenticators. Prior to issuing any authenticator, the identity of the
-  recipient is confirmed through an approved identity-proofing process in
-  accordance with NIST SP 800-63B.
+  {{ organization.name }} manages information system authenticators in
+  accordance with NIST SP 800-53 Rev 5 IA-5, ensuring that authenticators
+  are properly issued, protected, and revoked throughout their lifecycle.
 
-  Password-based authenticators enforce complexity requirements including a
-  minimum of 16 characters with mixed case, numbers, and special characters.
-  Automated controls within the IdentityProvider enforce these requirements at
-  account creation and password change events.
+  **Identity Proofing and Initial Issuance**
+  Prior to issuing any authenticator, the identity of the recipient is
+  confirmed through an approved identity-proofing process aligned with
+  NIST SP 800-63B Identity Assurance Level 2 (IAL2).  For new hires,
+  identity verification is performed by HR during onboarding.  For
+  contractors and external users, identity proofing is conducted via
+  the IdentityProvider self-service portal with document verification.
+  No authenticator is activated until the identity-proofing workflow
+  completes successfully.
 
-  Authenticator expiry and rotation are managed automatically. Passwords expire
-  on a scheduled basis and users are required to rotate credentials before
-  expiration. Privileged account credentials are rotated more frequently and
-  are vaulted within the organization's privileged access management solution.
+  **Password Complexity and Rotation**
+  Password-based authenticators enforce a minimum length of
+  {{ parameters['password-min-length'] }} characters with mixed-case,
+  numeric, and special-character requirements, consistent with NIST
+  SP 800-63B memorized-secret guidance.  Automated controls within the
+  IdentityProvider enforce these requirements at account creation and
+  every password-change event.  Privileged account credentials stored
+  in the PrivilegedAccessManagement vault are rotated at least every
+  {{ parameters['privileged-credential-rotation-days'] }} days and are
+  not reusable across rotations.
 
+  **Phishing-Resistant MFA Enforcement**
+  {{ organization.name }} enforces phishing-resistant multi-factor
+  authentication (FIDO2 hardware tokens and PIV/CAC smart cards) as the
+  primary authenticator method for all human accounts.  FIDO2 and PIV
+  credentials are registered per-device and per-user, preventing credential
+  sharing or replay attacks.  SMS and voice OTP authenticators are not
+  permitted for access to federal data within the authorization boundary.
+  MFA enrollment status is tracked in the mfa-enrollment-report artifact
+  and surfaced on the ConMon dashboard.
+
+  **Authenticator Revocation and Recovery**
   Lost, compromised, or damaged authenticators are revoked immediately upon
-  notification. The IdentityProvider enforces single-use recovery codes and
-  phishing-resistant MFA (FIDO2/PIV) as primary authenticator methods,
-  reducing reliance on shared secrets.
+  notification to the security operations team.  The IdentityProvider
+  enforces a break-glass recovery process using single-use, time-limited
+  recovery codes that are issued only through an approved identity
+  re-proofing workflow.  Revocation events are logged in the
+  credential-rotation-audit-log artifact and reviewed monthly by the ISSO.
 
-  {{ organization.name }} maintains an inventory of all issued authenticators
-  and conducts periodic reviews to ensure authenticators are revoked for
-  accounts that are no longer active or authorized.
+  **Evidence and Audit Artefacts**
+  - authenticator-management-policy: The authoritative policy document
+    defining authenticator types, complexity requirements, rotation
+    schedules, and revocation procedures.
+  - mfa-enrollment-report: Monthly export from the IdentityProvider
+    listing all active MFA methods per user, enrollment dates, and
+    any accounts with no MFA enrollment on record.
+  - credential-rotation-audit-log: Continuous log of all credential
+    issuance, rotation, and revocation events for both standard and
+    privileged accounts.
+
+related_controls:
+  - IA-2   # Identification and Authentication (Organizational Users)
+  - IA-4   # Identifier Management
+  - IA-8   # Identification and Authentication (Non-Organizational Users)
+  - AC-2   # Account Management
+  - AC-7   # Unsuccessful Logon Attempts
+  - SC-8   # Transmission Confidentiality and Integrity
