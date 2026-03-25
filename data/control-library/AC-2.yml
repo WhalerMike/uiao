@@ -1,0 +1,81 @@
+# NIST SP 800-53 Rev 5 — Control Narrative
+# Control ID : AC-2
+# Title      : Account Management
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AC-2
+title: Account Management
+status: implemented
+
+implemented_by:
+  - IdentityProvider
+  - HRSystem
+
+evidence:
+  - identity-plane-diagram
+
+parameters:
+  - id: account-creation-window
+    description: >-
+      Maximum number of business days within which a new account must be provisioned
+      after an approved access request or onboarding event is received from the HR feed.
+    value: "{{ parameters['account-creation-window'] }}"
+  - id: termination-window
+    description: >-
+      Maximum number of hours within which all accounts must be disabled or removed
+      following a separation or termination event published by the HR feed.
+    value: "{{ parameters['termination-window'] }}"
+
+narrative: |
+  {{ organization.name }} implements Account Management in accordance with NIST
+  SP 800-53 Rev 5 AC-2 through an automated Joiner-Mover-Leaver (JML) lifecycle
+  driven by a direct HR feed integration and SCIM-based provisioning.
+
+  **Account Provisioning (Joiner)**
+  When the HRSystem records a new hire or contractor onboarding event, the HR
+  feed publishes a SCIM Create request to the IdentityProvider within
+  {{ parameters['account-creation-window'] }} business days of the start date.
+  The IdentityProvider automatically provisions the user account, assigns the
+  baseline role set appropriate to the user's job code, and enables
+  phishing-resistant MFA enrollment. No manual account creation steps are
+  required; all provisioning actions are logged in the identity audit trail.
+
+  **Account Modification (Mover)**
+  Internal transfers and role changes are propagated from the HRSystem to the
+  IdentityProvider via SCIM Patch operations. When an employee's department,
+  title, or clearance level changes, the SCIM sync engine re-evaluates dynamic
+  group membership and adjusts assigned roles within one provisioning cycle.
+  Access to resources no longer authorized by the new role is revoked
+  automatically, preventing accumulation of excess privileges.
+
+  **Account Deprovisioning (Leaver)**
+  Upon receipt of a termination or separation event from the HRSystem, the
+  IdentityProvider disables the account and revokes all active sessions within
+  {{ parameters['termination-window'] }} hours. The SCIM Delete or status-update
+  operation removes group memberships, invalidates refresh tokens, and triggers
+  Continuous Access Evaluation (CAE) signals to all federated applications,
+  ensuring immediate session termination without waiting for token expiry.
+
+  **Privileged and Service Accounts**
+  Privileged accounts are subject to the same JML automation as standard user
+  accounts and additionally require just-in-time (JIT) elevation approval before
+  elevated rights are activated. Service accounts are enumerated in the
+  IdentityProvider directory, associated with owning system teams, and reviewed
+  quarterly. Accounts with no recorded activity for 90 days are flagged for
+  review and disabled pending re-authorization.
+
+  **Periodic Account Reviews**
+  {{ organization.name }} conducts formal account reviews on a defined schedule.
+  The IdentityProvider generates an access certification report from the identity
+  audit trail; managers review and attest to continued need for each account.
+  Accounts that fail attestation are disabled within five business days of the
+  review period close.
+
+related_controls:
+  - AC-3   # Access Enforcement
+  - AC-6   # Least Privilege
+  - IA-2   # Identification and Authentication
+  - IA-4   # Identifier Management
+  - IA-5   # Authenticator Management
+  - PS-4   # Personnel Termination
+  - PS-5   # Personnel Transfer
