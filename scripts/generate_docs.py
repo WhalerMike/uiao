@@ -15,9 +15,6 @@ from typing import Any
 
 from uiao_core.generators.docs import (
     DATA_DIR,
-    OVERLAYS_DIR,
-    _merge_by_key,
-    apply_overlay,
     build_docs,
     load_overlays as _load_overlays_impl,
 )
