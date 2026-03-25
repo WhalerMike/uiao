@@ -1,4 +1,4 @@
-# [0.30.0](https://github.com/WhalerMike/uiao-core/compare/v0.29.0...v0.30.0) (2026-03-24)
+# [0.30.0](https://github.com/WhalerMike/uiao-core/compare/v0.29.0...v0.30.0) (2026-03-25)
 
 
 ### Bug Fixes
@@ -70,13 +70,18 @@
 
 * add build_rich_docx to generators __init__ exports ([a5e3cef](https://github.com/WhalerMike/uiao-core/commit/a5e3cef760490c96a2eeca4c6477d6c8fc965ba9))
 * Add compliance-trestle assemble script (closes [#20](https://github.com/WhalerMike/uiao-core/issues/20)) ([3cca209](https://github.com/WhalerMike/uiao-core/commit/3cca2091419345673c7745696cccd9f96e87ae2d))
+* add data/control-library/SC-7.yml (Boundary Protection) ([2773618](https://github.com/WhalerMike/uiao-core/commit/2773618b15b95bbb531fc2034680c9f914cba992))
 * add generate-docs CLI command and fix settings.root_dir bug ([e618e36](https://github.com/WhalerMike/uiao-core/commit/e618e3663cf7dfdfd79836fe00b3783c5f0c127e))
 * add generate-docx and generate-artifacts CLI commands ([6e2ecf1](https://github.com/WhalerMike/uiao-core/commit/6e2ecf1adc4708847257df38b90c2a4acb0fe582))
 * add PyPI classifiers, URLs, and publish workflow ([9e82c39](https://github.com/WhalerMike/uiao-core/commit/9e82c398b6b661278bce598abe08e88ab61184e8))
 * Add rich DOCX generator with native Word styles and compliance tables ([18995c9](https://github.com/WhalerMike/uiao-core/commit/18995c98f3d953b58435e39d53740c2ed75b58bd))
+* add SC-8 Transmission Confidentiality and Integrity control narrative ([71b7f31](https://github.com/WhalerMike/uiao-core/commit/71b7f319b1d2dd88eef2356884b110962a881d2d))
 * add UIAO-7DAY-GRADING-RUBRIC.md - Strategic Advisor grading standard ([86de938](https://github.com/WhalerMike/uiao-core/commit/86de938aba91667999e5f7f676968d400a0f7feb))
 * add vendor-neutral abstraction layer with base provider interfaces and overlay support ([0eb39d2](https://github.com/WhalerMike/uiao-core/commit/0eb39d2acb9d52b71aa45578695f4c9ab32b80aa))
 * Add vendor-neutral overlay example template (closes [#22](https://github.com/WhalerMike/uiao-core/issues/22)) ([f974580](https://github.com/WhalerMike/uiao-core/commit/f974580aadecd611f28f640ce99f6026cff221e8))
+* **assets:** add 15 clean-named Modernization Atlas diagrams ([6d6b1b8](https://github.com/WhalerMike/uiao-core/commit/6d6b1b8e74f81c6015bbc5bc84e5ebf4118f1ce1))
+* **assets:** add 15 new Modernization Atlas diagrams ([c29a93a](https://github.com/WhalerMike/uiao-core/commit/c29a93a7e370463ac5038ed2fee516ce5769cb23))
+* **assets:** add full set of 15 clean Modernization Atlas diagrams ([02e75bf](https://github.com/WhalerMike/uiao-core/commit/02e75bfe67aea3e9a0413ebf78832c4d7220a055))
 * **build:** add pyproject.toml with PEP 621 metadata and src-layout (ADR-0001) ([9ff91e3](https://github.com/WhalerMike/uiao-core/commit/9ff91e34605bbe2bcf8808a786772fb11e886d70))
 * **cli:** add generate-gemini command with --name and --force-visuals flags (ADR-0005) ([f20aee0](https://github.com/WhalerMike/uiao-core/commit/f20aee0739acdd8553ff4ba58c05495aad16247e))
 * **cli:** add generate-pptx command for leadership briefing ([5fa7bba](https://github.com/WhalerMike/uiao-core/commit/5fa7bbafc3e030f291b03051339003c92bb29b98))
@@ -85,6 +90,8 @@
 * **cli:** update generate-ssp command with --canon, --data-dir, --output (ADR-0002) ([860ad45](https://github.com/WhalerMike/uiao-core/commit/860ad4520b8c213fd280eefd2b1ce2bda15b7a77))
 * **context:** add vendor overlay deep-merge support ([6a5723f](https://github.com/WhalerMike/uiao-core/commit/6a5723f66781ee67dfbf846e13565bfb5fe361fa))
 * **context:** support vendor overlay deep merge in load_context ([f8790f8](https://github.com/WhalerMike/uiao-core/commit/f8790f8afe6aaa325fd55af37d440e05fb6c3e33))
+* create data/control-library/IA-5.yml for Authenticator Management ([58d36bb](https://github.com/WhalerMike/uiao-core/commit/58d36bbdd659314c11c198d30455cfcfb39bef68))
+* Create data/control-library/SI-2.yml (Flaw Remediation) ([e00ce2d](https://github.com/WhalerMike/uiao-core/commit/e00ce2d1598905c27083d49c7d1304c369f55f30))
 * **diagrams:** automated diagram generation for generate-docs ([b460ea8](https://github.com/WhalerMike/uiao-core/commit/b460ea8aaaad381c8fa02a7c208109f6859f28ec))
 * FedRAMP Rev 5 SSP template alignment (Sections 1-12 + Appendix A) ([c90d87a](https://github.com/WhalerMike/uiao-core/commit/c90d87af73ea7bfbd6c8da5188d383376191c75e))
 * **generators:** add gemini_visuals.py for on-demand Gemini image generation (ADR-0005) ([d8a82e3](https://github.com/WhalerMike/uiao-core/commit/d8a82e351bafac464b0dc14a9abdd9ba61466883))
