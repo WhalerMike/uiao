@@ -1,0 +1,89 @@
+# NIST SP 800-53 Rev 5 Control Narrative
+# Control: SC-28 — Protection of Information at Rest
+# Source of Truth: data/control-library/SC-28.yml
+# Referenced by: SSP narrative, OSCAL Component Definition, FedRAMP 20x evidence package
+
+control_id: SC-28
+title: Protection of Information at Rest
+status: implemented
+
+implemented_by:
+  - type: EncryptedDataStore
+    description: >-
+      All data at rest within the UIAO boundary is protected using FIPS 140-2
+      validated cryptographic modules. Volume-level and object-level encryption
+      is enforced on all storage media, including cloud object storage, relational
+      databases, and virtual machine disk images. Encryption keys are unique per
+      data classification tier and rotated on a defined schedule.
+  - type: KMSOverlay
+    description: >-
+      A vendor-agnostic Key Management Service (KMS) overlay centralizes the
+      lifecycle management of all encryption keys used for data at rest. The
+      overlay enforces FIPS 140-2 validated key generation, secure key storage
+      in hardware security modules (HSMs), automated key rotation, and
+      cryptographic audit logging. The KMS integrates with the UIAO identity
+      plane so that key-access events are correlated with authenticated
+      principals and forwarded to the telemetry plane for continuous monitoring.
+
+parameters:
+  - id: inventory-source
+    description: >-
+      Authoritative asset inventory source used to enumerate all storage
+      resources subject to encryption-at-rest requirements and to verify
+      that no unencrypted data stores exist within the authorization boundary.
+    value: "{{ parameters['inventory-source'] }}"
+
+evidence:
+  - id: encryption-at-rest-config
+    title: Encryption-at-Rest Configuration and Key Management Report
+    description: >-
+      Machine-readable export of all storage encryption configurations,
+      FIPS 140-2 module certifications, KMS key policy definitions, and
+      automated rotation schedules. The artifact is regenerated on each
+      deployment pipeline run and validated against the approved encryption
+      baseline before the pipeline may proceed.
+    media_type: application/json
+    control_refs:
+      - SC-28
+
+narrative: |
+  {{ organization.name }} protects all information at rest within the
+  authorization boundary in accordance with NIST SP 800-53 Rev 5 SC-28.
+  The following mechanisms are in place:
+
+  **FIPS 140-2 Validated Encryption**
+  All encryption algorithms and cryptographic modules used to protect data
+  at rest are validated under FIPS 140-2 (or FIPS 140-3 where available).
+  Symmetric encryption uses AES-256-GCM or AES-256-CBC as mandated by
+  agency cryptographic policy. No non-FIPS-approved cipher suites are
+  permitted for the protection of federal data within the boundary.
+
+  **Volume-Level and Object-Level Encryption**
+  Storage encryption is applied at two complementary layers. At the volume
+  level, all virtual machine disk images and block-storage volumes are
+  encrypted using platform-native, FIPS 140-2 validated encryption prior
+  to any data being written. At the object level, individual data objects
+  stored in cloud or on-premises object stores are encrypted using
+  per-object keys derived from the KMS overlay, ensuring that access to
+  raw storage media does not yield readable data.
+
+  **KMS Vendor Overlay**
+  The KMS overlay abstracts vendor-specific key management APIs behind a
+  unified control interface. All storage resources enumerated in
+  {{ parameters['inventory-source'] }} are registered with the overlay,
+  which enforces a deny-by-default posture: any storage resource that
+  cannot present a valid KMS key association is automatically flagged as
+  non-compliant and reported to the governance plane. Key-access events
+  are correlated with authenticated principal identities from the UIAO
+  identity plane, providing a complete chain of custody for every
+  decryption operation performed within {{ organization.name }}'s boundary.
+
+  **Continuous Compliance Verification**
+  The encryption-at-rest-config evidence artifact is generated automatically
+  on each deployment pipeline run. The artifact includes a full enumeration
+  of storage resources sourced from {{ parameters['inventory-source'] }},
+  their associated encryption configurations, KMS key ARNs or identifiers,
+  FIPS module certification references, and key rotation timestamps. Any
+  deviation from the approved encryption baseline causes the pipeline to
+  halt and raises a POA&M candidate for remediation within the defined
+  SLA window.
