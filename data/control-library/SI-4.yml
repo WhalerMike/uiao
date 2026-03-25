@@ -1,0 +1,83 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SI-4
+# Title      : System Monitoring
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SI-4
+title: System Monitoring
+status: implemented
+
+implemented_by:
+  - TelemetryPlane
+  - OverlayPlane
+
+evidence:
+  - siem-alert-dashboard-export
+  - ids-ips-configuration-baseline
+  - continuous-monitoring-monthly-report
+
+parameters:
+  - id: monitoring-alert-threshold
+    description: >-
+      Maximum number of minutes between a security-relevant event
+      occurring and an alert being generated in the SIEM.
+    value: "{{ parameters['monitoring-alert-threshold'] }}"
+  - id: log-retention-period
+    description: >-
+      Minimum number of days that security event logs are retained
+      in hot storage for real-time query and correlation.
+    value: "{{ parameters['log-retention-period'] }}"
+
+narrative: |
+  {{ organization.name }} monitors its information systems to detect
+  attacks, indicators of potential attacks, unauthorised connections,
+  and anomalous behaviour using a defence-in-depth telemetry
+  architecture anchored by Microsoft Sentinel and Cisco SD-WAN
+  analytics.
+
+  **Monitoring Strategy**
+  The organisation employs a layered monitoring approach that
+  includes network-based intrusion detection (IDS/IPS) at all
+  boundary and segmentation points, host-based endpoint detection
+  and response (EDR) agents on every managed endpoint, and
+  application-layer logging for all authentication and authorisation
+  events.  Monitoring covers both ingress and egress traffic and is
+  aligned with CISA TIC 3.0 telemetry requirements.
+
+  **Event Collection and Correlation**
+  Security-relevant events from all sources (network devices,
+  servers, identity providers, cloud services) are forwarded to the
+  TelemetryPlane (Microsoft Sentinel) within
+  {{ parameters['monitoring-alert-threshold'] }} minutes of
+  occurrence.  Correlation rules map events to MITRE ATT&CK tactics
+  and NIST 800-53 control families.  Alerts are enriched with
+  threat intelligence feeds and assigned severity based on impact
+  to FedRAMP Moderate-baseline confidentiality, integrity, and
+  availability objectives.
+
+  **Automated and Manual Analysis**
+  High-severity alerts trigger automated playbooks (SOAR) for
+  containment actions such as account lockout and network
+  isolation.  The Security Operations Centre (SOC) reviews all
+  medium-and-above alerts within four hours.  Low-severity events
+  are batched for daily triage.
+
+  **Monitoring of Privileged Functions**
+  All privileged user actions (sudo, administrative console access,
+  security-group changes) are logged and monitored with enhanced
+  alerting thresholds.  Anomalous privileged activity outside
+  scheduled change windows generates immediate alerts.
+
+  **Audit and Reporting**
+  Monitoring effectiveness is reviewed monthly.  Key metrics include
+  mean-time-to-detect (MTTD), false-positive rate, and alert volume
+  by control family.  Logs are retained for a minimum of
+  {{ parameters['log-retention-period'] }} days in hot storage and
+  archived for three years.  Monthly continuous-monitoring reports
+  are provided to the Authorising Official.
+
+related_controls:
+  - AU-6  # Audit Record Review, Analysis, and Reporting
+  - IR-4  # Incident Handling
+  - SC-7  # Boundary Protection
+  - SI-2  # Flaw Remediation
