@@ -5,6 +5,14 @@ Modernizing federal systems with machine-readable Zero Trust and FedRAMP complia
 
 ---
 
+## End-to-End Demo
+
+![UIAO generate-all demo](assets/demo.svg)
+
+> Run `uiao generate-all` to transform your YAML canon into OSCAL JSON, Markdown docs, DOCX, PPTX, and a CycloneDX SBOM in a single command.
+
+---
+
 ## Modernization Atlas
 
 ![Unified Zero Trust Architecture & Automation](assets/images/modernization-atlas-unified-zero-trust-architecture-and-automation.png)
@@ -32,6 +40,24 @@ Modernizing federal systems with machine-readable Zero Trust and FedRAMP complia
 ![Visibility & Telemetry](assets/images/modernization-atlas-visibility-and-telemetry-eyes-and-ears.png)
 
 ![Actionable Intelligence Dashboard](assets/images/modernization-atlas-actionable-intelligence-dashboard.png)
+
+---
+
+## FedRAMP / OSCAL Tool Comparison
+
+| Capability | **uiao-core** | Compliance Trestle | GoComply | GovReady-Q | GSA fedramp-automation | Paramify | Xacta |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| OSCAL SSP generation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| OSCAL POA&M generation | ✅ | ✅ | ⚠️ partial | ✅ | ✅ | ✅ | ✅ |
+| OSCAL Component Definition | ✅ | ✅ | ✅ | ⚠️ partial | ✅ | ⚠️ partial | ⚠️ partial |
+| **Single YAML canon → OSCAL + PPTX** | ✅ **unique** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Leadership briefings (PPTX) auto-sync** | ✅ **unique** | ❌ | ❌ | ❌ | ❌ | ⚠️ manual | ❌ |
+| FedRAMP Rev 5 baseline | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Continuous monitoring / telemetry | ✅ | ⚠️ partial | ❌ | ⚠️ partial | ❌ | ⚠️ partial | ✅ |
+| Open-source | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Zero-Trust architecture codified | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ⚠️ partial |
+
+> **uiao-core's unique value:** A single YAML canon simultaneously renders machine-readable OSCAL compliance artifacts *and* synchronized executive/leadership briefings (PPTX), keeping security documentation and leadership communications always in sync — no other tool in this space does both.
 
 ---
 
