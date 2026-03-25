@@ -1,97 +1,40 @@
-# NIST SP 800-53 Rev 5 — Control Narrative
+# NIST SP 800-53 Rev 5 - Control Narrative
 # Control ID : AC-6
 # Title      : Least Privilege
 # Schema     : data/control-library (uiao-core canonical format)
 
 control_id: AC-6
 title: Least Privilege
+family: Access Control
 status: implemented
 
 implemented_by:
-  - IdentityProvider
-  - PolicyEnforcementPoint
-  - PrivilegedAccessManagement
+  - azure-pim
+  - azure-rbac
 
 evidence:
-  - least-privilege-access-report
-  - privileged-role-assignment-log
-  - jit-elevation-audit-log
+  - pim-elevation-logs
+  - rbac-role-assignment-report
 
 parameters:
-  - id: privileged-role-review-frequency
+  - id: ac_6_elevation_timeout
     description: >-
-      Frequency at which all privileged role assignments are formally reviewed
-      and re-attested by resource owners to detect accumulation of excess
-      privileges and ensure assignments remain aligned with job function.
-    value: "{{ parameters['privileged-role-review-frequency'] }}"
-  - id: non-privileged-function-policy
-    description: >-
-      Policy statement governing the use of non-privileged accounts for
-      all routine system interaction, mandating that privileged roles are
-      invoked only when elevated rights are operationally required.
-    value: "{{ parameters['non-privileged-function-policy'] }}"
+      Maximum duration for JIT privileged sessions.
+    value: "8 hours"
 
 narrative: |
-  {{ organization.name }} implements AC-6 Least Privilege in accordance with
-  NIST SP 800-53 Rev 5, ensuring that users, processes, and services are
-  granted only the minimum permissions required to perform their authorized
-  functions.  The principle of least privilege is enforced by the
-  IdentityProvider, PolicyEnforcementPoint, and PrivilegedAccessManagement
-  components across all layers of the system architecture.
+  The system enforces least privilege by restricting user access to the minimum
+  necessary for assigned duties.  Privileged access is managed via **Azure
+  Privileged Identity Management (PIM)**, requiring Just-In-Time (JIT)
+  elevation and multi-factor authentication (MFA).
 
-  **Role Minimization and Scoping**
-  Role assignments in the IdentityProvider are scoped to the narrowest
-  permission set required by each job function.  Role definitions are
-  maintained in version-controlled templates; any role that grants
-  administrative or write access to production systems is classified as
-  privileged.  All role assignments are reviewed on a
-  {{ parameters['privileged-role-review-frequency'] }} basis by resource
-  owners.  Assignments that exceed the documented job function are revoked
-  within five business days of the review close.  The outcome of each review
-  cycle is documented in the least-privilege-access-report artifact.
-
-  **Separation of Privileged and Non-Privileged Functions**
-  Administrators and security operations personnel maintain separate accounts
-  for privileged and non-privileged activities in accordance with
-  {{ parameters['non-privileged-function-policy'] }}.  Day-to-day activities
-  — email, browsing, documentation — are performed using a standard-user
-  account.  Privileged operations such as system configuration, log access,
-  and security-tool management require a distinct privileged account
-  authenticated through the PrivilegedAccessManagement vault, not the
-  standard user credential.
-
-  **Just-in-Time Privileged Elevation**
-  Privileged access is gated behind a just-in-time (JIT) elevation workflow
-  managed by the PrivilegedAccessManagement component.  Elevation requests
-  specify the target system, required permission scope, and business
-  justification.  Requests are approved by a designated authorizer and
-  time-bounded to the minimum duration required.  All elevation events are
-  logged in real time in the jit-elevation-audit-log artifact.  Elevated
-  rights are automatically revoked at expiry, and any session that exceeds
-  its approved window is terminated by the PolicyEnforcementPoint.
-
-  **Auditing and Continuous Monitoring**
-  All privileged role assignments, activations, and revocations are captured
-  in the privileged-role-assignment-log artifact and correlated against
-  the IdentityProvider joiner-mover-leaver lifecycle events.  {{ organization.name }}
-  monitors for anomalous privileged-account activity (after-hours access,
-  lateral movement, bulk data exports) using the telemetry plane.  Alerts
-  are routed to the ISSO and documented in the POA&M register when confirmed.
-
-  **Evidence and Audit Artefacts**
-  - least-privilege-access-report: Periodic certification report documenting
-    all role assignments, attested minimum-necessary justifications, and
-    any revocations resulting from the review cycle.
-  - privileged-role-assignment-log: Continuous audit log of all privileged
-    role grants, modifications, and revocations, keyed to the authorizing
-    change-control or JIT request record.
-  - jit-elevation-audit-log: Real-time log of all just-in-time elevation
-    requests, approvals, denials, active sessions, and automatic revocations.
+  Non-privileged users are assigned specific **Azure RBAC** roles (e.g.,
+  Reader, Contributor) restricted to relevant Resource Groups.
+  Administrative accounts are strictly separated from standard user accounts,
+  and all privileged elevations are logged and audited within **Microsoft
+  Sentinel**.
 
 related_controls:
-  - AC-2   # Account Management
-  - AC-3   # Access Enforcement
-  - AC-17  # Remote Access
-  - IA-2   # Identification and Authentication (Organizational Users)
-  - IA-5   # Authenticator Management
-  - CM-6   # Configuration Settings
+  - AC-2  # Account Management
+  - AC-3  # Access Enforcement
+  - IA-2  # Identification and Authentication
