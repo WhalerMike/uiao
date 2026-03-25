@@ -99,6 +99,7 @@
 * create data/control-library/IA-8.yml for non-org user identification and authentication ([950ba21](https://github.com/WhalerMike/uiao-core/commit/950ba21b8d7a02260e2cd233f240cad344d02e09))
 * Create data/control-library/SI-2.yml (Flaw Remediation) ([e00ce2d](https://github.com/WhalerMike/uiao-core/commit/e00ce2d1598905c27083d49c7d1304c369f55f30))
 * **diagrams:** automated diagram generation for generate-docs ([b460ea8](https://github.com/WhalerMike/uiao-core/commit/b460ea8aaaad381c8fa02a7c208109f6859f28ec))
+* expose overlay symbols from generate_docs shim for vendor-neutral abstraction layer ([63cbeb2](https://github.com/WhalerMike/uiao-core/commit/63cbeb21ffaf4b3d0d9d63829c395ec1704b3486))
 * FedRAMP Rev 5 SSP template alignment (Sections 1-12 + Appendix A) ([c90d87a](https://github.com/WhalerMike/uiao-core/commit/c90d87af73ea7bfbd6c8da5188d383376191c75e))
 * **generators:** add gemini_visuals.py for on-demand Gemini image generation (ADR-0005) ([d8a82e3](https://github.com/WhalerMike/uiao-core/commit/d8a82e351bafac464b0dc14a9abdd9ba61466883))
 * **generators:** add mermaid.py for server-side Mermaid-to-PNG rendering (ADR-0005) ([c70c5ad](https://github.com/WhalerMike/uiao-core/commit/c70c5ad8eb93898af424163823a2b5a9b9641be6))
