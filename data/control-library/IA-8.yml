@@ -1,0 +1,93 @@
+# NIST SP 800-53 Rev 5 — Control Narrative
+# Control ID : IA-8
+# Title      : Identification and Authentication (Non-Organizational Users)
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IA-8
+title: "Identification and Authentication (Non-Organizational Users)"
+status: implemented
+
+implemented_by:
+  - IdentityProvider
+  - FederatedIdPGateway
+
+evidence:
+  - federated-idp-config
+  - external-user-access-certification
+  - federation-event-log
+
+parameters:
+  - id: external-session-max-hours
+    description: >-
+      Maximum lifetime in hours for a non-organizational user session before
+      the session is terminated and the user must re-authenticate through
+      the FederatedIdPGateway.
+    value: "{{ parameters['external-session-max-hours'] }}"
+  - id: federation-metadata-review-frequency
+    description: >-
+      Frequency at which registered external Identity Provider metadata
+      (certificates, endpoints, attribute maps) is reviewed and re-validated
+      by the ICAM governance team.
+    value: "{{ parameters['federation-metadata-review-frequency'] }}"
+
+narrative: |
+  {{ organization.name }} enforces identification and authentication for all
+  non-organizational users — contractors, partners, and external agency
+  personnel — in accordance with NIST SP 800-53 Rev 5 IA-8.  All external
+  users are brokered through the FederatedIdPGateway using industry-standard
+  federation protocols (SAML 2.0 and OpenID Connect / OIDC).
+
+  **Federated Identity Brokering and IdP Registration**
+  External Identity Providers must be formally registered with
+  {{ organization.name }}'s ICAM governance team before any authentication
+  traffic is accepted.  Registration requires a signed metadata exchange,
+  a completed IdP risk assessment, and explicit approval from the ISSO.
+  Registered IdP metadata (certificates, endpoints, attribute schemas) is
+  reviewed on a {{ parameters['federation-metadata-review-frequency'] }}
+  basis.  Unregistered or expired IdP registrations are immediately rejected
+  at the FederatedIdPGateway with no access granted.
+
+  **Assertion Validation and Attribute Mapping**
+  All inbound SAML 2.0 assertions and OIDC ID tokens are validated at the
+  FederatedIdPGateway boundary for required claims: subject, issuer, audience,
+  issuance time, and expiry.  Tokens from revoked or unregistered issuers are
+  rejected before any mapping occurs.  The IdentityProvider maps validated
+  external subject identifiers to internal guest accounts applying the
+  principle of least privilege: only the minimum attribute set required for
+  the authorized access scope is consumed from the external assertion.
+
+  **Session Controls and Continuous Evaluation**
+  Non-organizational user sessions are time-bounded to a maximum of
+  {{ parameters['external-session-max-hours'] }} hours.  Sessions are subject
+  to continuous access evaluation (CAE); revocation signals from the external
+  IdP (e.g., account suspension, token revocation) are propagated to
+  {{ organization.name }}'s IdentityProvider within the CAE latency window,
+  forcing immediate session termination without waiting for token expiry.
+  Phishing-resistant MFA (FIDO2 or PIV) is required for any privileged or
+  sensitive access scope; standard read-only scopes require at minimum the
+  MFA assertion from the external IdP.
+
+  **Audit Logging and Evidence**
+  All federated authentication events are forwarded to the SIEM with the
+  external issuer, subject identifier, granted scopes, and assertion validity
+  window.  Logs are retained per {{ organization.name }}'s audit-log retention
+  policy and are available as the federation-event-log artifact.  External
+  user access is certified on the defined schedule and documented in the
+  external-user-access-certification artifact.
+
+  **Evidence and Audit Artefacts**
+  - federated-idp-config: Machine-readable export of all registered external
+    IdP configurations, certificate chains, and attribute mapping rules.
+  - external-user-access-certification: Periodic certification report
+    documenting all active non-organizational user accounts, their affiliated
+    external IdP, and resource-owner attestation of continued need.
+  - federation-event-log: Continuous SIEM log of all federated authentication
+    events including acceptance, rejection, and session termination records.
+
+related_controls:
+  - IA-2   # Identification and Authentication (Organizational Users)
+  - IA-4   # Identifier Management
+  - IA-5   # Authenticator Management
+  - AC-2   # Account Management
+  - AC-17  # Remote Access
+  - SC-8   # Transmission Confidentiality and Integrity
