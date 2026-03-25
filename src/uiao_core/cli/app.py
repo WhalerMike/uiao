@@ -65,12 +65,17 @@ def generate_ssp(
         "-o",
         help="Output SSP JSON path.",
     ),
+    enhanced: bool = typer.Option(
+        False,
+        "--enhanced/--no-enhanced",
+        help="Inject control-library narratives into implemented-requirements.",
+    ),
 ) -> None:
     """Generate an OSCAL SSP from canon YAML and data files."""
     from uiao_core.generators.ssp import build_ssp
 
     console.print(f"[bold]Generating SSP from {canon_path}...[/bold]")
-    out = build_ssp(canon_path=canon_path, data_dir=data_dir, output_path=output)
+    out = build_ssp(canon_path=canon_path, data_dir=data_dir, output_path=output, enhanced=enhanced)
     console.print(f"[green]SSP written to {out}[/green]")
 
 
@@ -568,6 +573,9 @@ def conmon_dashboard(
         out = exporter.export_json(output)
 
     console.print(f"[green]KSI dashboard written to {out}[/green]")
+
+
+@app.command()
 def generate_all(
     canon_path: str = typer.Option(
         "canon/uiao_leadership_briefing_v1.0.yaml",
