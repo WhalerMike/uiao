@@ -54,6 +54,7 @@
 * **oscal:** remove by-components from CD, fix empty prop values for trestle ([dee45f8](https://github.com/WhalerMike/uiao-core/commit/dee45f86473f26d48413bcc8ee9c6dd38e424e20))
 * **oscal:** update component-definition metadata for FedRAMP Rev 5 OSCAL 1.0.4 ([81eb807](https://github.com/WhalerMike/uiao-core/commit/81eb80745d188e39bfc75145bb6d676227395077))
 * **poam:** update metadata for FedRAMP Rev 5 OSCAL 1.0.4 compliance ([ec11443](https://github.com/WhalerMike/uiao-core/commit/ec11443dd5a9b0cb38c81944ba58ff2ed47c2253))
+* re-add [@app](https://github.com/app).command() decorator to generate_all and remove stray merge artifact ([9d667d3](https://github.com/WhalerMike/uiao-core/commit/9d667d300c706a653a12bf3356bccc4ffe353366))
 * remove unused BaseProvider import from test_abstractions.py ([c31fa24](https://github.com/WhalerMike/uiao-core/commit/c31fa240e31d1938ed2b9afa9145b71155ff5a9c))
 * remove unused field import to fix CI lint errors ([dcfd606](https://github.com/WhalerMike/uiao-core/commit/dcfd606cb0782e6bbaa9fd898f24ea55e066b745))
 * remove unused tempfile import (ruff F401, I001) ([693605a](https://github.com/WhalerMike/uiao-core/commit/693605a30e34973b5dbed0c67f2d27847ccedfd3))
