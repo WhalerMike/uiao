@@ -7,17 +7,31 @@ title: "Identification and Authentication (Organizational Users)"
 status: implemented
 family: IA
 
-narrative: >-
+narrative: |
   {{ organization.name }} uniquely identifies and authenticates all organizational
   users prior to granting access to any system resource. Multi-factor authentication
   (MFA) is enforced for all accounts in accordance with {{ parameters.mfa-requirement }}.
-  Phishing-resistant MFA mechanisms — including FIDO2 hardware security keys and
-  PIV/CAC smart cards — are required for all privileged accounts and for all federal
-  personnel accessing federal systems. PIV/CAC enforcement is managed through the
-  PIV Authentication Service, which validates certificate chains against the Federal
-  PKI trust anchor. Non-privileged accounts are subject to phishing-resistant MFA
-  via the Identity Provider conditional access policies. Shared or group accounts
-  are prohibited; every user is assigned a unique identifier that cannot be reused.
+
+  The IdentityProvider role is fulfilled by the CyberArk Identity Vault, which serves
+  as the primary identity and credential management platform. CyberArk Identity Vault
+  enforces phishing-resistant MFA mechanisms — including FIDO2 hardware security keys
+  and PIV/CAC smart cards — for all privileged accounts and for all users accessing
+  high-value assets. Conditional access policies within CyberArk Identity Vault ensure
+  that non-privileged accounts are also subject to phishing-resistant MFA.
+
+  The PIVAuthenticationService role is fulfilled by the Federal PIV/CAC Trust Chain.
+  PIV and CAC enforcement for federal personnel is managed through the Federal PIV/CAC
+  Trust Chain, which validates certificate chains against the Federal PKI (FPKI) trust
+  anchor using OCSP and CRL revocation checks. All federal personnel accessing federal
+  systems must authenticate using a valid PIV or CAC credential issued by a certified
+  Federal PKI issuer.
+
+  Shared or group accounts are prohibited; every user is assigned a unique identifier
+  that cannot be reused across the system lifecycle.
+
+  Authentication-related security findings are subject to SLA-based remediation timelines:
+    - Critical: remediated or mitigated within 15 days of discovery
+    - High: remediated or mitigated within 30 days of discovery
 
 implemented_by:
   - IdentityProvider
@@ -28,6 +42,10 @@ parameters:
     value: "Phishing-resistant MFA (FIDO2 / PIV / CAC) for all accounts"
   - id: piv-requirement
     value: "PIV/CAC required for all federal personnel and privileged users"
+  - id: critical-sla-days
+    value: 15
+  - id: high-sla-days
+    value: 30
 
 evidence:
   - mfa-enrollment-report
