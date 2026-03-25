@@ -18,6 +18,7 @@ from uiao_core.abstractions.providers import (
     IdentityProvider,
     NetworkEdge,
     PIVAuthenticationService,
+    PolicyEnforcementPoint,
 )
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "IdentityProvider",
     "NetworkEdge",
     "PIVAuthenticationService",
+    "PolicyEnforcementPoint",
 ]
