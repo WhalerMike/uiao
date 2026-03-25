@@ -567,13 +567,9 @@ def conmon_dashboard(
     console.print("[bold]Generating KSI ConMon dashboard...[/bold]")
     exporter = DashboardExporter(ksi_mappings_path=ksi_mappings)
 
-    if fmt_lower == "yaml":
-        out = exporter.export_yaml(output)
-    else:
-        out = exporter.export_json(output)
+    out = exporter.export_yaml(output) if fmt_lower == "yaml" else exporter.export_json(output)
 
     console.print(f"[green]KSI dashboard written to {out}[/green]")
-
 
 @app.command()
 def generate_all(
