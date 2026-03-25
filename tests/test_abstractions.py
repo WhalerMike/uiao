@@ -11,6 +11,7 @@ from uiao_core.abstractions.providers import Capability
 # Smoke-test: public API is importable
 # ---------------------------------------------------------------------------
 
+
 def test_imports():
     assert IdentityProvider
     assert NetworkEdge
@@ -21,6 +22,7 @@ def test_imports():
 # ---------------------------------------------------------------------------
 # Capability dataclass
 # ---------------------------------------------------------------------------
+
 
 def test_capability_defaults():
     cap = Capability(name="MFA")
@@ -38,6 +40,7 @@ def test_capability_full():
 # ---------------------------------------------------------------------------
 # Abstract classes are not directly instantiable
 # ---------------------------------------------------------------------------
+
 
 def test_identity_provider_is_abstract():
     with pytest.raises(TypeError):
@@ -62,6 +65,7 @@ def test_policy_enforcement_point_is_abstract():
 # ---------------------------------------------------------------------------
 # Concrete subclass satisfies contract
 # ---------------------------------------------------------------------------
+
 
 class ConcreteIdP(IdentityProvider):
     @property
@@ -100,6 +104,7 @@ def test_concrete_idp_to_oscal_component():
 # ---------------------------------------------------------------------------
 # Abstract class metadata
 # ---------------------------------------------------------------------------
+
 
 def test_abstract_names():
     assert IdentityProvider.abstract_name == "Identity Provider"
