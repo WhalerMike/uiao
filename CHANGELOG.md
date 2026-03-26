@@ -124,6 +124,7 @@
 * add generate-docx and generate-artifacts CLI commands ([6e2ecf1](https://github.com/WhalerMike/uiao-core/commit/6e2ecf1adc4708847257df38b90c2a4acb0fe582))
 * add Hardware Root of Trust (TPM 2.0) narrative to IA-3 for FedRAMP 20x Phase 2 ([122b897](https://github.com/WhalerMike/uiao-core/commit/122b8970f54fd42aa302cca28f279e04a3811e5d))
 * add infoblox.yaml standalone DDI/DNS vendor overlay ([5081b0c](https://github.com/WhalerMike/uiao-core/commit/5081b0c3713e42e8817417569131bf9b51d0102b))
+* add machine-readable document-skeleton.yml for canonical skeleton v1.0 ([3480612](https://github.com/WhalerMike/uiao-core/commit/3480612fe4d685c7fdaff7d60b6a44667860b4d8))
 * add machine-readable style-guide.yml governance rules ([984098c](https://github.com/WhalerMike/uiao-core/commit/984098c0063aa9c3aa0284ac9c1eb6562bcfc270))
 * add Palo Alto NGFW firewall parameters to parameters.yml ([9c4cc00](https://github.com/WhalerMike/uiao-core/commit/9c4cc0087b2510b5dbd73af0e6d0737f8e12ea9a))
 * add paloalto to active overlays (Slot [#2](https://github.com/WhalerMike/uiao-core/issues/2) NGFW sub-overlay) ([c8ffb52](https://github.com/WhalerMike/uiao-core/commit/c8ffb52a46fee1b38cbcdd7633f0b18ab6cf1c0d))
