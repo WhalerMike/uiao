@@ -1,0 +1,79 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-11
+# Title      : Re-Authentication
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IA-11
+title: Re-Authentication
+family: Identification and Authentication
+status: implemented
+
+implemented_by:
+  - entra-id
+  - cyberark-psm
+  - intune-mdm
+
+evidence:
+  - entra-id-conditional-access-reauthentication-policies
+  - cyberark-psm-session-reauthentication-configuration
+  - entra-id-continuous-access-evaluation-report
+
+parameters:
+  - id: ia_11_standard_reauth_trigger
+    description: >-
+      Conditions under which standard users are required to
+      re-authenticate to organizational information systems.
+    value: >-
+      Token expiration per PARAM-IAM-003 (30 min); step-up MFA for
+      sensitive resource access; device compliance state change
+  - id: ia_11_privileged_reauth_trigger
+    description: >-
+      Conditions under which privileged users are required to
+      re-authenticate before continuing privileged operations.
+    value: >-
+      Session timeout per PARAM-IAM-002 (15 min); PIM role activation
+      requires fresh MFA; any privileged session reconnection
+
+narrative: |
+  **Continuous Access Evaluation and Token-Based Re-Authentication**
+  The organization requires users to re-authenticate when defined
+  conditions or circumstances necessitate re-establishment of
+  identity assurance. Microsoft Entra ID Continuous Access Evaluation
+  (CAE) provides near-real-time enforcement of re-authentication
+  triggers, including user account disable, password change, location
+  change, and device compliance state revocation. Standard user tokens
+  expire per **PARAM-IAM-003** (30 minutes), requiring periodic
+  re-authentication that validates current MFA status per
+  **PARAM-IAM-001**. This supports **AC-12** (Session Termination)
+  and **IA-2** (Identification and Authentication) by ensuring that
+  authentication state remains current throughout active sessions.
+
+  **Privileged Re-Authentication and Step-Up MFA**
+  Privileged users are required to re-authenticate through fresh MFA
+  challenge upon Entra ID Privileged Identity Management (PIM) role
+  activation, ensuring that elevated access is explicitly authorized
+  at the time of use. CyberArk PSM enforces re-authentication at
+  session timeout boundaries per **PARAM-IAM-002** (15 minutes), with
+  no session resumption permitted without full credential
+  re-validation. Conditional Access authentication context policies
+  enforce step-up MFA for access to sensitive resources such as Azure
+  Key Vault, security configuration interfaces, and audit log
+  repositories, supporting **AC-6** (Least Privilege) requirements.
+
+  **Risk-Based and Context-Aware Re-Authentication**
+  Entra ID Identity Protection risk-based policies trigger
+  re-authentication when anomalous sign-in patterns, impossible travel,
+  or threat intelligence signals indicate potential credential
+  compromise. Microsoft Intune device compliance signals feed into
+  Conditional Access to force re-authentication when endpoint security
+  posture changes are detected. All re-authentication events are
+  logged to Microsoft Sentinel for correlation and analysis,
+  supporting **AU-2** (Event Logging) and **SI-4** (System Monitoring).
+
+related_controls:
+  - AC-6   # Least Privilege
+  - AC-12  # Session Termination
+  - IA-2   # Identification and Authentication
+  - IA-5   # Authenticator Management
+  - AU-2   # Event Logging
+  - SI-4   # System Monitoring
