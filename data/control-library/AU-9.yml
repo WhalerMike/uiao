@@ -1,0 +1,77 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AU-9
+# Title      : Protection of Audit Information
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AU-9
+title: Protection of Audit Information
+family: Audit and Accountability
+status: implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - entra-id
+  - splunk-siem
+  - azure-log-analytics
+
+evidence:
+  - sentinel-workspace-rbac-access-policy
+  - azure-log-analytics-immutable-storage-configuration
+  - splunk-index-access-control-policy
+  - entra-id-pim-audit-admin-role-configuration
+
+parameters:
+  - id: au_9_audit_access_restriction
+    description: >-
+      Access control mechanism restricting audit information to
+      authorized personnel only.
+    value: >-
+      Azure RBAC with Sentinel Reader/Contributor roles; PIM-gated
+      Sentinel Admin; Splunk role-based index access
+  - id: au_9_audit_integrity_protection
+    description: >-
+      Mechanism used to protect audit records from unauthorized
+      modification or deletion.
+    value: "Azure immutable blob storage for archived logs; Sentinel workspace resource lock"
+
+narrative: |
+  **Role-Based Access Control for Audit Data**
+  The organization protects audit information and audit logging tools
+  from unauthorized access, modification, and deletion. Microsoft
+  Sentinel workspace access is governed by Azure RBAC with dedicated
+  Sentinel Reader, Contributor, and Responder roles assigned based on
+  operational need. Administrative access to Sentinel workspace
+  configuration and audit data deletion capabilities requires Entra ID
+  Privileged Identity Management (PIM) just-in-time role activation
+  with MFA per **PARAM-IAM-001**, ensuring that audit data management
+  privileges are time-limited and individually attributable. This
+  supports **AC-6** (Least Privilege) and **AC-3** (Access Enforcement).
+
+  **Immutable Storage and Tamper Protection**
+  Archived audit records are stored in Azure immutable blob storage
+  with write-once-read-many (WORM) policies that prevent modification
+  or deletion of audit data during the defined retention period.
+  Sentinel Log Analytics workspaces are protected by Azure resource
+  locks preventing accidental or malicious workspace deletion. Splunk
+  indexes enforce role-based access controls that restrict audit data
+  access to authorized SOC analysts, with index deletion capabilities
+  limited to Splunk administrators authenticated through CyberArk PSM.
+  This supports **AU-4** (Audit Log Storage Capacity) and **SC-28**
+  (Protection of Information at Rest).
+
+  **Audit of Audit Access and Continuous Monitoring**
+  All access to audit information repositories is itself logged and
+  monitored. Sentinel workspace access events, Azure RBAC role
+  assignments, and PIM activation logs are forwarded to a separate
+  monitoring pipeline to ensure independent oversight. Any attempt
+  to modify audit retention policies or access archived records
+  triggers automated alerts to the ISSO, supporting **AU-6** (Audit
+  Record Review) and **SI-4** (System Monitoring) requirements.
+
+related_controls:
+  - AC-3   # Access Enforcement
+  - AC-6   # Least Privilege
+  - AU-4   # Audit Log Storage Capacity
+  - AU-6   # Audit Record Review, Analysis, and Reporting
+  - SC-28  # Protection of Information at Rest
+  - SI-4   # System Monitoring
