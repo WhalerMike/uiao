@@ -125,6 +125,7 @@
 * add Palo Alto NGFW firewall parameters to parameters.yml ([9c4cc00](https://github.com/WhalerMike/uiao-core/commit/9c4cc0087b2510b5dbd73af0e6d0737f8e12ea9a))
 * add paloalto to active overlays (Slot [#2](https://github.com/WhalerMike/uiao-core/issues/2) NGFW sub-overlay) ([c8ffb52](https://github.com/WhalerMike/uiao-core/commit/c8ffb52a46fee1b38cbcdd7633f0b18ab6cf1c0d))
 * add paloalto.yaml NGFW vendor overlay (Slot [#2](https://github.com/WhalerMike/uiao-core/issues/2) sub-overlay) ([7dc01c2](https://github.com/WhalerMike/uiao-core/commit/7dc01c25a1181e4b9917e6d9433aa30f36f44d2d))
+* add PARAM-IAM-006 Hardware Root of Trust for FedRAMP 20x Phase 2 IA-3 ([43247d5](https://github.com/WhalerMike/uiao-core/commit/43247d53e94da30fd120f9ef29c2088a9d558ec7))
 * add PyPI classifiers, URLs, and publish workflow ([9e82c39](https://github.com/WhalerMike/uiao-core/commit/9e82c398b6b661278bce598abe08e88ab61184e8))
 * Add rich DOCX generator with native Word styles and compliance tables ([18995c9](https://github.com/WhalerMike/uiao-core/commit/18995c98f3d953b58435e39d53740c2ed75b58bd))
 * add SC-12 Cryptographic Key Establishment control YAML ([d6eb6af](https://github.com/WhalerMike/uiao-core/commit/d6eb6af0d4828c866f6453119bcdab29e2c0334e))
