@@ -368,6 +368,8 @@ class TestConmonDashboard:
             ],
         )
         assert result.exit_code != 0
+
+
 class TestGenerateAll:
     """Tests for the generate-all orchestration command."""
 
@@ -407,9 +409,12 @@ class TestGenerateAll:
                 app,
                 [
                     "generate-all",
-                    "--canon", "canon/test.yaml",
-                    "--data-dir", str(tmp_path / "data"),
-                    "--exports-dir", str(tmp_path / "exports"),
+                    "--canon",
+                    "canon/test.yaml",
+                    "--data-dir",
+                    str(tmp_path / "data"),
+                    "--exports-dir",
+                    str(tmp_path / "exports"),
                 ],
             )
 

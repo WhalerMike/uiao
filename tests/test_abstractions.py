@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from uiao_core.abstractions import DNSProvider, IdentityProvider, NetworkEdge, PIVAuthenticationService, PolicyEnforcementPoint, VulnerabilityScanner
+from uiao_core.abstractions import (
+    DNSProvider,
+    IdentityProvider,
+    NetworkEdge,
+    PIVAuthenticationService,
+    PolicyEnforcementPoint,
+    VulnerabilityScanner,
+)
 from uiao_core.abstractions.providers import Capability
 
 # ---------------------------------------------------------------------------
@@ -141,6 +148,7 @@ class ConcretePIV(PIVAuthenticationService):
     @property
     def capabilities(self):
         from uiao_core.abstractions.providers import Capability
+
         return [Capability("PIV"), Capability("CAC"), Capability("FPKI")]
 
 
@@ -167,6 +175,7 @@ class ConcreteScanner(VulnerabilityScanner):
     @property
     def capabilities(self):
         from uiao_core.abstractions.providers import Capability
+
         return [Capability("authenticated-scan"), Capability("CVE-detection")]
 
 
