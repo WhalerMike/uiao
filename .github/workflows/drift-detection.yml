@@ -1,0 +1,30 @@
+# <!-- NEW (Proposed) --> Drift Detection Workflow
+# Scheduled drift detection for identity, addressing, telemetry, certificates, CMDB.
+name: Drift Detection
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Weekly on Monday at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  detect-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run drift detection
+        run: python scripts/detect_drift.py
+
+      - name: Upload drift report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: reports/drift-report.json
