@@ -80,6 +80,7 @@
 
 * add AT-3 Role-Based Training control YAML ([99169ee](https://github.com/WhalerMike/uiao-core/commit/99169ee3094d7313ace0e66e5f35265690232200))
 * add build_rich_docx to generators __init__ exports ([a5e3cef](https://github.com/WhalerMike/uiao-core/commit/a5e3cef760490c96a2eeca4c6477d6c8fc965ba9))
+* add cisco.yaml standalone SD-WAN vendor overlay ([bafe526](https://github.com/WhalerMike/uiao-core/commit/bafe5265eae03a077ff1eb46222225b8b532156f))
 * Add compliance-trestle assemble script (closes [#20](https://github.com/WhalerMike/uiao-core/issues/20)) ([3cca209](https://github.com/WhalerMike/uiao-core/commit/3cca2091419345673c7745696cccd9f96e87ae2d))
 * add conmon-process, conmon-export-oa, conmon-dashboard CLI commands for Sentinel telemetry to auto POA&M ([92826ad](https://github.com/WhalerMike/uiao-core/commit/92826addecad82109eefc2166bddb605bb42bbb2))
 * add CrowdStrike EDR vendor overlay ([9f51de8](https://github.com/WhalerMike/uiao-core/commit/9f51de84f6ee365aff3c378840bb6daf18519f83))
