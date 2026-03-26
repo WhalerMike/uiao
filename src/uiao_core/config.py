@@ -22,5 +22,6 @@ class Settings(BaseSettings):
     templates_dir: Path = Path("templates")
     data_dir: Path = Path("data")
     exports_dir: Path = Path("exports")
+    visuals_dir: Path = Path("visuals")
     schemas_dir: Path = Path("schemas")
     compliance_dir: Path = Path("compliance")
