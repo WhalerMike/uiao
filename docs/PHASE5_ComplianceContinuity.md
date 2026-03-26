@@ -1,242 +1,230 @@
 # PHASE 5 — Compliance Continuity Model
 
-> **UIAO Control Plane — Phase 5: Operational Readiness**
+> **UIAO Control Plane — Sequence D: Canon Expansion & Runtime Integration**
 >
-> Version: 1.0 
-> Date: 2025-07-13 
-> Classification: **CUI** — Executive Use Only 
+> Version: 2.0
+> Date: 2026-03-26
+> Classification: **CUI** — Executive Use Only
 > Status: **NEW (Proposed)**
+> Artifact: Task D5
+> Protocol: NO-HALLUCINATION PROTOCOL
+> Mode: Proposal Mode (B)
+> Parent: `PHASE5_OperationalGovernance.md`
 
 ---
 
-## 1. Purpose
+## 1. Purpose of the Compliance Continuity Model
 
-This document defines the Compliance Continuity Model for the UIAO Control Plane, establishing processes to maintain continuous compliance posture across all operational domains. It ensures that compliance obligations under FedRAMP Moderate, NIST 800-53 Rev 5, and OMB Zero Trust mandates are met without interruption during steady-state operations, system changes, and incident recovery.
+**NEW (Proposed)**
 
----
+The Compliance Continuity Model defines how the UIAO Control Plane maintains unbroken compliance posture across:
 
-## 2. Scope
+- Steady-state operations
+- System changes and upgrades
+- Personnel transitions
+- Incident response and recovery
+- Authorization boundary modifications
+- Control plane expansion events
 
-| Domain | Coverage |
+It ensures that compliance obligations under FedRAMP Moderate, NIST 800-53 Rev 5, OMB Zero Trust mandates, TIC 3.0, and SCuBA are met without interruption.
+
+| Property | Description |
 |---|---|
-| Identity (Entra ID) | Conditional Access, MFA enforcement, lifecycle governance |
-| Addressing (IPAM) | Subnet allocation, DNS integrity, IP accountability |
-| Network (Overlay) | TIC 3.0 compliance, micro-segmentation validation |
-| Telemetry | Diagnostic completeness, log retention, SIEM integration |
-| Certificates | PKI lifecycle, expiration monitoring, rotation compliance |
-| CMDB | Asset accuracy, configuration baseline integrity |
+| Continuous | Compliance is validated in real-time, not periodically |
+| Automated | Evidence generation is programmatic, not manual |
+| Resilient | Compliance posture survives component failures |
+| Auditable | Every compliance action produces an immutable audit trail |
+| Drift-Resistant | Proactive controls prevent compliance drift before it occurs |
+| Evidence-Backed | Every compliance assertion is supported by telemetry |
 
 ---
 
-## 3. Compliance Continuity Principles
+## 2. Compliance Domains
 
-1. **Continuous Authorization** — Compliance is validated continuously, not periodically
-2. **Evidence Automation** — All compliance evidence is generated programmatically
-3. **Drift Prevention** — Proactive controls prevent compliance drift before it occurs
-4. **Auditability** — Every compliance action produces an immutable audit trail
-5. **Resilience** — Compliance posture survives component failures and personnel changes
+**NEW (Proposed)**
 
----
+UIAO compliance continuity spans six operational domains aligned to control planes:
 
-## 4. Continuous Monitoring Framework
-
-### 4.1 Monitoring Tiers
-
-| Tier | Frequency | Method | Owner |
+| Domain | Control Plane | Compliance Scope | Primary Framework |
 |---|---|---|---|
-| Real-Time | Continuous | Automated telemetry and alerting | SOC / Platform Team |
-| Daily | Every 24 hours | Scheduled compliance scans | Compliance Automation |
-| Weekly | Every 7 days | Drift detection and reconciliation | Domain Owners |
-| Monthly | Every 30 days | Compliance dashboard review | ISSO / ISSM |
-| Quarterly | Every 90 days | Formal assessment and reporting | AO / Compliance Lead |
-
-### 4.2 Automated Controls
-
-| Control ID | Control Name | Automation Method | Target |
-|---|---|---|---|
-| CC-01 | MFA Enforcement Validation | `validate_mfa.py` | 100% coverage |
-| CC-02 | Conditional Access Policy Audit | `audit_ca_policies.py` | Zero policy gaps |
-| CC-03 | IPAM Record Accuracy | `reconcile_ipam.py` | < 1% discrepancy |
-| CC-04 | TIC 3.0 Overlay Validation | `validate_tic3.py` | Full overlay match |
-| CC-05 | Log Retention Compliance | `check_retention.py` | 365-day minimum |
-| CC-06 | Certificate Expiration Watch | `cert_monitor.py` | 30-day advance warning |
-| CC-07 | CMDB Baseline Integrity | `cmdb_baseline.py` | < 2% deviation |
+| Identity Compliance | Identity (Entra ID) | Conditional Access, MFA, lifecycle governance, RBAC | AC-2, IA-2, IA-5 |
+| Addressing Compliance | Addressing (IPAM) | Subnet allocation, DNS integrity, IP accountability | SC-7, CM-8 |
+| Network Compliance | Network (Overlay) | TIC 3.0 compliance, micro-segmentation, routing | SC-7, AC-4 |
+| Telemetry Compliance | Telemetry | Log retention, SIEM integration, diagnostic completeness | AU-2, AU-6, AU-12 |
+| Certificate Compliance | Certificates (PKI) | PKI lifecycle, expiration monitoring, rotation | SC-12, SC-13, IA-5 |
+| Configuration Compliance | Management (CMDB) | Asset accuracy, configuration baseline integrity | CM-2, CM-6, CM-8 |
 
 ---
 
-## 5. Evidence Generation Pipeline
+## 3. Continuity Principles
 
-### 5.1 Pipeline Architecture
+**NEW (Proposed)**
 
-```
-Control Execution → Evidence Capture → Normalization → Storage → Reporting
-       ↓                    ↓                ↓             ↓          ↓
-  Automated          Timestamped       JSON Schema    Immutable   Dashboard
-   Scripts           Artifacts          Validated     Archive     + POA&M
-```
+### 3.1 Continuous Authorization
 
-### 5.2 Evidence Artifact Types
+Compliance is validated continuously, not at point-in-time snapshots:
 
-| Artifact Type | Format | Retention | Storage Location |
-|---|---|---|---|
-| Scan Results | JSON | 3 years | `compliance/evidence/scans/` |
-| Policy Snapshots | JSON | 3 years | `compliance/evidence/policies/` |
-| Drift Reports | Markdown | 3 years | `compliance/evidence/drift/` |
-| Remediation Logs | JSON | 3 years | `compliance/evidence/remediation/` |
-| Assessment Reports | PDF/Markdown | 7 years | `compliance/evidence/assessments/` |
-
----
-
-## 6. Compliance Control Mapping
-
-### 6.1 NIST 800-53 Rev 5 — Key Control Families
-
-| Family | Controls | UIAO Implementation |
+| Principle | Implementation | Frequency |
 |---|---|---|
-| AC (Access Control) | AC-2, AC-6, AC-7, AC-17 | Entra ID Conditional Access + lifecycle automation |
-| AU (Audit) | AU-2, AU-3, AU-6, AU-12 | Centralized telemetry + SIEM forwarding |
-| CA (Assessment) | CA-2, CA-7, CA-8 | Continuous monitoring + automated scanning |
-| CM (Configuration) | CM-2, CM-3, CM-6, CM-8 | CMDB baseline + drift detection |
-| IA (Identification) | IA-2, IA-4, IA-5 | MFA enforcement + certificate PKI |
-| SC (System Comms) | SC-7, SC-8, SC-28 | TIC 3.0 overlay + encryption validation |
-| SI (System Integrity) | SI-2, SI-4, SI-7 | Patch compliance + integrity monitoring |
+| Real-Time Validation | Automated telemetry and alerting | Continuous |
+| Daily Compliance Scan | Scheduled compliance checks across all domains | Every 24 hours |
+| Weekly Drift Reconciliation | Drift detection and remediation verification | Every 7 days |
+| Monthly Dashboard Review | Executive compliance posture review | Every 30 days |
+| Quarterly Assessment | Formal assessment and AO reporting | Every 90 days |
 
-### 6.2 FedRAMP Moderate Continuous Monitoring
+### 3.2 Evidence Automation
 
-| Requirement | Frequency | UIAO Mechanism |
-|---|---|---|
-| Vulnerability Scanning | Monthly | Automated scan pipeline |
-| POA&M Updates | Monthly | Auto-generated from drift reports |
-| Significant Change Assessment | Per change | Change control workflow trigger |
-| Annual Assessment | Yearly | Comprehensive evidence package |
-| Incident Reporting | Within 1 hour | Automated alerting pipeline |
+All compliance evidence is generated programmatically:
 
----
-
-## 7. POA&M Integration
-
-### 7.1 Automated POA&M Lifecycle
-
-```
-Drift Detected → POA&M Created → Owner Assigned → Remediation Tracked → Closure Verified
-      ↓                ↓                ↓                  ↓                    ↓
-  detect_drift.py   poam_create.py   Notification      Status Updates     Evidence Attached
-                                      Engine            Dashboard          + Auto-Close
-```
-
-### 7.2 POA&M Severity and SLA
-
-| Severity | Response SLA | Remediation SLA | Escalation |
+| Evidence Type | Source | Automation Method | Retention |
 |---|---|---|---|
-| Critical | 1 hour | 24 hours | ISSO → AO immediately |
-| High | 4 hours | 7 days | ISSO at 48 hours |
-| Medium | 24 hours | 30 days | ISSO at 14 days |
-| Low | 72 hours | 90 days | ISSO at 60 days |
+| Identity Evidence | Entra ID Sign-In Logs | `collect_identity_evidence.py` | 365 days |
+| Network Evidence | SD-WAN Flow Logs | `collect_network_evidence.py` | 365 days |
+| Configuration Evidence | Intune Compliance Reports | `collect_config_evidence.py` | 365 days |
+| Certificate Evidence | PKI Audit Logs | `collect_cert_evidence.py` | 365 days |
+| Telemetry Evidence | SIEM/Sentinel Logs | `collect_telemetry_evidence.py` | 365 days |
+| Addressing Evidence | IPAM Allocation Logs | `collect_addressing_evidence.py` | 365 days |
 
----
+### 3.3 Drift Prevention
 
-## 8. Change Control and Compliance
+Proactive controls prevent compliance drift before it occurs:
 
-### 8.1 Change Impact Assessment
-
-All changes to UIAO Control Plane components require compliance impact assessment:
-
-| Change Type | Assessment Required | Approval Authority |
+| Prevention Layer | Method | Trigger |
 |---|---|---|
-| Configuration change | Automated compliance check | Domain Owner |
-| Policy modification | Full control mapping review | ISSO |
-| Architecture change | Significant change assessment | AO |
-| New integration | Security assessment + POA&M | ISSO + AO |
-| Emergency change | Post-implementation review | ISSO within 48 hours |
-
-### 8.2 Rollback Compliance
-
-Every change must include a validated rollback procedure that preserves compliance posture. The rollback itself must be tested against compliance controls before the change is approved.
+| Policy Enforcement | Conditional Access Policies | Every authentication event |
+| Configuration Lock | Intune Compliance Baselines | Every device check-in |
+| Network Segmentation | SD-WAN Policy Enforcement | Every routing decision |
+| Certificate Rotation | Automated PKI Lifecycle | 30 days before expiration |
+| IPAM Reconciliation | Automated Subnet Validation | Every allocation change |
 
 ---
 
-## 9. Personnel Continuity
+## 4. Continuity Scenarios
 
-### 9.1 Role Coverage Matrix
+**NEW (Proposed)**
 
-| Role | Primary | Backup | Documentation |
-|---|---|---|---|
-| ISSO | Named individual | Deputy ISSO | Compliance runbook |
-| ISSM | Named individual | Alternate ISSM | Program procedures |
-| Domain Owner (Identity) | IAM Lead | IAM Engineer | Domain playbook |
-| Domain Owner (Network) | Network Lead | Network Engineer | Domain playbook |
-| Domain Owner (Telemetry) | Monitoring Lead | SOC Analyst | Domain playbook |
-| Compliance Automation | DevSecOps Lead | Platform Engineer | Automation guide |
+### 4.1 Steady-State Operations
 
-### 9.2 Knowledge Transfer Requirements
-
-- All compliance procedures documented in runbook format
-- Cross-training completed for all critical compliance functions
-- Quarterly tabletop exercises for compliance incident response
-- Annual rotation of backup personnel through primary roles
-
----
-
-## 10. Compliance Reporting
-
-### 10.1 Report Schedule
-
-| Report | Audience | Frequency | Format |
-|---|---|---|---|
-| Compliance Posture Dashboard | All stakeholders | Real-time | Web dashboard |
-| Weekly Compliance Summary | Domain Owners, ISSO | Weekly | Automated email |
-| Monthly Compliance Report | ISSM, AO | Monthly | PDF + POA&M |
-| Quarterly Risk Assessment | Executive leadership | Quarterly | Executive brief |
-| Annual Authorization Package | AO, FedRAMP PMO | Annually | Full evidence set |
-
-### 10.2 Dashboard Metrics
-
-| Metric | Target | Red Threshold |
+| Activity | Compliance Action | Automation |
 |---|---|---|
-| Overall Compliance Score | > 95% | < 85% |
-| Open Critical POA&Ms | 0 | > 0 |
-| Open High POA&Ms | < 3 | > 5 |
-| Evidence Freshness | < 24 hours | > 72 hours |
-| Control Coverage | 100% | < 95% |
-| Drift Resolution Time (Avg) | < 4 hours | > 24 hours |
+| User Authentication | Validate MFA, Conditional Access | Entra ID real-time |
+| Device Check-In | Validate configuration baseline | Intune continuous |
+| Network Traffic | Validate TIC 3.0 routing | SD-WAN continuous |
+| Log Collection | Validate telemetry completeness | SIEM continuous |
+| Certificate Use | Validate chain of trust | PKI real-time |
+
+### 4.2 System Change Events
+
+| Change Type | Pre-Change Action | Post-Change Validation | Rollback Trigger |
+|---|---|---|---|
+| Configuration Update | Baseline snapshot | Compliance scan within 1 hour | Drift detection failure |
+| Policy Modification | Impact assessment | Control validation within 30 minutes | Control gap detected |
+| Infrastructure Change | Architecture review | Full compliance sweep within 4 hours | Evidence generation failure |
+| Software Deployment | Security review | Vulnerability scan within 2 hours | Critical vulnerability found |
+
+### 4.3 Personnel Transitions
+
+| Transition Type | Compliance Action | Timeline | Validation |
+|---|---|---|---|
+| Onboarding | Provision identity, assign roles, enforce MFA | Day 1 | Identity compliance check |
+| Role Change | Modify RBAC, update access policies | Within 4 hours | Access review validation |
+| Departure | Revoke access, archive credentials | Immediate | Orphaned account scan |
+| Contractor Expiration | Automated lifecycle termination | On expiration date | Lifecycle audit |
+
+### 4.4 Incident Response Recovery
+
+| Recovery Phase | Compliance Requirement | Evidence Generated |
+|---|---|---|
+| Detection | Maintain telemetry during incident | Incident detection logs |
+| Containment | Preserve compliance boundaries | Containment action logs |
+| Eradication | Restore compliant baselines | Remediation evidence |
+| Recovery | Validate full compliance restoration | Post-incident compliance scan |
+| Lessons Learned | Update compliance controls | Governance review record |
 
 ---
 
-## 11. Disaster Recovery Compliance
+## 5. Automated Compliance Controls
 
-Compliance posture must be maintained during and after disaster recovery events:
+**NEW (Proposed)**
 
-1. **Pre-DR**: Compliance evidence snapshot stored in offline archive
-2. **During DR**: Minimal compliance controls enforced (MFA, logging, encryption)
-3. **Post-DR**: Full compliance validation within 4 hours of recovery
-4. **Re-Authorization**: Expedited assessment if DR event triggers significant change
+| Control ID | Control Name | Automation Method | Target | Frequency |
+|---|---|---|---|---|
+| CC-01 | MFA Enforcement Validation | `validate_mfa.py` | 100% coverage | Continuous |
+| CC-02 | Conditional Access Policy Audit | `audit_ca_policies.py` | All policies active | Daily |
+| CC-03 | Device Compliance Baseline | `validate_device_compliance.py` | 95% compliance | Every 4 hours |
+| CC-04 | Network Segmentation Validation | `validate_segmentation.py` | All segments | Daily |
+| CC-05 | Certificate Expiration Monitor | `monitor_cert_expiry.py` | 0 expired certs | Continuous |
+| CC-06 | Log Retention Validation | `validate_log_retention.py` | 365-day minimum | Weekly |
+| CC-07 | IPAM Reconciliation | `reconcile_ipam.py` | 100% allocated | Daily |
+| CC-08 | RBAC Drift Detection | `detect_rbac_drift.py` | 0 unauthorized roles | Daily |
+| CC-09 | Configuration Baseline Check | `validate_cm_baseline.py` | 100% compliant | Every 4 hours |
+| CC-10 | Telemetry Completeness Audit | `audit_telemetry.py` | 100% sources active | Hourly |
 
 ---
 
-## 12. References
+## 6. Compliance Continuity Metrics
 
-| Reference | Description |
+**NEW (Proposed)**
+
+### 6.1 Key Performance Indicators
+
+| KPI | Target | Measurement Method | Alert Threshold |
+|---|---|---|---|
+| Compliance Uptime | 99.9% | Continuous monitoring | < 99.5% |
+| Evidence Generation Rate | 100% automated | Automation coverage audit | < 95% automated |
+| Drift Detection Time | < 15 minutes | Mean time to detect | > 30 minutes |
+| Drift Remediation Time | < 4 hours | Mean time to remediate | > 8 hours |
+| Control Coverage | 100% of required controls | Control mapping audit | < 95% coverage |
+| Audit Readiness | Always ready | Random readiness checks | Any gap detected |
+
+### 6.2 Compliance Dashboard Integration
+
+Metrics feed directly into `PHASE5_ExecutiveDashboard.md`:
+
+| Dashboard Widget | Data Source | Refresh Rate |
+|---|---|---|
+| Compliance Posture Score | All CC controls | Real-time |
+| Drift Event Timeline | Runtime Drift Model | Real-time |
+| Evidence Coverage Map | Telemetry Evidence Map | Hourly |
+| Control Family Status | FedRAMP Crosswalk | Daily |
+| Personnel Compliance | Identity Plane | Real-time |
+
+---
+
+## 7. Continuity During Authorization Boundary Changes
+
+**NEW (Proposed)**
+
+| Boundary Change | Compliance Impact | Continuity Action |
+|---|---|---|
+| New System Addition | Expanded control scope | Pre-authorization compliance mapping |
+| System Decommission | Reduced boundary | Evidence archive and control retirement |
+| Cloud Migration | Changed inheritance model | Control responsibility reassignment |
+| Network Restructure | Modified segmentation | TIC 3.0 re-validation |
+| Vendor Change | Updated supply chain risk | Third-party assessment update |
+
+---
+
+## 8. Cross-References
+
+**NEW (Proposed)**
+
+| Reference | Relationship |
 |---|---|
-| `docs/00_ControlPlaneArchitecture.md` | Control Plane architecture overview |
-| `docs/03_FedRAMP20x_Crosswalk.md` | FedRAMP 20x control crosswalk |
-| `docs/PHASE5_OperationalGovernance.md` | Operational governance charter |
-| `docs/PHASE5_RuntimeDriftModel.md` | Runtime drift detection model |
-| NIST SP 800-53 Rev 5 | Security and Privacy Controls |
-| NIST SP 800-137 | Continuous Monitoring guidance |
-| FedRAMP Continuous Monitoring Guide | FedRAMP ConMon requirements |
-| OMB M-22-09 | Federal Zero Trust Strategy |
+| `PHASE5_OperationalGovernance.md` | Parent governance framework |
+| `PHASE5_RuntimeDriftModel.md` | Drift domains feed continuity controls |
+| `PHASE5_ContinuousComplianceEngine.md` | Engine executes continuity automation |
+| `PHASE5_TelemetryEvidenceMap.md` | Evidence sources for continuity validation |
+| `PHASE5_ExecutiveDashboard.md` | Compliance metrics visualization |
+| `PHASE5_IncidentResponseIntegration.md` | IR compliance continuity procedures |
+| `03_FedRAMP20x_Crosswalk.md` | Control family mappings |
+| `09_CrosswalkIndex.md` | Master crosswalk index |
 
 ---
 
-## 13. Approval
+## 9. Revision History
 
-| Role | Name | Date |
-|---|---|---|
-| Document Author | UIAO Program Team | 2025-07-13 |
-| Reviewed By | _________________ | __________ |
-| ISSO Approval | _________________ | __________ |
-| AO Approval | _________________ | __________ |
-
----
-
-> **NO-HALLUCINATION PROTOCOL**: All frameworks, control families, and requirements referenced in this document are sourced from published NIST, FedRAMP, and OMB standards. Automation scripts and file paths reference the canonical UIAO repository structure. Items marked **NEW (Proposed)** are generated artifacts pending review.
+| Version | Date | Author | Summary |
+|---|---|---|---|
+| 1.0 | 2025-07-13 | UIAO Canon Engine | Initial Phase 5 draft |
+| 2.0 | 2026-03-26 | UIAO Canon Engine | Sequence D Task D5 — Full restructure with continuity scenarios, automated controls, KPIs, and cross-references |
