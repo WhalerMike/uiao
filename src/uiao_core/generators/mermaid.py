@@ -62,35 +62,61 @@ def _save_hash_cache(output_dir: Path, cache: dict[str, str]) -> None:
 # ---------------------------------------------------------------------------
 def _render_mmdc(mmd_path: Path, png_path: Path) -> bool:
     """Render using Mermaid CLI (mmdc via npx or global install)."""
+    import json
+    import tempfile
+
     mmdc = shutil.which("mmdc")
     cmd: list[str]
-    if mmdc:
-        cmd = [mmdc, "-i", str(mmd_path), "-o", str(png_path), "-b", "white", "-s", "2"]
-    else:
-        npx = shutil.which("npx")
-        if not npx:
-            return False
-        cmd = [
-            npx,
-            "--yes",
-            "@mermaid-js/mermaid-cli",
-            "-i",
-            str(mmd_path),
-            "-o",
-            str(png_path),
-            "-b",
-            "white",
-            "-s",
-            "2",
-        ]
+
+    # Puppeteer/Chromium requires --no-sandbox on GitHub Actions and similar CI
+    # environments where unprivileged user namespaces are restricted.
+    puppeteer_cfg_path: str | None = None
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=60, check=False)
-        if result.returncode == 0 and png_path.exists():
-            return True
-        logger.warning("mmdc returned %d: %s", result.returncode, result.stderr.decode())
-    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
-        logger.debug("mmdc unavailable: %s", exc)
-    return False
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        ) as pcfg:
+            json.dump({"args": ["--no-sandbox", "--disable-setuid-sandbox"]}, pcfg)
+            puppeteer_cfg_path = pcfg.name
+
+        if mmdc:
+            cmd = [
+                mmdc,
+                "-i", str(mmd_path),
+                "-o", str(png_path),
+                "-b", "white",
+                "-s", "2",
+                "--puppeteerConfig", puppeteer_cfg_path,
+            ]
+        else:
+            npx = shutil.which("npx")
+            if not npx:
+                return False
+            cmd = [
+                npx,
+                "--yes",
+                "@mermaid-js/mermaid-cli",
+                "-i",
+                str(mmd_path),
+                "-o",
+                str(png_path),
+                "-b",
+                "white",
+                "-s",
+                "2",
+                "--puppeteerConfig",
+                puppeteer_cfg_path,
+            ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, timeout=60, check=False)
+            if result.returncode == 0 and png_path.exists():
+                return True
+            logger.warning("mmdc returned %d: %s", result.returncode, result.stderr.decode())
+        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+            logger.debug("mmdc unavailable: %s", exc)
+        return False
+    finally:
+        if puppeteer_cfg_path is not None:
+            Path(puppeteer_cfg_path).unlink(missing_ok=True)
 
 
 def _render_playwright(mmd_path: Path, png_path: Path) -> bool:
@@ -110,7 +136,10 @@ def _render_playwright(mmd_path: Path, png_path: Path) -> bool:
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-setuid-sandbox"],
+            )
             page = browser.new_page(viewport={"width": 1200, "height": 800})
             page.goto(f"file://{html_path}")
             page.wait_for_selector(".mermaid svg", timeout=15000)
