@@ -82,6 +82,7 @@
 * add build_rich_docx to generators __init__ exports ([a5e3cef](https://github.com/WhalerMike/uiao-core/commit/a5e3cef760490c96a2eeca4c6477d6c8fc965ba9))
 * Add compliance-trestle assemble script (closes [#20](https://github.com/WhalerMike/uiao-core/issues/20)) ([3cca209](https://github.com/WhalerMike/uiao-core/commit/3cca2091419345673c7745696cccd9f96e87ae2d))
 * add conmon-process, conmon-export-oa, conmon-dashboard CLI commands for Sentinel telemetry to auto POA&M ([92826ad](https://github.com/WhalerMike/uiao-core/commit/92826addecad82109eefc2166bddb605bb42bbb2))
+* add CrowdStrike EDR vendor overlay ([9f51de8](https://github.com/WhalerMike/uiao-core/commit/9f51de84f6ee365aff3c378840bb6daf18519f83))
 * add data/control-library/SC-28.yml (Protection of Information at Rest) ([801b746](https://github.com/WhalerMike/uiao-core/commit/801b7468dcb9d992ea250a0eebe155e873ce7896))
 * add data/control-library/SC-7.yml (Boundary Protection) ([2773618](https://github.com/WhalerMike/uiao-core/commit/2773618b15b95bbb531fc2034680c9f914cba992))
 * add generate-all CLI command and animated SVG demo for README ([#1](https://github.com/WhalerMike/uiao-core/issues/1)) ([dd77d57](https://github.com/WhalerMike/uiao-core/commit/dd77d5793c4e90d3790399c8c304237a8d248435))
