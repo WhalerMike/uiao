@@ -93,6 +93,7 @@
 * Add rich DOCX generator with native Word styles and compliance tables ([18995c9](https://github.com/WhalerMike/uiao-core/commit/18995c98f3d953b58435e39d53740c2ed75b58bd))
 * add SC-12 Cryptographic Key Establishment control YAML ([d6eb6af](https://github.com/WhalerMike/uiao-core/commit/d6eb6af0d4828c866f6453119bcdab29e2c0334e))
 * add SC-8 Transmission Confidentiality and Integrity control narrative ([71b7f31](https://github.com/WhalerMike/uiao-core/commit/71b7f319b1d2dd88eef2356884b110962a881d2d))
+* add servicenow.yaml GRC vendor overlay (Xanadu) ([354d569](https://github.com/WhalerMike/uiao-core/commit/354d569944fa325c0ce3a0e1d3b75ab85c2d101f))
 * add SI-4 System Monitoring control YAML ([e9a0250](https://github.com/WhalerMike/uiao-core/commit/e9a0250c6e79e1a371e8f9985f840dc0c69fd0f2))
 * add splunk and crowdstrike to active overlays ([6494c11](https://github.com/WhalerMike/uiao-core/commit/6494c11430385eae6de31af5b7467f27a33536d8))
 * add Splunk SIEM vendor overlay ([a5d45ed](https://github.com/WhalerMike/uiao-core/commit/a5d45edb7388591d30784c3cb10504b3819da6d6))
