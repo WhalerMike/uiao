@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_OUTPUT_DIR = Path("assets/images/gemini")
 _PROMPT_REGISTRY_FILE = "gemini_prompts.json"
 _HASH_FILE = ".gemini_hashes.json"
-_DEFAULT_MODEL = "gemini-2.0-flash-preview-image-generation"
+_DEFAULT_MODEL = "gemini-2.0-flash-exp"
 
 # ---------------------------------------------------------------------------
 # Built-in prompt registry
