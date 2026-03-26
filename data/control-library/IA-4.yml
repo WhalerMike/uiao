@@ -1,0 +1,83 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-4
+# Title      : Identifier Management
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IA-4
+title: Identifier Management
+family: Identification and Authentication
+status: implemented
+
+implemented_by:
+  - entra-id
+  - cyberark-psm
+  - servicenow-itsm
+  - infoblox-ipam
+
+evidence:
+  - entra-id-user-lifecycle-management-configuration
+  - entra-id-inactive-account-review-report
+  - cyberark-privileged-account-inventory
+  - servicenow-account-provisioning-workflow-records
+  - infoblox-ipam-device-identifier-registry
+
+parameters:
+  - id: ia_4_identifier_uniqueness
+    description: >-
+      Requirement for unique identification of all individual users,
+      devices, and service accounts across organizational systems.
+    value: "Globally unique UPN via Entra ID; unique device OIDs via Intune; unique service principal IDs"
+  - id: ia_4_inactive_identifier_disable_period
+    description: >-
+      Period of inactivity after which user identifiers are automatically
+      disabled pending administrative review.
+    value: "90 days of inactivity triggers automatic account disable"
+  - id: ia_4_identifier_reuse_prohibition
+    description: >-
+      Minimum period before a previously assigned identifier may be
+      reassigned to a different individual or device.
+    value: "Identifiers are never reused; soft-deleted accounts retained 30 days then permanently purged"
+
+narrative: |
+  **Unique Identifier Assignment and Lifecycle Management**
+  The organization manages information system identifiers through
+  Microsoft Entra ID, which serves as the authoritative identity provider
+  for all user, device, and service principal identifiers. Each user
+  receives a globally unique User Principal Name (UPN) upon provisioning
+  through automated HR-driven lifecycle workflows integrated with
+  ServiceNow ITSM. Device identifiers are managed through Intune MDM
+  enrollment, and network device identifiers are maintained in Infoblox
+  IPAM. The organization prohibits identifier reuse, ensuring that
+  deprovisioned UPNs are never reassigned to different individuals,
+  directly supporting **AC-2** (Account Management) and **IA-2**
+  (Identification and Authentication).
+
+  **Privileged and Service Account Identifier Governance**
+  CyberArk PSM maintains an authoritative inventory of all privileged
+  account identifiers, with each privileged identity uniquely tied to
+  an individual administrator through Entra ID Privileged Identity
+  Management (PIM) just-in-time activation. Shared or generic
+  administrator accounts are prohibited; all privileged actions are
+  attributable to individual identifiers. Service account identifiers
+  are managed as Entra ID managed identities or service principals
+  with automated credential rotation, supporting **AC-6** (Least
+  Privilege) and **AU-2** (Event Logging) accountability requirements.
+
+  **Inactive Identifier Review and Deprovisioning**
+  Entra ID automated access reviews identify and disable user identifiers
+  after 90 days of inactivity, as defined in ia_4_inactive_identifier_disable_period.
+  Disabled accounts are reviewed by identity administrators via
+  ServiceNow workflows before permanent deletion. Entra ID soft-delete
+  retains disabled accounts for 30 days to support recovery, after which
+  accounts are permanently purged. All identifier lifecycle events are
+  logged to Microsoft Sentinel, supporting **AU-6** (Audit Record
+  Review) and **SI-4** (System Monitoring) continuous monitoring.
+
+related_controls:
+  - AC-2   # Account Management
+  - AC-6   # Least Privilege
+  - IA-2   # Identification and Authentication
+  - IA-5   # Authenticator Management
+  - AU-2   # Event Logging
+  - AU-6   # Audit Record Review, Analysis, and Reporting
+  - SI-4   # System Monitoring
