@@ -95,6 +95,7 @@
 * add SI-4 System Monitoring control YAML ([e9a0250](https://github.com/WhalerMike/uiao-core/commit/e9a0250c6e79e1a371e8f9985f840dc0c69fd0f2))
 * add splunk and crowdstrike to active overlays ([6494c11](https://github.com/WhalerMike/uiao-core/commit/6494c11430385eae6de31af5b7467f27a33536d8))
 * add Splunk SIEM vendor overlay ([a5d45ed](https://github.com/WhalerMike/uiao-core/commit/a5d45edb7388591d30784c3cb10504b3819da6d6))
+* add splunk, crowdstrike vendor params and PAM/GRC stubs to parameters.yml ([af98ba7](https://github.com/WhalerMike/uiao-core/commit/af98ba758505814a333fef2b3d530fd0cf67c4e2))
 * add UIAO-7DAY-GRADING-RUBRIC.md - Strategic Advisor grading standard ([86de938](https://github.com/WhalerMike/uiao-core/commit/86de938aba91667999e5f7f676968d400a0f7feb))
 * add vendor-neutral abstraction layer with base provider interfaces and overlay support ([0eb39d2](https://github.com/WhalerMike/uiao-core/commit/0eb39d2acb9d52b71aa45578695f4c9ab32b80aa))
 * Add vendor-neutral overlay example template (closes [#22](https://github.com/WhalerMike/uiao-core/issues/22)) ([f974580](https://github.com/WhalerMike/uiao-core/commit/f974580aadecd611f28f640ce99f6026cff221e8))
