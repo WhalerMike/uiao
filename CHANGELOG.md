@@ -170,6 +170,7 @@
 * rebase PR [#44](https://github.com/WhalerMike/uiao-core/issues/44) harden-github-actions-pipeline onto main, fix ruff ([e381598](https://github.com/WhalerMike/uiao-core/commit/e381598b445838772acba0a0c3c4d48172c6696f))
 * redesign docs/index.html for clean executive-friendly layout ([5a926f3](https://github.com/WhalerMike/uiao-core/commit/5a926f3f84190865850f5b77e4117ce799cb1db4))
 * Release v1.1.0 - version sync, README badges, and changelog ([7cd5a73](https://github.com/WhalerMike/uiao-core/commit/7cd5a73fd69b7989c91798360b60246605a40153))
+* replace PAM/GRC TBD stubs with CyberArk and ServiceNow Xanadu params ([b74c74c](https://github.com/WhalerMike/uiao-core/commit/b74c74c9ae907f4ed307e5f098999b3ef5ecb2c2))
 * **ssp:** migrate generate_ssp.py logic into uiao_core.generators.ssp (ADR-0002) ([d891b02](https://github.com/WhalerMike/uiao-core/commit/d891b02b2897aa2fdc47d0171b95f5c123c54321))
 * **trestle:** add validate_oscal_artifacts() + PlanOfActionAndMilestones support (ADR-0004) ([c47f6ce](https://github.com/WhalerMike/uiao-core/commit/c47f6ce74af8829ffbca66b6b04c5a16d6a0b6d8))
 * update AC-6 with Azure PIM/RBAC least privilege narrative ([10e8425](https://github.com/WhalerMike/uiao-core/commit/10e84256529718612ee80a776ec80c533a306dbe))
