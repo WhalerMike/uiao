@@ -8,6 +8,7 @@
 * add pip-audit CI step (continue-on-error) and tighten dep minimums ([10b052c](https://github.com/WhalerMike/uiao-core/commit/10b052c3aaf73ca81daf6bd9852dabbdee6c82ea))
 * add project_root to Settings and fix generate-artifacts workflow permissions ([884c755](https://github.com/WhalerMike/uiao-core/commit/884c75584a77a6d8db220e968ef61d90bd543945))
 * add role/shared_with annotations to cisco.yaml for compliance overlap clarity ([076cf86](https://github.com/WhalerMike/uiao-core/commit/076cf866bfad0df396a062dfca315186f5b02956))
+* add role/shared_with annotations to paloalto.yaml for compliance overlap clarity ([2260374](https://github.com/WhalerMike/uiao-core/commit/2260374db596b2ec5aa5f5955965fbff4bf0a056))
 * address code review — strict mode, Mermaid syntax tests, lint ([c5cea3b](https://github.com/WhalerMike/uiao-core/commit/c5cea3b4e70ec59cfb792674a24b6a4425d2d730))
 * address code review feedback - simplify audit fallbacks and fix Project-URL parsing ([d9fe42a](https://github.com/WhalerMike/uiao-core/commit/d9fe42a78b4d322fa87dbbfc771f87917345176a))
 * AI Security Audit handles both PRs and direct pushes to main ([6bc9f42](https://github.com/WhalerMike/uiao-core/commit/6bc9f42d648ba2c0fd97b42908ffff238fe66f14))
