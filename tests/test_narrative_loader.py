@@ -11,6 +11,7 @@ import yaml
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _write_yaml(path: Path, data: dict) -> None:
     """Write *data* as YAML to *path*, creating parent dirs as needed."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -48,10 +49,7 @@ def test_load_renders_jinja2(tmp_path: Path) -> None:
             "implemented_by": ["ServiceA"],
             "evidence": ["artifact-a"],
             "parameters": [],
-            "narrative": (
-                "{{ organization.name }} enforces XX-1. "
-                "Timeout is {{ parameters['session-timeout'] }}."
-            ),
+            "narrative": ("{{ organization.name }} enforces XX-1. Timeout is {{ parameters['session-timeout'] }}."),
         },
     )
 

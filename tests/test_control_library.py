@@ -16,6 +16,7 @@ IA2_PATH = CONTROL_LIBRARY_DIR / "IA-2.yml"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def load_yaml(path: Path) -> dict:
     with path.open(encoding="utf-8") as f:
         return yaml.safe_load(f)
@@ -106,6 +107,7 @@ class TestSC8Evidence:
 # ---------------------------------------------------------------------------
 # IA-2.yml existence and structure
 # ---------------------------------------------------------------------------
+
 
 def test_ia2_file_exists():
     assert IA2_PATH.exists(), f"Expected {IA2_PATH} to exist"

@@ -571,6 +571,7 @@ def conmon_dashboard(
 
     console.print(f"[green]KSI dashboard written to {out}[/green]")
 
+
 @app.command()
 def generate_all(
     canon_path: str = typer.Option(
@@ -757,17 +758,12 @@ def generate_all(
     elapsed = time.monotonic() - start
     console.print()
     if errors:
-        console.print(
-            f"[bold yellow]Pipeline finished in {elapsed:.1f}s with "
-            f"{len(errors)} error(s):[/bold yellow]"
-        )
+        console.print(f"[bold yellow]Pipeline finished in {elapsed:.1f}s with {len(errors)} error(s):[/bold yellow]")
         for err in errors:
             console.print(f"  [red]• {err}[/red]")
         raise typer.Exit(code=1)
 
-    console.print(
-        f"[bold green]✓ All artifacts generated in {elapsed:.1f}s[/bold green]"
-    )
+    console.print(f"[bold green]✓ All artifacts generated in {elapsed:.1f}s[/bold green]")
 
 
 if __name__ == "__main__":
