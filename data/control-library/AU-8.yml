@@ -1,0 +1,74 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AU-8
+# Title      : Time Stamps
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AU-8
+title: Time Stamps
+family: Audit and Accountability
+status: implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - cisco-catalyst
+  - infoblox-ipam
+  - intune-mdm
+
+evidence:
+  - azure-ntp-time-synchronization-configuration
+  - cisco-catalyst-ntp-server-configuration
+  - infoblox-dns-ntp-service-configuration
+  - sentinel-timestamp-normalization-documentation
+
+parameters:
+  - id: au_8_time_source
+    description: >-
+      Authoritative time source used to synchronize internal system
+      clocks across all organizational information systems.
+    value: "Azure internal NTP (time.windows.com) for cloud; Infoblox NTP for on-premises"
+  - id: au_8_time_granularity
+    description: >-
+      Granularity of timestamps recorded in audit records across
+      all organizational systems.
+    value: "UTC with millisecond precision; mapped to ISO 8601 format"
+
+narrative: |
+  **Authoritative Time Synchronization**
+  The organization uses internal system clocks to generate time stamps
+  for audit records synchronized to an authoritative time source. All
+  Azure-hosted systems and Microsoft 365 services synchronize to the
+  Azure internal NTP infrastructure (time.windows.com), which is
+  traceable to NIST and USNO time standards. On-premises network
+  infrastructure and endpoints synchronize to Infoblox-managed NTP
+  services, which in turn synchronize to the same authoritative
+  sources. Cisco Catalyst switches and routers are configured with
+  redundant NTP server associations to ensure continuous time
+  accuracy, supporting **AU-3** (Content of Audit Records) timestamp
+  requirements.
+
+  **Consistent Timestamp Format and Normalization**
+  All audit records across organizational systems use UTC timestamps
+  with millisecond precision in ISO 8601 format, ensuring consistent
+  cross-system event correlation. Microsoft Sentinel normalizes
+  ingested timestamps from all data sources to a common UTC reference
+  during the parsing and ingestion pipeline, eliminating time zone
+  discrepancies that could impede forensic analysis. Splunk CIM
+  timestamp normalization provides an additional layer of consistency
+  for the secondary SIEM platform, supporting **AU-6** (Audit Record
+  Review) and **IR-4** (Incident Handling) cross-source correlation.
+
+  **Time Drift Monitoring and Compliance**
+  Microsoft Intune compliance policies validate NTP synchronization
+  status on managed endpoints, flagging devices with clock drift
+  exceeding acceptable thresholds. Cisco Catalyst NTP associations
+  are monitored via SNMP polling with drift alerts forwarded to
+  Microsoft Sentinel. Time synchronization health is included in the
+  continuous monitoring program, supporting **CM-6** (Configuration
+  Settings) and **SI-4** (System Monitoring) requirements.
+
+related_controls:
+  - AU-3   # Content of Audit Records
+  - AU-6   # Audit Record Review, Analysis, and Reporting
+  - CM-6   # Configuration Settings
+  - IR-4   # Incident Handling
+  - SI-4   # System Monitoring
