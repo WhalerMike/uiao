@@ -31,6 +31,7 @@
 * **generators:** suppress I001 in charts.py for matplotlib backend setup ([426e6e5](https://github.com/WhalerMike/uiao-core/commit/426e6e59d31636843b79b5ec49691debb637047a))
 * ignore I001 isort in abstractions to fix CI lint ([36a35c5](https://github.com/WhalerMike/uiao-core/commit/36a35c580daf73b64c3c9eab60d5f1a064948873))
 * ignore setuptools CVEs in pip-audit (CVE-2024-6345, PYSEC-2025-49) ([339a15c](https://github.com/WhalerMike/uiao-core/commit/339a15c93d492120b0624cc91076763640ac33fe))
+* indent AC-1.yml narrative block to fix YAML parse error ([ef5378f](https://github.com/WhalerMike/uiao-core/commit/ef5378f683a034d935d91c52a73263c422eb2d38))
 * **lint:** add blank line after __future__ import in charts.py (ruff I001, ADR-0004) ([11bfbfb](https://github.com/WhalerMike/uiao-core/commit/11bfbfb1ce485fdec12f0fa73323666e36e85605))
 * **lint:** add blank line after __future__ import in rich_docx.py (ruff I001, ADR-0004) ([3e2dead](https://github.com/WhalerMike/uiao-core/commit/3e2deadb4bf7509a4a86a1bc8c2f5651ff7e9e86))
 * **lint:** add blank line after __future__ import in ssp.py (ruff I001, ADR-0004) ([d2e511a](https://github.com/WhalerMike/uiao-core/commit/d2e511aa5799c072ec5b8a5edb7c67faf68e8678))
