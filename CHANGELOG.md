@@ -93,6 +93,7 @@
 * add SC-12 Cryptographic Key Establishment control YAML ([d6eb6af](https://github.com/WhalerMike/uiao-core/commit/d6eb6af0d4828c866f6453119bcdab29e2c0334e))
 * add SC-8 Transmission Confidentiality and Integrity control narrative ([71b7f31](https://github.com/WhalerMike/uiao-core/commit/71b7f319b1d2dd88eef2356884b110962a881d2d))
 * add SI-4 System Monitoring control YAML ([e9a0250](https://github.com/WhalerMike/uiao-core/commit/e9a0250c6e79e1a371e8f9985f840dc0c69fd0f2))
+* add splunk and crowdstrike to active overlays ([6494c11](https://github.com/WhalerMike/uiao-core/commit/6494c11430385eae6de31af5b7467f27a33536d8))
 * add Splunk SIEM vendor overlay ([a5d45ed](https://github.com/WhalerMike/uiao-core/commit/a5d45edb7388591d30784c3cb10504b3819da6d6))
 * add UIAO-7DAY-GRADING-RUBRIC.md - Strategic Advisor grading standard ([86de938](https://github.com/WhalerMike/uiao-core/commit/86de938aba91667999e5f7f676968d400a0f7feb))
 * add vendor-neutral abstraction layer with base provider interfaces and overlay support ([0eb39d2](https://github.com/WhalerMike/uiao-core/commit/0eb39d2acb9d52b71aa45578695f4c9ab32b80aa))
