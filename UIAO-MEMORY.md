@@ -6,6 +6,7 @@ Update after EVERY run (success or failure).
 
 | Date | Task | Outcome | Issue / Error Summary | Correction Rule |
 |------|------|---------|----------------------|----------------|
+| 2026-03-26 | Format authority established | CLOSED | Formatting drift between Grok, Perplexity, and Claude (snake_case vs camelCase; canon vs schema assumptions causing agent disagreements on every PR) | Created `FORMAT-CANON.md` as primary format authority. Updated `PROJECT-CONTEXT.md` header to establish authority hierarchy. All format decisions now defer to `FORMAT-CANON.md` before agent training defaults. |
 | 2026-03-24 | Validation target repo | New architecture | ALWAYS point SSP/OSCAL/POA&M/monitoring agents at uiao-validation-targets. Endpoint: http://localhost:8000 (local) or https://github.com/WhalerMike/uiao-validation-targets (CI). Max 12 agents across BOTH repos. |
 | 2026-03-24 | Continuous monitoring review + fixes | SUCCESS (#48 review PR) | Missing dashboard/ksi.py, dashboard/export.py, monitoring/ongoing_auth.py; POA&M lacked POAM-UIAO- prefix + Open/In-Progress/Closed status enum; no OSCAL evidence cross-links; no tests | ALWAYS create all modules referenced in __init__.py; ALWAYS add POAM-UIAO- prefix + FedRAMP status enum; ALWAYS generate OA evidence cross-links; ALWAYS write tests |
 | 2026-03-24 | OSCAL evidence linking review + fixes (PR #47) | SUCCESS | RE-PLAN applied: added missing linker.py + bundler.py, added prop:id on every back-matter prop, added 34 tests (all pass), updated SSP back-matter | linker.py and bundler.py are REQUIRED companions to collector.py; never ship __init__.py that imports modules not in the PR |
@@ -34,3 +35,5 @@ Update after EVERY run (success or failure).
 - OSCAL schema validation runs via `make validate-oscal` (compliance-trestle); linker.py generates conformant structures but does not call the validator inline
 - ALWAYS populate back-matter resources in SSP before marking PR as review-ready
 - pip-audit currently shows CVEs in environment system packages (urllib3, setuptools, pip, pyopenssl); these are transitive/system-level — not direct project deps — but monitor for resolution in compliance-trestle upgrades
+- ALWAYS read FORMAT-CANON.md before making any format, naming, casing, or indentation decision
+- Format disputes resolve to: FORMAT-CANON.md > schemas/ > AGENTS.md > agent defaults (zero weight)
