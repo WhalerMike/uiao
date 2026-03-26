@@ -1,0 +1,57 @@
+# Palo Alto Networks vendor overlay for UIAO-Core
+#
+# Apply this overlay to replace generic firewall/NGFW abstract component names
+# with Palo Alto Networks Panorama / PAN-OS-specific values in all generated
+# OSCAL artifacts.
+#
+# Slot: Network (Slot #2 sub-overlay alongside Cisco SD-WAN)
+# Role: NGFW / Firewall / Micro-Segmentation
+#
+# Merge behavior:
+#   - dicts  -> deep-merged (overlay values override base/canon)
+#   - lists  -> appended then deduplicated (overlay items appended)
+#   - scalars -> overlay wins
+#
+# Usage:
+#   Place this file in data/vendor-overlays/ and it will be automatically
+#   applied by load_context().  Remove or rename to disable.
+
+control_planes:
+  network_firewall:
+    name: Palo Alto Networks NGFW
+    vendor: Palo Alto Networks
+    abstract_type: NGFWProvider
+    management: Panorama
+    capabilities:
+      - Next-Generation Firewall (NGFW)
+      - App-ID Application Identification
+      - Threat Prevention (IPS / Anti-Malware)
+      - URL Filtering
+      - SSL/TLS Decryption
+      - Micro-Segmentation (Zone-Based Policy)
+      - WildFire Sandbox Analysis
+      - GlobalProtect VPN
+
+nist_mappings:
+  SC-7: "Palo Alto NGFW boundary protection with deny-by-default zone policy"
+  AC-4: "Palo Alto App-ID information flow enforcement between security zones"
+  SI-3: "Palo Alto Threat Prevention engine for malicious code protection"
+  SI-4: "Palo Alto NGFW traffic inspection and IPS monitoring"
+  SC-8: "Palo Alto SSL/TLS decryption and re-encryption for traffic inspection"
+  AU-3: "Palo Alto traffic and threat log generation with full session detail"
+  SC-7(5): "Palo Alto deny-by-default with explicit allow for managed interfaces"
+  SI-3(7): "Palo Alto WildFire cloud-based sandbox for zero-day analysis"
+
+evidence_sources:
+  - name: Palo Alto Panorama Security Policy Export
+    type: api
+    endpoint: /restapi/v10.2/Policies/SecurityRules
+  - name: Palo Alto Traffic and Threat Logs
+    type: siem_feed
+    destination: Splunk / Microsoft Sentinel
+  - name: Palo Alto WildFire Verdicts
+    type: api
+    endpoint: /publicapi/get/verdict
+  - name: Palo Alto GlobalProtect Gateway Logs
+    type: siem_feed
+    destination: Splunk / Microsoft Sentinel
