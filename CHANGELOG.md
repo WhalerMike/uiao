@@ -52,6 +52,7 @@
 * indent narrative block scalar in IA-5.yml to fix YAML parse error ([efb6a41](https://github.com/WhalerMike/uiao-core/commit/efb6a417908b5e7f0689989689442ed542f9f932))
 * indent narrative block scalar in IA-8.yml to fix YAML parse error ([7fb6b0f](https://github.com/WhalerMike/uiao-core/commit/7fb6b0f826ff5643a6802757434743bc1272debe))
 * indent narrative block scalar in IR-4.yml to fix YAML parse error ([4d465f3](https://github.com/WhalerMike/uiao-core/commit/4d465f3e874df2d8aba2b3f3efd9ad9a2febeee8))
+* indent narrative block scalar in IR-6.yml to fix YAML parse error ([3bf5b31](https://github.com/WhalerMike/uiao-core/commit/3bf5b31ad6c1c66bdd9785c42c6d7097081c4e2b))
 * **lint:** add blank line after __future__ import in charts.py (ruff I001, ADR-0004) ([11bfbfb](https://github.com/WhalerMike/uiao-core/commit/11bfbfb1ce485fdec12f0fa73323666e36e85605))
 * **lint:** add blank line after __future__ import in rich_docx.py (ruff I001, ADR-0004) ([3e2dead](https://github.com/WhalerMike/uiao-core/commit/3e2deadb4bf7509a4a86a1bc8c2f5651ff7e9e86))
 * **lint:** add blank line after __future__ import in ssp.py (ruff I001, ADR-0004) ([d2e511a](https://github.com/WhalerMike/uiao-core/commit/d2e511aa5799c072ec5b8a5edb7c67faf68e8678))
