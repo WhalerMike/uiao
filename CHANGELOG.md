@@ -53,6 +53,7 @@
 * indent narrative block scalar in IA-8.yml to fix YAML parse error ([7fb6b0f](https://github.com/WhalerMike/uiao-core/commit/7fb6b0f826ff5643a6802757434743bc1272debe))
 * indent narrative block scalar in IR-4.yml to fix YAML parse error ([4d465f3](https://github.com/WhalerMike/uiao-core/commit/4d465f3e874df2d8aba2b3f3efd9ad9a2febeee8))
 * indent narrative block scalar in IR-6.yml to fix YAML parse error ([3bf5b31](https://github.com/WhalerMike/uiao-core/commit/3bf5b31ad6c1c66bdd9785c42c6d7097081c4e2b))
+* indent narrative block scalar in SC-12.yml to fix YAML parse error ([91089e6](https://github.com/WhalerMike/uiao-core/commit/91089e6086d957e21442b500a51222366d83febd))
 * indent narrative block scalar in SC-5.yml to fix YAML parse error ([461f568](https://github.com/WhalerMike/uiao-core/commit/461f56848b27ca198e3b2b18c0b72f4d6ddf9405))
 * indent narrative block scalar in SC-7.yml to fix YAML parse error ([1ccf919](https://github.com/WhalerMike/uiao-core/commit/1ccf919749cd9be420232d71128be9a215a2972a))
 * indent narrative block scalar in SC-8.yml to fix YAML parse error ([470e5e1](https://github.com/WhalerMike/uiao-core/commit/470e5e1eca4d11715964d87912197c15d0c5dcb9))
