@@ -13,6 +13,7 @@
 * address code review feedback - simplify audit fallbacks and fix Project-URL parsing ([d9fe42a](https://github.com/WhalerMike/uiao-core/commit/d9fe42a78b4d322fa87dbbfc771f87917345176a))
 * AI Security Audit handles both PRs and direct pushes to main ([6bc9f42](https://github.com/WhalerMike/uiao-core/commit/6bc9f42d648ba2c0fd97b42908ffff238fe66f14))
 * apply ruff format to tests/test_cli.py ([d701611](https://github.com/WhalerMike/uiao-core/commit/d7016115c3cad734ce2943865bb79e215f4d1391))
+* AU-11 Sentinel as primary, RA-5 ServiceNow VR, PM-4 legacy OSCAL replacement ([3503827](https://github.com/WhalerMike/uiao-core/commit/3503827afeec740135b735c5289d2fbd3ba2d78a))
 * **ci:** add rebase step to changelog workflow to prevent push failures ([0265b33](https://github.com/WhalerMike/uiao-core/commit/0265b33f6a7259246f5ff9906a26affa3ae09a27))
 * **ci:** add skip-tag to changelog - tag v0.30.0 already exists ([fac84fd](https://github.com/WhalerMike/uiao-core/commit/fac84fdff597837d42c1806c26d01a731ef50982))
 * **ci:** correct --tb=shortcom typo to --tb=short in ci.yml ([0aa5374](https://github.com/WhalerMike/uiao-core/commit/0aa537478517632da8c8e032b492b4b922ac69ec))
