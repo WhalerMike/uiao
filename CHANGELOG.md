@@ -65,6 +65,7 @@
 * remove unused pytest import from test_narrative_loader.py ([9d23976](https://github.com/WhalerMike/uiao-core/commit/9d23976334fa0b06afb9e4f32bbc4c8f3f96c21e))
 * remove unused tempfile import (ruff F401, I001) ([693605a](https://github.com/WhalerMike/uiao-core/commit/693605a30e34973b5dbed0c67f2d27847ccedfd3))
 * resolve all 156 ruff lint errors on copilot/add-gemini-image-generation ([3fd52f9](https://github.com/WhalerMike/uiao-core/commit/3fd52f9216536fcdcc10f80a177b9b738765f542))
+* resolve AU-11, PM-4, RA-5 compliance overlaps in parameters.yml ([f6f5bed](https://github.com/WhalerMike/uiao-core/commit/f6f5bedeff522305c26758dc75cbae76a5712356))
 * resolve merge conflicts with AC-3 PR, keep both PolicyEnforcementPoint and PIVAuthenticationService ([7c5a59e](https://github.com/WhalerMike/uiao-core/commit/7c5a59ea82043c11522e8dfbe0d000cd09fbfcad))
 * resolve PR [#45](https://github.com/WhalerMike/uiao-core/issues/45) POA&M rule engine CI failures and MEMORY compliance ([5a5e984](https://github.com/WhalerMike/uiao-core/commit/5a5e9841a76323e705973c83c3678c4999cb579b))
 * resolve UP037 linting errors in narrative_loader.py ([070b5ea](https://github.com/WhalerMike/uiao-core/commit/070b5ea40c9fae005335903be2b84b09bdf77004))
