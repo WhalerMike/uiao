@@ -91,6 +91,7 @@
 * add generate-all CLI command and animated SVG demo for README ([#1](https://github.com/WhalerMike/uiao-core/issues/1)) ([dd77d57](https://github.com/WhalerMike/uiao-core/commit/dd77d5793c4e90d3790399c8c304237a8d248435))
 * add generate-docs CLI command and fix settings.root_dir bug ([e618e36](https://github.com/WhalerMike/uiao-core/commit/e618e3663cf7dfdfd79836fe00b3783c5f0c127e))
 * add generate-docx and generate-artifacts CLI commands ([6e2ecf1](https://github.com/WhalerMike/uiao-core/commit/6e2ecf1adc4708847257df38b90c2a4acb0fe582))
+* add infoblox.yaml standalone DDI/DNS vendor overlay ([5081b0c](https://github.com/WhalerMike/uiao-core/commit/5081b0c3713e42e8817417569131bf9b51d0102b))
 * add PyPI classifiers, URLs, and publish workflow ([9e82c39](https://github.com/WhalerMike/uiao-core/commit/9e82c398b6b661278bce598abe08e88ab61184e8))
 * Add rich DOCX generator with native Word styles and compliance tables ([18995c9](https://github.com/WhalerMike/uiao-core/commit/18995c98f3d953b58435e39d53740c2ed75b58bd))
 * add SC-12 Cryptographic Key Establishment control YAML ([d6eb6af](https://github.com/WhalerMike/uiao-core/commit/d6eb6af0d4828c866f6453119bcdab29e2c0334e))
