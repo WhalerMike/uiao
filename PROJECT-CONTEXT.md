@@ -1,6 +1,20 @@
 # PROJECT-CONTEXT.md – Single Source of Truth for UIAO Ecosystem
 
-**Last Updated**: 2026-03-24
+## ⚠️ Format & Authority Hierarchy (CRITICAL)
+
+To prevent Agent formatting conflicts, follow this order of precedence for **format, naming, and presentation decisions**:
+
+1. **[FORMAT-CANON.md](./FORMAT-CANON.md)** — Absolute authority for file structure, naming conventions, casing, indentation, quoting, and styling.
+2. **`schemas/`** — Ultimate authority for OSCAL field types, JSON structure, and validation constraints.
+3. **`AGENTS.md`** — Defines task roles, implementation behavior, and code-level workflow rules.
+4. **This file (`PROJECT-CONTEXT.md`)** — Defines architectural intent, orchestration, and project history.
+5. **`UIAO-MEMORY.md`** — Persistent correction log and operational lessons learned; apply all matching correction rules before retrying failed work.
+
+**Agent Rule**: If a format decision is not explicitly defined in `FORMAT-CANON.md`, follow the closest existing gold-standard file. If ambiguity still remains, stop and ask for clarification. Never substitute training defaults.
+
+---
+
+**Last Updated**: 2026-03-26
 **Owner**: whalermike
 **Mission**: Build a production-capable, single-YAML-canon pipeline that generates auditor-accepted FedRAMP Moderate Rev 5 artifacts with real evidence and continuous monitoring hooks.
 
@@ -22,7 +36,7 @@
    - **GitHub Copilot** = Fast implementation layer only (never makes primary decisions).
 
 2. **Memory & Context**
-   - Always read this file + AGENTS.md + CLAUDE.md + UIAO-MEMORY.md before starting work
+       - Always read this file + FORMAT-CANON.md + AGENTS.md + CLAUDE.md + UIAO-MEMORY.md before starting work
    - After any significant change or mistake, update the relevant memory file and this PROJECT-CONTEXT.md if architecture decisions change
    - Never assume context from previous sessions — explicitly reference files
    - **Role separation**: UIAO-MEMORY.md is the live append-only correction log; PROJECT-CONTEXT.md is the static governance doc. Do not mix their roles.
@@ -68,6 +82,7 @@ canon/diagrams.yaml
 - Public repo rule: Never commit CUI or production artifacts here
 
 ## Decision Log (Add new entries at top)
+- 2026-03-26: FORMAT-CANON.md created as primary format authority. PROJECT-CONTEXT.md updated to establish format authority hierarchy before all other project context. All agents must read FORMAT-CANON.md before making any format decisions.
 - 2026-03-24: Automated diagram generation implemented (copilot/diagram-automation). `canon/diagrams.yaml` is now the single source of truth for all Mermaid diagrams. `generate-docs` auto-generates PNGs; `generate-diagrams` CLI command available for standalone use. Mermaid fences post-processed to `<img>` tags in Markdown for DOCX/PPTX/PDF pipelines.
 - 2026-03-24: Grill Master RE-PLAN fix-PR merge loop proven at scale (PRs #52, #54, #55, #56).
 - 2026-03-24: Created PROJECT-CONTEXT.md to prevent context collision across Comet/Copilot/Claude layers
