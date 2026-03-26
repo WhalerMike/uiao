@@ -1,0 +1,70 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AU-4
+# Title      : Audit Log Storage Capacity
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AU-4
+title: Audit Log Storage Capacity
+family: Audit and Accountability
+status: implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - splunk-siem
+  - azure-log-analytics
+
+evidence:
+  - sentinel-workspace-retention-configuration
+  - splunk-index-capacity-and-retention-report
+  - azure-log-analytics-usage-and-estimated-cost-report
+
+parameters:
+  - id: au_4_online_retention_period
+    description: >-
+      Minimum period for which audit records are retained in online
+      (hot/warm) storage for active query and investigation.
+    value: "90 days online in Sentinel Log Analytics workspace"
+  - id: au_4_archive_retention_period
+    description: >-
+      Total retention period for audit records including archived
+      (cold) storage for compliance and long-term forensics.
+    value: "1 year total retention; archive tier after 90 days"
+
+narrative: |
+  **Centralized Audit Log Storage and Capacity Management**
+  The organization allocates audit log storage capacity sufficient to
+  reduce the likelihood of storage exhaustion and ensure continuous
+  audit record collection across all organizational information
+  systems. Microsoft Sentinel, backed by Azure Log Analytics
+  workspaces, serves as the primary audit log repository with
+  auto-scaling storage that dynamically adjusts to ingestion volume.
+  Sentinel workspace retention is configured for 90 days of online
+  (hot) storage with an additional archive tier extending total
+  retention to one year, satisfying FedRAMP Moderate audit retention
+  requirements and supporting **AU-11** (Audit Record Retention).
+
+  **Multi-Tier Storage Architecture**
+  Splunk SIEM provides a secondary audit log aggregation layer with
+  dedicated index capacity planning and monitoring. Splunk indexes
+  are sized based on projected daily ingestion volume with a 20
+  percent growth buffer, and storage utilization is monitored via
+  automated dashboards. Azure Log Analytics estimated cost and usage
+  reports are reviewed monthly to ensure capacity remains aligned
+  with organizational audit logging requirements defined in **AU-2**
+  (Event Logging) and **AU-3** (Content of Audit Records).
+
+  **Capacity Alerting and Overflow Prevention**
+  Automated alerts are configured in both Sentinel and Splunk to
+  notify security operations personnel when storage utilization
+  exceeds 80 percent of allocated capacity, triggering capacity
+  expansion procedures before audit record loss can occur. This
+  proactive capacity management directly supports **AU-5** (Response
+  to Audit Logging Process Failures) by ensuring that storage
+  exhaustion does not result in audit record gaps.
+
+related_controls:
+  - AU-2   # Event Logging
+  - AU-3   # Content of Audit Records
+  - AU-5   # Response to Audit Logging Process Failures
+  - AU-9   # Protection of Audit Information
+  - AU-11  # Audit Record Retention
