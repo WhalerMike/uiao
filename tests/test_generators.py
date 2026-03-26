@@ -348,9 +348,7 @@ class TestInventoryFromCoreStack:
     def test_pillar_prop_is_included(self):
         from uiao_core.generators.ssp import inventory_items_from_core_stack
 
-        items = inventory_items_from_core_stack(
-            [{"id": "IB", "name": "Infoblox IPAM", "pillar": "addressing"}]
-        )
+        items = inventory_items_from_core_stack([{"id": "IB", "name": "Infoblox IPAM", "pillar": "addressing"}])
         prop_names = [p["name"] for p in items[0]["props"]]
         assert "uiao-pillar" in prop_names
         pillar_val = next(p["value"] for p in items[0]["props"] if p["name"] == "uiao-pillar")
@@ -406,8 +404,14 @@ class TestSSPInventoryMerge:
 
         context = {
             "inventory_items": [
-                {"id": "inv-inr", "description": "Manual INR override", "asset_type": "hardware",
-                 "responsible_party": "agency-admin", "implemented_components": ["component-identity"], "props": []}
+                {
+                    "id": "inv-inr",
+                    "description": "Manual INR override",
+                    "asset_type": "hardware",
+                    "responsible_party": "agency-admin",
+                    "implemented_components": ["component-identity"],
+                    "props": [],
+                }
             ],
             "core_stack": [{"id": "INR", "name": "Microsoft INR", "pillar": "identity"}],
         }

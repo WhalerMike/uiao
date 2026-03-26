@@ -72,20 +72,23 @@ def _render_mmdc(mmd_path: Path, png_path: Path) -> bool:
     # environments where unprivileged user namespaces are restricted.
     puppeteer_cfg_path: str | None = None
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as pcfg:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as pcfg:
             json.dump({"args": ["--no-sandbox", "--disable-setuid-sandbox"]}, pcfg)
             puppeteer_cfg_path = pcfg.name
 
         if mmdc:
             cmd = [
                 mmdc,
-                "-i", str(mmd_path),
-                "-o", str(png_path),
-                "-b", "white",
-                "-s", "2",
-                "--puppeteerConfig", puppeteer_cfg_path,
+                "-i",
+                str(mmd_path),
+                "-o",
+                str(png_path),
+                "-b",
+                "white",
+                "-s",
+                "2",
+                "--puppeteerConfig",
+                puppeteer_cfg_path,
             ]
         else:
             npx = shutil.which("npx")

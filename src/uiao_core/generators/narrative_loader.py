@@ -82,6 +82,7 @@ class _TBDUndefined(Undefined):
     def __bool__(self) -> bool:
         return False
 
+
 # ---------------------------------------------------------------------------
 # Parameter helpers
 # ---------------------------------------------------------------------------
@@ -134,6 +135,7 @@ def _merge_local_parameters(
             merged[pid] = str(val)
     return merged
 
+
 # ---------------------------------------------------------------------------
 # Jinja2 rendering
 # ---------------------------------------------------------------------------
@@ -169,6 +171,7 @@ def _render_narrative(
         logger.warning("Jinja2 render failed: %s – returning raw narrative", exc)
         return raw
 
+
 # ---------------------------------------------------------------------------
 # Normalisation helpers
 # ---------------------------------------------------------------------------
@@ -198,10 +201,12 @@ def _normalise_implemented_by(raw: Any) -> list[dict[str, Any]]:
             result.append({"type": item, "description": ""})
         elif isinstance(item, dict):
             item_type = item.get("type") or item.get("abstract-type", "")
-            result.append({
-                "type": str(item_type),
-                "description": item.get("description", ""),
-            })
+            result.append(
+                {
+                    "type": str(item_type),
+                    "description": item.get("description", ""),
+                }
+            )
     return result
 
 
@@ -212,6 +217,7 @@ def _resolve_field(data: dict[str, Any], canonical: str) -> Any:
         return val
     alt = canonical.replace("_", "-")
     return data.get(alt)
+
 
 # ---------------------------------------------------------------------------
 # OSCAL pre-build helpers (new in v2)
@@ -238,12 +244,15 @@ def _build_oscal_props(status: str, family: str = "") -> list[dict[str, Any]]:
         },
     ]
     if family:
-        props.append({
-            "name": "control-family",
-            "value": family,
-            "ns": "https://fedramp.gov/ns/oscal",
-        })
+        props.append(
+            {
+                "name": "control-family",
+                "value": family,
+                "ns": "https://fedramp.gov/ns/oscal",
+            }
+        )
     return props
+
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -317,9 +326,7 @@ def load_control_library(
             continue
 
         # Support both "control_id" and "control-id" key spellings.
-        ctrl_id: str = str(
-            _resolve_field(data, "control_id") or ""
-        ).strip().upper()
+        ctrl_id: str = str(_resolve_field(data, "control_id") or "").strip().upper()
         title: str = str(data.get("title", "")).strip()
         raw_narrative: str = str(data.get("narrative", "")).strip()
 
@@ -383,4 +390,3 @@ def load_control_library(
         logger.info("Control library: loaded %d controls", len(result))
 
     return result
-
