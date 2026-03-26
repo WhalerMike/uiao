@@ -92,6 +92,7 @@
 * add generate-docs CLI command and fix settings.root_dir bug ([e618e36](https://github.com/WhalerMike/uiao-core/commit/e618e3663cf7dfdfd79836fe00b3783c5f0c127e))
 * add generate-docx and generate-artifacts CLI commands ([6e2ecf1](https://github.com/WhalerMike/uiao-core/commit/6e2ecf1adc4708847257df38b90c2a4acb0fe582))
 * add infoblox.yaml standalone DDI/DNS vendor overlay ([5081b0c](https://github.com/WhalerMike/uiao-core/commit/5081b0c3713e42e8817417569131bf9b51d0102b))
+* add Palo Alto NGFW firewall parameters to parameters.yml ([9c4cc00](https://github.com/WhalerMike/uiao-core/commit/9c4cc0087b2510b5dbd73af0e6d0737f8e12ea9a))
 * add paloalto to active overlays (Slot [#2](https://github.com/WhalerMike/uiao-core/issues/2) NGFW sub-overlay) ([c8ffb52](https://github.com/WhalerMike/uiao-core/commit/c8ffb52a46fee1b38cbcdd7633f0b18ab6cf1c0d))
 * add paloalto.yaml NGFW vendor overlay (Slot [#2](https://github.com/WhalerMike/uiao-core/issues/2) sub-overlay) ([7dc01c2](https://github.com/WhalerMike/uiao-core/commit/7dc01c25a1181e4b9917e6d9433aa30f36f44d2d))
 * add PyPI classifiers, URLs, and publish workflow ([9e82c39](https://github.com/WhalerMike/uiao-core/commit/9e82c398b6b661278bce598abe08e88ab61184e8))
