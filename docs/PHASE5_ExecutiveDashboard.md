@@ -1,246 +1,230 @@
 # PHASE 5 — Executive Dashboard Specification
 
-> **UIAO Control Plane — Phase 5: Operational Readiness**
+> **UIAO Control Plane — Sequence D: Canon Expansion & Runtime Integration**
 >
-> Version: 1.0 
-> Date: 2025-07-13 
-> Classification: **CUI** — Executive Use Only 
+> Version: 2.0
+> Date: 2026-03-26
+> Classification: **CUI** — Executive Use Only
 > Status: **NEW (Proposed)**
+> Artifact: Task D6
+> Protocol: NO-HALLUCINATION PROTOCOL
+> Mode: Proposal Mode (B)
+> Parent: `PHASE5_OperationalGovernance.md`
 
 ---
 
-## 1. Purpose
+## 1. Purpose of the Executive Dashboard
 
-This document specifies the Executive Dashboard for the UIAO Control Plane, providing real-time visibility into operational health, compliance posture, drift status, and incident response across all six control plane domains. The dashboard serves as the single pane of glass for executive leadership, ISSO/ISSM, and Authorizing Officials to monitor the UIAO program's operational readiness.
+**NEW (Proposed)**
+
+The Executive Dashboard Specification defines the single-pane-of-glass for UIAO operational visibility. It provides real-time, evidence-backed views into:
+
+- Compliance posture across all six control planes
+- Runtime drift detection and remediation status
+- Telemetry evidence coverage and freshness
+- Incident response status and escalation paths
+- Authorization readiness and audit posture
+- Program modernization progress
+
+| Property | Description |
+|---|---|
+| Real-Time | All data refreshes continuously or at defined intervals |
+| Evidence-Backed | Every metric is traceable to telemetry sources |
+| Role-Based | Views are tailored to audience access levels |
+| Actionable | Every alert includes a remediation path |
+| Auditable | Dashboard state is logged for compliance review |
+| Drift-Aware | Dashboard highlights drift events prominently |
 
 ---
 
-## 2. Audience
+## 2. Audience and Access Model
 
-| Role | Access Level | Primary View |
-|---|---|---|
-| Authorizing Official (AO) | Full | Executive Summary |
-| ISSO / ISSM | Full | Compliance + Incident Detail |
-| Program Manager | Full | All operational views |
-| Domain Owners | Domain-scoped | Domain-specific metrics |
-| SOC Analysts | Incident-scoped | Incident and alert views |
-| Executive Leadership | Summary only | Executive Summary |
+**NEW (Proposed)**
+
+| Role | Access Level | Primary View | Update Frequency |
+|---|---|---|---|
+| Authorizing Official (AO) | Full | Executive Summary | Real-time |
+| ISSO / ISSM | Full | Compliance + Incident Detail | Real-time |
+| Program Manager | Read | Modernization Progress | Daily |
+| SOC Analyst | Operational | Drift + Incident Panels | Real-time |
+| Domain Owner | Domain-Scoped | Control Plane Detail | Real-time |
+| Auditor | Read-Only | Evidence + Compliance | On-demand |
 
 ---
 
 ## 3. Dashboard Architecture
 
-### 3.1 Data Flow
+**NEW (Proposed)**
+
+### 3.1 Data Flow Model
 
 ```
-Data Sources → Collection Layer → Processing → Dashboard API → Visualization
-     ↓                ↓               ↓              ↓               ↓
- Entra ID         Azure Monitor   Aggregation   REST API      Web Dashboard
- IPAM/DNS         GitHub Actions  Scoring       WebSocket     Power BI
- Overlay          SIEM            Alerting      GraphQL       Teams Integration
- Telemetry        Scripts         Trending
- Certificates
- CMDB
+Telemetry Sources --> Evidence Collection --> Data Aggregation --> Dashboard Rendering
+     |                      |                      |                     |
+  Entra ID            collect_*.py           Metrics Engine        Power BI / Sentinel
+  Intune              Sentinel SIEM          KPI Calculator        Role-Based Views
+  SD-WAN              IPAM Logs              Alert Engine          Real-Time Refresh
+  PKI                 CMDB Export            Trend Analysis        Audit Logging
 ```
 
 ### 3.2 Technology Stack
 
-| Component | Technology | Purpose |
+| Component | Technology | Role |
 |---|---|---|
-| Data Collection | Azure Monitor, GitHub Actions | Source data ingestion |
-| Processing | Azure Functions / Logic Apps | Aggregation, scoring, alerting |
-| Data Store | Azure SQL / Cosmos DB | Metric history, trend data |
-| API Layer | Azure API Management | Dashboard data serving |
-| Visualization | Power BI Embedded / Web App | Dashboard rendering |
-| Alerting | Azure Monitor Alerts | Threshold-based notifications |
-| Integration | Teams Webhooks | Status notifications |
+| Data Ingestion | Azure Sentinel / Log Analytics | Telemetry aggregation |
+| Metrics Engine | KQL Queries + Azure Functions | KPI calculation |
+| Visualization | Power BI Embedded | Dashboard rendering |
+| Alerting | Azure Monitor + Logic Apps | Threshold-based alerts |
+| Audit Logging | Azure Activity Logs | Dashboard access tracking |
+| Authentication | Entra ID Conditional Access | Role-based dashboard access |
 
 ---
 
-## 4. Dashboard Views
+## 4. Dashboard Panels
 
-### 4.1 Executive Summary View
+**NEW (Proposed)**
 
-The top-level view provides at-a-glance program health:
+### 4.1 Executive Summary Panel
 
-| Widget | Data Source | Refresh Rate |
-|---|---|---|
-| Overall Health Score | Composite of all domains | 5 minutes |
-| Compliance Posture (%) | Compliance automation pipeline | 15 minutes |
-| Active Incidents | Incident tracking system | Real-time |
-| Open POA&Ms by Severity | POA&M automation | 15 minutes |
-| Drift Events (24h) | Drift detection workflows | 15 minutes |
-| Domain Health Cards (6) | Per-domain health scores | 5 minutes |
-
-### 4.2 Domain Health Cards
-
-Each of the six domains displays a health card:
-
-| Domain | Key Metrics |
-|---|---|
-| Identity | MFA coverage %, Conditional Access compliance, stale accounts, privilege anomalies |
-| Addressing | IPAM accuracy %, DNS resolution health, allocation utilization, conflict count |
-| Network | Overlay validation status, TIC 3.0 compliance %, segmentation integrity |
-| Telemetry | Collection completeness %, log retention compliance, SIEM latency |
-| Certificates | Certificates expiring < 30d, PKI health, rotation compliance |
-| CMDB | Baseline accuracy %, unauthorized changes (24h), asset coverage |
-
-### 4.3 Compliance Detail View
-
-| Widget | Description |
-|---|---|
-| NIST 800-53 Control Coverage | Heat map of control family compliance |
-| FedRAMP ConMon Status | Monthly scan, POA&M, and assessment tracking |
-| Evidence Freshness | Age of most recent evidence per control |
-| POA&M Aging Report | Open POA&Ms by age and severity |
-| Compliance Trend (90d) | Score trending over past quarter |
-| Upcoming Deadlines | Assessments, renewals, reporting due dates |
-
-### 4.4 Incident Response View
-
-| Widget | Description |
-|---|---|
-| Active Incidents | List with severity, domain, owner, age |
-| Incident Timeline | Visual timeline of recent events |
-| MTTD / MTTR / MTTC | Rolling averages with trend arrows |
-| Escalation Status | Incidents approaching or past SLA |
-| Federal Reporting Queue | US-CERT reports pending or submitted |
-| Tabletop Exercise Tracker | Schedule compliance and results |
-
-### 4.5 Drift Detection View
-
-| Widget | Description |
-|---|---|
-| Active Drift Events | By domain, severity, and age |
-| Drift Trend (30d) | New vs. resolved drift events |
-| Top Drift Categories | Most frequent drift types |
-| Remediation Pipeline | Drift events in remediation workflow |
-| Auto-Remediation Rate | Percentage resolved automatically |
-| Drift Heat Map | Cross-domain drift concentration |
-
----
-
-## 5. Health Scoring Model
-
-### 5.1 Composite Health Score
-
-The overall health score is calculated as a weighted composite:
-
-| Domain | Weight | Score Components |
-|---|---|---|
-| Identity | 25% | MFA coverage, CA compliance, lifecycle health |
-| Addressing | 15% | IPAM accuracy, DNS health, conflict rate |
-| Network | 15% | Overlay validation, TIC compliance, segmentation |
-| Telemetry | 15% | Collection completeness, retention, SIEM health |
-| Certificates | 15% | Expiration risk, rotation compliance, PKI health |
-| CMDB | 15% | Baseline accuracy, change control, coverage |
-
-### 5.2 Score Thresholds
-
-| Score Range | Status | Color | Action |
+| Widget | Data Source | Metric | Refresh Rate |
 |---|---|---|---|
-| 95–100% | Healthy | Green | No action required |
-| 85–94% | Warning | Yellow | Review and address within SLA |
-| 70–84% | Degraded | Orange | Immediate investigation required |
-| < 70% | Critical | Red | Escalation to ISSO/AO |
+| Overall Compliance Score | All CC controls | Percentage compliant | Real-time |
+| Active Drift Events | Runtime Drift Model | Count by severity | Real-time |
+| Open Incidents | IR Integration | Count by status | Real-time |
+| Evidence Freshness | Telemetry Evidence Map | Percentage within SLA | Hourly |
+| Authorization Status | Compliance Continuity | ATO status indicator | Daily |
+| Program Milestone Tracker | Modernization Timeline | Phase completion % | Weekly |
 
----
+### 4.2 Compliance Posture Panel
 
-## 6. Alerting and Notifications
-
-### 6.1 Alert Thresholds
-
-| Metric | Warning Threshold | Critical Threshold | Notification Channel |
+| Widget | Data Source | Metric | Alert Threshold |
 |---|---|---|---|
-| Overall Health Score | < 90% | < 80% | Teams + Email |
-| Domain Health Score | < 85% | < 75% | Teams + Domain Owner |
-| Open Critical POA&Ms | >= 1 | >= 3 | ISSO + AO |
-| Active SEV-1 Incidents | >= 1 | N/A | SOC + ISSO + AO |
-| Drift Events Unresolved > 24h | >= 3 | >= 5 | Domain Owner + ISSO |
-| Evidence Staleness | > 48h | > 72h | Compliance Automation |
+| FedRAMP Control Coverage | FedRAMP Crosswalk | % controls satisfied | < 95% |
+| NIST 800-53 Compliance | Control Library | % controls implemented | < 90% |
+| TIC 3.0 Alignment | Network Plane | % PEPs compliant | < 100% |
+| SCuBA Baseline Status | Identity Plane | % policies enforced | < 100% |
+| Zero Trust Maturity | All Planes | Maturity level score | < Target |
 
-### 6.2 Notification Schedule
+### 4.3 Control Plane Health Panel
 
-| Notification | Trigger | Recipients |
-|---|---|---|
-| Daily Health Summary | 08:00 ET daily | All stakeholders |
-| Weekly Compliance Digest | Monday 09:00 ET | ISSO, ISSM, Domain Owners |
-| Critical Alert | Real-time | SOC, ISSO, AO |
-| Monthly Executive Brief | 1st business day | AO, Executive Leadership |
-
----
-
-## 7. Data Retention and History
-
-| Data Type | Retention Period | Granularity |
-|---|---|---|
-| Real-time metrics | 30 days | 5-minute intervals |
-| Daily aggregates | 1 year | Daily |
-| Weekly summaries | 3 years | Weekly |
-| Monthly reports | 7 years | Monthly |
-| Incident records | 7 years | Per event |
-| Compliance evidence | Per NIST requirements | Per artifact |
-
----
-
-## 8. Access Control
-
-### 8.1 Role-Based Access
-
-| Role | Dashboard Access | Data Export | Configuration |
+| Control Plane | Health Indicators | Source | Status Model |
 |---|---|---|---|
-| AO | All views, all domains | Yes | No |
-| ISSO / ISSM | All views, all domains | Yes | Alert thresholds |
-| Program Manager | All views, all domains | Yes | Dashboard layout |
-| Domain Owner | Domain-specific views | Domain only | Domain alerts |
-| SOC Analyst | Incident views | Incident data | No |
-| Read-Only Stakeholder | Executive summary only | No | No |
+| Identity | MFA coverage, stale accounts, RBAC drift | Entra ID | Green/Yellow/Red |
+| Addressing | IPAM utilization, DNS integrity, conflicts | IPAM/DDI | Green/Yellow/Red |
+| Network | TIC 3.0 compliance, segmentation, routing | SD-WAN | Green/Yellow/Red |
+| Telemetry | Log completeness, retention, SIEM health | Sentinel | Green/Yellow/Red |
+| Certificates | Expiration status, rotation compliance | PKI | Green/Yellow/Red |
+| Management | CMDB accuracy, Intune compliance, baselines | CMDB/Intune | Green/Yellow/Red |
 
-### 8.2 Authentication
+### 4.4 Drift Detection Panel
 
-- Entra ID SSO required for all dashboard access
-- MFA enforced via Conditional Access policy
-- Session timeout: 30 minutes idle, 8 hours absolute
-- All access logged to audit trail
+| Widget | Data Source | Metric | Refresh Rate |
+|---|---|---|---|
+| Active Drift Events | Runtime Drift Model | Count by domain | Real-time |
+| Drift Severity Distribution | Drift Classification | P1/P2/P3/P4 breakdown | Real-time |
+| Mean Time to Detect (MTTD) | Drift Event Logs | Average detection time | Hourly |
+| Mean Time to Remediate (MTTR) | Remediation Logs | Average remediation time | Hourly |
+| Drift Trend (30-day) | Historical Drift Data | Trend line | Daily |
+| Automated vs Manual Remediation | Remediation Records | Ratio | Daily |
+
+### 4.5 Incident Response Panel
+
+| Widget | Data Source | Metric | Refresh Rate |
+|---|---|---|---|
+| Active Incidents | IR Integration | Count by severity | Real-time |
+| Incident Response Time | IR Event Logs | Average response time | Hourly |
+| Compliance Impact | IR Compliance Assessment | Controls affected | Real-time |
+| Escalation Status | IR Escalation Logs | Active escalations | Real-time |
+| Post-Incident Reviews | Lessons Learned | Pending reviews | Daily |
+
+### 4.6 Evidence and Audit Panel
+
+| Widget | Data Source | Metric | Refresh Rate |
+|---|---|---|---|
+| Evidence Sources Active | Telemetry Evidence Map | Count active/total | Hourly |
+| Evidence Freshness Score | Evidence Collection Logs | % within freshness SLA | Hourly |
+| Audit Trail Completeness | Audit Logging | % events captured | Daily |
+| Last Audit Readiness Check | Compliance Continuity | Date + result | On-demand |
+| Evidence Gap Analysis | Evidence Map vs Controls | Unmapped controls | Daily |
 
 ---
 
-## 9. Implementation Roadmap
+## 5. Alert Framework
 
-| Phase | Deliverable | Timeline |
+**NEW (Proposed)**
+
+| Alert Level | Criteria | Notification Method | Response SLA |
+|---|---|---|---|
+| Critical (P1) | Compliance breach, active attack, control failure | SMS + Email + Teams | 15 minutes |
+| High (P2) | Drift detected, evidence gap, SLA violation | Email + Teams | 1 hour |
+| Medium (P3) | Metric degradation, threshold warning | Teams channel | 4 hours |
+| Low (P4) | Informational, trend change, scheduled maintenance | Dashboard only | 24 hours |
+
+### Alert Routing
+
+| Alert Type | Primary Recipient | Escalation Path |
 |---|---|---|
-| Phase 1 | Data collection pipeline + API scaffolding | Weeks 1–2 |
-| Phase 2 | Executive Summary view + health scoring | Weeks 3–4 |
-| Phase 3 | Domain health cards + compliance detail | Weeks 5–6 |
-| Phase 4 | Incident response + drift detection views | Weeks 7–8 |
-| Phase 5 | Alerting, notifications, Teams integration | Weeks 9–10 |
-| Phase 6 | UAT, refinement, go-live | Weeks 11–12 |
+| Compliance Breach | ISSO/ISSM | AO within 1 hour |
+| Drift Event (P1) | SOC + Domain Owner | ISSO within 30 minutes |
+| Drift Event (P2-P4) | Domain Owner | SOC if unresolved |
+| Evidence Gap | Compliance Lead | ISSO within 4 hours |
+| Incident Escalation | SOC Lead | ISSO/ISSM within 15 minutes |
 
 ---
 
-## 10. References
+## 6. Dashboard Metrics and KPIs
 
-| Reference | Description |
+**NEW (Proposed)**
+
+| KPI | Target | Measurement | Owner |
+|---|---|---|---|
+| Overall Compliance Score | >= 95% | Weighted control satisfaction | ISSO |
+| Drift Detection Rate | 100% | Detected vs total drift events | SOC |
+| MTTD (Mean Time to Detect) | < 15 minutes | Average across all domains | SOC |
+| MTTR (Mean Time to Remediate) | < 4 hours | Average across all domains | Domain Owners |
+| Evidence Freshness | 100% within SLA | Per-source freshness check | Compliance Lead |
+| Dashboard Uptime | 99.9% | Monitoring availability | Platform Team |
+| Audit Readiness | Always ready | Random readiness assessment | ISSO |
+
+---
+
+## 7. Implementation Requirements
+
+**NEW (Proposed)**
+
+| Requirement | Specification | Priority |
+|---|---|---|
+| Authentication | Entra ID with Conditional Access | P1 |
+| Authorization | Role-based panel visibility | P1 |
+| Data Refresh | Real-time for P1 panels, hourly for others | P1 |
+| Audit Logging | All dashboard access logged | P1 |
+| Mobile Access | Responsive design for tablet/phone | P2 |
+| Export Capability | PDF/CSV export for audit packages | P2 |
+| Historical View | 90-day trend data retention | P2 |
+| Offline Mode | Static snapshot available | P3 |
+
+---
+
+## 8. Cross-References
+
+**NEW (Proposed)**
+
+| Reference | Relationship |
 |---|---|
-| `docs/00_ControlPlaneArchitecture.md` | Control Plane architecture overview |
-| `docs/PHASE5_OperationalGovernance.md` | Operational governance charter |
-| `docs/PHASE5_RuntimeDriftModel.md` | Runtime drift detection model |
-| `docs/PHASE5_ComplianceContinuity.md` | Compliance continuity framework |
-| `docs/PHASE5_IncidentResponseIntegration.md` | Incident response integration plan |
-| NIST SP 800-137 | Continuous Monitoring guidance |
-| FedRAMP Continuous Monitoring Guide | Dashboard and reporting requirements |
+| `PHASE5_OperationalGovernance.md` | Parent governance framework |
+| `PHASE5_RuntimeDriftModel.md` | Drift data feeds dashboard panels |
+| `PHASE5_ContinuousComplianceEngine.md` | Compliance metrics source |
+| `PHASE5_TelemetryEvidenceMap.md` | Evidence freshness and coverage data |
+| `PHASE5_ComplianceContinuity.md` | Continuity KPIs and metrics |
+| `PHASE5_IncidentResponseIntegration.md` | IR status and escalation data |
+| `PHASE5_KnowledgeTransfer.md` | Dashboard training requirements |
+| `07_LeadershipBriefing.md` | Executive narrative alignment |
 
 ---
 
-## 11. Approval
+## 9. Revision History
 
-| Role | Name | Date |
-|---|---|---|
-| Document Author | UIAO Program Team | 2025-07-13 |
-| Reviewed By | _________________ | __________ |
-| ISSO Approval | _________________ | __________ |
-| AO Approval | _________________ | __________ |
-
----
-
-> **NO-HALLUCINATION PROTOCOL**: All technology references and compliance frameworks are sourced from published standards. Dashboard specifications reference the canonical UIAO repository structure and architecture. Items marked **NEW (Proposed)** are generated artifacts pending review.
+| Version | Date | Author | Summary |
+|---|---|---|---|
+| 1.0 | 2025-07-13 | UIAO Canon Engine | Initial Phase 5 draft |
+| 2.0 | 2026-03-26 | UIAO Canon Engine | Sequence D Task D6 — Full restructure with panel specs, alert framework, KPIs, and implementation requirements |
