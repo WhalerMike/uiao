@@ -1,3 +1,15 @@
+---
+title: "0001-Package-Restructure"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # ADR-0001: Restructure uiao-core as a Python Package with Type Safety and CLI
 
 ## Status

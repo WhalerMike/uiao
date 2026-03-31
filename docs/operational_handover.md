@@ -1,3 +1,16 @@
+---
+title: "UIAO Operational Handover"
+subtitle: "Transition & Sustainment Plan"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  docx: default
+  pdf: default
+  html: default
+  gfm: default
+---
+
 # Operational Handover: Modernization Atlas (V1.0)
 
 **Subject:** Secure Orchestration & Automated Enforcement SOPs  

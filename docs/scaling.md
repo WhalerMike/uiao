@@ -1,3 +1,15 @@
+---
+title: "Scaling"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Regional Scaling Model
 
 A primary goal of the **uiao-core** project is to eliminate "Configuration Drift." We achieve this by using immutable patterns defined in the **Appendix Canon Library**.

@@ -1,3 +1,15 @@
+---
+title: "Proposal-One-Pager"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO-Core: FedRAMP 20x-Aligned Modernization Pipeline
 
 **Overview**

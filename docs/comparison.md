@@ -1,3 +1,15 @@
+---
+title: "Comparison"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Legacy vs. Modernized Infrastructure
 
 To move at the speed of the agency's mission, we must transition away from manual, ticket-based workflows to an automated, policy-driven model.
