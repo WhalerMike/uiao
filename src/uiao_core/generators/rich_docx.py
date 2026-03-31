@@ -92,6 +92,8 @@ def _add_image_safe(doc: Document, image_name: str, visuals_dir: Path, width: An
 
 def _add_compliance_table(doc: Document, matrix: list[dict]) -> None:
     """Add the Unified Compliance Matrix as a formatted Word table."""
+        if not matrix:
+        return
     headers = [
         "UIAO Pillar",
         "CISA ZT Pillar",
