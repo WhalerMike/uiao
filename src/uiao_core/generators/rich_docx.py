@@ -113,8 +113,8 @@ def _add_compliance_table(doc: Document, matrix: list[dict]) -> None:
                 run.font.size = Pt(9)
 
     for entry in matrix:
-                if not isinstance(entry, dict):
-            continue
+        if not isinstance(entry, dict):
+    continue
         row = table.add_row()
         row.cells[0].text = entry.get("pillar", "")
         row.cells[1].text = entry.get("cisa_pillar", "")
