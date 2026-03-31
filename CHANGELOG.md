@@ -91,6 +91,7 @@
 * remove unused imports in generate_docs.py (F401, I001) ([d7dd6ea](https://github.com/WhalerMike/uiao-core/commit/d7dd6ea1e2ebff9ff8d9fb7d3e11132fd1a8677a))
 * remove unused pytest import from test_narrative_loader.py ([9d23976](https://github.com/WhalerMike/uiao-core/commit/9d23976334fa0b06afb9e4f32bbc4c8f3f96c21e))
 * remove unused tempfile import (ruff F401, I001) ([693605a](https://github.com/WhalerMike/uiao-core/commit/693605a30e34973b5dbed0c67f2d27847ccedfd3))
+* replace invalid related-observations with related-control props in POAM generator ([d4ae59d](https://github.com/WhalerMike/uiao-core/commit/d4ae59d2be3224da0038768786272779d030cc73))
 * resolve all 156 ruff lint errors on copilot/add-gemini-image-generation ([3fd52f9](https://github.com/WhalerMike/uiao-core/commit/3fd52f9216536fcdcc10f80a177b9b738765f542))
 * resolve AU-11, PM-4, RA-5 compliance overlaps in parameters.yml ([f6f5bed](https://github.com/WhalerMike/uiao-core/commit/f6f5bedeff522305c26758dc75cbae76a5712356))
 * resolve CI artifact generation failures (Playwright, sandbox, Settings.visuals_dir, Gemini model) ([ad23901](https://github.com/WhalerMike/uiao-core/commit/ad23901702e64ef0fcfe88412ae41b2f77e15077))
