@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="quarto-1.6.43" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+
+<meta name="author" content="UIAO Modernization Program" />
+<meta name="dcterms.date" content="2026-03-31" />
+
+<title>00 Controlplanearchitecture</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+<!-- htmldependencies:E3FAD763 -->
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <div id="quarto-toc-target"></div>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">00 Controlplanearchitecture</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>UIAO Modernization Program </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">March 31, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+<nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#unified-identity-addressing-overlay-architecture-uiao" id="toc-unified-identity-addressing-overlay-architecture-uiao"><span class="header-section-number">1</span> Unified Identity-Addressing-Overlay Architecture (UIAO)</a>
+  <ul>
+  <li><a href="#control-plane-architecture" id="toc-control-plane-architecture"><span class="header-section-number">1.1</span> Control Plane Architecture</a></li>
+  <li><a href="#purpose" id="toc-purpose"><span class="header-section-number">1.2</span> 2. Purpose</a></li>
+  <li><a href="#scope" id="toc-scope"><span class="header-section-number">1.3</span> 3. Scope</a>
+  <ul>
+  <li><a href="#included" id="toc-included"><span class="header-section-number">1.3.1</span> Included</a></li>
+  <li><a href="#excluded" id="toc-excluded"><span class="header-section-number">1.3.2</span> Excluded</a></li>
+  </ul></li>
+  <li><a href="#control-plane-alignment" id="toc-control-plane-alignment"><span class="header-section-number">1.4</span> 4. Control Plane Alignment</a></li>
+  <li><a href="#core-concepts" id="toc-core-concepts"><span class="header-section-number">1.5</span> 5. Core Concepts</a></li>
+  <li><a href="#architecture-model" id="toc-architecture-model"><span class="header-section-number">1.6</span> 6. Architecture Model</a>
+  <ul>
+  <li><a href="#overview" id="toc-overview"><span class="header-section-number">1.6.1</span> 6.1 Overview</a></li>
+  <li><a href="#plane-definitions" id="toc-plane-definitions"><span class="header-section-number">1.6.2</span> 6.2 Plane Definitions</a></li>
+  </ul></li>
+  <li><a href="#runtime-model" id="toc-runtime-model"><span class="header-section-number">1.7</span> 7. Runtime Model</a>
+  <ul>
+  <li><a href="#conversation-flow" id="toc-conversation-flow"><span class="header-section-number">1.7.1</span> 7.1 Conversation Flow</a></li>
+  <li><a href="#determinism" id="toc-determinism"><span class="header-section-number">1.7.2</span> 7.2 Determinism</a></li>
+  <li><a href="#continuous-evaluation" id="toc-continuous-evaluation"><span class="header-section-number">1.7.3</span> 7.3 Continuous Evaluation</a></li>
+  </ul></li>
+  <li><a href="#compliance-mapping" id="toc-compliance-mapping"><span class="header-section-number">1.8</span> 8. Compliance Mapping</a>
+  <ul>
+  <li><a href="#fedramp-20x-alignment" id="toc-fedramp-20x-alignment"><span class="header-section-number">1.8.1</span> 8.1 FedRAMP 20x Alignment</a></li>
+  <li><a href="#nist-800-53-rev-5-controls" id="toc-nist-800-53-rev-5-controls"><span class="header-section-number">1.8.2</span> 8.2 NIST 800-53 Rev 5 Controls</a></li>
+  <li><a href="#ksi-categories" id="toc-ksi-categories"><span class="header-section-number">1.8.3</span> 8.3 KSI Categories</a></li>
+  </ul></li>
+  <li><a href="#dependencies-sequencing" id="toc-dependencies-sequencing"><span class="header-section-number">1.9</span> 9. Dependencies &amp; Sequencing</a>
+  <ul>
+  <li><a href="#upstream" id="toc-upstream"><span class="header-section-number">1.9.1</span> Upstream</a></li>
+  <li><a href="#downstream" id="toc-downstream"><span class="header-section-number">1.9.2</span> Downstream</a></li>
+  </ul></li>
+  <li><a href="#governance-drift-controls" id="toc-governance-drift-controls"><span class="header-section-number">1.10</span> 10. Governance &amp; Drift Controls</a></li>
+  <li><a href="#appendices" id="toc-appendices"><span class="header-section-number">1.11</span> 11. Appendices</a>
+  <ul>
+  <li><a href="#appendix-a-definitions" id="toc-appendix-a-definitions"><span class="header-section-number">1.11.1</span> Appendix A: Definitions</a></li>
+  <li><a href="#appendix-b-tables" id="toc-appendix-b-tables"><span class="header-section-number">1.11.2</span> Appendix B: Tables</a></li>
+  <li><a href="#appendix-c-diagram-references" id="toc-appendix-c-diagram-references"><span class="header-section-number">1.11.3</span> Appendix C: Diagram References</a></li>
+  <li><a href="#appendix-d-crosswalk-references" id="toc-appendix-d-crosswalk-references"><span class="header-section-number">1.11.4</span> Appendix D: Crosswalk References</a></li>
+  <li><a href="#appendix-e-evidence-sources" id="toc-appendix-e-evidence-sources"><span class="header-section-number">1.11.5</span> Appendix E: Evidence Sources</a></li>
+  </ul></li>
+  <li><a href="#revision-history" id="toc-revision-history"><span class="header-section-number">1.12</span> 12. Revision History</a></li>
+  </ul></li>
+  </ul>
+</nav>
+<section id="unified-identity-addressing-overlay-architecture-uiao" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Unified Identity-Addressing-Overlay Architecture (UIAO)</h1>
+<section id="control-plane-architecture" class="level2" data-number="1.1">
+<h2 data-number="1.1"><span class="header-section-number">1.1</span> Control Plane Architecture</h2>
+<table class="table table-striped table-hover caption-top">
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Version</td>
+<td>1.0</td>
+</tr>
+<tr class="even">
+<td>Date</td>
+<td>2026-03</td>
+</tr>
+<tr class="odd">
+<td>Classification</td>
+<td>CUI/FOUO</td>
+</tr>
+<tr class="even">
+<td>Source Plane(s)</td>
+<td>Identity, Network, Addressing, Telemetry, Security, Management</td>
+</tr>
+<tr class="odd">
+<td>Document Type</td>
+<td>Architectural Specification (00_Core)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+</section>
+<section id="purpose" class="level2" data-number="1.2">
+<h2 data-number="1.2"><span class="header-section-number">1.2</span> 2. Purpose</h2>
+<p>This document defines the six control planes that form the foundation of the Unified Identity-Addressing-Overlay (UIAO) architecture. It establishes the authoritative structure, responsibilities, boundaries, and interactions of each plane, ensuring deterministic behavior across identity, network, addressing, telemetry, security, and management domains.</p>
+<hr />
+</section>
+<section id="scope" class="level2" data-number="1.3">
+<h2 data-number="1.3"><span class="header-section-number">1.3</span> 3. Scope</h2>
+<section id="included" class="level3" data-number="1.3.1">
+<h3 data-number="1.3.1"><span class="header-section-number">1.3.1</span> Included</h3>
+<ul>
+<li>Canonical definitions of all six control planes</li>
+<li>Responsibilities and boundaries for each plane</li>
+<li>Cross-plane interactions</li>
+<li>Runtime alignment with UIAO’s conversation-centric model</li>
+<li>Compliance and governance anchors</li>
+</ul>
+</section>
+<section id="excluded" class="level3" data-number="1.3.2">
+<h3 data-number="1.3.2"><span class="header-section-number">1.3.2</span> Excluded</h3>
+<ul>
+<li>Implementation-specific configurations</li>
+<li>Vendor-specific deployment guides</li>
+<li>Project plans (covered in modernization appendices)</li>
+<li>Diagrams (referenced but not embedded)</li>
+</ul>
+<hr />
+</section>
+</section>
+<section id="control-plane-alignment" class="level2" data-number="1.4">
+<h2 data-number="1.4"><span class="header-section-number">1.4</span> 4. Control Plane Alignment</h2>
+<p>This document defines all six UIAO control planes and establishes their relationships.</p>
+<table class="table table-striped table-hover caption-top">
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Plane</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Identity</td>
+<td>Primary source of truth for identity, assurance, and access</td>
+</tr>
+<tr class="even">
+<td>Network</td>
+<td>Routing, segmentation, and path selection</td>
+</tr>
+<tr class="odd">
+<td>Addressing</td>
+<td>Deterministic IPAM, DNS, DHCP, and identity-derived addressing</td>
+</tr>
+<tr class="even">
+<td>Telemetry &amp; Location</td>
+<td>Real-time signals for routing, security, and compliance</td>
+</tr>
+<tr class="odd">
+<td>Security &amp; Compliance</td>
+<td>Zero Trust enforcement, FedRAMP alignment, TIC 3.0</td>
+</tr>
+<tr class="even">
+<td>Management</td>
+<td>Governance, drift detection, CMDB, device compliance</td>
+</tr>
+</tbody>
+</table>
+<p>All other UIAO documents reference this plane model.</p>
+<hr />
+</section>
+<section id="core-concepts" class="level2" data-number="1.5">
+<h2 data-number="1.5"><span class="header-section-number">1.5</span> 5. Core Concepts</h2>
+<p>The six control planes operate according to the Seven Core Concepts of UIAO:</p>
+<ol type="1">
+<li>Conversation as the atomic unit</li>
+<li>Identity as the root namespace</li>
+<li>Deterministic addressing</li>
+<li>Certificate-anchored overlay</li>
+<li>Telemetry as control</li>
+<li>Embedded governance &amp; automation</li>
+<li>Public service first</li>
+</ol>
+<p>These concepts are frozen and must appear identically across all UIAO documents.</p>
+<hr />
+</section>
+<section id="architecture-model" class="level2" data-number="1.6">
+<h2 data-number="1.6"><span class="header-section-number">1.6</span> 6. Architecture Model</h2>
+<section id="overview" class="level3" data-number="1.6.1">
+<h3 data-number="1.6.1"><span class="header-section-number">1.6.1</span> 6.1 Overview</h3>
+<p>The UIAO architecture replaces legacy perimeter-centric models with a federated, identity-driven, telemetry-informed control plane system. Each plane is authoritative for a specific domain but interoperates through deterministic, identity-anchored relationships.</p>
+</section>
+<section id="plane-definitions" class="level3" data-number="1.6.2">
+<h3 data-number="1.6.2"><span class="header-section-number">1.6.2</span> 6.2 Plane Definitions</h3>
+<section id="identity-control-plane" class="level4" data-number="1.6.2.1">
+<h4 data-number="1.6.2.1"><span class="header-section-number">1.6.2.1</span> Identity Control Plane</h4>
+<ul>
+<li><strong>Authoritative System:</strong> Microsoft Entra ID</li>
+<li><strong>Responsibilities:</strong>
+<ul>
+<li>Identity lifecycle (joiner/mover/leaver)</li>
+<li>Authentication and assurance</li>
+<li>Conditional Access</li>
+<li>Privileged Identity Management</li>
+<li>Device trust (via Intune)</li>
+<li>Identity-derived addressing and policy</li>
+</ul></li>
+<li><strong>Inputs:</strong> HRIS, device compliance, certificate status</li>
+<li><strong>Outputs:</strong> Tokens, claims, identity attributes, assurance signals</li>
+</ul>
+</section>
+<section id="network-control-plane" class="level4" data-number="1.6.2.2">
+<h4 data-number="1.6.2.2"><span class="header-section-number">1.6.2.2</span> Network Control Plane</h4>
+<ul>
+<li><strong>Authoritative System:</strong> Cisco Catalyst SD-WAN</li>
+<li><strong>Responsibilities:</strong>
+<ul>
+<li>Routing and path selection</li>
+<li>Identity-aware segmentation</li>
+<li>Cloud OnRamp for M365</li>
+<li>DIA and branch modernization</li>
+<li>mTLS-anchored overlay enforcement</li>
+</ul></li>
+<li><strong>Inputs:</strong> Identity attributes, addressing, telemetry</li>
+<li><strong>Outputs:</strong> Segmentation decisions, path selection, overlay tunnels</li>
+</ul>
+</section>
+<section id="addressing-control-plane" class="level4" data-number="1.6.2.3">
+<h4 data-number="1.6.2.3"><span class="header-section-number">1.6.2.3</span> Addressing Control Plane</h4>
+<ul>
+<li><strong>Authoritative System:</strong> Infoblox BloxOne IPAM</li>
+<li><strong>Responsibilities:</strong>
+<ul>
+<li>Deterministic IP assignment</li>
+<li>DNS/DHCP modernization</li>
+<li>Cloud/on-prem reconciliation</li>
+<li>Identity-derived addressing</li>
+<li>Location inference</li>
+</ul></li>
+<li><strong>Inputs:</strong> Identity attributes, network boundaries</li>
+<li><strong>Outputs:</strong> IP allocations, DNS records, DHCP leases</li>
+</ul>
+</section>
+<section id="telemetry-location-control-plane" class="level4" data-number="1.6.2.4">
+<h4 data-number="1.6.2.4"><span class="header-section-number">1.6.2.4</span> Telemetry &amp; Location Control Plane</h4>
+<ul>
+<li><strong>Authoritative Systems:</strong> M365 Network Telemetry, SD-WAN telemetry, Defender/Intune, DNS telemetry</li>
+<li><strong>Responsibilities:</strong>
+<ul>
+<li>Real-time conversation-level telemetry</li>
+<li>Location inference (INR, IPAM, SD-WAN)</li>
+<li>E911 readiness</li>
+<li>SIEM ingestion</li>
+<li>Automated control inputs</li>
+</ul></li>
+<li><strong>Inputs:</strong> Network flows, identity events, device posture</li>
+<li><strong>Outputs:</strong> Assurance signals, routing modifiers, compliance indicators</li>
+</ul>
+</section>
+<section id="security-compliance-plane" class="level4" data-number="1.6.2.5">
+<h4 data-number="1.6.2.5"><span class="header-section-number">1.6.2.5</span> Security &amp; Compliance Plane</h4>
+<ul>
+<li><strong>Authoritative Systems:</strong> TIC 3.0, Zero Trust, FedRAMP 20x</li>
+<li><strong>Responsibilities:</strong>
+<ul>
+<li>Zero Trust enforcement</li>
+<li>FedRAMP 20x telemetry-based validation</li>
+<li>NIST 800-63 identity governance</li>
+<li>Policy enforcement across planes</li>
+</ul></li>
+<li><strong>Inputs:</strong> Identity, telemetry, addressing, device posture</li>
+<li><strong>Outputs:</strong> Allow/deny decisions, audit artifacts, compliance posture</li>
+</ul>
+</section>
+<section id="management-plane" class="level4" data-number="1.6.2.6">
+<h4 data-number="1.6.2.6"><span class="header-section-number">1.6.2.6</span> Management Plane</h4>
+<ul>
+<li><strong>Authoritative Systems:</strong> ServiceNow, Microsoft Intune</li>
+<li><strong>Responsibilities:</strong>
+<ul>
+<li>CMDB and asset inventory</li>
+<li>Drift detection and remediation</li>
+<li>Device compliance enforcement</li>
+<li>Change control and incident lifecycle</li>
+<li>Continuous Authorization (CA-7)</li>
+</ul></li>
+<li><strong>Inputs:</strong> Telemetry, configuration baselines, identity lifecycle</li>
+<li><strong>Outputs:</strong> Governance actions, remediation workflows, audit trails</li>
+</ul>
+<hr />
+</section>
+</section>
+</section>
+<section id="runtime-model" class="level2" data-number="1.7">
+<h2 data-number="1.7"><span class="header-section-number">1.7</span> 7. Runtime Model</h2>
+<p>UIAO operates on conversations as the atomic unit.</p>
+<section id="conversation-flow" class="level3" data-number="1.7.1">
+<h3 data-number="1.7.1"><span class="header-section-number">1.7.1</span> 7.1 Conversation Flow</h3>
+<ol type="1">
+<li>Identity initiates</li>
+<li>Addressing binds</li>
+<li>Certificates authenticate</li>
+<li>Overlay establishes path</li>
+<li>Telemetry validates</li>
+<li>Policy evaluates continuously</li>
+</ol>
+</section>
+<section id="determinism" class="level3" data-number="1.7.2">
+<h3 data-number="1.7.2"><span class="header-section-number">1.7.2</span> 7.2 Determinism</h3>
+<p>Given identical identity, boundary, telemetry, and assurance inputs, the system must produce the same decision across clouds, agencies, and implementations.</p>
+</section>
+<section id="continuous-evaluation" class="level3" data-number="1.7.3">
+<h3 data-number="1.7.3"><span class="header-section-number">1.7.3</span> 7.3 Continuous Evaluation</h3>
+<p>Telemetry modifies routing, access, and segmentation decisions in real time.</p>
+<hr />
+</section>
+</section>
+<section id="compliance-mapping" class="level2" data-number="1.8">
+<h2 data-number="1.8"><span class="header-section-number">1.8</span> 8. Compliance Mapping</h2>
+<section id="fedramp-20x-alignment" class="level3" data-number="1.8.1">
+<h3 data-number="1.8.1"><span class="header-section-number">1.8.1</span> 8.1 FedRAMP 20x Alignment</h3>
+<ul>
+<li>Class C (Moderate)</li>
+<li>Telemetry-based validation</li>
+<li>OSCAL machine-readability</li>
+</ul>
+</section>
+<section id="nist-800-53-rev-5-controls" class="level3" data-number="1.8.2">
+<h3 data-number="1.8.2"><span class="header-section-number">1.8.2</span> 8.2 NIST 800-53 Rev 5 Controls</h3>
+<p>Mapped via the canonical crosswalk:</p>
+<table class="table table-striped table-hover caption-top">
+<thead>
+<tr class="header">
+<th>Control ID</th>
+<th>Control Name</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>AC-4</td>
+<td>Information Flow Enforcement (segmentation)</td>
+</tr>
+<tr class="even">
+<td>IA-2</td>
+<td>Identification and Authentication</td>
+</tr>
+<tr class="odd">
+<td>IA-5</td>
+<td>Authenticator Management</td>
+</tr>
+<tr class="even">
+<td>CM-8</td>
+<td>Information System Component Inventory</td>
+</tr>
+<tr class="odd">
+<td>SC-8</td>
+<td>Transmission Confidentiality and Integrity (mTLS)</td>
+</tr>
+<tr class="even">
+<td>CA-7</td>
+<td>Continuous Monitoring</td>
+</tr>
+<tr class="odd">
+<td>SI-4</td>
+<td>Information System Monitoring (telemetry)</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="ksi-categories" class="level3" data-number="1.8.3">
+<h3 data-number="1.8.3"><span class="header-section-number">1.8.3</span> 8.3 KSI Categories</h3>
+<ul>
+<li>KSI-IAM</li>
+<li>KSI-PIY</li>
+<li>KSI-MLA</li>
+<li>KSI-SVC</li>
+<li>KSI-CMT</li>
+<li>KSI-CNA</li>
+<li>KSI-CED</li>
+</ul>
+<hr />
+</section>
+</section>
+<section id="dependencies-sequencing" class="level2" data-number="1.9">
+<h2 data-number="1.9"><span class="header-section-number">1.9</span> 9. Dependencies &amp; Sequencing</h2>
+<section id="upstream" class="level3" data-number="1.9.1">
+<h3 data-number="1.9.1"><span class="header-section-number">1.9.1</span> Upstream</h3>
+<ul>
+<li>HRIS</li>
+<li>PKI</li>
+<li>CMDB</li>
+<li>Network underlay</li>
+</ul>
+</section>
+<section id="downstream" class="level3" data-number="1.9.2">
+<h3 data-number="1.9.2"><span class="header-section-number">1.9.2</span> Downstream</h3>
+<ul>
+<li>Project plans (A-D)</li>
+<li>Modernization timeline</li>
+<li>FedRAMP crosswalk</li>
+<li>Leadership briefing</li>
+</ul>
+<hr />
+</section>
+</section>
+<section id="governance-drift-controls" class="level2" data-number="1.10">
+<h2 data-number="1.10"><span class="header-section-number">1.10</span> 10. Governance &amp; Drift Controls</h2>
+<table class="table table-striped table-hover caption-top">
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Element</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Source of Authority</td>
+<td>HR (human identity), Network architecture (addressing), System owners (configuration), PKI (credential trust)</td>
+</tr>
+<tr class="even">
+<td>Drift Detection</td>
+<td>ServiceNow CMDB reconciliation, Intune compliance, SD-WAN overlay validation, IPAM reconciliation</td>
+</tr>
+<tr class="odd">
+<td>Remediation Workflow</td>
+<td>Automated ServiceNow change, Conditional Access enforcement, Certificate renewal, IPAM correction</td>
+</tr>
+<tr class="even">
+<td>Audit Anchors</td>
+<td>Entra ID logs, Infoblox API records, SD-WAN telemetry, Intune compliance reports, ServiceNow audit trails</td>
+</tr>
+</tbody>
+</table>
+<hr />
+</section>
+<section id="appendices" class="level2" data-number="1.11">
+<h2 data-number="1.11"><span class="header-section-number">1.11</span> 11. Appendices</h2>
+<section id="appendix-a-definitions" class="level3" data-number="1.11.1">
+<h3 data-number="1.11.1"><span class="header-section-number">1.11.1</span> Appendix A: Definitions</h3>
+<p><em>See <code>docs/glossary.md</code></em></p>
+</section>
+<section id="appendix-b-tables" class="level3" data-number="1.11.2">
+<h3 data-number="1.11.2"><span class="header-section-number">1.11.2</span> Appendix B: Tables</h3>
+<p><em>Control plane summary tables are embedded in Section 4 and Section 6.</em></p>
+</section>
+<section id="appendix-c-diagram-references" class="level3" data-number="1.11.3">
+<h3 data-number="1.11.3"><span class="header-section-number">1.11.3</span> Appendix C: Diagram References</h3>
+<p><em>See <code>docs/images/</code> for all referenced architecture diagrams.</em></p>
+</section>
+<section id="appendix-d-crosswalk-references" class="level3" data-number="1.11.4">
+<h3 data-number="1.11.4"><span class="header-section-number">1.11.4</span> Appendix D: Crosswalk References</h3>
+<p><em>See <code>data/crosswalk-index.yml</code> and <code>docs/fedramp22_summary_v1.0.md</code>.</em></p>
+</section>
+<section id="appendix-e-evidence-sources" class="level3" data-number="1.11.5">
+<h3 data-number="1.11.5"><span class="header-section-number">1.11.5</span> Appendix E: Evidence Sources</h3>
+<p><em>See <code>data/parameters.yml</code> and control-library entries for evidence source catalogs.</em></p>
+<hr />
+</section>
+</section>
+<section id="revision-history" class="level2" data-number="1.12">
+<h2 data-number="1.12"><span class="header-section-number">1.12</span> 12. Revision History</h2>
+<table class="table table-striped table-hover caption-top">
+<thead>
+<tr class="header">
+<th>Version</th>
+<th>Date</th>
+<th>Author</th>
+<th>Summary of Changes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1.0</td>
+<td>2026-03</td>
+<td>UIAO Canon Engine</td>
+<td>Initial canonical release</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id = "quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+</body>
+
+</html>
