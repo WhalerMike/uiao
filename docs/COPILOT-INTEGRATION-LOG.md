@@ -189,3 +189,47 @@ Top-level keys: `version`, `document`, `classification`, `audience`, `leadership
 - `PROJECT-CONTEXT.md` - Add integration suite and ATO overlay references
 - `docs/03_FedRAMP20x_Crosswalk.md` - Cross-reference ATO Overlay Pack
 - `docs/04_FedRAMP20x_Phase2_Summary.md` - Link to AT-04 Accelerator Module
+
+
+---
+
+## Thread 5: AI Security Principles for Legacy Mainframe Modernization
+
+### Key Decisions
+
+- AI-assisted security analysis of mainframe systems requires truth verification patterns
+- Legacy COBOL/JCL systems carry embedded security assumptions that must be mapped before migration
+- AI provenance tracking essential for audit trail in federal modernization
+
+### Integration Target
+
+- `docs/12_AI_SecurityPrinciples.md` - Created from Copilot AI and Legacy Mainframe thread
+
+---
+
+## Thread 6: FIMF Adapter Registry
+
+### Key Decisions
+
+- Federal Identity Modernization Framework adapters provide bridge between legacy and modern identity systems
+- Adapter registry enables standardized integration patterns across agencies
+- SAML-to-OIDC, PIV-to-FIDO2, and mainframe-to-cloud identity bridges documented
+
+### Integration Target
+
+- `docs/13_FIMF_AdapterRegistry.md` - Created from Copilot Modernizing Mainframe thread
+
+---
+
+## Thread 7: TIC 3.0 F5 Proxy Retirement Roadmap
+
+### Key Decisions
+
+- F5 proxy retirement aligned with TIC 3.0 transition requirements
+- Workforce retraining blueprint for network teams transitioning from F5 to cloud-native security
+- Shadow and Swap migration pattern preserves operational continuity
+- Governance replacement pattern shifts from boundary control to identity control
+
+### Integration Target
+
+- `docs/14_TIC3_F5RetirementRoadmap.md` - Created from Copilot Phasing Out F5 Proxies thread
