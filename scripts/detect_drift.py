@@ -10,8 +10,6 @@ Usage:
 """
 
 import sys
-import json
-from pathlib import Path
 
 DRIFT_DOMAINS = ["Identity", "Addressing", "Network", "Telemetry", "Certificates", "CMDB"]
 
