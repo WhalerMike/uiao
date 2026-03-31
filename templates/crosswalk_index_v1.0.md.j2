@@ -1,0 +1,136 @@
+---
+title: "UIAO Crosswalk Index"
+version: "{{ crosswalk_index.crosswalk.version }}"
+date: "{{ crosswalk_index.crosswalk.date }}"
+classification: "{{ classification | default('CUI') }}"
+---
+
+# UIAO Crosswalk Index
+
+**Unified Cross-Reference Matrix — Version {{ crosswalk_index.crosswalk.version }}** ({{ crosswalk_index.crosswalk.date }})
+
+---
+
+## 1. Purpose
+
+{{ crosswalk_index.crosswalk.purpose }}
+
+The Crosswalk Index serves as the single authoritative map connecting every UIAO control plane to its governing specifications, architecture diagrams, project plans, canon volumes, and modernization appendices. This document enables traceability across the entire modernization program and supports impact analysis when any component changes.
+
+---
+
+## 2. Core Capabilities
+
+The crosswalk provides the following capabilities across the UIAO architecture:
+
+| Capability | Description |
+| :--- | :--- |
+{% for cap in crosswalk_index.crosswalk.capabilities %}
+| **{{ cap }}** | Enables {{ cap | lower }} across all control planes and documentation artifacts |
+{% endfor %}
+
+---
+
+## 3. Unified Architecture Overview
+
+The following diagram illustrates how the four control planes interconnect within the UIAO architecture. Each plane listed in the crosswalk matrix below maps to a specific region of this diagram.
+
+```mermaid
+{{ diagrams.unified_arch }}
+```
+
+---
+
+## 4. Plane Crosswalk Matrix
+
+This matrix provides the authoritative mapping between each UIAO control plane and its associated documentation artifacts.
+
+| Plane | Control Plane Spec | Architecture Diagram | Project Plans | Canon Volumes | Modernization Appendix |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+{% for plane in crosswalk_index.plane_crosswalk %}
+| **{{ plane.name }}** | `{{ plane.control_plane_spec }}` | {{ plane.architecture_diagram }} | {{ plane.project_plans | join(', ') }} | {{ plane.canon_volumes | join(', ') }} | {{ plane.modernization_appendix }} |
+{% endfor %}
+
+---
+
+## 5. Plane-to-Diagram Mapping
+
+Each control plane is visualized through one or more architecture diagrams. The following sections detail which diagrams are relevant to each plane, enabling reviewers and auditors to quickly locate the visual representation of any component.
+
+{% for plane in crosswalk_index.plane_crosswalk %}
+### 5.{{ loop.index }}. {{ plane.name }} Plane
+
+The **{{ plane.name }}** plane is governed by `{{ plane.control_plane_spec }}` and is visualized in the following diagrams:
+
+{% for diagram in plane.diagrams %}
+- {{ diagram }}
+{% endfor %}
+
+{% endfor %}
+
+---
+
+## 6. Cross-Plane Dependencies
+
+The UIAO architecture is designed as an integrated system where control planes depend on each other. The following dependency map ensures that changes to one plane are evaluated for downstream impact on connected planes.
+
+```mermaid
+{{ diagrams.multi_plane_integration }}
+```
+
+{% for dep in crosswalk_index.cross_plane_dependencies %}
+### {{ dep.planes | join(' ↔ ') }}
+
+{{ dep.description }}
+
+{% endfor %}
+
+---
+
+## 7. Canon Expansion Rules
+
+The UIAO canon follows strict expansion rules to maintain consistency and traceability as the documentation library grows. These rules govern how new appendices, volumes, and specifications are added to the architecture.
+
+{% for rule in crosswalk_index.canon_expansion_rules %}
+{{ loop.index }}. {{ rule }}
+{% endfor %}
+
+---
+
+## 8. Directory Structure (v{{ crosswalk_index.directory_structure.version }})
+
+### 8.1. Governing Principles
+
+The UIAO directory structure is organized according to the following principles:
+
+{% for p in crosswalk_index.directory_structure.principles %}
+- {{ p }}
+{% endfor %}
+
+### 8.2. Directory Reference
+
+| Directory | Purpose |
+| :--- | :--- |
+{% for dir in crosswalk_index.directory_structure.directories %}
+| `{{ dir.id }}` | {{ dir.purpose }} |
+{% endfor %}
+
+### 8.3. Placement Rules
+
+{% for rule in crosswalk_index.directory_structure.placement_rules %}
+{{ loop.index }}. {{ rule }}
+{% endfor %}
+
+---
+
+## 9. Appendix Library Structure
+
+The following diagram illustrates how the appendix canon is organized, processed through the Jinja2 rendering engine, and published to the documentation site.
+
+```mermaid
+{{ diagrams.appendix_library }}
+```
+
+---
+
+*Generated from UIAO data layer — Crosswalk Index v{{ crosswalk_index.crosswalk.version }}*
