@@ -1,3 +1,15 @@
+---
+title: "0003-Config-Hardening-Dependency-Consolidation"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # ADR-0003: Configuration Hardening, Dependency Consolidation, Ruff/Mypy, and Full Generator Migration + Week 1/2 Debt Retirement
 
 ## Status

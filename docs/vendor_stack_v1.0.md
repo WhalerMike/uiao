@@ -1,3 +1,15 @@
+---
+title: "UIAO Vendor Stack Analysis"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  docx: default
+  pdf: default
+  html: default
+  gfm: default
+---
+
 # UIAO Vendor Technology Stack and Compliance Registry
 
 **Classification:** CUI/FOUO  

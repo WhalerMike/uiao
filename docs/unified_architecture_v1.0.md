@@ -18,27 +18,7 @@ The strategic goal is to transform the agency into a modern federal network wher
 
 The following diagram illustrates how the three pillars of the UIAO framework interconnect. Each node is dynamically generated from program.yml and styled using validated classDef syntax.
 
-```mermaid
-graph LR
-    %% Define Classes based on UIAO Pillars
-    classDef identity fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef addressing fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef overlay fill:#dfd,stroke:#333,stroke-width:2px;
-
-    %% Dynamically generate nodes from program.yml
-    
-    INR["Microsoft INR"]:::identity
-    
-    IB["Infoblox IPAM"]:::addressing
-    
-    CAT["Cisco Catalyst"]:::overlay
-    
-
-    %% Static Logic Connections (The Unified Fabric)
-    INR --> CAT
-    IB --> CAT
-    CAT --> IB
-```
+<img src="assets/images/mermaid/graph_lr.png" alt="graph_lr" />
 
 ---
 

@@ -1,3 +1,15 @@
+---
+title: "0004-Week4-Critique"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Week 4 Critique: Final Migration, Lint, DRY, and Pilot Packaging
 
 **Date:** 2026-03-23
