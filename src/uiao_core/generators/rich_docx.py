@@ -114,7 +114,7 @@ def _add_compliance_table(doc: Document, matrix: list[dict]) -> None:
 
     for entry in matrix:
         if not isinstance(entry, dict):
-        continue
+            continue
         row = table.add_row()
         row.cells[0].text = entry.get("pillar", "")
         row.cells[3].text = ", ".join(controls) if isinstance(controls, list) else str(controls)
