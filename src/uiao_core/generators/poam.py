@@ -156,7 +156,7 @@ def build_poam(
                 "props": [
                     {"name": "risk-level", "value": gap.get("risk_level", "moderate")},
                     {"name": "finding-id", "value": f"POAM-{i:04d}"},
-                                        *[{"name": "related-control", "value": c} for c in related],
+                    *[{"name": "related-control", "value": c} for c in related],
                 ],
             }
         )
