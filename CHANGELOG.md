@@ -31,6 +31,7 @@
 * correct indentation in app.py ternary and fix import sort in generate_docs.py ([4c9e974](https://github.com/WhalerMike/uiao-core/commit/4c9e974c80babcb1f8d23642d768d6e1c63bf8fa))
 * correct Pipeline Diagrams indentation in mkdocs.yml nav ([de2b147](https://github.com/WhalerMike/uiao-core/commit/de2b147375e7f2483f9b2c4066ad9f0597fa98b1))
 * correct YAML indentation and pin Quarto to 1.6.43 ([152d0c4](https://github.com/WhalerMike/uiao-core/commit/152d0c4cd20e6fa56a9b57758e7055802f62c4e4))
+* create .env from .env.example to resolve MissingEnvVarsError in Quarto render ([324eb31](https://github.com/WhalerMike/uiao-core/commit/324eb3175d8ba331ccf07cf0f9895d34c147d7a4))
 * **evidence:** add missing linker.py + bundler.py, prop:id on OSCAL back-matter, 34 tests (refs UIAO-MEMORY.md) ([2f07a41](https://github.com/WhalerMike/uiao-core/commit/2f07a41f3857beb3ee3ea52179b390d228d3270b))
 * **evidence:** address code review — improve error logging, clarify OSCAL validation comment, add round-trip test ([5d5b711](https://github.com/WhalerMike/uiao-core/commit/5d5b7110f36ce844f5f1d605913b54b12b27ca91))
 * **generators:** add isort skip_file to rich_docx.py for try/except imports ([19744ca](https://github.com/WhalerMike/uiao-core/commit/19744caf9eb7cef84f35e6e0ea678d5bff8e7dd9))
