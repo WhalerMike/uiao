@@ -1,3 +1,15 @@
+---
+title: "14 Tic3 F5Retirementroadmap"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # TIC 3.0 Transition and F5 Proxy Retirement Roadmap
 
 **Source:** Copilot thread "Phasing Out F5 Proxies in a TIC 3.0 World"

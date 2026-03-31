@@ -1,3 +1,15 @@
+---
+title: "Logic"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Pipeline Logic & Data Normalization
 
 The **uiao-core** repository functions as a compiler for infrastructure. It translates high-level intent defined in YAML into vendor-specific configurations and documentation.

@@ -1,3 +1,15 @@
+---
+title: "Compliance Readiness"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # GCC-Moderate Compliance Readiness
 
 ## Modernization Atlas - NIST 800-53 Control Mapping

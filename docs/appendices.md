@@ -1,3 +1,15 @@
+---
+title: "Appendices"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Appendix Canon Library
 
 This library contains the 104 standardized technical and operational patterns (A-CZ) used across the agency's infrastructure.

@@ -1,3 +1,15 @@
+---
+title: "Roadmap"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Implementation Roadmap & Project Status
 
 The modernization of the agency's datacenter is a multi-phase journey. We are currently moving through Phase 1 (Foundations), with subsequent phases building on this core.

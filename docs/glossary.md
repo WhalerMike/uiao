@@ -1,3 +1,15 @@
+---
+title: "Glossary"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Glossary of Terms
 
 To ensure clarity across all levels of the agency, the following terms are defined as they pertain to the **uiao-core** Modernization Atlas.

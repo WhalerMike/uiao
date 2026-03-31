@@ -1,3 +1,15 @@
+---
+title: "0005-Dev-Repo-Promotion-Workflow"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # ADR-0005: Dev Repo Promotion Workflow
 
 **Status:** Accepted
