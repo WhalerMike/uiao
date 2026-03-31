@@ -147,9 +147,9 @@ def _add_evidence_table(doc: Document) -> None:
                 run.font.bold = True
                 run.font.size = Pt(9)
     for title, pillar, controls in evidence_map:
-        row = table.add_row()
-        row.cells[0].text = title
-        row.cells[1].text = pillar
+            row = table.add_row()
+            row.cells[0].text = title
+            row.cells[1].text = pillar
             row.cells[2].text = controls
         for cell in row.cells:
             for p in cell.paragraphs:
