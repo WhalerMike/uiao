@@ -116,6 +116,7 @@
 * **ssp:** rename system-inventory to inventory-items for OSCAL 1.0.x compliance ([1131341](https://github.com/WhalerMike/uiao-core/commit/11313410e1eaefb64655cc68db94da8f6728c42e))
 * use explicit block scalar indent |2 in CM-3.yml to fix YAML parse error ([7ea0467](https://github.com/WhalerMike/uiao-core/commit/7ea046764330d03f6a0c69a58e127cc794dd5cfe))
 * use ternary for SIM108 in cli/app.py ([fc42f0f](https://github.com/WhalerMike/uiao-core/commit/fc42f0fcb38ed720b4031401a6b8577534515ae5))
+* wrap servicenow section in {% if defined %} guard ([af210be](https://github.com/WhalerMike/uiao-core/commit/af210bee6724c45f125eb953a81ad98874364d19))
 
 
 ### Features
