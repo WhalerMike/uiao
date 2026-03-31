@@ -1,0 +1,75 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-10
+# Title      : Concurrent Session Control
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AC-10
+title: Concurrent Session Control
+family: Access Control
+status: implemented
+
+implemented_by:
+    - entra-id
+    - cyberark-pam
+    - intune-mdm
+
+evidence:
+    - entra-id-conditional-access-session-controls
+    - entra-id-token-lifetime-policies
+    - cyberark-concurrent-session-limits
+    - sentinel-concurrent-session-alerts
+
+parameters:
+    - id: PARAM-AC-010-001
+      description: >-
+          Maximum number of concurrent sessions allowed per
+          user account for standard users.
+      value: "3 concurrent sessions"
+    - id: PARAM-AC-010-002
+      description: >-
+          Maximum number of concurrent sessions allowed per
+          privileged account.
+      value: "1 concurrent session"
+
+narrative: |
+  **Entra ID Session Controls**
+  The organization limits concurrent sessions through Entra ID
+  Conditional Access session controls and token lifetime policies.
+  Standard user accounts are limited to PARAM-AC-010-001 (3)
+  concurrent active sessions across all devices and applications.
+  Conditional Access policies enforce sign-in frequency controls
+  that require re-authentication when session limits are approached.
+  Token lifetime policies ensure that stale sessions expire
+  predictably, preventing session accumulation. Session activity
+  is logged to Entra ID Sign-In Logs and forwarded to Microsoft
+  Sentinel for monitoring, supporting **AU-2** and **SI-4**.
+
+  **Privileged Session Isolation**
+  CyberArk Privileged Session Manager enforces a strict
+  single-session limit (PARAM-AC-010-002) for all privileged
+  accounts. Privileged users cannot open a second concurrent
+  session until the active session is terminated. This prevents
+  credential sharing and ensures full session recording for
+  each privileged interaction. Concurrent session violations
+  generate P2 alerts in Sentinel and are flagged for review
+  under **AC-2** (Account Management) and **AU-6** (Audit
+  Record Review).
+
+  **Endpoint Session Management**
+  Microsoft Intune MDM compliance policies enforce device-level
+  session limits on managed endpoints. Remote desktop and VPN
+  session policies limit concurrent connections per device,
+  ensuring that session proliferation does not circumvent
+  access controls. Non-compliant devices are blocked from
+  establishing additional sessions via Conditional Access
+  device compliance signals, consistent with **AC-17**
+  (Remote Access) controls.
+
+related_controls:
+    - AC-2   # Account Management
+    - AC-12  # Session Termination
+    - AC-17  # Remote Access
+    - AU-2   # Event Logging
+    - AU-6   # Audit Record Review
+    - IA-2   # Identification and Authentication
+    - SI-4   # System Monitoring
