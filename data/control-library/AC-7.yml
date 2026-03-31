@@ -1,0 +1,85 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-7
+# Title      : Unsuccessful Logon Attempts
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AC-7
+title: Unsuccessful Logon Attempts
+family: Access Control
+status: implemented
+
+implemented_by:
+    - entra-id
+    - intune-mdm
+    - cyberark-pam
+
+evidence:
+    - entra-id-sign-in-risk-policies
+    - entra-id-account-lockout-configuration
+    - intune-device-lock-policy
+    - sentinel-failed-logon-alerts
+
+parameters:
+    - id: PARAM-AC-007-001
+      description: >-
+          Maximum number of consecutive invalid logon attempts
+          before account lockout is enforced.
+      value: "5 attempts"
+    - id: PARAM-AC-007-002
+      description: >-
+          Time period in which consecutive invalid logon attempts
+          are counted.
+      value: "15 minutes"
+    - id: PARAM-AC-007-003
+      description: >-
+          Lockout duration or action taken when the maximum number
+          of unsuccessful attempts is exceeded.
+      value: "30-minute lockout; automatic unlock after duration"
+
+narrative: |
+  **Entra ID Account Lockout and Smart Lockout**
+  The organization enforces unsuccessful logon attempt limits
+  through Entra ID Smart Lockout. After PARAM-AC-007-001 (5)
+  consecutive failed authentication attempts within
+  PARAM-AC-007-002 (15 minutes), the account is locked for
+  PARAM-AC-007-003 (30 minutes). Smart Lockout distinguishes
+  between familiar and unfamiliar sign-in locations, applying
+  stricter thresholds for unfamiliar sources. Lockout events
+  are logged to Entra ID Sign-In Logs and forwarded to Microsoft
+  Sentinel for real-time alerting, supporting **AU-2** (Event
+  Logging) and **SI-4** (System Monitoring).
+
+  **Risk-Based Conditional Access Response**
+  Entra ID Identity Protection evaluates sign-in risk in real
+  time. High-risk sign-in events (password spray, credential
+  stuffing, impossible travel) trigger step-up MFA or automatic
+  session block regardless of the attempt counter. Risk-based
+  policies complement the static lockout threshold by detecting
+  distributed attack patterns that may not trigger per-account
+  lockouts. All risk detections are streamed to Sentinel for
+  correlation with **IR-4** (Incident Handling) workflows.
+
+  **Privileged Account Protection**
+  CyberArk enforces a separate, stricter lockout policy for
+  privileged accounts: 3 failed attempts result in immediate
+  vault lockout requiring administrative intervention. Failed
+  privileged authentication attempts generate P1 alerts in
+  Sentinel and trigger the incident response notification chain
+  defined in **IR-6** (Incident Reporting).
+
+  **Endpoint Device Lockout**
+  Microsoft Intune MDM compliance policies enforce device-level
+  lockout after 5 failed PIN or biometric attempts on managed
+  endpoints. Devices that exceed the threshold are locked and
+  require IT helpdesk intervention, consistent with **AC-11**
+  (Device Lock) requirements.
+
+related_controls:
+    - AC-2   # Account Management
+    - AC-11  # Device Lock
+    - AC-12  # Session Termination
+    - AU-2   # Event Logging
+    - IA-2   # Identification and Authentication
+    - IR-4   # Incident Handling
+    - IR-6   # Incident Reporting
+    - SI-4   # System Monitoring
