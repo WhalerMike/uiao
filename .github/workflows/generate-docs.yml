@@ -56,17 +56,53 @@ jobs:
       - name: Inject Quarto YAML frontmatter
         run: python scripts/quarto_pre_render.py
 
-      - name: Create .env from .env.example with empty values
+      - name: Prepare environment for Quarto render
         run: |
+          # Hide .env.example to prevent MissingEnvVarsError during quarto render
           if [ -f .env.example ]; then
-            sed 's/=.*/=/' .env.example > .env
-            echo "Created .env with empty values from .env.example"
+            mv .env.example .env.example.bak
+            echo "Temporarily renamed .env.example to avoid dotenv validation"
           fi
+          # Export all required env vars as empty strings for CI
+          export TENANT_ID='' CLIENT_ID='' CLIENT_SECRET=''
+          export SN_INSTANCE_NAME='' SN_SVC_USER='' SN_SVC_PASS=''
+          export INFOBLOX_URL='' INFOBLOX_USER='' INFOBLOX_PASS=''
+          export CYBERARK_VAULT_URL='' CYBERARK_SVC_USER='' CYBERARK_SVC_PASS=''
+          export PANORAMA_URL='' PANORAMA_API_KEY=''
+          export VMANAGE_URL='' VMANAGE_USER='' VMANAGE_PASS=''
+          export LOG_ANALYTICS_WORKSPACE_ID='' TEAMS_WEBHOOK_URL=''
 
       - name: Render all formats via Quarto
+        env:
+          TENANT_ID: ''
+          CLIENT_ID: ''
+          CLIENT_SECRET: ''
+          SN_INSTANCE_NAME: ''
+          SN_SVC_USER: ''
+          SN_SVC_PASS: ''
+          INFOBLOX_URL: ''
+          INFOBLOX_USER: ''
+          INFOBLOX_PASS: ''
+          CYBERARK_VAULT_URL: ''
+          CYBERARK_SVC_USER: ''
+          CYBERARK_SVC_PASS: ''
+          PANORAMA_URL: ''
+          PANORAMA_API_KEY: ''
+          VMANAGE_URL: ''
+          VMANAGE_USER: ''
+          VMANAGE_PASS: ''
+          LOG_ANALYTICS_WORKSPACE_ID: ''
+          TEAMS_WEBHOOK_URL: ''
         run: |
           quarto render docs/ --to html,docx,pptx,pdf,gfm 2>&1 | tee quarto-render.log
           echo "Quarto render completed with exit code $?"
+
+      - name: Restore .env.example
+        if: always()
+        run: |
+          if [ -f .env.example.bak ]; then
+            mv .env.example.bak .env.example
+          fi
 
       - name: Organize exports with canonical naming
         run: python scripts/quarto_post_render.py
