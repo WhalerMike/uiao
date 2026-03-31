@@ -124,6 +124,7 @@
 * add cisco.yaml standalone SD-WAN vendor overlay ([bafe526](https://github.com/WhalerMike/uiao-core/commit/bafe5265eae03a077ff1eb46222225b8b532156f))
 * Add compliance-trestle assemble script (closes [#20](https://github.com/WhalerMike/uiao-core/issues/20)) ([3cca209](https://github.com/WhalerMike/uiao-core/commit/3cca2091419345673c7745696cccd9f96e87ae2d))
 * add conmon-process, conmon-export-oa, conmon-dashboard CLI commands for Sentinel telemetry to auto POA&M ([92826ad](https://github.com/WhalerMike/uiao-core/commit/92826addecad82109eefc2166bddb605bb42bbb2))
+* add crosswalk_index_v1.0.md.j2 with narrative prose, diagrams, and tables ([3939f2e](https://github.com/WhalerMike/uiao-core/commit/3939f2e92a87cb5110cb7ecc7bcaae187687a10b))
 * add CrowdStrike EDR vendor overlay ([9f51de8](https://github.com/WhalerMike/uiao-core/commit/9f51de84f6ee365aff3c378840bb6daf18519f83))
 * add cyberark and servicenow to active overlays (Big 7 complete) ([fed6575](https://github.com/WhalerMike/uiao-core/commit/fed65755b21b19bd19b78d226f09cd6109314ba3))
 * add cyberark.yaml PAM vendor overlay ([8d9c18d](https://github.com/WhalerMike/uiao-core/commit/8d9c18db86f124f97440fbcbc0f4ec81630b02fb))
