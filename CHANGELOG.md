@@ -130,6 +130,7 @@
 * add cyberark.yaml PAM vendor overlay ([8d9c18d](https://github.com/WhalerMike/uiao-core/commit/8d9c18db86f124f97440fbcbc0f4ec81630b02fb))
 * add data/control-library/SC-28.yml (Protection of Information at Rest) ([801b746](https://github.com/WhalerMike/uiao-core/commit/801b7468dcb9d992ea250a0eebe155e873ce7896))
 * add data/control-library/SC-7.yml (Boundary Protection) ([2773618](https://github.com/WhalerMike/uiao-core/commit/2773618b15b95bbb531fc2034680c9f914cba992))
+* add fedramp_crosswalk_v1.0.md.j2 with narrative, diagrams, and compliance tables ([5708d3b](https://github.com/WhalerMike/uiao-core/commit/5708d3b3b440f91461af3f1a37faed8172adbfea))
 * add generate-all CLI command and animated SVG demo for README ([#1](https://github.com/WhalerMike/uiao-core/issues/1)) ([dd77d57](https://github.com/WhalerMike/uiao-core/commit/dd77d5793c4e90d3790399c8c304237a8d248435))
 * add generate-docs CLI command and fix settings.root_dir bug ([e618e36](https://github.com/WhalerMike/uiao-core/commit/e618e3663cf7dfdfd79836fe00b3783c5f0c127e))
 * add generate-docx and generate-artifacts CLI commands ([6e2ecf1](https://github.com/WhalerMike/uiao-core/commit/6e2ecf1adc4708847257df38b90c2a4acb0fe582))
