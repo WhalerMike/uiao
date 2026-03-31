@@ -14,7 +14,6 @@ Exit Codes:
 """
 
 import sys
-from pathlib import Path
 
 CANON_DOCS = [
     "00_ControlPlaneArchitecture.md",
