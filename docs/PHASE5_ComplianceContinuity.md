@@ -1,3 +1,15 @@
+---
+title: "Phase5 Compliancecontinuity"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # PHASE 5 — Compliance Continuity Model
 
 > **UIAO Control Plane — Sequence D: Canon Expansion & Runtime Integration**

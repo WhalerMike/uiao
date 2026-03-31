@@ -1,3 +1,15 @@
+---
+title: "Phase5 Incidentresponseintegration"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # PHASE 5 — Incident Response Integration Plan
 
 > **UIAO Control Plane — Sequence D: Canon Expansion & Runtime Integration**

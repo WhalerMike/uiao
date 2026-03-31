@@ -1,3 +1,15 @@
+---
+title: "0002-Testing-And-Ssp-Migration"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # ADR-0002: Testing Infrastructure and SSP Generator Migration
 
 ## Status

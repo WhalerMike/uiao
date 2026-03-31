@@ -1,3 +1,15 @@
+---
+title: "Copilot-Integration-Log"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Copilot Integration Log for uiao-core
 
 **Generated:** 2026-03-31

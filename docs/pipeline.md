@@ -1,3 +1,15 @@
+---
+title: "Pipeline"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO Generation Pipeline
 
 > **ADR-0005 Rationale:** Add a dedicated pipeline documentation page with live

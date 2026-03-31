@@ -1,3 +1,15 @@
+---
+title: "Style-Guide"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO Style Guide v1.0
 
 > A unified writing, formatting, and architectural governance standard for all UIAO documents.
