@@ -8,9 +8,7 @@ data/quarto-frontmatter.yml and prepends it to each matching .md file in docs/.
 This script runs AFTER generate_docs.py and BEFORE quarto render.
 """
 
-import os
 import re
-import sys
 
 import yaml
 from pathlib import Path
@@ -43,23 +41,23 @@ def build_frontmatter(doc_key: str, config: dict, filename: str) -> str:
     if subtitle:
         lines.append(f'subtitle: "{subtitle}"')
     lines.append(f'author: "{author}"')
-    lines.append(f'date: today')
-    lines.append(f'date-format: "MMMM D, YYYY"')
+    lines.append('date: today')
+    lines.append('date-format: "MMMM D, YYYY"')
     if classification:
         lines.append(f'classification: "{classification}"')
 
     # Format-specific overrides
     if "pptx" in formats:
         slide_level = doc_config.get("slide-level", 2)
-        lines.append(f"format:")
+        lines.append("format:")
         for fmt in formats:
             if fmt == "pptx":
-                lines.append(f"  pptx:")
+                lines.append("  pptx:")
                 lines.append(f"    slide-level: {slide_level}")
             else:
                 lines.append(f"  {fmt}: default")
     else:
-        lines.append(f"format:")
+        lines.append("format:")
         for fmt in formats:
             lines.append(f"  {fmt}: default")
 
