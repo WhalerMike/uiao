@@ -1,0 +1,163 @@
+openapi: 3.0.3
+info:
+  title: UIAO Core API
+  description: |
+    Unified Identity, Access, and Operations (UIAO) API contract.
+    Provides health checks, capability discovery, task execution,
+    and status tracking for federated identity and access management.
+  version: 1.0.0
+  contact:
+    name: UIAO Core Team
+  license:
+    name: MIT
+servers:
+  - url: https://api.uiao.local/v1
+    description: Local development
+  - url: https://api.uiao.staging/v1
+    description: Staging environment
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      operationId: getHealth
+      tags:
+        - system
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /capabilities:
+    get:
+      summary: List available UIAO capabilities
+      operationId: getCapabilities
+      tags:
+        - discovery
+      responses:
+        '200':
+          description: List of capabilities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Capability'
+  /execute:
+    post:
+      summary: Execute a UIAO task
+      operationId: executeTask
+      tags:
+        - execution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '202':
+          description: Task accepted for execution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskAccepted'
+  /status/{taskId}:
+    get:
+      summary: Get task execution status
+      operationId: getTaskStatus
+      tags:
+        - execution
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatus'
+        '404':
+          description: Task not found
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        version:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    Capability:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [identity, access, operations, compliance]
+        enabled:
+          type: boolean
+    TaskRequest:
+      type: object
+      required:
+        - capability
+        - parameters
+      properties:
+        capability:
+          type: string
+        parameters:
+          type: object
+        priority:
+          type: string
+          enum: [low, normal, high, critical]
+          default: normal
+    TaskAccepted:
+      type: object
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, running]
+        estimatedCompletion:
+          type: string
+          format: date-time
+    TaskStatus:
+      type: object
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, running, completed, failed, cancelled]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        result:
+          type: object
+        error:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
