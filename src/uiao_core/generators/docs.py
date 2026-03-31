@@ -57,6 +57,9 @@ DEFAULT_TEMPLATE_MAPPING: dict[str, tuple[str, str]] = {
         "system_inventory_and_components_v1.0.md",
         "system-inventory.md",
     ),
+        "crosswalk_index_v1.0.md.j2": ("crosswalk_index_v1.0.md", "crosswalk-index.md"),
+    "fedramp_crosswalk_v1.0.md.j2": ("fedramp_crosswalk_v1.0.md", "fedramp-crosswalk.md"),
+    "management_stack_v1.0.md.j2": ("management_stack_v1.0.md", "management-stack.md"),
 }
 
 
