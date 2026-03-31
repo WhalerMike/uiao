@@ -9,8 +9,6 @@ Usage:
 """
 
 import sys
-from pathlib import Path
-
 
 def main() -> int:
     """Check internal links. Returns 0 on success, 1 on broken links."""
