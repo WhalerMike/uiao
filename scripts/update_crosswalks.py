@@ -12,7 +12,6 @@ Usage:
 
 import sys
 import argparse
-from pathlib import Path
 
 
 def main() -> int:
