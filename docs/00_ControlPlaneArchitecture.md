@@ -1,3 +1,15 @@
+---
+title: "00 Controlplanearchitecture"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Unified Identity-Addressing-Overlay Architecture (UIAO)
 
 ## Control Plane Architecture

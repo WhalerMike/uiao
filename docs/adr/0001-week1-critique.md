@@ -1,3 +1,15 @@
+---
+title: "0001-Week1-Critique"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # ADR-0001 Week 1 Self-Critique
 
 ## What Was Delivered

@@ -1,3 +1,15 @@
+---
+title: "0004-Final-Migration-Lint-Dry-And-Pilot-Packaging"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # ADR-0004: Final Migration, Lint Enforcement, DRY Refactoring, and Agency Pilot Packaging
 
 ## Status

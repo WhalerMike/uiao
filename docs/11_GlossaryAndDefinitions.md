@@ -1,3 +1,15 @@
+---
+title: "11 Glossaryanddefinitions"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO Glossary and Definitions
 
 ## 1. Title Page
