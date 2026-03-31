@@ -87,6 +87,7 @@
 * **oscal:** load canon before data files so control_planes and matrix resolve correctly ([5306b03](https://github.com/WhalerMike/uiao-core/commit/5306b03e9a1560a1eb9961b069d462e5b1f8471b))
 * **oscal:** remove by-components from CD, fix empty prop values for trestle ([dee45f8](https://github.com/WhalerMike/uiao-core/commit/dee45f86473f26d48413bcc8ee9c6dd38e424e20))
 * **oscal:** update component-definition metadata for FedRAMP Rev 5 OSCAL 1.0.4 ([81eb807](https://github.com/WhalerMike/uiao-core/commit/81eb80745d188e39bfc75145bb6d676227395077))
+* pin Quarto version to 1.6.43 (404 on bare 1.6) ([29da4ee](https://github.com/WhalerMike/uiao-core/commit/29da4eedb4fada54e9b8b5496cfede6454881580))
 * **poam:** update metadata for FedRAMP Rev 5 OSCAL 1.0.4 compliance ([ec11443](https://github.com/WhalerMike/uiao-core/commit/ec11443dd5a9b0cb38c81944ba58ff2ed47c2253))
 * re-add [@app](https://github.com/app).command() decorator to generate_all and remove stray merge artifact ([9d667d3](https://github.com/WhalerMike/uiao-core/commit/9d667d300c706a653a12bf3356bccc4ffe353366))
 * remove unused BaseProvider import from test_abstractions.py ([c31fa24](https://github.com/WhalerMike/uiao-core/commit/c31fa240e31d1938ed2b9afa9145b71155ff5a9c))
