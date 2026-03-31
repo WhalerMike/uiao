@@ -123,9 +123,9 @@ def _add_compliance_table(doc: Document, matrix: list[dict]) -> None:
         row.cells[3].text = ", ".join(controls) if isinstance(controls, list) else str(controls)
         row.cells[4].text = entry.get("impact_statement", "")
     for cell in row.cells:
-            for p in cell.paragraphs:
-                for run in p.runs:
-                    run.font.size = Pt(8)
+        for p in cell.paragraphs:
+            for run in p.runs:
+                run.font.size = Pt(8)
 
 
 def _add_evidence_table(doc: Document) -> None:

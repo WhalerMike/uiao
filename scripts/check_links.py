@@ -10,6 +10,7 @@ Usage:
 
 import sys
 
+
 def main() -> int:
     """Check internal links. Returns 0 on success, 1 on broken links."""
     # TODO: Implement link checking
@@ -22,4 +23,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-    
