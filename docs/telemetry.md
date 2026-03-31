@@ -1,3 +1,15 @@
+---
+title: "Telemetry"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Visibility & Telemetry Control Plane
 
 Modernization requires more than just connectivity; it requires a continuous feedback loop between infrastructure, security, and operations.

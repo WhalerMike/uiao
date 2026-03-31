@@ -1,3 +1,15 @@
+---
+title: "04 Fedramp20X Phase2 Summary"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO FedRAMP 20x Phase 2 Compliance Summary
 
 ## 1. Title Page

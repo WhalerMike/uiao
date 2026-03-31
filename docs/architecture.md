@@ -1,3 +1,15 @@
+---
+title: "Architecture"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Modernization Atlas: Unified Architecture
 
 This document outlines the four-plane model driving the agency's IT transformation. By decoupling identity from physical location, we create a system that is both more secure and more agile.

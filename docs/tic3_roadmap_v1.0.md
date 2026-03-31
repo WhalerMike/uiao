@@ -204,35 +204,4 @@ The "Modernization Atlas" visualizes the fundamental shift from rigid, hardware-
 
 ---
 
-
----
-
-## Legacy Appliance Retirement Pattern: F5 Proxy Phase-Out
-
-As part of TIC 3.0 modernization, legacy F5 proxy appliances are retired in favor of cloud-native security controls aligned with UIAO overlay architecture.
-
-### Retirement Drivers
-
-- **TIC 3.0 Compliance**: Hardware-bound proxies conflict with cloud-first TIC 3.0 use cases (Branch, Remote User, Traditional)
-- **Zero Trust Alignment**: F5 inline inspection creates a single choke point incompatible with distributed identity-based enforcement
-- **Operational Cost**: Annual licensing, hardware refresh cycles, and dedicated FTE for appliance management
-- **Scalability**: Cloud-native proxies (Azure Front Door, AWS CloudFront, Cloudflare) auto-scale without capacity planning
-
-### Migration Sequence
-
-| Phase | Action | UIAO Control Plane |
-| :---- | :----- | :----------------- |
-| 1 | Inventory all F5 VIPs, iRules, and SSL profiles | I3-Addressing |
-| 2 | Map F5 policies to Azure Front Door / WAF rules | I4-Overlay |
-| 3 | Redirect DNS to cloud-native endpoints | I3-Addressing |
-| 4 | Enable Sentinel telemetry on new path | I5-Telemetry |
-| 5 | Decommission F5 appliances and reclaim rack space | I6-Governance |
-
-### Success Criteria
-
-- Zero F5 appliances in production network path
-- All web application traffic routed through cloud-native WAF
-- Sentinel telemetry covers 100% of migrated endpoints
-- No degradation in P95 latency for migrated services
-
 *End of TIC 3.0 Roadmap v1.0*

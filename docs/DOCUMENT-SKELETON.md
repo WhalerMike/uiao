@@ -1,3 +1,15 @@
+---
+title: "Document-Skeleton"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO Canonical Document Skeleton v1.0
 
 > A deterministic, plane-aligned, canon-aligned structure for all UIAO documents.

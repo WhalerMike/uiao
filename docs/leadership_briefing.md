@@ -1,3 +1,16 @@
+---
+title: "UIAO Leadership Briefing"
+subtitle: "Modernization Status & Strategic Direction"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  pptx:
+    slide-level: 2
+  pdf: default
+  html: default
+---
+
 # Executive Briefing: The Modernization Atlas
 
 **The Problem:** Current agency onboarding/offboarding (JML) is manual, error-prone, and takes >24 hours to revoke access. Asset inventory relies on manual data entry with no automated validation against the network source of truth.
