@@ -235,6 +235,8 @@
 * **trestle:** add validate_oscal_artifacts() + PlanOfActionAndMilestones support (ADR-0004) ([c47f6ce](https://github.com/WhalerMike/uiao-core/commit/c47f6ce74af8829ffbca66b6b04c5a16d6a0b6d8))
 * update AC-6 with Azure PIM/RBAC least privilege narrative ([10e8425](https://github.com/WhalerMike/uiao-core/commit/10e84256529718612ee80a776ec80c533a306dbe))
 * upgrade IA-2 + add SC-12 AT-3 SI-4 control YAMLs + README What's New (closes [#123](https://github.com/WhalerMike/uiao-core/issues/123)) ([d214e83](https://github.com/WhalerMike/uiao-core/commit/d214e83bdf077a0c56b50b1e1068d01fedd74591))
+* upgrade modernization_timeline_v1.0.md.j2 with roadmap tables, diagrams, and narrative ([c907ff1](https://github.com/WhalerMike/uiao-core/commit/c907ff17ef65b2566180e249f43473b33bb86aa3))
+* upgrade unified_architecture template to v1.0 quality standard ([e025dda](https://github.com/WhalerMike/uiao-core/commit/e025dda1153defe313b99c6144d6dda7a2902d56))
 * **utils:** add utils package with __init__.py (ADR-0004) ([1442961](https://github.com/WhalerMike/uiao-core/commit/1442961fe39a261e32414e48b1a0c4bd9d33ba89))
 * Wire control-library narratives into SSP generator with narrative_loader + enhanced CLI ([f7fd4ba](https://github.com/WhalerMike/uiao-core/commit/f7fd4bac38ffbc27335f9e5b4bccd7208d5c1f46))
 * wire Gemini image generation into generate-artifacts pipeline ([2b64912](https://github.com/WhalerMike/uiao-core/commit/2b64912931f3c4348d3c5b87289961e24271e5da))
