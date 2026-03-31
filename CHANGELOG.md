@@ -41,6 +41,7 @@
 * **generators:** sort imports in rich_docx.py for ruff I001 ([2599395](https://github.com/WhalerMike/uiao-core/commit/259939592f820de8061f0b72d38b38f2523a4ce5))
 * **generators:** sort pptx.py imports for ruff I001 ([ffa4da5](https://github.com/WhalerMike/uiao-core/commit/ffa4da5b293b8754323340e4af9b74c019c24e44))
 * **generators:** suppress I001 in charts.py for matplotlib backend setup ([426e6e5](https://github.com/WhalerMike/uiao-core/commit/426e6e59d31636843b79b5ec49691debb637047a))
+* guard _add_compliance_table against empty matrix ([dbd6b94](https://github.com/WhalerMike/uiao-core/commit/dbd6b9479bacd39c78de7e6f974af9680616b1bf))
 * hide .env.example and inject env vars to resolve Quarto MissingEnvVarsError ([af6c041](https://github.com/WhalerMike/uiao-core/commit/af6c041d883a0833385a11426d0ecfdae29282f0))
 * ignore I001 isort in abstractions to fix CI lint ([36a35c5](https://github.com/WhalerMike/uiao-core/commit/36a35c580daf73b64c3c9eab60d5f1a064948873))
 * ignore setuptools CVEs in pip-audit (CVE-2024-6345, PYSEC-2025-49) ([339a15c](https://github.com/WhalerMike/uiao-core/commit/339a15c93d492120b0624cc91076763640ac33fe))
