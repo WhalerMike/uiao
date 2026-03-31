@@ -1,0 +1,112 @@
+---
+title: "UIAO Management Stack"
+version: "{{ version | default('1.0') }}"
+classification: "{{ classification | default('CUI') }}"
+---
+
+# UIAO Management Stack
+
+**Version {{ version | default('1.0') }}**
+
+---
+
+## 1. Overview
+
+The UIAO Management Stack defines the FedRAMP-authorized platforms that provide incident lifecycle management, endpoint configuration enforcement, and continuous authorization support. These platforms operate alongside the core UIAO vendor stack (Cisco, Infoblox, Microsoft Identity) to deliver a complete operational management capability.
+
+The following diagram shows how the management stack integrates with the broader UIAO architecture through the telemetry and identity planes.
+
+```mermaid
+{{ diagrams.multi_plane_integration }}
+```
+
+---
+
+## 2. ServiceNow GovCommunityCloud
+
+**Provider:** {{ management_stack.servicenow.provider }}  
+**Product:** {{ management_stack.servicenow.product }}  
+**UIAO Role:** {{ management_stack.servicenow.uiao_role }}
+
+### 2.1. FedRAMP Authorization
+
+| Attribute | Value |
+| :--- | :--- |
+| Package Type | {{ management_stack.servicenow.fedramp_authorization.package_type }} |
+| Impact Level | {{ management_stack.servicenow.fedramp_authorization.impact_level }} |
+| FedRAMP 20x Class | {{ management_stack.servicenow.fedramp_authorization.fedramp_20x_class }} |
+| Status | {{ management_stack.servicenow.fedramp_authorization.status }} |
+| Assessment Framework | {{ management_stack.servicenow.fedramp_authorization.assessment_framework }} |
+| Authorization Source | {{ management_stack.servicenow.fedramp_authorization.authorization_source }} |
+| Required Version | {{ management_stack.servicenow.required_version }} |
+
+### 2.2. NIST 800-53 Rev 5 Control Implementations
+
+The following table details how ServiceNow implements specific NIST controls within the UIAO architecture.
+
+| Control ID | Control Name | Implementation | Evidence Artifact |
+| :--- | :--- | :--- | :--- |
+{% for ctrl in management_stack.servicenow.nist_controls %}
+| **{{ ctrl.control_id }}** | {{ ctrl.control_name }} | {{ ctrl.implements[:80] }}... | `{{ ctrl.evidence_artifact[:60] }}...` |
+{% endfor %}
+
+### 2.3. Integration Bindings
+
+ServiceNow integrates with the following UIAO components to maintain cross-platform data consistency and support unified incident management.
+
+{% for binding in management_stack.servicenow.integration_bindings %}
+- **{{ binding.target }}:** {{ binding.mechanism }} *({{ binding.control_supported }})*
+{% endfor %}
+
+---
+
+## 3. Microsoft Intune (M365 GCC High)
+
+**Provider:** {{ management_stack.intune.provider }}  
+**Product:** {{ management_stack.intune.product }}  
+**UIAO Role:** {{ management_stack.intune.uiao_role }}
+
+### 3.1. FedRAMP Authorization
+
+| Attribute | Value |
+| :--- | :--- |
+| Package Type | {{ management_stack.intune.fedramp_authorization.package_type }} |
+| Impact Level | {{ management_stack.intune.fedramp_authorization.impact_level }} |
+| FedRAMP 20x Class | {{ management_stack.intune.fedramp_authorization.fedramp_20x_class }} |
+| Parent Package | {{ management_stack.intune.fedramp_authorization.parent_package }} |
+| Status | {{ management_stack.intune.fedramp_authorization.status }} |
+| Assessment Framework | {{ management_stack.intune.fedramp_authorization.assessment_framework }} |
+| Deployment Ring | {{ management_stack.intune.deployment_ring }} |
+| Required Version | {{ management_stack.intune.required_version }} |
+
+> **Note:** {{ management_stack.intune.fedramp_authorization.note }}
+
+### 3.2. NIST 800-53 Rev 5 Control Implementations
+
+| Control ID | Control Name | Implementation | Evidence Artifact |
+| :--- | :--- | :--- | :--- |
+{% for ctrl in management_stack.intune.nist_controls %}
+| **{{ ctrl.control_id }}** | {{ ctrl.control_name }} | {{ ctrl.implements[:80] }}... | `{{ ctrl.evidence_artifact[:60] }}...` |
+{% endfor %}
+
+### 3.3. Integration Bindings
+
+Intune integrates with the following UIAO components to enforce device posture across the identity and network planes.
+
+{% for binding in management_stack.intune.integration_bindings %}
+- **{{ binding.target }}:** {{ binding.mechanism }} *({{ binding.control_supported }})*
+{% endfor %}
+
+---
+
+## 4. Vendor Logic Processing
+
+The following diagram illustrates how the UIAO data layer processes management stack configurations through the Jinja2 rendering pipeline to produce vendor-specific outputs.
+
+```mermaid
+{{ diagrams.vendor_logic }}
+```
+
+---
+
+*Generated from UIAO data layer — Management Stack v{{ version | default('1.0') }}*
