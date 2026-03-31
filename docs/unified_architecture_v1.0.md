@@ -5,46 +5,58 @@ classification: "CUI/FOUO"
 ---
 
 # UIAO Unified Architecture
+
 **Version 1.0**
 
 ---
 
-# Architectural Overview
+## 1. Architectural Overview
+
 The Unified Identity-Addressing-Overlay Architecture (UIAO) is a modernization initiative designed to unify identity, addressing, routing, telemetry, and governance into a coherent, Zero Trust-aligned federal architecture. It integrates Microsoft Entra ID as the identity control plane, ICAM as the governance backbone, InfoBlox as the authoritative IPAM, Cisco SD-WAN as the routing control plane, and cloud-native telemetry and location services as the truth source for operational decisions. Together, these components form a coordinated modernization effort that replaces fragmented legacy systems with a cloud-optimized, identity-driven, telemetry-informed enterprise.
 The strategic goal is to transform the agency into a modern federal network where identity is the perimeter, telemetry is the truth, routing is cloud-first, and governance is automated. UIAO provides the architectural foundation needed to meet Zero Trust expectations, TIC 3.0 requirements, and FedRAMP-aligned controls while improving mission performance and citizen experience.
 
 
-# Core Stack Integration
-
-The following diagram illustrates how the three pillars of the UIAO framework interconnect. Each node is dynamically generated from program.yml and styled using validated classDef syntax.
-
-<img src="assets/images/mermaid/graph_lr.png" alt="graph_lr" />
+The Unified Identity-Addressing-Overlay (UIAO) architecture integrates four control planes into a single cohesive framework. Each plane governs a distinct operational domain while sharing telemetry, policy signals, and configuration data with the others through well-defined integration points.
 
 ---
 
-# The Five Control Planes
+## 2. Four-Plane Architecture Diagram
 
-### 1. Identity Control Plane
+The following diagram illustrates the complete UIAO architecture, showing how the Identity, Addressing, Overlay, and Telemetry control planes interconnect through the central Policy Engine.
+
+<img src="assets/images/mermaid/diagram_1.png" alt="diagram_1" />
+
+---
+
+## 3. The Control Planes
+
+
+### 3.1. Identity Control Plane
+
 The Identity Control Plane is anchored in Entra ID and reinforced by ICAM governance, Conditional Access, Privileged Identity Management, and lifecycle automation. Identity becomes the authoritative source for access, addressing, certificates, and policy.
 
 
 
-### 2. Network Control Plane
+### 3.2. Network Control Plane
+
 The Network Control Plane uses Cisco SD-WAN to deliver cloud-first routing, performance-optimized paths for M365, and identity-aware segmentation. Integration with INR enables location-aware routing and emergency services readiness.
 
 
 
-### 3. Addressing Control Plane
+### 3.3. Addressing Control Plane
+
 The Addressing Control Plane modernizes IPAM through InfoBlox, replacing spreadsheets with authoritative, identity-derived addressing. DNS and DHCP are unified across cloud and on-prem environments, enabling consistent policy enforcement and accurate telemetry correlation.
 
 
 
-### 4. Telemetry & Location Control Plane
+### 3.4. Telemetry & Location Control Plane
+
 The Telemetry and Location Control Plane consolidates signals from M365, SD-WAN, endpoints, DNS, CDM/CLAW, and SIEM platforms. Telemetry becomes a real-time control input for routing, security, and compliance, enabling conversation-level visibility across the enterprise.
 
 
 
-### 5. Security & Compliance Plane
+### 3.5. Security & Compliance Plane
+
 The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Trust, FedRAMP 20x Phase 2, NIST 800-63, and ICAM governance. Security becomes embedded in the architecture rather than bolted on, with automated enforcement replacing manual review.
 
 
@@ -52,39 +64,79 @@ The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Tru
 
 ---
 
-# The Seven Core Concepts
+## 4. Multi-Plane Integration
 
-### 1. Conversation as the Atomic Unit
+The UIAO architecture achieves its power through deep integration between control planes. The telemetry plane provides closed-loop feedback to all other planes, enabling real-time policy adjustment and continuous compliance validation.
+
+<img src="assets/images/mermaid/diagram_2.png" alt="diagram_2" />
+
+---
+
+## 5. Core Stack Integration
+
+The following diagram illustrates how the three pillars of the UIAO framework interconnect. Each node is derived from the program data layer.
+
+<img src="assets/images/mermaid/graph_lr.png" alt="graph_lr" />
+
+---
+
+## 6. Legacy vs. Modernized State
+
+The following diagram compares the fragmented legacy state with the unified modernized architecture that UIAO delivers.
+
+<img src="assets/images/mermaid/diagram_4.png" alt="diagram_4" />
+
+---
+
+## 7. Mission-to-Technology Mapping
+
+The following diagram demonstrates how each technical control plane maps to strategic mission outcomes, providing executive visibility into the return on modernization investment.
+
+<img src="assets/images/mermaid/diagram_5.png" alt="diagram_5" />
+
+---
+
+## 8. Seven Core Concepts
+
+
+### 8.1. Conversation as the Atomic Unit
+
 Every interaction—identity, certificate, addressing, path, QoS, and telemetry—is treated as a single, correlated conversation rather than isolated events.
 
 
 
-### 2. Identity as the Root Namespace
+### 8.2. Identity as the Root Namespace
+
 Identity becomes the root namespace for all resources, ensuring that every IP address, certificate, subnet, policy, and telemetry event is derived from or bound to identity.
 
 
 
-### 3. Deterministic Addressing
+### 8.3. Deterministic Addressing
+
 Addressing becomes deterministic and policy-driven, replacing ad-hoc assignment with identity-derived logic that enables accurate correlation and automated governance.
 
 
 
-### 4. Certificate-Anchored Overlay
+### 8.4. Certificate-Anchored Overlay
+
 Certificates and mutual TLS anchor tunnels, services, and trust relationships across the enterprise.
 
 
 
-### 5. Telemetry as Control
+### 8.5. Telemetry as Control
+
 Telemetry becomes an active control input for routing, security, and compliance decisions rather than a passive reporting mechanism.
 
 
 
-### 6. Embedded Governance & Automation
+### 8.6. Embedded Governance & Automation
+
 Governance is executed through orchestrated workflows that enforce policy consistently and reduce operational burden.
 
 
 
-### 7. Public Service First
+### 8.7. Public Service First
+
 Citizen experience, accessibility, and privacy remain top-level design constraints.
 
 
@@ -92,46 +144,20 @@ Citizen experience, accessibility, and privacy remain top-level design constrain
 
 ---
 
-# Architectural Rationale
-The agency’s current environment is constrained by legacy TIC 2.0 routing patterns that force traffic through centralized bottlenecks, degrading performance and limiting cloud adoption. Identity remains anchored in on-premises Active Directory, creating governance gaps and inconsistent enforcement across divisions. Addressing is fragmented across spreadsheets and disconnected IPAM tools, making it difficult to correlate identity, device, and network activity. Telemetry is incomplete and siloed, preventing conversation-level visibility and limiting the agency’s ability to support INR, E911, or Zero Trust enforcement.
-These limitations have direct mission impact. M365 performance is degraded by unnecessary hairpinning. Cyber risk increases when identity governance is inconsistent and telemetry is incomplete. Compliance gaps emerge when the agency cannot meet TIC 3.0, FedRAMP 20x Phase 2, or SCuBA expectations. Operational inefficiencies multiply when governance depends on manual tickets instead of automated workflows. Modernization is required to support mission readiness, cyber resilience, and citizen-facing services.
+## 9. Jinja2 Normalization Pipeline
 
+All UIAO configuration data flows through a normalization pipeline that ensures consistency between YAML data sources and Jinja2 templates.
 
----
-
-# Vibrant Visualizations
-
-The following high-fidelity visuals provide presentation-grade evidence for audit and leadership review.
-
-### Identity-to-IP Mapping (U+A Pillar)
-![Identity-to-IP Mapping](../visuals/uiao-vibrant-u-plus-a-mapping.png "NIST 800-53 IA-2 / CM-8")
-
-### Cisco-Microsoft INR Overlay (O Pillar)
-![INR Overlay Fabric](../visuals/uiao-vibrant-o-pillar-inr-fabric.png "NIST 800-53 AC-4 / CA-7")
-
-### Cryptographic Trust Chain (SC-8)
-![Trust Chain](../visuals/uiao-vibrant-cryptographic-trust-chain.png "NIST 800-53 SC-8")
+<img src="assets/images/mermaid/diagram_6.png" alt="diagram_6" />
 
 ---
 
-## The Cryptographic Trust Chain (Visual V5)
+## 10. Executive Dashboard Status
 
-The UIAO model replaces legacy password-based access with a cryptographically proven trust chain. Every connection to the **agency** fabric is validated using a "Digital Passport" anchored to the **GSA Federal Common Policy CA (Root)**.
+The following diagram provides a real-time view of deployment readiness across all UIAO components.
 
-### **Trust Propagation Flow**
-
-1. **Root Anchor:** Trust originates at the Federal Root CA.
-2. **Issuance:** The **Agency Issuing CA (Subordinate)** issues certificates via **SCEP / Microsoft Intune**.
-3. **Verification:** The **UIAO Fabric Edge (Cisco SD-WAN)** performs a hardware-backed mTLS handshake.
-
-| Entity Type | Issuance Protocol | Enforcement Mechanism |
-| :--- | :--- | :--- |
-| Managed Workstations | `SCEP / Microsoft Intune` | Mutual TLS (mTLS) to Cisco Catalyst Edge |
-| Mobile Devices | `Derive PIV / Entra ID` | Conditional Access + FIDO2 |
-
-
-> **Security Note:** This architecture ensures that even if a user's credentials are compromised, the lack of a hardware-bound certificate (V5) prevents unauthorized access to the UIAO fabric.
+<img src="assets/images/mermaid/diagram_7.png" alt="diagram_7" />
 
 ---
 
-*End of Unified Architecture v1.0*
+*Generated from UIAO data layer — Unified Architecture v1.0*
