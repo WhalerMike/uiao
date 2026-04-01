@@ -28,6 +28,7 @@
 * complete PR [#48](https://github.com/WhalerMike/uiao-core/issues/48) continuous monitoring review fixes [refs UIAO-MEMORY.md] ([00b788a](https://github.com/WhalerMike/uiao-core/commit/00b788a52e3beb74c8a1eacab282ad6574430edf))
 * correct changelog.yml YAML syntax and indentation ([76e320a](https://github.com/WhalerMike/uiao-core/commit/76e320a725e3324674fb4a769727f17bda4278c2))
 * correct indentation and remove duplicate ternary in app.py ([0853465](https://github.com/WhalerMike/uiao-core/commit/0853465a32f9776f5f251819dbb919a4b092d0cf))
+* correct indentation in _add_compliance_table guard clause ([ee09c70](https://github.com/WhalerMike/uiao-core/commit/ee09c708d58d32a08a7c02218928ad30ba69cbdf))
 * correct indentation in app.py ternary and fix import sort in generate_docs.py ([4c9e974](https://github.com/WhalerMike/uiao-core/commit/4c9e974c80babcb1f8d23642d768d6e1c63bf8fa))
 * correct Pipeline Diagrams indentation in mkdocs.yml nav ([de2b147](https://github.com/WhalerMike/uiao-core/commit/de2b147375e7f2483f9b2c4066ad9f0597fa98b1))
 * correct YAML indentation and pin Quarto to 1.6.43 ([152d0c4](https://github.com/WhalerMike/uiao-core/commit/152d0c4cd20e6fa56a9b57758e7055802f62c4e4))
