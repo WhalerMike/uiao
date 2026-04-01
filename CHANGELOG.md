@@ -43,6 +43,7 @@
 * correct YAML indentation and pin Quarto to 1.6.43 ([152d0c4](https://github.com/WhalerMike/uiao-core/commit/152d0c4cd20e6fa56a9b57758e7055802f62c4e4))
 * create .env from .env.example to resolve MissingEnvVarsError in Quarto render ([324eb31](https://github.com/WhalerMike/uiao-core/commit/324eb3175d8ba331ccf07cf0f9895d34c147d7a4))
 * dedent guard clause in _add_compliance_table to correct indentation level ([8506a05](https://github.com/WhalerMike/uiao-core/commit/8506a051ec9bd3f92a65aff3a8401e33fc678d1d))
+* enable ruff --fix in CI workflow to auto-fix lint errors ([11377f7](https://github.com/WhalerMike/uiao-core/commit/11377f7334f515c5e96192adfecf35b0b3590eb9))
 * enable ruff --fix in lint workflow to auto-fix remaining lint errors ([3cf472b](https://github.com/WhalerMike/uiao-core/commit/3cf472bde7cce6b8061d54db26d09c7f67bd4902))
 * **evidence:** add missing linker.py + bundler.py, prop:id on OSCAL back-matter, 34 tests (refs UIAO-MEMORY.md) ([2f07a41](https://github.com/WhalerMike/uiao-core/commit/2f07a41f3857beb3ee3ea52179b390d228d3270b))
 * **evidence:** address code review — improve error logging, clarify OSCAL validation comment, add round-trip test ([5d5b711](https://github.com/WhalerMike/uiao-core/commit/5d5b7110f36ce844f5f1d605913b54b12b27ca91))
