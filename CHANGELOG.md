@@ -129,6 +129,7 @@
 * add BaseCollector ABC and EvidenceObject dataclasses ([842beae](https://github.com/WhalerMike/uiao-core/commit/842beae9a3f72706117760f49a848a181375a4ce))
 * add build_rich_docx to generators __init__ exports ([a5e3cef](https://github.com/WhalerMike/uiao-core/commit/a5e3cef760490c96a2eeca4c6477d6c8fc965ba9))
 * add canonical document skeleton Jinja2 template ([eaac014](https://github.com/WhalerMike/uiao-core/commit/eaac0143a6fe6f8ad50177f9bf25b4530ea97f2b))
+* add Cisco SD-WAN evidence collector ([30aa567](https://github.com/WhalerMike/uiao-core/commit/30aa5670325750e7875026a25605d2071437454b))
 * add cisco.yaml standalone SD-WAN vendor overlay ([bafe526](https://github.com/WhalerMike/uiao-core/commit/bafe5265eae03a077ff1eb46222225b8b532156f))
 * add collector registry with auto-discovery (__init__.py) ([e53e65a](https://github.com/WhalerMike/uiao-core/commit/e53e65a3ba3aeb4cd7adef4290bfcb6a4c68d760))
 * Add compliance-trestle assemble script (closes [#20](https://github.com/WhalerMike/uiao-core/issues/20)) ([3cca209](https://github.com/WhalerMike/uiao-core/commit/3cca2091419345673c7745696cccd9f96e87ae2d))
