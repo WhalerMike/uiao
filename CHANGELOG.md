@@ -162,6 +162,7 @@
 * add quarto_pre_render.py bridge script ([2a58cc7](https://github.com/WhalerMike/uiao-core/commit/2a58cc79c882dbc4067fab300677a89cb05f4db1))
 * add quarto-frontmatter.yml document mappings ([87a1b02](https://github.com/WhalerMike/uiao-core/commit/87a1b02ef2fa5a41dabd814d8d274a2a04f44c98))
 * Add rich DOCX generator with native Word styles and compliance tables ([18995c9](https://github.com/WhalerMike/uiao-core/commit/18995c98f3d953b58435e39d53740c2ed75b58bd))
+* add sample KSI rule YAML for AC-2 Account Management ([08490ae](https://github.com/WhalerMike/uiao-core/commit/08490aeb2eabb37a9006faef15d9ef727531d9ba))
 * add SC-12 Cryptographic Key Establishment control YAML ([d6eb6af](https://github.com/WhalerMike/uiao-core/commit/d6eb6af0d4828c866f6453119bcdab29e2c0334e))
 * add SC-8 Transmission Confidentiality and Integrity control narrative ([71b7f31](https://github.com/WhalerMike/uiao-core/commit/71b7f319b1d2dd88eef2356884b110962a881d2d))
 * add servicenow.yaml GRC vendor overlay (Xanadu) ([354d569](https://github.com/WhalerMike/uiao-core/commit/354d569944fa325c0ce3a0e1d3b75ab85c2d101f))
