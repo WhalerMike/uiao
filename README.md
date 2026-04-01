@@ -47,13 +47,14 @@ This structure is deterministic and must not be altered.
 
 The UIAO canon is built on the **Eight Core Concepts**:
 
-1. **Conversation as the atomic unit** — Every interaction binds identity, certificates, addressing, path, QoS, and telemetry.
-2. **Identity as the root namespace** — Every IP, certificate, subnet, policy, and telemetry event is derived from identity.
-3. **Deterministic addressing** — Addressing is identity-derived and policy-driven.
-4. **Certificate-anchored overlay** — mTLS anchors tunnels, services, and trust relationships.
-5. **Telemetry as control** — Telemetry is a real-time control input, not passive reporting.
-6. **Embedded governance and automation** — Governance is executed through orchestrated workflows, not manual tickets.
-7. **Public service first** — Citizen experience, accessibility, and privacy are top-level design constraints.
+1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
+2. **Conversation as the atomic unit** — Every interaction binds identity, certificates, addressing, path, QoS, and telemetry.
+3. **Identity as the root namespace** — Every IP, certificate, subnet, policy, and telemetry event is derived from identity.
+4. **Deterministic addressing** — Addressing is identity-derived and policy-driven.
+5. **Certificate-anchored overlay** — mTLS anchors tunnels, services, and trust relationships.
+6. **Telemetry as control** — Telemetry is a real-time control input, not passive reporting.
+7. **Embedded governance and automation** — Governance is executed through orchestrated workflows, not manual tickets.
+8. **Public service first** — Citizen experience, accessibility, and privacy are top-level design constraints.
 
 These concepts appear identically across all 12 documents.
 
