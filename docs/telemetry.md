@@ -17,6 +17,11 @@ Modernization requires more than just connectivity; it requires a continuous fee
 ## Closed-Loop Integration
 This visualization shows how real-time signals inform policy and security decisions.
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 graph TB
   subgraph "Telemetry Control Plane (Visibility)"
@@ -40,8 +45,9 @@ graph TB
   classDef telemetry fill:#f1f8e9,stroke:#558b2f,stroke-width:2px;
   classDef feedback stroke-dasharray: 5 5;
   class S,IB telemetry;
-
 ```
+
+</details>
 
 ### Telemetry Sources
 The agency utilizes the following telemetry anchors to maintain the "Modernization Atlas" accuracy:
