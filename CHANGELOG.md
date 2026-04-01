@@ -18,6 +18,7 @@
 * align evidence_path indentation with sibling keys in parameters.yml to fix YAML parse error ([712752a](https://github.com/WhalerMike/uiao-core/commit/712752a5af7f63af34a965b1783401ba9543f4e8))
 * apply ruff format to tests/test_cli.py ([d701611](https://github.com/WhalerMike/uiao-core/commit/d7016115c3cad734ce2943865bb79e215f4d1391))
 * AU-11 Sentinel as primary, RA-5 ServiceNow VR, PM-4 legacy OSCAL replacement ([3503827](https://github.com/WhalerMike/uiao-core/commit/3503827afeec740135b735c5289d2fbd3ba2d78a))
+* auto-remediate canonical drift detected by drift-detection workflow ([d280481](https://github.com/WhalerMike/uiao-core/commit/d2804818bcb2b29936fd715c892ad34ce5156a28))
 * auto-remediate canonical drift detected by drift-detection workflow ([7ede53a](https://github.com/WhalerMike/uiao-core/commit/7ede53a18134c0a8d5fc24e8a8157aac43857d22))
 * changelog workflow skip-commit and handle empty commits gracefully ([13c31fe](https://github.com/WhalerMike/uiao-core/commit/13c31febb4f6065d08ed05781014fb844097fde7))
 * **ci:** add rebase step to changelog workflow to prevent push failures ([0265b33](https://github.com/WhalerMike/uiao-core/commit/0265b33f6a7259246f5ff9906a26affa3ae09a27))
