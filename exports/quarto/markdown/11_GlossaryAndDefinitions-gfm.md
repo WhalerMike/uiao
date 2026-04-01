@@ -16,6 +16,9 @@ March 31, 2026
     Alignment](#4-control-plane-alignment)
   - [<span class="toc-section-number">1.5</span> 5. Core
     Concepts](#5-core-concepts)
+
+> **Single Source of Truth (SSOT):** The README.md is the authoritative origin for all canonical definitions.
+
     - [<span class="toc-section-number">1.5.1</span> Conversation as the
       Atomic Unit](#conversation-as-the-atomic-unit)
     - [<span class="toc-section-number">1.5.2</span> Identity as the
