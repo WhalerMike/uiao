@@ -1,4 +1,17 @@
+---
+title: "17 Consent Envelope"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO Federated Authorization & Consent Envelope
+
 **Document:** 17
 **Phase:** 5 — Data Governance Substrate
 **Version:** 1.0
@@ -81,3 +94,21 @@ consent_envelope:
 | AC-22 (Publicly Accessible Content) | `consent_granted_by`, `data_minimization` |
 | AR-4 (Privacy Monitoring) | `consent_expiry`, `cross_boundary_flag` |
 | IP-1 (Consent) | Full envelope |
+
+---
+
+## 7. Cross-References
+
+- `docs/15_ProvenanceProfile.md` — Provenance envelope that consent extends
+- `docs/16_DriftDetectionStandard.md` — Authorization drift (DRIFT-AUTHZ) enforcement
+- `docs/18_ClaimCatalog.md` — Claim records with `consent_required` flags
+- `docs/19_ReconciliationModel.md` — Consent conflict resolution (CONFLICT-CONSENT)
+- `docs/adapters/adapter-contract.md` — Adapter consent validation obligations
+
+---
+
+## 8. Revision History
+
+| Version | Date | Author | Summary |
+|---|---|---|---|
+| 1.0 | 2026-04-01 | UIAO Canon Engine | Initial canonical release — Phase 5 Data Governance Substrate |
