@@ -65,6 +65,9 @@ This glossary spans all six UIAO control planes:
 
 ## 5. Core Concepts
 
+> **Single Source of Truth (SSOT):** The README.md is the authoritative origin for all canonical definitions.
+
+
 The glossary includes the frozen definitions of the Eight Core Concepts:
 
 ### Conversation as the Atomic Unit
