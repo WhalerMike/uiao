@@ -1,8 +1,8 @@
-# ---------------------------------------------------------------
+# ----------------------------------------------------------------
 # Bootstrap Adapter Layer
 # Creates the full UIAO adapter scaffold in one commit.
-# Uses GITHUB_TOKEN — no PAT required.
-# ---------------------------------------------------------------
+# Uses GITHUB_TOKEN - no PAT required.
+# ----------------------------------------------------------------
 name: Bootstrap Adapter Layer
 
 on:
@@ -24,451 +24,345 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ---- adapters/__init__.py ----
-      - name: Create adapters/__init__.py
+      - name: Create adapter scaffold
         run: |
-          mkdir -p adapters
-          cat > adapters/__init__.py << 'PYEOF'
-"""UIAO Adapter Registry — auto-discovery of all installed adapters."""
-from __future__ import annotations
+          mkdir -p adapters/database adapters/cloud adapters/government tests
+          python3 << 'GENSCRIPT'
+          import os, textwrap
+          def w(path, content):
+              os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+              with open(path, 'w') as f:
+                  f.write(textwrap.dedent(content).lstrip('\n'))
 
-import importlib
-import pkgutil
-from typing import Dict, Type
+          w('adapters/__init__.py', '''
+              """UIAO Adapter Registry - auto-discovery of all installed adapters."""
+              from __future__ import annotations
+              import importlib
+              import pkgutil
+              from typing import Dict, Type
 
-_REGISTRY: Dict[str, Type] = {}
+              _REGISTRY: Dict[str, Type] = {}
+
+              def register(adapter_id: str):
+                  def decorator(cls):
+                      _REGISTRY[adapter_id] = cls
+                      return cls
+                  return decorator
+
+              def get_adapter(adapter_id: str):
+                  return _REGISTRY[adapter_id]
+
+              ADAPTER_REGISTRY = _REGISTRY
+
+              for _loader, _name, _ispkg in pkgutil.walk_packages(
+                  __path__, prefix=__name__ + "."
+              ):
+                  importlib.import_module(_name)
+          ''')
+
+          w('adapters/base_adapter.py', '''
+              """BaseAdapter ABC - every adapter implements this contract."""
+              from __future__ import annotations
+              from abc import ABC, abstractmethod
+              from dataclasses import dataclass, field
+              from typing import Any, List
+
+              @dataclass
+              class AdapterMetadata:
+                  adapter_id: str
+                  name: str
+                  version: str
+                  certification_level: int = 1
+                  plane: str = "Identity"
+                  capabilities: List[str] = field(default_factory=list)
+
+              @dataclass
+              class CanonicalClaim:
+                  claim_id: str
+                  source_system: str
+                  claim_type: str = ""
+                  value: Any = None
+
+              @dataclass
+              class ClaimFilter:
+                  source_system: str = ""
+                  claim_type: str = ""
+
+              @dataclass
+              class DriftReport:
+                  adapter_id: str
+                  drifted: bool = False
+                  details: str = ""
+
+              @dataclass
+              class KSIBundle:
+                  bundle_id: str
+                  adapter_id: str
+
+              @dataclass
+              class ProvenanceRecord:
+                  record_id: str
+                  adapter_id: str
+                  source_system: str = ""
+
+              class BaseAdapter(ABC):
+                  @abstractmethod
+                  async def connect(self, config: dict) -> bool: ...
+                  @abstractmethod
+                  async def extract_claims(self, filter: ClaimFilter) -> List[CanonicalClaim]: ...
+                  @abstractmethod
+                  async def detect_drift(self) -> DriftReport: ...
+                  @abstractmethod
+                  async def transform_to_canonical(self, raw: Any) -> CanonicalClaim: ...
+                  @abstractmethod
+                  async def generate_lineage(self) -> ProvenanceRecord: ...
+                  @abstractmethod
+                  async def generate_ksi_bundle(self) -> KSIBundle: ...
+                  @abstractmethod
+                  def get_metadata(self) -> AdapterMetadata: ...
+          ''')
+
+          w('adapters/database/__init__.py', '''
+              """Database adapter sub-package."""
+          ''')
+
+          w('adapters/database/sql_adapter.py', '''
+              """SqlAdapter - placeholder for direct SQL-based identity stores."""
+              from __future__ import annotations
+              from adapters import register
+              from adapters.base_adapter import (
+                  BaseAdapter, AdapterMetadata, CanonicalClaim, ClaimFilter,
+                  DriftReport, KSIBundle, ProvenanceRecord,
+              )
+              from typing import Any, List
+
+              @register("sql")
+              class SqlAdapter(BaseAdapter):
+                  """Reads identity claims from a SQL-compatible store."""
+                  _connected: bool = False
+
+                  async def connect(self, config: dict) -> bool:
+                      self._conn_str = config.get("connection_string", "")
+                      self._connected = bool(self._conn_str)
+                      return self._connected
+
+                  async def extract_claims(self, filter: ClaimFilter) -> List[CanonicalClaim]:
+                      return []
+
+                  async def detect_drift(self) -> DriftReport:
+                      return DriftReport(adapter_id="sql")
+
+                  async def transform_to_canonical(self, raw: Any) -> CanonicalClaim:
+                      return CanonicalClaim(
+                          claim_id="", source_system="sql",
+                          claim_type="row", value=raw,
+                      )
+
+                  async def generate_lineage(self) -> ProvenanceRecord:
+                      return ProvenanceRecord(
+                          record_id="", adapter_id="sql",
+                          source_system="SQL Store",
+                      )
+
+                  async def generate_ksi_bundle(self) -> KSIBundle:
+                      return KSIBundle(bundle_id="", adapter_id="sql")
+
+                  def get_metadata(self) -> AdapterMetadata:
+                      return AdapterMetadata(
+                          adapter_id="sql",
+                          name="SQL Identity Store Adapter",
+                          version="0.1.0",
+                          certification_level=1,
+                          plane="Data",
+                          capabilities=["row_extraction", "schema_discovery"],
+                      )
+          ''')
+
+          w('adapters/cloud/__init__.py', '''
+              """Cloud adapter sub-package."""
+          ''')
+
+          w('adapters/cloud/entra_id.py', '''
+              """EntraIdAdapter - Identity Plane adapter for Microsoft Entra ID."""
+              from __future__ import annotations
+              from adapters import register
+              from adapters.base_adapter import (
+                  BaseAdapter, AdapterMetadata, CanonicalClaim, ClaimFilter,
+                  DriftReport, KSIBundle, ProvenanceRecord,
+              )
+              from typing import Any, List
+
+              @register("entra-id")
+              class EntraIdAdapter(BaseAdapter):
+                  """Pulls identity claims from Microsoft Entra ID via MS Graph."""
+                  _tenant_id: str = ""
+                  _connected: bool = False
+
+                  async def connect(self, config: dict) -> bool:
+                      self._tenant_id = config.get("tenant_id", "")
+                      self._connected = bool(self._tenant_id)
+                      return self._connected
+
+                  async def extract_claims(self, filter: ClaimFilter) -> List[CanonicalClaim]:
+                      return []
+
+                  async def detect_drift(self) -> DriftReport:
+                      return DriftReport(adapter_id="entra-id")
+
+                  async def transform_to_canonical(self, raw: Any) -> CanonicalClaim:
+                      return CanonicalClaim(
+                          claim_id="", source_system="entra-id",
+                          claim_type="identity", value=raw,
+                      )
+
+                  async def generate_lineage(self) -> ProvenanceRecord:
+                      return ProvenanceRecord(
+                          record_id="", adapter_id="entra-id",
+                          source_system="Microsoft Entra ID",
+                      )
+
+                  async def generate_ksi_bundle(self) -> KSIBundle:
+                      return KSIBundle(bundle_id="", adapter_id="entra-id")
+
+                  def get_metadata(self) -> AdapterMetadata:
+                      return AdapterMetadata(
+                          adapter_id="entra-id",
+                          name="Microsoft Entra ID Adapter",
+                          version="0.1.0",
+                          certification_level=1,
+                          plane="Identity",
+                          capabilities=["user_sync", "group_sync", "conditional_access"],
+                      )
+          ''')
+
+          w('adapters/cloud/intune.py', '''
+              """IntuneAdapter - Management Plane adapter for Microsoft Intune."""
+              from __future__ import annotations
+              from adapters import register
+              from adapters.base_adapter import (
+                  BaseAdapter, AdapterMetadata, CanonicalClaim, ClaimFilter,
+                  DriftReport, KSIBundle, ProvenanceRecord,
+              )
+              from typing import Any, List
+
+              @register("intune")
+              class IntuneAdapter(BaseAdapter):
+                  """Pulls device-compliance and config claims from Intune."""
+                  async def connect(self, config: dict) -> bool:
+                      return True
+                  async def extract_claims(self, filter: ClaimFilter) -> List[CanonicalClaim]:
+                      return []
+                  async def detect_drift(self) -> DriftReport:
+                      return DriftReport(adapter_id="intune")
+                  async def transform_to_canonical(self, raw: Any) -> CanonicalClaim:
+                      return CanonicalClaim(claim_id="", source_system="intune", claim_type="device", value=raw)
+                  async def generate_lineage(self) -> ProvenanceRecord:
+                      return ProvenanceRecord(record_id="", adapter_id="intune", source_system="Microsoft Intune")
+                  async def generate_ksi_bundle(self) -> KSIBundle:
+                      return KSIBundle(bundle_id="", adapter_id="intune")
+                  def get_metadata(self) -> AdapterMetadata:
+                      return AdapterMetadata(
+                          adapter_id="intune", name="Microsoft Intune Adapter",
+                          version="0.1.0", certification_level=1, plane="Management",
+                          capabilities=["device_compliance", "configuration_profiles", "app_inventory"],
+                      )
+          ''')
+
+          w('adapters/cloud/m365.py', '''
+              """M365Adapter - Telemetry Plane adapter synthesising M365 signals."""
+              from __future__ import annotations
+              from adapters import register
+              from adapters.base_adapter import (
+                  BaseAdapter, AdapterMetadata, CanonicalClaim, ClaimFilter,
+                  DriftReport, KSIBundle, ProvenanceRecord,
+              )
+              from typing import Any, List
+
+              @register("m365")
+              class M365Adapter(BaseAdapter):
+                  """Synthesises telemetry claims from M365 service health and usage."""
+                  async def connect(self, config: dict) -> bool:
+                      return True
+                  async def extract_claims(self, filter: ClaimFilter) -> List[CanonicalClaim]:
+                      return []
+                  async def detect_drift(self) -> DriftReport:
+                      return DriftReport(adapter_id="m365")
+                  async def transform_to_canonical(self, raw: Any) -> CanonicalClaim:
+                      return CanonicalClaim(claim_id="", source_system="m365", claim_type="telemetry", value=raw)
+                  async def generate_lineage(self) -> ProvenanceRecord:
+                      return ProvenanceRecord(record_id="", adapter_id="m365", source_system="Microsoft 365")
+                  async def generate_ksi_bundle(self) -> KSIBundle:
+                      return KSIBundle(bundle_id="", adapter_id="m365")
+                  def get_metadata(self) -> AdapterMetadata:
+                      return AdapterMetadata(
+                          adapter_id="m365", name="Microsoft 365 Telemetry Adapter",
+                          version="0.1.0", certification_level=1, plane="Telemetry",
+                          capabilities=["service_health", "usage_reports", "network_telemetry"],
+                      )
+          ''')
+
+          w('adapters/government/__init__.py', '''
+              """Government adapter sub-package.
+
+              Roadmap placeholders for federal Truth Source adapters:
+                - SSA  (Social Security Administration)
+                - IRS  (Internal Revenue Service)
+                - CMS  (Centers for Medicare & Medicaid Services)
+                - DHS/USCIS (Department of Homeland Security / USCIS)
+
+              These adapters require inter-agency MOU and federated identity
+              before implementation can proceed.  Each will inherit from
+              adapters.base_adapter.BaseAdapter and follow the contract in
+              docs/20_AdapterContract.md.
+              """
+          ''')
+
+          w('tests/test_adapters.py', '''
+              """Smoke tests for the adapter registry and base contracts."""
+              import pytest
+              import asyncio
+              from adapters import ADAPTER_REGISTRY
+              from adapters.base_adapter import BaseAdapter
 
 
-def register(name: str):
-    """Class decorator — registers an adapter under *name*."""
-    def wrapper(cls):
-        _REGISTRY[name] = cls
-        return cls
-    return wrapper
+              def test_registry_not_empty():
+                  """At least one adapter must be registered."""
+                  assert len(ADAPTER_REGISTRY) > 0, "Adapter registry is empty"
 
 
-def get_adapter(name: str):
-    """Return the adapter class registered under *name*."""
-    if name not in _REGISTRY:
-        raise KeyError(f"No adapter registered as '{name}'")
-    return _REGISTRY[name]
+              def test_all_registered_are_base_adapter_subclasses():
+                  """Every registered adapter must extend BaseAdapter."""
+                  for name, cls in ADAPTER_REGISTRY.items():
+                      assert issubclass(cls, BaseAdapter), f"{name} is not a BaseAdapter subclass"
 
 
-def list_adapters() -> list[str]:
-    """Return sorted list of registered adapter names."""
-    return sorted(_REGISTRY.keys())
+              @pytest.mark.parametrize("adapter_id", list(ADAPTER_REGISTRY.keys()))
+              def test_adapter_metadata(adapter_id):
+                  """Each adapter must return valid metadata."""
+                  cls = ADAPTER_REGISTRY[adapter_id]
+                  instance = cls()
+                  meta = instance.get_metadata()
+                  assert meta.adapter_id == adapter_id
+                  assert meta.version
+                  assert meta.certification_level >= 1
 
 
-# Auto-import sub-packages so @register decorators execute on import.
-for _importer, _modname, _ispkg in pkgutil.walk_packages(
-    path=__path__, prefix=__name__ + "."
-):
-    importlib.import_module(_modname)
-PYEOF
+              @pytest.mark.parametrize("adapter_id", list(ADAPTER_REGISTRY.keys()))
+              def test_adapter_connect(adapter_id):
+                  """Each adapter connect() must return bool."""
+                  cls = ADAPTER_REGISTRY[adapter_id]
+                  instance = cls()
+                  result = asyncio.get_event_loop().run_until_complete(instance.connect({}))
+                  assert isinstance(result, bool)
+          ''')
 
-      # ---- adapters/base_adapter.py ----
-      - name: Create adapters/base_adapter.py
+          print("All 10 adapter files created.")
+          GENSCRIPT
+
+      - name: Commit adapter scaffold
         run: |
-          cat > adapters/base_adapter.py << 'PYEOF'
-"""BaseAdapter — abstract contract all UIAO adapters must implement.
-
-See docs/20_AdapterContract.md for the normative specification.
-"""
-from __future__ import annotations
-
-import abc
-import datetime as dt
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
-
-
-@dataclass
-class AdapterMetadata:
-    """Describes adapter identity and capabilities."""
-    adapter_id: str
-    name: str
-    version: str
-    certification_level: int = 0
-    plane: str = "unknown"
-    capabilities: List[str] = field(default_factory=list)
-
-
-@dataclass
-class CanonicalClaim:
-    """A single normalised claim extracted from a Truth Source."""
-    claim_id: str
-    source_system: str
-    claim_type: str
-    value: Any
-    timestamp: dt.datetime = field(default_factory=dt.datetime.utcnow)
-    provenance: Optional[Dict[str, Any]] = None
-
-
-@dataclass
-class DriftReport:
-    """Result of a drift-detection pass."""
-    adapter_id: str
-    checked_at: dt.datetime = field(default_factory=dt.datetime.utcnow)
-    drifts: List[Dict[str, Any]] = field(default_factory=list)
-    clean: bool = True
-
-
-@dataclass
-class ProvenanceRecord:
-    """Full lineage record per 15_ProvenanceProfile.md."""
-    record_id: str
-    adapter_id: str
-    source_system: str
-    extracted_at: dt.datetime = field(default_factory=dt.datetime.utcnow)
-    hash_sha256: str = ""
-    chain: List[str] = field(default_factory=list)
-
-
-@dataclass
-class KSIBundle:
-    """Signed evidence bundle (placeholder for KSI integration)."""
-    bundle_id: str
-    adapter_id: str
-    claims_count: int = 0
-    signature: str = ""
-
-
-class ClaimFilter:
-    """Simple filter for extract_claims()."""
-    def __init__(self, claim_types: Optional[List[str]] = None,
-                 since: Optional[dt.datetime] = None):
-        self.claim_types = claim_types or []
-        self.since = since
-
-
-class BaseAdapter(abc.ABC):
-    """Abstract base class — every UIAO adapter inherits this."""
-
-    # ---- required methods (see 20_AdapterContract.md §2) ----
-
-    @abc.abstractmethod
-    async def connect(self, config: dict) -> bool: ...
-
-    @abc.abstractmethod
-    async def extract_claims(self, filter: ClaimFilter) -> List[CanonicalClaim]: ...
-
-    @abc.abstractmethod
-    async def detect_drift(self) -> DriftReport: ...
-
-    @abc.abstractmethod
-    async def transform_to_canonical(self, raw: Any) -> CanonicalClaim: ...
-
-    @abc.abstractmethod
-    async def generate_lineage(self) -> ProvenanceRecord: ...
-
-    @abc.abstractmethod
-    async def generate_ksi_bundle(self) -> KSIBundle: ...
-
-    @abc.abstractmethod
-    def get_metadata(self) -> AdapterMetadata: ...
-
-    # ---- invariants ----
-    READ_ONLY: bool = True
-    MAX_ROWS: int = 10_000
-    MAX_QUERY_SECONDS: int = 30
-PYEOF
-
-      # ---- adapters/database/__init__.py ----
-      - name: Create adapters/database/__init__.py
-        run: |
-          mkdir -p adapters/database
-          cat > adapters/database/__init__.py << 'PYEOF'
-"""Database adapter sub-package — legacy Truth Source connectors."""
-PYEOF
-
-      # ---- adapters/database/base.py ----
-      - name: Create adapters/database/base.py
-        run: |
-          cat > adapters/database/base.py << 'PYEOF'
-"""DatabaseAdapter — base class for SQL / ODBC Truth Source adapters."""
-from __future__ import annotations
-
-from adapters.base_adapter import (
-    BaseAdapter, AdapterMetadata, CanonicalClaim, ClaimFilter,
-    DriftReport, KSIBundle, ProvenanceRecord,
-)
-from typing import Any, List
-
-
-class DatabaseAdapter(BaseAdapter):
-    """Concrete base for database-backed Truth Sources.
-
-    Sub-classes supply connection strings and query templates;
-    this class enforces read-only, row-limit, and timeout invariants.
-    """
-
-    def __init__(self, dsn: str = ""):
-        self._dsn = dsn
-        self._connected = False
-
-    async def connect(self, config: dict) -> bool:
-        self._dsn = config.get("dsn", self._dsn)
-        self._connected = True  # placeholder
-        return self._connected
-
-    async def extract_claims(self, filter: ClaimFilter) -> List[CanonicalClaim]:
-        return []  # sub-class overrides
-
-    async def detect_drift(self) -> DriftReport:
-        meta = self.get_metadata()
-        return DriftReport(adapter_id=meta.adapter_id)
-
-    async def transform_to_canonical(self, raw: Any) -> CanonicalClaim:
-        raise NotImplementedError
-
-    async def generate_lineage(self) -> ProvenanceRecord:
-        meta = self.get_metadata()
-        return ProvenanceRecord(
-            record_id="", adapter_id=meta.adapter_id, source_system=meta.name
-        )
-
-    async def generate_ksi_bundle(self) -> KSIBundle:
-        meta = self.get_metadata()
-        return KSIBundle(bundle_id="", adapter_id=meta.adapter_id)
-
-    def get_metadata(self) -> AdapterMetadata:
-        return AdapterMetadata(
-            adapter_id="database-generic",
-            name="Generic Database Adapter",
-            version="0.1.0",
-            certification_level=1,
-            plane="Management",
-            capabilities=["extract", "drift", "provenance"],
-        )
-PYEOF
-
-      # ---- adapters/cloud/entra_id.py ----
-      - name: Create adapters/cloud/entra_id.py
-        run: |
-          mkdir -p adapters/cloud
-          touch adapters/cloud/__init__.py
-          cat > adapters/cloud/entra_id.py << 'PYEOF'
-"""EntraIDAdapter — Identity Control Plane adapter for Microsoft Entra ID."""
-from __future__ import annotations
-
-from adapters import register
-from adapters.base_adapter import (
-    BaseAdapter, AdapterMetadata, CanonicalClaim, ClaimFilter,
-    DriftReport, KSIBundle, ProvenanceRecord,
-)
-from typing import Any, List
-
-
-@register("entra-id")
-class EntraIDAdapter(BaseAdapter):
-    """Extracts identity claims from Microsoft Entra ID via MS Graph."""
-
-    def __init__(self):
-        self._connected = False
-        self._tenant_id: str = ""
-
-    async def connect(self, config: dict) -> bool:
-        self._tenant_id = config.get("tenant_id", "")
-        self._connected = bool(self._tenant_id)
-        return self._connected
-
-    async def extract_claims(self, filter: ClaimFilter) -> List[CanonicalClaim]:
-        # TODO: call MS Graph /users, /groups, /servicePrincipals
-        return []
-
-    async def detect_drift(self) -> DriftReport:
-        return DriftReport(adapter_id="entra-id")
-
-    async def transform_to_canonical(self, raw: Any) -> CanonicalClaim:
-        return CanonicalClaim(
-            claim_id="", source_system="entra-id",
-            claim_type="identity", value=raw,
-        )
-
-    async def generate_lineage(self) -> ProvenanceRecord:
-        return ProvenanceRecord(
-            record_id="", adapter_id="entra-id", source_system="Microsoft Entra ID",
-        )
-
-    async def generate_ksi_bundle(self) -> KSIBundle:
-        return KSIBundle(bundle_id="", adapter_id="entra-id")
-
-    def get_metadata(self) -> AdapterMetadata:
-        return AdapterMetadata(
-            adapter_id="entra-id",
-            name="Microsoft Entra ID Adapter",
-            version="0.1.0",
-            certification_level=1,
-            plane="Identity",
-            capabilities=["users", "groups", "service_principals", "conditional_access"],
-        )
-PYEOF
-
-      # ---- adapters/cloud/intune.py ----
-      - name: Create adapters/cloud/intune.py
-        run: |
-          cat > adapters/cloud/intune.py << 'PYEOF'
-"""IntuneAdapter — Management Plane adapter for Microsoft Intune."""
-from __future__ import annotations
-
-from adapters import register
-from adapters.base_adapter import (
-    BaseAdapter, AdapterMetadata, CanonicalClaim, ClaimFilter,
-    DriftReport, KSIBundle, ProvenanceRecord,
-)
-from typing import Any, List
-
-
-@register("intune")
-class IntuneAdapter(BaseAdapter):
-    """Extracts device compliance and configuration claims from Intune."""
-
-    async def connect(self, config: dict) -> bool:
-        return True  # placeholder
-
-    async def extract_claims(self, filter: ClaimFilter) -> List[CanonicalClaim]:
-        return []
-
-    async def detect_drift(self) -> DriftReport:
-        return DriftReport(adapter_id="intune")
-
-    async def transform_to_canonical(self, raw: Any) -> CanonicalClaim:
-        return CanonicalClaim(
-            claim_id="", source_system="intune",
-            claim_type="device_compliance", value=raw,
-        )
-
-    async def generate_lineage(self) -> ProvenanceRecord:
-        return ProvenanceRecord(
-            record_id="", adapter_id="intune", source_system="Microsoft Intune",
-        )
-
-    async def generate_ksi_bundle(self) -> KSIBundle:
-        return KSIBundle(bundle_id="", adapter_id="intune")
-
-    def get_metadata(self) -> AdapterMetadata:
-        return AdapterMetadata(
-            adapter_id="intune",
-            name="Microsoft Intune Adapter",
-            version="0.1.0",
-            certification_level=1,
-            plane="Management",
-            capabilities=["device_compliance", "configuration_profiles", "app_inventory"],
-        )
-PYEOF
-
-      # ---- adapters/cloud/m365.py ----
-      - name: Create adapters/cloud/m365.py
-        run: |
-          cat > adapters/cloud/m365.py << 'PYEOF'
-"""M365Adapter — Telemetry Plane adapter synthesising M365 signals."""
-from __future__ import annotations
-
-from adapters import register
-from adapters.base_adapter import (
-    BaseAdapter, AdapterMetadata, CanonicalClaim, ClaimFilter,
-    DriftReport, KSIBundle, ProvenanceRecord,
-)
-from typing import Any, List
-
-
-@register("m365")
-class M365Adapter(BaseAdapter):
-    """Synthesises telemetry claims from M365 service health and usage."""
-
-    async def connect(self, config: dict) -> bool:
-        return True
-
-    async def extract_claims(self, filter: ClaimFilter) -> List[CanonicalClaim]:
-        return []
-
-    async def detect_drift(self) -> DriftReport:
-        return DriftReport(adapter_id="m365")
-
-    async def transform_to_canonical(self, raw: Any) -> CanonicalClaim:
-        return CanonicalClaim(
-            claim_id="", source_system="m365",
-            claim_type="telemetry", value=raw,
-        )
-
-    async def generate_lineage(self) -> ProvenanceRecord:
-        return ProvenanceRecord(
-            record_id="", adapter_id="m365", source_system="Microsoft 365",
-        )
-
-    async def generate_ksi_bundle(self) -> KSIBundle:
-        return KSIBundle(bundle_id="", adapter_id="m365")
-
-    def get_metadata(self) -> AdapterMetadata:
-        return AdapterMetadata(
-            adapter_id="m365",
-            name="Microsoft 365 Telemetry Adapter",
-            version="0.1.0",
-            certification_level=1,
-            plane="Telemetry",
-            capabilities=["service_health", "usage_reports", "network_telemetry"],
-        )
-PYEOF
-
-      # ---- adapters/government/__init__.py ----
-      - name: Create adapters/government/__init__.py
-        run: |
-          mkdir -p adapters/government
-          cat > adapters/government/__init__.py << 'PYEOF'
-"""Government adapter sub-package.
-
-Roadmap placeholders for federal Truth Source adapters:
-  - SSA  (Social Security Administration)
-  - IRS  (Internal Revenue Service)
-  - CMS  (Centers for Medicare & Medicaid Services)
-  - DHS/USCIS (Department of Homeland Security / USCIS)
-
-These adapters require inter-agency MOU and federated identity
-before implementation can proceed.  Each will inherit from
-adapters.base_adapter.BaseAdapter and follow the contract in
-docs/20_AdapterContract.md.
-"""
-PYEOF
-
-    # ---- tests/test_adapters.py ----
-    - name: Create tests/test_adapters.py
-      run: |
-        mkdir -p tests
-        cat > tests/test_adapters.py << 'PYEOF'
-"""Smoke tests for the adapter registry and base contracts."""
-import pytest
-import asyncio
-from adapters import ADAPTER_REGISTRY
-from adapters.base_adapter import BaseAdapter
-
-
-def test_registry_not_empty():
-    """At least one adapter must be registered."""
-    assert len(ADAPTER_REGISTRY) > 0, "Adapter registry is empty"
-
-
-def test_all_registered_are_base_adapter_subclasses():
-    """Every registered adapter must extend BaseAdapter."""
-    for name, cls in ADAPTER_REGISTRY.items():
-        assert issubclass(cls, BaseAdapter), f"{name} is not a BaseAdapter subclass"
-
-
-@pytest.mark.parametrize("adapter_id", list(ADAPTER_REGISTRY.keys()))
-def test_adapter_metadata(adapter_id):
-    """Each adapter must return valid metadata."""
-    cls = ADAPTER_REGISTRY[adapter_id]
-    instance = cls()
-    meta = instance.get_metadata()
-    assert meta.adapter_id == adapter_id
-    assert meta.version
-    assert meta.certification_level >= 1
-
-
-@pytest.mark.parametrize("adapter_id", list(ADAPTER_REGISTRY.keys()))
-def test_adapter_connect(adapter_id):
-    """Each adapter's connect() must return bool."""
-    cls = ADAPTER_REGISTRY[adapter_id]
-    instance = cls()
-    result = asyncio.get_event_loop().run_until_complete(instance.connect({}))
-    assert isinstance(result, bool)
-PYEOF
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: bootstrap adapter layer - 10 scaffold files"
+          git push
