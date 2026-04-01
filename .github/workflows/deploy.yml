@@ -1,0 +1,40 @@
+name: UDC Pipeline (AI Enhanced)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install google-generativeai
+          sudo apt-get update
+          sudo apt-get install -y pandoc texlive-xetex librsvg2-bin
+
+      - name: Generate AI Diagrams
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/generate_diagrams.py
+
+      - name: Run UDC Compiler
+        run: |
+          chmod +x scripts/compile.sh
+          ./scripts/compile.sh
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: docs # The output folder
+          branch: gh-pages
