@@ -205,6 +205,9 @@ def check_concept_coverage(
     if "core concepts" not in content_lower:
         return findings
 
+            # Skip Jinja2 templates - they reference concepts generically
+    if filepath.suffix.lower() == ".j2":
+        return findings
     # Check each canonical concept for presence
     missing = []
     for concept in CANONICAL_CONCEPTS:
