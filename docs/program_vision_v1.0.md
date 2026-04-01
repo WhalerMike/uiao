@@ -46,7 +46,7 @@ The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Tru
 
 ---
 
-# The Seven Core Concepts (Vision View)
+# The Eight Core Concepts (Vision View)
 
 ### 1. Conversation as the Atomic Unit
 Every interaction—identity, certificate, addressing, path, QoS, and telemetry—is treated as a single, correlated conversation rather than isolated events.

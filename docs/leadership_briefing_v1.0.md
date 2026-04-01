@@ -13,7 +13,7 @@ audience: "CIO, CISO, CTO, PMO, Network Leadership, Identity Leadership"
 The Unified Identity-Addressing-Overlay Architecture (UIAO) establishes a modern federal enterprise built on identity, telemetry, and cloud-first routing. It replaces fragmented legacy systems with a coherent, Zero Trust-aligned architecture that treats identity as the perimeter, telemetry as the authoritative truth source, and governance as an automated workflow rather than a manual process. UIAO is not a technology refresh; it is a structural modernization of how the agency authenticates, addresses, routes, observes, and governs every digital interaction.
 The agency’s current environment is constrained by TIC 2.0 hairpinning, on-premises Active Directory dependencies, fragmented IPAM, inconsistent Zero Trust enforcement, and incomplete telemetry. These limitations degrade M365 performance, increase cyber risk, and create compliance gaps with TIC 3.0, FedRAMP 20x Phase 2, SCuBA, and NIST 800-63. UIAO directly addresses these issues by unifying identity, addressing, routing, and telemetry into a single architectural fabric.
 The vision is a cloud-optimized, identity-driven enterprise where every resource—from IP addresses to certificates to routing paths—is derived from or bound to identity. Telemetry becomes a real-time control input for routing and security decisions. Addressing becomes deterministic and policy-driven. Routing becomes cloud-first and performance-optimized. Governance becomes embedded and automated. Above all, modernization is guided by a simple principle: if a change degrades citizen experience, it does not ship.
-UIAO organizes the modernized enterprise into five coordinated control planes and seven core concepts that define how the architecture operates. These planes and concepts work together to deliver conversation-level visibility, identity-aware segmentation, accurate location inference, and automated policy enforcement. The frozen state analysis reveals a legacy environment that cannot support modern mission requirements. UIAO resolves these issues by establishing a unified, authoritative, and automated architecture that improves performance, strengthens security, reduces compliance risk, and enhances citizen-facing services.
+UIAO organizes the modernized enterprise into five coordinated control planes and Eight Core Concepts that define how the architecture operates. These planes and concepts work together to deliver conversation-level visibility, identity-aware segmentation, accurate location inference, and automated policy enforcement. The frozen state analysis reveals a legacy environment that cannot support modern mission requirements. UIAO resolves these issues by establishing a unified, authoritative, and automated architecture that improves performance, strengthens security, reduces compliance risk, and enhances citizen-facing services.
 UIAO delivers measurable outcomes: reduced latency, improved M365 performance, stronger identity governance, deterministic addressing, real-time telemetry correlation, and alignment with federal modernization mandates. It provides the foundation for a resilient, scalable, and future-ready federal enterprise.
 
 
@@ -70,7 +70,7 @@ The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Tru
 
 ---
 
-# Seven Core Concepts
+# Eight Core Concepts
 
 ### 1. Conversation as the Atomic Unit
 Every interaction—identity, certificate, addressing, path, QoS, and telemetry—is treated as a single, correlated conversation rather than isolated events.

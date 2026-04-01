@@ -122,7 +122,7 @@ These definitions must appear identically across all documents. They are machine
 5. Security and Compliance Plane
 6. Management Plane (ServiceNow + Intune)
 
-### 4.2 The Seven Core Concepts
+### 4.2 The Eight Core Concepts
 
 1. Conversation as the atomic unit
 2. Identity as the root namespace
