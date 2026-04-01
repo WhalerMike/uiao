@@ -68,18 +68,26 @@ All other UIAO documents reference this plane model.
 
 ## 5. Core Concepts
 
-The six control planes operate according to the Eight Core Concepts of UIAO:
+The eight core principles governing UIAO are defined in a single source-of-truth document:
 
-1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
-2. Conversation as the atomic unit
-3. Identity as the root namespace
-4. Deterministic addressing
-5. Certificate-anchored overlay
-6. Telemetry as control
-7. Embedded governance & automation
-8. Public service first
+> **Canonical reference:** [00_CorePrinciples.md](00_CorePrinciples.md)
 
-These concepts are frozen and must appear identically across all UIAO documents.
+All UIAO documents MUST reference that file rather than duplicating principle text.
+Any expansion, amendment, or reordering of the principles MUST occur in
+`00_CorePrinciples.md` first; downstream documents inherit by pointer.
+
+For quick orientation the eight principles are:
+
+1. Single Source of Truth (SSOT)
+2. Conversation as the Atomic Unit
+3. Identity as the Root Namespace
+4. Deterministic Addressing
+5. Certificate-Anchored Overlay
+6. Telemetry as Control
+7. Embedded Governance & Automation
+8. Public Service First
+
+See `00_CorePrinciples.md` for full definitions, rationale, and compliance anchors.
 
 ---
 
