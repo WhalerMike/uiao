@@ -155,6 +155,18 @@ The unified architecture addresses the following legacy constraints:
 
 The unified architecture provides the required state.
 
+### 6.5 Adapter Layer
+
+Adapters bridge external source systems (Entra ID, Infoblox, ServiceNow, etc.) to the UIAO control planes. Each adapter conforms to a ten-domain contract covering discovery, normalization, provenance, drift detection, health, error classification, confidence scoring, metrics, and lifecycle management.
+
+The adapter contract is defined in:
+
+- `adapters/base_adapter.py` — Abstract base class (Python ABC)
+- `adapters/__init__.py` — In-process adapter registry
+- `docs/adapters/adapter-contract.md` — Human-readable contract specification
+
+Vendor-specific adapter implementations live in separate repositories (e.g., `uiao-adapter-entra`, `uiao-adapter-infoblox`). See `docs/13_FIMF_AdapterRegistry.md` for the full FIMF adapter registry and onboarding checklist.
+
 ---
 
 ## 7. Runtime Model
