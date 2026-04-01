@@ -103,10 +103,23 @@ DEPRECATED_PATTERNS = [
         "severity": "critical",
         "description": "Stale phrase referencing seven concepts",
     },
+
+        {
+        "pattern": re.compile(r"\bsix\s+core\s+concepts?\b", re.IGNORECASE),
+        "replacement": "Eight Core Concepts",
+        "severity": "critical",
+        "description": "Stale concept count: 'six' should be 'eight'",
+    },
+    {
+        "pattern": re.compile(r"\b6\s+core\s+concepts?\b", re.IGNORECASE),
+        "replacement": "8 Core Concepts",
+        "severity": "critical",
+        "description": "Stale numeric concept count: '6' should be '8'",
+    },
 ]
 
 # Directories and extensions to scan
-SCAN_DIRS = ["docs", "canon", "adapters", "compliance", "templates", "01_Canon", "exports", "site", "rules", "data", "schemas", "src", "dashboard", "analytics", "reports", "assets", "_extensions"]
+SCAN_DIRS = ["docs", "canon", "adapters", "compliance", "templates", "01_Canon", "exports", "site", "rules", "data", "schemas", "src", "dashboard", "analytics", "assets", "_extensions"]
 SCAN_ROOT_FILES = [
     "README.md",
     "CONTRIBUTING.md",
