@@ -70,13 +70,14 @@ Each plane has a predictable location in the repository.
 
 The directory structure operationalizes the Eight Core Concepts:
 
-1. **Conversation as the atomic unit** — Document relationships reflect runtime flow
-2. **Identity as the root namespace** — Identity documents appear first
-3. **Deterministic addressing** — Numbering is deterministic and stable
-4. **Certificate-anchored overlay** — Security documents grouped consistently
-5. **Telemetry as control** — Telemetry documents grouped under compliance
-6. **Embedded governance and automation** — Structure supports automation
-7. **Public service first** — Clear, accessible, predictable layout
+1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
+2. **Conversation as the atomic unit** — Document relationships reflect runtime flow
+3. **Identity as the root namespace** — Identity documents appear first
+4. **Deterministic addressing** — Numbering is deterministic and stable
+5. **Certificate-anchored overlay** — Security documents grouped consistently
+6. **Telemetry as control** — Telemetry documents grouped under compliance
+7. **Embedded governance and automation** — Structure supports automation
+8. **Public service first** — Clear, accessible, predictable layout
 
 ---
 
