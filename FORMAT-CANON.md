@@ -147,3 +147,4 @@ When in doubt: touch only what the task requires.
 - [ ] `make validate-oscal` passes
 - [ ] No files reformatted beyond task scope
 - [ ] Commit message references `UIAO-MEMORY.md` per convention
+- [ ] Core principles in any doc reference `docs/00_CorePrinciples.md` (SSOT) — never duplicate inline
