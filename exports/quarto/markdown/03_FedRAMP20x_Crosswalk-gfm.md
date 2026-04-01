@@ -132,13 +132,14 @@ Each plane contributes evidence to FedRAMP 20x telemetry validation.
 
 The crosswalk maps the Eight Core Concepts to NIST controls:
 
-1.  Conversation as the atomic unit → AC-4, SI-4
-2.  Identity as the root namespace → IA-2, AC-2
-3.  Deterministic addressing → CM-8, AC-4
-4.  Certificate-anchored overlay → SC-8, IA-5
-5.  Telemetry as control → CA-7, SI-4
-6.  Embedded governance & automation → CM-2, CM-3
-7.  Public service first → PT-2 (privacy and minimization)
+1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
+2.  Conversation as the atomic unit → AC-4, SI-4
+3.  Identity as the root namespace → IA-2, AC-2
+4.  Deterministic addressing → CM-8, AC-4
+5.  Certificate-anchored overlay → SC-8, IA-5
+6.  Telemetry as control → CA-7, SI-4
+7.  Embedded governance & automation → CM-2, CM-3
+8.  Public service first → PT-2 (privacy and minimization)
 
 These mappings are frozen and must appear identically across all UIAO
 compliance documents.

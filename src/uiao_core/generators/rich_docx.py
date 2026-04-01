@@ -222,8 +222,8 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
             _add_heading(doc, f"{i}. {plane.get('name', '')}", level=2)
             _add_narrative(doc, plane.get("narrative"))
 
-    # Seven Core Concepts
-    _add_heading(doc, "Seven Core Concepts")
+    # Eight Core Concepts
+    _add_heading(doc, "Eight Core Concepts")
     for i, concept in enumerate(lb.get("core_concepts", []), 1):
         if isinstance(concept, dict):
             _add_heading(doc, f"{i}. {concept.get('name', '')}", level=2)
