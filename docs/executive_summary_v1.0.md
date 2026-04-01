@@ -35,8 +35,8 @@ This document is generated from the UIAO canon and data overlays to prevent vers
 ### 2.1 Program snapshot
 
 - **Program name:** UIAO
-- **Mission / outcome:** TBD
-- **Scope:** TBD
+- **Mission / outcome:** Restore cross-service telemetry and identity correlation in FedRAMP Moderate environments where native platforms cannot
+- **Scope:** Drop-in overlay across Identity, Network, Addressing, Telemetry, Security, and Management control planes
 - **Target baseline:** FedRAMP Moderate (NIST 800-53 Rev 5)
 - **Primary stakeholders:**
   
