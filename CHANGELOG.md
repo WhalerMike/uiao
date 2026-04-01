@@ -193,6 +193,7 @@
 * add splunk and crowdstrike to active overlays ([6494c11](https://github.com/WhalerMike/uiao-core/commit/6494c11430385eae6de31af5b7467f27a33536d8))
 * add Splunk SIEM vendor overlay ([a5d45ed](https://github.com/WhalerMike/uiao-core/commit/a5d45edb7388591d30784c3cb10504b3819da6d6))
 * add splunk, crowdstrike vendor params and PAM/GRC stubs to parameters.yml ([af98ba7](https://github.com/WhalerMike/uiao-core/commit/af98ba758505814a333fef2b3d530fd0cf67c4e2))
+* add UDC professional compiler with XeLaTeX, embedded resources, and multi-format output ([f8b5fb9](https://github.com/WhalerMike/uiao-core/commit/f8b5fb9f2c1e7049e1043535a6a1cf2ba26c18ae))
 * add UIAO custom SCSS brand styling for Quarto ([0c2d46e](https://github.com/WhalerMike/uiao-core/commit/0c2d46eebcf4bd8056a9f2a185009dba497c4a6e))
 * add UIAO-7DAY-GRADING-RUBRIC.md - Strategic Advisor grading standard ([86de938](https://github.com/WhalerMike/uiao-core/commit/86de938aba91667999e5f7f676968d400a0f7feb))
 * add uiao-format.lua Pandoc filter for classification banners and styling ([4f1acdd](https://github.com/WhalerMike/uiao-core/commit/4f1acddd7c9bdb2d1db44e4396810b428fde4056))
