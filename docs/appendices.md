@@ -15,6 +15,11 @@ format:
 This library contains the 104 standardized technical and operational patterns (A-CZ) used across the agency's infrastructure.
 
 ## Library Overview
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 graph LR
   subgraph "Data Source: appendices.yml"
@@ -40,8 +45,9 @@ graph LR
   Logic --> Doc3
   style Logic fill:#f9f,stroke:#333,stroke-width:2px
   style A,B,C,D fill:#e1f5fe,stroke:#01579b
-
 ```
+
+</details>
 
 ## Table of Contents
 

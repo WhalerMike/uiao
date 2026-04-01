@@ -19,6 +19,11 @@ The diagram below contrasts our current "Siloed" state with the "Unified" model 
 
 ![Legacy vs Modernized](./images/legacy_vs_modern.png)
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 graph TB
   subgraph "LEGACY STATE (Manual, Siloed, Fragile)"
@@ -49,8 +54,9 @@ graph TB
       class ID,AM,OP,TM modernized;
   end
   style ModernizationAtlas fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
-
 ```
+
+</details>
 
 ### Key Value Transitions
 | Capability | Legacy State | Modernized (uiao-core) |
