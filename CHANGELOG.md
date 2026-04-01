@@ -212,6 +212,7 @@
 * cutover to Quarto rendering pipeline, remove legacy compile_documents.py ([d111f74](https://github.com/WhalerMike/uiao-core/commit/d111f7418f34828ed68011717392aa7a857868b1))
 * **diagrams:** automated diagram generation for generate-docs ([b460ea8](https://github.com/WhalerMike/uiao-core/commit/b460ea8aaaad381c8fa02a7c208109f6859f28ec))
 * enhance drift-detection workflow with auto-fix, commit-back, and issue creation ([4702033](https://github.com/WhalerMike/uiao-core/commit/47020335d76341d6585757e43880fbcd8fb21d82))
+* enhance fix_concept_lists.py to also replace Seven->Eight text references ([de748f4](https://github.com/WhalerMike/uiao-core/commit/de748f4c6ce86952b225c477192df282b1699780))
 * enrich 9 control-library YAMLs to AT-2 gold standard + README enhanced SSP section ([da5921c](https://github.com/WhalerMike/uiao-core/commit/da5921c59fe32d9611e70b59bc3da2fea5c62365))
 * expose overlay symbols from generate_docs shim for vendor-neutral abstraction layer ([63cbeb2](https://github.com/WhalerMike/uiao-core/commit/63cbeb21ffaf4b3d0d9d63829c395ec1704b3486))
 * FedRAMP Rev 5 SSP template alignment (Sections 1-12 + Appendix A) ([c90d87a](https://github.com/WhalerMike/uiao-core/commit/c90d87af73ea7bfbd6c8da5188d383376191c75e))
