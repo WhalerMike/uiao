@@ -19,6 +19,11 @@ The following diagram visualizes the intersection of user identity and network l
 
 ![Unified Architecture](./images/unified_arch.png)
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 graph TD
   subgraph "Identity Plane (The 'Who')"
@@ -37,8 +42,9 @@ graph TD
   end
   style D fill:#f96,stroke:#333,stroke-width:2px
   style F fill:#bbf,stroke:#333,stroke-width:2px
-
 ```
+
+</details>
 
 ### Core Pillars
 

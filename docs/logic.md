@@ -17,6 +17,11 @@ The **uiao-core** repository functions as a compiler for infrastructure. It tran
 ## The Data Pipeline
 How `program.yml` becomes a deployed configuration:
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart LR
   YAML[(program.yml)] --> Python[generate.py Logic]
@@ -29,12 +34,18 @@ flowchart LR
   Jinja -->|Output 3| Azure[Azure VNet/NSG Rules]
   style YAML fill:#dfd
   style Jinja fill:#ffd
-
 ```
+
+</details>
 
 ## The Normalization Engine
 
 The `generate.py` script performs a critical translation step. YAML keys in the canon use hyphens (e.g., `A-01`, `site-location`) for readability, but Jinja2 template variables cannot contain hyphens. The `normalize_key()` filter converts all hyphens to underscores at load time.
+
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 flowchart TD
@@ -49,8 +60,9 @@ flowchart TD
   E -->|Failure: Hyphen detected| H[Jinja2 UndefinedError]
   style C fill:#fff3e0,stroke:#ef6c00
   style D fill:#e8f5e9,stroke:#2e7b32
-
 ```
+
+</details>
 
 ### Key Pipeline Steps
 
@@ -62,6 +74,11 @@ flowchart TD
 
 ### Schema Validation
 Before any rendering occurs, the CI/CD pipeline validates `appendices.yml` against `schema.json`:
+
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 flowchart TD
@@ -79,5 +96,6 @@ flowchart TD
   style E fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
   style G fill:#ffcdd2,stroke:#c62828
   style F fill:#c8e6c9,stroke:#2e7b32
-
 ```
+
+</details>
