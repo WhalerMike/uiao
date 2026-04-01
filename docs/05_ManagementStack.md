@@ -67,13 +67,14 @@ ServiceNow and Intune jointly form the authoritative Management Plane.
 
 The Management Plane operationalizes the Eight Core Concepts:
 
-1. Conversation as the atomic unit → Incident, change, and configuration events tied to identity and device
-2. Identity as the root namespace → Device trust and configuration bound to identity
-3. Deterministic addressing → CMDB reconciliation with IPAM as source of truth
-4. Certificate-anchored overlay → Certificate drift detection and renewal workflows
-5. Telemetry as control → Compliance signals drive access decisions
-6. Embedded governance & automation → Automated remediation replaces manual tickets
-7. Public service first → Reduced downtime, faster remediation, higher reliability
+1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
+2. Conversation as the atomic unit → Incident, change, and configuration events tied to identity and device
+3. Identity as the root namespace → Device trust and configuration bound to identity
+4. Deterministic addressing → CMDB reconciliation with IPAM as source of truth
+5. Certificate-anchored overlay → Certificate drift detection and renewal workflows
+6. Telemetry as control → Compliance signals drive access decisions
+7. Embedded governance & automation → Automated remediation replaces manual tickets
+8. Public service first → Reduced downtime, faster remediation, higher reliability
 
 ---
 
