@@ -133,6 +133,7 @@
 ### Features
 
 * add 15_ProvenanceProfile.md — Phase 5 governance substrate (1/5) ([1c0ff0c](https://github.com/WhalerMike/uiao-core/commit/1c0ff0c411d214c2be5c74e0e66cca463fe409a1))
+* add 16_DriftDetectionStandard.md — Phase 5 governance substrate (2/5) ([eb5a7c7](https://github.com/WhalerMike/uiao-core/commit/eb5a7c7fb1de7c02fbae9284f69cbaeb36b46239))
 * add adapter registry (__init__.py) ([40f9350](https://github.com/WhalerMike/uiao-core/commit/40f9350ca522fa7103552f529b24679a496e9d92))
 * add add_ssot_concept.py script for SSOT injection into files missing it ([f3cbabb](https://github.com/WhalerMike/uiao-core/commit/f3cbabb25ab63ba585d133cda4b24fa2f15005ba))
 * add AT-3 Role-Based Training control YAML ([99169ee](https://github.com/WhalerMike/uiao-core/commit/99169ee3094d7313ace0e66e5f35265690232200))
