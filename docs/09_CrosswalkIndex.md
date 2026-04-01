@@ -67,7 +67,7 @@ The index ensures each plane's compliance responsibilities are traceable.
 
 ## 5. Core Concepts
 
-The Crosswalk Index is governed by the Seven Core Concepts:
+The Crosswalk Index is governed by the Eight Core Concepts:
 
 1. **Conversation as the atomic unit**
 2. **Identity as the root namespace**
