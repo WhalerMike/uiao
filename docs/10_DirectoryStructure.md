@@ -103,6 +103,15 @@ The UIAO repository uses a 12-document canon organized into four phases:
    09_CrosswalkIndex.md
    10_DirectoryStructure.md
    11_GlossaryAndDefinitions.md
+
+/adapters
+    __init__.py              # Adapter registry
+    base_adapter.py          # Abstract base class (adapter contract)
+
+/docs/adapters
+    canonical-definition-of-a-uiao-adapter.md
+    adapter-responsibilities-diagram-set.md
+    adapter-contract.md
 ```
 
 This structure is deterministic and must not be altered.
@@ -178,6 +187,8 @@ Crosswalks and governance documents (03-05, 09-11) support continuous monitoring
 | 09 | CrosswalkIndex | Index | Master index of all crosswalks |
 | 10 | DirectoryStructure | Index | This document |
 | 11 | GlossaryAndDefinitions | Index | Canonical glossary |
+| — | /adapters | Adapter Layer | BaseAdapter ABC and adapter registry |
+| — | /docs/adapters | Adapter Layer | Adapter contract, definitions, and diagrams |
 
 ---
 
@@ -254,3 +265,4 @@ Crosswalks and governance documents (03-05, 09-11) support continuous monitoring
 | Version | Date | Author | Summary |
 |---|---|---|---|
 | 1.0 | 2026-03 | UIAO Canon Engine | Initial canonical release |
+| 1.1 | 2026-04 | UIAO Adapter Layer | Added /adapters/ and /docs/adapters/ to directory layout and canonical table |
