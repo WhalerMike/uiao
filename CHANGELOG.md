@@ -121,6 +121,7 @@
 * resolve PR [#45](https://github.com/WhalerMike/uiao-core/issues/45) POA&M rule engine CI failures and MEMORY compliance ([5a5e984](https://github.com/WhalerMike/uiao-core/commit/5a5e9841a76323e705973c83c3678c4999cb579b))
 * resolve Ruff F541 and F401 lint errors in quarto_pre_render.py ([1ea54fd](https://github.com/WhalerMike/uiao-core/commit/1ea54fda60a003b46876f445c9e52f58601bb0a5))
 * resolve UP037 linting errors in narrative_loader.py ([070b5ea](https://github.com/WhalerMike/uiao-core/commit/070b5ea40c9fae005335903be2b84b09bdf77004))
+* rewrite adapter workflow using Python generator to avoid YAML heredoc issues ([6e83fd4](https://github.com/WhalerMike/uiao-core/commit/6e83fd497430ddab6ebe232cf62971b4878fb742))
 * rewrite import block in providers.py to fix I001 isort ([427d098](https://github.com/WhalerMike/uiao-core/commit/427d098263ce486126fb83842eb712e24e851474))
 * skip .j2 templates in concept coverage check to eliminate false warnings ([a356a4d](https://github.com/WhalerMike/uiao-core/commit/a356a4de3223df53eea0625b3921aad3d787b4b0))
 * sort imports for ruff I001 compliance in generators __init__ ([d437137](https://github.com/WhalerMike/uiao-core/commit/d437137ae6e2bbbc94b91cd9e32d93ae5f3268bd))
