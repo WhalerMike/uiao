@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-The Unified Identity-Addressing-Overlay Architecture (UIAO) is a 12-document modernization canon that defines a complete, deterministic, identity-driven, telemetry-informed federal architecture.
+The Unified Identity-Addressing-Overlay Architecture (UIAO) is a 20-document modernization canon that defines a complete, deterministic, identity-driven, telemetry-informed federal architecture.
 
 It spans six control planes: **Identity**, **Network**, **Addressing**, **Telemetry**, **Security**, and **Management**.
 
@@ -18,7 +18,7 @@ UIAO provides the architectural, compliance, governance, and leadership framewor
 
 ## 2. Repository Structure
 
-The repository contains 12 canonical documents, organized into four phases:
+The repository contains 20 canonical documents, organized into six phases:
 
 ```
 /docs
@@ -37,6 +37,16 @@ The repository contains 12 canonical documents, organized into four phases:
    09_CrosswalkIndex.md                Phase 4 — Index & Cross-Reference
    10_DirectoryStructure.md            Phase 4 — Index & Cross-Reference
    11_GlossaryAndDefinitions.md        Phase 4 — Index & Cross-Reference
+
+   12_AI_SecurityPrinciples.md         Phase 4.5 — Extended Reference
+   13_FIMF_AdapterRegistry.md          Phase 4.5 — Extended Reference
+   14_TIC3_F5RetirementRoadmap.md      Phase 4.5 — Extended Reference
+
+   15_ProvenanceProfile.md             Phase 5 — Data Governance Substrate
+   16_DriftDetectionStandard.md        Phase 5 — Data Governance Substrate
+   17_ConsentEnvelope.md               Phase 5 — Data Governance Substrate
+   18_ClaimCatalog.md                  Phase 5 — Data Governance Substrate
+   19_ReconciliationModel.md           Phase 5 — Data Governance Substrate
 ```
 
 This structure is deterministic and must not be altered.
@@ -56,7 +66,7 @@ The UIAO canon is built on the **Eight Core Concepts**:
 7. **Embedded governance and automation** — Governance is executed through orchestrated workflows, not manual tickets.
 8. **Public service first** — Citizen experience, accessibility, and privacy are top-level design constraints.
 
-These concepts appear identically across all 12 documents.
+These concepts appear identically across all 20 documents.
 
 ---
 
@@ -95,6 +105,8 @@ This repository is designed for:
 2. Use **03-05** for compliance and governance
 3. Use **06-08** for leadership and program execution
 4. Use **09-11** for navigation and metadata
+5. Use **12-14** for extended reference (AI security, adapters, TIC 3.0)
+6. Use **15-19** for data governance substrate (provenance, drift, consent, claims, reconciliation)
 
 ---
 
@@ -102,7 +114,7 @@ This repository is designed for:
 
 <!-- NEW (Proposed) -->
 
-- Canon documents (00-11) must never be modified without a formal revision
+- Canon documents (00-19) must never be modified without a formal revision
 - All changes require review by a designated Canon Steward
 - No renumbering, renaming, or relocation of canonical documents
 - Appendices may be added but must follow naming rules defined in `10_DirectoryStructure.md`
