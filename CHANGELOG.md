@@ -227,6 +227,7 @@
 * Gold Standard SI-4 Sentinel/KQL monitoring narrative ([0fc8c29](https://github.com/WhalerMike/uiao-core/commit/0fc8c295d0d204f64155a11f63b40f97621999e6))
 * harden GitHub Actions pipeline with security scanning, SBOM, and supply chain controls ([6520738](https://github.com/WhalerMike/uiao-core/commit/6520738f43f7364f25c929024701bfdda0a150e2))
 * **ia-2:** link IdentityProvider to CyberArk Identity Vault, PIVAuthenticationService to Federal PIV/CAC Trust Chain, add Critical/High SLAs" ([75a0ed7](https://github.com/WhalerMike/uiao-core/commit/75a0ed73c3709c976c6fec3491f91367ef87ed59))
+* implement canonical drift detection for Eight Core Concepts ([2e30304](https://github.com/WhalerMike/uiao-core/commit/2e303043074ddf64f4c4bc22a1da58538b648ab7))
 * link inventory from core-stack.yml into OSCAL SSP and POA&M ([fb2370a](https://github.com/WhalerMike/uiao-core/commit/fb2370adad04dded625a6f772c1db20e52058ee5))
 * Link SSP inventory section to core-stack component data ([d0273fc](https://github.com/WhalerMike/uiao-core/commit/d0273fc5d8e0cc2b4081f3a11590a474a6bcaa20))
 * Link SSP inventory section to core-stack component data ([1badd29](https://github.com/WhalerMike/uiao-core/commit/1badd29bca20b892310e5b6141a1c6a20ec69156))
