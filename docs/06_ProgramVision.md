@@ -67,7 +67,7 @@ The vision describes how these planes unify into a single modernization program.
 
 ## 5. Core Concepts
 
-The Program Vision is anchored in the Seven Core Concepts of UIAO:
+The Program Vision is anchored in the Eight Core Concepts of UIAO:
 
 1. Conversation as the atomic unit
 2. Identity as the root namespace

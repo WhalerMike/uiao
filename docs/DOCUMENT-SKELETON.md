@@ -111,7 +111,7 @@ Rules:
 
 ## Section 5: Core Concepts
 
-This section references the Seven Core Concepts from `data/style-guide.yml`. Only concepts relevant to the document are expanded; all seven are listed.
+This section references the Eight Core Concepts from `data/style-guide.yml`. Only concepts relevant to the document are expanded; all seven are listed.
 
 | # | Concept | Relevant |
 |---|---|---|

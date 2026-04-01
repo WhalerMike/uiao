@@ -67,7 +67,7 @@ Each plane contributes mandatory telemetry and evidence for FedRAMP 20x validati
 
 ## 5. Core Concepts
 
-FedRAMP 20x Phase 2 is supported by the Seven Core Concepts of UIAO:
+FedRAMP 20x Phase 2 is supported by the Eight Core Concepts of UIAO:
 
 1. **Conversation as the atomic unit**
 2. **Identity as the root namespace**

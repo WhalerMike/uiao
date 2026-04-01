@@ -65,7 +65,7 @@ Each plane contributes evidence to FedRAMP 20x telemetry validation.
 
 ## 5. Core Concepts
 
-The crosswalk maps the Seven Core Concepts to NIST controls:
+The crosswalk maps the Eight Core Concepts to NIST controls:
 
 1. Conversation as the atomic unit → AC-4, SI-4
 2. Identity as the root namespace → IA-2, AC-2

@@ -67,7 +67,7 @@ The timeline ensures each plane is modernized in the correct order.
 
 ## 5. Core Concepts
 
-The modernization timeline operationalizes the Seven Core Concepts:
+The modernization timeline operationalizes the Eight Core Concepts:
 
 1. **Conversation as the atomic unit**
 2. **Identity as the root namespace**
