@@ -130,6 +130,7 @@
 * add build_rich_docx to generators __init__ exports ([a5e3cef](https://github.com/WhalerMike/uiao-core/commit/a5e3cef760490c96a2eeca4c6477d6c8fc965ba9))
 * add canonical document skeleton Jinja2 template ([eaac014](https://github.com/WhalerMike/uiao-core/commit/eaac0143a6fe6f8ad50177f9bf25b4530ea97f2b))
 * add cisco.yaml standalone SD-WAN vendor overlay ([bafe526](https://github.com/WhalerMike/uiao-core/commit/bafe5265eae03a077ff1eb46222225b8b532156f))
+* add collector registry with auto-discovery (__init__.py) ([e53e65a](https://github.com/WhalerMike/uiao-core/commit/e53e65a3ba3aeb4cd7adef4290bfcb6a4c68d760))
 * Add compliance-trestle assemble script (closes [#20](https://github.com/WhalerMike/uiao-core/issues/20)) ([3cca209](https://github.com/WhalerMike/uiao-core/commit/3cca2091419345673c7745696cccd9f96e87ae2d))
 * add conmon-process, conmon-export-oa, conmon-dashboard CLI commands for Sentinel telemetry to auto POA&M ([92826ad](https://github.com/WhalerMike/uiao-core/commit/92826addecad82109eefc2166bddb605bb42bbb2))
 * add crosswalk_index_v1.0.md.j2 with narrative prose, diagrams, and tables ([3939f2e](https://github.com/WhalerMike/uiao-core/commit/3939f2e92a87cb5110cb7ecc7bcaae187687a10b))
