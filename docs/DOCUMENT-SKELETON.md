@@ -111,6 +111,9 @@ Rules:
 
 ## Section 5: Core Concepts
 
+> **Single Source of Truth (SSOT):** The README.md is the authoritative origin for all canonical definitions.
+
+
 This section references the Eight Core Concepts from `data/style-guide.yml`. Only concepts relevant to the document are expanded; all seven are listed.
 
 | # | Concept | Relevant |

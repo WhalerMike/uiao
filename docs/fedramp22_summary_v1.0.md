@@ -48,6 +48,9 @@ The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Tru
 
 # Core Concepts Supporting FedRAMP 20x Phase 2
 
+> **Single Source of Truth (SSOT):** The README.md is the authoritative origin for all canonical definitions.
+
+
 ### 1. Conversation as the Atomic Unit
 Every interaction—identity, certificate, addressing, path, QoS, and telemetry—is treated as a single, correlated conversation rather than isolated events.
 

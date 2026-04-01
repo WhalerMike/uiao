@@ -99,43 +99,49 @@ The following diagram demonstrates how each technical control plane maps to stra
 ## 8. Eight Core Concepts
 
 
-### 8.1. Conversation as the Atomic Unit
+### 8.1. Single Source of Truth (SSOT)
+
+The README.md serves as the authoritative origin for all canonical definitions,
+concept lists, and architectural decisions. All other documents derive from and
+must remain consistent with this single source of truth (SSOT).
+
+### 8.2. Conversation as the Atomic Unit
 
 Every interaction—identity, certificate, addressing, path, QoS, and telemetry—is treated as a single, correlated conversation rather than isolated events.
 
 
 
-### 8.2. Identity as the Root Namespace
+### 8.3. Identity as the Root Namespace
 
 Identity becomes the root namespace for all resources, ensuring that every IP address, certificate, subnet, policy, and telemetry event is derived from or bound to identity.
 
 
 
-### 8.3. Deterministic Addressing
+### 8.4. Deterministic Addressing
 
 Addressing becomes deterministic and policy-driven, replacing ad-hoc assignment with identity-derived logic that enables accurate correlation and automated governance.
 
 
 
-### 8.4. Certificate-Anchored Overlay
+### 8.5. Certificate-Anchored Overlay
 
 Certificates and mutual TLS anchor tunnels, services, and trust relationships across the enterprise.
 
 
 
-### 8.5. Telemetry as Control
+### 8.6. Telemetry as Control
 
 Telemetry becomes an active control input for routing, security, and compliance decisions rather than a passive reporting mechanism.
 
 
 
-### 8.6. Embedded Governance & Automation
+### 8.7. Embedded Governance & Automation
 
 Governance is executed through orchestrated workflows that enforce policy consistently and reduce operational burden.
 
 
 
-### 8.7. Public Service First
+### 8.8. Public Service First
 
 Citizen experience, accessibility, and privacy remain top-level design constraints.
 
