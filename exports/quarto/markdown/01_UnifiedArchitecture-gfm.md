@@ -139,13 +139,14 @@ deterministically.
 The unified architecture is governed by the Eight Core Concepts, which
 must appear identically across all UIAO documents:
 
-1.  Conversation as the atomic unit
-2.  Identity as the root namespace
-3.  Deterministic addressing
-4.  Certificate-anchored overlay
-5.  Telemetry as control
-6.  Embedded governance & automation
-7.  Public service first
+1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
+2.  Conversation as the atomic unit
+3.  Identity as the root namespace
+4.  Deterministic addressing
+5.  Certificate-anchored overlay
+6.  Telemetry as control
+7.  Embedded governance & automation
+8.  Public service first
 
 These concepts define the architectural philosophy and runtime behavior
 of UIAO.
