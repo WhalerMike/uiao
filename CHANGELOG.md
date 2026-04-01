@@ -19,6 +19,7 @@
 * align evidence_path indentation with sibling keys in parameters.yml to fix YAML parse error ([712752a](https://github.com/WhalerMike/uiao-core/commit/712752a5af7f63af34a965b1783401ba9543f4e8))
 * apply ruff format to tests/test_cli.py ([d701611](https://github.com/WhalerMike/uiao-core/commit/d7016115c3cad734ce2943865bb79e215f4d1391))
 * AU-11 Sentinel as primary, RA-5 ServiceNow VR, PM-4 legacy OSCAL replacement ([3503827](https://github.com/WhalerMike/uiao-core/commit/3503827afeec740135b735c5289d2fbd3ba2d78a))
+* auto-remediate canonical drift detected by drift-detection workflow ([5ce6fed](https://github.com/WhalerMike/uiao-core/commit/5ce6feddcbff55e00f99a510a9a62263cc9975be))
 * auto-remediate canonical drift detected by drift-detection workflow ([0607f9c](https://github.com/WhalerMike/uiao-core/commit/0607f9ca43b550aaa08de94b036c0c5343ce7e2a))
 * auto-remediate canonical drift detected by drift-detection workflow ([ef25376](https://github.com/WhalerMike/uiao-core/commit/ef25376c5fdaf8bffd203db979abdb29c3aff60a))
 * auto-remediate canonical drift detected by drift-detection workflow ([d280481](https://github.com/WhalerMike/uiao-core/commit/d2804818bcb2b29936fd715c892ad34ce5156a28))
@@ -131,6 +132,7 @@
 ### Features
 
 * add adapter registry (__init__.py) ([40f9350](https://github.com/WhalerMike/uiao-core/commit/40f9350ca522fa7103552f529b24679a496e9d92))
+* add add_ssot_concept.py script for SSOT injection into files missing it ([f3cbabb](https://github.com/WhalerMike/uiao-core/commit/f3cbabb25ab63ba585d133cda4b24fa2f15005ba))
 * add AT-3 Role-Based Training control YAML ([99169ee](https://github.com/WhalerMike/uiao-core/commit/99169ee3094d7313ace0e66e5f35265690232200))
 * add BaseAdapter abstract base class (Document 3 of 4) ([3031f49](https://github.com/WhalerMike/uiao-core/commit/3031f49af448c861b91a78ea6d3f3e4895313ae5))
 * add BaseCollector ABC and EvidenceObject dataclasses ([842beae](https://github.com/WhalerMike/uiao-core/commit/842beae9a3f72706117760f49a848a181375a4ce))
