@@ -8,11 +8,11 @@
 
 ## 1. Overview
 
-The Unified Identity-Addressing-Overlay Architecture (UIAO) is a 20-document modernization canon that defines a complete, deterministic, identity-driven, telemetry-informed federal architecture.
+UIAO is a drop-in overlay that restores cross-service telemetry and identity correlation in FedRAMP Moderate environments where native platforms cannot.
 
-It spans six control planes: **Identity**, **Network**, **Addressing**, **Telemetry**, **Security**, and **Management**.
+It provides deterministic identity correlation and cross-service telemetry across six control planes: **Identity**, **Network**, **Addressing**, **Telemetry**, **Security**, and **Management**. UIAO enables agencies to safely extract authoritative claims from legacy and brittle Truth Sources while maintaining provenance, drift detection, and continuous compliance -- without requiring rip-and-replace of existing platforms.
 
-UIAO provides the architectural, compliance, governance, and leadership framework required to modernize federal environments in alignment with Zero Trust, TIC 3.0, NIST 800-63, and FedRAMP 20x.
+The architecture is specified across a 20-document modernization canon aligned with Zero Trust, TIC 3.0, NIST 800-63, and FedRAMP 20x.
 
 ---
 
