@@ -1,3 +1,5 @@
+<!-- STATUS: Promoted to numbered canon. See 16_DriftDetectionStandard.md for the authoritative version. This document retained for operational runtime detail. -->
+
 ---
 title: "Phase5 Runtimedriftmodel"
 author: "UIAO Modernization Program"
