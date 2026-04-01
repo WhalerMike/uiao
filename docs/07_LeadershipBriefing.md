@@ -38,7 +38,7 @@ This document provides an executive-level briefing on the Unified Identity-Addre
 - Program overview and strategic goal
 - Current state challenges and mission impact
 - End-state vision and guiding principles
-- Six Control Planes and Seven Core Concepts
+- Six Control Planes and Eight Core Concepts
 - Frozen state analysis
 - Program outcomes
 - Runtime model
@@ -71,7 +71,7 @@ This document provides an executive-level briefing on the Unified Identity-Addre
 
 ## 5. Core Concepts
 
-The Seven Core Concepts govern the UIAO architecture:
+The Eight Core Concepts govern the UIAO architecture:
 
 1. **Conversation as the atomic unit** — Every interaction binds identity, certificates, addressing, path, QoS, and telemetry.
 2. **Identity as the root namespace** — Every IP, certificate, subnet, policy, and telemetry event is derived from identity.
