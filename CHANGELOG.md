@@ -146,6 +146,7 @@
 * add generate-docs CLI command and fix settings.root_dir bug ([e618e36](https://github.com/WhalerMike/uiao-core/commit/e618e3663cf7dfdfd79836fe00b3783c5f0c127e))
 * add generate-docx and generate-artifacts CLI commands ([6e2ecf1](https://github.com/WhalerMike/uiao-core/commit/6e2ecf1adc4708847257df38b90c2a4acb0fe582))
 * add Hardware Root of Trust (TPM 2.0) narrative to IA-3 for FedRAMP 20x Phase 2 ([122b897](https://github.com/WhalerMike/uiao-core/commit/122b8970f54fd42aa302cca28f279e04a3811e5d))
+* add InfoBlox DNS/IPAM evidence collector ([9b684c1](https://github.com/WhalerMike/uiao-core/commit/9b684c10a16e3878d3db6deddbe4b2c63892f507))
 * add infoblox.yaml standalone DDI/DNS vendor overlay ([5081b0c](https://github.com/WhalerMike/uiao-core/commit/5081b0c3713e42e8817417569131bf9b51d0102b))
 * add machine-readable document-skeleton.yml for canonical skeleton v1.0 ([3480612](https://github.com/WhalerMike/uiao-core/commit/3480612fe4d685c7fdaff7d60b6a44667860b4d8))
 * add machine-readable style-guide.yml governance rules ([984098c](https://github.com/WhalerMike/uiao-core/commit/984098c0063aa9c3aa0284ac9c1eb6562bcfc270))
