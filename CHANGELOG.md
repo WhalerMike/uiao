@@ -141,6 +141,7 @@
 * add 20_AdapterContract.md -- Adapter Contract & Certification Framework ([345898d](https://github.com/WhalerMike/uiao-core/commit/345898d041823557c7303f117612fe63b522f5a5))
 * add adapter registry (__init__.py) ([40f9350](https://github.com/WhalerMike/uiao-core/commit/40f9350ca522fa7103552f529b24679a496e9d92))
 * add add_ssot_concept.py script for SSOT injection into files missing it ([f3cbabb](https://github.com/WhalerMike/uiao-core/commit/f3cbabb25ab63ba585d133cda4b24fa2f15005ba))
+* add AI-enhanced UDC deployment pipeline with Gemini diagram generation ([4b6183e](https://github.com/WhalerMike/uiao-core/commit/4b6183e3a9a1fbba12e40dabb328bb21c8e2d617))
 * add AT-3 Role-Based Training control YAML ([99169ee](https://github.com/WhalerMike/uiao-core/commit/99169ee3094d7313ace0e66e5f35265690232200))
 * add BaseAdapter abstract base class (Document 3 of 4) ([3031f49](https://github.com/WhalerMike/uiao-core/commit/3031f49af448c861b91a78ea6d3f3e4895313ae5))
 * add BaseCollector ABC and EvidenceObject dataclasses ([842beae](https://github.com/WhalerMike/uiao-core/commit/842beae9a3f72706117760f49a848a181375a4ce))
