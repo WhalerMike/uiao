@@ -1,0 +1,45 @@
+---
+title: "UIAO KSI Compliance Dashboard"
+format:
+  html:
+    toc: true
+    theme: cosmo
+execute:
+  echo: false
+  warning: false
+  error: true
+---
+
+```{python}
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+# Path to the evidence bundle JSON (produced by the validator engine)
+bundle_path = Path("data/evidence-bundle.json")
+
+if not bundle_path.exists():
+    raise FileNotFoundError(f"Evidence bundle not found at {bundle_path}")
+
+bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+
+summary = bundle.get("summary", {})
+ksi_results = bundle.get("ksi_results", [])
+generated_at = datetime.fromisoformat(bundle["generated_at"])
+
+status_counts = {
+    "pass": 0,
+    "fail": 0,
+    "error": 0,
+    "stale": 0,
+}
+for res in ksi_results:
+    status = res.get("status")
+    if status in status_counts:
+        status_counts[status] += 1
+
+total_ksis = summary.get("total_ksis", len(ksi_results))
+coverage_percentage = summary.get("coverage_percentage", 0.0)
+
+now = datetime.now(timezone.utc)
+bundle_age = now - generated_at
