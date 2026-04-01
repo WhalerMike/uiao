@@ -43,7 +43,7 @@ def call_image_api(prompt):
     max_retries = 5
     delay = 1
 
-    for attempt in range(max_retries):
+    for _attempt in range(max_retries):
         try:
             response = requests.post(API_URL, headers=headers, data=json.dumps(payload))
             if response.status_code == 200:
@@ -79,7 +79,7 @@ def process_templates():
     print(f"Found {len(template_files)} templates to process.")
 
     for template_path in template_files:
-        with open(template_path, 'r', encoding='utf-8') as f:
+        with open(template_path, encoding='utf-8') as f:
             content = f.read()
 
         # Regex to match ```mermaid or ```diagram blocks
