@@ -111,6 +111,7 @@
 * **poam:** update metadata for FedRAMP Rev 5 OSCAL 1.0.4 compliance ([ec11443](https://github.com/WhalerMike/uiao-core/commit/ec11443dd5a9b0cb38c81944ba58ff2ed47c2253))
 * re-add [@app](https://github.com/app).command() decorator to generate_all and remove stray merge artifact ([9d667d3](https://github.com/WhalerMike/uiao-core/commit/9d667d300c706a653a12bf3356bccc4ffe353366))
 * remove missing reference-doc, scss, and lua filter from _quarto.yml ([ecadce2](https://github.com/WhalerMike/uiao-core/commit/ecadce20e1ac1a3c17555ffc0a459e725d9cf29d))
+* remove SSOT comment breaking YAML folded scalar in leadership briefing ([07e8b8a](https://github.com/WhalerMike/uiao-core/commit/07e8b8af0b0bec89ea26a24771b49ae293fa1a3e))
 * remove unused BaseProvider import from test_abstractions.py ([c31fa24](https://github.com/WhalerMike/uiao-core/commit/c31fa240e31d1938ed2b9afa9145b71155ff5a9c))
 * remove unused field import to fix CI lint errors ([dcfd606](https://github.com/WhalerMike/uiao-core/commit/dcfd606cb0782e6bbaa9fd898f24ea55e066b745))
 * remove unused imports in generate_docs.py (F401, I001) ([d7dd6ea](https://github.com/WhalerMike/uiao-core/commit/d7dd6ea1e2ebff9ff8d9fb7d3e11132fd1a8677a))
