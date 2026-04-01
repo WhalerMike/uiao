@@ -17,6 +17,11 @@ The modernization of the agency's datacenter is a multi-phase journey. We are cu
 ## High-Level Roadmap
 ![Project Roadmap](./images/roadmap.png)
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 graph LR
   Start(Project Kickoff) --> P1
@@ -48,13 +53,19 @@ graph LR
   P3 --> Milestone3{Q4 2026: Executive Ready & Modernized}
   classDef milestone fill:#f9f,stroke:#333,stroke-width:1px;
   class Milestone1,Milestone2,Milestone3 milestone;
-
 ```
+
+</details>
 
 ## Current Execution Status
 This "Stoplight" dashboard represents the real-time health of our development and documentation pipeline.
 
 ![Executive Dashboard](./images/exec_dashboard.png)
+
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 graph LR
@@ -75,8 +86,9 @@ graph LR
   class CI_CD,Docs,Mission complete;
   class App_Canon,MkDocs partial;
   class Validation blocked;
-
 ```
+
+</details>
 
 ### Remaining Milestones
 
