@@ -166,6 +166,7 @@
 * add UIAO custom SCSS brand styling for Quarto ([0c2d46e](https://github.com/WhalerMike/uiao-core/commit/0c2d46eebcf4bd8056a9f2a185009dba497c4a6e))
 * add UIAO-7DAY-GRADING-RUBRIC.md - Strategic Advisor grading standard ([86de938](https://github.com/WhalerMike/uiao-core/commit/86de938aba91667999e5f7f676968d400a0f7feb))
 * add uiao-format.lua Pandoc filter for classification banners and styling ([4f1acdd](https://github.com/WhalerMike/uiao-core/commit/4f1acddd7c9bdb2d1db44e4396810b428fde4056))
+* add unified KSI schema (ksi.schema.json) ([8fef21c](https://github.com/WhalerMike/uiao-core/commit/8fef21ce0482cd8260f33ab55dc42b0d647c3161))
 * add vendor-neutral abstraction layer with base provider interfaces and overlay support ([0eb39d2](https://github.com/WhalerMike/uiao-core/commit/0eb39d2acb9d52b71aa45578695f4c9ab32b80aa))
 * Add vendor-neutral overlay example template (closes [#22](https://github.com/WhalerMike/uiao-core/issues/22)) ([f974580](https://github.com/WhalerMike/uiao-core/commit/f974580aadecd611f28f640ce99f6026cff221e8))
 * **assets:** add 15 clean-named Modernization Atlas diagrams ([6d6b1b8](https://github.com/WhalerMike/uiao-core/commit/6d6b1b8e74f81c6015bbc5bc84e5ebf4118f1ce1))
