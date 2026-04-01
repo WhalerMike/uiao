@@ -65,7 +65,7 @@ ServiceNow and Intune jointly form the authoritative Management Plane.
 
 ## 5. Core Concepts
 
-The Management Plane operationalizes the Seven Core Concepts:
+The Management Plane operationalizes the Eight Core Concepts:
 
 1. Conversation as the atomic unit → Incident, change, and configuration events tied to identity and device
 2. Identity as the root namespace → Device trust and configuration bound to identity

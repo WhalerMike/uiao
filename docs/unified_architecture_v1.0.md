@@ -96,7 +96,7 @@ The following diagram demonstrates how each technical control plane maps to stra
 
 ---
 
-## 8. Seven Core Concepts
+## 8. Eight Core Concepts
 
 
 ### 8.1. Conversation as the Atomic Unit
