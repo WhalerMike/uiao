@@ -189,6 +189,7 @@
 * add quarto_post_render.py export organizer ([8801d81](https://github.com/WhalerMike/uiao-core/commit/8801d814edb5f1ef2ad4765a0d60899fb1bf2d46))
 * add quarto_pre_render.py bridge script ([2a58cc7](https://github.com/WhalerMike/uiao-core/commit/2a58cc79c882dbc4067fab300677a89cb05f4db1))
 * add quarto-frontmatter.yml document mappings ([87a1b02](https://github.com/WhalerMike/uiao-core/commit/87a1b02ef2fa5a41dabd814d8d274a2a04f44c98))
+* add render-and-insert-diagrams workflow ([ea182e4](https://github.com/WhalerMike/uiao-core/commit/ea182e44b53776522980506b74742992404b8c45))
 * Add rich DOCX generator with native Word styles and compliance tables ([18995c9](https://github.com/WhalerMike/uiao-core/commit/18995c98f3d953b58435e39d53740c2ed75b58bd))
 * add sample KSI rule YAML for AC-2 Account Management ([08490ae](https://github.com/WhalerMike/uiao-core/commit/08490aeb2eabb37a9006faef15d9ef727531d9ba))
 * add SC-12 Cryptographic Key Establishment control YAML ([d6eb6af](https://github.com/WhalerMike/uiao-core/commit/d6eb6af0d4828c866f6453119bcdab29e2c0334e))
