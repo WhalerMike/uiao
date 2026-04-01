@@ -97,7 +97,7 @@ Unified Identity-Addressing-Overlay Architecture (UIAO) is a coordinated moderni
 - **Cloud Telemetry + Location Services** — Telemetry Control Plane
 - **TIC 3.0 Cloud + Branch** — Security and Compliance Plane
 
-**Strategic Goal:** Transform the agency into a cloud-optimized, identity-driven, telemetry-informed, Zero Trust-aligned, TIC 3.0-compliant federal enterprise.
+**Strategic Goal:** Deliver a drop-in overlay that restores cross-service telemetry and identity correlation in FedRAMP Moderate environments where native platforms cannot.
 
 ### Slide 2 — Why Modernization Is Required
 
@@ -120,7 +120,7 @@ Unified Identity-Addressing-Overlay Architecture (UIAO) is a coordinated moderni
 
 ### Slide 3 — Program Vision
 
-**End State:** A fully modernized, identity-driven, cloud-optimized, telemetry-rich federal network.
+**End State:** A FedRAMP Moderate environment with restored cross-service telemetry and deterministic identity correlation -- delivered as a drop-in overlay.
 
 **Guiding Principles:**
 
@@ -199,7 +199,7 @@ Unified Identity-Addressing-Overlay Architecture (UIAO) is a coordinated moderni
 - Accurate addressing and location inference
 - Real-time telemetry for routing and security
 - TIC 3.0 compliance across cloud and branch
-- A unified, future-proof modernization foundation
+- A drop-in overlay delivering cross-service telemetry and identity correlation where native platforms cannot
 
 ---
 
