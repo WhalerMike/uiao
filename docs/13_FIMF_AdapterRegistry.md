@@ -125,4 +125,20 @@ Every adapter must emit:
 
 ---
 
-*End of UIAO FIMF Adapter Registry v1.0*
+## Adapter Layer Implementation Artifacts
+
+The following artifacts in `uiao-core` provide the concrete implementation of the adapter contract described in this document:
+
+| Artifact | Path | Purpose |
+| :------ | :--- | :------ |
+| BaseAdapter ABC | `adapters/base_adapter.py` | Abstract base class defining the ten adapter responsibility domains |
+| Adapter Registry | `adapters/__init__.py` | In-process registry for adapter discovery and instantiation |
+| Adapter Contract | `docs/adapters/adapter-contract.md` | Human-readable, governance-aligned adapter contract specification |
+| Canonical Definition | `docs/adapters/canonical-definition-of-a-uiao-adapter.md` | Full-length definition of a UIAO adapter with all ten domains |
+| Diagram Set | `docs/adapters/adapter-responsibilities-diagram-set.md` | ASCII diagrams covering architecture, responsibilities, and lifecycle |
+
+Vendor-specific adapters (e.g., `uiao-adapter-entra`, `uiao-adapter-infoblox`) live in separate repositories and must conform to the `BaseAdapter` contract.
+
+---
+
+*End of UIAO FIMF Adapter Registry v1.1*
