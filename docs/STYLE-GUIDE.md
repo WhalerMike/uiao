@@ -124,13 +124,14 @@ These definitions must appear identically across all documents. They are machine
 
 ### 4.2 The Eight Core Concepts
 
-1. Conversation as the atomic unit
-2. Identity as the root namespace
-3. Deterministic addressing
-4. Certificate-anchored overlay
-5. Telemetry as control
-6. Embedded governance and automation
-7. Public service first
+1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
+2. Conversation as the atomic unit
+3. Identity as the root namespace
+4. Deterministic addressing
+5. Certificate-anchored overlay
+6. Telemetry as control
+7. Embedded governance and automation
+8. Public service first
 
 ### 4.3 Runtime Model
 
