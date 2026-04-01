@@ -1,4 +1,17 @@
+---
+title: "15 Provenance Profile"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO Provenance Profile
+
 **Document:** 15
 **Phase:** 5 — Data Governance Substrate
 **Version:** 1.0
@@ -90,3 +103,21 @@ provenance:
 | AU-9 (Audit Information Protection) | `lineage_hash`, `signature` |
 | SI-7 (Software and Firmware Integrity) | `lineage_hash` verification |
 | AC-4 (Information Flow Enforcement) | `source_classification`, `transformation_chain` |
+
+---
+
+## 8. Cross-References
+
+- `docs/01_UnifiedArchitecture.md` — UIAO identity-first architecture
+- `docs/16_DriftDetectionStandard.md` — Drift detection for provenance breaks
+- `docs/17_ConsentEnvelope.md` — Consent model anchored to provenance
+- `docs/18_ClaimCatalog.md` — Claim registry with provenance requirements
+- `docs/adapters/adapter-contract.md` — Adapter provenance obligations
+
+---
+
+## 9. Revision History
+
+| Version | Date | Author | Summary |
+|---|---|---|---|
+| 1.0 | 2026-04-01 | UIAO Canon Engine | Initial canonical release — Phase 5 Data Governance Substrate |
