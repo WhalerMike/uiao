@@ -3,6 +3,7 @@
 
 ### Bug Fixes
 
+* add || true to detect_drift.py in auto-fix step so fix_concept_lists.py also runs ([9e20728](https://github.com/WhalerMike/uiao-core/commit/9e207283e3e852c05ac9ae396f06393bbe0f63ce))
 * add continue-on-error to auto-fix step so commit proceeds after fix ([833c289](https://github.com/WhalerMike/uiao-core/commit/833c289dcc705bc8c997c5a053d699e05b9891df))
 * add continue-on-error to pip-audit in CI workflow ([40f6935](https://github.com/WhalerMike/uiao-core/commit/40f6935e7f960e0258f9a070e683844d70486145))
 * add continue-on-error to schema validation in AI Security Audit ([31d8228](https://github.com/WhalerMike/uiao-core/commit/31d822817361c872e4e598d4cb5bb63f93fb3173))
@@ -18,6 +19,7 @@
 * align evidence_path indentation with sibling keys in parameters.yml to fix YAML parse error ([712752a](https://github.com/WhalerMike/uiao-core/commit/712752a5af7f63af34a965b1783401ba9543f4e8))
 * apply ruff format to tests/test_cli.py ([d701611](https://github.com/WhalerMike/uiao-core/commit/d7016115c3cad734ce2943865bb79e215f4d1391))
 * AU-11 Sentinel as primary, RA-5 ServiceNow VR, PM-4 legacy OSCAL replacement ([3503827](https://github.com/WhalerMike/uiao-core/commit/3503827afeec740135b735c5289d2fbd3ba2d78a))
+* auto-remediate canonical drift detected by drift-detection workflow ([ef25376](https://github.com/WhalerMike/uiao-core/commit/ef25376c5fdaf8bffd203db979abdb29c3aff60a))
 * auto-remediate canonical drift detected by drift-detection workflow ([d280481](https://github.com/WhalerMike/uiao-core/commit/d2804818bcb2b29936fd715c892ad34ce5156a28))
 * auto-remediate canonical drift detected by drift-detection workflow ([7ede53a](https://github.com/WhalerMike/uiao-core/commit/7ede53a18134c0a8d5fc24e8a8157aac43857d22))
 * changelog workflow skip-commit and handle empty commits gracefully ([13c31fe](https://github.com/WhalerMike/uiao-core/commit/13c31febb4f6065d08ed05781014fb844097fde7))
