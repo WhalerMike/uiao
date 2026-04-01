@@ -293,3 +293,4 @@ This document maps to all phases of the modernization timeline.
 | Version | Date | Author | Summary of Changes |
 |---|---|---|---|
 | 1.0 | 2026-03 | UIAO Canon Engine | Initial canonical release |
+| 1.1 | 2026-04 | UIAO Adapter Layer | Added Section 6.5 Adapter Layer cross-reference |
