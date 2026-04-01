@@ -158,6 +158,7 @@
 * add paloalto.yaml NGFW vendor overlay (Slot [#2](https://github.com/WhalerMike/uiao-core/issues/2) sub-overlay) ([7dc01c2](https://github.com/WhalerMike/uiao-core/commit/7dc01c25a1181e4b9917e6d9433aa30f36f44d2d))
 * add PARAM-IAM-006 Hardware Root of Trust for FedRAMP 20x Phase 2 IA-3 ([43247d5](https://github.com/WhalerMike/uiao-core/commit/43247d53e94da30fd120f9ef29c2088a9d558ec7))
 * add PyPI classifiers, URLs, and publish workflow ([9e82c39](https://github.com/WhalerMike/uiao-core/commit/9e82c398b6b661278bce598abe08e88ab61184e8))
+* add Quarto Continuous ATO Dashboard profile (_quarto.yml) ([e98621b](https://github.com/WhalerMike/uiao-core/commit/e98621be4933414a3206005d3f476bfe2564fd99))
 * add Quarto multi-format rendering pipeline (Phase 1 parallel) ([35e9692](https://github.com/WhalerMike/uiao-core/commit/35e9692ae8c629c820e3174a57923b71e747f94c))
 * add quarto_post_render.py export organizer ([8801d81](https://github.com/WhalerMike/uiao-core/commit/8801d814edb5f1ef2ad4765a0d60899fb1bf2d46))
 * add quarto_pre_render.py bridge script ([2a58cc7](https://github.com/WhalerMike/uiao-core/commit/2a58cc79c882dbc4067fab300677a89cb05f4db1))
