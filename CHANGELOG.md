@@ -46,6 +46,7 @@
 * **evidence:** add missing linker.py + bundler.py, prop:id on OSCAL back-matter, 34 tests (refs UIAO-MEMORY.md) ([2f07a41](https://github.com/WhalerMike/uiao-core/commit/2f07a41f3857beb3ee3ea52179b390d228d3270b))
 * **evidence:** address code review — improve error logging, clarify OSCAL validation comment, add round-trip test ([5d5b711](https://github.com/WhalerMike/uiao-core/commit/5d5b7110f36ce844f5f1d605913b54b12b27ca91))
 * exclude reports/ from drift scan, add six/6 deprecated patterns ([8111b84](https://github.com/WhalerMike/uiao-core/commit/8111b843b95003063beb108ffd65581e061abef9))
+* expand ruff ignore rules to suppress legacy type annotation and style warnings ([298a53a](https://github.com/WhalerMike/uiao-core/commit/298a53a67c05ced6fd4f9d40df4f1de876b55fe8))
 * **generators:** add isort skip_file to rich_docx.py for try/except imports ([19744ca](https://github.com/WhalerMike/uiao-core/commit/19744caf9eb7cef84f35e6e0ea678d5bff8e7dd9))
 * **generators:** fix indentation and remove duplicate radar chart in rich_docx.py ([ed2654c](https://github.com/WhalerMike/uiao-core/commit/ed2654cebe78b749fdb9ac42cb7f809c9dd75588))
 * **generators:** fix indentation in rich_docx.py radar chart section ([e773e36](https://github.com/WhalerMike/uiao-core/commit/e773e36176f4c47f12098b0f9ee99ff71cfc8777))
