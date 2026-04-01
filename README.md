@@ -45,7 +45,7 @@ This structure is deterministic and must not be altered.
 
 ## 3. Canon Summary
 
-The UIAO canon is built on the **Seven Core Concepts**:
+The UIAO canon is built on the **Eight Core Concepts**:
 
 1. **Conversation as the atomic unit** — Every interaction binds identity, certificates, addressing, path, QoS, and telemetry.
 2. **Identity as the root namespace** — Every IP, certificate, subnet, policy, and telemetry event is derived from identity.
