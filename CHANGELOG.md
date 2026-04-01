@@ -119,6 +119,7 @@
 * resolve CI artifact generation failures (Playwright, sandbox, Settings.visuals_dir, Gemini model) ([ad23901](https://github.com/WhalerMike/uiao-core/commit/ad23901702e64ef0fcfe88412ae41b2f77e15077))
 * resolve merge conflicts with AC-3 PR, keep both PolicyEnforcementPoint and PIVAuthenticationService ([7c5a59e](https://github.com/WhalerMike/uiao-core/commit/7c5a59ea82043c11522e8dfbe0d000cd09fbfcad))
 * resolve PR [#45](https://github.com/WhalerMike/uiao-core/issues/45) POA&M rule engine CI failures and MEMORY compliance ([5a5e984](https://github.com/WhalerMike/uiao-core/commit/5a5e9841a76323e705973c83c3678c4999cb579b))
+* resolve ruff B007 and UP015 lint errors in generate_diagrams.py ([6c0641c](https://github.com/WhalerMike/uiao-core/commit/6c0641c34abf35a7323579b9c712d4bf2387bc3e))
 * resolve Ruff F541 and F401 lint errors in quarto_pre_render.py ([1ea54fd](https://github.com/WhalerMike/uiao-core/commit/1ea54fda60a003b46876f445c9e52f58601bb0a5))
 * resolve UP037 linting errors in narrative_loader.py ([070b5ea](https://github.com/WhalerMike/uiao-core/commit/070b5ea40c9fae005335903be2b84b09bdf77004))
 * rewrite adapter workflow using Python generator to avoid YAML heredoc issues ([6e83fd4](https://github.com/WhalerMike/uiao-core/commit/6e83fd497430ddab6ebe232cf62971b4878fb742))
