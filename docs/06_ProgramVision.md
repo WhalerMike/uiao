@@ -26,7 +26,7 @@ format:
 
 ## 2. Purpose
 
-This document defines the Program Vision for the Unified Identity-Addressing-Overlay (UIAO) modernization initiative. It articulates the strategic intent, mission alignment, guiding principles, and end-state outcomes required to transform the agency into a cloud-optimized, identity-driven, telemetry-informed federal enterprise aligned with Zero Trust, TIC 3.0, and FedRAMP 20x.
+This document defines the Program Vision for the Unified Identity-Addressing-Overlay (UIAO) modernization initiative. UIAO is a drop-in overlay that restores cross-service telemetry and identity correlation in FedRAMP Moderate environments where native platforms cannot. It articulates the strategic intent, mission alignment, guiding principles, and end-state outcomes required to deliver deterministic identity correlation, provenance, drift detection, and continuous compliance -- without requiring rip-and-replace of existing platforms -- aligned with Zero Trust, TIC 3.0, NIST 800-63, and FedRAMP 20x.
 
 ---
 
@@ -96,7 +96,7 @@ The agency must modernize to:
 - Enable cloud-first operations
 - Support real-time telemetry and location services
 
-UIAO provides the architectural foundation for this transformation.
+UIAO provides a drop-in overlay that restores the cross-service telemetry and identity correlation required for this transformation.
 
 ### 6.2 Technology Pillars
 
@@ -127,7 +127,7 @@ These principles ensure modernization is sustainable, compliant, and mission-ali
 
 ### 6.4 End-State Vision
 
-The end state is a fully modernized, identity-driven, cloud-optimized, telemetry-rich federal network where:
+The end state is a FedRAMP Moderate environment with restored cross-service telemetry and deterministic identity correlation where:
 
 - Identity governs access, addressing, certificates, and policy
 - Routing is cloud-first and performance-optimized
@@ -137,7 +137,7 @@ The end state is a fully modernized, identity-driven, cloud-optimized, telemetry
 - Security is continuous and Zero Trust-aligned
 - Citizen experience is prioritized in every decision
 
-This is the target architecture for the agency.
+This is the target end state -- a drop-in overlay delivering what native platforms cannot.
 
 ---
 
