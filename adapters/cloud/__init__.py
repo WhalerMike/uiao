@@ -1,0 +1,1 @@
+"""Cloud adapter sub-package."""
