@@ -23,6 +23,11 @@ The UIAO Document Compiler transforms canon YAML data through a multi-stage
 pipeline, producing compliance-ready artifacts in Markdown, DOCX, PDF, PPTX,
 and OSCAL JSON formats.
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart LR
     A["Canon YAML\ndata/"] -->|validate| B["Schema\nValidation"]
@@ -48,6 +53,8 @@ flowchart LR
     style J fill:#1b5e20,color:#fff
     style K fill:#b71c1c,color:#fff
 ```
+
+</details>
 
 ## Stage Details
 
@@ -82,6 +89,11 @@ GitHub Pages, providing an always-current agency-facing dashboard.
 
 ## Zero-Trust Architecture Flow
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart TD
     subgraph Identity["Identity Plane"]
@@ -112,6 +124,8 @@ flowchart TD
     style Telemetry fill:#e65100,color:#fff
     style OSCAL fill:#b71c1c,color:#fff
 ```
+
+</details>
 
 ---
 
