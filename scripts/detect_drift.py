@@ -106,7 +106,7 @@ DEPRECATED_PATTERNS = [
 ]
 
 # Directories and extensions to scan
-SCAN_DIRS = ["docs", "canon", "adapters", "compliance", "templates", "01_Canon"]
+SCAN_DIRS = ["docs", "canon", "adapters", "compliance", "templates", "01_Canon", "exports", "site", "rules", "data", "schemas", "src", "dashboard", "analytics", "reports", "assets", "_extensions"]
 SCAN_ROOT_FILES = [
     "README.md",
     "CONTRIBUTING.md",
@@ -116,7 +116,7 @@ SCAN_ROOT_FILES = [
     "FORMAT-CANON.md",
     "USAGE.md",
 ]
-SCAN_EXTENSIONS = {".md", ".yml", ".yaml"}
+SCAN_EXTENSIONS = {".md", ".yml", ".yaml", ".html", ".j2", ".json", ".txt"}
 
 
 def find_repo_root() -> Path:
