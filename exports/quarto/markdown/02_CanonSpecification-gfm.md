@@ -141,7 +141,7 @@ The canon defines the principles that govern these planes.
 
 ## 5. Core Concepts
 
-The canon is anchored in the Seven Core Concepts, which define the
+The canon is anchored in the Eight Core Concepts, which define the
 philosophical and operational foundation of UIAO:
 
 1.  Conversation as the atomic unit

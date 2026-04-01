@@ -136,7 +136,7 @@ deterministically.
 
 ## 5. Core Concepts
 
-The unified architecture is governed by the Seven Core Concepts, which
+The unified architecture is governed by the Eight Core Concepts, which
 must appear identically across all UIAO documents:
 
 1.  Conversation as the atomic unit

@@ -126,7 +126,7 @@ All other UIAO documents reference this plane model.
 
 ## 5. Core Concepts
 
-The six control planes operate according to the Seven Core Concepts of
+The six control planes operate according to the Eight Core Concepts of
 UIAO:
 
 1.  Conversation as the atomic unit

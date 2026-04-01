@@ -123,7 +123,7 @@ Each plane has a predictable location in the repository.
 
 ## 5. Core Concepts
 
-The directory structure operationalizes the Seven Core Concepts:
+The directory structure operationalizes the Eight Core Concepts:
 
 1.  **Conversation as the atomic unit** — Document relationships reflect
     runtime flow

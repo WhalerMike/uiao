@@ -134,7 +134,7 @@ This glossary spans all six UIAO control planes:
 
 ## 5. Core Concepts
 
-The glossary includes the frozen definitions of the Seven Core Concepts:
+The glossary includes the frozen definitions of the Eight Core Concepts:
 
 ### Conversation as the Atomic Unit
 
