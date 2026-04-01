@@ -196,6 +196,7 @@
 * **assets:** add 15 new Modernization Atlas diagrams ([c29a93a](https://github.com/WhalerMike/uiao-core/commit/c29a93a7e370463ac5038ed2fee516ce5769cb23))
 * **assets:** add full set of 15 clean Modernization Atlas diagrams ([02e75bf](https://github.com/WhalerMike/uiao-core/commit/02e75bfe67aea3e9a0413ebf78832c4d7220a055))
 * **build:** add pyproject.toml with PEP 621 metadata and src-layout (ADR-0001) ([9ff91e3](https://github.com/WhalerMike/uiao-core/commit/9ff91e34605bbe2bcf8808a786772fb11e886d70))
+* **canon:** Phase 5 Data Governance Substrate — docs 15–19, crosswalk update, README ([b7c4e09](https://github.com/WhalerMike/uiao-core/commit/b7c4e0920cacc9900d20428117d2934c75801326))
 * **cli:** add generate-gemini command with --name and --force-visuals flags (ADR-0005) ([f20aee0](https://github.com/WhalerMike/uiao-core/commit/f20aee0739acdd8553ff4ba58c05495aad16247e))
 * **cli:** add generate-pptx command for leadership briefing ([5fa7bba](https://github.com/WhalerMike/uiao-core/commit/5fa7bbafc3e030f291b03051339003c92bb29b98))
 * **cli:** add generate-visuals command with --force-visuals flag (ADR-0005) ([ff10509](https://github.com/WhalerMike/uiao-core/commit/ff105092898ca4b2d9f3fad4fa2334a2ad74e6b5))
