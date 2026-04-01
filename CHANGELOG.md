@@ -19,6 +19,7 @@
 * align evidence_path indentation with sibling keys in parameters.yml to fix YAML parse error ([712752a](https://github.com/WhalerMike/uiao-core/commit/712752a5af7f63af34a965b1783401ba9543f4e8))
 * apply ruff format to tests/test_cli.py ([d701611](https://github.com/WhalerMike/uiao-core/commit/d7016115c3cad734ce2943865bb79e215f4d1391))
 * AU-11 Sentinel as primary, RA-5 ServiceNow VR, PM-4 legacy OSCAL replacement ([3503827](https://github.com/WhalerMike/uiao-core/commit/3503827afeec740135b735c5289d2fbd3ba2d78a))
+* auto-remediate canonical drift detected by drift-detection workflow ([ac4f952](https://github.com/WhalerMike/uiao-core/commit/ac4f952a38c936edcd9c9753162c1f4d3688202e))
 * auto-remediate canonical drift detected by drift-detection workflow ([5ce6fed](https://github.com/WhalerMike/uiao-core/commit/5ce6feddcbff55e00f99a510a9a62263cc9975be))
 * auto-remediate canonical drift detected by drift-detection workflow ([0607f9c](https://github.com/WhalerMike/uiao-core/commit/0607f9ca43b550aaa08de94b036c0c5343ce7e2a))
 * auto-remediate canonical drift detected by drift-detection workflow ([ef25376](https://github.com/WhalerMike/uiao-core/commit/ef25376c5fdaf8bffd203db979abdb29c3aff60a))
@@ -131,6 +132,7 @@
 
 ### Features
 
+* add 15_ProvenanceProfile.md — Phase 5 governance substrate (1/5) ([1c0ff0c](https://github.com/WhalerMike/uiao-core/commit/1c0ff0c411d214c2be5c74e0e66cca463fe409a1))
 * add adapter registry (__init__.py) ([40f9350](https://github.com/WhalerMike/uiao-core/commit/40f9350ca522fa7103552f529b24679a496e9d92))
 * add add_ssot_concept.py script for SSOT injection into files missing it ([f3cbabb](https://github.com/WhalerMike/uiao-core/commit/f3cbabb25ab63ba585d133cda4b24fa2f15005ba))
 * add AT-3 Role-Based Training control YAML ([99169ee](https://github.com/WhalerMike/uiao-core/commit/99169ee3094d7313ace0e66e5f35265690232200))
