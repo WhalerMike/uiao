@@ -1,0 +1,370 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao-core.example.com/schemas/ksi/evidence-bundle.schema.json",
+  "title": "UIAO KSI Evidence Bundle",
+  "description": "Schema for the evidence bundle emitted by the UIAO-Core KSI Validator Engine.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bundle_id",
+    "generated_at",
+    "generator",
+    "ksi_results",
+    "oscal_observations",
+    "quarto_fragments",
+    "summary",
+    "provenance"
+  ],
+  "properties": {
+    "bundle_id": {
+      "type": "string",
+      "description": "Unique identifier for this evidence bundle.",
+      "format": "uuid"
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "Timestamp when this evidence bundle was generated.",
+      "format": "date-time"
+    },
+    "generator": {
+      "type": "object",
+      "description": "Information about the generator that produced this bundle.",
+      "additionalProperties": false,
+      "required": [
+        "uiao_core_version",
+        "validator_version"
+      ],
+      "properties": {
+        "uiao_core_version": {
+          "type": "string",
+          "description": "Version of the UIAO-Core framework that produced this bundle."
+        },
+        "validator_version": {
+          "type": "string",
+          "description": "Version of the KSI Validator Engine."
+        },
+        "runtime": {
+          "type": "string",
+          "description": "Optional description of the runtime environment (e.g., Python version, platform)."
+        }
+      }
+    },
+    "ksi_results": {
+      "type": "array",
+      "description": "Per-KSI validation results.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ksi_id",
+          "status",
+          "evidence",
+          "drift_indicators",
+          "timestamp",
+          "errors"
+        ],
+        "properties": {
+          "ksi_id": {
+            "type": "string",
+            "description": "Identifier of the KSI."
+          },
+          "status": {
+            "type": "string",
+            "description": "Validation status for this KSI.",
+            "enum": [
+              "pass",
+              "fail",
+              "error",
+              "stale"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "description": "Evidence items associated with this KSI.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ksi_id",
+                "source",
+                "timestamp",
+                "raw_data",
+                "normalized_data",
+                "provenance",
+                "freshness_valid"
+              ],
+              "properties": {
+                "ksi_id": {
+                  "type": "string",
+                  "description": "KSI identifier this evidence relates to."
+                },
+                "source": {
+                  "type": "string",
+                  "description": "Logical source of the evidence (e.g., EntraID, CiscoSDWAN, InfoBlox)."
+                },
+                "timestamp": {
+                  "type": "string",
+                  "description": "Timestamp when this evidence was collected.",
+                  "format": "date-time"
+                },
+                "raw_data": {
+                  "description": "Raw data as collected from the source system.",
+                  "type": [
+                    "object",
+                    "array",
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "normalized_data": {
+                  "description": "Canonical normalized representation of the evidence, if available.",
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                },
+                "provenance": {
+                  "type": "object",
+                  "description": "Provenance envelope for this evidence item.",
+                  "additionalProperties": false,
+                  "required": [
+                    "collector_id",
+                    "hash",
+                    "collection_timestamp"
+                  ],
+                  "properties": {
+                    "collector_id": {
+                      "type": "string",
+                      "description": "Identifier of the collector that produced this evidence."
+                    },
+                    "hash": {
+                      "type": "string",
+                      "description": "Content hash of the evidence payload.",
+                      "pattern": "^[A-Fa-f0-9]{64}$"
+                    },
+                    "collection_timestamp": {
+                      "type": "string",
+                      "description": "Timestamp when the collector gathered this evidence.",
+                      "format": "date-time"
+                    }
+                  }
+                },
+                "freshness_valid": {
+                  "type": "boolean",
+                  "description": "Whether this evidence is within the KSI's freshness window."
+                }
+              }
+            }
+          },
+          "drift_indicators": {
+            "type": "array",
+            "description": "Human-readable drift indicators detected for this KSI.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Timestamp when validation was performed for this KSI.",
+            "format": "date-time"
+          },
+          "errors": {
+            "type": "array",
+            "description": "Errors encountered during validation of this KSI.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "oscal_observations": {
+      "type": "array",
+      "description": "OSCAL observation objects derived from KSI validation.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "uuid",
+          "description",
+          "collected",
+          "methods",
+          "subjects",
+          "relevant_evidence"
+        ],
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "description": "UUID of the OSCAL observation.",
+            "format": "uuid"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the observation."
+          },
+          "collected": {
+            "type": "string",
+            "description": "Timestamp when the observation was collected.",
+            "format": "date-time"
+          },
+          "methods": {
+            "type": "array",
+            "description": "Methods used to obtain the observation (e.g., TEST, INTERVIEW, EXAMINE).",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subjects": {
+            "type": "array",
+            "description": "Subjects associated with this observation.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "subject_id"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of subject (e.g., component, inventory-item, party)."
+                },
+                "subject_id": {
+                  "type": "string",
+                  "description": "Identifier of the subject."
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Optional human-readable title for the subject."
+                }
+              }
+            }
+          },
+          "relevant_evidence": {
+            "type": "array",
+            "description": "References to evidence items that support this observation.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "evidence_ref",
+                "description"
+              ],
+              "properties": {
+                "evidence_ref": {
+                  "type": "string",
+                  "description": "Reference to an evidence item (e.g., KSI ID or evidence hash)."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Description of how this evidence supports the observation."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "quarto_fragments": {
+      "type": "array",
+      "description": "Rendered Quarto-ready markdown snippets keyed by KSI.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ksi_id",
+          "markdown"
+        ],
+        "properties": {
+          "ksi_id": {
+            "type": "string",
+            "description": "Identifier of the KSI this fragment corresponds to."
+          },
+          "markdown": {
+            "type": "string",
+            "description": "Rendered markdown fragment for inclusion in Quarto dashboards or reports."
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Aggregate summary of KSI validation results.",
+      "additionalProperties": false,
+      "required": [
+        "total_ksis",
+        "passed",
+        "failed",
+        "error",
+        "stale",
+        "coverage_percentage"
+      ],
+      "properties": {
+        "total_ksis": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of KSIs in this bundle."
+        },
+        "passed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of KSIs with status 'pass'."
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of KSIs with status 'fail'."
+        },
+        "error": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of KSIs with status 'error'."
+        },
+        "stale": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of KSIs with status 'stale'."
+        },
+        "coverage_percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage of KSIs that have been evaluated (non-error) relative to the total catalog."
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Provenance envelope for the entire evidence bundle.",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "timestamp",
+        "hash"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Origin of this bundle (e.g., 'uiao-core-validator')."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the provenance record was created.",
+          "format": "date-time"
+        },
+        "hash": {
+          "type": "string",
+          "description": "Content hash of the bundle payload (e.g., SHA-256).",
+          "pattern": "^[A-Fa-f0-9]{64}$"
+        },
+        "environment": {
+          "type": "object",
+          "description": "Optional environment metadata (e.g., CI pipeline, host, region).",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}
