@@ -63,13 +63,13 @@ jobs:
         if: >
           steps.drift.outcome == 'failure' &&
           (github.event.inputs.auto_fix == 'true' || github.event_name == 'schedule')
+        id: fix
+        continue-on-error: true
         run: |
           python scripts/detect_drift.py --fix --verbose --output reports/drift-report-post-fix.json
-          echo "fix_applied=true" >> $GITHUB_OUTPUT
-        id: fix
 
       - name: Commit auto-fix changes
-        if: steps.fix.outcome == 'success'
+        if: steps.fix.outcome != 'skipped'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
