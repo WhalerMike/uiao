@@ -122,6 +122,7 @@
 ### Features
 
 * add AT-3 Role-Based Training control YAML ([99169ee](https://github.com/WhalerMike/uiao-core/commit/99169ee3094d7313ace0e66e5f35265690232200))
+* add BaseAdapter abstract base class (Document 3 of 4) ([3031f49](https://github.com/WhalerMike/uiao-core/commit/3031f49af448c861b91a78ea6d3f3e4895313ae5))
 * add build_rich_docx to generators __init__ exports ([a5e3cef](https://github.com/WhalerMike/uiao-core/commit/a5e3cef760490c96a2eeca4c6477d6c8fc965ba9))
 * add canonical document skeleton Jinja2 template ([eaac014](https://github.com/WhalerMike/uiao-core/commit/eaac0143a6fe6f8ad50177f9bf25b4530ea97f2b))
 * add cisco.yaml standalone SD-WAN vendor overlay ([bafe526](https://github.com/WhalerMike/uiao-core/commit/bafe5265eae03a077ff1eb46222225b8b532156f))
