@@ -148,6 +148,7 @@
 * add Hardware Root of Trust (TPM 2.0) narrative to IA-3 for FedRAMP 20x Phase 2 ([122b897](https://github.com/WhalerMike/uiao-core/commit/122b8970f54fd42aa302cca28f279e04a3811e5d))
 * add InfoBlox DNS/IPAM evidence collector ([9b684c1](https://github.com/WhalerMike/uiao-core/commit/9b684c10a16e3878d3db6deddbe4b2c63892f507))
 * add infoblox.yaml standalone DDI/DNS vendor overlay ([5081b0c](https://github.com/WhalerMike/uiao-core/commit/5081b0c3713e42e8817417569131bf9b51d0102b))
+* add KSI Validator Engine with OSCAL/Quarto/JSON export ([1c5a7dc](https://github.com/WhalerMike/uiao-core/commit/1c5a7dc8137d5ff7510082bf8e8f038a954b1511))
 * add machine-readable document-skeleton.yml for canonical skeleton v1.0 ([3480612](https://github.com/WhalerMike/uiao-core/commit/3480612fe4d685c7fdaff7d60b6a44667860b4d8))
 * add machine-readable style-guide.yml governance rules ([984098c](https://github.com/WhalerMike/uiao-core/commit/984098c0063aa9c3aa0284ac9c1eb6562bcfc270))
 * add management_stack_v1.0.md.j2 with ServiceNow/Intune control tables and diagrams ([c1175b1](https://github.com/WhalerMike/uiao-core/commit/c1175b118f5be53412b27c71028b39d8dd1755fc))
