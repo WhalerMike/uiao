@@ -106,6 +106,11 @@ This index links each category to its authoritative document.
 | `00_ControlPlaneArchitecture.md` | Control planes to NIST | Plane-level mapping |
 | `01_UnifiedArchitecture.md` | Core concepts to NIST | Conceptual mapping |
 | `02_CanonSpecification.md` | Canon to NIST/TIC/SCuBA | Doctrinal mapping |
+| `15_ProvenanceProfile.md` | Provenance to AU-3/AU-9/SI-7/AC-4 | Phase 5 — Data Governance Substrate |
+| `16_DriftDetectionStandard.md` | Drift to CM-3/SI-7/CA-7/IR-6 | Phase 5 — Data Governance Substrate |
+| `17_ConsentEnvelope.md` | Consent to AC-4/AC-22/AR-4/IP-1 | Phase 5 — Data Governance Substrate |
+| `18_ClaimCatalog.md` | Claims to CM-8/SA-4/SI-12 | Phase 5 — Data Governance Substrate |
+| `19_ReconciliationModel.md` | Reconciliation to AU-3/IR-4/SA-9/PM-16 | Phase 5 — Data Governance Substrate |
 
 This table is the master reference for all compliance-related documents.
 
@@ -191,6 +196,16 @@ Below is the canonical master index of all crosswalks in the UIAO canon.
 | KSI-CNA | Conversation metadata | `01_UnifiedArchitecture.md` |
 | KSI-CED | Data minimization | `02_CanonSpecification.md` |
 
+### 8.6 Phase 5 — Data Governance Substrate Crosswalk Index
+
+| Document | Crosswalk Type | Reference |
+|---|---|---|
+| `15_ProvenanceProfile.md` | Provenance to NIST AU/SI/AC | Lineage, audit, integrity |
+| `16_DriftDetectionStandard.md` | Drift to NIST CM/SI/CA/IR | Configuration, monitoring, incident |
+| `17_ConsentEnvelope.md` | Consent to NIST AC/AR/IP | Information flow, privacy |
+| `18_ClaimCatalog.md` | Claims to NIST CM/SA/SI | Inventory, acquisition, retention |
+| `19_ReconciliationModel.md` | Reconciliation to NIST AU/IR/SA/PM | Audit, incident, external services |
+
 ---
 
 ## 9. Dependencies and Sequencing
@@ -263,3 +278,4 @@ The Crosswalk Index supports all phases of the modernization timeline.
 | Version | Date | Author | Summary |
 |---|---|---|---|
 | 1.0 | 2026-03 | UIAO Canon Engine | Initial canonical release |
+| 1.1 | 2026-04 | UIAO Canon Engine | Register Phase 5 docs 15–19; add Section 8.6 |

@@ -1,4 +1,17 @@
+---
+title: "16 Drift Detection Standard"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO Drift Detection & Remediation Standard
+
 **Document:** 16
 **Phase:** 5 — Data Governance Substrate
 **Version:** 1.0
@@ -78,3 +91,21 @@ Certified UIAO adapters MUST:
 | SI-7 (Software Integrity) | Provenance and lineage hash verification |
 | CA-7 (Continuous Monitoring) | Automated drift detection workflow |
 | IR-6 (Incident Reporting) | P1/P2 escalation paths |
+
+---
+
+## 7. Cross-References
+
+- `docs/PHASE5_RuntimeDriftModel.md` — Operational runtime drift model (promoted by this document)
+- `docs/15_ProvenanceProfile.md` — Provenance envelope that drift detection validates
+- `docs/17_ConsentEnvelope.md` — Authorization drift detection
+- `docs/18_ClaimCatalog.md` — Schema drift detection against catalog versions
+- `scripts/detect_drift.py` — Drift detection automation
+
+---
+
+## 8. Revision History
+
+| Version | Date | Author | Summary |
+|---|---|---|---|
+| 1.0 | 2026-04-01 | UIAO Canon Engine | Initial canonical release — promotes PHASE5_RuntimeDriftModel.md |
