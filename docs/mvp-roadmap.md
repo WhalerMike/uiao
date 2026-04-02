@@ -1,3 +1,15 @@
+---
+title: "Mvp-Roadmap"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO-Core — MVP Roadmap  
 **Version 1.0 — 6‑Week Delivery Plan**
 

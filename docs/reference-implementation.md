@@ -1,3 +1,15 @@
+---
+title: "Reference-Implementation"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO-Core Reference Implementation  
 ## “ATO in a Box” Starter Kit Architecture
 

@@ -1,6 +1,6 @@
 # 09 Crosswalkindex
 UIAO Modernization Program
-March 31, 2026
+April 2, 2026
 
 - [<span class="toc-section-number">1</span> UIAO Crosswalk
   Index](#uiao-crosswalk-index)
@@ -42,6 +42,9 @@ March 31, 2026
       Crosswalk Index](#84-scuba-m365-crosswalk-index)
     - [<span class="toc-section-number">1.8.5</span> 8.5 KSI (Key
       Security Indicator) Index](#85-ksi-key-security-indicator-index)
+    - [<span class="toc-section-number">1.8.6</span> 8.6 Phase 5 — Data
+      Governance Substrate Crosswalk
+      Index](#86-phase-5--data-governance-substrate-crosswalk-index)
   - [<span class="toc-section-number">1.9</span> 9. Dependencies and
     Sequencing](#9-dependencies-and-sequencing)
     - [<span class="toc-section-number">1.9.1</span> Upstream
@@ -136,7 +139,11 @@ traceable.
 
 The Crosswalk Index is governed by the Eight Core Concepts:
 
-1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
+1.  **Single Source of Truth (SSOT)** — UIAO operates on the principle
+    that every claim has one authoritative origin. All other
+    representations are pointers, not copies. This ensures provenance,
+    prevents drift, and enables federated truth resolution across
+    boundaries.
 2.  **Conversation as the atomic unit**
 3.  **Identity as the root namespace**
 4.  **Deterministic addressing**
@@ -173,6 +180,11 @@ This index links each category to its authoritative document.
 | `00_ControlPlaneArchitecture.md` | Control planes to NIST | Plane-level mapping |
 | `01_UnifiedArchitecture.md` | Core concepts to NIST | Conceptual mapping |
 | `02_CanonSpecification.md` | Canon to NIST/TIC/SCuBA | Doctrinal mapping |
+| `15_ProvenanceProfile.md` | Provenance to AU-3/AU-9/SI-7/AC-4 | Phase 5 — Data Governance Substrate |
+| `16_DriftDetectionStandard.md` | Drift to CM-3/SI-7/CA-7/IR-6 | Phase 5 — Data Governance Substrate |
+| `17_ConsentEnvelope.md` | Consent to AC-4/AC-22/AR-4/IP-1 | Phase 5 — Data Governance Substrate |
+| `18_ClaimCatalog.md` | Claims to CM-8/SA-4/SI-12 | Phase 5 — Data Governance Substrate |
+| `19_ReconciliationModel.md` | Reconciliation to AU-3/IR-4/SA-9/PM-16 | Phase 5 — Data Governance Substrate |
 
 This table is the master reference for all compliance-related documents.
 
@@ -260,6 +272,16 @@ Below is the canonical master index of all crosswalks in the UIAO canon.
 | KSI-CNA | Conversation metadata   | `01_UnifiedArchitecture.md`      |
 | KSI-CED | Data minimization       | `02_CanonSpecification.md`       |
 
+### 8.6 Phase 5 — Data Governance Substrate Crosswalk Index
+
+| Document | Crosswalk Type | Reference |
+|----|----|----|
+| `15_ProvenanceProfile.md` | Provenance to NIST AU/SI/AC | Lineage, audit, integrity |
+| `16_DriftDetectionStandard.md` | Drift to NIST CM/SI/CA/IR | Configuration, monitoring, incident |
+| `17_ConsentEnvelope.md` | Consent to NIST AC/AR/IP | Information flow, privacy |
+| `18_ClaimCatalog.md` | Claims to NIST CM/SA/SI | Inventory, acquisition, retention |
+| `19_ReconciliationModel.md` | Reconciliation to NIST AU/IR/SA/PM | Audit, incident, external services |
+
 ------------------------------------------------------------------------
 
 ## 9. Dependencies and Sequencing
@@ -331,6 +353,7 @@ source catalogs.*
 
 ## 12. Revision History
 
-| Version | Date    | Author            | Summary                   |
-|---------|---------|-------------------|---------------------------|
-| 1.0     | 2026-03 | UIAO Canon Engine | Initial canonical release |
+| Version | Date | Author | Summary |
+|----|----|----|----|
+| 1.0 | 2026-03 | UIAO Canon Engine | Initial canonical release |
+| 1.1 | 2026-04 | UIAO Canon Engine | Register Phase 5 docs 15–19; add Section 8.6 |

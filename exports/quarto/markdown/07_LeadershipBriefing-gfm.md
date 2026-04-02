@@ -1,6 +1,6 @@
 # 07 Leadershipbriefing
 UIAO Modernization Program
-March 31, 2026
+April 2, 2026
 
 - [<span class="toc-section-number">1</span> Leadership Briefing —
   Unified Identity-Addressing-Overlay Architecture
@@ -144,7 +144,11 @@ architecture, compliance alignment, governance, timeline, and outcomes.
 
 The Eight Core Concepts govern the UIAO architecture:
 
-1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
+1.  **Single Source of Truth (SSOT)** — UIAO operates on the principle
+    that every claim has one authoritative origin. All other
+    representations are pointers, not copies. This ensures provenance,
+    prevents drift, and enables federated truth resolution across
+    boundaries.
 2.  **Conversation as the atomic unit** — Every interaction binds
     identity, certificates, addressing, path, QoS, and telemetry.
 3.  **Identity as the root namespace** — Every IP, certificate, subnet,
@@ -176,9 +180,9 @@ modernization effort across:
 - **Cloud Telemetry + Location Services** — Telemetry Control Plane
 - **TIC 3.0 Cloud + Branch** — Security and Compliance Plane
 
-**Strategic Goal:** Transform the agency into a cloud-optimized,
-identity-driven, telemetry-informed, Zero Trust-aligned, TIC
-3.0-compliant federal enterprise.
+**Strategic Goal:** Deliver a drop-in overlay that restores
+cross-service telemetry and identity correlation in FedRAMP Moderate
+environments where native platforms cannot.
 
 ### Slide 2 — Why Modernization Is Required
 
@@ -201,8 +205,9 @@ identity-driven, telemetry-informed, Zero Trust-aligned, TIC
 
 ### Slide 3 — Program Vision
 
-**End State:** A fully modernized, identity-driven, cloud-optimized,
-telemetry-rich federal network.
+**End State:** A FedRAMP Moderate environment with restored
+cross-service telemetry and deterministic identity correlation –
+delivered as a drop-in overlay.
 
 **Guiding Principles:**
 
@@ -282,7 +287,8 @@ not ship.
 - Accurate addressing and location inference
 - Real-time telemetry for routing and security
 - TIC 3.0 compliance across cloud and branch
-- A unified, future-proof modernization foundation
+- A drop-in overlay delivering cross-service telemetry and identity
+  correlation where native platforms cannot
 
 ------------------------------------------------------------------------
 

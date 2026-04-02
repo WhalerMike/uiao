@@ -1,3 +1,15 @@
+---
+title: "Adapter-Contract"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO Adapter Contract (Human-Readable Specification)
 **UIAO Adapter Suite — Document 4 of 4**
 **Version 1.0.0 — Canonical, Frozen**
