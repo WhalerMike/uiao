@@ -52,6 +52,11 @@ How `program.yml` becomes a deployed configuration:
 <details>
 <summary>Mermaid source</summary>
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart LR
   YAML[(program.yml)] --> Python[generate.py Logic]
@@ -80,9 +85,16 @@ flowchart LR
 
 </details>
 
+</details>
+
 ## The Normalization Engine
 
 The `generate.py` script performs a critical translation step. YAML keys in the canon use hyphens (e.g., `A-01`, `site-location`) for readability, but Jinja2 template variables cannot contain hyphens. The `normalize_key()` filter converts all hyphens to underscores at load time.
+
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
 
@@ -148,6 +160,8 @@ flowchart TD
 
 </details>
 
+</details>
+
 ### Key Pipeline Steps
 
 1. **Load** — All YAML files from `data/` are read into a unified context dictionary.
@@ -158,6 +172,11 @@ flowchart TD
 
 ### Schema Validation
 Before any rendering occurs, the CI/CD pipeline validates `appendices.yml` against `schema.json`:
+
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
 
@@ -211,6 +230,8 @@ flowchart TD
   style G fill:#ffcdd2,stroke:#c62828
   style F fill:#c8e6c9,stroke:#2e7b32
 ```
+
+</details>
 
 </details>
 
