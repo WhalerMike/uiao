@@ -29,7 +29,7 @@ The Telemetry and Location Control Plane consolidates signals from M365, SD-WAN,
 ---
 
 # Governance as Automation
-Governance is executed through orchestrated workflows that enforce policy consistently and reduce operational burden.
+Telemetry becomes an active control input for routing, security, and compliance decisions rather than a passive reporting mechanism.
 
 
 ---

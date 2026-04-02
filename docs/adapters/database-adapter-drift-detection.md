@@ -1,3 +1,15 @@
+---
+title: "Database-Adapter-Drift-Detection"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO-Core Database Adapter Drift Detection Specification  
 ### Version 1.0 — Canonical Definition
 

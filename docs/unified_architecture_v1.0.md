@@ -99,11 +99,12 @@ The following diagram demonstrates how each technical control plane maps to stra
 ## 8. Eight Core Concepts
 
 
+
 ### 8.1. Single Source of Truth (SSOT)
 
-The README.md serves as the authoritative origin for all canonical definitions,
-concept lists, and architectural decisions. All other documents derive from and
-must remain consistent with this single source of truth (SSOT).
+The canonical data repository is the authoritative origin for all architectural definitions. Every document, template, and generated artifact derives its definitions from this single source of truth, ensuring consistency and preventing drift across the architecture.
+
+
 
 ### 8.2. Conversation as the Atomic Unit
 
