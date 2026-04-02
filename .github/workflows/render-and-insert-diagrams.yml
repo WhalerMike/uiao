@@ -2,6 +2,7 @@
 # render-and-insert-diagrams.yml
 # Renders Mermaid .mermaid files to PNG, renders diagrams.yml entries
 # via mmdc, then inserts image references into canonical docs.
+# ROUTING: Skips files tagged diagram-owner: gemini (see canon/DIAGRAM-STANDARDS.md)
 # -----------------------------------------------------------------
 name: Render & Insert Diagrams
 
@@ -15,6 +16,7 @@ on:
       - 'canon/diagrams.yaml'
       - 'docs/**/*.md'
       - 'templates/**/*.md'
+      - 'canon/**/*.md'
       - 'scripts/insert_diagrams.py'
       - '.github/workflows/render-and-insert-diagrams.yml'
 
@@ -62,8 +64,8 @@ jobs:
             base=$(basename "$f" .mermaid)
             echo "Rendering $f -> assets/images/mermaid/${base}.png"
             mmdc -i "$f" -o "assets/images/mermaid/${base}.png" \
-                 -p /tmp/puppeteer-config.json \
-                 -b transparent -w 2048 -H 1536 || echo "WARN: $f failed"
+              -p /tmp/puppeteer-config.json \
+              -b transparent -w 2048 -H 1536 || echo "WARN: $f failed"
           done
 
       - name: Render diagrams from YAML catalogs
@@ -79,6 +81,7 @@ jobs:
               "data/diagrams.yml",
               "canon/diagrams.yaml",
           ]
+
           for cat in catalogs:
               p = Path(cat)
               if not p.exists():
@@ -103,18 +106,21 @@ jobs:
           print("YAML diagram rendering complete.")
           PYEOF
 
-      - name: Insert diagrams into Markdown docs
+      - name: Insert diagrams into Markdown docs (skip Gemini-owned files)
         run: |
           python3 - <<'PYEOF'
-          import re, glob, os
+          import re, glob, os, yaml
           from pathlib import Path
 
           ASSETS = Path("assets/images/mermaid")
           VISUALS = Path("visuals")
+          # Mermaid CLI owns docs/, templates/, canon/ -- but NOT src/templates/
           DOCS_DIRS = ["docs", "templates", "canon"]
-          changes = 0
 
+          changes = 0
+          skipped_gemini = 0
           available = {p.stem: p for p in ASSETS.glob("*.png")}
+
           visual_files = {}
           for ext in ("png", "svg", "jpg", "jpeg"):
               for p in VISUALS.glob(f"*.{ext}"):
@@ -124,9 +130,31 @@ jobs:
           def rel(src_file, target):
               return os.path.relpath(target, src_file.parent)
 
+          def is_gemini_owned(md_path):
+              """Check if file has diagram-owner: gemini in frontmatter."""
+              try:
+                  text = md_path.read_text(encoding="utf-8")
+                  if text.startswith("---"):
+                      end = text.find("---", 3)
+                      if end > 0:
+                          fm = yaml.safe_load(text[3:end])
+                          if isinstance(fm, dict) and fm.get("diagram-owner") == "gemini":
+                              return True
+              except Exception:
+                  pass
+              # Folder-based fallback: src/templates/ is Gemini territory
+              if str(md_path).startswith("src/templates/"):
+                  return True
+              return False
+
           for d in DOCS_DIRS:
               for md_path_str in glob.glob(f"{d}/**/*.md", recursive=True):
                   md = Path(md_path_str)
+                  if is_gemini_owned(md):
+                      skipped_gemini += 1
+                      print(f"  SKIP (Gemini-owned): {md}")
+                      continue
+
                   text = md.read_text(encoding="utf-8")
                   original = text
 
@@ -165,7 +193,7 @@ jobs:
                       return m.group(0)
 
                   text = re.sub(
-                      r"<!--\s*diagram:\s*(\S+)\s*-->",
+                      r"<!-- diagram:(\S+) -->",
                       replace_diagram_placeholder,
                       text,
                   )
@@ -182,7 +210,7 @@ jobs:
                       return m.group(0)
 
                   text = re.sub(
-                      r"<!--\s*visual:\s*(\S+)\s*-->",
+                      r"<!-- visual:(\S+) -->",
                       replace_visual_placeholder,
                       text,
                   )
@@ -192,12 +220,15 @@ jobs:
                       print(f"  Updated: {md}")
 
           print(f"\nDone. {changes} diagram insertion(s) across all docs.")
+          print(f"Skipped {skipped_gemini} Gemini-owned file(s).")
           PYEOF
 
       - name: Commit rendered diagrams & updated docs
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add assets/images/mermaid/ docs/ templates/ canon/ visuals/ || true
           git diff --cached --quiet || git commit -m "chore: render diagrams and insert into docs [skip ci]"
-          for i in 1 2 3; do git pull --rebase origin main && git push && break || sleep 5; done
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && break || sleep 5;
+          done
