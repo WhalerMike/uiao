@@ -249,6 +249,11 @@ Outputs:
 <details>
 <summary>Mermaid source</summary>
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart TD
     A[Collect Evidence] --> B[Normalize Evidence]
@@ -263,6 +268,8 @@ flowchart TD
     I --> K[Remediation Pipeline]
     K --> A
 ```
+
+</details>
 
 </details>
 
