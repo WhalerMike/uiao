@@ -3,16 +3,23 @@
 # UDC Professional Compiler
 # Optimized for FedRAMP 20x Phase 2 Document Quality
 
-INPUT_DIR="build/templates"
+BUILD_DIR="build"
 OUTPUT_DIR="docs/artifacts"
 mkdir -p "$OUTPUT_DIR"
 
 echo "Starting High-Quality Compilation..."
 
-# Find all processed templates
-find "$INPUT_DIR" -name "*.md" | while read -r template; do
-    filename=$(basename "$template" .md)
-    echo "Processing: $filename"
+# Find all processed templates under build/ (covers build/templates/ and any
+# tagged files outside src/templates/ that generate_diagrams.py mirrors under build/)
+while read -r template; do
+    # Derive relative path from build/ to preserve directory structure and avoid
+    # filename collisions when files in different subdirectories share a basename
+    relpath="${template#"$BUILD_DIR/"}"
+    reldir="$(dirname "$relpath")"
+    filename="$(basename "$relpath" .md)"
+    outdir="$OUTPUT_DIR/$reldir"
+    mkdir -p "$outdir"
+    echo "Processing: $relpath"
 
     # PDF Generation with XeLaTeX for better typography and embedded resources
     pandoc "$template" \
@@ -28,14 +35,14 @@ find "$INPUT_DIR" -name "*.md" | while read -r template; do
         -V geometry:margin=1in \
         -V mainfont="Noto Sans" \
         -V fontsize=11pt \
-        -o "$OUTPUT_DIR/$filename.pdf"
+        -o "$outdir/$filename.pdf"
 
     # Professional DOCX with embedded resources
     pandoc "$template" \
         --from markdown \
         --to docx \
         --embed-resources \
-        -o "$OUTPUT_DIR/$filename.docx"
+        -o "$outdir/$filename.docx"
 
     # Clean HTML for the dashboard
     pandoc "$template" \
@@ -44,7 +51,7 @@ find "$INPUT_DIR" -name "*.md" | while read -r template; do
         --embed-resources \
         --standalone \
         --template=scripts/html_template.html \
-        -o "$OUTPUT_DIR/$filename.html"
-done
+        -o "$outdir/$filename.html"
+done < <(find "$BUILD_DIR" -name "*.md")
 
 echo "All documents compiled. Check $OUTPUT_DIR for the new files."
