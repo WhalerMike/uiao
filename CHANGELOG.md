@@ -10,6 +10,7 @@
 * add continue-on-error to pip-audit in CI workflow ([40f6935](https://github.com/WhalerMike/uiao-core/commit/40f6935e7f960e0258f9a070e683844d70486145))
 * add continue-on-error to schema validation in AI Security Audit ([31d8228](https://github.com/WhalerMike/uiao-core/commit/31d822817361c872e4e598d4cb5bb63f93fb3173))
 * add known-third-party to ruff isort config (resolves I001) ([7930ac4](https://github.com/WhalerMike/uiao-core/commit/7930ac41c2b526f4bee3ff052def3c80caedc118))
+* add missing Single Source of Truth (SSOT) concept to leadership briefing ([56060af](https://github.com/WhalerMike/uiao-core/commit/56060af0b9f766e5303b3e24b13d28208aa6d51a))
 * add pip-audit CI step (continue-on-error) and tighten dep minimums ([10b052c](https://github.com/WhalerMike/uiao-core/commit/10b052c3aaf73ca81daf6bd9852dabbdee6c82ea))
 * add project_root to Settings and fix generate-artifacts workflow permissions ([884c755](https://github.com/WhalerMike/uiao-core/commit/884c75584a77a6d8db220e968ef61d90bd543945))
 * add role/shared_with annotations to cisco.yaml for compliance overlap clarity ([076cf86](https://github.com/WhalerMike/uiao-core/commit/076cf866bfad0df396a062dfca315186f5b02956))
