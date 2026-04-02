@@ -144,6 +144,7 @@
 * use 'in' operator for Jinja2 dict key checks in management_stack template ([019fb58](https://github.com/WhalerMike/uiao-core/commit/019fb58dc1ecc1e7ac11578499d6f5012ef53147))
 * use correct top-level puppeteer config format for mmdc no-sandbox ([4786976](https://github.com/WhalerMike/uiao-core/commit/4786976986de413ed8fe160a4c0300ad14f057c7))
 * use explicit block scalar indent |2 in CM-3.yml to fix YAML parse error ([7ea0467](https://github.com/WhalerMike/uiao-core/commit/7ea046764330d03f6a0c69a58e127cc794dd5cfe))
+* use full date format in crosswalk_index front matter to fix Jekyll build ([1b22ed6](https://github.com/WhalerMike/uiao-core/commit/1b22ed6dbbfc4fdb99e6a4e47d6adb7f65be6e36))
 * use pull-rebase with retries for diagram commit push ([8db914e](https://github.com/WhalerMike/uiao-core/commit/8db914ef7209331e9f4f9f2339c1a59109561f78))
 * use ternary for SIM108 in cli/app.py ([fc42f0f](https://github.com/WhalerMike/uiao-core/commit/fc42f0fcb38ed720b4031401a6b8577534515ae5))
 * wrap servicenow section in {% if defined %} guard ([af210be](https://github.com/WhalerMike/uiao-core/commit/af210bee6724c45f125eb953a81ad98874364d19))
