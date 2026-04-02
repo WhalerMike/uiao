@@ -16,13 +16,13 @@ The Identity Control Plane is anchored in Entra ID and reinforced by ICAM govern
 ---
 
 # Identity as the Root Namespace
-Identity becomes the root namespace for all resources, ensuring that every IP address, certificate, subnet, policy, and telemetry event is derived from or bound to identity.
+Every interaction—identity, certificate, addressing, path, QoS, and telemetry—is treated as a single, correlated conversation rather than isolated events.
 
 
 ---
 
 # Deterministic Addressing (Identity‑Derived)
-Addressing becomes deterministic and policy-driven, replacing ad-hoc assignment with identity-derived logic that enables accurate correlation and automated governance.
+Identity becomes the root namespace for all resources, ensuring that every IP address, certificate, subnet, policy, and telemetry event is derived from or bound to identity.
 
 
 ---

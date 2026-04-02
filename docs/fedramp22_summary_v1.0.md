@@ -48,40 +48,43 @@ The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Tru
 
 # Core Concepts Supporting FedRAMP 20x Phase 2
 
-> **Single Source of Truth (SSOT):** The README.md is the authoritative origin for all canonical definitions.
+
+### 1. Single Source of Truth (SSOT)
+The canonical data repository is the authoritative origin for all architectural definitions. Every document, template, and generated artifact derives its definitions from this single source of truth, ensuring consistency and preventing drift across the architecture.
 
 
-### 1. Conversation as the Atomic Unit
+
+### 2. Conversation as the Atomic Unit
 Every interaction—identity, certificate, addressing, path, QoS, and telemetry—is treated as a single, correlated conversation rather than isolated events.
 
 
 
-### 2. Identity as the Root Namespace
+### 3. Identity as the Root Namespace
 Identity becomes the root namespace for all resources, ensuring that every IP address, certificate, subnet, policy, and telemetry event is derived from or bound to identity.
 
 
 
-### 3. Deterministic Addressing
+### 4. Deterministic Addressing
 Addressing becomes deterministic and policy-driven, replacing ad-hoc assignment with identity-derived logic that enables accurate correlation and automated governance.
 
 
 
-### 4. Certificate-Anchored Overlay
+### 5. Certificate-Anchored Overlay
 Certificates and mutual TLS anchor tunnels, services, and trust relationships across the enterprise.
 
 
 
-### 5. Telemetry as Control
+### 6. Telemetry as Control
 Telemetry becomes an active control input for routing, security, and compliance decisions rather than a passive reporting mechanism.
 
 
 
-### 6. Embedded Governance & Automation
+### 7. Embedded Governance & Automation
 Governance is executed through orchestrated workflows that enforce policy consistently and reduce operational burden.
 
 
 
-### 7. Public Service First
+### 8. Public Service First
 Citizen experience, accessibility, and privacy remain top-level design constraints.
 
 

@@ -16,7 +16,7 @@ The Telemetry and Location Control Plane consolidates signals from M365, SD-WAN,
 ---
 
 # Telemetry as Control
-Telemetry becomes an active control input for routing, security, and compliance decisions rather than a passive reporting mechanism.
+Certificates and mutual TLS anchor tunnels, services, and trust relationships across the enterprise.
 
 
 ---

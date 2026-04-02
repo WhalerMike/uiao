@@ -1,0 +1,131 @@
+---
+title: "FedRAMP 20x Compliance Crosswalk: UIAO Architecture"
+version: "1.0"
+classification: "CUI/FOUO"
+authorization_level: "Moderate"
+---
+
+# FedRAMP 20x Compliance Crosswalk: UIAO Architecture
+
+**Date:** 2026-03  
+**Status:** High Readiness  
+**Framework Version:** 2026.1 (Consolidated Rules)  
+**Authorization Level:** Moderate
+
+---
+
+## 1. Executive Summary
+
+This document provides the machine-generated crosswalk between the **Unified Identity-Addressing-Overlay (UIAO)** architectural concepts and the **NIST 800-53 Rev 5** controls required for a FedRAMP Moderate Authorization. Following the **FedRAMP 20x** mandate, this report transitions from narrative-based compliance to **Telemetry-Based Validation** using Key Security Indicators (KSIs).
+
+**Compliance Strategy:** OSCAL-based Telemetry Validation
+
+The UIAO architecture is uniquely positioned for FedRAMP 20x because its four control planes map directly to NIST control families, and its telemetry plane provides the continuous monitoring evidence that KSI dashboards require.
+
+---
+
+## 2. Architecture-to-Compliance Mapping
+
+The following diagram illustrates how the UIAO unified architecture maps to the compliance framework. Each control plane provides evidence for specific NIST control families.
+
+<img src="assets/images/mermaid/diagram_1.png" alt="diagram_1" />
+
+---
+
+## 3. Fundamental Concept Mapping
+
+The following table maps UIAO architectural principles to required FedRAMP 20x KSI categories. Each concept represents a core architectural decision that satisfies one or more NIST controls.
+
+| UIAO Concept | NIST Control | KSI Category | Evidence Source |
+| :--- | :--- | :--- | :--- |
+
+| **Conversation as Atomic Unit** | AC-4 | `KSI-CNA` | Cisco Catalyst SD-WAN Flow Telemetry |
+
+| **Identity as Root Namespace** | IA-2 / AC-2 | `KSI-IAM` | Microsoft Entra ID / CyberArk Logs |
+
+| **Deterministic Addressing** | CM-8 / AC-4 | `KSI-PIY` | Infoblox BloxOne DDI API |
+
+| **Cert-Anchored Overlay** | SC-8 / IA-5 | `KSI-SVC` | Cisco Catalyst SD-WAN mTLS Configuration |
+
+| **Telemetry as Control** | CA-7 / SI-4 | `KSI-MLA` | Microsoft INR Telemetry Feed |
+
+| **Embedded Governance** | CM-2 | `KSI-CMT` | GitHub Repository YAML Baseline |
+
+| **Public Service First** | PT-2 | `KSI-CED` | Identity and Overlay Layer Data Minimization |
+
+
+---
+
+## 4. Mandatory 2026 Infrastructure Status
+
+To satisfy the **FedRAMP Consolidated Rules (CR26)**, the following infrastructure components are active and validated:
+
+- **Automated Security Inbox:** `automated-triage@agency.gov`
+- **OSCAL Machine-Readability:** High
+- **mTLS Enforcement:** Global
+- **KSI Dashboard Status:** Operational
+- **Submission Format:** OSCAL 1.1.0
+
+### 4.1. Mandatory Requirements Tracker
+
+| ID | Requirement | Status | Deadline |
+| :--- | :--- | :--- | :--- |
+
+| NTC-0003 | Automated Security Inbox | Required | 2026-01-05 |
+
+| RFC-0024 | OSCAL Machine-Readability | Required | 2026-09-30 |
+
+| M-24-15 | Phishing-Resistant MFA | Required | 2026-09-30 |
+
+
+---
+
+## 5. Audit Anchor Summary
+
+The UIAO architecture provides continuous telemetry via these validated components. Each audit anchor represents a pillar of the architecture that is independently verifiable through automated evidence collection.
+
+
+### 5.1. Identity Pillar
+
+**Validation Method:** Phishing-Resistant MFA (FIDO2/PIV)  
+**Validated by:** *Microsoft Entra ID*
+
+The Identity pillar provides continuous compliance evidence through phishing-resistant mfa (fido2/piv), validated by the Microsoft Entra ID platform.
+
+
+### 5.2. Addressing Pillar
+
+**Validation Method:** Deterministic IPAM  
+**Validated by:** *Infoblox BloxOne API*
+
+The Addressing pillar provides continuous compliance evidence through deterministic ipam, validated by the Infoblox BloxOne API platform.
+
+
+### 5.3. Overlay Pillar
+
+**Validation Method:** Encrypted mTLS Service Chain  
+**Validated by:** *Cisco Catalyst + Palo Alto*
+
+The Overlay pillar provides continuous compliance evidence through encrypted mtls service chain, validated by the Cisco Catalyst + Palo Alto platform.
+
+
+
+---
+
+## 6. Telemetry-Based Compliance Architecture
+
+The following diagram shows how the multi-plane integration enables continuous compliance monitoring. The telemetry control plane collects evidence from all other planes and feeds it to the KSI dashboard.
+
+<img src="assets/images/mermaid/diagram_2.png" alt="diagram_2" />
+
+---
+
+## 7. Schema Validation Pipeline
+
+All compliance data flows through an automated validation pipeline before publication. This ensures that every artifact submitted to FedRAMP is machine-readable and schema-compliant.
+
+<img src="assets/images/mermaid/diagram_3.png" alt="diagram_3" />
+
+---
+
+*Generated from UIAO data layer — FedRAMP 20x Crosswalk v1.0*

@@ -1,3 +1,15 @@
+---
+title: "Database-Adapter-Onboarding-Checklist"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO-Core Database Adapter Onboarding Checklist  
 ### Version 1.0 — Vendor & Implementer Guide
 
