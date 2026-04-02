@@ -240,6 +240,7 @@
 * create data/control-library/IA-5.yml for Authenticator Management ([58d36bb](https://github.com/WhalerMike/uiao-core/commit/58d36bbdd659314c11c198d30455cfcfb39bef68))
 * create data/control-library/IA-8.yml for non-org user identification and authentication ([950ba21](https://github.com/WhalerMike/uiao-core/commit/950ba21b8d7a02260e2cd233f240cad344d02e09))
 * Create data/control-library/SI-2.yml (Flaw Remediation) ([e00ce2d](https://github.com/WhalerMike/uiao-core/commit/e00ce2d1598905c27083d49c7d1304c369f55f30))
+* create src/templates/ directory with initial architecture documents for Gemini rendering ([53eeb8f](https://github.com/WhalerMike/uiao-core/commit/53eeb8f174e0eaa2f5afe13a4d098e7e6186a69d))
 * cutover to Quarto rendering pipeline, remove legacy compile_documents.py ([d111f74](https://github.com/WhalerMike/uiao-core/commit/d111f7418f34828ed68011717392aa7a857868b1))
 * **diagrams:** automated diagram generation for generate-docs ([b460ea8](https://github.com/WhalerMike/uiao-core/commit/b460ea8aaaad381c8fa02a7c208109f6859f28ec))
 * enhance drift-detection workflow with auto-fix, commit-back, and issue creation ([4702033](https://github.com/WhalerMike/uiao-core/commit/47020335d76341d6585757e43880fbcd8fb21d82))
