@@ -1,16 +1,36 @@
+# -----------------------------------------------------------------
+# deploy.yml — UDC Pipeline (AI Enhanced)
+# Gemini Imagen 4.0 diagram generation + Pandoc compilation
+# ROUTING: Only processes src/templates/ and files tagged diagram-owner: gemini
+# SERIALIZATION: Runs after render-and-insert-diagrams completes
+# Ref: canon/DIAGRAM-STANDARDS.md
+# -----------------------------------------------------------------
 name: UDC Pipeline (AI Enhanced)
 
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'src/templates/**/*.md'
+      - 'scripts/generate_diagrams.py'
+      - 'scripts/compile.sh'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Render & Insert Diagrams"]
+    types: [completed]
 
-  permissions:
+permissions:
   contents: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # Only run if triggered manually, by push, or if Mermaid workflow succeeded
+    if: >
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -39,5 +59,5 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: docs # The output folder
+          folder: docs  # The output folder
           branch: gh-pages
