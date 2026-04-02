@@ -13,6 +13,7 @@ class EvidenceProvenance:
     """
     Provenance envelope for a single evidence collection event.
     """
+
     collector_id: str
     hash: str
     collection_timestamp: datetime
@@ -33,6 +34,7 @@ class EvidenceObject:
     This object is designed to align with the KSI schema and downstream
     OSCAL/Quarto evidence pipelines.
     """
+
     ksi_id: str
     source: str
     timestamp: datetime

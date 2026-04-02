@@ -10,6 +10,7 @@ ROUTING: Only processes files in src/templates/ or files with
          diagram-owner: gemini in YAML frontmatter.
 Ref: canon/DIAGRAM-STANDARDS.md
 """
+
 import os
 import re
 import uuid
@@ -53,12 +54,13 @@ def is_gemini_owned(filepath):
 
     # Tag-based: check YAML frontmatter
     try:
-        with open(filepath, encoding='utf-8') as f:
+        with open(filepath, encoding="utf-8") as f:
             content = f.read()
         if content.startswith("---"):
             end = content.find("---", 3)
             if end > 0:
                 import yaml
+
                 fm = yaml.safe_load(content[3:end])
                 if isinstance(fm, dict) and fm.get("diagram-owner") == "gemini":
                     return True
@@ -71,11 +73,7 @@ def call_image_api(prompt):
     """Calls the Imagen API with exponential backoff for reliability."""
     payload = {
         "instances": [{"prompt": f"{STYLE_GUIDE}\n\nSubject: {prompt}"}],
-        "parameters": {
-            "sampleCount": 1,
-            "aspectRatio": "1:1",
-            "outputOptions": {"mimeType": "image/png"}
-        }
+        "parameters": {"sampleCount": 1, "aspectRatio": "1:1", "outputOptions": {"mimeType": "image/png"}},
     }
     headers = {"Content-Type": "application/json"}
     max_retries = 5
@@ -138,11 +136,11 @@ def process_templates():
         return
 
     for template_path in template_files:
-        with open(template_path, encoding='utf-8') as f:
+        with open(template_path, encoding="utf-8") as f:
             content = f.read()
 
         # Regex to match ```mermaid or ```diagram blocks
-        pattern = r'```(?:mermaid|diagram)\s*\n(.*?)\n```'
+        pattern = r"```(?:mermaid|diagram)\s*\n(.*?)\n```"
         matches = list(re.finditer(pattern, content, re.DOTALL))
 
         if not matches:
@@ -161,14 +159,14 @@ def process_templates():
             image_data = call_image_api(diagram_text)
 
             if image_data:
-                with open(image_path, 'wb') as img_file:
+                with open(image_path, "wb") as img_file:
                     img_file.write(base64.b64decode(image_data))
 
                 # Replace the code block with a Markdown image link
                 # Path is relative from build/templates/ to assets/
                 relative_path = f"../../assets/generated_diagrams/{image_filename}"
                 replacement = f"![UIAO Architecture Diagram]({relative_path})"
-                content = content[:match.start()] + replacement + content[match.end():]
+                content = content[: match.start()] + replacement + content[match.end() :]
                 print(f"    Success: {image_filename}")
             else:
                 print(f"    FAILED: Could not generate image for block in {template_path}")
@@ -182,7 +180,7 @@ def process_templates():
             build_path = Path("build") / tp
 
         build_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(build_path, 'w', encoding='utf-8') as f:
+        with open(build_path, "w", encoding="utf-8") as f:
             f.write(content)
         print(f"  Saved processed template: {build_path}")
 

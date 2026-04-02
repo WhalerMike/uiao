@@ -11,20 +11,21 @@ from __future__ import annotations
 import abc
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Dataclasses for Provenance, Schema Mapping, Queries, Claims, Drift, Evidence
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ConnectionProvenance:
     """
     Provenance envelope for database connections.
     """
+
     identity: str
     auth_method: str
     endpoint: str
@@ -48,6 +49,7 @@ class SchemaMappingObject:
     """
     Canonical mapping between vendor schema and UIAO canonical schema.
     """
+
     vendor_schema: Dict[str, Any]
     canonical_schema: Dict[str, Any]
     mapping_rules: Dict[str, Any]
@@ -69,6 +71,7 @@ class QueryProvenance:
     """
     Provenance envelope for deterministic query execution.
     """
+
     canonical_query: Dict[str, Any]
     vendor_query: str
     execution_plan_hash: str
@@ -90,6 +93,7 @@ class ClaimObject:
     """
     Minimal, authoritative claim derived from database rows.
     """
+
     claim_id: str
     entity: str
     fields: Dict[str, Any]
@@ -111,6 +115,7 @@ class ClaimSet:
     """
     A collection of ClaimObjects produced from normalized database rows.
     """
+
     claims: List[ClaimObject]
     source_reference: str
 
@@ -126,6 +131,7 @@ class DriftReport:
     """
     Drift detection report for schema, constraints, cardinality, or semantics.
     """
+
     drift_type: str
     severity: str
     first_observed: datetime
@@ -149,6 +155,7 @@ class EvidenceObject:
     """
     Canonical evidence object aligned with the KSI Evidence Bundle Schema.
     """
+
     ksi_id: str
     source: str
     timestamp: datetime
@@ -172,6 +179,7 @@ class EvidenceObject:
 # ---------------------------------------------------------------------------
 # Abstract Base Class for Database Adapters
 # ---------------------------------------------------------------------------
+
 
 class DatabaseAdapterBase(abc.ABC):
     """

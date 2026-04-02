@@ -19,10 +19,10 @@ from pathlib import Path
 # The old pattern: a numbered list starting with "1. Conversation" or "1. **Conversation"
 # We need to match variations: with/without bold, with/without markdown
 OLD_LIST_PATTERN = re.compile(
-    r'(1\.\s+\*{0,2}Conversation as the atomic unit\*{0,2})'
-    r'(.*?)'
-    r'(7\.\s+\*{0,2}Public service first\*{0,2}[^\n]*)',
-    re.DOTALL
+    r"(1\.\s+\*{0,2}Conversation as the atomic unit\*{0,2})"
+    r"(.*?)"
+    r"(7\.\s+\*{0,2}Public service first\*{0,2}[^\n]*)",
+    re.DOTALL,
 )
 
 # New SSOT line to prepend
@@ -41,30 +41,70 @@ RENUMBER = {
 
 # Text replacement patterns for "Seven" -> "Eight" references
 TEXT_REPLACEMENTS = [
-    (re.compile(r'\bseven\s+core\s+concepts?\b', re.IGNORECASE), 'Eight Core Concepts'),
-    (re.compile(r'\b7\s+core\s+concepts?\b', re.IGNORECASE), '8 Core Concepts'),
-    (re.compile(r'\bSeven\s+Core\s+Concepts?\b'), 'Eight Core Concepts'),
-    (re.compile(r'\*\*Seven Core Concepts\*\*'), '**Eight Core Concepts**'),
-    (re.compile(r'\*\*7 Core Concepts\*\*'), '**8 Core Concepts**'),
-    (re.compile(r'built\s+on\s+(?:the\s+)?seven\b', re.IGNORECASE), 'built on the Eight'),
+    (re.compile(r"\bseven\s+core\s+concepts?\b", re.IGNORECASE), "Eight Core Concepts"),
+    (re.compile(r"\b7\s+core\s+concepts?\b", re.IGNORECASE), "8 Core Concepts"),
+    (re.compile(r"\bSeven\s+Core\s+Concepts?\b"), "Eight Core Concepts"),
+    (re.compile(r"\*\*Seven Core Concepts\*\*"), "**Eight Core Concepts**"),
+    (re.compile(r"\*\*7 Core Concepts\*\*"), "**8 Core Concepts**"),
+    (re.compile(r"built\s+on\s+(?:the\s+)?seven\b", re.IGNORECASE), "built on the Eight"),
     (re.compile(r'"seven\s+core\s+concepts?"', re.IGNORECASE), '"Eight Core Concepts"'),
     (re.compile(r"'seven\s+core\s+concepts?'", re.IGNORECASE), "'Eight Core Concepts'"),
-    (re.compile(r'seven\s+\(7\)\s+core\s+concepts?', re.IGNORECASE), 'Eight (8) Core Concepts'),
-    (re.compile(r'\bseven\s+foundational\s+concepts?\b', re.IGNORECASE), 'eight foundational concepts'),
-    (re.compile(r'\bseven\s+pillars?\b', re.IGNORECASE), 'eight pillars'),
+    (re.compile(r"seven\s+\(7\)\s+core\s+concepts?", re.IGNORECASE), "Eight (8) Core Concepts"),
+    (re.compile(r"\bseven\s+foundational\s+concepts?\b", re.IGNORECASE), "eight foundational concepts"),
+    (re.compile(r"\bseven\s+pillars?\b", re.IGNORECASE), "eight pillars"),
 ]
 
-SCAN_DIRS = ["docs", "canon", "adapters", "compliance", "templates", "01_Canon",
-             "exports", "site", "rules", "data", "schemas", "src", "dashboard",
-             "analytics", "reports", "assets", "_extensions", "tools",
-             "tests", "deploy", "validation-targets"]
-SCAN_EXTENSIONS = {".md", ".yml", ".yaml", ".html", ".j2", ".json", ".txt",
-                   ".py", ".ps1", ".sh", ".css", ".js", ".xml", ".toml"}
+SCAN_DIRS = [
+    "docs",
+    "canon",
+    "adapters",
+    "compliance",
+    "templates",
+    "01_Canon",
+    "exports",
+    "site",
+    "rules",
+    "data",
+    "schemas",
+    "src",
+    "dashboard",
+    "analytics",
+    "reports",
+    "assets",
+    "_extensions",
+    "tools",
+    "tests",
+    "deploy",
+    "validation-targets",
+]
+SCAN_EXTENSIONS = {
+    ".md",
+    ".yml",
+    ".yaml",
+    ".html",
+    ".j2",
+    ".json",
+    ".txt",
+    ".py",
+    ".ps1",
+    ".sh",
+    ".css",
+    ".js",
+    ".xml",
+    ".toml",
+}
 
 SCAN_ROOT_FILES = [
-    "README.md", "CONTRIBUTING.md", "AGENTS.md", "PROJECT-CONTEXT.md",
-    "UIAO-MEMORY.md", "FORMAT-CANON.md", "USAGE.md", "CODE_OF_CONDUCT.md",
-    "CHANGELOG.md", "NOTICE",
+    "README.md",
+    "CONTRIBUTING.md",
+    "AGENTS.md",
+    "PROJECT-CONTEXT.md",
+    "UIAO-MEMORY.md",
+    "FORMAT-CANON.md",
+    "USAGE.md",
+    "CODE_OF_CONDUCT.md",
+    "CHANGELOG.md",
+    "NOTICE",
 ]
 
 
@@ -89,7 +129,7 @@ def collect_files(repo_root):
             continue
         for root, dirs, fnames in os.walk(d):
             # Skip hidden directories and node_modules
-            dirs[:] = [dd for dd in dirs if not dd.startswith('.') and dd != 'node_modules']
+            dirs[:] = [dd for dd in dirs if not dd.startswith(".") and dd != "node_modules"]
             for fname in fnames:
                 ext = os.path.splitext(fname)[1].lower()
                 if ext in SCAN_EXTENSIONS:
@@ -104,18 +144,18 @@ def fix_list_in_content(content):
     def replacer(match):
         nonlocal changed
         full = match.group(0)
-        lines = full.split('\n')
+        lines = full.split("\n")
         new_lines = []
         for line in lines:
-            m = re.match(r'^(\d+)\.\s', line)
+            m = re.match(r"^(\d+)\.\s", line)
             if m:
                 old_num = m.group(1)
                 if old_num in RENUMBER:
-                    line = RENUMBER[old_num] + '. ' + line[len(m.group(0)):]
+                    line = RENUMBER[old_num] + ". " + line[len(m.group(0)) :]
             new_lines.append(line)
-        renumbered = '\n'.join(new_lines)
+        renumbered = "\n".join(new_lines)
         changed = True
-        return SSOT_LINE + '\n' + renumbered
+        return SSOT_LINE + "\n" + renumbered
 
     new_content = OLD_LIST_PATTERN.sub(replacer, content)
     return new_content, changed

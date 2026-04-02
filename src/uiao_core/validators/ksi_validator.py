@@ -9,13 +9,11 @@ This module provides:
 - Export helpers for OSCAL, JSON summaries, and Quarto-ready markdown
 """
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-import json
-import logging
+from typing import Any, Dict, List
 
 import yaml  # type: ignore
 
@@ -45,6 +43,7 @@ class ValidationResult:
     errors:
         List of error messages encountered during validation.
     """
+
     ksi_id: str
     status: str
     evidence: List[EvidenceObject] = field(default_factory=list)
@@ -110,9 +109,7 @@ class KSIValidatorEngine:
     # Initialization helpers
     # --------------------------------------------------------------------- #
 
-    def _init_collectors(
-        self, collector_configs: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    def _init_collectors(self, collector_configs: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         collectors: Dict[str, Any] = {}
         for collector_id, cfg in collector_configs.items():
             try:
@@ -255,9 +252,7 @@ class KSIValidatorEngine:
                 # Simple drift detection stub:
                 # If normalized_data contains a key 'drift', surface it.
                 if isinstance(ev.normalized_data, dict) and ev.normalized_data.get("drift"):
-                    drift_indicators.append(
-                        f"Drift detected by {collector_id}: {ev.normalized_data['drift']}"
-                    )
+                    drift_indicators.append(f"Drift detected by {collector_id}: {ev.normalized_data['drift']}")
             except Exception as exc:  # pragma: no cover - defensive
                 errors.append(f"Collector '{collector_id}' failed: {exc}")
 
@@ -418,9 +413,7 @@ class KSIValidatorEngine:
         for ksi_id, res in sorted(self._results.items()):
             drift = "<br>".join(res.drift_indicators) if res.drift_indicators else ""
             errors = "<br>".join(res.errors) if res.errors else ""
-            lines.append(
-                f"| {ksi_id} | {res.status} | {drift} | {errors} |"
-            )
+            lines.append(f"| {ksi_id} | {res.status} | {drift} | {errors} |")
 
         lines.append("")
         return "\n".join(lines)
