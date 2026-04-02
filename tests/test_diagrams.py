@@ -4,10 +4,12 @@ Covers:
 - Loading canon/diagrams.yaml
 - generate_diagrams_from_canon() creating .mermaid files
 - replace_mermaid_blocks_with_images() post-processing
+- Mermaid theme configuration consistency
 """
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -15,6 +17,7 @@ import yaml
 
 _REPO_ROOT = Path(__file__).parent.parent
 _DIAGRAMS_CANON = _REPO_ROOT / "canon" / "diagrams.yaml"
+_MERMAID_CONFIG = _REPO_ROOT / "data" / "mermaid-config.json"
 
 
 # ---------------------------------------------------------------------------
@@ -386,3 +389,88 @@ class TestBuildDocsDiagramIntegration:
         # At least one .mermaid file should have been targeted for rendering
         # (render_mermaid_file was called at least once)
         assert mock_render.call_count >= 1
+
+
+# ---------------------------------------------------------------------------
+# Mermaid theme configuration consistency
+# ---------------------------------------------------------------------------
+class TestMermaidThemeConfiguration:
+    """Verify that all Mermaid rendering paths use the canonical 'neutral' theme."""
+
+    def test_mermaid_config_file_exists(self) -> None:
+        assert _MERMAID_CONFIG.exists(), f"data/mermaid-config.json not found at {_MERMAID_CONFIG}"
+
+    def test_mermaid_config_is_valid_json(self) -> None:
+        data = json.loads(_MERMAID_CONFIG.read_text(encoding="utf-8"))
+        assert isinstance(data, dict), "mermaid-config.json must be a JSON object"
+
+    def test_mermaid_config_theme_is_neutral(self) -> None:
+        data = json.loads(_MERMAID_CONFIG.read_text(encoding="utf-8"))
+        assert data.get("theme") == "neutral", (
+            f"data/mermaid-config.json 'theme' must be 'neutral', got {data.get('theme')!r}"
+        )
+
+    def test_quarto_yml_mermaid_theme_is_neutral(self) -> None:
+        quarto_yml = _REPO_ROOT / "_quarto.yml"
+        assert quarto_yml.exists(), "_quarto.yml not found"
+        cfg = yaml.safe_load(quarto_yml.read_text(encoding="utf-8"))
+        mermaid_section = cfg.get("mermaid", {})
+        assert mermaid_section.get("theme") == "neutral", (
+            f"_quarto.yml mermaid.theme must be 'neutral', got {mermaid_section.get('theme')!r}"
+        )
+
+    def test_mermaid_html_uses_canonical_theme(self) -> None:
+        from uiao_core.generators.mermaid import MERMAID_THEME, _mermaid_html
+
+        html = _mermaid_html("flowchart TD\n    A --> B")
+        assert f"theme:'{MERMAID_THEME}'" in html, (
+            f"_mermaid_html() must use theme '{MERMAID_THEME}'"
+        )
+
+    def test_mermaid_module_theme_constant_is_neutral(self) -> None:
+        from uiao_core.generators.mermaid import MERMAID_THEME
+
+        assert MERMAID_THEME == "neutral", (
+            f"MERMAID_THEME constant must be 'neutral', got {MERMAID_THEME!r}"
+        )
+
+    def test_config_theme_matches_module_constant(self) -> None:
+        from uiao_core.generators.mermaid import MERMAID_THEME
+
+        data = json.loads(_MERMAID_CONFIG.read_text(encoding="utf-8"))
+        assert data.get("theme") == MERMAID_THEME, (
+            f"data/mermaid-config.json theme ({data.get('theme')!r}) must match "
+            f"MERMAID_THEME constant ({MERMAID_THEME!r})"
+        )
+
+    def test_render_mmdc_passes_config_file(self, tmp_path: Path) -> None:
+        """_render_mmdc must include either --configFile or --theme in its command."""
+        import subprocess
+        import unittest.mock as mock
+
+        from uiao_core.generators.mermaid import _render_mmdc
+
+        mmd_path = tmp_path / "test.mermaid"
+        mmd_path.write_text("flowchart TD\n    A --> B", encoding="utf-8")
+        png_path = tmp_path / "test.png"
+
+        captured_args: list[str] = []
+
+        def fake_run(cmd, **_kwargs):
+            captured_args.extend(cmd)
+            # Simulate success by creating the PNG
+            png_path.touch()
+            result = mock.MagicMock()
+            result.returncode = 0
+            return result
+
+        with (
+            mock.patch("shutil.which", return_value="/usr/bin/mmdc"),
+            mock.patch("subprocess.run", side_effect=fake_run),
+        ):
+            _render_mmdc(mmd_path, png_path)
+
+        cmd_str = " ".join(captured_args)
+        assert "--configFile" in cmd_str or "--theme" in cmd_str, (
+            f"mmdc command must include --configFile or --theme; got: {cmd_str}"
+        )
