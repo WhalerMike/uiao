@@ -131,6 +131,7 @@
 * resolve ruff B007 and UP015 lint errors in generate_diagrams.py ([6c0641c](https://github.com/WhalerMike/uiao-core/commit/6c0641c34abf35a7323579b9c712d4bf2387bc3e))
 * resolve Ruff F541 and F401 lint errors in quarto_pre_render.py ([1ea54fd](https://github.com/WhalerMike/uiao-core/commit/1ea54fda60a003b46876f445c9e52f58601bb0a5))
 * resolve UP037 linting errors in narrative_loader.py ([070b5ea](https://github.com/WhalerMike/uiao-core/commit/070b5ea40c9fae005335903be2b84b09bdf77004))
+* rewrite _add_compliance_table loop to fix UnboundLocalError on row ([e62f1fd](https://github.com/WhalerMike/uiao-core/commit/e62f1fded659d7d7c53f4916ba4944006ed2c4ab))
 * rewrite adapter workflow using Python generator to avoid YAML heredoc issues ([6e83fd4](https://github.com/WhalerMike/uiao-core/commit/6e83fd497430ddab6ebe232cf62971b4878fb742))
 * rewrite import block in providers.py to fix I001 isort ([427d098](https://github.com/WhalerMike/uiao-core/commit/427d098263ce486126fb83842eb712e24e851474))
 * skip .j2 templates in concept coverage check to eliminate false warnings ([a356a4d](https://github.com/WhalerMike/uiao-core/commit/a356a4de3223df53eea0625b3921aad3d787b4b0))
