@@ -1,3 +1,15 @@
+#!/usr/bin/env python3
+"""
+UIAO-Core Gemini Diagram Generator
+===================================
+Scans src/templates/**/*.md and any files tagged diagram-owner: gemini
+for mermaid/diagram code blocks, generates AI images via Imagen 4.0,
+and writes processed output to build/templates/ for Pandoc compilation.
+
+ROUTING: Only processes files in src/templates/ or files with
+         diagram-owner: gemini in YAML frontmatter.
+Ref: canon/DIAGRAM-STANDARDS.md
+"""
 import os
 import re
 import uuid
@@ -9,7 +21,6 @@ import requests
 from pathlib import Path
 
 # API Configuration
-# Ensure this matches your project's region/endpoint if necessary
 API_KEY = os.getenv("GEMINI_API_KEY")
 MODEL_ID = "imagen-4.0-generate-001"
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:predict?key={API_KEY}"
@@ -27,6 +38,33 @@ STYLE_GUIDE = (
     "Quality: Vector-style illustration suitable for a FedRAMP technical specification. "
     "Avoid: Artistic flourishes, dark backgrounds, or blurry lines."
 )
+
+
+def is_gemini_owned(filepath):
+    """Check if a file is owned by the Gemini pipeline.
+
+    Returns True if:
+    - File is in src/templates/ (folder-based routing)
+    - File has diagram-owner: gemini in YAML frontmatter (tag-based routing)
+    """
+    # Folder-based: src/templates/ is always Gemini territory
+    if str(filepath).startswith("src/templates/"):
+        return True
+
+    # Tag-based: check YAML frontmatter
+    try:
+        with open(filepath, encoding='utf-8') as f:
+            content = f.read()
+        if content.startswith("---"):
+            end = content.find("---", 3)
+            if end > 0:
+                import yaml
+                fm = yaml.safe_load(content[3:end])
+                if isinstance(fm, dict) and fm.get("diagram-owner") == "gemini":
+                    return True
+    except Exception:
+        pass
+    return False
 
 
 def call_image_api(prompt):
@@ -59,31 +97,51 @@ def call_image_api(prompt):
 
             print(f"API Error ({response.status_code}): {response.text}")
             break
-
         except Exception as e:
             print(f"Connection error: {e}")
             time.sleep(delay)
             delay *= 2
-
     return None
 
 
+def collect_gemini_files():
+    """Collect all Markdown files owned by the Gemini pipeline."""
+    files = []
+
+    # Primary: src/templates/**/*.md (always Gemini-owned)
+    for f in glob.glob("src/templates/**/*.md", recursive=True):
+        files.append(f)
+
+    # Secondary: scan other dirs for files tagged diagram-owner: gemini
+    for pattern in ["docs/**/*.md", "canon/**/*.md", "templates/**/*.md"]:
+        for f in glob.glob(pattern, recursive=True):
+            if is_gemini_owned(f):
+                files.append(f)
+
+    return list(set(files))  # deduplicate
+
+
 def process_templates():
-    """Scans src/templates, generates diagrams via Gemini, and prepares build files."""
-    template_files = glob.glob("src/templates/**/*.md", recursive=True)
+    """Scans Gemini-owned files, generates diagrams, and prepares build files."""
+    template_files = collect_gemini_files()
 
     # We store images in a central assets folder that Pandoc can reach
     assets_dir = Path("assets/generated_diagrams")
     assets_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Found {len(template_files)} templates to process.")
+    print(f"Found {len(template_files)} Gemini-owned file(s) to process.")
+
+    if not template_files:
+        print("No files to process. Create src/templates/*.md or tag files with diagram-owner: gemini.")
+        # Ensure build dir exists for compile.sh
+        Path("build/templates").mkdir(parents=True, exist_ok=True)
+        return
 
     for template_path in template_files:
         with open(template_path, encoding='utf-8') as f:
             content = f.read()
 
         # Regex to match ```mermaid or ```diagram blocks
-        # This captures the content within the block regardless of minor whitespace
         pattern = r'```(?:mermaid|diagram)\s*\n(.*?)\n```'
         matches = list(re.finditer(pattern, content, re.DOTALL))
 
@@ -115,8 +173,14 @@ def process_templates():
             else:
                 print(f"    FAILED: Could not generate image for block in {template_path}")
 
-        # Save the processed template to the build directory
-        build_path = Path("build/templates") / Path(template_path).relative_to("src/templates")
+        # Determine build output path
+        tp = Path(template_path)
+        if str(tp).startswith("src/templates/"):
+            build_path = Path("build/templates") / tp.relative_to("src/templates")
+        else:
+            # For tagged files outside src/templates/, mirror the path under build/
+            build_path = Path("build") / tp
+
         build_path.parent.mkdir(parents=True, exist_ok=True)
         with open(build_path, 'w', encoding='utf-8') as f:
             f.write(content)
@@ -126,5 +190,8 @@ def process_templates():
 if __name__ == "__main__":
     print("UIAO-Core Gemini Diagram Generator")
     print("===================================")
+    print("Routing: src/templates/ + diagram-owner: gemini tagged files")
+    print("Ref: canon/DIAGRAM-STANDARDS.md")
+    print()
     process_templates()
     print("\nDiagram generation complete.")
