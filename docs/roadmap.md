@@ -42,6 +42,11 @@ The modernization of the agency's datacenter is a multi-phase journey. We are cu
 <details>
 <summary>Mermaid source</summary>
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 graph LR
   Start(Project Kickoff) --> P1
@@ -85,10 +90,17 @@ graph LR
 
 </details>
 
+</details>
+
 ## Current Execution Status
 This "Stoplight" dashboard represents the real-time health of our development and documentation pipeline.
 
 ![Executive Dashboard](./images/exec_dashboard.png)
+
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
 
@@ -135,6 +147,8 @@ graph LR
   class App_Canon,MkDocs partial;
   class Validation blocked;
 ```
+
+</details>
 
 </details>
 
