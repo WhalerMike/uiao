@@ -44,6 +44,11 @@ Whether we are deploying a small regional office or a massive agency datacenter,
 <details>
 <summary>Mermaid source</summary>
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 graph TD
   Library[(Appendix Canon<br/>Single Source of Truth)]
@@ -79,6 +84,8 @@ graph TD
   classDef scale fill:#f1f8e9,stroke:#558b2f;
   class SmallBranch,RegionalHub,Datacenter scale;
 ```
+
+</details>
 
 </details>
 
