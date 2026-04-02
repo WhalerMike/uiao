@@ -41,23 +41,10 @@ jobs:
       - name: Install Playwright Chromium (required by mmdc)
         run: npx playwright install --with-deps chromium
 
-      - name: Create Puppeteer config for no-sandbox
+      - name: Create Puppeteer no-sandbox config
         run: |
-          cat > /tmp/puppeteer-config.json << 'EOF'
-          {
-            "executablePath": "/usr/bin/google-chrome-stable",
-            "args": ["--no-sandbox", "--disable-setuid-sandbox"]
-          }
-          EOF
-          # Also create for mmdc native support
-          cat > /tmp/mmdc-puppeteer.json << 'EOF'
-          {
-            "launch": {
-              "args": ["--no-sandbox", "--disable-setuid-sandbox"],
-              "headless": true
-            }
-          }
-          EOF
+          echo '{"args":["--no-sandbox","--disable-setuid-sandbox"]}' > /tmp/puppeteer-config.json
+          cat /tmp/puppeteer-config.json
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -75,7 +62,7 @@ jobs:
             base=$(basename "$f" .mermaid)
             echo "Rendering $f -> assets/images/mermaid/${base}.png"
             mmdc -i "$f" -o "assets/images/mermaid/${base}.png" \
-                 -p /tmp/mmdc-puppeteer.json \
+                 -p /tmp/puppeteer-config.json \
                  -b transparent -w 2048 -H 1536 || echo "WARN: $f failed"
           done
 
@@ -109,7 +96,7 @@ jobs:
                   print(f"  Rendering YAML diagram: {key} -> {out_png}")
                   subprocess.run(
                       ["mmdc", "-i", str(tmp), "-o", str(out_png),
-                       "-p", "/tmp/mmdc-puppeteer.json",
+                       "-p", "/tmp/puppeteer-config.json",
                        "-b", "transparent", "-w", "2048", "-H", "1536"],
                       check=False,
                   )
