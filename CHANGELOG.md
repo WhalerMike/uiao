@@ -298,6 +298,7 @@
 * upgrade modernization_timeline_v1.0.md.j2 with roadmap tables, diagrams, and narrative ([c907ff1](https://github.com/WhalerMike/uiao-core/commit/c907ff17ef65b2566180e249f43473b33bb86aa3))
 * upgrade unified_architecture template to v1.0 quality standard ([e025dda](https://github.com/WhalerMike/uiao-core/commit/e025dda1153defe313b99c6144d6dda7a2902d56))
 * **utils:** add utils package with __init__.py (ADR-0004) ([1442961](https://github.com/WhalerMike/uiao-core/commit/1442961fe39a261e32414e48b1a0c4bd9d33ba89))
+* validate workflow serialization with test push trigger ([6965ef9](https://github.com/WhalerMike/uiao-core/commit/6965ef91ee5539e757945c521a69ff73aefbcba5))
 * Wire control-library narratives into SSP generator with narrative_loader + enhanced CLI ([f7fd4ba](https://github.com/WhalerMike/uiao-core/commit/f7fd4bac38ffbc27335f9e5b4bccd7208d5c1f46))
 * wire Gemini image generation into generate-artifacts pipeline ([2b64912](https://github.com/WhalerMike/uiao-core/commit/2b64912931f3c4348d3c5b87289961e24271e5da))
 
