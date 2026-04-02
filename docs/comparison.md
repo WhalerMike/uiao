@@ -49,6 +49,11 @@ The diagram below contrasts our current "Siloed" state with the "Unified" model 
 <details>
 <summary>Mermaid source</summary>
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 graph TB
   subgraph "LEGACY STATE (Manual, Siloed, Fragile)"
@@ -80,6 +85,8 @@ graph TB
   end
   style ModernizationAtlas fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
 ```
+
+</details>
 
 </details>
 
