@@ -119,6 +119,7 @@
 * remove unused imports in generate_docs.py (F401, I001) ([d7dd6ea](https://github.com/WhalerMike/uiao-core/commit/d7dd6ea1e2ebff9ff8d9fb7d3e11132fd1a8677a))
 * remove unused pytest import from test_narrative_loader.py ([9d23976](https://github.com/WhalerMike/uiao-core/commit/9d23976334fa0b06afb9e4f32bbc4c8f3f96c21e))
 * remove unused tempfile import (ruff F401, I001) ([693605a](https://github.com/WhalerMike/uiao-core/commit/693605a30e34973b5dbed0c67f2d27847ccedfd3))
+* remove unused variable md in test_generate_diagrams.py (ruff F841) ([5dd97d4](https://github.com/WhalerMike/uiao-core/commit/5dd97d4535a732c802faa7630bf99312a10b9bd9))
 * rename unused loop var format_name to _format_name (ruff B007) ([e1a21d8](https://github.com/WhalerMike/uiao-core/commit/e1a21d82d2128baa57221421eab77ad334d86eeb))
 * replace invalid related-observations with related-control props in POAM generator ([d4ae59d](https://github.com/WhalerMike/uiao-core/commit/d4ae59d2be3224da0038768786272779d030cc73))
 * replace non-canonical concept list with Eight Core Concepts in document-skeleton.yml ([3456dac](https://github.com/WhalerMike/uiao-core/commit/3456dace965d3c85ebdd145cc578c9f42160cf6f))
