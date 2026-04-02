@@ -98,7 +98,7 @@ The Mermaid CLI workflow replaces these with rendered PNGs.
 Reference standalone visual files from `visuals/`:
 
 ```markdown
-<!-- visual:identity_trust_lifecycle.png -->
+![Identity Trust Lifecycle](../visuals/identity_trust_lifecycle.png)
 ```
 
 ### 5.4 Gemini-Generated Diagrams
