@@ -80,6 +80,11 @@ In the event of an "Automation Storm" or a critical executive exclusion:
 <details>
 <summary>Mermaid source</summary>
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 graph TD
   Trigger[ALERT GRC Key Collision]
@@ -90,6 +95,8 @@ graph TD
   IAM -- CertReissued --> Resolved[ALERT RESOLVED]
   IAM -- RootCACompromised --> Fed[FedRAMP Liaison]
 ```
+
+</details>
 
 </details>
 
