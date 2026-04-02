@@ -97,7 +97,7 @@ Every UIAO document must follow this structure unless explicitly exempt:
 | 3 | Purpose | Yes |
 | 4 | Scope | Yes |
 | 5 | Control Plane Alignment | Yes |
-| 6 | Core Concepts | Yes |
+| 6 | Eight Core Concepts | Yes |
 | 7 | Architecture Model | Conditional |
 | 8 | Runtime Model | Conditional |
 | 9 | Compliance Mapping | Yes |
