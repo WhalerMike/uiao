@@ -6,7 +6,7 @@
 name: Render & Insert Diagrams
 
 on:
-  workflow_dispatch:          # manual trigger
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -20,18 +20,16 @@ on:
 
 jobs:
   render-and-insert:
-    name: Render Mermaid → PNG & Insert into Docs
+    name: Render Mermaid -> PNG & Insert into Docs
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      # ── checkout ─────────────────────────────────────────────
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── tooling ──────────────────────────────────────────────
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -43,6 +41,24 @@ jobs:
       - name: Install Playwright Chromium (required by mmdc)
         run: npx playwright install --with-deps chromium
 
+      - name: Create Puppeteer config for no-sandbox
+        run: |
+          cat > /tmp/puppeteer-config.json << 'EOF'
+          {
+            "executablePath": "/usr/bin/google-chrome-stable",
+            "args": ["--no-sandbox", "--disable-setuid-sandbox"]
+          }
+          EOF
+          # Also create for mmdc native support
+          cat > /tmp/mmdc-puppeteer.json << 'EOF'
+          {
+            "launch": {
+              "args": ["--no-sandbox", "--disable-setuid-sandbox"],
+              "headless": true
+            }
+          }
+          EOF
+
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
@@ -51,19 +67,18 @@ jobs:
       - name: Install Python dependencies
         run: pip install pyyaml
 
-      # ── Step 1: Render .mermaid files in visuals/ ────────────
       - name: Render standalone .mermaid files to PNG
         run: |
           mkdir -p assets/images/mermaid
           for f in visuals/*.mermaid; do
             [ -f "$f" ] || continue
             base=$(basename "$f" .mermaid)
-            echo "Rendering $f → assets/images/mermaid/${base}.png"
+            echo "Rendering $f -> assets/images/mermaid/${base}.png"
             mmdc -i "$f" -o "assets/images/mermaid/${base}.png" \
+                 -p /tmp/mmdc-puppeteer.json \
                  -b transparent -w 2048 -H 1536 || echo "WARN: $f failed"
           done
 
-      # ── Step 2: Render diagrams.yml / canon YAML entries ─────
       - name: Render diagrams from YAML catalogs
         run: |
           python3 - <<'PYEOF'
@@ -83,7 +98,6 @@ jobs:
                   print(f"Catalog not found, skipping: {cat}")
                   continue
               data = yaml.safe_load(p.read_text()) or {}
-              # Support top-level keys or nested 'diagrams' key
               diagrams = data.get("diagrams", data)
               for key, value in diagrams.items():
                   mmd_src = value if isinstance(value, str) else value.get("mermaid", value.get("source", ""))
@@ -92,30 +106,19 @@ jobs:
                   tmp = Path(f"/tmp/{key}.mmd")
                   tmp.write_text(mmd_src)
                   out_png = OUT / f"{key}.png"
-                  print(f"  Rendering YAML diagram: {key} → {out_png}")
+                  print(f"  Rendering YAML diagram: {key} -> {out_png}")
                   subprocess.run(
                       ["mmdc", "-i", str(tmp), "-o", str(out_png),
+                       "-p", "/tmp/mmdc-puppeteer.json",
                        "-b", "transparent", "-w", "2048", "-H", "1536"],
                       check=False,
                   )
           print("YAML diagram rendering complete.")
           PYEOF
 
-      # ── Step 3: Insert diagram image refs into docs ──────────
       - name: Insert diagrams into Markdown docs
         run: |
           python3 - <<'PYEOF'
-          """
-          insert_diagrams.py — inline
-
-          For each Markdown file in docs/, templates/, and canon/:
-          1. Replace ```mermaid ... ``` blocks with a rendered PNG image link
-             (keeps the mermaid source in a <details> collapse).
-          2. Replace <!-- diagram:KEY --> placeholders with the matching
-             rendered PNG from assets/images/mermaid/.
-          3. Replace <!-- visual:FILENAME --> placeholders with matching
-             images from visuals/.
-          """
           import re, glob, os
           from pathlib import Path
 
@@ -124,7 +127,6 @@ jobs:
           DOCS_DIRS = ["docs", "templates", "canon"]
           changes = 0
 
-          # Build lookup of available rendered PNGs
           available = {p.stem: p for p in ASSETS.glob("*.png")}
           visual_files = {}
           for ext in ("png", "svg", "jpg", "jpeg"):
@@ -132,8 +134,7 @@ jobs:
                   visual_files[p.stem] = p
                   visual_files[p.name] = p
 
-          def rel(src_file: Path, target: Path) -> str:
-              """Compute relative path from src_file's directory to target."""
+          def rel(src_file, target):
               return os.path.relpath(target, src_file.parent)
 
           for d in DOCS_DIRS:
@@ -142,15 +143,11 @@ jobs:
                   text = md.read_text(encoding="utf-8")
                   original = text
 
-                  # ── Pattern A: ```mermaid blocks → image + collapsed source
                   def replace_mermaid_block(m):
                       global changes
                       code = m.group(1).strip()
-                      # Try to find a matching rendered PNG by first line comment
-                      # or fall back to generic diagram image
                       label = "UIAO Architecture Diagram"
                       img_rel = rel(md, ASSETS / "unified_arch.png")
-                      # Check if any rendered diagram matches
                       for key, png in available.items():
                           if key in code or code[:80].lower().replace(" ","").find(key.lower().replace("_","")) >= 0:
                               img_rel = rel(md, png)
@@ -171,7 +168,6 @@ jobs:
                       flags=re.DOTALL,
                   )
 
-                  # ── Pattern B: <!-- diagram:KEY --> placeholders
                   def replace_diagram_placeholder(m):
                       global changes
                       key = m.group(1).strip()
@@ -179,7 +175,7 @@ jobs:
                           img_rel = rel(md, available[key])
                           changes += 1
                           return f"![{key.replace('_',' ').title()}]({img_rel})"
-                      return m.group(0)  # leave unchanged if no match
+                      return m.group(0)
 
                   text = re.sub(
                       r"<!--\s*diagram:\s*(\S+)\s*-->",
@@ -187,7 +183,6 @@ jobs:
                       text,
                   )
 
-                  # ── Pattern C: <!-- visual:FILENAME --> placeholders
                   def replace_visual_placeholder(m):
                       global changes
                       name = m.group(1).strip()
@@ -212,7 +207,6 @@ jobs:
           print(f"\nDone. {changes} diagram insertion(s) across all docs.")
           PYEOF
 
-      # ── Step 4: Commit results ────────────────────────────────
       - name: Commit rendered diagrams & updated docs
         run: |
           git config user.name  "github-actions[bot]"
