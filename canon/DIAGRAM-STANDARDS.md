@@ -136,9 +136,9 @@ Gemini writes processed Markdown to `build/templates/` (not in-place). Source fi
 3. **Separate output paths**: Gemini and Mermaid never write to the same directory
 4. **Source preservation**: Gemini writes to `build/`, Mermaid preserves source in `<details>` blocks
 
-## 9. Migration Notes
+## 9. Notes
 
-- `src/templates/` does not yet exist; create it when architecture documents are ready for Gemini rendering
+- `src/templates/` contains initial architecture documents: `system-architecture.md`, `authorization-boundary.md`, and `control-plane-architecture.md`
 - Existing `.mermaid` files in `visuals/` are exclusively Mermaid CLI owned
 - Existing Gemini-generated PNGs in `visuals/` (e.g., `cyberark_identity_vault.png`) are static assets, not pipeline outputs
 
