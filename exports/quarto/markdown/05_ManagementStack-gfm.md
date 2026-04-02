@@ -1,6 +1,6 @@
 # 05 Managementstack
 UIAO Modernization Program
-March 31, 2026
+April 2, 2026
 
 - [<span class="toc-section-number">1</span> UIAO Management Stack —
   FedRAMP Control
@@ -128,7 +128,11 @@ ServiceNow and Intune jointly form the authoritative Management Plane.
 
 The Management Plane operationalizes the Eight Core Concepts:
 
-1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
+1.  **Single Source of Truth (SSOT)** — UIAO operates on the principle
+    that every claim has one authoritative origin. All other
+    representations are pointers, not copies. This ensures provenance,
+    prevents drift, and enables federated truth resolution across
+    boundaries.
 2.  Conversation as the atomic unit → Incident, change, and
     configuration events tied to identity and device
 3.  Identity as the root namespace → Device trust and configuration

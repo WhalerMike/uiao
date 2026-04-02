@@ -1,6 +1,6 @@
 # 03 Fedramp20X Crosswalk
 UIAO Modernization Program
-March 31, 2026
+April 2, 2026
 
 - [<span class="toc-section-number">1</span> UIAO FedRAMP 20x Compliance
   Crosswalk](#uiao-fedramp-20x-compliance-crosswalk)
@@ -132,7 +132,11 @@ Each plane contributes evidence to FedRAMP 20x telemetry validation.
 
 The crosswalk maps the Eight Core Concepts to NIST controls:
 
-1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
+1.  **Single Source of Truth (SSOT)** — UIAO operates on the principle
+    that every claim has one authoritative origin. All other
+    representations are pointers, not copies. This ensures provenance,
+    prevents drift, and enables federated truth resolution across
+    boundaries.
 2.  Conversation as the atomic unit → AC-4, SI-4
 3.  Identity as the root namespace → IA-2, AC-2
 4.  Deterministic addressing → CM-8, AC-4

@@ -1,3 +1,15 @@
+---
+title: "Canonical-Definition-Of-A-Uiao-Adapter"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Canonical Definition of a UIAO Adapter
 **UIAO Adapter Suite — Document 1 of 4**
 **Version 1.0.0 — Canonical, Frozen**

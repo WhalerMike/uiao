@@ -14,9 +14,6 @@ The Unified Identity-Addressing-Overlay Architecture (UIAO) establishes a modern
 The agency’s current environment is constrained by TIC 2.0 hairpinning, on-premises Active Directory dependencies, fragmented IPAM, inconsistent Zero Trust enforcement, and incomplete telemetry. These limitations degrade M365 performance, increase cyber risk, and create compliance gaps with TIC 3.0, FedRAMP 20x Phase 2, SCuBA, and NIST 800-63. UIAO directly addresses these issues by unifying identity, addressing, routing, and telemetry into a single architectural fabric.
 The vision is a cloud-optimized, identity-driven enterprise where every resource—from IP addresses to certificates to routing paths—is derived from or bound to identity. Telemetry becomes a real-time control input for routing and security decisions. Addressing becomes deterministic and policy-driven. Routing becomes cloud-first and performance-optimized. Governance becomes embedded and automated. Above all, modernization is guided by a simple principle: if a change degrades citizen experience, it does not ship.
 UIAO organizes the modernized enterprise into five coordinated control planes and Eight Core Concepts that define how the architecture operates. These planes and concepts work together to deliver conversation-level visibility, identity-aware segmentation, accurate location inference, and automated policy enforcement. The frozen state analysis reveals a legacy environment that cannot support modern mission requirements. UIAO resolves these issues by establishing a unified, authoritative, and automated architecture that improves performance, strengthens security, reduces compliance risk, and enhances citizen-facing services.
-
-> **Single Source of Truth (SSOT):** The README.md is the authoritative origin for all canonical definitions.
-
 UIAO delivers measurable outcomes: reduced latency, improved M365 performance, stronger identity governance, deterministic addressing, real-time telemetry correlation, and alignment with federal modernization mandates. It provides the foundation for a resilient, scalable, and future-ready federal enterprise.
 
 
@@ -75,37 +72,43 @@ The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Tru
 
 # Eight Core Concepts
 
-### 1. Conversation as the Atomic Unit
+
+### 1. Single Source of Truth (SSOT)
+The canonical data repository is the authoritative origin for all architectural definitions. Every document, template, and generated artifact derives its definitions from this single source of truth, ensuring consistency and preventing drift across the architecture.
+
+
+
+### 2. Conversation as the Atomic Unit
 Every interaction—identity, certificate, addressing, path, QoS, and telemetry—is treated as a single, correlated conversation rather than isolated events.
 
 
 
-### 2. Identity as the Root Namespace
+### 3. Identity as the Root Namespace
 Identity becomes the root namespace for all resources, ensuring that every IP address, certificate, subnet, policy, and telemetry event is derived from or bound to identity.
 
 
 
-### 3. Deterministic Addressing
+### 4. Deterministic Addressing
 Addressing becomes deterministic and policy-driven, replacing ad-hoc assignment with identity-derived logic that enables accurate correlation and automated governance.
 
 
 
-### 4. Certificate-Anchored Overlay
+### 5. Certificate-Anchored Overlay
 Certificates and mutual TLS anchor tunnels, services, and trust relationships across the enterprise.
 
 
 
-### 5. Telemetry as Control
+### 6. Telemetry as Control
 Telemetry becomes an active control input for routing, security, and compliance decisions rather than a passive reporting mechanism.
 
 
 
-### 6. Embedded Governance & Automation
+### 7. Embedded Governance & Automation
 Governance is executed through orchestrated workflows that enforce policy consistently and reduce operational burden.
 
 
 
-### 7. Public Service First
+### 8. Public Service First
 Citizen experience, accessibility, and privacy remain top-level design constraints.
 
 

@@ -151,6 +151,8 @@ The Identity Control Plane is anchored in Entra ID and reinforced by ICAM govern
 
 
 
+
+
 **Identity as the Root Namespace:**
 
 Identity becomes the root namespace for all resources, ensuring that every IP address, certificate, subnet, policy, and telemetry event is derived from or bound to identity.

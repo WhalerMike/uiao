@@ -1,6 +1,6 @@
 # 11 Glossaryanddefinitions
 UIAO Modernization Program
-March 31, 2026
+April 2, 2026
 
 - [<span class="toc-section-number">1</span> UIAO Glossary and
   Definitions](#uiao-glossary-and-definitions)
@@ -16,9 +16,6 @@ March 31, 2026
     Alignment](#4-control-plane-alignment)
   - [<span class="toc-section-number">1.5</span> 5. Core
     Concepts](#5-core-concepts)
-
-> **Single Source of Truth (SSOT):** The README.md is the authoritative origin for all canonical definitions.
-
     - [<span class="toc-section-number">1.5.1</span> Conversation as the
       Atomic Unit](#conversation-as-the-atomic-unit)
     - [<span class="toc-section-number">1.5.2</span> Identity as the
@@ -136,6 +133,9 @@ This glossary spans all six UIAO control planes:
 ------------------------------------------------------------------------
 
 ## 5. Core Concepts
+
+> **Single Source of Truth (SSOT):** The README.md is the authoritative
+> origin for all canonical definitions.
 
 The glossary includes the frozen definitions of the Eight Core Concepts:
 

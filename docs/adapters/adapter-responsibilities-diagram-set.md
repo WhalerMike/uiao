@@ -1,3 +1,15 @@
+---
+title: "Adapter-Responsibilities-Diagram-Set"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # UIAO Adapter Responsibilities Diagram Set
 **UIAO Adapter Suite — Document 2 of 4**
 **Version 1.0.0 — Canonical, Frozen**

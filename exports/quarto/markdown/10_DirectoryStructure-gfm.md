@@ -1,6 +1,6 @@
 # 10 Directorystructure
 UIAO Modernization Program
-March 31, 2026
+April 2, 2026
 
 - [<span class="toc-section-number">1</span> UIAO Canonical Directory
   Structure](#uiao-canonical-directory-structure)
@@ -125,7 +125,11 @@ Each plane has a predictable location in the repository.
 
 The directory structure operationalizes the Eight Core Concepts:
 
-1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
+1.  **Single Source of Truth (SSOT)** — UIAO operates on the principle
+    that every claim has one authoritative origin. All other
+    representations are pointers, not copies. This ensures provenance,
+    prevents drift, and enables federated truth resolution across
+    boundaries.
 2.  **Conversation as the atomic unit** — Document relationships reflect
     runtime flow
 3.  **Identity as the root namespace** — Identity documents appear first
@@ -162,6 +166,15 @@ The UIAO repository uses a 12-document canon organized into four phases:
        09_CrosswalkIndex.md
        10_DirectoryStructure.md
        11_GlossaryAndDefinitions.md
+
+    /adapters
+        __init__.py              # Adapter registry
+        base_adapter.py          # Abstract base class (adapter contract)
+
+    /docs/adapters
+        canonical-definition-of-a-uiao-adapter.md
+        adapter-responsibilities-diagram-set.md
+        adapter-contract.md
 
 This structure is deterministic and must not be altered.
 
@@ -238,6 +251,8 @@ monitoring.
 | 09 | CrosswalkIndex | Index | Master index of all crosswalks |
 | 10 | DirectoryStructure | Index | This document |
 | 11 | GlossaryAndDefinitions | Index | Canonical glossary |
+| — | /adapters | Adapter Layer | BaseAdapter ABC and adapter registry |
+| — | /docs/adapters | Adapter Layer | Adapter contract, definitions, and diagrams |
 
 ------------------------------------------------------------------------
 
@@ -312,6 +327,7 @@ source catalogs.*
 
 ## 12. Revision History
 
-| Version | Date    | Author            | Summary                   |
-|---------|---------|-------------------|---------------------------|
-| 1.0     | 2026-03 | UIAO Canon Engine | Initial canonical release |
+| Version | Date | Author | Summary |
+|----|----|----|----|
+| 1.0 | 2026-03 | UIAO Canon Engine | Initial canonical release |
+| 1.1 | 2026-04 | UIAO Adapter Layer | Added /adapters/ and /docs/adapters/ to directory layout and canonical table |
