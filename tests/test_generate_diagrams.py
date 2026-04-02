@@ -64,7 +64,7 @@ class TestIsGeminiOwned:
     # -- folder-based routing ------------------------------------------------
 
     def test_src_templates_always_gemini(self, tmp_path: Path) -> None:
-        md = _write_md(tmp_path / "src/templates/arch.md", _no_frontmatter())
+        _write_md(tmp_path / "src/templates/arch.md", _no_frontmatter())
         # Patch the path check by passing a relative-looking string
         # is_gemini_owned uses str(filepath).startswith("src/templates/")
         assert self.mod.is_gemini_owned(Path("src/templates/arch.md"))
