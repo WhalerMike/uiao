@@ -9,6 +9,7 @@
 * add continue-on-error to auto-fix step so commit proceeds after fix ([833c289](https://github.com/WhalerMike/uiao-core/commit/833c289dcc705bc8c997c5a053d699e05b9891df))
 * add continue-on-error to pip-audit in CI workflow ([40f6935](https://github.com/WhalerMike/uiao-core/commit/40f6935e7f960e0258f9a070e683844d70486145))
 * add continue-on-error to schema validation in AI Security Audit ([31d8228](https://github.com/WhalerMike/uiao-core/commit/31d822817361c872e4e598d4cb5bb63f93fb3173))
+* add git pull --rebase before push in generate-artifacts to prevent race conditions ([770d2b6](https://github.com/WhalerMike/uiao-core/commit/770d2b639cab783d93a748f22436a42d6779c536))
 * add known-third-party to ruff isort config (resolves I001) ([7930ac4](https://github.com/WhalerMike/uiao-core/commit/7930ac41c2b526f4bee3ff052def3c80caedc118))
 * add missing Single Source of Truth (SSOT) concept to leadership briefing ([56060af](https://github.com/WhalerMike/uiao-core/commit/56060af0b9f766e5303b3e24b13d28208aa6d51a))
 * add pip-audit CI step (continue-on-error) and tighten dep minimums ([10b052c](https://github.com/WhalerMike/uiao-core/commit/10b052c3aaf73ca81daf6bd9852dabbdee6c82ea))
