@@ -96,15 +96,12 @@ DEPRECATED_PATTERNS = [
         "description": "Stale numeric concept count: '7' should be '8'",
     },
     {
-        "pattern": re.compile(
-            r"built\s+on\s+(?:the\s+)?seven\b", re.IGNORECASE
-        ),
+        "pattern": re.compile(r"built\s+on\s+(?:the\s+)?seven\b", re.IGNORECASE),
         "replacement": "built on the Eight",
         "severity": "critical",
         "description": "Stale phrase referencing seven concepts",
     },
-
-        {
+    {
         "pattern": re.compile(r"\bsix\s+core\s+concepts?\b", re.IGNORECASE),
         "replacement": "Eight Core Concepts",
         "severity": "critical",
@@ -119,7 +116,24 @@ DEPRECATED_PATTERNS = [
 ]
 
 # Directories and extensions to scan
-SCAN_DIRS = ["docs", "canon", "adapters", "compliance", "templates", "01_Canon", "exports", "site", "rules", "data", "schemas", "src", "dashboard", "analytics", "assets", "_extensions"]
+SCAN_DIRS = [
+    "docs",
+    "canon",
+    "adapters",
+    "compliance",
+    "templates",
+    "01_Canon",
+    "exports",
+    "site",
+    "rules",
+    "data",
+    "schemas",
+    "src",
+    "dashboard",
+    "analytics",
+    "assets",
+    "_extensions",
+]
 SCAN_ROOT_FILES = [
     "README.md",
     "CONTRIBUTING.md",
@@ -167,9 +181,7 @@ def collect_files(repo_root: Path) -> list[Path]:
     return sorted(set(files))
 
 
-def check_deprecated_patterns(
-    content: str, filepath: Path, repo_root: Path
-) -> list[dict]:
+def check_deprecated_patterns(content: str, filepath: Path, repo_root: Path) -> list[dict]:
     """Check a file for deprecated terminology."""
     findings = []
     lines = content.splitlines()
@@ -193,9 +205,7 @@ def check_deprecated_patterns(
     return findings
 
 
-def check_concept_coverage(
-    content: str, filepath: Path, repo_root: Path
-) -> list[dict]:
+def check_concept_coverage(content: str, filepath: Path, repo_root: Path) -> list[dict]:
     """Check whether a file that claims to list core concepts has all eight."""
     findings = []
     rel = filepath.relative_to(repo_root)
@@ -205,7 +215,7 @@ def check_concept_coverage(
     if "core concepts" not in content_lower:
         return findings
 
-            # Skip Jinja2 templates - they reference concepts generically
+        # Skip Jinja2 templates - they reference concepts generically
     if filepath.suffix.lower() == ".j2":
         return findings
     # Check each canonical concept for presence
@@ -229,10 +239,7 @@ def check_concept_coverage(
                 "matched_text": "",
                 "replacement": "",
                 "severity": "warning",
-                "description": (
-                    f"File references 'core concepts' but is missing: "
-                    f"{', '.join(names)}"
-                ),
+                "description": (f"File references 'core concepts' but is missing: {', '.join(names)}"),
                 "category": "missing_concept",
             }
         )
@@ -240,21 +247,25 @@ def check_concept_coverage(
     return findings
 
 
-def check_concept_count_consistency(
-    content: str, filepath: Path, repo_root: Path
-) -> list[dict]:
+def check_concept_count_consistency(content: str, filepath: Path, repo_root: Path) -> list[dict]:
     """Detect if a file states a concept count that disagrees with canonical."""
     findings = []
     rel = filepath.relative_to(repo_root)
     lines = content.splitlines()
 
-    count_pattern = re.compile(
-        r"(\w+)\s+[Cc]ore\s+[Cc]oncepts?", re.IGNORECASE
-    )
+    count_pattern = re.compile(r"(\w+)\s+[Cc]ore\s+[Cc]oncepts?", re.IGNORECASE)
 
     number_words = {
-        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+        "one": 1,
+        "two": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+        "six": 6,
+        "seven": 7,
+        "eight": 8,
+        "nine": 9,
+        "ten": 10,
     }
 
     for i, line in enumerate(lines, start=1):
@@ -276,10 +287,7 @@ def check_concept_count_consistency(
                         "matched_text": match.group(),
                         "replacement": f"{CANONICAL_CONCEPT_COUNT_WORD.title()} Core Concepts",
                         "severity": "critical",
-                        "description": (
-                            f"Concept count mismatch: found {num}, "
-                            f"canonical is {CANONICAL_CONCEPT_COUNT}"
-                        ),
+                        "description": (f"Concept count mismatch: found {num}, canonical is {CANONICAL_CONCEPT_COUNT}"),
                         "category": "count_mismatch",
                     }
                 )
@@ -294,9 +302,7 @@ def apply_fixes(content: str, findings: list[dict]) -> str:
     return content
 
 
-def generate_report(
-    all_findings: list[dict], files_scanned: int, repo_root: Path
-) -> dict:
+def generate_report(all_findings: list[dict], files_scanned: int, repo_root: Path) -> dict:
     """Generate the structured drift report."""
     critical = [f for f in all_findings if f["severity"] == "critical"]
     warnings = [f for f in all_findings if f["severity"] == "warning"]
@@ -311,18 +317,14 @@ def generate_report(
         "drift_detected": len(all_findings) > 0,
         "findings": all_findings,
         "summary": {
-            "files_with_drift": sorted(
-                set(f["file"] for f in all_findings)
-            ),
+            "files_with_drift": sorted(set(f["file"] for f in all_findings)),
             "categories": {},
         },
     }
 
     for f in all_findings:
         cat = f["category"]
-        report["summary"]["categories"][cat] = (
-            report["summary"]["categories"].get(cat, 0) + 1
-        )
+        report["summary"]["categories"][cat] = report["summary"]["categories"].get(cat, 0) + 1
 
     return report
 
@@ -368,29 +370,29 @@ def print_summary(report: dict, verbose: bool = False) -> None:
             print(f"  [{f['severity'].upper()}] {loc}")
             print(f"    {f['description']}")
             if f["matched_text"]:
-                print(f"    Found: \"{f['matched_text']}\"")
+                print(f'    Found: "{f["matched_text"]}"')
             if f["replacement"]:
-                print(f"    Suggested: \"{f['replacement']}\"")
+                print(f'    Suggested: "{f["replacement"]}"')
             print()
 
 
 def main() -> int:
     """Run drift detection. Returns 0 if no drift, 1 if drift detected."""
-    parser = argparse.ArgumentParser(
-        description="Detect canonical drift across UIAO repository"
-    )
+    parser = argparse.ArgumentParser(description="Detect canonical drift across UIAO repository")
     parser.add_argument(
         "--fix",
         action="store_true",
         help="Automatically fix deprecated patterns in-place",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Show detailed per-finding output",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default="reports/drift-report.json",
         help="Path for JSON report output (default: reports/drift-report.json)",
     )
@@ -417,9 +419,7 @@ def main() -> int:
         findings = []
         findings.extend(check_deprecated_patterns(content, fpath, repo_root))
         findings.extend(check_concept_coverage(content, fpath, repo_root))
-        findings.extend(
-            check_concept_count_consistency(content, fpath, repo_root)
-        )
+        findings.extend(check_concept_count_consistency(content, fpath, repo_root))
 
         all_findings.extend(findings)
 
@@ -441,9 +441,7 @@ def main() -> int:
     # Write JSON report
     output_path = repo_root / args.output
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(report, indent=2) + "\n", encoding="utf-8"
-    )
+    output_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
     # Print summary
     print_summary(report, verbose=args.verbose)

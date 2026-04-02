@@ -40,9 +40,7 @@ class EntraCollector(BaseCollector):
         """
         super().__init__(config=config)
         self._tenant_id: Optional[str] = self._config.get("tenant_id")
-        self._api_base_url: str = self._config.get(
-            "api_base_url", "https://graph.microsoft.com/v1.0"
-        )
+        self._api_base_url: str = self._config.get("api_base_url", "https://graph.microsoft.com/v1.0")
 
     def collect(self, ksi_id: str) -> EvidenceObject:
         """

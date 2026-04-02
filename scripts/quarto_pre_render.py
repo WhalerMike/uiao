@@ -23,7 +23,7 @@ def load_frontmatter_config() -> dict:
     if not FRONTMATTER_FILE.exists():
         print(f"[quarto-pre-render] WARNING: {FRONTMATTER_FILE} not found. Using defaults.")
         return {"documents": {}}
-    with open(FRONTMATTER_FILE, "r", encoding="utf-8") as f:
+    with open(FRONTMATTER_FILE, encoding="utf-8") as f:
         return yaml.safe_load(f) or {"documents": {}}
 
 
@@ -41,7 +41,7 @@ def build_frontmatter(doc_key: str, config: dict, filename: str) -> str:
     if subtitle:
         lines.append(f'subtitle: "{subtitle}"')
     lines.append(f'author: "{author}"')
-    lines.append('date: today')
+    lines.append("date: today")
     lines.append('date-format: "MMMM D, YYYY"')
     if classification:
         lines.append(f'classification: "{classification}"')

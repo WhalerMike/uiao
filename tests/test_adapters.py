@@ -1,4 +1,5 @@
 """Smoke tests for the adapter registry and base contracts."""
+
 import pytest
 import asyncio
 from adapters import ADAPTER_REGISTRY

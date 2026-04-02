@@ -117,11 +117,16 @@ def _render_mmdc(mmd_path: Path, png_path: Path, config_file: Path | None = None
             puppeteer_cfg_path = pcfg.name
 
         base_args = [
-            "-i", str(mmd_path),
-            "-o", str(png_path),
-            "-b", "white",
-            "-s", "2",
-            "--puppeteerConfig", puppeteer_cfg_path,
+            "-i",
+            str(mmd_path),
+            "-o",
+            str(png_path),
+            "-b",
+            "white",
+            "-s",
+            "2",
+            "--puppeteerConfig",
+            puppeteer_cfg_path,
         ]
         if resolved_config is not None:
             base_args += ["--configFile", str(resolved_config)]
