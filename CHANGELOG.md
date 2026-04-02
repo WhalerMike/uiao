@@ -1,8 +1,9 @@
-# [0.30.0](https://github.com/WhalerMike/uiao-core/compare/v0.29.0...v0.30.0) (2026-04-01)
+# [0.30.0](https://github.com/WhalerMike/uiao-core/compare/v0.29.0...v0.30.0) (2026-04-02)
 
 
 ### Bug Fixes
 
+* add --no-sandbox puppeteer config for mmdc on GitHub Actions ([56cf0a3](https://github.com/WhalerMike/uiao-core/commit/56cf0a3b4c786c268354b36c2dd3be61b4b2913b))
 * add || true to detect_drift.py in auto-fix step so fix_concept_lists.py also runs ([9e20728](https://github.com/WhalerMike/uiao-core/commit/9e207283e3e852c05ac9ae396f06393bbe0f63ce))
 * add contents write permission to deploy.yml for GitHub Pages deployment ([10000a3](https://github.com/WhalerMike/uiao-core/commit/10000a31257e5ecdeb3efa2d80e11f929bb3d311))
 * add continue-on-error to auto-fix step so commit proceeds after fix ([833c289](https://github.com/WhalerMike/uiao-core/commit/833c289dcc705bc8c997c5a053d699e05b9891df))
