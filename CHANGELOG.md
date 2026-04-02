@@ -182,6 +182,7 @@
 * add machine-readable document-skeleton.yml for canonical skeleton v1.0 ([3480612](https://github.com/WhalerMike/uiao-core/commit/3480612fe4d685c7fdaff7d60b6a44667860b4d8))
 * add machine-readable style-guide.yml governance rules ([984098c](https://github.com/WhalerMike/uiao-core/commit/984098c0063aa9c3aa0284ac9c1eb6562bcfc270))
 * add management_stack_v1.0.md.j2 with ServiceNow/Intune control tables and diagrams ([c1175b1](https://github.com/WhalerMike/uiao-core/commit/c1175b118f5be53412b27c71028b39d8dd1755fc))
+* add owner-tag routing and multi-dir scanning to generate_diagrams.py ([caff442](https://github.com/WhalerMike/uiao-core/commit/caff442bc5410a1056048997ac7dbfad7c190ecd))
 * add Palo Alto NGFW firewall parameters to parameters.yml ([9c4cc00](https://github.com/WhalerMike/uiao-core/commit/9c4cc0087b2510b5dbd73af0e6d0737f8e12ea9a))
 * add paloalto to active overlays (Slot [#2](https://github.com/WhalerMike/uiao-core/issues/2) NGFW sub-overlay) ([c8ffb52](https://github.com/WhalerMike/uiao-core/commit/c8ffb52a46fee1b38cbcdd7633f0b18ab6cf1c0d))
 * add paloalto.yaml NGFW vendor overlay (Slot [#2](https://github.com/WhalerMike/uiao-core/issues/2) sub-overlay) ([7dc01c2](https://github.com/WhalerMike/uiao-core/commit/7dc01c25a1181e4b9917e6d9433aa30f36f44d2d))
