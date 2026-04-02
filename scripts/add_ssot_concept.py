@@ -8,6 +8,7 @@ concept as the first core concept.
 Usage:
     python scripts/add_ssot_concept.py [--fix] [--verbose]
 """
+
 import argparse
 import os
 import re
@@ -17,9 +18,21 @@ from pathlib import Path
 SSOT_KEYWORDS = ["single source of truth", "ssot", "authoritative origin"]
 
 SCAN_DIRS = [
-    "docs", "canon", "adapters", "compliance", "templates",
-    "01_Canon", "exports", "site", "rules", "data",
-    "schemas", "src", "dashboard", "analytics", "assets",
+    "docs",
+    "canon",
+    "adapters",
+    "compliance",
+    "templates",
+    "01_Canon",
+    "exports",
+    "site",
+    "rules",
+    "data",
+    "schemas",
+    "src",
+    "dashboard",
+    "analytics",
+    "assets",
 ]
 SCAN_EXTENSIONS = {".md", ".yml", ".yaml", ".html", ".j2", ".json", ".txt"}
 
@@ -35,7 +48,7 @@ must remain consistent with this single source of truth (SSOT).
 
 SSOT_YAML_ENTRY = '  - "Single Source of Truth (SSOT)"\n'
 
-SSOT_HTML_LI = '      <li><strong>Single Source of Truth (SSOT)</strong> &mdash; The README.md is the authoritative origin for all canonical definitions.</li>\n'
+SSOT_HTML_LI = "      <li><strong>Single Source of Truth (SSOT)</strong> &mdash; The README.md is the authoritative origin for all canonical definitions.</li>\n"
 
 
 def find_repo_root():
@@ -92,9 +105,7 @@ def inject_ssot_md(content):
         rest = content[match.end() :]
         # Renumber subsequent subsections .2->.3, .3->.4, etc.
         for old in range(7, 1, -1):
-            rest = rest.replace(
-                f"{section}.{old}.", f"{section}.{old + 1}."
-            )
+            rest = rest.replace(f"{section}.{old}.", f"{section}.{old + 1}.")
         new_content += rest
         return new_content
 
@@ -117,11 +128,7 @@ def inject_ssot_yaml(content):
     )
     match = pattern.search(content)
     if match:
-        return (
-            content[: match.end(1)]
-            + SSOT_YAML_ENTRY
-            + content[match.start(2) :]
-        )
+        return content[: match.end(1)] + SSOT_YAML_ENTRY + content[match.start(2) :]
     # Fallback: add SSOT keyword near core concepts mention
     marker = re.search(r"(?i)core.concepts", content)
     if marker:
@@ -144,11 +151,7 @@ def inject_ssot_html(content):
     )
     match = pattern.search(content)
     if match:
-        return (
-            content[: match.end(1)]
-            + SSOT_HTML_LI
-            + content[match.start(2) :]
-        )
+        return content[: match.end(1)] + SSOT_HTML_LI + content[match.start(2) :]
     # Fallback: add SSOT meta comment
     marker = re.search(r"(?i)core.concepts", content)
     if marker:
@@ -156,7 +159,7 @@ def inject_ssot_html(content):
         if pos > 0:
             return (
                 content[:pos]
-                + '\n<!-- SSOT: Single Source of Truth - README.md is the authoritative origin -->'
+                + "\n<!-- SSOT: Single Source of Truth - README.md is the authoritative origin -->"
                 + content[pos:]
             )
     return content
@@ -170,7 +173,7 @@ def inject_ssot_j2(content):
         if pos > 0:
             return (
                 content[:pos]
-                + '\n{# SSOT: Single Source of Truth (SSOT) - README.md is the authoritative origin #}'
+                + "\n{# SSOT: Single Source of Truth (SSOT) - README.md is the authoritative origin #}"
                 + content[pos:]
             )
     return content
@@ -189,19 +192,17 @@ def inject_ssot(content, filepath):
         return inject_ssot_j2(content)
     elif ext == ".json":
         # Add ssot keyword in JSON
-        marker = re.search(r'(?i)core.concepts', content)
+        marker = re.search(r"(?i)core.concepts", content)
         if marker:
             pos = content.find('"', marker.end())
-            if pos > 0 and 'ssot' not in content[marker.start():pos].lower():
-                return content[:pos] + ' (includes Single Source of Truth / SSOT)' + content[pos:]
+            if pos > 0 and "ssot" not in content[marker.start() : pos].lower():
+                return content[:pos] + " (includes Single Source of Truth / SSOT)" + content[pos:]
         return content
     return content
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Add SSOT concept to files missing it"
-    )
+    parser = argparse.ArgumentParser(description="Add SSOT concept to files missing it")
     parser.add_argument("--fix", action="store_true", help="Apply fixes")
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args()

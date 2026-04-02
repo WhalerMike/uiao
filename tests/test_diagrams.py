@@ -423,16 +423,12 @@ class TestMermaidThemeConfiguration:
         from uiao_core.generators.mermaid import MERMAID_THEME, _mermaid_html
 
         html = _mermaid_html("flowchart TD\n    A --> B")
-        assert f"theme:'{MERMAID_THEME}'" in html, (
-            f"_mermaid_html() must use theme '{MERMAID_THEME}'"
-        )
+        assert f"theme:'{MERMAID_THEME}'" in html, f"_mermaid_html() must use theme '{MERMAID_THEME}'"
 
     def test_mermaid_module_theme_constant_is_neutral(self) -> None:
         from uiao_core.generators.mermaid import MERMAID_THEME
 
-        assert MERMAID_THEME == "neutral", (
-            f"MERMAID_THEME constant must be 'neutral', got {MERMAID_THEME!r}"
-        )
+        assert MERMAID_THEME == "neutral", f"MERMAID_THEME constant must be 'neutral', got {MERMAID_THEME!r}"
 
     def test_config_theme_matches_module_constant(self) -> None:
         from uiao_core.generators.mermaid import MERMAID_THEME
@@ -445,7 +441,6 @@ class TestMermaidThemeConfiguration:
 
     def test_render_mmdc_passes_config_file(self, tmp_path: Path) -> None:
         """_render_mmdc must include either --configFile or --theme in its command."""
-        import subprocess
         import unittest.mock as mock
 
         from uiao_core.generators.mermaid import _render_mmdc
