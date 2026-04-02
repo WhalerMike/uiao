@@ -136,6 +136,7 @@
 * **ssp:** add parties/roles and party-uuids for OSCAL trestle validation ([be501c8](https://github.com/WhalerMike/uiao-core/commit/be501c8624586717a2ff65c093658a7403d4156d))
 * **ssp:** inject Settings, fix datetime.utcnow() -> datetime.now(timezone.utc) (ADR-0003) ([305a322](https://github.com/WhalerMike/uiao-core/commit/305a32203ac6c46d7aae9d510eec72814854fcc5))
 * **ssp:** rename system-inventory to inventory-items for OSCAL 1.0.x compliance ([1131341](https://github.com/WhalerMike/uiao-core/commit/11313410e1eaefb64655cc68db94da8f6728c42e))
+* update compile.sh to compile tagged files from all of build/, not just build/templates/ ([11aa979](https://github.com/WhalerMike/uiao-core/commit/11aa9797c9bb2d7c5e15528afcfab494718cb707))
 * use correct top-level puppeteer config format for mmdc no-sandbox ([4786976](https://github.com/WhalerMike/uiao-core/commit/4786976986de413ed8fe160a4c0300ad14f057c7))
 * use explicit block scalar indent |2 in CM-3.yml to fix YAML parse error ([7ea0467](https://github.com/WhalerMike/uiao-core/commit/7ea046764330d03f6a0c69a58e127cc794dd5cfe))
 * use pull-rebase with retries for diagram commit push ([8db914e](https://github.com/WhalerMike/uiao-core/commit/8db914ef7209331e9f4f9f2339c1a59109561f78))
