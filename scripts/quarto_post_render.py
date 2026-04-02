@@ -67,7 +67,7 @@ def generate_manifest():
         "",
     ]
 
-    for format_name, subdir in sorted(FORMAT_DIRS.items()):
+    for _format_name, subdir in sorted(FORMAT_DIRS.items()):
         format_dir = EXPORT_DIR / subdir
         files = sorted(format_dir.rglob("*"))
         files = [f for f in files if f.is_file() and f.name != "MANIFEST.md"]
