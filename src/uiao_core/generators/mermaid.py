@@ -29,6 +29,12 @@ logger = logging.getLogger(__name__)
 _DEFAULT_VISUALS_DIR = Path("visuals")
 _DEFAULT_OUTPUT_DIR = Path("assets/images/mermaid")
 _HASH_FILE = ".mermaid_hashes.json"
+_MERMAID_CONFIG = Path("data/mermaid-config.json")
+
+# Canonical Mermaid theme used across all rendering backends.
+# Must match the ``mermaid.theme`` value in ``_quarto.yml`` and the theme
+# field in ``data/mermaid-config.json``.
+MERMAID_THEME = "neutral"
 
 
 # ---------------------------------------------------------------------------
@@ -60,13 +66,47 @@ def _save_hash_cache(output_dir: Path, cache: dict[str, str]) -> None:
 # ---------------------------------------------------------------------------
 # Rendering backends
 # ---------------------------------------------------------------------------
-def _render_mmdc(mmd_path: Path, png_path: Path) -> bool:
-    """Render using Mermaid CLI (mmdc via npx or global install)."""
+def _resolve_mermaid_config(config_file: Path | None) -> Path | None:
+    """Return the resolved path to a Mermaid config file, or None if not found.
+
+    When *config_file* is ``None`` the function tries the canonical path
+    ``data/mermaid-config.json`` relative to the project root; if that file
+    also does not exist it returns ``None`` and the caller falls back to the
+    ``--theme`` flag.  When an explicit *config_file* is supplied and the file
+    does not exist a warning is logged and ``None`` is returned.
+    """
+    if config_file is not None:
+        if config_file.exists():
+            return config_file
+        logger.warning(
+            "Mermaid config file not found at %s; falling back to --theme %s.",
+            config_file,
+            MERMAID_THEME,
+        )
+        return None
+    # Look for the canonical config relative to the project root
+    settings = get_settings()
+    default = settings.project_root / _MERMAID_CONFIG
+    return default if default.exists() else None
+
+
+def _render_mmdc(mmd_path: Path, png_path: Path, config_file: Path | None = None) -> bool:
+    """Render using Mermaid CLI (mmdc via npx or global install).
+
+    Args:
+        mmd_path: Path to the source ``.mermaid`` file.
+        png_path: Destination PNG path.
+        config_file: Optional path to a Mermaid JSON config file.  When
+            ``None`` the function attempts to locate the canonical config at
+            ``data/mermaid-config.json`` inside the project root.
+    """
     import json
     import tempfile
 
     mmdc = shutil.which("mmdc")
     cmd: list[str]
+
+    resolved_config = _resolve_mermaid_config(config_file)
 
     # Puppeteer/Chromium requires --no-sandbox on GitHub Actions and similar CI
     # environments where unprivileged user namespaces are restricted.
@@ -76,39 +116,25 @@ def _render_mmdc(mmd_path: Path, png_path: Path) -> bool:
             json.dump({"args": ["--no-sandbox", "--disable-setuid-sandbox"]}, pcfg)
             puppeteer_cfg_path = pcfg.name
 
+        base_args = [
+            "-i", str(mmd_path),
+            "-o", str(png_path),
+            "-b", "white",
+            "-s", "2",
+            "--puppeteerConfig", puppeteer_cfg_path,
+        ]
+        if resolved_config is not None:
+            base_args += ["--configFile", str(resolved_config)]
+        else:
+            base_args += ["--theme", MERMAID_THEME]
+
         if mmdc:
-            cmd = [
-                mmdc,
-                "-i",
-                str(mmd_path),
-                "-o",
-                str(png_path),
-                "-b",
-                "white",
-                "-s",
-                "2",
-                "--puppeteerConfig",
-                puppeteer_cfg_path,
-            ]
+            cmd = [mmdc, *base_args]
         else:
             npx = shutil.which("npx")
             if not npx:
                 return False
-            cmd = [
-                npx,
-                "--yes",
-                "@mermaid-js/mermaid-cli",
-                "-i",
-                str(mmd_path),
-                "-o",
-                str(png_path),
-                "-b",
-                "white",
-                "-s",
-                "2",
-                "--puppeteerConfig",
-                puppeteer_cfg_path,
-            ]
+            cmd = [npx, "--yes", "@mermaid-js/mermaid-cli", *base_args]
         try:
             result = subprocess.run(cmd, capture_output=True, timeout=60, check=False)
             if result.returncode == 0 and png_path.exists():
@@ -160,11 +186,16 @@ def _render_playwright(mmd_path: Path, png_path: Path) -> bool:
 
 
 def _mermaid_html(mmd_text: str) -> str:
-    """Build a minimal HTML page that renders a Mermaid diagram."""
+    """Build a minimal HTML page that renders a Mermaid diagram.
+
+    Uses :data:`MERMAID_THEME` so the Playwright fallback produces the same
+    visual result as the ``mmdc`` primary path and the Quarto ``_quarto.yml``
+    configuration.
+    """
     return f"""<!DOCTYPE html>
 <html><head>
 <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({{startOnLoad:true, theme:'default'}});</script>
+<script>mermaid.initialize({{startOnLoad:true, theme:'{MERMAID_THEME}'}});</script>
 </head><body>
 <div class="mermaid">{mmd_text}</div>
 </body></html>"""
@@ -177,8 +208,19 @@ def render_mermaid_file(
     mmd_path: Path,
     output_dir: Path | None = None,
     force: bool = False,
+    config_file: Path | None = None,
 ) -> Path | None:
     """Render a single .mermaid file to PNG.
+
+    Args:
+        mmd_path: Path to the source ``.mermaid`` file.
+        output_dir: Directory where the PNG is written.  Defaults to the
+            project-level ``assets/images/mermaid/`` path from settings.
+        force: When ``True`` the cache is bypassed and the diagram is
+            re-rendered unconditionally.
+        config_file: Optional path to a Mermaid JSON config file used by the
+            ``mmdc`` backend.  When ``None`` the function tries the canonical
+            ``data/mermaid-config.json`` inside the project root.
 
     Returns the Path to the PNG on success, or None on failure.
     """
@@ -201,7 +243,7 @@ def render_mermaid_file(
     logger.info("Rendering %s -> %s", mmd_path.name, png_path)
 
     # Try mmdc first, then Playwright
-    if _render_mmdc(mmd_path, png_path):
+    if _render_mmdc(mmd_path, png_path, config_file=config_file):
         _update_cache(mmd_path, output_dir)
         return png_path
 
