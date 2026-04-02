@@ -117,9 +117,16 @@ Gemini writes processed Markdown to `build/templates/` (not in-place). Source fi
 
 ### 6.2 Mermaid CLI Style
 
-- Transparent background (default)
-- Resolution: 2048x1536 minimum
-- Standard Mermaid theme (no custom CSS overrides)
+- White background (`-b white`)
+- Resolution: 2048×1536 minimum (`-s 2` scale factor)
+- **Canonical theme: `neutral`** — `MERMAID_THEME` in
+  `src/uiao_core/generators/mermaid.py` is the single source of truth.
+  `data/mermaid-config.json` and `_quarto.yml` (`mermaid.theme`) must both
+  reflect this value.  When changing the theme, update the constant first,
+  then update the two config files to match.  The ``mmdc`` backend passes the
+  config via `--configFile data/mermaid-config.json`; the Playwright fallback
+  reads `MERMAID_THEME` directly.  Do not override the theme in individual
+  diagram files or downstream configs.
 
 ## 7. Output Paths
 
