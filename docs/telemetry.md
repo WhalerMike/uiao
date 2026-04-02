@@ -42,6 +42,11 @@ This visualization shows how real-time signals inform policy and security decisi
 <details>
 <summary>Mermaid source</summary>
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 graph TB
   subgraph "Telemetry Control Plane (Visibility)"
@@ -66,6 +71,8 @@ graph TB
   classDef feedback stroke-dasharray: 5 5;
   class S,IB telemetry;
 ```
+
+</details>
 
 </details>
 
