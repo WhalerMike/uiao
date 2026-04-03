@@ -21,7 +21,7 @@ To prevent Agent formatting conflicts, follow this order of precedence for **for
 ## Core Architecture (Do Not Deviate Without Updating This File)
 
 * **Primary Repo**: uiao-core <https://github.com/WhalerMike/uiao-core>
-* **Document Compiler Repo**: uiao-document-compiler-v1 <https://github.com/WhalerMike/uiao-document-compiler-v1>
+* **Document Compiler Repo**: uiao-docs <https://github.com/WhalerMike/uiao-docs>
 * **Validation Target**: uiao-validation-targets <https://github.com/WhalerMike/uiao-validation-targets>
   + FastAPI mock service running at <http://localhost:8000> (or Docker)
   + Endpoints: /health, /ingest-evidence, /telemetry, /validation/fedramp-rev5-baseline
@@ -66,7 +66,7 @@ To prevent Agent formatting conflicts, follow this order of precedence for **for
    * Evidence collection & linking (OSCAL back-matter) — browser-driven collection via Comet-Perplexity
    * Migrate pipeline to secure/GitHub Enterprise-ready setup
    * Expand validation-targets with more scenarios (failure injection, high-volume telemetry, scan imports)
-   * Publish generated documents to uiao-document-compiler-v1 via GitHub Actions
+   * Publish generated documents to uiao-docs via GitHub Actions
 
 ## Automated Diagram Generation
 
