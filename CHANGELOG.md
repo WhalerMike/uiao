@@ -1,4 +1,13 @@
-# [0.30.0](https://github.com/WhalerMike/uiao-core/compare/v0.29.0...v0.30.0) (2026-04-03)
+## [2.0.1](https://github.com/WhalerMike/uiao-core/compare/v2.0.0...v2.0.1) (2026-04-03)
+
+
+### Bug Fixes
+
+* update workflows to use pyproject.toml instead of deleted requirements.txt ([bb0e660](https://github.com/WhalerMike/uiao-core/commit/bb0e660028abc90dec3681b22199fa1f39640f08))
+
+
+
+# [2.0.0](https://github.com/WhalerMike/uiao-core/compare/v0.29.0...v2.0.0) (2026-04-03)
 
 
 ### Bug Fixes
@@ -351,15 +360,6 @@
 ### Features
 
 * Add vendor-neutral abstraction layer with optional technology overlays ([6ec29d3](https://github.com/WhalerMike/uiao-core/commit/6ec29d3f95075d2fa31393c6bfe417aa52a577e2))
-
-
-
-# [0.27.0](https://github.com/WhalerMike/uiao-core/compare/v0.26.0...v0.27.0) (2026-03-22)
-
-
-### Features
-
-* Add compliance-trestle OSCAL validation and fix schema compliance ([ded4b21](https://github.com/WhalerMike/uiao-core/commit/ded4b2191059eb28426869f2124db5c8f2b95dd9))
 
 
 
