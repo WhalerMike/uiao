@@ -1,0 +1,63 @@
+name: Build and Deploy Documentation
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Install TinyTeX
+        uses: quarto-dev/quarto-actions/setup-tinytex@v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+
+      - name: Render HTML site
+        run: quarto render --to html
+
+      - name: Render DOCX exports
+        run: quarto render --to docx
+
+      - name: Render PPTX exports
+        run: quarto render --to pptx
+
+      - name: Upload DOCX/PPTX artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: uiao-docs-exports
+          path: |
+            **/*.docx
+            **/*.pptx
+
+      - name: Upload HTML site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
