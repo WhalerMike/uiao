@@ -3,6 +3,7 @@
 
 ### Bug Fixes
 
+* rename section 6 from Core Concepts to Eight Core Concepts to resolve canon drift ([b85d406](https://github.com/WhalerMike/uiao-core/commit/b85d406b8465b799cb832a8e14496d03286cf8fe))
 * resolve all remaining test failures — 379 passed, 0 failed ([e663092](https://github.com/WhalerMike/uiao-core/commit/e663092c6c62953b8d5e387befa6ca4c68413b90))
 * update workflows to use pyproject.toml instead of deleted requirements.txt ([bb0e660](https://github.com/WhalerMike/uiao-core/commit/bb0e660028abc90dec3681b22199fa1f39640f08))
 
