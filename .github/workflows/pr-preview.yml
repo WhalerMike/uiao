@@ -1,0 +1,35 @@
+name: PR Documentation Preview
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Install TinyTeX
+        uses: quarto-dev/quarto-actions/setup-tinytex@v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+
+      - name: Render HTML preview
+        run: quarto render --to html
+
+      - name: Upload preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-preview
+          path: _site
