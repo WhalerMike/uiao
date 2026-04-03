@@ -1,3 +1,15 @@
+---
+title: "Doc-Separation-Governance"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Governance: Separation of User Documents and Machine Documents
 
 **Status:** Active  
