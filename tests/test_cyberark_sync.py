@@ -2,11 +2,17 @@ import json
 import unittest
 from unittest.mock import MagicMock, patch
 
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 from cyberark_sync_orchestrator import SyncOrchestrator
 
 
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+
 def load_mock(filename):
-    with open(filename) as f:
+    filepath = os.path.join(TEST_DIR, "data", filename)
+    with open(filepath) as f:
         return json.load(f)
 
 
