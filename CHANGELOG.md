@@ -55,6 +55,7 @@
 * resolve CI artifact generation failures (Playwright, sandbox, Settings.visuals_dir, Gemini model) ([cfac0ea](https://github.com/WhalerMike/uiao-docs/commit/cfac0ea96469cbcdac1bf5e9e6822102514a1fed))
 * rewrite adapter workflow using Python generator to avoid YAML heredoc issues ([26f88bb](https://github.com/WhalerMike/uiao-docs/commit/26f88bbf952f515ea4539dbdf0144e6548680a63))
 * update secret scanning command to gh mcp run-secret-scanning ([b87081d](https://github.com/WhalerMike/uiao-docs/commit/b87081d389499953ad8c9adcaa4eae4b9376f770))
+* use --to html in CI workflows to skip PDF render ([c8d5293](https://github.com/WhalerMike/uiao-docs/commit/c8d529352f4b43a5fdfe4e42c47fc34f4d2b59f6))
 * use correct top-level puppeteer config format for mmdc no-sandbox ([4099769](https://github.com/WhalerMike/uiao-docs/commit/4099769cc22d39f73675e780090ac97c8443c678))
 * use full date format in crosswalk_index front matter to fix Jekyll build ([4a1b4be](https://github.com/WhalerMike/uiao-docs/commit/4a1b4be7ba37c96b37519a7399556e34a0860936))
 * use pull-rebase with retries for diagram commit push ([ba02db4](https://github.com/WhalerMike/uiao-docs/commit/ba02db47842b402bc8c55bbab12dd1a0b037647a))
