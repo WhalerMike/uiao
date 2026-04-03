@@ -336,6 +336,11 @@ Pipeline:
 <details>
 <summary>Mermaid source</summary>
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart TD
     A[Drift Detected] --> B[Evidence Collection]
@@ -347,6 +352,8 @@ flowchart TD
     G --> H[Post-State Verification]
     H --> I[Governance Update]
 ```
+
+</details>
 
 </details>
 
