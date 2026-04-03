@@ -118,7 +118,10 @@ class TestGeneratorsSmoke:
             build_docs(
                 canon_path=str(canon_file),
                 data_dir=str(data_dir),
-                output_dir=str(tmp_path / "docs_out"),
+                docs_dir=str(tmp_path / "docs_out"),
+                site_dir=str(tmp_path / "site_out"),
+                template_mapping={},
+                generate_diagrams=False,
             )
         except FileNotFoundError:
             pytest.skip("Template files not available in CI")

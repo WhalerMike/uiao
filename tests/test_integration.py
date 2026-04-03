@@ -60,7 +60,8 @@ def test_load_context_merges_data(tmp_path):
     canon = tmp_path / "canon.yaml"
     canon.write_text("version: '1.0'\n")
     ctx = load_context(canon_path=canon, data_dir=data_dir)
-    assert ctx.get("foo") == "bar"
+    # load_context stores each data file under its stem key (nested)
+    assert ctx["alpha"]["foo"] == "bar"
     assert ctx.get("version") == "1.0"
 
 
@@ -70,31 +71,31 @@ def test_load_context_merges_data(tmp_path):
 
 
 def test_docs_generator_import():
-    """docs.py exposes generate_docs."""
-    from uiao_core.generators.docs import generate_docs
+    """docs.py exposes build_docs."""
+    from uiao_core.generators.docs import build_docs
 
-    assert callable(generate_docs)
+    assert callable(build_docs)
 
 
 def test_oscal_generator_import():
-    """oscal.py exposes generate_oscal."""
-    from uiao_core.generators.oscal import generate_oscal
+    """oscal.py exposes build_oscal."""
+    from uiao_core.generators.oscal import build_oscal
 
-    assert callable(generate_oscal)
+    assert callable(build_oscal)
 
 
 def test_poam_generator_import():
-    """poam.py exposes generate_poam."""
-    from uiao_core.generators.poam import generate_poam
+    """poam.py exposes build_poam."""
+    from uiao_core.generators.poam import build_poam
 
-    assert callable(generate_poam)
+    assert callable(build_poam)
 
 
 def test_charts_generator_import():
-    """charts.py exposes generate_charts."""
-    from uiao_core.generators.charts import generate_charts
+    """charts.py exposes build_charts."""
+    from uiao_core.generators.charts import build_charts
 
-    assert callable(generate_charts)
+    assert callable(build_charts)
 
 
 def test_ssp_generator_import():
