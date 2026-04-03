@@ -17,7 +17,7 @@ UIAO-Core uses a **Structured Hybrid** diagram pipeline:
 | Pipeline | Renderer | Scope | Output Path | Trigger |
 |---|---|---|---|---|
 | **Gemini Imagen 4.0** | AI-generated (Imagen API) | Architecture diagrams in `src/templates/` | `assets/generated_diagrams/` | `deploy.yml` |
-| **Mermaid CLI** | Deterministic (mmdc) | All other diagrams repo-wide | `assets/images/mermaid/` | `render-and-insert-diagrams.yml` |
+| **PlantUML** | Server-rendered PNG | All structured diagrams repo-wide | `docs/images/` | Server-side rendering via PlantUML URL |
 
 ### 2.1 Execution Order
 
@@ -33,12 +33,12 @@ Any Markdown file may declare its diagram owner via YAML frontmatter:
 
 ```yaml
 ---
-diagram-owner: gemini   # or: mermaid (default)
+diagram-owner: gemini   # or: plantuml (default)
 ---
 ```
 
 - Files tagged `diagram-owner: gemini` are **skipped** by the Mermaid CLI workflow
-- Files tagged `diagram-owner: mermaid` (or untagged) are **skipped** by the Gemini pipeline
+- Files tagged `diagram-owner: plantuml` (or untagged) are **skipped** by the Gemini pipeline
 - The owner tag is the authoritative routing gate
 
 ### 3.2 Folder-Based Routing (Fallback)
@@ -51,7 +51,7 @@ When no owner tag is present, routing follows folder conventions:
 | `docs/` | Mermaid CLI | Operational and reference documentation |
 | `canon/` | Mermaid CLI | Canonical compliance specifications |
 | `templates/` | Mermaid CLI | Jinja2 template sources |
-| `visuals/` | Mermaid CLI | Standalone `.mermaid` source files |
+| `visuals/` | PlantUML | Standalone `.puml` source files |
 
 ### 3.3 YAML Catalog Routing
 
@@ -79,7 +79,7 @@ Diagrams defined in YAML catalogs are always owned by Mermaid CLI:
 
 ### 5.1 Mermaid Code Blocks (in Markdown)
 
-Mermaid CLI replaces fenced mermaid blocks with:
+PlantUML server replaces diagram blocks with:
 1. A PNG image reference
 2. A collapsible `<details>` block preserving the source
 
@@ -133,8 +133,8 @@ Gemini writes processed Markdown to `build/templates/` (not in-place). Source fi
 | Pipeline | Output Directory | Naming Convention |
 |---|---|---|
 | Gemini Imagen | `assets/generated_diagrams/` | `diagram_{uuid8}.png` |
-| Mermaid CLI (standalone) | `assets/images/mermaid/` | `{source_stem}.png` |
-| Mermaid CLI (YAML catalog) | `assets/images/mermaid/` | `{yaml_key}.png` |
+| PlantUML (standalone) | `docs/images/` | `{source_stem}.png` |
+| PlantUML (YAML catalog) | `docs/images/` | `{yaml_key}.png` |
 
 ## 8. Conflict Prevention
 
