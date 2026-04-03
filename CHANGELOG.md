@@ -55,6 +55,7 @@
 * replace invalid input-dir with render glob in _quarto.yml ([5a06935](https://github.com/WhalerMike/uiao-docs/commit/5a069352a112561f97d0418282f43d261105ce98))
 * replace Mermaid with PlantUML — remove mermaid filter, update test diagram to PlantUML server-rendered PNG ([9f5d1bc](https://github.com/WhalerMike/uiao-docs/commit/9f5d1bc28a5a135b499d73722c0375a1fb50fe37))
 * resolve CI artifact generation failures (Playwright, sandbox, Settings.visuals_dir, Gemini model) ([cfac0ea](https://github.com/WhalerMike/uiao-docs/commit/cfac0ea96469cbcdac1bf5e9e6822102514a1fed))
+* resolve remaining 12 broken links flagged by repo-hygiene ([acf91b6](https://github.com/WhalerMike/uiao-docs/commit/acf91b67d2f1ef2fc5a746a224bc1e0b0118b9d9))
 * rewrite adapter workflow using Python generator to avoid YAML heredoc issues ([26f88bb](https://github.com/WhalerMike/uiao-docs/commit/26f88bbf952f515ea4539dbdf0144e6548680a63))
 * update secret scanning command to gh mcp run-secret-scanning ([b87081d](https://github.com/WhalerMike/uiao-docs/commit/b87081d389499953ad8c9adcaa4eae4b9376f770))
 * use --to html in CI workflows to skip PDF render ([c8d5293](https://github.com/WhalerMike/uiao-docs/commit/c8d529352f4b43a5fdfe4e42c47fc34f4d2b59f6))
