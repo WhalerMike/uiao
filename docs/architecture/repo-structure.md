@@ -1,3 +1,15 @@
+---
+title: "Repo-Structure"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # Repository Structure: User vs Machine Documents
 
 ```text
