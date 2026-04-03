@@ -111,7 +111,7 @@ def collect_gemini_files():
         files.append(f)
 
     # Secondary: scan other dirs for files tagged diagram-owner: gemini
-    for pattern in ["docs/**/*.md", "canon/**/*.md", "templates/**/*.md"]:
+    for pattern in ["docs/**/*.md", "docs/**/*.qmd", "canon/**/*.md", "templates/**/*.md"]:
         for f in glob.glob(pattern, recursive=True):
             if is_gemini_owned(f):
                 files.append(f)
