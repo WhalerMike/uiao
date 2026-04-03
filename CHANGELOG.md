@@ -3,6 +3,7 @@
 
 ### Bug Fixes
 
+* resolve all remaining test failures — 379 passed, 0 failed ([e663092](https://github.com/WhalerMike/uiao-core/commit/e663092c6c62953b8d5e387befa6ca4c68413b90))
 * update workflows to use pyproject.toml instead of deleted requirements.txt ([bb0e660](https://github.com/WhalerMike/uiao-core/commit/bb0e660028abc90dec3681b22199fa1f39640f08))
 
 
