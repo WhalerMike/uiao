@@ -57,6 +57,7 @@
 * resolve CI artifact generation failures (Playwright, sandbox, Settings.visuals_dir, Gemini model) ([cfac0ea](https://github.com/WhalerMike/uiao-docs/commit/cfac0ea96469cbcdac1bf5e9e6822102514a1fed))
 * resolve remaining 12 broken links flagged by repo-hygiene ([acf91b6](https://github.com/WhalerMike/uiao-docs/commit/acf91b67d2f1ef2fc5a746a224bc1e0b0118b9d9))
 * rewrite adapter workflow using Python generator to avoid YAML heredoc issues ([26f88bb](https://github.com/WhalerMike/uiao-docs/commit/26f88bbf952f515ea4539dbdf0144e6548680a63))
+* **ssot:** rewrite README — assert canon ownership, remove Compiler branding ([5c83668](https://github.com/WhalerMike/uiao-docs/commit/5c83668cc1672ec511ba9401581b16a5b3638091))
 * update secret scanning command to gh mcp run-secret-scanning ([b87081d](https://github.com/WhalerMike/uiao-docs/commit/b87081d389499953ad8c9adcaa4eae4b9376f770))
 * use --to html in CI workflows to skip PDF render ([c8d5293](https://github.com/WhalerMike/uiao-docs/commit/c8d529352f4b43a5fdfe4e42c47fc34f4d2b59f6))
 * use correct top-level puppeteer config format for mmdc no-sandbox ([4099769](https://github.com/WhalerMike/uiao-docs/commit/4099769cc22d39f73675e780090ac97c8443c678))
