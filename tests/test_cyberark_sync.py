@@ -4,11 +4,13 @@ from unittest.mock import MagicMock, patch
 
 import os
 import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 from cyberark_sync_orchestrator import SyncOrchestrator
 
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def load_mock(filename):
     filepath = os.path.join(TEST_DIR, "data", filename)
