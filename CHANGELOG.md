@@ -39,6 +39,7 @@
 * correct indentation in _add_compliance_table guard clause ([7a249c8](https://github.com/WhalerMike/uiao-docs/commit/7a249c867eca52ec19e29389b795d66ef4b010f9))
 * correct YAML indentation and pin Quarto to 1.6.43 ([4c605c2](https://github.com/WhalerMike/uiao-docs/commit/4c605c2b060ae8d07d9ac1f5f735363f9b585f1c))
 * create .env from .env.example to resolve MissingEnvVarsError in Quarto render ([b743fd9](https://github.com/WhalerMike/uiao-docs/commit/b743fd97493837a343b920f02e5612dc16d0e3d8))
+* disable failing workflows, replace Mermaid refs with PlantUML, add structured sidebar ([067c10a](https://github.com/WhalerMike/uiao-docs/commit/067c10ae41c07f5acfbec18e7394b68a05ef972a))
 * enable ruff --fix in CI workflow to auto-fix lint errors ([64648ba](https://github.com/WhalerMike/uiao-docs/commit/64648bae6d351e8700dba5c23b557bc01fd00e99))
 * enable ruff --fix in lint workflow to auto-fix remaining lint errors ([ca500a5](https://github.com/WhalerMike/uiao-docs/commit/ca500a5795ff595579cd9c140ea5e1f418b6e792))
 * Generate button now downloads files instead of opening viewer ([d1555e4](https://github.com/WhalerMike/uiao-docs/commit/d1555e4bcf0f654baed23e470e0932ee2cd2ca19))
