@@ -177,6 +177,7 @@
 * add cyberark.yaml PAM vendor overlay ([8d9c18d](https://github.com/WhalerMike/uiao-core/commit/8d9c18db86f124f97440fbcbc0f4ec81630b02fb))
 * add data/control-library/SC-28.yml (Protection of Information at Rest) ([801b746](https://github.com/WhalerMike/uiao-core/commit/801b7468dcb9d992ea250a0eebe155e873ce7896))
 * add data/control-library/SC-7.yml (Boundary Protection) ([2773618](https://github.com/WhalerMike/uiao-core/commit/2773618b15b95bbb531fc2034680c9f914cba992))
+* add drift detection script for doc/machine separation ([ac666c4](https://github.com/WhalerMike/uiao-core/commit/ac666c4ca5005883b0009fa8da5c8416296109bb))
 * add Entra ID evidence collector ([f900778](https://github.com/WhalerMike/uiao-core/commit/f9007787ca08fdfbcabd0733bc71e6d6a8bee76b))
 * add fedramp_crosswalk_v1.0.md.j2 with narrative, diagrams, and compliance tables ([5708d3b](https://github.com/WhalerMike/uiao-core/commit/5708d3b3b440f91461af3f1a37faed8172adbfea))
 * add Gemini Imagen 4.0 diagram generator for professional architectural diagrams ([cd05ba8](https://github.com/WhalerMike/uiao-core/commit/cd05ba87a95ba62b7566c3136af8575236c23b39))
