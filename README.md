@@ -1,163 +1,84 @@
-# Unified Identity-Addressing-Overlay Architecture (UIAO)
+# UIAO Core — Generation Engine & Adapter Framework
 
-**Version:** 1.0
-**Status:** Canonical Repository
+**Repository:** `uiao-core`
+**Role:** Machine-readable tooling — OSCAL generation, adapter framework, Python engine, schemas
 **Classification:** CUI/FOUO
 
 ---
 
-## 1. Overview
+## What This Repository Is
 
-UIAO is a drop-in overlay that restores cross-service telemetry and identity correlation in FedRAMP Moderate environments where native platforms cannot.
+`uiao-core` is the **generation engine and adapter framework** for the Unified Identity-Addressing-Overlay Architecture (UIAO). It contains:
 
-It provides deterministic identity correlation and cross-service telemetry across six control planes: **Identity**, **Network**, **Addressing**, **Telemetry**, **Security**, and **Management**. UIAO enables agencies to safely extract authoritative claims from legacy and brittle Truth Sources while maintaining provenance, drift detection, and continuous compliance -- without requiring rip-and-replace of existing platforms.
+- **Python generation engine** (`src/`) — transforms YAML canon into OSCAL JSON, Markdown, DOCX, PPTX, and CycloneDX SBOM
+- **Adapter framework** — standardized interfaces connecting vendor systems to the UIAO schema
+- **JSON schemas** (`schemas/`) — validation schemas for KSI mappings, OSCAL profiles, drift detection
+- **Scripts** (`scripts/`) — crosswalk validation, drift checks, pre-commit hooks, directory enforcement
+- **Tests** (`tests/`) — unit and integration tests for the generation pipeline
 
-The architecture is specified across a 20-document modernization canon aligned with Zero Trust, TIC 3.0, NIST 800-63, and FedRAMP 20x.
+## What This Repository Is NOT
 
----
+This repository does not contain the documentation canon. The canonical `.qmd` source files, YAML data schemas, rendered HTML site, and Quarto pipeline live in **[uiao-docs](https://github.com/WhalerMike/uiao-docs)**.
 
-## 2. Repository Structure
+| What | Where |
+|------|-------|
+| 20+ canonical documents (`.qmd`) | [uiao-docs](https://github.com/WhalerMike/uiao-docs) |
+| YAML data schemas (30 files) | [uiao-docs/data/](https://github.com/WhalerMike/uiao-docs/tree/main/data) |
+| Rendered HTML site | [whalermike.github.io/uiao-docs](https://whalermike.github.io/uiao-docs/docs/index.html) |
+| OSCAL generation engine | **This repo** (`src/`) |
+| Adapter framework | **This repo** (`src/adapters/`) |
+| JSON validation schemas | **This repo** (`schemas/`) |
+| Operational wiki | [uiao-docs wiki](https://github.com/WhalerMike/uiao-docs/wiki) |
 
-The repository contains 20 canonical documents, organized into six phases:
-
-```
-/docs
-   00_ControlPlaneArchitecture.md      Phase 1 — Foundational Architecture
-   01_UnifiedArchitecture.md           Phase 1 — Foundational Architecture
-   02_CanonSpecification.md            Phase 1 — Foundational Architecture
-
-   03_FedRAMP20x_Crosswalk.md          Phase 2 — Compliance & Governance
-   04_FedRAMP20x_Phase2_Summary.md     Phase 2 — Compliance & Governance
-   05_ManagementStack.md               Phase 2 — Compliance & Governance
-
-   06_ProgramVision.md                 Phase 3 — Program & Leadership
-   07_LeadershipBriefing.md            Phase 3 — Program & Leadership
-   08_ModernizationTimeline.md         Phase 3 — Program & Leadership
-
-   09_CrosswalkIndex.md                Phase 4 — Index & Cross-Reference
-   10_DirectoryStructure.md            Phase 4 — Index & Cross-Reference
-   11_GlossaryAndDefinitions.md        Phase 4 — Index & Cross-Reference
-
-   12_AI_SecurityPrinciples.md         Phase 4.5 — Extended Reference
-   13_FIMF_AdapterRegistry.md          Phase 4.5 — Extended Reference
-   14_TIC3_F5RetirementRoadmap.md      Phase 4.5 — Extended Reference
-
-   15_ProvenanceProfile.md             Phase 5 — Data Governance Substrate
-   16_DriftDetectionStandard.md        Phase 5 — Data Governance Substrate
-   17_ConsentEnvelope.md               Phase 5 — Data Governance Substrate
-   18_ClaimCatalog.md                  Phase 5 — Data Governance Substrate
-   19_ReconciliationModel.md           Phase 5 — Data Governance Substrate
-```
-
-This structure is deterministic and must not be altered.
+See the [Repository Ownership & SSOT Policy](https://github.com/WhalerMike/uiao-docs/wiki/Repository-Ownership-and-SSOT-Policy) for the full ownership table.
 
 ---
 
-## 3. Canon Summary
+## Repository Structure
 
-The UIAO canon is built on the **Eight Core Concepts**:
+```
+uiao-core/
+├── src/                    # Python generation engine
+│   ├── adapters/           # Vendor adapter implementations
+│   ├── generators/         # OSCAL, Markdown, DOCX, PPTX generators
+│   └── validators/         # Schema and drift validators
+├── schemas/                # JSON schemas (KSI, OSCAL, drift)
+├── scripts/                # Utility scripts (crosswalk, validation, hooks)
+├── tests/                  # Unit and integration tests
+├── canon/                  # Canon metadata and visual manifest
+├── visuals/                # Visual asset sources
+├── docs/                   # Non-document assets only (images, pitch deck)
+│   └── README.md           # Points to uiao-docs for all documentation
+├── machine/                # Machine-readable artifact definitions
+├── templates/              # Jinja2 templates for document generation
+└── compliance/             # FedRAMP reference data
+```
 
-1. **Single Source of Truth (SSOT)** — UIAO operates on the principle that every claim has one authoritative origin. All other representations are pointers, not copies. This ensures provenance, prevents drift, and enables federated truth resolution across boundaries.
+---
+
+## UIAO Overview
+
+UIAO (Unified Identity-Addressing-Overlay Architecture) is a federal network modernization program that replaces legacy infrastructure silos with a unified, identity-driven, cloud-optimized architecture.
+
+It provides deterministic identity correlation and cross-service telemetry across six control planes: **Identity**, **Addressing**, **Overlay**, **Telemetry**, **Management**, and **Governance**. UIAO enables agencies to safely extract authoritative claims from legacy systems while maintaining provenance, drift detection, and continuous compliance.
+
+The architecture is specified across a 20-document modernization canon maintained in [uiao-docs](https://github.com/WhalerMike/uiao-docs), aligned with Zero Trust, TIC 3.0, NIST 800-63, and FedRAMP 20x.
+
+---
+
+## Eight Core Concepts
+
+1. **Single Source of Truth (SSOT)** — Every claim has one authoritative origin. All other representations are pointers, not copies.
 2. **Conversation as the atomic unit** — Every interaction binds identity, certificates, addressing, path, QoS, and telemetry.
-3. **Identity as the root namespace** — Every IP, certificate, subnet, policy, and telemetry event is derived from identity.
+3. **Identity as the root namespace** — Every IP, certificate, subnet, policy, and telemetry event derives from identity.
 4. **Deterministic addressing** — Addressing is identity-derived and policy-driven.
 5. **Certificate-anchored overlay** — mTLS anchors tunnels, services, and trust relationships.
 6. **Telemetry as control** — Telemetry is a real-time control input, not passive reporting.
-7. **Embedded governance and automation** — Governance is executed through orchestrated workflows, not manual tickets.
+7. **Embedded governance and automation** — Governance is executed through orchestrated workflows.
 8. **Public service first** — Citizen experience, accessibility, and privacy are top-level design constraints.
 
-These concepts appear identically across all 20 documents.
-
 ---
 
-## 4. Control Planes
+## License
 
-UIAO defines six control planes:
-
-| Plane | Role |
-|---|---|
-| **Identity** | Entra ID, ICAM governance, Conditional Access, PIM, lifecycle automation |
-| **Network** | Cisco Catalyst SD-WAN, Cloud OnRamp, INR, identity-aware segmentation |
-| **Addressing** | InfoBlox IPAM, DNS/DHCP modernization, deterministic addressing |
-| **Telemetry and Location** | M365 telemetry, SD-WAN telemetry, endpoint telemetry, CDM/CLAW, SIEM |
-| **Security and Compliance** | TIC 3.0 Cloud + Branch, Zero Trust, FedRAMP 20x, NIST 800-63 |
-| **Management** | ServiceNow CMDB, Intune device compliance, drift detection |
-
-Each plane has a dedicated architectural role and compliance responsibility.
-
----
-
-## 5. How to Use This Repository
-
-<!-- NEW (Proposed) -->
-
-This repository is designed for:
-
-- **Architects** building Zero Trust and TIC 3.0-aligned environments
-- **PMOs** managing modernization programs
-- **CISOs and CIOs** requiring compliance alignment
-- **Engineering teams** implementing identity, network, and addressing modernization
-- **Governance teams** building drift-resistant operations
-
-**Usage pattern:**
-
-1. Start with **00-02** to understand the architecture
-2. Use **03-05** for compliance and governance
-3. Use **06-08** for leadership and program execution
-4. Use **09-11** for navigation and metadata
-5. Use **12-14** for extended reference (AI security, adapters, TIC 3.0)
-6. Use **15-19** for data governance substrate (provenance, drift, consent, claims, reconciliation)
-
----
-
-## 6. Contribution Guidelines
-
-<!-- NEW (Proposed) -->
-
-- Canon documents (00-19) must never be modified without a formal revision
-- All changes require review by a designated Canon Steward
-- No renumbering, renaming, or relocation of canonical documents
-- Appendices may be added but must follow naming rules defined in `10_DirectoryStructure.md`
-- All contributions must comply with the Style Guide (`docs/STYLE-GUIDE.md`) and Canonical Skeleton (`docs/DOCUMENT-SKELETON.md`)
-
----
-
-## 7. Versioning
-
-<!-- NEW (Proposed) -->
-
-The canon uses semantic versioning:
-
-- **Major** — Canon revisions (structural or doctrinal changes)
-- **Minor** — Additions to appendices or supporting artifacts
-- **Patch** — Corrections or clarifications
-
----
-
-## 8. License
-
-See [LICENSE](LICENSE) for details. Apache 2.0.
-
----
-
-## 9. Maintainers
-
-<!-- NEW (Proposed) -->
-
-| Role | Status |
-|---|---|
-| Canon Steward | To be designated |
-| Architecture Lead | To be designated |
-| Compliance Lead | To be designated |
-
----
-
-## 10. Related Artifacts
-
-| Artifact | Location |
-|---|---|
-| Style Guide | `docs/STYLE-GUIDE.md` |
-| Canonical Skeleton | `docs/DOCUMENT-SKELETON.md` |
-| Crosswalk Data | `data/crosswalk-index.yml` |
-| Parameters | `data/parameters.yml` |
-| Glossary | `docs/11_GlossaryAndDefinitions.md` |
+[Apache License 2.0](LICENSE)
