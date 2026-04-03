@@ -87,7 +87,7 @@ def inject_frontmatter():
     md_files = sorted(DOCS_DIR.rglob("*.md"))
 
     if not md_files:
-        print("[quarto-pre-render] No .md files found in docs/. Nothing to process.")
+        print("[quarto-pre-render] No .md/.qmd files found in docs/. Nothing to process.")
         return
 
     injected = 0
