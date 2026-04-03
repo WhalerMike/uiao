@@ -1,0 +1,61 @@
+# Sync YAML data schemas from uiao-docs to uiao-core
+# uiao-docs owns the data/ directory. This workflow pushes changes
+# to uiao-core whenever data files are modified on main.
+#
+# Requires: UIAO_CORE_SYNC_TOKEN secret (PAT with repo scope for uiao-core)
+# If the secret is not configured, this workflow will fail silently.
+
+name: Sync Data to uiao-core
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Push data/ to uiao-core
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout uiao-docs
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: data
+
+      - name: Checkout uiao-core
+        uses: actions/checkout@v4
+        with:
+          repository: WhalerMike/uiao-core
+          token: ${{ secrets.UIAO_CORE_SYNC_TOKEN }}
+          path: uiao-core
+
+      - name: Sync data files
+        run: |
+          echo "Syncing data/ from uiao-docs to uiao-core..."
+
+          # Copy all YAML/JSON data files (preserving uiao-core-only files)
+          cp data/*.yml uiao-core/data/ 2>/dev/null || true
+          cp data/*.yaml uiao-core/data/ 2>/dev/null || true
+
+          cd uiao-core
+
+          # Check for changes
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No changes to sync."
+            exit 0
+          fi
+
+          git config user.name "uiao-docs-sync[bot]"
+          git config user.email "noreply@github.com"
+          git add data/
+          git commit -m "sync: update data/ from uiao-docs
+
+          Automated sync from WhalerMike/uiao-docs.
+          Source commit: ${{ github.sha }}"
+          git push
+          echo "Sync complete."
