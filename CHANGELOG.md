@@ -117,6 +117,7 @@
 * remove extra indentation on date field in crosswalk_index front matter ([449753a](https://github.com/WhalerMike/uiao-core/commit/449753af8cb21413675e91e3e5f33baa6a326573))
 * remove missing reference-doc, scss, and lua filter from _quarto.yml ([ecadce2](https://github.com/WhalerMike/uiao-core/commit/ecadce20e1ac1a3c17555ffc0a459e725d9cf29d))
 * remove SSOT comment breaking YAML folded scalar in leadership briefing ([07e8b8a](https://github.com/WhalerMike/uiao-core/commit/07e8b8af0b0bec89ea26a24771b49ae293fa1a3e))
+* remove stale PowerShell scripts and diagram-review.md from root ([a6d1d69](https://github.com/WhalerMike/uiao-core/commit/a6d1d696963af5757bc07f16192b4d0e976e0508))
 * remove unused BaseProvider import from test_abstractions.py ([c31fa24](https://github.com/WhalerMike/uiao-core/commit/c31fa240e31d1938ed2b9afa9145b71155ff5a9c))
 * remove unused field import to fix CI lint errors ([dcfd606](https://github.com/WhalerMike/uiao-core/commit/dcfd606cb0782e6bbaa9fd898f24ea55e066b745))
 * remove unused imports in generate_docs.py (F401, I001) ([d7dd6ea](https://github.com/WhalerMike/uiao-core/commit/d7dd6ea1e2ebff9ff8d9fb7d3e11132fd1a8677a))
