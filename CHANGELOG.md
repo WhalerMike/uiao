@@ -143,6 +143,7 @@
 * **ssp:** inject Settings, fix datetime.utcnow() -> datetime.now(timezone.utc) (ADR-0003) ([305a322](https://github.com/WhalerMike/uiao-core/commit/305a32203ac6c46d7aae9d510eec72814854fcc5))
 * **ssp:** rename system-inventory to inventory-items for OSCAL 1.0.x compliance ([1131341](https://github.com/WhalerMike/uiao-core/commit/11313410e1eaefb64655cc68db94da8f6728c42e))
 * update compile.sh to compile tagged files from all of build/, not just build/templates/ ([11aa979](https://github.com/WhalerMike/uiao-core/commit/11aa9797c9bb2d7c5e15528afcfab494718cb707))
+* update references after docs removal, add data/README, simplify quarto config ([8748b94](https://github.com/WhalerMike/uiao-core/commit/8748b9444e5f4c8dd8681679143ded667cb933db))
 * use 'in' operator for Jinja2 dict key checks in management_stack template ([019fb58](https://github.com/WhalerMike/uiao-core/commit/019fb58dc1ecc1e7ac11578499d6f5012ef53147))
 * use correct top-level puppeteer config format for mmdc no-sandbox ([4786976](https://github.com/WhalerMike/uiao-core/commit/4786976986de413ed8fe160a4c0300ad14f057c7))
 * use explicit block scalar indent |2 in CM-3.yml to fix YAML parse error ([7ea0467](https://github.com/WhalerMike/uiao-core/commit/7ea046764330d03f6a0c69a58e127cc794dd5cfe))
