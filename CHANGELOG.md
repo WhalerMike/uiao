@@ -50,6 +50,7 @@
 * remove setup-tinytex and redundant pandoc from CI workflows ([fbdbc92](https://github.com/WhalerMike/uiao-docs/commit/fbdbc92f11f3341edaf4f62baff2519d00bd2f99))
 * replace git rebase with merge --strategy-option ours to resolve binary conflicts ([15b553a](https://github.com/WhalerMike/uiao-docs/commit/15b553a90a036f744b65c691777b5a67e32f9e27))
 * replace invalid github/mcp-server action with gh extension install ([f5674d2](https://github.com/WhalerMike/uiao-docs/commit/f5674d20ead03e91d1cd9e541d63e287e40eacf6))
+* replace invalid input-dir with render glob in _quarto.yml ([5a06935](https://github.com/WhalerMike/uiao-docs/commit/5a069352a112561f97d0418282f43d261105ce98))
 * replace Mermaid with PlantUML — remove mermaid filter, update test diagram to PlantUML server-rendered PNG ([9f5d1bc](https://github.com/WhalerMike/uiao-docs/commit/9f5d1bc28a5a135b499d73722c0375a1fb50fe37))
 * resolve CI artifact generation failures (Playwright, sandbox, Settings.visuals_dir, Gemini model) ([cfac0ea](https://github.com/WhalerMike/uiao-docs/commit/cfac0ea96469cbcdac1bf5e9e6822102514a1fed))
 * rewrite adapter workflow using Python generator to avoid YAML heredoc issues ([26f88bb](https://github.com/WhalerMike/uiao-docs/commit/26f88bbf952f515ea4539dbdf0144e6548680a63))
