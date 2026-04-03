@@ -6,7 +6,7 @@ import sys
 # Ensure the scripts directory is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
-from uiao_core.generators.docs import DATA_DIR, OVERLAYS_DIR, _merge_by_key, apply_overlay
+from uiao_core.generators.docs import DATA_DIR, _merge_by_key, apply_overlay
 from generate_docs import load_overlays
 
 # ---------------------------------------------------------------------------
@@ -200,6 +200,7 @@ class TestOverlayIntegration:
         original_data_dir = gd.DATA_DIR
         monkeypatch.setattr(gd, "DATA_DIR", tmp_path)
         import uiao_core.generators.docs as _docs_mod
+
         monkeypatch.setattr(_docs_mod, "OVERLAYS_DIR", tmp_path / "overlays")
 
         # Load control-planes.yml directly and apply empty overlays
