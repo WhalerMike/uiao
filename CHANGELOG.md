@@ -115,6 +115,7 @@
 * re-add [@app](https://github.com/app).command() decorator to generate_all and remove stray merge artifact ([9d667d3](https://github.com/WhalerMike/uiao-core/commit/9d667d300c706a653a12bf3356bccc4ffe353366))
 * remove 320 tracked build artifacts, stale leftovers, add .gitignore rules ([33300a7](https://github.com/WhalerMike/uiao-core/commit/33300a7540f78fffaf204550ef09c4aceea181ac))
 * remove extra indentation on date field in crosswalk_index front matter ([449753a](https://github.com/WhalerMike/uiao-core/commit/449753af8cb21413675e91e3e5f33baa6a326573))
+* remove legacy configs, Quarto extension, and 5 duplicated root .md files ([fa5e162](https://github.com/WhalerMike/uiao-core/commit/fa5e1623283a4c3826950611e3af86625b718b4a))
 * remove missing reference-doc, scss, and lua filter from _quarto.yml ([ecadce2](https://github.com/WhalerMike/uiao-core/commit/ecadce20e1ac1a3c17555ffc0a459e725d9cf29d))
 * remove SSOT comment breaking YAML folded scalar in leadership briefing ([07e8b8a](https://github.com/WhalerMike/uiao-core/commit/07e8b8af0b0bec89ea26a24771b49ae293fa1a3e))
 * remove stale PowerShell scripts and diagram-review.md from root ([a6d1d69](https://github.com/WhalerMike/uiao-core/commit/a6d1d696963af5757bc07f16192b4d0e976e0508))
