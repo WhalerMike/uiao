@@ -97,6 +97,7 @@
 * pin all GitHub Actions SHAs in publish.yml and fix download-artifact version ([2a5cc0a](https://github.com/WhalerMike/uiao-docs/commit/2a5cc0ae3d234916fa48c6fc9bb2ad42fcc774dc))
 * redesign docs/index.html for clean executive-friendly layout ([c4f614d](https://github.com/WhalerMike/uiao-docs/commit/c4f614d2e388cdac6ff2d16bcc7b92e221a577a9))
 * Release v1.1.0 - version sync, README badges, and changelog ([bc29684](https://github.com/WhalerMike/uiao-docs/commit/bc296844bbd044d389b91c78881fee143a28faab))
+* replace 44 Mermaid placeholders with PlantUML server-rendered diagrams, add cross-repo sync ([5c43062](https://github.com/WhalerMike/uiao-docs/commit/5c43062d4b6fa7dedee38c14e2cb3e7fb5f38fd9)), closes [#1B3A5](https://github.com/WhalerMike/uiao-docs/issues/1B3A5) [#E8F0](https://github.com/WhalerMike/uiao-docs/issues/E8F0)
 * use pre-built exports for downloads, wire sidebar links ([b958694](https://github.com/WhalerMike/uiao-docs/commit/b9586944df0893de244288a69e49e10c15a0bb51))
 * validate workflow serialization with test push trigger ([c879ea2](https://github.com/WhalerMike/uiao-docs/commit/c879ea2d30b01251dda7a6493003286346bb3111))
 * wire Gemini image generation into generate-artifacts pipeline ([41aeacc](https://github.com/WhalerMike/uiao-docs/commit/41aeacc5be218f6e6b222e4294e2e511e9a6c35f))
