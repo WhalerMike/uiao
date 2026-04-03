@@ -129,6 +129,7 @@
 * replace invalid related-observations with related-control props in POAM generator ([d4ae59d](https://github.com/WhalerMike/uiao-core/commit/d4ae59d2be3224da0038768786272779d030cc73))
 * replace non-canonical concept list with Eight Core Concepts in document-skeleton.yml ([3456dac](https://github.com/WhalerMike/uiao-core/commit/3456dace965d3c85ebdd145cc578c9f42160cf6f))
 * resolve all 156 ruff lint errors on copilot/add-gemini-image-generation ([3fd52f9](https://github.com/WhalerMike/uiao-core/commit/3fd52f9216536fcdcc10f80a177b9b738765f542))
+* resolve all 19 test failures, clean dependencies, add html_template ([3ecbc57](https://github.com/WhalerMike/uiao-core/commit/3ecbc571f7c4c5ea593c208bd8eb0e1239eba4c7))
 * resolve AU-11, PM-4, RA-5 compliance overlaps in parameters.yml ([f6f5bed](https://github.com/WhalerMike/uiao-core/commit/f6f5bedeff522305c26758dc75cbae76a5712356))
 * resolve CI artifact generation failures (Playwright, sandbox, Settings.visuals_dir, Gemini model) ([ad23901](https://github.com/WhalerMike/uiao-core/commit/ad23901702e64ef0fcfe88412ae41b2f77e15077))
 * resolve merge conflicts with AC-3 PR, keep both PolicyEnforcementPoint and PIVAuthenticationService ([7c5a59e](https://github.com/WhalerMike/uiao-core/commit/7c5a59ea82043c11522e8dfbe0d000cd09fbfcad))
