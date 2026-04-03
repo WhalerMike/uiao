@@ -47,6 +47,7 @@
 * loadDoc tries _v1.0.md fallback for versioned doc filenames ([7628424](https://github.com/WhalerMike/uiao-docs/commit/762842475eac7db579c2f5d28e886fe34ff34d24))
 * pin Quarto version to 1.6.43 (404 on bare 1.6) ([3a3304d](https://github.com/WhalerMike/uiao-docs/commit/3a3304ddba44aa622ca19a754642e2fb052cebd2))
 * remove extra indentation on date field in crosswalk_index front matter ([353fa6c](https://github.com/WhalerMike/uiao-docs/commit/353fa6c31ff40a16bcb7cfa4bd4d432f90c7f607))
+* remove setup-tinytex and redundant pandoc from CI workflows ([fbdbc92](https://github.com/WhalerMike/uiao-docs/commit/fbdbc92f11f3341edaf4f62baff2519d00bd2f99))
 * replace git rebase with merge --strategy-option ours to resolve binary conflicts ([15b553a](https://github.com/WhalerMike/uiao-docs/commit/15b553a90a036f744b65c691777b5a67e32f9e27))
 * replace invalid github/mcp-server action with gh extension install ([f5674d2](https://github.com/WhalerMike/uiao-docs/commit/f5674d20ead03e91d1cd9e541d63e287e40eacf6))
 * replace Mermaid with PlantUML — remove mermaid filter, update test diagram to PlantUML server-rendered PNG ([9f5d1bc](https://github.com/WhalerMike/uiao-docs/commit/9f5d1bc28a5a135b499d73722c0375a1fb50fe37))
