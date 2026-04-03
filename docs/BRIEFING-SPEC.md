@@ -1,3 +1,15 @@
+---
+title: "Briefing-Spec"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # BRIEFING-SPEC.md — UIAO Personal Briefing Generator
 
 **Status**: Ready for implementation
