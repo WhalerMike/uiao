@@ -33,7 +33,7 @@ To prevent Agent formatting conflicts, follow this order of precedence for **for
 
 1. **AI HIERARCHY (single source of truth)**
 
-   * **Claude Code** = Canon Steward + Lead Architect + Harsh Reviewer. Primary decision-maker for architecture, canon governance, and PR gating. Owns the repo directly via GitHub integration. Read `docs/BRIEFING-SPEC.md` on first session and implement `generate-briefing` command.
+   * **Claude Code** = Canon Steward + Lead Architect + Harsh Reviewer. Primary decision-maker for architecture, canon governance, and PR gating. Owns the repo directly via GitHub integration. Read [`docs/BRIEFING-SPEC.qmd`](https://github.com/WhalerMike/uiao-docs/blob/main/docs/BRIEFING-SPEC.qmd) on first session and implement `generate-briefing` command.
    * **Comet-Perplexity** (running Claude Sonnet) = Orchestrator + Browser Agent. Owns web search, browser-driven evidence collection from live vendor portals, and task queue management. Defers all architecture decisions to Claude Code.
    * **GitHub Copilot** = Fast implementation layer only. Executes well-scoped tasks with persistent repo memory. Never makes primary architecture or canon decisions.
    * **Gemini** = Image and diagram generation only. Produces architectural visuals via Imagen. No repo write access beyond `assets/images/`.
@@ -41,7 +41,7 @@ To prevent Agent formatting conflicts, follow this order of precedence for **for
 2. **Memory & Context**
 
    * Always read this file + FORMAT-CANON.md + AGENTS.md + UIAO-MEMORY.md before starting any work
-   * **Claude Code session zero**: read `docs/BRIEFING-SPEC.md` and implement the `generate-briefing` command
+   * **Claude Code session zero**: read [`docs/BRIEFING-SPEC.qmd`](https://github.com/WhalerMike/uiao-docs/blob/main/docs/BRIEFING-SPEC.qmd) and implement the `generate-briefing` command
    * Run `uiao generate-briefing` at the start of every Claude Code session to establish current system state before taking any action
    * After any significant change or mistake, update the relevant memory file and this PROJECT-CONTEXT.md if architecture decisions change
    * Never assume context from previous sessions — explicitly reference files
@@ -58,7 +58,7 @@ To prevent Agent formatting conflicts, follow this order of precedence for **for
 
 4. **Current Priorities (April 2026)**
 
-   * **[SESSION ZERO]** Claude Code: read `docs/BRIEFING-SPEC.md` and implement `uiao generate-briefing` command
+   * **[SESSION ZERO]** Claude Code: read [`docs/BRIEFING-SPEC.qmd`](https://github.com/WhalerMike/uiao-docs/blob/main/docs/BRIEFING-SPEC.qmd) and implement `uiao generate-briefing` command
    * Claude Code established as Canon Steward and lead GitHub agent (Grok retired)
    * Tight integration between uiao-core and uiao-validation-targets (CLI commands to test against live target)
    * Full SSP control narrative templating with organization-defined parameters
@@ -100,7 +100,7 @@ canon/diagrams.yaml
 | OSCAL artifacts | `exports/oscal/` |
 | Mermaid PNGs | `assets/images/mermaid/` (15 PNGs) |
 | Gemini PNGs | `assets/images/` |
-| Briefing spec | `docs/BRIEFING-SPEC.md` |
+| Briefing spec | [`docs/BRIEFING-SPEC.qmd`](https://github.com/WhalerMike/uiao-docs/blob/main/docs/BRIEFING-SPEC.qmd) |
 | Reference architecture | `01_Canon/uiao-reference.docx` |
 | Leadership briefing | `exports/docx/UIAO_Leadership_Briefing_v1.0.docx` |
 | CI workflows | `.github/workflows/` (23 workflows) |
@@ -108,7 +108,7 @@ canon/diagrams.yaml
 
 ## Decision Log (Add new entries at top)
 
-* 2026-04-03: BRIEFING-SPEC.md created at docs/BRIEFING-SPEC.md. Defines `uiao generate-briefing` CLI command — owner's daily dashboard document. Pulls from live repo sources: MEMORY.md, vendor-overlays/, control-library/, OSCAL exports, PROJECT-CONTEXT.md, CHANGELOG.md, drift-report.json. Quality target: matches 01_Canon/uiao-reference.docx visual standard.
+* 2026-04-03: BRIEFING-SPEC.md created at BRIEFING-SPEC.qmd (in uiao-docs). Defines `uiao generate-briefing` CLI command — owner's daily dashboard document. Pulls from live repo sources: MEMORY.md, vendor-overlays/, control-library/, OSCAL exports, PROJECT-CONTEXT.md, CHANGELOG.md, drift-report.json. Quality target: matches 01_Canon/uiao-reference.docx visual standard.
 * 2026-04-03: Key file locations table added to PROJECT-CONTEXT.md. vendor-overlays/ (NOT overlays/) confirmed as Big 7 source. 131 control YAMLs and 15 Mermaid PNGs confirmed from directory tree.
 * 2026-04-02: AI hierarchy restructured. Grok retired. Claude Code promoted to Canon Steward and Lead Architect with direct GitHub integration. Comet-Perplexity (running Claude Sonnet) retained as orchestrator and browser/evidence agent. Gemini role locked to image generation only. Copilot retained for fast implementation. Stack simplified from four-model hierarchy to two-model core (Claude Code + Comet-Perplexity).
 * 2026-03-26: FORMAT-CANON.md created as primary format authority. PROJECT-CONTEXT.md updated to establish format authority hierarchy before all other project context. All agents must read FORMAT-CANON.md before making any format decisions.
