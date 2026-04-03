@@ -310,6 +310,11 @@ CMDB:
 <details>
 <summary>Mermaid source</summary>
 
+![UIAO Architecture Diagram](../assets/images/mermaid/unified_arch.png)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart TD
     A[Identity Telemetry] --> B[Addressing Telemetry]
@@ -327,6 +332,8 @@ flowchart TD
     H --> I[Drift Engine - D2]
     I --> G
 ```
+
+</details>
 
 </details>
 
