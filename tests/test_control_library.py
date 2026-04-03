@@ -82,17 +82,11 @@ class TestSC8ImplementedBy:
     def test_tls_termination_layer_present(self, sc8):
         entries = sc8["implemented-by"]
         # entries are plain strings in the current schema
-        assert any(
-            "front-door" in str(e).lower() or "TLSTerminationLayer" in str(e)
-            for e in entries
-        )
+        assert any("front-door" in str(e).lower() or "TLSTerminationLayer" in str(e) for e in entries)
 
     def test_api_gateway_present(self, sc8):
         entries = sc8["implemented-by"]
-        assert any(
-            "gateway" in str(e).lower() or "APIGateway" in str(e)
-            for e in entries
-        )
+        assert any("gateway" in str(e).lower() or "APIGateway" in str(e) for e in entries)
 
     def test_each_entry_is_present(self, sc8):
         for entry in sc8["implemented-by"]:
@@ -109,8 +103,9 @@ class TestSC8Evidence:
         # evidence entries are dicts with 'type' and 'ref' keys
         refs = [e["ref"] for e in sc8["evidence"] if isinstance(e, dict)]
         types = [e.get("type", "") for e in sc8["evidence"] if isinstance(e, dict)]
-        assert any("SC-8" in r or "tls" in r.lower() or "compliance" in r.lower() for r in refs) or \
-               any("configuration" in t for t in types)
+        assert any("SC-8" in r or "tls" in r.lower() or "compliance" in r.lower() for r in refs) or any(
+            "configuration" in t for t in types
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -161,11 +156,7 @@ def test_ia2_narrative_references_piv_cac():
     data = load_yaml(IA2_PATH)
     narrative = data.get("narrative", "")
     # Current YAML does not mention PIV/CAC — check for phishing-resistant auth instead
-    assert (
-        "PIV" in narrative
-        or "CAC" in narrative
-        or "phishing-resistant" in narrative.lower()
-    )
+    assert "PIV" in narrative or "CAC" in narrative or "phishing-resistant" in narrative.lower()
 
 
 def test_ia2_jinja2_template_variables():
