@@ -113,6 +113,7 @@
 * pin Quarto version to 1.6.43 (404 on bare 1.6) ([29da4ee](https://github.com/WhalerMike/uiao-core/commit/29da4eedb4fada54e9b8b5496cfede6454881580))
 * **poam:** update metadata for FedRAMP Rev 5 OSCAL 1.0.4 compliance ([ec11443](https://github.com/WhalerMike/uiao-core/commit/ec11443dd5a9b0cb38c81944ba58ff2ed47c2253))
 * re-add [@app](https://github.com/app).command() decorator to generate_all and remove stray merge artifact ([9d667d3](https://github.com/WhalerMike/uiao-core/commit/9d667d300c706a653a12bf3356bccc4ffe353366))
+* remove 320 tracked build artifacts, stale leftovers, add .gitignore rules ([33300a7](https://github.com/WhalerMike/uiao-core/commit/33300a7540f78fffaf204550ef09c4aceea181ac))
 * remove extra indentation on date field in crosswalk_index front matter ([449753a](https://github.com/WhalerMike/uiao-core/commit/449753af8cb21413675e91e3e5f33baa6a326573))
 * remove missing reference-doc, scss, and lua filter from _quarto.yml ([ecadce2](https://github.com/WhalerMike/uiao-core/commit/ecadce20e1ac1a3c17555ffc0a459e725d9cf29d))
 * remove SSOT comment breaking YAML folded scalar in leadership briefing ([07e8b8a](https://github.com/WhalerMike/uiao-core/commit/07e8b8af0b0bec89ea26a24771b49ae293fa1a3e))
