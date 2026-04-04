@@ -10,6 +10,7 @@ from collections import defaultdict
 import re
 from datetime import datetime
 
+
 def analyze_control_library(control_dir: str = "data/control-library"):
     control_path = Path(control_dir)
     if not control_path.exists():
@@ -37,12 +38,12 @@ def analyze_control_library(control_dir: str = "data/control-library"):
                 families[base_id].append(f"{base_id}({enh_num})")
             else:
                 base_controls += 1
-                family_code = base_id.split('-')[0]
+                family_code = base_id.split("-")[0]
                 families[family_code].append(base_id)
 
         # Basic YAML structure check
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
             has_ksi = any("ksi" in str(k).lower() for k in data.keys()) if isinstance(data, dict) else False
             has_params = "parameters" in data if isinstance(data, dict) else False
@@ -50,12 +51,9 @@ def analyze_control_library(control_dir: str = "data/control-library"):
         except Exception:
             has_ksi = has_params = has_impl = False
 
-        control_details.append({
-            "file": file_path.name,
-            "has_ksi": has_ksi,
-            "has_params": has_params,
-            "has_impl": has_impl
-        })
+        control_details.append(
+            {"file": file_path.name, "has_ksi": has_ksi, "has_params": has_params, "has_impl": has_impl}
+        )
 
     # Summary
     print("=== CONTROL LIBRARY SUMMARY ===")
@@ -67,7 +65,7 @@ def analyze_control_library(control_dir: str = "data/control-library"):
     family_counts = defaultdict(int)
     for fam_list in families.values():
         for item in fam_list:
-            fam = item.split('-')[0]
+            fam = item.split("-")[0]
             family_counts[fam] += 1
 
     for fam in sorted(family_counts.keys()):
@@ -78,14 +76,14 @@ def analyze_control_library(control_dir: str = "data/control-library"):
     with_impl = sum(1 for d in control_details if d["has_impl"])
 
     print("\n=== QUALITY METRICS ===")
-    print(f"KSI rules present      : {with_ksi:3d} / {len(files)} ({with_ksi/len(files)*100:5.1f}%)")
-    print(f"Parameters defined     : {with_params:3d} / {len(files)} ({with_params/len(files)*100:5.1f}%)")
-    print(f"Implementation statements: {with_impl:3d} / {len(files)} ({with_impl/len(files)*100:5.1f}%)")
+    print(f"KSI rules present      : {with_ksi:3d} / {len(files)} ({with_ksi / len(files) * 100:5.1f}%)")
+    print(f"Parameters defined     : {with_params:3d} / {len(files)} ({with_params / len(files) * 100:5.1f}%)")
+    print(f"Implementation statements: {with_impl:3d} / {len(files)} ({with_impl / len(files) * 100:5.1f}%)")
 
     # Save Markdown report
     report_path = control_path / "control_library_report.md"
     with open(report_path, "w", encoding="utf-8") as f:
-        f.write(f"# uiao-core Control Library Report\n\n")
+        f.write("# uiao-core Control Library Report\n\n")
         f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
         f.write(f"**Total files**: {len(files)}\n")
         f.write(f"**Base controls**: {base_controls}\n")
@@ -97,7 +95,7 @@ def analyze_control_library(control_dir: str = "data/control-library"):
             f.write(f"- **{fam}**: {family_counts[fam]} files\n")
 
         f.write("\n## Quality Metrics\n")
-        f.write(f"- KSI coverage: **{with_ksi}** / {len(files)} files ({with_ksi/len(files)*100:.1f}%)\n")
+        f.write(f"- KSI coverage: **{with_ksi}** / {len(files)} files ({with_ksi / len(files) * 100:.1f}%)\n")
         f.write(f"- Parameters: **{with_params}** files\n")
         f.write(f"- Implementation statements: **{with_impl}** files\n\n")
 
@@ -106,6 +104,7 @@ def analyze_control_library(control_dir: str = "data/control-library"):
         f.write("- Aim for >80% KSI coverage before starting SCuBA importer (Phase 1).\n")
 
     print(f"\n✅ Report saved to: {report_path.resolve()}")
+
 
 if __name__ == "__main__":
     analyze_control_library()
