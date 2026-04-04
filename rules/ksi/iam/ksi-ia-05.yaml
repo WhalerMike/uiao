@@ -1,33 +1,55 @@
 ksi_id: KSI-IA-05
 title: Authenticator Management
-description: Measures and validates compliance with IA-5 (Authenticator Management) and its enhancements. Monitors EntraID,
-  AzureActivityLogs for evidence of control implementation and effectiveness.
+description: All authenticators must meet FIPS 140-2 requirements. Password policies enforce complexity, rotation, and breach-detection screening. Service account credentials must be managed via managed identities or secret vaults — no static passwords.
 severity: critical
 family: IA
 controls:
 - IA-5
 - IA-5(1)
 - IA-5(2)
+- IA-5(4)
 - IA-5(6)
+- IA-5(7)
 data_sources:
 - EntraID
-- AzureActivityLogs
-validation_logic_ref: ksi/ksi-ia-05.yaml
+- AzureKeyVault
+- graph_api
+validation_type: automated
+pass_criteria:
+  description: Zero static passwords for service accounts. 100% of user passwords screened against breach lists. All secrets stored in Key Vault.
+  type: boolean
+  threshold: 1
+  operator: equals
+  logic: EntraID password protection enabled; service principals use managed identity or cert-based auth
+uiao_extensions:
+  gcc_moderate_focus: true
+  private_endpoint_enforcement: true
+  dns_segmentation_required: false
+  hub_spoke_model: false
+  video_project_isolation: false
+  zero_trust_telemetry: true
+  sase_global_secure_access: false
+  custom_validation_logic: entra_password_protection_and_managed_identity_check
+oscal_props:
+  implementation_status_prop: satisfied
+  evidence_type: observation
+validation_logic_ref: ksi/iam/ksi-ia-05.yaml
 freshness_window: PT24H
 expected_patterns:
-- Authenticator Management must enforce phishing-resistant MFA for all privileged access
-- All authentication events must be bound to UIAO identity namespace
+- Service accounts must use managed identities or certificate-based authentication
+- User passwords must be screened against known breach lists via Entra ID Password Protection
 evidence_output:
   oscal_evidence_type: observation
   quarto_snippet_type: evidence-panel
 provenance:
-  source: generated-from-template
+  source: tier1-manual-enrichment
   timestamp: '2026-04-04T00:00:00Z'
   collector_id: uiao-core-ksi-builder
-  hash: 632c07c511b106b535e88d749882856a2c1839481871f0243c1d268b7324af92
-version: 1.0.0
+  hash: placeholder
+version: 1.1
 tags:
-- identification-authentication
 - identity-plane
+- authenticator-management
+- zero-trust
 - fedramp-moderate
 enabled: true
