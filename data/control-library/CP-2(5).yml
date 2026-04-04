@@ -1,0 +1,80 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CP-2(5)
+# Title      : Contingency Plan | Continue Mission and Business Functions
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: CP-2(5)
+title: "Contingency Plan | Continue Mission and Business Functions"
+family: Contingency Planning
+status: not-implemented
+
+implemented_by:
+  - azure-site-recovery
+  - azure-entra-id
+  - microsoft-sentinel
+  - cisco-ise
+
+evidence:
+  - cp-2-5-degraded-operations-procedures
+  - cp-2-5-azure-high-availability-architecture-diagram
+  - cp-2-5-sentinel-resilience-monitoring-dashboard
+  - cp-2-5-cisco-ise-ha-configuration-evidence
+
+parameters:
+  - id: cp_2_5_degraded_operations_capabilities
+    description: >-
+      Defined essential capabilities that must remain available during
+      degraded or contingency operations to continue mission functions.
+    value: "User authentication (Entra ID in degraded mode), network access enforcement (Cisco ISE with local policy cache), security event monitoring (Sentinel with local log retention), and privileged access (CyberArk in DR mode)"
+  - id: cp_2_5_continuity_duration
+    description: >-
+      Maximum duration for which the system must sustain essential
+      mission functions in degraded or alternate-site operations.
+    value: "Minimum 72 hours at full essential capability; extended operations up to 30 days at reduced but mission-viable capability through alternate processing facility"
+
+narrative: |
+  **Continuation of Essential Functions During Disruption**
+  The UIAO Contingency Plan addresses continuation of essential mission and
+  business functions throughout the duration of a disruption — not merely
+  resumption after recovery — ensuring that critical services remain available
+  or rapidly achievable even during the contingency period. Degraded operations
+  capabilities defined in PARAM cp_2_5_degraded_operations_capabilities identify
+  the minimum set of security and mission functions that must remain available,
+  and the technical architecture is designed to sustain these capabilities for
+  the duration defined in PARAM cp_2_5_continuity_duration without full system
+  restoration. This continuity-first posture distinguishes CP-2(5) from
+  CP-2(3)'s resumption focus and ensures mission viability throughout the
+  incident lifecycle.
+
+  **High Availability Architecture Supporting Continuity**
+  Azure Entra ID is deployed with geo-redundant replication across Azure
+  regions, ensuring authentication and authorization services remain available
+  with no manual failover required during regional Azure outages. Cisco ISE is
+  deployed in a high-availability pair with local policy caching, allowing
+  network access enforcement to continue enforcing the last-known good policy
+  for a defined duration even if connectivity to the primary ISE node is lost.
+  Microsoft Sentinel is configured with data connector redundancy and local
+  Log Analytics workspace retention, maintaining security monitoring visibility
+  throughout contingency operations. CyberArk is deployed with Disaster Recovery
+  vault replication to the alternate Azure region, ensuring privileged access
+  management capability persists. These architectural decisions collectively
+  sustain **AC-2** (Account Management) and **AU-2** (Event Logging) functions
+  during contingency conditions.
+
+  **Degraded Operations Procedures and Monitoring**
+  The Contingency Plan includes specific degraded operations procedures for
+  each essential capability, documenting manual fallback processes for
+  scenarios where automated systems are partially degraded. Microsoft Sentinel
+  dashboards include a Contingency Operations view displaying the health status
+  of all continuity-critical components, generating alerts when any component
+  falls below its defined continuity threshold. Continuity status is reported
+  to the ISSM and Authorizing Official at defined intervals during contingency
+  operations, supporting **CP-4** (Contingency Plan Testing) exercise scenarios
+  that validate degraded-mode operational procedures.
+
+related_controls:
+  - CP-2   # Contingency Plan (parent control)
+  - CP-2(3) # Resume Mission and Business Functions
+  - CP-2(8) # Identify Critical Assets
+  - CP-4   # Contingency Plan Testing
+  - CP-10  # System Recovery and Reconstitution

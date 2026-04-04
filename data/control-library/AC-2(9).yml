@@ -1,0 +1,89 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-2(9)
+# Title      : Account Management | Restrictions on Use of Shared and Group Accounts
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AC-2(9)
+title: "Account Management | Restrictions on Use of Shared and Group Accounts"
+family: Access Control
+status: not-implemented
+
+implemented_by:
+  - entra-id
+  - cyberark-pas
+  - servicenow-itsm
+  - microsoft-sentinel
+
+evidence:
+  - entra-id-shared-account-inventory-report
+  - cyberark-shared-account-policy-configuration
+  - servicenow-shared-account-exception-records
+  - sentinel-shared-account-usage-alert-log
+
+parameters:
+  - id: ac_2_9_shared_account_conditions
+    description: >-
+      Conditions under which shared or group accounts are permitted
+      within the UIAO system environment.
+    value: "Shared accounts permitted only for service accounts, functional mailboxes, and emergency break-glass accounts with documented business justification approved by ISSO and ISSM"
+  - id: ac_2_9_shared_account_controls
+    description: >-
+      Compensating controls required when shared or group accounts
+      are authorized for use.
+    value: "All shared account credentials vaulted in CyberArk; check-out logged with requester identity; session recording enabled for all shared privileged accounts"
+
+narrative: |
+  **Restriction Policy for Shared and Group Accounts**
+  The UIAO system restricts the use of shared and group accounts
+  to only those conditions explicitly authorized under PARAM
+  ac_2_9_shared_account_conditions. Individual user accounts are
+  the default account type for all personnel, and shared accounts
+  are prohibited unless a documented business justification has
+  been reviewed and approved by both the ISSO and ISSM through a
+  formal exception process tracked in ServiceNow ITSM. The Entra
+  ID account inventory is periodically reviewed by the ISSO to
+  identify any shared or group accounts and validate that each
+  has an active, approved exception on file. This satisfies
+  the requirement to allow shared accounts only under specific
+  defined conditions and supports **AC-2** (Account Management)
+  and **AC-5** (Separation of Duties).
+
+  **Vaulting and Accountability for Authorized Shared Accounts**
+  All authorized shared and group account credentials are stored
+  exclusively in CyberArk Privileged Access Security, preventing
+  direct knowledge or storage of credentials by individual users.
+  Access to shared account credentials requires an authenticated
+  check-out request in CyberArk that records the requesting user's
+  individual Entra ID identity, the time of checkout, the stated
+  business purpose, and the duration of access. This check-out
+  logging provides individual accountability for shared account
+  usage despite the shared credential, satisfying compensating
+  control requirements defined in PARAM ac_2_9_shared_account_controls.
+
+  **Session Recording for Shared Privileged Accounts**
+  CyberArk Privileged Session Manager (PSM) enforces session
+  recording for all interactive sessions initiated through shared
+  privileged accounts. Session recordings are stored in the
+  CyberArk vault with restricted access and are forwarded as
+  audit metadata to Microsoft Sentinel, enabling behavioral
+  analysis and anomaly detection. The session recording capability
+  provides forensic traceability for shared account activity,
+  supporting **AU-2** (Event Logging) and **AU-12** (Audit
+  Record Generation) requirements.
+
+  **Break-Glass Account Controls**
+  Emergency break-glass accounts maintained in Entra ID are
+  governed by a dedicated procedure requiring dual-authorization
+  for activation and immediate notification to the ISSO and ISSM.
+  Break-glass account usage is monitored by a Sentinel alert that
+  fires within minutes of any sign-in, ensuring rapid human review
+  of emergency access events consistent with **IR-4** (Incident
+  Handling) and **AC-2(4)** (Automated Audit Actions) requirements.
+
+related_controls:
+  - AC-2    # Account Management
+  - AC-2(4) # Automated Audit Actions
+  - AC-5    # Separation of Duties
+  - AC-6    # Least Privilege
+  - AU-2    # Event Logging
+  - AU-12   # Audit Record Generation

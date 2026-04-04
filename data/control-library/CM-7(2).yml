@@ -1,0 +1,93 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CM-7(2)
+# Title      : Least Functionality | Prevent Program Execution
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: CM-7(2)
+title: "Least Functionality | Prevent Program Execution"
+family: Configuration Management
+status: not-implemented
+
+implemented_by:
+  - crowdstrike-falcon
+  - intune-mdm
+  - entra-id
+  - microsoft-sentinel
+
+evidence:
+  - crowdstrike-application-control-policy-config
+  - intune-managed-application-allow-list
+  - crowdstrike-blocked-execution-event-log
+  - sentinel-unauthorized-execution-alert-log
+
+parameters:
+  - id: cm_7_2_prevention_mechanism
+    description: >-
+      Technical mechanism used to prevent execution of software
+      programs not authorized for use within the system.
+    value: "CrowdStrike Falcon application control with allow-list enforcement; Windows Defender Application Control (WDAC) policies deployed via Intune; macOS Gatekeeper enforced via Intune configuration profile"
+  - id: cm_7_2_authorized_software_catalog
+    description: >-
+      Repository maintaining the list of authorized software
+      programs permitted to execute within the UIAO environment.
+    value: "Authorized software catalog maintained in ServiceNow CMDB Application Portfolio; enforced through CrowdStrike application control hashes and publisher-based rules"
+
+narrative: |
+  **Application Allow-Listing and Execution Prevention**
+  The UIAO system prevents the execution of software programs
+  not authorized for operational use through technical enforcement
+  mechanisms defined in PARAM cm_7_2_prevention_mechanism.
+  CrowdStrike Falcon's application control capability enforces
+  an allow-list of approved executables on all managed endpoints
+  by blocking execution of any binary that does not match an
+  approved hash, publisher certificate, or path rule from the
+  authorized software catalog defined in PARAM cm_7_2_authorized_software_catalog.
+  Windows endpoints additionally benefit from Windows Defender
+  Application Control (WDAC) policies deployed through Microsoft
+  Intune, providing a kernel-level execution prevention layer
+  independent of the CrowdStrike agent. This layered approach
+  satisfies the CM-7(2) requirement to prevent program execution
+  and supports **CM-7** (Least Functionality) and **SI-3**
+  (Malicious Code Protection) objectives.
+
+  **macOS Application Execution Controls**
+  macOS managed endpoints are configured via Intune to enforce
+  Gatekeeper restrictions that prevent execution of unsigned
+  or unnotarized applications. Intune configuration profiles
+  set Gatekeeper to require applications to be signed by an
+  identified developer and notarized by Apple, preventing
+  execution of unsigned or self-compiled binaries. CrowdStrike
+  Falcon supplements Gatekeeper with behavioral prevention
+  controls that block malicious execution patterns even for
+  signed applications that exhibit suspicious behavior.
+
+  **Unauthorized Execution Detection and Response**
+  CrowdStrike Falcon logs all blocked execution attempts,
+  capturing the process name, hash, parent process, user
+  identity, and endpoint identifier for each prevention event.
+  Blocked execution events are forwarded to Microsoft Sentinel,
+  where analytic rules identify patterns of persistent execution
+  attempts that may indicate an adversarial presence. High-volume
+  or targeted execution prevention events trigger alerts routed
+  to ServiceNow ITSM for investigation under **IR-4** (Incident
+  Handling) procedures. The execution prevention telemetry also
+  informs software catalog reviews during the quarterly least
+  functionality review under **CM-7(1)**.
+
+  **Software Catalog Governance**
+  Additions to the authorized software catalog require submission
+  of a ServiceNow change request with business justification,
+  security review by the ISSO, and CAB approval before new
+  hashes or publisher rules are added to CrowdStrike application
+  control policies. This governed catalog management process
+  ensures that execution prevention policy changes are traceable
+  and authorized, maintaining alignment with **CM-3**
+  (Configuration Change Control) requirements.
+
+related_controls:
+  - CM-3   # Configuration Change Control
+  - CM-7   # Least Functionality
+  - CM-7(1) # Periodic Review
+  - SI-3   # Malicious Code Protection
+  - IR-4   # Incident Handling
+  - SI-4   # System Monitoring
