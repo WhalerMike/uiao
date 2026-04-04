@@ -1,5 +1,11 @@
 # UIAO Core — Generation Engine & Adapter Framework
 
+[![CI](https://github.com/WhalerMike/uiao-core/actions/workflows/ci.yml/badge.svg)](https://github.com/WhalerMike/uiao-core/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![FedRAMP Moderate](https://img.shields.io/badge/FedRAMP-Moderate%20Rev%205-orange.svg)](#control-library-status)
+[![Controls](https://img.shields.io/badge/controls-247%20(163%20base%20%2B%2084%20enhancements)-blueviolet.svg)](#control-library-status)
+
 **Repository:** `uiao-core`
 **Role:** Machine-readable tooling — OSCAL generation, adapter framework, Python engine, schemas
 **Classification:** CUI/FOUO
@@ -8,17 +14,22 @@
 
 ## What This Repository Is
 
-`uiao-core` is the **generation engine and adapter framework** for the Unified Identity-Addressing-Overlay Architecture (UIAO). It contains:
+`uiao-core` is the **generation engine and adapter framework** for the Unified Identity-Addressing-Overlay Architecture (UIAO) — a federal network modernization program targeting FedRAMP Moderate Rev 5 compliance. It transforms YAML definitions into OSCAL JSON, Markdown, DOCX, PPTX, and CycloneDX SBOM artifacts.
 
 - **Python generation engine** (`src/`) — transforms YAML canon into OSCAL JSON, Markdown, DOCX, PPTX, and CycloneDX SBOM
-- **Adapter framework** — standardized interfaces connecting vendor systems to the UIAO schema
+- **Control library** (`data/control-library/`) — 247 granular NIST controls covering the full FedRAMP Moderate baseline
+- **Adapter framework** — standardized interfaces connecting vendor systems (Entra, Infoblox, CyberArk, ServiceNow, Palo Alto, Cisco, SD-WAN) to the UIAO schema
 - **JSON schemas** (`schemas/`) — validation schemas for KSI mappings, OSCAL profiles, drift detection
 - **Scripts** (`scripts/`) — crosswalk validation, drift checks, pre-commit hooks, directory enforcement
 - **Tests** (`tests/`) — unit and integration tests for the generation pipeline
 
-## What This Repository Is NOT
+---
 
-This repository does not contain the documentation canon. The canonical `.qmd` source files, YAML data schemas, rendered HTML site, and Quarto pipeline live in **[uiao-docs](https://github.com/WhalerMike/uiao-docs)**.
+## Documentation Canon — Separation Notice
+
+> **This repository is the engine, not the documentation source.**
+
+The canonical `.qmd` source files, YAML data schemas, rendered HTML site, and Quarto pipeline live in **[uiao-docs](https://github.com/WhalerMike/uiao-docs)**.
 
 | What | Where |
 |------|-------|
@@ -26,6 +37,7 @@ This repository does not contain the documentation canon. The canonical `.qmd` s
 | YAML data schemas (30 files) | [uiao-docs/data/](https://github.com/WhalerMike/uiao-docs/tree/main/data) |
 | Rendered HTML site | [whalermike.github.io/uiao-docs](https://whalermike.github.io/uiao-docs/docs/index.html) |
 | OSCAL generation engine | **This repo** (`src/`) |
+| Control library (247 controls) | **This repo** (`data/control-library/`) |
 | Adapter framework | **This repo** (`src/adapters/`) |
 | JSON validation schemas | **This repo** (`schemas/`) |
 | Operational wiki | [uiao-docs wiki](https://github.com/WhalerMike/uiao-docs/wiki) |
@@ -34,36 +46,146 @@ See the [Repository Ownership & SSOT Policy](https://github.com/WhalerMike/uiao-
 
 ---
 
-## Repository Structure
+## Control Library Status
+
+The control library covers the **full FedRAMP Moderate Rev 5 baseline** with 247 granular control files.
+
+| Metric | Value |
+|--------|-------|
+| Total controls | **247** (163 base + 84 enhancements) |
+| Parameter coverage | **86.7%** |
+| KSI rules coverage | **0%** (next major task) |
+| Implementation statements | **27.4%** |
+
+Each control is a standalone YAML file in `data/control-library/` following the naming convention `<family>-<number>.yml` (e.g., `AC-2.yml`) with enhancements as `<family>-<number>(<enhancement>).yml` (e.g., `AC-2(3).yml`).
+
+---
+
+## Architecture
+
+### Two-Repo Model
+
+```
+┌──────────────────────────────────┐      ┌──────────────────────────────────┐
+│          uiao-core               │      │          uiao-docs               │
+│  (this repo)                     │      │  (documentation canon)           │
+│                                  │      │                                  │
+│  Python engine + adapters        │      │  .qmd source files               │
+│  OSCAL generation pipeline       │─────>│  Quarto pipeline                 │
+│  Control library (247 controls)  │      │  Rendered HTML site              │
+│  JSON schemas + validators       │      │  YAML data schemas               │
+└──────────────────────────────────┘      └──────────────────────────────────┘
+```
+
+### Generation Pipeline
+
+```
+YAML definitions (generation-inputs/)
+        │
+        ▼
+Python generation engine (src/uiao_core/generators/)
+        │
+        ├──> OSCAL JSON (SSP, POA&M, profiles)
+        ├──> Markdown / DOCX / PPTX
+        ├──> CycloneDX SBOM
+        └──> Mermaid diagrams → PNG
+```
+
+### Diagram Pipeline
+
+`generation-inputs/diagrams.yaml` is SSOT for all Mermaid diagrams:
+
+```
+diagrams.yaml → generate_diagrams_from_canon() → visuals/*.mermaid → render_mermaid_file() → assets/images/mermaid/*.png
+```
+
+<!-- TODO: Add architecture diagram (Mermaid or PNG) -->
+
+### Source Layout
 
 ```
 uiao-core/
-├── src/                    # Python generation engine
-│   ├── adapters/           # Vendor adapter implementations
-│   ├── generators/         # OSCAL, Markdown, DOCX, PPTX generators
-│   └── validators/         # Schema and drift validators
-├── schemas/                # JSON schemas (KSI, OSCAL, drift)
+├── src/uiao_core/
+│   ├── cli/                # Typer CLI app and subcommands
+│   ├── generators/         # OSCAL, SSP, POA&M, DOCX, PPTX, SBOM, diagram generators
+│   ├── adapters/           # Vendor system interfaces (Big 7)
+│   ├── collectors/         # Data collectors for vendor systems
+│   ├── evidence/           # Bundler, collector, linker for compliance evidence
+│   ├── validators/         # Schema and drift validators
+│   ├── models/             # Pydantic models
+│   ├── monitoring/         # Telemetry and health checks
+│   ├── onboarding/         # JML (Joiner/Mover/Leaver) scenarios
+│   ├── abstractions/       # Provider interface contracts
+│   ├── dashboard/          # Dashboard components
+│   └── utils/              # Shared utilities
+├── data/
+│   ├── control-library/    # 247 NIST control YAML files (FedRAMP Moderate)
+│   └── vendor-overlays/    # Big 7 vendor integration specs
+├── schemas/                # JSON validation schemas (KSI, UDC, UIAO API)
+├── templates/              # Jinja2 templates for DOCX/PPTX rendering
+├── generation-inputs/      # YAML definitions driving the generation engine
 ├── scripts/                # Utility scripts (crosswalk, validation, hooks)
 ├── tests/                  # Unit and integration tests
-├── generation-inputs/      # Machine-readable generation inputs (YAML definitions)
-├── visuals/                # Visual asset sources
-├── docs/                   # Non-document assets only (images, pitch deck)
-│   └── README.md           # Points to uiao-docs for all documentation
-├── machine/                # Machine-readable artifact definitions
-├── templates/              # Jinja2 templates for document generation
-└── compliance/             # FedRAMP reference data
+└── .github/workflows/      # 23 GitHub Actions workflows
 ```
 
 ---
 
-## Intentional Exceptions
+## Quick Start
 
-Two items in this repo may look like documentation artifacts but are intentionally retained:
+```bash
+# Install in development mode
+pip install -e ".[dev]"
 
-| Item | Why It's Here |
-|------|---------------|
-| `_quarto.yml` | Simplified stub kept for local generation script testing. The canonical Quarto pipeline lives in [uiao-docs](https://github.com/WhalerMike/uiao-docs). |
-| `generation-inputs/` | Machine-readable YAML definitions (diagram specs, visual manifest, pitch deck data, project plan data) that drive the Python generation engine in `src/`. These are inputs to code, not human-readable documentation. |
+# Run CI test subset
+pytest tests/test_models.py tests/test_cli.py tests/test_workflow_serialization.py -v --tb=short
+
+# Lint
+ruff check --fix src/
+
+# Type check
+mypy src/uiao_core/
+```
+
+## CLI
+
+The `uiao` CLI (typer-based) is the primary interface:
+
+```bash
+uiao --version
+uiao generate-ssp --canon <path> --data-dir data/ --output exports/
+uiao generate-diagrams        # Renders Mermaid → PNG
+uiao generate-docs             # Full doc generation
+uiao generate-sbom --output sbom.cyclonedx.json
+uiao validate <path>
+uiao canon-check --dir <path>
+```
+
+---
+
+## Roadmap
+
+### Completed
+
+- [x] Full FedRAMP Moderate baseline — 247 controls (163 base + 84 enhancements)
+- [x] 86.7% parameter coverage across control library
+- [x] OSCAL SSP and POA&M generation pipeline
+- [x] Big 7 vendor adapter framework (Entra, Infoblox, CyberArk, ServiceNow, Palo Alto, Cisco, SD-WAN)
+- [x] CycloneDX SBOM generation
+- [x] Mermaid diagram pipeline from YAML SSOT
+- [x] 23 GitHub Actions CI/CD workflows
+
+### In Progress
+
+- [ ] Implementation statements — expand from 27.4% to full coverage
+- [ ] Parameter coverage — close remaining 13.3% gap
+
+### Next Major Tasks
+
+- [ ] **KSI rules** — currently at 0%, this is the next major initiative
+- [ ] Evidence linker integration with OSCAL back-matter
+- [ ] GPG-signed commit hard gate (currently advisory)
+- [ ] FedRAMP 20x alignment updates
 
 ---
 
@@ -75,9 +197,7 @@ It provides deterministic identity correlation and cross-service telemetry acros
 
 The architecture is specified across a 20-document modernization canon maintained in [uiao-docs](https://github.com/WhalerMike/uiao-docs), aligned with Zero Trust, TIC 3.0, NIST 800-63, and FedRAMP 20x.
 
----
-
-## Eight Core Concepts
+### Eight Core Concepts
 
 1. **Single Source of Truth (SSOT)** — Every claim has one authoritative origin. All other representations are pointers, not copies.
 2. **Conversation as the atomic unit** — Every interaction binds identity, certificates, addressing, path, QoS, and telemetry.
