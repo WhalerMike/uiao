@@ -3,8 +3,10 @@
 
 ### Bug Fixes
 
+* remove docs/STYLE-GUIDE.md and site/ generated files to resolve merge conflicts ([7e40ff8](https://github.com/WhalerMike/uiao-core/commit/7e40ff8f75985ae0a7a81139c080b91fee9802da))
 * rename section 6 from Core Concepts to Eight Core Concepts to resolve canon drift ([b85d406](https://github.com/WhalerMike/uiao-core/commit/b85d406b8465b799cb832a8e14496d03286cf8fe))
 * resolve all remaining test failures — 379 passed, 0 failed ([e663092](https://github.com/WhalerMike/uiao-core/commit/e663092c6c62953b8d5e387befa6ca4c68413b90))
+* update Core Concepts section name to Eight Core Concepts to resolve canon drift ([9f868c1](https://github.com/WhalerMike/uiao-core/commit/9f868c1755f3d951f7cab24cc67e1f07cddfed4b))
 * update workflows to use pyproject.toml instead of deleted requirements.txt ([bb0e660](https://github.com/WhalerMike/uiao-core/commit/bb0e660028abc90dec3681b22199fa1f39640f08))
 
 
