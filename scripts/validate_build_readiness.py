@@ -16,8 +16,8 @@ warnings.warn(
 )
 
 REQUIRED_FILES = [
-    "data/nist_crosswalk.yml",
-    "data/roadmap.yml",
+    "rules/ksi/uiao-control-to-ksi-mapping.yaml",
+    "rules/ksi/index.yaml",
     "visuals/README.md",
 ]
 
@@ -28,17 +28,14 @@ REQUIRED_DIRS = [
 
 def check_readiness():
     missing = []
-
     # Check Directories
     for d in REQUIRED_DIRS:
         if not os.path.exists(d):
             missing.append(f"Directory Missing: {d}")
-
     # Check Files
     for f in REQUIRED_FILES:
         if not os.path.exists(f):
             missing.append(f"File Missing: {f}")
-
     if missing:
         print("BUILD BLOCKED: The following architectural assets are missing:")
         for m in missing:
