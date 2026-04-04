@@ -20,6 +20,7 @@
 
 * **adapters:** add Entra ID DNS-style adapter matching DatabaseAdapterBase pattern ([0850109](https://github.com/WhalerMike/uiao-core/commit/08501091126be3bd9d776cb6e3f15f4c92d2464d))
 * **adapters:** add ServiceNow DNS-style alignment adapter + collector + README section ([231c7a6](https://github.com/WhalerMike/uiao-core/commit/231c7a63ccceec4935e2da545b15e8c49fc0745b))
+* **adapters:** export EntraAdapter from adapters __init__.py ([ee34d6d](https://github.com/WhalerMike/uiao-core/commit/ee34d6d6aec1580dddc069688196f2500c6df376))
 * add KSI library (163 indicators) for FedRAMP Moderate baseline ([ab8a303](https://github.com/WhalerMike/uiao-core/commit/ab8a3032a605e2ec92331ba98706b380a5d281c2))
 * expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
 * **ksi:** add crosswalk script + mapping - 163 KSIs covering 247 NIST controls ([3d784ff](https://github.com/WhalerMike/uiao-core/commit/3d784fffdbe7a2bb07119e57d5addac4c060f21d))
