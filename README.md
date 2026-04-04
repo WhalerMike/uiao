@@ -54,7 +54,7 @@ The control library covers the **full FedRAMP Moderate Rev 5 baseline** with 247
 |--------|-------|
 | Total controls | **247** (163 base + 84 enhancements) |
 | Parameter coverage | **86.7%** |
-| KSI rules coverage | **0%** (next major task) |
+| KSI rules coverage | **163 rules — schema + index complete, enrichment in progress** |
 | Implementation statements | **27.4%** |
 
 Each control is a standalone YAML file in `data/control-library/` following the naming convention `<family>-<number>.yml` (e.g., `AC-2.yml`) with enhancements as `<family>-<number>(<enhancement>).yml` (e.g., `AC-2(3).yml`).
