@@ -1,8 +1,7 @@
 ksi_id: KSI-SC-28
 title: Protection of Information at Rest
-description: Measures and validates compliance with SC-28 (Protection of Information at Rest) and its enhancements. Monitors
-  AzurePolicy, AzureResourceGraph for evidence of control implementation and effectiveness.
-severity: critical
+description: All data at rest encrypted using AES-256 or stronger. Azure Storage, SQL, Cosmos DB, and Key Vault use customer-managed keys (CMK) stored in Azure Key Vault with HSM backing. Encryption status validated via Azure Policy and Defender for Cloud.
+severity: high
 family: SC
 controls:
 - SC-28
@@ -10,22 +9,43 @@ controls:
 data_sources:
 - AzurePolicy
 - AzureResourceGraph
-validation_logic_ref: ksi/ksi-sc-28.yaml
+validation_type: automated
+pass_criteria:
+  description: 100% of in-scope storage resources encrypted with CMK. Zero resources with platform-managed keys where CMK is required. Key Vault HSM protection enabled.
+  type: percentage
+  threshold: 100
+  operator: equals
+  logic: ARG query confirms encryption settings on all storage/SQL/Cosmos resources; Key Vault key metadata confirms HSM-backed keys
+uiao_extensions:
+  gcc_moderate_focus: true
+  private_endpoint_enforcement: true
+  dns_segmentation_required: false
+  hub_spoke_model: false
+  video_project_isolation: true
+  zero_trust_telemetry: false
+  sase_global_secure_access: false
+  custom_validation_logic: azure_cmk_encryption_coverage_check
+oscal_props:
+  implementation_status_prop: satisfied
+  evidence_type: observation
+validation_logic_ref: ksi/boundary-protection/ksi-sc-28.yaml
 freshness_window: PT24H
 expected_patterns:
-- Protection of Information at Rest must be enforced across all system communication paths
-- Network security posture must be continuously monitored and validated
+- All in-scope data stores must use customer-managed keys with HSM-backed Key Vault
+- Zero storage resources permitted to use platform-managed keys where CMK policy applies
 evidence_output:
   oscal_evidence_type: observation
   quarto_snippet_type: evidence-panel
 provenance:
-  source: generated-from-template
+  source: tier1-manual-enrichment
   timestamp: '2026-04-04T00:00:00Z'
   collector_id: uiao-core-ksi-builder
-  hash: d5135c18a2cac422acca22632e98b5a93ebd835fe327ff98f2275980b12a9aae
-version: 1.0.0
+  hash: placeholder
+version: 1.1
 tags:
-- system-communications
 - network-plane
+- encryption-at-rest
+- cmk
+- key-vault
 - fedramp-moderate
 enabled: true

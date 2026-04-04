@@ -1,30 +1,49 @@
 ksi_id: KSI-AU-02
 title: Event Logging
-description: Measures and validates compliance with AU-2 (Event Logging) and its enhancements. Monitors AzureActivityLogs,
-  AzureMonitorMetrics for evidence of control implementation and effectiveness.
+description: Defined audit events must be logged across all in-scope system components. Entra ID sign-in and audit logs, Azure Activity Log, resource diagnostic logs, and Defender alerts must all flow to the central Log Analytics workspace within 15 minutes.
 severity: high
 family: AU
 controls:
 - AU-2
+- AU-2(3)
 data_sources:
 - AzureActivityLogs
 - AzureMonitorMetrics
-validation_logic_ref: ksi/ksi-au-02.yaml
+validation_type: automated
+pass_criteria:
+  description: 100% of defined audit event categories enabled on all in-scope resources. Log ingestion latency <15 minutes. Zero audit log gaps >1 hour.
+  type: percentage
+  threshold: 100
+  operator: equals
+  logic: Diagnostic settings API confirms all required categories enabled; Log Analytics query confirms recent ingestion timestamps
+uiao_extensions:
+  gcc_moderate_focus: true
+  private_endpoint_enforcement: true
+  dns_segmentation_required: false
+  hub_spoke_model: false
+  video_project_isolation: false
+  zero_trust_telemetry: true
+  sase_global_secure_access: false
+  custom_validation_logic: azure_diagnostic_settings_coverage_check
+oscal_props:
+  implementation_status_prop: satisfied
+  evidence_type: observation
+validation_logic_ref: ksi/monitoring-logging/ksi-au-02.yaml
 freshness_window: PT24H
 expected_patterns:
-- Event Logging must be continuously operational across all system components
-- Audit data must be collected, stored, and available for review within freshness window
+- All required audit event categories must be enabled on every in-scope Azure resource
+- Log ingestion latency must not exceed 15 minutes for any audit event category
 evidence_output:
   oscal_evidence_type: observation
   quarto_snippet_type: dashboard-widget
 provenance:
-  source: generated-from-template
+  source: tier1-manual-enrichment
   timestamp: '2026-04-04T00:00:00Z'
   collector_id: uiao-core-ksi-builder
-  hash: 133935c4ed20ab1ace19383fa9cb9f75634a42ff6344b85632e3eaf8a303a47c
-version: 1.0.0
+  hash: placeholder
+version: 1.1
 tags:
-- audit
 - telemetry-plane
+- audit-logging
 - fedramp-moderate
 enabled: true

@@ -1,35 +1,57 @@
 ksi_id: KSI-SI-04
 title: System Monitoring
-description: Measures and validates compliance with SI-4 (System Monitoring) and its enhancements. Monitors MicrosoftDefenderXDR,
-  DefenderForEndpoint, AzureMonitorMetrics for evidence of control implementation and effectiveness.
+description: Continuous monitoring via Microsoft Sentinel with UEBA enabled. All Azure resource diagnostic logs forwarded to Log Analytics workspace. Alert rules active for anomalous sign-ins, privilege escalation, data exfiltration indicators, and lateral movement patterns.
 severity: critical
 family: SI
 controls:
 - SI-4
-- SI-4(18)
 - SI-4(2)
 - SI-4(4)
 - SI-4(5)
+- SI-4(10)
+- SI-4(16)
 data_sources:
 - MicrosoftDefenderXDR
 - DefenderForEndpoint
 - AzureMonitorMetrics
-validation_logic_ref: ksi/ksi-si-04.yaml
-freshness_window: PT24H
+- AzureActivityLogs
+validation_type: automated
+pass_criteria:
+  description: Sentinel workspace receiving logs from 100% of in-scope resources. UEBA enabled. Zero gaps >15 minutes in diagnostic log ingestion. All critical alert rules in Enabled state.
+  type: percentage
+  threshold: 100
+  operator: equals
+  logic: Log Analytics heartbeat confirms all VMs/PaaS sending data; Sentinel analytics rules active count matches baseline
+uiao_extensions:
+  gcc_moderate_focus: true
+  private_endpoint_enforcement: true
+  dns_segmentation_required: false
+  hub_spoke_model: true
+  video_project_isolation: false
+  zero_trust_telemetry: true
+  sase_global_secure_access: true
+  custom_validation_logic: sentinel_coverage_and_ueba_status_check
+oscal_props:
+  implementation_status_prop: satisfied
+  evidence_type: observation
+validation_logic_ref: ksi/monitoring-logging/ksi-si-04.yaml
+freshness_window: PT1H
 expected_patterns:
-- System Monitoring must detect and report anomalies within defined thresholds
-- System integrity checks must pass validation within freshness window
+- All in-scope resources must forward diagnostic logs to Log Analytics within 15 minutes
+- Sentinel UEBA must be enabled and processing sign-in and audit data
 evidence_output:
   oscal_evidence_type: observation
   quarto_snippet_type: dashboard-widget
 provenance:
-  source: generated-from-template
+  source: tier1-manual-enrichment
   timestamp: '2026-04-04T00:00:00Z'
   collector_id: uiao-core-ksi-builder
-  hash: d5cff596c11fdb7065495a7e39c60114ecff4e3da76a415af3c0c106a6dd587a
-version: 1.0.0
+  hash: placeholder
+version: 1.1
 tags:
-- system-integrity
-- security-plane
+- telemetry-plane
+- sentinel
+- ueba
+- zero-trust
 - fedramp-moderate
 enabled: true

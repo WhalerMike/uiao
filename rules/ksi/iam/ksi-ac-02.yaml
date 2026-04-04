@@ -1,35 +1,58 @@
 ksi_id: KSI-AC-02
 title: Account Management
-description: Measures and validates compliance with AC-2 (Account Management) and its enhancements. Monitors EntraID, AzureActivityLogs
-  for evidence of control implementation and effectiveness.
+description: All user account lifecycle events (creation, modification, disablement, termination) must be automated via Entra ID governance workflows and logged within 5 minutes. Privileged accounts require separate dedicated admin accounts. Guest accounts reviewed quarterly.
 severity: critical
 family: AC
 controls:
 - AC-2
-- AC-2(10)
+- AC-2(1)
 - AC-2(3)
 - AC-2(4)
 - AC-2(5)
+- AC-2(7)
 - AC-2(9)
+- AC-2(11)
 data_sources:
 - EntraID
 - AzureActivityLogs
-validation_logic_ref: ksi/ksi-ac-02.yaml
+- graph_api
+validation_type: automated
+pass_criteria:
+  description: 100% of account lifecycle events logged within 5 minutes. Zero orphaned accounts (no activity >90 days without review). Privileged roles assigned only to dedicated admin accounts.
+  type: percentage
+  threshold: 100
+  operator: equals
+  logic: Entra ID audit logs confirm lifecycle events; PIM active assignments reviewed; stale account report current
+uiao_extensions:
+  gcc_moderate_focus: true
+  private_endpoint_enforcement: false
+  dns_segmentation_required: false
+  hub_spoke_model: false
+  video_project_isolation: false
+  zero_trust_telemetry: true
+  sase_global_secure_access: true
+  custom_validation_logic: entra_account_lifecycle_and_pim_review
+oscal_props:
+  implementation_status_prop: satisfied
+  evidence_type: observation
+validation_logic_ref: ksi/iam/ksi-ac-02.yaml
 freshness_window: PT24H
 expected_patterns:
-- All account management policies must be enforced and validated
-- Access decisions must be logged and auditable within the telemetry plane
+- All account lifecycle events must be logged in Entra ID audit logs within 5 minutes
+- Privileged role assignments must use PIM with time-bound activation
 evidence_output:
   oscal_evidence_type: observation
   quarto_snippet_type: evidence-panel
 provenance:
-  source: generated-from-template
+  source: tier1-manual-enrichment
   timestamp: '2026-04-04T00:00:00Z'
   collector_id: uiao-core-ksi-builder
-  hash: f45499568dd616f5aeb89984e83105526f43b714e772dae2f8f703b3c81f4771
-version: 1.0.0
+  hash: placeholder
+version: 1.1
 tags:
-- access-control
 - identity-plane
+- account-management
+- zero-trust
+- pim
 - fedramp-moderate
 enabled: true

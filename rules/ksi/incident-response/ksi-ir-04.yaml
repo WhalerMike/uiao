@@ -1,32 +1,53 @@
 ksi_id: KSI-IR-04
 title: Incident Handling
-description: Measures and validates compliance with IR-4 (Incident Handling) and its enhancements. Monitors MicrosoftDefenderXDR,
-  AzureActivityLogs, DefenderForEndpoint for evidence of control implementation and effectiveness.
+description: Incident response capability must be operational with defined detection-to-containment SLAs. Sentinel incidents auto-triaged via playbooks. Critical incidents (P1) contained within 1 hour. All incidents tracked to closure in ServiceNow with OSCAL evidence artifacts generated.
 severity: critical
 family: IR
 controls:
 - IR-4
 - IR-4(1)
+- IR-4(3)
+- IR-4(9)
 data_sources:
 - MicrosoftDefenderXDR
 - AzureActivityLogs
 - DefenderForEndpoint
-validation_logic_ref: ksi/ksi-ir-04.yaml
+validation_type: semi-automated
+pass_criteria:
+  description: P1 incidents contained within 1 hour. P2 within 4 hours. Zero open critical incidents older than SLA threshold. Playbook automation rate >80% for Tier 1 alerts.
+  type: threshold
+  threshold: 1
+  operator: less_than
+  logic: Sentinel incident metrics confirm mean-time-to-contain within SLA; playbook trigger rate from automation rules
+uiao_extensions:
+  gcc_moderate_focus: true
+  private_endpoint_enforcement: false
+  dns_segmentation_required: false
+  hub_spoke_model: false
+  video_project_isolation: false
+  zero_trust_telemetry: true
+  sase_global_secure_access: false
+  custom_validation_logic: sentinel_incident_sla_and_playbook_rate_check
+oscal_props:
+  implementation_status_prop: satisfied
+  evidence_type: observation
+validation_logic_ref: ksi/incident-response/ksi-ir-04.yaml
 freshness_window: PT1H
 expected_patterns:
-- Incident Handling must be operational and tested
-- Incident detection to response initiation must meet defined SLA thresholds
+- P1 incidents must be contained within 1 hour of detection
+- Sentinel automation playbooks must handle >80% of Tier 1 alert triage
 evidence_output:
   oscal_evidence_type: observation
   quarto_snippet_type: dashboard-widget
 provenance:
-  source: generated-from-template
+  source: tier1-manual-enrichment
   timestamp: '2026-04-04T00:00:00Z'
   collector_id: uiao-core-ksi-builder
-  hash: 1f3106b1075187335261e94e1045bd6f9e9b07e71dbd03b0f78cb9ae519c65f6
-version: 1.0.0
+  hash: placeholder
+version: 1.1
 tags:
-- incident-response
 - telemetry-plane
+- incident-response
+- sentinel
 - fedramp-moderate
 enabled: true
