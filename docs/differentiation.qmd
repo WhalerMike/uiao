@@ -23,7 +23,7 @@ Federal IT modernization has produced a rich ecosystem of tools for identity, co
 
 The gap that none of them close individually is *correlation*: the continuous, real-time linkage between *who a principal is*, *what network address they hold*, *what telemetry events they generate*, and *whether that composite state is consistent with an authorized, compliant configuration*. Answering that question across a multi-cloud, multi-vendor federal environment — and expressing the answer in machine-readable OSCAL — requires a layer that sits between the existing tools rather than replacing them.
 
-That is the role UIAO is designed to fill. This document compares UIAO against the most relevant existing approaches in the federal compliance and identity space: OpenZiti, compliance-trestle, commercial GRC platforms (RSA Archer, ServiceNow GRC, Drata, Vanta), Microsoft Entra ID, and traditional ICAM platforms (Okta, Ping Identity / ForgeRock). The goal is not to diminish these tools — several of them are direct inputs to the UIAO adapter layer — but to make explicit what they provide, where they stop, and what UIAO adds.
+That is the role UIAO is designed to fill. This document compares UIAO against the most relevant existing approaches in the federal compliance and identity space: OpenZiti, compliance-trestle, FedRAMP automation platforms (RegScale, Paramify), commercial GRC platforms (RSA Archer, ServiceNow GRC, Drata, Vanta), Microsoft Entra ID, and traditional ICAM platforms (Okta, Ping Identity / ForgeRock). The goal is not to diminish these tools — several of them are direct inputs to the UIAO adapter layer — but to make explicit what they provide, where they stop, and what UIAO adds.
 
 ---
 
@@ -33,24 +33,26 @@ The table below scores each approach against nine capabilities that matter for F
 
 **Legend:** ✅ = Full native support · ⚠️ = Partial or requires significant integration effort · ❌ = Not in scope
 
-| Capability | UIAO | OpenZiti | Trestle | Commercial GRC | Native ICAM |
-|:---|:---:|:---:|:---:|:---:|:---:|
-| **Identity-to-addressing correlation** | ✅ | ⚠️ | ❌ | ❌ | ❌ |
-| **Real-time drift detection** | ✅ | ❌ | ❌ | ⚠️ | ❌ |
-| **OSCAL-native compliance output** | ✅ | ❌ | ✅ | ❌ | ❌ |
-| **Cross-service telemetry correlation** | ✅ | ❌ | ❌ | ⚠️ | ⚠️ |
-| **Vendor-agnostic overlay** | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Zero Trust architecture** | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| **FedRAMP Moderate ready** | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
-| **Open source** | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Adapter / plugin extensibility** | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| Capability | UIAO | OpenZiti | Trestle | RegScale / Paramify | Commercial GRC | Native ICAM |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Identity-to-addressing correlation** | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ |
+| **Real-time drift detection** | ✅ | ❌ | ❌ | ⚠️ | ⚠️ | ❌ |
+| **OSCAL-native compliance output** | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| **Cross-service telemetry correlation** | ✅ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
+| **Vendor-agnostic overlay** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Zero Trust architecture** | ✅ | ✅ | ❌ | ❌ | ⚠️ | ⚠️ |
+| **FedRAMP Moderate ready** | ✅ | ⚠️ | ⚠️ | ✅ | ⚠️ | ⚠️ |
+| **Open source** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Adapter / plugin extensibility** | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
 
 **Notes on scoring:**
 
 - *OpenZiti identity-to-addressing*: OpenZiti binds identities to service policies via PKI-backed X.509 certificates and performs identity-aware routing within the overlay. However, it does not correlate those identities to external IPAM systems, DNS namespaces, or OSCAL component inventories — the correlation stays inside the Ziti fabric.
 - *Commercial GRC real-time drift*: Drata markets "continuous control monitoring rather than point-in-time checks" and Vanta offers "continuous controls and test monitoring." In practice, these platforms poll integrated SaaS APIs and generate alerts when evidence goes stale. They do not observe network-layer state or identity-to-IP binding changes.
 - *Native ICAM cross-service telemetry*: Okta's Identity Threat Protection and Entra ID's Conditional Access Evaluation both aggregate signals from integrated security partners, but correlation is limited to authentication events. Neither platform resolves network addressing, overlay path state, or OSCAL control evidence.
-- *FedRAMP Moderate ready*: All platforms listed can be *used in* FedRAMP Moderate environments, but "ready" here means the platform's own outputs can be consumed directly as machine-readable OSCAL evidence by an AO. Only UIAO and Trestle target that output format natively.
+- *RegScale/Paramify drift detection*: RegScale's CCM platform offers continuous controls monitoring by polling integrated tool APIs and comparing against OSCAL baselines. Paramify tracks POA&M status. Neither observes infrastructure-layer state (IP bindings, certificate propagation, overlay routing) directly.
+- *RegScale/Paramify FedRAMP ready*: Both platforms are OSCAL-native and designed specifically for FedRAMP. RegScale is FedRAMP High authorized. Paramify achieved FedRAMP High audit readiness in six weeks.
+- *FedRAMP Moderate ready*: All platforms listed can be *used in* FedRAMP Moderate environments, but "ready" here means the platform's own outputs can be consumed directly as machine-readable OSCAL evidence by an AO. UIAO, Trestle, RegScale, and Paramify target that output format natively.
 
 ---
 
@@ -146,6 +148,16 @@ The result is an architecture that makes the existing tool ecosystem more valuab
 
 ---
 
+### 3.6 FedRAMP Automation Platforms (RegScale, Paramify)
+
+**What they do well.** RegScale and Paramify represent the emerging category of OSCAL-native FedRAMP automation platforms. RegScale's Continuous Controls Monitoring (CCM) platform ingested the FedRAMP 20x KSI catalog and generated a validated OSCAL SSP in [under 90 minutes](https://regscale.com/blog/fedramp-20x-compliance-as-code-ksis/). RegScale itself achieved FedRAMP High authorization 3-4x faster than the industry average using its own platform. Paramify focuses on SSP generation and POA&M management, reducing documentation costs by up to 90% and achieving FedRAMP High audit readiness in [six weeks at under $300,000](https://www.paramify.com/blog/automate-fedramp). Both platforms excel at automating the paperwork layer of compliance — generating SSPs, SAPs, SARs, and POA&Ms in machine-readable OSCAL format.
+
+**Where they fall short.** Neither platform provides identity-to-network correlation, real-time drift detection at the infrastructure layer, or cross-service telemetry. They automate *documentation about* security controls but do not *enforce* them. RegScale's AI agents can attest to controls based on existing documentation, but they don't observe whether a deprovisioned identity still holds an active IP lease or whether a certificate rotation actually propagated across overlay tunnels. Paramify's gap assessment identifies control deficiencies but cannot close the loop by triggering automated remediation at the network layer. Both platforms assume the underlying infrastructure is correctly configured — they document what *should be* true, not what *is* true in real time.
+
+**How UIAO complements them.** UIAO and these platforms are natural partners. RegScale and Paramify handle the compliance documentation pipeline (SSP generation, POA&M tracking, evidence packaging). UIAO handles the infrastructure intelligence pipeline (identity correlation, drift detection, telemetry, enforcement). UIAO's OSCAL-native output — assessment results, component definitions, POA&M entries — can feed directly into RegScale or Paramify as machine-readable evidence, creating a closed loop: UIAO detects drift → generates OSCAL finding → RegScale/Paramify ingests it as a POA&M → remediation is tracked to closure. This is the FedRAMP 20x vision: continuous, automated, machine-readable compliance from infrastructure to documentation.
+
+---
+
 ## References
 
 | Tool / Platform | Documentation Source |
@@ -168,3 +180,8 @@ The result is an architecture that makes the existing tool ecosystem more valuab
 | UIAO Unified Architecture | `docs/01_UnifiedArchitecture.qmd` |
 | UIAO Identity Plane | `docs/identity_plane_deep_dive_v1.0.qmd` |
 | UIAO Runtime Drift Model | `docs/PHASE5_RuntimeDriftModel.qmd` |
+| RegScale FedRAMP Automation | [RegScale — Accelerate FedRAMP Certification](https://regscale.com/speed-fedramp-certification-and-compliance/) |
+| RegScale FedRAMP 20x in 90 Minutes | [RegScale Blog — Compliance as Code with AI and OSCAL](https://regscale.com/blog/fedramp-20x-compliance-as-code-ksis/) |
+| RegScale OSCAL Hub | [RegScale Blog — Introducing OSCAL Hub](https://regscale.com/blog/introducing-oscal-hub/) |
+| Paramify FedRAMP Automation | [Paramify — Automate FedRAMP](https://www.paramify.com/blog/automate-fedramp) |
+| Paramify Platform Overview | [Paramify — What Does Paramify Do?](https://www.paramify.com/blog/what-does-paramify-do) |
