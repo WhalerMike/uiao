@@ -2,7 +2,7 @@
 
 Walks the user step-by-step through filling in every required field,
 validates inputs in real-time with Pydantic, and writes a ready-to-use
-``canon/<system_slug>.yaml`` file.
+``generation-inputs/<system_slug>.yaml`` file.
 
 Usage::
 
@@ -128,7 +128,7 @@ def run_wizard(output_dir: Path = Path("canon")) -> Path:
     ----------
     output_dir:
         Directory where the generated canon YAML will be written.
-        Defaults to ``canon/``.
+        Defaults to ``generation-inputs/``.
 
     Returns
     -------

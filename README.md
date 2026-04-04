@@ -45,7 +45,7 @@ uiao-core/
 ├── schemas/                # JSON schemas (KSI, OSCAL, drift)
 ├── scripts/                # Utility scripts (crosswalk, validation, hooks)
 ├── tests/                  # Unit and integration tests
-├── canon/                  # Canon metadata and visual manifest
+├── generation-inputs/      # Machine-readable generation inputs (YAML definitions)
 ├── visuals/                # Visual asset sources
 ├── docs/                   # Non-document assets only (images, pitch deck)
 │   └── README.md           # Points to uiao-docs for all documentation
@@ -53,6 +53,17 @@ uiao-core/
 ├── templates/              # Jinja2 templates for document generation
 └── compliance/             # FedRAMP reference data
 ```
+
+---
+
+## Intentional Exceptions
+
+Two items in this repo may look like documentation artifacts but are intentionally retained:
+
+| Item | Why It's Here |
+|------|---------------|
+| `_quarto.yml` | Simplified stub kept for local generation script testing. The canonical Quarto pipeline lives in [uiao-docs](https://github.com/WhalerMike/uiao-docs). |
+| `generation-inputs/` | Machine-readable YAML definitions (diagram specs, visual manifest, pitch deck data, project plan data) that drive the Python generation engine in `src/`. These are inputs to code, not human-readable documentation. |
 
 ---
 

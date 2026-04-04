@@ -76,7 +76,7 @@ class TestCLIBasics:
                 [
                     "generate-docs",
                     "--canon",
-                    "canon/test.yaml",
+                    "generation-inputs/test.yaml",
                     "--data-dir",
                     str(tmp_path / "data"),
                     "--templates-dir",
@@ -89,7 +89,7 @@ class TestCLIBasics:
             assert "Generated" in result.stdout
             assert "1" in result.stdout
             mock_build.assert_called_once_with(
-                canon_path=Path("canon/test.yaml"),
+                canon_path=Path("generation-inputs/test.yaml"),
                 data_dir=Path(str(tmp_path / "data")),
                 templates_dir=Path(str(tmp_path / "templates")),
                 docs_dir=Path(str(tmp_path / "docs")),
@@ -410,7 +410,7 @@ class TestGenerateAll:
                 [
                     "generate-all",
                     "--canon",
-                    "canon/test.yaml",
+                    "generation-inputs/test.yaml",
                     "--data-dir",
                     str(tmp_path / "data"),
                     "--exports-dir",

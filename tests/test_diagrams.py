@@ -1,7 +1,7 @@
 """Tests for the diagram automation feature.
 
 Covers:
-- Loading canon/diagrams.yaml
+- Loading generation-inputs/diagrams.yaml
 - generate_diagrams_from_canon() creating .mermaid files
 - replace_mermaid_blocks_with_images() post-processing
 - Mermaid theme configuration consistency
@@ -16,7 +16,7 @@ import pytest
 import yaml
 
 _REPO_ROOT = Path(__file__).parent.parent
-_DIAGRAMS_CANON = _REPO_ROOT / "canon" / "diagrams.yaml"
+_DIAGRAMS_CANON = _REPO_ROOT / "generation-inputs" / "diagrams.yaml"
 _MERMAID_CONFIG = _REPO_ROOT / "data" / "mermaid-config.json"
 
 
@@ -24,10 +24,10 @@ _MERMAID_CONFIG = _REPO_ROOT / "data" / "mermaid-config.json"
 # Canon YAML loading
 # ---------------------------------------------------------------------------
 class TestDiagramsCanon:
-    """Verify that canon/diagrams.yaml loads and is well-formed."""
+    """Verify that generation-inputs/diagrams.yaml loads and is well-formed."""
 
     def test_file_exists(self) -> None:
-        assert _DIAGRAMS_CANON.exists(), f"canon/diagrams.yaml not found at {_DIAGRAMS_CANON}"
+        assert _DIAGRAMS_CANON.exists(), f"generation-inputs/diagrams.yaml not found at {_DIAGRAMS_CANON}"
 
     def test_loads_as_yaml(self) -> None:
         data = yaml.safe_load(_DIAGRAMS_CANON.read_text(encoding="utf-8"))
@@ -35,7 +35,7 @@ class TestDiagramsCanon:
 
     def test_diagrams_section_present(self) -> None:
         data = yaml.safe_load(_DIAGRAMS_CANON.read_text(encoding="utf-8"))
-        assert "diagrams" in data, "'diagrams' key must exist in canon/diagrams.yaml"
+        assert "diagrams" in data, "'diagrams' key must exist in generation-inputs/diagrams.yaml"
 
     def test_expected_diagram_keys(self) -> None:
         data = yaml.safe_load(_DIAGRAMS_CANON.read_text(encoding="utf-8"))
@@ -371,7 +371,7 @@ class TestBuildDocsDiagramIntegration:
 
         from uiao_core.generators.diagrams import generate_diagrams_from_canon
 
-        leadership_canon = _REPO_ROOT / "canon" / "uiao_leadership_briefing_v1.0.yaml"
+        leadership_canon = _REPO_ROOT / "generation-inputs" / "uiao_leadership_briefing_v1.0.yaml"
         assert leadership_canon.exists(), f"Canon not found: {leadership_canon}"
 
         with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None) as mock_render:

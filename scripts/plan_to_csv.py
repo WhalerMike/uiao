@@ -10,7 +10,7 @@ warnings.warn(
     stacklevel=1,
 )
 # Paths
-PLAN_YAML = "canon/uiao_project_plan_v1.0.yaml"
+PLAN_YAML = "generation-inputs/uiao_project_plan_v1.0.yaml"
 PLAN_CSV = "docs/modernization_atlas_planner_import.csv"
 
 
