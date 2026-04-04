@@ -1,4 +1,4 @@
-## [2.0.1](https://github.com/WhalerMike/uiao-core/compare/v2.0.0...v2.0.1) (2026-04-03)
+## [2.0.1](https://github.com/WhalerMike/uiao-core/compare/v2.0.0...v2.0.1) (2026-04-04)
 
 
 ### Bug Fixes
