@@ -109,7 +109,7 @@ def generate_stub(control_id: str) -> str:
     
     # Determine if this is an enhancement
     is_enhancement = "(" in number
-    base_number = number.split("(")[0] if is_enhancement else number
+    _ = number.split("(")[0] if is_enhancement else number  # noqa: F841
     
     return f"""# NIST SP 800-53 Rev 5 - Control Narrative
 # Control ID : {control_id}
