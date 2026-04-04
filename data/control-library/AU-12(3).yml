@@ -1,0 +1,92 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AU-12(3)
+# Title      : Audit Record Generation | Changes by Authorized Individuals
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AU-12(3)
+title: "Audit Record Generation | Changes by Authorized Individuals"
+family: Audit and Accountability
+status: not-implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - servicenow-itsm
+  - entra-id
+  - azure-policy
+
+evidence:
+  - sentinel-audit-configuration-change-log
+  - servicenow-audit-configuration-change-records
+  - entra-id-audit-admin-role-assignment-report
+  - azure-policy-audit-configuration-compliance-report
+
+parameters:
+  - id: au_12_3_authorized_individuals
+    description: >-
+      Roles authorized to modify audit logging configuration and
+      the scope of auditable events.
+    value: "ISSO and ISSM authorized to approve changes to audit logging scope; Security Operations Lead authorized to implement approved changes in Sentinel; changes require ServiceNow change record"
+  - id: au_12_3_change_notification
+    description: >-
+      Notification requirement when changes to audit logging
+      configuration are made.
+    value: "Automated notification to ISSO and ISSM via ServiceNow workflow and Microsoft Teams within 15 minutes of any audit configuration change"
+
+narrative: |
+  **Authorization Requirement for Audit Configuration Changes**
+  The UIAO system permits changes to the scope of audited events
+  and audit logging configuration only by the individuals authorized
+  in PARAM au_12_3_authorized_individuals. Changes to Microsoft
+  Sentinel analytic rules, data connector configurations, log
+  retention policies, and Azure diagnostic settings that affect
+  audit record generation must be initiated through a ServiceNow
+  change request, reviewed by the ISSO, and approved by the ISSM
+  before implementation. This authorization workflow ensures that
+  audit logging cannot be silently reduced or disabled by system
+  operators, maintaining the integrity and comprehensiveness of
+  the audit trail. This satisfies the AU-12(3) requirement for
+  authorized individual control over audit configuration changes.
+
+  **Technical Enforcement of Audit Configuration Access**
+  Microsoft Sentinel configuration changes (analytic rule
+  modification, workspace configuration, data connector management)
+  require the Sentinel Contributor role, which is restricted to
+  the Security Operations Lead as defined in PARAM au_12_3_authorized_individuals
+  and managed through Entra ID role assignments reviewed quarterly.
+  Azure Policy assignments enforce diagnostic settings across all
+  Azure resources, and modification of Policy assignments requires
+  Azure subscription Owner authorization with ISSO and ISSM
+  concurrence documented in ServiceNow. This dual-layer technical
+  and procedural control prevents unauthorized reduction of
+  audit coverage.
+
+  **Automated Notification of Configuration Changes**
+  Any modification to Sentinel workspace configuration, diagnostic
+  settings, or audit policy triggers an automated notification
+  to the ISSO and ISSM as specified in PARAM au_12_3_change_notification.
+  Notifications are delivered through both ServiceNow workflow
+  email and a dedicated Microsoft Teams security channel alert,
+  ensuring that authorized personnel are immediately aware of
+  any audit configuration change and can validate that it was
+  properly authorized. Unauthorized changes trigger a Priority 1
+  incident in ServiceNow for immediate investigation under
+  **IR-4** (Incident Handling) procedures.
+
+  **Audit Configuration Change Audit Trail**
+  Changes to audit logging configuration are themselves audited
+  as a meta-audit record in Microsoft Sentinel, creating a complete
+  history of who changed what audit configuration and when. This
+  audit-of-audit-configuration capability provides the ISSO with
+  a traceable record of all changes to audit scope, supporting
+  **AU-9** (Protection of Audit Information) and the continuous
+  monitoring requirements of **CA-7**. Configuration change records
+  are included in the annual authorization boundary review package
+  under **CA-6**.
+
+related_controls:
+  - AU-9   # Protection of Audit Information
+  - AU-12  # Audit Record Generation
+  - CA-7   # Continuous Monitoring
+  - CM-3   # Configuration Change Control
+  - IR-4   # Incident Handling
+  - AC-6   # Least Privilege

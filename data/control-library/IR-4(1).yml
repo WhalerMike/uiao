@@ -1,0 +1,82 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IR-4(1)
+# Title      : Incident Handling | Automated Incident Handling Processes
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IR-4(1)
+title: "Incident Handling | Automated Incident Handling Processes"
+family: Incident Response
+status: not-implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - servicenow-grc
+  - azure-entra-id
+  - cisco-ise
+
+evidence:
+  - ir-4-1-sentinel-automation-playbook-configurations
+  - ir-4-1-servicenow-incident-workflow-records
+  - ir-4-1-sentinel-soar-playbook-execution-logs
+  - ir-4-1-automated-containment-action-audit-logs
+
+parameters:
+  - id: ir_4_1_automated_response_actions
+    description: >-
+      Categories of incident response actions that are automated through
+      SOAR playbooks and system integrations.
+    value: "Automatic account suspension in Entra ID upon high-confidence compromise alert; Cisco ISE dynamic quarantine VLAN assignment for compromised endpoints; CyberArk privileged session termination on anomaly detection; ServiceNow P1 ticket creation with evidence package on Sentinel P1 alert trigger"
+  - id: ir_4_1_automation_threshold
+    description: >-
+      Confidence or severity threshold required before automated response
+      actions are executed without human approval.
+    value: "High-confidence (≥90% ML confidence or rule-based certainty) P1 severity events: fully automated containment; Medium-confidence P2 events: automated alert with analyst approval required before containment action execution"
+
+narrative: |
+  **Automated Incident Handling Architecture**
+  The UIAO organization implements automated incident handling processes through
+  Microsoft Sentinel's Security Orchestration, Automation, and Response (SOAR)
+  capabilities, reducing response latency for high-confidence security events
+  from hours to minutes and ensuring consistent application of containment
+  procedures regardless of staff availability. Sentinel Logic App playbooks
+  orchestrate automated response actions defined in PARAM ir_4_1_automated_response_actions
+  based on the confidence and severity thresholds established in
+  PARAM ir_4_1_automation_threshold. Automated actions are logged with full
+  context in both Sentinel and ServiceNow GRC, providing a complete audit
+  trail of all automated decisions for post-incident review and **AU-2**
+  (Event Logging) compliance.
+
+  **Identity and Endpoint Automated Containment**
+  Upon detection of high-confidence account compromise indicators, Sentinel
+  playbooks automatically invoke the Microsoft Graph API to disable the affected
+  Azure Entra ID user account and revoke all active sessions, preventing
+  adversary persistence through stolen credentials while the incident is
+  investigated. Simultaneously, Cisco ISE is automatically updated via the
+  pxGrid API to move any endpoints authenticated with the compromised identity
+  to a quarantine VLAN that restricts lateral movement while preserving network
+  forensic access. Intune is queried to identify all devices enrolled under the
+  affected identity, and device compliance policies are automatically set to
+  non-compliant pending analyst review. These automated identity containment
+  actions support **AC-2** (Account Management) and **AC-4** (Information Flow
+  Enforcement) security objectives during active incidents.
+
+  **Privileged Access and Ticket Automation**
+  CyberArk privileged access management is integrated with Sentinel playbooks
+  to automatically terminate active privileged sessions associated with
+  compromised accounts and rotate affected credential vaults upon incident
+  declaration, preventing privilege escalation by adversaries who may have
+  obtained standard account credentials. ServiceNow GRC incident management
+  is automatically populated by Sentinel when P1 or P2 incidents trigger,
+  creating a structured incident record with pre-populated evidence package
+  references, affected asset inventory from **CM-8** (System Component
+  Inventory), and assigned responder notifications based on the on-call
+  rotation. This automation ensures the **IR-6** (Incident Reporting) timeline
+  requirements are met even outside normal business hours and supports
+  **IR-8** (Incident Response Plan) SLA tracking.
+
+related_controls:
+  - IR-4   # Incident Handling (parent control)
+  - IR-6   # Incident Reporting
+  - IR-8   # Incident Response Plan
+  - AC-2   # Account Management
+  - SI-4   # System Monitoring

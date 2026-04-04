@@ -1,0 +1,94 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-5(6)
+# Title      : Authenticator Management | Protection of Authenticators
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IA-5(6)
+title: "Authenticator Management | Protection of Authenticators"
+family: Identification and Authentication
+status: not-implemented
+
+implemented_by:
+  - cyberark-pas
+  - entra-id
+  - azure-key-vault
+  - intune-mdm
+
+evidence:
+  - cyberark-vault-encryption-and-access-policy
+  - azure-key-vault-access-policy-configuration
+  - entra-id-authenticator-registration-protection-policy
+  - intune-device-encryption-compliance-report
+
+parameters:
+  - id: ia_5_6_authenticator_storage
+    description: >-
+      Methods used to protect authenticators including passwords,
+      certificates, and keys from unauthorized disclosure.
+    value: "Privileged account credentials stored exclusively in CyberArk vault with AES-256 encryption at rest; user passwords hashed with bcrypt in Entra ID; certificate private keys protected by TPM 2.0 hardware; service account secrets stored in Azure Key Vault with HSM-backed key protection"
+  - id: ia_5_6_transmission_protection
+    description: >-
+      Controls applied to protect authenticators during transmission
+      to prevent interception and unauthorized use.
+    value: "All authentication traffic encrypted with TLS 1.2+ minimum; HSTS enforced on all web application endpoints; FIDO2 and Windows Hello authenticators never transmit private keys — only signed challenges"
+
+narrative: |
+  **Authenticator Storage Protection**
+  The UIAO system protects authenticators from unauthorized
+  disclosure and modification through the storage mechanisms
+  defined in PARAM ia_5_6_authenticator_storage. Privileged
+  account credentials are stored exclusively in CyberArk
+  Privileged Access Security, which encrypts vault contents
+  using AES-256 with a Vault Key protected by a Hardware
+  Security Module (HSM). No privileged account passwords
+  are stored in plaintext or in reversibly encrypted form
+  anywhere in the UIAO environment. User account passwords
+  in Entra ID are stored as one-way hashes using bcrypt with
+  per-user salt, preventing offline dictionary attacks against
+  the credential store. Service account secrets, API keys,
+  and connection strings are stored in Azure Key Vault with
+  HSM-backed key protection, preventing access without proper
+  Azure RBAC authorization. This satisfies the IA-5(6)
+  requirement to protect authenticators commensurate with the
+  security category of the information they protect.
+
+  **Private Key Hardware Protection**
+  Windows Hello for Business and FIDO2 hardware security key
+  authenticators protect private keys in hardware — either
+  TPM 2.0 for Windows Hello or the secure element in the FIDO2
+  key device. Hardware-protected private keys cannot be exported,
+  copied, or accessed by software running on the host system,
+  providing protection against malware that attempts to steal
+  authentication credentials. Intune compliance policies enforce
+  TPM presence and attestation on all managed endpoints, ensuring
+  that Windows Hello private keys are always hardware-protected.
+
+  **Transmission Security for Authentication Credentials**
+  Authentication traffic is protected in transit using the
+  controls defined in PARAM ia_5_6_transmission_protection.
+  All Entra ID authentication endpoints enforce TLS 1.2 minimum
+  with strong cipher suites, with TLS 1.0 and 1.1 deprecated.
+  HTTP Strict Transport Security (HSTS) is enforced on all
+  UIAO web application endpoints, preventing protocol downgrade
+  attacks. FIDO2 and Windows Hello authenticators provide
+  inherent transmission protection — these protocols transmit
+  only challenge-response signatures rather than the private
+  key or a replayable credential, eliminating the value of
+  transport-layer interception for these authenticator types.
+
+  **Authenticator Registration Protection**
+  Entra ID enforces Temporary Access Pass (TAP) or existing
+  MFA requirements for MFA authenticator registration changes,
+  preventing unauthorized addition of new authenticators to
+  user accounts. Combined Registration security information
+  changes trigger audit log events forwarded to Microsoft
+  Sentinel, where analytic rules alert on bulk authenticator
+  modifications consistent with account takeover activity.
+
+related_controls:
+  - IA-5    # Authenticator Management
+  - IA-5(1) # Password-Based Authentication
+  - IA-5(2) # Public Key-Based Authentication
+  - SC-12   # Cryptographic Key Establishment and Management
+  - SC-13   # Cryptographic Protection
+  - SC-28   # Protection of Information at Rest

@@ -1,0 +1,79 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-10
+# Title      : Network Disconnect
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SC-10
+title: "Network Disconnect"
+family: System and Communications Protection
+status: not-implemented
+
+implemented_by:
+  - entra-id
+  - palo-alto-ngfw
+  - intune-mdm
+  - cisco-ise
+
+evidence:
+  - entra-id-session-timeout-conditional-access-policies
+  - palo-alto-session-timeout-configuration
+  - intune-device-lock-configuration-profiles
+  - cisco-ise-session-reauthentication-configuration
+
+parameters:
+  - id: PARAM-SC-010-001
+    description: >-
+      Period of inactivity after which network connections are terminated
+      for interactive sessions and VPN connections.
+    value: "15 minutes of inactivity for interactive sessions; 30 minutes for VPN sessions; configurable by session type per organizational policy"
+  - id: PARAM-SC-010-002
+    description: >-
+      Mechanism for terminating network connections after the defined
+      inactivity period or session timeout.
+    value: "Entra ID Conditional Access enforces session timeouts; Palo Alto NGFW terminates idle VPN and session-layer connections; Intune enforces device lock"
+
+narrative: |
+  **Session Inactivity Timeout**
+  The organization terminates network connections after a defined
+  period of inactivity (PARAM-SC-010-001) to reduce the risk of
+  unauthorized access through abandoned or unattended sessions.
+  Interactive sessions time out after 15 minutes of inactivity,
+  and VPN sessions time out after 30 minutes of inactivity.
+  These timeouts are enforced at multiple layers of the technology
+  stack to ensure consistent enforcement regardless of client
+  application behavior.
+
+  **Entra ID Session Control Enforcement**
+  Microsoft Entra ID Conditional Access policies enforce session
+  timeout requirements (PARAM-SC-010-002) for all cloud-hosted
+  UIAO resources. Session controls define maximum sign-in frequency
+  and browser session persistence settings. Sessions exceeding the
+  inactivity threshold require re-authentication before access
+  is restored. Continuous Access Evaluation (CAE) enables near
+  real-time revocation of sessions when risk signals are detected,
+  supporting **AC-12** (Session Termination) requirements.
+
+  **Network-Layer Disconnect via Palo Alto NGFW**
+  Palo Alto NGFW is configured with idle session timeout policies
+  that terminate TCP and UDP sessions that remain inactive beyond
+  the defined threshold. GlobalProtect VPN enforces session timeout
+  at the VPN tunnel level, disconnecting idle remote access sessions
+  and requiring re-authentication to reconnect. This network-layer
+  enforcement operates independently of application-layer session
+  controls, providing defense-in-depth.
+
+  **Device-Level Lock Enforcement**
+  Microsoft Intune configuration profiles enforce device lock after
+  15 minutes of inactivity on all managed endpoints, consistent with
+  **AC-11** (Device Lock) requirements. Cisco ISE session reauthentication
+  timers require periodic re-authentication for network access control
+  sessions, ensuring sustained compliance validation. Together these
+  controls ensure that session termination is enforced at the device,
+  identity, and network layers.
+
+related_controls:
+  - AC-11   # Device Lock
+  - AC-12   # Session Termination
+  - AC-17   # Remote Access
+  - SC-7    # Boundary Protection
+  - IA-11   # Re-Authentication

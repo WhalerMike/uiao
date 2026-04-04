@@ -1,0 +1,95 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-2(2)
+# Title      : Identification and Authentication | Multi-Factor Authentication to Non-Privileged Accounts
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IA-2(2)
+title: "Identification and Authentication | Multi-Factor Authentication to Non-Privileged Accounts"
+family: Identification and Authentication
+status: not-implemented
+
+implemented_by:
+  - entra-id
+  - microsoft-authenticator
+  - intune-mdm
+  - microsoft-sentinel
+
+evidence:
+  - entra-id-mfa-registration-report-all-users
+  - entra-id-conditional-access-mfa-policy-all-users
+  - entra-id-security-defaults-or-mfa-policy-config
+  - sentinel-mfa-bypass-alert-log
+
+parameters:
+  - id: ia_2_2_mfa_methods_nonprov
+    description: >-
+      MFA methods approved for authentication to non-privileged
+      accounts within the UIAO system.
+    value: "Microsoft Authenticator push notifications with number matching (default), FIDO2 security keys, Windows Hello for Business; SMS OTP permitted only as temporary fallback with ISSO approval for specific users"
+  - id: ia_2_2_mfa_coverage_target
+    description: >-
+      Target coverage for MFA registration across the non-privileged
+      user population.
+    value: "100% of Entra ID user accounts required to register an approved MFA method; Conditional Access policy blocks access to all cloud resources for accounts without MFA registration"
+
+narrative: |
+  **MFA Enforcement for All Non-Privileged User Accounts**
+  The UIAO system implements multi-factor authentication for all
+  network access to non-privileged accounts, including all
+  standard user accounts accessing Microsoft 365, Azure resources,
+  and organizational applications. Entra ID Conditional Access
+  enforces MFA for all users by requiring an approved authentication
+  strength for all cloud application access, using the methods
+  defined in PARAM ia_2_2_mfa_methods_nonprov. Microsoft Authenticator
+  push notifications with number matching are the default MFA
+  method for non-privileged users, providing protection against
+  MFA fatigue attacks by requiring users to enter a displayed
+  number in the Authenticator app. The MFA coverage target defined
+  in PARAM ia_2_2_mfa_coverage_target is enforced technically —
+  accounts that have not registered an approved MFA method are
+  blocked from accessing organizational resources until registration
+  is completed. This satisfies the IA-2(2) FedRAMP Moderate
+  requirement and supports **IA-2** (Identification and
+  Authentication) and **IA-5** (Authenticator Management) objectives.
+
+  **Phishing-Resistant MFA Adoption**
+  The UIAO security program promotes phishing-resistant MFA
+  adoption for non-privileged accounts through a prioritized
+  migration from push notifications to FIDO2 security keys
+  and Windows Hello for Business. FIDO2 keys are issued to
+  users in high-risk roles (finance, HR, executive assistants)
+  as part of the privileged population expansion under **IA-2(1)**.
+  Windows Hello for Business is deployed to all Intune-managed
+  Windows endpoints, enabling hardware-backed biometric or PIN
+  authentication that is resistant to remote phishing and
+  credential stuffing attacks.
+
+  **Conditional Access Integration and Risk-Based Step-Up**
+  Entra ID Conditional Access sign-in risk policies require
+  additional MFA challenges for sign-in attempts assessed as
+  medium or high risk by Entra ID Identity Protection, including
+  atypical travel, impossible travel, and sign-ins from anonymous
+  IP addresses. Users whose accounts are flagged as compromised
+  by Entra ID Identity Protection are automatically blocked and
+  required to perform a secure password reset with MFA before
+  access is restored. This risk-based approach supplements the
+  base MFA requirement with adaptive controls for elevated-risk
+  authentication events.
+
+  **MFA Bypass Monitoring and Reporting**
+  Microsoft Sentinel analytic rules continuously monitor for MFA
+  bypass patterns, including legacy authentication protocol usage,
+  Conditional Access policy gaps, and per-user MFA exclusions.
+  Any sign-in to a non-privileged account that completed without
+  MFA triggers a Sentinel alert routed to ServiceNow for
+  investigation. Monthly MFA coverage reports are reviewed by
+  the ISSO to track registration rates and identify accounts
+  approaching registration deadline.
+
+related_controls:
+  - IA-2    # Identification and Authentication
+  - IA-2(1) # MFA to Privileged Accounts
+  - IA-5    # Authenticator Management
+  - AC-7    # Unsuccessful Logon Attempts
+  - AU-2    # Event Logging
+  - SI-4    # System Monitoring
