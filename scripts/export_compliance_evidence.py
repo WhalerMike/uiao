@@ -3,6 +3,7 @@ import warnings
 from datetime import datetime
 
 import yaml
+import os
 
 warnings.warn(
     "scripts/export_compliance_evidence.py is deprecated. Use `uiao` CLI instead.",
@@ -14,6 +15,11 @@ warnings.warn(
 def export_master_evidence():
     # Load multiple data sources for cross-referencing
     sources = {"matrix": "data/unified_compliance_matrix.yml", "cisa": "data/cisa_zt_mapping.yml"}
+        # Graceful skip if data files don't exist (removed during SSOT refactor)
+    missing = [p for p in sources.values() if not os.path.exists(p)]
+    if missing:
+        print(f"Skipping GRC export - missing data files: {missing}")
+        return
     data_context = {}
     for key, path in sources.items():
         with open(path) as f:
