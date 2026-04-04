@@ -182,7 +182,7 @@ uiao canon-check --dir <path>
 
 ### Next Major Tasks
 
-- [ ] **KSI rules** — currently at 0%, this is the next major initiative
+- [x] **KSI rules** — 163 indicators in 7 categories, schema + master index live
 - [ ] Evidence linker integration with OSCAL back-matter
 - [ ] GPG-signed commit hard gate (currently advisory)
 - [ ] FedRAMP 20x alignment updates
