@@ -14,6 +14,7 @@
 * update canon_dir to generation-inputs/ in wizard.py ([fc3f642](https://github.com/WhalerMike/uiao-core/commit/fc3f642efc0b58695fc93867d55391e6ec07838a))
 * update Core Concepts section name to Eight Core Concepts to resolve canon drift ([9f868c1](https://github.com/WhalerMike/uiao-core/commit/9f868c1755f3d951f7cab24cc67e1f07cddfed4b))
 * update workflows to use pyproject.toml instead of deleted requirements.txt ([bb0e660](https://github.com/WhalerMike/uiao-core/commit/bb0e660028abc90dec3681b22199fa1f39640f08))
+* use ChainableUndefined in Jinja2 env to handle missing template vars ([9c657f0](https://github.com/WhalerMike/uiao-core/commit/9c657f0e5cec3f19b2d088eb56ddf46ce84de9ab))
 
 
 ### Features
