@@ -1,6 +1,6 @@
 """Diagram generator from canon YAML.
 
-Loads diagram definitions from ``canon/diagrams.yaml``, writes each diagram's
+Loads diagram definitions from ``generation-inputs/diagrams.yaml``, writes each diagram's
 Mermaid source to ``visuals/<key>.mermaid``, and renders each to PNG in
 ``assets/images/mermaid/`` via the existing :func:`render_mermaid_file` helper.
 
@@ -21,7 +21,7 @@ from uiao_core.utils.context import get_settings
 
 logger = logging.getLogger(__name__)
 
-_DIAGRAMS_CANON = Path("canon/diagrams.yaml")
+_DIAGRAMS_CANON = Path("generation-inputs/diagrams.yaml")
 _DEFAULT_VISUALS_DIR = Path("visuals")
 _DEFAULT_OUTPUT_DIR = Path("assets/images/mermaid")
 
@@ -36,7 +36,7 @@ def load_diagrams_canon(
 
     Args:
         canon_path: Path to ``diagrams.yaml``. Defaults to
-            ``<project_root>/canon/diagrams.yaml``.
+            ``<project_root>/generation-inputs/diagrams.yaml``.
 
     Returns:
         Dictionary mapping diagram key -> diagram metadata dict.
@@ -97,13 +97,13 @@ def generate_diagrams_from_canon(
 ) -> list[Path]:
     """Generate ``.mermaid`` files and render them to PNG from canon YAML.
 
-    For each diagram defined in ``canon/diagrams.yaml``:
+    For each diagram defined in ``generation-inputs/diagrams.yaml``:
     1. Writes the Mermaid source to ``visuals/<key>.mermaid``.
     2. Calls :func:`render_mermaid_file` to produce a PNG in *output_dir*.
 
     Args:
         canon_path: Path to the diagrams canon YAML. Defaults to
-            ``<project_root>/canon/diagrams.yaml``.
+            ``<project_root>/generation-inputs/diagrams.yaml``.
         visuals_dir: Directory to write ``.mermaid`` source files.
             Defaults to ``<project_root>/visuals``.
         output_dir: Directory for rendered PNG files.

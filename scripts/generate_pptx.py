@@ -11,7 +11,7 @@ warnings.warn(
     stacklevel=1,
 )
 # Paths
-CANON_PATH = "canon/uiao_pitch_deck_v1.0.yaml"
+CANON_PATH = "generation-inputs/uiao_pitch_deck_v1.0.yaml"
 OUTPUT_PATH = "docs/modernization_atlas_pitch.pptx"
 VISUALS_DIR = "visuals/"
 

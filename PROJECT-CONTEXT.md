@@ -70,10 +70,10 @@ To prevent Agent formatting conflicts, follow this order of precedence for **for
 
 ## Automated Diagram Generation
 
-Diagrams are defined in `canon/diagrams.yaml` (single source of truth) and rendered via the pipeline below:
+Diagrams are defined in `generation-inputs/diagrams.yaml` (single source of truth) and rendered via the pipeline below:
 
 ```
-canon/diagrams.yaml
+generation-inputs/diagrams.yaml
     └─ generate_diagrams_from_canon()
            ├─ writes visuals/<key>.mermaid
            └─ render_mermaid_file() → assets/images/mermaid/<key>.png
@@ -112,7 +112,7 @@ canon/diagrams.yaml
 * 2026-04-03: Key file locations table added to PROJECT-CONTEXT.md. vendor-overlays/ (NOT overlays/) confirmed as Big 7 source. 131 control YAMLs and 15 Mermaid PNGs confirmed from directory tree.
 * 2026-04-02: AI hierarchy restructured. Grok retired. Claude Code promoted to Canon Steward and Lead Architect with direct GitHub integration. Comet-Perplexity (running Claude Sonnet) retained as orchestrator and browser/evidence agent. Gemini role locked to image generation only. Copilot retained for fast implementation. Stack simplified from four-model hierarchy to two-model core (Claude Code + Comet-Perplexity).
 * 2026-03-26: FORMAT-CANON.md created as primary format authority. PROJECT-CONTEXT.md updated to establish format authority hierarchy before all other project context. All agents must read FORMAT-CANON.md before making any format decisions.
-* 2026-03-24: Automated diagram generation implemented (copilot/diagram-automation). `canon/diagrams.yaml` is now the single source of truth for all Mermaid diagrams. `generate-docs` auto-generates PNGs; `generate-diagrams` CLI command available for standalone use. Mermaid fences post-processed to `<img>` tags in Markdown for DOCX/PPTX/PDF pipelines.
+* 2026-03-24: Automated diagram generation implemented (copilot/diagram-automation). `generation-inputs/diagrams.yaml` is now the single source of truth for all Mermaid diagrams. `generate-docs` auto-generates PNGs; `generate-diagrams` CLI command available for standalone use. Mermaid fences post-processed to `<img>` tags in Markdown for DOCX/PPTX/PDF pipelines.
 * 2026-03-24: Grill Master RE-PLAN fix-PR merge loop proven at scale (PRs #52, #54, #55, #56).
 * 2026-03-24: Created PROJECT-CONTEXT.md to prevent context collision across Comet/Copilot/Claude layers
 * 2026-03-24: uiao-validation-targets bootstrapped as live mock telemetry endpoint

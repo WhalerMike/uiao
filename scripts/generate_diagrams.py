@@ -8,7 +8,7 @@ and writes processed output to build/templates/ for Pandoc compilation.
 
 ROUTING: Only processes files in src/templates/ or files with
          diagram-owner: gemini in YAML frontmatter.
-Ref: canon/DIAGRAM-STANDARDS.md
+Ref: generation-inputs/DIAGRAM-STANDARDS.md
 """
 
 import os
@@ -111,7 +111,7 @@ def collect_gemini_files():
         files.append(f)
 
     # Secondary: scan other dirs for files tagged diagram-owner: gemini
-    for pattern in ["docs/**/*.md", "docs/**/*.qmd", "canon/**/*.md", "templates/**/*.md"]:
+    for pattern in ["docs/**/*.md", "docs/**/*.qmd", "generation-inputs/**/*.md", "templates/**/*.md"]:
         for f in glob.glob(pattern, recursive=True):
             if is_gemini_owned(f):
                 files.append(f)
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     print("UIAO-Core Gemini Diagram Generator")
     print("===================================")
     print("Routing: src/templates/ + diagram-owner: gemini tagged files")
-    print("Ref: canon/DIAGRAM-STANDARDS.md")
+    print("Ref: generation-inputs/DIAGRAM-STANDARDS.md")
     print()
     process_templates()
     print("\nDiagram generation complete.")
