@@ -1,0 +1,85 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SI-16
+# Title      : Memory Protection
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SI-16
+title: "Memory Protection"
+family: System and Information Integrity
+status: not-implemented
+
+implemented_by:
+  - intune-mdm
+  - entra-id
+  - microsoft-sentinel
+  - azure-devops
+
+evidence:
+  - intune-exploit-protection-configuration-profiles
+  - windows-defender-memory-protection-settings-reports
+  - azure-vm-memory-protection-configuration-documentation
+  - microsoft-sentinel-memory-exploit-detection-alerts
+
+parameters:
+  - id: PARAM-SI-016-001
+    description: >-
+      Memory protection technologies and mechanisms implemented to
+      protect against memory-based attacks on UIAO system components.
+    value: "DEP/NX, ASLR, Control Flow Guard, and Stack Canaries enforced via Intune Exploit Protection profiles on all managed endpoints and servers"
+  - id: PARAM-SI-016-002
+    description: >-
+      Hardware and firmware features utilized to enforce memory
+      protection capabilities.
+    value: "Intel/AMD NX bit enforcement; UEFI Secure Boot with Virtualization Based Security (VBS) enabled; Hypervisor Protected Code Integrity (HVCI)"
+
+narrative: |
+  **Memory Protection Technologies**
+  The organization implements memory protection mechanisms to protect
+  the UIAO system's memory from unauthorized code execution and
+  memory-based attacks (PARAM-SI-016-001). Microsoft Intune deploys
+  Windows Defender Exploit Protection profiles to all managed endpoints
+  and servers, enforcing the following memory protection technologies:
+  Data Execution Prevention (DEP/NX bit) prevents execution of code
+  from non-executable memory regions; Address Space Layout Randomization
+  (ASLR) randomizes memory layout to defeat address prediction in
+  exploit code; Control Flow Guard (CFG) validates indirect function
+  calls to prevent control flow hijacking; and stack canaries detect
+  buffer overflow attacks before control transfer.
+
+  **Hardware-Enforced Memory Protection**
+  Memory protection is anchored in hardware capabilities
+  (PARAM-SI-016-002). Intel and AMD processor NX bit enforcement
+  prevents the CPU from executing code in memory pages marked as
+  data. UEFI Secure Boot with Virtualization Based Security (VBS)
+  enabled creates an isolated memory environment protected by the
+  CPU's hypervisor capabilities. Hypervisor Protected Code Integrity
+  (HVCI) uses VBS to run kernel code integrity checks, preventing
+  unsigned or malicious drivers from executing in kernel memory.
+  These hardware-enforced protections survive attempts to disable
+  software-level memory protection settings.
+
+  **Secure Development Practices for Memory Safety**
+  Azure DevOps pipeline security checks include static analysis
+  rules that flag unsafe memory operations in custom-developed code,
+  including unchecked buffer operations, use-after-free patterns,
+  and format string vulnerabilities. Security Engineering reviews
+  flagged findings before deployment. Compiler security flags
+  are enforced in build pipelines to enable stack protection and
+  position-independent executable (PIE) compilation.
+
+  **Memory Exploit Monitoring**
+  Microsoft Sentinel and Microsoft Defender for Endpoint monitor for
+  memory-based exploitation attempts including process injection,
+  reflective DLL loading, and credential memory dumping. Detected
+  memory exploitation events generate high-priority ServiceNow
+  incidents for immediate SOC response. Entra ID risk detection
+  correlates endpoint exploitation signals with authentication anomalies
+  to identify compromised credential scenarios, supporting **IR-4**
+  (Incident Handling) and **SC-39** (Process Isolation) requirements.
+
+related_controls:
+  - SC-39   # Process Isolation
+  - SI-7    # Software, Firmware, and Information Integrity
+  - CM-6    # Configuration Settings
+  - SA-8    # Security and Privacy Engineering Principles
+  - IR-4    # Incident Handling

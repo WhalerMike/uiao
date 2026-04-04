@@ -1,0 +1,87 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-2(10)
+# Title      : Account Management | Shared and Group Account Credential Change
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AC-2(10)
+title: "Account Management | Shared and Group Account Credential Change"
+family: Access Control
+status: not-implemented
+
+implemented_by:
+  - cyberark-pas
+  - entra-id
+  - servicenow-itsm
+
+evidence:
+  - cyberark-automatic-password-rotation-policy
+  - cyberark-credential-change-audit-log
+  - servicenow-shared-account-checkout-records
+  - entra-id-service-account-credential-rotation-log
+
+parameters:
+  - id: ac_2_10_rotation_trigger
+    description: >-
+      Events that trigger mandatory credential rotation for shared
+      and group accounts.
+    value: "Credentials rotated automatically after each check-out session via CyberArk CPM; additionally rotated within 1 hour when any member of the authorized group departs or loses access authorization"
+  - id: ac_2_10_rotation_frequency
+    description: >-
+      Maximum period between scheduled rotations of shared and
+      group account credentials independent of access events.
+    value: "Shared account passwords rotated at least every 90 days via CyberArk Central Policy Manager (CPM) scheduled rotation"
+
+narrative: |
+  **Automated Credential Rotation on Group Membership Change**
+  The UIAO system terminates shared and group account credential
+  access when individuals leave the group by enforcing immediate
+  credential rotation through CyberArk Central Policy Manager
+  (CPM). When any authorized user's access to a shared account
+  is revoked — triggered by departure, role change, or ISSO
+  directive — the CyberArk CPM automatically rotates the shared
+  account password within the timeframe defined in PARAM
+  ac_2_10_rotation_trigger, invalidating any previously known
+  credential values. The revocation and rotation events are
+  recorded in CyberArk audit logs and forwarded to Microsoft
+  Sentinel for compliance tracking. This satisfies the core
+  requirement of AC-2(10) to change shared account credentials
+  when group membership changes.
+
+  **Post-Checkout Credential Rotation**
+  CyberArk CPM is configured to automatically rotate shared
+  account credentials after each check-out session completes,
+  ensuring that no user retains knowledge of a valid credential
+  after their authorized session ends. This post-use rotation
+  approach provides continuous invalidation of previously
+  disclosed credentials independent of group membership changes,
+  reinforcing the principle of least privilege defined in **AC-6**
+  and reducing the window of exposure for any compromised credential.
+
+  **Scheduled Rotation for Dormant Shared Accounts**
+  Shared accounts that are not actively used within the scheduled
+  rotation interval defined in PARAM ac_2_10_rotation_frequency
+  are subject to scheduled automatic rotation by CyberArk CPM.
+  This ensures that shared account credentials do not persist
+  indefinitely even for accounts with infrequent use, reducing
+  the risk of credential compromise from historical exposure.
+  Rotation completion is logged in the CyberArk CPM audit trail
+  and reconciled against the ServiceNow shared account inventory
+  record during quarterly reviews.
+
+  **Service Account Credential Management**
+  Entra ID service accounts and managed identities used by
+  application workloads are governed through Entra ID Workload
+  Identity management. Where possible, workloads are migrated to
+  managed identities with platform-managed credential rotation,
+  eliminating long-lived shared secrets. Where service account
+  passwords are required, they are stored and rotated in CyberArk
+  with rotation events tracked through ServiceNow ITSM, supporting
+  **IA-5** (Authenticator Management) requirements.
+
+related_controls:
+  - AC-2    # Account Management
+  - AC-2(9) # Restrictions on Use of Shared and Group Accounts
+  - AC-6    # Least Privilege
+  - IA-5    # Authenticator Management
+  - AU-2    # Event Logging
+  - PS-4    # Personnel Termination

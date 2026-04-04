@@ -1,0 +1,98 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-12(2)
+# Title      : Identity Proofing | Supervisor Authorization
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IA-12(2)
+title: "Identity Proofing | Supervisor Authorization"
+family: Identification and Authentication
+status: not-implemented
+
+implemented_by:
+  - servicenow-itsm
+  - entra-id
+  - workday-hr
+  - microsoft-sentinel
+
+evidence:
+  - servicenow-identity-proofing-approval-workflow-config
+  - workday-hr-supervisor-attestation-records
+  - entra-id-account-provisioning-audit-log
+  - servicenow-identity-proofing-request-records
+
+parameters:
+  - id: ia_12_2_supervisor_authorization_requirement
+    description: >-
+      Requirement for supervisor authorization during the identity
+      proofing process for new organizational users.
+    value: "Direct supervisor must authorize identity proofing request before account provisioning proceeds; authorization captured in ServiceNow provisioning workflow with Workday manager record validation"
+  - id: ia_12_2_authorization_scope
+    description: >-
+      User population for which supervisor authorization is required
+      during identity proofing.
+    value: "All new organizational employees, contractors, and long-term partners requiring access to systems processing CUI or higher impact information"
+
+narrative: |
+  **Supervisor Authorization in the Identity Proofing Process**
+  The UIAO organization requires supervisor authorization as
+  part of the identity proofing process for all new users in
+  the scope defined in PARAM ia_12_2_authorization_scope, ensuring
+  that individual identities are validated by a person with
+  organizational knowledge of the applicant before system access
+  is granted. New user access requests are processed through a
+  ServiceNow provisioning workflow that includes a mandatory
+  supervisor authorization step, as defined in PARAM
+  ia_12_2_supervisor_authorization_requirement. The workflow
+  validates the supervisor's identity by cross-referencing
+  the authorizing manager's Entra ID account against the
+  Workday HR organizational hierarchy, confirming that the
+  approving supervisor is the applicant's direct manager
+  of record in the authoritative HR system. This satisfies
+  the IA-12(2) requirement for supervisor authorization in
+  identity proofing and supports **IA-12** (Identity Proofing)
+  and **AC-2** (Account Management) objectives.
+
+  **Workflow Enforcement and Accountability**
+  The ServiceNow provisioning workflow enforces that the
+  supervisor authorization step cannot be bypassed or
+  auto-approved — the workflow remains in a blocked state
+  until an authorized supervisor with the correct Workday
+  manager relationship explicitly approves the identity
+  proofing request. All authorization decisions are recorded
+  in ServiceNow with the authorizing supervisor's identity,
+  timestamp, and any justification notes provided. This
+  creates an auditable record linking the supervisor
+  authorization to the subsequent account provisioning
+  action, supporting accountability for identity proofing
+  decisions.
+
+  **Contractor and Partner Authorization**
+  For contractors and business partners, the supervisor
+  authorization requirement is fulfilled by the organizational
+  point of contact (OPOC) or Contracting Officer's
+  Representative (COR) who is responsible for the contractor's
+  work. The OPOC/COR authorization is captured in ServiceNow
+  and cross-referenced against the current contract record
+  to verify that the authorizing individual has current
+  authority over the contractor's work. Contractor identity
+  proofing additionally requires the identity evidence
+  validation process defined in **IA-12(3)** (Identity
+  Evidence Validation and Verification).
+
+  **Identity Proofing Monitoring and Audit**
+  Microsoft Sentinel monitors the account provisioning pipeline
+  for accounts created without a corresponding completed
+  supervisor authorization record in ServiceNow, generating
+  alerts for any provisioning that bypasses the authorization
+  workflow. Quarterly audits of provisioning records compare
+  ServiceNow authorization logs against Entra ID account
+  creation events to identify and investigate any gaps in
+  the supervisor authorization chain.
+
+related_controls:
+  - IA-12   # Identity Proofing
+  - IA-12(3) # Identity Evidence Validation and Verification
+  - AC-2    # Account Management
+  - PS-3    # Personnel Screening
+  - PS-4    # Personnel Termination
+  - AU-2    # Event Logging

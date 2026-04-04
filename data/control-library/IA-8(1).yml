@@ -1,0 +1,90 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-8(1)
+# Title      : Identification and Authentication (Non-Organizational Users) | Acceptance of PIV Credentials from Other Agencies
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IA-8(1)
+title: "Identification and Authentication (Non-Organizational Users) | Acceptance of PIV Credentials from Other Agencies"
+family: Identification and Authentication
+status: not-implemented
+
+implemented_by:
+  - entra-id
+  - active-directory-certificate-services
+  - microsoft-sentinel
+
+evidence:
+  - entra-id-certificate-based-auth-federal-pki-trust-config
+  - federal-pki-ca-trust-anchor-configuration-documentation
+  - entra-id-b2b-external-user-authentication-log
+  - sentinel-piv-authentication-event-log
+
+parameters:
+  - id: ia_8_1_accepted_piv_issuers
+    description: >-
+      Federal PKI certification authorities whose PIV credentials
+      are accepted for authentication by the UIAO system.
+    value: "Federal Common Policy CA G2 (FCPCA G2) and all subordinate issuing CAs in the Federal PKI trust hierarchy as published at https://www.idmanagement.gov/fpki/trust-services/; acceptance validated against current Federal PKI Common Policy Framework"
+  - id: ia_8_1_piv_validation_method
+    description: >-
+      Technical method used to validate PIV credentials at the
+      point of authentication.
+    value: "Entra ID CBA validates PIV certificate chain to FCPCA G2 trust anchor; OCSP revocation check against federal OCSP responder required; certificate Policy OID validation to enforce PIV-I or PIV content type"
+
+narrative: |
+  **Acceptance of Federal Agency PIV Credentials**
+  The UIAO system accepts PIV credentials issued by other federal
+  agencies for authentication by non-organizational users from
+  those agencies, implementing the trust configuration defined
+  in PARAM ia_8_1_accepted_piv_issuers. Microsoft Entra ID
+  Certificate-Based Authentication (CBA) is configured to trust
+  the Federal Common Policy CA G2 and its entire subordinate
+  CA hierarchy as published by the General Services Administration's
+  Identity Management office. When a federal agency user presents
+  a PIV card-derived certificate during authentication, Entra ID
+  CBA validates the certificate using the method defined in PARAM
+  ia_8_1_piv_validation_method, including chain validation to the
+  FCPCA G2 trust anchor, OCSP revocation checking against the
+  federal OCSP infrastructure, and certificate Policy OID
+  validation to confirm the credential meets PIV or PIV-I standards.
+  This satisfies the IA-8(1) requirement and supports **IA-2(12)**
+  (Acceptance of PIV Credentials) and **IA-8** (Identification
+  and Authentication for Non-Organizational Users) objectives.
+
+  **Federal PKI Trust Anchor Maintenance**
+  The FCPCA G2 trust anchor and cross-certified agency CAs are
+  maintained in the Entra ID CBA trusted issuer configuration.
+  The Federal PKI trust store is reviewed semi-annually against
+  the current Federal PKI Certificate Policy and Trust Store
+  publications to ensure that newly added issuing CAs are included
+  and revoked or expired CAs are removed. Updates to the trust
+  configuration are processed through the ServiceNow change
+  management workflow with ISSO review and CAB approval.
+
+  **External Agency User Account Provisioning**
+  Federal agency users authenticating with PIV credentials are
+  provisioned in Entra ID as External Identities (B2B) accounts
+  mapped to their PIV certificate attributes (subject DN, email SAN).
+  Account provisioning includes assignment to the minimum necessary
+  role and access scope authorized by the data sharing agreement
+  or interconnection security agreement (ISA) under **CA-3**
+  (Information Exchange). Access is governed by Entra ID Access
+  Reviews that validate continued need for external user access
+  on a defined schedule.
+
+  **PIV Authentication Monitoring**
+  Microsoft Sentinel monitors all certificate-based authentication
+  events from external federal agency users, generating alerts for
+  expired or revoked PIV certificates, authentication from
+  unexpected geographic locations, and access attempts to resources
+  outside the authorized access scope. Anomalous PIV authentication
+  events generate ServiceNow incidents for investigation under
+  **IR-4** (Incident Handling) procedures.
+
+related_controls:
+  - IA-2(12) # Acceptance of PIV Credentials
+  - IA-8     # Identification and Authentication (Non-Org Users)
+  - IA-8(2)  # Acceptance of External Authenticators
+  - CA-3     # Information Exchange
+  - AC-2     # Account Management
+  - AU-2     # Event Logging

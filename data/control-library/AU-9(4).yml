@@ -1,0 +1,92 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AU-9(4)
+# Title      : Protection of Audit Information | Access by Subset of Privileged Users
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AU-9(4)
+title: "Protection of Audit Information | Access by Subset of Privileged Users"
+family: Audit and Accountability
+status: not-implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - entra-id
+  - cyberark-pas
+  - azure-rbac
+
+evidence:
+  - sentinel-log-analytics-rbac-configuration
+  - entra-id-sentinel-role-assignment-report
+  - azure-rbac-audit-workspace-access-review
+  - cyberark-audit-vault-access-policy
+
+parameters:
+  - id: au_9_4_authorized_roles
+    description: >-
+      Privileged roles authorized to manage and access audit logging
+      functionality and audit records.
+    value: "Security Operations Center (SOC) analysts (Sentinel Reader), ISSO (Sentinel Contributor), ISSM (Sentinel Operator); Log Analytics Workspace Contributor limited to Sentinel automation service accounts only"
+  - id: au_9_4_administrative_restriction
+    description: >-
+      Restriction preventing general IT administrators from accessing
+      or modifying audit records.
+    value: "Azure subscription Owner, Contributor, and IT Helpdesk roles explicitly excluded from Log Analytics workspace read and write permissions via Azure RBAC deny assignments"
+
+narrative: |
+  **Audit Access Restricted to Security Subset**
+  The UIAO system restricts management and access to audit logging
+  functionality and audit records to the subset of privileged users
+  defined in PARAM au_9_4_authorized_roles, preventing general
+  administrators from accessing, modifying, or deleting audit data.
+  Microsoft Sentinel and the underlying Log Analytics workspace are
+  governed by Azure RBAC assignments that grant audit access only
+  to SOC analysts, the ISSO, and the ISSM, each with the minimum
+  necessary permission level for their function. General IT
+  administrators, system operators, and helpdesk personnel are
+  explicitly excluded from audit workspace permissions through
+  Azure deny assignments as specified in PARAM au_9_4_administrative_restriction,
+  ensuring that system administrators cannot alter the audit trail
+  of their own actions. This satisfies the AU-9(4) requirement and
+  supports **AU-9** (Protection of Audit Information) and **AC-5**
+  (Separation of Duties) objectives.
+
+  **Role Separation Between Audit Management and IT Operations**
+  A key separation enforced by the UIAO audit protection model is
+  that individuals with administrative access to the systems being
+  audited (Azure subscription administrators, Entra ID Global
+  Administrators, infrastructure operators) are explicitly denied
+  access to the Log Analytics workspace that stores their own
+  activity records. This separation ensures that audit records cannot
+  be manipulated to conceal unauthorized actions, maintaining the
+  integrity of the audit trail as an independent accountability
+  mechanism. The separation is enforced through Azure RBAC deny
+  assignments that take precedence over any role-based grant,
+  preventing privilege escalation from bypassing the restriction.
+
+  **CyberArk Audit Vault Access Control**
+  CyberArk Privileged Access Security maintains a separate audit
+  vault for privileged session recordings and access logs that is
+  accessible only to the ISSO, ISSM, and designated audit reviewers.
+  System administrators who initiate privileged sessions cannot
+  access their own session recordings or the associated audit logs,
+  providing independent accountability for all privileged activity.
+  CyberArk audit vault access events are themselves logged and
+  forwarded to Microsoft Sentinel, creating a meta-audit trail
+  of who accessed audit records and when.
+
+  **Quarterly Access Review for Audit Roles**
+  Entra ID Access Reviews are configured to review Log Analytics
+  workspace and Sentinel role assignments quarterly, ensuring that
+  audit access remains limited to the authorized subset of personnel.
+  Role additions outside the approved set trigger a Sentinel alert
+  and ServiceNow ITSM incident for immediate investigation, preventing
+  unauthorized expansion of audit access and supporting continuous
+  monitoring requirements under **CA-7**.
+
+related_controls:
+  - AU-9   # Protection of Audit Information
+  - AC-5   # Separation of Duties
+  - AC-6   # Least Privilege
+  - CA-7   # Continuous Monitoring
+  - IR-4   # Incident Handling
+  - IA-2   # Identification and Authentication

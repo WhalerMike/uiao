@@ -1,0 +1,88 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-2(4)
+# Title      : Account Management | Automated Audit Actions
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AC-2(4)
+title: "Account Management | Automated Audit Actions"
+family: Access Control
+status: not-implemented
+
+implemented_by:
+  - entra-id
+  - microsoft-sentinel
+  - servicenow-itsm
+  - cyberark-pas
+
+evidence:
+  - entra-id-audit-log-account-lifecycle-events
+  - sentinel-account-management-alert-rules
+  - servicenow-account-action-ticket-log
+  - cyberark-privileged-account-audit-trail
+
+parameters:
+  - id: ac_2_4_audit_events
+    description: >-
+      Account management actions that are automatically audited by
+      the system without requiring manual intervention.
+    value: "Account creation, modification, enabling, disabling, and removal events are automatically logged in Entra ID Audit Logs and forwarded to Microsoft Sentinel"
+  - id: ac_2_4_audit_retention
+    description: >-
+      Retention period for automated account management audit records.
+    value: "Audit records retained for 12 months in Log Analytics hot tier; 24-month cold tier in Azure Storage"
+
+narrative: |
+  **Automated Audit of Account Lifecycle Actions**
+  The UIAO system automatically audits all account management actions
+  including creation, modification, enabling, disabling, and removal
+  of user, service, and privileged accounts. Microsoft Entra ID
+  generates structured audit log entries for each lifecycle event
+  defined in PARAM ac_2_4_audit_events, capturing the initiating
+  principal, target account, action type, timestamp, and outcome.
+  These records are streamed in near-real time to Microsoft Sentinel
+  via the Entra ID diagnostic settings connector, establishing an
+  immutable, tamper-evident audit trail independent of the identity
+  platform itself. This satisfies the requirement for automated
+  auditing of account management actions and supports **AU-2**
+  (Event Logging) and **AU-3** (Content of Audit Records).
+
+  **Privileged Account Audit via CyberArk**
+  CyberArk Privileged Access Security generates a separate,
+  independent audit trail for all privileged account management
+  actions including vault onboarding, credential rotation, session
+  initiation, and account suspension. CyberArk audit records are
+  forwarded to Microsoft Sentinel via the CyberArk Syslog connector,
+  enabling cross-correlation of privileged identity events with
+  endpoint and network telemetry. The dual-audit approach ensures
+  that privileged account management actions are captured from both
+  the identity provider and the privileged access governance layer,
+  supporting **AC-6** (Least Privilege) and **AU-9** (Protection of
+  Audit Information) requirements.
+
+  **Alerting and Automated Response**
+  Microsoft Sentinel analytic rules fire automated alerts when
+  account management actions deviate from established patterns,
+  including accounts created outside approved ServiceNow change
+  windows, bulk account modifications, or re-enablement of
+  previously disabled accounts. Alerts are routed to ServiceNow
+  ITSM as incidents for investigation under **IR-4** (Incident
+  Handling) procedures. Audit records are retained per PARAM
+  ac_2_4_audit_retention to satisfy FedRAMP continuous monitoring
+  and audit log retention requirements.
+
+  **Audit Log Integrity Protection**
+  Account management audit logs in Microsoft Sentinel are protected
+  against unauthorized modification through Azure role-based access
+  controls (RBAC) that restrict write and delete operations to the
+  Log Analytics workspace. Workspace purge operations require
+  multi-party authorization and are separately audited, supporting
+  **AU-9** (Protection of Audit Information) and **AU-9(4)**
+  (Access by Subset of Privileged Users) requirements.
+
+related_controls:
+  - AC-2   # Account Management
+  - AC-6   # Least Privilege
+  - AU-2   # Event Logging
+  - AU-3   # Content of Audit Records
+  - AU-9   # Protection of Audit Information
+  - IR-4   # Incident Handling

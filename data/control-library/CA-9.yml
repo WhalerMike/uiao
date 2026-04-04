@@ -1,0 +1,84 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CA-9
+# Title      : Internal System Connections
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: CA-9
+title: "Internal System Connections"
+family: Assessment, Authorization, and Monitoring
+status: not-implemented
+
+implemented_by:
+  - cisco-ise
+  - palo-alto-ngfw
+  - infoblox-ipam
+  - servicenow-grc
+
+evidence:
+  - ca-9-internal-connection-authorization-register
+  - ca-9-servicenow-connection-approval-records
+  - ca-9-palo-alto-internal-firewall-rule-baseline
+  - ca-9-cisco-ise-segment-authorization-policy
+
+parameters:
+  - id: ca_9_connection_authorization_requirement
+    description: >-
+      Requirement for formal authorization of internal system-to-system
+      connections before establishment.
+    value: "All internal connections between security domains and network segments require documented business justification, ISSM approval, and a connection authorization record in ServiceNow GRC prior to provisioning"
+  - id: ca_9_connection_review_frequency
+    description: >-
+      Frequency at which existing internal system connections are reviewed
+      and reauthorized.
+    value: "Annually; additionally upon system change, personnel change affecting connection ownership, or findings from CA-7 continuous monitoring"
+  - id: ca_9_connection_security_requirements
+    description: >-
+      Security requirements applied to authorized internal system
+      connections including encryption and authentication standards.
+    value: "Mutual TLS 1.2 or higher for service-to-service connections; IPsec for network segment interconnections; Cisco ISE policy enforcement for device-to-segment connections"
+
+narrative: |
+  **Internal Connection Authorization Process**
+  The UIAO organization requires formal authorization for all internal
+  system connections that cross defined security domain boundaries, preventing
+  unauthorized data flows and ensuring that inter-system dependencies are
+  documented, reviewed, and approved. Connection authorization requests are
+  submitted through ServiceNow GRC with required fields including connection
+  endpoints, data classification, protocol and port specifications, business
+  justification, and connection owner. The ISSM reviews and approves each
+  connection request against security requirements (PARAM ca_9_connection_security_requirements)
+  before network provisioning is initiated, satisfying PARAM ca_9_connection_authorization_requirement.
+  This process supports **AC-4** (Information Flow Enforcement) and **AC-17**
+  (Remote Access) policy objectives.
+
+  **Technical Enforcement via Network Access Control**
+  Cisco ISE enforces connection authorization policies at the network access
+  layer, dynamically assigning devices and services to authorized VLANs and
+  micro-segments based on identity, device posture, and connection authorization
+  records. Palo Alto Next-Generation Firewall implements zone-based policy
+  enforcement between internal security domains, permitting only traffic flows
+  explicitly authorized in the internal connection register and logged in the
+  Palo Alto audit trail. Infoblox IPAM maintains authoritative records of all
+  internal IP address assignments and DNS name resolutions, providing the
+  source-of-truth for connection endpoint identity verification. All unauthorized
+  connection attempts are blocked and generate alerts forwarded to Microsoft
+  Sentinel for correlation with **AU-2** (Event Logging) audit requirements.
+
+  **Connection Register Maintenance and Periodic Review**
+  The ISSM maintains an internal connection authorization register in ServiceNow
+  GRC documenting all approved internal connections, their security characteristics,
+  owners, and authorization expiration dates. Existing connections are reviewed
+  on the frequency defined in PARAM ca_9_connection_review_frequency. During
+  review, connection owners confirm continued business need and compliance with
+  current security requirements; connections failing review are deauthorized
+  and the corresponding Cisco ISE and Palo Alto policies are updated within
+  five business days. This register feeds the **CM-8** (System Component
+  Inventory) data asset and supports **CA-3** (Information Exchange) objectives
+  for inter-system boundary documentation.
+
+related_controls:
+  - AC-4   # Information Flow Enforcement
+  - AC-17  # Remote Access
+  - CA-3   # Information Exchange
+  - CM-8   # System Component Inventory
+  - SC-7   # Boundary Protection

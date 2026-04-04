@@ -1,0 +1,95 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-2(3)
+# Title      : Account Management | Disable Accounts
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AC-2(3)
+title: "Account Management | Disable Accounts"
+family: Access Control
+status: not-implemented
+
+implemented_by:
+  - entra-id
+  - servicenow-itsm
+  - workday-hr
+  - cyberark-pas
+
+evidence:
+  - entra-id-disabled-account-report
+  - workday-hr-separation-event-feed
+  - servicenow-account-disable-ticket-log
+  - cyberark-privileged-account-suspension-records
+
+parameters:
+  - id: ac_2_3_disable_period_inactive
+    description: >-
+      Maximum period of inactivity before an account is automatically
+      disabled by the system.
+    value: "35 days of inactivity triggers automated account disable via Entra ID Identity Governance"
+  - id: ac_2_3_disable_period_separation
+    description: >-
+      Maximum time window between an HR separation event and account
+      disable action being enforced.
+    value: "Account disabled within 1 hour of HR separation event via Workday-to-Entra SCIM feed"
+  - id: ac_2_3_disable_scope
+    description: >-
+      Account types in scope for automated disable, including privileged
+      and non-privileged accounts.
+    value: "All Entra ID user, service, and privileged accounts; CyberArk vaulted credentials rotated on separation"
+
+narrative: |
+  **Automated Account Disable on Separation**
+  The UIAO system automatically disables accounts upon personnel
+  separation through a real-time integration between Workday HR and
+  Microsoft Entra ID via SCIM 2.0 provisioning. When a separation
+  event is recorded in Workday, the SCIM connector propagates the
+  account lifecycle change to Entra ID within the timeframe defined
+  in PARAM ac_2_3_disable_period_separation, blocking all
+  interactive and programmatic access to organizational resources.
+  CyberArk Privileged Access Security immediately rotates all
+  vaulted credentials associated with the departing user's privileged
+  accounts, ensuring no reuse of known secrets. This satisfies the
+  requirement to disable accounts of individuals no longer requiring
+  access and supports **AC-2** (Account Management) and **PS-4**
+  (Personnel Termination).
+
+  **Inactivity-Based Account Disable**
+  Microsoft Entra ID Identity Governance enforces automated account
+  disable for accounts exceeding the inactivity threshold defined in
+  PARAM ac_2_3_disable_period_inactive. Entra ID sign-in activity
+  reports are evaluated continuously, and accounts with no successful
+  interactive or non-interactive authentication within the defined
+  window are flagged and disabled through an automated Lifecycle
+  Workflow. ServiceNow ITSM captures each disable action as a
+  ticketed record linking the account identifier, the triggering
+  condition, and the authorizing workflow, providing an auditable
+  chain for compliance review. This approach aligns with **AC-2(5)**
+  (Inactivity Logout) and **AU-12** (Audit Record Generation).
+
+  **Privileged Account Disable Controls**
+  CyberArk Privileged Access Security enforces additional disable
+  controls for privileged accounts by restricting session initiation
+  to accounts whose Entra ID status is Active. When an account is
+  disabled in Entra ID, the CyberArk integration immediately removes
+  the account's ability to check out credentials or initiate
+  privileged sessions. All disable events for privileged accounts
+  are logged to Microsoft Sentinel for correlation against
+  **AC-6** (Least Privilege) and **AU-9** (Protection of Audit
+  Information) monitoring use cases.
+
+  **Periodic Account Review Integration**
+  Account disable outcomes are incorporated into the quarterly
+  account review process managed through Entra ID Access Reviews.
+  Reviewers validate that all disabled accounts remain in a disabled
+  state and that no unauthorized re-enablement has occurred.
+  Anomalous re-enablement events trigger an alert in Microsoft
+  Sentinel and an incident in ServiceNow for investigation under
+  **IR-4** (Incident Handling) procedures.
+
+related_controls:
+  - AC-2   # Account Management
+  - AC-2(5) # Inactivity Logout
+  - AC-6   # Least Privilege
+  - PS-4   # Personnel Termination
+  - AU-12  # Audit Record Generation
+  - IR-4   # Incident Handling

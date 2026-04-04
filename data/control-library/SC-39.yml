@@ -1,0 +1,81 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-39
+# Title      : Process Isolation
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SC-39
+title: "Process Isolation"
+family: System and Communications Protection
+status: not-implemented
+
+implemented_by:
+  - intune-mdm
+  - entra-id
+  - azure-devops
+  - microsoft-sentinel
+
+evidence:
+  - intune-windows-defender-application-guard-configuration
+  - azure-container-isolation-configuration-documentation
+  - os-process-isolation-baseline-documentation
+  - microsoft-sentinel-process-isolation-monitoring
+
+parameters:
+  - id: PARAM-SC-039-001
+    description: >-
+      Mechanisms implemented to maintain separate execution domains
+      for each executing process within the UIAO system.
+    value: "OS-level process isolation via Windows security boundaries; containerized workloads use Hyper-V isolation; browser isolation via Windows Defender Application Guard"
+  - id: PARAM-SC-039-002
+    description: >-
+      Hardware and virtualization mechanisms that support process isolation
+      within the UIAO system environment.
+    value: "Intel VT-x and AMD-V hardware virtualization enforced; Hyper-V Type 1 hypervisor provides VM isolation; TPM 2.0 and Secure Boot enforce firmware-level process integrity"
+
+narrative: |
+  **Operating System Process Isolation**
+  The organization maintains separate execution domains for each
+  executing process within the UIAO system (PARAM-SC-039-001). Windows
+  operating systems on UIAO endpoints and servers enforce process-level
+  memory isolation through Virtual Address Space (VAS) separation,
+  preventing processes from accessing the memory address space of other
+  processes without explicit permission. Windows Defender Exploit
+  Protection settings enforced via Intune enable additional process
+  isolation controls including Control Flow Guard (CFG) and arbitrary
+  code guard.
+
+  **Browser Isolation via Application Guard**
+  Windows Defender Application Guard (WDAG) provides hardware-based
+  browser isolation, executing untrusted web content in a Hyper-V
+  isolated container separate from the host operating system
+  (PARAM-SC-039-001). WDAG is enforced via Intune configuration
+  profiles for administrative users, ensuring that browser-based
+  attacks cannot escape to the host system even if the browser
+  is compromised. This directly reduces risk from web-based
+  malware and supports **SC-18** (Mobile Code) control objectives.
+
+  **Virtualization and Container Isolation**
+  Cloud-hosted UIAO workloads run in Azure virtual machines with
+  Hyper-V Type 1 hypervisor isolation (PARAM-SC-039-002), providing
+  hardware-enforced separation between VMs sharing the same physical
+  host. Containerized workloads use Hyper-V container isolation rather
+  than process-only container isolation, maintaining hardware-enforced
+  boundaries. Azure DevOps pipeline workloads execute in isolated
+  agent environments that are destroyed after each pipeline run,
+  preventing cross-build contamination.
+
+  **Firmware-Level Process Integrity**
+  TPM 2.0 and Secure Boot enforced via Intune ensure that only
+  authorized bootloaders and OS kernels execute, maintaining
+  process isolation from the firmware layer. Microsoft Sentinel
+  monitors for process injection attempts and unusual inter-process
+  communication patterns, alerting on behaviors consistent with
+  process isolation bypass techniques, supporting **SI-7**
+  (Software, Firmware, and Information Integrity) requirements.
+
+related_controls:
+  - SI-7    # Software Integrity
+  - SC-3    # Security Function Isolation
+  - SC-18   # Mobile Code
+  - CM-6    # Configuration Settings
+  - SI-16   # Memory Protection
