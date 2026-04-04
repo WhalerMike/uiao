@@ -15,6 +15,7 @@
 * add KSI library (163 indicators) for FedRAMP Moderate baseline ([ab8a303](https://github.com/WhalerMike/uiao-core/commit/ab8a3032a605e2ec92331ba98706b380a5d281c2))
 * expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
 * **ksi:** add schema, master index, and improved IAM/boundary exemplars ([8642c47](https://github.com/WhalerMike/uiao-core/commit/8642c4765045761c6a6987dd96a19e6c3c33f80c))
+* **ksi:** regenerate 163 KSI files into category subdirs via updated generator ([3684ef7](https://github.com/WhalerMike/uiao-core/commit/3684ef703c58f4166dc480cbb69f3df8297bdb5f))
 * **scripts:** route KSI generator output to category subdirs ([45b0ed5](https://github.com/WhalerMike/uiao-core/commit/45b0ed5cfd6ff09301952557ddce7c0a38a5543e))
 
 
