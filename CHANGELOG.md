@@ -9,6 +9,7 @@
 * rename section 6 from Core Concepts to Eight Core Concepts to resolve canon drift ([b85d406](https://github.com/WhalerMike/uiao-core/commit/b85d406b8465b799cb832a8e14496d03286cf8fe))
 * resolve all remaining test failures — 379 passed, 0 failed ([e663092](https://github.com/WhalerMike/uiao-core/commit/e663092c6c62953b8d5e387befa6ca4c68413b90))
 * update canon_dir to generation-inputs/ in config.py ([e56a5ae](https://github.com/WhalerMike/uiao-core/commit/e56a5aeb09f4e696af94ed98ffd687ecf66037b8)), closes [#479](https://github.com/WhalerMike/uiao-core/issues/479)
+* update canon_dir to generation-inputs/ in wizard.py ([fc3f642](https://github.com/WhalerMike/uiao-core/commit/fc3f642efc0b58695fc93867d55391e6ec07838a))
 * update Core Concepts section name to Eight Core Concepts to resolve canon drift ([9f868c1](https://github.com/WhalerMike/uiao-core/commit/9f868c1755f3d951f7cab24cc67e1f07cddfed4b))
 * update workflows to use pyproject.toml instead of deleted requirements.txt ([bb0e660](https://github.com/WhalerMike/uiao-core/commit/bb0e660028abc90dec3681b22199fa1f39640f08))
 
