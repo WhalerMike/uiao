@@ -286,6 +286,14 @@ def build_docs(
     canon_context = load_canon(canon_path)
     context.update(canon_context)
 
+        # Safe default for perimeter_collapse (legacy stub for tic3_roadmap template)
+    context.setdefault("perimeter_collapse", {
+        "transitions": [],
+        "description": "Perimeter collapse model (legacy stub)",
+        "current_state": "hub-spoke private endpoints",
+        "target_state": "full zero-trust segmentation",
+    })
+
     env = Environment(
         loader=FileSystemLoader(str(templates_dir)),
         autoescape=False,
