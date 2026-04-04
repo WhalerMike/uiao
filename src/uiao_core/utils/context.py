@@ -126,6 +126,15 @@ def load_context(
                     ov_data = yaml.safe_load(f) or {}
                 context = _deep_merge(context, ov_data)
 
+    # Safe default for perimeter_collapse (legacy stub)
+    # TODO: Remove once tic3_roadmap template is updated or data restored
+    context.setdefault("perimeter_collapse", {
+        "transitions": [],
+        "description": "Perimeter collapse model (legacy stub)",
+        "current_state": "hub-spoke private endpoints",
+        "target_state": "full zero-trust segmentation",
+    })
+
     return context
 
 
