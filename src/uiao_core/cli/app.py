@@ -766,5 +766,50 @@ def generate_all(
     console.print(f"[bold green]✓ All artifacts generated in {elapsed:.1f}s[/bold green]")
 
 
+@app.command()
+def adapter_run(
+    vendor: str = typer.Argument(..., help="Vendor adapter name (servicenow, entra)."),
+    output: str = typer.Option(
+        "",
+        "--output",
+        "-o",
+        help="Optional JSON output path for alignment results.",
+    ),
+) -> None:
+    """Run a vendor adapter and align claims (DNS-style, no heavy OSCAL conversion)."""
+    from typing import Optional
+
+    import json as _json
+
+    adapter_registry = {
+        "servicenow": "uiao_core.adapters.servicenow_adapter.ServiceNowAdapter",
+        "entra": "uiao_core.adapters.entra_adapter.EntraAdapter",
+    }
+
+    vendor_lower = vendor.lower()
+    if vendor_lower not in adapter_registry:
+        console.print(f"[red]Unknown vendor: {vendor}[/red]")
+        console.print(f"[dim]Available: {', '.join(adapter_registry.keys())}[/dim]")
+        raise typer.Exit(code=1)
+
+    # Lazy import to avoid circular dependencies
+    import importlib
+
+    module_path, class_name = adapter_registry[vendor_lower].rsplit(".", 1)
+    module = importlib.import_module(module_path)
+    adapter_class = getattr(module, class_name)
+    adapter = adapter_class()
+
+    console.print(f"[bold green]> Running {vendor} adapter...[/bold green]")
+    aligned = adapter.collect_and_align()
+
+    console.print(f"[bold]Aligned {aligned['metadata']['total_records']} claims[/bold]")
+    console.print(f"[dim]Metadata: {aligned['metadata']}[/dim]")
+
+    if output:
+        with open(output, "w") as f:
+            _json.dump(aligned, f, indent=2, default=str)
+        console.print(f"[green]Saved to {output}[/green]")
+
 if __name__ == "__main__":
     app()
