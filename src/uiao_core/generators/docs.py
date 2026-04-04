@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import ChainableUndefined, Environment, FileSystemLoader
 
 from uiao_core.utils.context import get_settings, load_canon
 
@@ -300,6 +300,7 @@ def build_docs(
     env = Environment(
         loader=FileSystemLoader(str(templates_dir)),
         autoescape=False,
+                undefined=ChainableUndefined,
     )
     docs_dir.mkdir(exist_ok=True)
     site_dir.mkdir(exist_ok=True)
