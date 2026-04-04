@@ -76,7 +76,7 @@ def load_context(
     Loading order (later steps override earlier ones):
 
     1. ``data/*.yml`` files (sorted alphabetically)
-    2. Canon YAML (``canon/uiao_leadership_briefing_v1.0.yaml`` by default)
+    2. Canon YAML (``generation-inputs/uiao_leadership_briefing_v1.0.yaml`` by default)
     3. Vendor overlays from *overlay_dir* (``data/vendor-overlays/*.yaml``,
        sorted alphabetically) – applied last so they win over everything.
 

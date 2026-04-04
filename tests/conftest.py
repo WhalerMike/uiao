@@ -15,8 +15,8 @@ def project_root() -> Path:
 
 @pytest.fixture
 def canon_dir(project_root: Path) -> Path:
-    """Return the canon/ directory path."""
-    return project_root / "canon"
+    """Return the generation-inputs/ directory path."""
+    return project_root / "generation-inputs"
 
 
 @pytest.fixture

@@ -35,5 +35,5 @@ All artifacts in this directory are intended for consumption by automation, vali
 ## Related
 
 - Human-readable documentation: [`/docs/`](../docs/)
-- Canonical definitions: [`/canon/`](../canon/)
+- Canonical definitions: [`/generation-inputs/`](../generation-inputs/)
 - Utility scripts: [`/scripts/`](../scripts/)

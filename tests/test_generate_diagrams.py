@@ -157,7 +157,7 @@ class TestCollectGeminiFiles:
         assert len(result) == len(set(result)), "collect_gemini_files() must deduplicate results"
 
     def test_canon_tagged_gemini_picked_up(self) -> None:
-        _write_md(self.tmp / "canon/spec.md", _with_frontmatter("gemini"))
+        _write_md(self.tmp / "generation-inputs/spec.md", _with_frontmatter("gemini"))
         result = self.mod.collect_gemini_files()
         assert any(Path(f).name == "spec.md" for f in result)
 

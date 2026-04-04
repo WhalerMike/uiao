@@ -33,7 +33,7 @@ These rules apply to all automated agents that read, generate, or modify files i
 ### Prohibited Actions
 
 - Committing secrets, credentials, API keys, or PII directly into any file.
-- Modifying canonical source files (`canon/`, `data/`, `schemas/`) without a human-reviewed pull request.
+- Modifying canonical source files (`generation-inputs/`, `data/`, `schemas/`) without a human-reviewed pull request.
 - Disabling or bypassing branch protection rules, required status checks, or secret-scanning alerts.
 - Exfiltrating repository contents to unapproved external endpoints.
 - Self-modifying workflow files (`.github/workflows/`) without explicit human approval.
@@ -53,7 +53,7 @@ Every action taken by an AI agent must be traceable via:
 
 The following changes **always** require a human reviewer to approve before merging:
 
-- Changes to `canon/` or `data/` (source-of-truth files).
+- Changes to `generation-inputs/` or `data/` (source-of-truth files).
 - Changes to `schemas/` (validation schemas).
 - Changes to `.github/workflows/` (CI/CD pipeline configuration).
 - Changes to `SECURITY.md`, `AGENTS.md`, or `CONTRIBUTING.md`.

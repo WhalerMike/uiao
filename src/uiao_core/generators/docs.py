@@ -242,7 +242,7 @@ def build_docs(
     """Build all documentation from templates.
 
     After rendering templates, optionally auto-generates Mermaid diagrams
-    from ``canon/diagrams.yaml`` and replaces fenced ``mermaid`` blocks in
+    from ``generation-inputs/diagrams.yaml`` and replaces fenced ``mermaid`` blocks in
     the rendered Markdown with ``<img>`` references to pre-rendered PNGs.
 
     Args:

@@ -43,7 +43,7 @@ The Modernization Atlas v1.0 is a unified orchestration layer designed to accele
 | Directory | Contents |
 | :--- | :--- |
 | `scripts/` | Core Python orchestrators: `sync_orchestrator.py`, `cyberark_sync_orchestrator.py`, `enforcement_orchestrator.py`, `generate_pptx.py`, `plan_to_csv.py`, `generate_docs.py` |
-| `canon/` | YAML definitions: pitch deck, project plan, JML logic, leadership briefing, visual manifest |
+| `generation-inputs/` | YAML definitions: pitch deck, project plan, JML logic, leadership briefing, visual manifest |
 | `visuals/` | 12-asset manifest (6 Mermaid `.mermaid` + 6 AI-generated `.png`) |
 | `analytics/` | KQL alert definitions for Microsoft Sentinel (Privileged Leaver, Compliance Drift, Orchestrator Health) |
 | `docs/` | Operational handover SOPs, compliance readiness, leadership briefing, generated artifacts |

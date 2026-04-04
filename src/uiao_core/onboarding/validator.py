@@ -6,7 +6,7 @@ document generation is attempted.
 
 Usage::
 
-    uiao validate-canon --canon canon/my_system.yaml
+    uiao validate-canon --canon generation-inputs/my_system.yaml
 """
 
 from __future__ import annotations

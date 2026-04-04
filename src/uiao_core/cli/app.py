@@ -48,7 +48,7 @@ def main(
 @app.command()
 def generate_ssp(
     canon_path: str = typer.Option(
-        "canon/uiao_leadership_briefing_v1.0.yaml",
+        "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
         "--canon",
         "-c",
         help="Path to canon YAML file.",
@@ -186,7 +186,7 @@ def generate_gemini(
 @app.command()
 def generate_pptx(
     canon_path: str = typer.Option(
-        "canon/uiao_leadership_briefing_v1.0.yaml",
+        "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
         "--canon",
         "-c",
         help="Path to canon YAML file.",
@@ -219,7 +219,7 @@ def generate_pptx(
 @app.command()
 def generate_docx(
     canon_path: str = typer.Option(
-        "canon/uiao_leadership_briefing_v1.0.yaml",
+        "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
         "--canon",
         "-c",
         help="Path to canon YAML file.",
@@ -252,7 +252,7 @@ def generate_docx(
 @app.command()
 def generate_diagrams(
     canon_path: str = typer.Option(
-        "canon/diagrams.yaml",
+        "generation-inputs/diagrams.yaml",
         "--canon",
         "-c",
         help="Path to diagrams canon YAML file.",
@@ -296,7 +296,7 @@ def generate_diagrams(
 @app.command()
 def generate_docs(
     canon_path: str = typer.Option(
-        "canon/uiao_leadership_briefing_v1.0.yaml",
+        "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
         "--canon",
         "-c",
         help="Path to canon YAML file.",
@@ -332,13 +332,13 @@ def generate_docs(
 ) -> None:
     """Render Jinja2 templates into Markdown docs using canon YAML and data files.
 
-    Automatically generates diagrams from canon/diagrams.yaml before rendering
+    Automatically generates diagrams from generation-inputs/diagrams.yaml before rendering
     templates (unless --skip-diagrams is set).
     """
     from uiao_core.generators.docs import build_docs
 
     if not skip_diagrams:
-        console.print("[bold]Auto-generating diagrams from canon/diagrams.yaml...[/bold]")
+        console.print("[bold]Auto-generating diagrams from generation-inputs/diagrams.yaml...[/bold]")
 
     console.print(f"[bold]Generating docs from {canon_path}...[/bold]")
     generated = build_docs(
@@ -355,7 +355,7 @@ def generate_docs(
 @app.command()
 def generate_artifacts(
     canon_path: str = typer.Option(
-        "canon/uiao_leadership_briefing_v1.0.yaml",
+        "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
         "--canon",
         "-c",
         help="Path to canon YAML file.",
@@ -575,7 +575,7 @@ def conmon_dashboard(
 @app.command()
 def generate_all(
     canon_path: str = typer.Option(
-        "canon/uiao_leadership_briefing_v1.0.yaml",
+        "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
         "--canon",
         "-c",
         help="Path to canon YAML file.",

@@ -116,7 +116,7 @@ class TestCanonModelDiagrams:
         assert model.diagrams == {}
 
     def test_leadership_briefing_canon_loads_with_diagrams(self, canon_dir) -> None:
-        """canon/uiao_leadership_briefing_v1.0.yaml loads cleanly and has diagrams."""
+        """generation-inputs/uiao_leadership_briefing_v1.0.yaml loads cleanly and has diagrams."""
         import yaml
 
         from uiao_core.models.canon import CanonModel
@@ -135,13 +135,13 @@ class TestCanonLoading:
     """Tests for loading canon YAML files from disk."""
 
     def test_canon_dir_exists(self, canon_dir) -> None:
-        """The canon/ directory must exist in the project."""
-        assert canon_dir.exists(), f"canon/ directory not found at {canon_dir}"
+        """The generation-inputs/ directory must exist in the project."""
+        assert canon_dir.exists(), f"generation-inputs/ directory not found at {canon_dir}"
 
     def test_canon_has_yaml_files(self, canon_dir) -> None:
-        """canon/ directory should contain at least one YAML file."""
+        """generation-inputs/ directory should contain at least one YAML file."""
         yamls = list(canon_dir.glob("*.yaml")) + list(canon_dir.glob("*.yml"))
-        assert len(yamls) > 0, "No YAML files found in canon/"
+        assert len(yamls) > 0, "No YAML files found in generation-inputs/"
 
     def test_data_dir_exists(self, data_dir) -> None:
         """The data/ directory must exist in the project."""
