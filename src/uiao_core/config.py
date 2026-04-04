@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     project_root: Path = Path.cwd()
     root_dir: Path = Path.cwd()
-    canon_dir: Path = Path("canon")
+    canon_dir: Path = Path("generation-inputs")
     templates_dir: Path = Path("templates")
     data_dir: Path = Path("data")
     exports_dir: Path = Path("exports")
