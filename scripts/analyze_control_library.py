@@ -47,7 +47,7 @@ def analyze_control_library(control_dir: str = "data/control-library"):
             has_ksi = any("ksi" in str(k).lower() for k in data.keys()) if isinstance(data, dict) else False
             has_params = "parameters" in data if isinstance(data, dict) else False
             has_impl = any(word in str(data).lower() for word in ["implementation", "statement"])
-        except:
+        except Exception:
             has_ksi = has_params = has_impl = False
 
         control_details.append({
