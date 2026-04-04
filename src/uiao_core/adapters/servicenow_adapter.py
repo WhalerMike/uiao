@@ -14,12 +14,10 @@ File: src/uiao_core/adapters/servicenow_adapter.py
 
 from __future__ import annotations
 
-import hashlib
-from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from .database_base import DatabaseAdapterBase, ClaimObject, ClaimSet, DriftReport, EvidenceObject
 from ..collectors.servicenow_collector import ServiceNowCollector
+from .database_base import ClaimObject, ClaimSet, DatabaseAdapterBase, DriftReport
 
 
 class ServiceNowAdapter(DatabaseAdapterBase):
@@ -51,6 +49,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
     def connect(self):
         """Establish ServiceNow connection and return provenance."""
         from .database_base import ConnectionProvenance
+
         return ConnectionProvenance(
             identity=f"servicenow:{self.collector.instance}",
             auth_method="oauth-bearer",
@@ -67,6 +66,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
     def discover_schema(self):
         """Return canonical mapping of ServiceNow fields → UIAO schema."""
         from .database_base import SchemaMappingObject
+
         vendor_schema = {
             "sys_id": "string",
             "short_description": "string",
@@ -104,6 +104,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
     def execute_query(self, canonical_query: Dict[str, Any]):
         """Translate canonical query to ServiceNow Table API parameters."""
         from .database_base import QueryProvenance
+
         table = canonical_query.get("from", "incident")
         fields = canonical_query.get("select", ["sys_id", "short_description", "uiao_control_id"])
         vendor_query = f"GET /api/now/table/{table}?sysparm_fields={','.join(fields)}"
@@ -135,10 +136,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
                 "implementation_statement": record.get("short_description", ""),
                 "vendor_overlay_ref": "servicenow.yaml",
                 "telemetry_enabled": True,
-                "raw_link": (
-                    f"https://{self.collector.instance}.service-now.com"
-                    f"/incident.do?sys_id={sys_id}"
-                ),
+                "raw_link": (f"https://{self.collector.instance}.service-now.com/incident.do?sys_id={sys_id}"),
             }
             claim = ClaimObject(
                 claim_id=f"servicenow:{sys_id}",
@@ -151,10 +149,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
 
         return ClaimSet(
             claims=claims,
-            source_reference=(
-                f"https://{self.collector.instance}.service-now.com"
-                f"/api/now/table/incident"
-            ),
+            source_reference=(f"https://{self.collector.instance}.service-now.com/api/now/table/incident"),
         )
 
     # ------------------------------------------------------------------
