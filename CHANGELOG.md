@@ -18,6 +18,7 @@
 * **ksi:** add schema, master index, and improved IAM/boundary exemplars ([8642c47](https://github.com/WhalerMike/uiao-core/commit/8642c4765045761c6a6987dd96a19e6c3c33f80c))
 * **ksi:** rebuild index.yaml from disk - 163 entries with full metadata ([c1a5e86](https://github.com/WhalerMike/uiao-core/commit/c1a5e861d2e355095695ede2155ec3ec2f047be2))
 * **ksi:** regenerate 163 KSI files into category subdirs via updated generator ([3684ef7](https://github.com/WhalerMike/uiao-core/commit/3684ef703c58f4166dc480cbb69f3df8297bdb5f))
+* **ksi:** tier1 enrichment - 15 critical/high KSIs with full pass_criteria and uiao_extensions ([d526354](https://github.com/WhalerMike/uiao-core/commit/d526354d24a3fb1e811c96268fae6d6acc0e0c3c))
 * **scripts:** route KSI generator output to category subdirs ([45b0ed5](https://github.com/WhalerMike/uiao-core/commit/45b0ed5cfd6ff09301952557ddce7c0a38a5543e))
 
 
