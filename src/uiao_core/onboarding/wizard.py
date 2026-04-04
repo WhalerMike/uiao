@@ -121,7 +121,7 @@ def _collect_components() -> list[dict[str, str]]:
 # ---------------------------------------------------------------------------
 
 
-def run_wizard(output_dir: Path = Path("canon")) -> Path:
+def run_wizard(output_dir: Path = Path("generation-inputs")) -> Path:
     """Run the interactive onboarding wizard and write a canon YAML file.
 
     Parameters
