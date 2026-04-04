@@ -1,34 +1,56 @@
 ksi_id: KSI-IA-02
-title: Identification and Authentication
-description: Measures and validates compliance with IA-2 (Identification and Authentication) and its enhancements. Monitors
-  EntraID, AzureActivityLogs for evidence of control implementation and effectiveness.
+title: Identification and Authentication (Organizational Users)
+description: All organizational users must authenticate using phishing-resistant MFA. Validates Entra ID Conditional Access policies enforce FIDO2/Windows Hello for Business for all privileged and standard accounts across the GCC environment.
 severity: critical
 family: IA
 controls:
 - IA-2
 - IA-2(1)
-- IA-2(12)
 - IA-2(2)
+- IA-2(6)
 - IA-2(8)
+- IA-2(12)
 data_sources:
 - EntraID
 - AzureActivityLogs
-validation_logic_ref: ksi/ksi-ia-02.yaml
+- graph_api
+validation_type: automated
+pass_criteria:
+  description: 100% of non-exempt accounts enforce phishing-resistant MFA via Conditional Access. Zero legacy auth protocols permitted.
+  type: percentage
+  threshold: 100
+  operator: equals
+  logic: CA policy assigns FIDO2 or WHfB to all users; legacy auth blocked at tenant level
+uiao_extensions:
+  gcc_moderate_focus: true
+  private_endpoint_enforcement: false
+  dns_segmentation_required: false
+  hub_spoke_model: false
+  video_project_isolation: false
+  zero_trust_telemetry: true
+  sase_global_secure_access: true
+  custom_validation_logic: entra_ca_policy_mfa_strength_check
+oscal_props:
+  implementation_status_prop: satisfied
+  evidence_type: observation
+validation_logic_ref: ksi/iam/ksi-ia-02.yaml
 freshness_window: PT24H
 expected_patterns:
-- Identification and Authentication must enforce phishing-resistant MFA for all privileged access
-- All authentication events must be bound to UIAO identity namespace
+- All accounts must enforce phishing-resistant MFA via Conditional Access policy
+- Legacy authentication protocols must be blocked at tenant level
 evidence_output:
   oscal_evidence_type: observation
   quarto_snippet_type: evidence-panel
 provenance:
-  source: generated-from-template
+  source: tier1-manual-enrichment
   timestamp: '2026-04-04T00:00:00Z'
   collector_id: uiao-core-ksi-builder
-  hash: 403a6c788226447fd84f3f511f6aa2fe457dee4d4a840ef97afff7561cea6ace
-version: 1.0.0
+  hash: placeholder
+version: 1.1
 tags:
-- identification-authentication
 - identity-plane
+- zero-trust
+- mfa
+- phishing-resistant
 - fedramp-moderate
 enabled: true

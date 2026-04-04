@@ -1,32 +1,52 @@
 ksi_id: KSI-CM-07
 title: Least Functionality
-description: Measures and validates compliance with CM-7 (Least Functionality) and its enhancements. Monitors AzurePolicy,
-  DefenderForEndpoint for evidence of control implementation and effectiveness.
+description: Systems configured to provide only essential capabilities. Unnecessary services, ports, protocols, and functions disabled via Azure Policy deny effects and Defender for Endpoint attack surface reduction rules. ASR rules enforced on all Windows endpoints.
 severity: high
 family: CM
 controls:
 - CM-7
 - CM-7(1)
 - CM-7(2)
+- CM-7(5)
 data_sources:
 - AzurePolicy
 - DefenderForEndpoint
-validation_logic_ref: ksi/ksi-cm-07.yaml
+validation_type: automated
+pass_criteria:
+  description: All ASR rules in Block mode on enrolled endpoints. Azure Policy deny assignments blocking unnecessary resource types. Zero open management ports (RDP/SSH) exposed to internet.
+  type: boolean
+  threshold: 1
+  operator: equals
+  logic: MDE ASR report confirms block mode; NSG flow logs confirm no inbound 3389/22 from internet; Policy deny assignments active
+uiao_extensions:
+  gcc_moderate_focus: true
+  private_endpoint_enforcement: true
+  dns_segmentation_required: false
+  hub_spoke_model: true
+  video_project_isolation: false
+  zero_trust_telemetry: true
+  sase_global_secure_access: false
+  custom_validation_logic: asr_rules_and_internet_exposure_check
+oscal_props:
+  implementation_status_prop: satisfied
+  evidence_type: observation
+validation_logic_ref: ksi/configuration-management/ksi-cm-07.yaml
 freshness_window: PT24H
 expected_patterns:
-- Least Functionality must reflect current approved state of all system components
-- Configuration drift must be detected and reported within 24 hours
+- All ASR rules must be in Block mode on 100% of MDE-enrolled Windows endpoints
+- Zero management ports (RDP/SSH) exposed to internet via NSG rules
 evidence_output:
   oscal_evidence_type: observation
   quarto_snippet_type: dashboard-widget
 provenance:
-  source: generated-from-template
+  source: tier1-manual-enrichment
   timestamp: '2026-04-04T00:00:00Z'
   collector_id: uiao-core-ksi-builder
-  hash: bb6d0239792386f54eecf1c18bff4cf167951272768063a497a760caaa631a3d
-version: 1.0.0
+  hash: placeholder
+version: 1.1
 tags:
-- configuration
 - management-plane
+- least-functionality
+- asr-rules
 - fedramp-moderate
 enabled: true

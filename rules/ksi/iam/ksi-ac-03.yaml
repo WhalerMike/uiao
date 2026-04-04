@@ -1,30 +1,53 @@
 ksi_id: KSI-AC-03
 title: Access Enforcement
-description: Measures and validates compliance with AC-3 (Access Enforcement) and its enhancements. Monitors EntraID, AzurePolicy
-  for evidence of control implementation and effectiveness.
+description: Role-Based Access Control enforced across all Azure resources via Entra ID and Azure RBAC. Least privilege principle applied — no standing Global Administrator assignments. All access decisions logged and auditable.
 severity: critical
 family: AC
 controls:
 - AC-3
+- AC-3(7)
+- AC-3(9)
 data_sources:
 - EntraID
 - AzurePolicy
-validation_logic_ref: ksi/ksi-ac-03.yaml
+- graph_api
+validation_type: automated
+pass_criteria:
+  description: Zero standing Global Admin assignments outside PIM. 100% of resource access governed by Azure RBAC with no wildcard Owner assignments at subscription scope.
+  type: boolean
+  threshold: 1
+  operator: equals
+  logic: ARG confirms no permanent Owner/Contributor at subscription; Entra PIM enforces JIT for GA role
+uiao_extensions:
+  gcc_moderate_focus: true
+  private_endpoint_enforcement: false
+  dns_segmentation_required: false
+  hub_spoke_model: false
+  video_project_isolation: true
+  zero_trust_telemetry: true
+  sase_global_secure_access: true
+  custom_validation_logic: azure_rbac_least_privilege_scan
+oscal_props:
+  implementation_status_prop: satisfied
+  evidence_type: observation
+validation_logic_ref: ksi/iam/ksi-ac-03.yaml
 freshness_window: PT24H
 expected_patterns:
-- All access enforcement policies must be enforced and validated
-- Access decisions must be logged and auditable within the telemetry plane
+- No standing Global Administrator assignments outside of PIM JIT activation
+- All subscription-level Owner assignments must be time-bound and approved
 evidence_output:
   oscal_evidence_type: observation
   quarto_snippet_type: evidence-panel
 provenance:
-  source: generated-from-template
+  source: tier1-manual-enrichment
   timestamp: '2026-04-04T00:00:00Z'
   collector_id: uiao-core-ksi-builder
-  hash: 69ae8c5d65b86eea97ea3292b3f6f6d37992881b83429f97e251758d730ebbea
-version: 1.0.0
+  hash: placeholder
+version: 1.1
 tags:
-- access-control
 - identity-plane
+- rbac
+- least-privilege
+- zero-trust
 - fedramp-moderate
 enabled: true

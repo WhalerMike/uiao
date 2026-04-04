@@ -1,34 +1,54 @@
 ksi_id: KSI-RA-05
 title: Vulnerability Monitoring and Scanning
-description: Measures and validates compliance with RA-5 (Vulnerability Monitoring and Scanning) and its enhancements. Monitors
-  DefenderForEndpoint, MDE, AzureResourceGraph for evidence of control implementation and effectiveness.
+description: Continuous vulnerability scanning via Microsoft Defender for Endpoint and Defender for Cloud. Critical and high CVEs remediated within 30 days (critical within 15 days). CVSS scoring applied. Vulnerability findings tracked in Defender for Cloud and correlated with OSCAL POA&M.
 severity: critical
 family: RA
 controls:
 - RA-5
-- RA-5(11)
+- RA-5(1)
 - RA-5(2)
+- RA-5(3)
 - RA-5(5)
 data_sources:
 - DefenderForEndpoint
-- MDE
 - AzureResourceGraph
-validation_logic_ref: ksi/ksi-ra-05.yaml
+- AzureMonitorMetrics
+validation_type: automated
+pass_criteria:
+  description: Zero unmitigated critical CVEs older than 15 days. Zero unmitigated high CVEs older than 30 days. Scan coverage >99% of in-scope endpoints.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: Defender for Cloud secure score CVE report filtered by age and severity; endpoint coverage from MDE onboarding status
+uiao_extensions:
+  gcc_moderate_focus: true
+  private_endpoint_enforcement: false
+  dns_segmentation_required: false
+  hub_spoke_model: false
+  video_project_isolation: false
+  zero_trust_telemetry: true
+  sase_global_secure_access: false
+  custom_validation_logic: defender_vulnerability_age_and_coverage_check
+oscal_props:
+  implementation_status_prop: satisfied
+  evidence_type: observation
+validation_logic_ref: ksi/other/ksi-ra-05.yaml
 freshness_window: P7D
 expected_patterns:
-- Vulnerability Monitoring and Scanning must identify and prioritize all known vulnerabilities
-- Risk findings must be tracked to remediation or acceptance
+- Zero unmitigated critical CVEs older than 15 days across all in-scope endpoints
+- Endpoint scan coverage must exceed 99% of Intune-enrolled devices
 evidence_output:
   oscal_evidence_type: observation
   quarto_snippet_type: dashboard-widget
 provenance:
-  source: generated-from-template
+  source: tier1-manual-enrichment
   timestamp: '2026-04-04T00:00:00Z'
   collector_id: uiao-core-ksi-builder
-  hash: 8ec1f8bd3ceb8ecd3c1bc71b89a7ebaf1ba78f2ee20772349117a8086fc51480
-version: 1.0.0
+  hash: placeholder
+version: 1.1
 tags:
-- risk-assessment
 - security-plane
+- vulnerability-management
+- defender
 - fedramp-moderate
 enabled: true
