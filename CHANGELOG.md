@@ -12,6 +12,7 @@
 
 ### Features
 
+* add KSI library (163 indicators) for FedRAMP Moderate baseline ([ab8a303](https://github.com/WhalerMike/uiao-core/commit/ab8a3032a605e2ec92331ba98706b380a5d281c2))
 * expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
 
 
