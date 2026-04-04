@@ -131,6 +131,38 @@ uiao-core/
 
 ---
 
+## How Adapters Work
+
+The UIAO adapter framework is intentionally **lightweight and sits outside the main data path**.
+Its only job is to **create alignments** — exactly like a DNS resolver.
+
+It does **not** perform the actual conversions into OSCAL JSON, SSPs, POA&Ms, or SBOMs.
+Those happen downstream in the `generators/` layer.
+The adapters simply "tell the engine how to get there."
+
+### DNS Analogy
+
+| DNS Concept              | UIAO Adapter Equivalent                          | What It Does |
+|--------------------------|--------------------------------------------------|--------------|
+| Domain name              | YAML canon (Single Source of Truth)              | The one authoritative address |
+| DNS resolver             | Adapter (ServiceNow, Entra, Palo Alto, etc.)     | "Tells you how to get there" |
+| IP address returned      | Vendor-overlay + claim alignment                 | Pointer + mapping + evidence hash |
+| Recursive lookup         | Collector → normalize → overlay                  | Fast, repeatable, no data duplication |
+| TTL / cache invalidation | Drift detection                                  | Continuous validation against canon |
+
+### What an Adapter Actually Does (Step-by-Step)
+
+1. **Collector** reaches out to the vendor system (API, SDK, database, etc.) using secure credentials.
+2. **Adapter** normalizes the raw data into UIAO schema concepts (identity as root namespace).
+3. **Adapter** builds a vendor-specific **overlay** (stored in `data/vendor-overlays/`) and lightweight claims with evidence links.
+4. **Engine** merges the alignment into the canon and hands it to the generators for full artifact creation.
+
+This keeps SSOT pure, makes adapters swappable, and lets you add a new Big 7 vendor in hours instead of weeks.
+
+Result: No more manual spreadsheets, no more copy-paste into FedRAMP artifacts, and real-time drift detection from the systems you already own.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -174,6 +206,7 @@ uiao canon-check --dir <path>
 - [x] CycloneDX SBOM generation
 - [x] Mermaid diagram pipeline from YAML SSOT
 - [x] 23 GitHub Actions CI/CD workflows
+- [x] ServiceNow adapter — first real Big 7 implementation (alignment-only, DNS pattern)
 
 ### In Progress
 
@@ -186,6 +219,9 @@ uiao canon-check --dir <path>
 - [ ] Evidence linker integration with OSCAL back-matter
 - [ ] GPG-signed commit hard gate (currently advisory)
 - [ ] FedRAMP 20x alignment updates
+- [ ] Entra adapter — Big 7 #2 (identity is the root namespace)
+- [ ] `data/vendor-overlays/servicenow.yaml` — overlay spec for ServiceNow control mappings
+- [ ] CLI command: `uiao adapter run servicenow`
 
 ---
 
