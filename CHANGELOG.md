@@ -4,6 +4,7 @@
 ### Bug Fixes
 
 * **ci:** update build-readiness gate to reference new KSI crosswalk and index paths ([54dd709](https://github.com/WhalerMike/uiao-core/commit/54dd7091f85a543b0cd6bf1c57054be3a622b7b0))
+* **lint:** resolve pre-existing ruff E722 and F841 errors ([3d43ace](https://github.com/WhalerMike/uiao-core/commit/3d43acef9a743e8ba51c29dfe47fb10bb0fc59f5))
 * remove docs/STYLE-GUIDE.md and site/ generated files to resolve merge conflicts ([7e40ff8](https://github.com/WhalerMike/uiao-core/commit/7e40ff8f75985ae0a7a81139c080b91fee9802da))
 * rename section 6 from Core Concepts to Eight Core Concepts to resolve canon drift ([b85d406](https://github.com/WhalerMike/uiao-core/commit/b85d406b8465b799cb832a8e14496d03286cf8fe))
 * resolve all remaining test failures — 379 passed, 0 failed ([e663092](https://github.com/WhalerMike/uiao-core/commit/e663092c6c62953b8d5e387befa6ca4c68413b90))
