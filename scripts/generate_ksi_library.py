@@ -7,7 +7,6 @@ file per base control to rules/ksi/<category>/.
 """
 
 import hashlib
-import os
 import re
 from pathlib import Path
 
@@ -240,6 +239,7 @@ FAMILY_CATEGORY = {
     "SR": "other",
 }
 
+
 def parse_control_id(filename: str) -> tuple[str, str, str | None]:
     """Parse filename into (family, base_number, enhancement_number|None)."""
     name = filename.replace(".yml", "")
@@ -347,10 +347,13 @@ def build_expected_patterns(title: str, family: str, narrative: str) -> list[str
         ],
     }
 
-    patterns = family_patterns.get(family, [
-        f"{title} must be validated and current",
-        "Evidence must be collected within the defined freshness window",
-    ])
+    patterns = family_patterns.get(
+        family,
+        [
+            f"{title} must be validated and current",
+            "Evidence must be collected within the defined freshness window",
+        ],
+    )
 
     return patterns
 
@@ -414,7 +417,7 @@ def generate_ksi(base_key: str, group: dict) -> dict:
     freshness = FAMILY_FRESHNESS.get(family, "P7D")
     oscal_type = FAMILY_OSCAL_TYPE.get(family, "observation")
     quarto_type = FAMILY_QUARTO_TYPE.get(family, "table-row")
-    tags = FAMILY_TAGS.get(family, []) + [f"fedramp-moderate"]
+    tags = FAMILY_TAGS.get(family, []) + ["fedramp-moderate"]
 
     expected_patterns = build_expected_patterns(title, family, narrative)
 
@@ -426,7 +429,7 @@ def generate_ksi(base_key: str, group: dict) -> dict:
         "ksi_id": ksi_id,
         "title": title,
         "description": f"Measures and validates compliance with {base_key} ({title}) and its enhancements. "
-                       f"Monitors {', '.join(data_sources)} for evidence of control implementation and effectiveness.",
+        f"Monitors {', '.join(data_sources)} for evidence of control implementation and effectiveness.",
         "severity": severity,
         "family": family,
         "controls": controls,
