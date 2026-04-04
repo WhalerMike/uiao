@@ -1,4 +1,4 @@
-## [2.0.1](https://github.com/WhalerMike/uiao-core/compare/v2.0.0...v2.0.1) (2026-04-04)
+# [2.1.0](https://github.com/WhalerMike/uiao-core/compare/v2.0.0...v2.1.0) (2026-04-04)
 
 
 ### Bug Fixes
@@ -8,6 +8,11 @@
 * resolve all remaining test failures — 379 passed, 0 failed ([e663092](https://github.com/WhalerMike/uiao-core/commit/e663092c6c62953b8d5e387befa6ca4c68413b90))
 * update Core Concepts section name to Eight Core Concepts to resolve canon drift ([9f868c1](https://github.com/WhalerMike/uiao-core/commit/9f868c1755f3d951f7cab24cc67e1f07cddfed4b))
 * update workflows to use pyproject.toml instead of deleted requirements.txt ([bb0e660](https://github.com/WhalerMike/uiao-core/commit/bb0e660028abc90dec3681b22199fa1f39640f08))
+
+
+### Features
+
+* expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
 
 
 
