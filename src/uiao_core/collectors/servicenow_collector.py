@@ -105,10 +105,7 @@ class ServiceNowCollector:
         Lightweight comparison by sys_id + short_description.
         The engine compares full claim sets against the YAML canon.
         """
-        expected_index: Dict[str, str] = {
-            r.get("sys_id", ""): r.get("short_description", "")
-            for r in expected
-        }
+        expected_index: Dict[str, str] = {r.get("sys_id", ""): r.get("short_description", "") for r in expected}
         drifted = []
         for record in current:
             sys_id = record.get("sys_id", "")
