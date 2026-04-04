@@ -1,0 +1,92 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AU-12(1)
+# Title      : Audit Record Generation | System-Wide and Time-Correlated Audit Trail
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AU-12(1)
+title: "Audit Record Generation | System-Wide and Time-Correlated Audit Trail"
+family: Audit and Accountability
+status: not-implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - entra-id
+  - crowdstrike-falcon
+  - palo-alto-ngfw
+
+evidence:
+  - sentinel-unified-audit-trail-workspace-config
+  - azure-time-synchronization-policy-documentation
+  - sentinel-timestamp-normalization-rule-set
+  - crowdstrike-ntp-synchronization-configuration
+
+parameters:
+  - id: au_12_1_time_source
+    description: >-
+      Authoritative time source used to synchronize all audit
+      record timestamps across platform components.
+    value: "Azure host NTP service (time.windows.com) synchronized to NIST stratum 1 servers; all managed endpoints synchronized via Intune and Active Directory w32tm; network devices synchronized via Cisco NTP hierarchy"
+  - id: au_12_1_time_variance_threshold
+    description: >-
+      Maximum permitted clock deviation from authoritative time
+      source before corrective action is triggered.
+    value: "Maximum 1-second deviation; Intune compliance policy marks endpoints out-of-compliance at >5 seconds deviation; NGFW syslog time offset alert fires at >2 seconds"
+
+narrative: |
+  **System-Wide Audit Trail Compilation**
+  The UIAO system compiles audit records from all individual system
+  components into a system-wide, time-correlated audit trail in
+  Microsoft Sentinel. Audit records from Entra ID, Microsoft 365,
+  CrowdStrike Falcon, Palo Alto NGFW, CyberArk, Cisco SD-WAN, and
+  Azure platform services are ingested into a unified Log Analytics
+  workspace, where Sentinel normalizes all records to a consistent
+  timestamp schema using the time source defined in PARAM au_12_1_time_source.
+  The centralized compilation ensures that any security event can
+  be traced across all system components with temporal coherence,
+  enabling analysts to reconstruct the exact sequence of actions
+  across identity, endpoint, network, and cloud layers. This satisfies
+  the AU-12(1) requirement for a system-wide, time-correlated audit
+  trail and supports **AU-6(3)** (Correlate Audit Record Repositories)
+  and **IR-4** (Incident Handling) objectives.
+
+  **Time Synchronization Enforcement**
+  All UIAO system components synchronize to the authoritative time
+  hierarchy defined in PARAM au_12_1_time_source, ensuring that
+  audit record timestamps across disparate platforms can be
+  meaningfully correlated. Azure virtual machines inherit NTP
+  synchronization from the Azure host time service. Managed
+  endpoints are synchronized via Windows Time Service (w32tm)
+  policies enforced through Intune. Palo Alto NGFW, Cisco SD-WAN,
+  and other network infrastructure devices synchronize to a
+  dedicated internal NTP server that is itself synchronized to
+  the Azure host time service. This hierarchical synchronization
+  ensures sub-second timestamp consistency across all audit sources,
+  satisfying **AU-8** (Time Stamps) requirements.
+
+  **Clock Deviation Monitoring and Alerting**
+  Microsoft Sentinel monitors for clock deviation anomalies using
+  the variance thresholds defined in PARAM au_12_1_time_variance_threshold.
+  Audit records with timestamps that deviate significantly from
+  the expected system time are flagged by Sentinel analytic rules,
+  which can indicate log tampering, time-of-flight logging delays,
+  or misconfigured time sources. Intune device compliance policies
+  report endpoints with excessive clock deviation to Entra ID
+  Conditional Access, which can restrict access for out-of-sync
+  devices until time synchronization is restored.
+
+  **Audit Trail Integrity Across Retention Tiers**
+  The time-correlated audit trail is maintained across all retention
+  tiers — 12-month hot tier in Log Analytics and 24-month cold tier
+  in Azure Storage — with timestamp fidelity preserved throughout.
+  Log export processes include hash validation metadata to detect
+  record modification during tier migration, supporting **AU-9**
+  (Protection of Audit Information) and the continuous monitoring
+  objectives of **CA-7**.
+
+related_controls:
+  - AU-8    # Time Stamps
+  - AU-9    # Protection of Audit Information
+  - AU-12   # Audit Record Generation
+  - AU-6(3) # Correlate Audit Record Repositories
+  - CA-7    # Continuous Monitoring
+  - IR-4    # Incident Handling

@@ -1,0 +1,78 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SA-9(2)
+# Title      : External System Services | Identification of Functions, Ports, Protocols, and Services
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SA-9(2)
+title: "External System Services | Identification of Functions, Ports, Protocols, and Services"
+family: System and Services Acquisition
+status: not-implemented
+
+implemented_by:
+  - palo-alto-ngfw
+  - infoblox
+  - servicenow
+  - microsoft-sentinel
+
+evidence:
+  - external-service-port-protocol-matrix-servicenow
+  - palo-alto-external-service-firewall-rule-documentation
+  - infoblox-external-dns-service-records
+  - servicenow-vendor-network-requirements-records
+
+parameters:
+  - id: PARAM-SA-009-2-001
+    description: >-
+      Requirement for external service providers to identify the functions,
+      ports, protocols, and services required for their service delivery.
+    value: "External providers must submit a port, protocol, and service matrix as part of onboarding; updates require ISSO approval before implementation"
+  - id: PARAM-SA-009-2-002
+    description: >-
+      Review and approval process for external provider network requirements
+      before connectivity is established or modified.
+    value: "ISSO and Network Security review external provider port/protocol submissions in ServiceNow; Palo Alto NGFW rules created only after approval"
+
+narrative: |
+  **External Service Network Requirements Documentation**
+  The organization requires external service providers to identify
+  the functions, ports, protocols, and services they use to deliver
+  services to the UIAO system (PARAM-SA-009-2-001). During onboarding,
+  external providers submit a completed port, protocol, and service
+  matrix that identifies all required inbound and outbound communications,
+  including protocol details and business justification for each
+  communication path. This matrix is stored in ServiceNow as part
+  of the vendor management record.
+
+  **Review and Approval Process**
+  The ISSO and Network Security team review external provider network
+  requirements (PARAM-SA-009-2-002) before connectivity is provisioned.
+  Approved requirements are implemented as named Palo Alto NGFW security
+  policy rules with explicit source, destination, port, and protocol
+  specifications. Rules are tagged with the associated vendor and ISA
+  reference for auditability. Any deviation from the approved matrix
+  requires a new review and approval cycle before additional connectivity
+  is permitted.
+
+  **DNS and Service Discovery Control**
+  Infoblox DNS maintains authoritative records for external service
+  endpoints accessed by UIAO systems. DNS resolution for external
+  services is controlled through Infoblox DNS response policy zones
+  (RPZ) that block resolution of unapproved external service domains.
+  This prevents unauthorized external service connectivity even when
+  firewall rules might otherwise permit the traffic.
+
+  **Anomaly Detection and Monitoring**
+  Microsoft Sentinel monitors network traffic to and from external
+  service endpoints, alerting on connections to ports, protocols,
+  or services not reflected in the approved network requirements matrix.
+  Alerts trigger ServiceNow incident creation for ISSO investigation,
+  ensuring undocumented external service usage is detected and addressed.
+  This monitoring capability supports **SI-4(4)** (Inbound and Outbound
+  Communications Traffic) requirements.
+
+related_controls:
+  - SA-9   # External System Services
+  - SC-7   # Boundary Protection
+  - CM-7  # Least Functionality
+  - SI-4   # System Monitoring
+  - CA-3   # Information Exchange

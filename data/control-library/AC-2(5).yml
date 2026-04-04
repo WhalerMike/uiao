@@ -1,0 +1,89 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-2(5)
+# Title      : Account Management | Inactivity Logout
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AC-2(5)
+title: "Account Management | Inactivity Logout"
+family: Access Control
+status: not-implemented
+
+implemented_by:
+  - entra-id
+  - intune-mdm
+  - microsoft-365
+  - cyberark-pas
+
+evidence:
+  - entra-id-conditional-access-session-policy
+  - intune-device-lock-policy-report
+  - microsoft-365-idle-session-timeout-configuration
+  - cyberark-session-inactivity-timeout-settings
+
+parameters:
+  - id: ac_2_5_session_inactivity_timeout
+    description: >-
+      Maximum period of session inactivity before the system
+      automatically logs out or locks the user session.
+    value: "15 minutes of inactivity triggers session lock on managed endpoints via Intune policy; 1 hour triggers sign-out for Microsoft 365 web sessions"
+  - id: ac_2_5_privileged_session_timeout
+    description: >-
+      Inactivity timeout applied to privileged access sessions
+      managed through CyberArk PSM.
+    value: "10 minutes of session inactivity triggers automatic privileged session termination via CyberArk PSM"
+
+narrative: |
+  **Endpoint Session Lock on Inactivity**
+  The UIAO system requires automatic session lock for all managed
+  endpoints after the inactivity period defined in PARAM
+  ac_2_5_session_inactivity_timeout. Microsoft Intune deploys
+  device configuration profiles enforcing screen lock after 15
+  minutes of user inactivity across all Windows and macOS managed
+  endpoints. The lock screen requires re-authentication via Windows
+  Hello for Business or Entra ID credentials before session access
+  is restored, preventing unauthorized access to unattended
+  workstations. Intune compliance policies report on devices where
+  the lock timeout is not enforced, and Entra ID Conditional Access
+  blocks non-compliant devices from accessing organizational
+  resources. This supports **AC-11** (Device Lock) and **IA-2**
+  (Identification and Authentication) requirements.
+
+  **Web and Cloud Application Session Timeout**
+  Microsoft 365 and Azure portal sessions are governed by Entra ID
+  Conditional Access sign-in frequency policies, which enforce
+  re-authentication after the idle session threshold defined in
+  PARAM ac_2_5_session_inactivity_timeout. SharePoint Online and
+  Teams apply additional idle session timeout controls through
+  Microsoft 365 security policy settings, terminating browser
+  sessions that exceed the inactivity threshold. These controls
+  ensure that cloud application sessions do not persist beyond
+  defined inactivity windows, reducing risk from unattended
+  authenticated browser sessions.
+
+  **Privileged Session Inactivity Enforcement**
+  CyberArk Privileged Session Manager (PSM) enforces a shorter
+  inactivity timeout for all privileged remote desktop and SSH
+  sessions as defined in PARAM ac_2_5_privileged_session_timeout.
+  Sessions that reach the inactivity threshold are automatically
+  terminated by CyberArk PSM, and the session termination event
+  is recorded in the CyberArk audit trail and forwarded to
+  Microsoft Sentinel. The shorter timeout for privileged sessions
+  reflects the elevated risk associated with unattended privileged
+  access, aligning with **AC-6** (Least Privilege) and **AC-17**
+  (Remote Access) security objectives.
+
+  **Policy Enforcement and Monitoring**
+  Compliance with session inactivity controls is monitored through
+  Microsoft Sentinel, which correlates Intune device compliance
+  signals, Entra ID sign-in logs, and CyberArk session records to
+  detect anomalous session persistence. Deviations from configured
+  inactivity policies generate alerts routed to ServiceNow ITSM
+  for investigation under **IR-4** (Incident Handling) procedures.
+
+related_controls:
+  - AC-2   # Account Management
+  - AC-6   # Least Privilege
+  - AC-11  # Device Lock
+  - AC-17  # Remote Access
+  - IA-2   # Identification and Authentication
+  - IR-4   # Incident Handling

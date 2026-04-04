@@ -1,0 +1,87 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CP-8
+# Title      : Telecommunications Services
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: CP-8
+title: "Telecommunications Services"
+family: Contingency Planning
+status: not-implemented
+
+implemented_by:
+  - azure-expressroute
+  - palo-alto-ngfw
+  - infoblox-ipam
+  - servicenow-grc
+
+evidence:
+  - cp-8-telecommunications-contingency-plan-section
+  - cp-8-alternate-telecommunications-provider-contracts
+  - cp-8-expressroute-redundancy-architecture-diagram
+  - cp-8-servicenow-telecom-provider-records
+
+parameters:
+  - id: cp_8_primary_telecom_providers
+    description: >-
+      Primary telecommunications service providers supporting UIAO
+      system connectivity to users and dependent services.
+    value: "Azure ExpressRoute circuit (primary WAN connectivity to Azure regions); ISP-provided internet circuits for secondary public connectivity; carrier-grade MPLS for inter-site connectivity"
+  - id: cp_8_alternate_telecom_requirements
+    description: >-
+      Requirements for alternate telecommunications services to support
+      continuity of operations during primary provider disruption.
+    value: "Geographically diverse ExpressRoute circuits through separate peering locations; backup ISP internet circuits on separate physical infrastructure; failover activation within 15 minutes of primary circuit failure detection"
+  - id: cp_8_telecom_recovery_priority
+    description: >-
+      Priority assigned to telecommunications service restoration within
+      the overall contingency plan recovery sequence.
+    value: "Tier 1 priority — network connectivity is a prerequisite for all other recovery actions; UIAO O&M team and ISP NOC contacts maintained in ServiceNow on-call records"
+
+narrative: |
+  **Telecommunications Service Continuity Planning**
+  The UIAO organization identifies and documents alternate telecommunications
+  services required to maintain essential mission functions during disruption
+  of primary network connectivity. Telecommunications contingency planning is
+  integrated into the broader Contingency Plan and specifically addresses
+  the UIAO system's dependency on network connectivity for access to
+  Azure-hosted services, security infrastructure (Sentinel, Entra ID, CyberArk),
+  and inter-site communications. Primary and alternate provider information
+  is maintained in PARAM cp_8_primary_telecom_providers with alternate
+  requirements defined in PARAM cp_8_alternate_telecom_requirements. Network
+  connectivity is assigned Tier 1 recovery priority per PARAM cp_8_telecom_recovery_priority
+  because all other contingency recovery actions depend on its availability.
+
+  **Redundant Circuit Architecture**
+  The UIAO network architecture implements geographically diverse Azure
+  ExpressRoute circuits through separate Microsoft peering locations, ensuring
+  that a single physical or logical circuit failure does not interrupt
+  Azure connectivity. Palo Alto Next-Generation Firewall is configured with
+  dual-path routing policies that automatically fail over to the backup
+  ExpressRoute circuit or ISP internet path upon detection of primary circuit
+  failure, with Infoblox providing DNS failover for affected service endpoints.
+  Internet-facing services are provisioned with redundant ISP circuits on
+  separate physical infrastructure (conduit, building entry points), providing
+  last-resort connectivity independent of ExpressRoute availability. Circuit
+  health is continuously monitored by Microsoft Sentinel network performance
+  dashboards, which alert the UIAO network team when circuit utilization or
+  latency thresholds indicate degradation risk, supporting **CP-7** (Alternate
+  Processing Site) connectivity requirements.
+
+  **Provider Agreements and Contact Records**
+  Telecommunications provider service level agreements (SLAs) are reviewed
+  annually to confirm that provider restoration commitments align with UIAO
+  contingency RTO requirements. Provider emergency contact information,
+  circuit identifiers, and escalation procedures are maintained in ServiceNow
+  GRC and referenced in the Contingency Plan telecommunications section.
+  Alternate provider contracts include provisions for priority restoration
+  in declared emergency situations. Telecommunications contingency
+  capabilities are exercised annually during the coordinated **CP-4(1)**
+  (Contingency Plan Testing: Coordinate with Related Plans) exercise cycle
+  to validate failover switching procedures under controlled conditions.
+
+related_controls:
+  - CP-2   # Contingency Plan
+  - CP-6   # Alternate Storage Site
+  - CP-7   # Alternate Processing Site
+  - CP-4(1) # Contingency Plan Testing: Coordinate with Related Plans
+  - SC-7   # Boundary Protection

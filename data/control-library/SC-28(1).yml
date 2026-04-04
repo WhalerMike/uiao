@@ -1,0 +1,83 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-28(1)
+# Title      : Protection of Information at Rest | Cryptographic Protection
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SC-28(1)
+title: "Protection of Information at Rest | Cryptographic Protection"
+family: System and Communications Protection
+status: not-implemented
+
+implemented_by:
+  - azure-key-vault
+  - intune-mdm
+  - cyberark
+  - entra-id
+
+evidence:
+  - azure-storage-encryption-configuration-documentation
+  - intune-bitlocker-encryption-compliance-reports
+  - azure-key-vault-key-management-audit-logs
+  - cyberark-credential-vault-encryption-configuration
+
+parameters:
+  - id: PARAM-SC-028-1-001
+    description: >-
+      Cryptographic mechanisms used to protect information at rest
+      across UIAO system storage components.
+    value: "AES-256 encryption for all data at rest; FIPS 140-2 validated modules; Azure Storage Service Encryption and BitLocker on all endpoints"
+  - id: PARAM-SC-028-1-002
+    description: >-
+      Key management requirements for encryption keys protecting
+      information at rest.
+    value: "Azure Key Vault HSM-backed keys with customer-managed key (CMK) configuration; CyberArk manages privileged credential encryption; annual key rotation"
+
+narrative: |
+  **Encryption of Data at Rest**
+  The organization implements cryptographic mechanisms to prevent
+  unauthorized disclosure of information at rest (PARAM-SC-028-1-001).
+  All UIAO data at rest is encrypted using AES-256, the approved
+  FIPS 140-2 validated symmetric encryption algorithm. Azure Storage
+  Service Encryption (SSE) automatically encrypts all data written
+  to Azure Blob Storage, Azure Files, Azure Disks, and Azure
+  Queue Storage. Database encryption using Azure Transparent Data
+  Encryption (TDE) protects all relational data stores. Encryption
+  applies to both production and backup data, ensuring comprehensive
+  at-rest protection.
+
+  **Key Management via Azure Key Vault**
+  Encryption keys are managed using Customer-Managed Keys (CMK)
+  stored in Azure Key Vault with Hardware Security Module (HSM)
+  backing (PARAM-SC-028-1-002). Azure Key Vault HSM provides FIPS
+  140-2 Level 3 validated key protection, ensuring key material
+  never exists in plaintext outside the HSM boundary. Key access
+  policies enforce least privilege, with service identities granted
+  only the minimum key operations required for their function.
+  Entra ID managed identities authenticate Azure services to
+  Key Vault, eliminating the need for static credential management.
+  Annual key rotation is enforced by Key Vault rotation policies.
+
+  **Endpoint Encryption via BitLocker**
+  Microsoft Intune enforces BitLocker full-disk encryption on all
+  managed Windows endpoints. BitLocker uses TPM 2.0 to protect
+  the encryption key, ensuring that disk contents cannot be accessed
+  if the physical device is removed or the operating system is
+  bypassed. BitLocker recovery keys are escrowed to Entra ID and
+  retrievable only by authorized administrators. Endpoint compliance
+  policies block access to organizational resources from devices
+  without active BitLocker encryption.
+
+  **Privileged Credential Protection**
+  CyberArk Privileged Access Manager stores privileged credentials
+  in an encrypted vault, protecting administrative passwords, SSH
+  keys, and API tokens at rest. CyberArk's encryption uses AES-256
+  with HSM-protected master keys, ensuring privileged credentials
+  remain protected even if vault database files are accessed directly.
+  This supports **IA-5** (Authenticator Management) requirements.
+
+related_controls:
+  - SC-28   # Protection of Information at Rest
+  - SC-13   # Cryptographic Protection
+  - IA-5    # Authenticator Management
+  - SC-8(1) # Cryptographic Protection in Transit
+  - MP-5    # Media Transport
