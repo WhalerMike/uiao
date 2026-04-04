@@ -3,7 +3,7 @@
 
 Reads all control YAML files from data/control-library/,
 groups enhancements with base controls, and writes one KSI
-file per base control to rules/ksi/.
+file per base control to rules/ksi/<category>/.
 """
 
 import hashlib
@@ -218,6 +218,27 @@ FAMILY_TAGS = {
     "SR": ["supply-chain", "management-plane"],
 }
 
+
+FAMILY_CATEGORY = {
+    "AC": "iam",
+    "IA": "iam",
+    "PS": "planning-personnel",
+    "SC": "boundary-protection",
+    "AU": "monitoring-logging",
+    "SI": "monitoring-logging",
+    "CM": "configuration-management",
+    "IR": "incident-response",
+    "MA": "planning-personnel",
+    "MP": "planning-personnel",
+    "PE": "planning-personnel",
+    "PL": "planning-personnel",
+    "AT": "other",
+    "CA": "other",
+    "CP": "other",
+    "RA": "other",
+    "SA": "other",
+    "SR": "other",
+}
 
 def parse_control_id(filename: str) -> tuple[str, str, str | None]:
     """Parse filename into (family, base_number, enhancement_number|None)."""
@@ -438,7 +459,10 @@ def generate_ksi(base_key: str, group: dict) -> dict:
 def write_ksi_file(ksi: dict, family: str, number: str) -> str:
     """Write a KSI YAML file and return the filename."""
     filename = f"ksi-{family.lower()}-{number.zfill(2)}.yaml"
-    filepath = KSI_DIR / filename
+    category = FAMILY_CATEGORY.get(family, "other")
+    subdir = KSI_DIR / category
+    subdir.mkdir(parents=True, exist_ok=True)
+    filepath = subdir / filename
 
     # Custom YAML dumper to get nice formatting
     content = yaml.dump(
