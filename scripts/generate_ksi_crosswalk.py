@@ -23,6 +23,7 @@ CATEGORIES = [
     "other",
 ]
 
+
 def load_all_ksis() -> list[dict]:
     ksis = []
     for category in CATEGORIES:
@@ -38,6 +39,7 @@ def load_all_ksis() -> list[dict]:
             except Exception as e:
                 print(f"  WARNING: Could not parse {f.name}: {e}")
     return ksis
+
 
 def build_crosswalk(ksis: list[dict]) -> dict:
     mappings = {}
@@ -78,6 +80,7 @@ def build_crosswalk(ksis: list[dict]) -> dict:
 
     return mappings, ksi_summary
 
+
 def main():
     print("Loading KSI files...")
     ksis = load_all_ksis()
@@ -89,6 +92,7 @@ def main():
 
     # Category counts
     from collections import Counter
+
     cat_counts = Counter(v["category"] for v in ksi_summary.values())
 
     output = {
@@ -105,12 +109,11 @@ def main():
     }
 
     OUTPUT_FILE.write_text(
-        yaml.dump(output, default_flow_style=False, sort_keys=False,
-                  allow_unicode=True, width=120),
-        encoding="utf-8"
+        yaml.dump(output, default_flow_style=False, sort_keys=False, allow_unicode=True, width=120), encoding="utf-8"
     )
     print(f"\nDone: crosswalk written to {OUTPUT_FILE}")
     print(f"  {len(ksi_summary)} KSIs | {total_controls} controls mapped")
+
 
 if __name__ == "__main__":
     main()
