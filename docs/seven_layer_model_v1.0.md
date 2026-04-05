@@ -8,7 +8,7 @@ classification: "CUI/FOUO"
 
 This model defines the architectural stack for the modernization efforts at . Each layer represents a functional domain, and the three UIAO pillars (Identity, Addressing, Overlay) are highlighted to show where vendor-specific integration occurs.
 
-<img src="assets/images/mermaid/graph_td.png" alt="graph_td" />
+<img src="assets/images/plantuml/graph_td.png" alt="graph_td" />
 
 ---
 
