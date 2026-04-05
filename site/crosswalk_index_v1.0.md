@@ -33,7 +33,7 @@ The crosswalk provides the following capabilities across the UIAO architecture:
 
 The following diagram illustrates how the four control planes interconnect within the UIAO architecture. Each plane listed in the crosswalk matrix below maps to a specific region of this diagram.
 
-<img src="assets/images/mermaid/diagram_1.png" alt="diagram_1" />
+<img src="assets/images/plantuml/diagram_1.png" alt="diagram_1" />
 
 ---
 
@@ -59,7 +59,7 @@ Each control plane is visualized through one or more architecture diagrams. The 
 
 The UIAO architecture is designed as an integrated system where control planes depend on each other. The following dependency map ensures that changes to one plane are evaluated for downstream impact on connected planes.
 
-<img src="assets/images/mermaid/diagram_2.png" alt="diagram_2" />
+<img src="assets/images/plantuml/diagram_2.png" alt="diagram_2" />
 
 
 
@@ -97,7 +97,7 @@ The UIAO directory structure is organized according to the following principles:
 
 The following diagram illustrates how the appendix canon is organized, processed through the Jinja2 rendering engine, and published to the documentation site.
 
-<img src="assets/images/mermaid/diagram_3.png" alt="diagram_3" />
+<img src="assets/images/plantuml/diagram_3.png" alt="diagram_3" />
 
 ---
 
