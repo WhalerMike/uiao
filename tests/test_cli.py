@@ -391,7 +391,7 @@ class TestGenerateAll:
     def test_generate_all_runs_all_steps(self, tmp_path) -> None:
         """generate-all invokes every generator and reports success."""
         patches = [
-            patch("uiao_core.generators.mermaid.render_all_mermaid", return_value=["img1.png", "img2.png"]),
+            patch("uiao_core.generators.plantuml.render_plantuml_dir", return_value=["img1.png", "img2.png"]),
             patch("uiao_core.generators.docs.build_docs", return_value=["docs/a.md", "docs/b.md"]),
             patch("uiao_core.generators.oscal.build_oscal", return_value=tmp_path / "oscal.json"),
             patch("uiao_core.generators.ssp.build_ssp", return_value=tmp_path / "ssp.json"),
@@ -425,7 +425,7 @@ class TestGenerateAll:
     def test_generate_all_skip_sbom(self, tmp_path) -> None:
         """--skip-sbom skips SBOM generation and still exits 0."""
         patches = [
-            patch("uiao_core.generators.mermaid.render_all_mermaid", return_value=[]),
+            patch("uiao_core.generators.plantuml.render_plantuml_dir", return_value=[]),
             patch("uiao_core.generators.docs.build_docs", return_value=[]),
             patch("uiao_core.generators.oscal.build_oscal", return_value=tmp_path / "o.json"),
             patch("uiao_core.generators.ssp.build_ssp", return_value=tmp_path / "s.json"),
@@ -446,7 +446,7 @@ class TestGenerateAll:
     def test_generate_all_partial_failure_exits_nonzero(self, tmp_path) -> None:
         """generate-all exits with code 1 and reports errors when a generator raises."""
         patches = [
-            patch("uiao_core.generators.mermaid.render_all_mermaid", return_value=[]),
+            patch("uiao_core.generators.plantuml.render_plantuml_dir", return_value=[]),
             patch("uiao_core.generators.docs.build_docs", side_effect=RuntimeError("template missing")),
             patch("uiao_core.generators.oscal.build_oscal", return_value=tmp_path / "o.json"),
             patch("uiao_core.generators.ssp.build_ssp", return_value=tmp_path / "s.json"),
