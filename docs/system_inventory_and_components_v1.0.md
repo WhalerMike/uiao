@@ -88,7 +88,7 @@ All hardware components are subject to the UIAO Hardware Lifecycle Policy:
 | uiao-core | 1.0 | Python 3.12+ | Documentation pipeline | GitHub |
 | Jinja2 | Current | Python | Template rendering | PyPI |
 | MkDocs | Current | Python | Documentation site | PyPI |
-| Mermaid | Current | JavaScript | Diagram generation | npm |
+| PlantUML | Current | JavaScript | Diagram generation | npm |
 | python-docx | Current | Python | DOCX export | PyPI |
 | OPA (Open Policy Agent) | Current | Go | Policy engine | GitHub |
 
@@ -98,7 +98,7 @@ All hardware components are subject to the UIAO Hardware Lifecycle Policy:
 
 ### 4.1 Network Component Inventory
 
-<img src="assets/images/mermaid/flowchart_lr.png" alt="flowchart_lr" />
+<img src="assets/images/plantuml/flowchart_lr.png" alt="flowchart_lr" />
 
 ### 4.2 Network Segment Definitions
 
