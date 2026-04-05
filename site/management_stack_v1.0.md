@@ -16,7 +16,7 @@ The UIAO Management Stack defines the FedRAMP-authorized platforms that provide 
 
 The following diagram shows how the management stack integrates with the broader UIAO architecture through the telemetry and identity planes.
 
-<img src="assets/images/mermaid/diagram_1.png" alt="diagram_1" />
+<img src="assets/images/plantuml/diagram_1.png" alt="diagram_1" />
 
 ---
 
@@ -32,7 +32,7 @@ The following diagram shows how the management stack integrates with the broader
 
 The following diagram illustrates how the UIAO data layer processes management stack configurations through the Jinja2 rendering pipeline to produce vendor-specific outputs.
 
-<img src="assets/images/mermaid/diagram_2.png" alt="diagram_2" />
+<img src="assets/images/plantuml/diagram_2.png" alt="diagram_2" />
 
 ---
 
