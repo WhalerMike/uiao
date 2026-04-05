@@ -1,8 +1,9 @@
-# [2.1.0](https://github.com/WhalerMike/uiao-core/compare/v2.0.0...v2.1.0) (2026-04-04)
+# [2.1.0](https://github.com/WhalerMike/uiao-core/compare/v2.0.0...v2.1.0) (2026-04-05)
 
 
 ### Bug Fixes
 
+* add continue-on-error to OSCAL/GRC steps in generate-docs workflow ([94c4ca8](https://github.com/WhalerMike/uiao-core/commit/94c4ca8a3e9e364fca5272de597dab44dbb9cad0))
 * add perimeter_collapse stub to context loader for CI ([f361a0b](https://github.com/WhalerMike/uiao-core/commit/f361a0b5e2f2546911cf274fbf637b1ffa6dd7f9))
 * add perimeter_collapse stub to docs.py build_docs context ([a234271](https://github.com/WhalerMike/uiao-core/commit/a234271071effe08a6c25979db8299dd7ca468aa))
 * **ci:** update build-readiness gate to reference new KSI crosswalk and index paths ([54dd709](https://github.com/WhalerMike/uiao-core/commit/54dd7091f85a543b0cd6bf1c57054be3a622b7b0))
