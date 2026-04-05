@@ -1,7 +1,7 @@
 """UIAO-Core CLI application.
 
-Provides command-line interface for OSCAL document generation,
-validation, and canon management.
+Provides command-line interface for OSCAL document generation, validation, and
+canon management.
 """
 
 from __future__ import annotations
@@ -16,63 +16,62 @@ from uiao_core.__version__ import __version__
 from uiao_core.generators.trestle import validate_oscal_artifacts
 
 app = typer.Typer(
-    name="uiao",
-    help="UIAO-Core: OSCAL compliance toolkit for US Government systems.",
-    add_completion=False,
+        name="uiao",
+        help="UIAO-Core: OSCAL compliance toolkit for US Government systems.",
+        add_completion=False,
 )
-
 console = Console()
 
 
 def version_callback(value: bool) -> None:
-    """Print version and exit."""
-    if value:
-        console.print(f"uiao-core {__version__}")
-        raise typer.Exit()
+        """Print version and exit."""
+        if value:
+                    console.print(f"uiao-core {__version__}")
+                    raise typer.Exit()
 
 
 @app.callback()
 def main(
-    version: bool = typer.Option(
-        False,
-        "--version",
-        "-V",
-        help="Show version and exit.",
-        callback=version_callback,
-        is_eager=True,
-    ),
+        version: bool = typer.Option(
+                    False,
+                    "--version",
+                    "-V",
+                    help="Show version and exit.",
+                    callback=version_callback,
+                    is_eager=True,
+        ),
 ) -> None:
-    """UIAO-Core OSCAL compliance toolkit."""
+        """UIAO-Core OSCAL compliance toolkit."""
 
 
 @app.command()
 def generate_ssp(
-    canon_path: str = typer.Option(
-        "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
-        "--canon",
-        "-c",
-        help="Path to canon YAML file.",
-    ),
-    data_dir: str = typer.Option(
-        "data",
-        "--data-dir",
-        "-d",
-        help="Path to data YAML directory.",
-    ),
-    output: str = typer.Option(
-        "exports/oscal/uiao-ssp-skeleton.json",
-        "--output",
-        "-o",
-        help="Output SSP JSON path.",
-    ),
-    enhanced: bool = typer.Option(
-        False,
-        "--enhanced/--no-enhanced",
-        help="Inject control-library narratives into implemented-requirements.",
-    ),
+        canon_path: str = typer.Option(
+                    "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
+                    "--canon",
+                    "-c",
+                    help="Path to canon YAML file.",
+        ),
+        data_dir: str = typer.Option(
+                    "data",
+                    "--data-dir",
+                    "-d",
+                    help="Path to data YAML directory.",
+        ),
+        output: str = typer.Option(
+                    "exports/oscal/uiao-ssp-skeleton.json",
+                    "--output",
+                    "-o",
+                    help="Output SSP JSON path.",
+        ),
+        enhanced: bool = typer.Option(
+                    False,
+                    "--enhanced/--no-enhanced",
+                    help="Inject control-library narratives into implemented-requirements.",
+        ),
 ) -> None:
-    """Generate an OSCAL SSP from canon YAML and data files."""
-    from uiao_core.generators.ssp import build_ssp
+        """Generate an OSCAL SSP from canon YAML and data files."""
+        from uiao_core.generators.ssp import build_ssp
 
     console.print(f"[bold]Generating SSP from {canon_path}...[/bold]")
     out = build_ssp(canon_path=canon_path, data_dir=data_dir, output_path=output, enhanced=enhanced)
@@ -81,103 +80,103 @@ def generate_ssp(
 
 @app.command()
 def validate(
-    path: str = typer.Argument(..., help="Path to OSCAL JSON file."),
+        path: str = typer.Argument(..., help="Path to OSCAL JSON file."),
 ) -> None:
-    """Validate an OSCAL document against its schema."""
-    console.print(f"[bold]Validating {path}...[/bold]")
-    console.print("[yellow]Validation not yet implemented (Week 3).[/yellow]")
+        """Validate an OSCAL document against its schema."""
+        console.print(f"[bold]Validating {path}...[/bold]")
+        console.print("[yellow]Validation not yet implemented (Week 3).[/yellow]")
 
 
 @app.command()
 def canon_check(
-    canon_dir: str = typer.Option("canon", "--dir", "-d", help="Canon directory."),
+        canon_dir: str = typer.Option("canon", "--dir", "-d", help="Canon directory."),
 ) -> None:
-    """Check canon YAML files for consistency."""
-    console.print(f"[bold]Checking canon at {canon_dir}...[/bold]")
-    console.print("[yellow]Canon check not yet implemented (Week 3).[/yellow]")
+        """Check canon YAML files for consistency."""
+        console.print(f"[bold]Checking canon at {canon_dir}...[/bold]")
+        console.print("[yellow]Canon check not yet implemented (Week 3).[/yellow]")
 
 
 @app.command()
 def validate_ssp(
-    oscal_dir: str = typer.Option(
-        "exports/oscal",
-        "--oscal-dir",
-        "-d",
-        help="Directory containing OSCAL JSON artifacts.",
-    ),
+        oscal_dir: str = typer.Option(
+                    "exports/oscal",
+                    "--oscal-dir",
+                    "-d",
+                    help="Directory containing OSCAL JSON artifacts.",
+        ),
 ) -> None:
-    """Validate OSCAL artifacts with compliance-trestle Pydantic models."""
-    console.print(f"[bold]Validating OSCAL artifacts in {oscal_dir}...[/bold]")
-    failures = validate_oscal_artifacts(Path(oscal_dir))
-    if failures:
-        console.print(f"[red]{failures} validation failure(s)[/red]")
-        raise typer.Exit(code=1)
-    console.print("[green]All artifacts passed validation.[/green]")
+        """Validate OSCAL artifacts with compliance-trestle Pydantic models."""
+        console.print(f"[bold]Validating OSCAL artifacts in {oscal_dir}...[/bold]")
+        failures = validate_oscal_artifacts(Path(oscal_dir))
+        if failures:
+                    console.print(f"[red]{failures} validation failure(s)[/red]")
+                    raise typer.Exit(code=1)
+                console.print("[green]All artifacts passed validation.[/green]")
 
 
 @app.command()
 def generate_visuals(
-    visuals_dir: str = typer.Option(
-        "visuals",
-        "--visuals-dir",
-        "-v",
-        help="Directory containing .mermaid source files.",
-    ),
-    output_dir: str = typer.Option(
-        "assets/images/mermaid",
-        "--output-dir",
-        "-o",
-        help="Output directory for rendered PNGs.",
-    ),
-    force: bool = typer.Option(
-        False,
-        "--force-visuals",
-        help="Force regeneration of all visuals (ignore cache).",
-    ),
+        visuals_dir: str = typer.Option(
+                    "visuals",
+                    "--visuals-dir",
+                    "-v",
+                    help="Directory containing .puml source files.",
+        ),
+        output_dir: str = typer.Option(
+                    "assets/images/plantuml",
+                    "--output-dir",
+                    "-o",
+                    help="Output directory for rendered PNGs.",
+        ),
+        force: bool = typer.Option(
+                    False,
+                    "--force-visuals",
+                    help="Force regeneration of all visuals (ignore cache).",
+        ),
 ) -> None:
-    """Render Mermaid diagrams to PNG for DOCX/PPTX embedding."""
-     from uiao_core.generators.plantuml import render_plantuml_dir
+        """Render PlantUML diagrams to PNG for DOCX/PPTX embedding."""
+    from uiao_core.generators.plantuml import render_plantuml_dir
 
     console.print(f"[bold]Rendering PlantUML diagrams from {visuals_dir}...[/bold]")
-    results = render_plantuml_dir(visuals_dir, output_dir, force=force)
+    results = render_plantuml_dir(Path(visuals_dir), Path(output_dir), force=force)
     console.print(f"[green]Rendered {len(results)} diagram(s) to {output_dir}[/green]")
 
 
 @app.command()
 def generate_gemini(
-    output_dir: str = typer.Option(
-        "assets/images/gemini",
-        "--output-dir",
-        "-o",
-        help="Output directory for generated Gemini images.",
-    ),
-    force: bool = typer.Option(
-        False,
-        "--force-visuals",
-        help="Force regeneration of all images (ignore cache).",
-    ),
-    name: str = typer.Option(
-        "",
-        "--name",
-        "-n",
-        help="Generate a single named image (default: all).",
-    ),
+        output_dir: str = typer.Option(
+                    "assets/images/gemini",
+                    "--output-dir",
+                    "-o",
+                    help="Output directory for generated Gemini images.",
+        ),
+        force: bool = typer.Option(
+                    False,
+                    "--force-visuals",
+                    help="Force regeneration of all images (ignore cache).",
+        ),
+        name: str = typer.Option(
+                    "",
+                    "--name",
+                    "-n",
+                    help="Generate a single named image (default: all).",
+        ),
 ) -> None:
-    """Generate images via Gemini API (requires GEMINI_API_KEY)."""
+        """Generate images via Gemini API (requires GEMINI_API_KEY)."""
     from uiao_core.generators.gemini_visuals import (
         generate_all_gemini_images,
         generate_gemini_image,
-    )
+)
 
     if name:
-        console.print(f"[bold]Generating Gemini image: {name}...[/bold]")
-        result = generate_gemini_image(name, output_dir=output_dir, force=force)
-        if result:
-            console.print(f"[green]Generated {result}[/green]")
-        else:
-            console.print(f"[red]Failed to generate {name}[/red]")
-            raise typer.Exit(code=1)
+                console.print(f"[bold]Generating Gemini image: {name}...[/bold]")
+                result = generate_gemini_image(name, output_dir=output_dir, force=force)
+                if result:
+                                console.print(f"[green]Generated {result}[/green]")
     else:
+            console.print(f"[red]Failed to generate {name}[/red]")
+                    raise typer.Exit(code=1)
+else:
         console.print("[bold]Generating all Gemini images...[/bold]")
         results = generate_all_gemini_images(output_dir, force=force)
         console.print(f"[green]Generated {len(results)} image(s) to {output_dir}[/green]")
@@ -185,225 +184,230 @@ def generate_gemini(
 
 @app.command()
 def generate_pptx(
-    canon_path: str = typer.Option(
-        "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
-        "--canon",
-        "-c",
-        help="Path to canon YAML file.",
-    ),
-    data_dir: str = typer.Option(
-        "data",
-        "--data-dir",
-        "-d",
-        help="Path to data YAML directory.",
-    ),
-    exports_dir: str = typer.Option(
-        "exports",
-        "--exports-dir",
-        "-e",
-        help="Output exports directory.",
-    ),
+        canon_path: str = typer.Option(
+                    "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
+                    "--canon",
+                    "-c",
+                    help="Path to canon YAML file.",
+        ),
+        data_dir: str = typer.Option(
+                    "data",
+                    "--data-dir",
+                    "-d",
+                    help="Path to data YAML directory.",
+        ),
+        exports_dir: str = typer.Option(
+                    "exports",
+                    "--exports-dir",
+                    "-e",
+                    help="Output exports directory.",
+        ),
 ) -> None:
-    """Generate a leadership briefing PPTX deck."""
+        """Generate a leadership briefing PPTX deck."""
     from uiao_core.generators.pptx import build_pptx
 
     console.print("[bold]Generating leadership briefing PPTX...[/bold]")
     out = build_pptx(
-        canon_path=Path(canon_path),
-        data_dir=Path(data_dir),
-        exports_dir=Path(exports_dir),
+                canon_path=Path(canon_path),
+                data_dir=Path(data_dir),
+                exports_dir=Path(exports_dir),
     )
     console.print(f"[green]PPTX exported to {out}[/green]")
 
 
 @app.command()
 def generate_docx(
-    canon_path: str = typer.Option(
-        "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
-        "--canon",
-        "-c",
-        help="Path to canon YAML file.",
-    ),
-    data_dir: str = typer.Option(
-        "data",
-        "--data-dir",
-        "-d",
-        help="Path to data YAML directory.",
-    ),
-    exports_dir: str = typer.Option(
-        "exports",
-        "--exports-dir",
-        "-e",
-        help="Output exports directory.",
-    ),
+        canon_path: str = typer.Option(
+                    "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
+                    "--canon",
+                    "-c",
+                    help="Path to canon YAML file.",
+        ),
+        data_dir: str = typer.Option(
+                    "data",
+                    "--data-dir",
+                    "-d",
+                    help="Path to data YAML directory.",
+        ),
+        exports_dir: str = typer.Option(
+                    "exports",
+                    "--exports-dir",
+                    "-e",
+                    help="Output exports directory.",
+        ),
 ) -> None:
-    """Generate a rich DOCX leadership briefing with embedded visuals."""
+        """Generate a rich DOCX leadership briefing with embedded visuals."""
     from uiao_core.generators.rich_docx import build_rich_docx
 
     console.print("[bold]Generating leadership briefing DOCX...[/bold]")
     out = build_rich_docx(
-        canon_path=Path(canon_path),
-        data_dir=Path(data_dir),
-        exports_dir=Path(exports_dir),
+                canon_path=Path(canon_path),
+                data_dir=Path(data_dir),
+                exports_dir=Path(exports_dir),
     )
     console.print(f"[green]DOCX exported to {out}[/green]")
 
 
 @app.command()
 def generate_diagrams(
-    canon_path: str = typer.Option(
-        "generation-inputs/diagrams.yaml",
-        "--canon",
-        "-c",
-        help="Path to diagrams canon YAML file.",
-    ),
-    visuals_dir: str = typer.Option(
-        "visuals",
-        "--visuals-dir",
-        "-v",
-        help="Directory to write .mermaid source files.",
-    ),
-    output_dir: str = typer.Option(
-        "assets/images/mermaid",
-        "--output-dir",
-        "-o",
-        help="Output directory for rendered PNG files.",
-    ),
-    force: bool = typer.Option(
-        False,
-        "--force-visuals",
-        help="Force regeneration of all visuals (ignore cache).",
-    ),
+        canon_path: str = typer.Option(
+                    "generation-inputs/diagrams.yaml",
+                    "--canon",
+                    "-c",
+                    help="Path to diagrams canon YAML file.",
+        ),
+        visuals_dir: str = typer.Option(
+                    "visuals",
+                    "--visuals-dir",
+                    "-v",
+                    help="Directory containing .puml source files.",
+        ),
+        output_dir: str = typer.Option(
+                    "assets/images/plantuml",
+                    "--output-dir",
+                    "-o",
+                    help="Output directory for rendered PNG files.",
+        ),
+        force: bool = typer.Option(
+                    False,
+                    "--force-visuals",
+                    help="Force regeneration of all visuals (ignore cache).",
+        ),
 ) -> None:
-    """Generate PlantUML diagrams from visuals/ and render them to PNG."""
+        """Generate PlantUML diagrams from visuals/ and render them to PNG."""
     from uiao_core.generators.diagrams import generate_diagrams_from_canon
 
     console.print(f"[bold]Generating diagrams from {visuals_dir}/*.puml...[/bold]")
     rendered = generate_diagrams_from_canon(
-        canon_path=canon_path,
-        visuals_dir=visuals_dir,
-        output_dir=output_dir,
-        force=force,
+                canon_path=canon_path,
+                visuals_dir=visuals_dir,
+                output_dir=output_dir,
+                force=force,
     )
     console.print(f"[green]Rendered {len(rendered)} diagram(s) to {output_dir}[/green]")
 
 
 @app.command()
 def generate_docs(
-    canon_path: str = typer.Option(
-        "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
-        "--canon",
-        "-c",
-        help="Path to canon YAML file.",
-    ),
-    data_dir: str = typer.Option(
-        "data",
-        "--data-dir",
-        "-d",
-        help="Path to data YAML directory.",
-    ),
-    templates_dir: str = typer.Option(
-        "templates",
-        "--templates-dir",
-        "-t",
-        help="Path to Jinja2 templates directory.",
-    ),
-    output_dir: str = typer.Option(
-        "docs",
-        "--output-dir",
-        "-o",
-        help="Output directory for generated Markdown documents.",
-    ),
-    skip_diagrams: bool = typer.Option(
-        False,
-        "--skip-diagrams",
-        help="Skip automatic diagram generation (faster, for template-only runs).",
-    ),
-    force_visuals: bool = typer.Option(
-        False,
-        "--force-visuals",
-        help="Force regeneration of all visuals (ignore cache).",
-    ),
+        canon_path: str = typer.Option(
+                    "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
+                    "--canon",
+                    "-c",
+                    help="Path to canon YAML file.",
+        ),
+        data_dir: str = typer.Option(
+                    "data",
+                    "--data-dir",
+                    "-d",
+                    help="Path to data YAML directory.",
+        ),
+        templates_dir: str = typer.Option(
+                    "templates",
+                    "--templates-dir",
+                    "-t",
+                    help="Path to Jinja2 templates directory.",
+        ),
+        output_dir: str = typer.Option(
+                    "docs",
+                    "--output-dir",
+                    "-o",
+                    help="Output directory for generated Markdown documents.",
+        ),
+        skip_diagrams: bool = typer.Option(
+                    False,
+                    "--skip-diagrams",
+                    help="Skip automatic diagram generation (faster, for template-only runs).",
+        ),
+        force_visuals: bool = typer.Option(
+                    False,
+                    "--force-visuals",
+                    help="Force regeneration of all visuals (ignore cache).",
+        ),
 ) -> None:
-    """Render Jinja2 templates into Markdown docs using canon YAML and data files.
+        """Render Jinja2 templates into Markdown docs using canon YAML and data files.
 
-    Automatically generates diagrams from generation-inputs/diagrams.yaml before rendering
-    templates (unless --skip-diagrams is set).
-    """
+            Automatically generates PlantUML diagrams from generation-inputs/diagrams.yaml
+                before rendering templates (unless --skip-diagrams is set).
+                    """
     from uiao_core.generators.docs import build_docs
 
     if not skip_diagrams:
-        console.print("[bold]Auto-generating diagrams from generation-inputs/diagrams.yaml...[/bold]")
-
-    console.print(f"[bold]Generating docs from {canon_path}...[/bold]")
+                console.print("[bold]Auto-generating diagrams from generation-inputs/diagrams.yaml...[/bold]")
+            console.print(f"[bold]Generating docs from {canon_path}...[/bold]")
     generated = build_docs(
-        canon_path=Path(canon_path),
-        data_dir=Path(data_dir),
-        templates_dir=Path(templates_dir),
-        docs_dir=Path(output_dir),
-        generate_diagrams=not skip_diagrams,
-        force_visuals=force_visuals,
+                canon_path=Path(canon_path),
+                data_dir=Path(data_dir),
+                templates_dir=Path(templates_dir),
+                docs_dir=Path(output_dir),
+                generate_diagrams=not skip_diagrams,
+                force_visuals=force_visuals,
     )
     console.print(f"[green]Generated {len(generated)} document(s) to {output_dir}[/green]")
 
 
 @app.command()
 def generate_artifacts(
-    canon_path: str = typer.Option(
-        "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
-        "--canon",
-        "-c",
-        help="Path to canon YAML file.",
-    ),
-    data_dir: str = typer.Option(
-        "data",
-        "--data-dir",
-        "-d",
-        help="Path to data YAML directory.",
-    ),
-    exports_dir: str = typer.Option(
-        "exports",
-        "--exports-dir",
-        "-e",
-        help="Output exports directory.",
-    ),
-    force_visuals: bool = typer.Option(
-        False,
-        "--force-visuals",
-        help="Force regeneration of all visuals (ignore cache).",
-    ),
+        canon_path: str = typer.Option(
+                    "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
+                    "--canon",
+                    "-c",
+                    help="Path to canon YAML file.",
+        ),
+        data_dir: str = typer.Option(
+                    "data",
+                    "--data-dir",
+                    "-d",
+                    help="Path to data YAML directory.",
+        ),
+        exports_dir: str = typer.Option(
+                    "exports",
+                    "--exports-dir",
+                    "-e",
+                    help="Output exports directory.",
+        ),
+        force_visuals: bool = typer.Option(
+                    False,
+                    "--force-visuals",
+                    help="Force regeneration of all visuals (ignore cache).",
+        ),
 ) -> None:
-    """Generate DOCX + PPTX with embedded Mermaid and Gemini visuals."""
-     from uiao_core.generators.plantuml import render_plantuml_dir
+        """Generate DOCX + PPTX with embedded PlantUML and Gemini visuals."""
+    from uiao_core.generators.plantuml import render_plantuml_dir
     from uiao_core.generators.pptx import build_pptx
     from uiao_core.generators.rich_docx import build_rich_docx
+    from uiao_core.utils.context import get_settings
 
-    console.print("[bold]Rendering Mermaid visuals...[/bold]")
-    from uiao_core.generators.plantuml import render_plantuml_dir
+    console.print("[bold]Rendering PlantUML visuals...[/bold]")
+    _s = get_settings()
+    pngs = render_plantuml_dir(
+                _s.project_root / "visuals",
+                _s.project_root / "assets/images/plantuml",
+                force=force_visuals,
+    )
     console.print(f"[green]Rendered {len(pngs)} diagram(s)[/green]")
 
     if os.environ.get("GEMINI_API_KEY", "").strip():
-        from uiao_core.generators.gemini_visuals import generate_all_gemini_images
+                from uiao_core.generators.gemini_visuals import generate_all_gemini_images
 
         console.print("[bold]Generating Gemini images...[/bold]")
         gemini_results = generate_all_gemini_images(force=force_visuals)
         console.print(f"[green]Generated {len(gemini_results)} Gemini image(s)[/green]")
-    else:
+else:
         console.print("[yellow]GEMINI_API_KEY not set — skipping Gemini image generation.[/yellow]")
 
     console.print("[bold]Generating DOCX...[/bold]")
     docx_out = build_rich_docx(
-        canon_path=Path(canon_path),
-        data_dir=Path(data_dir),
-        exports_dir=Path(exports_dir),
+                canon_path=Path(canon_path),
+                data_dir=Path(data_dir),
+            exports_dir=Path(exports_dir),
     )
     console.print(f"[green]DOCX exported to {docx_out}[/green]")
 
     console.print("[bold]Generating PPTX...[/bold]")
     pptx_out = build_pptx(
-        canon_path=Path(canon_path),
-        data_dir=Path(data_dir),
-        exports_dir=Path(exports_dir),
+                canon_path=Path(canon_path),
+                data_dir=Path(data_dir),
+                exports_dir=Path(exports_dir),
     )
     console.print(f"[green]PPTX exported to {pptx_out}[/green]")
     console.print("[bold green]All artifacts generated with embedded visuals.[/bold green]")
@@ -411,14 +415,14 @@ def generate_artifacts(
 
 @app.command()
 def generate_sbom(
-    output: str = typer.Option(
-        "exports/sbom/sbom.cyclonedx.json",
-        "--output",
-        "-o",
-        help="Output path for the CycloneDX JSON SBOM.",
-    ),
+        output: str = typer.Option(
+                    "exports/sbom/sbom.cyclonedx.json",
+                    "--output",
+                    "-o",
+                    help="Output path for the CycloneDX JSON SBOM.",
+        ),
 ) -> None:
-    """Generate a CycloneDX 1.4 Software Bill of Materials (SBOM)."""
+        """Generate a CycloneDX 1.4 Software Bill of Materials (SBOM)."""
     from uiao_core.generators.sbom import build_sbom
 
     console.print("[bold]Generating CycloneDX SBOM...[/bold]")
@@ -428,36 +432,36 @@ def generate_sbom(
 
 @app.command()
 def conmon_process(
-    alert_json: str = typer.Option(
-        ...,
-        "--alert-json",
-        "-a",
-        help="Path to a Sentinel alert webhook payload JSON file.",
-    ),
-    poam_path: str = typer.Option(
-        "data/poam-findings.yml",
-        "--poam-path",
-        "-p",
-        help="Path to the POA&M findings YAML file (created if absent).",
-    ),
-    monitoring_sources: str = typer.Option(
-        "data/monitoring-sources.yml",
-        "--monitoring-sources",
-        "-m",
-        help="Path to monitoring-sources.yml signal map.",
-    ),
-    no_upsert: bool = typer.Option(
-        False,
-        "--no-upsert",
-        help="Dry-run: parse and map controls without writing the POA&M file.",
-    ),
+        alert_json: str = typer.Option(
+                    ...,
+                    "--alert-json",
+                    "-a",
+                    help="Path to a Sentinel alert webhook payload JSON file.",
+        ),
+        poam_path: str = typer.Option(
+                    "data/poam-findings.yml",
+                    "--poam-path",
+                    "-p",
+                    help="Path to the POA&M findings YAML file (created if absent).",
+        ),
+        monitoring_sources: str = typer.Option(
+                    "data/monitoring-sources.yml",
+                    "--monitoring-sources",
+                    "-m",
+                    help="Path to monitoring-sources.yml signal map.",
+        ),
+        no_upsert: bool = typer.Option(
+                    False,
+                    "--no-upsert",
+                    help="Dry-run: parse and map controls without writing the POA&M file.",
+        ),
 ) -> None:
-    """Process a Sentinel alert and auto-upsert a POA&M entry.
+        """Process a Sentinel alert and auto-upsert a POA&M entry.
 
-    Reads a Sentinel alert webhook payload from ALERT_JSON, maps it to
-    NIST 800-53 controls via monitoring-sources.yml, and creates or
-    updates a POA&M entry in POAM_PATH.  Use --no-upsert for a dry-run.
-    """
+            Reads a Sentinel alert webhook payload from ALERT_JSON, maps it to NIST
+                800-53 controls via monitoring-sources.yml, and creates or updates a POA&M
+                    entry in POAM_PATH. Use --no-upsert for a dry-run.
+                        """
     import json as _json
     from pathlib import Path as _Path
 
@@ -465,61 +469,58 @@ def conmon_process(
 
     alert_path = _Path(alert_json)
     if not alert_path.exists():
-        console.print(f"[red]Alert JSON not found: {alert_path}[/red]")
-        raise typer.Exit(code=1)
+                console.print(f"[red]Alert JSON not found: {alert_path}[/red]")
+                raise typer.Exit(code=1)
 
     console.print(f"[bold]Processing Sentinel alert from {alert_json}...[/bold]")
     payload = _json.loads(alert_path.read_text())
-
     hook = SentinelHook(monitoring_sources_path=monitoring_sources)
     alert = hook.parse_alert(payload)
     control_ids = hook.map_alert_to_controls(alert)
-
     console.print(f"  Alert ID : [cyan]{alert.alert_id}[/cyan]")
     console.print(f"  Severity : [cyan]{alert.severity}[/cyan]")
     console.print(f"  Controls : [cyan]{', '.join(control_ids) or 'SI-4 (default)'}[/cyan]")
-
     if no_upsert:
-        console.print("[yellow]Dry-run: POA&M file not updated.[/yellow]")
+                console.print("[yellow]Dry-run: POA&M file not updated.[/yellow]")
     else:
         poam_entry = hook.upsert_poam_entry(alert, poam_path=poam_path)
         console.print(f"  POA&M ID : [green]{poam_entry['id']}[/green]")
-        console.print(f"[green]POA&M entry upserted → {poam_path}[/green]")
+        console.print(f"[green]POA&M entry upserted -> {poam_path}[/green]")
 
 
 @app.command()
 def conmon_export_oa(
-    monitoring_sources: str = typer.Option(
-        "data/monitoring-sources.yml",
-        "--monitoring-sources",
-        "-m",
-        help="Path to monitoring-sources.yml signal map.",
-    ),
-    ksi_mappings: str = typer.Option(
-        "data/ksi-mappings.yml",
-        "--ksi-mappings",
-        "-k",
-        help="Path to ksi-mappings.yml.",
-    ),
-    output: str = typer.Option(
-        "exports/oscal/uiao-ongoing-auth.json",
-        "--output",
-        "-o",
-        help="Output path for the ongoing-authorization OSCAL JSON artifact.",
-    ),
+        monitoring_sources: str = typer.Option(
+                    "data/monitoring-sources.yml",
+                    "--monitoring-sources",
+                    "-m",
+                    help="Path to monitoring-sources.yml signal map.",
+        ),
+        ksi_mappings: str = typer.Option(
+                    "data/ksi-mappings.yml",
+                    "--ksi-mappings",
+                    "-k",
+                    help="Path to ksi-mappings.yml.",
+        ),
+        output: str = typer.Option(
+                    "exports/oscal/uiao-ongoing-auth.json",
+                    "--output",
+                    "-o",
+                    help="Output path for the ongoing-authorization OSCAL JSON artifact.",
+        ),
 ) -> None:
-    """Export an OSCAL ongoing-authorization evidence artifact.
+        """Export an OSCAL ongoing-authorization evidence artifact.
 
-    Generates machine-readable control evidence linking every monitored
-    NIST 800-53 control to its telemetry source, satisfying the FedRAMP
-    20x Phase 2 ConMon requirement for ongoing authorization evidence.
-    """
+            Generates machine-readable control evidence linking every monitored NIST
+                800-53 control to its telemetry source, satisfying the FedRAMP 20x Phase 2
+                    ConMon requirement for ongoing authorization evidence.
+                        """
     from uiao_core.monitoring.ongoing_auth import OngoingAuthGenerator
 
     console.print("[bold]Generating ongoing-authorization evidence artifact...[/bold]")
     gen = OngoingAuthGenerator(
-        monitoring_sources_path=monitoring_sources,
-        ksi_mappings_path=ksi_mappings,
+                monitoring_sources_path=monitoring_sources,
+                ksi_mappings_path=ksi_mappings,
     )
     out = gen.export(output)
     console.print(f"[green]Ongoing-authorization evidence written to {out}[/green]")
@@ -527,105 +528,101 @@ def conmon_export_oa(
 
 @app.command()
 def conmon_dashboard(
-    ksi_mappings: str = typer.Option(
-        "data/ksi-mappings.yml",
-        "--ksi-mappings",
-        "-k",
-        help="Path to ksi-mappings.yml.",
-    ),
-    output: str = typer.Option(
-        "exports/conmon/ksi-dashboard.json",
-        "--output",
-        "-o",
-        help="Output path for the KSI dashboard artifact.",
-    ),
-    fmt: str = typer.Option(
-        "json",
-        "--format",
-        "-f",
-        help="Output format: json or yaml.",
-    ),
+        ksi_mappings: str = typer.Option(
+                    "data/ksi-mappings.yml",
+                    "--ksi-mappings",
+                    "-k",
+                    help="Path to ksi-mappings.yml.",
+        ),
+        output: str = typer.Option(
+                    "exports/conmon/ksi-dashboard.json",
+                    "--output",
+                    "-o",
+                    help="Output path for the KSI dashboard artifact.",
+        ),
+        fmt: str = typer.Option(
+                    "json",
+                    "--format",
+                    "-f",
+                    help="Output format: json or yaml.",
+        ),
 ) -> None:
-    """Export the KSI continuous monitoring dashboard.
+        """Export the KSI continuous monitoring dashboard.
 
-    Computes Key Security Indicator scores from ksi-mappings.yml and
-    writes a FedRAMP 20x Phase 2 ConMon dashboard artifact in JSON or
-    YAML format.
-    """
+            Computes Key Security Indicator scores from ksi-mappings.yml and writes a
+                FedRAMP 20x Phase 2 ConMon dashboard artifact in JSON or YAML format.
+                    """
     from uiao_core.dashboard.export import DashboardExporter
 
     fmt_lower = fmt.lower()
     if fmt_lower not in ("json", "yaml"):
-        console.print(f"[red]Invalid format '{fmt}'. Choose 'json' or 'yaml'.[/red]")
-        raise typer.Exit(code=1)
-
-    console.print("[bold]Generating KSI ConMon dashboard...[/bold]")
+                console.print(f"[red]Invalid format '{fmt}'. Choose 'json' or 'yaml'.[/red]")
+                raise typer.Exit(code=1)
+            console.print("[bold]Generating KSI ConMon dashboard...[/bold]")
     exporter = DashboardExporter(ksi_mappings_path=ksi_mappings)
-
     out = exporter.export_yaml(output) if fmt_lower == "yaml" else exporter.export_json(output)
-
     console.print(f"[green]KSI dashboard written to {out}[/green]")
 
 
 @app.command()
 def generate_all(
-    canon_path: str = typer.Option(
-        "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
-        "--canon",
-        "-c",
-        help="Path to canon YAML file.",
-    ),
-    data_dir: str = typer.Option(
-        "data",
-        "--data-dir",
-        "-d",
-        help="Path to data YAML directory.",
-    ),
-    templates_dir: str = typer.Option(
-        "templates",
-        "--templates-dir",
-        "-t",
-        help="Path to Jinja2 templates directory.",
-    ),
-    docs_dir: str = typer.Option(
-        "docs",
-        "--docs-dir",
-        help="Output directory for generated Markdown documents.",
-    ),
-    exports_dir: str = typer.Option(
-        "exports",
-        "--exports-dir",
-        "-e",
-        help="Output exports directory (DOCX, PPTX, OSCAL, SBOM).",
-    ),
-    force_visuals: bool = typer.Option(
-        False,
-        "--force-visuals",
-        help="Force regeneration of all visuals (ignore cache).",
-    ),
-    skip_sbom: bool = typer.Option(
-        False,
-        "--skip-sbom",
-        help="Skip SBOM generation.",
-    ),
+        canon_path: str = typer.Option(
+                    "generation-inputs/uiao_leadership_briefing_v1.0.yaml",
+                    "--canon",
+                    "-c",
+                    help="Path to canon YAML file.",
+        ),
+        data_dir: str = typer.Option(
+                    "data",
+                    "--data-dir",
+                    "-d",
+                    help="Path to data YAML directory.",
+        ),
+        templates_dir: str = typer.Option(
+                    "templates",
+                    "--templates-dir",
+                    "-t",
+                    help="Path to Jinja2 templates directory.",
+        ),
+        docs_dir: str = typer.Option(
+                    "docs",
+                    "--docs-dir",
+                    help="Output directory for generated Markdown documents.",
+        ),
+        exports_dir: str = typer.Option(
+                    "exports",
+                    "--exports-dir",
+                    "-e",
+                    help="Output exports directory (DOCX, PPTX, OSCAL, SBOM).",
+        ),
+        force_visuals: bool = typer.Option(
+                    False,
+                    "--force-visuals",
+                    help="Force regeneration of all visuals (ignore cache).",
+        ),
+        skip_sbom: bool = typer.Option(
+                    False,
+                    "--skip-sbom",
+                    help="Skip SBOM generation.",
+        ),
 ) -> None:
-    """Run the full UIAO generation pipeline: YAML canon → all output artifacts.
+        """Run the full UIAO generation pipeline: YAML canon -> all output artifacts.
 
-    Executes every generator in order:
-    1. Schema validation of canon YAML
-    2. Mermaid diagram rendering (PNG)
-    3. Markdown documentation (docs/)
-    4. OSCAL Component Definition JSON
-    5. SSP Skeleton JSON
-    6. POA&M template JSON
-    7. DOCX leadership briefing
-    8. PPTX leadership deck
-    9. CycloneDX SBOM (unless --skip-sbom)
-    """
+            Executes every generator in order:
+                  1. Schema validation of canon YAML
+                        2. PlantUML diagram rendering (PNG)
+                              3. Markdown documentation (docs/)
+                                    4. OSCAL Component Definition JSON
+                                          5. SSP Skeleton JSON
+                                                6. POA&M template JSON
+                                                      7. DOCX leadership briefing
+                                                            8. PPTX leadership deck
+                                                                  9. CycloneDX SBOM (unless --skip-sbom)
+                                                                      """
     import time
 
     from uiao_core.generators.docs import build_docs
-     from uiao_core.generators.plantuml import render_plantuml_dir
+    from uiao_core.generators.plantuml import render_plantuml_dir
     from uiao_core.generators.oscal import build_oscal
     from uiao_core.generators.poam import build_poam_export
     from uiao_core.generators.pptx import build_pptx
@@ -636,175 +633,176 @@ def generate_all(
     start = time.monotonic()
     errors: list[str] = []
 
-    console.print("[bold blue]━━━ UIAO generate-all ━━━[/bold blue]")
-    console.print(f"[dim]Canon: {canon_path}  |  Data: {data_dir}[/dim]\n")
+    console.print("[bold blue]UIAO generate-all[/bold blue]")
+    console.print(f"[dim]Canon: {canon_path} | Data: {data_dir}[/dim]\n")
 
-    # ── 1. Mermaid diagrams ──────────────────────────────────────────────────
-    console.print("[bold][ 1/8 ] Rendering Mermaid diagrams...[/bold]")
+    # 1. PlantUML diagrams
+    console.print("[bold][ 1/8 ] Rendering PlantUML diagrams...[/bold]")
     try:
-        from uiao_core.utils.context import get_settings as _gs; _s = _gs(); pngs = render_plantuml_dir(_s.project_root / "visuals", _s
-        console.print(f"[green]✓ Rendered {len(pngs)} diagram(s)[/green]")
-    except Exception as exc:  # noqa: BLE001
-        console.print(f"[yellow]⚠ Diagrams skipped: {exc}[/yellow]")
+                from uiao_core.utils.context import get_settings as _gs
 
-    # ── 2. Markdown docs ─────────────────────────────────────────────────────
+        _s = _gs()
+        pngs = render_plantuml_dir(
+                        _s.project_root / "visuals",
+                        _s.project_root / "assets/images/plantuml",
+                        force=force_visuals,
+        )
+        console.print(f"[green]Rendered {len(pngs)} diagram(s)[/green]")
+except Exception as exc:  # noqa: BLE001
+        console.print(f"[yellow]Diagrams skipped: {exc}[/yellow]")
+
+    # 2. Markdown docs
     console.print("[bold][ 2/8 ] Generating Markdown documentation...[/bold]")
     try:
-        generated = build_docs(
-            canon_path=Path(canon_path),
-            data_dir=Path(data_dir),
-            templates_dir=Path(templates_dir),
-            docs_dir=Path(docs_dir),
-            generate_diagrams=False,
-            force_visuals=False,
-        )
-        console.print(f"[green]✓ Generated {len(generated)} document(s) → {docs_dir}/[/green]")
+                generated = build_docs(
+                                canon_path=Path(canon_path),
+                                data_dir=Path(data_dir),
+                                templates_dir=Path(templates_dir),
+                                docs_dir=Path(docs_dir),
+                                generate_diagrams=False,
+                                force_visuals=False,
+                )
+                console.print(f"[green]Generated {len(generated)} document(s) -> {docs_dir}/[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"Docs generation failed: {exc}"
         errors.append(msg)
-        console.print(f"[red]✗ {msg}[/red]")
+        console.print(f"[red]{msg}[/red]")
 
-    # ── 3. OSCAL Component Definition ────────────────────────────────────────
+    # 3. OSCAL Component Definition
     console.print("[bold][ 3/8 ] Building OSCAL Component Definition...[/bold]")
     try:
-        oscal_out = build_oscal(
-            canon_path=Path(canon_path),
-            data_dir=Path(data_dir),
-            exports_dir=Path(exports_dir),
-        )
-        console.print(f"[green]✓ OSCAL CD → {oscal_out}[/green]")
+                oscal_out = build_oscal(
+                                canon_path=Path(canon_path),
+                                data_dir=Path(data_dir),
+                                exports_dir=Path(exports_dir),
+                )
+                console.print(f"[green]OSCAL CD -> {oscal_out}[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"OSCAL CD failed: {exc}"
         errors.append(msg)
-        console.print(f"[red]✗ {msg}[/red]")
+        console.print(f"[red]{msg}[/red]")
 
-    # ── 4. SSP Skeleton ──────────────────────────────────────────────────────
+    # 4. SSP Skeleton
     console.print("[bold][ 4/8 ] Building SSP Skeleton...[/bold]")
     try:
-        ssp_out = build_ssp(
-            canon_path=Path(canon_path),
-            data_dir=Path(data_dir),
-            exports_dir=Path(exports_dir),
-        )
-        console.print(f"[green]✓ SSP → {ssp_out}[/green]")
+                ssp_out = build_ssp(
+                                canon_path=Path(canon_path),
+                                data_dir=Path(data_dir),
+                                exports_dir=Path(exports_dir),
+                )
+                console.print(f"[green]SSP -> {ssp_out}[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"SSP failed: {exc}"
         errors.append(msg)
-        console.print(f"[red]✗ {msg}[/red]")
+        console.print(f"[red]{msg}[/red]")
 
-    # ── 5. POA&M Template ────────────────────────────────────────────────────
+    # 5. POA&M Template
     console.print("[bold][ 5/8 ] Building POA&M Template...[/bold]")
     try:
-        poam_out = build_poam_export(
-            canon_path=Path(canon_path),
-            data_dir=Path(data_dir),
-            exports_dir=Path(exports_dir),
-        )
-        console.print(f"[green]✓ POA&M → {poam_out}[/green]")
+                poam_out = build_poam_export(
+                                canon_path=Path(canon_path),
+                                data_dir=Path(data_dir),
+                                exports_dir=Path(exports_dir),
+                )
+                console.print(f"[green]POA&M -> {poam_out}[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"POA&M failed: {exc}"
         errors.append(msg)
-        console.print(f"[red]✗ {msg}[/red]")
+        console.print(f"[red]{msg}[/red]")
 
-    # ── 6. DOCX ──────────────────────────────────────────────────────────────
+    # 6. DOCX
     console.print("[bold][ 6/8 ] Generating DOCX leadership briefing...[/bold]")
     try:
-        docx_out = build_rich_docx(
-            canon_path=Path(canon_path),
-            data_dir=Path(data_dir),
-            exports_dir=Path(exports_dir),
-        )
-        console.print(f"[green]✓ DOCX → {docx_out}[/green]")
+                docx_out = build_rich_docx(
+                                canon_path=Path(canon_path),
+                                data_dir=Path(data_dir),
+                                exports_dir=Path(exports_dir),
+                )
+                console.print(f"[green]DOCX -> {docx_out}[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"DOCX failed: {exc}"
         errors.append(msg)
-        console.print(f"[red]✗ {msg}[/red]")
+        console.print(f"[red]{msg}[/red]")
 
-    # ── 7. PPTX ──────────────────────────────────────────────────────────────
+    # 7. PPTX
     console.print("[bold][ 7/8 ] Generating PPTX leadership deck...[/bold]")
     try:
-        pptx_out = build_pptx(
-            canon_path=Path(canon_path),
-            data_dir=Path(data_dir),
-            exports_dir=Path(exports_dir),
-        )
-        console.print(f"[green]✓ PPTX → {pptx_out}[/green]")
+                pptx_out = build_pptx(
+                                canon_path=Path(canon_path),
+                                data_dir=Path(data_dir),
+                                exports_dir=Path(exports_dir),
+                )
+                console.print(f"[green]PPTX -> {pptx_out}[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"PPTX failed: {exc}"
         errors.append(msg)
-        console.print(f"[red]✗ {msg}[/red]")
+        console.print(f"[red]{msg}[/red]")
 
-    # ── 8. SBOM ──────────────────────────────────────────────────────────────
+    # 8. SBOM
     if not skip_sbom:
-        console.print("[bold][ 8/8 ] Generating CycloneDX SBOM...[/bold]")
-        try:
-            sbom_out = build_sbom(
-                output_path=f"{exports_dir}/sbom/sbom.cyclonedx.json",
-            )
-            console.print(f"[green]✓ SBOM → {sbom_out}[/green]")
-        except Exception as exc:  # noqa: BLE001
+                console.print("[bold][ 8/8 ] Generating CycloneDX SBOM...[/bold]")
+                try:
+                                sbom_out = build_sbom(
+                                                    output_path=f"{exports_dir}/sbom/sbom.cyclonedx.json",
+                                )
+                                console.print(f"[green]SBOM -> {sbom_out}[/green]")
+except Exception as exc:  # noqa: BLE001
             msg = f"SBOM failed: {exc}"
             errors.append(msg)
-            console.print(f"[red]✗ {msg}[/red]")
-    else:
+            console.print(f"[red]{msg}[/red]")
+else:
         console.print("[dim][ 8/8 ] SBOM skipped (--skip-sbom)[/dim]")
 
-    # ── Summary ───────────────────────────────────────────────────────────────
     elapsed = time.monotonic() - start
     console.print()
     if errors:
-        console.print(f"[bold yellow]Pipeline finished in {elapsed:.1f}s with {len(errors)} error(s):[/bold yellow]")
-        for err in errors:
-            console.print(f"  [red]• {err}[/red]")
-        raise typer.Exit(code=1)
-
-    console.print(f"[bold green]✓ All artifacts generated in {elapsed:.1f}s[/bold green]")
+                console.print(
+                                f"[bold yellow]Pipeline finished in {elapsed:.1f}s with {len(errors)} error(s):[/bold yellow]"
+                )
+                for err in errors:
+                                console.print(f"  [red]- {err}[/red]")
+                            raise typer.Exit(code=1)
+    console.print(f"[bold green]All artifacts generated in {elapsed:.1f}s[/bold green]")
 
 
 @app.command()
 def adapter_run(
-    vendor: str = typer.Argument(..., help="Vendor adapter name (servicenow, entra)."),
-    output: str = typer.Option(
-        "",
-        "--output",
-        "-o",
-        help="Optional JSON output path for alignment results.",
-    ),
+        vendor: str = typer.Argument(..., help="Vendor adapter name (servicenow, entra)."),
+        output: str = typer.Option(
+                    "",
+                    "--output",
+                    "-o",
+                    help="Optional JSON output path for alignment results.",
+        ),
 ) -> None:
-    """Run a vendor adapter and align claims (DNS-style, no heavy OSCAL conversion)."""
-    from typing import Optional
-
+        """Run a vendor adapter and align claims (DNS-style, no heavy OSCAL conversion)."""
+    import importlib
     import json as _json
 
     adapter_registry = {
-        "servicenow": "uiao_core.adapters.servicenow_adapter.ServiceNowAdapter",
-        "entra": "uiao_core.adapters.entra_adapter.EntraAdapter",
+                "servicenow": "uiao_core.adapters.servicenow_adapter.ServiceNowAdapter",
+                "entra": "uiao_core.adapters.entra_adapter.EntraAdapter",
     }
 
     vendor_lower = vendor.lower()
     if vendor_lower not in adapter_registry:
-        console.print(f"[red]Unknown vendor: {vendor}[/red]")
+                console.print(f"[red]Unknown vendor: {vendor}[/red]")
         console.print(f"[dim]Available: {', '.join(adapter_registry.keys())}[/dim]")
         raise typer.Exit(code=1)
-
-    # Lazy import to avoid circular dependencies
-    import importlib
 
     module_path, class_name = adapter_registry[vendor_lower].rsplit(".", 1)
     module = importlib.import_module(module_path)
     adapter_class = getattr(module, class_name)
     adapter = adapter_class()
-
-    console.print(f"[bold green]> Running {vendor} adapter...[/bold green]")
+    console.print(f"[bold green]Running {vendor} adapter...[/bold green]")
     aligned = adapter.collect_and_align()
-
     console.print(f"[bold]Aligned {aligned['metadata']['total_records']} claims[/bold]")
     console.print(f"[dim]Metadata: {aligned['metadata']}[/dim]")
-
     if output:
-        with open(output, "w") as f:
-            _json.dump(aligned, f, indent=2, default=str)
-        console.print(f"[green]Saved to {output}[/green]")
+                with open(output, "w") as f:
+                                _json.dump(aligned, f, indent=2, default=str)
+                            console.print(f"[green]Saved to {output}[/green]")
+
 
 if __name__ == "__main__":
-    app()
+        app()
