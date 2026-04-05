@@ -26,7 +26,7 @@ The strategic goal is to transform the agency into a modern federal network wher
 
 The following diagram illustrates the legacy-to-modernized state transformation that the UIAO program delivers across all four control planes.
 
-<img src="assets/images/mermaid/diagram_1.png" alt="diagram_1" />
+<img src="assets/images/plantuml/diagram_1.png" alt="diagram_1" />
 
 ---
 
@@ -72,7 +72,7 @@ The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Tru
 
 The following diagram provides a phased view of the implementation roadmap, showing how foundations, plane integration, and overlay scaling progress across the program timeline.
 
-<img src="assets/images/mermaid/diagram_2.png" alt="diagram_2" />
+<img src="assets/images/plantuml/diagram_2.png" alt="diagram_2" />
 
 ---
 
@@ -195,7 +195,7 @@ leaver_scenario:
 
 The following diagram maps the technical control planes to the strategic outcomes they enable, demonstrating how each investment drives measurable mission value.
 
-<img src="assets/images/mermaid/diagram_3.png" alt="diagram_3" />
+<img src="assets/images/plantuml/diagram_3.png" alt="diagram_3" />
 
 ---
 
@@ -203,7 +203,7 @@ The following diagram maps the technical control planes to the strategic outcome
 
 The UIAO architecture scales from small branch offices to large data centers using the same canonical patterns. The following diagram illustrates the scaling model.
 
-<img src="assets/images/mermaid/diagram_4.png" alt="diagram_4" />
+<img src="assets/images/plantuml/diagram_4.png" alt="diagram_4" />
 
 ---
 
