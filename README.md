@@ -140,6 +140,39 @@ It does **not** perform the actual conversions into OSCAL JSON, SSPs, POA&Ms, or
 Those happen downstream in the `generators/` layer.
 The adapters simply "tell the engine how to get there."
 
+### Adapter Resolution Flow
+
+```
+                        UIAO Adapter Pattern (DNS-Style Resolution)
+
+  ┌─────────────────┐      ┌─────────────────────┐      ┌──────────────────┐
+  │  YAML Canon      │      │  Adapter (Resolver)  │      │  Vendor System   │
+  │  (SSOT)          │      │                      │      │  (Entra, SNOW,   │
+  │                  │      │  1. Connect           │<─────│   Palo Alto...)  │
+  │  "The domain     │      │  2. Collect (API)     │      │                  │
+  │   name"          │      │  3. Normalize         │      │  Raw records,    │
+  │                  │      │  4. Align → overlay   │      │  events, configs │
+  └────────┬─────────┘      └──────────┬────────────┘      └──────────────────┘
+           │                           │
+           │   Vendor-overlay +        │
+           │   claim alignment         │
+           │   ("IP address")          │
+           ▼                           ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │                     Generation Engine (generators/)                  │
+  │                                                                      │
+  │   Aligned claims ──> OSCAL JSON, SSP, POA&M, SBOM, DOCX, PPTX      │
+  │                                                                      │
+  │   The engine does the heavy lifting. Adapters just point the way.   │
+  └──────────────────────────────────────────────────────────────────────┘
+```
+
+> **Key insight:** Adapters never own or duplicate data. They produce lightweight
+> pointers (vendor-overlay + claim + evidence hash) that the generation engine
+> consumes. This keeps SSOT pure and makes adapters swappable — you can plug in
+> a new Big 7 vendor without touching any generation code.
+
+
 ### DNS Analogy
 
 | DNS Concept              | UIAO Adapter Equivalent                          | What It Does |
