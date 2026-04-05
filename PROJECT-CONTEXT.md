@@ -75,16 +75,16 @@ Diagrams are defined in `generation-inputs/diagrams.yaml` (single source of trut
 ```
 generation-inputs/diagrams.yaml
     └─ generate_diagrams_from_canon()
-           ├─ writes visuals/<key>.mermaid
-           └─ render_mermaid_file() → assets/images/mermaid/<key>.png
+           ├─ writes visuals/<key>.puml
+           └─ render_plantuml_file() → assets/images/plantuml/<key>.png
                                             └─ embedded in DOCX / PPTX
 ```
 
-* **CLI**: `uiao generate-diagrams` — writes `.mermaid` files and renders all PNGs.
+* **CLI**: `uiao generate-diagrams` — writes `.puml` files and renders all PNGs.
 * **Auto-integration**: `uiao generate-docs` calls diagram generation automatically (pass `--skip-diagrams` to opt out).
-* **Post-processing**: `replace_mermaid_blocks_with_images()` in `docs.py` replaces fenced `mermaid` blocks with `<img>` tags so DOCX/PPTX/PDF renderers can embed the PNGs.
-* **Live site**: `mkdocs.yml` loads Mermaid 10 ESM from CDN for real-time browser rendering on GitHub Pages.
-* **15 canonical diagrams confirmed in** `assets/images/mermaid/`: `unified_arch`, `vendor_logic`, `multi_plane_integration`, `executive_dashboard_status`, `roadmap_gantt_visual`, `schema_validation_flow`, `enforcement_pipeline_logic`, `mgmt_plane_flow`, `frontend_integration_map`, `incident_escalation_tree`, `leaver_killswitch_flow`, `mover_scenario_workflow`, `jinja_normalization`, `appendix_library`, `user_to_app_zt_journey`.
+* **Post-processing**: `replace_plantuml_blocks_with_images()` in `docs.py` replaces fenced `plantuml` blocks with `<img>` tags so DOCX/PPTX/PDF renderers can embed the PNGs.
+* **Live site**: `mkdocs.yml` loads PlantUML (plantweb) for real-time browser rendering on GitHub Pages.
+* **PlantUML diagrams rendered to `assets/images/plantuml/`.
 * **Gemini Imagen** generates high-resolution architectural PNGs on demand via `uiao generate-gemini`.
 * Target: FedRAMP Moderate Rev 5 baseline
 * Focus: 20x Phase 2 (machine-readable evidence over narrative bloat, continuous monitoring, KSI mapping)
@@ -98,7 +98,7 @@ generation-inputs/diagrams.yaml
 | Vendor overlays (Big 7) | `data/vendor-overlays/*.yaml` (9 files) |
 | Control library | `data/control-library/*.yml` (131 files) |
 | OSCAL artifacts | `exports/oscal/` |
-| Mermaid PNGs | `assets/images/mermaid/` (15 PNGs) |
+| PlantUML PNGs | `assets/images/plantuml/` (15 PNGs) |
 | Gemini PNGs | `assets/images/` |
 | Briefing spec | [`docs/BRIEFING-SPEC.qmd`](https://github.com/WhalerMike/uiao-docs/blob/main/docs/BRIEFING-SPEC.qmd) |
 | Reference architecture | `01_Canon/uiao-reference.docx` |
@@ -109,10 +109,10 @@ generation-inputs/diagrams.yaml
 ## Decision Log (Add new entries at top)
 
 * 2026-04-03: BRIEFING-SPEC.md created at BRIEFING-SPEC.qmd (in uiao-docs). Defines `uiao generate-briefing` CLI command — owner's daily dashboard document. Pulls from live repo sources: MEMORY.md, vendor-overlays/, control-library/, OSCAL exports, PROJECT-CONTEXT.md, CHANGELOG.md, drift-report.json. Quality target: matches 01_Canon/uiao-reference.docx visual standard.
-* 2026-04-03: Key file locations table added to PROJECT-CONTEXT.md. vendor-overlays/ (NOT overlays/) confirmed as Big 7 source. 131 control YAMLs and 15 Mermaid PNGs confirmed from directory tree.
+* 2026-04-03: Key file locations table added to PROJECT-CONTEXT.md. vendor-overlays/ (NOT overlays/) confirmed as Big 7 source. 131 control YAMLs and 15 PlantUML PNGs confirmed from directory tree.
 * 2026-04-02: AI hierarchy restructured. Grok retired. Claude Code promoted to Canon Steward and Lead Architect with direct GitHub integration. Comet-Perplexity (running Claude Sonnet) retained as orchestrator and browser/evidence agent. Gemini role locked to image generation only. Copilot retained for fast implementation. Stack simplified from four-model hierarchy to two-model core (Claude Code + Comet-Perplexity).
 * 2026-03-26: FORMAT-CANON.md created as primary format authority. PROJECT-CONTEXT.md updated to establish format authority hierarchy before all other project context. All agents must read FORMAT-CANON.md before making any format decisions.
-* 2026-03-24: Automated diagram generation implemented (copilot/diagram-automation). `generation-inputs/diagrams.yaml` is now the single source of truth for all Mermaid diagrams. `generate-docs` auto-generates PNGs; `generate-diagrams` CLI command available for standalone use. Mermaid fences post-processed to `<img>` tags in Markdown for DOCX/PPTX/PDF pipelines.
+* 2026-03-24: Automated diagram generation implemented (copilot/diagram-automation). `generation-inputs/diagrams.yaml` is now the single source of truth for all PlantUML diagrams. `generate-docs` auto-generates PNGs; `generate-diagrams` CLI command available for standalone use. PlantUML fences post-processed to `<img>` tags in Markdown for DOCX/PPTX/PDF pipelines.
 * 2026-03-24: Grill Master RE-PLAN fix-PR merge loop proven at scale (PRs #52, #54, #55, #56).
 * 2026-03-24: Created PROJECT-CONTEXT.md to prevent context collision across Comet/Copilot/Claude layers
 * 2026-03-24: uiao-validation-targets bootstrapped as live mock telemetry endpoint
