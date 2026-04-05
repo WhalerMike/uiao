@@ -125,7 +125,7 @@ class EntraAdapter(DatabaseAdapterBase):
         claims: List[ClaimObject] = []
         for record in raw_rows:
             record_id = record.get("id", "unknown")
-            upn = record.get("userPrincipalName", "")
+                        _upn = record.get("userPrincipalName", "")  # noqa: F841
             claim_payload = {
                 "identity": f"entra:user:{record_id}",
                 "control_id": record.get("uiao_control_id", "AC-2"),
