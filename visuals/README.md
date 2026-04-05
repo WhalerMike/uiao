@@ -1,6 +1,6 @@
 # UIAO Vibrant Visualization Canon
 
-This directory contains high-fidelity, presentation-grade architectural visualizations. These assets supplement the technical **Mermaid.js** diagrams in `data/diagrams.yml` for use in leadership briefings and FedRAMP authorized evidence.
+This directory contains high-fidelity, presentation-grade architectural visualizations. These assets supplement the technical **PlantUML** diagrams in `generation-inputs/diagrams.yaml` for use in leadership briefings and FedRAMP authorized evidence.
 
 > **Geographic Constraint:** All map-based imagery in this repository MUST depict only the United States and its territories (CONUS, Alaska, Hawaii, Puerto Rico, Guam, US Virgin Islands, and minor outlying islands). World maps are prohibited in a US Federal Government context.
 
