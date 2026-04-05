@@ -9,6 +9,7 @@
 * add perimeter_collapse stub to docs.py build_docs context ([a234271](https://github.com/WhalerMike/uiao-core/commit/a234271071effe08a6c25979db8299dd7ca468aa))
 * **ci:** update build-readiness gate to reference new KSI crosswalk and index paths ([54dd709](https://github.com/WhalerMike/uiao-core/commit/54dd7091f85a543b0cd6bf1c57054be3a622b7b0))
 * graceful skip for missing data files in GRC export ([1918213](https://github.com/WhalerMike/uiao-core/commit/1918213334b9c9424ea00e14d193af678d2095e0))
+* **lint:** remove unused _upn variable from entra_adapter.py ([4e459ee](https://github.com/WhalerMike/uiao-core/commit/4e459ee14274dacef92ecd74ee58799af35a2180))
 * **lint:** remove unused variable and import in enrich_ksi_tier2.py ([fd0a156](https://github.com/WhalerMike/uiao-core/commit/fd0a1560d83716c17eb504187677456a9b405a63))
 * **lint:** resolve pre-existing ruff E722 and F841 errors ([3d43ace](https://github.com/WhalerMike/uiao-core/commit/3d43acef9a743e8ba51c29dfe47fb10bb0fc59f5))
 * **lint:** suppress unused upn variable in entra_adapter.py ([4b16859](https://github.com/WhalerMike/uiao-core/commit/4b168591e50a371f557a307fec90fbec2c5d538c))
