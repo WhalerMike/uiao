@@ -3,6 +3,7 @@
 
 ### Bug Fixes
 
+* add continue-on-error to Build MkDocs site step (mkdocs not installed) ([10ac80d](https://github.com/WhalerMike/uiao-core/commit/10ac80dddb2c59b506d816660e5e9cba484b6c27))
 * add continue-on-error to OSCAL/GRC steps in generate-docs workflow ([94c4ca8](https://github.com/WhalerMike/uiao-core/commit/94c4ca8a3e9e364fca5272de597dab44dbb9cad0))
 * add perimeter_collapse stub to context loader for CI ([f361a0b](https://github.com/WhalerMike/uiao-core/commit/f361a0b5e2f2546911cf274fbf637b1ffa6dd7f9))
 * add perimeter_collapse stub to docs.py build_docs context ([a234271](https://github.com/WhalerMike/uiao-core/commit/a234271071effe08a6c25979db8299dd7ca468aa))
