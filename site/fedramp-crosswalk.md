@@ -28,7 +28,7 @@ The UIAO architecture is uniquely positioned for FedRAMP 20x because its four co
 
 The following diagram illustrates how the UIAO unified architecture maps to the compliance framework. Each control plane provides evidence for specific NIST control families.
 
-<img src="assets/images/mermaid/diagram_1.png" alt="diagram_1" />
+<img src="assets/images/plantuml/diagram_1.png" alt="diagram_1" />
 
 ---
 
@@ -72,7 +72,7 @@ The UIAO architecture provides continuous telemetry via these validated componen
 
 The following diagram shows how the multi-plane integration enables continuous compliance monitoring. The telemetry control plane collects evidence from all other planes and feeds it to the KSI dashboard.
 
-<img src="assets/images/mermaid/diagram_2.png" alt="diagram_2" />
+<img src="assets/images/plantuml/diagram_2.png" alt="diagram_2" />
 
 ---
 
@@ -80,7 +80,7 @@ The following diagram shows how the multi-plane integration enables continuous c
 
 All compliance data flows through an automated validation pipeline before publication. This ensures that every artifact submitted to FedRAMP is machine-readable and schema-compliant.
 
-<img src="assets/images/mermaid/diagram_3.png" alt="diagram_3" />
+<img src="assets/images/plantuml/diagram_3.png" alt="diagram_3" />
 
 ---
 
