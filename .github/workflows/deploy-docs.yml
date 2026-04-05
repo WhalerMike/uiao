@@ -1,14 +1,43 @@
-# DISABLED: Redundant workflow - generate-docs.yml is the primary pipeline
-# deploy-docs.yml used mkdocs gh-deploy which conflicts with GitHub Actions Pages source
-# This caused duplicate github-pages artifact uploads (Pages build #370 failure)
-name: Deploy Modernization Atlas (DISABLED)
+name: Deploy MkDocs to GitHub Pages
 
 on:
-  workflow_dispatch:  # Manual trigger only - no longer auto-runs
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  deploy:
-    if: false  # Disabled - use generate-docs.yml instead
+  build:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "This workflow is disabled"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Build MkDocs site
+        run: mkdocs build --strict
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
