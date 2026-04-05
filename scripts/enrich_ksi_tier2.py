@@ -10,7 +10,6 @@ Usage:
 
 import argparse
 import json
-import os
 import sys
 import yaml
 from pathlib import Path
@@ -54,15 +53,14 @@ def process_ksi_data(ksi_data: dict) -> dict:
         for key, value in ksi_data.items():
             # Determine category from the key or nested structure
             category = key.lower().replace('_', '-')
-            enrichment = get_enrichment_for_category(category)
-            
+
             if isinstance(value, dict):
                 enriched_data[key] = enrich_ksi_entry(value, category)
             elif isinstance(value, list):
                 enriched_data[key] = [enrich_ksi_entry(item, category) if isinstance(item, dict) else item for item in value]
             else:
                 enriched_data[key] = value
-            
+
             categories_processed.add(category)
 
     return enriched_data, categories_processed
