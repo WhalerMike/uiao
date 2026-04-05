@@ -84,8 +84,8 @@ class TestIsGeminiOwned:
         md = _write_md(tmp_path / "docs" / "arch.md", _with_frontmatter("gemini"))
         assert self.mod.is_gemini_owned(md)
 
-    def test_mermaid_tag_returns_false(self, tmp_path: Path) -> None:
-        md = _write_md(tmp_path / "docs" / "flow.md", _with_frontmatter("mermaid"))
+    def test_unknown_tag_returns_false(self, tmp_path: Path) -> None:
+        md = _write_md(tmp_path / "docs" / "flow.md", _with_frontmatter("unknown-owner"))
         assert not self.mod.is_gemini_owned(md)
 
     def test_no_tag_returns_false(self, tmp_path: Path) -> None:
