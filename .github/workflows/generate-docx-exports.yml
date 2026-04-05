@@ -1,0 +1,55 @@
+name: Generate DOCX Exports
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  convert-to-docx:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+
+      - name: Create exports directory
+        run: mkdir -p exports/docx
+
+      - name: Convert all docs/*.md to DOCX
+        run: |
+          echo "Converting Markdown files to DOCX..."
+          for md_file in docs/*.md; do
+            if [ -f "$md_file" ]; then
+              basename=$(basename "$md_file" .md)
+              echo "  Converting: $md_file -> exports/docx/${basename}.docx"
+              pandoc "$md_file" \
+                --from markdown \
+                --to docx \
+                --output "exports/docx/${basename}.docx" \
+                --standalone
+            fi
+          done
+          echo "Done. Generated DOCX files:"
+          ls -la exports/docx/
+
+      - name: Commit DOCX exports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f exports/docx/*.docx
+          if git diff --cached --quiet; then
+            echo "No DOCX changes to commit."
+          else
+            git commit -m "Auto-generate DOCX exports from docs/ [skip ci]"
+            git push
+          fi
