@@ -1,0 +1,61 @@
+name: Document Export (Word/PDF)
+
+on:
+  workflow_dispatch:
+    inputs:
+      doc_path:
+        description: 'Document path relative to docs/ (e.g., documents/uiao-042.md)'
+        required: true
+        type: string
+      format:
+        description: 'Output format'
+        required: true
+        type: choice
+        options:
+          - docx
+          - pdf
+          - both
+        default: docx
+      mode:
+        description: 'Export mode'
+        required: true
+        type: choice
+        options:
+          - single
+          - all
+        default: single
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pandoc
+        run: sudo apt-get install -y pandoc
+
+      - name: Export document
+        run: |
+          mkdir -p exports
+          DOC="docs/${{ inputs.doc_path }}"
+          BASE=$(basename "$DOC" .md)
+          if [ "${{ inputs.format }}" = "docx" ] || [ "${{ inputs.format }}" = "both" ]; then
+            REF_FLAG=""
+            if [ -f .github/export-template.docx ]; then
+              REF_FLAG="--reference-doc=.github/export-template.docx"
+            fi
+            pandoc "$DOC" -o "exports/${BASE}.docx" $REF_FLAG
+          fi
+          if [ "${{ inputs.format }}" = "pdf" ] || [ "${{ inputs.format }}" = "both" ]; then
+            pandoc "$DOC" -o "exports/${BASE}.pdf"
+          fi
+
+      - name: Upload export artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: document-export
+          path: exports/
+          retention-days: 30
