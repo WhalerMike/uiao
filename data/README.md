@@ -12,7 +12,7 @@ The Python generation engine (`src/`) and scripts (`scripts/`) read from `data/`
 
 | File | Purpose |
 |------|---------|
-| `mermaid-config.json` | Legacy Mermaid CLI config (deprecated) |
+| `(removed — was Legacy PlantUML CLI config)` | Legacy PlantUML CLI config (deprecated) |
 | `schema.json` | JSON validation schema for data files |
 | `control-library/` | NIST control library YAML files |
 
