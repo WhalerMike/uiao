@@ -1,3 +1,15 @@
+---
+title: "How Adapters Work V1.0"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # How Adapters Work — UIAO DNS-Style Resolution Pattern
 
 **Version:** 1.0  
