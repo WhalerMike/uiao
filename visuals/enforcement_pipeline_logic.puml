@@ -1,0 +1,24 @@
+@startuml enforcement_pipeline_logic
+title Enforcement Pipeline Logic
+start
+:Receive Access Request;
+:Extract Identity Claims;
+if (Valid MFA?) then (yes)
+  :Resolve IP/Address Binding;
+  if (Address in Approved Range?) then (yes)
+    :Evaluate ABAC Policy;
+    if (Policy Permits?) then (yes)
+      :Grant Access;
+      :Log to SIEM;
+    else (no)
+      :Deny — Policy Block;
+    endif
+  else (no)
+    :Deny — Address Violation;
+  endif
+else (no)
+  :Deny — MFA Required;
+endif
+:Emit Telemetry Event;
+stop
+@enduml
