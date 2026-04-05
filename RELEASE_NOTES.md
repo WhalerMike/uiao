@@ -28,7 +28,7 @@ The Modernization Atlas v1.0 is a unified orchestration layer designed to accele
 ## What's New in v1.0
 
 - **Automated Artifact Generation:** CI/CD pipeline generates the 11-slide Pitch Deck (PPTX) and Project Plan (MS Planner CSV) on every push to main
-- **Visual Manifest:** Complete library of 12 architectural assets (6 Mermaid diagrams, 6 AI-generated PNGs)
+- **Visual Manifest:** Complete library of 12 architectural assets (6 PlantUML diagrams, 6 AI-generated PNGs)
 - **Operational SOPs:** Formalized handbook for SecOps covering health monitoring, manual overrides, escalation paths, and kill-switch procedures
 - **Compliance Readiness:** Mapping of Atlas capabilities to NIST 800-53 controls for streamlined ATO in GCC-Moderate
 - **Identity Lifecycle Canon:** Mover and Leaver scenarios with detailed narratives and metrics integrated into leadership briefing YAML
@@ -44,7 +44,7 @@ The Modernization Atlas v1.0 is a unified orchestration layer designed to accele
 | :--- | :--- |
 | `scripts/` | Core Python orchestrators: `sync_orchestrator.py`, `cyberark_sync_orchestrator.py`, `enforcement_orchestrator.py`, `generate_pptx.py`, `plan_to_csv.py`, `generate_docs.py` |
 | `generation-inputs/` | YAML definitions: pitch deck, project plan, JML logic, leadership briefing, visual manifest |
-| `visuals/` | 12-asset manifest (6 Mermaid `.mermaid` + 6 AI-generated `.png`) |
+| `visuals/` | 12-asset manifest (6 PlantUML `.puml` + 6 AI-generated `.png`) |
 | `analytics/` | KQL alert definitions for Microsoft Sentinel (Privileged Leaver, Compliance Drift, Orchestrator Health) |
 | `docs/` | Operational handover SOPs, compliance readiness, leadership briefing, generated artifacts |
 | `templates/` | Jinja2 templates for document generation pipeline |
