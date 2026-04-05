@@ -48,7 +48,7 @@ The UIAO authorization boundary encompasses all components that process, store,
 or transmit federal information as part of the modernization program. The boundary is
 defined by the five control planes and the services they govern.
 
-<img src="assets/images/mermaid/flowchart_lr.png" alt="flowchart_lr" />
+<img src="assets/images/plantuml/flowchart_lr.png" alt="flowchart_lr" />
 
 ### 2.2 Control Planes in Boundary
 
@@ -77,7 +77,7 @@ All user requests traverse the following path within the UIAO boundary:
 
 ### 3.2 Data Flow Diagram
 
-<img src="assets/images/mermaid/flowchart_lr.png" alt="flowchart_lr" />
+<img src="assets/images/plantuml/flowchart_lr.png" alt="flowchart_lr" />
 
 ---
 
@@ -194,7 +194,7 @@ evidence-based, and integrated with the UIAO-Core Documentation-as-Code pipeline
 
 ### 5.3 Evidence Collection Pipeline
 
-<img src="assets/images/mermaid/flowchart_lr.png" alt="flowchart_lr" />
+<img src="assets/images/plantuml/flowchart_lr.png" alt="flowchart_lr" />
 
 ---
 
