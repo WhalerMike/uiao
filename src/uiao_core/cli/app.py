@@ -136,10 +136,10 @@ def generate_visuals(
     ),
 ) -> None:
     """Render Mermaid diagrams to PNG for DOCX/PPTX embedding."""
-    from uiao_core.generators.mermaid import render_all_mermaid
+     from uiao_core.generators.plantuml import render_plantuml_dir
 
-    console.print(f"[bold]Rendering Mermaid visuals from {visuals_dir}...[/bold]")
-    results = render_all_mermaid(visuals_dir, output_dir, force=force)
+    console.print(f"[bold]Rendering PlantUML diagrams from {visuals_dir}...[/bold]")
+    results = render_plantuml_dir(visuals_dir, output_dir, force=force)
     console.print(f"[green]Rendered {len(results)} diagram(s) to {output_dir}[/green]")
 
 
@@ -275,22 +275,17 @@ def generate_diagrams(
         help="Force regeneration of all visuals (ignore cache).",
     ),
 ) -> None:
-    """Generate Mermaid .mermaid files and render them to PNG from canon YAML."""
+    """Generate PlantUML diagrams from visuals/ and render them to PNG."""
     from uiao_core.generators.diagrams import generate_diagrams_from_canon
-    from uiao_core.generators.mermaid import render_all_mermaid
 
-    console.print(f"[bold]Generating diagrams from {canon_path}...[/bold]")
+    console.print(f"[bold]Generating diagrams from {visuals_dir}/*.puml...[/bold]")
     rendered = generate_diagrams_from_canon(
         canon_path=canon_path,
         visuals_dir=visuals_dir,
         output_dir=output_dir,
         force=force,
     )
-    console.print(f"[green]Generated {len(rendered)} diagram(s) from canon.[/green]")
-
-    console.print(f"[bold]Rendering all Mermaid files in {visuals_dir}...[/bold]")
-    all_pngs = render_all_mermaid(visuals_dir=visuals_dir, output_dir=output_dir, force=force)
-    console.print(f"[green]Rendered {len(all_pngs)} total diagram(s) to {output_dir}[/green]")
+    console.print(f"[green]Rendered {len(rendered)} diagram(s) to {output_dir}[/green]")
 
 
 @app.command()
@@ -379,12 +374,12 @@ def generate_artifacts(
     ),
 ) -> None:
     """Generate DOCX + PPTX with embedded Mermaid and Gemini visuals."""
-    from uiao_core.generators.mermaid import render_all_mermaid
+     from uiao_core.generators.plantuml import render_plantuml_dir
     from uiao_core.generators.pptx import build_pptx
     from uiao_core.generators.rich_docx import build_rich_docx
 
     console.print("[bold]Rendering Mermaid visuals...[/bold]")
-    pngs = render_all_mermaid(force=force_visuals)
+    from uiao_core.generators.plantuml import render_plantuml_dir
     console.print(f"[green]Rendered {len(pngs)} diagram(s)[/green]")
 
     if os.environ.get("GEMINI_API_KEY", "").strip():
@@ -630,7 +625,7 @@ def generate_all(
     import time
 
     from uiao_core.generators.docs import build_docs
-    from uiao_core.generators.mermaid import render_all_mermaid
+     from uiao_core.generators.plantuml import render_plantuml_dir
     from uiao_core.generators.oscal import build_oscal
     from uiao_core.generators.poam import build_poam_export
     from uiao_core.generators.pptx import build_pptx
@@ -647,7 +642,7 @@ def generate_all(
     # ── 1. Mermaid diagrams ──────────────────────────────────────────────────
     console.print("[bold][ 1/8 ] Rendering Mermaid diagrams...[/bold]")
     try:
-        pngs = render_all_mermaid(force=force_visuals)
+        from uiao_core.utils.context import get_settings as _gs; _s = _gs(); pngs = render_plantuml_dir(_s.project_root / "visuals", _s
         console.print(f"[green]✓ Rendered {len(pngs)} diagram(s)[/green]")
     except Exception as exc:  # noqa: BLE001
         console.print(f"[yellow]⚠ Diagrams skipped: {exc}[/yellow]")
