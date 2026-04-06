@@ -3,7 +3,7 @@
 # Original trigger preserved in comments below.
 # -----------------------------------------------------------------
 # render-and-insert-diagrams.yml
-# Renders Mermaid .mermaid files to PNG, renders diagrams.yml entries
+# Renders PlantUML .plantuml files to PNG, renders diagrams.yml entries
 # via mmdc, then inserts image references into canonical docs.
 # ROUTING: Skips files tagged diagram-owner: gemini (see canon/DIAGRAM-STANDARDS.md)
 # -----------------------------------------------------------------
@@ -14,7 +14,7 @@ on:
 
 jobs:
   render-and-insert:
-    name: Render Mermaid -> PNG & Insert into Docs
+    name: Render PlantUML -> PNG & Insert into Docs
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -29,8 +29,8 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install Mermaid CLI (mmdc)
-        run: npm install -g @mermaid-js/mermaid-cli
+      - name: Install PlantUML CLI (mmdc)
+        run: npm install -g @plantuml-js/plantuml-cli
 
       - name: Install Playwright Chromium (required by mmdc)
         run: npx playwright install --with-deps chromium
@@ -48,14 +48,14 @@ jobs:
       - name: Install Python dependencies
         run: pip install pyyaml
 
-      - name: Render standalone .mermaid files to PNG
+      - name: Render standalone .plantuml files to PNG
         run: |
-          mkdir -p assets/images/mermaid
-          for f in visuals/*.mermaid; do
+          mkdir -p assets/images/plantuml
+          for f in visuals/*.plantuml; do
             [ -f "$f" ] || continue
-            base=$(basename "$f" .mermaid)
-            echo "Rendering $f -> assets/images/mermaid/${base}.png"
-            mmdc -i "$f" -o "assets/images/mermaid/${base}.png" \
+            base=$(basename "$f" .plantuml)
+            echo "Rendering $f -> assets/images/plantuml/${base}.png"
+            mmdc -i "$f" -o "assets/images/plantuml/${base}.png" \
               -p /tmp/puppeteer-config.json \
               -b transparent -w 2048 -H 1536 || echo "WARN: $f failed"
           done
@@ -66,7 +66,7 @@ jobs:
           import yaml, subprocess, os, sys
           from pathlib import Path
 
-          OUT = Path("assets/images/mermaid")
+          OUT = Path("assets/images/plantuml")
           OUT.mkdir(parents=True, exist_ok=True)
 
           catalogs = [
@@ -82,7 +82,7 @@ jobs:
               data = yaml.safe_load(p.read_text()) or {}
               diagrams = data.get("diagrams", data)
               for key, value in diagrams.items():
-                  mmd_src = value if isinstance(value, str) else value.get("mermaid", value.get("source", ""))
+                  mmd_src = value if isinstance(value, str) else value.get("plantuml", value.get("source", ""))
                   if not mmd_src or not mmd_src.strip():
                       continue
                   tmp = Path(f"/tmp/{key}.mmd")
@@ -104,9 +104,9 @@ jobs:
           import re, glob, os, yaml
           from pathlib import Path
 
-          ASSETS = Path("assets/images/mermaid")
+          ASSETS = Path("assets/images/plantuml")
           VISUALS = Path("visuals")
-          # Mermaid CLI owns docs/, templates/, canon/ -- but NOT src/templates/
+          # PlantUML CLI owns docs/, templates/, canon/ -- but NOT src/templates/
           DOCS_DIRS = ["docs", "templates", "canon"]
 
           changes = 0
@@ -150,7 +150,7 @@ jobs:
                   text = md.read_text(encoding="utf-8")
                   original = text
 
-                  def replace_mermaid_block(m):
+                  def replace_plantuml_block(m):
                       global changes
                       code = m.group(1).strip()
                       label = "UIAO Architecture Diagram"
@@ -163,14 +163,14 @@ jobs:
                       changes += 1
                       return (
                           f"![{label}]({img_rel})\n\n"
-                          f"<details>\n<summary>Mermaid source</summary>\n\n"
-                          f"```mermaid\n{code}\n```\n\n"
+                          f"<details>\n<summary>PlantUML source</summary>\n\n"
+                          f"```plantuml\n{code}\n```\n\n"
                           f"</details>"
                       )
 
                   text = re.sub(
-                      r"```mermaid\s*\n(.*?)\n```",
-                      replace_mermaid_block,
+                      r"```plantuml\s*\n(.*?)\n```",
+                      replace_plantuml_block,
                       text,
                       flags=re.DOTALL,
                   )
@@ -219,7 +219,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add assets/images/mermaid/ docs/ templates/ canon/ visuals/ || true
+          git add assets/images/plantuml/ docs/ templates/ canon/ visuals/ || true
           git diff --cached --quiet || git commit -m "chore: render diagrams and insert into docs [skip ci]"
           for i in 1 2 3; do
             git pull --rebase origin main && git push && break || sleep 5;
