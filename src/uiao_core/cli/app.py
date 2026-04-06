@@ -796,7 +796,6 @@ def adapter_run(
     ),
 ) -> None:
     """Run a vendor adapter and align claims (DNS-style, no heavy OSCAL conversion)."""
-    from typing import Optional
 
     import json as _json
 
@@ -829,6 +828,7 @@ def adapter_run(
         with open(output, "w") as f:
             _json.dump(aligned, f, indent=2, default=str)
         console.print(f"[green]Saved to {output}[/green]")
+
 
 if __name__ == "__main__":
     app()

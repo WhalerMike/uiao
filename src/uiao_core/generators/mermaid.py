@@ -15,6 +15,8 @@ from pathlib import Path
 
 from uiao_core.generators.plantuml import (
     render_plantuml_dir as _render_plantuml_dir,
+)
+from uiao_core.generators.plantuml import (
     render_plantuml_file as _render_plantuml_file,
 )
 from uiao_core.utils.context import get_settings
@@ -82,22 +84,19 @@ def build_plantuml_visuals(
 def build_mermaid_visuals(*args: object, **kwargs: object) -> Path:
     """Removed. Use build_plantuml_visuals() instead."""
     raise RuntimeError(
-        "build_mermaid_visuals() has been removed. "
-        "Use build_plantuml_visuals() from uiao_core.generators.plantuml."
+        "build_mermaid_visuals() has been removed. Use build_plantuml_visuals() from uiao_core.generators.plantuml."
     )
 
 
 def render_mermaid_file(*args: object, **kwargs: object) -> Path | None:
     """Removed. Use render_plantuml_file() instead."""
     raise RuntimeError(
-        "render_mermaid_file() has been removed. "
-        "Use render_plantuml_file() from uiao_core.generators.plantuml."
+        "render_mermaid_file() has been removed. Use render_plantuml_file() from uiao_core.generators.plantuml."
     )
 
 
 def render_all_mermaid(*args: object, **kwargs: object) -> list[Path]:
     """Removed. Use render_all_plantuml() instead."""
     raise RuntimeError(
-        "render_all_mermaid() has been removed. "
-        "Use render_all_plantuml() from uiao_core.generators.plantuml."
+        "render_all_mermaid() has been removed. Use render_all_plantuml() from uiao_core.generators.plantuml."
     )

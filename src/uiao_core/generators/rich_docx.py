@@ -293,6 +293,7 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
     if disclaimer_text:
         from docx.oxml.ns import qn as _qn
         from docx.oxml import OxmlElement as _OxmlElement
+
         d = doc.add_paragraph()
         d.paragraph_format.space_before = Pt(14)
         d.paragraph_format.space_after = Pt(14)
@@ -367,12 +368,21 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
         "Each figure is referenced by number in the architecture sections above.",
     )
     visuals = [
-        ("Modernization Journey", "uiao-vibrant-modernization-atlas.png",
-         "UIAO Modernization Atlas — transition from fragmented legacy to unified control planes"),
-        ("FedRAMP 20x Governance Loop", "uiao-vibrant-20x-governance-hub.png",
-         "FedRAMP 20x Governance Hub — continuous compliance evidence loop"),
-        ("Identity-to-IP Architecture", "uiao-vibrant-u-plus-a-mapping.png",
-         "Identity-to-IP Mapping — Entra ID as root namespace for all addressing decisions"),
+        (
+            "Modernization Journey",
+            "uiao-vibrant-modernization-atlas.png",
+            "UIAO Modernization Atlas — transition from fragmented legacy to unified control planes",
+        ),
+        (
+            "FedRAMP 20x Governance Loop",
+            "uiao-vibrant-20x-governance-hub.png",
+            "FedRAMP 20x Governance Hub — continuous compliance evidence loop",
+        ),
+        (
+            "Identity-to-IP Architecture",
+            "uiao-vibrant-u-plus-a-mapping.png",
+            "Identity-to-IP Mapping — Entra ID as root namespace for all addressing decisions",
+        ),
     ]
     for title_text, img, caption in visuals:
         _add_heading(doc, title_text, level=2)
@@ -384,7 +394,9 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
         doc.add_page_break()
         _add_heading(doc, "CISA Zero Trust Maturity Assessment")
         _add_image_safe(
-            doc, "dynamic-maturity-radar.png", visuals_dir,
+            doc,
+            "dynamic-maturity-radar.png",
+            visuals_dir,
             fig_counter=fig,
             caption="CISA Zero Trust Maturity Radar — current vs. target maturity across all five pillars",
         )
@@ -406,7 +418,9 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
                 diagram_title = png.stem.replace("-", " ").replace("_", " ").title()
                 _add_heading(doc, diagram_title, level=2)
                 _add_image_safe(
-                    doc, png.name, plantuml_dir,
+                    doc,
+                    png.name,
+                    plantuml_dir,
                     fig_counter=fig,
                     caption=f"{diagram_title} — PlantUML architecture diagram",
                 )
@@ -422,7 +436,9 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
                 gemini_title = png.stem.replace("-", " ").replace("_", " ").title()
                 _add_heading(doc, gemini_title, level=2)
                 _add_image_safe(
-                    doc, png.name, gemini_dir,
+                    doc,
+                    png.name,
+                    gemini_dir,
                     fig_counter=fig,
                     caption=f"{gemini_title} — AI-generated conceptual visualization",
                 )
@@ -534,7 +550,7 @@ def _md_to_docx(doc: Document, md_text: str) -> None:
             r.font.size = Pt(11)
             r.font.bold = first is bold_m
             r.font.italic = first is not bold_m
-            remaining = remaining[first.end():]
+            remaining = remaining[first.end() :]
 
     while i < len(lines):
         line = lines[i].rstrip()
@@ -607,6 +623,8 @@ def _md_to_docx(doc: Document, md_text: str) -> None:
         i += 1
 
     _flush_paragraph()
+
+
 def build_topic_docx(
     md_path: Path,
     exports_dir: Path,
