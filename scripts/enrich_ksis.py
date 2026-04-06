@@ -8,6 +8,7 @@ Usage:
     python scripts/enrich_ksis.py
     python scripts/enrich_ksis.py --dry-run
 """
+
 from __future__ import annotations
 
 import argparse

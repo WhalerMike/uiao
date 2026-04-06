@@ -17,7 +17,15 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from ..collectors.entra.entra_collector import EntraCollector
-from .database_base import ClaimObject, ClaimSet, ConnectionProvenance, DatabaseAdapterBase, DriftReport, QueryProvenance, SchemaMappingObject
+from .database_base import (
+    ClaimObject,
+    ClaimSet,
+    ConnectionProvenance,
+    DatabaseAdapterBase,
+    DriftReport,
+    QueryProvenance,
+    SchemaMappingObject,
+)
 
 
 class EntraAdapter(DatabaseAdapterBase):
