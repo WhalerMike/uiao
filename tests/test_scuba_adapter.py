@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -168,11 +167,7 @@ class TestScubaAdapterDriftDetection:
 
     def test_detect_drift_no_failing(self) -> None:
         a = ScubaAdapter()
-        a._raw_report = {
-            "TestResults": [
-                {"PolicyId": "MS.AAD.2.1v1", "RequirementMet": True}
-            ]
-        }
+        a._raw_report = {"TestResults": [{"PolicyId": "MS.AAD.2.1v1", "RequirementMet": True}]}
         report = a.detect_drift()
         assert report.severity == "none"
 
