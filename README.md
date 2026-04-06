@@ -205,6 +205,29 @@
           mypy src/uiao_core/
           ```
 
+### PlantUML Diagrams (one-time setup)
+
+Diagram rendering uses a local `plantuml.jar` for fully offline, reliable PNG generation.
+
+```bash
+# 1. Download the JAR (one time) — place it in your repo root or tools/
+#    https://plantuml.com/download  (direct link below)
+curl -L -o plantuml.jar https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar
+
+# 2. Confirm Java is installed (required to run the JAR)
+java -version
+
+# 3. Optional: set a custom JAR path via env var
+# set UIAO_PLANTUML_JAR=C:\tools\plantuml.jar   # Windows
+# export UIAO_PLANTUML_JAR=/opt/tools/plantuml.jar  # Linux/Mac
+
+# 4. If you prefer NOT to use a local JAR, install plantweb as a fallback:
+pip install plantweb
+```
+
+> **Note:** Without the JAR, `uiao generate-all` falls back to the public
+> `plantuml.com` server which may occasionally return 509 rate-limit errors.
+
           ## CLI
 
           The `uiao` CLI (typer-based) is the primary interface:
