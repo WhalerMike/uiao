@@ -24,9 +24,10 @@ _JAR_CANDIDATES = [
 ]
 
 
-def _find_jar() -> "Path | None":
+def _find_jar() -> Path | None:
     """Return the path to plantuml.jar if it exists, else None."""
     import os
+
     env_jar = os.environ.get("UIAO_PLANTUML_JAR")
     if env_jar:
         p = Path(env_jar)
@@ -51,7 +52,7 @@ def render_plantuml_file(
     output_dir: Path,
     force: bool = False,
     fmt: str = "png",
-) -> "Path | None":
+) -> Path | None:
     """Render a single .puml file to PNG (or other format).
 
     Uses local plantuml.jar via Java subprocess when available.
@@ -81,13 +82,16 @@ def _render_with_jar(
     output_dir: Path,
     jar: Path,
     fmt: str = "png",
-) -> "Path | None":
+) -> Path | None:
     """Render using local plantuml.jar via java subprocess."""
     png_path = output_dir / (puml_path.stem + f".{fmt}")
     cmd = [
-        "java", "-jar", str(jar),
+        "java",
+        "-jar",
+        str(jar),
         f"-t{fmt}",
-        "-o", str(output_dir.resolve()),
+        "-o",
+        str(output_dir.resolve()),
         str(puml_path.resolve()),
     ]
     try:
@@ -99,8 +103,7 @@ def _render_with_jar(
         )
         if result.returncode != 0:
             logger.warning(
-                "plantuml.jar exited %d for %s: %s",
-                result.returncode, puml_path.name, result.stderr.strip()
+                "plantuml.jar exited %d for %s: %s", result.returncode, puml_path.name, result.stderr.strip()
             )
             return None
         logger.info("Rendered (JAR): %s -> %s", puml_path.name, png_path)
@@ -117,7 +120,7 @@ def _render_with_plantweb(
     puml_path: Path,
     output_dir: Path,
     fmt: str = "png",
-) -> "Path | None":
+) -> Path | None:
     """Render using plantweb (calls public plantuml.com server)."""
     png_path = output_dir / (puml_path.stem + f".{fmt}")
     try:

@@ -128,7 +128,8 @@ class EntraAdapter(DatabaseAdapterBase):
             claim_payload = {
                 "identity": f"entra:user:{record_id}",
                 "control_id": record.get("uiao_control_id", "AC-2"),
-                "implementation_statement": record.get("displayName", "") or record.get("message", "Entra identity event"),
+                "implementation_statement": record.get("displayName", "")
+                or record.get("message", "Entra identity event"),
                 "vendor_overlay_ref": "microsoft.yaml",
                 "telemetry_enabled": True,
                 "raw_link": f"https://portal.azure.com/#view/Microsoft_AAD_UsersAndTenants/UserProfileMenuBlade/~/overview/userId/{record_id}",

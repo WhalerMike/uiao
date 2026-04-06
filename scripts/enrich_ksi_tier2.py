@@ -26,7 +26,7 @@ def load_ksi_index(index_path: Path) -> dict:
     if not index_path.exists():
         print(f"ERROR: KSI index not found at {index_path}")
         sys.exit(1)
-    with open(index_path, 'r') as f:
+    with open(index_path) as f:
         return yaml.safe_load(f)
 
 
@@ -34,12 +34,12 @@ def enrich_ksi_entry(entry: dict, category: str) -> dict:
     """Apply Tier 2 enrichment rules to a single KSI entry."""
     enrichment = get_enrichment_for_category(category)
     enriched = entry.copy()
-    enriched['tier2_enrichment'] = {
-        'validation_type': enrichment['validation_type'],
-        'pass_criteria': enrichment['pass_criteria'],
-        'uiao_extensions': enrichment['uiao_extensions'],
-        'enrichment_applied': True,
-        'enrichment_tier': 2
+    enriched["tier2_enrichment"] = {
+        "validation_type": enrichment["validation_type"],
+        "pass_criteria": enrichment["pass_criteria"],
+        "uiao_extensions": enrichment["uiao_extensions"],
+        "enrichment_applied": True,
+        "enrichment_tier": 2,
     }
     return enriched
 
@@ -52,12 +52,14 @@ def process_ksi_data(ksi_data: dict) -> dict:
     if isinstance(ksi_data, dict):
         for key, value in ksi_data.items():
             # Determine category from the key or nested structure
-            category = key.lower().replace('_', '-')
+            category = key.lower().replace("_", "-")
 
             if isinstance(value, dict):
                 enriched_data[key] = enrich_ksi_entry(value, category)
             elif isinstance(value, list):
-                enriched_data[key] = [enrich_ksi_entry(item, category) if isinstance(item, dict) else item for item in value]
+                enriched_data[key] = [
+                    enrich_ksi_entry(item, category) if isinstance(item, dict) else item for item in value
+                ]
             else:
                 enriched_data[key] = value
 
@@ -69,7 +71,7 @@ def process_ksi_data(ksi_data: dict) -> dict:
 def write_output(enriched_data: dict, output_dir: Path, dry_run: bool = False):
     """Write enriched KSI data to output directory."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / 'ksi_tier2_enriched.json'
+    output_file = output_dir / "ksi_tier2_enriched.json"
 
     if dry_run:
         print("\n=== DRY RUN MODE ===")
@@ -80,16 +82,16 @@ def write_output(enriched_data: dict, output_dir: Path, dry_run: bool = False):
         print(json.dumps(sample, indent=2, default=str))
         return
 
-    with open(output_file, 'w') as f:
+    with open(output_file, "w") as f:
         json.dump(enriched_data, f, indent=2, default=str)
     print(f"Enriched KSI data written to {output_file}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='UIAO-Core KSI Tier 2 Enrichment')
-    parser.add_argument('--dry-run', action='store_true', help='Preview enrichment without writing files')
-    parser.add_argument('--output-dir', type=str, default='exports/ksi', help='Output directory for enriched data')
-    parser.add_argument('--index', type=str, default='rules/ksi/index.yaml', help='Path to KSI index.yaml')
+    parser = argparse.ArgumentParser(description="UIAO-Core KSI Tier 2 Enrichment")
+    parser.add_argument("--dry-run", action="store_true", help="Preview enrichment without writing files")
+    parser.add_argument("--output-dir", type=str, default="exports/ksi", help="Output directory for enriched data")
+    parser.add_argument("--index", type=str, default="rules/ksi/index.yaml", help="Path to KSI index.yaml")
     args = parser.parse_args()
 
     index_path = PROJECT_ROOT / args.index
@@ -116,5 +118,5 @@ def main():
     print("\nDone.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
