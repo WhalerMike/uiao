@@ -495,9 +495,9 @@ _MD_HR_RE = re.compile(r"^-{3,}$")
 _MD_FRONTMATTER_RE = re.compile(r"^---\n.*?^---\n", re.DOTALL | re.MULTILINE)
 
 
-_IMG_TAG_RE = re.compile(r'<img\\s+[^>]*src="([^"]+)"[^>]*>', re.IGNORECASE)
-_MD_TABLE_ROW_RE = re.compile(r"^\\|(.+)\\|\\s*$")
-_MD_TABLE_SEP_RE = re.compile(r"^[\\s|:\\-]+$")
+_IMG_TAG_RE = re.compile(r'<img\s+[^>]*src="([^"]+)"[^>]*>', re.IGNORECASE)
+_MD_TABLE_ROW_RE = re.compile(r"^\|(.+)\|\s*$")
+_MD_TABLE_SEP_RE = re.compile(r"^[\s|:\-]+$")
 
 
 def _md_to_docx(doc: Document, md_text: str) -> None:
@@ -527,8 +527,8 @@ def _md_to_docx(doc: Document, md_text: str) -> None:
         p.paragraph_format.line_spacing = 1.15
         remaining = text
         while remaining:
-            bold_m = re.search(r"\\*\\*(.+?)\\*\\*", remaining)
-            ital_m = re.search(r"(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)", remaining)
+            bold_m = re.search(r"\*\*(.+?)\*\*", remaining)
+            ital_m = re.search(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", remaining)
             first = None
             if bold_m and ital_m:
                 first = bold_m if bold_m.start() <= ital_m.start() else ital_m
@@ -566,7 +566,7 @@ def _md_to_docx(doc: Document, md_text: str) -> None:
         if m:
             _flush_paragraph()
             level = len(m.group(1))
-            text = re.sub(r"\\*+(.+?)\\*+", r"\\1", m.group(2))
+            text = re.sub(r"\*+(.+?)\*+", r"\1", m.group(2))
             h = doc.add_heading(text, level=min(level, 3))
             for run in h.runs:
                 run.font.color.rgb = RGBColor(0x1B, 0x3A, 0x5C)
