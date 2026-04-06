@@ -2,9 +2,9 @@
 
 Covers:
 - Loading generation-inputs/diagrams.yaml
-- generate_diagrams_from_canon() creating .mermaid files
-- replace_mermaid_blocks_with_images() post-processing
-- Mermaid theme configuration consistency
+- generate_diagrams_from_canon() creating .puml files
+- replace_plantuml_blocks_with_images() post-processing
+- PlantUML theme configuration consistency
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ import yaml
 
 _REPO_ROOT = Path(__file__).parent.parent
 _DIAGRAMS_CANON = _REPO_ROOT / "generation-inputs" / "diagrams.yaml"
-_MERMAID_CONFIG = _REPO_ROOT / "data" / "mermaid-config.json"
+_PLANTUML_CONFIG = _REPO_ROOT / "data" / "plantuml-config.json"
 
 
 # ---------------------------------------------------------------------------
@@ -77,42 +77,42 @@ class TestDiagramsCanon:
 # generate_diagrams_from_canon()
 # ---------------------------------------------------------------------------
 class TestGenerateDiagramsFromCanon:
-    """Verify that generate_diagrams_from_canon() writes .mermaid files."""
+    """Verify that generate_diagrams_from_canon() writes .puml files."""
 
-    def test_creates_mermaid_files(self, tmp_path: Path) -> None:
+    def test_creates_plantuml_files(self, tmp_path: Path) -> None:
         from uiao_core.generators.diagrams import generate_diagrams_from_canon
 
         visuals_dir = tmp_path / "visuals"
         output_dir = tmp_path / "images"
 
-        # Skip PNG rendering (no mmdc/Playwright in CI) — only check .mermaid writes
+        # Skip PNG rendering (no mmdc/Playwright in CI) — only check .puml writes
         import unittest.mock as mock
 
-        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None):
+        with mock.patch("uiao_core.generators.diagrams.render_plantuml_file", return_value=None):
             generate_diagrams_from_canon(
                 canon_path=_DIAGRAMS_CANON,
                 visuals_dir=visuals_dir,
                 output_dir=output_dir,
             )
 
-        mermaid_files = list(visuals_dir.glob("*.mermaid"))
-        assert len(mermaid_files) >= 6, f"Expected ≥6 .mermaid files, got {len(mermaid_files)}"
+        plantuml_files = list(visuals_dir.glob("*.puml"))
+        assert len(plantuml_files) >= 6, f"Expected ≥6 .puml files, got {len(plantuml_files)}"
 
-    def test_mermaid_file_names_match_keys(self, tmp_path: Path) -> None:
+    def test_plantuml_file_names_match_keys(self, tmp_path: Path) -> None:
         from uiao_core.generators.diagrams import generate_diagrams_from_canon
 
         visuals_dir = tmp_path / "visuals"
 
         import unittest.mock as mock
 
-        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None):
+        with mock.patch("uiao_core.generators.diagrams.render_plantuml_file", return_value=None):
             generate_diagrams_from_canon(
                 canon_path=_DIAGRAMS_CANON,
                 visuals_dir=visuals_dir,
                 output_dir=tmp_path / "images",
             )
 
-        stems = {p.stem for p in visuals_dir.glob("*.mermaid")}
+        stems = {p.stem for p in visuals_dir.glob("*.puml")}
         expected = {
             "architecture_overview",
             "authorization_boundary",
@@ -121,41 +121,41 @@ class TestGenerateDiagramsFromCanon:
             "generation_pipeline",
             "zero_trust_journey",
         }
-        assert expected.issubset(stems), f"Missing .mermaid files: {expected - stems}"
+        assert expected.issubset(stems), f"Missing .puml files: {expected - stems}"
 
-    def test_mermaid_file_content_is_nonempty(self, tmp_path: Path) -> None:
+    def test_plantuml_file_content_is_nonempty(self, tmp_path: Path) -> None:
         from uiao_core.generators.diagrams import generate_diagrams_from_canon
 
         visuals_dir = tmp_path / "visuals"
 
         import unittest.mock as mock
 
-        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None):
+        with mock.patch("uiao_core.generators.diagrams.render_plantuml_file", return_value=None):
             generate_diagrams_from_canon(
                 canon_path=_DIAGRAMS_CANON,
                 visuals_dir=visuals_dir,
                 output_dir=tmp_path / "images",
             )
 
-        for mmd in visuals_dir.glob("*.mermaid"):
+        for mmd in visuals_dir.glob("*.puml"):
             assert mmd.read_text(encoding="utf-8").strip(), f"{mmd.name} is empty"
 
-    def test_mermaid_file_content_is_valid_mermaid(self, tmp_path: Path) -> None:
-        """Each generated .mermaid file must contain Mermaid flowchart keywords."""
+    def test_plantuml_file_content_is_valid_plantuml(self, tmp_path: Path) -> None:
+        """Each generated .puml file must contain PlantUML flowchart keywords."""
         import unittest.mock as mock
 
         from uiao_core.generators.diagrams import generate_diagrams_from_canon
 
         visuals_dir = tmp_path / "visuals"
 
-        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None):
+        with mock.patch("uiao_core.generators.diagrams.render_plantuml_file", return_value=None):
             generate_diagrams_from_canon(
                 canon_path=_DIAGRAMS_CANON,
                 visuals_dir=visuals_dir,
                 output_dir=tmp_path / "images",
             )
 
-        for mmd in visuals_dir.glob("*.mermaid"):
+        for mmd in visuals_dir.glob("*.puml"):
             text = mmd.read_text(encoding="utf-8")
             # All canon diagrams are flowcharts with edges
             assert "flowchart" in text.lower(), f"{mmd.name} missing 'flowchart' keyword"
@@ -167,7 +167,7 @@ class TestGenerateDiagramsFromCanon:
         from uiao_core.generators.diagrams import generate_diagrams_from_canon
 
         with (
-            mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None),
+            mock.patch("uiao_core.generators.diagrams.render_plantuml_file", return_value=None),
             pytest.raises(RuntimeError, match="Failed to render"),
         ):
             generate_diagrams_from_canon(
@@ -192,7 +192,7 @@ class TestGenerateDiagramsFromCanon:
 
         from uiao_core.generators.diagrams import build_diagrams
 
-        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None):
+        with mock.patch("uiao_core.generators.diagrams.render_plantuml_file", return_value=None):
             result = build_diagrams(
                 canon_path=_DIAGRAMS_CANON,
                 visuals_dir=tmp_path / "visuals",
@@ -203,52 +203,52 @@ class TestGenerateDiagramsFromCanon:
 
 
 # ---------------------------------------------------------------------------
-# replace_mermaid_blocks_with_images()
+# replace_plantuml_blocks_with_images()
 # ---------------------------------------------------------------------------
-class TestReplaceMermaidBlocks:
-    """Verify the Mermaid fence → <img> post-processing helper."""
+class TestReplacePlantUMLBlocks:
+    """Verify the PlantUML fence → <img> post-processing helper."""
 
     def test_replaces_single_block(self) -> None:
-        from uiao_core.generators.docs import replace_mermaid_blocks_with_images
+        from uiao_core.generators.docs import replace_plantuml_blocks_with_images
 
-        md = "# Title\n\n```mermaid\nflowchart TD\n    A --> B\n```\n\nEnd."
-        result = replace_mermaid_blocks_with_images(md)
-        assert "```mermaid" not in result
+        md = "# Title\n\n```plantuml\nflowchart TD\n    A --> B\n```\n\nEnd."
+        result = replace_plantuml_blocks_with_images(md)
+        assert "```plantuml" not in result
         assert "<img" in result
         assert ".png" in result
 
     def test_replaces_multiple_blocks(self) -> None:
-        from uiao_core.generators.docs import replace_mermaid_blocks_with_images
+        from uiao_core.generators.docs import replace_plantuml_blocks_with_images
 
-        md = "```mermaid\nflowchart LR\n    A --> B\n```\n\n```mermaid\nflowchart TD\n    C --> D\n```\n"
-        result = replace_mermaid_blocks_with_images(md)
+        md = "```plantuml\nflowchart LR\n    A --> B\n```\n\n```plantuml\nflowchart TD\n    C --> D\n```\n"
+        result = replace_plantuml_blocks_with_images(md)
         assert result.count("<img") == 2
-        assert "```mermaid" not in result
+        assert "```plantuml" not in result
 
-    def test_leaves_non_mermaid_fences_intact(self) -> None:
-        from uiao_core.generators.docs import replace_mermaid_blocks_with_images
+    def test_leaves_non_plantuml_fences_intact(self) -> None:
+        from uiao_core.generators.docs import replace_plantuml_blocks_with_images
 
         md = "```python\nprint('hello')\n```\n"
-        result = replace_mermaid_blocks_with_images(md)
+        result = replace_plantuml_blocks_with_images(md)
         assert result == md
 
-    def test_no_mermaid_blocks_unchanged(self) -> None:
-        from uiao_core.generators.docs import replace_mermaid_blocks_with_images
+    def test_no_plantuml_blocks_unchanged(self) -> None:
+        from uiao_core.generators.docs import replace_plantuml_blocks_with_images
 
         md = "# No diagrams here\n\nJust text."
-        assert replace_mermaid_blocks_with_images(md) == md
+        assert replace_plantuml_blocks_with_images(md) == md
 
     def test_img_contains_images_dir(self) -> None:
-        from uiao_core.generators.docs import replace_mermaid_blocks_with_images
+        from uiao_core.generators.docs import replace_plantuml_blocks_with_images
 
-        md = "```mermaid\nflowchart TD\n    A --> B\n```"
-        result = replace_mermaid_blocks_with_images(md, images_dir="custom/dir")
+        md = "```plantuml\nflowchart TD\n    A --> B\n```"
+        result = replace_plantuml_blocks_with_images(md, images_dir="custom/dir")
         assert "custom/dir" in result
 
     def test_empty_string_unchanged(self) -> None:
-        from uiao_core.generators.docs import replace_mermaid_blocks_with_images
+        from uiao_core.generators.docs import replace_plantuml_blocks_with_images
 
-        assert replace_mermaid_blocks_with_images("") == ""
+        assert replace_plantuml_blocks_with_images("") == ""
 
 
 # ---------------------------------------------------------------------------
@@ -374,7 +374,7 @@ class TestBuildDocsDiagramIntegration:
         leadership_canon = _REPO_ROOT / "generation-inputs" / "uiao_leadership_briefing_v1.0.yaml"
         assert leadership_canon.exists(), f"Canon not found: {leadership_canon}"
 
-        with mock.patch("uiao_core.generators.diagrams.render_mermaid_file", return_value=None) as mock_render:
+        with mock.patch("uiao_core.generators.diagrams.render_plantuml_file", return_value=None) as mock_render:
             import tempfile
 
             with tempfile.TemporaryDirectory() as td:
@@ -386,66 +386,66 @@ class TestBuildDocsDiagramIntegration:
                     output_dir=output_dir,
                 )
 
-        # At least one .mermaid file should have been targeted for rendering
-        # (render_mermaid_file was called at least once)
+        # At least one .puml file should have been targeted for rendering
+        # (render_plantuml_file was called at least once)
         assert mock_render.call_count >= 1
 
 
 # ---------------------------------------------------------------------------
-# Mermaid theme configuration consistency
+# PlantUML theme configuration consistency
 # ---------------------------------------------------------------------------
-class TestMermaidThemeConfiguration:
-    """Verify that all Mermaid rendering paths use the canonical 'neutral' theme."""
+class TestPlantUMLThemeConfiguration:
+    """Verify that all PlantUML rendering paths use the canonical 'neutral' theme."""
 
-    def test_mermaid_config_file_exists(self) -> None:
-        assert _MERMAID_CONFIG.exists(), f"data/mermaid-config.json not found at {_MERMAID_CONFIG}"
+    def test_plantuml_config_file_exists(self) -> None:
+        assert _PLANTUML_CONFIG.exists(), f"data/plantuml-config.json not found at {_PLANTUML_CONFIG}"
 
-    def test_mermaid_config_is_valid_json(self) -> None:
-        data = json.loads(_MERMAID_CONFIG.read_text(encoding="utf-8"))
-        assert isinstance(data, dict), "mermaid-config.json must be a JSON object"
+    def test_plantuml_config_is_valid_json(self) -> None:
+        data = json.loads(_PLANTUML_CONFIG.read_text(encoding="utf-8"))
+        assert isinstance(data, dict), "plantuml-config.json must be a JSON object"
 
-    def test_mermaid_config_theme_is_neutral(self) -> None:
-        data = json.loads(_MERMAID_CONFIG.read_text(encoding="utf-8"))
+    def test_plantuml_config_theme_is_neutral(self) -> None:
+        data = json.loads(_PLANTUML_CONFIG.read_text(encoding="utf-8"))
         assert data.get("theme") == "neutral", (
-            f"data/mermaid-config.json 'theme' must be 'neutral', got {data.get('theme')!r}"
+            f"data/plantuml-config.json 'theme' must be 'neutral', got {data.get('theme')!r}"
         )
 
-    def test_quarto_yml_mermaid_theme_is_neutral(self) -> None:
+    def test_quarto_yml_plantuml_theme_is_neutral(self) -> None:
         quarto_yml = _REPO_ROOT / "_quarto.yml"
         assert quarto_yml.exists(), "_quarto.yml not found"
         cfg = yaml.safe_load(quarto_yml.read_text(encoding="utf-8"))
-        mermaid_section = cfg.get("mermaid", {})
-        assert mermaid_section.get("theme") == "neutral", (
-            f"_quarto.yml mermaid.theme must be 'neutral', got {mermaid_section.get('theme')!r}"
+        plantuml_section = cfg.get("plantuml", {})
+        assert plantuml_section.get("theme") == "neutral", (
+            f"_quarto.yml plantuml.theme must be 'neutral', got {plantuml_section.get('theme')!r}"
         )
 
-    def test_mermaid_html_uses_canonical_theme(self) -> None:
-        from uiao_core.generators.mermaid import MERMAID_THEME, _mermaid_html
+    def test_plantuml_html_uses_canonical_theme(self) -> None:
+        from uiao_core.generators.puml import PLANTUML_THEME, _plantuml_html
 
-        html = _mermaid_html("flowchart TD\n    A --> B")
-        assert f"theme:'{MERMAID_THEME}'" in html, f"_mermaid_html() must use theme '{MERMAID_THEME}'"
+        html = _plantuml_html("flowchart TD\n    A --> B")
+        assert f"theme:'{PLANTUML_THEME}'" in html, f"_plantuml_html() must use theme '{PLANTUML_THEME}'"
 
-    def test_mermaid_module_theme_constant_is_neutral(self) -> None:
-        from uiao_core.generators.mermaid import MERMAID_THEME
+    def test_plantuml_module_theme_constant_is_neutral(self) -> None:
+        from uiao_core.generators.puml import PLANTUML_THEME
 
-        assert MERMAID_THEME == "neutral", f"MERMAID_THEME constant must be 'neutral', got {MERMAID_THEME!r}"
+        assert PLANTUML_THEME == "neutral", f"PLANTUML_THEME constant must be 'neutral', got {PLANTUML_THEME!r}"
 
     def test_config_theme_matches_module_constant(self) -> None:
-        from uiao_core.generators.mermaid import MERMAID_THEME
+        from uiao_core.generators.puml import PLANTUML_THEME
 
-        data = json.loads(_MERMAID_CONFIG.read_text(encoding="utf-8"))
-        assert data.get("theme") == MERMAID_THEME, (
-            f"data/mermaid-config.json theme ({data.get('theme')!r}) must match "
-            f"MERMAID_THEME constant ({MERMAID_THEME!r})"
+        data = json.loads(_PLANTUML_CONFIG.read_text(encoding="utf-8"))
+        assert data.get("theme") == PLANTUML_THEME, (
+            f"data/plantuml-config.json theme ({data.get('theme')!r}) must match "
+            f"PLANTUML_THEME constant ({PLANTUML_THEME!r})"
         )
 
     def test_render_mmdc_passes_config_file(self, tmp_path: Path) -> None:
         """_render_mmdc must include either --configFile or --theme in its command."""
         import unittest.mock as mock
 
-        from uiao_core.generators.mermaid import _render_mmdc
+        from uiao_core.generators.puml import _render_mmdc
 
-        mmd_path = tmp_path / "test.mermaid"
+        mmd_path = tmp_path / "test.puml"
         mmd_path.write_text("flowchart TD\n    A --> B", encoding="utf-8")
         png_path = tmp_path / "test.png"
 
