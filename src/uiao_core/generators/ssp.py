@@ -214,7 +214,11 @@ def build_ssp_skeleton(
         context.get("fedramp_20x_config") or _unwrap(context.get("fedramp_20x", {}), "fedramp_20x_config") or {}
     )
     planes = _unwrap(context.get("control_planes", []), "control_planes")
+    if not isinstance(planes, list):
+        planes = []
     matrix = _unwrap(context.get("unified_compliance_matrix", []), "unified_compliance_matrix")
+    if not isinstance(matrix, list):
+        matrix = []
     inventory_items = _unwrap(context.get("inventory_items", []), "inventory_items")
     if not isinstance(inventory_items, list):
         inventory_items = []
