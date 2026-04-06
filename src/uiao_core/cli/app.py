@@ -857,5 +857,65 @@ def generate_briefing(
     typer.echo("   Open this document before starting any agent session.")
 
 
+
+@app.command()
+def adapter_run_scuba(
+    report: str = typer.Argument(
+        ...,
+        help="Path to ScubaGear output file (.json or .yaml)",
+    ),
+    output: Optional[str] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output JSON file path for alignment results",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Parse report and print summary without writing output",
+    ),
+) -> None:
+    """
+    Run SCuBA adapter: ingest a ScubaGear assessment report and map
+    policy results to UIAO KSI evidence.
+
+    Reads ScubaGear JSON or YAML output and produces OSCAL-aligned
+    claim records for each M365 policy baseline finding.
+
+    Example::
+
+        uiao adapter-run-scuba exports/scuba/M365BaselineConformance.json
+    """
+    import json as _json
+    from uiao_core.adapters.scuba_adapter import ScubaAdapter
+
+    typer.echo(f"\U0001f50d Reading SCuBA report: {report}")
+    adapter = ScubaAdapter(config={"report_path": report})
+    result = adapter.collect_and_align()
+
+    meta = result.get("metadata", {})
+    total = meta.get("total_policies", 0)
+    passing = meta.get("passing", 0)
+    failing = meta.get("failing", 0)
+
+    typer.echo(f"  Total policies : {total}")
+    typer.echo(f"  Passing        : {passing}")
+    typer.echo(f"  Failing        : {failing}")
+
+    if dry_run:
+        typer.echo("\nDry-run mode — no output written.")
+        return
+
+    if output:
+        out_path = Path(output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w") as f:
+            _json.dump(result, f, indent=2, default=str)
+        typer.echo(f"\n\u2705 Alignment written to {output}")
+    else:
+        typer.echo("\n" + _json.dumps(result["metadata"], indent=2, default=str))
+
+
 if __name__ == "__main__":
     app()
