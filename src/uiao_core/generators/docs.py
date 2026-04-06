@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import yaml
 from jinja2 import Environment, FileSystemLoader, Undefined
@@ -26,31 +26,31 @@ from uiao_core.utils.context import get_settings, load_canon
 class _SilentUndefined(Undefined):
     """Jinja2 Undefined that silently returns empty for missing context vars."""
 
-    def _fail_with_undefined_error(self, *args, **kwargs):
+    def _fail_with_undefined_error(self, *args: object, **kwargs: object) -> "_SilentUndefined":
         return self
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ""
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[object]:
         return iter([])
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return False
 
-    def items(self):
+    def items(self) -> list[object]:
         return []
 
-    def keys(self):
+    def keys(self) -> list[str]:
         return []
 
-    def values(self):
+    def values(self) -> list[object]:
         return []
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> "_SilentUndefined":
         return self
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: object) -> "_SilentUndefined":
         return self
 
 
