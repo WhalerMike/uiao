@@ -18,31 +18,41 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from jinja2 import Undefined, Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, Undefined
 
 from uiao_core.utils.context import get_settings, load_canon
 
 
 class _SilentUndefined(Undefined):
     """Jinja2 Undefined that silently returns empty for missing context vars."""
+
     def _fail_with_undefined_error(self, *args, **kwargs):
         return self
+
     def __str__(self):
         return ""
+
     def __iter__(self):
         return iter([])
+
     def __bool__(self):
         return False
+
     def items(self):
         return []
+
     def keys(self):
         return []
+
     def values(self):
         return []
+
     def __getattr__(self, name):
         return self
+
     def __getitem__(self, name):
         return self
+
 
 # ---------------------------------------------------------------------------
 # Module-level path constants (overridable for testing via monkeypatch)
@@ -337,7 +347,7 @@ def build_docs(
     env = Environment(
         loader=FileSystemLoader(str(templates_dir)),
         autoescape=False,
-                undefined=_SilentUndefined,
+        undefined=_SilentUndefined,
     )
     docs_dir.mkdir(exist_ok=True)
     site_dir.mkdir(exist_ok=True)
