@@ -90,7 +90,10 @@ All user requests traverse the following path within the UIAO boundary:
 
 **Identity Control Plane:**
 
-The Identity Control Plane is anchored in Entra ID and reinforced by ICAM governance, Conditional Access, Privileged Identity Management, and lifecycle automation. Identity becomes the authoritative source for access, addressing, certificates, and policy.
+The Identity Control Plane is anchored in Entra ID and reinforced by
+ICAM governance, Conditional Access, Privileged Identity Management,
+and lifecycle automation. Identity becomes the authoritative source
+for access, addressing, certificates, and policy.
 
 
 
@@ -135,7 +138,9 @@ The Identity Control Plane is anchored in Entra ID and reinforced by ICAM govern
 
 **Identity as the Root Namespace:**
 
-Identity becomes the root namespace for all resources, ensuring that every IP address, certificate, subnet, policy, and telemetry event is derived from or bound to identity.
+Identity becomes the root namespace for all resources, ensuring that
+every IP address, certificate, subnet, policy, and telemetry event is
+derived from or bound to identity.
 
 
 
