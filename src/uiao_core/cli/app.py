@@ -845,6 +845,7 @@ def generate_briefing(
     control coverage, pipeline, priorities, and agent activity.
     Quality target: matches 01_Canon/uiao-reference.docx visual standard.
     """
+    from uiao_core.config import Settings
     from uiao_core.generators.briefing import build_briefing
 
     typer.echo("\U0001f4cb Generating UIAO personal briefing...")
