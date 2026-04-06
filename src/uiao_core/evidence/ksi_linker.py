@@ -119,10 +119,7 @@ class KsiEvidenceLinker:
             self.load_all()
         assert self._linker is not None
         raw_map = self._linker.build_control_map()
-        return {
-            cid: [a.title for a in ev_map.artifacts]
-            for cid, ev_map in raw_map.items()
-        }
+        return {cid: [a.title for a in ev_map.artifacts] for cid, ev_map in raw_map.items()}
 
     def summary(self) -> dict[str, Any]:
         """Return a summary of loaded KSI artifacts for reporting."""
@@ -131,7 +128,7 @@ class KsiEvidenceLinker:
         for artifact in self._artifacts:
             for tag in artifact.collector.split(":"):
                 if tag.startswith("ksi-cat:"):
-                    cat = tag[len("ksi-cat:"):]
+                    cat = tag[len("ksi-cat:") :]
                     categories[cat] = categories.get(cat, 0) + 1
             controls.update(c.lower() for c in artifact.control_refs)
         return {
@@ -170,10 +167,7 @@ class KsiEvidenceLinker:
         artifact = EvidenceArtifact(
             uuid=str(uuid.uuid5(uuid.NAMESPACE_URL, f"ksi:{ksi_id}")),
             title=f"KSI Evidence: {title}",
-            description=(
-                description
-                or f"{ksi_id} -- {category} control evidence (validation: {validation_type})"
-            ),
+            description=(description or f"{ksi_id} -- {category} control evidence (validation: {validation_type})"),
             file_path=str(ksi_path),
             media_type="application/yaml",
             control_refs=control_refs,
@@ -192,4 +186,4 @@ _CATEGORY_CONTROL_MAP: dict[str, str] = {
     "incident-response": "ir-4",
     "risk-management": "ra-3",
     "supply-chain": "sr-3",
-      }
+}
