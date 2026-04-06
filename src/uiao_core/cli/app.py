@@ -864,7 +864,7 @@ def adapter_run_scuba(
         ...,
         help="Path to ScubaGear output file (.json or .yaml)",
     ),
-    output: Optional[str] = typer.Option(
+    output: str | None = typer.Option(
         None,
         "--output",
         "-o",
