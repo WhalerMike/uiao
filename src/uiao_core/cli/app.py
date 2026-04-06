@@ -168,12 +168,12 @@ def generate_gemini(
         generate_gemini_image,
 )
 
-        if name:
+    if name:
                 console.print(f"[bold]Generating Gemini image: {name}...[/bold]")
                 result = generate_gemini_image(name, output_dir=output_dir, force=force)
                 if result:
                                 console.print(f"[green]Generated {result}[/green]")
-        else:
+    else:
             console.print(f"[red]Failed to generate {name}[/red]")
                     raise typer.Exit(code=1)
 else:
@@ -329,20 +329,20 @@ def generate_docs(
             Automatically generates PlantUML diagrams from generation-inputs/diagrams.yaml
                 before rendering templates (unless --skip-diagrams is set).
                     """
-        from uiao_core.generators.docs import build_docs
+    from uiao_core.generators.docs import build_docs
 
-        if not skip_diagrams:
+    if not skip_diagrams:
                 console.print("[bold]Auto-generating diagrams from generation-inputs/diagrams.yaml...[/bold]")
             console.print(f"[bold]Generating docs from {canon_path}...[/bold]")
-        generated = build_docs(
+    generated = build_docs(
                 canon_path=Path(canon_path),
                 data_dir=Path(data_dir),
                 templates_dir=Path(templates_dir),
                 docs_dir=Path(output_dir),
                 generate_diagrams=not skip_diagrams,
                 force_visuals=force_visuals,
-        )
-        console.print(f"[green]Generated {len(generated)} document(s) to {output_dir}[/green]")
+    )
+    console.print(f"[green]Generated {len(generated)} document(s) to {output_dir}[/green]")
 
 
 @app.command()
@@ -462,27 +462,27 @@ def conmon_process(
                 800-53 controls via monitoring-sources.yml, and creates or updates a POA&M
                     entry in POAM_PATH. Use --no-upsert for a dry-run.
                         """
-        import json as _json
-        from pathlib import Path as _Path
+    import json as _json
+    from pathlib import Path as _Path
 
-        from uiao_core.monitoring.sentinel_hook import SentinelHook
+    from uiao_core.monitoring.sentinel_hook import SentinelHook
 
-        alert_path = _Path(alert_json)
-        if not alert_path.exists():
+    alert_path = _Path(alert_json)
+    if not alert_path.exists():
                 console.print(f"[red]Alert JSON not found: {alert_path}[/red]")
                 raise typer.Exit(code=1)
 
-        console.print(f"[bold]Processing Sentinel alert from {alert_json}...[/bold]")
-        payload = _json.loads(alert_path.read_text())
-        hook = SentinelHook(monitoring_sources_path=monitoring_sources)
-        alert = hook.parse_alert(payload)
-        control_ids = hook.map_alert_to_controls(alert)
-        console.print(f"  Alert ID : [cyan]{alert.alert_id}[/cyan]")
-        console.print(f"  Severity : [cyan]{alert.severity}[/cyan]")
-        console.print(f"  Controls : [cyan]{', '.join(control_ids) or 'SI-4 (default)'}[/cyan]")
-        if no_upsert:
+    console.print(f"[bold]Processing Sentinel alert from {alert_json}...[/bold]")
+    payload = _json.loads(alert_path.read_text())
+    hook = SentinelHook(monitoring_sources_path=monitoring_sources)
+    alert = hook.parse_alert(payload)
+    control_ids = hook.map_alert_to_controls(alert)
+    console.print(f"  Alert ID : [cyan]{alert.alert_id}[/cyan]")
+    console.print(f"  Severity : [cyan]{alert.severity}[/cyan]")
+    console.print(f"  Controls : [cyan]{', '.join(control_ids) or 'SI-4 (default)'}[/cyan]")
+    if no_upsert:
                 console.print("[yellow]Dry-run: POA&M file not updated.[/yellow]")
-        else:
+    else:
         poam_entry = hook.upsert_poam_entry(alert, poam_path=poam_path)
         console.print(f"  POA&M ID : [green]{poam_entry['id']}[/green]")
         console.print(f"[green]POA&M entry upserted -> {poam_path}[/green]")
@@ -515,15 +515,15 @@ def conmon_export_oa(
                 800-53 control to its telemetry source, satisfying the FedRAMP 20x Phase 2
                     ConMon requirement for ongoing authorization evidence.
                         """
-        from uiao_core.monitoring.ongoing_auth import OngoingAuthGenerator
+    from uiao_core.monitoring.ongoing_auth import OngoingAuthGenerator
 
-        console.print("[bold]Generating ongoing-authorization evidence artifact...[/bold]")
-        gen = OngoingAuthGenerator(
+    console.print("[bold]Generating ongoing-authorization evidence artifact...[/bold]")
+    gen = OngoingAuthGenerator(
                 monitoring_sources_path=monitoring_sources,
                 ksi_mappings_path=ksi_mappings,
-        )
-        out = gen.export(output)
-        console.print(f"[green]Ongoing-authorization evidence written to {out}[/green]")
+    )
+    out = gen.export(output)
+    console.print(f"[green]Ongoing-authorization evidence written to {out}[/green]")
 
 
 @app.command()
@@ -552,16 +552,16 @@ def conmon_dashboard(
             Computes Key Security Indicator scores from ksi-mappings.yml and writes a
                 FedRAMP 20x Phase 2 ConMon dashboard artifact in JSON or YAML format.
                     """
-        from uiao_core.dashboard.export import DashboardExporter
+    from uiao_core.dashboard.export import DashboardExporter
 
-        fmt_lower = fmt.lower()
-        if fmt_lower not in ("json", "yaml"):
+    fmt_lower = fmt.lower()
+    if fmt_lower not in ("json", "yaml"):
                 console.print(f"[red]Invalid format '{fmt}'. Choose 'json' or 'yaml'.[/red]")
                 raise typer.Exit(code=1)
             console.print("[bold]Generating KSI ConMon dashboard...[/bold]")
-        exporter = DashboardExporter(ksi_mappings_path=ksi_mappings)
-        out = exporter.export_yaml(output) if fmt_lower == "yaml" else exporter.export_json(output)
-        console.print(f"[green]KSI dashboard written to {out}[/green]")
+    exporter = DashboardExporter(ksi_mappings_path=ksi_mappings)
+    out = exporter.export_yaml(output) if fmt_lower == "yaml" else exporter.export_json(output)
+    console.print(f"[green]KSI dashboard written to {out}[/green]")
 
 
 @app.command()
@@ -619,26 +619,26 @@ def generate_all(
                                                             8. PPTX leadership deck
                                                                   9. CycloneDX SBOM (unless --skip-sbom)
                                                                       """
-        import time
+    import time
 
-        from uiao_core.generators.docs import build_docs
-        from uiao_core.generators.plantuml import render_plantuml_dir
-        from uiao_core.generators.oscal import build_oscal
-        from uiao_core.generators.poam import build_poam_export
-        from uiao_core.generators.pptx import build_pptx
-        from uiao_core.generators.rich_docx import build_rich_docx
-        from uiao_core.generators.sbom import build_sbom
-        from uiao_core.generators.ssp import build_ssp
+    from uiao_core.generators.docs import build_docs
+    from uiao_core.generators.plantuml import render_plantuml_dir
+    from uiao_core.generators.oscal import build_oscal
+    from uiao_core.generators.poam import build_poam_export
+    from uiao_core.generators.pptx import build_pptx
+    from uiao_core.generators.rich_docx import build_rich_docx
+    from uiao_core.generators.sbom import build_sbom
+    from uiao_core.generators.ssp import build_ssp
 
-        start = time.monotonic()
-        errors: list[str] = []
+    start = time.monotonic()
+    errors: list[str] = []
 
-        console.print("[bold blue]UIAO generate-all[/bold blue]")
-        console.print(f"[dim]Canon: {canon_path} | Data: {data_dir}[/dim]\n")
+    console.print("[bold blue]UIAO generate-all[/bold blue]")
+    console.print(f"[dim]Canon: {canon_path} | Data: {data_dir}[/dim]\n")
 
-        # 1. PlantUML diagrams
-        console.print("[bold][ 1/8 ] Rendering PlantUML diagrams...[/bold]")
-        try:
+    # 1. PlantUML diagrams
+    console.print("[bold][ 1/8 ] Rendering PlantUML diagrams...[/bold]")
+    try:
                 from uiao_core.utils.context import get_settings as _gs
 
         _s = _gs()
