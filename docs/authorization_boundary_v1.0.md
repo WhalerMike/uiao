@@ -57,7 +57,7 @@ Components **outside** the boundary (leveraged services):
 
 ### 2.1 High-Level Architecture
 
-<img src="assets/images/mermaid/flowchart_td.png" alt="flowchart_td" />
+<img src="assets/images/plantuml/flowchart_td.png" alt="flowchart_td" />
 
 ### 2.2 Network Segmentation
 
@@ -156,7 +156,7 @@ TLS 1.3 or IPSec. The following data types traverse the boundary:
 
 ### 5.2 Data Flow Diagram
 
-<img src="assets/images/mermaid/flowchart_lr.png" alt="flowchart_lr" />
+<img src="assets/images/plantuml/flowchart_lr.png" alt="flowchart_lr" />
 
 ---
 
