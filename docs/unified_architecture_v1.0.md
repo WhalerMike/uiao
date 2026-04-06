@@ -24,7 +24,7 @@ The Unified Identity-Addressing-Overlay (UIAO) architecture integrates four cont
 
 The following diagram illustrates the complete UIAO architecture, showing how the Identity, Addressing, Overlay, and Telemetry control planes interconnect through the central Policy Engine.
 
-<img src="assets/images/mermaid/diagram_1.png" alt="diagram_1" />
+<img src="assets/images/plantuml/diagram_1.png" alt="diagram_1" />
 
 ---
 
@@ -68,7 +68,7 @@ The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Tru
 
 The UIAO architecture achieves its power through deep integration between control planes. The telemetry plane provides closed-loop feedback to all other planes, enabling real-time policy adjustment and continuous compliance validation.
 
-<img src="assets/images/mermaid/diagram_2.png" alt="diagram_2" />
+<img src="assets/images/plantuml/diagram_2.png" alt="diagram_2" />
 
 ---
 
@@ -76,7 +76,7 @@ The UIAO architecture achieves its power through deep integration between contro
 
 The following diagram illustrates how the three pillars of the UIAO framework interconnect. Each node is derived from the program data layer.
 
-<img src="assets/images/mermaid/graph_lr.png" alt="graph_lr" />
+<img src="assets/images/plantuml/graph_lr.png" alt="graph_lr" />
 
 ---
 
@@ -84,7 +84,7 @@ The following diagram illustrates how the three pillars of the UIAO framework in
 
 The following diagram compares the fragmented legacy state with the unified modernized architecture that UIAO delivers.
 
-<img src="assets/images/mermaid/diagram_4.png" alt="diagram_4" />
+<img src="assets/images/plantuml/diagram_4.png" alt="diagram_4" />
 
 ---
 
@@ -92,7 +92,7 @@ The following diagram compares the fragmented legacy state with the unified mode
 
 The following diagram demonstrates how each technical control plane maps to strategic mission outcomes, providing executive visibility into the return on modernization investment.
 
-<img src="assets/images/mermaid/diagram_5.png" alt="diagram_5" />
+<img src="assets/images/plantuml/diagram_5.png" alt="diagram_5" />
 
 ---
 
@@ -155,7 +155,7 @@ Citizen experience, accessibility, and privacy remain top-level design constrain
 
 All UIAO configuration data flows through a normalization pipeline that ensures consistency between YAML data sources and Jinja2 templates.
 
-<img src="assets/images/mermaid/diagram_6.png" alt="diagram_6" />
+<img src="assets/images/plantuml/diagram_6.png" alt="diagram_6" />
 
 ---
 
@@ -163,7 +163,7 @@ All UIAO configuration data flows through a normalization pipeline that ensures 
 
 The following diagram provides a real-time view of deployment readiness across all UIAO components.
 
-<img src="assets/images/mermaid/diagram_7.png" alt="diagram_7" />
+<img src="assets/images/plantuml/diagram_7.png" alt="diagram_7" />
 
 ---
 
