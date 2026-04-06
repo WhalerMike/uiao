@@ -479,45 +479,40 @@ _MD_HR_RE = re.compile(r"^-{3,}$")
 _MD_FRONTMATTER_RE = re.compile(r"^---\n.*?^---\n", re.DOTALL | re.MULTILINE)
 
 
+_IMG_TAG_RE = re.compile(r'<img\\s+[^>]*src="([^"]+)"[^>]*>', re.IGNORECASE)
+_MD_TABLE_ROW_RE = re.compile(r"^\\|(.+)\\|\\s*$")
+_MD_TABLE_SEP_RE = re.compile(r"^[\\s|:\\-]+$")
+
+
 def _md_to_docx(doc: Document, md_text: str) -> None:
     """Render simplified Markdown into an existing Document.
 
-    Handles H1-H3 headings, paragraphs, and horizontal rules.
+    Handles H1-H3 headings, paragraphs, horizontal rules, pipe tables,
+    and <img> tags (resolved to embedded pictures).
     Inline bold (**text**) and italic (*text*) are also supported.
-    Code blocks and tables render as plain-text paragraphs.
     """
     md_text = _MD_FRONTMATTER_RE.sub("", md_text).strip()
 
-    for line in md_text.splitlines():
-        line = line.rstrip()
+    lines = md_text.splitlines()
+    i = 0
+    para_buffer: list[str] = []
 
-        if _MD_HR_RE.match(line):
-            p = doc.add_paragraph()
-            p.paragraph_format.space_after = Pt(4)
-            continue
-
-        m = _MD_HEADING_RE.match(line)
-        if m:
-            level = len(m.group(1))
-            text = re.sub(r"\*+(.+?)\*+", r"\1", m.group(2))
-            h = doc.add_heading(text, level=min(level, 3))
-            for run in h.runs:
-                run.font.color.rgb = RGBColor(0x1B, 0x3A, 0x5C)
-            continue
-
-        if not line:
-            continue
-
+    def _flush_paragraph() -> None:
+        nonlocal para_buffer
+        if not para_buffer:
+            return
+        text = " ".join(para_buffer).strip()
+        para_buffer = []
+        if not text:
+            return
         p = doc.add_paragraph()
-        p.paragraph_format.space_before = Pt(0)
-        p.paragraph_format.space_after = Pt(10)
+        p.paragraph_format.space_before = Pt(6)
+        p.paragraph_format.space_after = Pt(6)
         p.paragraph_format.line_spacing = 1.15
-
-        # Parse inline bold and italic
-        remaining = line
+        remaining = text
         while remaining:
-            bold_m = re.search(r"\*\*(.+?)\*\*", remaining)
-            ital_m = re.search(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", remaining)
+            bold_m = re.search(r"\\*\\*(.+?)\\*\\*", remaining)
+            ital_m = re.search(r"(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)", remaining)
             first = None
             if bold_m and ital_m:
                 first = bold_m if bold_m.start() <= ital_m.start() else ital_m
@@ -525,7 +520,6 @@ def _md_to_docx(doc: Document, md_text: str) -> None:
                 first = bold_m
             elif ital_m:
                 first = ital_m
-
             if first is None:
                 r = p.add_run(remaining)
                 r.font.name = "Calibri"
@@ -542,7 +536,77 @@ def _md_to_docx(doc: Document, md_text: str) -> None:
             r.font.italic = first is not bold_m
             remaining = remaining[first.end():]
 
+    while i < len(lines):
+        line = lines[i].rstrip()
 
+        if _MD_HR_RE.match(line):
+            _flush_paragraph()
+            p = doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(4)
+            i += 1
+            continue
+
+        m = _MD_HEADING_RE.match(line)
+        if m:
+            _flush_paragraph()
+            level = len(m.group(1))
+            text = re.sub(r"\\*+(.+?)\\*+", r"\\1", m.group(2))
+            h = doc.add_heading(text, level=min(level, 3))
+            for run in h.runs:
+                run.font.color.rgb = RGBColor(0x1B, 0x3A, 0x5C)
+            i += 1
+            continue
+
+        img_m = _IMG_TAG_RE.search(line)
+        if img_m:
+            _flush_paragraph()
+            src = img_m.group(1)
+            img_path = Path(src)
+            if img_path.exists():
+                try:
+                    doc.add_picture(str(img_path), width=Inches(6.0))
+                    doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                except Exception:
+                    pass
+            i += 1
+            continue
+
+        if _MD_TABLE_ROW_RE.match(line):
+            _flush_paragraph()
+            table_rows: list[list[str]] = []
+            while i < len(lines) and _MD_TABLE_ROW_RE.match(lines[i].rstrip()):
+                row_text = lines[i].strip().strip("|")
+                cells = [c.strip() for c in row_text.split("|")]
+                inner = lines[i].strip().replace("|", "").replace(" ", "").replace("-", "").replace(":", "")
+                if inner:
+                    table_rows.append(cells)
+                i += 1
+            if table_rows:
+                num_cols = max(len(r) for r in table_rows)
+                tbl = doc.add_table(rows=0, cols=num_cols)
+                tbl.style = "Light List Accent 1"
+                tbl.autofit = True
+                for ri, row_cells in enumerate(table_rows):
+                    row = tbl.add_row()
+                    for ci in range(num_cols):
+                        cell_text = row_cells[ci] if ci < len(row_cells) else ""
+                        row.cells[ci].text = cell_text
+                        for p in row.cells[ci].paragraphs:
+                            for run in p.runs:
+                                run.font.size = Pt(9)
+                                if ri == 0:
+                                    run.font.bold = True
+            continue
+
+        if not line:
+            _flush_paragraph()
+            i += 1
+            continue
+
+        para_buffer.append(line)
+        i += 1
+
+    _flush_paragraph()
 def build_topic_docx(
     md_path: Path,
     exports_dir: Path,
@@ -560,6 +624,12 @@ def build_topic_docx(
     """
     doc = Document()
     _set_default_styles(doc)
+    # Apply 1" margins per canonical style guide (margin-safe, no fixed widths)
+    for section in doc.sections:
+        section.top_margin = Inches(1.0)
+        section.bottom_margin = Inches(1.0)
+        section.left_margin = Inches(1.0)
+        section.right_margin = Inches(1.0)
     _add_classification_header(doc, classification)
     md_text = md_path.read_text(encoding="utf-8")
     _md_to_docx(doc, md_text)
