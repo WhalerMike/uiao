@@ -18,8 +18,8 @@ from pathlib import Path
 import yaml
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
 from uiao_core.config import Settings
@@ -27,10 +27,10 @@ from uiao_core.config import Settings
 # ---------------------------------------------------------------------------
 # Brand colors (from uiao-reference.docx)
 # ---------------------------------------------------------------------------
-COLOR_TITLE = RGBColor(0x44, 0x72, 0xC4)      # #4472C4 — blue title
-COLOR_SUBTITLE = RGBColor(0x2B, 0x57, 0x97)   # #2B5797 — dark blue subtitle
-COLOR_HEADER_BG = "D5E8F0"                     # table header shading
-COLOR_ACCENT = RGBColor(0xC0, 0x00, 0x00)      # #C00000 — red CUI banner
+COLOR_TITLE = RGBColor(0x44, 0x72, 0xC4)  # #4472C4 — blue title
+COLOR_SUBTITLE = RGBColor(0x2B, 0x57, 0x97)  # #2B5797 — dark blue subtitle
+COLOR_HEADER_BG = "D5E8F0"  # table header shading
+COLOR_ACCENT = RGBColor(0xC0, 0x00, 0x00)  # #C00000 — red CUI banner
 
 STATUS_EMOJI = {
     "pass": "🟢",
@@ -41,11 +41,11 @@ STATUS_EMOJI = {
 
 # Vendor → Control Plane mapping (from data/vendor-overlays/)
 PLANE_VENDOR_MAP = {
-    "Identity":   ["microsoft", "entra_id", "cyberark", "okta"],
-    "Network":    ["cisco"],
+    "Identity": ["microsoft", "entra_id", "cyberark", "okta"],
+    "Network": ["cisco"],
     "Addressing": ["infoblox"],
-    "Telemetry":  ["splunk", "sentinel", "crowdstrike"],
-    "Security":   ["paloalto", "crowdstrike"],
+    "Telemetry": ["splunk", "sentinel", "crowdstrike"],
+    "Security": ["paloalto", "crowdstrike"],
     "Management": ["servicenow", "cyberark"],
 }
 
@@ -64,6 +64,7 @@ VENDOR_OVERLAY_NAMES = {
 # ---------------------------------------------------------------------------
 # Styling helpers
 # ---------------------------------------------------------------------------
+
 
 def _set_cell_shading(cell, fill_hex: str) -> None:
     """Apply background shading to a table cell."""
@@ -86,8 +87,7 @@ def _add_cui_banner(doc: Document) -> None:
     run.font.size = Pt(10)
 
 
-def _add_heading(doc: Document, text: str, level: int = 1,
-                 color: RGBColor | None = None) -> None:
+def _add_heading(doc: Document, text: str, level: int = 1, color: RGBColor | None = None) -> None:
     heading = doc.add_heading(text, level=level)
     if color:
         for run in heading.runs:
@@ -125,8 +125,7 @@ def _add_styled_table(
     doc.add_paragraph()
 
 
-def _embed_diagram(doc: Document, path: Path, caption: str,
-                   width_inches: float = 5.5) -> None:
+def _embed_diagram(doc: Document, path: Path, caption: str, width_inches: float = 5.5) -> None:
     """Embed a diagram PNG or show a fallback message."""
     if path.exists():
         doc.add_picture(str(path), width=Inches(width_inches))
@@ -135,15 +134,13 @@ def _embed_diagram(doc: Document, path: Path, caption: str,
         p.runs[0].italic = True
         p.runs[0].font.size = Pt(9)
     else:
-        doc.add_paragraph(
-            f"⚠️  Diagram not available: {path.name}. "
-            f"Run `uiao generate-diagrams` to generate."
-        )
+        doc.add_paragraph(f"⚠️  Diagram not available: {path.name}. Run `uiao generate-diagrams` to generate.")
 
 
 # ---------------------------------------------------------------------------
 # Data collectors — all pull from live repo sources
 # ---------------------------------------------------------------------------
+
 
 def collect_ci_status(root: Path) -> list[dict]:
     """
@@ -175,19 +172,23 @@ def collect_ci_status(root: Path) -> list[dict]:
     results = []
     for component in components:
         if "Drift" in component:
-            results.append({
-                "component": component,
-                "status": STATUS_EMOJI.get(drift_status, "⚠️"),
-                "last_changed": "See reports/drift-report.json",
-                "notes": drift_note or "Run drift-detection workflow",
-            })
+            results.append(
+                {
+                    "component": component,
+                    "status": STATUS_EMOJI.get(drift_status, "⚠️"),
+                    "last_changed": "See reports/drift-report.json",
+                    "notes": drift_note or "Run drift-detection workflow",
+                }
+            )
         else:
-            results.append({
-                "component": component,
-                "status": "⚠️",
-                "last_changed": "Run `gh run list` to refresh",
-                "notes": "Live CI status requires GitHub Actions API",
-            })
+            results.append(
+                {
+                    "component": component,
+                    "status": "⚠️",
+                    "last_changed": "Run `gh run list` to refresh",
+                    "notes": "Live CI status requires GitHub Actions API",
+                }
+            )
     return results
 
 
@@ -195,25 +196,23 @@ def collect_memory_entries(root: Path, n: int = 3) -> list[dict]:
     """Pull last n entries from UIAO-MEMORY.md correction log."""
     memory_path = root / "UIAO-MEMORY.md"
     if not memory_path.exists():
-        return [{"date": "—", "task": "MEMORY.md not found",
-                 "outcome": "—", "correction": ""}]
+        return [{"date": "—", "task": "MEMORY.md not found", "outcome": "—", "correction": ""}]
 
     entries = []
     for line in memory_path.read_text(encoding="utf-8").splitlines():
         if re.match(r"^\| 20\d\d-", line):
             parts = [p.strip() for p in line.split("|") if p.strip()]
             if len(parts) >= 3:
-                entries.append({
-                    "date": parts[0],
-                    "task": parts[1],
-                    "outcome": parts[2],
-                    "correction": parts[4] if len(parts) > 4 else "",
-                })
+                entries.append(
+                    {
+                        "date": parts[0],
+                        "task": parts[1],
+                        "outcome": parts[2],
+                        "correction": parts[4] if len(parts) > 4 else "",
+                    }
+                )
 
-    return entries[:n] or [
-        {"date": "—", "task": "No entries found",
-         "outcome": "—", "correction": ""}
-    ]
+    return entries[:n] or [{"date": "—", "task": "No entries found", "outcome": "—", "correction": ""}]
 
 
 def collect_adapter_status(root: Path) -> list[dict]:
@@ -223,14 +222,11 @@ def collect_adapter_status(root: Path) -> list[dict]:
     """
     overlays_dir = root / "data" / "vendor-overlays"
     if not overlays_dir.exists():
-        return [{"plane": "—", "vendor": "data/vendor-overlays/ not found",
-                 "status": "⚠️", "controls": "—", "role": "—"}]
+        return [
+            {"plane": "—", "vendor": "data/vendor-overlays/ not found", "status": "⚠️", "controls": "—", "role": "—"}
+        ]
 
-    plane_lookup = {
-        vendor: plane
-        for plane, vendors in PLANE_VENDOR_MAP.items()
-        for vendor in vendors
-    }
+    plane_lookup = {vendor: plane for plane, vendors in PLANE_VENDOR_MAP.items() for vendor in vendors}
 
     rows = []
     for yaml_file in sorted(overlays_dir.glob("*.yaml")):
@@ -245,24 +241,30 @@ def collect_adapter_status(root: Path) -> list[dict]:
             if isinstance(controls, list):
                 controls_str = ", ".join(str(c) for c in controls[:5])
                 if len(controls) > 5:
-                    controls_str += f" +{len(controls)-5} more"
+                    controls_str += f" +{len(controls) - 5} more"
             else:
                 controls_str = str(controls) if controls else "—"
-            rows.append({
-                "plane": plane,
-                "vendor": name,
-                "status": data.get("status", "active"),
-                "controls": controls_str or "—",
-                "role": data.get("role", "—"),
-            })
+            rows.append(
+                {
+                    "plane": plane,
+                    "vendor": name,
+                    "status": data.get("status", "active"),
+                    "controls": controls_str or "—",
+                    "role": data.get("role", "—"),
+                }
+            )
         except Exception as exc:
-            rows.append({
-                "plane": "Error", "vendor": yaml_file.stem,
-                "status": "⚠️", "controls": str(exc)[:60], "role": "—",
-            })
+            rows.append(
+                {
+                    "plane": "Error",
+                    "vendor": yaml_file.stem,
+                    "status": "⚠️",
+                    "controls": str(exc)[:60],
+                    "role": "—",
+                }
+            )
 
-    return rows or [{"plane": "—", "vendor": "No overlays found",
-                     "status": "⚠️", "controls": "—", "role": "—"}]
+    return rows or [{"plane": "—", "vendor": "No overlays found", "status": "⚠️", "controls": "—", "role": "—"}]
 
 
 def collect_control_coverage(root: Path) -> tuple[list[dict], int, int, int]:
@@ -272,9 +274,20 @@ def collect_control_coverage(root: Path) -> tuple[list[dict], int, int, int]:
     """
     control_dir = root / "data" / "control-library"
     if not control_dir.exists():
-        return ([{"id": "—", "title": "control-library/ not found",
-                  "narrative": "—", "evidence": "—", "gap": "dir missing"}],
-                0, 0, 0)
+        return (
+            [
+                {
+                    "id": "—",
+                    "title": "control-library/ not found",
+                    "narrative": "—",
+                    "evidence": "—",
+                    "gap": "dir missing",
+                }
+            ],
+            0,
+            0,
+            0,
+        )
 
     rows = []
     for yaml_file in sorted(control_dir.glob("*.yml")):
@@ -282,39 +295,31 @@ def collect_control_coverage(root: Path) -> tuple[list[dict], int, int, int]:
             continue  # skip uiao-control-matrix.yaml
         try:
             data = yaml.safe_load(yaml_file.read_text(encoding="utf-8"))
-            is_gold = bool(data.get("gold_standard") or
-                          data.get("narrative_quality") == "gold")
-            has_narrative = bool(data.get("narrative") or
-                                data.get("implementation_statement"))
-            has_evidence = bool(data.get("evidence_links") or
-                               data.get("evidence_path") or
-                               data.get("oscal_evidence"))
-            narrative_str = (
-                "✅ Gold" if is_gold else
-                "✅" if has_narrative else "❌"
+            is_gold = bool(data.get("gold_standard") or data.get("narrative_quality") == "gold")
+            has_narrative = bool(data.get("narrative") or data.get("implementation_statement"))
+            has_evidence = bool(data.get("evidence_links") or data.get("evidence_path") or data.get("oscal_evidence"))
+            narrative_str = "✅ Gold" if is_gold else "✅" if has_narrative else "❌"
+            evidence_str = "✅" if has_evidence else "⚠️" if has_narrative else "❌"
+            gap = "—" if has_narrative and has_evidence else "evidence gap" if has_narrative else "narrative gap"
+            rows.append(
+                {
+                    "id": yaml_file.stem,
+                    "title": data.get("title", data.get("name", "—"))[:50],
+                    "narrative": narrative_str,
+                    "evidence": evidence_str,
+                    "gap": gap,
+                }
             )
-            evidence_str = (
-                "✅" if has_evidence else
-                "⚠️" if has_narrative else "❌"
-            )
-            gap = (
-                "—" if has_narrative and has_evidence else
-                "evidence gap" if has_narrative else
-                "narrative gap"
-            )
-            rows.append({
-                "id": yaml_file.stem,
-                "title": data.get("title", data.get("name", "—"))[:50],
-                "narrative": narrative_str,
-                "evidence": evidence_str,
-                "gap": gap,
-            })
         except Exception as exc:
-            rows.append({
-                "id": yaml_file.stem, "title": "parse error",
-                "narrative": "❌", "evidence": "❌",
-                "gap": str(exc)[:40],
-            })
+            rows.append(
+                {
+                    "id": yaml_file.stem,
+                    "title": "parse error",
+                    "narrative": "❌",
+                    "evidence": "❌",
+                    "gap": str(exc)[:40],
+                }
+            )
 
     gold = sum(1 for r in rows if r["narrative"] == "✅ Gold")
     covered = sum(1 for r in rows if r["gap"] == "—")
@@ -341,9 +346,9 @@ def collect_oscal_status(root: Path) -> dict:
                 data = json.loads(path.read_text(encoding="utf-8"))
                 # Check for basic OSCAL structure
                 valid = bool(
-                    data.get("system-security-plan") or
-                    data.get("component-definition") or
-                    data.get("plan-of-action-and-milestones")
+                    data.get("system-security-plan")
+                    or data.get("component-definition")
+                    or data.get("plan-of-action-and-milestones")
                 )
                 status[name] = {
                     "present": True,
@@ -351,11 +356,9 @@ def collect_oscal_status(root: Path) -> dict:
                     "valid_structure": valid,
                 }
             except Exception:
-                status[name] = {"present": True, "size_kb": size_kb,
-                                "valid_structure": False}
+                status[name] = {"present": True, "size_kb": size_kb, "valid_structure": False}
         else:
-            status[name] = {"present": False, "size_kb": 0,
-                            "valid_structure": False}
+            status[name] = {"present": False, "size_kb": 0, "valid_structure": False}
     return status
 
 
@@ -404,6 +407,7 @@ def collect_changelog(root: Path, n: int = 10) -> list[str]:
 # ---------------------------------------------------------------------------
 # Main builder
 # ---------------------------------------------------------------------------
+
 
 def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     """
@@ -475,18 +479,16 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
         doc,
         headers=["Page", "Content", "Audience"],
         rows=[
-            {"page": "Page 1", "content": "System Health & Recent Issues",
-             "aud": "Owner — read this first every session"},
-            {"page": "Page 2", "content": "Vendor Stack (The Big 7)",
-             "aud": "Architects, Engineers"},
-            {"page": "Page 3", "content": "FedRAMP Control Coverage",
-             "aud": "Compliance, Auditors"},
-            {"page": "Page 4", "content": "Generation Pipeline",
-             "aud": "Engineers, Architects"},
-            {"page": "Page 5", "content": "Current Priorities & Decisions",
-             "aud": "Owner, PMO"},
-            {"page": "Page 6", "content": "Agent Activity Log",
-             "aud": "Owner (optional)"},
+            {
+                "page": "Page 1",
+                "content": "System Health & Recent Issues",
+                "aud": "Owner — read this first every session",
+            },
+            {"page": "Page 2", "content": "Vendor Stack (The Big 7)", "aud": "Architects, Engineers"},
+            {"page": "Page 3", "content": "FedRAMP Control Coverage", "aud": "Compliance, Auditors"},
+            {"page": "Page 4", "content": "Generation Pipeline", "aud": "Engineers, Architects"},
+            {"page": "Page 5", "content": "Current Priorities & Decisions", "aud": "Owner, PMO"},
+            {"page": "Page 6", "content": "Agent Activity Log", "aud": "Owner (optional)"},
         ],
         keys=["page", "content", "aud"],
     )
@@ -499,8 +501,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     _add_cui_banner(doc)
     _add_heading(doc, "Page 1 — System Health", 1, COLOR_TITLE)
     doc.add_paragraph(
-        "Traffic-light status of all major system components. "
-        "CI status requires `gh run list` to fully populate."
+        "Traffic-light status of all major system components. CI status requires `gh run list` to fully populate."
     )
 
     ci_rows = collect_ci_status(root)
@@ -516,13 +517,14 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     oscal_status = collect_oscal_status(root)
     oscal_rows = []
     for name, info in oscal_status.items():
-        oscal_rows.append({
-            "artifact": name,
-            "present": "✅" if info["present"] else "❌",
-            "size": f"{info['size_kb']}KB" if info["present"] else "—",
-            "valid": "✅" if info["valid_structure"] else
-                     "⚠️ malformed" if info["present"] else "❌",
-        })
+        oscal_rows.append(
+            {
+                "artifact": name,
+                "present": "✅" if info["present"] else "❌",
+                "size": f"{info['size_kb']}KB" if info["present"] else "—",
+                "valid": "✅" if info["valid_structure"] else "⚠️ malformed" if info["present"] else "❌",
+            }
+        )
     _add_styled_table(
         doc,
         headers=["OSCAL Artifact", "Present", "Size", "Valid Structure"],
@@ -614,8 +616,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     gap_rows = [r for r in control_rows if r["gap"] != "—"]
 
     if gap_rows:
-        _add_heading(doc, f"Controls With Gaps ({len(gap_rows)})", 2,
-                     COLOR_ACCENT)
+        _add_heading(doc, f"Controls With Gaps ({len(gap_rows)})", 2, COLOR_ACCENT)
         _add_styled_table(
             doc,
             headers=["Control ID", "Title", "Narrative", "Evidence", "Gap"],
@@ -623,10 +624,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
             keys=["id", "title", "narrative", "evidence", "gap"],
         )
         if len(gap_rows) > 30:
-            doc.add_paragraph(
-                f"... and {len(gap_rows) - 30} more. "
-                f"See data/control-library/ for full list."
-            )
+            doc.add_paragraph(f"... and {len(gap_rows) - 30} more. See data/control-library/ for full list.")
 
     _embed_diagram(
         doc,
@@ -641,9 +639,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     # -----------------------------------------------------------------------
     _add_cui_banner(doc)
     _add_heading(doc, "Page 4 — Generation Pipeline", 1, COLOR_TITLE)
-    doc.add_paragraph(
-        "How UIAO generates compliance artifacts from the canonical YAML sources."
-    )
+    doc.add_paragraph("How UIAO generates compliance artifacts from the canonical YAML sources.")
 
     # Pipeline flow as structured text
     pipeline_steps = [
@@ -712,8 +708,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
         _add_cui_banner(doc)
         _add_heading(doc, "Page 6 — What the Agents Did Last", 1, COLOR_TITLE)
         doc.add_paragraph(
-            "Last 10 changelog entries in plain English. "
-            "Source: CHANGELOG.md (auto-generated, commit-driven)."
+            "Last 10 changelog entries in plain English. Source: CHANGELOG.md (auto-generated, commit-driven)."
         )
         for entry in collect_changelog(root):
             doc.add_paragraph(entry, style="List Bullet")
