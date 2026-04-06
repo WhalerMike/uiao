@@ -675,7 +675,7 @@ def generate_all(
         oscal_out = build_oscal(
             canon_path=Path(canon_path),
             data_dir=Path(data_dir),
-            exports_dir=Path(exports_dir),
+            output_dir=Path(exports_dir),
         )
         console.print(f"[green]✓ OSCAL CD → {oscal_out}[/green]")
     except Exception as exc:  # noqa: BLE001
@@ -689,7 +689,7 @@ def generate_all(
         ssp_out = build_ssp(
             canon_path=Path(canon_path),
             data_dir=Path(data_dir),
-            exports_dir=Path(exports_dir),
+            output_path=Path(exports_dir),
         )
         console.print(f"[green]✓ SSP → {ssp_out}[/green]")
     except Exception as exc:  # noqa: BLE001
@@ -703,7 +703,7 @@ def generate_all(
         poam_out = build_poam_export(
             canon_path=Path(canon_path),
             data_dir=Path(data_dir),
-            exports_dir=Path(exports_dir),
+            output_dir=Path(exports_dir),
         )
         console.print(f"[green]✓ POA&M → {poam_out}[/green]")
     except Exception as exc:  # noqa: BLE001
