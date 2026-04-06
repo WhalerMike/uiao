@@ -18,6 +18,7 @@
 * **lint:** repair CodeMirror auto-indent corruption in generate_diagrams.py ([3724fab](https://github.com/WhalerMike/uiao-core/commit/3724fabc43e8317a7da3d2986b1ceacfc38d809d))
 * **lint:** resolve pre-existing ruff E722 and F841 errors ([3d43ace](https://github.com/WhalerMike/uiao-core/commit/3d43acef9a743e8ba51c29dfe47fb10bb0fc59f5))
 * **lint:** suppress unused upn variable in entra_adapter.py ([4b16859](https://github.com/WhalerMike/uiao-core/commit/4b168591e50a371f557a307fec90fbec2c5d538c))
+* **mypy:** annotate yaml.safe_load return type in canon.py to fix no-any-return ([d608715](https://github.com/WhalerMike/uiao-core/commit/d6087156d2c8c1f64f0b777fef5b65e9bc85596f))
 * pass full output path to build_ssp in generate_all ([d697e6d](https://github.com/WhalerMike/uiao-core/commit/d697e6d6f89c2249b489e79321af14fb0ab70d3b))
 * remove docs/STYLE-GUIDE.md and site/ generated files to resolve merge conflicts ([7e40ff8](https://github.com/WhalerMike/uiao-core/commit/7e40ff8f75985ae0a7a81139c080b91fee9802da))
 * rename section 6 from Core Concepts to Eight Core Concepts to resolve canon drift ([b85d406](https://github.com/WhalerMike/uiao-core/commit/b85d406b8465b799cb832a8e14496d03286cf8fe))
