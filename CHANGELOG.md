@@ -17,6 +17,7 @@
 * rename section 6 from Core Concepts to Eight Core Concepts to resolve canon drift ([b85d406](https://github.com/WhalerMike/uiao-core/commit/b85d406b8465b799cb832a8e14496d03286cf8fe))
 * resolve all remaining test failures — 379 passed, 0 failed ([e663092](https://github.com/WhalerMike/uiao-core/commit/e663092c6c62953b8d5e387befa6ca4c68413b90))
 * restore correct indentation in app.py and replace Mermaid with PlantUML ([14b378a](https://github.com/WhalerMike/uiao-core/commit/14b378a166159545d980ceef211e38c09f624064))
+* restore correct indentation in diagrams.py and replace Mermaid with PlantUML ([59f6fe3](https://github.com/WhalerMike/uiao-core/commit/59f6fe342f3ba984d581b305c940ccb4c546c0d6))
 * update canon_dir to generation-inputs/ in config.py ([e56a5ae](https://github.com/WhalerMike/uiao-core/commit/e56a5aeb09f4e696af94ed98ffd687ecf66037b8)), closes [#479](https://github.com/WhalerMike/uiao-core/issues/479)
 * update canon_dir to generation-inputs/ in wizard.py ([fc3f642](https://github.com/WhalerMike/uiao-core/commit/fc3f642efc0b58695fc93867d55391e6ec07838a))
 * update Core Concepts section name to Eight Core Concepts to resolve canon drift ([9f868c1](https://github.com/WhalerMike/uiao-core/commit/9f868c1755f3d951f7cab24cc67e1f07cddfed4b))
