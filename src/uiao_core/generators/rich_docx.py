@@ -233,6 +233,34 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
     dr = date_p.add_run(f"Generated: {datetime.now():%B %d, %Y}")
     dr.font.size = Pt(10)
     dr.font.color.rgb = RGBColor(0x80, 0x80, 0x80)
+
+    # Disclaimer callout — rendered as amber notice box on title page
+    disclaimer_text = context.get("disclaimer", "").strip()
+    if disclaimer_text:
+        from docx.oxml.ns import qn as _qn
+        from docx.oxml import OxmlElement as _OxmlElement
+        d = doc.add_paragraph()
+        d.paragraph_format.space_before = Pt(14)
+        d.paragraph_format.space_after = Pt(14)
+        d.paragraph_format.left_indent = Inches(0.3)
+        d.paragraph_format.right_indent = Inches(0.3)
+        d.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        pPr = d._p.get_or_add_pPr()
+        shd = _OxmlElement("w:shd")
+        shd.set(_qn("w:val"), "clear")
+        shd.set(_qn("w:color"), "auto")
+        shd.set(_qn("w:fill"), "FFF3CD")
+        pPr.append(shd)
+        label_run = d.add_run("NOTICE: ")
+        label_run.font.name = "Calibri"
+        label_run.font.size = Pt(9)
+        label_run.font.bold = True
+        label_run.font.color.rgb = RGBColor(0x85, 0x6A, 0x04)
+        text_run = d.add_run(disclaimer_text)
+        text_run.font.name = "Calibri"
+        text_run.font.size = Pt(9)
+        text_run.font.color.rgb = RGBColor(0x66, 0x50, 0x00)
+
     doc.add_page_break()
 
     # TOC placeholder
