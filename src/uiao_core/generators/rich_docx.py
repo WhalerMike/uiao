@@ -68,14 +68,54 @@ def _add_heading(doc: Document, text: str, level: int = 1):
     return h
 
 
+def _set_default_styles(doc: Document) -> None:
+    """Set Calibri as the default font and tighten paragraph spacing document-wide."""
+    from docx.oxml.ns import qn  # noqa: F401
+    from docx.oxml import OxmlElement  # noqa: F401
+
+    style = doc.styles["Normal"]
+    font = style.font
+    font.name = "Calibri"
+    font.size = Pt(11)
+    pf = style.paragraph_format
+    pf.space_before = Pt(0)
+    pf.space_after = Pt(6)
+    pf.line_spacing = 1.15
+
+    # Heading 1
+    h1 = doc.styles["Heading 1"]
+    h1.font.name = "Calibri"
+    h1.font.size = Pt(14)
+    h1.font.bold = True
+    h1.font.color.rgb = RGBColor(0x1B, 0x3A, 0x5C)
+    h1.paragraph_format.space_before = Pt(12)
+    h1.paragraph_format.space_after = Pt(4)
+
+    # Heading 2
+    h2 = doc.styles["Heading 2"]
+    h2.font.name = "Calibri"
+    h2.font.size = Pt(12)
+    h2.font.bold = True
+    h2.font.color.rgb = RGBColor(0x1B, 0x3A, 0x5C)
+    h2.paragraph_format.space_before = Pt(10)
+    h2.paragraph_format.space_after = Pt(3)
+
+
 def _add_narrative(doc: Document, text: Any) -> None:
-    """Add narrative paragraph(s) with proper formatting."""
+    """Add narrative paragraph(s) with Calibri 11pt and clean spacing."""
     if not text:
         return
     for para_text in str(text).split("\n\n"):
-        p = doc.add_paragraph(para_text.strip())
-        p.paragraph_format.space_after = Pt(6)
+        para_text = para_text.strip()
+        if not para_text:
+            continue
+        p = doc.add_paragraph(para_text)
+        p.style = doc.styles["Normal"]
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(8)
+        p.paragraph_format.line_spacing = 1.15
         for run in p.runs:
+            run.font.name = "Calibri"
             run.font.size = Pt(11)
 
 
@@ -167,6 +207,7 @@ def _add_evidence_table(doc: Document) -> None:
 def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
     """Build a complete styled DOCX programmatically."""
     doc = Document()
+    _set_default_styles(doc)
     lb = context.get("leadership_briefing", {})
     if not isinstance(lb, dict):
         lb = {}
