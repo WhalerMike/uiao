@@ -857,7 +857,6 @@ def generate_briefing(
     typer.echo("   Open this document before starting any agent session.")
 
 
-
 @app.command()
 def adapter_run_scuba(
     report: str = typer.Argument(
@@ -888,6 +887,7 @@ def adapter_run_scuba(
         uiao adapter-run-scuba exports/scuba/M365BaselineConformance.json
     """
     import json as _json
+
     from uiao_core.adapters.scuba_adapter import ScubaAdapter
 
     typer.echo(f"\U0001f50d Reading SCuBA report: {report}")
