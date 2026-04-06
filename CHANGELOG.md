@@ -58,6 +58,7 @@
 * **ksi:** add schema, master index, and improved IAM/boundary exemplars ([8642c47](https://github.com/WhalerMike/uiao-core/commit/8642c4765045761c6a6987dd96a19e6c3c33f80c))
 * **ksi:** rebuild index.yaml from disk - 163 entries with full metadata ([c1a5e86](https://github.com/WhalerMike/uiao-core/commit/c1a5e861d2e355095695ede2155ec3ec2f047be2))
 * **ksi:** regenerate 163 KSI files into category subdirs via updated generator ([3684ef7](https://github.com/WhalerMike/uiao-core/commit/3684ef703c58f4166dc480cbb69f3df8297bdb5f))
+* **ksi:** run Tier 2 enrichment on remaining 148 KSIs ([bffb8b4](https://github.com/WhalerMike/uiao-core/commit/bffb8b44ef8da43da9b5f435e4d1ef815f4c7e87))
 * **ksi:** tier1 enrichment - 15 critical/high KSIs with full pass_criteria and uiao_extensions ([d526354](https://github.com/WhalerMike/uiao-core/commit/d526354d24a3fb1e811c96268fae6d6acc0e0c3c))
 * local JAR renderer with plantweb fallback in plantuml.py ([ce19fae](https://github.com/WhalerMike/uiao-core/commit/ce19fae32a4969540c5c35fb0ef0939af73d57d0))
 * render Generic Federal Agency disclaimer as amber notice box on title page ([cb8e8f5](https://github.com/WhalerMike/uiao-core/commit/cb8e8f572da70d146640994336f4326adf33e5b1))
