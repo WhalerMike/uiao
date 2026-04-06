@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from ..collectors.entra.entra_collector import EntraCollector
-from .database_base import ClaimObject, ClaimSet, DatabaseAdapterBase, DriftReport
+from .database_base import ClaimObject, ClaimSet, ConnectionProvenance, DatabaseAdapterBase, DriftReport, QueryProvenance, SchemaMappingObject
 
 
 class EntraAdapter(DatabaseAdapterBase):
@@ -42,7 +42,7 @@ class EntraAdapter(DatabaseAdapterBase):
     # ------------------------------------------------------------------
     # 2.1 Connection & Identity -- delegate to collector
     # ------------------------------------------------------------------
-    def connect(self):
+    def connect(self) -> ConnectionProvenance:
         """Establish Entra ID connection and return provenance."""
         from .database_base import ConnectionProvenance
 
@@ -59,7 +59,7 @@ class EntraAdapter(DatabaseAdapterBase):
     # ------------------------------------------------------------------
     # 2.2 Schema Discovery -- map Entra fields to UIAO schema
     # ------------------------------------------------------------------
-    def discover_schema(self):
+    def discover_schema(self) -> SchemaMappingObject:
         """Return canonical mapping of Entra ID fields -> UIAO schema."""
         from .database_base import SchemaMappingObject
 
@@ -97,7 +97,7 @@ class EntraAdapter(DatabaseAdapterBase):
     # ------------------------------------------------------------------
     # 2.3 Query Normalization -- translate canonical query to Graph API
     # ------------------------------------------------------------------
-    def execute_query(self, canonical_query: Dict[str, Any]):
+    def execute_query(self, canonical_query: Dict[str, Any]) -> QueryProvenance:
         """Translate canonical query to Microsoft Graph API parameters."""
         from .database_base import QueryProvenance
 
