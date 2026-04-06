@@ -612,7 +612,6 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
 
     # Show controls with gaps first, then covered
     gap_rows = [r for r in control_rows if r["gap"] != "—"]
-    covered_rows = [r for r in control_rows if r["gap"] == "—"]
 
     if gap_rows:
         _add_heading(doc, f"Controls With Gaps ({len(gap_rows)})", 2,
