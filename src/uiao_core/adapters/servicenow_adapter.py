@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from ..collectors.servicenow_collector import ServiceNowCollector
-from .database_base import ClaimObject, ClaimSet, DatabaseAdapterBase, DriftReport
+from .database_base import ClaimObject, ClaimSet, ConnectionProvenance, DatabaseAdapterBase, DriftReport, QueryProvenance, SchemaMappingObject
 
 
 class ServiceNowAdapter(DatabaseAdapterBase):
@@ -46,7 +46,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
     # 2.1 Connection & Identity — delegate to collector
     # ------------------------------------------------------------------
 
-    def connect(self):
+    def connect(self) -> ConnectionProvenance:
         """Establish ServiceNow connection and return provenance."""
         from .database_base import ConnectionProvenance
 
@@ -63,7 +63,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
     # 2.2 Schema Discovery — map ServiceNow fields to UIAO schema
     # ------------------------------------------------------------------
 
-    def discover_schema(self):
+    def discover_schema(self) -> SchemaMappingObject:
         """Return canonical mapping of ServiceNow fields → UIAO schema."""
         from .database_base import SchemaMappingObject
 
@@ -101,7 +101,7 @@ class ServiceNowAdapter(DatabaseAdapterBase):
     # 2.3 Query Normalization — translate canonical query to ServiceNow
     # ------------------------------------------------------------------
 
-    def execute_query(self, canonical_query: Dict[str, Any]):
+    def execute_query(self, canonical_query: Dict[str, Any]) -> QueryProvenance:
         """Translate canonical query to ServiceNow Table API parameters."""
         from .database_base import QueryProvenance
 
