@@ -79,7 +79,7 @@ def _set_default_styles(doc: Document) -> None:
     font.size = Pt(11)
     pf = style.paragraph_format
     pf.space_before = Pt(0)
-    pf.space_after = Pt(6)
+    pf.space_after = Pt(12)
     pf.line_spacing = 1.15
 
     # Heading 1
@@ -112,7 +112,7 @@ def _add_narrative(doc: Document, text: Any) -> None:
         p = doc.add_paragraph(para_text)
         p.style = doc.styles["Normal"]
         p.paragraph_format.space_before = Pt(0)
-        p.paragraph_format.space_after = Pt(8)
+        p.paragraph_format.space_after = Pt(12)
         p.paragraph_format.line_spacing = 1.15
         for run in p.runs:
             run.font.name = "Calibri"
