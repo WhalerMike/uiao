@@ -99,7 +99,7 @@ def _validate_field(model: type[BaseModel], field: str, value: Any) -> str | Non
     except ValidationError as exc:
         for error in exc.errors():
             if field in error.get("loc", ()):
-                return error["msg"]
+                return str(error["msg"])
     return None
 
 
