@@ -9,6 +9,7 @@
 * add perimeter_collapse stub to docs.py build_docs context ([a234271](https://github.com/WhalerMike/uiao-core/commit/a234271071effe08a6c25979db8299dd7ca468aa))
 * **ci:** repair CodeMirror auto-indent corruption in deploy.yml ([fba1cb4](https://github.com/WhalerMike/uiao-core/commit/fba1cb4daa8fe6d31827396d723cd02713c3ece5))
 * **ci:** repair CodeMirror auto-indent corruption in generate-artifacts.yml ([17eb7ef](https://github.com/WhalerMike/uiao-core/commit/17eb7ef6285e67f444966002f98dd590cf790e04))
+* **ci:** repair CodeMirror auto-indent corruption in render-and-insert-diagrams.yml ([6f2f982](https://github.com/WhalerMike/uiao-core/commit/6f2f9826592cccc51177be1aa25caebe262d0128))
 * **ci:** update build-readiness gate to reference new KSI crosswalk and index paths ([54dd709](https://github.com/WhalerMike/uiao-core/commit/54dd7091f85a543b0cd6bf1c57054be3a622b7b0))
 * correct kwarg names for build_oscal/ssp/poam_export in generate_all ([74fa33d](https://github.com/WhalerMike/uiao-core/commit/74fa33db64aa8206dd1aad281b9aa0794e376910))
 * **docx:** increase paragraph space_after to Pt(12) for visible inter-paragraph gaps ([dbf0367](https://github.com/WhalerMike/uiao-core/commit/dbf0367f27d8c4ea6ccdee2a691fd419b111b5de))
