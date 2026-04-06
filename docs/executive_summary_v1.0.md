@@ -1,15 +1,3 @@
----
-title: "Executive Summary V1.0"
-author: "UIAO Modernization Program"
-date: today
-date-format: "MMMM D, YYYY"
-format:
-  html: default
-  docx: default
-  pdf: default
-  gfm: default
----
-
 # UIAO Executive Summary
 
 **Classification:** CUI/FOUO  
