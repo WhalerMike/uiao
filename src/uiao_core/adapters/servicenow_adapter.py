@@ -17,7 +17,15 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from ..collectors.servicenow_collector import ServiceNowCollector
-from .database_base import ClaimObject, ClaimSet, ConnectionProvenance, DatabaseAdapterBase, DriftReport, QueryProvenance, SchemaMappingObject
+from .database_base import (
+    ClaimObject,
+    ClaimSet,
+    ConnectionProvenance,
+    DatabaseAdapterBase,
+    DriftReport,
+    QueryProvenance,
+    SchemaMappingObject,
+)
 
 
 class ServiceNowAdapter(DatabaseAdapterBase):

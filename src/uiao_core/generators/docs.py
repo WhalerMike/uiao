@@ -26,7 +26,7 @@ from uiao_core.utils.context import get_settings, load_canon
 class _SilentUndefined(Undefined):
     """Jinja2 Undefined that silently returns empty for missing context vars."""
 
-    def _fail_with_undefined_error(self, *args: object, **kwargs: object) -> "_SilentUndefined":
+    def _fail_with_undefined_error(self, *args: object, **kwargs: object) -> _SilentUndefined:
         return self
 
     def __str__(self) -> str:
@@ -47,10 +47,10 @@ class _SilentUndefined(Undefined):
     def values(self) -> list[object]:
         return []
 
-    def __getattr__(self, name: str) -> "_SilentUndefined":
+    def __getattr__(self, name: str) -> _SilentUndefined:
         return self
 
-    def __getitem__(self, name: object) -> "_SilentUndefined":
+    def __getitem__(self, name: object) -> _SilentUndefined:
         return self
 
 
