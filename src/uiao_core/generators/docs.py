@@ -88,10 +88,19 @@ DEFAULT_TEMPLATE_MAPPING: dict[str, tuple[str, str]] = {
 # ---------------------------------------------------------------------------
 # Data loading helpers
 # ---------------------------------------------------------------------------
+# Files to skip when scanning data/ — governance/meta files not used as template context
+_DATA_SKIP_STEMS = frozenset({"style-guide", "schema", "overlay-config"})
+
+
 def load_data_files(
     data_dir: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Load all YAML files from data/ directory and merge into context."""
+    """Load all YAML files from data/ directory tree and merge into context.
+
+    Recursively scans data/ including control-library/, overlays/,
+    vendor-overlays/ subdirectories so templates receive the full data set.
+    Governance/meta files (style-guide, schema, overlay-config) are excluded.
+    """
     if data_dir is None:
         settings = get_settings()
         data_dir = settings.data_dir
@@ -99,13 +108,19 @@ def load_data_files(
     data: dict[str, Any] = {}
     if not data_dir.exists():
         return data
-    for yml_file in sorted(data_dir.glob("*.yml")):
+    for yml_file in sorted(data_dir.rglob("*.yml")):
+        if yml_file.stem in _DATA_SKIP_STEMS:
+            continue
         key = yml_file.stem.replace("-", "_")
         with yml_file.open("r", encoding="utf-8") as f:
             content = yaml.safe_load(f)
         if content:
             if isinstance(content, dict):
-                data.update(content)
+                # Merge top-level keys without overwriting existing keys from
+                # higher-priority files (shallow merge with precedence to first seen)
+                for k, v in content.items():
+                    if k not in data:
+                        data[k] = v
             data[key] = content
     return data
 
