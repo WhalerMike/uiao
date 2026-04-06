@@ -24,16 +24,16 @@ def _get_installed_packages() -> list[dict[str, str]]:
     packages = []
     for dist in importlib.metadata.distributions():
         meta = dist.metadata
-        name = meta.get("Name", "")
-        version = meta.get("Version", "")
+        name = meta.get("Name") or ""
+        version = meta.get("Version") or ""
         if name and version:
             packages.append(
                 {
                     "name": name,
                     "version": version,
-                    "description": meta.get("Summary", ""),
-                    "homepage": meta.get("Home-page", "") or _first_project_url(meta),
-                    "license": meta.get("License", ""),
+                    "description": meta.get("Summary") or "",
+                    "homepage": meta.get("Home-page") or _first_project_url(meta),
+                    "license": meta.get("License") or "",
                 }
             )
     return sorted(packages, key=lambda p: p["name"].lower())
