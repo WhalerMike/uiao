@@ -33,6 +33,7 @@
 * use @startgantt/[@endgantt](https://github.com/endgantt) syntax for roadmap Gantt diagram ([5c42386](https://github.com/WhalerMike/uiao-core/commit/5c423868364d76509a12c8039a4449d3e12e70c2))
 * use ChainableUndefined in Jinja2 env to handle missing template vars ([9c657f0](https://github.com/WhalerMike/uiao-core/commit/9c657f0e5cec3f19b2d088eb56ddf46ce84de9ab))
 * use git add -f to force-add gitignored exports directory ([e955738](https://github.com/WhalerMike/uiao-core/commit/e955738db1f0fc3cf414567235890d9bf51c0791))
+* **yaml:** switch narrative block scalars from > to | to preserve paragraph breaks in DOCX ([e5b57d0](https://github.com/WhalerMike/uiao-core/commit/e5b57d0e05857feae7d3d36d804681e496b589b1))
 
 
 ### Features
