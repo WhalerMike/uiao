@@ -830,5 +830,31 @@ def adapter_run(
         console.print(f"[green]Saved to {output}[/green]")
 
 
+@app.command()
+def generate_briefing(
+    history: bool = typer.Option(
+        True,
+        "--history/--no-history",
+        help="Include agent activity log on Page 6",
+    ),
+) -> None:
+    """
+    Generate personal briefing document from live repo state.
+
+    Produces a 6-page DOCX covering system health, vendor stack,
+    control coverage, pipeline, priorities, and agent activity.
+    Quality target: matches 01_Canon/uiao-reference.docx visual standard.
+    """
+    from uiao_core.generators.briefing import build_briefing
+
+    typer.echo("\U0001f4cb Generating UIAO personal briefing...")
+    typer.echo("   Reading: MEMORY.md, vendor-overlays/, control-library/,")
+    typer.echo("            PROJECT-CONTEXT.md, CHANGELOG.md, exports/oscal/")
+    settings = Settings()
+    output_path = build_briefing(settings, include_history=history)
+    typer.echo(f"\u2705 Briefing saved: {output_path}")
+    typer.echo("   Open this document before starting any agent session.")
+
+
 if __name__ == "__main__":
     app()
