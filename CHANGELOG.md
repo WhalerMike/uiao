@@ -66,6 +66,7 @@
 * local JAR renderer with plantweb fallback in plantuml.py ([ce19fae](https://github.com/WhalerMike/uiao-core/commit/ce19fae32a4969540c5c35fb0ef0939af73d57d0))
 * render Generic Federal Agency disclaimer as amber notice box on title page ([cb8e8f5](https://github.com/WhalerMike/uiao-core/commit/cb8e8f572da70d146640994336f4326adf33e5b1))
 * **scripts:** route KSI generator output to category subdirs ([45b0ed5](https://github.com/WhalerMike/uiao-core/commit/45b0ed5cfd6ff09301952557ddce7c0a38a5543e))
+* **scuba:** implement SCuBA adapter for ScubaGear assessment ingestion ([9980600](https://github.com/WhalerMike/uiao-core/commit/9980600a380d39883895ca92d3d3924bd12a9769))
 
 
 
