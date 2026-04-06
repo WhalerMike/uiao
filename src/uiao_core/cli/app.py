@@ -617,15 +617,19 @@ def generate_all(
     """Run the full UIAO generation pipeline: YAML canon → all output artifacts.
 
     Executes every generator in order:
-    1. Schema validation of canon YAML
-    2. PlantUML diagram rendering (PNG)
-    3. Markdown documentation (docs/)
-    4. OSCAL Component Definition JSON
-    5. SSP Skeleton JSON
-    6. POA&M template JSON
-    7. DOCX leadership briefing
-    8. PPTX leadership deck
+    1. PlantUML diagram rendering (PNG)
+    2. Markdown documentation (docs/)
+    3. OSCAL Component Definition JSON
+    4. SSP Skeleton JSON
+    5. POA&M template JSON
+    6. DOCX Leadership Briefing (rich, with embedded diagrams)
+    7. PPTX leadership deck
+    8. Topic DOCX suite (one per Markdown doc in docs/)
     9. CycloneDX SBOM (unless --skip-sbom)
+
+    Note: The legacy lowercase 'leadership_briefing_v1.0.docx' in exports/docx/
+    is no longer regenerated. The authoritative file is
+    'UIAO_Leadership_Briefing_v1.0.docx' produced by step 6.
     """
     import time
 
@@ -634,18 +638,19 @@ def generate_all(
     from uiao_core.generators.oscal import build_oscal
     from uiao_core.generators.poam import build_poam_export
     from uiao_core.generators.pptx import build_pptx
-    from uiao_core.generators.rich_docx import build_rich_docx
+    from uiao_core.generators.rich_docx import build_rich_docx, generate_all_topic_docs
     from uiao_core.generators.sbom import build_sbom
     from uiao_core.generators.ssp import build_ssp
 
     start = time.monotonic()
     errors: list[str] = []
+    context_classification = "CUI"  # classification marking for topic DOCX headers
 
     console.print("[bold blue]━━━ UIAO generate-all ━━━[/bold blue]")
     console.print(f"[dim]Canon: {canon_path}  |  Data: {data_dir}[/dim]\n")
 
     # ── 1. PlantUML diagrams ──────────────────────────────────────────────────
-    console.print("[bold][ 1/8 ] Rendering PlantUML diagrams...[/bold]")
+    console.print("[bold][ 1/9 ] Rendering PlantUML diagrams...[/bold]")
     try:
         pngs = render_all_plantuml(force=force_visuals)
         console.print(f"[green]✓ Rendered {len(pngs)} diagram(s)[/green]")
@@ -653,7 +658,7 @@ def generate_all(
         console.print(f"[yellow]⚠ Diagrams skipped: {exc}[/yellow]")
 
     # ── 2. Markdown docs ─────────────────────────────────────────────────────
-    console.print("[bold][ 2/8 ] Generating Markdown documentation...[/bold]")
+    console.print("[bold][ 2/9 ] Generating Markdown documentation...[/bold]")
     try:
         generated = build_docs(
             canon_path=Path(canon_path),
@@ -670,7 +675,7 @@ def generate_all(
         console.print(f"[red]✗ {msg}[/red]")
 
     # ── 3. OSCAL Component Definition ────────────────────────────────────────
-    console.print("[bold][ 3/8 ] Building OSCAL Component Definition...[/bold]")
+    console.print("[bold][ 3/9 ] Building OSCAL Component Definition...[/bold]")
     try:
         oscal_out = build_oscal(
             canon_path=Path(canon_path),
@@ -684,7 +689,7 @@ def generate_all(
         console.print(f"[red]✗ {msg}[/red]")
 
     # ── 4. SSP Skeleton ──────────────────────────────────────────────────────
-    console.print("[bold][ 4/8 ] Building SSP Skeleton...[/bold]")
+    console.print("[bold][ 4/9 ] Building SSP Skeleton...[/bold]")
     try:
         ssp_out = build_ssp(
             canon_path=Path(canon_path),
@@ -698,7 +703,7 @@ def generate_all(
         console.print(f"[red]✗ {msg}[/red]")
 
     # ── 5. POA&M Template ────────────────────────────────────────────────────
-    console.print("[bold][ 5/8 ] Building POA&M Template...[/bold]")
+    console.print("[bold][ 5/9 ] Building POA&M Template...[/bold]")
     try:
         poam_out = build_poam_export(
             canon_path=Path(canon_path),
@@ -712,7 +717,7 @@ def generate_all(
         console.print(f"[red]✗ {msg}[/red]")
 
     # ── 6. DOCX ──────────────────────────────────────────────────────────────
-    console.print("[bold][ 6/8 ] Generating DOCX leadership briefing...[/bold]")
+    console.print("[bold][ 6/9 ] Generating DOCX leadership briefing...[/bold]")
     try:
         docx_out = build_rich_docx(
             canon_path=Path(canon_path),
@@ -726,7 +731,7 @@ def generate_all(
         console.print(f"[red]✗ {msg}[/red]")
 
     # ── 7. PPTX ──────────────────────────────────────────────────────────────
-    console.print("[bold][ 7/8 ] Generating PPTX leadership deck...[/bold]")
+    console.print("[bold][ 7/9 ] Generating PPTX leadership deck...[/bold]")
     try:
         pptx_out = build_pptx(
             canon_path=Path(canon_path),
@@ -739,9 +744,23 @@ def generate_all(
         errors.append(msg)
         console.print(f"[red]✗ {msg}[/red]")
 
-    # ── 8. SBOM ──────────────────────────────────────────────────────────────
+    # ── 8. Topic DOCX suite ─────────────────────────────────────────────────
+    console.print("[bold][ 8/9 ] Generating topic DOCX suite from docs/...[/bold]")
+    try:
+        topic_docs = generate_all_topic_docs(
+            docs_dir=Path(docs_dir),
+            exports_dir=Path(exports_dir),
+            classification=context_classification,
+        )
+        console.print(f"[green]✓ Generated {len(topic_docs)} topic DOCX(s) → {exports_dir}/docx/[/green]")
+    except Exception as exc:  # noqa: BLE001
+        msg = f"Topic DOCX failed: {exc}"
+        errors.append(msg)
+        console.print(f"[red]✗ {msg}[/red]")
+
+    # ── 9. SBOM ──────────────────────────────────────────────────────────────
     if not skip_sbom:
-        console.print("[bold][ 8/8 ] Generating CycloneDX SBOM...[/bold]")
+        console.print("[bold][ 9/9 ] Generating CycloneDX SBOM...[/bold]")
         try:
             sbom_out = build_sbom(
                 output_path=f"{exports_dir}/sbom/sbom.cyclonedx.json",
@@ -752,7 +771,7 @@ def generate_all(
             errors.append(msg)
             console.print(f"[red]✗ {msg}[/red]")
     else:
-        console.print("[dim][ 8/8 ] SBOM skipped (--skip-sbom)[/dim]")
+        console.print("[dim][ 9/9 ] SBOM skipped (--skip-sbom)[/dim]")
 
     # ── Summary ───────────────────────────────────────────────────────────────
     elapsed = time.monotonic() - start
