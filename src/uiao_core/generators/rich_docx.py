@@ -12,6 +12,7 @@ References: ADR-0004
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -119,21 +120,70 @@ def _add_narrative(doc: Document, text: Any) -> None:
             run.font.size = Pt(11)
 
 
-def _add_image_safe(doc: Document, image_name: str, visuals_dir: Path, width: Any = _DEFAULT_IMAGE_WIDTH) -> bool:
-    """Add an image if it exists, skip gracefully if not."""
+def _add_figure_caption(doc: Document, counter: list, title: str) -> None:
+    """Add a 'Figure N: Title' caption below an image."""
+    counter[0] += 1
+    cap = doc.add_paragraph()
+    cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    cap.paragraph_format.space_before = Pt(2)
+    cap.paragraph_format.space_after = Pt(14)
+    label = cap.add_run(f"Figure {counter[0]}: ")
+    label.font.name = "Calibri"
+    label.font.size = Pt(9)
+    label.font.bold = True
+    label.font.color.rgb = RGBColor(0x1B, 0x3A, 0x5C)
+    body = cap.add_run(title)
+    body.font.name = "Calibri"
+    body.font.size = Pt(9)
+    body.font.italic = True
+    body.font.color.rgb = RGBColor(0x44, 0x44, 0x44)
+
+
+def _add_table_caption(doc: Document, counter: list, title: str) -> None:
+    """Add a 'Table N: Title' caption above a table."""
+    counter[0] += 1
+    cap = doc.add_paragraph()
+    cap.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    cap.paragraph_format.space_before = Pt(14)
+    cap.paragraph_format.space_after = Pt(3)
+    label = cap.add_run(f"Table {counter[0]}: ")
+    label.font.name = "Calibri"
+    label.font.size = Pt(9)
+    label.font.bold = True
+    label.font.color.rgb = RGBColor(0x1B, 0x3A, 0x5C)
+    body = cap.add_run(title)
+    body.font.name = "Calibri"
+    body.font.size = Pt(9)
+    body.font.italic = True
+    body.font.color.rgb = RGBColor(0x44, 0x44, 0x44)
+
+
+def _add_image_safe(
+    doc: Document,
+    image_name: str,
+    visuals_dir: Path,
+    fig_counter: list | None = None,
+    caption: str = "",
+    width: Any = _DEFAULT_IMAGE_WIDTH,
+) -> bool:
+    """Add an image with optional Figure N caption below it."""
     img_path = visuals_dir / image_name
     if img_path.exists():
         doc.add_picture(str(img_path), width=width)
         doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        if fig_counter is not None and caption:
+            _add_figure_caption(doc, fig_counter, caption)
         return True
     logger.warning("Image not found: %s", img_path)
     return False
 
 
-def _add_compliance_table(doc: Document, matrix: list[dict]) -> None:
+def _add_compliance_table(doc: Document, matrix: list[dict], tbl_counter: list | None = None) -> None:
     """Add the Unified Compliance Matrix as a formatted Word table."""
     if not matrix:
         return
+    if tbl_counter is not None:
+        _add_table_caption(doc, tbl_counter, "Unified Compliance & Maturity Matrix")
     headers = [
         "UIAO Pillar",
         "CISA ZT Pillar",
@@ -170,8 +220,10 @@ def _add_compliance_table(doc: Document, matrix: list[dict]) -> None:
                         run.font.size = Pt(8)
 
 
-def _add_evidence_table(doc: Document) -> None:
+def _add_evidence_table(doc: Document, tbl_counter: list | None = None) -> None:
     """Add the FedRAMP Audit Evidence Summary table."""
+    if tbl_counter is not None:
+        _add_table_caption(doc, tbl_counter, "FedRAMP 20x Audit Evidence Summary — NIST 800-53 Rev 5 Control Mapping")
     evidence_map = [
         ("V1: Identity-to-IP Mapping", "U + A (The Gate)", "IA-2, AC-19, CM-8"),
         ("V2: INR Fabric", "O (The Network)", "AC-4"),
@@ -208,6 +260,8 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
     """Build a complete styled DOCX programmatically."""
     doc = Document()
     _set_default_styles(doc)
+    fig = [0]  # mutable figure counter
+    tbl = [0]  # mutable table counter
     lb = context.get("leadership_briefing", {})
     if not isinstance(lb, dict):
         lb = {}
@@ -307,21 +361,33 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
     # Vibrant Visualizations
     doc.add_page_break()
     _add_heading(doc, "Vibrant Visualizations")
+    _add_narrative(
+        doc,
+        "The following diagrams represent key architectural views of the UIAO program. "
+        "Each figure is referenced by number in the architecture sections above.",
+    )
     visuals = [
-        ("Modernization Journey", "uiao-vibrant-modernization-atlas.png"),
-        ("FedRAMP 20x Governance Loop", "uiao-vibrant-20x-governance-hub.png"),
-        ("Identity-to-IP Architecture", "uiao-vibrant-u-plus-a-mapping.png"),
+        ("Modernization Journey", "uiao-vibrant-modernization-atlas.png",
+         "UIAO Modernization Atlas — transition from fragmented legacy to unified control planes"),
+        ("FedRAMP 20x Governance Loop", "uiao-vibrant-20x-governance-hub.png",
+         "FedRAMP 20x Governance Hub — continuous compliance evidence loop"),
+        ("Identity-to-IP Architecture", "uiao-vibrant-u-plus-a-mapping.png",
+         "Identity-to-IP Mapping — Entra ID as root namespace for all addressing decisions"),
     ]
-    for title_text, img in visuals:
+    for title_text, img, caption in visuals:
         _add_heading(doc, title_text, level=2)
-        _add_image_safe(doc, img, visuals_dir)
+        _add_image_safe(doc, img, visuals_dir, fig_counter=fig, caption=caption)
 
     # Maturity radar chart
     radar_path = visuals_dir / "dynamic-maturity-radar.png"
     if radar_path.exists():
         doc.add_page_break()
         _add_heading(doc, "CISA Zero Trust Maturity Assessment")
-        _add_image_safe(doc, "dynamic-maturity-radar.png", visuals_dir)
+        _add_image_safe(
+            doc, "dynamic-maturity-radar.png", visuals_dir,
+            fig_counter=fig,
+            caption="CISA Zero Trust Maturity Radar — current vs. target maturity across all five pillars",
+        )
 
     # PlantUML-rendered architecture diagrams
     plantuml_dir = visuals_dir.parent / "plantuml"
@@ -330,9 +396,20 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
         if plantuml_pngs:
             doc.add_page_break()
             _add_heading(doc, "Architecture Diagrams (PlantUML)")
+            _add_narrative(
+                doc,
+                "The following PlantUML diagrams are generated from the UIAO canon YAML. "
+                "Each diagram is versioned alongside the architecture source and reflects "
+                "the current state of the authoritative model.",
+            )
             for png in plantuml_pngs:
-                _add_heading(doc, png.stem.replace("-", " ").title(), level=2)
-                _add_image_safe(doc, png.name, plantuml_dir)
+                diagram_title = png.stem.replace("-", " ").replace("_", " ").title()
+                _add_heading(doc, diagram_title, level=2)
+                _add_image_safe(
+                    doc, png.name, plantuml_dir,
+                    fig_counter=fig,
+                    caption=f"{diagram_title} — PlantUML architecture diagram",
+                )
 
     # Gemini AI-generated visuals
     gemini_dir = visuals_dir.parent / "gemini"
@@ -342,8 +419,13 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
             doc.add_page_break()
             _add_heading(doc, "AI-Generated Visuals (Gemini)")
             for png in gemini_pngs:
-                _add_heading(doc, png.stem.replace("-", " ").title(), level=2)
-                _add_image_safe(doc, png.name, gemini_dir)
+                gemini_title = png.stem.replace("-", " ").replace("_", " ").title()
+                _add_heading(doc, gemini_title, level=2)
+                _add_image_safe(
+                    doc, png.name, gemini_dir,
+                    fig_counter=fig,
+                    caption=f"{gemini_title} — AI-generated conceptual visualization",
+                )
 
     # FedRAMP Evidence Summary
     doc.add_page_break()
@@ -352,14 +434,19 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
         doc,
         "Direct mapping of UIAO architecture to NIST 800-53 Rev 5 controls.",
     )
-    _add_evidence_table(doc)
+    _add_narrative(
+        doc,
+        f"Direct mapping of UIAO architecture to NIST 800-53 Rev 5 controls. "
+        f"See Table {tbl[0] + 1} for the full evidence map.",
+    )
+    _add_evidence_table(doc, tbl_counter=tbl)
 
     # Compliance Matrix
     doc.add_page_break()
     _add_heading(doc, "Unified Compliance & Maturity Matrix")
     matrix = context.get("unified_compliance_matrix", [])
     if matrix:
-        _add_compliance_table(doc, matrix)
+        _add_compliance_table(doc, matrix, tbl_counter=tbl)
         p = doc.add_paragraph()
         p.add_run(
             "Auditor Note: All controls listed above are continuously "
@@ -367,7 +454,156 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
             "through the ServiceNow SCuBA integration."
         ).font.italic = True
 
+    # Figure & table index note
+    if fig[0] > 0 or tbl[0] > 0:
+        doc.add_page_break()
+        _add_heading(doc, "List of Figures and Tables")
+        summary = doc.add_paragraph()
+        summary.add_run(
+            f"This document contains {fig[0]} figure(s) and {tbl[0]} table(s). "
+            "All figures are captioned with a sequential Figure number and descriptive title below the image. "
+            "All tables are captioned with a sequential Table number and title above the table body."
+        )
+        summary.runs[0].font.size = Pt(10)
+        summary.runs[0].font.italic = True
+
     return doc
+
+
+# ---------------------------------------------------------------------------
+# Markdown-to-DOCX topic document builder  (Issues 1 & 2)
+# ---------------------------------------------------------------------------
+
+_MD_HEADING_RE = re.compile(r"^(#{1,3})\s+(.+)$")
+_MD_HR_RE = re.compile(r"^-{3,}$")
+_MD_FRONTMATTER_RE = re.compile(r"^---\n.*?^---\n", re.DOTALL | re.MULTILINE)
+
+
+def _md_to_docx(doc: Document, md_text: str) -> None:
+    """Render simplified Markdown into an existing Document.
+
+    Handles H1-H3 headings, paragraphs, and horizontal rules.
+    Inline bold (**text**) and italic (*text*) are also supported.
+    Code blocks and tables render as plain-text paragraphs.
+    """
+    md_text = _MD_FRONTMATTER_RE.sub("", md_text).strip()
+
+    for line in md_text.splitlines():
+        line = line.rstrip()
+
+        if _MD_HR_RE.match(line):
+            p = doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(4)
+            continue
+
+        m = _MD_HEADING_RE.match(line)
+        if m:
+            level = len(m.group(1))
+            text = re.sub(r"\*+(.+?)\*+", r"\1", m.group(2))
+            h = doc.add_heading(text, level=min(level, 3))
+            for run in h.runs:
+                run.font.color.rgb = RGBColor(0x1B, 0x3A, 0x5C)
+            continue
+
+        if not line:
+            continue
+
+        p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(10)
+        p.paragraph_format.line_spacing = 1.15
+
+        # Parse inline bold and italic
+        remaining = line
+        while remaining:
+            bold_m = re.search(r"\*\*(.+?)\*\*", remaining)
+            ital_m = re.search(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", remaining)
+            first = None
+            if bold_m and ital_m:
+                first = bold_m if bold_m.start() <= ital_m.start() else ital_m
+            elif bold_m:
+                first = bold_m
+            elif ital_m:
+                first = ital_m
+
+            if first is None:
+                r = p.add_run(remaining)
+                r.font.name = "Calibri"
+                r.font.size = Pt(11)
+                break
+            if first.start() > 0:
+                r = p.add_run(remaining[: first.start()])
+                r.font.name = "Calibri"
+                r.font.size = Pt(11)
+            r = p.add_run(first.group(1))
+            r.font.name = "Calibri"
+            r.font.size = Pt(11)
+            r.font.bold = first is bold_m
+            r.font.italic = first is not bold_m
+            remaining = remaining[first.end():]
+
+
+def build_topic_docx(
+    md_path: Path,
+    exports_dir: Path,
+    classification: str = "CUI",
+) -> Path:
+    """Convert a single Markdown document into a styled DOCX.
+
+    Args:
+        md_path: Path to the source Markdown file (from docs/).
+        exports_dir: Root exports directory; output goes to exports_dir/docx/.
+        classification: Header/footer marking (default: CUI).
+
+    Returns:
+        Path to the generated DOCX file.
+    """
+    doc = Document()
+    _set_default_styles(doc)
+    _add_classification_header(doc, classification)
+    md_text = md_path.read_text(encoding="utf-8")
+    _md_to_docx(doc, md_text)
+    docx_dir = exports_dir / "docx"
+    docx_dir.mkdir(parents=True, exist_ok=True)
+    out_path = docx_dir / (md_path.stem + ".docx")
+    doc.save(str(out_path))
+    logger.info("Topic DOCX exported -> %s", out_path)
+    return out_path
+
+
+def generate_all_topic_docs(
+    docs_dir: Path | None = None,
+    exports_dir: Path | None = None,
+    classification: str = "CUI",
+) -> list[Path]:
+    """Convert all Markdown documents in docs_dir to DOCX.
+
+    Skips README, CHANGELOG, MANIFEST, index files. The rich Leadership
+    Briefing DOCX is generated separately by build_rich_docx().
+
+    Returns:
+        List of generated DOCX Path objects.
+    """
+    settings = get_settings()
+    if docs_dir is None:
+        docs_dir = settings.root_dir / "docs"
+    if exports_dir is None:
+        exports_dir = settings.exports_dir
+    docs_dir = Path(docs_dir)
+    if not docs_dir.exists():
+        logger.warning("docs_dir not found: %s", docs_dir)
+        return []
+    _SKIP = {"readme", "changelog", "manifest", "index"}
+    generated: list[Path] = []
+    for md_path in sorted(docs_dir.glob("*.md")):
+        if md_path.stem.lower() in _SKIP:
+            continue
+        try:
+            out = build_topic_docx(md_path, exports_dir, classification=classification)
+            generated.append(out)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to convert %s: %s", md_path.name, exc)
+    return generated
 
 
 # ---------------------------------------------------------------------------
