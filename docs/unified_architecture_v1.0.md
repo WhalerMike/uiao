@@ -12,8 +12,22 @@ classification: "CUI/FOUO"
 
 ## 1. Architectural Overview
 
-The Unified Identity-Addressing-Overlay Architecture (UIAO) is a modernization initiative designed to unify identity, addressing, routing, telemetry, and governance into a coherent, Zero Trust-aligned federal architecture. It integrates Microsoft Entra ID as the identity control plane, ICAM as the governance backbone, InfoBlox as the authoritative IPAM, Cisco SD-WAN as the routing control plane, and cloud-native telemetry and location services as the truth source for operational decisions. Together, these components form a coordinated modernization effort that replaces fragmented legacy systems with a cloud-optimized, identity-driven, telemetry-informed enterprise.
-The strategic goal is to transform the agency into a modern federal network where identity is the perimeter, telemetry is the truth, routing is cloud-first, and governance is automated. UIAO provides the architectural foundation needed to meet Zero Trust expectations, TIC 3.0 requirements, and FedRAMP-aligned controls while improving mission performance and citizen experience.
+UIAO consolidates four infrastructure layers that currently operate as separate programs under
+separate ownership: identity (Active Directory and Entra ID), addressing (DNS/DHCP/IPAM), network
+routing (TIC-compliant SD-WAN), and telemetry (Splunk correlation feeds). Today these layers are
+managed by different teams, procured on different cycles, and monitored against different baselines.
+When something breaks at the intersection — and it regularly does — the diagnosis takes days because
+no single team owns the full picture.
+
+The program is organized around four control planes, each with a defined vendor, a defined OSCAL
+component definition, and a defined set of FedRAMP Moderate controls it satisfies. Identity goes to
+Entra ID and CyberArk. Network goes to Cisco SD-WAN with TIC 3.0 policy enforcement. Addressing goes
+to Infoblox DDI. Telemetry goes to Splunk with Palo Alto Prisma for inline inspection.
+
+Each plane is independently deployable. The agency does not need to cut over everything at once.
+Phase 1 can deliver cloud-first routing and Entra ID consolidation without touching IPAM. That matters
+because the legacy PKI dependency in the case management platform cannot be resolved until FY27 at
+the earliest, and the program is designed to work around it.
 
 
 The Unified Identity-Addressing-Overlay (UIAO) architecture integrates four control planes into a single cohesive framework. Each plane governs a distinct operational domain while sharing telemetry, policy signals, and configuration data with the others through well-defined integration points.
@@ -33,31 +47,48 @@ The following diagram illustrates the complete UIAO architecture, showing how th
 
 ### 3.1. Identity Control Plane
 
-The Identity Control Plane is anchored in Entra ID and reinforced by ICAM governance, Conditional Access, Privileged Identity Management, and lifecycle automation. Identity becomes the authoritative source for access, addressing, certificates, and policy.
+The Identity Control Plane is anchored in Entra ID and reinforced by
+ICAM governance, Conditional Access, Privileged Identity Management,
+and lifecycle automation. Identity becomes the authoritative source
+for access, addressing, certificates, and policy.
 
 
 
 ### 3.2. Network Control Plane
 
-The Network Control Plane uses Cisco SD-WAN to deliver cloud-first routing, performance-optimized paths for M365, and identity-aware segmentation. Integration with INR enables location-aware routing and emergency services readiness.
+The Network Control Plane uses Cisco SD-WAN to deliver cloud-first
+routing, performance-optimized paths for M365, and identity-aware
+segmentation. Integration with INR enables location-aware routing and
+emergency services readiness.
 
 
 
 ### 3.3. Addressing Control Plane
 
-The Addressing Control Plane modernizes IPAM through InfoBlox, replacing spreadsheets with authoritative, identity-derived addressing. DNS and DHCP are unified across cloud and on-prem environments, enabling consistent policy enforcement and accurate telemetry correlation.
+The Addressing Control Plane modernizes IPAM through InfoBlox,
+replacing spreadsheets with authoritative, identity-derived
+addressing. DNS and DHCP are unified across cloud and on-prem
+environments, enabling consistent policy enforcement and accurate
+telemetry correlation.
 
 
 
 ### 3.4. Telemetry & Location Control Plane
 
-The Telemetry and Location Control Plane consolidates signals from M365, SD-WAN, endpoints, DNS, CDM/CLAW, and SIEM platforms. Telemetry becomes a real-time control input for routing, security, and compliance, enabling conversation-level visibility across the enterprise.
+The Telemetry and Location Control Plane consolidates signals from
+M365, SD-WAN, endpoints, DNS, CDM/CLAW, and SIEM platforms. Telemetry
+becomes a real-time control input for routing, security, and
+compliance, enabling conversation-level visibility across the
+enterprise.
 
 
 
 ### 3.5. Security & Compliance Plane
 
-The Security and Compliance Plane aligns the architecture with TIC 3.0, Zero Trust, FedRAMP 20x Phase 2, NIST 800-63, and ICAM governance. Security becomes embedded in the architecture rather than bolted on, with automated enforcement replacing manual review.
+The Security and Compliance Plane aligns the architecture with TIC
+3.0, Zero Trust, FedRAMP 20x Phase 2, NIST 800-63, and ICAM governance.
+Security becomes embedded in the architecture rather than bolted on,
+with automated enforcement replacing manual review.
 
 
 
@@ -102,49 +133,62 @@ The following diagram demonstrates how each technical control plane maps to stra
 
 ### 8.1. Single Source of Truth (SSOT)
 
-The canonical data repository is the authoritative origin for all architectural definitions. Every document, template, and generated artifact derives its definitions from this single source of truth, ensuring consistency and preventing drift across the architecture.
+The canonical data repository is the authoritative origin for all
+architectural definitions. Every document, template, and generated
+artifact derives its definitions from this single source of truth,
+ensuring consistency and preventing drift across the architecture.
 
 
 
 ### 8.2. Conversation as the Atomic Unit
 
-Every interaction—identity, certificate, addressing, path, QoS, and telemetry—is treated as a single, correlated conversation rather than isolated events.
+Every interaction—identity, certificate, addressing, path, QoS, and
+telemetry—is treated as a single, correlated conversation rather than
+isolated events.
 
 
 
 ### 8.3. Identity as the Root Namespace
 
-Identity becomes the root namespace for all resources, ensuring that every IP address, certificate, subnet, policy, and telemetry event is derived from or bound to identity.
+Identity becomes the root namespace for all resources, ensuring that
+every IP address, certificate, subnet, policy, and telemetry event is
+derived from or bound to identity.
 
 
 
 ### 8.4. Deterministic Addressing
 
-Addressing becomes deterministic and policy-driven, replacing ad-hoc assignment with identity-derived logic that enables accurate correlation and automated governance.
+Addressing becomes deterministic and policy-driven, replacing ad-hoc
+assignment with identity-derived logic that enables accurate
+correlation and automated governance.
 
 
 
 ### 8.5. Certificate-Anchored Overlay
 
-Certificates and mutual TLS anchor tunnels, services, and trust relationships across the enterprise.
+Certificates and mutual TLS anchor tunnels, services, and trust
+relationships across the enterprise.
 
 
 
 ### 8.6. Telemetry as Control
 
-Telemetry becomes an active control input for routing, security, and compliance decisions rather than a passive reporting mechanism.
+Telemetry becomes an active control input for routing, security, and
+compliance decisions rather than a passive reporting mechanism.
 
 
 
 ### 8.7. Embedded Governance & Automation
 
-Governance is executed through orchestrated workflows that enforce policy consistently and reduce operational burden.
+Governance is executed through orchestrated workflows that enforce
+policy consistently and reduce operational burden.
 
 
 
 ### 8.8. Public Service First
 
-Citizen experience, accessibility, and privacy remain top-level design constraints.
+Citizen experience, accessibility, and privacy remain top-level
+design constraints.
 
 
 
