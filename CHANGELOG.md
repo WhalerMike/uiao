@@ -47,6 +47,7 @@
 * **ksi:** rebuild index.yaml from disk - 163 entries with full metadata ([c1a5e86](https://github.com/WhalerMike/uiao-core/commit/c1a5e861d2e355095695ede2155ec3ec2f047be2))
 * **ksi:** regenerate 163 KSI files into category subdirs via updated generator ([3684ef7](https://github.com/WhalerMike/uiao-core/commit/3684ef703c58f4166dc480cbb69f3df8297bdb5f))
 * **ksi:** tier1 enrichment - 15 critical/high KSIs with full pass_criteria and uiao_extensions ([d526354](https://github.com/WhalerMike/uiao-core/commit/d526354d24a3fb1e811c96268fae6d6acc0e0c3c))
+* local JAR renderer with plantweb fallback in plantuml.py ([ce19fae](https://github.com/WhalerMike/uiao-core/commit/ce19fae32a4969540c5c35fb0ef0939af73d57d0))
 * **scripts:** route KSI generator output to category subdirs ([45b0ed5](https://github.com/WhalerMike/uiao-core/commit/45b0ed5cfd6ff09301952557ddce7c0a38a5543e))
 
 
