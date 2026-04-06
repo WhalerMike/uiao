@@ -1,55 +1,73 @@
 name: Generate DOCX Exports
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - 'docs/**'
-  workflow_dispatch:
+      - "docs/**"
+      - "templates/**"
+      - "data/**"
+      - "generation-inputs/**"
+      - "src/**"
+      - "pyproject.toml"
 
 permissions:
   contents: write
 
 jobs:
-  convert-to-docx:
+  build-docx:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Pandoc
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y pandoc
+          python -m pip install --upgrade pip
+          pip install -e "." || true
+          pip install python-docx pyyaml jinja2
 
-      - name: Create exports directory
-        run: mkdir -p exports/docx
-
-      - name: Convert all docs/*.md to DOCX
+      - name: Generate topic DOCX exports
         run: |
-          echo "Converting Markdown files to DOCX..."
-          for md_file in docs/*.md; do
-            if [ -f "$md_file" ]; then
-              basename=$(basename "$md_file" .md)
-              echo "  Converting: $md_file -> exports/docx/${basename}.docx"
-              pandoc "$md_file" \
-                --from markdown \
-                --to docx \
-                --output "exports/docx/${basename}.docx" \
-                --standalone
-            fi
-          done
-          echo "Done. Generated DOCX files:"
-          ls -la exports/docx/
+          python - << 'PYEOF'
+          import sys
+          sys.path.insert(0, "src")
+          from uiao_core.generators.rich_docx import generate_all_topic_docs
+          from pathlib import Path
+          generated = generate_all_topic_docs(
+              docs_dir=Path("docs"),
+              exports_dir=Path("exports"),
+              classification="CUI",
+          )
+          print(f"Generated {len(generated)} topic DOCX file(s):")
+          for p in generated:
+              print(f"  {p}")
+          PYEOF
 
-      - name: Commit DOCX exports
+      - name: Upload DOCX artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: uiao-docx-exports
+          path: exports/docx/*.docx
+          if-no-files-found: warn
+
+      - name: Commit topic DOCX exports
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f exports/docx/*.docx
+          git restore --staged exports/docx/UIAO_Leadership_Briefing_v1.0.docx 2>/dev/null || true
+          git restore --staged exports/docx/leadership_briefing_v1.0.docx 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No DOCX changes to commit."
           else
-            git commit -m "Auto-generate DOCX exports from docs/ [skip ci]"
+            git commit -m "ci: regenerate topic DOCX exports via Python pipeline [skip ci]"
             git push
           fi
