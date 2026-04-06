@@ -32,6 +32,7 @@
 * restore correct indentation in mermaid.py PlantUML compat shim ([6075e72](https://github.com/WhalerMike/uiao-core/commit/6075e727d62f9060127eb887b30e401dfe87fccc))
 * restore correct indentation in pptx.py and replace Mermaid with PlantUML ([1e1f034](https://github.com/WhalerMike/uiao-core/commit/1e1f0340970af64e6cd3c97140af6503a958f837))
 * restore correct indentation in rich_docx.py and replace Mermaid with PlantUML ([c83389e](https://github.com/WhalerMike/uiao-core/commit/c83389ebf867942bc392c7012a1dafd1dcf88577))
+* **rich_docx:** repair double-backslash corruption in regex patterns (Python 3.14 compat) ([ea93436](https://github.com/WhalerMike/uiao-core/commit/ea9343667bd977997b6af16053f9020347416b2f))
 * update canon_dir to generation-inputs/ in config.py ([e56a5ae](https://github.com/WhalerMike/uiao-core/commit/e56a5aeb09f4e696af94ed98ffd687ecf66037b8)), closes [#479](https://github.com/WhalerMike/uiao-core/issues/479)
 * update canon_dir to generation-inputs/ in wizard.py ([fc3f642](https://github.com/WhalerMike/uiao-core/commit/fc3f642efc0b58695fc93867d55391e6ec07838a))
 * update Core Concepts section name to Eight Core Concepts to resolve canon drift ([9f868c1](https://github.com/WhalerMike/uiao-core/commit/9f868c1755f3d951f7cab24cc67e1f07cddfed4b))
