@@ -28,7 +28,7 @@ def enrich_ksi_file(file_path: Path, dry_run: bool = False) -> bool:
 
     Returns True if the file was (or would be) enriched, False if skipped.
     """
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         ksi = yaml.safe_load(f)
 
     if not isinstance(ksi, dict):
