@@ -34,6 +34,7 @@
 * restore correct indentation in rich_docx.py and replace Mermaid with PlantUML ([c83389e](https://github.com/WhalerMike/uiao-core/commit/c83389ebf867942bc392c7012a1dafd1dcf88577))
 * **rich_docx:** repair double-backslash corruption in regex patterns (Python 3.14 compat) ([ea93436](https://github.com/WhalerMike/uiao-core/commit/ea9343667bd977997b6af16053f9020347416b2f))
 * **ruff:** add missing Settings import in generate_briefing command ([046b233](https://github.com/WhalerMike/uiao-core/commit/046b233ad96c45d1d56e9b48a7ca87bc92c60e40))
+* **ruff:** remove unused covered_rows variable in briefing.py ([a7b0ca4](https://github.com/WhalerMike/uiao-core/commit/a7b0ca4e8069cd6a05b64db77b300837b5424618))
 * **scripts:** rewrite enrich_ksi_tier2.py to walk ksi dirs in-place ([0046e8a](https://github.com/WhalerMike/uiao-core/commit/0046e8ae4596b1a329525813aa15be852ed0b2ec))
 * update canon_dir to generation-inputs/ in config.py ([e56a5ae](https://github.com/WhalerMike/uiao-core/commit/e56a5aeb09f4e696af94ed98ffd687ecf66037b8)), closes [#479](https://github.com/WhalerMike/uiao-core/issues/479)
 * update canon_dir to generation-inputs/ in wizard.py ([fc3f642](https://github.com/WhalerMike/uiao-core/commit/fc3f642efc0b58695fc93867d55391e6ec07838a))
