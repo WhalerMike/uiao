@@ -14,6 +14,7 @@
 * guard planes/matrix against non-list type from vendor overlays in ssp.py ([0dc2b71](https://github.com/WhalerMike/uiao-core/commit/0dc2b71f524423d65a16cef741476ad847a675ab))
 * **lint:** remove unused _upn variable from entra_adapter.py ([4e459ee](https://github.com/WhalerMike/uiao-core/commit/4e459ee14274dacef92ecd74ee58799af35a2180))
 * **lint:** remove unused variable and import in enrich_ksi_tier2.py ([fd0a156](https://github.com/WhalerMike/uiao-core/commit/fd0a1560d83716c17eb504187677456a9b405a63))
+* **lint:** repair CodeMirror auto-indent corruption in canon.py – fix docstring and load_canon indentation ([300bc9a](https://github.com/WhalerMike/uiao-core/commit/300bc9a9e814186025e00e43737f060df566599f))
 * **lint:** resolve pre-existing ruff E722 and F841 errors ([3d43ace](https://github.com/WhalerMike/uiao-core/commit/3d43acef9a743e8ba51c29dfe47fb10bb0fc59f5))
 * **lint:** suppress unused upn variable in entra_adapter.py ([4b16859](https://github.com/WhalerMike/uiao-core/commit/4b168591e50a371f557a307fec90fbec2c5d538c))
 * pass full output path to build_ssp in generate_all ([d697e6d](https://github.com/WhalerMike/uiao-core/commit/d697e6d6f89c2249b489e79321af14fb0ab70d3b))
