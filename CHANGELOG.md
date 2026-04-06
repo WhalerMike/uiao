@@ -51,6 +51,7 @@
 * add KSI library (163 indicators) for FedRAMP Moderate baseline ([ab8a303](https://github.com/WhalerMike/uiao-core/commit/ab8a3032a605e2ec92331ba98706b380a5d281c2))
 * add plantuml optional dep group to pyproject.toml ([55a1da2](https://github.com/WhalerMike/uiao-core/commit/55a1da2f436d0ce0ccbe6d03d6abf2d1e30cd510))
 * add plantuml_jar setting to config (UIAO_PLANTUML_JAR env var) ([85d987b](https://github.com/WhalerMike/uiao-core/commit/85d987bf63c12cf4ae52cc3d7a8b60682fc48ebe))
+* **briefing:** implement uiao generate-briefing generator (SESSION ZERO) ([cd896a5](https://github.com/WhalerMike/uiao-core/commit/cd896a57ae399b21373c26489b64efbbdb901e59))
 * **cli:** add 'uiao adapter-run' command for ServiceNow and Entra adapters ([87b5db1](https://github.com/WhalerMike/uiao-core/commit/87b5db1b646be99ca319dbd37f3445ee8a0dc485))
 * expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
 * **ksi:** add crosswalk script + mapping - 163 KSIs covering 247 NIST controls ([3d784ff](https://github.com/WhalerMike/uiao-core/commit/3d784fffdbe7a2bb07119e57d5addac4c060f21d))
