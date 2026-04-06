@@ -88,11 +88,7 @@ class ScubaAdapter(DatabaseAdapterBase):
 
     def __init__(self, config: Dict[str, Any] | None = None) -> None:
         super().__init__(config or {})
-        self._report_path: Optional[Path] = (
-            Path(self._config["report_path"])
-            if "report_path" in self._config
-            else None
-        )
+        self._report_path: Optional[Path] = Path(self._config["report_path"]) if "report_path" in self._config else None
         self._raw_report: Optional[Dict[str, Any]] = None
 
     # ------------------------------------------------------------------
@@ -104,9 +100,7 @@ class ScubaAdapter(DatabaseAdapterBase):
         if self._report_path and self._report_path.exists():
             suffix = self._report_path.suffix.lower()
             with open(self._report_path, encoding="utf-8") as f:
-                self._raw_report = (
-                    json.load(f) if suffix == ".json" else yaml.safe_load(f)
-                )
+                self._raw_report = json.load(f) if suffix == ".json" else yaml.safe_load(f)
             source = str(self._report_path)
         else:
             self._raw_report = {}
@@ -261,11 +255,7 @@ class ScubaAdapter(DatabaseAdapterBase):
         self.connect()
         results = self._extract_results()
         claim_set = self.normalize(results)
-        passing = sum(
-            1
-            for c in claim_set.claims
-            if c.fields.get("scuba_result") == "pass"
-        )
+        passing = sum(1 for c in claim_set.claims if c.fields.get("scuba_result") == "pass")
         return {
             "vendor": "CISA SCuBA / ScubaGear",
             "adapter_id": self.ADAPTER_ID,
@@ -298,8 +288,4 @@ class ScubaAdapter(DatabaseAdapterBase):
     def get_ksi_evidence(self, ksi_id: str) -> List[Dict[str, Any]]:
         """Return all SCuBA policy results that map to a given KSI/control ID."""
         results = self._extract_results()
-        return [
-            r
-            for r in results
-            if SCUBA_TO_KSI_MAP.get(r.get("PolicyId", ""), "") == ksi_id
-        ]
+        return [r for r in results if SCUBA_TO_KSI_MAP.get(r.get("PolicyId", ""), "") == ksi_id]
