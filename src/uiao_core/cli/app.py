@@ -689,7 +689,7 @@ def generate_all(
         ssp_out = build_ssp(
             canon_path=Path(canon_path),
             data_dir=Path(data_dir),
-            output_path=Path(exports_dir),
+            output_path=Path(exports_dir) / "oscal" / "uiao-ssp-skeleton.json",
         )
         console.print(f"[green]✓ SSP → {ssp_out}[/green]")
     except Exception as exc:  # noqa: BLE001
