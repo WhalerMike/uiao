@@ -1,121 +1,117 @@
 #!/usr/bin/env python3
 """UIAO-Core KSI Tier 2 Enrichment Script
 
-Reads KSI index.yaml, applies enrichment rules from rules/ksi/enrichment_rules.py,
-and outputs enriched KSI data for each control category.
+Walks all KSI YAML files in rules/ksi/<category>/ subdirectories,
+applies Tier 2 enrichment rules from enrichment_rules.py in-place,
+and skips any file that already has enrichment applied.
 
 Usage:
-    python scripts/enrich_ksi_tier2.py [--dry-run] [--output-dir exports/ksi]
+    python scripts/enrich_ksi_tier2.py [--dry-run]
 """
 
 import argparse
-import json
 import sys
-import yaml
+from datetime import datetime
 from pathlib import Path
 
-# Add project root to path
+import yaml
+
+# Add project root to Python path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from rules.ksi.enrichment_rules import ENRICHMENT_RULES, get_enrichment_for_category
 
 
-def load_ksi_index(index_path: Path) -> dict:
-    """Load the KSI index.yaml file."""
-    if not index_path.exists():
-        print(f"ERROR: KSI index not found at {index_path}")
-        sys.exit(1)
-    with open(index_path) as f:
-        return yaml.safe_load(f)
+def enrich_ksi_file(file_path: Path, dry_run: bool = False) -> bool:
+    """Enrich a single KSI YAML file with Tier 2 data in-place.
 
+    Returns True if the file was (or would be) enriched, False if skipped.
+    """
+    with open(file_path, "r", encoding="utf-8") as f:
+        ksi = yaml.safe_load(f)
 
-def enrich_ksi_entry(entry: dict, category: str) -> dict:
-    """Apply Tier 2 enrichment rules to a single KSI entry."""
+    if not isinstance(ksi, dict):
+        print(f"  SKIP {file_path.name} — not a valid YAML mapping")
+        return False
+
+    # Idempotency: skip if already enriched
+    if ksi.get("validation_type"):
+        return False
+
+    # Derive category from the parent directory name
+    category = file_path.parent.name.lower()
     enrichment = get_enrichment_for_category(category)
-    enriched = entry.copy()
-    enriched["tier2_enrichment"] = {
-        "validation_type": enrichment["validation_type"],
-        "pass_criteria": enrichment["pass_criteria"],
-        "uiao_extensions": enrichment["uiao_extensions"],
-        "enrichment_applied": True,
-        "enrichment_tier": 2,
+
+    # Apply Tier 2 fields
+    ksi["category"] = category
+    ksi["validation_type"] = enrichment["validation_type"]
+    ksi["pass_criteria"] = enrichment["pass_criteria"]
+
+    if "uiao_extensions" not in ksi:
+        ksi["uiao_extensions"] = {}
+    ksi["uiao_extensions"].update(enrichment["uiao_extensions"])
+
+    ksi["oscal_props"] = {
+        "implementation_status_prop": "satisfied",
+        "evidence_type": "observation",
     }
-    return enriched
-
-
-def process_ksi_data(ksi_data: dict) -> dict:
-    """Process all KSI entries and apply enrichment."""
-    enriched_data = {}
-    categories_processed = set()
-
-    if isinstance(ksi_data, dict):
-        for key, value in ksi_data.items():
-            # Determine category from the key or nested structure
-            category = key.lower().replace("_", "-")
-
-            if isinstance(value, dict):
-                enriched_data[key] = enrich_ksi_entry(value, category)
-            elif isinstance(value, list):
-                enriched_data[key] = [
-                    enrich_ksi_entry(item, category) if isinstance(item, dict) else item for item in value
-                ]
-            else:
-                enriched_data[key] = value
-
-            categories_processed.add(category)
-
-    return enriched_data, categories_processed
-
-
-def write_output(enriched_data: dict, output_dir: Path, dry_run: bool = False):
-    """Write enriched KSI data to output directory."""
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / "ksi_tier2_enriched.json"
+    ksi["last_updated"] = datetime.now().isoformat()[:10]
 
     if dry_run:
-        print("\n=== DRY RUN MODE ===")
-        print(f"Would write to: {output_file}")
-        print(f"Enriched entries: {len(enriched_data)}")
-        print("\nSample output (first 2 entries):")
-        sample = dict(list(enriched_data.items())[:2])
-        print(json.dumps(sample, indent=2, default=str))
-        return
+        print(f"  DRY-RUN: {file_path.name} (category: {category})")
+        return True
 
-    with open(output_file, "w") as f:
-        json.dump(enriched_data, f, indent=2, default=str)
-    print(f"Enriched KSI data written to {output_file}")
+    with open(file_path, "w", encoding="utf-8") as f:
+        yaml.dump(ksi, f, sort_keys=False, default_flow_style=False, allow_unicode=True)
+
+    print(f"  Enriched: {file_path.name}")
+    return True
 
 
-def main():
-    parser = argparse.ArgumentParser(description="UIAO-Core KSI Tier 2 Enrichment")
-    parser.add_argument("--dry-run", action="store_true", help="Preview enrichment without writing files")
-    parser.add_argument("--output-dir", type=str, default="exports/ksi", help="Output directory for enriched data")
-    parser.add_argument("--index", type=str, default="rules/ksi/index.yaml", help="Path to KSI index.yaml")
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="UIAO-Core KSI Tier 2 Enrichment — walks rules/ksi/ and enriches in-place"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview enrichment without modifying files",
+    )
     args = parser.parse_args()
 
-    index_path = PROJECT_ROOT / args.index
-    output_dir = PROJECT_ROOT / args.output_dir
+    ksi_root = PROJECT_ROOT / "rules" / "ksi"
+    if not ksi_root.exists():
+        print(f"ERROR: KSI root directory not found: {ksi_root}")
+        sys.exit(1)
+
+    total = 0
+    enriched = 0
+    skipped = 0
 
     print("UIAO-Core KSI Tier 2 Enrichment")
-    print("=" * 40)
-    print(f"Index: {index_path}")
-    print(f"Output: {output_dir}")
-    print(f"Dry run: {args.dry_run}")
+    print("=" * 50)
+    print(f"KSI root : {ksi_root}")
+    print(f"Dry run  : {args.dry_run}")
+    print(f"Rules    : {', '.join(ENRICHMENT_RULES.keys())}")
     print()
 
-    # Load KSI index
-    ksi_data = load_ksi_index(index_path)
-    print(f"Loaded {len(ksi_data) if ksi_data else 0} KSI entries")
+    # Walk every ksi-*.yaml file across all category subdirectories
+    for file_path in sorted(ksi_root.rglob("ksi-*.yaml")):
+        total += 1
+        if enrich_ksi_file(file_path, dry_run=args.dry_run):
+            enriched += 1
+        else:
+            skipped += 1
 
-    # Apply enrichment
-    enriched_data, categories = process_ksi_data(ksi_data)
-    print(f"Applied enrichment to {len(categories)} categories: {', '.join(sorted(categories))}")
-    print(f"Available enrichment rules: {', '.join(ENRICHMENT_RULES.keys())}")
-
-    # Write output
-    write_output(enriched_data, output_dir, dry_run=args.dry_run)
-    print("\nDone.")
+    print()
+    print("=" * 50)
+    print(f"Processed : {total}")
+    print(f"Enriched  : {enriched}")
+    print(f"Skipped   : {skipped} (already enriched or invalid)")
+    if args.dry_run:
+        print("DRY-RUN — no files were modified.")
+    print("Done.")
 
 
 if __name__ == "__main__":
