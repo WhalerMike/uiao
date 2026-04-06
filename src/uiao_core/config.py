@@ -5,6 +5,7 @@ or .env file. Defaults assume running from repo root.
 """
 
 from pathlib import Path
+from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -25,3 +26,8 @@ class Settings(BaseSettings):
     visuals_dir: Path = Path("visuals")
     schemas_dir: Path = Path("schemas")
     compliance_dir: Path = Path("compliance")
+
+    # PlantUML JAR path for local rendering (no network required).
+    # Set UIAO_PLANTUML_JAR=/path/to/plantuml.jar to override.
+    # Falls back to plantweb (public plantuml.com) if not set or not found.
+    plantuml_jar: Optional[Path] = None
