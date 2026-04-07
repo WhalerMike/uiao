@@ -59,6 +59,7 @@
 * expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
 * **ksi:** add crosswalk script + mapping - 163 KSIs covering 247 NIST controls ([3d784ff](https://github.com/WhalerMike/uiao-core/commit/3d784fffdbe7a2bb07119e57d5addac4c060f21d))
 * **ksi:** add KSI evaluation engine for SCuBA findings ([f883b48](https://github.com/WhalerMike/uiao-core/commit/f883b489884a90159078671bd5800178b185eab2))
+* **ksi:** add KSI-001 MFA Enforcement rule ([9b545be](https://github.com/WhalerMike/uiao-core/commit/9b545be33f5f4eff4c1cb326fd44bc61ca55d184))
 * **ksi:** add schema, master index, and improved IAM/boundary exemplars ([8642c47](https://github.com/WhalerMike/uiao-core/commit/8642c4765045761c6a6987dd96a19e6c3c33f80c))
 * **ksi:** rebuild index.yaml from disk - 163 entries with full metadata ([c1a5e86](https://github.com/WhalerMike/uiao-core/commit/c1a5e861d2e355095695ede2155ec3ec2f047be2))
 * **ksi:** regenerate 163 KSI files into category subdirs via updated generator ([3684ef7](https://github.com/WhalerMike/uiao-core/commit/3684ef703c58f4166dc480cbb69f3df8297bdb5f))
