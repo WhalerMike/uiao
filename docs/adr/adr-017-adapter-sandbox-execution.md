@@ -1,32 +1,32 @@
 ---
-adr_id: "ADR-017"
-title: "Adapter Sandbox Execution Model"
-family: "A - Adapter Plane"
-status: "Proposed"
-date: "2026-04-07"
+title: "ADR-017: Adapter Sandbox Execution"
+adr: "ADR-017"
+status: ACCEPTED
+date: "2026-02-12"
+deciders: ["UIAO Governance Board"]
 ---
 
-# ADR-017 - Adapter Sandbox Execution Model
+# ADR-017: Adapter Sandbox Execution
 
-> **Status:** Proposed - [NEW (Proposed)] awaiting ratification.
-> **Family:** A - Adapter Plane
+## Status
+
+ACCEPTED
 
 ## Context
 
-<!-- TODO: Describe the context and problem statement -->
+Adapters run third-party or mission partner code that integrates with external systems. Without sandbox isolation, a malicious or buggy adapter could access other adapters' data, exhaust host resources, or make unauthorized network connections.
 
 ## Decision
 
-<!-- MISSING - Awaiting ratification content -->
+All adapters execute in isolated sandboxes with: process isolation (dedicated PID namespace), network isolation (default-deny outbound), filesystem isolation (read-only shared schemas, ephemeral writable scratch space), and resource limits (CPU and memory quotas from registration schema). Sandbox escapes are classified as CRITICAL drift events and trigger immediate adapter suspension. See Appendix A-02 for the full sandbox specification.
 
 ## Consequences
 
-<!-- MISSING - Awaiting ratification content -->
+**Positive:**
+- Adapter failures and misbehavior are contained within their sandbox
+- Network default-deny prevents unauthorized data exfiltration
+- Sandbox resource limits prevent denial-of-service by misbehaving adapters
 
-## Rationale
-
-<!-- TODO: Describe the rationale for this decision -->
-
-## Related ADRs
-
-<!-- TODO: List related ADR IDs -->
+**Negative:**
+- Sandbox infrastructure adds operational complexity and overhead
+- Adapters have limited access to shared resources — some legitimate integrations may require explicit sandbox rule exceptions (governed by Governance Plane)
