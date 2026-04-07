@@ -207,8 +207,8 @@ pwsh ./uiao-core/provenance/manifests/generate-manifest.ps1 `
 
 ## 11. Related Documents
 
-- [Appendix B — UIAO SCuBA Pipeline (Summary)](../appendices/Appendix-B-UIAO-SCuBA-Pipeline.md)
-- [Appendix C — KSI Mapping Tables](../appendices/Appendix-C-KSI-Mapping-Tables.md)
-- [SCuBA Canonical Report](../reports/SCuBA-Canonical-Report.md)
+- [Appendix B — UIAO SCuBA Pipeline (Summary)](https://github.com/WhalerMike/uiao-docs/tree/main/appendices)
+- [Appendix C — KSI Mapping Tables](https://github.com/WhalerMike/uiao-docs/tree/main/appendices)
+- [SCuBA Canonical Report](https://github.com/WhalerMike/uiao-docs/tree/main/reports)
 - [SCuBA Maintainer Onboarding Guide](SCuBA-Maintainer-Onboarding.md)
-- [UIAO SCuBA Access Page](../index-scuba.md)
+- [UIAO SCuBA Access Page](index.md)
