@@ -1,32 +1,32 @@
 ---
-adr_id: "ADR-016"
-title: "Evidence Bundle Lifecycle"
-family: "D - Evidence Fabric"
-status: "Proposed"
-date: "2026-04-07"
+title: "ADR-016: Evidence Bundle Lifecycle"
+adr: "ADR-016"
+status: ACCEPTED
+date: "2026-02-10"
+deciders: ["UIAO Governance Board"]
 ---
 
-# ADR-016 - Evidence Bundle Lifecycle
+# ADR-016: Evidence Bundle Lifecycle
 
-> **Status:** Proposed - [NEW (Proposed)] awaiting ratification.
-> **Family:** D - Evidence Fabric
+## Status
+
+ACCEPTED
 
 ## Context
 
-<!-- TODO: Describe the context and problem statement -->
+Compliance assessments and forensic investigations require collecting related evidence records into a coherent package. Without a formal bundle model, assembling evidence packages is ad hoc and inconsistent.
 
 ## Decision
 
-<!-- MISSING - Awaiting ratification content -->
+The Evidence Fabric supports **Evidence Bundles**: named, governed collections of evidence records assembled for a specific purpose. Bundles pass through four lifecycle states: ASSEMBLING, SEALED, SUBMITTED, CLOSED. Once SEALED, no records may be added or removed. Bundles are immutable once sealed and are themselves recorded as Evidence Fabric entries.
 
 ## Consequences
 
-<!-- MISSING - Awaiting ratification content -->
+**Positive:**
+- Compliance packages are formally governed and reproducible
+- Bundles can be submitted to external assessors with confidence in their integrity
+- Bundle lifecycle is auditable
 
-## Rationale
-
-<!-- TODO: Describe the rationale for this decision -->
-
-## Related ADRs
-
-<!-- TODO: List related ADR IDs -->
+**Negative:**
+- Bundle assembly requires explicit governance steps — cannot be assembled on the fly
+- Sealed bundles cannot be corrected (only superseded by a new bundle)
