@@ -1,71 +1,86 @@
----
-title: "UIAO Governance Canon"
-status: ACTIVE
-version: "1.0"
-last_updated: "2026-04-07"
----
-
 # UIAO Governance Canon
 
-The UIAO Governance Canon is the authoritative body of rules, definitions, decisions, and specifications that govern the Universal Integration Adapter Orchestration (UIAO) framework.
+!!! tip "Start Here"
+    This is the **authoritative entry point** for the UIAO governance corpus.
+    New readers should start here, then navigate to the relevant appendix.
+    See the [Corpus Status Dashboard](corpus-status-dashboard.md) for document maturity at a glance.
+
+The UIAO Governance Canon is the authoritative body of rules, definitions, decisions, and specifications
+that govern the Universal Integration Adapter Orchestration (UIAO) framework.
 
 ## What Is the Canon?
 
-The Canon is not a single document — it is a structured collection of governance artifacts that together define how UIAO is designed, operated, and evolved. The Canon includes:
+The Canon is not a single document -- it is a structured collection of governance artifacts that together
+define how UIAO is designed, operated, and evolved.
+
+The Canon includes:
 
 - **Canonical Rules (CR-001 through CR-005):** The five immutable governance constraints that all UIAO artifacts must conform to.
 - **Glossary:** Authoritative definitions for all UIAO terminology.
 - **Migration Plan:** The structured plan for transitioning documentation from flat to hierarchical canonical structure.
 - **PDF Layout Specification:** Requirements for the printable/archival PDF export of the Canon.
-- **Architectural Decision Records (ADR-005 through ADR-027):** Immutable records of all significant architectural decisions.
+- **Architectural Decision Records (ADR-000 through ADR-027):** Immutable records of all significant architectural decisions.
 - **Appendices A through E:** Detailed specifications for each major UIAO subsystem.
+
+## Cross-Fabric Governance Map
+
+![UIAO Cross-Fabric Governance Map](../images/cross-fabric-map.svg)
+
+> **Text alternative:** Canon Overview anchors five appendices (Adapter Model, Truth Fabric, Drift Fabric,
+> Evidence Fabric, Governance Plane). A Cross-Fabric Interaction Layer connects them. Below: ADR Registry,
+> Corpus Status Dashboard, and Contributor Workflows. Each node links to its landing page.
 
 ## Canon Authority
 
-The Canon is maintained by the **Governance Plane**, which consists of:
-- The UIAO Governance Board (human authority)
-- The Canon Master Document (DOCX) — the authoritative source per CR-002
-- This Canonical Rules file — the machine-readable policy
+The Canon is maintained by the Governance Plane, which consists of:
 
-All changes to Canon content require Governance Plane ratification. See [Canonical Rules](canonical-rules.md) for the formal ratification process.
+- The UIAO Governance Board (human authority)
+- The Canon Master Document (DOCX) -- the authoritative source per CR-002
+- This Canonical Rules file -- the machine-readable policy
+
+All changes to Canon content require Governance Plane ratification.
+See [Canonical Rules](canonical-rules.md) for the formal ratification process.
 
 ## Canon Structure
 
 ```
 docs/canon/
-├── index.md              ← This file
-├── canonical-rules.md    ← CR-001 through CR-005
-├── glossary.md           ← Authoritative UIAO terminology
-├── migration-plan.md     ← Flat-to-hierarchical migration plan
-└── pdf-layout-spec.md    ← PDF export layout requirements
+|- index.md                  <- This file
+|- canonical-rules.md        <- CR-001 through CR-005
+|- glossary.md               <- Authoritative UIAO terminology
+|- migration-plan.md         <- Flat-to-hierarchical migration plan
+|- pdf-layout-spec.md        <- PDF export layout requirements
+|- corpus-status-dashboard.md <- Document maturity dashboard
 ```
 
 ## Navigating the Canon
 
 | Section | Description |
-|---|---|
+|---------|-------------|
 | [Canonical Rules](canonical-rules.md) | The five governance constraints all UIAO artifacts must satisfy |
-| [Glossary](glossary.md) | Definitions for all UIAO terms — start here if a term is unfamiliar |
+| [Glossary](glossary.md) | Definitions for all UIAO terms -- start here if a term is unfamiliar |
 | [Migration Plan](migration-plan.md) | How the documentation structure was migrated and what remains |
 | [PDF Layout Spec](pdf-layout-spec.md) | Requirements for the PDF export of this Canon |
-| [Appendix A — Adapter Plane](../appendix/a-adapter-plane/index.md) | Adapter registration, schema, and lifecycle |
-| [Appendix B — Truth Fabric](../appendix/b-truth-fabric/index.md) | Canonical state model and query API |
-| [Appendix C — Drift Fabric](../appendix/c-drift-fabric/index.md) | Drift detection and reconciliation |
-| [Appendix D — Evidence Fabric](../appendix/d-evidence-fabric/index.md) | Audit events and compliance attestations |
-| [Appendix E — Governance Plane](../appendix/e-governance-plane/index.md) | Governance review process and Canon change protocol |
-| [ADR Index](../adr/index.md) | All architectural decision records |
+| [Corpus Status Dashboard](corpus-status-dashboard.md) | Document maturity and governance health at a glance |
+| [Appendix A -- Adapter Plane](../appendix/a-adapter-plane/index.md) | Adapter registration, schema, and lifecycle |
+| [Appendix B -- Truth Fabric](../appendix/b-truth-fabric/index.md) | Canonical state model and query API |
+| [Appendix C -- Drift Fabric](../appendix/c-drift-fabric/index.md) | Drift detection and reconciliation |
+| [Appendix D -- Evidence Fabric](../appendix/d-evidence-fabric/index.md) | Audit events and compliance attestations |
+| [Appendix E -- Governance Plane](../appendix/e-governance-plane/index.md) | Governance review process and Canon change protocol |
+| [ADR Index](../adr/index.md) | All architectural decision records by theme and lifecycle state |
 
 ## Status Definitions
 
 All Canon files carry a `status` field in their frontmatter:
 
 | Status | Meaning |
-|---|---|
-| `MISSING` | Stub placeholder — no content yet |
-| `DRAFT` | Content inserted but not yet ratified |
-| `ACTIVE` | Ratified by Governance Plane — authoritative |
-| `DEPRECATED` | Superseded by newer content — kept for audit trail |
+|--------|---------|
+| MISSING | Stub placeholder -- no content yet |
+| DRAFT | Content inserted but not yet ratified |
+| ACTIVE | Ratified by Governance Plane -- authoritative |
+| DEPRECATED | Superseded by newer content -- kept for audit trail |
 
 ## Canon Pointer
 
-The `uiao-core` repository contains a `docs/CANON_POINTER.md` file that links back to this Canon. Machine consumers that need to locate governance documentation should start from the Canon Pointer.
+The `uiao-core` repository contains a `docs/CANON_POINTER.md` file that links back to this Canon.
+Machine consumers that need to locate governance documentation should start from the Canon Pointer.
