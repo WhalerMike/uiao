@@ -1,32 +1,33 @@
 ---
-adr_id: "ADR-008"
-title: "Zero-Trust Identity Anchoring"
-family: "B - Truth Fabric"
-status: "Proposed"
-date: "2026-04-07"
+title: "ADR-008: Zero-Trust Identity Anchoring"
+adr: "ADR-008"
+status: ACCEPTED
+date: "2026-01-22"
+deciders: ["UIAO Governance Board"]
 ---
 
-# ADR-008 - Zero-Trust Identity Anchoring
+# ADR-008: Zero-Trust Identity Anchoring
 
-> **Status:** Proposed - [NEW (Proposed)] awaiting ratification.
-> **Family:** B - Truth Fabric
+## Status
+
+ACCEPTED
 
 ## Context
 
-<!-- TODO: Describe the context and problem statement -->
+UIAO receives identity claims from adapters across multiple systems. Without explicit verification, an adapter could assert a false identity anchor (e.g., claiming that a user in System A is the same person as a user in System B). This could lead to unauthorized access escalation or incorrect compliance attestations.
 
 ## Decision
 
-<!-- MISSING - Awaiting ratification content -->
+The Truth Fabric adopts a **zero-trust identity anchoring** model: no anchor binding is trusted by default, regardless of the source. Every anchor binding requires at least one of: cryptographic proof from the subject, cross-system corroboration from two independent adapters, or manual Governance Plane authorization. Unverified anchors are marked PENDING and treated as low-confidence.
 
 ## Consequences
 
-<!-- MISSING - Awaiting ratification content -->
+**Positive:**
+- Prevents false identity correlations that could lead to privilege escalation
+- Provides a clear verification audit trail
+- Compliant with zero-trust architecture principles
 
-## Rationale
-
-<!-- TODO: Describe the rationale for this decision -->
-
-## Related ADRs
-
-<!-- TODO: List related ADR IDs -->
+**Negative:**
+- New anchor bindings require verification before they can be used in HIGH-confidence compliance attestations
+- Initial onboarding of multi-system identities requires more effort
+- PENDING anchors add complexity to compliance queries
