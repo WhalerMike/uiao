@@ -66,6 +66,7 @@
 * **ksi:** update ksi-au-12.yaml to 10/10 quality standard (Batch 5) ([73dae84](https://github.com/WhalerMike/uiao-core/commit/73dae84b383c36516dac91f520c5c62f7bba06de))
 * **ksi:** update ksi-cm-01.yaml to 10/10 quality standard (Batch 5) ([28704a2](https://github.com/WhalerMike/uiao-core/commit/28704a2ae977882937015e7494a9c0cb02fe8065))
 * **ksi:** update ksi-cm-02.yaml to 10/10 quality standard (Batch 6) ([587ddb1](https://github.com/WhalerMike/uiao-core/commit/587ddb1381f0f65442f2901c81520ebb9f1a5d8d))
+* **ksi:** update ksi-cm-03.yaml to 10/10 quality standard (Batch 6) ([024e4fd](https://github.com/WhalerMike/uiao-core/commit/024e4fd12ccae93d29bcdef30c6a006dc3ea17eb))
 * **ksi:** update ksi-cm-06.yaml to 10/10 quality standard (Batch 5) ([0929f80](https://github.com/WhalerMike/uiao-core/commit/0929f80b54b6fcb681a37d29a425bbdaf9f35841))
 * **ksi:** update ksi-cm-07.yaml to 10/10 quality standard (Batch 5) ([52e9e02](https://github.com/WhalerMike/uiao-core/commit/52e9e02236fcec57f9a845eb9ec45b6b23cb0405))
 * **ksi:** update ksi-si-07.yaml to 10/10 quality standard (Batch 5) ([df9a1fc](https://github.com/WhalerMike/uiao-core/commit/df9a1fc695f4b4127ef323de63485666ef3d2ef8))
