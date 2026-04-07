@@ -24,11 +24,11 @@ As a SCuBA maintainer, you:
    [docs/SCuBA-Pipeline-Runbook.md](SCuBA-Pipeline-Runbook.md)
 
 2. **Appendix B — UIAO SCuBA Pipeline (Summary & Diagrams)**
-   [appendices/Appendix-B-UIAO-SCuBA-Pipeline.md](../appendices/Appendix-B-UIAO-SCuBA-Pipeline.md)
+   [appendices/Appendix-B-UIAO-SCuBA-Pipeline.md](https://github.com/WhalerMike/uiao-docs/tree/main/appendices)
 
 3. **KSI Ruleset and Mapping Tables**
    - KSI rules: `uiao-core/ksi/rules/`
-   - Mapping tables: [Appendix C](../appendices/Appendix-C-KSI-Mapping-Tables.md)
+   - Mapping tables: [Appendix C](https://github.com/WhalerMike/uiao-docs/tree/main/appendices)
 
 ---
 
