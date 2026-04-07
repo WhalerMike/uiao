@@ -1,4 +1,48 @@
-@startuml
-' PLACEHOLDER - replace with full PlantUML source from Copilot task.
-' File: uiao-drift-fabric.puml
+@startuml UIAO_Drift_Fabric
+' Appendix C — Drift Fabric Cross-Dependency Diagram
+
+skinparam backgroundColor #FEFEFE
+skinparam componentBackgroundColor #FFF3E0
+skinparam componentBorderColor #E65100
+skinparam componentFontSize 12
+skinparam arrowColor #2C3E50
+
+title **Appendix C — Drift Fabric**\n//Internal & Cross-Plane Dependencies//
+
+component "C-01\nDrift Detection" as C01 {
+  portin "ADR-009" as a009
+}
+
+component "C-02\nDrift Taxonomy" as C02 {
+  portin "ADR-012" as a012
+}
+
+component "C-03\nVendor Failure\nContainment" as C03 {
+  portin "ADR-019" as a019
+}
+
+' Internal dependencies [NEW (Proposed)]
+C01 --> C02 : detected drift\nclassified by taxonomy
+C01 --> C03 : detection triggers\ncontainment evaluation
+C03 --> C02 : failure events\nmap to taxonomy
+
+' Cross-plane inbound/outbound [NEW (Proposed)]
+component "A-02 Adapter\nSandbox" as A02 #E8F0FE
+component "A-04 Adapter\nHealth" as A04 #E8F0FE
+component "B-04 Control\nMapping" as B04 #E8F8E8
+component "D-01 Evidence\nDeterminism" as D01 #FCE4EC
+component "D-04 Evidence\nCorrelation" as D04 #FCE4EC
+
+B04 ..> C01 : baselines\nfeed detection
+A04 ..> C01 : health signals\ntrigger drift
+C01 ..> D01 : drift -> evidence
+C02 ..> D04 : taxonomy ->\ncorrelation
+C03 ..> A02 : containment ->\nsandbox isolation
+
+note bottom
+  Drift Fabric detects, classifies, and contains
+  configuration and compliance drift.
+  Drift Ledger is immutable (ADR-009).
+end note
+
 @enduml
