@@ -1,32 +1,33 @@
 ---
-adr_id: "ADR-009"
-title: "Drift Ledger Immutability"
-family: "C - Drift Fabric"
-status: "Proposed"
-date: "2026-04-07"
+title: "ADR-009: Drift Ledger Immutability"
+adr: "ADR-009"
+status: ACCEPTED
+date: "2026-01-22"
+deciders: ["UIAO Governance Board"]
 ---
 
-# ADR-009 - Drift Ledger Immutability
+# ADR-009: Drift Ledger Immutability
 
-> **Status:** Proposed - [NEW (Proposed)] awaiting ratification.
-> **Family:** C - Drift Fabric
+## Status
+
+ACCEPTED
 
 ## Context
 
-<!-- TODO: Describe the context and problem statement -->
+The Drift Fabric detects deviations between observed state and canonical state. Some detected drift events may later be determined to be false positives (e.g., a correctly-authorized change that wasn't tracked). The question was: should drift records be deletable or modifiable after the fact?
 
 ## Decision
 
-<!-- MISSING - Awaiting ratification content -->
+All Drift Records are **immutable**. They are written to the Evidence Fabric and cannot be modified or deleted. If a drift event is later determined to be a false positive, a correction record is appended — the original record remains. This applies equally to false positives, authorized deviations, and superseded drift events.
 
 ## Consequences
 
-<!-- MISSING - Awaiting ratification content -->
+**Positive:**
+- The drift ledger is a reliable audit trail — no one can retroactively remove evidence of drift
+- Compliance assessors can trust that drift records represent what actually happened
+- Forensic investigations can reconstruct the complete drift history
 
-## Rationale
-
-<!-- TODO: Describe the rationale for this decision -->
-
-## Related ADRs
-
-<!-- TODO: List related ADR IDs -->
+**Negative:**
+- False positive drift records accumulate — queries must filter them using correction record status
+- Storage grows monotonically
+- Developers cannot "clean up" test drift records from production environments
