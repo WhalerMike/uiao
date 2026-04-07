@@ -1,32 +1,34 @@
 ---
-adr_id: "ADR-012"
-title: "Canonical Drift Taxonomy"
-family: "C - Drift Fabric"
-status: "Proposed"
-date: "2026-04-07"
+title: "ADR-012: Canonical Drift Taxonomy"
+adr: "ADR-012"
+status: ACCEPTED
+date: "2026-02-01"
+deciders: ["UIAO Governance Board"]
 ---
 
-# ADR-012 - Canonical Drift Taxonomy
+# ADR-012: Canonical Drift Taxonomy
 
-> **Status:** Proposed - [NEW (Proposed)] awaiting ratification.
-> **Family:** C - Drift Fabric
+## Status
+
+ACCEPTED
 
 ## Context
 
-<!-- TODO: Describe the context and problem statement -->
+Without a canonical taxonomy for drift types, different adapters and teams would use inconsistent terminology when reporting drift events. This would make it impossible to aggregate drift statistics, set consistent severity thresholds, or produce meaningful governance reports.
 
 ## Decision
 
-<!-- MISSING - Awaiting ratification content -->
+The Drift Fabric adopts a canonical drift taxonomy with five drift types (DT-01 through DT-05) and five severity levels (INFO, LOW, MEDIUM, HIGH, CRITICAL). The taxonomy is defined in Appendix C-02 and is machine-readable in `uiao-core`. All Drift Records MUST use a taxonomy-defined drift type and severity.
+
+The taxonomy can only be extended (new types added) — existing types cannot be modified or removed. Extensions require Governance Plane approval and a new ADR entry.
 
 ## Consequences
 
-<!-- MISSING - Awaiting ratification content -->
+**Positive:**
+- Consistent drift classification across all adapters
+- Enables meaningful drift aggregation and trending
+- Severity levels drive consistent automated actions
 
-## Rationale
-
-<!-- TODO: Describe the rationale for this decision -->
-
-## Related ADRs
-
-<!-- TODO: List related ADR IDs -->
+**Negative:**
+- Taxonomy evolution requires governance overhead
+- Some drift events may not fit neatly into a single taxonomy type — multi-type classification is allowed but adds complexity
