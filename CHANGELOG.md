@@ -63,6 +63,7 @@
 * **ksi:** regenerate 163 KSI files into category subdirs via updated generator ([3684ef7](https://github.com/WhalerMike/uiao-core/commit/3684ef703c58f4166dc480cbb69f3df8297bdb5f))
 * **ksi:** run Tier 2 enrichment on remaining 148 KSIs ([bffb8b4](https://github.com/WhalerMike/uiao-core/commit/bffb8b44ef8da43da9b5f435e4d1ef815f4c7e87))
 * **ksi:** tier1 enrichment - 15 critical/high KSIs with full pass_criteria and uiao_extensions ([d526354](https://github.com/WhalerMike/uiao-core/commit/d526354d24a3fb1e811c96268fae6d6acc0e0c3c))
+* **ksi:** update ksi-ac-14.yaml to 10/10 quality standard (IAM batch) ([324eb56](https://github.com/WhalerMike/uiao-core/commit/324eb560992473794ea198b17341822a1e769c97))
 * **ksi:** update ksi-at-03.yaml to 10/10 quality standard (Batch 9) ([d6bc1fe](https://github.com/WhalerMike/uiao-core/commit/d6bc1fefc05fe6693f4b9c8700f75cb7086aa6fd))
 * **ksi:** update ksi-au-12.yaml to 10/10 quality standard (Batch 5) ([73dae84](https://github.com/WhalerMike/uiao-core/commit/73dae84b383c36516dac91f520c5c62f7bba06de))
 * **ksi:** update ksi-cm-01.yaml to 10/10 quality standard (Batch 5) ([28704a2](https://github.com/WhalerMike/uiao-core/commit/28704a2ae977882937015e7494a9c0cb02fe8065))
