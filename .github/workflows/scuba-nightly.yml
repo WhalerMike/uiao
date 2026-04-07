@@ -1,0 +1,61 @@
+name: UIAO SCuBA Nightly Assessment
+
+on:
+  schedule:
+    - cron: "0 4 * * *"  # Every day at 04:00 UTC
+  workflow_dispatch:
+
+jobs:
+  scuba-nightly:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Required PowerShell Modules
+        shell: pwsh
+        run: |
+          Install-Module -Name ExchangeOnlineManagement -Force -Scope CurrentUser
+          Install-Module -Name Microsoft.Graph -Force -Scope CurrentUser
+
+      - name: Configure SCuBA Credentials
+        shell: pwsh
+        env:
+          SCUBA_USERNAME: ${{ secrets.SCUBA_USERNAME }}
+          SCUBA_PASSWORD: ${{ secrets.SCUBA_PASSWORD }}
+        run: |
+          # Placeholder: configure auth for ScubaGear using secrets
+          # Example:
+          # $secPassword = (ConvertTo-SecureString $env:SCUBA_PASSWORD -AsPlainText -Force)
+          # $cred = New-Object System.Management.Automation.PSCredential($env:SCUBA_USERNAME, $secPassword)
+          Write-Host "SCuBA credentials configured (placeholder)."
+
+      - name: Run UIAO SCuBA Pipeline
+        shell: pwsh
+        run: |
+          pwsh ./uiao-core/adapters/scuba/run/adapter-run-scuba.ps1 `
+               -OutputDirectory ./uiao-core/artifacts/scuba
+
+      - name: Generate Provenance Manifest
+        shell: pwsh
+        run: |
+          $rawFile        = Get-ChildItem ./uiao-core/artifacts/scuba/raw        -Filter *.json | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          $normalizedFile = Get-ChildItem ./uiao-core/artifacts/scuba/normalized  -Filter *.json | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          $reportFile     = Get-ChildItem ./uiao-core/artifacts/scuba/reports     -Filter *.json | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+          pwsh ./uiao-core/provenance/manifests/generate-manifest.ps1 `
+               -RawFilePath        $rawFile.FullName `
+               -NormalizedFilePath $normalizedFile.FullName `
+               -ReportFilePath     $reportFile.FullName `
+               -OutputDirectory    ./uiao-core/provenance/manifests
+
+      - name: Upload SCuBA Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: scuba-nightly-artifacts
+          path: |
+            ./uiao-core/artifacts/scuba/raw
+            ./uiao-core/artifacts/scuba/normalized
+            ./uiao-core/artifacts/scuba/reports
+            ./uiao-core/provenance/manifests
