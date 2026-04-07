@@ -1,0 +1,84 @@
+name: Validate UIAO Frontmatter and Badges
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**/*.md'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate-frontmatter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find changed markdown files
+        id: files
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1 || true
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...${{ github.sha }} -- 'docs/**/*.md' 2>/dev/null || true)
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Validate frontmatter and badges
+        if: steps.files.outputs.changed_files != ''
+        run: |
+          set -euo pipefail
+          FAIL=0
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            [ -f "$f" ] || continue
+            echo "Checking: $f"
+
+            # Extract YAML frontmatter between first two --- lines
+            FRONT=$(awk 'BEGIN{p=0} /^---/{if(p==0){p=1;next} else {exit}} p==1{print}' "$f")
+
+            if [ -z "$FRONT" ]; then
+              echo "::warning file=$f::No YAML frontmatter found. Add frontmatter with uiao_id, status, and owner."
+              continue
+            fi
+
+            # Check uiao_id (flexible: accepts uiao_id: or id: patterns)
+            UIAO_ID=$(echo "$FRONT" | grep -E '^(uiao_id|uiao.id)\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1)
+            if [ -z "$UIAO_ID" ]; then
+              echo "::warning file=$f::Missing uiao_id in frontmatter. Expected pattern: UIAO_A_01"
+            else
+              if ! echo "$UIAO_ID" | grep -Eq '^UIAO_[A-Z]_[0-9]{2,}$'; then
+                echo "::error file=$f::uiao_id '$UIAO_ID' invalid. Must match UIAO_<Letter>_<NN>. Example: UIAO_A_01"
+                FAIL=1
+              fi
+            fi
+
+            # Check status
+            STATUS=$(echo "$FRONT" | grep -E '^status\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1)
+            if [ -z "$STATUS" ]; then
+              echo "::error file=$f::Missing status in frontmatter. Allowed: Current, Draft, Needs Replacing, Needs Creating, Deprecated"
+              FAIL=1
+            else
+              if ! echo "$STATUS" | grep -Eiq '^(Current|Draft|Needs Replacing|Needs Creating|Deprecated)$'; then
+                echo "::error file=$f::Invalid status '$STATUS'. Allowed: Current, Draft, Needs Replacing, Needs Creating, Deprecated"
+                FAIL=1
+              fi
+            fi
+
+            # Check owner (warning only)
+            OWNER=$(echo "$FRONT" | grep -E '^owner\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1)
+            if [ -z "$OWNER" ]; then
+              echo "::warning file=$f::Missing owner in frontmatter."
+            fi
+
+          done <<< "${{ steps.files.outputs.changed_files }}"
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo ""
+            echo "Frontmatter validation failed. Fix errors above and re-push."
+            exit 1
+          fi
+          echo "All checked files passed frontmatter validation."
