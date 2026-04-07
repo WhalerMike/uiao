@@ -48,11 +48,11 @@ docs/canon/
 | [Glossary](glossary.md) | Definitions for all UIAO terms — start here if a term is unfamiliar |
 | [Migration Plan](migration-plan.md) | How the documentation structure was migrated and what remains |
 | [PDF Layout Spec](pdf-layout-spec.md) | Requirements for the PDF export of this Canon |
-| [Appendix A — Adapter Plane](../appendix/a/index.md) | Adapter registration, schema, and lifecycle |
-| [Appendix B — Truth Fabric](../appendix/b/index.md) | Canonical state model and query API |
-| [Appendix C — Drift Fabric](../appendix/c/index.md) | Drift detection and reconciliation |
-| [Appendix D — Evidence Fabric](../appendix/d/index.md) | Audit events and compliance attestations |
-| [Appendix E — Governance Plane](../appendix/e/index.md) | Governance review process and Canon change protocol |
+| [Appendix A — Adapter Plane](../appendix/a-adapter-plane/index.md) | Adapter registration, schema, and lifecycle |
+| [Appendix B — Truth Fabric](../appendix/b-truth-fabric/index.md) | Canonical state model and query API |
+| [Appendix C — Drift Fabric](../appendix/c-drift-fabric/index.md) | Drift detection and reconciliation |
+| [Appendix D — Evidence Fabric](../appendix/d-evidence-fabric/index.md) | Audit events and compliance attestations |
+| [Appendix E — Governance Plane](../appendix/e-governance-plane/index.md) | Governance review process and Canon change protocol |
 | [ADR Index](../adr/index.md) | All architectural decision records |
 
 ## Status Definitions
