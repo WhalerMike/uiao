@@ -1,37 +1,60 @@
 ---
-title: "E-01 ARB Coordination"
-family: "Appendix E - Governance Plane"
-sub_appendix: "E-01"
-status: MISSING
-adrs: []
-cross_plane_dependencies: []
+title: "Appendix E-01: Architecture Review Board Coordination"
+appendix: "E-01"
+family: "Governance Plane"
+status: DRAFT
+version: "1.0"
+last_updated: "2026-04-07"
+related_adrs: ["ADR-018"]
 ---
 
-# E-01 ARB Coordination
-
-> **Status:** MISSING - Awaiting population from canonical source.
-> **Sub-Appendix:** E-01 | **Family:** Appendix E - Governance Plane
+# Appendix E-01: Architecture Review Board Coordination
 
 ## Purpose
 
-<!-- TODO: Describe the purpose of this sub-appendix -->
+This appendix defines how the UIAO Governance Plane coordinates with the Architecture Review Board (ARB) for decisions that require cross-organizational governance. The ARB is the enterprise-level authority for architectural decisions; the UIAO Governance Board is the domain-specific authority for UIAO governance. This appendix clarifies their interaction.
 
 ## Scope
 
-<!-- TODO: Define what is in and out of scope -->
+Applies to all UIAO governance decisions that have cross-organizational architectural implications: changes to the Canonical Claim Schema, new fabric introductions, cross-fabric dependency exceptions, and mission channel enforcement changes.
 
-## Related ADRs
+## ARB vs. Governance Board Authority
 
-<!-- TODO: List ADR numbers and titles -->
+| Decision Type | Authority |
+|---|---|
+| UIAO Canonical Rules changes | Governance Board (required) + ARB (advisory) |
+| New fabric introduction | Governance Board (required) + ARB (required) |
+| Cross-fabric dependency exception (CR-004 waiver) | Governance Board (required) + ARB (required) |
+| New adapter registration (standard) | Governance Board only |
+| New adapter registration (mission-critical) | Governance Board (required) + ARB (advisory) |
+| ADR acceptance (standard) | Governance Board only |
+| ADR acceptance (architectural impact) | Governance Board (required) + ARB (required) |
+| Mission channel enforcement changes | Governance Board + ARB (required) |
 
-## Cross-Plane Dependencies
+## ARB Escalation Process
 
-<!-- TODO: List dependencies on other appendix families -->
+When a UIAO governance decision requires ARB involvement:
+1. The Governance Board prepares an ARB briefing package containing: the proposed change, impact analysis, relevant ADRs, and supporting evidence from the Evidence Fabric
+2. The briefing package is submitted to the ARB at least 10 business days before the required decision date
+3. The ARB reviews and provides one of: APPROVED, APPROVED_WITH_CONDITIONS, DEFERRED, or REJECTED
+4. The Governance Board records the ARB decision in the Evidence Fabric as a governance event
+5. If APPROVED or APPROVED_WITH_CONDITIONS: the Governance Board proceeds with the change per the ARB's conditions
+6. If DEFERRED or REJECTED: the Governance Board documents the outcome in the relevant ADR and does not proceed
 
-## Governance Rules
+## Mission Channel Enforcement
 
-<!-- TODO: List applicable governance rules (CR-001 through CR-004) -->
+Per ADR-018, mission channels are designated integration pathways that carry mission-critical data and require elevated governance oversight. Changes to mission channel enforcement rules require ARB approval. Mission channel definitions are maintained in `uiao-core` and referenced in this documentation.
 
-## Implementation Status
+## ARB Representation
 
-<!-- TODO: Describe current implementation state -->
+The UIAO Governance Board maintains a designated ARB liaison responsible for:
+- Preparing ARB briefing packages
+- Attending ARB meetings on behalf of the Governance Board
+- Tracking ARB decisions and ensuring they are recorded in the Evidence Fabric
+- Reporting ARB decisions to the Governance Board
+
+## Dependencies
+
+- **ADR-018:** Mission channel enforcement decision record
+- **Appendix E-02:** Mission partner corridors (cross-org channel governance)
+- **Appendix E-03:** Cross-fabric consistency (requires ARB for exceptions)
