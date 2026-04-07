@@ -1,4 +1,62 @@
-@startuml
-' PLACEHOLDER - replace with full PlantUML source from Copilot task.
-' File: uiao-evidence-fabric.puml
+@startuml UIAO_Evidence_Fabric
+' Appendix D — Evidence Fabric Cross-Dependency Diagram
+
+skinparam backgroundColor #FEFEFE
+skinparam componentBackgroundColor #FCE4EC
+skinparam componentBorderColor #C62828
+skinparam componentFontSize 12
+skinparam arrowColor #2C3E50
+
+title **Appendix D — Evidence Fabric**\n//Internal & Cross-Plane Dependencies//
+
+component "D-01\nEvidence\nDeterminism" as D01 {
+  portin "ADR-006" as a006
+  portin "ADR-020" as a020
+}
+
+component "D-02\nEvidence\nLifecycle" as D02 {
+  portin "ADR-016" as a016
+  portin "ADR-026" as a026
+}
+
+component "D-03\nEvidence\nSigning" as D03 {
+  portin "ADR-022" as a022
+  portin "ADR-024" as a024
+}
+
+component "D-04\nEvidence\nCorrelation" as D04 {
+  portin "ADR-014" as a014
+  portin "ADR-011" as a011
+}
+
+' Internal dependencies [NEW (Proposed)]
+D01 --> D02 : determinism guarantees\ngovern lifecycle
+D01 --> D03 : deterministic evidence\nis signable
+D01 --> D04 : determinism enables\ncorrelation
+D02 --> D03 : lifecycle state\ngates signing
+D03 --> D04 : signed evidence\nenables correlation
+
+' Cross-plane inbound/outbound [NEW (Proposed)]
+component "A-01 Adapter\nLifecycle" as A01 #E8F0FE
+component "A-04 Adapter\nHealth" as A04 #E8F0FE
+component "B-01 Canonical\nClaim Schema" as B01 #E8F8E8
+component "B-04 Control\nMapping" as B04 #E8F8E8
+component "C-01 Drift\nDetection" as C01 #FFF3E0
+component "C-02 Drift\nTaxonomy" as C02 #FFF3E0
+component "E-03 Cross-Fabric\nConsistency" as E03 #EDE7F6
+
+B01 ..> D01 : claims -> evidence
+C01 ..> D01 : drift -> evidence
+A04 ..> D01 : health -> evidence
+A01 ..> D02 : adapter events\n-> lifecycle
+D04 ..> B04 : correlation ->\ncontrol mapping
+C02 ..> D04 : taxonomy ->\ncorrelation
+D01 ..> E03 : consistency gate
+
+note bottom
+  Evidence Fabric is the provenance layer.
+  KSI->OSCAL back-matter bridge via ksi_linker.py.
+  Evidence Linker established in foundational session.
+end note
+
 @enduml
