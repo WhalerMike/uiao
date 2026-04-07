@@ -69,6 +69,7 @@
 * **ksi:** update ksi-cm-03.yaml to 10/10 quality standard (Batch 6) ([024e4fd](https://github.com/WhalerMike/uiao-core/commit/024e4fd12ccae93d29bcdef30c6a006dc3ea17eb))
 * **ksi:** update ksi-cm-06.yaml to 10/10 quality standard (Batch 5) ([0929f80](https://github.com/WhalerMike/uiao-core/commit/0929f80b54b6fcb681a37d29a425bbdaf9f35841))
 * **ksi:** update ksi-cm-07.yaml to 10/10 quality standard (Batch 5) ([52e9e02](https://github.com/WhalerMike/uiao-core/commit/52e9e02236fcec57f9a845eb9ec45b6b23cb0405))
+* **ksi:** update ksi-cm-08.yaml to 10/10 quality standard (Batch 6) ([7f867d7](https://github.com/WhalerMike/uiao-core/commit/7f867d72d344eaf6aae4a2186b0790a6a2867af6))
 * **ksi:** update ksi-si-07.yaml to 10/10 quality standard (Batch 5) ([df9a1fc](https://github.com/WhalerMike/uiao-core/commit/df9a1fc695f4b4127ef323de63485666ef3d2ef8))
 * **ksi:** update ksi-si-16.yaml to 10/10 quality standard (Batch 5) ([c8d16d2](https://github.com/WhalerMike/uiao-core/commit/c8d16d2bc53f786a5a076a1be6d768229bcfbb57))
 * local JAR renderer with plantweb fallback in plantuml.py ([ce19fae](https://github.com/WhalerMike/uiao-core/commit/ce19fae32a4969540c5c35fb0ef0939af73d57d0))
