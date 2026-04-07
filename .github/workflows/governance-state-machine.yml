@@ -1,0 +1,59 @@
+name: Governance State Machine Enforcement
+
+on:
+  issues:
+    types: [opened, labeled, edited]
+  pull_request:
+    types: [opened, synchronize, closed]
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  enforce:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Evaluate Issue State
+        if: github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE=${{ github.event.issue.number }}
+          REPO=${{ github.repository }}
+
+          # New drift -> needs-owner-ack
+          if gh issue view $ISSUE --repo $REPO --json labels | jq -e '.labels[].name | select(.=="metadata-drift")' >/dev/null 2>&1; then
+            gh issue edit $ISSUE --repo $REPO --add-label needs-owner-ack || true
+          fi
+
+          # SLA at risk (48h)
+          CREATED=$(gh issue view $ISSUE --repo $REPO --json createdAt | jq -r '.createdAt')
+          AGE=$(( ( $(date +%s) - $(date -d "$CREATED" +%s) ) / 3600 ))
+          if [ $AGE -ge 48 ] && [ $AGE -lt 72 ]; then
+            gh issue edit $ISSUE --repo $REPO --add-label sla-at-risk || true
+          fi
+
+          # SLA breached (72h)
+          if [ $AGE -ge 72 ]; then
+            gh issue edit $ISSUE --repo $REPO --add-label sla-breached || true
+          fi
+
+      - name: Evaluate PR State
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+          MERGED=${{ github.event.pull_request.merged }}
+
+          # PR merged -> remediation-complete
+          if [ "$MERGED" == "true" ]; then
+            gh pr edit $PR --repo $REPO --add-label remediation-complete || true
+          fi
