@@ -5,7 +5,7 @@ on:
     inputs:
       doc_path:
         description: 'Document path relative to docs/ (e.g., documents/uiao-042.md)'
-        required: true
+        required: false
         type: string
       format:
         description: 'Output format'
@@ -17,7 +17,7 @@ on:
           - both
         default: docx
       mode:
-        description: 'Export mode'
+        description: 'Export mode: single = one file, all = entire docs/ tree'
         required: true
         type: choice
         options:
@@ -34,23 +34,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Pandoc
-        run: sudo apt-get install -y pandoc
+      - name: Install Pandoc and LaTeX (for PDF)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y pandoc texlive-xetex texlive-fonts-recommended
 
-      - name: Export document
+      - name: Export document(s)
         run: |
           mkdir -p exports
-          DOC="docs/${{ inputs.doc_path }}"
-          BASE=$(basename "$DOC" .md)
-          if [ "${{ inputs.format }}" = "docx" ] || [ "${{ inputs.format }}" = "both" ]; then
-            REF_FLAG=""
-            if [ -f .github/export-template.docx ]; then
-              REF_FLAG="--reference-doc=.github/export-template.docx"
+
+          do_export() {
+            local DOC="$1"
+            local BASE
+            BASE=$(basename "$DOC" .md)
+            local SUBDIR
+            SUBDIR=$(dirname "$DOC" | sed 's|^docs/||')
+            mkdir -p "exports/$SUBDIR"
+
+            if [ "${{ inputs.format }}" = "docx" ] || [ "${{ inputs.format }}" = "both" ]; then
+              REF_FLAG=""
+              if [ -f .github/export-template.docx ]; then
+                REF_FLAG="--reference-doc=.github/export-template.docx"
+              fi
+              pandoc "$DOC" -o "exports/$SUBDIR/${BASE}.docx" $REF_FLAG
             fi
-            pandoc "$DOC" -o "exports/${BASE}.docx" $REF_FLAG
-          fi
-          if [ "${{ inputs.format }}" = "pdf" ] || [ "${{ inputs.format }}" = "both" ]; then
-            pandoc "$DOC" -o "exports/${BASE}.pdf"
+
+            if [ "${{ inputs.format }}" = "pdf" ] || [ "${{ inputs.format }}" = "both" ]; then
+              pandoc "$DOC" --pdf-engine=xelatex -o "exports/$SUBDIR/${BASE}.pdf"
+            fi
+          }
+
+          if [ "${{ inputs.mode }}" = "all" ]; then
+            find docs/ -name "*.md" | while read -r f; do
+              do_export "$f"
+            done
+          else
+            if [ -z "${{ inputs.doc_path }}" ]; then
+              echo "ERROR: doc_path is required when mode=single"
+              exit 1
+            fi
+            do_export "docs/${{ inputs.doc_path }}"
           fi
 
       - name: Upload export artifacts
