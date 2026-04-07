@@ -1,32 +1,38 @@
 ---
-adr_id: "ADR-018"
-title: "Mission-Channel Enforcement Guarantees"
-family: "E - Governance Plane"
-status: "Proposed"
-date: "2026-04-07"
+title: "ADR-018: Mission Channel Enforcement"
+adr: "ADR-018"
+status: ACCEPTED
+date: "2026-02-15"
+deciders: ["UIAO Governance Board", "ARB"]
 ---
 
-# ADR-018 - Mission-Channel Enforcement Guarantees
+# ADR-018: Mission Channel Enforcement
 
-> **Status:** Proposed - [NEW (Proposed)] awaiting ratification.
-> **Family:** E - Governance Plane
+## Status
+
+ACCEPTED
 
 ## Context
 
-<!-- TODO: Describe the context and problem statement -->
+Some integration pathways carry mission-critical data that requires elevated governance controls. These pathways (Mission Channels) need to be explicitly defined, governed, and monitored at a higher standard than ordinary adapter integrations.
 
 ## Decision
 
-<!-- MISSING - Awaiting ratification content -->
+The Governance Plane maintains a registry of **Mission Channels** — designated integration pathways with elevated governance requirements. Mission Channels require ARB approval to establish or change. Adapters operating in a Mission Channel are subject to:
+- Elevated evidence recording (all events recorded at HIGH or CRITICAL severity)
+- Dedicated drift detection rules
+- Mandatory Governance Plane notification for any MEDIUM or higher event
+- Annual Mission Channel review
+
+Mission Channels are a superset of Mission Partner Corridors (which require inter-organizational agreements) — an internal mission-critical pathway can be a Mission Channel without being a Corridor.
 
 ## Consequences
 
-<!-- MISSING - Awaiting ratification content -->
+**Positive:**
+- Critical pathways receive proportionate governance oversight
+- Mission Channel status is explicit and auditable
+- ARB involvement ensures cross-organizational awareness of critical channels
 
-## Rationale
-
-<!-- TODO: Describe the rationale for this decision -->
-
-## Related ADRs
-
-<!-- TODO: List related ADR IDs -->
+**Negative:**
+- Mission Channel designation requires ARB overhead
+- Elevated evidence recording for Mission Channels increases storage volume
