@@ -1,4 +1,61 @@
-@startuml
-' PLACEHOLDER - replace with full PlantUML source from Copilot task.
-' File: uiao-adapter-plane.puml
+@startuml UIAO_Adapter_Plane
+' Appendix A — Adapter Plane Cross-Dependency Diagram
+
+skinparam backgroundColor #FEFEFE
+skinparam componentBackgroundColor #E8F0FE
+skinparam componentBorderColor #4A6FA5
+skinparam componentFontSize 12
+skinparam arrowColor #2C3E50
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #F9A825
+
+title **Appendix A — Adapter Plane**\n//Internal & Cross-Plane Dependencies//
+
+component "A-01\nAdapter Lifecycle" as A01 {
+  portin "ADR-015" as a015
+  portin "ADR-027" as a027
+}
+
+component "A-02\nAdapter Sandbox\nExecution" as A02 {
+  portin "ADR-017" as a017
+}
+
+component "A-03\nAdapter Hot-Swap\n& Rollback" as A03 {
+  portin "ADR-021" as a021
+}
+
+component "A-04\nAdapter Health\n& Liveness" as A04 {
+  portin "ADR-025" as a025
+  portin "ADR-013" as a013
+  portin "ADR-023" as a023
+}
+
+' Internal dependencies [NEW (Proposed)]
+A01 --> A03 : lifecycle governs\nhot-swap eligibility
+A01 --> A02 : lifecycle governs\nsandbox provisioning
+A03 --> A04 : rollback triggers\nhealth recheck
+A02 --> A04 : sandbox reports\nliveness status
+
+' Cross-plane outbound [NEW (Proposed)]
+component "B-04 Control\nMapping" as B04 #E8F8E8
+component "C-01 Drift\nDetection" as C01 #FFF3E0
+component "C-03 Vendor Failure\nContainment" as C03 #FFF3E0
+component "D-01 Evidence\nDeterminism" as D01 #FCE4EC
+component "D-02 Evidence\nLifecycle" as D02 #FCE4EC
+component "E-01 ARB\nCoordination" as E01 #EDE7F6
+
+A01 ..> B04 : adapter controls
+A01 ..> D02 : evidence on\nlifecycle events
+A01 ..> E01 : ARB gate
+A04 ..> C01 : health -> drift signals
+A04 ..> D01 : health -> evidence
+A02 ..> C03 : sandbox <-> containment
+A03 ..> E01 : ARB gate\nfor hot-swap
+
+note bottom
+  Adapter Plane governs all adapter runtime behavior.
+  scuba_adapter.py is the canonical reference implementation.
+  CI: Lint/Ruff green on PR #292.
+end note
+
 @enduml
