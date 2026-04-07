@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       doc_path:
-        description: 'Document path relative to docs/ (e.g., documents/uiao-042.md)'
+        description: 'File path relative to docs/ -- required for mode=single, ignored for mode=all (e.g., canon/index.md)'
         required: false
+        default: 'canon/index.md'
         type: string
       format:
         description: 'Output format'
@@ -17,7 +18,7 @@ on:
           - both
         default: docx
       mode:
-        description: 'Export mode: single = one file, all = entire docs/ tree'
+        description: 'single = export one file (uses doc_path), all = export entire docs/ tree'
         required: true
         type: choice
         options:
@@ -31,6 +32,8 @@ permissions:
 jobs:
   export:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
@@ -69,11 +72,12 @@ jobs:
               do_export "$f"
             done
           else
-            if [ -z "${{ inputs.doc_path }}" ]; then
-              echo "ERROR: doc_path is required when mode=single"
+            TARGET="docs/${{ inputs.doc_path }}"
+            if [ ! -f "$TARGET" ]; then
+              echo "ERROR: File not found: $TARGET"
               exit 1
             fi
-            do_export "docs/${{ inputs.doc_path }}"
+            do_export "$TARGET"
           fi
 
       - name: Upload export artifacts
