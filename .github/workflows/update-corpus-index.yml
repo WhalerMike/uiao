@@ -1,0 +1,41 @@
+name: Update Corpus Index
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**/*.md'
+
+permissions:
+  contents: write
+
+jobs:
+  update-index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Update corpus index
+        run: node scripts/update_corpus_index.js
+
+      - name: Commit and push index if changed
+        run: |
+          git config user.name "uiao-bot"
+          git config user.email "uiao-bot@users.noreply.github.com"
+          if ! git diff --quiet docs/_data/corpus-index.json 2>/dev/null; then
+            git add docs/_data/corpus-index.json
+            git commit -m "chore: update corpus index [skip ci]"
+            git push
+          else
+            echo "Corpus index is up to date -- no changes to commit."
+          fi
