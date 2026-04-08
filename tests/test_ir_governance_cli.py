@@ -1,4 +1,5 @@
 """CLI smoke tests for ir-governance-report command."""
+
 from __future__ import annotations
 
 import json
@@ -67,9 +68,7 @@ class TestIRGovernanceReport:
 
     def test_out_writes_json(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "governance.json"
-        result = runner.invoke(
-            app, ["ir-governance-report", str(scuba_json), "--out", str(out)]
-        )
+        result = runner.invoke(app, ["ir-governance-report", str(scuba_json), "--out", str(out)])
         assert result.exit_code == 0, result.output
         assert out.exists()
         rows = json.loads(out.read_text())
