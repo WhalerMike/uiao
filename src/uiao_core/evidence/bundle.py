@@ -105,7 +105,7 @@ def build_bundle_from_transform_result(transform_result: Any) -> EvidenceBundle:
         if transform_result.evidence
         else "1970-01-01T00:00:00Z",
         version="1.0",
-        hash=None,
+        content_hash=None,
     )
     return EvidenceBundle(
         run_id=transform_result.run_id,
@@ -116,3 +116,4 @@ def build_bundle_from_transform_result(transform_result: Any) -> EvidenceBundle:
         policies=transform_result.policies,
         unmapped_ksi_ids=transform_result.unmapped_ksi_ids,
     )
+

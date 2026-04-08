@@ -1004,7 +1004,7 @@ def ir_drift_detect(
         source="cli:drift-detect",
         timestamp=datetime.now(timezone.utc).isoformat(),
         version="cli",
-        hash=None,
+        content_hash=None,
         actor="cli",
     )
     drift = build_drift_state(
@@ -1071,4 +1071,5 @@ def ir_governance_report(
         console.print(f"[green]Governance report JSON written to {out}[/green]")
 if __name__ == "__main__":
     app()
+
 

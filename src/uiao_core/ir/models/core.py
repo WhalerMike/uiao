@@ -33,7 +33,7 @@ class ProvenanceRecord(IRBase):
     source: str
     timestamp: str
     version: str
-    hash: Optional[str] = None
+    content_hash: Optional[str] = None
     actor: Optional[str] = None
 
 
@@ -133,7 +133,7 @@ def bind_policy(
         source="uiao-binding",
         timestamp="1970-01-01T00:00:00Z",
         version="0.1.0",
-        hash=None,
+        content_hash=None,
     )
     return BoundPolicy(
         id=f"bpg:{policy.id}:{identity.id}:{resource.id}:{boundary.id}",
@@ -144,3 +144,4 @@ def bind_policy(
         enforcement_targets=sorted_targets,
         provenance=prov,
     )
+
