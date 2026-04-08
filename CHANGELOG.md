@@ -58,6 +58,7 @@
 * add plantuml_jar setting to config (UIAO_PLANTUML_JAR env var) ([85d987b](https://github.com/WhalerMike/uiao-core/commit/85d987bf63c12cf4ae52cc3d7a8b60682fc48ebe))
 * **briefing:** implement uiao generate-briefing generator (SESSION ZERO) ([cd896a5](https://github.com/WhalerMike/uiao-core/commit/cd896a57ae399b21373c26489b64efbbdb901e59))
 * **cli:** add 'uiao adapter-run' command for ServiceNow and Entra adapters ([87b5db1](https://github.com/WhalerMike/uiao-core/commit/87b5db1b646be99ca319dbd37f3445ee8a0dc485))
+* **cli:** add ir-governance-report command -- full governance pipeline ([b3912d6](https://github.com/WhalerMike/uiao-core/commit/b3912d62cb5069862c571cdce2b971f5484016da))
 * **cli:** add ir-scuba-transform, ir-evidence-bundle, ir-poam-export, ir-drift-detect commands ([bc1b9c3](https://github.com/WhalerMike/uiao-core/commit/bc1b9c35bfd1ccdb8af4b3e52e30baf55a4f635e))
 * **evidence:** add EvidenceBundle + POA&M export with 21 tests ([5b8eb7c](https://github.com/WhalerMike/uiao-core/commit/5b8eb7cf13dea2a5237d7c04801a3e0fc968c48b))
 * expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
