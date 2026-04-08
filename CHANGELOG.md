@@ -101,6 +101,7 @@
 * local JAR renderer with plantweb fallback in plantuml.py ([ce19fae](https://github.com/WhalerMike/uiao-core/commit/ce19fae32a4969540c5c35fb0ef0939af73d57d0))
 * **p0:** auditor bundle, diff engine, IR validator — 3 CLI commands + 19 tests ([0c1836e](https://github.com/WhalerMike/uiao-core/commit/0c1836e43e816209e839cff049a252947bd2701c))
 * **p1:** add freshness engine ([7cf6095](https://github.com/WhalerMike/uiao-core/commit/7cf6095954f9387e9dd3cc3ec32f60b66bafa50f))
+* **p1:** add freshness engine tests ([6cff25d](https://github.com/WhalerMike/uiao-core/commit/6cff25d769dc5cf5295a9ce5cc1ad6e1a969c256))
 * **p1:** add freshness package __init__.py ([20bf983](https://github.com/WhalerMike/uiao-core/commit/20bf983c6288e5f5018ac9938aa889b400cfd475))
 * **p1:** add IR governance dashboard ([a00a88f](https://github.com/WhalerMike/uiao-core/commit/a00a88f08ab83c9a7c4531303d4d7a15c04a31d6))
 * render Generic Federal Agency disclaimer as amber notice box on title page ([cb8e8f5](https://github.com/WhalerMike/uiao-core/commit/cb8e8f572da70d146640994336f4326adf33e5b1))
