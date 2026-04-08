@@ -1,4 +1,5 @@
 """Public API for uiao_core.governance."""
+
 from uiao_core.governance.actions import GovernanceAction, build_governance_actions, classify_action_type
 from uiao_core.governance.drift import build_drift_state
 from uiao_core.governance.ownership import resolve_owner_for_ksi
