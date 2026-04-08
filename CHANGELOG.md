@@ -56,6 +56,7 @@
 * add plantuml_jar setting to config (UIAO_PLANTUML_JAR env var) ([85d987b](https://github.com/WhalerMike/uiao-core/commit/85d987bf63c12cf4ae52cc3d7a8b60682fc48ebe))
 * **briefing:** implement uiao generate-briefing generator (SESSION ZERO) ([cd896a5](https://github.com/WhalerMike/uiao-core/commit/cd896a57ae399b21373c26489b64efbbdb901e59))
 * **cli:** add 'uiao adapter-run' command for ServiceNow and Entra adapters ([87b5db1](https://github.com/WhalerMike/uiao-core/commit/87b5db1b646be99ca319dbd37f3445ee8a0dc485))
+* **evidence:** add EvidenceBundle + POA&M export with 21 tests ([5b8eb7c](https://github.com/WhalerMike/uiao-core/commit/5b8eb7cf13dea2a5237d7c04801a3e0fc968c48b))
 * expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
 * **governance:** add deterministic IR-based drift detection ([9d301d5](https://github.com/WhalerMike/uiao-core/commit/9d301d56d376cac7e83c625498956e84d2a9013d))
 * **ir:** add canonical IR models + KSI to IR mapping layer ([a23fe01](https://github.com/WhalerMike/uiao-core/commit/a23fe012eebcd1bb42c4c379e5cfe27da6bf2bf3))
