@@ -3,13 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 from uiao_core.ir.adapters.scuba.transformer import (
     SCuBATransformResult,
     transform_scuba_to_ir,
 )
-from uiao_core.ir.models.core import Evidence
 
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "scuba_normalized_sample.json"

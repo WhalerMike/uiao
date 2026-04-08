@@ -12,11 +12,7 @@ def _classify_drift(
 ) -> str:
     if expected_hash == actual_hash:
         return "benign"
-    changed_fields = (
-        set(delta.get("changed", []))
-        | set(delta.get("added", []))
-        | set(delta.get("removed", []))
-    )
+    changed_fields = set(delta.get("changed", [])) | set(delta.get("added", [])) | set(delta.get("removed", []))
     if len(changed_fields) <= 3:
         return "risky"
     return "unauthorized"

@@ -1,8 +1,10 @@
 from __future__ import annotations
-from typing import List, Optional, Dict, Any, Literal
-from pydantic import BaseModel, Field, ConfigDict
-import json
+
 import hashlib
+import json
+from typing import Any, Dict, List, Literal, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 def canonical_json(data: Any) -> str:
@@ -17,6 +19,7 @@ def canonical_hash(data: Any) -> str:
 
 class IRBase(BaseModel):
     """Canonical, immutable IR base."""
+
     model_config = ConfigDict(frozen=True)
 
     def to_canonical(self) -> str:

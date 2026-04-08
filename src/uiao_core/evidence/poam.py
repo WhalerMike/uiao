@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
 import json
+from typing import Any, Dict, List
 
 from uiao_core.evidence.bundle import EvidenceBundle
 from uiao_core.ir.models.core import Evidence
-
 
 # Severity order for sorting POA&M rows
 _SEVERITY_ORDER = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
@@ -50,11 +49,7 @@ def build_poam(bundle: EvidenceBundle) -> List[Dict[str, Any]]:
     Only FAIL and WARN evidence entries are included.
     Rows are sorted by severity then KSI ID.
     """
-    rows = [
-        _poam_row(e)
-        for e in bundle.evidence
-        if e.evaluation.get("failed") or e.evaluation.get("warning")
-    ]
+    rows = [_poam_row(e) for e in bundle.evidence if e.evaluation.get("failed") or e.evaluation.get("warning")]
     rows.sort(key=lambda r: (_SEVERITY_ORDER.get(r["severity"], 99), r["ksi_id"]))
     return rows
 

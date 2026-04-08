@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
 import json
+from typing import Any, Dict, List
 
 from uiao_core.ir.models.core import (
     Control,
@@ -67,18 +67,10 @@ class EvidenceBundle:
                 "drift_detected": self.drift_count,
                 "unmapped_ksi_ids": self.unmapped_ksi_ids,
             },
-            "evidence": [
-                json.loads(e.to_canonical()) for e in self.evidence
-            ],
-            "drift_states": [
-                json.loads(d.to_canonical()) for d in self.drift_states
-            ],
-            "controls": [
-                json.loads(c.to_canonical()) for c in self.controls
-            ],
-            "policies": [
-                json.loads(p.to_canonical()) for p in self.policies
-            ],
+            "evidence": [json.loads(e.to_canonical()) for e in self.evidence],
+            "drift_states": [json.loads(d.to_canonical()) for d in self.drift_states],
+            "controls": [json.loads(c.to_canonical()) for c in self.controls],
+            "policies": [json.loads(p.to_canonical()) for p in self.policies],
         }
 
     def to_canonical(self) -> str:
@@ -110,7 +102,8 @@ def build_bundle_from_transform_result(transform_result: Any) -> EvidenceBundle:
     prov = ProvenanceRecord(
         source=f"bundle:{transform_result.run_id}",
         timestamp=transform_result.evidence[0].provenance.timestamp
-        if transform_result.evidence else "1970-01-01T00:00:00Z",
+        if transform_result.evidence
+        else "1970-01-01T00:00:00Z",
         version="1.0",
         hash=None,
     )

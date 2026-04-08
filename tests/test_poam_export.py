@@ -38,8 +38,15 @@ def test_poam_sorted_by_severity():
 def test_poam_has_required_fields():
     rows = _poam()
     required = {
-        "ksi_id", "control_id", "policy_id", "status", "severity",
-        "evidence_id", "evidence_hash", "remediation_sla_days", "recommended_action",
+        "ksi_id",
+        "control_id",
+        "policy_id",
+        "status",
+        "severity",
+        "evidence_id",
+        "evidence_hash",
+        "remediation_sla_days",
+        "recommended_action",
     }
     for r in rows:
         assert required.issubset(r.keys()), f"Missing fields in row: {r}"
