@@ -1104,5 +1104,65 @@ def ir_ssp_report(
         console.print("[green]SSP report written to " + out + "[/green]")
 
 
+
+
+@app.command()
+def ir_auditor_bundle(
+    normalized_json: str = typer.Argument(..., help='Path to normalized SCuBA JSON file.'),
+    out_dir: str = typer.Option('exports/auditor-bundle', '--out-dir', '-o', help='Output directory for artifacts.'),
+) -> None:
+    '''Run full pipeline and write all auditor artifacts to a directory.'''
+    from uiao_core.auditor.bundle import build_auditor_bundle
+    console.print(f'[bold]Building auditor bundle from: {normalized_json}...[/bold]')
+    manifest = build_auditor_bundle(normalized_json, out_dir)
+    console.print(f'[green]Bundle written to {out_dir}[/green]')
+    s = manifest['summary']
+    console.print(f'  Evidence : {s["evidence_total"]}')
+    console.print(f'  Actions  : {s["governance_actions"]}')
+    console.print(f'  POA&M    : {s["poam_items"]}')
+
+
+@app.command()
+def ir_diff(
+    run_a: str = typer.Argument(..., help='Path to first normalized SCuBA JSON file.'),
+    run_b: str = typer.Argument(..., help='Path to second normalized SCuBA JSON file.'),
+    fmt: str = typer.Option('markdown', '--format', '-f', help='Output format: markdown | json'),
+    out: str = typer.Option('', '--out', '-o', help='Write output to file.'),
+) -> None:
+    '''Diff two SCuBA runs: KSI changes, evidence hash deltas, status changes.'''
+    from pathlib import Path as _Path
+    from uiao_core.diff.engine import diff_runs, format_diff_json, format_diff_markdown
+    from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    result_a = transform_scuba_to_ir(run_a)
+    result_b = transform_scuba_to_ir(run_b)
+    diff = diff_runs(result_a, result_b)
+    output_text = format_diff_json(diff) if fmt.lower() == 'json' else format_diff_markdown(diff)
+    typer.echo(output_text)
+    if out:
+        _Path(out).parent.mkdir(parents=True, exist_ok=True)
+        _Path(out).write_text(output_text, encoding='utf-8')
+        console.print('[green]Diff written to ' + out + '[/green]')
+
+
+@app.command()
+def ir_validate(
+    normalized_json: str = typer.Argument(..., help='Path to normalized SCuBA JSON file to validate.'),
+    strict: bool = typer.Option(False, '--strict', help='Exit non-zero on warnings.'),
+) -> None:
+    '''Validate a normalized SCuBA JSON file for IR pipeline conformance.'''
+    from uiao_core.validators.ir_validator import validate_normalized_json
+    result = validate_normalized_json(normalized_json)
+    for err in result.errors:
+        console.print(f'[red]ERROR: {err}[/red]')
+    for warn in result.warnings:
+        console.print(f'[yellow]WARN:  {warn}[/yellow]')
+    if result.valid:
+        console.print('[green]VALID[/green]')
+        if result.warnings and strict:
+            raise typer.Exit(code=1)
+    else:
+        console.print(f'[red]INVALID — {len(result.errors)} error(s)[/red]')
+        raise typer.Exit(code=1)
+
 if __name__ == "__main__":
     app()
