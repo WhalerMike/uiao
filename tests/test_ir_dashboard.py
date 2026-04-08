@@ -9,7 +9,11 @@ import pytest
 
 from uiao_core.dashboard.ir_dashboard import build_ir_dashboard, export_ir_dashboard
 from uiao_core.governance.actions import GovernanceAction
-from uiao_core.ir.models.core import Evidence
+from uiao_core.ir.models.core import Evidence, ProvenanceRecord
+
+
+def _prov() -> ProvenanceRecord:
+    return ProvenanceRecord(source="test", timestamp="2025-01-01T00:00:00Z", version="1")
 
 
 def _make_evidence(eid: str, control_id: str, ts: str) -> Evidence:
@@ -21,6 +25,7 @@ def _make_evidence(eid: str, control_id: str, ts: str) -> Evidence:
         policy_id=None,
         data={"ksi_id": control_id},
         evaluation={},
+        provenance=_prov(),
     )
 
 
