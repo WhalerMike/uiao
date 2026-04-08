@@ -144,4 +144,3 @@ def bind_policy(
         enforcement_targets=sorted_targets,
         provenance=prov,
     )
-
