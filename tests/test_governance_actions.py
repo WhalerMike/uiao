@@ -23,7 +23,7 @@ def _prov() -> ProvenanceRecord:
         source="test-suite",
         timestamp=datetime(2026, 4, 8, tzinfo=timezone.utc).isoformat(),
         version="0.0.1-test",
-        hash=None,
+        content_hash=None,
         actor="pytest",
     )
 
@@ -227,3 +227,4 @@ class TestReport:
         report = format_governance_report([])
         assert "UIAO Governance Report" in report
         assert "Top actions:" in report
+
