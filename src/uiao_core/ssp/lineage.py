@@ -37,9 +37,7 @@ def build_lineage_index(
         )
         entry["ksis"].add(link.ksi_id)
         entry["scuba_policies"].add(link.scuba_policy_id)
-        entry["evidence"].append(
-            {"id": link.evidence_id, "hash": link.evidence_hash}
-        )
+        entry["evidence"].append({"id": link.evidence_id, "hash": link.evidence_hash})
         for a in actions_by_evidence.get(link.evidence_id, []):
             entry["governance_actions"].append(
                 {
