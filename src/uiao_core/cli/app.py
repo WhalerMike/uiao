@@ -1070,5 +1070,37 @@ def ir_governance_report(
         console.print(f"[green]Governance report JSON written to {out}[/green]")
 
 
+
+@app.command()
+def ir_ssp_report(
+    normalized_json: str = typer.Argument(..., help='Path to normalized SCuBA JSON file.'),
+    fmt: str = typer.Option('markdown', '--format', '-f', help='Output format: markdown | json'),
+    out: str = typer.Option('', '--out', '-o', help='Write output to file.'),
+) -> None:
+    '''Generate SSP narrative + lineage from SCuBA -> IR -> Evidence -> Governance.'''
+    import json as _json
+    from pathlib import Path as _Path
+    from uiao_core.evidence.bundle import build_bundle_from_transform_result
+    from uiao_core.governance.actions import build_governance_actions
+    from uiao_core.coverage.coverage import build_coverage_links
+    from uiao_core.ssp.narrative import build_control_narratives, format_ssp_markdown
+    from uiao_core.ssp.lineage import build_lineage_index
+    from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    result = transform_scuba_to_ir(normalized_json)
+    bundle = build_bundle_from_transform_result(result)
+    actions = build_governance_actions(bundle.evidence, bundle.drift_states)
+    links = build_coverage_links(bundle.evidence)
+    narratives = build_control_narratives(links, actions)
+    if fmt.lower() == 'json':
+        lineage = build_lineage_index(links, actions)
+        output_text = _json.dumps(lineage, indent=2)
+    else:
+        output_text = format_ssp_markdown(narratives)
+    typer.echo(output_text)
+    if out:
+        _Path(out).parent.mkdir(parents=True, exist_ok=True)
+        _Path(out).write_text(output_text, encoding='utf-8')
+        console.print('[green]SSP report written to ' + out + '[/green]')
+
 if __name__ == "__main__":
     app()
