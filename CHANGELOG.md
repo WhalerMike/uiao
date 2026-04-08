@@ -50,6 +50,7 @@
 * **ruff:** add missing Settings import in generate_briefing command ([046b233](https://github.com/WhalerMike/uiao-core/commit/046b233ad96c45d1d56e9b48a7ca87bc92c60e40))
 * **ruff:** remove unused covered_rows variable in briefing.py ([a7b0ca4](https://github.com/WhalerMike/uiao-core/commit/a7b0ca4e8069cd6a05b64db77b300837b5424618))
 * **scripts:** rewrite enrich_ksi_tier2.py to walk ksi dirs in-place ([0046e8a](https://github.com/WhalerMike/uiao-core/commit/0046e8ae4596b1a329525813aa15be852ed0b2ec))
+* **tests:** normalize stdout before path assertion to handle Windows line-wrapped paths ([85eeee6](https://github.com/WhalerMike/uiao-core/commit/85eeee691298796cbd54a0425b33355ab8f7a95e))
 * **tests:** replace deprecated asyncio.get_event_loop() with asyncio.run() for Python 3.14 ([94bd0be](https://github.com/WhalerMike/uiao-core/commit/94bd0be431cd4a88121d2763948f9f2d7a0d84a9))
 * update canon_dir to generation-inputs/ in config.py ([e56a5ae](https://github.com/WhalerMike/uiao-core/commit/e56a5aeb09f4e696af94ed98ffd687ecf66037b8)), closes [#479](https://github.com/WhalerMike/uiao-core/issues/479)
 * update canon_dir to generation-inputs/ in wizard.py ([fc3f642](https://github.com/WhalerMike/uiao-core/commit/fc3f642efc0b58695fc93867d55391e6ec07838a))
