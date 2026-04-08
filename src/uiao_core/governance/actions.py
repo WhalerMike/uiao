@@ -49,9 +49,7 @@ def build_governance_actions(
     DriftState is matched by (resource_id, policy_ref) when available.
     One action is produced per Evidence object.
     """
-    drift_index = {
-        (d.resource_id, d.policy_ref): d for d in drift_states
-    }
+    drift_index = {(d.resource_id, d.policy_ref): d for d in drift_states}
 
     actions: List[GovernanceAction] = []
 
@@ -69,8 +67,7 @@ def build_governance_actions(
         action_type = classify_action_type(severity, drift_classification)
 
         description = (
-            f"{action_type.upper()} for {ksi_id} "
-            f"(severity={severity}, drift={drift_classification or 'none'})"
+            f"{action_type.upper()} for {ksi_id} (severity={severity}, drift={drift_classification or 'none'})"
         )
 
         actions.append(

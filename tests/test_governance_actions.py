@@ -1,12 +1,11 @@
 """Tests for uiao_core.governance: ownership, SLA, actions, report."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import pytest
 
 from uiao_core.governance.actions import (
-    GovernanceAction,
     build_governance_actions,
     classify_action_type,
 )
@@ -201,8 +200,9 @@ class TestBuildGovernanceActions:
 class TestReport:
     def test_summarize_counts_by_type(self) -> None:
         e1 = _evidence("e1", severity="Critical")
-        e2 = _evidence("e2", "KSI-AC-01", severity="Medium", resource_id="res-2",
-                        policy_id="policy:ksi:KSI-AC-01:default")
+        e2 = _evidence(
+            "e2", "KSI-AC-01", severity="Medium", resource_id="res-2", policy_id="policy:ksi:KSI-AC-01:default"
+        )
         actions = build_governance_actions([e1, e2], [])
         summary = summarize_actions(actions)
         assert summary["remediate"] == 1
