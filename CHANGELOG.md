@@ -16,6 +16,7 @@
 * **control-library:** add SC-8.yml at flat path for test compatibility ([56d1f2d](https://github.com/WhalerMike/uiao-core/commit/56d1f2d2abb22e87207fb43b021a2b1c25507688))
 * correct kwarg names for build_oscal/ssp/poam_export in generate_all ([74fa33d](https://github.com/WhalerMike/uiao-core/commit/74fa33db64aa8206dd1aad281b9aa0794e376910))
 * **diagrams:** restore correct YAML indentation in diagrams.yaml ([92dd509](https://github.com/WhalerMike/uiao-core/commit/92dd50954f0ac955b3c448eb967d8385d799995a))
+* **diagrams:** unwrap word-wrapped PlantUML participant names causing YAML ScannerError ([6ef1e93](https://github.com/WhalerMike/uiao-core/commit/6ef1e93197133a92c3c976538dacc45605f6eb8a))
 * **docx:** increase paragraph space_after to Pt(12) for visible inter-paragraph gaps ([dbf0367](https://github.com/WhalerMike/uiao-core/commit/dbf0367f27d8c4ea6ccdee2a691fd419b111b5de))
 * graceful skip for missing data files in GRC export ([1918213](https://github.com/WhalerMike/uiao-core/commit/1918213334b9c9424ea00e14d193af678d2095e0))
 * guard planes/matrix against non-list type from vendor overlays in ssp.py ([0dc2b71](https://github.com/WhalerMike/uiao-core/commit/0dc2b71f524423d65a16cef741476ad847a675ab))
