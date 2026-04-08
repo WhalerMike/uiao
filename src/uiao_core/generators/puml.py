@@ -11,8 +11,8 @@ import subprocess
 from pathlib import Path
 
 from uiao_core.generators.plantuml import (
-    render_plantuml_file,
     render_plantuml_dir,
+    render_plantuml_file,
 )
 
 __all__ = [
@@ -32,7 +32,6 @@ def _plantuml_html(content: str, theme: str = PLANTUML_THEME) -> str:
 
     The snippet includes the canonical theme so tests can verify it.
     """
-    escaped = content.replace("'", "\'").replace("\n", "\\n")
     return (
         f"<div class='plantuml'>"
         f"<script>plantumlConfig={{theme:'{theme}'}};</script>"
