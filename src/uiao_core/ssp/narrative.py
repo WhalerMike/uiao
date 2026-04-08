@@ -87,10 +87,7 @@ def format_ssp_markdown(narratives: List[ControlNarrative]) -> str:
         lines.append(n.summary)
         lines.append("")
         if n.drift_status:
-            lines.append(
-                f"Drift / governance status: {n.drift_status} "
-                f"({', '.join(n.governance_action_types)})"
-            )
+            lines.append(f"Drift / governance status: {n.drift_status} ({', '.join(n.governance_action_types)})")
             lines.append("")
 
     return "\n".join(lines)
