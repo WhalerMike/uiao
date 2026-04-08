@@ -1,4 +1,5 @@
 """Tests for uiao_core.coverage: CoverageLink building and SSP section formatting."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
