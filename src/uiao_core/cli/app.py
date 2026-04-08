@@ -1028,8 +1028,6 @@ def ir_drift_detect(
         console.print(f"[green]DriftState JSON written to {out}[/green]")
 
 
-
-
 @app.command()
 def ir_governance_report(
     normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
@@ -1038,10 +1036,11 @@ def ir_governance_report(
     """Run full governance pipeline: SCuBA -> IR -> Evidence -> Actions -> Report."""
     import json as _json
     from pathlib import Path as _Path
-    from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
+
     from uiao_core.evidence.bundle import build_bundle_from_transform_result
     from uiao_core.governance.actions import build_governance_actions
     from uiao_core.governance.report import format_governance_report
+    from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
 
     console.print(f"[bold]Running governance pipeline for: {normalized_json}...[/bold]")
     result = transform_scuba_to_ir(normalized_json)
@@ -1069,7 +1068,7 @@ def ir_governance_report(
         ]
         _Path(out).write_text(_json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
         console.print(f"[green]Governance report JSON written to {out}[/green]")
+
+
 if __name__ == "__main__":
     app()
-
-
