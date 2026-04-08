@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-import json
+from typing import Any, Dict, List
 
+from uiao_core.ir.mapping.ksi_to_ir import build_ksi_ir_mapping
 from uiao_core.ir.models.core import (
     Control,
     Evidence,
@@ -12,13 +13,12 @@ from uiao_core.ir.models.core import (
     ProvenanceRecord,
     canonical_hash,
 )
-from uiao_core.ir.mapping.ksi_to_ir import build_ksi_ir_mapping
 
 
 def transform_scuba_to_ir(
     normalized_json_path,
     tenant_boundary_id: str = "boundary:tenant:m365:contoso",
-) -> "SCuBATransformResult":
+) -> SCuBATransformResult:
     """
     Load a normalized SCuBA JSON file and produce IR Evidence objects,
     one per ksi_results entry.
@@ -104,9 +104,7 @@ def transform_scuba_to_ir(
     final_evidence: List[Evidence] = []
     for e in evidence_list:
         eval_with_hash = dict(e.evaluation)
-        eval_with_hash["canonical_hash"] = canonical_hash(
-            e.model_dump(mode="json", exclude_none=True)
-        )
+        eval_with_hash["canonical_hash"] = canonical_hash(e.model_dump(mode="json", exclude_none=True))
         final_evidence.append(e.model_copy(update={"evaluation": eval_with_hash}))
 
     return SCuBATransformResult(
@@ -117,11 +115,7 @@ def transform_scuba_to_ir(
         pass_count=sum(1 for e in final_evidence if e.evaluation["passed"]),
         warn_count=sum(1 for e in final_evidence if e.evaluation["warning"]),
         fail_count=sum(1 for e in final_evidence if e.evaluation["failed"]),
-        unmapped_ksi_ids=[
-            e.data["ksi_id"]
-            for e in final_evidence
-            if not e.evaluation["control_mapped"]
-        ],
+        unmapped_ksi_ids=[e.data["ksi_id"] for e in final_evidence if not e.evaluation["control_mapped"]],
     )
 
 
@@ -157,8 +151,7 @@ class SCuBATransformResult:
             f"  PASS              : {self.pass_count}",
             f"  WARN              : {self.warn_count}",
             f"  FAIL              : {self.fail_count}",
-            f"  Unmapped KSIs     : {unmapped}"
-            + (f" {self.unmapped_ksi_ids}" if unmapped else ""),
+            f"  Unmapped KSIs     : {unmapped}" + (f" {self.unmapped_ksi_ids}" if unmapped else ""),
         ]
         return "\n".join(lines)
 
@@ -169,14 +162,13 @@ class SCuBATransformResult:
             "warn_count": self.warn_count,
             "fail_count": self.fail_count,
             "unmapped_ksi_ids": self.unmapped_ksi_ids,
-            "evidence": [
-                json.loads(e.to_canonical()) for e in self.evidence
-            ],
+            "evidence": [json.loads(e.to_canonical()) for e in self.evidence],
         }
 
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 2:
         print("Usage: python transformer.py <normalized-scuba.json>")
         sys.exit(1)
