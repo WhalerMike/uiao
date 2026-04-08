@@ -33,5 +33,5 @@ def test_adapter_connect(adapter_id):
     """Each adapter connect() must return bool."""
     cls = ADAPTER_REGISTRY[adapter_id]
     instance = cls()
-    result = asyncio.get_event_loop().run_until_complete(instance.connect({}))
+    result = asyncio.run(instance.connect({}))
     assert isinstance(result, bool)
