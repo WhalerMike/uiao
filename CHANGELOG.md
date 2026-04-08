@@ -100,6 +100,7 @@
 * **ksi:** update ksi-si-16.yaml to 10/10 quality standard (Batch 5) ([c8d16d2](https://github.com/WhalerMike/uiao-core/commit/c8d16d2bc53f786a5a076a1be6d768229bcfbb57))
 * local JAR renderer with plantweb fallback in plantuml.py ([ce19fae](https://github.com/WhalerMike/uiao-core/commit/ce19fae32a4969540c5c35fb0ef0939af73d57d0))
 * **p0:** auditor bundle, diff engine, IR validator — 3 CLI commands + 19 tests ([0c1836e](https://github.com/WhalerMike/uiao-core/commit/0c1836e43e816209e839cff049a252947bd2701c))
+* **p1:** add freshness package __init__.py ([20bf983](https://github.com/WhalerMike/uiao-core/commit/20bf983c6288e5f5018ac9938aa889b400cfd475))
 * render Generic Federal Agency disclaimer as amber notice box on title page ([cb8e8f5](https://github.com/WhalerMike/uiao-core/commit/cb8e8f572da70d146640994336f4326adf33e5b1))
 * **scripts:** route KSI generator output to category subdirs ([45b0ed5](https://github.com/WhalerMike/uiao-core/commit/45b0ed5cfd6ff09301952557ddce7c0a38a5543e))
 * **scuba:** add adapter-run-scuba orchestration wrapper ([b0366a2](https://github.com/WhalerMike/uiao-core/commit/b0366a2412a485cc25156b07b2d348cb4c511a53))
