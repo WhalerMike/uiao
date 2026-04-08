@@ -50,7 +50,11 @@ def is_gemini_owned(filepath):
     - File has diagram-owner: gemini in YAML frontmatter (tag-based routing)
     """
     # Folder-based: src/templates/ is always Gemini territory
-    if str(filepath).startswith("src/templates/"):
+    # Use as_posix() for cross-platform path comparison (handles Windows backslashes)
+    from pathlib import Path as _Path
+    _fp = _Path(filepath)
+    _posix = _fp.as_posix()
+    if _posix.startswith("src/templates/") or (len(_fp.parts) >= 2 and _fp.parts[0] == "src" and _fp.parts[1] == "templates"):
         return True
     # Tag-based: check YAML frontmatter
     try:
