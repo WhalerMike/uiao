@@ -18,6 +18,7 @@
 * **diagrams:** restore correct YAML indentation in diagrams.yaml ([92dd509](https://github.com/WhalerMike/uiao-core/commit/92dd50954f0ac955b3c448eb967d8385d799995a))
 * **diagrams:** unwrap word-wrapped PlantUML participant names causing YAML ScannerError ([6ef1e93](https://github.com/WhalerMike/uiao-core/commit/6ef1e93197133a92c3c976538dacc45605f6eb8a))
 * **docx:** increase paragraph space_after to Pt(12) for visible inter-paragraph gaps ([dbf0367](https://github.com/WhalerMike/uiao-core/commit/dbf0367f27d8c4ea6ccdee2a691fd419b111b5de))
+* **generate_diagrams:** use Path.as_posix() in is_gemini_owned for Windows path compatibility ([e0d6869](https://github.com/WhalerMike/uiao-core/commit/e0d68690dfa985b139e5ed8517996f4e0e6e9868))
 * graceful skip for missing data files in GRC export ([1918213](https://github.com/WhalerMike/uiao-core/commit/1918213334b9c9424ea00e14d193af678d2095e0))
 * guard planes/matrix against non-list type from vendor overlays in ssp.py ([0dc2b71](https://github.com/WhalerMike/uiao-core/commit/0dc2b71f524423d65a16cef741476ad847a675ab))
 * **lint:** remove unused _upn variable from entra_adapter.py ([4e459ee](https://github.com/WhalerMike/uiao-core/commit/4e459ee14274dacef92ecd74ee58799af35a2180))
