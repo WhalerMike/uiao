@@ -26,6 +26,7 @@
 * **mypy:** annotate yaml.safe_load return type in canon.py to fix no-any-return ([d608715](https://github.com/WhalerMike/uiao-core/commit/d6087156d2c8c1f64f0b777fef5b65e9bc85596f))
 * **p1:** fix engine.py indentation - replace with correct content ([e2ad798](https://github.com/WhalerMike/uiao-core/commit/e2ad798a52d0159dc276cedcd945a66d7847e56a))
 * **p1:** fix ir_dashboard.py indentation ([487ab10](https://github.com/WhalerMike/uiao-core/commit/487ab10422d5833e32520fb5bb0cd8cd22f5e449))
+* **p1:** fix test_ir_dashboard.py indentation ([f8c4e55](https://github.com/WhalerMike/uiao-core/commit/f8c4e55549a92f72069d24f700854909fce85d6a))
 * **p1:** fix test_ir_freshness.py indentation ([54ef28f](https://github.com/WhalerMike/uiao-core/commit/54ef28f7865516530717601e6783335022c19059))
 * pass full output path to build_ssp in generate_all ([d697e6d](https://github.com/WhalerMike/uiao-core/commit/d697e6d6f89c2249b489e79321af14fb0ab70d3b))
 * remove docs/STYLE-GUIDE.md and site/ generated files to resolve merge conflicts ([7e40ff8](https://github.com/WhalerMike/uiao-core/commit/7e40ff8f75985ae0a7a81139c080b91fee9802da))
