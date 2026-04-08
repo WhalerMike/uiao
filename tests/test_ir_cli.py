@@ -2,10 +2,10 @@
 All tests use the CliRunner and a minimal fixture file so they do not
 require external services or large data files.
 """
+
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -173,4 +173,3 @@ def test_cli_root_help() -> None:
     assert "ir-evidence-bundle" in result.output
     assert "ir-poam-export" in result.output
     assert "ir-drift-detect" in result.output
-
