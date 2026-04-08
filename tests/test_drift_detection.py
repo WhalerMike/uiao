@@ -85,4 +85,3 @@ def test_drift_state_is_deterministic():
     )
     assert drift_a.to_canonical() == drift_b.to_canonical()
     assert drift_a.hash() == drift_b.hash()
-
