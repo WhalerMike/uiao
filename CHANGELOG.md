@@ -62,6 +62,7 @@
 * **evidence:** add EvidenceBundle + POA&M export with 21 tests ([5b8eb7c](https://github.com/WhalerMike/uiao-core/commit/5b8eb7cf13dea2a5237d7c04801a3e0fc968c48b))
 * expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
 * **governance:** add deterministic IR-based drift detection ([9d301d5](https://github.com/WhalerMike/uiao-core/commit/9d301d56d376cac7e83c625498956e84d2a9013d))
+* **governance:** add ownership, SLA, actions engine, and governance report ([7bb4132](https://github.com/WhalerMike/uiao-core/commit/7bb413279061a21f4b84ec2721992327b53ac92c))
 * **ir:** add canonical IR models + KSI to IR mapping layer ([a23fe01](https://github.com/WhalerMike/uiao-core/commit/a23fe012eebcd1bb42c4c379e5cfe27da6bf2bf3))
 * **ksi:** add crosswalk script + mapping - 163 KSIs covering 247 NIST controls ([3d784ff](https://github.com/WhalerMike/uiao-core/commit/3d784fffdbe7a2bb07119e57d5addac4c060f21d))
 * **ksi:** add KSI evaluation engine for SCuBA findings ([f883b48](https://github.com/WhalerMike/uiao-core/commit/f883b489884a90159078671bd5800178b185eab2))
