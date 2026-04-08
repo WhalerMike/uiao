@@ -73,6 +73,7 @@
 * **coverage+ci:** SSP coverage export, IR hash stability, CI coverage floor 45%, CLI smoke test, deselect pre-existing failures ([f4c29d4](https://github.com/WhalerMike/uiao-core/commit/f4c29d47be2cc727d4f812c9d7008c927242acaf))
 * **evidence:** add EvidenceBundle + POA&M export with 21 tests ([5b8eb7c](https://github.com/WhalerMike/uiao-core/commit/5b8eb7cf13dea2a5237d7c04801a3e0fc968c48b))
 * expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
+* **generators:** add puml.py shim with PLANTUML_THEME, _plantuml_html, _render_mmdc ([8592b2b](https://github.com/WhalerMike/uiao-core/commit/8592b2b7cc54d9cdfb07a7c93814ab6c4ca59275))
 * **governance:** add deterministic IR-based drift detection ([9d301d5](https://github.com/WhalerMike/uiao-core/commit/9d301d56d376cac7e83c625498956e84d2a9013d))
 * **governance:** add ownership, SLA, actions engine, and governance report ([7bb4132](https://github.com/WhalerMike/uiao-core/commit/7bb413279061a21f4b84ec2721992327b53ac92c))
 * **ir:** add canonical IR models + KSI to IR mapping layer ([a23fe01](https://github.com/WhalerMike/uiao-core/commit/a23fe012eebcd1bb42c4c379e5cfe27da6bf2bf3))
