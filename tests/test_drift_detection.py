@@ -11,7 +11,7 @@ def _prov() -> ProvenanceRecord:
         source="test-suite",
         timestamp=datetime(2026, 4, 8, tzinfo=timezone.utc).isoformat(),
         version="0.0.1-test",
-        hash=None,
+        content_hash=None,
         actor="pytest",
     )
 
@@ -85,3 +85,4 @@ def test_drift_state_is_deterministic():
     )
     assert drift_a.to_canonical() == drift_b.to_canonical()
     assert drift_a.hash() == drift_b.hash()
+

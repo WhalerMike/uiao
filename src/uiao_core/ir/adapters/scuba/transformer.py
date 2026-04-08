@@ -54,7 +54,7 @@ def transform_scuba_to_ir(
         source=f"scuba:{run_id}",
         timestamp=assessment_date,
         version=tool_version,
-        hash=canonical_hash(scuba),
+        content_hash=canonical_hash(scuba),
         actor=meta.get("collector_user"),
     )
 
@@ -174,3 +174,4 @@ if __name__ == "__main__":
         sys.exit(1)
     result = transform_scuba_to_ir(sys.argv[1])
     print(result.summary())
+
