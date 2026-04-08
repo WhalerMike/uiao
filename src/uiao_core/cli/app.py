@@ -917,7 +917,6 @@ def adapter_run_scuba(
         typer.echo("\n" + _json.dumps(result["metadata"], indent=2, default=str))
 
 
-
 @app.command()
 def ir_scuba_transform(
     normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
@@ -925,6 +924,7 @@ def ir_scuba_transform(
 ) -> None:
     """Transform normalized SCuBA JSON -> IR Evidence objects and print summary."""
     import json as _json
+
     from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
 
     console.print(f"[bold]Transforming SCuBA JSON: {normalized_json}...[/bold]")
@@ -932,6 +932,7 @@ def ir_scuba_transform(
     console.print(result.summary())
     if out:
         from pathlib import Path as _Path
+
         _Path(out).parent.mkdir(parents=True, exist_ok=True)
         _Path(out).write_text(_json.dumps(result.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
         console.print(f"[green]Evidence JSON written to {out}[/green]")
@@ -943,7 +944,6 @@ def ir_evidence_bundle(
     out: str = typer.Option("", "--out", "-o", help="Write canonical bundle JSON to file."),
 ) -> None:
     """Build a canonical EvidenceBundle from a SCuBA transform and print summary."""
-    import json as _json
     from uiao_core.evidence.bundle import build_bundle_from_transform_result
     from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
 
@@ -953,6 +953,7 @@ def ir_evidence_bundle(
     console.print(bundle.summary())
     if out:
         from pathlib import Path as _Path
+
         _Path(out).parent.mkdir(parents=True, exist_ok=True)
         _Path(out).write_text(bundle.to_canonical(), encoding="utf-8")
         console.print(f"[green]Bundle JSON written to {out}[/green]")
@@ -975,6 +976,7 @@ def ir_poam_export(
     console.print(poam_summary(rows))
     if out:
         from pathlib import Path as _Path
+
         _Path(out).parent.mkdir(parents=True, exist_ok=True)
         _Path(out).write_text(poam_to_json(rows), encoding="utf-8")
         console.print(f"[green]POA&M JSON written to {out}[/green]")
@@ -990,8 +992,9 @@ def ir_drift_detect(
 ) -> None:
     """Detect drift between two IR state JSON files and print classification."""
     import json as _json
-    from pathlib import Path as _Path
     from datetime import datetime, timezone
+    from pathlib import Path as _Path
+
     from uiao_core.governance.drift import build_drift_state
     from uiao_core.ir.models.core import ProvenanceRecord
 
@@ -1016,11 +1019,14 @@ def ir_drift_detect(
     console.print(f"Policy    : {drift.policy_ref}")
     console.print(f"Status    : {status}")
     console.print(f"Class     : {drift.classification}")
-    console.print(f"Delta     : added={drift.delta.get('added',[])} removed={drift.delta.get('removed',[])} changed={drift.delta.get('changed',[])}")
+    console.print(
+        f"Delta     : added={drift.delta.get('added', [])} removed={drift.delta.get('removed', [])} changed={drift.delta.get('changed', [])}"
+    )
     if out:
         _Path(out).parent.mkdir(parents=True, exist_ok=True)
         _Path(out).write_text(drift.to_canonical(), encoding="utf-8")
         console.print(f"[green]DriftState JSON written to {out}[/green]")
+
+
 if __name__ == "__main__":
     app()
-
