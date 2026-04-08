@@ -1164,5 +1164,74 @@ def ir_validate(
         console.print(f'[red]INVALID — {len(result.errors)} error(s)[/red]')
         raise typer.Exit(code=1)
 
+
+
+@app.command()
+def ir_freshness(
+    normalized_json: str = typer.Argument(..., help='Path to normalized SCuBA JSON file.'),
+    out: str = typer.Option('', '--out', '-o', help='Write freshness JSON to file.'),
+    threshold_days: int = typer.Option(30, '--threshold-days', '-t', help='Default freshness threshold in days.'),
+) -> None:
+    '''Compute evidence freshness and generate refresh actions for stale evidence.'''
+    import json as _json
+    from pathlib import Path as _Path
+    from uiao_core.evidence.bundle import build_bundle_from_transform_result
+    from uiao_core.freshness.engine import build_freshness_records, generate_refresh_actions
+    from uiao_core.governance.actions import build_governance_actions
+    from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    result = transform_scuba_to_ir(normalized_json)
+    bundle = build_bundle_from_transform_result(result)
+    existing_actions = build_governance_actions(bundle.evidence, bundle.drift_states)
+    thresholds = {'default': threshold_days}
+    records = build_freshness_records(bundle.evidence, thresholds=thresholds)
+    fresh = sum(1 for r in records if r.status == 'fresh')
+    stale_soon = sum(1 for r in records if r.status == 'stale-soon')
+    stale = sum(1 for r in records if r.status == 'stale')
+    console.print(f'[bold]Freshness report for: {normalized_json}[/bold]')
+    console.print(f'  Fresh      : [green]{fresh}[/green]')
+    console.print(f'  Stale-soon : [yellow]{stale_soon}[/yellow]')
+    console.print(f'  Stale      : [red]{stale}[/red]')
+    refresh_actions = generate_refresh_actions(records, existing_actions=existing_actions)
+    console.print(f'  Refresh actions generated: {len(refresh_actions)}')
+    if out:
+        import dataclasses as _dc
+        payload = {'freshness_records': [_dc.asdict(r) for r in records], 'refresh_actions': [{'ksi_id': a.ksi_id, 'control_id': a.control_id, 'policy_id': a.policy_id, 'severity': a.severity, 'drift_classification': a.drift_classification, 'owner': a.owner, 'sla_days': a.sla_days, 'action_type': a.action_type, 'description': a.description, 'evidence_id': a.evidence_id} for a in refresh_actions]}
+        _Path(out).parent.mkdir(parents=True, exist_ok=True)
+        _Path(out).write_text(_json.dumps(payload, indent=2, ensure_ascii=False), encoding='utf-8')
+        console.print('[green]Freshness report written to ' + out + '[/green]')
+
+
+@app.command()
+def ir_dashboard(
+    normalized_json: str = typer.Argument(..., help='Path to normalized SCuBA JSON file.'),
+    out: str = typer.Option('', '--out', '-o', help='Write dashboard JSON to file.'),
+    threshold_days: int = typer.Option(30, '--threshold-days', '-t', help='Default freshness threshold in days.'),
+) -> None:
+    '''Build IR governance dashboard: evidence freshness + governance action summary.'''
+    from pathlib import Path as _Path
+    from uiao_core.dashboard.ir_dashboard import export_ir_dashboard
+    from uiao_core.evidence.bundle import build_bundle_from_transform_result
+    from uiao_core.governance.actions import build_governance_actions
+    from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    result = transform_scuba_to_ir(normalized_json)
+    bundle = build_bundle_from_transform_result(result)
+    actions = build_governance_actions(bundle.evidence, bundle.drift_states)
+    thresholds = {'default': threshold_days}
+    console.print(f'[bold]Building IR dashboard for: {normalized_json}...[/bold]')
+    if out:
+        path = export_ir_dashboard(bundle.evidence, actions, out, thresholds=thresholds)
+        console.print('[green]Dashboard written to ' + path + '[/green]')
+    else:
+        import json as _json
+        from uiao_core.dashboard.ir_dashboard import build_ir_dashboard
+        dashboard = build_ir_dashboard(bundle.evidence, actions, thresholds=thresholds)
+        console.print(f'  Evidence total : {dashboard["evidence_total"]}')
+        fs = dashboard['freshness_summary']
+        console.print(f'  Fresh          : [green]{fs["fresh"]}[/green]')
+        console.print(f'  Stale-soon     : [yellow]{fs["stale_soon"]}[/yellow]')
+        console.print(f'  Stale          : [red]{fs["stale"]}[/red]')
+        gs = dashboard['governance_summary']
+        console.print(f'  Total actions  : {gs["total_actions"]}')
+
 if __name__ == "__main__":
     app()
