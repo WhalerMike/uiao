@@ -69,7 +69,7 @@ def build_ksi_ir_mapping(
         version="1.2",
         hash=None,
     )
-    for ksi_id, ksi in sorted(ksi_library.items()):
+    for _ksi_id, ksi in sorted(ksi_library.items()):
         control = ksi_to_ir_control(ksi, provenance)
         policy = ksi_to_ir_policy(ksi, control, tenant_boundary_id)
         controls.append(control)
