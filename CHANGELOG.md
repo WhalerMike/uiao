@@ -24,6 +24,7 @@
 * **lint:** resolve pre-existing ruff E722 and F841 errors ([3d43ace](https://github.com/WhalerMike/uiao-core/commit/3d43acef9a743e8ba51c29dfe47fb10bb0fc59f5))
 * **lint:** suppress unused upn variable in entra_adapter.py ([4b16859](https://github.com/WhalerMike/uiao-core/commit/4b168591e50a371f557a307fec90fbec2c5d538c))
 * **mypy:** annotate yaml.safe_load return type in canon.py to fix no-any-return ([d608715](https://github.com/WhalerMike/uiao-core/commit/d6087156d2c8c1f64f0b777fef5b65e9bc85596f))
+* **p1:** add provenance to Evidence in freshness tests ([6759ac1](https://github.com/WhalerMike/uiao-core/commit/6759ac1d440aafca2efac30dc34fad98eef18b96))
 * **p1:** fix engine.py indentation - replace with correct content ([e2ad798](https://github.com/WhalerMike/uiao-core/commit/e2ad798a52d0159dc276cedcd945a66d7847e56a))
 * **p1:** fix ir_dashboard.py indentation ([487ab10](https://github.com/WhalerMike/uiao-core/commit/487ab10422d5833e32520fb5bb0cd8cd22f5e449))
 * **p1:** fix test_ir_dashboard.py indentation ([f8c4e55](https://github.com/WhalerMike/uiao-core/commit/f8c4e55549a92f72069d24f700854909fce85d6a))
