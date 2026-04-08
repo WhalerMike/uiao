@@ -57,6 +57,7 @@
 * **briefing:** implement uiao generate-briefing generator (SESSION ZERO) ([cd896a5](https://github.com/WhalerMike/uiao-core/commit/cd896a57ae399b21373c26489b64efbbdb901e59))
 * **cli:** add 'uiao adapter-run' command for ServiceNow and Entra adapters ([87b5db1](https://github.com/WhalerMike/uiao-core/commit/87b5db1b646be99ca319dbd37f3445ee8a0dc485))
 * expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
+* **governance:** add deterministic IR-based drift detection ([9d301d5](https://github.com/WhalerMike/uiao-core/commit/9d301d56d376cac7e83c625498956e84d2a9013d))
 * **ir:** add canonical IR models + KSI to IR mapping layer ([a23fe01](https://github.com/WhalerMike/uiao-core/commit/a23fe012eebcd1bb42c4c379e5cfe27da6bf2bf3))
 * **ksi:** add crosswalk script + mapping - 163 KSIs covering 247 NIST controls ([3d784ff](https://github.com/WhalerMike/uiao-core/commit/3d784fffdbe7a2bb07119e57d5addac4c060f21d))
 * **ksi:** add KSI evaluation engine for SCuBA findings ([f883b48](https://github.com/WhalerMike/uiao-core/commit/f883b489884a90159078671bd5800178b185eab2))
