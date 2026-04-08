@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 from pathlib import Path
-import yaml
 from typing import Dict, List, Tuple
+
+import yaml
+
 from uiao_core.ir.models.core import (
     Control,
     Policy,
