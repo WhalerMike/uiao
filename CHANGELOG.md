@@ -7,6 +7,7 @@
 * add continue-on-error to OSCAL/GRC steps in generate-docs workflow ([94c4ca8](https://github.com/WhalerMike/uiao-core/commit/94c4ca8a3e9e364fca5272de597dab44dbb9cad0))
 * add perimeter_collapse stub to context loader for CI ([f361a0b](https://github.com/WhalerMike/uiao-core/commit/f361a0b5e2f2546911cf274fbf637b1ffa6dd7f9))
 * add perimeter_collapse stub to docs.py build_docs context ([a234271](https://github.com/WhalerMike/uiao-core/commit/a234271071effe08a6c25979db8299dd7ca468aa))
+* **ci:** export evidence public API + exclude 4 more pre-existing broken tests ([72d0686](https://github.com/WhalerMike/uiao-core/commit/72d0686f83ccf5f1d968e43ad9bd5ac637757457))
 * **ci:** repair CodeMirror auto-indent corruption in deploy.yml ([fba1cb4](https://github.com/WhalerMike/uiao-core/commit/fba1cb4daa8fe6d31827396d723cd02713c3ece5))
 * **ci:** repair CodeMirror auto-indent corruption in generate-artifacts.yml ([17eb7ef](https://github.com/WhalerMike/uiao-core/commit/17eb7ef6285e67f444966002f98dd590cf790e04))
 * **ci:** repair CodeMirror auto-indent corruption in render-and-insert-diagrams.yml ([6f2f982](https://github.com/WhalerMike/uiao-core/commit/6f2f9826592cccc51177be1aa25caebe262d0128))
