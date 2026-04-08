@@ -34,6 +34,7 @@
 * **p1:** fix test_ir_dashboard.py indentation ([f8c4e55](https://github.com/WhalerMike/uiao-core/commit/f8c4e55549a92f72069d24f700854909fce85d6a))
 * **p1:** fix test_ir_freshness.py indentation ([54ef28f](https://github.com/WhalerMike/uiao-core/commit/54ef28f7865516530717601e6783335022c19059))
 * pass full output path to build_ssp in generate_all ([d697e6d](https://github.com/WhalerMike/uiao-core/commit/d697e6d6f89c2249b489e79321af14fb0ab70d3b))
+* **puml:** remove unused escaped variable to pass ruff F841 ([247cffc](https://github.com/WhalerMike/uiao-core/commit/247cffc0d122ca6a486c35bd8fab689a4451a484))
 * **quarto:** restore correct YAML indentation and add plantuml theme ([21d8524](https://github.com/WhalerMike/uiao-core/commit/21d8524a1194456b7f3b7600fe51a7eff9a0f15b))
 * remove docs/STYLE-GUIDE.md and site/ generated files to resolve merge conflicts ([7e40ff8](https://github.com/WhalerMike/uiao-core/commit/7e40ff8f75985ae0a7a81139c080b91fee9802da))
 * rename section 6 from Core Concepts to Eight Core Concepts to resolve canon drift ([b85d406](https://github.com/WhalerMike/uiao-core/commit/b85d406b8465b799cb832a8e14496d03286cf8fe))
