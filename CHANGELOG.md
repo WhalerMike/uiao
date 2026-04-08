@@ -72,6 +72,7 @@
 * **cli:** add ir-scuba-transform, ir-evidence-bundle, ir-poam-export, ir-drift-detect commands ([bc1b9c3](https://github.com/WhalerMike/uiao-core/commit/bc1b9c35bfd1ccdb8af4b3e52e30baf55a4f635e))
 * **cli:** ir-ssp-report command — SSP narrative + lineage from SCuBA pipeline ([c6202b4](https://github.com/WhalerMike/uiao-core/commit/c6202b4b643aaed982b5c9083750600ea224eba0))
 * **coverage+ci:** SSP coverage export, IR hash stability, CI coverage floor 45%, CLI smoke test, deselect pre-existing failures ([f4c29d4](https://github.com/WhalerMike/uiao-core/commit/f4c29d47be2cc727d4f812c9d7008c927242acaf))
+* **data:** add plantuml-config.json with neutral theme ([10ac5f4](https://github.com/WhalerMike/uiao-core/commit/10ac5f4fb242c067d87b00db0ea76fb93938bff6))
 * **evidence:** add EvidenceBundle + POA&M export with 21 tests ([5b8eb7c](https://github.com/WhalerMike/uiao-core/commit/5b8eb7cf13dea2a5237d7c04801a3e0fc968c48b))
 * expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
 * **generators:** add puml.py shim with PLANTUML_THEME, _plantuml_html, _render_mmdc ([8592b2b](https://github.com/WhalerMike/uiao-core/commit/8592b2b7cc54d9cdfb07a7c93814ab6c4ca59275))
