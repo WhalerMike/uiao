@@ -103,6 +103,7 @@
 * **p1:** add freshness engine ([7cf6095](https://github.com/WhalerMike/uiao-core/commit/7cf6095954f9387e9dd3cc3ec32f60b66bafa50f))
 * **p1:** add freshness engine tests ([6cff25d](https://github.com/WhalerMike/uiao-core/commit/6cff25d769dc5cf5295a9ce5cc1ad6e1a969c256))
 * **p1:** add freshness package __init__.py ([20bf983](https://github.com/WhalerMike/uiao-core/commit/20bf983c6288e5f5018ac9938aa889b400cfd475))
+* **p1:** add IR dashboard tests ([9f6878f](https://github.com/WhalerMike/uiao-core/commit/9f6878f57648f3ed2498e1ae6e3f023585366fbd))
 * **p1:** add IR governance dashboard ([a00a88f](https://github.com/WhalerMike/uiao-core/commit/a00a88f08ab83c9a7c4531303d4d7a15c04a31d6))
 * render Generic Federal Agency disclaimer as amber notice box on title page ([cb8e8f5](https://github.com/WhalerMike/uiao-core/commit/cb8e8f572da70d146640994336f4326adf33e5b1))
 * **scripts:** route KSI generator output to category subdirs ([45b0ed5](https://github.com/WhalerMike/uiao-core/commit/45b0ed5cfd6ff09301952557ddce7c0a38a5543e))
