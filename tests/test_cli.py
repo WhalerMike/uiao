@@ -301,7 +301,7 @@ class TestConmonExportOa:
             ],
         )
         assert result.exit_code == 0
-        assert str(out) in result.stdout
+        assert str(out) in result.stdout.replace("\n", "")
 
 
 # ===========================================================================
