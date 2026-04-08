@@ -11,15 +11,13 @@ FAKE_SCUBA = {
         "run_id": "test-run-001",
         "assessment_date": "2025-01-01T00:00:00Z",
         "tool_version": "1.0.0",
-        "collector_user": "ci"
+        "collector_user": "ci",
     },
     "tenant": {"tenant_id": "test-tenant"},
     "ksi_results": [
-        {"ksi_id": "KSI-IAM-01", "status": "PASS", "severity": "Low",
-         "details": "AAD policy passed"},
-        {"ksi_id": "KSI-IAM-02", "status": "FAIL", "severity": "High",
-         "details": "MFA not enforced"},
-    ]
+        {"ksi_id": "KSI-IAM-01", "status": "PASS", "severity": "Low", "details": "AAD policy passed"},
+        {"ksi_id": "KSI-IAM-02", "status": "FAIL", "severity": "High", "details": "MFA not enforced"},
+    ],
 }
 FAKE_JSON = json.dumps(FAKE_SCUBA)
 
@@ -40,7 +38,7 @@ def test_ir_ssp_report_markdown_default(scuba_file):
 def test_ir_ssp_report_json_format(scuba_file):
     result = runner.invoke(app, ["ir-ssp-report", scuba_file, "--format", "json"])
     assert result.exit_code == 0, result.output
-    raw = result.output[result.output.index(chr(123)):]
+    raw = result.output[result.output.index(chr(123)) :]
     data = json.loads(raw)
     assert isinstance(data, dict)
 
