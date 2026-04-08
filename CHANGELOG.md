@@ -12,6 +12,7 @@
 * **ci:** repair CodeMirror auto-indent corruption in generate-artifacts.yml ([17eb7ef](https://github.com/WhalerMike/uiao-core/commit/17eb7ef6285e67f444966002f98dd590cf790e04))
 * **ci:** repair CodeMirror auto-indent corruption in render-and-insert-diagrams.yml ([6f2f982](https://github.com/WhalerMike/uiao-core/commit/6f2f9826592cccc51177be1aa25caebe262d0128))
 * **ci:** update build-readiness gate to reference new KSI crosswalk and index paths ([54dd709](https://github.com/WhalerMike/uiao-core/commit/54dd7091f85a543b0cd6bf1c57054be3a622b7b0))
+* **control-library:** add IA-2.yml at flat path for test compatibility ([10e669e](https://github.com/WhalerMike/uiao-core/commit/10e669ee0a1d66d57a3d9874c78aa090fafbe520))
 * **control-library:** add SC-8.yml at flat path for test compatibility ([56d1f2d](https://github.com/WhalerMike/uiao-core/commit/56d1f2d2abb22e87207fb43b021a2b1c25507688))
 * correct kwarg names for build_oscal/ssp/poam_export in generate_all ([74fa33d](https://github.com/WhalerMike/uiao-core/commit/74fa33db64aa8206dd1aad281b9aa0794e376910))
 * **diagrams:** restore correct YAML indentation in diagrams.yaml ([92dd509](https://github.com/WhalerMike/uiao-core/commit/92dd50954f0ac955b3c448eb967d8385d799995a))
