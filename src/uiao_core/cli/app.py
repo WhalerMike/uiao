@@ -917,5 +917,110 @@ def adapter_run_scuba(
         typer.echo("\n" + _json.dumps(result["metadata"], indent=2, default=str))
 
 
+
+@app.command()
+def ir_scuba_transform(
+    normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
+    out: str = typer.Option("", "--out", "-o", help="Write full evidence JSON to file."),
+) -> None:
+    """Transform normalized SCuBA JSON -> IR Evidence objects and print summary."""
+    import json as _json
+    from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
+
+    console.print(f"[bold]Transforming SCuBA JSON: {normalized_json}...[/bold]")
+    result = transform_scuba_to_ir(normalized_json)
+    console.print(result.summary())
+    if out:
+        from pathlib import Path as _Path
+        _Path(out).parent.mkdir(parents=True, exist_ok=True)
+        _Path(out).write_text(_json.dumps(result.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+        console.print(f"[green]Evidence JSON written to {out}[/green]")
+
+
+@app.command()
+def ir_evidence_bundle(
+    normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
+    out: str = typer.Option("", "--out", "-o", help="Write canonical bundle JSON to file."),
+) -> None:
+    """Build a canonical EvidenceBundle from a SCuBA transform and print summary."""
+    import json as _json
+    from uiao_core.evidence.bundle import build_bundle_from_transform_result
+    from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
+
+    console.print(f"[bold]Building EvidenceBundle from: {normalized_json}...[/bold]")
+    result = transform_scuba_to_ir(normalized_json)
+    bundle = build_bundle_from_transform_result(result)
+    console.print(bundle.summary())
+    if out:
+        from pathlib import Path as _Path
+        _Path(out).parent.mkdir(parents=True, exist_ok=True)
+        _Path(out).write_text(bundle.to_canonical(), encoding="utf-8")
+        console.print(f"[green]Bundle JSON written to {out}[/green]")
+
+
+@app.command()
+def ir_poam_export(
+    normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
+    out: str = typer.Option("", "--out", "-o", help="Write POA&M JSON to file."),
+) -> None:
+    """Export POA&M rows (FAIL + WARN only) from a SCuBA run and print summary."""
+    from uiao_core.evidence.bundle import build_bundle_from_transform_result
+    from uiao_core.evidence.poam import build_poam, poam_summary, poam_to_json
+    from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
+
+    console.print(f"[bold]Generating POA&M from: {normalized_json}...[/bold]")
+    result = transform_scuba_to_ir(normalized_json)
+    bundle = build_bundle_from_transform_result(result)
+    rows = build_poam(bundle)
+    console.print(poam_summary(rows))
+    if out:
+        from pathlib import Path as _Path
+        _Path(out).parent.mkdir(parents=True, exist_ok=True)
+        _Path(out).write_text(poam_to_json(rows), encoding="utf-8")
+        console.print(f"[green]POA&M JSON written to {out}[/green]")
+
+
+@app.command()
+def ir_drift_detect(
+    expected: str = typer.Argument(..., help="Path to expected-state JSON file."),
+    actual: str = typer.Argument(..., help="Path to actual-state JSON file."),
+    resource_id: str = typer.Option("resource", "--resource-id", "-r", help="Resource identifier."),
+    policy_ref: str = typer.Option("policy", "--policy-ref", "-p", help="Policy reference."),
+    out: str = typer.Option("", "--out", "-o", help="Write DriftState JSON to file."),
+) -> None:
+    """Detect drift between two IR state JSON files and print classification."""
+    import json as _json
+    from pathlib import Path as _Path
+    from datetime import datetime, timezone
+    from uiao_core.governance.drift import build_drift_state
+    from uiao_core.ir.models.core import ProvenanceRecord
+
+    expected_state = _json.loads(_Path(expected).read_text(encoding="utf-8"))
+    actual_state = _json.loads(_Path(actual).read_text(encoding="utf-8"))
+    prov = ProvenanceRecord(
+        source="cli:drift-detect",
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        version="cli",
+        hash=None,
+        actor="cli",
+    )
+    drift = build_drift_state(
+        resource_id=resource_id,
+        policy_ref=policy_ref,
+        expected_state=expected_state,
+        actual_state=actual_state,
+        provenance=prov,
+    )
+    status = "[red]DRIFT DETECTED[/red]" if drift.drift_detected else "[green]NO DRIFT[/green]"
+    console.print(f"Resource  : {drift.resource_id}")
+    console.print(f"Policy    : {drift.policy_ref}")
+    console.print(f"Status    : {status}")
+    console.print(f"Class     : {drift.classification}")
+    console.print(f"Delta     : added={drift.delta.get('added',[])} removed={drift.delta.get('removed',[])} changed={drift.delta.get('changed',[])}")
+    if out:
+        _Path(out).parent.mkdir(parents=True, exist_ok=True)
+        _Path(out).write_text(drift.to_canonical(), encoding="utf-8")
+        console.print(f"[green]DriftState JSON written to {out}[/green]")
 if __name__ == "__main__":
     app()
+
