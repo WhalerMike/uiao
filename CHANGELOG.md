@@ -15,6 +15,7 @@
 * **control-library:** add IA-2.yml at flat path for test compatibility ([10e669e](https://github.com/WhalerMike/uiao-core/commit/10e669ee0a1d66d57a3d9874c78aa090fafbe520))
 * **control-library:** add SC-8.yml at flat path for test compatibility ([56d1f2d](https://github.com/WhalerMike/uiao-core/commit/56d1f2d2abb22e87207fb43b021a2b1c25507688))
 * correct kwarg names for build_oscal/ssp/poam_export in generate_all ([74fa33d](https://github.com/WhalerMike/uiao-core/commit/74fa33db64aa8206dd1aad281b9aa0794e376910))
+* **data:** add fedramp_20x_control_plane_alignment to control-planes.yml for overlay tests ([52f9317](https://github.com/WhalerMike/uiao-core/commit/52f9317de9b44a17be83afeee3481ce2dc1a6856))
 * **data:** complete fedramp_ssp_template_structure.yaml with all Rev5 fields required by TestSSPBuilder ([d043cf7](https://github.com/WhalerMike/uiao-core/commit/d043cf7206d871f1e52fc94c4e491dacf80cdb2b))
 * **diagrams:** restore correct YAML indentation in diagrams.yaml ([92dd509](https://github.com/WhalerMike/uiao-core/commit/92dd50954f0ac955b3c448eb967d8385d799995a))
 * **diagrams:** unwrap word-wrapped PlantUML participant names causing YAML ScannerError ([6ef1e93](https://github.com/WhalerMike/uiao-core/commit/6ef1e93197133a92c3c976538dacc45605f6eb8a))
