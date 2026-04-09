@@ -240,10 +240,7 @@ def live_ssp_summary(ssp_doc: dict[str, Any], bundle: EvidenceBundle) -> str:
         Multi-line summary suitable for printing to a terminal.
     """
     # Handle both wrapped {"system-security-plan": ...} and raw plan dict
-    if "system-security-plan" in ssp_doc:
-        plan = ssp_doc["system-security-plan"]
-    else:
-        plan = ssp_doc
+    plan = ssp_doc.get("system-security-plan", ssp_doc)
 
     meta = plan.get("metadata", {})
     title = meta.get("title", "Unknown")
