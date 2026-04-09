@@ -8,7 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from uiao_core.cli.app import app
-from uiao_core.evidence.bundle import EvidenceBundle, build_bundle_from_transform_result
+from uiao_core.evidence.bundle import EvidenceBundle
 from uiao_core.generators.sar import (
     _finding_state,
     _finding_risk_state,
@@ -89,6 +89,7 @@ def minimal_bundle() -> EvidenceBundle:
 # Unit: helper functions
 # ---------------------------------------------------------------------------
 
+
 class TestHelpers:
     def test_finding_state_pass(self) -> None:
         ev = _make_evidence("e1", "AC-2", passed=True)
@@ -112,8 +113,11 @@ class TestHelpers:
 
     def test_severity_high(self) -> None:
         ev = Evidence(
-            id="e1", source="test", timestamp="2025-01-01T00:00:00Z",
-            control_id="AC-2", policy_id=None,
+            id="e1",
+            source="test",
+            timestamp="2025-01-01T00:00:00Z",
+            control_id="AC-2",
+            policy_id=None,
             data={"ksi_id": "AC-2", "severity": "Critical", "status": "FAIL"},
             evaluation={"passed": False},
             provenance=_prov(),
@@ -128,6 +132,7 @@ class TestHelpers:
 # ---------------------------------------------------------------------------
 # Unit: build_sar structure
 # ---------------------------------------------------------------------------
+
 
 class TestBuildSar:
     def test_top_level_key(self, minimal_bundle: EvidenceBundle) -> None:
@@ -172,7 +177,9 @@ class TestBuildSar:
 
     def test_pass_finding_state_satisfied(self, minimal_bundle: EvidenceBundle) -> None:
         results = build_sar(minimal_bundle)["assessment-results"]["results"][0]
-        pass_findings = [f for f in results["findings"] if "PASS" in f["title"] or f["target"]["status"]["state"] == "satisfied"]
+        pass_findings = [
+            f for f in results["findings"] if "PASS" in f["title"] or f["target"]["status"]["state"] == "satisfied"
+        ]
         assert len(pass_findings) >= 1
 
     def test_back_matter_resources_match_evidence(self, minimal_bundle: EvidenceBundle) -> None:
@@ -201,7 +208,6 @@ class TestBuildSar:
         doc = build_sar(minimal_bundle)
         text = json.dumps(doc)
         # Extract all uuid values - they should all parse as valid UUIDs
-        import re
         raw = json.loads(text)
         # Spot-check top-level uuid
         ar = raw["assessment-results"]
@@ -257,6 +263,7 @@ class TestBuildSar:
 # Unit: build_sar_summary
 # ---------------------------------------------------------------------------
 
+
 class TestBuildSarSummary:
     def test_summary_contains_run_id(self, minimal_bundle: EvidenceBundle) -> None:
         doc = build_sar(minimal_bundle)
@@ -279,6 +286,7 @@ class TestBuildSarSummary:
 # ---------------------------------------------------------------------------
 # Unit: export_sar
 # ---------------------------------------------------------------------------
+
 
 class TestExportSar:
     def test_writes_json_file(self, minimal_bundle: EvidenceBundle, tmp_path: Path) -> None:
@@ -307,6 +315,7 @@ class TestExportSar:
 # ---------------------------------------------------------------------------
 # CLI smoke tests: ir-generate-sar
 # ---------------------------------------------------------------------------
+
 
 class TestIRGenerateSARCLI:
     def test_runs_without_error(self, scuba_json: Path) -> None:

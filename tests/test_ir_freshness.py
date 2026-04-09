@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
-import pytest
 
 from uiao_core.freshness.engine import (
-    FreshnessRecord,
     build_freshness_records,
     classify_age,
     generate_refresh_actions,
@@ -73,9 +71,13 @@ class TestBuildFreshnessRecords:
 
     def test_missing_timestamp_is_stale(self):
         ev = Evidence(
-            id="e3", source="test", timestamp="",
-            control_id="AC-2", policy_id=None,
-            data={}, evaluation={},
+            id="e3",
+            source="test",
+            timestamp="",
+            control_id="AC-2",
+            policy_id=None,
+            data={},
+            evaluation={},
             provenance=_prov(),
         )
         records = build_freshness_records([ev])
@@ -105,11 +107,19 @@ class TestGenerateRefreshActions:
         ts = "2025-01-01T00:00:00Z"
         ev = _make_evidence("e6", "AC-2", ts)
         records = build_freshness_records([ev], now=now)
-        existing = [GovernanceAction(
-            ksi_id="AC-2", control_id="AC-2", policy_id=None,
-            severity="Medium", drift_classification=None,
-            owner="ops", sla_days=7, action_type="refresh",
-            description="existing", evidence_id="e6",
-        )]
+        existing = [
+            GovernanceAction(
+                ksi_id="AC-2",
+                control_id="AC-2",
+                policy_id=None,
+                severity="Medium",
+                drift_classification=None,
+                owner="ops",
+                sla_days=7,
+                action_type="refresh",
+                description="existing",
+                evidence_id="e6",
+            )
+        ]
         actions = generate_refresh_actions(records, existing_actions=existing)
         assert len(actions) == 0

@@ -14,6 +14,7 @@ build_live_ssp(normalized_json_path, ...)
 live_ssp_summary(ssp_doc, bundle)
     Return a human-readable summary string for CLI output.
 """
+
 from __future__ import annotations
 
 import json
@@ -49,11 +50,7 @@ def _find_component_uuid(ssp: dict[str, Any], ksi_id: str) -> str | None:
     """
     del ksi_id  # best-effort lookup; always use first component for now
     try:
-        components = (
-            ssp["system-security-plan"]
-            ["system-implementation"]
-            ["components"]
-        )
+        components = ssp["system-security-plan"]["system-implementation"]["components"]
         if components:
             return components[0]["uuid"]
     except (KeyError, IndexError, TypeError):
@@ -94,9 +91,7 @@ def inject_scuba_evidence(
             req_by_id[ctrl_id] = req
 
         # implementation-status
-        req.setdefault("implementation-status", {})["state"] = _oscal_status(
-            ev.evaluation or {}
-        )
+        req.setdefault("implementation-status", {})["state"] = _oscal_status(ev.evaluation or {})
 
         # remarks - B005 compliant: no multi-char lstrip
         scuba_tag = f"SCUBA:{run_id}"
@@ -113,12 +108,8 @@ def inject_scuba_evidence(
                 {
                     "component-uuid": component_uuid,
                     "uuid": str(uuid.uuid4()),
-                    "description": (
-                        ev.evaluation.get("details", "") if ev.evaluation else ""
-                    ),
-                    "implementation-status": {
-                        "state": _oscal_status(ev.evaluation or {})
-                    },
+                    "description": (ev.evaluation.get("details", "") if ev.evaluation else ""),
+                    "implementation-status": {"state": _oscal_status(ev.evaluation or {})},
                 }
             )
 
@@ -188,9 +179,7 @@ def build_live_ssp(
 
     # --- write output ----------------------------------------------------
     if output_path is None:
-        output_path = normalized_json_path.parent / (
-            normalized_json_path.stem + "_live_ssp.json"
-        )
+        output_path = normalized_json_path.parent / (normalized_json_path.stem + "_live_ssp.json")
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as fh:
@@ -221,9 +210,7 @@ def live_ssp_summary(ssp_doc: dict[str, Any], bundle: EvidenceBundle) -> str:
     meta = plan.get("metadata", {})
     title = meta.get("title", "Unknown")
     reqs = plan.get("control-implementation", {}).get("implemented-requirements", [])
-    injected = [
-        r for r in reqs if "SCUBA:" in r.get("remarks", "")
-    ]
+    injected = [r for r in reqs if "SCUBA:" in r.get("remarks", "")]
     lines = [
         f"Live SSP [{bundle.run_id}]",
         f"  Title            : {title}",

@@ -69,13 +69,9 @@ def validate_normalized_json(path: str) -> ValidationResult:
                 errors.append(f"ksi_results[{i}] missing required field: '{key}'")
             status = entry.get("status", "")
             if status and status not in VALID_STATUSES:
-                errors.append(
-                    f"ksi_results[{i}] invalid status '{status}' — expected one of {sorted(VALID_STATUSES)}"
-                )
+                errors.append(f"ksi_results[{i}] invalid status '{status}' — expected one of {sorted(VALID_STATUSES)}")
             severity = entry.get("severity", "")
             if severity and severity not in VALID_SEVERITIES:
-                warnings.append(
-                    f"ksi_results[{i}] unrecognised severity '{severity}'"
-                )
+                warnings.append(f"ksi_results[{i}] unrecognised severity '{severity}'")
 
     return ValidationResult(valid=not errors, errors=errors, warnings=warnings)

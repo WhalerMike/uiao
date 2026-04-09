@@ -6,14 +6,26 @@ import pytest
 from uiao_core.auditor.bundle import build_auditor_bundle
 
 FAKE = {
-    "assessment_metadata": {"run_id": "audit-001", "assessment_date": "2025-01-01T00:00:00Z", "tool_version": "1.0", "collector_user": "ci"},
+    "assessment_metadata": {
+        "run_id": "audit-001",
+        "assessment_date": "2025-01-01T00:00:00Z",
+        "tool_version": "1.0",
+        "collector_user": "ci",
+    },
     "tenant": {"tenant_id": "test-tenant"},
     "ksi_results": [
         {"ksi_id": "KSI-IAM-01", "status": "PASS", "severity": "Low", "details": "ok"},
         {"ksi_id": "KSI-IAM-02", "status": "FAIL", "severity": "High", "details": "gap"},
     ],
 }
-EXPECTED = {"governance-report.md", "ssp-narrative.md", "lineage.json", "evidence-bundle.json", "poam.json", "manifest.json"}
+EXPECTED = {
+    "governance-report.md",
+    "ssp-narrative.md",
+    "lineage.json",
+    "evidence-bundle.json",
+    "poam.json",
+    "manifest.json",
+}
 
 
 @pytest.fixture()
