@@ -1263,5 +1263,28 @@ def ir_freshness_schedule(
         console.print('[green]Schedule written to ' + out + '[/green]')
 
 
+@app.command()
+def ir_generate_sar(
+    normalized_json: str = typer.Argument(..., help='Path to normalized SCuBA JSON file.'),
+    out: str = typer.Option('', '--out', '-o', help='Write OSCAL SAR JSON to file.'),
+    system_name: str = typer.Option('UIAO SCuBA Assessment System', '--system-name', '-s', help='System name for SAR metadata.'),
+    ap_href: str = typer.Option('', '--ap-href', help='Optional href to Assessment Plan document.'),
+) -> None:
+    '''Generate an OSCAL Assessment Results (SAR) document from a SCuBA run.'''
+    from uiao_core.evidence.bundle import build_bundle_from_transform_result
+    from uiao_core.generators.sar import build_sar_summary, export_sar, build_sar
+    from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    result = transform_scuba_to_ir(normalized_json)
+    bundle = build_bundle_from_transform_result(result)
+    tenant_id = result.evidence[0].data.get("tenant_id", "") if result.evidence else ""
+    console.print('[bold]Generating OSCAL SAR...[/bold]')
+    if out:
+        from pathlib import Path as _Path
+        path = export_sar(bundle, out, system_name=system_name, tenant_id=tenant_id, ap_href=ap_href)
+        console.print('[green]SAR written to ' + path + '[/green]')
+    else:
+        sar_doc = build_sar(bundle, system_name=system_name, tenant_id=tenant_id, ap_href=ap_href)
+        console.print(build_sar_summary(sar_doc))
+
 if __name__ == "__main__":
     app()
