@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -10,11 +10,8 @@ from typer.testing import CliRunner
 from uiao_core.cli.app import app
 from uiao_core.freshness.engine import (
     FreshnessRecord,
-    build_freshness_records,
-    generate_refresh_actions,
 )
 from uiao_core.freshness.scheduler import (
-    RefreshJob,
     _urgency,
     build_refresh_schedule,
     group_jobs_by_owner,
@@ -108,6 +105,7 @@ def _refresh_action(eid: str, owner: str = "ops@example.gov") -> GovernanceActio
 # Unit tests for _urgency
 # ---------------------------------------------------------------------------
 
+
 class TestUrgency:
     def test_normal(self) -> None:
         assert _urgency(5.0, 30) == "normal"
@@ -131,6 +129,7 @@ class TestUrgency:
 # ---------------------------------------------------------------------------
 # Unit tests for build_refresh_schedule
 # ---------------------------------------------------------------------------
+
 
 class TestBuildRefreshSchedule:
     def test_no_stale_returns_empty(self) -> None:
@@ -234,6 +233,7 @@ class TestBuildRefreshSchedule:
 # Unit tests for group_jobs_by_owner
 # ---------------------------------------------------------------------------
 
+
 class TestGroupJobsByOwner:
     def test_groups_correctly(self) -> None:
         r1 = _stale_record("e1")
@@ -265,6 +265,7 @@ class TestGroupJobsByOwner:
 # Unit tests for schedule_summary
 # ---------------------------------------------------------------------------
 
+
 class TestScheduleSummary:
     def test_empty_returns_no_jobs_message(self) -> None:
         msg = schedule_summary([])
@@ -295,6 +296,7 @@ class TestScheduleSummary:
 # ---------------------------------------------------------------------------
 # CLI smoke tests for ir-freshness-schedule
 # ---------------------------------------------------------------------------
+
 
 class TestIRFreshnessScheduleCLI:
     def test_runs_without_error(self, scuba_json: Path) -> None:
