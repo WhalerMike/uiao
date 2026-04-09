@@ -233,7 +233,7 @@ def build_sar(
     sar: Dict[str, Any] = {
         "uuid": str(uuid.uuid4()),
         "metadata": {
-            "title": "OSCAL SAR: " + system_name + " — SCuBA Run " + bundle.run_id,
+            "title": "OSCAL SAR: " + system_name + " \u2014 SCuBA Run " + bundle.run_id,
             "published": now,
             "last-modified": now,
             "version": bundle.provenance.version or "1.0",
@@ -253,7 +253,7 @@ def build_sar(
                 {
                     "uuid": agency_party_uuid,
                     "type": "organization",
-                    "name": "UIAO Program Office — Automated Assessment",
+                    "name": "UIAO Program Office \u2014 Automated Assessment",
                 }
             ],
         },
@@ -300,7 +300,7 @@ def build_sar_summary(sar_doc: Dict[str, Any]) -> str:
     risks = results.get("risks", [])
     run_id = next((p["value"] for p in meta.get("props", []) if p["name"] == "run-id"), "n/a")
     lines = [
-        "OSCAL SAR: " + meta.get("title", "untitled"),
+        meta.get("title", "untitled"),
         "  Run ID      : " + run_id,
         "  PASS        : " + props.get("pass-count", "?"),
         "  WARN        : " + props.get("warn-count", "?"),
