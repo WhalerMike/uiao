@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-
-import pytest
 
 from uiao_core.dashboard.ir_dashboard import build_ir_dashboard, export_ir_dashboard
 from uiao_core.governance.actions import GovernanceAction
@@ -83,7 +80,6 @@ class TestBuildIrDashboard:
         assert records[0]["evidence_id"] == "e1"
 
     def test_export_writes_file(self, tmp_path):
-        now = datetime(2025, 1, 31, tzinfo=timezone.utc)
         ev = _make_evidence("e1", "AC-2", "2025-01-30T00:00:00Z")
         out_file = str(tmp_path / "dashboard.json")
         path = export_ir_dashboard([ev], [], out_file)
