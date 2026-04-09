@@ -14,6 +14,7 @@ build_live_ssp(normalized_json_path, ...)
 live_ssp_summary(ssp_doc, bundle)
     Return a human-readable summary string for CLI output.
 """
+
 from __future__ import annotations
 
 import json
@@ -54,7 +55,6 @@ def _find_component_uuid(ssp: dict[str, Any], ksi_id: str) -> str | None:
     except (KeyError, IndexError, TypeError):
         pass
     return None
-
 
 
 def inject_scuba_evidence(
@@ -212,9 +212,7 @@ def build_live_ssp(
 
     # --- write output ---
     if output_path is None:
-        output_path = normalized_json_path.parent / (
-            normalized_json_path.stem + "_live_ssp.json"
-        )
+        output_path = normalized_json_path.parent / (normalized_json_path.stem + "_live_ssp.json")
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as fh:
@@ -249,10 +247,7 @@ def live_ssp_summary(ssp_doc: dict[str, Any], bundle: EvidenceBundle) -> str:
     implemented = sum(
         1
         for r in injected
-        if any(
-            p.get("name") == "implementation-status" and p.get("value") == "implemented"
-            for p in r.get("props", [])
-        )
+        if any(p.get("name") == "implementation-status" and p.get("value") == "implemented" for p in r.get("props", []))
     )
     partial = sum(
         1
@@ -266,8 +261,7 @@ def live_ssp_summary(ssp_doc: dict[str, Any], bundle: EvidenceBundle) -> str:
         1
         for r in injected
         if any(
-            p.get("name") == "implementation-status" and p.get("value") == "not-implemented"
-            for p in r.get("props", [])
+            p.get("name") == "implementation-status" and p.get("value") == "not-implemented" for p in r.get("props", [])
         )
     )
     lines = [
