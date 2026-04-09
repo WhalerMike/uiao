@@ -1,6 +1,8 @@
 import json
 import pathlib
+
 import pytest
+
 from uiao_core.auditor.bundle import build_auditor_bundle
 
 FAKE = {
@@ -22,7 +24,7 @@ def scuba_file(tmp_path):
 
 
 def test_creates_all_files(tmp_path, scuba_file):
-    manifest = build_auditor_bundle(scuba_file, str(tmp_path / "out"))
+    build_auditor_bundle(scuba_file, str(tmp_path / "out"))
     created = {p.name for p in pathlib.Path(tmp_path / "out").iterdir()}
     assert EXPECTED.issubset(created)
 
