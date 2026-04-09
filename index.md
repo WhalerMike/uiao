@@ -60,4 +60,4 @@ All machine-facing artifacts (schemas, adapters, KSI rules, provenance) live in:
 This repository is the single source of truth for all human-readable UIAO documentation.
 Machine artifacts are never stored here. Human artifacts are never stored in uiao-core.
 
-See the [SSOT Policy](docs/00-canon-specification.qmd) for the full ownership table and duplication rules.
+See the [SSOT Policy](docs/02_CanonSpecification.qmd) for the full ownership table and duplication rules.
