@@ -60,7 +60,7 @@ After completion, you will have:
 
 ## Related Documents
 
-- [UIAO SCuBA Integration and Governance Guide](./docs/SCuBA-Integration-Guide.md)
+- [UIAO SCuBA Integration and Governance Guide](./docs/SCuBA-Pipeline-Runbook.md)
 - [Appendix B — UIAO SCuBA Pipeline](./appendices/Appendix-B-UIAO-SCuBA-Pipeline.md)
 - [Appendix C — KSI Mapping Tables](./appendices/Appendix-C-KSI-Mapping-Tables.md)
 - [Appendix E — SCuBA Field Dictionary](./appendices/Appendix-E-SCuBA-Field-Dictionary.md)
