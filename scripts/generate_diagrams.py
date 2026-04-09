@@ -27,9 +27,6 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 MODEL_ID = "imagen-4.0-generate-001"
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:predict?key={API_KEY}"
 
-if not API_KEY:
-    print("Error: GEMINI_API_KEY environment variable is not set. Please add it to GitHub Secrets.")
-    exit(1)
 
 # Professional Style Guide for UIAO-Core Architectural Diagrams
 STYLE_GUIDE = (
@@ -180,6 +177,9 @@ def process_templates():
 
 
 if __name__ == "__main__":
+    if not API_KEY:
+        print("Error: GEMINI_API_KEY environment variable is not set. Please add it to GitHub Secrets.")
+        exit(1)
     print("UIAO-Core Gemini Diagram Generator")
     print("===================================")
     print("Routing: src/templates/ + diagram-owner: gemini tagged files")
