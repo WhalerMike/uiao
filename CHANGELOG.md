@@ -1,4 +1,4 @@
-# [2.1.0](https://github.com/WhalerMike/uiao-core/compare/v2.0.0...v2.1.0) (2026-04-08)
+# [2.1.0](https://github.com/WhalerMike/uiao-core/compare/v2.0.0...v2.1.0) (2026-04-09)
 
 
 ### Bug Fixes
@@ -128,6 +128,7 @@
 * **p1:** add IR governance dashboard ([a00a88f](https://github.com/WhalerMike/uiao-core/commit/a00a88f08ab83c9a7c4531303d4d7a15c04a31d6))
 * **p1:** inject ir_freshness and ir_dashboard CLI commands ([c395721](https://github.com/WhalerMike/uiao-core/commit/c395721bc5697464a640a0940a3b7b5027dd461b))
 * **p2:** add freshness scheduler module with RefreshJob, build_refresh_schedule, group_jobs_by_owner ([8a2bf2a](https://github.com/WhalerMike/uiao-core/commit/8a2bf2a1d8722e1e07c81b453eb6e83658bca97d))
+* **p2:** add ir-freshness-schedule CLI command to app.py ([1b179c4](https://github.com/WhalerMike/uiao-core/commit/1b179c411f7d96938993f62d5a901946af0de5e8))
 * render Generic Federal Agency disclaimer as amber notice box on title page ([cb8e8f5](https://github.com/WhalerMike/uiao-core/commit/cb8e8f572da70d146640994336f4326adf33e5b1))
 * **scripts:** route KSI generator output to category subdirs ([45b0ed5](https://github.com/WhalerMike/uiao-core/commit/45b0ed5cfd6ff09301952557ddce7c0a38a5543e))
 * **scuba:** add adapter-run-scuba orchestration wrapper ([b0366a2](https://github.com/WhalerMike/uiao-core/commit/b0366a2412a485cc25156b07b2d348cb4c511a53))
