@@ -185,7 +185,7 @@ def validate_oscal_artifacts(
             continue
 
         try:
-            model_class.parse_obj(data[root_key])
+            model_class.model_validate(data[root_key])
             logger.info("PASS: %s", json_path.name)
         except Exception as exc:
             logger.error("FAIL: %s", json_path.name)
