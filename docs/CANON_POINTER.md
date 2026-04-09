@@ -1,3 +1,15 @@
+---
+title: "Canon Pointer"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 # CANON POINTER
 
 The UIAO Governance Canon — all human-readable documentation, appendices,

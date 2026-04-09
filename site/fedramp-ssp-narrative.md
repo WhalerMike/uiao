@@ -53,11 +53,30 @@ defined by the five control planes and the services they govern.
 ### 2.2 Control Planes in Boundary
 
 
-- Identity Control Plane — Entra ID, ICAM, Zero Trust Policy Engine
-- Network Control Plane — Cisco Catalyst SD-WAN, mTLS Fabric
-- Addressing Control Plane — InfoBlox IPAM, DNS/DHCP
-- Telemetry Control Plane — Microsoft Sentinel, CDM/CLAW, SIEM
-- Management / Compliance Plane — FedRAMP 20x, TIC 3.0, NIST 800-53
+
+
+
+- **identity:** Manages user and device identity, authentication, and access control across the UIAO architecture.
+
+
+- **addressing:** Manages IP address space, DNS resolution, and asset tracking across the enterprise network.
+
+
+- **overlay:** Provides secure overlay networking, zero-trust network access, and microsegmentation capabilities.
+
+
+- **telemetry:** Collects, aggregates, and analyzes security telemetry from all planes to enable continuous monitoring and threat detection.
+
+
+- **management:** Orchestrates policy enforcement, automation, and continuous compliance monitoring across all UIAO planes.
+
+
+- **network:** Manages physical and virtual network connectivity, routing, and traffic engineering.
+
+
+- **endpoint:** 
+
+
 
 
 ---
@@ -186,15 +205,28 @@ the FedRAMP 20x Phase 2 Key Security Indicators (KSIs) framework. Monitoring is 
 evidence-based, and integrated with the UIAO-Core Documentation-as-Code pipeline.
 
 
-### 5.2 Key Security Indicators
+### 5.2 FedRAMP 20x Control Plane Alignment
 
-| KSI | Control Family | Monitoring Method | Frequency |
-| :--- | :--- | :--- | :--- |
-| KSI-IAM | AC, IA | Entra ID Sign-in Logs + CA Outcomes | Continuous |
-| KSI-NET | AC-4, SC | Cisco SD-WAN IPFIX Flow Telemetry | Continuous |
-| KSI-DNS | SC-20, CM-8 | InfoBlox DDI API — Identity-to-IP Bindings | Hourly |
-| KSI-TEL | AU, IR | Sentinel SIEM — Alert Triage | Real-time |
-| KSI-PAM | AC-2, IA-5 | CyberArk — Privileged Session Recordings | Continuous |
+
+
+| Plane | KSI Mapping | Evidence Method |
+| :--- | :--- | :--- |
+
+| identity | TBD | Automated telemetry |
+
+| addressing | TBD | Automated telemetry |
+
+| overlay | TBD | Automated telemetry |
+
+| telemetry | TBD | Automated telemetry |
+
+| management | TBD | Automated telemetry |
+
+| network | TBD | Automated telemetry |
+
+| endpoint | TBD | Automated telemetry |
+
+
 
 
 ### 5.3 Evidence Collection Pipeline
