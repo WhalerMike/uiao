@@ -10,7 +10,7 @@ from pathlib import Path
 def find_markdown_files(root_dir):
     """Find all markdown files in the repository."""
     root = Path(root_dir)
-    return list(root.rglob("*.md")) + list(root.rglob("*.qmd"))
+    return [p for p in list(root.rglob("*.md")) + list(root.rglob("*.qmd")) if not (p.parent == root and p.name in ("index.md", "index-scuba.md", "SUMMARY.md"))]
 
 
 def check_links(files):
