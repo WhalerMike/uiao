@@ -4,6 +4,7 @@ Tests import from uiao_core.generators.puml; the canonical implementation
 lives in plantuml.py. This module re-exports everything so both import
 paths work.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -32,12 +33,7 @@ def _plantuml_html(content: str, theme: str = PLANTUML_THEME) -> str:
 
     The snippet includes the canonical theme so tests can verify it.
     """
-    return (
-        f"<div class='plantuml'>"
-        f"<script>plantumlConfig={{theme:'{theme}'}};</script>"
-        f"<pre>{content}</pre>"
-        f"</div>"
-    )
+    return f"<div class='plantuml'><script>plantumlConfig={{theme:'{theme}'}};</script><pre>{content}</pre></div>"
 
 
 def _render_mmdc(

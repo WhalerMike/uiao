@@ -68,9 +68,12 @@ def build_refresh_schedule(
         urgency = _urgency(record.age_days, record.threshold_days)
         dispatch_ref = (
             "workflow:ir-freshness-refresh"
-            + "?evidence_id=" + record.evidence_id
-            + "&control_id=" + record.control_id
-            + "&owner=" + action.owner
+            + "?evidence_id="
+            + record.evidence_id
+            + "&control_id="
+            + record.control_id
+            + "&owner="
+            + action.owner
         )
         jobs.append(
             RefreshJob(

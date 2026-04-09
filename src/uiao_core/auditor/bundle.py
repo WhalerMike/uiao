@@ -70,7 +70,5 @@ def build_auditor_bundle(
             "poam_items": len(poam_rows),
         },
     }
-    (out / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
     return manifest
