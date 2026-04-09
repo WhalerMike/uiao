@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from uiao_core.freshness.engine import FreshnessRecord, build_freshness_records
+from uiao_core.freshness.engine import build_freshness_records
 from uiao_core.governance.actions import GovernanceAction
 from uiao_core.ir.models.core import Evidence
 

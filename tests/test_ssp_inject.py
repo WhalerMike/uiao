@@ -7,7 +7,7 @@ import pytest
 from typer.testing import CliRunner
 
 from uiao_core.cli.app import app
-from uiao_core.evidence.bundle import EvidenceBundle, build_bundle_from_transform_result
+from uiao_core.evidence.bundle import EvidenceBundle
 from uiao_core.generators.ssp_inject import (
     _find_component_uuid,
     _oscal_status,
@@ -90,9 +90,7 @@ def _minimal_ssp() -> dict:
     """Build a minimal OSCAL SSP skeleton for testing."""
     comp_uuid = "aaaa-bbbb-cccc-dddd-eeee"
     return {
-        "system-implementation": {
-            "components": [{"uuid": comp_uuid, "type": "service", "title": "TestComp"}]
-        },
+        "system-implementation": {"components": [{"uuid": comp_uuid, "type": "service", "title": "TestComp"}]},
         "control-implementation": {
             "implemented-requirements": [
                 {"uuid": "req-1", "control-id": "AC-2", "remarks": "pillar: identity"},
@@ -107,6 +105,7 @@ def _minimal_ssp() -> dict:
 # ---------------------------------------------------------------------------
 # Unit: helper functions
 # ---------------------------------------------------------------------------
+
 
 class TestOscalStatus:
     def test_pass_returns_implemented(self) -> None:
@@ -139,6 +138,7 @@ class TestFindComponentUuid:
 # ---------------------------------------------------------------------------
 # Unit: inject_scuba_evidence
 # ---------------------------------------------------------------------------
+
 
 class TestInjectScubaEvidence:
     def test_injects_implementation_status(self, minimal_bundle: EvidenceBundle) -> None:
@@ -244,6 +244,7 @@ class TestInjectScubaEvidence:
 # Unit: live_ssp_summary
 # ---------------------------------------------------------------------------
 
+
 class TestLiveSspSummary:
     def test_contains_run_id(self, minimal_bundle: EvidenceBundle) -> None:
         ssp = _minimal_ssp()
@@ -281,15 +282,18 @@ class TestLiveSspSummary:
 # Integration: build_live_ssp (uses real canon/data files)
 # ---------------------------------------------------------------------------
 
+
 class TestBuildLiveSsp:
     def test_writes_ssp_json_file(self, scuba_json: Path, tmp_path: Path) -> None:
         from uiao_core.generators.ssp_inject import build_live_ssp
+
         out = tmp_path / "live-ssp.json"
         path = build_live_ssp(normalized_json_path=scuba_json, output_path=str(out))
         assert Path(path).exists()
 
     def test_output_is_valid_oscal_ssp(self, scuba_json: Path, tmp_path: Path) -> None:
         from uiao_core.generators.ssp_inject import build_live_ssp
+
         out = tmp_path / "live-ssp.json"
         build_live_ssp(normalized_json_path=scuba_json, output_path=str(out))
         data = json.loads(Path(out).read_text())
@@ -297,6 +301,7 @@ class TestBuildLiveSsp:
 
     def test_output_has_implemented_requirements(self, scuba_json: Path, tmp_path: Path) -> None:
         from uiao_core.generators.ssp_inject import build_live_ssp
+
         out = tmp_path / "live-ssp.json"
         build_live_ssp(normalized_json_path=scuba_json, output_path=str(out))
         data = json.loads(Path(out).read_text())
@@ -306,6 +311,7 @@ class TestBuildLiveSsp:
 
     def test_some_requirements_have_implementation_status(self, scuba_json: Path, tmp_path: Path) -> None:
         from uiao_core.generators.ssp_inject import build_live_ssp
+
         out = tmp_path / "live-ssp.json"
         build_live_ssp(normalized_json_path=scuba_json, output_path=str(out))
         data = json.loads(Path(out).read_text())
@@ -316,6 +322,7 @@ class TestBuildLiveSsp:
 
     def test_creates_parent_dirs(self, scuba_json: Path, tmp_path: Path) -> None:
         from uiao_core.generators.ssp_inject import build_live_ssp
+
         out = tmp_path / "deep" / "nested" / "live-ssp.json"
         build_live_ssp(normalized_json_path=scuba_json, output_path=str(out))
         assert out.exists()
@@ -324,6 +331,7 @@ class TestBuildLiveSsp:
 # ---------------------------------------------------------------------------
 # CLI smoke tests: ir-ssp-inject
 # ---------------------------------------------------------------------------
+
 
 class TestIRSspInjectCLI:
     def test_runs_without_error(self, scuba_json: Path, tmp_path: Path) -> None:

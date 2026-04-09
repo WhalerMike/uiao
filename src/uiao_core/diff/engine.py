@@ -32,16 +32,10 @@ class RunDiff:
 
     @property
     def has_changes(self) -> bool:
-        return bool(
-            self.ksi_diff.added
-            or self.ksi_diff.removed
-            or any(d.changed for d in self.evidence_diffs)
-        )
+        return bool(self.ksi_diff.added or self.ksi_diff.removed or any(d.changed for d in self.evidence_diffs))
 
 
-def diff_runs(
-    result_a: SCuBATransformResult, result_b: SCuBATransformResult
-) -> RunDiff:
+def diff_runs(result_a: SCuBATransformResult, result_b: SCuBATransformResult) -> RunDiff:
     """Diff two SCuBATransformResults deterministically."""
     ksis_a: Set[str] = {e.data.get("ksi_id", "") for e in result_a.evidence}
     ksis_b: Set[str] = {e.data.get("ksi_id", "") for e in result_b.evidence}
@@ -80,12 +74,16 @@ def diff_runs(
 def format_diff_markdown(diff: RunDiff) -> str:
     """Render a RunDiff as human-readable Markdown."""
     lines = [
-        "# IR Run Diff", "",
-        f"Run A: {diff.run_id_a}  ", f"Run B: {diff.run_id_b}", "",
+        "# IR Run Diff",
+        "",
+        f"Run A: {diff.run_id_a}  ",
+        f"Run B: {diff.run_id_b}",
+        "",
         "## KSI Changes",
         f"- Added   : {len(diff.ksi_diff.added)}",
         f"- Removed : {len(diff.ksi_diff.removed)}",
-        f"- Common  : {len(diff.ksi_diff.unchanged)}", "",
+        f"- Common  : {len(diff.ksi_diff.unchanged)}",
+        "",
     ]
     if diff.ksi_diff.added:
         lines += ["### New KSIs"] + [f"- {k}" for k in diff.ksi_diff.added] + [""]
@@ -105,18 +103,20 @@ def format_diff_markdown(diff: RunDiff) -> str:
 
 def format_diff_json(diff: RunDiff) -> str:
     """Render a RunDiff as canonical JSON."""
-    return json.dumps({
-        "run_id_a": diff.run_id_a,
-        "run_id_b": diff.run_id_b,
-        "has_changes": diff.has_changes,
-        "ksi_diff": {
-            "added": diff.ksi_diff.added,
-            "removed": diff.ksi_diff.removed,
-            "unchanged_count": len(diff.ksi_diff.unchanged),
+    return json.dumps(
+        {
+            "run_id_a": diff.run_id_a,
+            "run_id_b": diff.run_id_b,
+            "has_changes": diff.has_changes,
+            "ksi_diff": {
+                "added": diff.ksi_diff.added,
+                "removed": diff.ksi_diff.removed,
+                "unchanged_count": len(diff.ksi_diff.unchanged),
+            },
+            "evidence_hash_changes": [
+                {"ksi_id": d.ksi_id, "hash_a": d.hash_a, "hash_b": d.hash_b} for d in diff.evidence_diffs if d.changed
+            ],
+            "status_changes": diff.status_changes,
         },
-        "evidence_hash_changes": [
-            {"ksi_id": d.ksi_id, "hash_a": d.hash_a, "hash_b": d.hash_b}
-            for d in diff.evidence_diffs if d.changed
-        ],
-        "status_changes": diff.status_changes,
-    }, indent=2)
+        indent=2,
+    )

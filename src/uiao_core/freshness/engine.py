@@ -8,9 +8,16 @@ from uiao_core.governance.actions import GovernanceAction
 from uiao_core.ir.models.core import Evidence
 
 DEFAULT_THRESHOLDS: Dict[str, int] = {
-    "AC": 30, "AU": 7, "CA": 90, "CM": 14,
-    "IA": 30, "IR": 1, "RA": 90, "SC": 30,
-    "SI": 7, "default": 30,
+    "AC": 30,
+    "AU": 7,
+    "CA": 90,
+    "CM": 14,
+    "IA": 30,
+    "IR": 1,
+    "RA": 90,
+    "SC": 30,
+    "SI": 7,
+    "default": 30,
 }
 
 
@@ -60,14 +67,16 @@ def build_freshness_records(
         control_id = e.control_id or (e.data.get("ksi_id", "UNKNOWN") if e.data else "UNKNOWN")
         family = control_id.split("-")[0] if "-" in control_id else control_id[:2]
         threshold = thr.get(control_id) or thr.get(family) or thr.get("default", 30)
-        records.append(FreshnessRecord(
-            evidence_id=e.id,
-            control_id=control_id,
-            age_days=age_days,
-            threshold_days=threshold,
-            status=classify_age(age_days, threshold),
-            generated_at=now.isoformat(),
-        ))
+        records.append(
+            FreshnessRecord(
+                evidence_id=e.id,
+                control_id=control_id,
+                age_days=age_days,
+                threshold_days=threshold,
+                status=classify_age(age_days, threshold),
+                generated_at=now.isoformat(),
+            )
+        )
     return records
 
 
@@ -85,18 +94,20 @@ def generate_refresh_actions(
             continue
         if (r.evidence_id, "refresh") in existing_keys:
             continue
-        age_str = "{:.1f}".format(r.age_days)
+        age_str = f"{r.age_days:.1f}"
         desc = "Refresh evidence " + r.evidence_id + " for control " + r.control_id + ", age " + age_str + " days"
-        actions.append(GovernanceAction(
-            ksi_id=r.control_id,
-            control_id=r.control_id,
-            policy_id="policy:freshness:auto",
-            severity="Medium",
-            drift_classification="stale_evidence",
-            owner=default_owner,
-            sla_days=sla_days_for_stale,
-            action_type="refresh",
-            description=desc,
-            evidence_id=r.evidence_id,
-        ))
+        actions.append(
+            GovernanceAction(
+                ksi_id=r.control_id,
+                control_id=r.control_id,
+                policy_id="policy:freshness:auto",
+                severity="Medium",
+                drift_classification="stale_evidence",
+                owner=default_owner,
+                sla_days=sla_days_for_stale,
+                action_type="refresh",
+                description=desc,
+                evidence_id=r.evidence_id,
+            )
+        )
     return actions

@@ -3,6 +3,7 @@
 Produces a FedRAMP-aligned OSCAL Assessment Results document from a
 SCuBA transform result + evidence bundle.
 """
+
 from __future__ import annotations
 
 import json
@@ -13,7 +14,6 @@ from typing import Any, Dict, List, Optional
 
 from uiao_core.evidence.bundle import EvidenceBundle
 from uiao_core.ir.models.core import Evidence
-
 
 _FEDRAMP_NS = "https://fedramp.gov/ns/oscal"
 
@@ -70,7 +70,10 @@ def _build_observation(evidence: Evidence, now: str) -> Dict[str, Any]:
         ],
         "collected": evidence.timestamp or now,
         "expires": "",
-        "remarks": "run_id=" + str(evidence.data.get("run_id", "unknown")) + " | tenant=" + str(evidence.data.get("tenant_id", "unknown")),
+        "remarks": "run_id="
+        + str(evidence.data.get("run_id", "unknown"))
+        + " | tenant="
+        + str(evidence.data.get("tenant_id", "unknown")),
     }
 
 
@@ -88,8 +91,7 @@ def _build_finding(
         "uuid": str(uuid.uuid4()),
         "title": ksi_id + ": " + status_label,
         "description": (
-            "SCuBA automated assessment finding for " + ksi_id
-            + " mapped to NIST control " + control_id + "."
+            "SCuBA automated assessment finding for " + ksi_id + " mapped to NIST control " + control_id + "."
         ),
         "target": {
             "type": "statement-id",
@@ -134,9 +136,7 @@ def _build_risk(evidence: Evidence, finding_uuid: str, now: str) -> Optional[Dic
         "status": _finding_risk_state(evidence),
         "characterizations": [
             {
-                "origin": {
-                    "actors": [{"type": "tool", "actor-uuid": str(uuid.uuid4()), "title": "SCuBA"}]
-                },
+                "origin": {"actors": [{"type": "tool", "actor-uuid": str(uuid.uuid4()), "title": "SCuBA"}]},
                 "facets": [
                     {"name": "likelihood", "system": _FEDRAMP_NS, "value": severity},
                     {"name": "impact", "system": _FEDRAMP_NS, "value": severity},
@@ -159,9 +159,19 @@ def _build_back_matter(bundle: EvidenceBundle) -> Dict[str, Any]:
                 "title": "SCuBA Evidence: " + ksi_id,
                 "props": [
                     {"name": "ksi-id", "value": ksi_id, "ns": _FEDRAMP_NS, "uuid": str(uuid.uuid4())},
-                    {"name": "status", "value": e.data.get("status", "UNKNOWN"), "ns": _FEDRAMP_NS, "uuid": str(uuid.uuid4())},
+                    {
+                        "name": "status",
+                        "value": e.data.get("status", "UNKNOWN"),
+                        "ns": _FEDRAMP_NS,
+                        "uuid": str(uuid.uuid4()),
+                    },
                     {"name": "evidence-id", "value": e.id, "ns": _FEDRAMP_NS, "uuid": str(uuid.uuid4())},
-                    {"name": "run-id", "value": e.data.get("run_id", "unknown"), "ns": _FEDRAMP_NS, "uuid": str(uuid.uuid4())},
+                    {
+                        "name": "run-id",
+                        "value": e.data.get("run_id", "unknown"),
+                        "ns": _FEDRAMP_NS,
+                        "uuid": str(uuid.uuid4()),
+                    },
                 ],
                 "remarks": "Canonical hash prefix: " + (e.evaluation.get("canonical_hash", "")[:16] or "n/a"),
             }
@@ -192,11 +202,7 @@ def build_sar(
     prov_ts = bundle.provenance.timestamp or now
     agency_party_uuid = str(uuid.uuid4())
 
-    control_ids = sorted({
-        e.control_id
-        for e in bundle.evidence
-        if e.control_id
-    })
+    control_ids = sorted({e.control_id for e in bundle.evidence if e.control_id})
 
     observations: List[Dict[str, Any]] = []
     findings: List[Dict[str, Any]] = []
@@ -267,8 +273,13 @@ def build_sar(
                 "title": "SCuBA Assessment Results: " + bundle.run_id,
                 "description": (
                     "Automated SCuBA assessment of " + str(len(bundle.evidence)) + " KSI controls. "
-                    "PASS: " + str(bundle.pass_count) + ", WARN: " + str(bundle.warn_count)
-                    + ", FAIL: " + str(bundle.fail_count) + "."
+                    "PASS: "
+                    + str(bundle.pass_count)
+                    + ", WARN: "
+                    + str(bundle.warn_count)
+                    + ", FAIL: "
+                    + str(bundle.fail_count)
+                    + "."
                 ),
                 "start": prov_ts,
                 "end": now,
