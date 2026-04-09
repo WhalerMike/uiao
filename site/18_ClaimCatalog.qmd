@@ -1,0 +1,116 @@
+---
+title: "18 Claim Catalog"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
+# UIAO Canonical Claim Catalog & Versioning Rules
+
+**Document:** 18
+**Phase:** 5 — Data Governance Substrate
+**Version:** 1.0
+**Status:** Draft
+**Classification:** CUI/FOUO
+**Date:** 2026-04-01
+
+---
+
+## 1. Purpose
+
+The UIAO Canonical Claim Catalog is the semantic backbone of the UIAO ecosystem — the authoritative registry of all claim types, their schemas, versioning rules, and deprecation contracts. It makes UIAO the NIEM of canonical claims, grounded in real data-plane constraints.
+
+---
+
+## 2. Claim Naming Convention
+
+Every canonical claim follows the URI pattern:
+
+```
+urn:uiao:claim:{domain}:{claim_type}:{version}
+```
+
+Examples:
+- `urn:uiao:claim:identity:ssn_verified:1.0`
+- `urn:uiao:claim:eligibility:snap_eligible:2.1`
+- `urn:uiao:claim:address:residential:1.3`
+
+---
+
+## 3. Claim Record Schema
+
+```yaml
+claim_record:
+  claim_uri: "urn:uiao:claim:{domain}:{type}:{version}"
+  domain: "{IDENTITY | ELIGIBILITY | ADDRESS | TAX | BENEFITS | ENFORCEMENT}"
+  claim_type: "{snake_case_name}"
+  version: "{MAJOR.MINOR}"
+  status: "active | deprecated | superseded | reserved"
+  truth_source: "{agency_identifier}"
+  schema_ref: "{path to JSON Schema or YAML schema file}"
+  provenance_required: true | false
+  consent_required: true | false
+  legal_authority: "{cite or null}"
+  superseded_by: "{claim_uri or null}"
+  deprecation_date: "{ISO8601 or null}"
+  change_log:
+    - version: "1.0"
+      date: "{ISO8601}"
+      change: "{description}"
+```
+
+---
+
+## 4. Versioning Rules
+
+- **MAJOR** version increment — breaking schema change; existing adapters MUST be recertified
+- **MINOR** version increment — additive field; existing adapters may continue with deprecation warning
+- Claims MUST NOT be deleted; only deprecated with a `superseded_by` pointer
+- Deprecated claims MUST remain in the catalog for a minimum of 5 years
+- All version changes require Canon Steward approval and a formal ADR entry in `docs/adr/`
+
+---
+
+## 5. Seed Catalog — Phase 1 Claims
+
+| Claim URI | Domain | Truth Source | Status |
+|---|---|---|---|
+| `urn:uiao:claim:identity:entra_id_verified:1.0` | IDENTITY | Microsoft Entra ID | Active |
+| `urn:uiao:claim:identity:piv_card_bound:1.0` | IDENTITY | Agency ICAM | Active |
+| `urn:uiao:claim:address:residential:1.0` | ADDRESS | InfoBlox IPAM | Active |
+| `urn:uiao:claim:network:ipam_assigned:1.0` | ADDRESS | InfoBlox IPAM | Active |
+| `urn:uiao:claim:device:intune_compliant:1.0` | IDENTITY | Microsoft Intune | Active |
+| `urn:uiao:claim:telemetry:location_verified:1.0` | TELEMETRY | SD-WAN Telemetry | Active |
+
+---
+
+## 6. Compliance Mapping
+
+| NIST Control | Catalog Requirement |
+|---|---|
+| CM-8 (System Component Inventory) | Claim catalog as data component inventory |
+| SA-4 (Acquisition Process) | `schema_ref` and `legal_authority` for procurement |
+| SI-12 (Information Management) | Deprecation rules and retention periods |
+
+---
+
+## 7. Cross-References
+
+- `docs/15_ProvenanceProfile.md` — Provenance requirements per claim
+- `docs/16_DriftDetectionStandard.md` — Schema drift detection against catalog
+- `docs/17_ConsentEnvelope.md` — Consent requirements per claim
+- `docs/19_ReconciliationModel.md` — Conflict resolution for claim disputes
+- `data/crosswalk-index.yml` — Machine-readable seed catalog entries
+
+---
+
+## 8. Revision History
+
+| Version | Date | Author | Summary |
+|---|---|---|---|
+| 1.0 | 2026-04-01 | UIAO Canon Engine | Initial canonical release — Phase 5 Data Governance Substrate |
