@@ -1233,5 +1233,35 @@ def ir_dashboard(
         gs = dashboard['governance_summary']
         console.print(f'  Total actions  : {gs["total_actions"]}')
 
+@app.command()
+def ir_freshness_schedule(
+    normalized_json: str = typer.Argument(..., help='Path to normalized SCuBA JSON file.'),
+    out: str = typer.Option('', '--out', '-o', help='Write schedule JSON to file.'),
+    threshold_days: int = typer.Option(30, '--threshold-days', '-t', help='Default freshness threshold in days.'),
+) -> None:
+    '''Build a refresh job schedule from stale evidence and print the schedule summary.'''
+    import dataclasses as _dc
+    import json as _json
+    from pathlib import Path as _Path
+    from uiao_core.evidence.bundle import build_bundle_from_transform_result
+    from uiao_core.freshness.engine import build_freshness_records, generate_refresh_actions
+    from uiao_core.freshness.scheduler import build_refresh_schedule, schedule_summary
+    from uiao_core.governance.actions import build_governance_actions
+    from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    result = transform_scuba_to_ir(normalized_json)
+    bundle = build_bundle_from_transform_result(result)
+    existing_actions = build_governance_actions(bundle.evidence, bundle.drift_states)
+    thresholds = {'default': threshold_days}
+    records = build_freshness_records(bundle.evidence, thresholds=thresholds)
+    refresh_actions = generate_refresh_actions(records, existing_actions=existing_actions)
+    jobs = build_refresh_schedule(records, refresh_actions)
+    console.print(schedule_summary(jobs))
+    if out:
+        _Path(out).parent.mkdir(parents=True, exist_ok=True)
+        payload = [_dc.asdict(j) for j in jobs]
+        _Path(out).write_text(_json.dumps(payload, indent=2, ensure_ascii=False), encoding='utf-8')
+        console.print('[green]Schedule written to ' + out + '[/green]')
+
+
 if __name__ == "__main__":
     app()
