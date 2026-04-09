@@ -139,7 +139,7 @@ def _build_back_matter(template: dict[str, Any]) -> dict[str, Any]:
             "rlinks": [{"href": law.get("href", "")}],
         }
         if law.get("resource_id"):
-            resource["props"] = [{"name": "resource-id", "value": law["resource_id"]}]
+            resource["props"] = [{"name": "resource-id", "value": law["resource_id"], "uuid": str(uuid.uuid4())}]
         resources.append(resource)
     return {"resources": resources} if resources else {}
 
