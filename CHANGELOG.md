@@ -53,6 +53,7 @@
 * **rich_docx:** repair double-backslash corruption in regex patterns (Python 3.14 compat) ([ea93436](https://github.com/WhalerMike/uiao-core/commit/ea9343667bd977997b6af16053f9020347416b2f))
 * **ruff:** add missing Settings import in generate_briefing command ([046b233](https://github.com/WhalerMike/uiao-core/commit/046b233ad96c45d1d56e9b48a7ca87bc92c60e40))
 * **ruff:** remove unused covered_rows variable in briefing.py ([a7b0ca4](https://github.com/WhalerMike/uiao-core/commit/a7b0ca4e8069cd6a05b64db77b300837b5424618))
+* **sar:** remove double OSCAL SAR prefix in build_sar_summary ([988ef1a](https://github.com/WhalerMike/uiao-core/commit/988ef1aaf49aceff94e1d889e9a7efc2d7595716))
 * **scripts:** rewrite enrich_ksi_tier2.py to walk ksi dirs in-place ([0046e8a](https://github.com/WhalerMike/uiao-core/commit/0046e8ae4596b1a329525813aa15be852ed0b2ec))
 * **tests+data:** resolve all 26 test failures for Python 3.14 / Windows ([6ddd6f4](https://github.com/WhalerMike/uiao-core/commit/6ddd6f4bcb2f731d03c6d83fe323478f8de53bfc))
 * **tests:** normalize stdout before path assertion to handle Windows line-wrapped paths ([85eeee6](https://github.com/WhalerMike/uiao-core/commit/85eeee691298796cbd54a0425b33355ab8f7a95e))
