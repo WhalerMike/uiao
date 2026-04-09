@@ -25,6 +25,7 @@
 * graceful skip for missing data files in GRC export ([1918213](https://github.com/WhalerMike/uiao-core/commit/1918213334b9c9424ea00e14d193af678d2095e0))
 * guard planes/matrix against non-list type from vendor overlays in ssp.py ([0dc2b71](https://github.com/WhalerMike/uiao-core/commit/0dc2b71f524423d65a16cef741476ad847a675ab))
 * **lint:** remove unused _upn variable from entra_adapter.py ([4e459ee](https://github.com/WhalerMike/uiao-core/commit/4e459ee14274dacef92ecd74ee58799af35a2180))
+* **lint:** remove unused manifest variable in test_auditor_bundle ([2752625](https://github.com/WhalerMike/uiao-core/commit/275262528ece7c508cb3481f35c796b15bd6c7fd))
 * **lint:** remove unused variable and import in enrich_ksi_tier2.py ([fd0a156](https://github.com/WhalerMike/uiao-core/commit/fd0a1560d83716c17eb504187677456a9b405a63))
 * **lint:** rename unused loop variable ksi_id to _ksi_id (ruff B007) ([75ac09f](https://github.com/WhalerMike/uiao-core/commit/75ac09fbb0246f4e75d74bfdc22cd903cbe5a42d))
 * **lint:** repair CodeMirror auto-indent corruption in canon.py – fix docstring and load_canon indentation ([300bc9a](https://github.com/WhalerMike/uiao-core/commit/300bc9a9e814186025e00e43737f060df566599f))
