@@ -149,13 +149,26 @@ and a Memorandum of Understanding (MOU) as required by NIST 800-47.
 ### 7.1 Control Plane Health Summary
 
 
+
+
 | Control Plane | Key Components | Operational Status | FedRAMP Evidence |
 | :--- | :--- | :--- | :--- |
-| Identity Plane | Entra ID, ICAM, CyberArk PAM | ✅ Active | Entra ID sign-in logs |
-| Network Plane | Cisco SD-WAN, UIAO Gateway | ✅ Active | SD-WAN IPFIX flows |
-| Addressing Plane | InfoBlox IPAM, DNS/DHCP | ✅ Active | DDI API bindings |
-| Telemetry Plane | Sentinel, CDM/CLAW | ✅ Active | Sentinel analytics |
-| Management Plane | OPA Policy Engine, Terraform | ✅ Active | Terraform state audit |
+
+| identity | Microsoft Entra ID, ICAM Governance, Zero Trust Policy Engine | ✅ Active | Automated via UIAO pipeline |
+
+| addressing | InfoBlox IPAM, DNS Management, DHCP Management, Cloud IPAM Reconciliation | ✅ Active | Automated via UIAO pipeline |
+
+| overlay | ZTNA Gateway, SD-WAN Controller, Microsegmentation Engine | ✅ Active | Automated via UIAO pipeline |
+
+| telemetry | Splunk / Sentinel, Azure Monitor / CloudWatch, ThousandEyes / Riverbed, InfoBlox, Defender / MINR | ✅ Active | Automated via UIAO pipeline |
+
+| management | Policy Engine, ConMon Dashboard, Automation Orchestrator | ✅ Active | Automated via UIAO pipeline |
+
+| network | vManage, vSmart, vBond, WAN Edge Devices | ✅ Active | Automated via UIAO pipeline |
+
+| endpoint | Defender / MINR, Intune, Entra ID Device Objects | ✅ Active | Automated via UIAO pipeline |
+
+
 
 
 ### 7.2 Vendor Support Status

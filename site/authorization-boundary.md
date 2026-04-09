@@ -96,32 +96,143 @@ Connections are reviewed quarterly and updated in this canonical document.
 ### 4.1 Component Summary by Plane
 
 
-#### Identity Plane Components
-| Component | Role |
-| :--- | :--- |
-| Microsoft Entra ID | Primary Identity Provider and SSO |
-| ICAM Platform | Identity governance, credentialing, access reviews |
-| CyberArk PAM | Privileged access management and session recording |
 
-#### Network Plane Components
-| Component | Role |
-| :--- | :--- |
-| Cisco Catalyst SD-WAN | Encrypted overlay fabric and mTLS transport |
-| UIAO Gateway | API gateway and load balancer |
-| Next-Gen Firewall | Perimeter filtering and stateful inspection |
 
-#### Addressing Plane Components
-| Component | Role |
-| :--- | :--- |
-| InfoBlox IPAM | Authoritative IP address management and DNS/DHCP |
-| DNS Security | Threat defense and DNSSEC enforcement |
 
-#### Telemetry Plane Components
+#### 4.1.1. identity
+
+**Description:** Manages user and device identity, authentication, and access control across the UIAO architecture.
+
+
+
 | Component | Role |
 | :--- | :--- |
-| Microsoft Sentinel | SIEM / SOAR platform |
-| CDM/CLAW | Continuous Diagnostics and Mitigation asset visibility |
-| Log Analytics Workspace | Centralized log aggregation and retention |
+
+| Microsoft Entra ID | Primary Identity Provider |
+
+| ICAM Governance | Identity governance and compliance |
+
+| Zero Trust Policy Engine | Continuous access evaluation |
+
+
+
+
+#### 4.1.2. addressing
+
+**Description:** Manages IP address space, DNS resolution, and asset tracking across the enterprise network.
+
+
+
+| Component | Role |
+| :--- | :--- |
+
+| InfoBlox IPAM | Authoritative Source of Truth |
+
+| DNS Management | Authoritative DNS zones |
+
+| DHCP Management | Scope governance |
+
+| Cloud IPAM Reconciliation | Multi-cloud addressing truth |
+
+
+
+
+#### 4.1.3. overlay
+
+**Description:** Provides secure overlay networking, zero-trust network access, and microsegmentation capabilities.
+
+
+
+| Component | Role |
+| :--- | :--- |
+
+| ZTNA Gateway | TBD |
+
+| SD-WAN Controller | TBD |
+
+| Microsegmentation Engine | TBD |
+
+
+
+
+#### 4.1.4. telemetry
+
+**Description:** Collects, aggregates, and analyzes security telemetry from all planes to enable continuous monitoring and threat detection.
+
+
+
+| Component | Role |
+| :--- | :--- |
+
+| Splunk / Sentinel | Aggregation, correlation, compliance |
+
+| Azure Monitor / CloudWatch | Cloud-native telemetry |
+
+| ThousandEyes / Riverbed | Network path truth |
+
+| InfoBlox | DNS/DHCP/IPAM evidence |
+
+| Defender / MINR | Endpoint truth |
+
+
+
+
+#### 4.1.5. management
+
+**Description:** Orchestrates policy enforcement, automation, and continuous compliance monitoring across all UIAO planes.
+
+
+
+| Component | Role |
+| :--- | :--- |
+
+| Policy Engine | TBD |
+
+| ConMon Dashboard | TBD |
+
+| Automation Orchestrator | TBD |
+
+
+
+
+#### 4.1.6. network
+
+**Description:** Manages physical and virtual network connectivity, routing, and traffic engineering.
+
+
+
+| Component | Role |
+| :--- | :--- |
+
+| vManage | Centralized policy engine |
+
+| vSmart | Control-plane orchestrator |
+
+| vBond | Secure orchestration |
+
+| WAN Edge Devices | Enforcement points |
+
+
+
+
+#### 4.1.7. endpoint
+
+**Description:** Control plane component.
+
+
+| Component | Role |
+| :--- | :--- |
+
+| Defender / MINR | Endpoint detection and response |
+
+| Intune | Configuration and compliance management |
+
+| Entra ID Device Objects | Device identity anchoring |
+
+
+
+
+
 
 
 ---
