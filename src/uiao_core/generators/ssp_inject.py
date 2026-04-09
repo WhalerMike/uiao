@@ -1,3 +1,73 @@
+        ssp_doc: Full OSCAL document dict (top-level key system-security-plan).
+        bundle: EvidenceBundle used for the injection pass.
+
+    Returns:
+        Multi-line summary string.
+    """
+    ssp = ssp_doc.get("system-security-plan", ssp_doc)
+    impl = ssp.get("control-implementation", {})
+    reqs = impl.get("implemented-requirements", [])
+
+    total_reqs = len(reqs)
+    injected = sum(1 for r in reqs if r.get("statements"))
+    status_counts: dict[str, int] = {}
+    for r in reqs:
+        for p in r.get("props", []):
+            if p.get("name") == "implementation-status":
+                val = p.get("value", "planned")
+                status_counts[val] = status_counts.get(val, 0) + 1
+
+    implemented = status_counts.get("implemented", 0)
+    partial = status_counts.get("partially-implemented", 0)
+    not_impl = status_counts.get("not-implemented", 0)
+    no_evidence = total_reqs - injected
+
+    lines = [
+        f"Live SSP [{bundle.run_id}]",
+        f"  Total requirements  : {total_reqs}",
+        f"  Evidence injected   : {injected}",
+        f"  Implemented         : {implemented}",
+        f"  Partial             : {partial}",
+        f"  Not-implemented     : {not_impl}",
+        f"  No evidence (planned): {no_evidence}",
+        f"  SCuBA run           : {bundle.run_id}",
+        f"  PASS / WARN / FAIL  : {bundle.pass_count} / {bundle.warn_count} / {bundle.fail_count}",
+    ]
+    return "\n".join(lines)
+Augments a baseline SSP skeleton (built from canon YAML + data files) with
+real-world evidence drawn from a SCuBA transform result.  Each
+implemented-requirement that maps to a KSI is enriched with:
+
+  - An OSCAL statement carrying the evidence status and hash
+  - A by-components entry linking to the matching control-plane component
+  - An implementation-status prop reflecting the live PASS/WARN/FAIL verdict
+  - A remarks annotation with the SCuBA run ID and assessment timestamp
+
+The baseline SSP skeleton is unchanged when no matching evidence exists for a
+control; this function is purely additive / non-destructive.
+"""
+from __future__ import annotations
+
+import json
+import uuid
+from pathlib import Path
+from typing import Any
+
+from uiao_core.evidence.bundle import EvidenceBundle, build_bundle_from_transform_result
+from uiao_core.generators.ssp import build_ssp_skeleton
+from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
+from uiao_core.utils.context import get_settings, load_context
+
+
+def _oscal_status(evaluation: dict[str, Any]) -> str:
+    """Derive OSCAL implementation-status from an evidence evaluation dict."""
+    if evaluation.get("passed"):
+        return "implemented"
+    if evaluation.get("warning"):
+        return "partially-implemented"
+    return "not-implemented"
+
+
 """Live evidence injection layer for OSCAL SSP.
 
 Augments a baseline SSP skeleton (built from canon YAML + data files) with
@@ -144,11 +214,14 @@ def inject_scuba_evidence(
         ]
         req["statements"].append(stmt)
 
-        # 3. Remarks annotation
+        # 3. Remarks annotation (avoid B005: no multi-char strip)
         existing_remarks = req.get("remarks", "")
         scuba_tag = f"[scuba:{run_id}:{ts}]"
         if scuba_tag not in existing_remarks:
-            req["remarks"] = (existing_remarks + " | " + scuba_tag).lstrip(" | ")
+            if existing_remarks:
+                req["remarks"] = existing_remarks + " | " + scuba_tag
+            else:
+                req["remarks"] = scuba_tag
 
     return ssp
 
@@ -212,39 +285,3 @@ def live_ssp_summary(
     """Return a human-readable summary of a live SSP injection pass.
 
     Args:
-        ssp_doc: Full OSCAL document dict (top-level key system-security-plan).
-        bundle: EvidenceBundle used for the injection pass.
-
-    Returns:
-        Multi-line summary string.
-    """
-    ssp = ssp_doc.get("system-security-plan", ssp_doc)
-    impl = ssp.get("control-implementation", {})
-    reqs = impl.get("implemented-requirements", [])
-
-    total_reqs = len(reqs)
-    injected = sum(1 for r in reqs if r.get("statements"))
-    status_counts: dict[str, int] = {}
-    for r in reqs:
-        for p in r.get("props", []):
-            if p.get("name") == "implementation-status":
-                val = p.get("value", "planned")
-                status_counts[val] = status_counts.get(val, 0) + 1
-
-    implemented = status_counts.get("implemented", 0)
-    partial = status_counts.get("partially-implemented", 0)
-    not_impl = status_counts.get("not-implemented", 0)
-    no_evidence = total_reqs - injected
-
-    lines = [
-        f"Live SSP [{bundle.run_id}]",
-        f"  Total requirements  : {total_reqs}",
-        f"  Evidence injected   : {injected}",
-        f"  Implemented         : {implemented}",
-        f"  Partial             : {partial}",
-        f"  Not-implemented     : {not_impl}",
-        f"  No evidence (planned): {no_evidence}",
-        f"  SCuBA run           : {bundle.run_id}",
-        f"  PASS / WARN / FAIL  : {bundle.pass_count} / {bundle.warn_count} / {bundle.fail_count}",
-    ]
-    return "\n".join(lines)
