@@ -17,6 +17,7 @@
 * correct kwarg names for build_oscal/ssp/poam_export in generate_all ([74fa33d](https://github.com/WhalerMike/uiao-core/commit/74fa33db64aa8206dd1aad281b9aa0794e376910))
 * **data:** add fedramp_20x_control_plane_alignment to control-planes.yml for overlay tests ([52f9317](https://github.com/WhalerMike/uiao-core/commit/52f9317de9b44a17be83afeee3481ce2dc1a6856))
 * **data:** complete fedramp_ssp_template_structure.yaml with all Rev5 fields required by TestSSPBuilder ([d043cf7](https://github.com/WhalerMike/uiao-core/commit/d043cf7206d871f1e52fc94c4e491dacf80cdb2b))
+* **diagrams:** move module-level exit(1) inside __main__ guard to prevent import-time crash ([ab778ed](https://github.com/WhalerMike/uiao-core/commit/ab778edaf3ef09912c686bd70e8c835ee563ad09))
 * **diagrams:** restore correct YAML indentation in diagrams.yaml ([92dd509](https://github.com/WhalerMike/uiao-core/commit/92dd50954f0ac955b3c448eb967d8385d799995a))
 * **diagrams:** unwrap word-wrapped PlantUML participant names causing YAML ScannerError ([6ef1e93](https://github.com/WhalerMike/uiao-core/commit/6ef1e93197133a92c3c976538dacc45605f6eb8a))
 * **docx:** increase paragraph space_after to Pt(12) for visible inter-paragraph gaps ([dbf0367](https://github.com/WhalerMike/uiao-core/commit/dbf0367f27d8c4ea6ccdee2a691fd419b111b5de))
