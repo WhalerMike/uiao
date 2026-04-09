@@ -143,6 +143,7 @@
 * **scuba:** implement SCuBA adapter for ScubaGear assessment ingestion ([9980600](https://github.com/WhalerMike/uiao-core/commit/9980600a380d39883895ca92d3d3924bd12a9769))
 * **ssp:** add ir-ssp-inject CLI command for live SSP evidence injection ([ae0ab13](https://github.com/WhalerMike/uiao-core/commit/ae0ab135473251370e1ea9748c1a518b539ad5e2))
 * **ssp:** add live evidence injection module ssp_inject.py ([a7cdd17](https://github.com/WhalerMike/uiao-core/commit/a7cdd1765f466ffe2a75984b95805ba68a121b33))
+* **ssp:** recreate ssp_inject.py with B005 fix ([637b221](https://github.com/WhalerMike/uiao-core/commit/637b221c2ba0c6ad0a874f1f05b79a14e58a7d06))
 * **ssp:** SSP narrative + lineage exports — control-level AO artifacts ([956a3e3](https://github.com/WhalerMike/uiao-core/commit/956a3e3a1b9a7656f663c088555710911d34cd49))
 
 
