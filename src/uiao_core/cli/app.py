@@ -1286,5 +1286,36 @@ def ir_generate_sar(
         sar_doc = build_sar(bundle, system_name=system_name, tenant_id=tenant_id, ap_href=ap_href)
         console.print(build_sar_summary(sar_doc))
 
+@app.command()
+def ir_ssp_inject(
+    normalized_json: str = typer.Argument(..., help='Path to normalized SCuBA JSON file.'),
+    out: str = typer.Option('exports/oscal/uiao-ssp-live.json', '--out', '-o', help='Output SSP JSON path.'),
+    canon_path: str = typer.Option('', '--canon', '-c', help='Canon YAML path (default: settings).'),
+    data_dir: str = typer.Option('', '--data-dir', '-d', help='Data YAML directory (default: settings).'),
+    enhanced: bool = typer.Option(False, '--enhanced/--no-enhanced', help='Also inject control-library narratives.'),
+) -> None:
+    '''Inject live SCuBA evidence into OSCAL SSP, writing uiao-ssp-live.json.
+
+    Combines the canon SSP baseline with real SCuBA assessment evidence,
+    producing an OSCAL SSP whose implemented-requirements carry live
+    implementation-status props and evidence-hash annotations.
+    '''
+    import json as _json
+    from pathlib import Path as _Path
+    from uiao_core.evidence.bundle import build_bundle_from_transform_result
+    from uiao_core.generators.ssp_inject import build_live_ssp, live_ssp_summary
+    from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    kw = {}
+    if canon_path:
+        kw['canon_path'] = canon_path
+    if data_dir:
+        kw['data_dir'] = data_dir
+    console.print(f'[bold]Injecting SCuBA evidence into SSP: {normalized_json}...[/bold]')
+    path = build_live_ssp(normalized_json_path=normalized_json, output_path=out, enhanced=enhanced, **kw)
+    ssp_doc = _json.loads(_Path(out).read_text(encoding='utf-8'))
+    _bundle = build_bundle_from_transform_result(transform_scuba_to_ir(normalized_json))
+    console.print(live_ssp_summary(ssp_doc, _bundle))
+    console.print(f'[green]Live SSP written to {path}[/green]')
+
 if __name__ == "__main__":
     app()
