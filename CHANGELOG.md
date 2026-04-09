@@ -56,6 +56,7 @@
 * **tests+data:** resolve all 26 test failures for Python 3.14 / Windows ([6ddd6f4](https://github.com/WhalerMike/uiao-core/commit/6ddd6f4bcb2f731d03c6d83fe323478f8de53bfc))
 * **tests:** normalize stdout before path assertion to handle Windows line-wrapped paths ([85eeee6](https://github.com/WhalerMike/uiao-core/commit/85eeee691298796cbd54a0425b33355ab8f7a95e))
 * **tests:** replace deprecated asyncio.get_event_loop() with asyncio.run() for Python 3.14 ([94bd0be](https://github.com/WhalerMike/uiao-core/commit/94bd0be431cd4a88121d2763948f9f2d7a0d84a9))
+* **trestle:** replace deprecated parse_obj() with model_validate() for pydantic v2 ([8ddeaa4](https://github.com/WhalerMike/uiao-core/commit/8ddeaa407fbbed3c46ace2e94f95261325a80f4f))
 * update canon_dir to generation-inputs/ in config.py ([e56a5ae](https://github.com/WhalerMike/uiao-core/commit/e56a5aeb09f4e696af94ed98ffd687ecf66037b8)), closes [#479](https://github.com/WhalerMike/uiao-core/issues/479)
 * update canon_dir to generation-inputs/ in wizard.py ([fc3f642](https://github.com/WhalerMike/uiao-core/commit/fc3f642efc0b58695fc93867d55391e6ec07838a))
 * update Core Concepts section name to Eight Core Concepts to resolve canon drift ([9f868c1](https://github.com/WhalerMike/uiao-core/commit/9f868c1755f3d951f7cab24cc67e1f07cddfed4b))
