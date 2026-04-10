@@ -1356,6 +1356,9 @@ from uiao_core.cli.scuba import scuba_app  # noqa: E402
 app.add_typer(scuba_app, name="scuba")
 from uiao_core.cli.ksi import ksi_app  # noqa: E402
 app.add_typer(ksi_app, name="ksi")
+from uiao_core.cli.evidence import evidence_app  # noqa: E402
+app.add_typer(evidence_app, name="evidence")
+
 
 
 if __name__ == "__main__":
