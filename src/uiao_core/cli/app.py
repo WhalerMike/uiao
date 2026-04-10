@@ -1346,7 +1346,6 @@ def ir_ssp_inject(
     bundle = build_bundle_from_transform_result(ir_result)
     console.print(live_ssp_summary(ssp_doc, bundle))
     console.print(f"[green]Live SSP written to {path}[/green]")
-    console.print(f"[green]Live SSP written to {path}[/green]")
 
 
 if __name__ == "__main__":
