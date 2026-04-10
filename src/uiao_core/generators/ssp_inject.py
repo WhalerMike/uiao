@@ -192,10 +192,7 @@ def build_live_ssp(
         title = title or "Live SSP"
 
     # --- build evidence bundle ---
-    with normalized_json_path.open() as fh:
-        normalized = json.load(fh)
-
-    ir_result = transform_scuba_to_ir(normalized)
+    ir_result = transform_scuba_to_ir(normalized_json_path)
     bundle = build_bundle_from_transform_result(ir_result)
 
     # --- build SSP skeleton ---
