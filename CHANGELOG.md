@@ -158,6 +158,7 @@
 * **p2:** add OSCAL SAR generator with build_sar, build_sar_summary, export_sar ([d05e3f2](https://github.com/WhalerMike/uiao-core/commit/d05e3f231c70eb5ccfe083a996422b7ef786beda))
 * render Generic Federal Agency disclaimer as amber notice box on title page ([cb8e8f5](https://github.com/WhalerMike/uiao-core/commit/cb8e8f572da70d146640994336f4326adf33e5b1))
 * **scripts:** add uiao-ir-to-ksi.ps1 PowerShell orchestrator (Plane 2) ([4f33b67](https://github.com/WhalerMike/uiao-core/commit/4f33b67952654c93d45cbe4a4a448703f523bc29))
+* **scripts:** add uiao-ksi-to-evidence.ps1 PowerShell orchestrator (Plane 3) ([6f9b659](https://github.com/WhalerMike/uiao-core/commit/6f9b659713c3231b54fb3eb382e7183af94bff8b))
 * **scripts:** add uiao-scuba-to-ir.ps1 — Plane 1 PowerShell orchestrator ([1457d83](https://github.com/WhalerMike/uiao-core/commit/1457d8308332ed779e5d33ca8c4a24be00508cec))
 * **scripts:** route KSI generator output to category subdirs ([45b0ed5](https://github.com/WhalerMike/uiao-core/commit/45b0ed5cfd6ff09301952557ddce7c0a38a5543e))
 * **scuba:** add adapter-run-scuba orchestration wrapper ([b0366a2](https://github.com/WhalerMike/uiao-core/commit/b0366a2412a485cc25156b07b2d348cb4c511a53))
