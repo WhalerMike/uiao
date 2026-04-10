@@ -98,6 +98,7 @@
 * **cli:** ir-ssp-report command — SSP narrative + lineage from SCuBA pipeline ([c6202b4](https://github.com/WhalerMike/uiao-core/commit/c6202b4b643aaed982b5c9083750600ea224eba0))
 * **cli:** wire evidence_app into root uiao Typer app (Plane 3 KSI->Evidence) ([fbcc13c](https://github.com/WhalerMike/uiao-core/commit/fbcc13ccabff938987fff528cfbc816382676370))
 * **cli:** wire ksi_app into root uiao Typer app (Plane 2 IR->KSI) ([da7b477](https://github.com/WhalerMike/uiao-core/commit/da7b477af440d80d60eb1a01afd4754e363ec360))
+* **cli:** wire oscal_app into root uiao Typer app (Plane 4 Evidence->OSCAL) ([cebd7e8](https://github.com/WhalerMike/uiao-core/commit/cebd7e8ec51f426848baf2d9e0a195893a923765))
 * **cli:** wire scuba_app into root uiao Typer app (Plane 1 SCuBA->IR) ([2ddfac0](https://github.com/WhalerMike/uiao-core/commit/2ddfac0febc5e386d3d159836cfa31a16c21c14f))
 * **config:** add evidence-build.json config skeleton (Plane 3) ([2d143b3](https://github.com/WhalerMike/uiao-core/commit/2d143b3ad154a4d37afa62c71482f15320ec07c4))
 * **config:** add ksi-rules.json config skeleton (Plane 2) ([e2c48d2](https://github.com/WhalerMike/uiao-core/commit/e2c48d21af193fb07fe8d5ce00d7f312bcacc79c))
