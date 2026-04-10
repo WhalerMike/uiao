@@ -1341,11 +1341,11 @@ def ir_ssp_inject(
         kw["data_dir"] = data_dir
     console.print(f"[bold]Injecting SCuBA evidence into SSP: {normalized_json}...[/bold]")
     path = build_live_ssp(normalized_json_path=normalized_json, output_path=out, enhanced=enhanced, **kw)
-    ssp_doc = _json.loads(_Path(out).read_text(encoding="utf-8"))
-    with open(normalized_json, encoding="utf-8") as _f:
-        _normalized = _json.load(_f)
-    _bundle = build_bundle_from_transform_result(transform_scuba_to_ir(_normalized))
-    console.print(live_ssp_summary(ssp_doc, _bundle))
+    ssp_doc = json.loads(Path(out).read_text(encoding="utf-8"))
+    ir_result = transform_scuba_to_ir(normalized_json)
+    bundle = build_bundle_from_transform_result(ir_result)
+    console.print(live_ssp_summary(ssp_doc, bundle))
+    console.print(f"[green]Live SSP written to {path}[/green]")
     console.print(f"[green]Live SSP written to {path}[/green]")
 
 
