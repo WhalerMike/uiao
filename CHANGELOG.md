@@ -115,6 +115,7 @@
 * **ksi:** add KSI-006 External Sharing Restrictions rule ([b89c578](https://github.com/WhalerMike/uiao-core/commit/b89c578fad1ed7cbebfdc75223b6317b7796ae15))
 * **ksi:** add KSI-007 Safe Links Protection rule ([5234efc](https://github.com/WhalerMike/uiao-core/commit/5234efca5560d18a5ac46621df50d1db5274cecb))
 * **ksi:** add ksi/__init__.py — Plane 2 KSI evaluation package ([720cfba](https://github.com/WhalerMike/uiao-core/commit/720cfba28e6cf1bee2e2705811ab96e700aff266))
+* **ksi:** add ksi/evaluate.py — Plane 2 IR→KSI pure evaluator ([5ca3566](https://github.com/WhalerMike/uiao-core/commit/5ca35667e88e423c531aef4a6768d84f13afeef7))
 * **ksi:** add schema, master index, and improved IAM/boundary exemplars ([8642c47](https://github.com/WhalerMike/uiao-core/commit/8642c4765045761c6a6987dd96a19e6c3c33f80c))
 * **ksi:** rebuild index.yaml from disk - 163 entries with full metadata ([c1a5e86](https://github.com/WhalerMike/uiao-core/commit/c1a5e861d2e355095695ede2155ec3ec2f047be2))
 * **ksi:** regenerate 163 KSI files into category subdirs via updated generator ([3684ef7](https://github.com/WhalerMike/uiao-core/commit/3684ef703c58f4166dc480cbb69f3df8297bdb5f))
