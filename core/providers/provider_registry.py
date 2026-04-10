@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from core.providers.entra.entra_adapter import EntraIDAdapter
 from core.providers.azure.azure_adapter import AzureResourceGraphAdapter
 from core.providers.aws.aws_adapter import AWSConfigAdapter
+from core.providers.m365.m365_adapter import M365ComplianceAdapter
 
 class ProviderHealth(BaseModelfrom typing import Dict, Type
 
@@ -21,6 +22,7 @@ class ProviderRegistry:
         self.register("entra", EntraIDAdapter)                                
         self.register("azure", AzureResourceGraphAdapter)                                
         self.register("aws", AWSConfigAdapter)        
+        self.register("m365", M365ComplianceAdapter)        
                                     def register(self, name: str, adapter_cls: Type):
                                             self._registry[name] = adapter_cls
                                             
