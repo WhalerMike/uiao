@@ -102,6 +102,7 @@
 * **data:** add control-planes.yml with 6 UIAO planes for overlay tests ([2db9ca0](https://github.com/WhalerMike/uiao-core/commit/2db9ca01773f253411fda7a1ec57c08ed4728be8))
 * **data:** add fedramp_ssp_template_structure.yaml for SSP builder tests ([2df44fc](https://github.com/WhalerMike/uiao-core/commit/2df44fc803862daa83d31d11a0408e853240e745))
 * **data:** add plantuml-config.json with neutral theme ([10ac5f4](https://github.com/WhalerMike/uiao-core/commit/10ac5f4fb242c067d87b00db0ea76fb93938bff6))
+* **evidence:** add evidence/builder.py — Plane 3 KSI→Evidence pure builder ([aa5801c](https://github.com/WhalerMike/uiao-core/commit/aa5801cb334f40908923cbcd8f3e4c713fd064f2))
 * **evidence:** add EvidenceBundle + POA&M export with 21 tests ([5b8eb7c](https://github.com/WhalerMike/uiao-core/commit/5b8eb7cf13dea2a5237d7c04801a3e0fc968c48b))
 * expand control library to full FedRAMP Moderate baseline (247 controls) ([9b252e1](https://github.com/WhalerMike/uiao-core/commit/9b252e1eb8bc905e6f3d1400bf75a1797d1072e3))
 * **generators:** add puml.py shim with PLANTUML_THEME, _plantuml_html, _render_mmdc ([8592b2b](https://github.com/WhalerMike/uiao-core/commit/8592b2b7cc54d9cdfb07a7c93814ab6c4ca59275))
