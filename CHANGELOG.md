@@ -93,6 +93,7 @@
 * **cli:** add ir-governance-report command -- full governance pipeline ([b3912d6](https://github.com/WhalerMike/uiao-core/commit/b3912d62cb5069862c571cdce2b971f5484016da))
 * **cli:** add ir-scuba-transform, ir-evidence-bundle, ir-poam-export, ir-drift-detect commands ([bc1b9c3](https://github.com/WhalerMike/uiao-core/commit/bc1b9c35bfd1ccdb8af4b3e52e30baf55a4f635e))
 * **cli:** ir-ssp-report command — SSP narrative + lineage from SCuBA pipeline ([c6202b4](https://github.com/WhalerMike/uiao-core/commit/c6202b4b643aaed982b5c9083750600ea224eba0))
+* **cli:** wire scuba_app into root uiao Typer app (Plane 1 SCuBA->IR) ([2ddfac0](https://github.com/WhalerMike/uiao-core/commit/2ddfac0febc5e386d3d159836cfa31a16c21c14f))
 * **coverage+ci:** SSP coverage export, IR hash stability, CI coverage floor 45%, CLI smoke test, deselect pre-existing failures ([f4c29d4](https://github.com/WhalerMike/uiao-core/commit/f4c29d47be2cc727d4f812c9d7008c927242acaf))
 * **data:** add control-planes.yml with 6 UIAO planes for overlay tests ([2db9ca0](https://github.com/WhalerMike/uiao-core/commit/2db9ca01773f253411fda7a1ec57c08ed4728be8))
 * **data:** add fedramp_ssp_template_structure.yaml for SSP builder tests ([2df44fc](https://github.com/WhalerMike/uiao-core/commit/2df44fc803862daa83d31d11a0408e853240e745))
