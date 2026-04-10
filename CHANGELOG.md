@@ -180,6 +180,7 @@
 * **ssp:** SSP narrative + lineage exports — control-level AO artifacts ([956a3e3](https://github.com/WhalerMike/uiao-core/commit/956a3e3a1b9a7656f663c088555710911d34cd49))
 * **tests:** add test_evidence_build_plane.py — 27-test Plane 3 suite ([fb47b06](https://github.com/WhalerMike/uiao-core/commit/fb47b06c9244b4353be563c1c6fdd093983e4fc9))
 * **tests:** add test_ksi_eval_plane.py — 23-test Plane 2 suite ([c04ad37](https://github.com/WhalerMike/uiao-core/commit/c04ad373a976a738170b42f40d5622becb8d4435))
+* **tests:** add test_oscal_generate_plane.py — 30-test Plane 4 suite ([de7353b](https://github.com/WhalerMike/uiao-core/commit/de7353b3dab24af9c5f5fb04cc0e67eb541e0238))
 * **tests:** add test_scuba_transform_plane.py — Plane 1 pytest suite (18 tests) ([75f06a8](https://github.com/WhalerMike/uiao-core/commit/75f06a8cce205c00a3075a0f817983acfd6ac6f6))
 
 
