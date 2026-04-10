@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Dict, Any
 from pydantic import BaseModel
 
+from core.providers.entra.entra_adapter import EntraIDAdapter
 
 class ProviderHealth(BaseModelfrom typing import Dict, Type
 
@@ -15,6 +16,7 @@ class ProviderRegistry:
                     
                         def __init__(self):
                                 self._registry: Dict[str, Type] = {}
+        self.register("entra", EntraIDAdapter)                                
                                 
                                     def register(self, name: str, adapter_cls: Type):
                                             self._registry[name] = adapter_cls
