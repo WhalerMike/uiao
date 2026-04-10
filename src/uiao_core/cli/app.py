@@ -1354,6 +1354,9 @@ def ir_ssp_inject(
 # ---------------------------------------------------------------------------
 from uiao_core.cli.scuba import scuba_app  # noqa: E402
 app.add_typer(scuba_app, name="scuba")
+from uiao_core.cli.ksi import ksi_app  # noqa: E402
+app.add_typer(ksi_app, name="ksi")
+
 
 if __name__ == "__main__":
     app()
