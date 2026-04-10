@@ -147,6 +147,7 @@
 * **ksi:** update ksi-si-16.yaml to 10/10 quality standard (Batch 5) ([c8d16d2](https://github.com/WhalerMike/uiao-core/commit/c8d16d2bc53f786a5a076a1be6d768229bcfbb57))
 * local JAR renderer with plantweb fallback in plantuml.py ([ce19fae](https://github.com/WhalerMike/uiao-core/commit/ce19fae32a4969540c5c35fb0ef0939af73d57d0))
 * **oscal:** add oscal/__init__.py — Plane 4 OSCAL generation package ([58c9a37](https://github.com/WhalerMike/uiao-core/commit/58c9a377f56f8d300f04b526c0fbc01ba8453440))
+* **oscal:** add oscal/generator.py — Plane 4 Evidence→OSCAL pure generator ([ff4d983](https://github.com/WhalerMike/uiao-core/commit/ff4d983e385caf9e5e62c0948d16651fb4c82f74))
 * **p0:** auditor bundle, diff engine, IR validator — 3 CLI commands + 19 tests ([0c1836e](https://github.com/WhalerMike/uiao-core/commit/0c1836e43e816209e839cff049a252947bd2701c))
 * **p1:** add freshness engine ([7cf6095](https://github.com/WhalerMike/uiao-core/commit/7cf6095954f9387e9dd3cc3ec32f60b66bafa50f))
 * **p1:** add freshness engine tests ([6cff25d](https://github.com/WhalerMike/uiao-core/commit/6cff25d769dc5cf5295a9ce5cc1ad6e1a969c256))
