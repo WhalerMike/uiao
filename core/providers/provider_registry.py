@@ -6,6 +6,7 @@ from core.providers.entra.entra_adapter import EntraIDAdapter
 from core.providers.azure.azure_adapter import AzureResourceGraphAdapter
 from core.providers.aws.aws_adapter import AWSConfigAdapter
 from core.providers.m365.m365_adapter import M365ComplianceAdapter
+from core.providers.github.github_adapter import GitHubAdapter
 
 class ProviderHealth(BaseModelfrom typing import Dict, Type
 
@@ -23,6 +24,7 @@ class ProviderRegistry:
         self.register("azure", AzureResourceGraphAdapter)                                
         self.register("aws", AWSConfigAdapter)        
         self.register("m365", M365ComplianceAdapter)        
+        self.register("github", GitHubAdapter)        
                                     def register(self, name: str, adapter_cls: Type):
                                             self._registry[name] = adapter_cls
                                             
