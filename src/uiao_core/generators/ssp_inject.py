@@ -197,11 +197,12 @@ def build_live_ssp(
 
     # --- build SSP skeleton ---
     ssp_doc = build_ssp_skeleton(
-        tenant_id=tenant_id,
-        system_id=system_id,
-        title=title,
+        context={
+            "tenant_id": tenant_id,
+            "system_id": system_id,
+            "system_name": title,
+        },
         enhanced=enhanced,
-    )
 
     # --- inject evidence into the plan dict ---
     plan = ssp_doc.setdefault("system-security-plan", {})
