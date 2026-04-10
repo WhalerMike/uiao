@@ -95,6 +95,7 @@
 * **cli:** add ir-governance-report command -- full governance pipeline ([b3912d6](https://github.com/WhalerMike/uiao-core/commit/b3912d62cb5069862c571cdce2b971f5484016da))
 * **cli:** add ir-scuba-transform, ir-evidence-bundle, ir-poam-export, ir-drift-detect commands ([bc1b9c3](https://github.com/WhalerMike/uiao-core/commit/bc1b9c35bfd1ccdb8af4b3e52e30baf55a4f635e))
 * **cli:** ir-ssp-report command — SSP narrative + lineage from SCuBA pipeline ([c6202b4](https://github.com/WhalerMike/uiao-core/commit/c6202b4b643aaed982b5c9083750600ea224eba0))
+* **cli:** wire evidence_app into root uiao Typer app (Plane 3 KSI->Evidence) ([fbcc13c](https://github.com/WhalerMike/uiao-core/commit/fbcc13ccabff938987fff528cfbc816382676370))
 * **cli:** wire ksi_app into root uiao Typer app (Plane 2 IR->KSI) ([da7b477](https://github.com/WhalerMike/uiao-core/commit/da7b477af440d80d60eb1a01afd4754e363ec360))
 * **cli:** wire scuba_app into root uiao Typer app (Plane 1 SCuBA->IR) ([2ddfac0](https://github.com/WhalerMike/uiao-core/commit/2ddfac0febc5e386d3d159836cfa31a16c21c14f))
 * **config:** add ksi-rules.json config skeleton (Plane 2) ([e2c48d2](https://github.com/WhalerMike/uiao-core/commit/e2c48d21af193fb07fe8d5ce00d7f312bcacc79c))
