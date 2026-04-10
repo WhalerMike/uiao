@@ -1,62 +1,62 @@
-# DEPRECATED: This workflow references directories (canon/, templates/, src/, etc.)
-# that exist in uiao-core, not uiao-docs. Disabled to prevent CI noise.
-# Original trigger preserved in comments below.
-name: AI Security Audit
-
-on:
-  workflow_dispatch:  # Manual trigger only — see deprecation notice above
-
-permissions:
-  contents: read
-  security-events: write
-  pull-requests: read
-
-jobs:
-  secret-scanning:
-    name: Secret Scanning via TruffleHog
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-        with:
-          fetch-depth: 0
-
-      - name: Run TruffleHog secret scanning
-        uses: trufflesecurity/trufflehog@6bd2d14f7a4bc1e569fa3550efa7ec632a4fa67b  # v3.94.2
-        with:
-          extra_args: --only-verified
-
-  vulnerability-triage:
-    name: AI-Powered Vulnerability Triage
-    runs-on: ubuntu-latest
-    needs: secret-scanning
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-
-      - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
-        with:
-          python-version: '3.12'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run schema validation (compliance gate)
-        continue-on-error: true
-        run: python scripts/validate_schemas.py
-
-      - name: Run build-readiness safety gate
-        run: python scripts/validate_build_readiness.py
-
-      - name: Validate OSCAL artifacts
-        run: python scripts/validate_oscal.py
-
-      - name: Upload security audit results
-        if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
-        with:
-          name: security-audit-results
-          path: |
-            exports/oscal/
-          retention-days: 90
+# DEPRECATED: This workflow references directories (canon/, templates/, src/, etc.)
+# that exist in uiao-core, not uiao-docs. Disabled to prevent CI noise.
+# Original trigger preserved in comments below.
+name: AI Security Audit
+
+on:
+  workflow_dispatch:  # Manual trigger only  see deprecation notice above
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: read
+
+jobs:
+  secret-scanning:
+    name: Secret Scanning via TruffleHog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Run TruffleHog secret scanning
+        uses: trufflesecurity/trufflehog@6bd2d14f7a4bc1e569fa3550efa7ec632a4fa67b  # v3.94.2
+        with:
+          extra_args: --only-verified
+
+  vulnerability-triage:
+    name: AI-Powered Vulnerability Triage
+    runs-on: ubuntu-latest
+    needs: secret-scanning
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run schema validation (compliance gate)
+        continue-on-error: true
+        run: python scripts/validate_schemas.py
+
+      - name: Run build-readiness safety gate
+        run: python scripts/validate_build_readiness.py
+
+      - name: Validate OSCAL artifacts
+        run: python scripts/validate_oscal.py
+
+      - name: Upload security audit results
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
+        with:
+          name: security-audit-results
+          path: |
+            exports/oscal/
+          retention-days: 90

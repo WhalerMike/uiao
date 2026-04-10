@@ -1,47 +1,47 @@
-name: Verify Commit Signatures
-
-on:
-  pull_request:
-    branches: [main]
-
-permissions:
-  contents: read
-  pull-requests: read
-
-jobs:
-  verify-signatures:
-    name: Check GPG-Signed Commits
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-        with:
-          fetch-depth: 0
-
-      - name: Verify commit signatures on PR
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          echo "Checking commit signatures between $BASE_SHA and $HEAD_SHA"
-          UNSIGNED_COMMITS=""
-          for commit in $(git log --format="%H" "$BASE_SHA".."$HEAD_SHA"); do
-            STATUS=$(git log --format="%G?" -n 1 "$commit")
-            AUTHOR=$(git log --format="%an <%ae>" -n 1 "$commit")
-            MSG=$(git log --format="%s" -n 1 "$commit")
-            if [ "$STATUS" = "N" ]; then
-              echo "::warning::Unsigned commit: $commit by $AUTHOR — $MSG"
-              UNSIGNED_COMMITS="$UNSIGNED_COMMITS $commit"
-            elif [ "$STATUS" = "G" ] || [ "$STATUS" = "U" ] || [ "$STATUS" = "E" ] || [ "$STATUS" = "X" ]; then
-              echo "✓ Signed commit ($STATUS): $commit — $MSG"
-            else
-              echo "::warning::Unverified signature ($STATUS): $commit by $AUTHOR — $MSG"
-            fi
-          done
-          if [ -n "$UNSIGNED_COMMITS" ]; then
-            echo ""
-            echo "::warning::One or more commits are unsigned. See CONTRIBUTING.md for GPG setup instructions."
-            echo "Unsigned commits detected — enforcement is advisory. Configure branch protection to require signed commits."
-          else
-            echo "All commits are signed."
-          fi
+name: Verify Commit Signatures
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  verify-signatures:
+    name: Check GPG-Signed Commits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Verify commit signatures on PR
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          echo "Checking commit signatures between $BASE_SHA and $HEAD_SHA"
+          UNSIGNED_COMMITS=""
+          for commit in $(git log --format="%H" "$BASE_SHA".."$HEAD_SHA"); do
+            STATUS=$(git log --format="%G?" -n 1 "$commit")
+            AUTHOR=$(git log --format="%an <%ae>" -n 1 "$commit")
+            MSG=$(git log --format="%s" -n 1 "$commit")
+            if [ "$STATUS" = "N" ]; then
+              echo "::warning::Unsigned commit: $commit by $AUTHOR  $MSG"
+              UNSIGNED_COMMITS="$UNSIGNED_COMMITS $commit"
+            elif [ "$STATUS" = "G" ] || [ "$STATUS" = "U" ] || [ "$STATUS" = "E" ] || [ "$STATUS" = "X" ]; then
+              echo " Signed commit ($STATUS): $commit  $MSG"
+            else
+              echo "::warning::Unverified signature ($STATUS): $commit by $AUTHOR  $MSG"
+            fi
+          done
+          if [ -n "$UNSIGNED_COMMITS" ]; then
+            echo ""
+            echo "::warning::One or more commits are unsigned. See CONTRIBUTING.md for GPG setup instructions."
+            echo "Unsigned commits detected  enforcement is advisory. Configure branch protection to require signed commits."
+          else
+            echo "All commits are signed."
+          fi

@@ -1,153 +1,153 @@
-# DEPRECATED: This workflow references directories (canon/, templates/, src/, etc.)
-# that exist in uiao-core, not uiao-docs. Disabled to prevent CI noise.
-# Original trigger preserved in comments below.
-name: Generate UIAO Documents
-
-on:
-  workflow_dispatch:  # Manual trigger only — see deprecation notice above
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  QUARTO_VERSION: '1.6.43'
-
-permissions:
-  contents: write
-  pages: write
-  id-token: write
-
-jobs:
-  generate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
-        with:
-          python-version: '3.12'
-
-      - name: Install Python dependencies
-        run: pip install -r requirements.txt
-
-      - name: Install Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
-        with:
-          version: ${{ env.QUARTO_VERSION }}
-
-      - name: Install TinyTeX for PDF output
-        run: quarto install tinytex --no-prompt
-
-      - name: Run Federal Compliance Safety Gate
-        run: python scripts/validate_build_readiness.py
-
-      - name: Generate Markdown from Jinja2 templates
-        run: python scripts/generate_docs.py
-
-      - name: Inject Quarto YAML frontmatter
-        run: python scripts/quarto_pre_render.py
-
-      - name: Prepare environment for Quarto render
-        run: |
-          # Hide .env.example to prevent MissingEnvVarsError during quarto render
-          if [ -f .env.example ]; then
-            mv .env.example .env.example.bak
-            echo "Temporarily renamed .env.example to avoid dotenv validation"
-          fi
-          # Export all required env vars as empty strings for CI
-          export TENANT_ID='' CLIENT_ID='' CLIENT_SECRET=''
-          export SN_INSTANCE_NAME='' SN_SVC_USER='' SN_SVC_PASS=''
-          export INFOBLOX_URL='' INFOBLOX_USER='' INFOBLOX_PASS=''
-          export CYBERARK_VAULT_URL='' CYBERARK_SVC_USER='' CYBERARK_SVC_PASS=''
-          export PANORAMA_URL='' PANORAMA_API_KEY=''
-          export VMANAGE_URL='' VMANAGE_USER='' VMANAGE_PASS=''
-          export LOG_ANALYTICS_WORKSPACE_ID='' TEAMS_WEBHOOK_URL=''
-
-      - name: Render all formats via Quarto
-        env:
-          TENANT_ID: ''
-          CLIENT_ID: ''
-          CLIENT_SECRET: ''
-          SN_INSTANCE_NAME: ''
-          SN_SVC_USER: ''
-          SN_SVC_PASS: ''
-          INFOBLOX_URL: ''
-          INFOBLOX_USER: ''
-          INFOBLOX_PASS: ''
-          CYBERARK_VAULT_URL: ''
-          CYBERARK_SVC_USER: ''
-          CYBERARK_SVC_PASS: ''
-          PANORAMA_URL: ''
-          PANORAMA_API_KEY: ''
-          VMANAGE_URL: ''
-          VMANAGE_USER: ''
-          VMANAGE_PASS: ''
-          LOG_ANALYTICS_WORKSPACE_ID: ''
-          TEAMS_WEBHOOK_URL: ''
-        run: |
-          quarto render docs/ --to html,docx,pptx,pdf,gfm 2>&1 | tee quarto-render.log
-          echo "Quarto render completed with exit code $?"
-
-      - name: Restore .env.example
-        if: always()
-        run: |
-          if [ -f .env.example.bak ]; then
-            mv .env.example.bak .env.example
-          fi
-
-      - name: Organize exports with canonical naming
-        run: python scripts/quarto_post_render.py
-
-      - name: Export GRC Compliance Evidence
-        run: python scripts/export_compliance_evidence.py
-
-      - name: Generate OSCAL Component Definition
-        run: python scripts/generate_oscal.py
-
-      - name: Generate OSCAL POA&M with Gap Detection
-        run: python scripts/generate_poam.py
-
-      - name: Generate OSCAL SSP Skeleton
-        run: python scripts/generate_ssp.py
-
-      - name: Validate OSCAL Artifacts
-        run: python scripts/validate_oscal.py
-
-      - name: Validate with compliance-trestle
-        run: python scripts/validate_with_trestle.py
-
-      - name: Validate Continuous Monitoring Integration (dry-run)
-        run: python scripts/update_poam_from_monitoring.py --dry-run
-
-      - name: Build MkDocs site
-        run: mkdocs build
-
-      - name: Upload Quarto document artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: uiao-documents
-          path: |
-            exports/quarto/**/*.docx
-            exports/quarto/**/*.pptx
-            exports/quarto/**/*.pdf
-            exports/quarto/**/*.html
-          retention-days: 90
-
-      - name: Upload render log
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: quarto-render-log
-          path: quarto-render.log
-          retention-days: 30
-
-      - name: Commit generated docs and exports
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add docs/ site/ exports/
-          git diff --cached --quiet || git commit -m "Auto-generate docs and exports [Quarto]"
-          # Pull remote changes, auto-resolving all conflicts by keeping our generated files
-          git pull origin main --no-rebase --strategy-option ours || (git checkout --ours . && git add -A)
-          git push
+# DEPRECATED: This workflow references directories (canon/, templates/, src/, etc.)
+# that exist in uiao-core, not uiao-docs. Disabled to prevent CI noise.
+# Original trigger preserved in comments below.
+name: Generate UIAO Documents
+
+on:
+  workflow_dispatch:  # Manual trigger only  see deprecation notice above
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  QUARTO_VERSION: '1.6.43'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: ${{ env.QUARTO_VERSION }}
+
+      - name: Install TinyTeX for PDF output
+        run: quarto install tinytex --no-prompt
+
+      - name: Run Federal Compliance Safety Gate
+        run: python scripts/validate_build_readiness.py
+
+      - name: Generate Markdown from Jinja2 templates
+        run: python scripts/generate_docs.py
+
+      - name: Inject Quarto YAML frontmatter
+        run: python scripts/quarto_pre_render.py
+
+      - name: Prepare environment for Quarto render
+        run: |
+          # Hide .env.example to prevent MissingEnvVarsError during quarto render
+          if [ -f .env.example ]; then
+            mv .env.example .env.example.bak
+            echo "Temporarily renamed .env.example to avoid dotenv validation"
+          fi
+          # Export all required env vars as empty strings for CI
+          export TENANT_ID='' CLIENT_ID='' CLIENT_SECRET=''
+          export SN_INSTANCE_NAME='' SN_SVC_USER='' SN_SVC_PASS=''
+          export INFOBLOX_URL='' INFOBLOX_USER='' INFOBLOX_PASS=''
+          export CYBERARK_VAULT_URL='' CYBERARK_SVC_USER='' CYBERARK_SVC_PASS=''
+          export PANORAMA_URL='' PANORAMA_API_KEY=''
+          export VMANAGE_URL='' VMANAGE_USER='' VMANAGE_PASS=''
+          export LOG_ANALYTICS_WORKSPACE_ID='' TEAMS_WEBHOOK_URL=''
+
+      - name: Render all formats via Quarto
+        env:
+          TENANT_ID: ''
+          CLIENT_ID: ''
+          CLIENT_SECRET: ''
+          SN_INSTANCE_NAME: ''
+          SN_SVC_USER: ''
+          SN_SVC_PASS: ''
+          INFOBLOX_URL: ''
+          INFOBLOX_USER: ''
+          INFOBLOX_PASS: ''
+          CYBERARK_VAULT_URL: ''
+          CYBERARK_SVC_USER: ''
+          CYBERARK_SVC_PASS: ''
+          PANORAMA_URL: ''
+          PANORAMA_API_KEY: ''
+          VMANAGE_URL: ''
+          VMANAGE_USER: ''
+          VMANAGE_PASS: ''
+          LOG_ANALYTICS_WORKSPACE_ID: ''
+          TEAMS_WEBHOOK_URL: ''
+        run: |
+          quarto render docs/ --to html,docx,pptx,pdf,gfm 2>&1 | tee quarto-render.log
+          echo "Quarto render completed with exit code $?"
+
+      - name: Restore .env.example
+        if: always()
+        run: |
+          if [ -f .env.example.bak ]; then
+            mv .env.example.bak .env.example
+          fi
+
+      - name: Organize exports with canonical naming
+        run: python scripts/quarto_post_render.py
+
+      - name: Export GRC Compliance Evidence
+        run: python scripts/export_compliance_evidence.py
+
+      - name: Generate OSCAL Component Definition
+        run: python scripts/generate_oscal.py
+
+      - name: Generate OSCAL POA&M with Gap Detection
+        run: python scripts/generate_poam.py
+
+      - name: Generate OSCAL SSP Skeleton
+        run: python scripts/generate_ssp.py
+
+      - name: Validate OSCAL Artifacts
+        run: python scripts/validate_oscal.py
+
+      - name: Validate with compliance-trestle
+        run: python scripts/validate_with_trestle.py
+
+      - name: Validate Continuous Monitoring Integration (dry-run)
+        run: python scripts/update_poam_from_monitoring.py --dry-run
+
+      - name: Build MkDocs site
+        run: mkdocs build
+
+      - name: Upload Quarto document artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: uiao-documents
+          path: |
+            exports/quarto/**/*.docx
+            exports/quarto/**/*.pptx
+            exports/quarto/**/*.pdf
+            exports/quarto/**/*.html
+          retention-days: 90
+
+      - name: Upload render log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: quarto-render-log
+          path: quarto-render.log
+          retention-days: 30
+
+      - name: Commit generated docs and exports
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add docs/ site/ exports/
+          git diff --cached --quiet || git commit -m "Auto-generate docs and exports [Quarto]"
+          # Pull remote changes, auto-resolving all conflicts by keeping our generated files
+          git pull origin main --no-rebase --strategy-option ours || (git checkout --ours . && git add -A)
+          git push
