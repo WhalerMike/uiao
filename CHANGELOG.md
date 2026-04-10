@@ -102,6 +102,7 @@
 * **cli:** wire scuba_app into root uiao Typer app (Plane 1 SCuBA->IR) ([2ddfac0](https://github.com/WhalerMike/uiao-core/commit/2ddfac0febc5e386d3d159836cfa31a16c21c14f))
 * **config:** add evidence-build.json config skeleton (Plane 3) ([2d143b3](https://github.com/WhalerMike/uiao-core/commit/2d143b3ad154a4d37afa62c71482f15320ec07c4))
 * **config:** add ksi-rules.json config skeleton (Plane 2) ([e2c48d2](https://github.com/WhalerMike/uiao-core/commit/e2c48d21af193fb07fe8d5ce00d7f312bcacc79c))
+* **config:** add oscal-generate.json config skeleton (Plane 4) ([148969a](https://github.com/WhalerMike/uiao-core/commit/148969a119f708e1a3a9ffb9d1b6f8254113eb22))
 * **config:** add scuba-transform.json — Plane 1 config skeleton ([061457e](https://github.com/WhalerMike/uiao-core/commit/061457e0f05eea8d8ae162bc876047a9b99c06b5))
 * **coverage+ci:** SSP coverage export, IR hash stability, CI coverage floor 45%, CLI smoke test, deselect pre-existing failures ([f4c29d4](https://github.com/WhalerMike/uiao-core/commit/f4c29d47be2cc727d4f812c9d7008c927242acaf))
 * **data:** add control-planes.yml with 6 UIAO planes for overlay tests ([2db9ca0](https://github.com/WhalerMike/uiao-core/commit/2db9ca01773f253411fda7a1ec57c08ed4728be8))
