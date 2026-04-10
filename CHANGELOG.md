@@ -89,6 +89,7 @@
 * add plantuml_jar setting to config (UIAO_PLANTUML_JAR env var) ([85d987b](https://github.com/WhalerMike/uiao-core/commit/85d987bf63c12cf4ae52cc3d7a8b60682fc48ebe))
 * **briefing:** implement uiao generate-briefing generator (SESSION ZERO) ([cd896a5](https://github.com/WhalerMike/uiao-core/commit/cd896a57ae399b21373c26489b64efbbdb901e59))
 * **cli:** add 'uiao adapter-run' command for ServiceNow and Entra adapters ([87b5db1](https://github.com/WhalerMike/uiao-core/commit/87b5db1b646be99ca319dbd37f3445ee8a0dc485))
+* **cli:** add cli/evidence.py Typer sub-app for uiao evidence build (Plane 3) ([a978194](https://github.com/WhalerMike/uiao-core/commit/a978194f5d605434af8c51147476c41bfedac194))
 * **cli:** add cli/ksi.py Typer sub-app for uiao ksi evaluate Plane 2 ([f1eb762](https://github.com/WhalerMike/uiao-core/commit/f1eb762118c9ca333538b6af656ce21f43f83e53))
 * **cli:** add cli/scuba.py — Typer scuba sub-app for SCuBA→IR plane ([def4fe3](https://github.com/WhalerMike/uiao-core/commit/def4fe33962f64189d98aed13fdf78bd7824e698))
 * **cli:** add ir-governance-report command -- full governance pipeline ([b3912d6](https://github.com/WhalerMike/uiao-core/commit/b3912d62cb5069862c571cdce2b971f5484016da))
