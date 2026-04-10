@@ -5,6 +5,7 @@ from core.providers.provider_framework import ProviderFramework
 from core.pipeline.governance_pipeline import GovernancePipeline
 from core.providers.provider_registry import ProviderRegistry
 from core.governance.audit_log import AuditLog
+from core.version import VERSION
 
 
 def main():
@@ -13,6 +14,7 @@ def main():
 
             sub.add_parser("providers")
                 sub.add_parser("providers-health")
+                    sub.add_parser("version")
                     sub.add_parser("audit")
 
                         run_cmd = sub.add_parser("run")
@@ -63,6 +65,11 @@ def main():
                                                                                                                                                                                                                                                                                                                             print(json.dumps(result, indent=2))
                                                                                                                                                                                                                                                                                                                                     return
 
+                                                                                                                                                                                                                                                                                                                                            if args.command == "version":
+                                                                                                                                                                                                                                                                                                                                                        print(VERSION.full())
+                                                                                                                                                                                                                                                                                                                                                                return
+
+                                                                                                                                                                                                                                                                                                                                                                
                                                                                                                                                                                                                                                                                                                                         parser.print_help()
 
 
