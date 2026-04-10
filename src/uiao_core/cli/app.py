@@ -1358,6 +1358,9 @@ from uiao_core.cli.ksi import ksi_app  # noqa: E402
 app.add_typer(ksi_app, name="ksi")
 from uiao_core.cli.evidence import evidence_app  # noqa: E402
 app.add_typer(evidence_app, name="evidence")
+from uiao_core.cli.oscal import oscal_app  # noqa: E402
+app.add_typer(oscal_app, name="oscal")
+
 
 
 
