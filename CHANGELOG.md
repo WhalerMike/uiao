@@ -162,6 +162,7 @@
 * **p2:** add ir-generate-sar CLI command to app.py ([efbb503](https://github.com/WhalerMike/uiao-core/commit/efbb5032db4436bfa65262a88d9410215d2bf88f))
 * **p2:** add OSCAL SAR generator with build_sar, build_sar_summary, export_sar ([d05e3f2](https://github.com/WhalerMike/uiao-core/commit/d05e3f231c70eb5ccfe083a996422b7ef786beda))
 * render Generic Federal Agency disclaimer as amber notice box on title page ([cb8e8f5](https://github.com/WhalerMike/uiao-core/commit/cb8e8f572da70d146640994336f4326adf33e5b1))
+* **scripts:** add uiao-evidence-to-oscal.ps1 PowerShell orchestrator (Plane 4) ([74fe2e8](https://github.com/WhalerMike/uiao-core/commit/74fe2e8af2d85da9b5affc8bef3320495baae69b))
 * **scripts:** add uiao-ir-to-ksi.ps1 PowerShell orchestrator (Plane 2) ([4f33b67](https://github.com/WhalerMike/uiao-core/commit/4f33b67952654c93d45cbe4a4a448703f523bc29))
 * **scripts:** add uiao-ksi-to-evidence.ps1 PowerShell orchestrator (Plane 3) ([6f9b659](https://github.com/WhalerMike/uiao-core/commit/6f9b659713c3231b54fb3eb382e7183af94bff8b))
 * **scripts:** add uiao-scuba-to-ir.ps1 — Plane 1 PowerShell orchestrator ([1457d83](https://github.com/WhalerMike/uiao-core/commit/1457d8308332ed779e5d33ca8c4a24be00508cec))
