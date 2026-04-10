@@ -25,7 +25,7 @@ from typing import Any
 from uiao_core.evidence.bundle import EvidenceBundle, build_bundle_from_transform_result
 from uiao_core.generators.ssp import build_ssp_skeleton
 from uiao_core.ir.adapters.scuba.transformer import transform_scuba_to_ir
-from uiao_core.utils.context import get_settings, load_context
+from uiao_core.utils.context import load_context
 
 
 def _oscal_status(evaluation: dict[str, Any]) -> str:
@@ -179,34 +179,19 @@ def build_live_ssp(
     """
     normalized_json_path = Path(normalized_json_path)
 
-    # --- resolve context defaults ---
+    # --- resolve context ---
     try:
         ctx = load_context()
-        settings = get_settings()
-        tenant_id = tenant_id or getattr(settings, "tenant_id", None) or "unknown-tenant"
-        system_id = system_id or getattr(ctx, "system_id", None) or "unknown-system"
-        title = title or getattr(ctx, "system_name", None) or "Live SSP"
     except Exception:  # pragma: no cover
-        tenant_id = tenant_id or "unknown-tenant"
-        system_id = system_id or "unknown-system"
-        title = title or "Live SSP"
+        ctx = {}
 
     # --- build evidence bundle ---
     ir_result = transform_scuba_to_ir(normalized_json_path)
     bundle = build_bundle_from_transform_result(ir_result)
 
-    # --- build SSP skeleton ---
-    ssp_doc = build_ssp_skeleton(
-        context={
-            "tenant_id": tenant_id,
-            "system_id": system_id,
-            "system_name": title,
-        },
-        enhanced=enhanced,
-    )
-    # --- inject evidence into the plan dict ---
-    plan = ssp_doc.setdefault("system-security-plan", {})
-    inject_scuba_evidence(plan, bundle)
+    # --- build SSP skeleton and inject evidence ---
+    ssp_plan = build_ssp_skeleton(context=ctx, enhanced=enhanced)
+    inject_scuba_evidence(ssp_plan, bundle)
 
     # --- write output ---
     if output_path is None:
@@ -214,7 +199,7 @@ def build_live_ssp(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as fh:
-        json.dump(ssp_doc, fh, indent=2)
+        json.dump({"system-security-plan": ssp_plan}, fh, indent=2)
 
     return output_path.resolve()
 
