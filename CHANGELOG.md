@@ -91,6 +91,7 @@
 * **cli:** add 'uiao adapter-run' command for ServiceNow and Entra adapters ([87b5db1](https://github.com/WhalerMike/uiao-core/commit/87b5db1b646be99ca319dbd37f3445ee8a0dc485))
 * **cli:** add cli/evidence.py Typer sub-app for uiao evidence build (Plane 3) ([a978194](https://github.com/WhalerMike/uiao-core/commit/a978194f5d605434af8c51147476c41bfedac194))
 * **cli:** add cli/ksi.py Typer sub-app for uiao ksi evaluate Plane 2 ([f1eb762](https://github.com/WhalerMike/uiao-core/commit/f1eb762118c9ca333538b6af656ce21f43f83e53))
+* **cli:** add cli/oscal.py Typer sub-app for uiao oscal generate (Plane 4) ([d144321](https://github.com/WhalerMike/uiao-core/commit/d144321688c64e271a2f3ef7415bbf637a0b175d))
 * **cli:** add cli/scuba.py — Typer scuba sub-app for SCuBA→IR plane ([def4fe3](https://github.com/WhalerMike/uiao-core/commit/def4fe33962f64189d98aed13fdf78bd7824e698))
 * **cli:** add ir-governance-report command -- full governance pipeline ([b3912d6](https://github.com/WhalerMike/uiao-core/commit/b3912d62cb5069862c571cdce2b971f5484016da))
 * **cli:** add ir-scuba-transform, ir-evidence-bundle, ir-poam-export, ir-drift-detect commands ([bc1b9c3](https://github.com/WhalerMike/uiao-core/commit/bc1b9c35bfd1ccdb8af4b3e52e30baf55a4f635e))
