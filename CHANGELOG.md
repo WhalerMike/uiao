@@ -1,4 +1,4 @@
-# [2.1.0](https://github.com/WhalerMike/uiao-core/compare/v2.0.0...v2.1.0) (2026-04-09)
+# [2.1.0](https://github.com/WhalerMike/uiao-core/compare/v2.0.0...v2.1.0) (2026-04-10)
 
 
 ### Bug Fixes
@@ -11,6 +11,7 @@
 * **ci:** repair CodeMirror auto-indent corruption in deploy.yml ([fba1cb4](https://github.com/WhalerMike/uiao-core/commit/fba1cb4daa8fe6d31827396d723cd02713c3ece5))
 * **ci:** repair CodeMirror auto-indent corruption in generate-artifacts.yml ([17eb7ef](https://github.com/WhalerMike/uiao-core/commit/17eb7ef6285e67f444966002f98dd590cf790e04))
 * **ci:** repair CodeMirror auto-indent corruption in render-and-insert-diagrams.yml ([6f2f982](https://github.com/WhalerMike/uiao-core/commit/6f2f9826592cccc51177be1aa25caebe262d0128))
+* **ci:** rewrite 4 corrupted workflow files with clean YAML indentation ([d812528](https://github.com/WhalerMike/uiao-core/commit/d812528fa751161818091350c2ff9136c1615298))
 * **ci:** update build-readiness gate to reference new KSI crosswalk and index paths ([54dd709](https://github.com/WhalerMike/uiao-core/commit/54dd7091f85a543b0cd6bf1c57054be3a622b7b0))
 * **control-library:** add IA-2.yml at flat path for test compatibility ([10e669e](https://github.com/WhalerMike/uiao-core/commit/10e669ee0a1d66d57a3d9874c78aa090fafbe520))
 * **control-library:** add SC-8.yml at flat path for test compatibility ([56d1f2d](https://github.com/WhalerMike/uiao-core/commit/56d1f2d2abb22e87207fb43b021a2b1c25507688))
