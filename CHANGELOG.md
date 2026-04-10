@@ -58,6 +58,7 @@
 * **ruff:** remove unused covered_rows variable in briefing.py ([a7b0ca4](https://github.com/WhalerMike/uiao-core/commit/a7b0ca4e8069cd6a05b64db77b300837b5424618))
 * **sar:** remove double OSCAL SAR prefix in build_sar_summary ([988ef1a](https://github.com/WhalerMike/uiao-core/commit/988ef1aaf49aceff94e1d889e9a7efc2d7595716))
 * **scripts:** rewrite enrich_ksi_tier2.py to walk ksi dirs in-place ([0046e8a](https://github.com/WhalerMike/uiao-core/commit/0046e8ae4596b1a329525813aa15be852ed0b2ec))
+* **ssp:** close build_ssp_skeleton call paren (syntax error) ([548788e](https://github.com/WhalerMike/uiao-core/commit/548788e3f835282121356a87defc040a7328b87d))
 * **ssp:** pass context dict to build_ssp_skeleton instead of flat kwargs ([bd0a9ff](https://github.com/WhalerMike/uiao-core/commit/bd0a9ffbb6e48b86d02ded485ecdf2acd480281a))
 * **ssp:** pass path to transform_scuba_to_ir instead of pre-loaded dict ([af82dd2](https://github.com/WhalerMike/uiao-core/commit/af82dd2b2e58d5603a71f05933326ee1377597f3))
 * **tests+data:** resolve all 26 test failures for Python 3.14 / Windows ([6ddd6f4](https://github.com/WhalerMike/uiao-core/commit/6ddd6f4bcb2f731d03c6d83fe323478f8de53bfc))
