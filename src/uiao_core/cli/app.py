@@ -1348,5 +1348,12 @@ def ir_ssp_inject(
     console.print(f"[green]Live SSP written to {path}[/green]")
 
 
+
+# ---------------------------------------------------------------------------
+# Plane 1 -- SCuBA -> IR  (registered at module load time)
+# ---------------------------------------------------------------------------
+from uiao_core.cli.scuba import scuba_app  # noqa: E402
+app.add_typer(scuba_app, name="scuba")
+
 if __name__ == "__main__":
     app()
