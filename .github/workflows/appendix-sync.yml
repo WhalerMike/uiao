@@ -3,110 +3,40 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'appendices/**'
+      - "appendices/**"
   push:
     branches: [main]
     paths:
-      - 'appendices/**'
+      - "appendices/**"
   workflow_dispatch:
 permissions:
-contents: read
-pull-requests: write
+  contents: read
+  pull-requests: write
 jobs:
-appendix-sync:
-name: Verify Documentation Appendix Integrity
-runs-on: ubuntu-latest
-steps:
-- name: Checkout docs repository
-uses: actions/checkout@v4
-with:
-path: uiao-docs
-- name: Checkout core repository (for cross-repo checks)
-uses: actions/checkout@v4
-with:
-repository: ${{ github.repository_owner }}/uiao-core
-path: uiao-core
-token: ${{ secrets.CROSS_REPO_TOKEN }}
-- name: Set up Python
-uses: actions/setup-python@v5
-with:
-python-version: '3.12'
-- name: Install dependencies
-run: |
-python -m pip install --upgrade pip
-pip install pyyaml
-- name: Run appendix audit
-id: audit
-working-directory: uiao-docs
-run: |
-python tools/appendix_indexer.py \
---path appendices/ \
---mode audit \
---output reports/appendix-audit.json \
---ci
-continue-on-error: true
-- name: Run appendix sync check
-id: sync
-working-directory: uiao-docs
-run: |
-python tools/appendix_indexer.py \
---path appendices/ \
---mode sync \
---output reports/appendix-sync.json \
---ci
-continue-on-error: true
-- name: Run cross-repo appendix alignment
-id: cross-repo
-working-directory: uiao-docs
-run: |
-python tools/appendix_indexer.py \
---path appendices/ \
---mode cross-repo \
---core-path ../uiao-core/appendices/ \
---output reports/appendix-cross-repo.json \
---ci
-continue-on-error: true
-- name: Upload appendix reports
-if: always()
-uses: actions/upload-artifact@v4
-with:
-name: appendix-reports
-path: uiao-docs/reports/
-retention-days: 30
-- name: Comment on PR
-if: github.event_name == 'pull_request' && always()
-uses: actions/github-script@v7
-with:
-script: |
-const fs = require('fs');
-let body = '## 📎 Documentation Appendix Report\n\n';
-if (fs.existsSync('uiao-docs/reports/appendix-audit.json')) {
-const audit = JSON.parse(fs.readFileSync('uiao-docs/reports/appendix-audit.json', 'utf8'));
-body += `### Audit\n`;
-body += `- Appendices: ${audit.total_appendices}\n`;
-body += `- With Copy section: ${audit.with_copy} | Missing: ${audit.missing_copy}\n`;
-body += `- Valid frontmatter: ${audit.valid_frontmatter} | Invalid: ${audit.invalid_frontmatter}\n\n`;
-if (audit.findings && audit.findings.length > 0) {
-body += '| Appendix | Issue | Severity |\n|----------|-------|----------|\n';
-for (const f of audit.findings.slice(0, 20)) {
-body += `| ${f.appendix_id} | ${f.issue} | ${f.severity} |\n`;
-}
-body += '\n';
-}
-}
-if (fs.existsSync('uiao-docs/reports/appendix-cross-repo.json')) {
-const xr = JSON.parse(fs.readFileSync('uiao-docs/reports/appendix-cross-repo.json', 'utf8'));
-body += `### Cross-Repo Alignment\n`;
-body += `- Aligned: ${xr.aligned} | Misaligned: ${xr.misaligned}\n`;
-}
-await github.rest.issues.createComment({
-owner: context.repo.owner,
-repo: context.repo.repo,
-issue_number: context.issue.number,
-body
-});
-- name: Fail on blocking issues
-if: steps.audit.outcome == 'failure'
-run: |
-echo "❌ Appendix audit found BLOCKING issues."
-exit 1
+  appendix-sync:
+    name: Verify Documentation Appendix Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout docs repository
+        uses: actions/checkout@v4
+        with:
+          path: uiao-docs
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+      - name: Run appendix audit
+        id: audit
+        working-directory: uiao-docs
+        run: |
+          python tools/appendix_indexer.py --path appendices/ --mode audit --output reports/appendix-audit.json --ci
+        continue-on-error: true
+      - name: Fail on blocking issues
+        if: steps.audit.outcome == 'failure'
+        run: |
+          echo "Appendix audit found BLOCKING issues."
+          exit 1
