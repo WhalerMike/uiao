@@ -161,6 +161,7 @@
 * **ssp:** add live evidence injection module ssp_inject.py ([a7cdd17](https://github.com/WhalerMike/uiao-core/commit/a7cdd1765f466ffe2a75984b95805ba68a121b33))
 * **ssp:** recreate ssp_inject.py with B005 fix ([637b221](https://github.com/WhalerMike/uiao-core/commit/637b221c2ba0c6ad0a874f1f05b79a14e58a7d06))
 * **ssp:** SSP narrative + lineage exports — control-level AO artifacts ([956a3e3](https://github.com/WhalerMike/uiao-core/commit/956a3e3a1b9a7656f663c088555710911d34cd49))
+* **tests:** add test_scuba_transform_plane.py — Plane 1 pytest suite (18 tests) ([75f06a8](https://github.com/WhalerMike/uiao-core/commit/75f06a8cce205c00a3075a0f817983acfd6ac6f6))
 
 
 
