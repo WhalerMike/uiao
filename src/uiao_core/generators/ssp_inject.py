@@ -203,7 +203,7 @@ def build_live_ssp(
             "system_name": title,
         },
         enhanced=enhanced,
-
+    )
     # --- inject evidence into the plan dict ---
     plan = ssp_doc.setdefault("system-security-plan", {})
     inject_scuba_evidence(plan, bundle)
