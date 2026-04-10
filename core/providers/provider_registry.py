@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from core.providers.entra.entra_adapter import EntraIDAdapter
 from core.providers.azure.azure_adapter import AzureResourceGraphAdapter
+from core.providers.aws.aws_adapter import AWSConfigAdapter
 
 class ProviderHealth(BaseModelfrom typing import Dict, Type
 
@@ -19,6 +20,7 @@ class ProviderRegistry:
                                 self._registry: Dict[str, Type] = {}
         self.register("entra", EntraIDAdapter)                                
         self.register("azure", AzureResourceGraphAdapter)                                
+        self.register("aws", AWSConfigAdapter)        
                                     def register(self, name: str, adapter_cls: Type):
                                             self._registry[name] = adapter_cls
                                             
