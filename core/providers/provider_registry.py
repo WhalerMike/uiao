@@ -3,6 +3,7 @@ from typing import Dict, Any
 from pydantic import BaseModel
 
 from core.providers.entra.entra_adapter import EntraIDAdapter
+from core.providers.azure.azure_adapter import AzureResourceGraphAdapter
 
 class ProviderHealth(BaseModelfrom typing import Dict, Type
 
@@ -17,7 +18,7 @@ class ProviderRegistry:
                         def __init__(self):
                                 self._registry: Dict[str, Type] = {}
         self.register("entra", EntraIDAdapter)                                
-                                
+        self.register("azure", AzureResourceGraphAdapter)                                
                                     def register(self, name: str, adapter_cls: Type):
                                             self._registry[name] = adapter_cls
                                             
