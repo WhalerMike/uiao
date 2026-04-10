@@ -150,6 +150,7 @@
 * **scuba:** add adapter-run-scuba orchestration wrapper ([b0366a2](https://github.com/WhalerMike/uiao-core/commit/b0366a2412a485cc25156b07b2d348cb4c511a53))
 * **scuba:** add scuba module __init__.py — SCuBA→IR plane ([8e78b72](https://github.com/WhalerMike/uiao-core/commit/8e78b72f8e2c7c671059b2267408445d997fd50c))
 * **scuba:** add SCuBA normalization transform script ([8d72085](https://github.com/WhalerMike/uiao-core/commit/8d72085cb143bb174e4ae9cd6ea2fe8a204bda31))
+* **scuba:** add transform.py — SCuBA→IR plane 1 pure transformer ([b30bcf6](https://github.com/WhalerMike/uiao-core/commit/b30bcf6447138d88ee0386caaf87e34ea60e4c4a))
 * **scuba:** add UIAO SCuBA normalization schema ([be11cc1](https://github.com/WhalerMike/uiao-core/commit/be11cc1d4a7fe60939567174553b86f437987e0b))
 * **scuba:** implement SCuBA adapter for ScubaGear assessment ingestion ([9980600](https://github.com/WhalerMike/uiao-core/commit/9980600a380d39883895ca92d3d3924bd12a9769))
 * **ssp:** add ir-ssp-inject CLI command for live SSP evidence injection ([ae0ab13](https://github.com/WhalerMike/uiao-core/commit/ae0ab135473251370e1ea9748c1a518b539ad5e2))
