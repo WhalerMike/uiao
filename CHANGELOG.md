@@ -14,6 +14,7 @@
 * **ci:** resolve DOCX conflicts; remove duplicate print in ir-ssp-inject CLI ([b20ddb1](https://github.com/WhalerMike/uiao-core/commit/b20ddb11c26a258e2672f3ad2e8dcb29e9f8f182))
 * **ci:** rewrite 4 corrupted workflow files with clean YAML indentation ([d812528](https://github.com/WhalerMike/uiao-core/commit/d812528fa751161818091350c2ff9136c1615298))
 * **ci:** update build-readiness gate to reference new KSI crosswalk and index paths ([54dd709](https://github.com/WhalerMike/uiao-core/commit/54dd7091f85a543b0cd6bf1c57054be3a622b7b0))
+* **cli:** fix NameError in ir-ssp-inject — use _json/_Path aliases ([0f0f587](https://github.com/WhalerMike/uiao-core/commit/0f0f58784c8e0f842dfee974ea7c539d93f04462))
 * **cli:** repair ir-ssp-inject command — remove broken duplicate pipeline, fix variable names ([57926a8](https://github.com/WhalerMike/uiao-core/commit/57926a8c7ede2a61e2c3443751f73eedd4f9bb82))
 * **control-library:** add IA-2.yml at flat path for test compatibility ([10e669e](https://github.com/WhalerMike/uiao-core/commit/10e669ee0a1d66d57a3d9874c78aa090fafbe520))
 * **control-library:** add SC-8.yml at flat path for test compatibility ([56d1f2d](https://github.com/WhalerMike/uiao-core/commit/56d1f2d2abb22e87207fb43b021a2b1c25507688))
