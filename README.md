@@ -30,7 +30,7 @@
 
 **Repository:** `uiao-core`
 **Role:** Machine-readable tooling — OSCAL generation, adapter framework, Python engine, schemas
-**Classification:** CUI/FOUO
+**Classification:** Open Source
 
 ---
 
