@@ -23,7 +23,7 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import yaml
 
@@ -71,6 +71,17 @@ def _load_config(config_path: Optional[str]) -> Dict[str, Any]:
     with p.open(encoding="utf-8") as fh:
         cfg = yaml.safe_load(fh) if p.suffix in {".yaml", ".yml"} else json.load(fh)
     return cfg if isinstance(cfg, dict) else {}
+
+
+def _load_scuba(src: Path) -> Dict[str, Any]:
+    """Parse a SCuBA JSON or YAML file and return its contents as a dict."""
+    with src.open(encoding="utf-8") as fh:
+        data: Dict[str, Any] = (
+            yaml.safe_load(fh) or {}
+            if src.suffix in {".yaml", ".yml"}
+            else json.load(fh)
+        )
+    return data
 
 
 def _resolve_log_path(output_path: Path) -> Path:
@@ -162,12 +173,7 @@ def transform_scuba_to_ir(
     tenant_boundary_id: Optional[str] = cfg.get("tenant_boundary_id")
 
     # 2. Parse SCuBA input
-    with src.open(encoding="utf-8") as fh:
-        scuba_data: Dict[str, Any] = (
-            yaml.safe_load(fh) or {}
-            if src.suffix in {".yaml", ".yml"}
-            else json.load(fh)
-        )
+    scuba_data = _load_scuba(src)
 
     # 3. Apply config overrides
     scuba_data = _apply_config_overrides(cfg, scuba_data)
