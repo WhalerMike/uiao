@@ -68,6 +68,7 @@
 * **sar:** remove double OSCAL SAR prefix in build_sar_summary ([988ef1a](https://github.com/WhalerMike/uiao-core/commit/988ef1aaf49aceff94e1d889e9a7efc2d7595716))
 * **scripts:** rewrite enrich_ksi_tier2.py to walk ksi dirs in-place ([0046e8a](https://github.com/WhalerMike/uiao-core/commit/0046e8ae4596b1a329525813aa15be852ed0b2ec))
 * **scuba:** apply ruff SIM108 fix in transform.py — ternary for yaml/json load ([ab5b66d](https://github.com/WhalerMike/uiao-core/commit/ab5b66da4a55cf14d8a304e97916acb761cd9103))
+* **scuba:** restore _load_scuba helper — required by test_scuba_transform_plane.py ([9c9d361](https://github.com/WhalerMike/uiao-core/commit/9c9d36118321428f0c2524a6f24fa26e7422b0e6))
 * **scuba:** rewrite transform.py — correct indentation corruption from editor ([53f989d](https://github.com/WhalerMike/uiao-core/commit/53f989dd5100e71cb988f6cede56ae749a5312f8))
 * **ssp_inject:** use load_context for build_ssp_skeleton and wrap output ([18b678a](https://github.com/WhalerMike/uiao-core/commit/18b678acd8c46736628cbe161bcc74dae2d86123))
 * **ssp:** close build_ssp_skeleton call paren (syntax error) ([548788e](https://github.com/WhalerMike/uiao-core/commit/548788e3f835282121356a87defc040a7328b87d))
