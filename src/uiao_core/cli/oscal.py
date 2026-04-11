@@ -38,7 +38,7 @@ _console = Console()
 
 @oscal_app.command("generate")
 def generate_command(
-    evidence: str = typer.Option(
+    evidence: str = typer.Option(  # noqa: B008
         ...,
         "--evidence",
         help=(
@@ -47,7 +47,7 @@ def generate_command(
         ),
         show_default=False,
     ),
-    output: str = typer.Option(
+    output: str = typer.Option(  # noqa: B008
         ...,
         "--output",
         help=(
@@ -56,7 +56,7 @@ def generate_command(
         ),
         show_default=False,
     ),
-    config: Optional[str] = typer.Option(
+    config: Optional[str] = typer.Option(  # noqa: B008
         None,
         "--config",
         help="Optional path to oscal-generate.json config file.",
