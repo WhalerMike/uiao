@@ -130,7 +130,7 @@ def _canonical_json(data: Any) -> str:
 
 
 # Fields excluded from record hashing to ensure determinism across runs.
-_VOLATILE_FIELDS = frozenset({"id", "run_id", "generated_at", "collected_at"})
+_VOLATILE_FIELDS = frozenset({"id", "run_id", "generated_at", "collected_at", "provenance"})
 
 
 def _stable_hash(data: Any) -> str:
