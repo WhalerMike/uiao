@@ -69,10 +69,7 @@ def _load_config(config_path: Optional[str]) -> Dict[str, Any]:
     if not p.exists():
         return {}
     with p.open(encoding="utf-8") as fh:
-        if p.suffix in {".yaml", ".yml"}:
-            cfg = yaml.safe_load(fh)
-        else:
-            cfg = json.load(fh)
+        cfg = yaml.safe_load(fh) if p.suffix in {".yaml", ".yml"} else json.load(fh)
     return cfg if isinstance(cfg, dict) else {}
 
 
@@ -166,10 +163,11 @@ def transform_scuba_to_ir(
 
     # 2. Parse SCuBA input
     with src.open(encoding="utf-8") as fh:
-        if src.suffix in {".yaml", ".yml"}:
-            scuba_data: Dict[str, Any] = yaml.safe_load(fh) or {}
-        else:
-            scuba_data = json.load(fh)
+        scuba_data: Dict[str, Any] = (
+            yaml.safe_load(fh) or {}
+            if src.suffix in {".yaml", ".yml"}
+            else json.load(fh)
+        )
 
     # 3. Apply config overrides
     scuba_data = _apply_config_overrides(cfg, scuba_data)
