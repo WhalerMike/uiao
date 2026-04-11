@@ -38,13 +38,13 @@ _console = Console()
 
 @evidence_app.command("build")
 def build_command(
-    input: str = typer.Option(
+    input: str = typer.Option(  # noqa: B008
         ...,
         "--input",
         help="Path to the KSI result JSON produced by Plane 2 (ksi evaluate).",
         show_default=False,
     ),
-    output: str = typer.Option(
+    output: str = typer.Option(  # noqa: B008
         ...,
         "--output",
         help=(
@@ -54,7 +54,7 @@ def build_command(
         ),
         show_default=False,
     ),
-    config: Optional[str] = typer.Option(
+    config: Optional[str] = typer.Option(  # noqa: B008
         None,
         "--config",
         help="Optional path to evidence-build.json config file.",
