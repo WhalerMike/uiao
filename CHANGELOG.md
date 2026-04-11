@@ -15,6 +15,7 @@
 * **ci:** rewrite 4 corrupted workflow files with clean YAML indentation ([d812528](https://github.com/WhalerMike/uiao-core/commit/d812528fa751161818091350c2ff9136c1615298))
 * **ci:** update build-readiness gate to reference new KSI crosswalk and index paths ([54dd709](https://github.com/WhalerMike/uiao-core/commit/54dd7091f85a543b0cd6bf1c57054be3a622b7b0))
 * **cli:** fix NameError in ir-ssp-inject — use _json/_Path aliases ([0f0f587](https://github.com/WhalerMike/uiao-core/commit/0f0f58784c8e0f842dfee974ea7c539d93f04462))
+* **cli:** remove leading em-dash from ksi.py — SyntaxError on import ([1f3adc4](https://github.com/WhalerMike/uiao-core/commit/1f3adc44b45537f053dc0c0ac84e0aa8067a1ab9))
 * **cli:** repair ir-ssp-inject command — remove broken duplicate pipeline, fix variable names ([57926a8](https://github.com/WhalerMike/uiao-core/commit/57926a8c7ede2a61e2c3443751f73eedd4f9bb82))
 * **cli:** rewrite scuba.py — correct IndentationError breaking CI import ([56d76eb](https://github.com/WhalerMike/uiao-core/commit/56d76eb090843e0dc775bfc12d05e0c3baf94d11))
 * **control-library:** add IA-2.yml at flat path for test compatibility ([10e669e](https://github.com/WhalerMike/uiao-core/commit/10e669ee0a1d66d57a3d9874c78aa090fafbe520))
