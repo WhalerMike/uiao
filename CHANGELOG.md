@@ -69,6 +69,7 @@
 * **sar:** remove double OSCAL SAR prefix in build_sar_summary ([988ef1a](https://github.com/WhalerMike/uiao-core/commit/988ef1aaf49aceff94e1d889e9a7efc2d7595716))
 * **scripts:** rewrite enrich_ksi_tier2.py to walk ksi dirs in-place ([0046e8a](https://github.com/WhalerMike/uiao-core/commit/0046e8ae4596b1a329525813aa15be852ed0b2ec))
 * **scuba:** apply ruff SIM108 fix in transform.py — ternary for yaml/json load ([ab5b66d](https://github.com/WhalerMike/uiao-core/commit/ab5b66da4a55cf14d8a304e97916acb761cd9103))
+* **scuba:** don't pass None tenant_boundary_id — fixes Policy.scope.boundaries pydantic error ([5f78a2d](https://github.com/WhalerMike/uiao-core/commit/5f78a2da1e3204de625016401cc6df91068831c6))
 * **scuba:** raise ValueError in _load_scuba when input is not a dict ([60d0034](https://github.com/WhalerMike/uiao-core/commit/60d003480677bec701bf2e1a7bd2461cd46ed06a))
 * **scuba:** restore _load_scuba helper — required by test_scuba_transform_plane.py ([9c9d361](https://github.com/WhalerMike/uiao-core/commit/9c9d36118321428f0c2524a6f24fa26e7422b0e6))
 * **scuba:** rewrite transform.py — correct indentation corruption from editor ([53f989d](https://github.com/WhalerMike/uiao-core/commit/53f989dd5100e71cb988f6cede56ae749a5312f8))
