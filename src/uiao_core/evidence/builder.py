@@ -129,9 +129,22 @@ def _canonical_json(data: Any) -> str:
     return json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
+# Fields excluded from record hashing to ensure determinism across runs.
+_VOLATILE_FIELDS = frozenset({"id", "run_id", "generated_at", "collected_at"})
+
+
 def _stable_hash(data: Any) -> str:
-    """Stable SHA-256 hex digest of the canonical JSON representation."""
-    return hashlib.sha256(_canonical_json(data).encode("utf-8")).hexdigest()
+    """Stable SHA-256 hex digest of the canonical JSON representation.
+
+    When *data* is a dict, volatile fields (run_id, generated_at, id,
+    collected_at) are excluded so the hash is identical across independent
+    runs that process the same KSI input.
+    """
+    if isinstance(data, dict):
+        stable: Any = {k: v for k, v in data.items() if k not in _VOLATILE_FIELDS}
+    else:
+        stable = data
+    return hashlib.sha256(_canonical_json(stable).encode("utf-8")).hexdigest()
 
 
 def _ksi_result_to_evidence_record(
