@@ -199,9 +199,12 @@ def transform_scuba_to_ir(
     try:
         # 5. Run core transformer
         logger.debug("Running core transformer ...")
-        result: SCuBATransformResult = _core_transform(
-            tmp_path, tenant_boundary_id=tenant_boundary_id
-        )
+        # Only pass tenant_boundary_id when explicitly set; None would
+        # override the core transformer's default and produce null boundaries
+        kwargs = {}
+        if tenant_boundary_id is not None:
+            kwargs["tenant_boundary_id"] = tenant_boundary_id
+        result: SCuBATransformResult = _core_transform(tmp_path, **kwargs)
     finally:
         tmp_path.unlink(missing_ok=True)
 
