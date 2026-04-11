@@ -74,14 +74,22 @@ def _load_config(config_path: Optional[str]) -> Dict[str, Any]:
 
 
 def _load_scuba(src: Path) -> Dict[str, Any]:
-    """Parse a SCuBA JSON or YAML file and return its contents as a dict."""
+    """Parse a SCuBA JSON or YAML file and return its contents as a dict.
+
+    Raises
+    ------
+    ValueError
+        When the parsed content is not a dict.
+    """
     with src.open(encoding="utf-8") as fh:
-        data: Dict[str, Any] = (
+        raw = (
             yaml.safe_load(fh) or {}
             if src.suffix in {".yaml", ".yml"}
             else json.load(fh)
         )
-    return data
+    if not isinstance(raw, dict):
+        raise ValueError(f"SCuBA input must be a dict, got {type(raw).__name__}")
+    return raw
 
 
 def _resolve_log_path(output_path: Path) -> Path:
