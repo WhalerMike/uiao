@@ -38,19 +38,19 @@ _console = Console()
 
 @ksi_app.command("evaluate")
 def evaluate_command(
-    ir: str = typer.Option(
+    ir: str = typer.Option(  # noqa: B008
         ...,
         "--ir",
         help="Path to the IR JSON envelope produced by Plane 1 (scuba transform).",
         show_default=False,
     ),
-    out: str = typer.Option(
+    out: str = typer.Option(  # noqa: B008
         ...,
         "--out",
         help="Destination path for the KSI result JSON (e.g. ./output/ksi/source.ksi.json).",
         show_default=False,
     ),
-    config: Optional[str] = typer.Option(
+    config: Optional[str] = typer.Option(  # noqa: B008
         None,
         "--config",
         help="Optional path to ksi-rules.json config file.",
