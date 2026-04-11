@@ -1,4 +1,4 @@
-—"""uiao_core.cli.ksi — Typer sub-app for the `uiao ksi` command group.
+"""uiao_core.cli.ksi — Typer sub-app for the `uiao ksi` command group.
 
 Mount point
 -----------
