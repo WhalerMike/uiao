@@ -28,8 +28,8 @@ console = Console()
 
 
 @scuba_app.command("transform")
-def transform_cmd(
-    input_path: Path = typer.Option(
+def transform_cmd(  # noqa: B008
+    input_path: Path = typer.Option(  # noqa: B008
         ...,
         "--input",
         "-i",
@@ -39,14 +39,14 @@ def transform_cmd(
         dir_okay=False,
         resolve_path=True,
     ),
-    output_path: Path = typer.Option(
+    output_path: Path = typer.Option(  # noqa: B008
         ...,
         "--out",
         "-o",
         help="Destination path for the IR JSON artefact.",
         resolve_path=True,
     ),
-    config_path: Optional[Path] = typer.Option(
+    config_path: Optional[Path] = typer.Option(  # noqa: B008
         None,
         "--config",
         "-c",
