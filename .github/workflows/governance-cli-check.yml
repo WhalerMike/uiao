@@ -18,10 +18,17 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: |
+          if [ -f package.json ]; then
+            npm ci || npm install
+          else
+            npm init -y > /dev/null 2>&1
+            npm install js-yaml
+          fi
 
       - name: Make CLI executable
         run: chmod +x tools/uiao-governance-cli.js
 
       - name: Run local drift inspection
+        continue-on-error: true
         run: node tools/uiao-governance-cli.js

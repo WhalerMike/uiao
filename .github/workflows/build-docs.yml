@@ -2,114 +2,174 @@ name: Build and Deploy Documentation
 
 on:
   push:
-      branches: [ "main" ]
-        workflow_dispatch:
+    branches: [ "main" ]
+  workflow_dispatch:
 
-        permissions:
-          contents: read
-            pages: write
-              id-token: write
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
-              concurrency:
-                group: "pages"
-                  cancel-in-progress: false
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
-                  jobs:
-                    build:
-                        runs-on: ubuntu-latest
-                            steps:
-                                  - name: Checkout repository
-                                          uses: actions/checkout@v4
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-                                                - name: Setup Quarto
-                                                        uses: quarto-dev/quarto-actions/setup@v2
+      - name: Setup Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
 
-                                                              - name: Install TinyTeX for PDF support
-                                                                      run: quarto install tinytex
+      - name: Install TinyTeX for PDF support
+        run: quarto install tinytex
 
-                                                                            - name: Render HTML site
-                                                                                    run: quarto render --to html
+      - name: Render HTML site
+        run: quarto render --to html
 
-                                                                                          - name: Render DOCX files
-                                                                                                  run: |
-                                                                                                            mkdir -p _site/downloads
-                                                                                                                      find docs -name "*.qmd" | while read f; do
-                                                                                                                                  base=$(basename "$f" .qmd)
-                                                                                                                                              subdir=$(dirname "$f" | sed 's|^docs/||')
-                                                                                                                                                          mkdir -p "_site/downloads/$subdir"
-                                                                                                                                                                      quarto render "$f" --to docx --output-dir "_site/downloads/$subdir" || true
-                                                                                                                                                                                done
-                                                                                                                                                                                
-                                                                                                                                                                                      - name: Render PPTX files
-                                                                                                                                                                                              run: |
-                                                                                                                                                                                                        find docs -name "*.qmd" | while read f; do
-                                                                                                                                                                                                                    base=$(basename "$f" .qmd)
-                                                                                                                                                                                                                                subdir=$(dirname "$f" | sed 's|^docs/||')
-                                                                                                                                                                                                                                            mkdir -p "_site/downloads/$subdir"
-                                                                                                                                                                                                                                                        quarto render "$f" --to pptx --output-dir "_site/downloads/$subdir" || true
-                                                                                                                                                                                                                                                                  done
-                                                                                                                                                                                                                                                                  
-                                                                                                                                                                                                                                                                        - name: Generate downloads index
-                                                                                                                                                                                                                                                                                run: |
-                                                                                                                                                                                                                                                                                          cat > _site/downloads/index.html << 'HTMLEOF'
-                                                                                                                                                                                                                                                                                                    <!DOCTYPE html>
-                                                                                                                                                                                                                                                                                                              <html lang="en">
-                                                                                                                                                                                                                                                                                                                        <head><meta charset="UTF-8"><title>UIAO Document Downloads</title>
-                                                                                                                                                                                                                                                                                                                                  <style>
-                                                                                                                                                                                                                                                                                                                                              body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
-                                                                                                                                                                                                                                                                                                                                                          h1 { color: #1B3A5C; }
-                                                                                                                                                                                                                                                                                                                                                                      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-                                                                                                                                                                                                                                                                                                                                                                                  th { background: #1B3A5C; color: white; padding: 0.5rem 1rem; text-align: left; }
-                                                                                                                                                                                                                                                                                                                                                                                              td { padding: 0.5rem 1rem; border-bottom: 1px solid #ddd; }
-                                                                                                                                                                                                                                                                                                                                                                                                          a { color: #1B3A5C; }
-                                                                                                                                                                                                                                                                                                                                                                                                                      .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; margin: 0 2px; }
-                                                                                                                                                                                                                                                                                                                                                                                                                                  .docx { background: #2B5797; color: white; }
-                                                                                                                                                                                                                                                                                                                                                                                                                                              .pptx { background: #C43E1C; color: white; }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                          .html { background: #1B3A5C; color: white; }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </style>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </head>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <body>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <h1>UIAO Document Downloads</h1>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <p>All UIAO governance documents are available in HTML (web), Word (DOCX), and PowerPoint (PPTX) formats.</p>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <table>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <tr><th>Document</th><th>HTML</th><th>Word (DOCX)</th><th>PowerPoint (PPTX)</th></tr>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <tr><td>Executive Summary</td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td><a href="../docs/executive_summary_v1.0.html"><span class="badge html">HTML</span></a></td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <td><a href="executive_summary_v1.0.docx"><span class="badge docx">DOCX</span></a></td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <td><a href="executive_summary_v1.0.pptx"><span class="badge pptx">PPTX</span></a></td></tr>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <tr><td>Leadership Briefing</td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <td><a href="../docs/07_LeadershipBriefing.html"><span class="badge html">HTML</span></a></td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <td><a href="07_LeadershipBriefing.docx"><span class="badge docx">DOCX</span></a></td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td><a href="07_LeadershipBriefing.pptx"><span class="badge pptx">PPTX</span></a></td></tr>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <tr><td>Program Vision</td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <td><a href="../docs/06_ProgramVision.html"><span class="badge html">HTML</span></a></td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <td><a href="06_ProgramVision.docx"><span class="badge docx">DOCX</span></a></td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <td><a href="06_ProgramVision.pptx"><span class="badge pptx">PPTX</span></a></td></tr>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <tr><td>Unified Architecture</td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <td><a href="../docs/01_UnifiedArchitecture.html"><span class="badge html">HTML</span></a></td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <td><a href="01_UnifiedArchitecture.docx"><span class="badge docx">DOCX</span></a></td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <td><a href="01_UnifiedArchitecture.pptx"><span class="badge pptx">PPTX</span></a></td></tr>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <tr><td>MVP Roadmap</td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td><a href="../docs/mvp-roadmap.html"><span class="badge html">HTML</span></a></td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <td><a href="mvp-roadmap.docx"><span class="badge docx">DOCX</span></a></td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <td><a href="mvp-roadmap.pptx"><span class="badge pptx">PPTX</span></a></td></tr>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </table>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <p style="margin-top:2rem; color:#666; font-size:0.9em;">Generated automatically on every push to main. All documents reflect the current canon state.</p>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </body></html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            HTMLEOF
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  - name: Upload HTML site artifact
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          uses: actions/upload-pages-artifact@v3
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  with:
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            path: _site
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              deploy:
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  needs: build
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      runs-on: ubuntu-latest
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          environment:
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                name: github-pages
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      url: ${{ steps.deployment.outputs.page_url }}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          steps:
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                - name: Deploy to GitHub Pages
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        id: deployment
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                uses: actions/deploy-pages@v4
+      - name: Render DOCX files
+        run: |
+          mkdir -p _site/downloads
+          find docs -name "*.qmd" | sort | while read f; do
+            subdir=$(dirname "$f" | sed 's|^docs/||')
+            mkdir -p "_site/downloads/$subdir"
+            quarto render "$f" --to docx --output-dir "_site/downloads/$subdir" || true
+          done
+
+      - name: Render PPTX files
+        run: |
+          find docs -name "*.qmd" | sort | while read f; do
+            subdir=$(dirname "$f" | sed 's|^docs/||')
+            mkdir -p "_site/downloads/$subdir"
+            quarto render "$f" --to pptx --output-dir "_site/downloads/$subdir" || true
+          done
+
+      - name: Render PDF files
+        run: |
+          find docs -name "*.qmd" | sort | while read f; do
+            subdir=$(dirname "$f" | sed 's|^docs/||')
+            mkdir -p "_site/downloads/$subdir"
+            quarto render "$f" --to pdf --output-dir "_site/downloads/$subdir" || true
+          done
+
+      - name: Render EPUB files
+        run: |
+          find docs -name "*.qmd" | sort | while read f; do
+            subdir=$(dirname "$f" | sed 's|^docs/||')
+            mkdir -p "_site/downloads/$subdir"
+            quarto render "$f" --to epub --output-dir "_site/downloads/$subdir" || true
+          done
+
+      - name: Generate downloads index
+        run: |
+          DOWNLOADS_DIR="_site/downloads"
+
+          mapfile -t BASES < <(
+            find "$DOWNLOADS_DIR" -name "*.docx" \
+              | sed "s|${DOWNLOADS_DIR}/||" \
+              | sed 's|\.docx$||' \
+              | sort
+          )
+
+          cat > "$DOWNLOADS_DIR/index.html" << 'STYLE_EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>UIAO Document Downloads</title>
+            <style>
+              body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+              h1 { color: #1B3A5C; }
+              p.subtitle { color: #555; margin-bottom: 1.5rem; }
+              table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9em; }
+              th { background: #1B3A5C; color: white; padding: 0.5rem 0.75rem; text-align: left; }
+              td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #e0e0e0; vertical-align: middle; }
+              tr:hover td { background: #f5f7fa; }
+              a { text-decoration: none; }
+              .badge {
+                display: inline-block; padding: 2px 8px; border-radius: 4px;
+                font-size: 0.78em; font-weight: bold; margin: 0 2px;
+              }
+              .html  { background: #1B3A5C; color: white; }
+              .docx  { background: #2B5797; color: white; }
+              .pptx  { background: #C43E1C; color: white; }
+              .pdf   { background: #B00020; color: white; }
+              .epub  { background: #2E7D32; color: white; }
+              .na    { background: #ccc;    color: #555;  }
+              footer { margin-top: 2rem; color: #888; font-size: 0.82em; }
+            </style>
+          </head>
+          <body>
+            <h1>UIAO Document Downloads</h1>
+            <p class="subtitle">
+              All UIAO governance documents — available in HTML, Word (DOCX),
+              PowerPoint (PPTX), PDF, and EPUB. Generated automatically on every
+              push to <code>main</code>. All formats reflect the current canon state.
+            </p>
+            <table>
+              <tr>
+                <th>Document</th>
+                <th>HTML</th>
+                <th>DOCX</th>
+                <th>PPTX</th>
+                <th>PDF</th>
+                <th>EPUB</th>
+              </tr>
+          STYLE_EOF
+
+          for base in "${BASES[@]}"; do
+            name=$(basename "$base" | sed 's/_/ /g; s/-/ /g')
+            html_href="../docs/${base}.html"
+
+            [ -f "$DOWNLOADS_DIR/${base}.docx" ] \
+              && docx_cell="<a href=\"${base}.docx\"><span class=\"badge docx\">DOCX</span></a>" \
+              || docx_cell="<span class=\"badge na\">N/A</span>"
+
+            [ -f "$DOWNLOADS_DIR/${base}.pptx" ] \
+              && pptx_cell="<a href=\"${base}.pptx\"><span class=\"badge pptx\">PPTX</span></a>" \
+              || pptx_cell="<span class=\"badge na\">N/A</span>"
+
+            [ -f "$DOWNLOADS_DIR/${base}.pdf" ] \
+              && pdf_cell="<a href=\"${base}.pdf\"><span class=\"badge pdf\">PDF</span></a>" \
+              || pdf_cell="<span class=\"badge na\">N/A</span>"
+
+            [ -f "$DOWNLOADS_DIR/${base}.epub" ] \
+              && epub_cell="<a href=\"${base}.epub\"><span class=\"badge epub\">EPUB</span></a>" \
+              || epub_cell="<span class=\"badge na\">N/A</span>"
+
+            echo "      <tr>" >> "$DOWNLOADS_DIR/index.html"
+            echo "        <td>${name}</td>" >> "$DOWNLOADS_DIR/index.html"
+            echo "        <td><a href=\"${html_href}\"><span class=\"badge html\">HTML</span></a></td>" >> "$DOWNLOADS_DIR/index.html"
+            echo "        <td>${docx_cell}</td>" >> "$DOWNLOADS_DIR/index.html"
+            echo "        <td>${pptx_cell}</td>" >> "$DOWNLOADS_DIR/index.html"
+            echo "        <td>${pdf_cell}</td>" >> "$DOWNLOADS_DIR/index.html"
+            echo "        <td>${epub_cell}</td>" >> "$DOWNLOADS_DIR/index.html"
+            echo "      </tr>" >> "$DOWNLOADS_DIR/index.html"
+          done
+
+          cat >> "$DOWNLOADS_DIR/index.html" << 'FOOT_EOF'
+            </table>
+            <footer>Generated automatically on every push to main. All documents reflect the current canon state.</footer>
+          </body>
+          </html>
+          FOOT_EOF
+
+      - name: Upload HTML site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
