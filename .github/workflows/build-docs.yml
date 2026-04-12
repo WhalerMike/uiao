@@ -4,6 +4,15 @@ on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
+    inputs:
+      render_all_formats:
+        description: 'Render all formats (DOCX, PPTX, PDF, EPUB) in addition to HTML'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 permissions:
   contents: read
@@ -25,12 +34,14 @@ jobs:
         uses: quarto-dev/quarto-actions/setup@v2
 
       - name: Install TinyTeX for PDF support
+        if: github.event.inputs.render_all_formats == 'true'
         run: quarto install tinytex
 
       - name: Render HTML site
         run: quarto render --to html
 
       - name: Render DOCX files
+        if: github.event.inputs.render_all_formats == 'true'
         run: |
           mkdir -p _site/downloads
           find docs -name "*.qmd" | sort | while read f; do
@@ -40,6 +51,7 @@ jobs:
           done
 
       - name: Render PPTX files
+        if: github.event.inputs.render_all_formats == 'true'
         run: |
           find docs -name "*.qmd" | sort | while read f; do
             subdir=$(dirname "$f" | sed 's|^docs/||')
@@ -48,6 +60,7 @@ jobs:
           done
 
       - name: Render PDF files
+        if: github.event.inputs.render_all_formats == 'true'
         run: |
           find docs -name "*.qmd" | sort | while read f; do
             subdir=$(dirname "$f" | sed 's|^docs/||')
@@ -56,6 +69,7 @@ jobs:
           done
 
       - name: Render EPUB files
+        if: github.event.inputs.render_all_formats == 'true'
         run: |
           find docs -name "*.qmd" | sort | while read f; do
             subdir=$(dirname "$f" | sed 's|^docs/||')
@@ -64,6 +78,7 @@ jobs:
           done
 
       - name: Generate downloads index
+        if: github.event.inputs.render_all_formats == 'true'
         run: |
           DOWNLOADS_DIR="_site/downloads"
 
