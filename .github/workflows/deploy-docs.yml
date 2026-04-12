@@ -1,43 +1,21 @@
-name: Deploy MkDocs to GitHub Pages
+# DISABLED: MkDocs deploy — replaced by build-docs.yml (Quarto)
+# This workflow was competing with build-docs.yml for the github-pages artifact slot,
+# causing the MkDocs site to overwrite the Quarto site on every push.
+# Quarto (build-docs.yml) is now the single authoritative Pages deployer.
+# MkDocs / requirements.txt are retained for local preview only.
+
+name: Deploy MkDocs to GitHub Pages (DISABLED)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+      inputs:
+            confirm:
+                    description: 'Type ENABLE to re-enable this workflow'
+                            required: true
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Build MkDocs site
-        run: mkdocs build
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+                            jobs:
+                              disabled:
+                                  if: ${{ github.event.inputs.confirm == 'ENABLE' }}
+                                      runs-on: ubuntu-latest
+                                          steps:
+                                                - run: echo "This workflow is disabled. Use build-docs.yml instead."
