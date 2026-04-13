@@ -41,6 +41,11 @@ except ImportError:
     transform_scuba_to_ir = None  # type: ignore[assignment]
 
 try:
+    from uiao_core.ir.adapters.scuba.normalize_scuba import normalize_scuba
+except ImportError:
+    normalize_scuba = None  # type: ignore[assignment]
+
+try:
     from uiao_core.ksi.evaluate import evaluate_ksi
 except ImportError:
     evaluate_ksi = None  # type: ignore[assignment]
@@ -239,10 +244,43 @@ def _run_plane_1(
     start = time.time()
     retry_count = 0
 
+    # Auto-detect raw ScubaGear input and normalize if needed
+    effective_input = input_path
+    try:
+        with open(input_path, encoding="utf-8") as _f:
+            _probe = json.load(_f)
+        is_raw = "TestResults" in _probe or "Results" in _probe
+        is_dir_input = input_path.is_dir()
+    except (json.JSONDecodeError, IsADirectoryError):
+        is_raw = False
+        is_dir_input = input_path.is_dir()
+
+    if is_raw or is_dir_input:
+        if normalize_scuba:
+            logger.info(f"[{plane_id}] Detected raw ScubaGear input — normalizing first")
+            normalized_data = normalize_scuba(
+                input_path,
+                tenant_id=tenant_id,
+                repo_root=input_path.parent if input_path.is_file() else input_path,
+            )
+            # Write normalized file next to input
+            normalized_path = output_dir / "normalized-scuba.json"
+            normalized_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(normalized_path, "w", encoding="utf-8") as _nf:
+                json.dump(normalized_data, _nf, indent=2)
+            logger.info(
+                f"[{plane_id}] Normalized %d KSIs from raw input → %s",
+                len(normalized_data.get("ksi_results", [])),
+                normalized_path,
+            )
+            effective_input = normalized_path
+        else:
+            logger.warning(f"[{plane_id}] Raw ScubaGear detected but normalize_scuba not available")
+
     for attempt in range(max_retries + 1):
         try:
             logger.info(f"[{plane_id}] Attempt {attempt + 1}/{max_retries + 1}")
-            result = transform_scuba_to_ir(str(input_path), tenant_boundary_id=tenant_id)
+            result = transform_scuba_to_ir(str(effective_input), tenant_boundary_id=tenant_id)
             output_path = output_dir / f"{result.run_id}.ir.json"
 
             # Serialize result to JSON
