@@ -127,9 +127,9 @@ class TestScubaAdapterNormalize:
     def test_normalize_control_id_mapping(self, adapter: ScubaAdapter) -> None:
         results = adapter._extract_results()
         claim_set = adapter.normalize(results)
-        # MS.AAD.2.1v1 should map to IA-2
+        # MS.AAD.2.1v1 maps to AC-3 (role-based access / conditional access)
         aad_claim = next(c for c in claim_set.claims if "MS.AAD.2.1v1" in c.claim_id)
-        assert aad_claim.fields["control_id"] == "IA-2"
+        assert aad_claim.fields["control_id"] == "AC-3"
 
     def test_normalize_unmapped_policy(self, adapter: ScubaAdapter) -> None:
         # An unknown policy should get control_id "N/A"
@@ -174,14 +174,14 @@ class TestScubaAdapterDriftDetection:
 
 class TestScubaKsiMapping:
     def test_ksi_map_aad_entries(self) -> None:
-        assert SCUBA_TO_KSI_MAP["MS.AAD.2.1v1"] == "IA-2"
-        assert SCUBA_TO_KSI_MAP["MS.AAD.1.1v1"] == "AC-2"
+        assert SCUBA_TO_KSI_MAP["MS.AAD.2.1v1"] == "AC-3"
+        assert SCUBA_TO_KSI_MAP["MS.AAD.1.1v1"] == "IA-2(1)"
 
     def test_ksi_map_defender_entries(self) -> None:
-        assert SCUBA_TO_KSI_MAP["MS.DEFENDER.2.1v1"] == "AU-2"
+        assert SCUBA_TO_KSI_MAP["MS.DEFENDER.2.1v1"] == "SI-8"
 
     def test_get_ksi_evidence(self, adapter: ScubaAdapter) -> None:
-        evidence = adapter.get_ksi_evidence("IA-2")
+        evidence = adapter.get_ksi_evidence("AC-3")
         assert len(evidence) == 1
         assert evidence[0]["PolicyId"] == "MS.AAD.2.1v1"
 
