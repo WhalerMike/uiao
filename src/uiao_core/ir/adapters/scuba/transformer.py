@@ -158,6 +158,8 @@ class SCuBATransformResult:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "run_id": self.run_id,
+            "controls": [json.loads(c.to_canonical()) for c in self.controls],
+            "policies": [json.loads(p.to_canonical()) for p in self.policies],
             "pass_count": self.pass_count,
             "warn_count": self.warn_count,
             "fail_count": self.fail_count,
