@@ -120,7 +120,7 @@ The multi-stage Dockerfile uses a Python 3.12-slim base, installs only productio
 
 5.2 Data Handling
 
-- No CUI/FOUO markings --- GCC Moderate applies to M365 SaaS services only
+- No Public markings --- GCC Moderate applies to M365 SaaS services only
 
 - Evidence bundles encrypted at rest using AES-256
 

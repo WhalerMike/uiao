@@ -1,7 +1,7 @@
 ---
 title: "UIAO Identity Plane Deep Dive"
 version: "1.0"
-classification: "CUI/FOUO"
+classification: "Public"
 ---
 
 # Identity Control Plane Deep Dive  

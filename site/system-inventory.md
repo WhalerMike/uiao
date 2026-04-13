@@ -1,7 +1,7 @@
 
 # System Inventory and Components
 
-**Classification:** CUI/FOUO  
+**Classification:** Public  
 **Version:** 1.0  
 **Generated:** Auto-generated  
 
@@ -20,7 +20,7 @@ satisfy NIST 800-53 Rev 5 CM-8 (System Component Inventory) requirements.
 
 - **System:** UIAO (UIAO)
 - **Authorization Level:** FedRAMP Moderate
-- **Classification:** CUI/FOUO
+- **Classification:** Public
 
 ### 1.2 Inventory Maintenance
 

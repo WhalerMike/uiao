@@ -182,8 +182,8 @@ def run_wizard(output_dir: Path = Path("generation-inputs")) -> Path:
 
     classification = _prompt(
         "Document classification",
-        default="CUI//SP-CTI",
-        hint="E.g. 'UNCLASSIFIED', 'CUI//SP-CTI', 'CUI/FOUO'",
+        default="Public",
+        hint="E.g. 'Public', 'Internal', 'Confidential'",
     )
 
     audience_raw = _prompt(
