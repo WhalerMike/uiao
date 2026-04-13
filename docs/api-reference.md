@@ -1,3 +1,15 @@
+---
+title: "Api-Reference"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 UIAO-Core API Reference
 
 **Document ID:** UIAO_API_001

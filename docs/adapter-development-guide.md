@@ -1,3 +1,15 @@
+---
+title: "Adapter-Development-Guide"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 UIAO Adapter Development Guide
 
 **Document ID:** UIAO_ADG_001
