@@ -40,7 +40,7 @@ _DEFAULT_IMAGE_WIDTH: Any = Inches(5.5)  # module-level singleton for ruff B008
 # ---------------------------------------------------------------------------
 
 
-def _add_classification_header(doc: Document, classification: str = "CUI") -> None:
+def _add_classification_header(doc: Document, classification: str = "Public") -> None:
     """Add header/footer with classification marking to all sections."""
     for section in doc.sections:
         header = section.header
@@ -265,7 +265,7 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
     lb = context.get("leadership_briefing", {})
     if not isinstance(lb, dict):
         lb = {}
-    classification = context.get("classification", "CUI")
+    classification = context.get("classification", "Public")
     _add_classification_header(doc, classification)
 
     # Title page
@@ -628,7 +628,7 @@ def _md_to_docx(doc: Document, md_text: str) -> None:
 def build_topic_docx(
     md_path: Path,
     exports_dir: Path,
-    classification: str = "CUI",
+    classification: str = "Public",
 ) -> Path:
     """Convert a single Markdown document into a styled DOCX.
 
@@ -662,7 +662,7 @@ def build_topic_docx(
 def generate_all_topic_docs(
     docs_dir: Path | None = None,
     exports_dir: Path | None = None,
-    classification: str = "CUI",
+    classification: str = "Public",
 ) -> list[Path]:
     """Convert all Markdown documents in docs_dir to DOCX.
 

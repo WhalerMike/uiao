@@ -644,7 +644,7 @@ def generate_all(
 
     start = time.monotonic()
     errors: list[str] = []
-    context_classification = "CUI"  # classification marking for topic DOCX headers
+    context_classification = "Public"  # classification marking for topic DOCX headers
 
     console.print("[bold blue]━━━ UIAO generate-all ━━━[/bold blue]")
     console.print(f"[dim]Canon: {canon_path}  |  Data: {data_dir}[/dim]\n")

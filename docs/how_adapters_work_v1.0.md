@@ -15,7 +15,7 @@ format:
 **Version:** 1.0  
 **Status:** Authoritative  
 **Repository:** `uiao-core`  
-**Classification:** CUI/FOUO  
+**Classification:** Public  
 **Last Updated:** April 2026
 
 ---

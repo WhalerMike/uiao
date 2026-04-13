@@ -280,7 +280,7 @@ def _build_pptx(context: dict[str, Any], settings: Any) -> Presentation:
     _add_title_slide(
         prs,
         "Questions?",
-        f"UIAO Program | {today} | CUI",
+        f"UIAO Program | {today} | Public",
     )
 
     return prs

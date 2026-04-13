@@ -30,7 +30,7 @@ from uiao_core.config import Settings
 COLOR_TITLE = RGBColor(0x44, 0x72, 0xC4)  # #4472C4 — blue title
 COLOR_SUBTITLE = RGBColor(0x2B, 0x57, 0x97)  # #2B5797 — dark blue subtitle
 COLOR_HEADER_BG = "D5E8F0"  # table header shading
-COLOR_ACCENT = RGBColor(0xC0, 0x00, 0x00)  # #C00000 — red CUI banner
+COLOR_ACCENT = RGBColor(0xC0, 0x00, 0x00)  # #C00000 — red accent banner
 
 STATUS_EMOJI = {
     "pass": "🟢",
@@ -77,11 +77,11 @@ def _set_cell_shading(cell, fill_hex: str) -> None:
     tcPr.append(shd)
 
 
-def _add_cui_banner(doc: Document) -> None:
-    """Add CUI//FOUO classification banner matching reference doc style."""
+def _add_classification_banner(doc: Document) -> None:
+    """Add classification banner matching reference doc style."""
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run("CUI // FOUO")
+    run = p.add_run("Public")
     run.bold = True
     run.font.color.rgb = COLOR_ACCENT
     run.font.size = Pt(10)
@@ -432,7 +432,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     # -----------------------------------------------------------------------
     # Cover page
     # -----------------------------------------------------------------------
-    _add_cui_banner(doc)
+    _add_classification_banner(doc)
     doc.add_paragraph()
 
     title = doc.add_paragraph()
@@ -459,7 +459,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
         f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
         "Owner: Michael Stratton (whalermike)",
         "Repo: https://github.com/WhalerMike/uiao-core",
-        "Classification: CUI // FOUO",
+        "Classification: Public",
     ]
     for line in meta_lines:
         p = doc.add_paragraph()
@@ -498,7 +498,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     # -----------------------------------------------------------------------
     # Page 1 — System Health
     # -----------------------------------------------------------------------
-    _add_cui_banner(doc)
+    _add_classification_banner(doc)
     _add_heading(doc, "Page 1 — System Health", 1, COLOR_TITLE)
     doc.add_paragraph(
         "Traffic-light status of all major system components. CI status requires `gh run list` to fully populate."
@@ -556,7 +556,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     # -----------------------------------------------------------------------
     # Page 2 — The Stack
     # -----------------------------------------------------------------------
-    _add_cui_banner(doc)
+    _add_classification_banner(doc)
     _add_heading(doc, "Page 2 — The Vendor Stack", 1, COLOR_TITLE)
     doc.add_paragraph(
         "The Big 7 vendor adapters mapped to UIAO control planes. "
@@ -594,7 +594,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     # -----------------------------------------------------------------------
     # Page 3 — Control Coverage
     # -----------------------------------------------------------------------
-    _add_cui_banner(doc)
+    _add_classification_banner(doc)
     _add_heading(doc, "Page 3 — FedRAMP Control Coverage", 1, COLOR_TITLE)
 
     control_rows, gold, covered, total = collect_control_coverage(root)
@@ -637,7 +637,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     # -----------------------------------------------------------------------
     # Page 4 — Pipeline
     # -----------------------------------------------------------------------
-    _add_cui_banner(doc)
+    _add_classification_banner(doc)
     _add_heading(doc, "Page 4 — Generation Pipeline", 1, COLOR_TITLE)
     doc.add_paragraph("How UIAO generates compliance artifacts from the canonical YAML sources.")
 
@@ -680,7 +680,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     # -----------------------------------------------------------------------
     # Page 5 — Priorities & Decisions
     # -----------------------------------------------------------------------
-    _add_cui_banner(doc)
+    _add_classification_banner(doc)
     _add_heading(doc, "Page 5 — Current Priorities & Decisions", 1, COLOR_TITLE)
     doc.add_paragraph("Source: PROJECT-CONTEXT.md (live file).")
 
@@ -705,7 +705,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     # -----------------------------------------------------------------------
     if include_history:
         doc.add_page_break()
-        _add_cui_banner(doc)
+        _add_classification_banner(doc)
         _add_heading(doc, "Page 6 — What the Agents Did Last", 1, COLOR_TITLE)
         doc.add_paragraph(
             "Last 10 changelog entries in plain English. Source: CHANGELOG.md (auto-generated, commit-driven)."
