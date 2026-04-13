@@ -189,9 +189,24 @@ def build_live_ssp(
     ir_result = transform_scuba_to_ir(normalized_json_path)
     bundle = build_bundle_from_transform_result(ir_result)
 
+<<<<<<< Updated upstream
     # --- build SSP skeleton and inject evidence ---
     ssp_plan = build_ssp_skeleton(context=ctx, enhanced=enhanced)
     inject_scuba_evidence(ssp_plan, bundle)
+=======
+    # --- build SSP skeleton ---
+    ssp_doc = build_ssp_skeleton(
+        context={
+            "tenant_id": tenant_id,
+            "system_id": system_id,
+            "system_name": title,
+        },
+        enhanced=enhanced,
+    )
+    # --- inject evidence into the plan dict ---
+    plan = ssp_doc.setdefault("system-security-plan", {})
+    inject_scuba_evidence(plan, bundle)
+>>>>>>> Stashed changes
 
     # --- write output ---
     if output_path is None:
