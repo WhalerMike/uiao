@@ -1,7 +1,7 @@
 ---
 title: "UIAO Zero Trust Narrative"
 version: "1.0"
-classification: "Public"
+classification: "CUI/FOUO"
 ---
 
 # UIAO Zero Trust Narrative  

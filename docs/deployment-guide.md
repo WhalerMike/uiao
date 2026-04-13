@@ -1,3 +1,15 @@
+---
+title: "Deployment-Guide"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 UIAO-Core Deployment Guide
 
 **Document ID:** UIAO_DEP_001

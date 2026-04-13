@@ -1,7 +1,7 @@
 ---
 title: "UIAO Unified Architecture"
 version: "1.0"
-classification: "Public"
+classification: "CUI/FOUO"
 ---
 
 # UIAO Unified Architecture

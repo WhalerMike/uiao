@@ -1,3 +1,15 @@
+---
+title: "Scuba-Architecture-Guide"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 UIAO SCuBA Architecture Guide
 
 **Document ID:** UIAO_SAG_001
