@@ -104,16 +104,37 @@ def _write_ksi(dst: Path, payload: Dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 # Default pass-criteria behaviour when no explicit rule is configured:
-#   A control is considered passing when its \"evaluation.result\" field
-#   (carried inside any Evidence item that references the control) equals
-#   \"pass\", OR when the control has at least one evidence item with
-#   data.result == \"pass\".  If no evidence is present, the verdict is
-#   \"inconclusive\" rather than \"fail\" — absence of evidence != failure.
+#   A control is considered passing when its evidence item's evaluation
+#   block indicates success.  The transformer may use either:
+#     - evaluation.result == "pass"   (string-based)
+#     - evaluation.passed == True     (boolean-based)
+#   Both are supported.  If no evidence is present, the verdict is
+#   "inconclusive" rather than "fail" — absence of evidence != failure.
 
 _VERDICT_PASS = "pass"
 _VERDICT_FAIL = "fail"
 _VERDICT_INCONCLUSIVE = "inconclusive"
 _VERDICT_EXCLUDED = "excluded"
+
+
+def _evidence_passes(ev: Dict[str, Any]) -> bool:
+    """Check whether an evidence item indicates a passing result.
+
+    Supports two serialization conventions used by IR transformers:
+      - evaluation.result == "pass"   (string-based)
+      - evaluation.passed == True     (boolean-based, used by SCuBA transformer)
+    """
+    evaluation = ev.get("evaluation", {})
+    # String-based: evaluation.result == "pass"
+    if evaluation.get("result") == _VERDICT_PASS:
+        return True
+    # Boolean-based: evaluation.passed == True
+    if evaluation.get("passed") is True:
+        return True
+    # Also check data.status for direct SCuBA status passthrough
+    if ev.get("data", {}).get("status") == "PASS":
+        return True
+    return False
 
 
 def _evaluate_control(
@@ -168,7 +189,8 @@ def _evaluate_control(
         override = override_rules[cid]
         expected = override.get("expected_result", _VERDICT_PASS)
         matched = any(
-            ev.get("evaluation", {}).get("result") == expected
+            _evidence_passes(ev) if expected == _VERDICT_PASS
+            else ev.get("evaluation", {}).get("result") == expected
             for ev in evidence_items
         )
         verdict = _VERDICT_PASS if matched else _VERDICT_FAIL
@@ -197,15 +219,13 @@ def _evaluate_control(
             "evidence_count": 0,
         }
 
-    # Pass if ANY evidence item carries evaluation.result == "pass"
-    # (conservative: if there is mixed evidence, the control still passes
-    #  if at least one item passes AND the config does not require all to pass)
+    # Pass if ANY evidence item indicates a passing result.
+    # Supports both evaluation.result=="pass" and evaluation.passed==True.
+    # Conservative: if mixed evidence, control still passes if at least one
+    # item passes AND the config does not require all to pass.
     require_all: bool = rules.get("require_all_evidence_pass", False)
 
-    passing = [
-        ev for ev in evidence_items
-        if ev.get("evaluation", {}).get("result") == _VERDICT_PASS
-    ]
+    passing = [ev for ev in evidence_items if _evidence_passes(ev)]
 
     if require_all:
         verdict = _VERDICT_PASS if len(passing) == len(evidence_items) else _VERDICT_FAIL
