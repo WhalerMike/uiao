@@ -1,7 +1,7 @@
 ---
 title: "UIAO Seven-Layer Model"
 version: "1.0"
-classification: "CUI/FOUO"
+classification: "Public"
 ---
 
 # The UIAO Seven-Layer Model

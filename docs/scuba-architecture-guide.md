@@ -199,7 +199,7 @@ uiao ├── scuba │ ├── run \# Execute ScubaGear assessment │ ├�
 +-----------------------------------------------------------------------------------+
 | **Canon Rule**                                                                    |
 |                                                                                   |
-| No FOUO markings. GCC Moderate classification applies to M365 SaaS services only. |
+| No classification markings. GCC Moderate classification applies to M365 SaaS services only. |
 +-----------------------------------------------------------------------------------+
 
 9\. Key Architectural Decisions

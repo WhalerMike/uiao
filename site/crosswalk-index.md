@@ -2,7 +2,7 @@
 title: "UIAO Crosswalk Index"
 version: ""
 date: ""
-classification: "CUI/FOUO"
+classification: "Public"
 ---
 
 # UIAO Crosswalk Index
