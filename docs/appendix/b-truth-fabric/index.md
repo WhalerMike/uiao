@@ -44,3 +44,5 @@ The Truth Fabric provides:
 - ADR-005: Canonical Claim Schema design
 - ADR-008: Zero-trust identity anchoring
 - ADR-011: Multi-adapter correlation
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

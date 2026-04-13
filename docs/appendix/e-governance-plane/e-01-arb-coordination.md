@@ -58,3 +58,5 @@ The UIAO Governance Board maintains a designated ARB liaison responsible for:
 - **ADR-018:** Mission channel enforcement decision record
 - **Appendix E-02:** Mission partner corridors (cross-org channel governance)
 - **Appendix E-03:** Cross-fabric consistency (requires ARB for exceptions)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -97,3 +97,5 @@ To provide governance stewards with a single, authoritative view of systemic gov
 - Cluster detection accuracy >= 90%
 - Deterministic color mapping
 - All values traceable to DB or API
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -32,3 +32,5 @@ The Adapter Plane supports **hot-swap**: the new adapter version is registered a
 **Negative:**
 - Dual-version operation during upgrade increases resource consumption
 - Only one hot-swap operation per adapter identity may proceed at a time (see ADR-023)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

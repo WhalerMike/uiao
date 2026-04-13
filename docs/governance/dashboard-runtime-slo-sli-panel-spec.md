@@ -83,3 +83,5 @@ To provide a real-time, authoritative view of governance runtime health across d
 - No stale data >5 minutes
 - Deterministic color mapping
 - All values traceable to DB or API
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

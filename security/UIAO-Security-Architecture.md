@@ -233,3 +233,5 @@ The UIAO Security Architecture Layer establishes:
 7. **Enforcement Safety** — Authorization, rollback, and immutable audit trail
 
 This is the layer that makes UIAO **trustworthy**, **assessable**, and **FedRAMP-ready**.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -30,3 +30,5 @@ The Evidence Fabric supports **Evidence Bundles**: named, governed collections o
 **Negative:**
 - Bundle assembly requires explicit governance steps — cannot be assembled on the fly
 - Sealed bundles cannot be corrected (only superseded by a new bundle)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

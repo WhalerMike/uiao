@@ -68,3 +68,5 @@ For component architecture see `runtime-architecture.md`.
 5. Webhook fires `weekly_report_published` event.
 6. API updates weekly reports list.
 7. Dashboard weekly reports view refreshes.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

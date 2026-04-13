@@ -33,3 +33,5 @@ The Adapter Plane enforces concurrency constraints using an adapter-identity-lev
 **Negative:**
 - Long-running lifecycle operations (e.g., a slow hot-swap traffic shift) block other operations on the same adapter
 - Lock timeout must be configured appropriately — too short causes premature lock release; too long causes unacceptable blocking
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -1,7 +1,7 @@
 ---
 title: "UIAO Leadership Briefing"
 version: "1.0"
-classification: "CUI/FOUO"
+classification: "Public"
 audience: "CIO, CISO, CTO, PMO, Network Leadership, Identity Leadership"
 ---
 # Unified Identity‑Addressing‑Overlay Architecture (UIAO)

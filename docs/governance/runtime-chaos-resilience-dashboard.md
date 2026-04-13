@@ -68,3 +68,5 @@ Resilience = 100 - (ChaosImpact * SeverityWeight)
 - Update CI validator
 - Update workflows
 - Trigger systemic drift review
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

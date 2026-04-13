@@ -90,3 +90,5 @@ SRP = 0.30*LDP + 0.25*CP + 0.20*SCP + 0.25*AI
 - Patch workflows
 - Reassign owners
 - Trigger systemic drift review
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

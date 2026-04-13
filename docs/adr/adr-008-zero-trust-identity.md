@@ -31,3 +31,5 @@ The Truth Fabric adopts a **zero-trust identity anchoring** model: no anchor bin
 - New anchor bindings require verification before they can be used in HIGH-confidence compliance attestations
 - Initial onboarding of multi-system identities requires more effort
 - PENDING anchors add complexity to compliance queries
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

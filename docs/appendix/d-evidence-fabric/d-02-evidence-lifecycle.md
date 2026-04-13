@@ -61,3 +61,5 @@ Per ADR-022, evidence records that have been in ARCHIVED phase for more than 1 y
 - **ADR-026:** Evidence lifecycle guarantees decision record
 - **Appendix D-01:** Evidence determinism
 - **Appendix D-03:** Compliance attestation process
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

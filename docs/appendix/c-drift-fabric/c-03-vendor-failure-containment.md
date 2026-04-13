@@ -68,3 +68,5 @@ When a vendor system recovers from a failure:
 - **Appendix C-01:** Drift detection algorithm
 - **Appendix C-02:** Drift taxonomy (VF failure modes use DT-05 classification)
 - **Appendix A-04:** Adapter health and liveness (VF-01/VF-02 correlated with adapter health)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

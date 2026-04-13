@@ -104,3 +104,5 @@ flowchart TD
 | Click owner | Open owner normalization profile |
 | Hover integrity score | Show breakdown by violation type and severity contribution |
 | Click enforcement action | Open action detail with linked PR or intervention record |
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

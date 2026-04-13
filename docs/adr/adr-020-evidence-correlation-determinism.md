@@ -30,3 +30,5 @@ date: "2026-04-07"
 ## Related ADRs
 
 <!-- TODO: List related ADR IDs -->
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -75,3 +75,5 @@ SLA breach cells override color to deep red (#D32F2F) regardless of count.
 - SLA breach cells always override severity color.
 - Owner sorting deterministic and reproducible.
 - All interactions resolve to canonical dashboard views.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

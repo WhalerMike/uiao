@@ -42,3 +42,4 @@ python tools/dashboard_exporter.py --schema schemas/dashboard-schema.json --expo
 # Export with 30-day trends
 python tools/dashboard_exporter.py --schema schemas/dashboard-schema.json --export json --trends 30
 ```
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

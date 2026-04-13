@@ -103,3 +103,5 @@ Dashboard marks item resolved.
 - Dashboard renders corpus index and SLA heatmap.
 - Drift -> SLA -> Remediation -> Resolution flows visible end-to-end.
 - All components pass health checks.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

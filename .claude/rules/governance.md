@@ -21,3 +21,4 @@ Always active. Applies to all operations within uiao-docs.
 9. **Placeholder Standards:** Every placeholder includes a unique ID and a fully detailed description. Prose references use "Table X", "Diagram Y", or "Image Z" format.
 10. **Image Standards:** All images must include a title, dimensions (width × height), and alt text.
 11. **Diagram Rendering:** PlantUML is the canonical diagram renderer. Mermaid is prohibited.
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

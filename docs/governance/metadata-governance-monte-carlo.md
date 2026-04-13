@@ -89,3 +89,5 @@ GSI = DriftLoad + SLAStress + AutomationPenalty
 - CI validator updates
 - Workflow redesign
 - Governance risk forecasting
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

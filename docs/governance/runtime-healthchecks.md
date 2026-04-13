@@ -59,3 +59,5 @@ For architecture overview see `runtime-architecture.md`.
 - All health endpoints respond within 2 seconds.
 - Degraded state alerts fire within 5 minutes of failure.
 - Recovery procedures are documented and tested quarterly.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

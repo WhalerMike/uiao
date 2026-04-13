@@ -151,3 +151,5 @@ For full artifact listing, see: governance/governance-corpus-index.md
 For architecture diagrams, see: governance/governance-os-architecture.md
 
 For visual references, see: governance/governance-visual-atlas.md
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

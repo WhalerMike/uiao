@@ -51,3 +51,5 @@ Drift --> Acknowledge --> Review --> Classify
 
 Fix --> Validate --> Remediation PR --> CI --> Merge --> Dashboard --> Governance --> Close SLA
 ```
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -48,3 +48,5 @@ Why is this change needed? Reference issues, ADRs, or incidents.
 - [ ] `status` set
 - [ ] `owner` present
 - [ ] CI validation passes
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -128,3 +128,5 @@ Cross-tenant security enforces zero drift propagation, zero schema divergence, a
 - Zero automation subversion
 - Zero systemic-risk masking
 - Zero cross-tenant governance compromise
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

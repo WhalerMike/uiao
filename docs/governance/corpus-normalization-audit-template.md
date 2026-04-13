@@ -108,3 +108,5 @@ IntegrityScore = 100 - (Violations * SeverityWeight)
 - Auditor:
 - Governance steward:
 - Maintainer:
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

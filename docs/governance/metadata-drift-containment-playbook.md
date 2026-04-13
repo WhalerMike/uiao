@@ -78,3 +78,5 @@ This playbook defines the containment strategy for preventing local drift from e
 - Update CI validator
 - Update workflows
 - Update governance charter if needed
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

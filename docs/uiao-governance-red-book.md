@@ -130,3 +130,5 @@ Required after every Severity 3, 4, or 5 incident:
 - Workflow updates required
 - Governance charter updates if warranted
 - Incident logged to governance audit trail
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

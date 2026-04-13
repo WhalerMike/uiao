@@ -31,3 +31,5 @@ All Drift Records are **immutable**. They are written to the Evidence Fabric and
 - False positive drift records accumulate — queries must filter them using correction record status
 - Storage grows monotonically
 - Developers cannot "clean up" test drift records from production environments
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

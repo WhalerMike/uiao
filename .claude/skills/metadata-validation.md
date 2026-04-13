@@ -46,3 +46,4 @@ boundary-exception: false # Optional — boundary exception flag
 ```bash
 python tools/metadata_validator.py --path <target> --schema schemas/docs-metadata-schema.json
 ```
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

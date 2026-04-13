@@ -114,3 +114,5 @@ With UIAO
 - Every adapter change requires an ADR
 
 Full operational details: [UIAO SCuBA Pipeline Runbook](../docs/SCuBA-Pipeline-Runbook.md)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

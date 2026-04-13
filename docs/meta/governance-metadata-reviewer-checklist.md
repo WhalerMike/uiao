@@ -95,3 +95,5 @@ Reviewers must confirm all items below before approving a PR.
 - [Governance Metadata Playbook](governance-metadata-playbook.md)
 - [UIAO Document Metadata Contract](uiao-document-metadata-contract.md)
 - [UIAO ADR Metadata Contract](uiao-adr-metadata-contract.md)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

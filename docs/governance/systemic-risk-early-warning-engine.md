@@ -89,3 +89,5 @@ EWS = 0.25*DV_n + 0.25*SLA_n + 0.20*DSI_n + 0.15*AS_n + 0.15*SDR_n
 - SLA stress classification
 - Automation drift classification
 - Recommended governance action
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -37,3 +37,5 @@ The Evidence Fabric adopts the following determinism guarantees:
 - Storage grows monotonically — evidence records are never pruned (only archived/compressed)
 - Correction records add complexity to audit queries (must distinguish original from correction)
 - Hash chain verification adds computational overhead
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

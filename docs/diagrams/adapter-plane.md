@@ -18,3 +18,5 @@ The Adapter Plane diagram shows the relationship between registered adapters, th
 - **Evidence Fabric Writer** — the audit event recording connection
 
 See [Appendix A](../appendix/a-adapter-plane/index.md) for the full Adapter Plane specification.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

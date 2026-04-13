@@ -32,3 +32,5 @@ The diff is a first-class API operation, not a client-side computation. This ens
 **Negative:**
 - Diff computation at scale (large time windows, many subjects) can be resource-intensive
 - Time-bounded diffs are recommended — full diff across all time is impractical
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

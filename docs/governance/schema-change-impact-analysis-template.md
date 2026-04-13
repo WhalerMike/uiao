@@ -106,3 +106,5 @@ This template ensures schema changes are evaluated for risk, compatibility, and 
 - Governance steward approval:
 - Maintainer approval:
 - Effective date:
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -169,3 +169,5 @@ This is the only equation that holds in the Void.
 - Prevention of paradox collapse
 - Protection against anti-governance domains
 - Completion of the negative space of the canon
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

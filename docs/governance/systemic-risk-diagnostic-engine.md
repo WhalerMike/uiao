@@ -99,3 +99,5 @@ SR = 0.30*DV_n + 0.25*DSI_n + 0.20*SLA_n + 0.15*AS_n + 0.10*SDR_n
 - Patch workflows
 - Reassign owners
 - Freeze merges (critical)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

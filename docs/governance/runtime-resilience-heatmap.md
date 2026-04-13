@@ -111,3 +111,5 @@ So that higher scores always mean better resilience across all factors.
 | PostgreSQL FI2 red | Add read replicas and failover configuration |
 | Any component CR < 0.6 | Schedule targeted chaos engineering sprint |
 | Full column red | Escalate to governance board for infrastructure review |
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

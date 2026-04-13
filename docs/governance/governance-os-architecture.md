@@ -141,3 +141,5 @@ Orchestrates all governance domains based on enforcement outputs.
 - All control plane actions are traceable to an enforcement trigger
 - Schema changes propagate through all five layers before taking effect
 - Automation failures surface in the detection layer within 5 minutes
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

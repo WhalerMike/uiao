@@ -61,3 +61,5 @@ This repository is the single source of truth for all human-readable UIAO docume
 Machine artifacts are never stored here. Human artifacts are never stored in uiao-core.
 
 See the [SSOT Policy](docs/02_CanonSpecification.qmd) for the full ownership table and duplication rules.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -81,3 +81,5 @@ Actions:
 - Activate manual SLA enforcement
 - Full runtime audit
 - Executive notification
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -245,3 +245,5 @@ The following governance rules are authoritative and apply to all UIAO operation
 3. **UIAO operates in Commercial Cloud as governed by FedRAMP unless specifically noted.** Exceptions (e.g., Amazon Connect) are explicitly documented.
 4. **No references to any previous version in any context prior to the current version.** All artifacts are current-state only. Historical version references are not carried forward.
 5. **Every artifact must be canonical, deterministic, and provenance-aligned.** Outputs are reproducible from canon YAML, traceable through the pipeline, and consistent across invocations.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

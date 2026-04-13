@@ -109,3 +109,5 @@ Audience: CIO, CISO, IG/OIG, SES, Congressional Oversight
 - Schema approvals
 - Resource allocation
 - Governance charter amendments
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

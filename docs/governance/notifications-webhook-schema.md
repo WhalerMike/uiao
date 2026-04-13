@@ -76,3 +76,5 @@ Payload fields:
 - Failed deliveries must be retried with exponential backoff (3 attempts max).
 - Webhook secret must be rotated quarterly.
 - All event types must be logged to the governance database.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

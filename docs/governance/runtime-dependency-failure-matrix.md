@@ -48,3 +48,5 @@ This matrix identifies failure modes across the governance runtime and defines t
 - Webhook health checks
 - DB integrity checks
 - Dashboard freshness monitoring
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

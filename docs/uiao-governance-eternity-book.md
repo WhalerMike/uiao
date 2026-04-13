@@ -182,3 +182,5 @@ Governance approaches perfect stability: Stability(t) -> 1
 - Time-independent systemic-risk models
 - Eternal provenance
 - Governance stability across infinite time
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -117,3 +117,5 @@ This template ensures drift causes are identified, corrected, and prevented.
 - Owner:
 - Maintainer:
 - Governance steward:
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

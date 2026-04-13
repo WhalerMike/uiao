@@ -12,3 +12,5 @@ title: Diagram Gallery
 | [Drift Fabric](./drift-fabric.md) | Appendix C dependencies |
 | [Evidence Fabric](./evidence-fabric.md) | Appendix D dependencies |
 | [Governance Plane](./governance-plane.md) | Appendix E dependencies |
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

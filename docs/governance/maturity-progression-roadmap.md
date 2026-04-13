@@ -71,3 +71,5 @@ Goal: Add predictive models + systemic drift clustering.
 - Systemic-risk forecasting
 
 Goal: Maintain continuous governance optimization.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

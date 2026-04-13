@@ -119,3 +119,5 @@ Collective governance intelligence emerges from agent cooperation across domains
 - Emergent systemic-risk equilibrium through collective containment
 - Distributed governance intelligence that exceeds any individual agent
 - A governance OS that organizes, stabilizes, and improves itself
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

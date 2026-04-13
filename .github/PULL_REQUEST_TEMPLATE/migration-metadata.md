@@ -71,3 +71,5 @@ Provenance:
 - Docs Ops:
 - Appendix Owner(s):
 - Governance Reviewer:
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

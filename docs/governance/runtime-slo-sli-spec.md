@@ -89,3 +89,5 @@ Tracks automation failures (CI, webhook, dashboard).
 - Increase monitoring
 - Patch CI/webhook/dashboard
 - Governance steward review
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

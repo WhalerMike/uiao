@@ -62,3 +62,5 @@ This package contains all artifacts required for a federal Authority to Operate 
 - Architecture overview
 - Data flow diagrams
 - Network topology
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

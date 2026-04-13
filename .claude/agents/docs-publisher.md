@@ -50,3 +50,4 @@ Every article must pass all checks before publication:
 ### Advisory Notes
 <any non-blocking observations>
 ```
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

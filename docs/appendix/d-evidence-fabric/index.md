@@ -51,3 +51,5 @@ The Evidence Fabric provides:
 - ADR-022: Evidence compression
 - ADR-024: Evidence diffing
 - ADR-026: Evidence lifecycle guarantees
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

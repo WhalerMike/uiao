@@ -67,3 +67,5 @@ Decommissioning a corridor requires:
 - **ADR-018:** Mission channel enforcement decision record
 - **Appendix E-01:** ARB coordination (corridors require ARB approval)
 - **Appendix E-03:** Cross-fabric consistency (corridors apply cross-fabric consistency checks)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

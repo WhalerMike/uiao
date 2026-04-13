@@ -8,3 +8,5 @@ status: MISSING
 > **Status:** MISSING - Awaiting population from canonical source.
 
 <!-- TODO: Populate from UIAO Governance Canon Master Document -->
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

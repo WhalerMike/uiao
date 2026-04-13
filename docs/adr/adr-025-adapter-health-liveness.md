@@ -30,3 +30,5 @@ Each adapter must expose a health endpoint polled every 30 seconds. Health respo
 **Negative:**
 - Health endpoint implementation is required for all adapters — adds to adapter development requirements
 - Poll frequency (30s health, 10s liveness) generates monitoring overhead
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -123,3 +123,5 @@ Phase 2 is complete when:
 - The Canon DOCX has been reviewed and a final ratification commit is made to `docs/canon/`
 - MkDocs site builds without errors and all nav links resolve
 - Governance Board has formally signed off on the complete Canon
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

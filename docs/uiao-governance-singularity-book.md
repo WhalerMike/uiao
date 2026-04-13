@@ -181,3 +181,5 @@ The system approaches -- but never fully reaches -- perfect governance.
 - Emergence of a single governance mind
 - The final invariant of governance
 - The limit state of the UIAO Governance OS
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

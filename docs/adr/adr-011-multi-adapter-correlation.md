@@ -31,3 +31,5 @@ The Truth Fabric implements a **multi-adapter correlation engine** that can comb
 - Correlation logic adds complexity to the Truth Fabric
 - Timing gaps between adapter submissions can leave controls in partial-satisfaction state longer than expected
 - Control mapping definitions must explicitly specify which adapters are required for full satisfaction
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

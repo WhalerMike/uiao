@@ -26,3 +26,4 @@ Export documentation health metrics to structured dashboard format with cross-re
 6. Write export to `--output` directory
 ## Agent
 Delegates to `docs-dashboard-exporter`
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

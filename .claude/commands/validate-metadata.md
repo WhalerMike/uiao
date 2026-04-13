@@ -27,3 +27,4 @@ Run the full metadata and formatting validation suite against documentation arti
 12. If `--report` is set, write report to `reports/validation-<timestamp>.md`
 ## Agent
 Delegates to `docs-governance-agent`
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

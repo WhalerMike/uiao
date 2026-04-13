@@ -95,3 +95,5 @@ EnforcementScore = 100 - (Violations * SeverityWeight)
 - Update workflows
 - Owner training
 - Systemic drift review
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

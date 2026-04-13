@@ -57,3 +57,4 @@ This repository maintains a sync relationship with `uiao-core`:
 - Canon changes in `uiao-core` trigger drift detection here
 - Provenance references must point to current `uiao-core` artifacts
 - Scheduled weekly sync checks verify alignment
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

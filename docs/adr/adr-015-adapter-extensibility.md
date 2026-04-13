@@ -37,3 +37,5 @@ Extensibility constraints:
 - Open registration requires robust sandbox validation to prevent malicious adapters
 - Third-party adapter quality is outside UIAO's direct control
 - Claim type registry must evolve to support new claim types needed by new adapters
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -46,3 +46,5 @@ Publish --> Drift Detection --> No Drift --> Publish
                             |
                             Drift --> Issue --> Acknowledge --> Remediate --> CI --> Merge --> Dashboard --> Quarterly Review --> Schema Evolution --> Metadata
 ```
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -180,3 +180,5 @@ Stability = ResolvedParadoxes / TotalParadoxes
 - Self-governance without circularity
 - Boundary-safe governance
 - A governance OS that survives contradiction
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

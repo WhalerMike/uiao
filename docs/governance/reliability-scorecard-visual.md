@@ -63,3 +63,5 @@ flowchart TD
 | SLA Breached | 20% | 0 | 1 | >1 |
 | CI Failures | 5% | <1% | 1-3% | >3% |
 | Unacked Items | 5% | 0 | 1-3 | >3 |
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

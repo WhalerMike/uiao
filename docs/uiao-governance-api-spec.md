@@ -214,3 +214,5 @@ All limits are governance-domain scoped and configurable.
 - Provenance-aligned data: all responses include source traceability
 - Zero silent failures: all errors return structured GOV error codes
 - Audit trail: all write operations are logged with actor and timestamp
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

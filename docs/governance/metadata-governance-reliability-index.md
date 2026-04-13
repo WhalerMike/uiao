@@ -77,3 +77,5 @@ MG-RI = 100 * (
 - Owner coaching
 - Schema evolution planning
 - Automation tuning
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -83,3 +83,5 @@ DG-RI = 100 * (
 - Schema evolution planning
 - Automation tuning
 - Quarterly governance review
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

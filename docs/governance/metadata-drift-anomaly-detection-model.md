@@ -85,3 +85,5 @@ X = [DV, SD, CAC, CIES, OR]
 - Check workflow logs
 - Check schema divergence
 - Trigger systemic drift review
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

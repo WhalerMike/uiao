@@ -97,3 +97,5 @@ Where each factor is normalized 0-1.
 - Freeze merges
 - Full runtime audit
 - Executive notification
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -164,3 +164,5 @@ mkdocs build
 ```
 
 The MkDocs PDF plugin is configured in `mkdocs.yml` under `plugins:`. The output file name and path are set in the plugin configuration. The PDF is NOT committed to the repository — it is produced as a CI artifact on each tagged release.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

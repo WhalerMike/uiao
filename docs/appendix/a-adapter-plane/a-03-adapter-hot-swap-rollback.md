@@ -71,3 +71,5 @@ Only one hot-swap operation may be in progress for a given adapter identity at a
 - **Evidence Fabric (Appendix D):** Records all hot-swap and rollback events
 - **ADR-021:** Hot-swap and rollback decision record
 - **ADR-023:** Adapter concurrency constraints
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

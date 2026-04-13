@@ -89,3 +89,5 @@ GSI = DriftLoad + SLAStress + AutomationPenalty
 - Testing CI validator updates
 - Stress-testing governance runtime
 - Predicting systemic drift
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

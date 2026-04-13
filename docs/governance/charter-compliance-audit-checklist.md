@@ -92,3 +92,5 @@ This checklist verifies compliance with the UIAO Governance Charter and its auto
 - All non-compliant items documented
 - Corrective actions assigned
 - Systemic issues escalated
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

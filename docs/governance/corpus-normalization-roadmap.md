@@ -72,3 +72,5 @@ This roadmap defines the phases required to normalize metadata, eliminate drift,
 - Drift velocity reduced by 80%
 - SLA breach rate < 2%
 - Zero systemic drift clusters
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -114,3 +114,5 @@ UIAO (Unified Identity-Addressing-Overlay Architecture) is a federal network mod
 | `verify-signatures.yml` | Checks commit signature integrity |
 
 16 additional workflows are disabled pending dependency setup.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -20,3 +20,5 @@ The Evidence Fabric diagram shows the write pipeline from event ingestion throug
 - **Correlation Engine** — serves correlation and diff queries
 
 See [Appendix D](../appendix/d-evidence-fabric/index.md) for the full Evidence Fabric specification.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

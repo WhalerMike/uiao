@@ -96,3 +96,5 @@ but strongly recommended for traceability.
 - [ADR Process and Lifecycle](../adr/adr-000-adr-process.md)
 - [ADR Index](../adr/index.md)
 - [Corpus Status Dashboard](../canon/corpus-status-dashboard.md)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

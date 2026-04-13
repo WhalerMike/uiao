@@ -94,3 +94,5 @@ This backlog defines the prioritized automation initiatives required to strength
 - All changes must be auditable
 - All outputs must be schema-aligned
 - No automation may modify narrative content
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

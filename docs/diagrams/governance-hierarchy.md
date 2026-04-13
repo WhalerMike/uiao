@@ -18,3 +18,5 @@ The governance hierarchy diagram shows the authority relationships between the G
 - **Adapter Plane** — integration execution layer; hosts adapter sandboxes under Governance Plane authority
 
 See [Canon Overview](../canon/index.md) for the full governance hierarchy description.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

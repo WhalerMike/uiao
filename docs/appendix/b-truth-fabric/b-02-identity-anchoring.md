@@ -59,3 +59,5 @@ Unverified anchor bindings are flagged with `verification_status: PENDING` and t
 - **ADR-008:** Zero-trust identity anchoring decision record
 - **Appendix B-01:** Canonical Claim Schema (subject field definition)
 - **Appendix B-03:** Multi-cloud identity matrix (cross-cloud anchor patterns)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

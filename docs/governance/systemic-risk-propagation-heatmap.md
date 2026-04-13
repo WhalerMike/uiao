@@ -82,3 +82,5 @@ Override: Any appendix with >= 2 systemic drift clusters -> #D32F2F (deep red).
 - Hover: show propagation factors
 - Click: open appendix detail panel
 - Filters: drift type, owner, time range
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

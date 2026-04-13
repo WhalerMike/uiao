@@ -41,3 +41,5 @@ This guide covers how to contribute documentation to the UIAO project.
 - Use fenced code blocks with language identifiers
 - Use admonitions for notes and warnings
 - Reference PlantUML diagrams where applicable
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

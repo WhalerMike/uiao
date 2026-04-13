@@ -218,3 +218,5 @@ Deterministic. Schema-first. Provenance-aligned. Drift-resistant. Automation-enf
 For full reference: uiao-governance-blue-book.md
 
 For architecture: governance/governance-os-architecture.md
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

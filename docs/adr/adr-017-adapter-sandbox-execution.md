@@ -30,3 +30,5 @@ All adapters execute in isolated sandboxes with: process isolation (dedicated PI
 **Negative:**
 - Sandbox infrastructure adds operational complexity and overhead
 - Adapters have limited access to shared resources — some legitimate integrations may require explicit sandbox rule exceptions (governed by Governance Plane)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

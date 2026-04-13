@@ -93,3 +93,5 @@ flowchart TD
 - SLA: real-time
 - AS: every 5 minutes
 - OR: daily
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

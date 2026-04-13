@@ -137,3 +137,5 @@ The system generates tailored narratives for each audience:
 - Multi-agent governance that coordinates without central bottlenecks
 - Cognitively aligned governance that every stakeholder can understand
 - Zero-trust, federated, high-performance governance intelligence
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

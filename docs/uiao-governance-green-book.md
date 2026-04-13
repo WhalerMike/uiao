@@ -155,3 +155,5 @@ Any index below its threshold triggers a remediation workflow.
 | Medium | Cross-document impact | Remediation PR opened |
 | High | Owner reassignment or governance vote required | Governance intervention triggered |
 | Critical | Corpus-wide schema failure | Merge freeze declared |
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

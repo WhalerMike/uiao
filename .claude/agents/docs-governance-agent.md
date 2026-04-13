@@ -34,3 +34,4 @@ python tools/metadata_validator.py --path articles/ --audit-format --template ar
 python tools/metadata_validator.py --path . --audit-placeholders
 python tools/metadata_validator.py --path . --audit-images
 ```
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

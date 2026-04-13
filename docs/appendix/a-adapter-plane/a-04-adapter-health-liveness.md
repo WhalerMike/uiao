@@ -69,3 +69,5 @@ Adapters MAY proactively report their own health status to the Adapter Plane man
 - **Drift Fabric (Appendix C):** Correlates health degradation with drift events
 - **Evidence Fabric (Appendix D):** Archives health audit events
 - **ADR-025:** Health and liveness decision record
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

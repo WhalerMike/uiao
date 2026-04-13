@@ -146,3 +146,5 @@ This glossary defines authoritative terminology for the Universal Integration Ad
 **uiao-core** — The GitHub repository containing all UIAO machine artifacts: adapter schemas, orchestration logic, drift algorithms, evidence manifests, and the Canon Pointer.
 
 **uiao-docs** — The GitHub repository containing all UIAO human artifacts: governance documents, ADRs, appendices, diagrams, glossaries, migration plans, and the MkDocs site configuration.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

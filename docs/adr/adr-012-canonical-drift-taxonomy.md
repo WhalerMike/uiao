@@ -32,3 +32,5 @@ The taxonomy can only be extended (new types added) — existing types cannot be
 **Negative:**
 - Taxonomy evolution requires governance overhead
 - Some drift events may not fit neatly into a single taxonomy type — multi-type classification is allowed but adds complexity
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

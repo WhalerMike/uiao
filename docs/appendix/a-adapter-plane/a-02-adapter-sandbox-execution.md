@@ -59,3 +59,5 @@ Before promotion to ACTIVE, adapters MUST pass a sandbox validation suite that t
 - **Drift Fabric (Appendix C):** Monitors sandbox boundary violations
 - **Evidence Fabric (Appendix D):** Records sandbox violations and audit events
 - **ADR-017:** Decision record for sandbox execution model
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

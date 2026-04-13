@@ -73,3 +73,5 @@ Table of recent PRs with metadata failures: PR number, title, owner, error type,
 - Clicking a document ID anywhere -> Document detail drawer.
 - All severity/status pills are filterable chips.
 - All lists sortable by severity, age, owner, and status.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

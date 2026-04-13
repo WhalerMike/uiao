@@ -118,3 +118,5 @@ UIAO is cloud-agnostic and supports Azure, AWS, GCP, and on-prem deployments. Cr
 - Zero cross-tenant schema divergence
 - Federated systemic-risk awareness
 - Global governance alignment across clouds and agencies
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

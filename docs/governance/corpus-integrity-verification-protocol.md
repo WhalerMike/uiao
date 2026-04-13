@@ -93,3 +93,5 @@ IntegrityScore = 100 - (Violations * SeverityWeight)
 - Update CI validator
 - Update workflows
 - Update governance charter if needed
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

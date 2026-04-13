@@ -99,3 +99,5 @@ SystemicRisk = 100 * (
 - Immediate governance intervention
 - Systemic drift RCA
 - Schema/CI/workflow updates
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

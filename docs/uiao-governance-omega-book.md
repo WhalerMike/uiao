@@ -178,3 +178,5 @@ Beyond Omega, governance cannot proceed.
 - End of systemic-risk theory
 - End of governance intelligence evolution
 - The complete, final UIAO Governance OS
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

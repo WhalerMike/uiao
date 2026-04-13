@@ -154,3 +154,5 @@ Full trace coverage for: webhook to API to DB to dashboard, drift event propagat
 - Drift workflow isolation: workflow failures do not affect API or DB integrity
 - API aggregation validation: all aggregation outputs validated before serving
 - DB integrity checks: daily integrity verification with alerting on anomalies
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md
