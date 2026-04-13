@@ -1,7 +1,7 @@
 ---
 title: "UIAO TIC 3.0 Roadmap"
 version: "1.0"
-classification: "CUI/FOUO"
+classification: "Public"
 ---
 
 # UIAO TIC 3.0 Roadmap

@@ -167,7 +167,7 @@ Every run produces a timestamped transcript log. Every mode emits deterministic,
 > > ## Governance Notes
 > >
 > > - **Canonical artifact** in the UIAO-Core repository
-> > - - Classification: **Controlled** (per UIAO Canon  not FOUO)
+> > - - Classification: **Controlled** (per UIAO Canon  is public)
 > >   - - Operates exclusively against `origin/main`
 > >     - - No secrets, tokens, or credentials stored or transmitted
 > >       - 

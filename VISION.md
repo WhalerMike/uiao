@@ -1,6 +1,6 @@
 # UIAO Vision & Mission Scope
 
-> **Classification:** CUI/FOUO
+> **Classification:** Public
 > **Canonical source:** This file is the authoritative mission statement for `uiao-core`.
 > It is referenced by the README, the uiao-docs canon, and the UIAO Codex.
 

@@ -13,7 +13,7 @@ UIAO Compliance Mapping Matrix
 +-------------------------------------------------------------------------------------------------------+
 | **Canon Rule**                                                                                        |
 |                                                                                                       |
-| GCC Moderate applies to M365 SaaS services only. No CUI/FOUO markings are applied to pipeline output. |
+| GCC Moderate applies to M365 SaaS services only. No Public markings are applied to pipeline output. |
 +-------------------------------------------------------------------------------------------------------+
 
 This matrix maps UIAO pipeline capabilities to NIST 800-53 controls under the FedRAMP Moderate baseline and CISA BOD 25-01 requirements. It identifies which controls are automated, which require supplemental evidence, and which remain manual.

@@ -29,7 +29,7 @@ console = Console()
 _REQUIRED_FIELDS: list[tuple[str, str, str]] = [
     ("version", "1.0", "Canon schema version"),
     ("document", "My System Canon", "Human-readable document title"),
-    ("classification", "CUI//SP-CTI", "Document classification marking"),
+    ("classification", "Public", "Document classification marking"),
     ("audience", "[CIO, CISO, PMO]", "List of target audience roles"),
     ("deployment_model", "azure | aws | hybrid | on_prem", "CSP / deployment model"),
     ("leadership_briefing.executive_summary", "One-sentence description…", "Executive summary text"),
