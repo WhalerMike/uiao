@@ -143,3 +143,5 @@ The Intervention Severity Ladder defines four escalation levels: Low (auto-fix),
 - Appendix E: Schema Version History
 - Appendix F: SLA Taxonomy
 - Appendix G: Automation Taxonomy
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

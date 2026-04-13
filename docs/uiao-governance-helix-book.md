@@ -134,3 +134,5 @@ The Governance Evolution Engine identifies evolutionary pressure, proposes gover
 - Risk-driven evolution that sharpens prediction models
 - Multi-generation governance intelligence that compounds over time
 - A living, evolving governance OS with complete provenance
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

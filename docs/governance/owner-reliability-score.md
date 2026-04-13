@@ -70,3 +70,5 @@ Score = 100 x (0.30 x TTA_n + 0.30 x TTR_n + 0.20 x B_n + 0.10 x R_n + 0.10 x W_
 - **SLA Breach Rate:** Count of issues with sla-breached label per milestone.
 - **Owner Reliability Score:** Computed weekly; stored in `owner_reliability_snapshots` table.
 - **Systemic Drift Index:** Number of items entering governance-review per quarter.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -148,3 +148,5 @@ date: 2026-04-07
 - [Canon Overview](index.md)
 - [ADR Index](../adr/index.md)
 - [Document Library](../documents/index.md)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

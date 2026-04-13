@@ -30,3 +30,5 @@ Evidence records in ARCHIVED phase for more than 1 year are eligible for transpa
 **Negative:**
 - Decompression on access adds latency for archived record queries
 - Compression algorithm choices must be documented and versioned — if an algorithm is deprecated, a migration is required
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

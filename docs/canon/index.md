@@ -84,3 +84,5 @@ All Canon files carry a `status` field in their frontmatter:
 
 The `uiao-core` repository contains a `docs/CANON_POINTER.md` file that links back to this Canon.
 Machine consumers that need to locate governance documentation should start from the Canon Pointer.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

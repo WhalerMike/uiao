@@ -108,3 +108,5 @@ Result: Fully aligned.
 ## 5. Conclusion
 
 The UIAO Governance Canon is internally consistent, architecturally aligned, deterministic, and free of contradictions across all seven volumes.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -71,3 +71,5 @@ Where: RT_n = normalized recovery time, FI2_n = normalized failure impact
 - Reduce recovery time
 - Reduce failure impact
 - Strengthen fault isolation
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

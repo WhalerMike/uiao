@@ -102,3 +102,5 @@ To provide governance operators, architects, and board members with a single doc
         -> Governance Control Plane Visuals
 
 Each visual domain feeds the next, forming the complete governance OS visual chain.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

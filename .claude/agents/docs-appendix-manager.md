@@ -35,3 +35,4 @@ python tools/appendix_indexer.py --path appendices/ --mode sync
 # Cross-repo sync check
 python tools/appendix_indexer.py --path appendices/ --mode cross-repo --core-path ../uiao-core/appendices/
 ```
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

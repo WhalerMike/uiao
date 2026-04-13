@@ -82,3 +82,5 @@ Override: Any SLA breach -> #D32F2F (deep red).
 - Hover: show indicator values
 - Click: open owner detail panel
 - Filters: appendix, severity, time range
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

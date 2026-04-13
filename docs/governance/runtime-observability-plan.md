@@ -99,3 +99,5 @@ This plan defines how the governance runtime is monitored to ensure reliability,
 - Weekly: automation health
 - Monthly: schema divergence
 - Quarterly: full observability audit
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

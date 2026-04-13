@@ -70,3 +70,5 @@ The Canonical Rules define the immutable governance constraints for the Universa
 **Rationale:** Without a clear authority structure, governance decisions are made ad hoc and inconsistently. The Governance Plane provides a formal ratification path that is auditable and traceable.
 
 **Enforcement:** All PRs touching `docs/canon/` or any ADR with `status: ACCEPTED` require Governance Plane sign-off before merge.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

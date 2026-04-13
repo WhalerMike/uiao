@@ -38,3 +38,5 @@ Baseline version mismatches are treated as VF-03 until resolved.
 **Negative:**
 - Baseline updates require Governance Plane approval — vendor updates can temporarily suspend drift detection
 - The baseline registry in `uiao-core` must be kept current with each vendor's release cadence
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

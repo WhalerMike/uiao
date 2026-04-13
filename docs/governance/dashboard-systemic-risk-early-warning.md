@@ -77,3 +77,5 @@ This dashboard provides a predictive, multi-signal view of systemic governance r
 - Predictive accuracy >= 85%
 - Deterministic color mapping
 - All values traceable to DB or API
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

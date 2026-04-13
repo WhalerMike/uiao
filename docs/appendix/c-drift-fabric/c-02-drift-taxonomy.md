@@ -89,3 +89,5 @@ The Governance Plane may override the default severity classification for specif
 - **ADR-012:** Canonical drift taxonomy decision record
 - **Appendix C-01:** Drift detection algorithm
 - **Appendix D-02:** Audit event taxonomy (drift events are a subset)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

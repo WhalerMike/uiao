@@ -161,3 +161,5 @@ The governance system is considered healthy when:
 | `docs/ci/TESTPLAN-metadata-validator.md` | CI validator test plan |
 | `docs/meta/governance-metadata-playbook.md` | Human-readable governance guide |
 | `docs/meta/governance-metadata-reviewer-checklist.md` | PR review checklist |
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

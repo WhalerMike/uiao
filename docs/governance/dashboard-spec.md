@@ -84,3 +84,5 @@ Payload includes: document ID, owner, severity, link to remediation PR or drift 
 - Owners can see all assigned items in one view.
 - Governance can identify SLA breaches instantly.
 - Notification accuracy >= 99%.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

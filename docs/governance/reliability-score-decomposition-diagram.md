@@ -63,3 +63,5 @@ Percentage of CI validator failures linked to documents owned by this owner.
 ### Weekly Unacknowledged Items
 
 Backlog of unacknowledged drift items accumulated week-over-week.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

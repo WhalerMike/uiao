@@ -116,3 +116,5 @@ Where SeverityWeight is highest for drift detection and SLA timer layers.
 | Automation resilience < 85 | Patch webhook handler and workflows |
 | Schema resilience < 90 | Force schema normalization sprint |
 | Composite score < 75 | Trigger systemic resilience review |
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

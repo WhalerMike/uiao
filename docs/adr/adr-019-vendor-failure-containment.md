@@ -36,3 +36,5 @@ See Appendix C-03 for the complete containment specification.
 **Negative:**
 - During VF-01 (unavailability), compliance attestations for affected subjects are suspended
 - Catch-up scan after recovery can generate a large volume of drift events if the failure was long
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

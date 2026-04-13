@@ -92,3 +92,5 @@ Weekly Drift Workflow
 - Update CI validator
 - Update workflows
 - Trigger systemic drift review
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

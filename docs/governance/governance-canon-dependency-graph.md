@@ -89,3 +89,5 @@ flowchart TD
     Blue Book (Root)
         -> Domain Books (Red, Green, Black, Platinum, Obsidian, White, Silver, Crystal)
         -> Gold Book (Apex)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

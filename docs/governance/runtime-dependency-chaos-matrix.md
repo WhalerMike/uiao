@@ -47,3 +47,5 @@ This matrix defines controlled chaos experiments to validate runtime resilience,
 - CI validator versioning
 - DB integrity checks
 - Dashboard freshness monitoring
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

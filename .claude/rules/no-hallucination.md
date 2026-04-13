@@ -18,3 +18,4 @@ Activated when the user invokes "No-Hallucination Mode" or "NHP", or when operat
 - When creating guides, ensure every procedure step has been validated against the operational playbook
 - Article narrative sections (story, comic) are clearly labeled as creative content, not factual claims
 - Technical sections are held to full NHP rigor
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

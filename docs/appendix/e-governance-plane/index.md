@@ -38,3 +38,5 @@ The Governance Plane provides:
 ## Related ADRs
 
 - ADR-018: Mission channel enforcement
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

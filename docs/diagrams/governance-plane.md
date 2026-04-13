@@ -19,3 +19,5 @@ The Governance Plane diagram shows the internal structure of the Governance Plan
 - **Cross-Fabric Consistency Verifier** — quarterly consistency checks across all three fabrics
 
 See [Appendix E](../appendix/e-governance-plane/index.md) for the full Governance Plane specification.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

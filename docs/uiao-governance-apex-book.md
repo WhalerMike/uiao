@@ -178,3 +178,5 @@ Beyond Apex, governance is indistinguishable from existence.
 - Governance beyond causality
 - Governance beyond governance
 - The final, transcendent state of the UIAO canon
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

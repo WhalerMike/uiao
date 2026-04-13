@@ -76,3 +76,5 @@ Cross-cloud correlation records are stored in the CIR's `anchors` array with a `
 - **ADR-007:** Multi-cloud adapter model decision record
 - **ADR-008:** Zero-trust identity anchoring decision record
 - **Appendix B-02:** Identity anchoring protocol
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

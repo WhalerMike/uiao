@@ -25,3 +25,4 @@ a. Schema compliance, naming conventions, boundary checks
 5. Generate structured drift report with remediation priorities
 ## Agent
 Delegates to `docs-drift-detector`
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

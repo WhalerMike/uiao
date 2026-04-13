@@ -152,3 +152,5 @@ When systemic-risk signals are degraded, the system applies pre-emptive containm
 - Zero catastrophic schema divergence under any failure condition
 - Zero catastrophic systemic-risk cascades under any failure condition
 - Full recovery to autonomous governance with complete reconciliation
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

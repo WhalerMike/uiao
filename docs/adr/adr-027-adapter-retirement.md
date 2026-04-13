@@ -37,3 +37,5 @@ Retired adapters' evidence records are retained per the standard lifecycle guara
 **Negative:**
 - Retirement process has governance overhead — not suitable for emergency decommissioning
 - For emergency decommissioning (security incident), the SUSPENDED → RETIRED path bypasses the notice period but still requires Governance Board vote
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -78,3 +78,5 @@
 * [Drift Fabric Dependencies](docs/diagrams/drift-fabric.md)
 * [Evidence Fabric Dependencies](docs/diagrams/evidence-fabric.md)
 * [Governance Plane Dependencies](docs/diagrams/governance-plane.md)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

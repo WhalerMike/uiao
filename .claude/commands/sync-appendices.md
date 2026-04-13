@@ -22,3 +22,4 @@ Compare existing INDEX.md against actual directory contents, report orphans and 
 Compare documentation appendices against uiao-core appendices for alignment.
 ## Agent
 Delegates to `docs-appendix-manager`
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

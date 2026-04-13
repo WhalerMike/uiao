@@ -108,3 +108,5 @@ Add:
 - Governance steward approval
 - Maintainer approval
 - Executive sponsor approval
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

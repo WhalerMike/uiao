@@ -42,3 +42,5 @@ The Drift Fabric provides:
 - ADR-010: Vendor baseline versioning
 - ADR-012: Canonical drift taxonomy
 - ADR-019: Vendor failure containment
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

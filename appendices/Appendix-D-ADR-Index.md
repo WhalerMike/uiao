@@ -72,3 +72,5 @@ Version:      1.0
 - [Appendix B — UIAO SCuBA Pipeline](Appendix-B-UIAO-SCuBA-Pipeline.md)
 - [Appendix C — KSI Mapping Tables](Appendix-C-KSI-Mapping-Tables.md)
 - [SCuBA Pipeline Runbook](../docs/SCuBA-Pipeline-Runbook.md)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

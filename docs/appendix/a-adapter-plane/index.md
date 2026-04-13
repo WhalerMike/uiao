@@ -49,3 +49,5 @@ Adapters are the fundamental building blocks of UIAO integration. Each adapter r
 - ADR-023: Adapter concurrency
 - ADR-025: Adapter health and liveness
 - ADR-027: Adapter retirement
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

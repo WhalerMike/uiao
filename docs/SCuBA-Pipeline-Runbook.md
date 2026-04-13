@@ -212,3 +212,5 @@ pwsh ./uiao-core/provenance/manifests/generate-manifest.ps1 `
 - [SCuBA Canonical Report](https://github.com/WhalerMike/uiao-docs/tree/main/reports)
 - [SCuBA Maintainer Onboarding Guide](SCuBA-Maintainer-Onboarding.md)
 - [UIAO SCuBA Access Page](index.md)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

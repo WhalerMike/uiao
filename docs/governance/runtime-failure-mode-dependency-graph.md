@@ -78,3 +78,5 @@ Failure Modes:
 - DB write failure   --> Corrupted SLA/drift state
 - Dashboard stale    --> Incorrect governance decisions
 ```
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

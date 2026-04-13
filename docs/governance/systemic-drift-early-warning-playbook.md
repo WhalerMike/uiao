@@ -102,3 +102,5 @@ This playbook defines how governance stewards detect, validate, and respond to e
 - SLA pressure decreases
 - Automation stability restored
 - Reliability scores stabilize
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

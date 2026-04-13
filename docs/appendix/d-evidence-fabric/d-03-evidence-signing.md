@@ -71,3 +71,5 @@ Evidence records for a given subject are linked in a hash chain: each record con
 - **ADR-014:** Evidence severity model
 - **uiao-core:** Key management configuration
 - **Appendix D-01:** Evidence determinism principles
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

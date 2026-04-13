@@ -98,3 +98,5 @@ date: 2026-04-07
 - [Governance Metadata Playbook](governance-metadata-playbook.md)
 - [Governance Metadata Reviewer Checklist](governance-metadata-reviewer-checklist.md)
 - [Corpus Status Dashboard](../canon/corpus-status-dashboard.md)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

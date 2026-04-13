@@ -75,3 +75,5 @@ IntegrityScore = 100 - (Violations * SeverityWeight)
 - Automated fixes (low-risk)
 - Remediation PRs (medium-risk)
 - Governance intervention (high-risk)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

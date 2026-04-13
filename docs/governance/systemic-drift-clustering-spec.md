@@ -94,3 +94,5 @@ A cluster is systemic if:
 - Owner training
 - Workflow update
 - Governance intervention
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

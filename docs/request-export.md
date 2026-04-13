@@ -23,3 +23,5 @@ If you do not have Actions permissions, submit a request:
 
 !!! tip
     The **Download as PDF** button on each page uses your browser's print dialog. Select **Save as PDF** as the destination for an instant export.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

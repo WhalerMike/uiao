@@ -18,3 +18,5 @@ The Drift Fabric diagram shows the drift detection pipeline from canonical state
 - **Reconciliation Trigger** — escalates HIGH/CRITICAL drift to the Governance Plane
 
 See [Appendix C](../appendix/c-drift-fabric/index.md) for the full Drift Fabric specification.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

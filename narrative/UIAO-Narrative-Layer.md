@@ -172,3 +172,5 @@ The UIAO Narrative Layer establishes seven distinct narrative constructs:
 7. **Customer** — The CISO/compliance director narrative
 
 This is the layer that makes UIAO **legible**, **fundable**, **buyable**, and **inevitable**.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

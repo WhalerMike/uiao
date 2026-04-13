@@ -99,3 +99,5 @@ RiskScore = 100 * (
 - Immediate governance intervention
 - Systemic drift investigation
 - Automation audit
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

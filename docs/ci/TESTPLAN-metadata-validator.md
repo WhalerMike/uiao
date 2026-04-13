@@ -88,3 +88,5 @@ Confirm CI logs show:
 - 100% of positive tests pass.
 - Error messages are deterministic and reproducible.
 - Emergency bypass requires documented governance approval.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

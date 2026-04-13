@@ -115,3 +115,5 @@ See `runtime-deploy.md` for full deployment guide.
 | `day1-owner-quickstart.md` | New owner quick start |
 | `runtime-architecture.md` | Runtime component overview |
 | `quarterly-review-template.md` | Quarterly review format |
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

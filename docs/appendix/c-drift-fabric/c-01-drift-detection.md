@@ -65,3 +65,5 @@ Per ADR-009, the Drift Ledger is immutable. Every Drift Record written to the Ev
 - **ADR-009:** Drift ledger immutability decision record
 - **ADR-012:** Canonical drift taxonomy decision record
 - **Appendix C-02:** Drift taxonomy definitions
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

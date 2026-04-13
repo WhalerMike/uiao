@@ -129,3 +129,5 @@ Result: Fully aligned.
 The UIAO Governance Canon is internally coherent, architecturally aligned, and free of contradictions across all published volumes. This report serves as the canonical integrity certification for the governance OS.
 
 **Integrity Status: CERTIFIED**
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

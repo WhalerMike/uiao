@@ -30,3 +30,4 @@ exception-date: "<ISO-8601>"
 - Title, byline, section headers, and 'About the Author' header use muted-blue style
 - Only narrative body text is black
 - Pseudonym: Michal Doroszewski
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

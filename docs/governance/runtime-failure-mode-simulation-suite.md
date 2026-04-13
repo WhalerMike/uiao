@@ -89,3 +89,5 @@ To test: drift detection resilience, SLA timer accuracy, automation stability, d
 - Update workflows
 - Update CI validator
 - Trigger systemic drift review
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

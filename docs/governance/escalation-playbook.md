@@ -129,3 +129,5 @@ Resolved
 - Governance must be notified on every breach.
 - Weekly workflow must close resolved items automatically.
 - Dashboard must reflect state changes within 5 minutes.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -88,3 +88,5 @@ To ensure the governance runtime remains stable, predictable, and drift-resistan
 - Dashboard reflects anomalies
 - Governance receives alerts
 - No silent failures
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -41,3 +41,5 @@ The Canon is organized into five appendices plus the canonical rules, glossary, 
 | [C -- Drift Fabric](appendix/c-drift-fabric/index.md) | Drift detection | Detection algorithm, taxonomy, containment |
 | [D -- Evidence Fabric](appendix/d-evidence-fabric/index.md) | Audit and compliance | Determinism, lifecycle, signing, correlation |
 | [E -- Governance Plane](appendix/e-governance-plane/index.md) | Governance process | ARB, mission corridors, cross-fabric consistency |
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

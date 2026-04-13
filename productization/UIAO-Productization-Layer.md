@@ -132,3 +132,5 @@ With the Productization Layer, UIAO becomes:
 - **Deployable** — multiple models for commercial and government
 - **Differentiable** — uniquely positioned against SSPM vendors and manual compliance tools
 - **Investable** — crisp product narrative for investors and buyers
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

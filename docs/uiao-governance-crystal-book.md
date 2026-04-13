@@ -151,3 +151,5 @@ Cross-domain navigation enables: Drift to Schema drill-through, Schema to Automa
 - Steward confidence: complete audit evidence always visible
 - Operator efficiency: real-time alerts reduce mean time to remediation
 - Enterprise trust: visual provenance and trust indicators build external confidence
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

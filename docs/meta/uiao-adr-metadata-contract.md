@@ -89,3 +89,5 @@ version: 1.0                   # Optional semantic version
 - [UIAO Document Metadata Contract](uiao-document-metadata-contract.md)
 - [ADR-000 ADR Process](../adr/adr-000-adr-process.md)
 - [ADR Index](../adr/index.md)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

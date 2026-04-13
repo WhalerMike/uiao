@@ -114,3 +114,5 @@ A composite 0-100 score reflecting corpus normalization health. Updated after ev
 | 60-74 | Trigger targeted remediation for at-risk classes |
 | 40-59 | Initiate governance intervention for affected owners |
 | Below 40 | Declare normalization emergency, freeze merges |
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

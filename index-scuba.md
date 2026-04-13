@@ -73,3 +73,5 @@ All artifacts produced by the UIAO SCuBA pipeline include a provenance manifest 
 `uiao-core/provenance/manifests/`
 
 Manifests record: run metadata, file hashes, lineage, adapter version, and KSI ruleset version.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

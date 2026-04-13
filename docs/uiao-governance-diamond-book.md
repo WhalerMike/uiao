@@ -181,3 +181,5 @@ A machine-governance council that votes on governance actions, recommends interv
 - Fully self-healing metadata corpus
 - Fully self-optimizing governance OS
 - Predictive, adaptive, and autonomous governance
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

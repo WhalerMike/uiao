@@ -110,3 +110,5 @@ These fields are produced by the KSI evaluation engine and appended to the norma
 - [Appendix C — KSI Mapping Tables](Appendix-C-KSI-Mapping-Tables.md)
 - [Appendix D — ADR Index](Appendix-D-ADR-Index.md)
 - [SCuBA Pipeline Runbook](../docs/SCuBA-Pipeline-Runbook.md)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -71,3 +71,5 @@ Examples:
 - Verify `docs/_data/corpus-index.json` updated
 - Confirm governance dashboard reflects the change
 - Close linked issue when remediation is verified
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

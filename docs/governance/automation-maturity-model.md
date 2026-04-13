@@ -67,3 +67,5 @@ Goal: Add autonomous remediation suggestions.
 - Fully predictive governance runtime
 
 Goal: Maintain continuous governance optimization.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -92,3 +92,5 @@ GitHub
 - Webhook handler health checks
 - DB integrity checks
 - Dashboard freshness monitoring
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

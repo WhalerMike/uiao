@@ -75,3 +75,5 @@ This dashboard provides a unified view of governance runtime performance.
 - No silent failures
 - All anomalies surfaced within 5 minutes
 - All metrics traceable to DB or API
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

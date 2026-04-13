@@ -87,3 +87,5 @@ Claims failing validation are rejected and an Evidence Fabric audit event is gen
 - **ADR-005:** Decision record for the Canonical Claim Schema design
 - **uiao-core:** Machine-readable Canonical Claim Schema and Claim Type Registry
 - **Appendix B-02:** Identity anchoring for subject identifiers
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

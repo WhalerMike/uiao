@@ -42,3 +42,5 @@ This decision was reviewed and approved by the ARB because it has cross-organiza
 - More adapters to maintain (one per cloud platform)
 - Cross-cloud identity correlation requires explicit effort in the Truth Fabric
 - The Multi-Cloud Identity Matrix (Appendix B-03) must be maintained as platforms evolve
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

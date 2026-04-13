@@ -73,3 +73,5 @@ All API responses include a `correlation_id` that can be used to track a multi-s
 - **ADR-024:** Evidence diffing decision record
 - **Appendix D-01:** Evidence determinism
 - **Appendix D-02:** Evidence lifecycle
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

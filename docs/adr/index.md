@@ -75,3 +75,5 @@ Per CR-003 (ADR Immutability), once an ADR is ACCEPTED:
 - The superseded ADR must be updated with `superseded_by: ADR-MMM`
 
 All ADR changes require Governance Plane approval. See [ADR-000](adr-000-adr-process.md) for the full process.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -102,3 +102,5 @@ Override rule: Any cell where the owner has an active SLA breach is rendered #D3
 | Schema divergence row elevated | Force schema normalization sprint |
 | SLA breach override active | Open SLA remediation ticket immediately |
 | Automation stability row red | Patch CI validator and workflows |
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

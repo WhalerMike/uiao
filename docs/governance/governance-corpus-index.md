@@ -146,3 +146,5 @@ The runtime-to-governance control plane dependency chain:
     Prediction Layer: Propagation Models, Simulators, RL Governance Model
     Enforcement Layer: Normalization Engine, SLA Enforcement, Automation Alignment
     Governance Control Plane: Schema, Automation, Owner, Systemic-Risk Governance
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

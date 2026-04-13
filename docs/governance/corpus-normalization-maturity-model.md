@@ -65,3 +65,5 @@ Goal: Add predictive normalization + systemic drift detection.
 - Fully normalized corpus
 
 Goal: Maintain continuous normalization optimization.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

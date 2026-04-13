@@ -118,3 +118,5 @@ Where AS_i(t) is automation stability at timestep t.
 | Owner reassignment | Reassign at-risk owners at t=10 | Break ownership coupling chain |
 | CI hardening | Increase automation stability to 0.99 | Reduce automation instability pressure |
 | Full containment | All interventions at t=5 | Rapid propagation suppression |
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

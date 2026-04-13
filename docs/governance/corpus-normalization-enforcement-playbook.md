@@ -89,3 +89,5 @@ This playbook defines how governance stewards enforce normalization across the c
 - Update CI validator
 - Update workflows
 - Update governance charter
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

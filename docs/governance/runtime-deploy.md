@@ -120,3 +120,5 @@ helm rollback uiao-governance
 - Webhook receives and processes test event within 60 seconds.
 - Database schema applied without errors.
 - Rollback procedure documented and tested quarterly.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

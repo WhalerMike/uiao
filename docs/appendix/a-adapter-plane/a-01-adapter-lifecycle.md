@@ -63,3 +63,5 @@ When an adapter version must be updated without service interruption, the hot-sw
 - **Evidence Fabric (Appendix D):** Records all lifecycle transitions as audit events
 - **ADR-021:** Hot-swap and rollback decision record
 - **ADR-025:** Adapter health and liveness requirements
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

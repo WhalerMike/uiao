@@ -20,3 +20,5 @@ The Truth Fabric diagram shows the claim intake pipeline from adapter submission
 - **Drift Fabric Interface** — exposes canonical state for drift detection queries
 
 See [Appendix B](../appendix/b-truth-fabric/index.md) for the full Truth Fabric specification.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

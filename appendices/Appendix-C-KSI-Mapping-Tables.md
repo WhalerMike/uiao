@@ -29,3 +29,5 @@
 - KSI Ruleset Version: 1.0
 - Adapter Version: 1.0
 - Source: uiao-core/ksi/rules/
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

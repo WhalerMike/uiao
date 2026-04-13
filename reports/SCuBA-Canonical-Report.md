@@ -125,3 +125,5 @@ All hashes, lineage, and environment details are recorded in the corresponding p
 - Appendix C: KSI Mapping Tables
 - Appendix D: ADR Index
 - Appendix E: SCuBA Field Dictionary
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

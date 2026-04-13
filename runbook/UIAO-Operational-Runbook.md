@@ -232,3 +232,5 @@ The UIAO Operational Runbook Layer establishes:
 7. **Tenant Onboarding/Offboarding** — Deterministic lifecycle procedures
 
 This is the layer that makes UIAO **operationally viable**, **auditor-trustworthy**, and **enterprise-ready**.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

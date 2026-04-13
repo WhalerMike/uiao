@@ -38,3 +38,5 @@ These guarantees are codified as Governance Plane policy and referenced in all c
 **Negative:**
 - Storage is a permanent cost — no escape hatch for reducing retention of older records
 - Sealing SEALED records is irreversible — errors in sealed records require a new superseding bundle
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

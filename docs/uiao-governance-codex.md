@@ -152,3 +152,5 @@ Governance is the constraint that preserves correctness across structure, time, 
 The Codex provides a unified architecture, a complete dependency graph, a deterministic lifecycle, a closed set of invariants, a total boundary model, and a single, coherent governance universe.
 
 This is the UIAO Governance OS in its final, unified form.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

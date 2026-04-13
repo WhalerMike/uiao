@@ -30,3 +30,5 @@ Each adapter runs in an isolated sandbox (Appendix A-02) with hard resource limi
 **Negative:**
 - Compliance attestations that depend on the failed adapter cannot be produced until the adapter is restored
 - Adapter sandboxing adds infrastructure complexity
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

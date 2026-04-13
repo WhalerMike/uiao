@@ -44,3 +44,5 @@ The Canonical Claim Schema is stored as a machine artifact in `uiao-core`.
 
 **Neutral:**
 - The Canonical Claim Schema must be versioned independently of the UIAO framework version
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

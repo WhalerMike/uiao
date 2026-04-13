@@ -1,0 +1,140 @@
+import pathlib
+
+content = """\
+name: Metadata Validator
+on:
+  pull_request:
+    paths:
+      - 'articles/**'
+      - 'guides/**'
+      - 'appendices/**'
+      - 'schemas/**'
+  push:
+    branches: [main]
+    paths:
+      - 'articles/**'
+      - 'guides/**'
+      - 'appendices/**'
+      - 'schemas/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate-metadata:
+    name: Validate Documentation Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml jsonschema
+
+      - name: Validate articles metadata
+        id: validate-articles
+        run: |
+          python tools/metadata_validator.py \\
+            --path articles/ \\
+            --schema schemas/docs-metadata-schema.json \\
+            --output reports/articles-validation.json \\
+            --ci
+        continue-on-error: true
+
+      - name: Validate guides metadata
+        id: validate-guides
+        run: |
+          python tools/metadata_validator.py \\
+            --path guides/ \\
+            --schema schemas/docs-metadata-schema.json \\
+            --output reports/guides-validation.json \\
+            --ci
+        continue-on-error: true
+
+      - name: Validate appendices metadata
+        id: validate-appendices
+        run: |
+          python tools/metadata_validator.py \\
+            --path appendices/ \\
+            --schema schemas/docs-metadata-schema.json \\
+            --output reports/appendices-validation.json \\
+            --ci
+        continue-on-error: true
+
+      - name: Validate article formatting
+        id: validate-format
+        run: |
+          python tools/metadata_validator.py \\
+            --path articles/ \\
+            --schema schemas/docs-metadata-schema.json \\
+            --audit-format \\
+            --template article-1 \\
+            --output reports/format-validation.json \\
+            --ci
+        continue-on-error: true
+
+      - name: Upload validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-reports
+          path: reports/
+          retention-days: 30
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let report = '';
+            const files = [
+              'reports/articles-validation.json',
+              'reports/guides-validation.json',
+              'reports/appendices-validation.json',
+              'reports/format-validation.json'
+            ];
+            for (const file of files) {
+              if (fs.existsSync(file)) {
+                const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+                report += `### ${data.scope}\\n`;
+                report += `- Files scanned: ${data.files_scanned}\\n`;
+                report += `- BLOCKING: ${data.blocking} | WARNING: ${data.warning} | INFO: ${data.info}\\n\\n`;
+                if (data.findings && data.findings.length > 0) {
+                  report += '| File | Issue | Severity |\\n|------|-------|----------|\\n';
+                  for (const f of data.findings.slice(0, 15)) {
+                    report += `| ${f.file} | ${f.issue} | ${f.severity} |\\n`;
+                  }
+                  report += '\\n';
+                }
+              }
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '## Documentation Metadata Validation Report\\n\\n' + report
+            });
+
+      - name: Fail on blocking issues
+        if: >-
+          steps.validate-articles.outcome == 'failure' ||
+          steps.validate-guides.outcome == 'failure' ||
+          steps.validate-appendices.outcome == 'failure' ||
+          steps.validate-format.outcome == 'failure'
+        run: |
+          echo "Metadata validation found BLOCKING issues."
+          exit 1
+"""
+
+pathlib.Path('.github/workflows/metadata-validator.yml').write_text(content, encoding='utf-8')
+print('Written: metadata-validator.yml')

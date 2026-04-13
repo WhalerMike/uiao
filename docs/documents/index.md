@@ -16,3 +16,5 @@ This page lists all UIAO documents with their current status.
 
 !!! info
     To add a new document, follow the steps in the [Contributor Guide](../contributing.md).
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -152,3 +152,5 @@ scripts, CI updates, and dashboard updates.
 - [UIAO ADR Metadata Contract](uiao-adr-metadata-contract.md)
 - [Governance Metadata Reviewer Checklist](governance-metadata-reviewer-checklist.md)
 - [Metadata Drift Detection Report](metadata-drift-detection-report.md)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

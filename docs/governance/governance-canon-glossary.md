@@ -126,3 +126,5 @@ This glossary defines every canonical term used across the UIAO Governance OS vo
 ## Z
 
 **Zero-Trust Governance** — A governance security model in which no metadata, automation action, schema change, or identity is trusted by default. All must be verified.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

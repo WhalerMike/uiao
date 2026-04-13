@@ -124,3 +124,5 @@ Enforcement action severity scales with the probability of the triggering condit
 - Probabilistic automation correctness modeling
 - Stochastic systemic-risk forecasting via Monte-Carlo simulation
 - Deterministic governance decisions under uncertain signals
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

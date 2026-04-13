@@ -61,3 +61,5 @@ The Governance Plane is specifically authorized by CR-005 to perform cross-cutti
 - **ADR-005:** Canonical Claim Schema (basis for Truth-Evidence consistency check)
 - **ADR-006:** Evidence determinism (basis for evidence record completeness)
 - **ADR-009:** Drift ledger immutability (basis for Drift-Evidence consistency check)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -25,3 +25,4 @@ derived_by: <agent-or-human-id>
 - Drift detection runs automatically on next CI pass
 - Stale provenance references become WARNING-level findings
 6. **Copy Section Preservation:** Every appendix must retain its Copy section through all edits, migrations, and version updates. Removal of a Copy section is a BLOCKING violation.
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

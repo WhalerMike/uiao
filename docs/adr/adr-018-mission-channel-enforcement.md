@@ -36,3 +36,5 @@ Mission Channels are a superset of Mission Partner Corridors (which require inte
 **Negative:**
 - Mission Channel designation requires ARB overhead
 - Elevated evidence recording for Mission Channels increases storage volume
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

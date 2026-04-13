@@ -74,3 +74,5 @@ Override: Any appendix with >= 2 systemic drift clusters -> #D32F2F (deep red).
 - Propagation factors: hourly
 - SLA stress: real-time
 - Schema divergence: daily
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

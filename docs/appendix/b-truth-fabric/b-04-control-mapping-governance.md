@@ -60,3 +60,5 @@ Some controls require evidence from multiple adapters to establish full satisfac
 - **ADR-011:** Multi-adapter correlation decision record
 - **uiao-core:** Machine-readable control mapping registry
 - **Appendix D-03:** Compliance attestation process
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

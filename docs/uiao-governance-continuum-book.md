@@ -202,3 +202,5 @@ Node(t0) -> Node(t1) -> Node(t2) -> Node(t3)
 - Automation lifecycle governance
 - Temporal systemic-risk forecasting
 - Governance stability across time
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

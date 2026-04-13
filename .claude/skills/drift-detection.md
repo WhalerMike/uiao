@@ -48,3 +48,4 @@ python tools/drift_detector.py --path . --mode full
 # Diff scan
 python tools/drift_detector.py --base main --head feature/update --mode diff
 ```
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

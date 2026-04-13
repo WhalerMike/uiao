@@ -92,3 +92,5 @@ To detect reliability degradation before SLA breaches or systemic drift occur.
 - Forecast accuracy within +/-10%
 - Deterministic color mapping
 - All values traceable to DB or API
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

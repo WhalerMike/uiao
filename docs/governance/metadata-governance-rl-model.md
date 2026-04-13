@@ -72,3 +72,5 @@ Step 5 - Update policy
 - CI validator tuning
 - Workflow optimization
 - Governance automation roadmap
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

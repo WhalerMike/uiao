@@ -113,3 +113,5 @@ You are maintaining a governed pipeline with clear boundaries between:
 3. Walk through each artifact produced and map it to the Runbook
 4. Review the KSI ruleset and mapping tables
 5. Shadow a real production run (if applicable)
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

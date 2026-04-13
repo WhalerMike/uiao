@@ -38,3 +38,5 @@ Severity affects signing requirements, retention periods, and escalation paths (
 **Negative:**
 - Severity misclassification is possible — an INFO event that should have been HIGH will not trigger appropriate escalation
 - Severity model must be kept current as the governance landscape evolves
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -59,3 +59,5 @@ The Evidence Fabric supports correlation queries: given a drift record, find all
 - **ADR-020:** Evidence correlation determinism decision record
 - **Appendix D-02:** Audit event taxonomy
 - **Appendix D-03:** Compliance attestation process
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

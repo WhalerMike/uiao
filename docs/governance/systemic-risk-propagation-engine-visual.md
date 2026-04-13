@@ -64,3 +64,5 @@ flowchart TD
 - Workflow resilience to maintain automation under chaos
 - Owner reassignment when reliability trend declines
 - Systemic drift intervention at Cluster Drift stage
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

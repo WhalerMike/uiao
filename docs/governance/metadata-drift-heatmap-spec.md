@@ -86,3 +86,5 @@ Override: Any SLA breach -> #D32F2F (deep red) regardless of score.
 - Deterministic color mapping
 - SLA overrides always applied
 - Owner sorting reproducible
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md
