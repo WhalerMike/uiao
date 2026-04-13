@@ -1,3 +1,15 @@
+---
+title: "Scuba-Operator-Runbook"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
 UIAO SCuBA Operator Runbook
 
 **Document ID:** UIAO_SOR_001
