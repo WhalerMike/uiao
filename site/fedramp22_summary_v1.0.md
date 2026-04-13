@@ -1,7 +1,7 @@
 ---
 title: "UIAO FedRAMP 20x Phase 2 Compliance Summary"
 version: "1.0"
-classification: "Public"
+classification: "CUI/FOUO"
 ---
 
 # UIAO FedRAMP 20x Phase 2 Compliance Summary  

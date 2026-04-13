@@ -1,7 +1,7 @@
 ---
 title: "FedRAMP 20x Compliance Crosswalk: UIAO Architecture"
 version: "1.0"
-classification: "Public"
+classification: "CUI/FOUO"
 authorization_level: ""
 ---
 

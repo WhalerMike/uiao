@@ -13,7 +13,7 @@ format:
 
 # Authorization Boundary
 
-**Classification:** Public  
+**Classification:** CUI/FOUO  
 **Version:** 1.0  
 **Generated:** Auto-generated  
 
@@ -29,7 +29,7 @@ format:
 - **Acronym:** UIAO
 - **Authorization Level:** FedRAMP Moderate (NIST 800-53 Rev 5)
 - **Boundary Owner:** UIAO Program Office
-- **Classification:** Public
+- **Classification:** CUI/FOUO
 
 ### 1.2 Boundary Definition
 
