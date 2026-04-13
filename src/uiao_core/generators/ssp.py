@@ -130,7 +130,19 @@ def _build_system_characteristics_props(template: dict[str, Any]) -> list[dict[s
 def _build_back_matter(template: dict[str, Any]) -> dict[str, Any]:
     """Build OSCAL back-matter with laws/regulations resources (Section 12)."""
     resources = []
-    for law in template.get("laws_and_regulations", []):
+    laws = template.get("laws_and_regulations", [])
+
+    # If no laws provided in template, use FedRAMP default laws
+    if not laws:
+        laws = [
+            {"title": "Federal Information Security Modernization Act (FISMA)", "href": "https://www.congress.gov/bill/113th-congress/senate-bill/2521", "resource_id": "fisma-2014"},
+            {"title": "NIST SP 800-53 Rev 5: Security and Privacy Controls", "href": "https://doi.org/10.6028/NIST.SP.800-53r5", "resource_id": "nist-sp-800-53r5"},
+            {"title": "NIST SP 800-37 Rev 2: Risk Management Framework", "href": "https://doi.org/10.6028/NIST.SP.800-37r2", "resource_id": "nist-sp-800-37r2"},
+            {"title": "FedRAMP Authorization Act", "href": "https://www.congress.gov/bill/117th-congress/house-bill/7776", "resource_id": "fedramp-auth-act"},
+            {"title": "OMB Circular A-130: Managing Information as a Strategic Resource", "href": "https://www.whitehouse.gov/sites/whitehouse.gov/files/omb/circulars/A130/a130revised.pdf", "resource_id": "omb-a-130"},
+        ]
+
+    for law in laws:
         if not isinstance(law, dict):
             continue
         resource: dict[str, Any] = {
@@ -139,7 +151,7 @@ def _build_back_matter(template: dict[str, Any]) -> dict[str, Any]:
             "rlinks": [{"href": law.get("href", "")}],
         }
         if law.get("resource_id"):
-            resource["props"] = [{"name": "resource-id", "value": law["resource_id"], "uuid": str(uuid.uuid4())}]
+            resource["props"] = [{"name": "resource-id", "value": law["resource_id"], "uuid": str(uuid.uuid4()), "ns": "https://fedramp.gov/ns/oscal"}]
         resources.append(resource)
     return {"resources": resources} if resources else {}
 

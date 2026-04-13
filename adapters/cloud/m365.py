@@ -1,4 +1,5 @@
-"""M365Adapter - Telemetry Plane adapter synthesising M365 signals."""
+"""DEPRECATED: Stub adapter. Real implementation pending in
+src/uiao_core/adapters/. Do not extend."""
 from __future__ import annotations
 from adapters import register
 from adapters.base_adapter import (

@@ -1,4 +1,6 @@
-"""EntraIdAdapter - Identity Plane adapter for Microsoft Entra ID."""
+"""DEPRECATED: Superseded by src/uiao_core/adapters/entra_adapter.py
+and src/uiao_core/collectors/entra/entra_collector.py (Graph API).
+Retained for backward compatibility only. Do not extend."""
 from __future__ import annotations
 from adapters import register
 from adapters.base_adapter import (
