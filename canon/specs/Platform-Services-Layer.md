@@ -1,3 +1,15 @@
+---
+document_id: UIAO_102
+title: "UIAO Platform Services Layer"
+version: "1.0"
+status: Current
+classification: CANONICAL
+owner: "Michael Stratton"
+created_at: "2026-04-14"
+updated_at: "2026-04-14"
+boundary: "GCC-Moderate"
+---
+
 # UIAO Platform Services Layer
 
 This layer defines the extensibility and marketplace infrastructure that transforms UIAO from a compliance engine into a compliance platform.

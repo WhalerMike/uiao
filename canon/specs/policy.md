@@ -1,3 +1,15 @@
+---
+document_id: UIAO_116
+title: "UIAO Enforcement Policy Language (EPL)"
+version: "1.0"
+status: Current
+classification: CANONICAL
+owner: "Michael Stratton"
+created_at: "2026-04-14"
+updated_at: "2026-04-14"
+boundary: "GCC-Moderate"
+---
+
 # UIAO Enforcement Policy Language (EPL)
 
 EPL is a declarative language for expressing enforcement requirements within the UIAO compliance engine.

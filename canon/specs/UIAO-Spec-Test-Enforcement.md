@@ -1,3 +1,15 @@
+---
+document_id: UIAO_103
+title: "UIAO Spec-to-Test Enforcement Layer"
+version: "1.0"
+status: Current
+classification: CANONICAL
+owner: "Michael Stratton"
+created_at: "2026-04-14"
+updated_at: "2026-04-14"
+boundary: "GCC-Moderate"
+---
+
 # UIAO Spec-to-Test Enforcement Layer
 
 ## Overview
