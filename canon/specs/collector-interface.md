@@ -1,3 +1,15 @@
+---
+document_id: UIAO_107
+title: "UIAO Evidence Collector Interface"
+version: "1.0"
+status: Current
+classification: CANONICAL
+owner: "Michael Stratton"
+created_at: "2026-04-14"
+updated_at: "2026-04-14"
+boundary: "GCC-Moderate"
+---
+
 # UIAO Evidence Collector Interface
 
 The Evidence Collector Framework provides standardized, pluggable evidence ingestion for the UIAO compliance engine.

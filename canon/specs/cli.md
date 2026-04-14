@@ -1,3 +1,15 @@
+---
+document_id: UIAO_106
+title: "UIAO Compliance CLI"
+version: "1.0"
+status: Current
+classification: CANONICAL
+owner: "Michael Stratton"
+created_at: "2026-04-14"
+updated_at: "2026-04-14"
+boundary: "GCC-Moderate"
+---
+
 # UIAO Compliance CLI
 
 The UIAO Compliance CLI provides a command-line interface for operators and maintainers to run assessments, inspect evidence, manage drift, generate OSCAL outputs, and test enforcement policies.
