@@ -54,48 +54,71 @@ Every piece of canon that `uiao-docs` must mirror is declared in a machine-reada
 
 ```
 uiao-core/canon/
-├── adapter-registry.yaml         # canonical list of every adapter
-├── modernization-registry.yaml   # canonical list of every modernization domain
-└── registry-schema.json          # JSON Schema for both manifests (validation)
+├── adapter-registry.yaml         # canonical conformance adapters (class=conformance)
+└── modernization-registry.yaml   # canonical modernization adapters (class=modernization)
+
+uiao-core/schemas/adapter-registry/
+└── adapter-registry.schema.json  # JSON Schema (draft-07) for both manifests
 ```
 
-### 3.2 Adapter registry schema (NEW, Proposed)
+Both registry files validate against a single shared schema. The schema constrains registry-level metadata plus the common adapter shape; the operational `class` field on each entry must match the registry's `registry-class` (enforced at CI). The seeded entries landed 2026-04-14 — see §14 change log 0.5.0.
 
-Two adapter classes are supported. `modernization` adapters are migration/change workers. `conformance` adapters are read-only assessment/continuous-monitoring workers (see §16). Both live in the same registry and share a common identity/provenance shape; additional fields are class-specific.
+### 3.2 Adapter registry schema — dual-axis taxonomy
+
+Every adapter is classified along **two orthogonal axes**, and the schema requires both on every entry.
+
+**Axis 1 — Operational class (`class`).** How the adapter behaves at runtime.
+- `modernization` — change-making adapter (writes to a target environment; e.g., Entra ID migration, M365 tenant reconfiguration, ServiceNow ticket creation, Palo Alto firewall updates).
+- `conformance` — read-only assessor (observes state, produces normalized findings, never mutates the target; e.g., ScubaGear, future vulnerability scanners). See §16 for the continuous-monitoring program these serve.
+
+**Axis 2 — Doctrinal mission class (`mission-class`).** The canonical UIAO_003 Adapter Segmentation Overview class the adapter realizes against SSOT. The four canonical values are `identity`, `telemetry`, `policy`, `enforcement` (three still NEW (Proposed) per `canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md`). Two escape values are also defined:
+- `unmapped` — no current doctrinal class cleanly covers the adapter's role. Requires `mission-class-notes` and MUST appear as a §13 open decision. All five seeded modernization adapters land here pending ODA-15.
+- `mixed` — adapter straddles two canonical roles. Requires `mission-class-notes`.
+
+**Why two axes.** The operational class answers *what the adapter does at runtime* (auditable, unambiguous, safe to encode in workflows). The mission class answers *which governance role the adapter plays against SSOT* (auditable against UIAO_003 canon, but partially proposed). Separating them prevents the operational choice from accidentally ratifying the doctrinal one, and lets the doctrinal model evolve (e.g., adding a fifth "Integration" class for change-makers) without forcing a registry migration.
+
+Both classes live across two registry files — one file per operational class — and share the common identity/provenance shape defined in `schemas/adapter-registry/adapter-registry.schema.json`. Additional fields are class-specific (e.g., `policy-engine`, `policy-pin` typically apply to conformance adapters; `runtime-version` applies to both).
+
+Minimal entry shape:
 
 ```yaml
-schema-version: 1.1
-adapters:
-  # Modernization class — migration/change workers
-  - id: entra-id
-    class: modernization          # modernization | conformance
-    display-name: Microsoft Entra ID
-    status: active                # active | proposed | deprecated
-    cloud-boundary: gcc-moderate
-    canonical-source: canon/adapters/entra-id.md
-    docs-required:
-      - adapter-technical-specifications
-      - adapter-validation-suites
-    added: 2026-01-15
+# Excerpt — see canon/modernization-registry.yaml and canon/adapter-registry.yaml
+# for the full seeded entries landed 2026-04-14.
 
-  # Conformance class — assessment / ISCM workers (see §16)
-  - id: scubagear
-    class: conformance
-    display-name: CISA ScubaGear (M365 SCuBA baseline)
-    status: proposed
-    cloud-boundary: gcc-moderate
-    vendor: cisa
-    license: CC0                  # UNSURE — verify LICENSE in cisagov/ScubaGear
-    runtime: powershell
-    scope: [entra, exchange, sharepoint, teams, power-platform, defender-o365]
-    policy-engine: opa-rego
-    outputs: [report-html, findings-json, poam-csv]
-    triggers:
-      - schedule: monthly         # FedRAMP ConMon cadence
-      - event: post-migration     # repository_dispatch after modernization adapter completes
-    evidence-class: iscm-automated
-    canonical-source: canon/adapters/scubagear.md
-    added: 2026-04-14
+# Modernization-class entry (change-maker)
+- id: entra-id
+  class: modernization
+  mission-class: unmapped          # see ODA-15 in §13
+  mission-class-notes: >-
+    UIAO_003 has no canonical class for target-environment change-making.
+  status: active
+  gcc-boundary: gcc-moderate
+  ssot-mutation: never
+  certificate-anchored: true
+  object-identity-only: true
+  # ...plus runtime, scope, outputs, triggers, controls, references...
+
+# Conformance-class entry (read-only assessor)
+- id: scubagear
+  class: conformance
+  mission-class: policy            # clear match to UIAO_003 §4.4
+  status: active
+  phase: phase-1
+  vendor: CISA
+  license: CC0-1.0
+  runtime: powershell-7.4
+  runtime-version: "1.5.1"
+  policy-engine: opa-rego
+  policy-pin: main
+  scope: [aad, defender, exo, powerbi, powerplatform, sharepoint, teams]
+  outputs: [findings.json, metadata.json, scubagear-report.html]
+  triggers: [workflow_dispatch, repository_dispatch, schedule]
+  controls: [CA-2, CA-5, CA-7, CM-6, CM-8, RA-5]
+  automation-domain: [configuration-management]
+  gcc-boundary: gcc-moderate
+  ssot-mutation: never
+  certificate-anchored: true
+  object-identity-only: true
 ```
 
 ### 3.3 Modernization registry schema (NEW, Proposed)
@@ -405,6 +428,7 @@ For a static Quarto site, the production server does not need Git running at all
 | 12 | Disposition of the seeded `scuba` modernization adapter vs new `scubagear` conformance adapter (keep both, rename, or merge — see §3.4 note) | Michael | Before Phase 1 execution |
 | 13 | Self-hosted Windows runners in Azure Government: resource group, VM SKU, hardening baseline, secret-broker pattern | Michael | Before Phase 3 execution |
 | 14 | Conformance adapter slot expansion beyond v1 (vuln-scan, stig-compliance, patch-state) — sequencing and tool selection (e.g. Tenable vs OpenSCAP) | Michael | Before Phase 2 execution |
+| 15 | **Doctrinal mission-class gap for modernization adapters (ODA-15).** UIAO_003 §4.2–§4.5 names four canonical adapter classes (Identity, Telemetry, Policy, Enforcement) but none cleanly covers "change-maker against target environment". All five seeded modernization adapters currently declare `mission-class: unmapped`. Options: (a) add a fifth canonical class (tentative name: "Integration") to UIAO_003 and ratify it; (b) re-interpret `enforcement` to include target-environment changes (currently scoped in §4.5 to "external assurance artifacts"); (c) leave as `unmapped` permanently and accept the dual-axis model as final. | Michael | Before ratifying UIAO_003 §4.2–§4.5 from NEW (Proposed) to canonical |
 
 ## 14. Change log
 
@@ -414,6 +438,7 @@ For a static Quarto site, the production server does not need Git running at all
 | 2026-04-14 | 0.2.0 | FedRAMP posture integration: explicit compliance mapping (§15), firewall with `uiao-gos` (§2.2), Team tier recommendation (§10), Azure Government as on-prem target (§12), federal PKI/TLS, STIG references, resolved decisions tracked in §13 | Claude (Cowork) |
 | 2026-04-14 | 0.3.0 | Continuous monitoring program: Conformance Adapter class introduced (§3.2, §3.5); three new workflows (§9); NIST SP 800-137 ISCM capability matrix added (§15); new §16 Continuous Monitoring Program; four open decisions added (§13 items 11–14); pointer to standalone `CONMON.md` for full operational detail | Claude (Cowork) |
 | 2026-04-14 | 0.4.0 | Source verification pass. Two authority PDFs placed at `compliance/reference/nist-sp-800-137/` and `compliance/reference/fedramp-conmon-playbook/` with provenance READMEs and SHA-256 checksums. §15.2 corrected to canonical 11 security automation domains (added Incident Management; corrected IAM placement). §16.2 lifecycle citations added verbatim from 800-137 §§3.1–3.6. §16.3 cadence table rebuilt against Playbook v1.0 (2025-11-17) with control citations (CA-5, CM-8, RA-5, SI-2, CM-3, CM-4, CA-2). §16.9 updated with verified/UNSURE split and five newly-surfaced requirements from verified Playbook read | Claude (Cowork) |
+| 2026-04-14 | 0.5.0 | **Step 0a — Adapter registries landed.** Dual-axis taxonomy established in §3.2: every adapter declares both `class` (operational: modernization\|conformance) and `mission-class` (doctrinal: identity\|telemetry\|policy\|enforcement\|unmapped\|mixed). Schema `schemas/adapter-registry/adapter-registry.schema.json` created (draft-07, conditional requirements for deprecated/mixed/unmapped). Seeded registries: `canon/modernization-registry.yaml` (5 adapters: entra-id, m365, service-now, palo-alto, scuba — all `unmapped` pending ODA-15); `canon/adapter-registry.yaml` (4 conformance adapters: scubagear active/policy, vuln-scan reserved/telemetry, stig-compliance reserved/policy, patch-state reserved/telemetry). Open decision ODA-15 added to §13 for modernization mission-class gap. Both registries validate clean against the schema | Claude (Cowork) |
 
 ## 15. Federal compliance mapping
 
