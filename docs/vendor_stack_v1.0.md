@@ -13,7 +13,7 @@ format:
 
 # UIAO Vendor Technology Stack and Compliance Registry
 
-**Classification:** CUI/FOUO  
+**Classification:** Public  
 **Version:** 1.0  
 **Generated:** Auto-compiled from `data/vendor-stack.yml`  
 

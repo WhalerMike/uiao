@@ -1,7 +1,7 @@
 ---
 title: "UIAO Telemetry Plane Deep Dive"
 version: "1.0"
-classification: "CUI/FOUO"
+classification: "Public"
 ---
 
 # Telemetry & Location Control Plane Deep Dive  
