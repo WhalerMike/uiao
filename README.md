@@ -26,6 +26,8 @@
 
 → **[Full mission scope, mandate alignment, and architectural invariants: VISION.md](./VISION.md)**
 
+→ **[Customer Documentation Platform architecture (federal pair): ARCHITECTURE.md](./ARCHITECTURE.md)** — canonical architecture for the `uiao-core` + `uiao-docs` federal FedRAMP-Moderate pair. Covers canon registry, cross-repo sync, image pipeline, Git LFS strategy, Azure Government migration roadmap, and NIST 800-53 compliance mapping. **Out of scope:** `uiao-gos` (commercial product, separate architecture).
+
 ---
 
 **Repository:** `uiao-core`
