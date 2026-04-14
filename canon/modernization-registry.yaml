@@ -1,0 +1,233 @@
+# yaml-language-server: $schema=../schemas/adapter-registry/adapter-registry.schema.json
+#
+# UIAO Modernization Adapter Registry
+# ===================================
+# Operational axis: `modernization` — change-making adapters that write to
+# target environments (e.g., Entra ID migration, M365 tenant configuration,
+# ticket creation, firewall rule updates).
+#
+# Doctrinal axis (UIAO_003 §4.2–§4.5): three of the four canonical classes
+# (Identity, Telemetry, Policy, Enforcement) are still NEW (Proposed) as of
+# canon v1.0. None of the four cleanly covers "change-maker against target
+# environment", so every entry below declares `mission-class: unmapped` and
+# references open decision ODA-15 in ARCHITECTURE.md §13.
+#
+# Canon invariants enforced on every entry:
+#   * gcc-boundary: gcc-moderate (Amazon Connect exception noted per-adapter)
+#   * ssot-mutation: never
+#   * certificate-anchored: true
+#   * object-identity-only: true
+#
+# Pair registry: canon/adapter-registry.yaml (conformance class)
+# Schema:        schemas/adapter-registry/adapter-registry.schema.json
+# Governance:    ARCHITECTURE.md §3.2, §3.5, §15.2, §16.4
+
+schema-version: "1.0.0"
+registry-class: modernization
+updated: "2026-04-14"
+
+adapters:
+
+  - id: entra-id
+    name: Microsoft Entra ID
+    class: modernization
+    mission-class: unmapped
+    mission-class-notes: >-
+      UIAO_003 doctrinal model does not include a "change-maker against target
+      identity system" class. Tracked as ARCHITECTURE.md §13 open decision
+      ODA-15 (proposed new doctrinal class, tentatively "Integration", pending
+      canon review).
+    status: active
+    phase: phase-1
+    vendor: Microsoft
+    license: Commercial
+    runtime: powershell-7.4
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - user-objects
+      - group-objects
+      - service-principals
+      - conditional-access-policies
+    outputs:
+      - migration-manifest.json
+      - migration-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-8
+      - IA-2
+      - IA-4
+      - AC-2
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-002
+      - UIAO-CANON-003
+
+  - id: m365
+    name: Microsoft 365 Tenant (Graph API)
+    class: modernization
+    mission-class: unmapped
+    mission-class-notes: >-
+      Same as entra-id — no canonical class for target-environment change-
+      making. Tracked under ODA-15.
+    status: active
+    phase: phase-1
+    vendor: Microsoft
+    license: Commercial
+    runtime: powershell-7.4
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - exchange-online
+      - sharepoint-online
+      - teams
+      - defender-o365
+      - purview
+    outputs:
+      - tenant-config-manifest.json
+      - change-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-2
+      - CM-3
+      - CM-8
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-002
+      - UIAO-CANON-003
+
+  - id: service-now
+    name: ServiceNow (Ticketing / ITSM)
+    class: modernization
+    mission-class: unmapped
+    mission-class-notes: >-
+      Ticketing integration is change-making (creates/updates records in an
+      external system of record). Tracked under ODA-15.
+    status: active
+    phase: phase-1
+    vendor: ServiceNow
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - incident-tickets
+      - change-requests
+      - problem-records
+    outputs:
+      - ticket-manifest.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: incident
+    retention-years: 3
+    controls:
+      - IR-4
+      - IR-5
+      - IR-6
+      - CM-3
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+
+  - id: palo-alto
+    name: Palo Alto Networks (Firewall / NGFW)
+    class: modernization
+    mission-class: unmapped
+    mission-class-notes: >-
+      Firewall configuration is change-making against a network target.
+      Tracked under ODA-15.
+    status: active
+    phase: phase-1
+    vendor: Palo Alto Networks
+    license: Commercial
+    runtime: python-3.12
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    scope:
+      - security-policies
+      - nat-rules
+      - threat-prevention-profiles
+    outputs:
+      - firewall-config-manifest.json
+      - rule-change-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - SC-7
+      - CM-7
+      - AC-4
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+
+  - id: scuba
+    name: CISA SCuBA M365 Secure Baseline (Target)
+    class: modernization
+    mission-class: unmapped
+    mission-class-notes: >-
+      `scuba` is the *baseline target* — the declarative security posture
+      UIAO applies to M365 tenants. It is a change-maker (writes the baseline
+      into tenant configuration) and is distinct from `scubagear` (the
+      read-only assessment tool) in canon/adapter-registry.yaml. Tracked
+      under ODA-15.
+    status: active
+    phase: phase-1
+    vendor: CISA
+    license: CC0-1.0
+    runtime: powershell-7.4
+    runner-class: github-hosted
+    tenancy: per-customer
+    policy-engine: none
+    scope:
+      - aad-baseline
+      - defender-baseline
+      - exo-baseline
+      - powerbi-baseline
+      - powerplatform-baseline
+      - sharepoint-baseline
+      - teams-baseline
+    outputs:
+      - baseline-apply-manifest.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-2
+      - CM-6
+      - CM-7
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-002
+      - https://github.com/cisagov/ScubaGoggles
+    notes: >-
+      Pair with conformance adapter `scubagear` (canon/adapter-registry.yaml)
+      which assesses the applied baseline without mutating it.
