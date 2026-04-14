@@ -1,0 +1,25 @@
+@startuml generation_pipeline
+title UIAO Generation Pipeline
+skinparam activityBackgroundColor #e8f4fd
+
+start
+:Load Canon YAML\n(generation-inputs/);
+:Validate Schema;
+if (Valid?) then (yes)
+  fork
+    :Generate DOCX\n(python-docx);
+  fork again
+    :Generate PPTX\n(python-pptx);
+  fork again
+    :Render Diagrams\n(plantweb / PlantUML);
+  fork again
+    :Generate OSCAL SSP\n(JSON);
+  end fork
+  :Write to exports/;
+  :Log artifacts to SBOM;
+else (no)
+  :Raise ValidationError;
+  stop
+endif
+stop
+@enduml
