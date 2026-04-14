@@ -1,3 +1,15 @@
+---
+document_id: UIAO_101
+title: "UIAO Platform Overview"
+version: "1.0"
+status: Current
+classification: CANONICAL
+owner: "Michael Stratton"
+created_at: "2026-04-14"
+updated_at: "2026-04-14"
+boundary: "GCC-Moderate"
+---
+
 # UIAO Platform Overview
 
 This layer describes the UIAO compliance platform — a system that can be extended, integrated, delegated, audited, and operated at scale.
