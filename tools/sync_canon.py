@@ -77,6 +77,12 @@ ADAPTER_DOC_TREES = [
 
 FRONTMATTER_MARKER = "---"
 
+# Primary scaffold file extension. Quarto renders .qmd from _quarto.yml. .md is
+# the legacy extension that the Step 0b initial scaffold used before the
+# Quarto-native upgrade landed in Step 1.
+PRIMARY_EXT = ".qmd"
+LEGACY_PRIMARY_EXTS = (".md",)
+
 
 # ------------------------------------------------------------------
 # Report dataclasses
@@ -110,17 +116,24 @@ class SyncReport:
 
     @property
     def exit_code(self) -> int:
+        # Informational drift kinds surface for human triage but don't block
+        # CI (they neither cause failures nor open PRs on their own).
+        INFO_KINDS = {"legacy-orphan"}
         if not self.schema_ok:
             return 2
-        if self.mode == "check-only" and self.drift:
+        blocking_drift = [d for d in self.drift if d.kind not in INFO_KINDS]
+        if self.mode == "check-only" and blocking_drift:
             return 1
         if self.mode == "scaffold" and self.actions:
             # CI wants a non-zero signal when scaffolding happened so a PR
             # gets opened. Orphan/status drift that we didn't remediate also
             # still counts as drift.
             return 1
-        remaining_drift = [d for d in self.drift if d.kind != "additive"]
-        if remaining_drift:
+        # In scaffold mode with no actions taken: only non-additive,
+        # non-informational drift should be fatal (e.g. orphan folders,
+        # unresolved status-mismatch, schema-error).
+        unremediated = [d for d in blocking_drift if d.kind != "additive"]
+        if unremediated:
             return 1
         return 0
 
@@ -247,38 +260,59 @@ def render_frontmatter(adapter: dict[str, Any], doc_kind: str, doc_title: str) -
 
 
 def render_placeholder_body(adapter: dict[str, Any], doc_kind: str, doc_title: str) -> str:
-    """Produce a minimal placeholder body so the doc renders but flags as a stub."""
+    """Produce a minimal Quarto-compatible placeholder body so the doc renders
+    but flags as a stub. Uses Quarto callout blocks for status/canon-source
+    banners so the published HTML/PDF picks up appropriate styling."""
     controls = ", ".join(f"`{c}`" for c in adapter.get("controls", [])) or "_(none declared)_"
     scope = ", ".join(f"`{s}`" for s in adapter.get("scope", [])) or "_(not yet defined)_"
     notes = adapter.get("notes", "").strip() or "_(none)_"
+    references = adapter.get("references", [])
+    references_block = "\n".join(f"- {r}" for r in references) if references else "_(none declared yet)_"
 
     return f"""# {adapter['name']} — {doc_title}
 
-> **Status:** `{adapter['status']}` · **Class:** `{adapter['class']}` · **Mission:** `{adapter['mission-class']}` · **Phase:** `{adapter.get('phase', 'unspecified')}`
->
-> **Canon source:** `{adapter['_source_registry']}` (sync_canon.py)
->
-> **This document is a scaffold.** Replace the TODO sections with authored content. The frontmatter and this header are regenerated from canon and must not be hand-edited.
+::: {{.callout-note}}
+## Canon-derived document
+
+**Status:** `{adapter['status']}` · **Class:** `{adapter['class']}` · **Mission:** `{adapter['mission-class']}` · **Phase:** `{adapter.get('phase', 'unspecified')}`
+
+**Canon source:** `{adapter['_source_registry']}` (propagated by `uiao-core/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+::: {{.callout-warning}}
+## Scaffold — awaiting authored content
+
+This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
+:::
 
 ## Overview
 
-_TODO — Author an overview of the {adapter['name']} adapter's role in the UIAO governance perimeter. Do not contradict canon._
+_TODO — Author an overview of the {adapter['name']} adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion {'AVS' if doc_kind == 'ats' else 'ATS'} document where relevant._
 
 ## Scope
 
 Target surfaces / subsystems: {scope}
 
+_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: {controls}
 
+_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+
 ## Operational profile
 
-- **Runtime:** `{adapter.get('runtime', 'TBD')}` (pin: `{adapter.get('runtime-version', 'TBD')}`)
-- **Runner class:** `{adapter.get('runner-class', 'TBD')}`
-- **Tenancy:** `{adapter.get('tenancy', 'TBD')}`
-- **Evidence class:** `{adapter.get('evidence-class', 'TBD')}`
-- **Retention:** `{adapter.get('retention-years', 'TBD')}` year(s)
+| Field | Value |
+|---|---|
+| Runtime | `{adapter.get('runtime', 'TBD')}` |
+| Runtime pin | `{adapter.get('runtime-version', 'TBD')}` |
+| Runner class | `{adapter.get('runner-class', 'TBD')}` |
+| Tenancy | `{adapter.get('tenancy', 'TBD')}` |
+| Evidence class | `{adapter.get('evidence-class', 'TBD')}` |
+| Retention | `{adapter.get('retention-years', 'TBD')}` year(s) |
 
 ## Canon invariants
 
@@ -293,11 +327,11 @@ NIST SP 800-53 Rev 5 controls this adapter supports: {controls}
 
 ## References
 
-{chr(10).join(f'- {r}' for r in adapter.get('references', []))}
+{references_block}
 
 ---
 
-*This scaffold was generated by `uiao-core/tools/sync_canon.py`. See `uiao-core/ARCHITECTURE.md` §4 for the cross-repo sync contract.*
+*Generated by `uiao-core/tools/sync_canon.py`. See `uiao-core/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*
 """
 
 
@@ -372,7 +406,21 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
 
             # Status drift check
             adapter = adapter_ids[folder_id]
-            primary = child / f"{kind}-{folder_id}.md"
+            primary = child / f"{kind}-{folder_id}{PRIMARY_EXT}"
+
+            # Legacy-file detection: report same-basename .md files as
+            # informational orphans (never delete — owner removes via git rm).
+            for legacy_ext in LEGACY_PRIMARY_EXTS:
+                legacy = child / f"{kind}-{folder_id}{legacy_ext}"
+                if legacy.is_file() and primary.is_file() and primary != legacy:
+                    report.drift.append(
+                        DriftItem(
+                            "legacy-orphan",
+                            folder_id,
+                            str(legacy),
+                            f"Legacy {legacy_ext} scaffold superseded by {PRIMARY_EXT} (git rm to clean)",
+                        )
+                    )
             fm = parse_frontmatter(primary)
             if fm is None:
                 # File either empty or lacks frontmatter — treat as additive
@@ -424,7 +472,7 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
         # 2. Walk registries → detect additives (adapter with no folder)
         for adapter in adapters:
             folder = tree / adapter["id"]
-            primary = folder / f"{kind}-{adapter['id']}.md"
+            primary = folder / f"{kind}-{adapter['id']}{PRIMARY_EXT}"
             prompts = folder / "IMAGE-PROMPTS.md"
             images = folder / "images"
             gitkeep = images / ".gitkeep"
