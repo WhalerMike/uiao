@@ -5,6 +5,8 @@
 **Live site:** [whalermike.github.io/uiao-docs](https://whalermike.github.io/uiao-docs/docs/index.html)
 **License:** [MIT](LICENSE)
 
+→ **[Customer Documentation Platform architecture (federal pair)](https://github.com/WhalerMike/uiao-core/blob/main/ARCHITECTURE.md)** — canonical in `uiao-core/ARCHITECTURE.md`. Defines how this repo's `customer-documents/` tree, image pipeline, Quarto rendering, CI workflows, and Azure Government migration inherit from `uiao-core` canon. **Out of scope:** `uiao-gos` (commercial product, separate architecture).
+
 ---
 
 ## What This Repository Is
@@ -111,8 +113,4 @@ UIAO (Unified Identity-Addressing-Overlay Architecture) is a federal network mod
 | `pr-preview.yml` | Renders preview for pull requests |
 | `changelog.yml` | Auto-generates CHANGELOG.md |
 | `repo-hygiene.yml` | Validates internal links and directory structure |
-| `verify-signatures.yml` | Checks commit signature integrity |
-
-16 additional workflows are disabled pending dependency setup.
-
-> **SSOT Reference:** See /ssot/UIAO-SSOT.md
+| `verify-signa
