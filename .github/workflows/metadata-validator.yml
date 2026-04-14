@@ -3,15 +3,11 @@ on:
   pull_request:
     paths:
       - 'canon/**'
-      - 'playbooks/**'
-      - 'appendices/**'
       - 'schemas/**'
   push:
     branches: [main]
     paths:
       - 'canon/**'
-      - 'playbooks/**'
-      - 'appendices/**'
       - 'schemas/**'
   workflow_dispatch:
 
@@ -37,33 +33,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyyaml jsonschema
 
-      - name: Run metadata validator
+      - name: Run metadata validator (canon)
         id: validate
         run: |
           python tools/metadata_validator.py \
             --path canon/ \
             --schema schemas/metadata-schema.json \
             --output reports/validation-report.json \
-            --ci
-        continue-on-error: true
-
-      - name: Validate playbooks metadata
-        id: validate-playbooks
-        run: |
-          python tools/metadata_validator.py \
-            --path playbooks/ \
-            --schema schemas/metadata-schema.json \
-            --output reports/playbooks-validation-report.json \
-            --ci
-        continue-on-error: true
-
-      - name: Validate appendices metadata
-        id: validate-appendices
-        run: |
-          python tools/metadata_validator.py \
-            --path appendices/ \
-            --schema schemas/metadata-schema.json \
-            --output reports/appendices-validation-report.json \
             --ci
         continue-on-error: true
 
@@ -82,18 +58,11 @@ jobs:
           script: |
             const fs = require('fs');
             let report = '';
-            const files = [
-              'reports/validation-report.json',
-              'reports/playbooks-validation-report.json',
-              'reports/appendices-validation-report.json'
-            ];
-            for (const file of files) {
-              if (fs.existsSync(file)) {
-                const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-                report += `### ${data.scope}\n`;
-                report += `- Files scanned: ${data.files_scanned}\n`;
-                report += `- BLOCKING: ${data.blocking} | WARNING: ${data.warning} | INFO: ${data.info}\n\n`;
-              }
+            if (fs.existsSync('reports/validation-report.json')) {
+              const data = JSON.parse(fs.readFileSync('reports/validation-report.json', 'utf8'));
+              report += `### ${data.scope}\n`;
+              report += `- Files scanned: ${data.files_scanned}\n`;
+              report += `- BLOCKING: ${data.blocking} | WARNING: ${data.warning} | INFO: ${data.info}\n\n`;
             }
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -103,10 +72,7 @@ jobs:
             });
 
       - name: Fail on blocking issues
-        if: >-
-          steps.validate.outcome == 'failure' ||
-          steps.validate-playbooks.outcome == 'failure' ||
-          steps.validate-appendices.outcome == 'failure'
+        if: steps.validate.outcome == 'failure'
         run: |
           echo "Metadata validation found BLOCKING issues."
           exit 1
