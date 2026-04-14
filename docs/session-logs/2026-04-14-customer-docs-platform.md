@@ -312,3 +312,113 @@ GitHub → Settings → Developer settings → Personal access tokens → Fine-g
 - **ODA-15 resolution.** At some point Michael picks (a), (b), or (c). Until then, modernization adapters stay `unmapped` and any canon review of UIAO_003 must carry ODA-15 as a blocker for promoting §4.2–§4.5 from NEW (Proposed) to canonical.
 - **Track 1 monitoring action item.** Owner still needs to subscribe to `cisagov/ScubaGear` releases on GitHub (prior session carryover).
 - **Build-and-deploy status-check wiring.** Currently flagged on every `uiao-docs` push as "bypassed" — resolve in Step 6.
+
+---
+
+## Turn 7 — Phase A/B/C close-out: sync_canon.py .qmd upgrade, Master Documents, image pipeline
+
+Worked three tracks in parallel this turn. **A** (close the Step 0b round-trip verification loop) was handed back to Michael via a side manifest. **B** (housekeeping: ODA-15, build-deploy investigation, ScubaGear Watch) was scoped for decisions. **C** (Step 1 execution: qmd conversion + Master Documents + image pipeline) was implemented in full.
+
+### C1 — sync_canon.py upgraded to emit Quarto `.qmd`
+
+`uiao-core/tools/sync_canon.py` now writes `ats-<id>.qmd` and `avs-<id>.qmd` instead of `.md`. Added constants `PRIMARY_EXT = ".qmd"` and `LEGACY_PRIMARY_EXTS = (".md",)`. Both scaffold-write paths use `PRIMARY_EXT`. Rewrote `render_placeholder_body()` with Quarto callout syntax — `::: {.callout-warning}` for scaffold status when placeholder, `::: {.callout-note}` for the canon status banner, operational-profile expressed as a pipe table with canon keys.
+
+Added legacy-orphan detection: when both `ats-<id>.md` and `ats-<id>.qmd` exist for the same adapter, the `.md` is reported as drift kind `legacy-orphan` with a `git rm` hint in the description. Exit-code logic extended with `INFO_KINDS = {"legacy-orphan"}` so informational drift does not block CI or open noise PRs — only structural drift (`missing-folder`, `missing-primary`, `missing-secondary`) triggers the open-PR path.
+
+Scaffold rerun is clean: 18 new `.qmd` files created on first run, second run produces zero filesystem changes, reports 18 `legacy-orphan` informational items for the matching `.md` files that Michael's commit batch will remove.
+
+### C2 — Master Documents (Quarto listings)
+
+Three new `index.qmd` landing pages under `docs/customer-documents/`:
+
+- **Top-level landing** (`customer-documents/index.qmd`): document-family map, canon invariants recap, governance note pointing to `uiao-core/ARCHITECTURE.md` §4.
+- **ATS Master** (`adapter-technical-specifications/index.qmd`): Quarto listing directive with `type: table`, `contents: "*/ats-*.qmd"`, sortable/filterable columns on `adapter-id`, `adapter-class`, `mission-class`, `status`, `phase`. Per-role starter table and dual-axis taxonomy summary inline.
+- **AVS Master** (`adapter-validation-suites/index.qmd`): parallel structure, pulls `*/avs-*.qmd`, explains validation-suite contents and its relationship to the (forthcoming) Validation Operations Playbook.
+
+All three are canon-safe: frontmatter cites `uiao-core/canon/{adapter,modernization}-registry.yaml` as source, body content is authored not scaffold-generated, so it won't be clobbered by subsequent `sync_canon.py --scaffold` runs.
+
+### C3 — `generate_images.py`
+
+New tool at `uiao-docs/tools/generate_images.py`. Consumes `image-manifest.json` (produced by `aggregate_prompts.py`), maintains a persistent `data/image-cache.json` of `{target_path: content_hash}`, renders only entries whose hash changed. Two backends:
+
+- **`stub`** (default, CI-safe): writes a deterministic 1x1 transparent PNG plus a `.prompt.txt` sidecar containing the prompt body. Zero dependencies, zero network, exercises the full orchestration path end-to-end.
+- **`real`** (placeholder): errors out with "scheduled for Step 2" message. Step 2 swaps the body for the chosen image-model call.
+
+Flags: `--force` (ignore cache, regenerate all), `--dry-run` (plan only), `--verbose` (per-entry status), `--manifest`, `--cache`, `--docs-root`, `--backend {stub,real}`.
+
+Exit codes: 0 success, 1 partial failure (cache updated for successes only), 2 fatal (missing manifest, unreadable cache).
+
+Smoke-tested with a synthetic 1-entry manifest: first run rendered the PNG+sidecar, second run correctly skipped (hash match, `skipped unchanged: 1`). Live run against the real manifest is a no-op as expected — every current `IMAGE-PROMPTS.md` contains only the `_TODO — describe...` placeholder that `aggregate_prompts.py` deliberately filters out, so `prompts found: 0`.
+
+### C4 — `aggregate_prompts.py`
+
+New tool at `uiao-docs/tools/aggregate_prompts.py`. Walks ATS + AVS trees, parses each adapter's `IMAGE-PROMPTS.md`, emits deterministic `data/image-manifest.json`. Handles two author styles:
+
+1. **Bracket placeholders**: `[IMAGE-01: ...prompt...]` (works across lines, lazy match on body).
+2. **Heading + prose**: `## IMAGE-01\n\n<prompt paragraph>\n\n## IMAGE-02\n\n...` — the scaffolded style. Skips leading `_TODO` / `*TODO` lines so unedited scaffolds produce zero entries (correct behavior; nothing to render yet).
+
+Output manifest sorted by `(tree_key, adapter_id, tag)` for determinism. Each entry carries `content_hash` (first 16 hex chars of sha256 over the prompt body) so `generate_images.py` can short-circuit cleanly.
+
+### Architectural correction scoped as Phase D
+
+During this turn Michael noted that the previous repo split may have mis-assigned two large concerns: the **document rendering pipeline** (Quarto, pandoc, DOCX/PPTX/PDF/EPUB generators) is currently sitting in `uiao-core` when it belongs in `uiao-docs`; conversely some **canonical content** (schemas, canonical-rules, canon ADRs) is sitting in `uiao-docs` when it belongs in `uiao-core`. Confirmed by inspection — `uiao-core` carries 9 rendering workflows, `_quarto.yml`, rendered DOCX outputs, and several application-code trees (`adapters/`, `analytics/`, `api/`) that do not belong in a canon repo. `uiao-docs` carries `schemas/`, `canonical-rules.md`, and ADRs that should live with canon.
+
+Decision: **defer to Phase D next session.** Finish C3 and hand off the combined PowerShell commit batch first. Phase D plan already drafted: move document pipeline uiao-core → uiao-docs, move canon content uiao-docs → uiao-core, update every cross-repo reference and CI workflow that breaks as a result.
+
+---
+
+## Hand-off — combined commit batch (your side)
+
+Run from `C:\Users\whale\uiao-core` then `C:\Users\whale\uiao-docs` in sequence. Each block is copy/paste-ready.
+
+### Block 1 — uiao-core (sync_canon.py .qmd upgrade)
+
+```powershell
+Set-Location 'C:\Users\whale\uiao-core'
+git pull --rebase origin main
+git add tools/sync_canon.py
+git commit -m "[UIAO-CORE] UPDATE: sync_canon.py — emit .qmd scaffolds + legacy-orphan detection"
+git push
+```
+
+### Block 2 — uiao-docs (new .qmd scaffolds, Master Documents, image pipeline, session log, remove legacy .md)
+
+```powershell
+Set-Location 'C:\Users\whale\uiao-docs'
+git pull --rebase origin main
+
+# Remove 18 legacy .md scaffolds that sync_canon.py now flags as legacy-orphan
+git rm `
+    docs/customer-documents/adapter-technical-specifications/*/ats-*.md `
+    docs/customer-documents/adapter-validation-suites/*/avs-*.md
+
+# Stage the new .qmd scaffolds, Master Documents, tools, session log, DOCX, manifest
+git add `
+    docs/customer-documents/index.qmd `
+    docs/customer-documents/adapter-technical-specifications/ `
+    docs/customer-documents/adapter-validation-suites/ `
+    tools/aggregate_prompts.py `
+    tools/generate_images.py `
+    data/image-manifest.json `
+    data/image-cache.json `
+    docs/session-logs/2026-04-14-customer-docs-platform.md `
+    docs/session-logs/2026-04-14-customer-docs-platform.docx
+
+git commit -m "[UIAO-DOCS] CREATE: Step 1 — qmd scaffolds + Master Documents + image pipeline (aggregate_prompts, generate_images) + Turn 7 log"
+git push
+```
+
+Notes on Block 2:
+- The `git rm` glob will quietly no-op for any adapter folder that never got a legacy `.md` — safe.
+- `data/image-cache.json` is a tracked cache (so CI can prove determinism). It's tiny (empty `entries: {}` today) and grows only when real prompts start landing.
+- `data/image-manifest.json` today contains zero entries; it's committed so CI has something to diff against later.
+
+---
+
+## Next Up
+
+- **Phase D — repo split correction (next session).** Move document rendering pipeline `uiao-core → uiao-docs`. Move canon content `uiao-docs → uiao-core`. Rewrite cross-repo references, CI workflows, and any derived docs that link to the moved paths. Full file-level plan to be drafted at session start.
+- **Phase A closeout from Michael's manifest.** UIAO_003 canon patch commit, PAT creation + secret, canon-sync round-trip test.
+- **Phase B decisions.** ODA-15 (pick a/b/c), Track 1 ScubaGear Watch subscription, build-deploy status-check wiring (Step 6).
+- **Step 2 — real image backend.** Swap `render_real()` stub in `generate_images.py` for the chosen provider. Wire API key as repo secret. Add CI gate that runs `aggregate_prompts.py → generate_images.py --backend=real --force=false` on label `image-refresh`.
+- **Author first real image prompts.** Pick 1–2 adapters, replace `_TODO` placeholders in their `IMAGE-PROMPTS.md` with real prompt bodies under `## IMAGE-01` / `## DIAGRAM-01` headings, rerun aggregate + generate to prove the pipeline end-to-end.
