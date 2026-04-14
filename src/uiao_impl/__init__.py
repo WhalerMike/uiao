@@ -1,3 +1,9 @@
-"""uiao_impl — Python implementation for UIAO governance."""
+"""UIAO Core - Unified Identity-Addressing-Overlay Architecture.
 
-__version__ = "0.1.0"
+FedRAMP modernization pipeline package providing type-safe YAML loading,
+OSCAL generation, and CLI tooling for federal cloud compliance.
+"""
+
+from .__version__ import __version__
+
+__all__ = ["__version__"]
