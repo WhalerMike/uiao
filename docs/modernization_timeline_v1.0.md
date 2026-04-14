@@ -1,7 +1,7 @@
 ---
 title: "UIAO Modernization Timeline"
 version: "1.0"
-classification: "CUI/FOUO"
+classification: "Public"
 ---
 
 # UIAO Modernization Timeline
