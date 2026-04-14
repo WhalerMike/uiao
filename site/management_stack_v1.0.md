@@ -1,7 +1,7 @@
 ---
 title: "UIAO Management Stack"
 version: "1.0"
-classification: "CUI/FOUO"
+classification: "Public"
 ---
 
 # UIAO Management Stack

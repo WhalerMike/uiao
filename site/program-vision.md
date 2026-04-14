@@ -1,7 +1,7 @@
 ---
 title: "UIAO Program Vision"
 version: "1.0"
-classification: "CUI/FOUO"
+classification: "Public"
 ---
 
 # UIAO Program Vision  
