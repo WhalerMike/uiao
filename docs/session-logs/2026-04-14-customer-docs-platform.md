@@ -206,9 +206,109 @@ git push
 
 ---
 
+## Turn 6 — 2026-04-14T15:28Z — Step 0b: cross-repo canon sync
+
+**Direction from Michael (via AskUserQuestion):** Auto-open PR on receiver (recommended) + Write + validate scaffolder scope (recommended).
+
+**Built:**
+
+1. **`uiao-core/tools/sync_canon.py`** (~420 lines).
+   - Reads both registries + schema, walks the two adapter document trees in `uiao-docs` (`docs/customer-documents/adapter-technical-specifications/` and `.../adapter-validation-suites/`), reports drift, optionally scaffolds missing folders.
+   - Three modes: `--check-only` (read-only, exit 0/1/2), `--scaffold` (write + validate, additive-only), default = scaffold. `--json` emits a machine-readable drift report for CI artifact upload.
+   - Per-adapter scaffold per tree: `<kind>-<adapter-id>.md` (with canonical YAML frontmatter generated from canon), `IMAGE-PROMPTS.md` seed, `images/.gitkeep`. Markdown body is *safe to author* — tool only writes body if file is missing or empty.
+   - Invariants enforced: never deletes (orphan folders in docs tree reported as drift for human triage), never writes outside the two adapter trees, never touches domain trees (`modernization-*`), deterministic + idempotent (rerun → no changes, exit 0).
+   - YAML dump fix: `allow_unicode=True` so em-dashes in generated titles don't serialize as `\u2014`.
+
+2. **`uiao-core/tools/requirements.txt`** — pins `jsonschema==4.23.0`, `PyYAML==6.0.2`. Both workflows install from this.
+
+3. **`uiao-core/tools/README.md`** — tool reference table, full `sync_canon.py` docs (modes, exit codes, what it writes / doesn't), cross-repo workflow table, fine-grained PAT setup recipe (Contents R/W + PRs R/W on both repos, 90-day expiry), rotation protocol, manual re-sync via `workflow_dispatch`, troubleshooting table (bad creds, dispatch not triggering, status-check bypass, orphan drift, schema failures).
+
+4. **`uiao-core/.github/workflows/canon-sync-dispatch.yml`** — Layer 1 push side.
+   - Triggers on push to `main` modifying `canon/adapter-registry.yaml`, `canon/modernization-registry.yaml`, or `schemas/adapter-registry/**`.
+   - Inline Python pre-flight: `Draft7Validator` over both registries + `registry-class` match check. Exits non-zero on any schema violation so a bad canon push never reaches the receiver.
+   - Uses `peter-evans/repository-dispatch@v3` with `CANON_SYNC_DISPATCH_TOKEN` secret. Payload includes `source_sha`, `source_repo`, `source_ref`, `source_actor`, `source_commit_message`, `triggered_at`.
+   - `concurrency: canon-sync-dispatch, cancel-in-progress: false` so bursty pushes queue cleanly.
+
+5. **`uiao-docs/.github/workflows/canon-sync-receive.yml`** — Layer 1 receive side.
+   - Triggers on `repository_dispatch` type `canon-updated` OR `workflow_dispatch` (with optional `core_ref` input for manual re-runs).
+   - Dual checkout: `uiao-docs` at repo root, `uiao-core` into `.uiao-core-sync/` (pinned to `client_payload.source_sha` when dispatched, else the manual ref, else `main`).
+   - Runs `sync_canon.py --scaffold --json > /tmp/sync-report.json`, uploads the JSON as a workflow artifact (30-day retention) so every sync has an auditable record.
+   - Removes `.uiao-core-sync/` before staging, detects changes with `git status --porcelain`, builds a PR body with source SHA / actor / triggered-at / review notes (frontmatter = canon-generated, body = author-safe) + canon sync guarantees (deterministic, idempotent, additive-only).
+   - Opens PR via `peter-evans/create-pull-request@v6` with labels `canon-sync` + `automated`, branch `canon-sync/<sha>` or `canon-sync/manual-<run_id>`, commit message `[UIAO-DOCS] SYNC: propagate canon from uiao-core@<sha>`.
+
+**Verified locally:**
+
+- Dry-run `--check-only` on pre-scaffold tree: exit 1, 18 additive drift items (9 adapters × 2 trees).
+- `--scaffold` run: created 27 filesystem items (9 adapter folders × 3 files each in each of 2 trees = 54 writes total, tool reported exit 1 = wrote).
+- Second `--check-only` post-scaffold: exit 0, zero drift → idempotency confirmed.
+- Both workflow YAMLs parse-checked with PyYAML; jobs resolved (`dispatch`, `sync`).
+
+**Noted, not fixed:**
+
+- Pre-existing orphan zero-byte files from an earlier naming scheme (`ats-servicenow.md`, `ats-paloalto.md`, `avs-servicenow.md`, etc. — 9 total) sit alongside the new correctly-named scaffolds. Tool doesn't clean them (never-deletes policy). Owner to decide: delete manually or let them ride.
+- GitHub still flags a missing "Build and Deploy Documentation" status check on every `uiao-docs` push — expected, will resolve in Step 6 (CI workflows).
+
+**PAT reminder — blocker for workflow execution.** Neither workflow runs until `CANON_SYNC_DISPATCH_TOKEN` exists as a secret in **both** `WhalerMike/uiao-core` and `WhalerMike/uiao-docs`. Fine-grained PAT, both repos selected, Contents:R/W + Pull requests:R/W + Metadata:R. Full recipe in `uiao-core/tools/README.md §Required secret`.
+
+**Files touched:**
+
+| Path | Action |
+|---|---|
+| `uiao-core/tools/sync_canon.py` | new |
+| `uiao-core/tools/requirements.txt` | new |
+| `uiao-core/tools/README.md` | new |
+| `uiao-core/.github/workflows/canon-sync-dispatch.yml` | new |
+| `uiao-docs/.github/workflows/canon-sync-receive.yml` | new |
+| `uiao-docs/docs/customer-documents/adapter-technical-specifications/<9 adapters>/` | new (27 files: ATS stub + IMAGE-PROMPTS.md + images/.gitkeep × 9) |
+| `uiao-docs/docs/customer-documents/adapter-validation-suites/<9 adapters>/` | new (27 files: AVS stub + IMAGE-PROMPTS.md + images/.gitkeep × 9) |
+| `uiao-docs/docs/session-logs/2026-04-14-customer-docs-platform.md` | updated (this append) |
+| `uiao-docs/docs/session-logs/2026-04-14-customer-docs-platform.docx` | regenerated via pandoc |
+
+**Commit hand-off (PowerShell):**
+
+```powershell
+# uiao-core — Step 0b sync tooling + dispatcher workflow
+Set-Location 'C:\Users\whale\uiao-core'
+git add tools/sync_canon.py tools/requirements.txt tools/README.md `
+        .github/workflows/canon-sync-dispatch.yml
+git commit -m "[UIAO-CORE] CREATE: Step 0b — sync_canon.py + dispatch workflow (cross-repo canon propagation)"
+git push
+
+# uiao-docs — receiver workflow + 27 scaffolded adapter doc folders + session log append
+Set-Location 'C:\Users\whale\uiao-docs'
+git add .github/workflows/canon-sync-receive.yml `
+        docs/customer-documents/adapter-technical-specifications/ `
+        docs/customer-documents/adapter-validation-suites/ `
+        docs/session-logs/2026-04-14-customer-docs-platform.md `
+        docs/session-logs/2026-04-14-customer-docs-platform.docx
+git commit -m "[UIAO-DOCS] CREATE: Step 0b — receiver workflow + scaffolded adapter doc trees + Turn 6 log append"
+git push
+```
+
+**PAT setup (do before first real canon push, else dispatcher will fail):**
+
+```
+GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new
+  Name:       UIAO canon-sync dispatch
+  Owner:      WhalerMike
+  Repos:      WhalerMike/uiao-core  AND  WhalerMike/uiao-docs  (both)
+  Perms:      Contents: Read and write
+              Pull requests: Read and write
+              Metadata: Read-only (auto)
+  Expiry:     90 days
+→ Copy token value (shown once).
+→ Add as secret `CANON_SYNC_DISPATCH_TOKEN` in BOTH repos:
+  Settings → Secrets and variables → Actions → New repository secret.
+```
+
+---
+
 ## Next Up
 
+- **Verify first canon-sync round-trip.** After pushing Step 0b and setting up the PAT, re-save any canon file in `uiao-core` (or re-push with a trivial whitespace change) to trigger the dispatcher. Confirm: dispatcher validates → `canon-updated` fires → receiver checks out both repos → `sync_canon.py --scaffold` runs → no-op PR is either skipped (if no diff) or opened with label `canon-sync`.
+- **Orphan cleanup.** Delete the 9 pre-existing zero-byte orphan files under `uiao-docs/docs/customer-documents/adapter-*-specifications/` / `adapter-validation-suites/` (old naming scheme, no hyphen). Tool won't touch them; human decision.
 - **Step 0a supporting — tooling.** Add a small Python validator (`tools/validate_registries.py`) and wire it into the existing CI gates (`metadata-validator` check). Also consider a canonical-YAML linter (enforce key ordering so diffs stay clean).
-- **Step 0b — Cross-repo sync.** Build `uiao-core/tools/sync_canon.py` + `.github/workflows/canon-sync-dispatch.yml`, and the matching receiver `uiao-docs/.github/workflows/canon-sync-receive.yml`. This is what turns the registries from static files into a propagating source of truth.
+- **Step 1+ — customer-documents expansion.** qmd conversion, Master Document, `generate_images.py` cleanup, `aggregate_prompts.py`, Git LFS config, CI workflows, Quarto landing page.
 - **ODA-15 resolution.** At some point Michael picks (a), (b), or (c). Until then, modernization adapters stay `unmapped` and any canon review of UIAO_003 must carry ODA-15 as a blocker for promoting §4.2–§4.5 from NEW (Proposed) to canonical.
 - **Track 1 monitoring action item.** Owner still needs to subscribe to `cisagov/ScubaGear` releases on GitHub (prior session carryover).
+- **Build-and-deploy status-check wiring.** Currently flagged on every `uiao-docs` push as "bypassed" — resolve in Step 6.
