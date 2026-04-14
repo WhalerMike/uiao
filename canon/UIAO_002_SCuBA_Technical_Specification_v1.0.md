@@ -1,15 +1,16 @@
 ---
-document_title: "UIAO SCuBA Technical Specification"
 document_id: UIAO_002
+title: "UIAO SCuBA Technical Specification"
 version: "1.0"
-date: "2026-04-13"
+status: Current
+classification: CANONICAL
+owner: "Michael Stratton"
+created_at: "2026-04-13"
+updated_at: "2026-04-14"
+boundary: "GCC-Moderate"
 author: "Michael Stratton"
-classification: "UIAO Canon – Controlled"
-compliance: "GCC-Moderate Only"
 no_hallucination_mode: ENABLED
 nhp: true
-status: CANONICAL
-owner: "Michael Stratton"
 provenance:
   source: "uiao-core repository (v2.0.0)"
   version: "1.0"
@@ -63,7 +64,7 @@ provenance:
 
 UIAO integrates CISA's Secure Cloud Business Applications (SCuBA) assessment framework into a deterministic, four-plane compliance pipeline that transforms raw ScubaGear output into auditor-ready OSCAL artifacts. The pipeline ingests ScubaGear JSON, normalizes it through a three-hop mapping chain (PolicyId to NIST SP 800-53 control to UIAO Key Security Indicator), evaluates compliance posture, builds tamper-evident evidence bundles signed with HMAC-SHA256, and generates OSCAL 1.1.2 System Security Plans, Plans of Action and Milestones, and Security Assessment Reports.
 
-This specification covers the full SCuBA integration: 143 policy-to-control mappings across eight Microsoft 365 product baselines (Entra ID, Defender, Exchange Online, SharePoint, Teams, Power Platform, Power BI, and Security Suite), the normalization engine that handles both combined and per-product ScubaGear output formats, the four-plane orchestrator with retry logic and timestamped run isolation, and the evidence integrity chain from raw scan to signed OSCAL deliverable. The system operates exclusively within the GCC-Moderate boundary for M365 SaaS services, with no Azure IaaS/PaaS dependencies.
+This specification covers the full SCuBA integration: 143 policy-to-control mappings across eight Microsoft 365 product baselines (Entra ID, Defender, Exchange Online, SharePoint, Teams, Power Platform, Power BI, and Security Suite), the normalization engine that handles both combined and per-product ScubaGear output formats, the four-plane orchestrator with retry logic and timestamped run isolation, and the evidence integrity chain from raw scan to signed OSCAL deliverable. The system operates exclusively within the GCC-Moderate boundary for M365 SaaS services, with no dependencies on out-of-scope cloud infrastructure.
 
 For leadership: UIAO's SCuBA integration replaces manual compliance evidence gathering with a continuous, automated pipeline that produces FedRAMP Moderate-aligned artifacts in under 120 seconds per assessment cycle. Every output is deterministic — the same ScubaGear input always produces identical compliance artifacts — and every evidence item carries cryptographic provenance tracing it back to the original scan. This directly supports CISA Binding Operational Directive 25-01 mandatory timelines with machine-readable, auditor-ready evidence.
 
@@ -77,7 +78,7 @@ For leadership: UIAO's SCuBA integration replaces manual compliance evidence gat
 
 **Who Is Affected.** Information System Security Officers (ISSOs), Authorizing Officials (AOs), compliance teams, and system administrators responsible for maintaining FedRAMP Moderate authorization for M365 tenants in GCC-Moderate environments. External auditors and assessors consuming OSCAL-formatted evidence packages are also direct beneficiaries.
 
-**What Constraints Apply.** All operations are scoped to GCC-Moderate (M365 SaaS only). No GCC-High, DoD, or Azure IaaS/PaaS services are referenced or required. Amazon Connect Contact Center is the sole Commercial Cloud exception. The pipeline enforces object identity only — no person identity is stored or processed. All artifacts must validate against OSCAL 1.1.2 schemas. The SSOT (Single Source of Truth) is singular and certificate-anchored; adapters never mutate truth.
+**What Constraints Apply.** All operations are scoped to GCC-Moderate (M365 SaaS only). No services outside the GCC-Moderate M365 SaaS scope are referenced or required. Amazon Connect Contact Center is the sole Commercial Cloud exception. The pipeline enforces object identity only — no person identity is stored or processed. All artifacts must validate against OSCAL 1.1.2 schemas. The SSOT (Single Source of Truth) is singular and certificate-anchored; adapters never mutate truth.
 
 ---
 
@@ -614,5 +615,5 @@ Vendor overlay verified against data/vendor-overlays/scuba.yaml.
 CLI commands verified against docs/scuba-architecture-guide.md.
 No hallucinations detected.
 GCC-Moderate boundary enforced throughout.
-No GCC-High, DoD, or Azure IaaS/PaaS references present.
+No out-of-boundary cloud environment references present.
 [/VALIDATION]
