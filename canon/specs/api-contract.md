@@ -1,3 +1,15 @@
+---
+document_id: UIAO_105
+title: "UIAO Auditor API"
+version: "1.0"
+status: Current
+classification: CANONICAL
+owner: "Michael Stratton"
+created_at: "2026-04-14"
+updated_at: "2026-04-14"
+boundary: "GCC-Moderate"
+---
+
 # UIAO Auditor API
 
 The Auditor API provides read-only access to UIAO compliance evidence, findings, POA&M entries, and OSCAL outputs for auditors and oversight personnel.

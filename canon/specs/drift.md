@@ -1,3 +1,15 @@
+---
+document_id: UIAO_110
+title: "UIAO Drift Engine Specification"
+version: "1.0"
+status: Current
+classification: CANONICAL
+owner: "Michael Stratton"
+created_at: "2026-04-14"
+updated_at: "2026-04-14"
+boundary: "GCC-Moderate"
+---
+
 # UIAO Drift Engine Specification
 
 The Drift Engine is the core of UIAO's continuous monitoring capability.
