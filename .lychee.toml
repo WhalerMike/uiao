@@ -1,0 +1,51 @@
+# Lychee link checker config — uiao-docs
+# Docs: https://lychee.cli.rs/usage/config/
+
+# ── Runtime ────────────────────────────────────────────────────────────
+max_concurrency = 16
+max_retries = 3
+retry_wait_time = 5
+timeout = 20
+cache = true
+max_cache_age = "14d"
+
+# ── Verbosity ──────────────────────────────────────────────────────────
+verbose = "info"
+no_progress = true
+
+# ── Acceptance ─────────────────────────────────────────────────────────
+# External sites commonly rate-limit or block HEAD requests; treat these
+# as non-fatal. A 200-299 or 429 response is good enough to not flag.
+accept = [200, 201, 202, 203, 204, 206, 301, 302, 303, 304, 307, 308, 403, 429]
+
+# ── Exclusions ─────────────────────────────────────────────────────────
+exclude_path = [
+  "_site",
+  "_freeze",
+  "site",                 # legacy MkDocs output still in tree
+  "node_modules",
+  ".venv",
+  ".pytest_cache",
+  "docs/session-logs",    # dev logs, not published
+]
+
+# Regex-based URL exclusions — for links we know will 404 locally or
+# that are intentional placeholders.
+exclude = [
+  # localhost / loopback
+  "^https?://localhost",
+  "^https?://127\\.0\\.0\\.1",
+  "^https?://0\\.0\\.0\\.0",
+  # example.com placeholders
+  "^https?://(www\\.)?example\\.(com|org|net)",
+  # private / internal references sometimes embedded in examples
+  "^https?://.*\\.local(/|$)",
+  # mailto (lychee flags unreachable SMTP; not our concern)
+  "^mailto:",
+  # tel links
+  "^tel:",
+]
+
+# ── GitHub token ───────────────────────────────────────────────────────
+# Use GITHUB_TOKEN env var to avoid anonymous rate limits on github.com.
+# The workflow wires this up automatically.
