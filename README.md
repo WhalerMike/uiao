@@ -7,6 +7,23 @@
 
 → **[Customer Documentation Platform architecture (federal pair)](https://github.com/WhalerMike/uiao-core/blob/main/ARCHITECTURE.md)** — canonical in `uiao-core/ARCHITECTURE.md`. Defines how this repo's `customer-documents/` tree, image pipeline, Quarto rendering, CI workflows, and Azure Government migration inherit from `uiao-core` canon. **Out of scope:** `uiao-gos` (commercial product, separate architecture).
 
+## Compliance with Presidential Executive Orders
+
+The UIAO documentation set is written against the provisions of the
+following Executive Orders:
+
+- **EO 14144** (January 16, 2025) — *Strengthening and Promoting Innovation in the Nation's Cybersecurity*
+- **EO 14306** (June 6, 2025) — *Sustaining Select Efforts to Strengthen the Nation's Cybersecurity; amending EO 13694 and EO 14144*
+- **EO 14390** (March 6, 2026) — *Combating Cybercrime, Fraud, and Predatory Schemes Against American Citizens* (paired with *President Trump's Cyber Strategy for America*, March 2026)
+
+These orders drive UIAO's emphasis on Zero Trust architecture, federal
+cybersecurity modernization, FedRAMP / cloud transition, post-quantum
+cryptography, and continuous compliance. The canonical mapping between
+UIAO artifacts and EO provisions lives in [`uiao-core/canon/compliance/executive-orders.md`](https://github.com/WhalerMike/uiao-core/blob/main/canon/compliance/executive-orders.md)
+(UIAO_004). This repository is a **consumer** of that canon — do not
+back-fill EO citations into `uiao-docs` artifacts without a
+corresponding entry in UIAO_004.
+
 ---
 
 ## What This Repository Is
@@ -113,4 +130,4 @@ UIAO (Unified Identity-Addressing-Overlay Architecture) is a federal network mod
 | `pr-preview.yml` | Renders preview for pull requests |
 | `changelog.yml` | Auto-generates CHANGELOG.md |
 | `repo-hygiene.yml` | Validates internal links and directory structure |
-| `verify-signa
+| `verif
