@@ -53,7 +53,7 @@ def parse_frontmatter(filepath: Path) -> tuple[dict | None, str]:
     """Extract YAML frontmatter and body from a markdown file."""
     try:
         content = filepath.read_text(encoding="utf-8")
-    except Exception as e:
+    except Exception:
         return None, ""
     if not content.startswith("---"):
         return None, content
@@ -237,7 +237,7 @@ def main():
         print(f"ERROR: Path not found: {args.path}", file=sys.stderr)
         sys.exit(2)
     base_path = target if target.is_dir() else target.parent
-    print(f"UIAO Metadata Validator")
+    print("UIAO Metadata Validator")
     print(f"{'='*50}")
     print(f"Target: {args.path}")
     print(f"Timestamp: {datetime.utcnow().isoformat()}Z")
