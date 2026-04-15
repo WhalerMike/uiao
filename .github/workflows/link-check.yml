@@ -44,6 +44,13 @@ jobs:
           restore-keys: |
             lychee-cache-
 
+      - name: Count input files (sanity check)
+        shell: bash
+        run: |
+          md=$(find . -name '*.md' -not -path './.git/*' -not -path './node_modules/*' -not -path './.pytest_cache/*' -not -path './tools/__pycache__/*' | wc -l)
+          echo "Found ${md} .md files"
+          echo "INPUT_MD=${md}" >> "$GITHUB_ENV"
+
       - name: Run lychee
         id: lychee
         uses: lycheeverse/lychee-action@v2
@@ -51,7 +58,8 @@ jobs:
           args: >-
             --config .lychee.toml
             --cache
-            './**/*.md'
+            --extensions md
+            .
           output: ./lychee-report.md
           fail: ${{ github.event_name == 'pull_request' || github.event.inputs.fail_on_broken == 'true' }}
           token: ${{ secrets.GITHUB_TOKEN }}
