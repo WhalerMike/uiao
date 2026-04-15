@@ -1,0 +1,90 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-5(5)
+# Title      : Separation of Duties | Account Types
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AC-5(5)
+title: "Separation of Duties | Account Types"
+family: Access Control
+status: not-implemented
+
+implemented_by:
+  - entra-id
+  - cyberark-pas
+  - servicenow-itsm
+  - microsoft-sentinel
+
+evidence:
+  - entra-id-role-separation-policy-configuration
+  - cyberark-privileged-account-type-inventory
+  - servicenow-role-assignment-records
+  - sentinel-privileged-activity-monitoring-alerts
+
+parameters:
+  - id: ac_5_5_account_types
+    description: >-
+      Distinct account types defined by the organization to enforce
+      separation of duties across personnel and functions.
+    value: "Standard user accounts, privileged administrator accounts (separate from daily-use accounts), service accounts, functional/shared accounts, and emergency break-glass accounts — each with distinct Entra ID identities"
+  - id: ac_5_5_separation_enforcement
+    description: >-
+      Technical mechanism enforcing separation between daily-use
+      and privileged account types.
+    value: "Privileged functions accessible only through separate Entra ID privileged accounts; CyberArk PAS required for privileged session initiation; daily-use accounts denied privileged role assignments"
+
+narrative: |
+  **Distinct Account Type Architecture**
+  The UIAO system enforces separation of duties through a
+  strict account type architecture in which individuals requiring
+  privileged access maintain two distinct Entra ID identities:
+  a standard daily-use account for email, collaboration, and
+  general productivity workloads, and a separate privileged
+  administrator account used exclusively for administrative
+  functions. The account types defined in PARAM ac_5_5_account_types
+  are enforced through Entra ID directory policies that prohibit
+  assignment of privileged roles (Global Administrator, Security
+  Administrator, Privileged Role Administrator, etc.) to standard
+  daily-use accounts. This architectural separation prevents
+  accidental or malicious escalation of privilege from daily-use
+  sessions and supports **AC-6** (Least Privilege) and **IA-2**
+  (Identification and Authentication).
+
+  **Privileged Account Access Gating via CyberArk**
+  All privileged administrator accounts are onboarded to CyberArk
+  Privileged Access Security, requiring authenticated check-out of
+  credentials or direct PSM session initiation before any privileged
+  function can be performed. CyberArk enforces that privileged
+  accounts cannot be used for general-purpose activities by
+  restricting session targets to authorized administrative systems
+  only. The separation between account types is technically enforced
+  rather than relying solely on policy, satisfying the intent of
+  PARAM ac_5_5_separation_enforcement and reducing insider threat
+  risk consistent with **PS-3** (Personnel Screening) objectives.
+
+  **Service and Functional Account Separation**
+  Service accounts and functional accounts are provisioned as
+  non-interactive Entra ID accounts with no mailbox, no MFA bypass,
+  and no interactive sign-in capability. These accounts are
+  restricted to specific application workloads through Entra ID
+  Conditional Access and Managed Identity assignments, ensuring
+  they cannot be co-opted for human interactive access. ServiceNow
+  tracks the ownership, purpose, and access scope of every service
+  account in the configuration management database.
+
+  **Monitoring Separation of Duties Compliance**
+  Microsoft Sentinel monitors for violations of the account
+  separation model, including privileged role assignments to
+  standard accounts, sign-ins from privileged accounts to
+  non-administrative targets, and cross-account activity
+  correlation that may indicate privilege misuse. Alerts route
+  to ServiceNow ITSM for investigation under **IR-4** (Incident
+  Handling) procedures, with findings tracked through the Plan
+  of Action and Milestones (POA&M) process under **CA-5**.
+
+related_controls:
+  - AC-2   # Account Management
+  - AC-5   # Separation of Duties
+  - AC-6   # Least Privilege
+  - IA-2   # Identification and Authentication
+  - PS-3   # Personnel Screening
+  - IR-4   # Incident Handling

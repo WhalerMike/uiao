@@ -1,0 +1,92 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AU-3(1)
+# Title      : Content of Audit Records | Additional Audit Information
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AU-3(1)
+title: "Content of Audit Records | Additional Audit Information"
+family: Audit and Accountability
+status: not-implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - entra-id
+  - crowdstrike-falcon
+  - palo-alto-ngfw
+
+evidence:
+  - sentinel-log-schema-documentation
+  - entra-id-audit-log-field-inventory
+  - crowdstrike-event-schema-additional-fields
+  - palo-alto-ngfw-log-field-reference
+
+parameters:
+  - id: au_3_1_additional_fields
+    description: >-
+      Additional audit record fields generated beyond the baseline
+      AU-3 content requirements to support enhanced forensic analysis.
+    value: "Source and destination IP, port, protocol, geolocation, user agent string, session ID, Entra ID correlation ID, CrowdStrike process lineage (parent PID, command line), NGFW threat category and signature ID"
+  - id: au_3_1_enrichment_source
+    description: >-
+      Platform responsible for enriching audit records with
+      additional contextual information.
+    value: "Microsoft Sentinel enriches raw audit events with threat intelligence, geolocation, and UEBA behavioral scores at ingestion time"
+
+narrative: |
+  **Enhanced Audit Record Content Beyond Baseline**
+  The UIAO system generates audit records that include additional
+  information beyond the baseline AU-3 content requirements,
+  providing enriched forensic context that supports investigation,
+  correlation, and anomaly detection. All audit sources contributing
+  to Microsoft Sentinel are configured to include the additional
+  fields defined in PARAM au_3_1_additional_fields, ensuring that
+  each audit record carries sufficient context to reconstruct the
+  full security-relevant circumstances of the event without requiring
+  separate data lookups. This satisfies the AU-3(1) requirement for
+  additional audit information and enhances the investigative value
+  of the audit trail for **IR-4** (Incident Handling) and
+  **CA-7** (Continuous Monitoring) activities.
+
+  **Entra ID Audit Log Enrichment**
+  Microsoft Entra ID audit logs include extended fields beyond
+  standard event type and timestamp, capturing the Entra ID
+  correlation ID (linking authentication and authorization events
+  in the same user session), the conditional access policy name
+  that evaluated the request, the device compliance state at
+  the time of sign-in, the application ID and display name, and
+  the client IP geolocation. These additional fields are streamed
+  to Microsoft Sentinel and indexed for rapid query, enabling
+  analysts to reconstruct authentication session context for any
+  identity event within the retention window.
+
+  **CrowdStrike Process Lineage and Command-Line Capture**
+  CrowdStrike Falcon sensors capture full process execution context
+  including parent process ID, grandparent process ID, command-line
+  arguments, file hash, and user security identifier for every
+  process creation event on managed endpoints. This process lineage
+  information enables analysts to trace attack kill chains from
+  initial execution through lateral movement without relying on
+  incomplete OS-level audit logs. Process lineage data is forwarded
+  to Microsoft Sentinel via the CrowdStrike Falcon Data Replicator,
+  supporting **SI-4** (System Monitoring) and **AU-12** (Audit
+  Record Generation) forensic requirements.
+
+  **Sentinel Threat Intelligence Enrichment**
+  Microsoft Sentinel automatically enriches ingested audit records
+  with threat intelligence indicators sourced from Microsoft Defender
+  Threat Intelligence and configured TAXII feeds, as defined in
+  PARAM au_3_1_enrichment_source. IP addresses, domains, and file
+  hashes observed in audit events are cross-referenced against
+  threat intelligence at ingestion time, annotating matching records
+  with indicator severity, confidence, and attribution metadata.
+  This enrichment elevates the information content of audit records
+  beyond raw event data, directly supporting **AU-6** (Audit Record
+  Review, Analysis, and Reporting) analysis workflows.
+
+related_controls:
+  - AU-3   # Content of Audit Records
+  - AU-6   # Audit Record Review, Analysis, and Reporting
+  - AU-12  # Audit Record Generation
+  - IR-4   # Incident Handling
+  - CA-7   # Continuous Monitoring
+  - SI-4   # System Monitoring

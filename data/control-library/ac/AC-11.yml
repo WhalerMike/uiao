@@ -1,0 +1,75 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-11
+# Title      : Device Lock
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AC-11
+title: Device Lock
+family: Access Control
+status: implemented
+
+implemented_by:
+    - intune-mdm
+    - group-policy
+    - entra-id
+
+evidence:
+    - intune-device-lock-compliance-policy
+    - group-policy-screen-lock-settings
+    - intune-compliance-report-device-lock
+
+parameters:
+    - id: PARAM-AC-011-001
+      description: >-
+          Period of inactivity after which the system initiates
+          a device lock.
+      value: "15 minutes"
+    - id: PARAM-AC-011-002
+      description: >-
+          Information concealed on the display during device lock
+          via pattern-hiding mechanism.
+      value: "Screen saver with organization-approved image; all session content hidden"
+
+narrative: |
+  **Intune MDM Device Lock Enforcement**
+  The organization enforces device lock after PARAM-AC-011-001
+  (15 minutes) of inactivity on all managed endpoints through
+  Microsoft Intune MDM compliance policies. Intune device
+  configuration profiles deploy screen timeout and lock
+  settings to Windows, iOS, and Android managed devices.
+  Devices that do not comply with the lock policy are marked
+  non-compliant and blocked from accessing cloud resources
+  via Entra ID Conditional Access device compliance gates.
+  Compliance status is reported to the Intune admin console
+  and forwarded to Microsoft Sentinel, supporting **CM-6**
+  (Configuration Settings) and **SI-4** (System Monitoring).
+
+  **Windows Group Policy Screen Lock**
+  On-premises and hybrid-joined Windows devices enforce
+  screen lock through Group Policy Objects (GPO). The
+  screensaver timeout is set to 15 minutes with password
+  protection on resume enabled. The screensaver displays
+  an organization-approved image (PARAM-AC-011-002),
+  concealing all session content. GPO settings are validated
+  through Intune configuration compliance for hybrid-joined
+  devices, ensuring consistent enforcement across cloud and
+  on-premises management planes.
+
+  **Mobile Device Lock**
+  Intune app protection policies enforce device-level lock
+  requirements on managed mobile devices. iOS and Android
+  devices must have passcode or biometric lock enabled with
+  a maximum 15-minute inactivity timeout. Devices without
+  compliant lock settings are blocked from accessing
+  organization data through managed applications. Lock
+  configuration is enforced independently of user action,
+  consistent with **AC-7** (Unsuccessful Logon Attempts)
+  and **AC-12** (Session Termination) requirements.
+
+related_controls:
+    - AC-2   # Account Management
+    - AC-7   # Unsuccessful Logon Attempts
+    - AC-12  # Session Termination
+    - CM-6   # Configuration Settings
+    - IA-2   # Identification and Authentication
+    - SI-4   # System Monitoring
