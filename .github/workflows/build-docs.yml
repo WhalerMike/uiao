@@ -3,10 +3,14 @@ name: Build and Deploy Documentation
 on:
   push:
     branches: [ "main" ]
+  schedule:
+    # Nightly at 06:00 UTC - renders all heavy formats (DOCX/PPTX/PDF/EPUB)
+    # so the downloads index stays fresh. Push builds stay HTML-only for speed.
+    - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
       render_heavy_formats:
-        description: 'Also render PPTX and PDF (resource-intensive)'
+        description: 'Also render DOCX/PPTX/PDF/EPUB (resource-intensive)'
         required: false
         default: 'false'
         type: choice
@@ -43,13 +47,14 @@ jobs:
         uses: quarto-dev/quarto-actions/setup@v2
 
       - name: Install TinyTeX for PDF support
-        if: github.event.inputs.render_heavy_formats == 'true'
+        if: github.event.inputs.render_heavy_formats == 'true' || github.event_name == 'schedule'
         run: quarto install tinytex
 
       - name: Render HTML site
         run: quarto render --to html
 
       - name: Render DOCX files
+        if: github.event.inputs.render_heavy_formats == 'true' || github.event_name == 'schedule'
         run: |
           mkdir -p _site/downloads
           find docs -name "*.qmd" | sort | while read f; do
@@ -59,7 +64,7 @@ jobs:
           done
 
       - name: Render PPTX files
-        if: github.event.inputs.render_heavy_formats == 'true'
+        if: github.event.inputs.render_heavy_formats == 'true' || github.event_name == 'schedule'
         run: |
           find docs -name "*.qmd" | sort | while read f; do
             subdir=$(dirname "$f" | sed 's|^docs/||')
@@ -68,7 +73,7 @@ jobs:
           done
 
       - name: Render PDF files
-        if: github.event.inputs.render_heavy_formats == 'true'
+        if: github.event.inputs.render_heavy_formats == 'true' || github.event_name == 'schedule'
         run: |
           find docs -name "*.qmd" | sort | while read f; do
             subdir=$(dirname "$f" | sed 's|^docs/||')
@@ -77,7 +82,7 @@ jobs:
           done
 
       - name: Render EPUB files
-        if: github.event.inputs.render_heavy_formats == 'true'
+        if: github.event.inputs.render_heavy_formats == 'true' || github.event_name == 'schedule'
         run: |
           find docs -name "*.qmd" | sort | while read f; do
             subdir=$(dirname "$f" | sed 's|^docs/||')
