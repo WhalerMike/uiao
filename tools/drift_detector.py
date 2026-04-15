@@ -399,7 +399,7 @@ def main():
     target = Path(args.path)
     base_path = target if target.is_dir() else target.parent
     core_path = Path(args.cross_repo) if args.cross_repo else None
-    print(f"UIAO Drift Detector")
+    print("UIAO Drift Detector")
     print(f"{'='*50}")
     print(f"Mode: {args.mode}")
     print(f"Target: {args.path}")
