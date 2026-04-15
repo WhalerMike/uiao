@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 try:
-    import yaml
+    import yaml  # noqa: F401  # presence check; importer exits if unavailable
 except ImportError:
     print("ERROR: PyYAML required. Install: pip install pyyaml", file=sys.stderr)
     sys.exit(1)
@@ -140,7 +140,6 @@ def collect_owner_metrics(metrics_dir: Path) -> list[dict]:
         try:
             data = json.loads(rf.read_text(encoding="utf-8"))
             for finding in data.get("findings", []):
-                file_path = finding.get("file", "")
                 # Attempt to extract owner from findings context
                 # In a real implementation, this would parse frontmatter
                 owner = finding.get("owner", "unassigned")
@@ -326,7 +325,7 @@ def main():
     schema_path = Path(args.schema)
     metrics_dir = Path(args.metrics_dir)
     output_dir = Path(args.output)
-    print(f"UIAO Dashboard Exporter")
+    print("UIAO Dashboard Exporter")
     print(f"{'='*50}")
     print(f"Timestamp: {datetime.utcnow().isoformat()}Z")
     print()
