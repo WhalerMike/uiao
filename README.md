@@ -3,7 +3,7 @@
 **Repository:** `uiao-docs`
 **Role:** Canonical documentation source — Quarto pipeline, YAML schemas, rendered site
 **Live site:** [whalermike.github.io/uiao-docs](https://whalermike.github.io/uiao-docs/docs/index.html)
-**License:** [MIT](LICENSE)
+**License:** [Apache 2.0](LICENSE)
 
 → **[Customer Documentation Platform architecture (federal pair)](https://github.com/WhalerMike/uiao-core/blob/main/ARCHITECTURE.md)** — canonical in `uiao-core/ARCHITECTURE.md`. Defines how this repo's `customer-documents/` tree, image pipeline, Quarto rendering, CI workflows, and Azure Government migration inherit from `uiao-core` canon. **Out of scope:** `uiao-gos` (commercial product, separate architecture).
 
