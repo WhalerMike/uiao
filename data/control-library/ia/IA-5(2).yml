@@ -1,0 +1,93 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-5(2)
+# Title      : Authenticator Management | Public Key-Based Authentication
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IA-5(2)
+title: "Authenticator Management | Public Key-Based Authentication"
+family: Identification and Authentication
+status: not-implemented
+
+implemented_by:
+  - entra-id
+  - intune-mdm
+  - active-directory-certificate-services
+  - cyberark-pas
+
+evidence:
+  - entra-id-certificate-based-auth-configuration
+  - intune-scep-certificate-profile-deployment-report
+  - ad-certificate-services-ca-policy-documentation
+  - windows-hello-business-deployment-report
+
+parameters:
+  - id: ia_5_2_pki_infrastructure
+    description: >-
+      Public key infrastructure components used to issue and
+      manage certificates for public key-based authentication.
+    value: "Microsoft Active Directory Certificate Services (AD CS) with Enterprise CA for internal device and user certificates; Microsoft Intune SCEP integration for automated certificate deployment to managed endpoints; Federal PKI trust for PIV certificates"
+  - id: ia_5_2_private_key_protection
+    description: >-
+      Technical mechanism used to protect private keys associated
+      with public key authentication certificates.
+    value: "Windows Hello for Business uses TPM 2.0 hardware to generate and store private keys that cannot be exported; device certificates protected by TPM-backed key storage; Intune prevents software-only key generation for managed device certificates"
+
+narrative: |
+  **Public Key-Based Authentication Architecture**
+  The UIAO system implements public key-based authentication for
+  devices and users, with the PKI infrastructure defined in PARAM
+  ia_5_2_pki_infrastructure providing the foundation for certificate
+  lifecycle management. Microsoft Entra ID Certificate-Based
+  Authentication (CBA) enables users and devices to authenticate
+  using X.509 certificates issued by trusted CAs, providing
+  phishing-resistant authentication for cloud resources without
+  requiring a separate token device. Windows Hello for Business
+  implements asymmetric key pair authentication where the private
+  key is generated in and protected by the device's TPM 2.0,
+  and authentication involves the relying party issuing a challenge
+  that is signed by the TPM-protected private key, satisfying
+  public key-based authentication requirements. This satisfies
+  the IA-5(2) requirements and supports **IA-2(8)** (Replay
+  Resistant) and **IA-2(12)** (Acceptance of PIV Credentials)
+  objectives.
+
+  **Device Certificate Deployment via Intune SCEP**
+  Microsoft Intune deploys device authentication certificates
+  to all managed endpoints using Simple Certificate Enrollment
+  Protocol (SCEP) integrated with Active Directory Certificate
+  Services. Device certificates are used for 802.1X network
+  access authentication at Cisco Catalyst network access
+  switches, enabling device identity verification independent
+  of user credentials. The certificate deployment process
+  ensures that private keys are generated on the device using
+  the TPM key provider as required by PARAM ia_5_2_private_key_protection,
+  preventing certificate export and ensuring that the private
+  key material never leaves the protected TPM hardware.
+
+  **Certificate Path Validation and Revocation**
+  All public key-based authentication implementations in the
+  UIAO environment validate the certificate path to a trusted
+  CA anchor and check certificate revocation status via OCSP
+  or CRL before accepting authentication. Entra ID CBA enforces
+  online revocation checking for all certificate-based
+  authentication events. Device certificates issued by AD CS
+  are automatically revoked when a device is decommissioned
+  or removed from Intune management, ensuring that retired
+  device certificates cannot be used for unauthorized access.
+
+  **PIV Certificate Support**
+  The UIAO PKI trust configuration includes the Federal Common
+  Policy CA G2 as a trusted root for PIV credential acceptance,
+  enabling federal agency users with PIV cards to authenticate
+  using their PIV-issued certificates. PIV certificate path
+  validation follows the Federal PKI certificate path validation
+  procedures, including checking against the federal OCSP
+  infrastructure for real-time revocation status.
+
+related_controls:
+  - IA-2(8)  # Replay Resistant
+  - IA-2(12) # Acceptance of PIV Credentials
+  - IA-5     # Authenticator Management
+  - IA-3     # Device Identification and Authentication
+  - SC-12    # Cryptographic Key Establishment and Management
+  - SC-13    # Cryptographic Protection
