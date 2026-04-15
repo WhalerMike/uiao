@@ -1,0 +1,79 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-7(7)
+# Title      : Boundary Protection | Split Tunneling for Remote Devices
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SC-7(7)
+title: "Boundary Protection | Split Tunneling for Remote Devices"
+family: System and Communications Protection
+status: not-implemented
+
+implemented_by:
+  - palo-alto-ngfw
+  - intune-mdm
+  - entra-id
+  - microsoft-sentinel
+
+evidence:
+  - vpn-split-tunnel-prevention-configuration-documentation
+  - intune-vpn-profile-configuration-reports
+  - palo-alto-globalprotect-configuration
+  - microsoft-sentinel-vpn-tunnel-monitoring-alerts
+
+parameters:
+  - id: PARAM-SC-007-7-001
+    description: >-
+      Policy governing split tunneling for remote devices connecting
+      to the UIAO system.
+    value: "Split tunneling is prohibited for remote access to UIAO systems; all remote device traffic routed through organizational VPN and Palo Alto NGFW inspection"
+  - id: PARAM-SC-007-7-002
+    description: >-
+      Technical enforcement mechanism preventing split tunneling on
+      remote access devices.
+    value: "Palo Alto GlobalProtect VPN enforces full-tunnel mode; Intune compliance policy blocks VPN profiles that permit split tunneling"
+
+narrative: |
+  **Split Tunneling Prohibition Policy**
+  The organization prevents split tunneling for remote devices connecting
+  to the UIAO system (PARAM-SC-007-7-001). Split tunneling allows remote
+  devices to simultaneously maintain VPN connectivity to the organizational
+  network and direct connectivity to external networks, creating a potential
+  bypass path for malicious traffic or data exfiltration. The UIAO
+  remote access policy explicitly prohibits split tunneling configurations,
+  requiring that all remote device traffic be routed through the
+  organizational VPN and inspected by Palo Alto NGFW.
+
+  **Technical Enforcement via GlobalProtect and Intune**
+  Palo Alto GlobalProtect VPN is configured in full-tunnel mode,
+  routing all remote device traffic through the organizational security
+  perimeter for inspection (PARAM-SC-007-7-002). GlobalProtect enforces
+  this configuration by applying security policies that prevent direct
+  internet access while the VPN is connected. Microsoft Intune compliance
+  policies verify that VPN client configurations on managed endpoints
+  enforce full-tunnel mode, flagging non-compliant configurations and
+  restricting access to UIAO resources from non-compliant devices via
+  Entra ID Conditional Access.
+
+  **Entra ID Conditional Access Enforcement**
+  Entra ID Conditional Access policies require that remote access
+  to UIAO resources occurs only from compliant, managed devices.
+  Devices that circumvent the full-tunnel VPN requirement would fail
+  device compliance checks and be blocked from accessing organizational
+  resources. This identity-layer enforcement complements the network-layer
+  enforcement provided by GlobalProtect.
+
+  **Monitoring and Detection**
+  Microsoft Sentinel monitors GlobalProtect VPN telemetry for indicators
+  of split tunneling attempts or unauthorized VPN configuration changes.
+  Alerts on unusual traffic patterns from remote access sessions, such
+  as traffic bypassing the VPN, are correlated with endpoint telemetry
+  from Intune to identify potential policy violations. Findings generate
+  ServiceNow incidents for ISSO investigation, supporting **AC-17**
+  (Remote Access) monitoring requirements.
+
+related_controls:
+  - SC-7    # Boundary Protection
+  - AC-17   # Remote Access
+  - AC-4    # Information Flow Enforcement
+  - SI-4    # System Monitoring
+  - CM-6    # Configuration Settings

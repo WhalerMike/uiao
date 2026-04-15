@@ -1,0 +1,91 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-2(12)
+# Title      : Identification and Authentication | Acceptance of PIV Credentials
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IA-2(12)
+title: "Identification and Authentication | Acceptance of PIV Credentials"
+family: Identification and Authentication
+status: not-implemented
+
+implemented_by:
+  - entra-id
+  - active-directory-on-premises
+  - intune-mdm
+  - microsoft-sentinel
+
+evidence:
+  - entra-id-certificate-based-authentication-config
+  - active-directory-smart-card-logon-policy
+  - entra-id-piv-cac-federation-configuration
+  - intune-smart-card-enforcement-policy
+
+parameters:
+  - id: ia_2_12_piv_acceptance_mechanism
+    description: >-
+      Technical mechanism through which PIV credentials are
+      accepted for authentication to the UIAO system.
+    value: "Microsoft Entra ID Certificate-Based Authentication (CBA) with federal PKI CA trust anchors; Active Directory Smart Card Logon for legacy on-premises systems; ADFS federation for PIV-enabled agency partner access"
+  - id: ia_2_12_piv_required_systems
+    description: >-
+      System resources for which PIV credential acceptance
+      is required as per FedRAMP guidance.
+    value: "All federal agency users accessing UIAO systems must authenticate with PIV; PIV or equivalent phishing-resistant credentials required for privileged administrative access"
+
+narrative: |
+  **PIV Credential Acceptance Implementation**
+  The UIAO system accepts Personal Identity Verification (PIV)
+  credentials issued by federal agencies for authentication,
+  implementing the technical mechanisms defined in PARAM
+  ia_2_12_piv_acceptance_mechanism. Microsoft Entra ID
+  Certificate-Based Authentication (CBA) is configured to trust
+  the Federal Common Policy CA G2 and subordinate issuing CAs
+  in the Federal PKI trust hierarchy, enabling users presenting
+  PIV card-derived certificates to authenticate directly to
+  Entra ID without requiring a separate identity provider
+  federation. The CBA configuration maps PIV certificate
+  attributes (subject DN, UPN SAN, email SAN) to Entra ID
+  user accounts for authorization. This satisfies the IA-2(12)
+  FedRAMP requirement to accept PIV credentials and supports
+  **IA-2** (Identification and Authentication) and **IA-8(1)**
+  (Acceptance of PIV Credentials from Other Agencies) objectives.
+
+  **Smart Card Logon for On-Premises Systems**
+  Active Directory Group Policy enforces smart card logon
+  requirements for privileged access to on-premises systems
+  within the UIAO environment, including domain controllers,
+  privileged workstations, and network infrastructure management
+  interfaces. PIV cards satisfy the smart card logon requirement
+  when the federal CA certificate chain resolves to a trusted
+  Enterprise CA configured in Active Directory. This ensures
+  that PIV-enabled federal personnel can use their PIV card
+  for both cloud and on-premises privileged access without
+  requiring a separate organizational credential.
+
+  **PIV Credential Mapping and Account Provisioning**
+  Federal agency users accessing UIAO systems through PIV
+  authentication are provisioned in Entra ID through an
+  identity governance process that maps PIV certificate
+  attributes to organizational roles and access rights.
+  Entra ID External Identities (B2B) is used for agency
+  user account provisioning, with account lifecycle
+  governance managed through Entra ID Access Reviews to
+  ensure that federal user access remains current and
+  authorized throughout the engagement.
+
+  **PIV Authentication Monitoring**
+  Microsoft Sentinel monitors PIV-based authentication events
+  from Entra ID CBA sign-in logs, generating alerts for
+  certificate-based authentication failures, expired PIV
+  certificates, and attempts to authenticate with revoked
+  certificates. Certificate revocation status is validated
+  against federal OCSP responders at authentication time,
+  ensuring that revoked PIV credentials are rejected.
+
+related_controls:
+  - IA-2    # Identification and Authentication
+  - IA-8(1) # Acceptance of PIV Credentials from Other Agencies
+  - IA-5(2) # Public Key-Based Authentication
+  - IA-8    # Identification and Authentication (Non-Org Users)
+  - AC-2    # Account Management
+  - AU-2    # Event Logging
