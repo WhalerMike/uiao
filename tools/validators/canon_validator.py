@@ -9,7 +9,6 @@ Usage:
 """
 
 import sys
-import json
 from pathlib import Path
 
 SCHEMA_PATH = Path("tools/schema/canon_schema.json")
