@@ -1,0 +1,82 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-7(18)
+# Title      : Boundary Protection | Fail Secure
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SC-7(18)
+title: "Boundary Protection | Fail Secure"
+family: System and Communications Protection
+status: not-implemented
+
+implemented_by:
+  - palo-alto-ngfw
+  - cisco-ise
+  - entra-id
+  - microsoft-sentinel
+
+evidence:
+  - palo-alto-ha-fail-secure-configuration-documentation
+  - cisco-ise-fail-closed-configuration-documentation
+  - entra-id-conditional-access-fail-closed-policy
+  - boundary-device-failover-test-records
+
+parameters:
+  - id: PARAM-SC-007-18-001
+    description: >-
+      Failure mode configuration for boundary protection devices to
+      ensure traffic is denied rather than permitted during device failure.
+    value: "Palo Alto NGFW configured for fail-closed mode; Cisco ISE fail-closed posture denies network access when ISE is unreachable"
+  - id: PARAM-SC-007-18-002
+    description: >-
+      High availability and redundancy configuration for boundary
+      protection devices to minimize failure events.
+    value: "Palo Alto NGFW deployed in Active/Passive HA pair; Cisco ISE deployed in redundant node cluster with RADIUS fail-closed configuration"
+
+narrative: |
+  **Fail-Secure Configuration of Boundary Devices**
+  The organization configures boundary protection devices to fail in
+  a secure state that denies all communications rather than permitting
+  unrestricted traffic (PARAM-SC-007-18-001). Palo Alto NGFW firewalls
+  are configured in fail-closed mode, meaning that in the event of
+  a firewall process failure, all traffic traversal is denied until
+  the failure is resolved. This prevents an adversary from exploiting
+  a firewall failure to gain unrestricted network access. Cisco ISE
+  is configured with fail-closed RADIUS behavior, denying network
+  access when the ISE infrastructure is unreachable rather than falling
+  back to open access.
+
+  **High Availability to Minimize Failure Impact**
+  To minimize boundary protection failures, devices are deployed with
+  high availability configurations (PARAM-SC-007-18-002). Palo Alto
+  NGFW is deployed as an Active/Passive High Availability pair with
+  sub-second failover, ensuring that HA failover events do not result
+  in unprotected traffic windows. Cisco ISE is deployed as a redundant
+  node cluster with multiple Policy Service Nodes, ensuring that
+  individual node failures do not disrupt network access control
+  functions. HA configuration and failover testing are documented
+  and reviewed annually.
+
+  **Entra ID Conditional Access Fail-Secure**
+  Entra ID Conditional Access policies are designed to fail securely
+  at the identity layer. When policy evaluation cannot complete due to
+  service unavailability, the default behavior is to deny access
+  rather than grant it. This ensures that identity-layer boundary
+  controls maintain their protective posture even during partial
+  service disruptions.
+
+  **Failure Event Monitoring**
+  Microsoft Sentinel monitors boundary device health metrics and
+  HA failover events, alerting the ISSO when fail-secure conditions
+  are triggered. Boundary device failure events generate high-priority
+  ServiceNow incidents for immediate investigation and resolution.
+  Failover events that reveal single points of failure in boundary
+  protection architecture are tracked as POA&M items, supporting
+  **CP-7** (Alternative Processing Site) and **CP-9** (System Backup)
+  continuity requirements.
+
+related_controls:
+  - SC-7    # Boundary Protection
+  - CP-7    # Alternative Processing Site
+  - SI-4    # System Monitoring
+  - IR-4    # Incident Handling
+  - SC-7(3) # Access Points

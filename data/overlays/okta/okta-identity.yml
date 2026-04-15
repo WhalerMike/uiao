@@ -1,0 +1,61 @@
+# Okta Identity Overlay
+# Replaces Microsoft Entra ID with Okta Identity Cloud for the Identity
+# and Endpoint control planes. Demonstrates vendor-neutral swap capability.
+# Activate by replacing 'microsoft' with 'okta' in data/overlay-config.yml.
+
+overlay_meta:
+  vendor: okta
+  product: okta-identity-cloud
+  description: "Okta Identity Cloud platform with Adaptive MFA and Lifecycle Management"
+
+control_plane_overrides:
+  - id: identity
+    subtitle: "Okta Identity Cloud + ICAM + Zero Trust"
+    components:
+      - name: "Okta Identity Cloud"
+        role: "Primary Identity Provider"
+        capabilities:
+          - Adaptive MFA
+          - Okta Verify (FIDO2)
+          - Identity Governance
+          - Universal Directory
+          - Authentication Strength Policies
+      - name: "ICAM Governance"
+        role: "Identity governance and compliance"
+        capabilities:
+          - NIST 800-63 Alignment
+          - OMB M-19-17 Compliance
+          - Credentialing
+          - Access Reviews (Okta Identity Governance)
+          - Privileged Access Management
+          - Joiner/Mover/Leaver Automation (Okta Workflows)
+      - name: "Okta Policy Engine"
+        role: "Continuous access evaluation"
+        capabilities:
+          - "Identity + Device + Location + Risk"
+          - "Continuous Access Evaluation"
+          - "Policy decisions exported to SD-WAN + Telemetry"
+
+  - id: endpoint
+    components:
+      - name: "CrowdStrike Falcon"
+        role: "Endpoint detection and response"
+      - name: "Okta Device Trust"
+        role: "Configuration and compliance management"
+      - name: "Okta Device Assurance"
+        role: "Device identity anchoring"
+    device_identity:
+      anchored_in:
+        - "Okta device objects"
+        - "Certificates (TPM-backed)"
+        - "Okta Device Assurance compliance state"
+      used_for:
+        - "Adaptive MFA"
+        - "Network segmentation decisions"
+        - "Segmentation boundaries"
+
+fedramp_alignment_overrides:
+  - plane_id: identity
+    evidence_source: "Okta System Log and risk event feeds"
+  - plane_id: endpoint
+    evidence_source: "CrowdStrike Falcon telemetry + Okta Device Assurance signals"
