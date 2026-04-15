@@ -11,7 +11,7 @@
 If you discover a security vulnerability, please **do not** open a public GitHub issue.
 
 Instead, please report it via GitHub's private vulnerability reporting feature:
-[Report a Vulnerability](../../security/advisories/new)
+[Report a Vulnerability](https://github.com/WhalerMike/uiao-core/security/advisories/new)
 
 You can expect an initial response within **72 hours** and a resolution timeline within **14 days** for critical issues.
 
