@@ -17,5 +17,28 @@ dependencies = [
     "jsonschema>=4.0",
 ]
 
-# No [project.scripts] — CLI lives in uiao-impl.
-# No [tool.setuptools.packages.find] — uiao-core is not a Python package.
+[project.optional-dependencies]
+# Minimal developer/CI extras. Canon enforcement tooling does not require
+# a heavy stack — ruff/mypy/pytest are here so workflows like ai-security-audit
+# and security-scan can install with `pip install -e ".[dev]"` without
+# reinventing their own pin list.
+dev = [
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "pip-audit>=2.7",
+    "safety>=3.2",
+]
+
+# uiao-core ships canonical data (YAML/JSON/Markdown) plus ``tools/`` and
+# ``scripts/`` helper modules invoked directly via ``python <path>``. It does
+# NOT expose a Python import package — the runtime library and CLI live in
+# the sibling ``uiao-impl`` repository. Declaring an empty package list here
+# disables setuptools' auto-discovery (which otherwise errors with
+# "Multiple top-level packages discovered in a flat-layout" because the repo
+# contains many top-level directories: ``adapters/``, ``analytics/``,
+# ``canon/``, ``generation-inputs/``, etc.). ``pip install -e .`` now
+# succeeds and only installs the dependencies above.
+[tool.setuptools]
+packages = []
