@@ -1,18 +1,23 @@
 name: Lint
 
+# Post four-repo split this repo ships canonical data plus thin Python
+# helpers under ``tools/`` and ``scripts/``. The runtime package lives in
+# uiao-impl, so ``src/`` and ``tests/`` are no longer meaningful lint
+# targets here — attempting to lint them caused ``E902 No such file or
+# directory``. Scope is now ``tools/`` + ``scripts/``, which matches the
+# Python we actually own.
+
 on:
   push:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'tests/**'
+      - 'tools/**'
       - 'scripts/**'
       - 'pyproject.toml'
   pull_request:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'tests/**'
+      - 'tools/**'
       - 'scripts/**'
       - 'pyproject.toml'
 
@@ -36,19 +41,19 @@ jobs:
         run: pip install ruff mypy types-PyYAML
 
       - name: Ruff check
-        run: ruff check --fix src/ tests/ scripts/
+        run: ruff check --fix tools/ scripts/
 
       - name: Ruff format (auto-fix)
-        run: ruff format src/ tests/ scripts/
+        run: ruff format tools/ scripts/
 
       - name: Commit formatting fixes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add tools/ scripts/
           git diff --cached --quiet || git commit -m "style: auto-format with ruff"
           git push || true
 
-      - name: Mypy (package only)
+      - name: Mypy (helpers only)
         continue-on-error: true
-        run: mypy src/uiao_core --ignore-missing-imports
+        run: mypy tools/ scripts/ --ignore-missing-imports

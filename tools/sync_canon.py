@@ -376,7 +376,7 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
                 report.actions.append(ScaffoldAction("created-folder", str(tree), "doc tree root"))
             else:
                 report.drift.append(
-                    DriftItem("additive", None, str(tree), f"Doc tree missing (would create)")
+                    DriftItem("additive", None, str(tree), "Doc tree missing (would create)")
                 )
                 continue
 
@@ -477,17 +477,15 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
             images = folder / "images"
             gitkeep = images / ".gitkeep"
 
-            created_any = False
             if not folder.is_dir():
                 report.drift.append(
-                    DriftItem("additive", adapter["id"], str(folder), f"Folder missing for adapter (would create)")
+                    DriftItem("additive", adapter["id"], str(folder), "Folder missing for adapter (would create)")
                 )
                 if write:
                     folder.mkdir(parents=True, exist_ok=True)
                     report.actions.append(
                         ScaffoldAction("created-folder", str(folder), f"adapter={adapter['id']}")
                     )
-                    created_any = True
 
             if write and folder.is_dir():
                 if not primary.exists() or primary.stat().st_size == 0:
@@ -498,15 +496,12 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
                         encoding="utf-8",
                     )
                     report.actions.append(ScaffoldAction("created-file", str(primary), "ATS/AVS scaffold"))
-                    created_any = True
                 if not prompts.exists():
                     prompts.write_text(render_image_prompts(adapter, kind), encoding="utf-8")
                     report.actions.append(ScaffoldAction("created-file", str(prompts), "image prompts scaffold"))
-                    created_any = True
                 if not images.is_dir():
                     images.mkdir(parents=True, exist_ok=True)
                     report.actions.append(ScaffoldAction("created-folder", str(images), "images dir"))
-                    created_any = True
                 if not gitkeep.exists():
                     gitkeep.write_text("", encoding="utf-8")
                     report.actions.append(ScaffoldAction("created-file", str(gitkeep), ".gitkeep"))
