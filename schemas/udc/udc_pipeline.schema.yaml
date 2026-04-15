@@ -1,0 +1,74 @@
+# UDC Pipeline Schema v1.0
+# Defines compiler pipeline stages for document generation
+---
+schema_id: udc_pipeline
+schema_version: "1.0"
+description: >-
+  Pipeline schema for UIAO Document Compiler (UDC).
+  Defines the ordered stages of the compilation pipeline.
+
+pipeline_stages:
+  - stage: validate
+    name: Schema Validation
+    tool: jsonschema
+    description: Validate all YAML artifacts against UDC JSON schemas
+    inputs:
+      - data/**/*.yml
+      - data/**/*.yaml
+    outputs:
+      - validation_report.json
+    required: true
+
+  - stage: normalize
+    name: Artifact Normalization
+    tool: python
+    description: Canonical ordering, metadata expansion, field completion
+    inputs:
+      - data/**/*.yml
+      - data/**/*.yaml
+    outputs:
+      - normalized/**/*.yml
+    required: true
+
+  - stage: compile
+    name: Document Compilation
+    tool: pandoc
+    description: Render templates with data context into publication formats
+    inputs:
+      - normalized/**/*.yml
+      - templates/**/*
+    outputs:
+      - exports/**/*
+    required: true
+    supported_tools:
+      - pandoc
+      - python-docx
+      - python-pptx
+      - openpyxl
+      - jinja2
+
+  - stage: hash
+    name: Integrity Hashing
+    tool: python
+    description: Generate SHA-256 hashes for all exported documents
+    inputs:
+      - exports/**/*
+    outputs:
+      - exports/manifest.json
+    required: true
+
+  - stage: upload
+    name: Artifact Upload
+    tool: github-actions
+    description: Upload compiled documents as GitHub Actions artifacts
+    inputs:
+      - exports/**/*
+    outputs:
+      - github-artifact
+    required: false
+
+pipeline_config:
+  fail_on_validation_error: true
+  continue_on_warning: true
+  parallel_compilation: false
+  log_level: info

@@ -1,0 +1,88 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CP-10
+# Title      : System Recovery and Reconstitution
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: CP-10
+title: "System Recovery and Reconstitution"
+family: Contingency Planning
+status: not-implemented
+
+implemented_by:
+  - azure-site-recovery
+  - azure-backup
+  - microsoft-sentinel
+  - servicenow-grc
+
+evidence:
+  - cp-10-system-recovery-runbooks
+  - cp-10-azure-site-recovery-failover-test-reports
+  - cp-10-servicenow-recovery-task-completion-records
+  - cp-10-post-recovery-security-validation-checklists
+
+parameters:
+  - id: cp_10_recovery_time_objective
+    description: >-
+      Maximum acceptable time to recover the system to operational status
+      following a disruption that requires full system recovery.
+    value: "Tier 1 systems (identity, monitoring, boundary protection): RTO 4 hours; Tier 2 application systems: RTO 12 hours; full system reconstitution: RTO 24 hours"
+  - id: cp_10_recovery_point_objective
+    description: >-
+      Maximum acceptable data loss measured in time from last good backup
+      to the point of disruption.
+    value: "Tier 1 critical systems: RPO 1 hour (continuous replication via Azure Site Recovery); Tier 2 systems: RPO 4 hours; Tier 3 supporting systems: RPO 24 hours"
+  - id: cp_10_reconstitution_security_validation
+    description: >-
+      Security controls that must be validated before the reconstituted
+      system is authorized to return to full operational status.
+    value: "Authentication services operational (Entra ID), all Sentinel monitoring rules active, Palo Alto policy baseline verified, CyberArk vault accessible, vulnerability scan clean or with accepted risk, ISSM authorization documented in ServiceNow"
+
+narrative: |
+  **System Recovery Planning and Execution**
+  The UIAO Contingency Plan provides documented procedures for recovering
+  and reconstituting the system to a known, secure operational state following
+  a disruption requiring full system recovery. Recovery procedures address
+  both the technical restoration of system components and the security
+  validation required before the reconstituted system is authorized to resume
+  operational status. Recovery Time Objectives defined in PARAM cp_10_recovery_time_objective
+  and Recovery Point Objectives defined in PARAM cp_10_recovery_point_objective
+  are derived from Business Impact Analysis findings and drive the selection
+  of recovery technologies and replication configurations. Azure Site Recovery
+  provides automated failover capability for Tier 1 systems, while Azure Backup
+  provides restore capability for Tier 2 and Tier 3 workloads.
+
+  **Technical Recovery Execution**
+  System recovery follows a documented runbook sequence maintained in SharePoint
+  and referenced in the Contingency Plan. Recovery is initiated by the ISSM
+  or designated alternate following declaration of a contingency event, with
+  task assignments generated automatically in ServiceNow GRC upon activation.
+  Azure Site Recovery executes failover plans for Tier 1 critical workloads,
+  replicating the last-known-good state to the alternate Azure region within
+  the defined RPO window. Palo Alto firewall configurations are restored from
+  validated configuration backups, Cisco ISE policy is restored from backup,
+  Infoblox DNS zones are recovered from replicated data, and CyberArk vaults
+  are brought online in DR mode. Microsoft Sentinel is configured first among
+  all recovery actions to ensure security monitoring is available throughout
+  the remaining recovery sequence, consistent with **CP-2(5)** (Continue
+  Mission and Business Functions) requirements.
+
+  **Post-Recovery Security Validation and Reconstitution Authorization**
+  Before the recovered system is authorized to return to full operational
+  status, all security controls identified in PARAM cp_10_reconstitution_security_validation
+  must be verified operational. The ISSM reviews a structured post-recovery
+  security validation checklist in ServiceNow, confirming that authentication
+  services, monitoring, boundary protection, and privileged access controls
+  are functional and that no new vulnerabilities were introduced during
+  recovery. A vulnerability scan of the recovered environment is completed
+  and reviewed prior to reconstitution authorization. The ISSM documents
+  reconstitution authorization in ServiceNow, and the recovered system is
+  restored to the active monitoring scope in Microsoft Sentinel. Recovery
+  events and validation records provide evidence for **CA-2** (Security
+  Assessments) and **CP-4** (Contingency Plan Testing) audit purposes.
+
+related_controls:
+  - CP-2   # Contingency Plan
+  - CP-2(3) # Resume Mission and Business Functions
+  - CP-9   # System Backup
+  - CP-9(1) # Backup Testing for Reliability and Integrity
+  - CA-2   # Security Assessments

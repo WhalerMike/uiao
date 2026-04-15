@@ -1,0 +1,95 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CM-8(1)
+# Title      : System Component Inventory | Updates During Installation and Removal
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: CM-8(1)
+title: "System Component Inventory | Updates During Installation and Removal"
+family: Configuration Management
+status: not-implemented
+
+implemented_by:
+  - servicenow-cmdb
+  - intune-mdm
+  - azure-resource-graph
+  - servicenow-itsm
+
+evidence:
+  - servicenow-cmdb-installation-event-update-log
+  - intune-device-enrollment-cmdb-sync-record
+  - azure-resource-graph-inventory-change-log
+  - servicenow-change-record-ci-update-evidence
+
+parameters:
+  - id: cm_8_1_update_trigger
+    description: >-
+      Events that trigger automatic update of the system component
+      inventory in the authoritative record system.
+    value: "Component installation, enrollment, deployment, decommission, and removal events automatically trigger CMDB record creation, update, or deletion within 24 hours via automated integrations"
+  - id: cm_8_1_integration_sources
+    description: >-
+      Systems integrated with ServiceNow CMDB to provide automated
+      inventory updates during installation and removal.
+    value: "Microsoft Intune (endpoint enrollment/unenrollment), Azure Resource Graph (cloud resource deployment/deletion), Cisco vManage (network device provisioning/decommission), CrowdStrike Falcon (new host detection)"
+
+narrative: |
+  **Automated Inventory Update on Installation**
+  The UIAO system updates the system component inventory in the
+  ServiceNow CMDB automatically when new components are installed
+  or deployed, eliminating the risk of inventory gaps from manual
+  update processes. The integration sources defined in PARAM
+  cm_8_1_integration_sources provide event-driven triggers to
+  the CMDB when components enter the system boundary. Microsoft
+  Intune automatically creates a CMDB configuration item (CI) when
+  a new endpoint is enrolled in MDM management, capturing hardware
+  identifiers, operating system version, and assigned user. Azure
+  Resource Graph change feed triggers CMDB updates within the
+  timeframe defined in PARAM cm_8_1_update_trigger when new Azure
+  resources are deployed, ensuring cloud components are tracked
+  from first provisioning. This satisfies the CM-8(1) requirement
+  to update the inventory as an integral part of component
+  installation and supports **CM-8** (System Component Inventory)
+  and **CM-3** (Configuration Change Control) objectives.
+
+  **Automated Inventory Update on Removal**
+  When system components are removed from the operational
+  environment, automated integrations trigger CMDB record
+  retirement or deletion to maintain inventory accuracy.
+  Intune device unenrollment events trigger CMDB record
+  retirement with decommission date and disposition method
+  captured. Azure Resource Graph deletion events propagate
+  to the CMDB through the automated sync feed, removing
+  retired cloud resources from the active inventory. CrowdStrike
+  Falcon flags hosts that have not checked in for 30 days,
+  triggering a CMDB staleness review to identify components
+  that may have been removed without proper change management.
+
+  **Change Management Integration**
+  Authorized component installations and removals are initiated
+  through ServiceNow change requests, which include a mandatory
+  step to update the CMDB CI record as part of the change closure
+  checklist. This procedural control ensures that planned
+  inventory changes are documented with full change context
+  including business justification, authorizing individual,
+  and implementation date. Unauthorized installations detected
+  by CrowdStrike (unmanaged hosts) or Azure Policy (out-of-policy
+  resources) trigger ServiceNow incidents for investigation
+  under **CM-8(3)** (Automated Unauthorized Component Detection)
+  procedures.
+
+  **Inventory Accuracy Verification**
+  CMDB inventory accuracy is verified quarterly through automated
+  reconciliation between the CMDB and discovery sources including
+  Azure Resource Graph, Intune, and CrowdStrike. Discrepancies
+  are reported to the ISSO for investigation and remediation,
+  ensuring that the CMDB remains an accurate reflection of the
+  current system boundary as required by **CM-8** and assessed
+  under **CA-2** (Security Assessments).
+
+related_controls:
+  - CM-3   # Configuration Change Control
+  - CM-8   # System Component Inventory
+  - CM-8(3) # Automated Unauthorized Component Detection
+  - CA-7   # Continuous Monitoring
+  - IR-4   # Incident Handling
+  - PM-5   # System Inventory

@@ -1,0 +1,88 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : MA-3(1)
+# Title      : Maintenance Tools | Inspect Tools
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: MA-3(1)
+title: Maintenance Tools | Inspect Tools
+family: Maintenance
+status: not-implemented
+
+implemented_by:
+  - microsoft-defender-for-endpoint
+  - intune-mdm
+  - cyberark-pam
+  - servicenow
+
+evidence:
+  - defender-for-endpoint-tool-scan-reports
+  - intune-application-control-policy-report
+  - cyberark-session-recording-logs
+  - approved-maintenance-tools-list
+
+parameters:
+  - id: PARAM-MA-003-1-001
+    description: >-
+      Inspection method applied to maintenance tools brought into
+      the UIAO environment to check for improper modification.
+    value: "Hash verification, digital signature validation, and Defender for Endpoint malware scan prior to execution"
+  - id: PARAM-MA-003-1-002
+    description: >-
+      Frequency of inspection for maintenance tools on the approved
+      tools list to verify continued integrity.
+    value: "Prior to each use for portable tools; monthly integrity scan for resident tools"
+  - id: PARAM-MA-003-1-003
+    description: >-
+      Action taken when a maintenance tool fails inspection or
+      integrity verification.
+    value: "Tool quarantined, use prohibited, IR-4 incident initiated, and tool removed from approved list pending investigation"
+
+narrative: |
+  **Maintenance Tool Inspection Requirements**
+  The organization inspects maintenance tools used on UIAO systems
+  to verify that tools have not been modified or tampered with prior
+  to use (PARAM-MA-003-1-001). All maintenance tools are subject to
+  hash verification against known-good baseline values and digital
+  signature validation before execution. Tools introduced via portable
+  media or remote transfer are scanned by Microsoft Defender for
+  Endpoint for malware and unauthorized modifications before any
+  use on production systems.
+
+  **Pre-Use Integrity Verification**
+  Resident maintenance tools installed on managed systems are subject
+  to continuous integrity monitoring through Microsoft Defender for
+  Endpoint, which detects unauthorized modifications to tool binaries,
+  configuration files, and execution parameters. Portable tools
+  brought into the environment are verified at the point of entry
+  through the ServiceNow change management process, which includes
+  documented hash values and version information. Inspections are
+  performed prior to each use for portable tools and at least monthly
+  for resident tools (PARAM-MA-003-1-002), consistent with the approved
+  maintenance tools list maintained under **MA-3**.
+
+  **Failed Inspection Response**
+  When a maintenance tool fails integrity inspection or exhibits
+  unexpected modifications, it is immediately quarantined, its use
+  is prohibited, and an incident is initiated in ServiceNow following
+  **IR-4** (Incident Handling) procedures (PARAM-MA-003-1-003). The
+  tool is removed from the approved list pending investigation by the
+  ISSO. If tampering is confirmed, the incident is escalated and the
+  supply chain is reviewed per **SR-3** (Supply Chain Controls and
+  Processes) to assess potential compromise scope.
+
+  **CyberArk Integration for Privileged Tool Sessions**
+  Maintenance tools executed within privileged sessions are launched
+  through CyberArk Privileged Session Manager (PSM), which captures
+  the tool binary hash at session initiation and validates it against
+  the approved tools registry. This ensures that even privileged users
+  cannot substitute unauthorized tools within recorded sessions, and
+  provides a forensically sound record of all tool executions for
+  post-incident analysis, supporting **AU-2** (Event Logging) and
+  **MA-3** (Maintenance Tools) baseline requirements.
+
+related_controls:
+  - MA-3   # Maintenance Tools
+  - MA-2   # Controlled Maintenance
+  - IR-4   # Incident Handling
+  - SI-7   # Software, Firmware, and Information Integrity
+  - AU-2   # Event Logging

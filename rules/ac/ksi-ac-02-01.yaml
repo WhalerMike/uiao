@@ -1,0 +1,106 @@
+# UIAO ATO Overlay Pack for FedRAMP Rev5 Moderate
+# Version: 0.2 (April 2026)
+# Status: Initial Release - Under Active Development
+# Purpose: Provide UIAO-specific control mappings, compensating controls, 
+#          and adapter integration guidance to accelerate Moderate ATO processes.
+
+metadata:
+  title: "UIAO ATO Overlay Pack for FedRAMP Rev5 Moderate"
+  version: "0.2"
+  last-updated: "2026-04-01"
+  uiao-version: "1.0"
+  fedramp-baseline: "Rev5 Moderate"
+  oscal-version: "1.0.4"
+  status: "Draft - Seeking Agency Feedback"
+
+# UIAO Control Planes → FedRAMP Rev5 Control Mappings
+control-planes:
+  identity:
+    description: "Identity as the root namespace with phishing-resistant MFA and ABAC enforcement"
+    primary-controls:
+      - IA-2 (Identification and Authentication)
+      - IA-5 (Authenticator Management)
+      - IA-8 (Identification and Authentication (Non-Organizational Users))
+      - AC-2 (Account Management)
+      - AC-3 (Access Enforcement)
+    compensating-controls:
+      - "UIAO enforces phishing-resistant MFA via Adaptive MFA (Okta) or Conditional Access + FIDO2 (Entra)"
+      - "All identity decisions are bound to UIAO root namespace for consistent ABAC"
+    automation-level: "High (target ≥85%)"
+    adapter-support: "OktaIdentityAdapter, EntraIdentityAdapter"
+
+  network:
+    description: "Identity-aware network segmentation and TIC 3.0 boundary protection"
+    primary-controls:
+      - AC-4 (Information Flow Enforcement)
+      - SC-7 (Boundary Protection)
+      - CA-9 (Internal System Connections)
+    compensating-controls: []
+    automation-level: "Medium"
+    adapter-support: "NetworkPolicyAdapter"
+
+  addressing:
+    description: "Deterministic addressing with identity binding (IPAM/DNS)"
+    primary-controls:
+      - CM-2 (Baseline Configuration)
+      - CM-6 (Configuration Settings)
+    compensating-controls: []
+    automation-level: "High"
+    adapter-support: "InfoBloxAdapter"
+
+  telemetry:
+    description: "Continuous telemetry plane for real-time policy decisions and KSI validation"
+    primary-controls:
+      - AU-2 (Audit Events)
+      - AU-6 (Audit Review, Analysis, and Reporting)
+      - SI-4 (System Monitoring)
+    compensating-controls:
+      - "Telemetry events are normalized and linked to UIAO identity namespace"
+    automation-level: "High (target ≥90%)"
+    adapter-support: "SentinelTelemetryAdapter, CrowdStrikeAdapter"
+
+  security:
+    description: "mTLS trust anchoring and security policy enforcement"
+    primary-controls:
+      - SC-8 (Transmission Confidentiality and Integrity)
+      - SC-12 (Cryptographic Key Establishment and Management)
+    compensating-controls: []
+    automation-level: "Medium-High"
+    adapter-support: "mTLSTrustAdapter"
+
+  management:
+    description: "Configuration drift detection and CMDB synchronization"
+    primary-controls:
+      - CM-2 (Baseline Configuration)
+      - CM-8 (System Component Inventory)
+      - SI-7 (Software, Firmware, and Information Integrity)
+    compensating-controls: []
+    automation-level: "Medium"
+    adapter-support: "ServiceNowAdapter"
+
+# Adapter Integration Requirements
+adapters:
+  registry: "adapters/__init__.py"
+  base-class: "adapters/base_adapter.py"
+  requirement: "All adapters must inherit BaseAdapter and implement identity binding, telemetry ingestion, and compliance evidence generation"
+  examples:
+    - OktaIdentityAdapter
+    - SentinelTelemetryAdapter
+
+# Usage Guidance for Agencies
+usage:
+  ssp:
+    - "Reference this overlay in the SSP's import-profile section"
+    - "Use UIAO Component Definition for inheritance of control implementations"
+    - "Apply set-parameters from data/parameters.yml for agency-specific tailoring"
+  poam:
+    - "Leverage auto-gap detection from unified_compliance_matrix.yml"
+    - "Link remediation evidence to adapter-generated telemetry outputs"
+  ato-process:
+    - "Combine with UIAO ATO Overlay Pack to reduce manual tailoring effort"
+    - "Use for compensating control documentation and inheritance scenarios"
+
+notes:
+  - "This overlay pack is designed to be used alongside the UIAO Canon and Adapters layer."
+  - "It significantly reduces manual effort when implementing TIC 3.0 and Zero Trust using UIAO."
+  - "Will be updated after publication of FedRAMP Consolidated Rules (CR26) expected ~June 2026."
