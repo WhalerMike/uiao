@@ -34,6 +34,21 @@ uiao validate --canon-path ../uiao-core/canon
 uiao generate-ssp --canon-path ../uiao-core/canon --out out/ssp.docx
 ```
 
+## Compliance with Presidential Executive Orders
+
+The UIAO implementation codebase supports the federal-cybersecurity
+provisions of the following Executive Orders:
+
+- **EO 14144** (January 16, 2025) — *Strengthening and Promoting Innovation in the Nation's Cybersecurity*
+- **EO 14306** (June 6, 2025) — *Sustaining Select Efforts to Strengthen the Nation's Cybersecurity; amending EO 13694 and EO 14144*
+- **EO 14390** (March 6, 2026) — *Combating Cybercrime, Fraud, and Predatory Schemes Against American Citizens* (paired with *President Trump's Cyber Strategy for America*, March 2026)
+
+These orders shape UIAO's operational focus: Zero Trust architecture,
+federal cybersecurity modernization, FedRAMP / cloud transition,
+post-quantum cryptography, and continuous compliance. The canonical
+mapping between UIAO artifacts and EO provisions lives in [`uiao-core/canon/compliance/executive-orders.md`](https://github.com/WhalerMike/uiao-core/blob/main/canon/compliance/executive-orders.md)
+(UIAO_004). This repository is a **consumer** of that canon.
+
 ## License
 
 Apache 2.0
