@@ -28,6 +28,22 @@
 
 → **[Customer Documentation Platform architecture (federal pair): ARCHITECTURE.md](./ARCHITECTURE.md)** — canonical architecture for the `uiao-core` + `uiao-docs` federal FedRAMP-Moderate pair. Covers canon registry, cross-repo sync, image pipeline, Git LFS strategy, Azure Government migration roadmap, and NIST 800-53 compliance mapping. **Out of scope:** `uiao-gos` (commercial product, separate architecture).
 
+## Compliance with Presidential Executive Orders
+
+UIAO is explicitly architected to help Federal agencies implement the
+provisions of the following Presidential Executive Orders:
+
+- **[EO 14144](./canon/compliance/executive-orders.md#eo-14144--strengthening-and-promoting-innovation-in-the-nations-cybersecurity)** (January 16, 2025) — *Strengthening and Promoting Innovation in the Nation's Cybersecurity* — third-party software supply-chain, post-quantum cryptography, AI-cyber hardening, IoT security, zero-trust expansion.
+- **[EO 14306](./canon/compliance/executive-orders.md#eo-14306--sustaining-select-efforts-to-strengthen-the-nations-cybersecurity-and-amending-executive-order-13694-and-executive-order-14144)** (June 6, 2025) — *Sustaining Select Efforts to Strengthen the Nation's Cybersecurity; amending EO 13694 and EO 14144* — current controlling cybersecurity EO.
+- **[EO 14390](./canon/compliance/executive-orders.md#eo-14390--combating-cybercrime-fraud-and-predatory-schemes-against-american-citizens)** (March 6, 2026) — *Combating Cybercrime, Fraud, and Predatory Schemes Against American Citizens* — paired with the March 2026 *President Trump's Cyber Strategy for America*.
+
+UIAO's four capability pillars — **claims-based evidence fabric**,
+**adapter framework**, **drift detection**, and **KSI provenance** — map
+directly to the Zero Trust architecture, federal cybersecurity
+modernization, FedRAMP / cloud transition, and continuous-compliance
+themes of these orders. The **[canonical EO mapping](./canon/compliance/executive-orders.md)**
+(UIAO_004) is the single source of truth for these provisions.
+
 ---
 
 **Repository:** `uiao-core`
