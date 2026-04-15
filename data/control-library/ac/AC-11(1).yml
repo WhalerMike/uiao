@@ -1,0 +1,86 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-11(1)
+# Title      : Device Lock | Pattern-Hiding Displays
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AC-11(1)
+title: "Device Lock | Pattern-Hiding Displays"
+family: Access Control
+status: not-implemented
+
+implemented_by:
+  - intune-mdm
+  - entra-id
+  - microsoft-365
+
+evidence:
+  - intune-device-lock-screen-policy-report
+  - intune-compliance-policy-pattern-hiding-config
+  - entra-id-conditional-access-device-compliance-signal
+  - microsoft-365-information-barrier-policy-config
+
+parameters:
+  - id: ac_11_1_lock_screen_content
+    description: >-
+      Content concealmentcontrols applied to the device lock screen
+      to prevent information disclosure from unattended devices.
+    value: "Lock screens display no notification content, no email previews, and no application data; only organization name and authentication prompt displayed"
+  - id: ac_11_1_pattern_hiding_scope
+    description: >-
+      Device types and operating system platforms subject to
+      pattern-hiding lock screen enforcement.
+    value: "All Intune-managed Windows 10/11, macOS, iOS, and Android devices; enforced via Intune device configuration profiles"
+
+narrative: |
+  **Pattern-Hiding Lock Screen Enforcement**
+  The UIAO system conceals information previously visible on the
+  display when device lock is activated, preventing sensitive data
+  from being observable on unattended screens. Microsoft Intune
+  device configuration profiles are deployed to all managed
+  endpoints within scope of PARAM ac_11_1_pattern_hiding_scope,
+  configuring the Windows lock screen to suppress notification
+  content, disable application peek previews, and restrict the
+  lock screen display to only the organizational branding and
+  authentication prompt as specified in PARAM ac_11_1_lock_screen_content.
+  This satisfies the AC-11(1) requirement to conceal information
+  from public view when the device lock is activated and supports
+  **AC-11** (Device Lock) and **SC-4** (Information in Shared
+  System Resources) requirements.
+
+  **Mobile Device Pattern-Hiding Controls**
+  Intune Mobile Device Management enforces pattern-hiding display
+  controls on iOS and Android managed devices through configuration
+  profiles that disable lock screen notification previews and
+  application widgets. Managed devices that do not comply with
+  the pattern-hiding configuration are flagged as non-compliant
+  in Intune, and Entra ID Conditional Access blocks non-compliant
+  devices from accessing organizational resources including email,
+  SharePoint, and Teams until compliance is restored. This ensures
+  that the pattern-hiding control is technically enforced rather
+  than relying on user behavior.
+
+  **macOS Lock Screen Configuration**
+  Intune macOS configuration profiles apply system preference
+  lockdown settings that disable hot corners that bypass screen
+  lock, prevent screen saver bypass, and suppress notification
+  content on the lock screen. CrowdStrike Falcon verifies
+  macOS system integrity and reports configuration drift to
+  Intune, enabling rapid detection of lock screen configuration
+  changes that may expose previously visible information.
+
+  **Compliance Monitoring and Remediation**
+  Intune compliance reports are reviewed by the ISSO monthly to
+  verify that all managed devices have the pattern-hiding lock
+  screen policy applied and enforced. Devices with configuration
+  drift or non-compliant lock screen settings are automatically
+  quarantined from organizational resources through Entra ID
+  Conditional Access and tracked through ServiceNow ITSM for
+  remediation under **CM-6** (Configuration Settings) procedures.
+
+related_controls:
+  - AC-11  # Device Lock
+  - AC-3   # Access Enforcement
+  - SC-4   # Information in Shared System Resources
+  - CM-6   # Configuration Settings
+  - IA-2   # Identification and Authentication
+  - SI-12  # Information Management and Retention

@@ -1,0 +1,208 @@
+# generation-inputs/diagrams.yaml
+# Canonical PlantUML diagram definitions for UIAO-Core.
+# Each entry is rendered to visuals/<key>.puml and assets/images/plantuml/<key>.png.
+
+diagrams:
+  architecture_overview:
+    type: component
+    title: UIAO Architecture Overview
+    description: >
+      High-level view of the five primary UIAO planes and their interconnections,
+      showing how Identity, Addressing, Overlay, Telemetry, and Management planes
+      interact within the unified architecture.
+    content: |
+      @startuml architecture_overview
+      ' flowchart
+      skinparam backgroundColor white
+      skinparam componentStyle rectangle
+
+      package "UIAO Architecture" {
+        component [Identity Plane] as IP
+        component [Addressing Plane] as AP
+        component [Overlay Plane] as OP
+        component [Telemetry Plane] as TP
+        component [Management Plane] as MP
+      }
+
+      IP --> OP : auth context
+      AP --> OP : address resolution
+      OP --> TP : policy events
+      TP --> MP : telemetry stream
+      MP --> IP : policy enforcement
+      MP --> AP : IPAM updates
+
+      @enduml
+
+  authorization_boundary:
+    type: component
+    title: Authorization Boundary
+    description: >
+      FedRAMP authorization boundary showing system components, external services,
+      and data flows within the UIAO architecture.
+    content: |
+      @startuml authorization_boundary
+      ' flowchart
+      skinparam backgroundColor white
+
+      cloud "External Users" as EU
+      rectangle "Authorization Boundary" {
+        component [API Gateway] as AGW
+        component [Identity Provider] as IDP
+        component [Core Services] as CS
+        database [Data Store] as DS
+      }
+      cloud "External Services" as ES
+
+      EU --> AGW : HTTPS/TLS 1.2+
+      AGW --> IDP : authenticate
+      AGW --> CS : authorized requests
+      CS --> DS : read/write
+      CS --> ES : federated calls
+
+      @enduml
+
+  data_flow:
+    type: sequence
+    title: Evidence Data Flow
+    description: >
+      End-to-end data flow from SCuBA assessment through IR transformation,
+      evidence bundling, and governance action generation.
+    content: |
+      @startuml data_flow
+      ' flowchart
+      skinparam backgroundColor white
+
+      participant "SCuBA Assessment" as SC
+      participant "IR Transformer" as IR
+      participant "Evidence Bundle" as EB
+      participant "Governance Engine" as GE
+      participant "Dashboard" as DB
+
+      SC --> IR : normalized JSON
+      IR --> EB : Evidence objects
+      EB --> GE : bundle + drift states
+      GE --> DB : governance actions
+      EB --> DB : freshness records
+
+      @enduml
+
+  uiao_planes:
+    type: component
+    title: UIAO Five-Plane Model
+    description: >
+      The five control planes of the UIAO architecture showing their
+      responsibilities and interdependencies.
+    content: |
+      @startuml uiao_planes
+      ' flowchart
+      skinparam backgroundColor white
+      skinparam packageStyle rectangle
+
+      package "Identity Plane" {
+        component [Entra ID / IdP] as IDP
+        component [MFA / FIDO2] as MFA
+        component [PAM / PIM] as PAM
+      }
+
+      package "Addressing Plane" {
+        component [IPAM] as IPAM
+        component [DNS] as DNS
+        component [CMDB] as CMDB
+      }
+
+      package "Overlay Plane" {
+        component [ZTNA] as ZTNA
+        component [SD-WAN] as SDWAN
+        component [Microsegmentation] as MSEG
+      }
+
+      package "Telemetry Plane" {
+        component [SIEM / Sentinel] as SIEM
+        component [UEBA] as UEBA
+        component [Log Analytics] as LA
+      }
+
+      package "Management Plane" {
+        component [Policy Engine] as PE
+        component [ConMon Dashboard] as CMD
+        component [Automation] as AUTO
+      }
+
+      IDP --> ZTNA : identity context
+      IPAM --> ZTNA : address policy
+      ZTNA --> SIEM : access events
+      SIEM --> PE : threat signals
+      PE --> AUTO : remediation triggers
+
+      @enduml
+
+  generation_pipeline:
+    type: sequence
+    title: UIAO Generation Pipeline
+    description: >
+      The automated artifact generation pipeline from canon YAML through
+      to OSCAL, DOCX, PPTX, and dashboard outputs.
+    content: |
+      @startuml generation_pipeline
+      ' flowchart
+      skinparam backgroundColor white
+
+      participant "Canon YAML" as CY
+      participant "uiao CLI" as CLI
+      participant "Generators" as GEN
+      participant "OSCAL Artifacts" as OSCAL
+      participant "Office Artifacts" as OFFICE
+      participant "CI/CD" as CI
+
+      CY --> CLI : uiao generate-all
+      CLI --> GEN : build_ssp()
+      CLI --> GEN : build_docs()
+      CLI --> GEN : build_pptx()
+      GEN --> OSCAL : SSP JSON
+      GEN --> OSCAL : POA&M JSON
+      GEN --> OFFICE : DOCX / PPTX
+      OSCAL --> CI : validate + publish
+      OFFICE --> CI : attach artifacts
+
+      @enduml
+
+  zero_trust_journey:
+    type: component
+    title: Zero Trust Journey
+    description: >
+      The phased Zero Trust implementation journey from traditional perimeter
+      security to full UIAO Zero Trust architecture.
+    content: |
+      @startuml zero_trust_journey
+      ' flowchart
+      skinparam backgroundColor white
+
+      rectangle "Phase 1: Identity Foundation" as P1 {
+        component [MFA Enforcement] as MFA
+        component [Conditional Access] as CA
+        component [Privileged Access] as PA
+      }
+
+      rectangle "Phase 2: Device & Network" as P2 {
+        component [Device Compliance] as DC
+        component [ZTNA Deployment] as ZTNA
+        component [Microsegmentation] as MS
+      }
+
+      rectangle "Phase 3: Data & Apps" as P3 {
+        component [DLP Policies] as DLP
+        component [App Proxy] as AP
+        component [Data Classification] as DCL
+      }
+
+      rectangle "Phase 4: Continuous Monitoring" as P4 {
+        component [UIAO ConMon] as CONMON
+        component [Automated Remediation] as AR
+        component [FedRAMP 20x] as FED
+      }
+
+      P1 --> P2 : identity verified
+      P2 --> P3 : network secured
+      P3 --> P4 : data protected
+
+      @enduml
