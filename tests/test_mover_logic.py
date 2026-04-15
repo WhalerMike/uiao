@@ -16,7 +16,8 @@ class TestMoverLogic(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Load the JML Logic Canon YAML."""
-        canon_path = os.path.join(os.path.dirname(__file__), "..", "generation-inputs", "uiao_jml_logic_v1.0.yaml")
+        from canon_paths import JML_LOGIC_CANON
+        canon_path = str(JML_LOGIC_CANON)
         with open(canon_path) as f:
             cls.logic = yaml.safe_load(f)
 

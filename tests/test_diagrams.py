@@ -16,8 +16,8 @@ import pytest
 import yaml
 
 _REPO_ROOT = Path(__file__).parent.parent
-_DIAGRAMS_CANON = _REPO_ROOT / "generation-inputs" / "diagrams.yaml"
-_PLANTUML_CONFIG = _REPO_ROOT / "data" / "plantuml-config.json"
+from canon_paths import DIAGRAMS_CANON as _DIAGRAMS_CANON
+from canon_paths import PLANTUML_CONFIG as _PLANTUML_CONFIG
 
 
 # ---------------------------------------------------------------------------
