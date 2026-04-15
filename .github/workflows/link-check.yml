@@ -46,6 +46,15 @@ jobs:
           restore-keys: |
             lychee-cache-
 
+      - name: Count input files (sanity check)
+        shell: bash
+        run: |
+          md=$(find . -name '*.md'  -not -path './.git/*' -not -path './_site/*' -not -path './_freeze/*' -not -path './site/*' -not -path './node_modules/*' -not -path './docs/session-logs/*' | wc -l)
+          qmd=$(find . -name '*.qmd' -not -path './.git/*' -not -path './_site/*' -not -path './_freeze/*' -not -path './site/*' -not -path './node_modules/*' -not -path './docs/session-logs/*' | wc -l)
+          echo "Found ${md} .md files and ${qmd} .qmd files"
+          echo "INPUT_MD=${md}" >> "$GITHUB_ENV"
+          echo "INPUT_QMD=${qmd}" >> "$GITHUB_ENV"
+
       - name: Run lychee
         id: lychee
         uses: lycheeverse/lychee-action@v2
@@ -53,8 +62,8 @@ jobs:
           args: >-
             --config .lychee.toml
             --cache
-            './**/*.md'
-            './**/*.qmd'
+            --extensions md,qmd
+            .
           output: ./lychee-report.md
           # fail on PRs (blocking); schedule + dispatch produce report only
           fail: ${{ github.event_name == 'pull_request' || github.event.inputs.fail_on_broken == 'true' }}
