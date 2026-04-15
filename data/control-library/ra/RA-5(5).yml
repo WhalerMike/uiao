@@ -1,0 +1,92 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : RA-5(5)
+# Title      : Vulnerability Monitoring and Scanning | Privileged Access
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: RA-5(5)
+title: Vulnerability Monitoring and Scanning | Privileged Access
+family: Risk Assessment
+status: not-implemented
+
+implemented_by:
+  - cyberark-pam
+  - microsoft-defender-for-endpoint
+  - microsoft-defender-for-cloud
+  - servicenow
+
+evidence:
+  - defender-for-endpoint-credentialed-scan-configuration
+  - cyberark-vault-scanning-credential-records
+  - defender-for-cloud-privileged-scan-compliance-report
+  - servicenow-privileged-scan-authorization-records
+
+parameters:
+  - id: PARAM-RA-005-5-001
+    description: >-
+      System components for which vulnerability scans are
+      performed using privileged access credentials.
+    value: "All UIAO managed endpoints, servers, network devices, and cloud resources subject to authenticated vulnerability scanning"
+  - id: PARAM-RA-005-5-002
+    description: >-
+      Mechanism used to provide privileged credentials to
+      vulnerability scanning tools without exposing credentials.
+    value: "CyberArk vaulted scanning credentials with just-in-time checkout; Defender for Cloud managed identity scanning for Azure resources"
+  - id: PARAM-RA-005-5-003
+    description: >-
+      Handling and protection requirements for privileged
+      scanning credentials used in vulnerability assessments.
+    value: "Scanning credentials stored in CyberArk Vault; rotated after each scan session; never stored in scan tool configuration files"
+
+narrative: |
+  **Authenticated Vulnerability Scanning**
+  The organization implements privileged access vulnerability scanning
+  to obtain more complete and accurate vulnerability assessment results
+  for UIAO system components (PARAM-RA-005-5-001). Authenticated
+  (credentialed) scanning provides visibility into software inventory,
+  patch levels, security configuration baselines, and local
+  vulnerabilities that are not detectable through unauthenticated
+  network scanning. Microsoft Defender for Endpoint TVM performs
+  continuous authenticated vulnerability assessment on all enrolled
+  endpoints using the Defender agent's privileged context without
+  requiring separate scanning credential management.
+
+  **Credential Management via CyberArk**
+  Privileged credentials used for authenticated vulnerability
+  scanning of servers, network devices, and non-Defender-managed
+  components are stored and managed through CyberArk Privileged
+  Access Manager (PAM) Vault (PARAM-RA-005-5-002). Scanning tools
+  retrieve credentials from CyberArk using just-in-time checkout
+  immediately before scan execution, and credentials are automatically
+  rotated after each scan session. Azure resource vulnerability
+  scanning through Microsoft Defender for Cloud uses managed
+  identities, eliminating the need for stored scanning credentials
+  entirely for cloud-native components.
+
+  **Credential Security and Non-Exposure**
+  Scanning credentials are never stored in scan tool configuration
+  files, environment variables, or version-controlled repositories
+  (PARAM-RA-005-5-003). CyberArk enforces credential checkout
+  policies that require scan job identification and session recording
+  for all privileged scanning operations. All credential access
+  events are logged in the CyberArk audit trail and forwarded to
+  Microsoft Sentinel for correlation with scan activity, detecting
+  any unauthorized credential use outside of scheduled scan windows.
+
+  **Privileged Scan Results Handling**
+  Results from privileged vulnerability scans are treated as
+  sensitive security information and handled in accordance with
+  the data classification policy. Scan results are stored in
+  Defender for Cloud and Defender for Endpoint portals with
+  role-based access controls limiting visibility to authorized
+  security personnel. ServiceNow Vulnerability Response module
+  receives scan findings through automated ingestion, with
+  privileged-access-discovered vulnerabilities tracked separately
+  to ensure they receive appropriate remediation priority per
+  the SLA defined in **RA-5**.
+
+related_controls:
+  - RA-5    # Vulnerability Monitoring and Scanning
+  - RA-5(2) # Update Vulnerabilities to Be Scanned
+  - AC-6    # Least Privilege
+  - IA-5    # Authenticator Management
+  - AU-2    # Event Logging

@@ -1,0 +1,94 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-2(1)
+# Title      : Identification and Authentication | Multi-Factor Authentication to Privileged Accounts
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IA-2(1)
+title: "Identification and Authentication | Multi-Factor Authentication to Privileged Accounts"
+family: Identification and Authentication
+status: not-implemented
+
+implemented_by:
+  - entra-id
+  - cyberark-pas
+  - microsoft-authenticator
+  - intune-mdm
+
+evidence:
+  - entra-id-mfa-registration-report-privileged-accounts
+  - entra-id-conditional-access-mfa-policy-privileged
+  - cyberark-mfa-enforcement-configuration
+  - entra-id-privileged-identity-management-mfa-settings
+
+parameters:
+  - id: ia_2_1_mfa_methods_privileged
+    description: >-
+      MFA methods approved for authentication to privileged accounts
+      within the UIAO system.
+    value: "FIDO2 hardware security keys (preferred), Microsoft Authenticator phishing-resistant push with number matching, Windows Hello for Business (TPM-backed); SMS and voice OTP explicitly prohibited for privileged accounts"
+  - id: ia_2_1_privileged_scope
+    description: >-
+      Account types subject to MFA enforcement for privileged access.
+    value: "All Entra ID Global Administrators, Security Administrators, Privileged Role Administrators, Exchange Administrators, SharePoint Administrators, and CyberArk vault administrators"
+
+narrative: |
+  **MFA Enforcement for Privileged Account Access**
+  The UIAO system implements multi-factor authentication for all
+  network access to accounts with privileged permissions, using
+  phishing-resistant MFA methods defined in PARAM ia_2_1_mfa_methods_privileged.
+  Microsoft Entra ID Conditional Access enforces MFA for all
+  sign-ins to accounts within the privileged scope defined in
+  PARAM ia_2_1_privileged_scope using a dedicated Conditional
+  Access policy that targets privileged directory roles and
+  requires authentication strength set to phishing-resistant MFA.
+  FIDO2 hardware security keys are the preferred authenticator
+  for privileged accounts, providing cryptographic proof of
+  possession that eliminates phishing risk. Windows Hello for
+  Business backed by TPM 2.0 is the approved alternative for
+  managed workstation privileged sessions. SMS and voice OTP
+  authenticators are explicitly blocked for privileged accounts
+  through Entra ID Authentication Methods policy, preventing
+  downgrade to weaker authentication factors. This satisfies
+  the IA-2(1) FedRAMP Moderate requirement and supports
+  **IA-2** (Identification and Authentication) and **AC-5**
+  (Separation of Duties) objectives.
+
+  **Entra Privileged Identity Management Integration**
+  Microsoft Entra Privileged Identity Management (PIM) gates
+  just-in-time privilege elevation behind a mandatory MFA
+  challenge, ensuring that even users who have already completed
+  session MFA must re-authenticate with an approved MFA method
+  before activating a privileged role. PIM activation requests
+  are logged in Entra ID audit logs and forwarded to Microsoft
+  Sentinel, providing a complete record of when privileged
+  roles were elevated and which MFA method was used for
+  each activation event.
+
+  **CyberArk MFA Enforcement**
+  CyberArk Privileged Access Security enforces a separate MFA
+  challenge for vault authentication and privileged session
+  initiation, independent of the Entra ID session. This dual-MFA
+  architecture requires adversaries to compromise both the
+  Entra ID MFA credential and the CyberArk MFA credential to
+  gain access to privileged sessions, significantly raising
+  the cost of privilege escalation attacks. CyberArk MFA events
+  are logged to the CyberArk audit trail and forwarded to
+  Microsoft Sentinel for behavioral analysis.
+
+  **MFA Registration and Coverage Monitoring**
+  Entra ID MFA registration reports are reviewed monthly by
+  the ISSO to verify that all privileged accounts have
+  registered approved phishing-resistant MFA methods. Accounts
+  lacking approved MFA registration are flagged for remediation
+  and may have privileged role assignments suspended until
+  registration is completed. Microsoft Sentinel monitors for
+  MFA bypass patterns and alerts on sign-ins to privileged
+  accounts that completed authentication without MFA.
+
+related_controls:
+  - IA-2    # Identification and Authentication
+  - IA-2(2) # MFA to Non-Privileged Accounts
+  - IA-5    # Authenticator Management
+  - AC-5    # Separation of Duties
+  - AC-6    # Least Privilege
+  - AU-2    # Event Logging
