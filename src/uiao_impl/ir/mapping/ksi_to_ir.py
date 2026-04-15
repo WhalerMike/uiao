@@ -13,8 +13,15 @@ from uiao_impl.ir.models.core import (
 
 
 def load_ksi_library() -> Dict[str, dict]:
-    """Load all KSI files from the 7 category subdirectories."""
-    ksi_root = Path("rules/ksi")
+    """Load all KSI files from the 7 category subdirectories.
+
+    Resolves the rules directory via :class:`uiao_impl.config.Settings`
+    so the sibling ``uiao-core/rules`` checkout is found post four-repo
+    split.
+    """
+    from uiao_impl.config import Settings
+
+    ksi_root = Settings().rules_dir / "ksi"
     ksi_dict = {}
     for ksi_file in ksi_root.rglob("ksi-*.yaml"):
         with open(ksi_file, encoding="utf-8") as f:

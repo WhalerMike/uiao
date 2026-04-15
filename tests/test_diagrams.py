@@ -17,6 +17,7 @@ import yaml
 
 _REPO_ROOT = Path(__file__).parent.parent
 from canon_paths import DIAGRAMS_CANON as _DIAGRAMS_CANON
+from canon_paths import LEADERSHIP_BRIEFING as _LEADERSHIP_CANON
 from canon_paths import PLANTUML_CONFIG as _PLANTUML_CONFIG
 
 
@@ -371,7 +372,7 @@ class TestBuildDocsDiagramIntegration:
 
         from uiao_impl.generators.diagrams import generate_diagrams_from_canon
 
-        leadership_canon = _REPO_ROOT / "generation-inputs" / "uiao_leadership_briefing_v1.0.yaml"
+        leadership_canon = _LEADERSHIP_CANON
         assert leadership_canon.exists(), f"Canon not found: {leadership_canon}"
 
         with mock.patch("uiao_impl.generators.diagrams.render_plantuml_file", return_value=None) as mock_render:
@@ -411,8 +412,11 @@ class TestPlantUMLThemeConfiguration:
         )
 
     def test_quarto_yml_plantuml_theme_is_neutral(self) -> None:
+        # Post four-repo split, _quarto.yml lives in the ``uiao-docs``
+        # repository. Skip when the file is not present in this checkout.
         quarto_yml = _REPO_ROOT / "_quarto.yml"
-        assert quarto_yml.exists(), "_quarto.yml not found"
+        if not quarto_yml.exists():
+            pytest.skip("_quarto.yml lives in uiao-docs post split; not present here.")
         cfg = yaml.safe_load(quarto_yml.read_text(encoding="utf-8"))
         plantuml_section = cfg.get("plantuml", {})
         assert plantuml_section.get("theme") == "neutral", (

@@ -21,7 +21,7 @@ from uiao_impl.utils.context import get_settings
 
 logger = logging.getLogger(__name__)
 
-_DIAGRAMS_CANON = Path("generation-inputs/diagrams.yaml")
+_DIAGRAMS_CANON_NAME = "diagrams.yaml"
 _DEFAULT_VISUALS_DIR = Path("visuals")
 _DEFAULT_OUTPUT_DIR = Path("assets/images/plantuml")
 
@@ -44,7 +44,7 @@ def load_diagrams_canon(
     """
     settings = get_settings()
     if canon_path is None:
-        canon_path = settings.project_root / _DIAGRAMS_CANON
+        canon_path = settings.canon_dir / _DIAGRAMS_CANON_NAME
     canon_path = Path(canon_path)
 
     if not canon_path.exists():

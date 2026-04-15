@@ -7,9 +7,11 @@ core builder functions work with minimal/empty context data.
 import json
 from pathlib import Path
 
+from canon_paths import FEDRAMP_SSP_TEMPLATE
+
 # Locate the repo root relative to this test file so paths are portable
 _REPO_ROOT = Path(__file__).parent.parent
-_TEMPLATE_PATH = _REPO_ROOT / "data" / "fedramp_ssp_template_structure.yaml"
+_TEMPLATE_PATH = FEDRAMP_SSP_TEMPLATE
 
 
 class TestGeneratorImports:
