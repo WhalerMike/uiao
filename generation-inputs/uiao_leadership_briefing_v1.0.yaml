@@ -1,0 +1,291 @@
+version: "1.0"
+document: "UIAO Leadership Briefing"
+classification: "Public"
+disclaimer: >
+  This document describes a Generic Federal Agency reference architecture. It is not based on
+  any specific real agency, organization, or program. The scenarios, metrics, system names,
+  personnel references, and organizational details used throughout are illustrative and
+  representative of conditions commonly observed across the U.S. federal enterprise. This
+  material is intended to demonstrate what a mature UIAO implementation looks like in practice
+  and to provide a credible, reusable baseline for agencies at various stages of modernization.
+
+
+audience:
+  - CIO
+  - CISO
+  - CTO
+  - PMO
+  - Network Leadership
+  - Identity Leadership
+
+leadership_briefing:
+
+  executive_summary: |
+    The agency has been trying to solve the same identity problem for six years. Different divisions
+    provisioned their own AD forests. Network teams built their own IPAM spreadsheets. Security teams
+    stacked DLP tools on top of monitoring gaps they never fully closed. Each fix made sense locally.
+    Collectively, they created an environment that is harder to secure, slower to operate, and increasingly
+    difficult to audit.
+
+    UIAO is the program that stops patching symptoms and addresses structure. It replaces the fragmented
+    identity, addressing, and routing layers with a single coherent model — one where every user, device,
+    and workload is authenticated through Entra ID before it touches the network, DNS is authoritative and
+    policy-driven, and telemetry actually correlates rather than just accumulates.
+
+    This is not a technology refresh. The hardware is largely the same. What changes is the architecture
+    underneath: how identity decisions propagate, how traffic is routed, how compliance evidence is
+    collected, and how the agency proves it to auditors without a six-week manual review cycle.
+
+    The immediate drivers are concrete. TIC 2.0 hairpinning is adding 40-60% latency to M365 traffic.
+    FedRAMP 20x Phase 2 requirements land before the end of the fiscal year. Three open POA&M items
+    trace back directly to the IPAM fragmentation this program fixes. UIAO addresses all three.
+
+  program_overview: |
+    UIAO consolidates four infrastructure layers that currently operate as separate programs under
+    separate ownership: identity (Active Directory and Entra ID), addressing (DNS/DHCP/IPAM), network
+    routing (TIC-compliant SD-WAN), and telemetry (Splunk correlation feeds). Today these layers are
+    managed by different teams, procured on different cycles, and monitored against different baselines.
+    When something breaks at the intersection — and it regularly does — the diagnosis takes days because
+    no single team owns the full picture.
+
+    The program is organized around four control planes, each with a defined vendor, a defined OSCAL
+    component definition, and a defined set of FedRAMP Moderate controls it satisfies. Identity goes to
+    Entra ID and CyberArk. Network goes to Cisco SD-WAN with TIC 3.0 policy enforcement. Addressing goes
+    to Infoblox DDI. Telemetry goes to Splunk with Palo Alto Prisma for inline inspection.
+
+    Each plane is independently deployable. The agency does not need to cut over everything at once.
+    Phase 1 can deliver cloud-first routing and Entra ID consolidation without touching IPAM. That matters
+    because the legacy PKI dependency in the case management platform cannot be resolved until FY27 at
+    the earliest, and the program is designed to work around it.
+
+  modernization_need: |
+    The current environment has three problems that are getting worse, not better.
+
+    First, identity. The agency runs Active Directory across eight separately managed forests, several of
+    which have no documented owner since the last reorganization. Conditional Access policies exist on paper
+    but are inconsistently enforced — the Security Operations Center identified 14 accounts with Tier 0
+    access that had not been reviewed in over 18 months. Entra ID is in use but has not been fully
+    synchronized, which means the identity graph is incomplete and cannot be relied upon for Zero Trust
+    enforcement decisions.
+
+    Second, addressing. IPAM is managed primarily through spreadsheets maintained by individual network
+    branches. There is no authoritative source for IP-to-identity correlation. When the SOC needs to
+    attribute a suspicious IP to a user and device during an incident, that correlation typically takes
+    three to five business days. That is not a tooling problem — it is a structural one.
+
+    Third, compliance posture. The agency's current FedRAMP compliance evidence is collected manually,
+    assembled quarterly, and reflects a point-in-time snapshot that is usually six to eight weeks stale
+    by the time an assessor sees it. Three of the agency's current open POA&M items trace directly to
+    gaps in identity governance and telemetry coverage that UIAO is designed to close.
+
+    TIC 3.0 transition requirements and FedRAMP 20x Phase 2 expectations add deadline pressure. Neither
+    can be met by continuing to optimize the current architecture.
+
+  program_vision: |
+    The end state is not complicated to describe. The hard part is getting there without breaking
+    operations along the way.
+
+    In the target architecture, a user's Entra ID identity is the root of every access decision. When
+    they connect — from any location, on any device — Conditional Access evaluates their posture, their
+    role, and their network path before the session is established. There is no separate VPN decision,
+    no separate IPAM lookup, no separate compliance check. Those happen in the background, continuously,
+    against live telemetry rather than a quarterly snapshot.
+
+    Network routing follows TIC 3.0 policy natively through Cisco SD-WAN. M365 traffic no longer
+    backhauls through legacy concentrators. The latency savings are measurable and immediate — the pilot
+    site showed a 47% reduction in average Teams call setup time in the first week.
+
+    DNS is authoritative. Every device that gets an address gets it from Infoblox with a corresponding
+    identity binding. That binding flows into Splunk. When the SOC needs to attribute a connection, the
+    answer is available in under a minute, not five days.
+
+    Compliance evidence is generated continuously from the same control plane telemetry. The OSCAL
+    artifacts produced by this pipeline are not a separate documentation effort — they are a live output
+    of the architecture. Assessors can pull current evidence on demand rather than waiting for a
+    quarterly package.
+
+    The architecture is designed to survive vendor changes. If a better identity provider emerges, or
+    if a contract changes, the control plane model allows substitution without rearchitecting the rest
+    of the program. That is the structural value of UIAO — not any single vendor, but the framework
+    that makes vendors interchangeable.
+
+  control_planes:
+    - name: "Identity Control Plane"
+      narrative: |
+        The Identity Control Plane is anchored in Entra ID and reinforced by
+        ICAM governance, Conditional Access, Privileged Identity Management,
+        and lifecycle automation. Identity becomes the authoritative source
+        for access, addressing, certificates, and policy.
+
+    - name: "Network Control Plane"
+      narrative: |
+        The Network Control Plane uses Cisco SD-WAN to deliver cloud-first
+        routing, performance-optimized paths for M365, and identity-aware
+        segmentation. Integration with INR enables location-aware routing and
+        emergency services readiness.
+
+    - name: "Addressing Control Plane"
+      narrative: |
+        The Addressing Control Plane modernizes IPAM through InfoBlox,
+        replacing spreadsheets with authoritative, identity-derived
+        addressing. DNS and DHCP are unified across cloud and on-prem
+        environments, enabling consistent policy enforcement and accurate
+        telemetry correlation.
+
+    - name: "Telemetry & Location Control Plane"
+      narrative: |
+        The Telemetry and Location Control Plane consolidates signals from
+        M365, SD-WAN, endpoints, DNS, CDM/CLAW, and SIEM platforms. Telemetry
+        becomes a real-time control input for routing, security, and
+        compliance, enabling conversation-level visibility across the
+        enterprise.
+
+    - name: "Security & Compliance Plane"
+      narrative: |
+        The Security and Compliance Plane aligns the architecture with TIC
+        3.0, Zero Trust, FedRAMP 20x Phase 2, NIST 800-63, and ICAM governance.
+        Security becomes embedded in the architecture rather than bolted on,
+        with automated enforcement replacing manual review.
+
+  core_concepts:
+    - name: "Single Source of Truth (SSOT)"
+      narrative: |
+        The canonical data repository is the authoritative origin for all
+        architectural definitions. Every document, template, and generated
+        artifact derives its definitions from this single source of truth,
+        ensuring consistency and preventing drift across the architecture.
+
+    - name: "Conversation as the Atomic Unit"
+      narrative: |
+        Every interaction—identity, certificate, addressing, path, QoS, and
+        telemetry—is treated as a single, correlated conversation rather than
+        isolated events.
+
+    - name: "Identity as the Root Namespace"
+      narrative: |
+        Identity becomes the root namespace for all resources, ensuring that
+        every IP address, certificate, subnet, policy, and telemetry event is
+        derived from or bound to identity.
+
+    - name: "Deterministic Addressing"
+      narrative: |
+        Addressing becomes deterministic and policy-driven, replacing ad-hoc
+        assignment with identity-derived logic that enables accurate
+        correlation and automated governance.
+
+    - name: "Certificate-Anchored Overlay"
+      narrative: |
+        Certificates and mutual TLS anchor tunnels, services, and trust
+        relationships across the enterprise.
+
+    - name: "Telemetry as Control"
+      narrative: |
+        Telemetry becomes an active control input for routing, security, and
+        compliance decisions rather than a passive reporting mechanism.
+
+    - name: "Embedded Governance & Automation"
+      narrative: |
+        Governance is executed through orchestrated workflows that enforce
+        policy consistently and reduce operational burden.
+
+    - name: "Public Service First"
+      narrative: |
+        Citizen experience, accessibility, and privacy remain top-level
+        design constraints.
+
+  frozen_state: |
+    The current state is not a failure of effort. Most of these systems were reasonable choices at the
+    time they were deployed. The problem is that they were deployed independently, optimized locally,
+    and never integrated into a coherent whole.
+
+    Identity is split across eight AD forests. Some divisions use Entra ID. Some do not. The result is
+    an identity graph with known gaps — the kind of gaps that show up as unattributed access in SOC
+    dashboards and unresolved findings in assessment reports.
+
+    Addressing is manual. The IPAM system of record is a combination of three legacy tools and a shared
+    spreadsheet that nobody fully trusts. IP-to-user correlation during incidents is a multi-day exercise.
+
+    Network security relies on perimeter controls that were designed for an environment where all users
+    were on-premises and all traffic went through a known boundary. That environment no longer exists.
+    Remote work and cloud adoption changed the threat model, but the controls have not kept pace.
+
+    Telemetry exists but is not correlated. The agency has Splunk. It also has feeds from six other
+    monitoring tools that do not share a common schema. Building a timeline across an incident requires
+    manual normalization. That is a solvable problem, but it has not been solved yet.
+
+    Governance runs on email and manual change tickets. A DNS change that should take four hours
+    typically takes two weeks because the approval chain involves four separate teams with no shared
+    workflow system. This is not a people problem. It is a process problem that will persist until the
+    infrastructure underneath it changes.
+
+  outcomes: |
+    The program has four near-term results that are measurable before the end of Phase 1.
+
+    M365 performance improves as soon as TIC 3.0 routing is in place. The pilot site recorded
+    a 47% reduction in Teams call setup latency within the first week. That is not a projection
+    — it is a measured result from the SD-WAN cutover already completed in the eastern region.
+
+    Three open POA&M items close. They trace to IPAM fragmentation and incomplete identity
+    governance — both of which UIAO directly addresses. Closing them reduces the agency's
+    overall risk posture and removes a recurring finding that has appeared in the last two
+    assessment cycles.
+
+    The compliance evidence problem gets solved structurally. Instead of assembling a quarterly
+    package that is already stale, assessors get continuous OSCAL output from the live
+    architecture. The six-to-eight week lag goes away.
+
+    The separation case — the one that used to take 24 to 48 hours — drops to under two minutes.
+    That matters for both security and audit. Every contractor departure, every role change,
+    every access review becomes a documented, automated event rather than a manual ticket
+    that someone may or may not have closed.
+
+    The longer-term outcome is an architecture that does not need to be replaced when a vendor
+    changes. The control plane model is the investment. The specific vendors inside it are not.
+
+diagrams:
+  architecture_overview:
+    title: "UIAO High-Level Architecture"
+    type: flowchart
+    description: >
+      High-level view of the five primary UIAO planes and their interconnections,
+      showing how Identity, Addressing, Overlay, Telemetry, and Management planes
+      interact within the unified architecture.
+    include_in:
+      - leadership_briefing_v1.0.md
+      - unified_architecture_v1.0.md
+    content: |
+      flowchart TD
+          IP["🔐 Identity Plane\n(AuthN / AuthZ)"]
+          AP["📍 Addressing Plane\n(DNS / Service Mesh)"]
+          OP["🌐 Overlay Plane\n(Network Fabric / SD-WAN)"]
+          TP["📊 Telemetry Plane\n(SIEM / Monitoring)"]
+          MP["⚙️ Management Plane\n(Policy / Orchestration)"]
+
+          MP -->|"Governs"| IP
+          MP -->|"Governs"| AP
+          MP -->|"Governs"| OP
+          MP -->|"Governs"| TP
+          IP -->|"Token / Assertion"| AP
+          AP -->|"Route Resolution"| OP
+          OP -->|"Traffic Telemetry"| TP
+          TP -->|"Alerts / Feedback"| MP
+
+  zero_trust_journey:
+    title: "Zero Trust Maturity Journey"
+    type: flowchart
+    description: >
+      Maturity progression from Traditional Perimeter-based security through
+      Enhanced and Optimal stages to Advanced Zero Trust Architecture (ZTA).
+    include_in:
+      - leadership_briefing_v1.0.md
+      - zero_trust_narrative_v1.0.md
+    content: |
+      flowchart LR
+          TP["🏰 Traditional Perimeter\n(Castle-and-Moat)\nVPN + Firewall only"]
+          EN["🔒 Enhanced\n(Identity-Aware)\nMFA + SSO + RBAC"]
+          OP["✅ Optimal\n(Zero Trust Aligned)\nMicro-seg + ABAC + SIEM"]
+          ADV["🚀 Advanced ZTA\n(Continuous Verification)\nAI-driven + FedRAMP 20x"]
+
+          TP -->|"Adopt MFA + IdP"| EN
+          EN -->|"Deploy Service Mesh\n+ Policy Engine"| OP
+          OP -->|"Continuous Auth\n+ ML Anomaly Detection"| ADV
