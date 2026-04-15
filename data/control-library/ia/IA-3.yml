@@ -1,0 +1,92 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-3
+# Title      : Device Identification and Authentication
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IA-3
+title: Device Identification and Authentication
+family: Identification and Authentication
+status: implemented
+
+implemented_by:
+  - entra-id
+  - intune-mdm
+  - cisco-catalyst
+  - infoblox-ipam
+
+evidence:
+  - entra-id-device-registration-report
+  - intune-device-compliance-policy-report
+  - cisco-catalyst-802-1x-device-authentication-logs
+  - infoblox-ipam-device-address-assignment-records
+
+parameters:
+  - id: ia_3_device_authentication_method
+    description: >-
+      Authentication method required for device identification before
+      network access is granted.
+    value: "802.1X with Entra ID device certificates; MAC-based fallback for IoT via Infoblox"
+  - id: ia_3_device_registration_requirement
+    description: >-
+      Registration requirement for devices connecting to organizational
+      network infrastructure.
+    value: "Entra ID device registration and Intune enrollment required for all managed endpoints"
+
+narrative: |
+  **Device Identity and Certificate-Based Authentication**
+  The organization uniquely identifies and authenticates all devices
+  before establishing network connections through a layered device
+  identity framework. Managed endpoints are registered in Microsoft
+  Entra ID and enrolled in Intune MDM, receiving device certificates
+  that enable 802.1X certificate-based authentication at the network
+  access layer. Cisco Catalyst network infrastructure enforces 802.1X
+  authentication at all wired and wireless access ports, ensuring that
+  only devices with valid Entra ID-issued certificates are admitted
+  to organizational network segments. This supports **IA-2**
+  (Identification and Authentication) and **AC-18** (Wireless Access).
+
+  **Network Address Management and IoT Device Authentication**
+  Infoblox IPAM provides authoritative IP address management for all
+  organizational devices, maintaining a comprehensive device inventory
+  that correlates MAC addresses, IP assignments, and device identity
+  attributes. IoT and operational technology devices that cannot support
+  certificate-based authentication are authenticated via MAC
+  Authentication Bypass (MAB) with Infoblox-managed address reservations
+  and placed into restricted network segments enforced by Cisco Catalyst
+  VLAN policies. This segmentation approach aligns with **AC-4**
+  (Information Flow Enforcement) and **SC-7** (Boundary Protection).
+
+  **Hardware Root of Trust Enforcement**
+  The system enforces device identification by requiring a valid Hardware
+  Root of Trust (TPM 2.0) during the initial Entra ID device join process.
+  All managed endpoints must present a healthy TPM 2.0 attestation status
+  before being granted access to organizational resources. Microsoft Intune
+  validates the TPM health attestation as part of the device compliance
+  policy, and Entra ID Conditional Access denies authentication for any
+  device where TPM 2.0 health attestation fails. This ensures that only
+  organizationally-managed, cryptographically-verified hardware can access
+  the environment, providing a machine-verifiable link between the user
+  identity, the Entra ID Device Object ID, and the physical hardware.
+  The verification endpoint for device attestation status is exposed via
+  the Microsoft Intune Device Settings API (PARAM-IAM-006). This supports
+  **IA-5** (Authenticator Management) and **SA-4** (Acquisition Process).
+
+  **Continuous Device Compliance Monitoring**
+  Microsoft Intune continuously evaluates device compliance status,
+  including OS patch level, encryption state, and security configuration
+  baselines. Devices falling out of compliance are dynamically blocked
+  from organizational resources through Entra ID Conditional Access
+  device compliance signals. All device authentication events are
+  forwarded to Microsoft Sentinel for correlation and anomaly detection,
+  supporting **AU-2** (Event Logging) and **SI-4** (System Monitoring)
+  continuous monitoring requirements.
+
+related_controls:
+  - AC-4  # Information Flow Enforcement
+  - AC-18 # Wireless Access
+  - IA-2  # Identification and Authentication
+  - IA-5  # Authenticator Management
+  - AU-2  # Event Logging
+  - SA-4  # Acquisition Process
+  - SC-7  # Boundary Protection
+  - SI-4  # System Monitoring

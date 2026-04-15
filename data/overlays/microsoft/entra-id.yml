@@ -1,0 +1,59 @@
+# Microsoft Entra ID Overlay
+# Restores Microsoft Entra ID-specific details for the Identity and Endpoint control planes.
+# Remove 'microsoft' from data/overlay-config.yml to use generic placeholders instead.
+
+overlay_meta:
+  vendor: microsoft
+  product: entra-id
+  description: "Microsoft Entra ID identity platform and endpoint management (Intune/Defender)"
+
+control_plane_overrides:
+  - id: identity
+    subtitle: "Entra ID + ICAM + Zero Trust"
+    components:
+      - name: "Microsoft Entra ID"
+        role: "Primary Identity Provider"
+        capabilities:
+          - Conditional Access (CA)
+          - MFA / SSPR
+          - Identity Protection
+          - Authentication Strength
+      - name: "ICAM Governance"
+        role: "Identity governance and compliance"
+        capabilities:
+          - NIST 800-63 Alignment
+          - OMB M-19-17 Compliance
+          - Credentialing
+          - Access Reviews
+          - Privileged Identity Management (PIM)
+          - Joiner/Mover/Leaver Automation
+      - name: "Zero Trust Policy Engine"
+        role: "Continuous access evaluation"
+        capabilities:
+          - "Identity + Device + Location + Risk"
+          - Continuous Access Evaluation (CAE)
+          - "Policy decisions exported to SD-WAN + Telemetry"
+
+  - id: endpoint
+    components:
+      - name: "Defender / MINR"
+        role: "Endpoint detection and response"
+      - name: "Intune"
+        role: "Configuration and compliance management"
+      - name: "Entra ID Device Objects"
+        role: "Device identity anchoring"
+    device_identity:
+      anchored_in:
+        - "Entra ID device objects"
+        - "Certificates (TPM-backed)"
+        - "Intune compliance state"
+      used_for:
+        - "Conditional Access"
+        - "INR routing decisions"
+        - "Segmentation boundaries"
+
+fedramp_alignment_overrides:
+  - plane_id: identity
+    evidence_source: "Microsoft Entra ID sign-in and risk logs"
+  - plane_id: endpoint
+    evidence_source: "Intune compliance state + Defender ATP posture signals"
