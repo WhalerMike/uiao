@@ -176,8 +176,30 @@ I inspected `uiao-docs/.github/workflows/build-docs.yml` and confirmed the workf
 - [ ] **A1** — Commit UIAO_003 (2 min)
 - [ ] **A2** — Generate PAT + add secret to both repos (5 min)
 - [ ] **A3** — Trigger round-trip probe + watch Actions (3-5 min)
-- [ ] **B1** — Reply in chat with ODA-15 choice (a/b/c) (30 sec)
+- [x] **B1** — ~~Reply in chat with ODA-15 choice (a/b/c)~~ **RESOLVED 2026-04-15 as Option (a) — new `integration` mission-class** (see Turn 8 append in `2026-04-14-customer-docs-platform.md` and `uiao-core` v0.6.0 changelog entry)
 - [ ] **B2** — Watch cisagov/ScubaGear releases (30 sec)
 - [ ] **B3** — No action, parked for Step 6
 
 Ping me when A1-A3 are done or if anything fails. While you're running these, I'm building Phase C.
+
+---
+
+## ODA-15 Resolution — 2026-04-15
+
+**Decision (Option a):** Add a fifth canonical doctrinal mission-class named `integration` to UIAO_003 covering change-making actions against a target environment. All five seeded modernization adapters (`entra-id`, `m365`, `service-now`, `palo-alto`, `scuba`) migrate from `mission-class: unmapped` → `mission-class: integration`.
+
+**Rationale:** Keeps the doctrinal axis clean and orthogonal to the operational axis. Explicitly distinguishes modernization adapters (change-makers) from enforcement adapters (assurance artifact producers). Avoids re-interpreting `enforcement` (which stays scoped to external assurance artifacts) and avoids the permanent `unmapped` hack. Future-proofs the registry for additional change-making adapters (Terraform/OpenTofu, CyberArk credential rotation, etc.).
+
+**Impact:** Dual-axis taxonomy is now complete and ratifiable. UIAO_003 §4.2–§4.7 ready for promotion from NEW (Proposed) to canonical pending Master Document review. No breaking changes to existing code or adapters.
+
+**Files landed** (see `uiao-core` commit on branch `claude/implement-oda15-updates-UofSn`):
+- `uiao-core/schemas/adapter-registry/adapter-registry.schema.json` — enum extended.
+- `uiao-core/canon/modernization-registry.yaml` — 5 adapters migrated.
+- `uiao-core/canon/adapter-registry.yaml` — header comment refreshed.
+- `uiao-core/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md` — new §4.7 Integration Adapter Class + TOC / §3 / §5 / Appendix B updates.
+- `uiao-core/ARCHITECTURE.md` — §3.2, §13 row 15 (RESOLVED), §14 v0.6.0 changelog.
+
+**Downstream in this repo** (see `uiao-docs` commit on the same branch):
+- `docs/13_FIMF_AdapterRegistry.qmd` — inserted **Doctrinal Mission-Classes** section with the 5-row table.
+- 10 adapter scaffolds under `docs/customer-documents/adapter-{technical-specifications,validation-suites}/{entra-id,m365,service-now,palo-alto,scuba}/*.qmd` — frontmatter regenerated via `uiao-core/tools/sync_canon.py --scaffold` (idempotent; `--check-only` exits 0).
+- This session log + paired `.docx`.
