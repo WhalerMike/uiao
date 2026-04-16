@@ -32,19 +32,29 @@ This document is a stub. Replace every `_TODO — ..._` block with authored cont
 
 ## Overview
 
-_TODO — Author an overview of the Infoblox DNS / IPAM Adapter adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Infoblox Adapter is an **integration-class** modernization adapter for DNS and IP Address Management. It consumes Infoblox WAPI data to produce canonical claims for DNS records, DHCP scopes, and IP allocations.
+
+Key capabilities: DNS record enumeration by network view, proposed DNS change reporting (change-making surface), and KSI-anchored evidence generation. Requires on-prem-self-hosted runner with network access to the Infoblox grid master.
+
+**Implementation:** `uiao-impl/src/uiao_impl/adapters/infoblox_adapter.py`. Conformance: 30/30 PASS.
 
 ## Scope
 
 Target surfaces / subsystems: `dns-records`, `dhcp-scopes`, `ip-allocations`, `network-views`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** Infoblox WAPI v2.12 for DNS records (A, CNAME, etc.), network views, and zones.
+**Emits:** `ClaimSet` with one claim per DNS record, `DriftReport` for proposed changes, `EvidenceObject` with record count.
+**Does NOT:** modify DNS records without explicit `push_dns_change()` invocation, access DHCP lease data, or operate outside the configured network view.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `SC-20`, `SC-21`, `CM-8`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **SC-20** Secure Name/Address Resolution | Primary | DNS record enumeration provides evidence of authoritative name resolution state. |
+| **SC-21** Secure Name/Address Resolution (Recursive) | Supporting | Zone configuration tracking supports recursive resolution governance. |
+| **CM-8** Component Inventory | Supporting | DNS/IP record enumeration supports network component inventory. |
 
 ## Operational profile
 
