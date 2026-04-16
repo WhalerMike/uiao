@@ -42,9 +42,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .lycheecache
-          key: lychee-cache-${{ github.run_id }}
+          # Include .lychee.toml hash in the key so config changes (e.g. a new
+          # exclude pattern) invalidate the cache. Without this, stale failures
+          # for URLs later added to the exclude list persist indefinitely via
+          # the restore-keys prefix match. (Parity with uiao-core's link-check
+          # workflow, which hit this exact bug during ODA-15.)
+          key: lychee-cache-${{ hashFiles('.lychee.toml') }}-${{ github.run_id }}
           restore-keys: |
-            lychee-cache-
+            lychee-cache-${{ hashFiles('.lychee.toml') }}-
 
       - name: Count input files (sanity check)
         shell: bash
@@ -68,6 +73,31 @@ jobs:
           # fail on PRs (blocking); schedule + dispatch produce report only
           fail: ${{ github.event_name == 'pull_request' || github.event.inputs.fail_on_broken == 'true' }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish lychee report to job summary + annotations
+        if: always() && hashFiles('lychee-report.md') != ''
+        shell: bash
+        run: |
+          # Human-readable summary for the Actions UI.
+          {
+            echo "## Lychee link-check report"
+            echo ""
+            cat lychee-report.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Echo to log (requires admin access to view).
+          echo "::group::lychee-report.md"
+          cat lychee-report.md
+          echo "::endgroup::"
+
+          # Emit the report as a single CI error annotation. Annotations on a
+          # check-run are exposed via the public REST endpoint
+          # `/check-runs/{id}/annotations`, so the failing URLs become
+          # readable without admin access to logs or artifact downloads.
+          # URL-encode newlines to %0A per GitHub workflow-command rules.
+          # (Parity with uiao-core's link-check workflow.)
+          report_encoded=$(awk '{printf "%s%%0A", $0}' lychee-report.md)
+          echo "::error title=Lychee link-check report::${report_encoded}"
 
       - name: Upload report artifact
         if: always()
