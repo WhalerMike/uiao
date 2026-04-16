@@ -33,19 +33,55 @@ This document is a stub. Replace every `_TODO — ..._` block with authored cont
 
 ## Overview
 
-_TODO — Author an overview of the Terraform / OpenTofu Evidence Adapter adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Terraform / OpenTofu Evidence Adapter is an **integration-class** modernization adapter that consumes Terraform and OpenTofu artifacts — state files (`.tfstate`), plan output (`terraform plan -json`), and HCL configuration files (`.tf`) — to produce object-keyed canonical claims with KSI-anchored provenance.
+
+This adapter serves three primary functions within the UIAO governance perimeter:
+
+1. **State extraction.** Parses Terraform v4 state files to enumerate all managed resources across providers (AWS, Azure, GCP, etc.), producing one `ClaimObject` per resource with full attribute preservation and deterministic provenance hashes.
+
+2. **Plan consumption.** Ingests `terraform plan -json` output and maps each planned action (create, update, delete) to a severity-rated `DriftReport`, which feeds downstream POA&M generation via the OSCAL pipeline.
+
+3. **Three-way drift detection.** Compares live system state (from a companion adapter), Terraform state, and HCL configuration to identify misalignments across all three sources — the most comprehensive drift analysis in the adapter family.
+
+The adapter never invokes the `terraform` CLI directly. It parses the output files that the CLI produces, maintaining a clean separation between infrastructure execution and governance observation.
+
+**Implementation:** `uiao-impl/src/uiao_impl/adapters/terraform_adapter.py` + `terraform_parser.py` (real parsing, not stubs). End-to-end OSCAL SAR generation proven via 7 integration tests.
 
 ## Scope
 
 Target surfaces / subsystems: `terraform-state`, `terraform-plan`, `hcl-configuration`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**What the adapter reads:**
+
+- Terraform v4 state files (JSON) — local files, S3 backends, or Terraform Cloud state URLs
+- Terraform plan output (JSON from `terraform plan -json`) — planned infrastructure changes
+- HCL2 configuration files (`.tf`) — desired-state declarations parsed via `python-hcl2`
+
+**What the adapter emits:**
+
+- `ClaimSet` with one `ClaimObject` per managed resource (from state or HCL)
+- `DriftReport` with per-resource planned changes and severity ratings (from plan)
+- `EvidenceObject` with bundled provenance chain (from evidence generation)
+- OSCAL Assessment Results (SAR) via the `adapter_to_oscal.py` bridge
+
+**What the adapter does NOT touch:**
+
+- Does not invoke `terraform apply` or make any infrastructure changes
+- Does not access cloud provider APIs directly (that's the companion live-system adapter's job)
+- Does not modify `.tfstate` files; reads only
+- Does not store credentials; auth is delegated to the runner environment
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CM-2`, `CM-3`, `CM-6`, `CM-8`, `CA-7`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CM-2** Baseline Configuration | Primary | State extraction captures the current baseline of all managed infrastructure resources. |
+| **CM-3** Configuration Change Control | Primary | Plan consumption maps every planned change to a drift item with create/update/delete action and field-level diff. |
+| **CM-6** Configuration Settings | Supporting | HCL parsing captures declared configuration settings; three-way drift detects deviations from declared state. |
+| **CM-8** Information System Component Inventory | Primary | State extraction produces a complete, deterministic inventory of all Terraform-managed components with provider, type, name, and attribute data. |
+| **CA-7** Continuous Monitoring | Supporting | When run on a schedule, provides continuous evidence of infrastructure drift between desired (HCL), recorded (state), and actual (live) configurations. |
 
 ## Operational profile
 
