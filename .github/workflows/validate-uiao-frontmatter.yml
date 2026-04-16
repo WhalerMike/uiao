@@ -46,7 +46,11 @@ jobs:
             fi
 
             # Check uiao_id (flexible: accepts uiao_id: or id: patterns)
-            UIAO_ID=$(echo "$FRONT" | grep -E '^(uiao_id|uiao.id)\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1)
+            # `|| true` guards each pipe against `set -o pipefail` aborting
+            # the whole step when grep finds no match — which would stop the
+            # validator mid-file and fail CI even on files that only generate
+            # warnings. Missing fields are handled by the [ -z ] checks below.
+            UIAO_ID=$(echo "$FRONT" | grep -E '^(uiao_id|uiao.id)\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1 || true)
             if [ -z "$UIAO_ID" ]; then
               echo "::warning file=$f::Missing uiao_id in frontmatter. Expected pattern: UIAO_A_01"
             else
@@ -63,7 +67,7 @@ jobs:
             # ADRs (docs/adr/*) use the standard ADR lifecycle vocabulary per
             # Michael Nygard's ADR spec: Proposed | Accepted | Rejected |
             # Superseded | Deprecated. Both are accepted case-insensitively.
-            STATUS=$(echo "$FRONT" | grep -E '^status\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1)
+            STATUS=$(echo "$FRONT" | grep -E '^status\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1 || true)
             ALLOWED_STATUS_RE='^(Current|Draft|Needs Replacing|Needs Creating|Proposed|Accepted|Rejected|Superseded|Deprecated)$'
             if [ -z "$STATUS" ]; then
               echo "::error file=$f::Missing status in frontmatter. Allowed (docs): Current, Draft, Needs Replacing, Needs Creating, Deprecated. Allowed (ADRs): Proposed, Accepted, Rejected, Superseded, Deprecated."
@@ -76,7 +80,7 @@ jobs:
             fi
 
             # Check owner (warning only)
-            OWNER=$(echo "$FRONT" | grep -E '^owner\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1)
+            OWNER=$(echo "$FRONT" | grep -E '^owner\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1 || true)
             if [ -z "$OWNER" ]; then
               echo "::warning file=$f::Missing owner in frontmatter."
             fi
