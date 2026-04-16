@@ -182,3 +182,123 @@ def build_adapter_bundle(
     )
 
     return bundle
+
+
+# ---------------------------------------------------------------------------
+# Drift → POA&M bridge
+# ---------------------------------------------------------------------------
+
+_SEVERITY_TO_RISK = {
+    "high": "high",
+    "warning": "moderate",
+    "info": "low",
+    "none": "low",
+}
+
+
+def drift_to_poam_findings(
+    drift: DriftReport,
+    adapter_id: str,
+    control_ids: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
+    """Convert an adapter DriftReport into POA&M findings.
+
+    Each drifted resource becomes a POA&M item with title, description,
+    risk level, and related controls. The output format matches what
+    `generators/poam.py` `build_poam(manual_findings=...)` expects.
+
+    Args:
+        drift: DriftReport from any adapter method (consume_terraform_plan,
+               apply_baseline, push_config_change, etc.)
+        adapter_id: The adapter ADAPTER_ID.
+        control_ids: NIST 800-53 control IDs to associate with findings.
+
+    Returns:
+        List of finding dicts, each with:
+        - title, description, risk_level, related_controls
+    """
+    ctrl_ids = control_ids or []
+    findings: List[Dict[str, Any]] = []
+
+    resources = drift.details.get("resources", {})
+    if resources:
+        # Per-resource drift items (e.g., from consume_terraform_plan)
+        for addr, info in resources.items():
+            actions = info.get("actions", [])
+            diff = info.get("diff", {})
+            severity = info.get("severity", drift.severity)
+            risk = _SEVERITY_TO_RISK.get(severity, "moderate")
+
+            action_str = "/".join(actions) if actions else "drift"
+            changed_fields = list(diff.keys()) if diff else []
+
+            findings.append({
+                "title": f"[{adapter_id}] {action_str}: {addr}",
+                "description": (
+                    f"Adapter {adapter_id} detected {action_str} on resource "
+                    f"{addr}. "
+                    + (f"Changed fields: {', '.join(changed_fields)}. " if changed_fields else "")
+                    + f"Severity: {severity}."
+                ),
+                "risk_level": risk,
+                "related_controls": ctrl_ids,
+            })
+    else:
+        # Aggregate drift (e.g., from baseline comparison)
+        comparison = drift.details.get("comparison", {})
+        summary = comparison.get("summary", {})
+        nc_count = summary.get("non_compliant_count", 0)
+        missing_count = summary.get("missing_count", 0)
+
+        if nc_count > 0 or missing_count > 0:
+            risk = _SEVERITY_TO_RISK.get(drift.severity, "moderate")
+            findings.append({
+                "title": f"[{adapter_id}] Baseline drift: {drift.drift_type}",
+                "description": (
+                    f"Adapter {adapter_id} baseline comparison found "
+                    f"{nc_count} non-compliant setting(s) and "
+                    f"{missing_count} missing setting(s). "
+                    f"Drift type: {drift.drift_type}."
+                ),
+                "risk_level": risk,
+                "related_controls": ctrl_ids,
+            })
+
+        # Non-compliant items as individual findings
+        for nc in comparison.get("non_compliant", []):
+            findings.append({
+                "title": f"[{adapter_id}] Non-compliant: {nc.get('key', 'unknown')}",
+                "description": (
+                    f"Expected: {nc.get('expected')}, "
+                    f"Actual: {nc.get('actual')}."
+                ),
+                "risk_level": _SEVERITY_TO_RISK.get(drift.severity, "moderate"),
+                "related_controls": ctrl_ids,
+            })
+
+    return findings
+
+
+def build_adapter_poam(
+    adapter_id: str,
+    drift: DriftReport,
+    control_ids: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Build a complete OSCAL POA&M from adapter drift output.
+
+    Convenience function that converts drift → findings → POA&M.
+
+    Args:
+        adapter_id: The adapter ADAPTER_ID.
+        drift: DriftReport from any adapter method.
+        control_ids: NIST 800-53 control IDs.
+
+    Returns:
+        OSCAL POA&M document dict.
+    """
+    from ..generators.poam import build_poam
+
+    findings = drift_to_poam_findings(drift, adapter_id, control_ids)
+    # build_poam expects a context dict; pass empty since we're using manual_findings
+    poam = build_poam(context={}, manual_findings=findings)
+    return poam
