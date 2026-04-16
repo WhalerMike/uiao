@@ -37,7 +37,7 @@ This glossary defines authoritative terminology for the Universal Integration Ad
 
 **Canon DOCX** — The UIAO Governance Canon Master Document in Microsoft Word format. The single authoritative source for all governance content. All published documentation MUST be traceable to the Canon DOCX.
 
-**Canonical Rules** — The five immutable governance constraints (CR-001 through CR-005) that all UIAO artifacts must conform to. See `docs/canon/canonical-rules.md`.
+**Canonical Rules** — The five immutable governance constraints (CR-001 through CR-005) that all UIAO artifacts must conform to. See `uiao-core/canon/canonical-rules.md` (moved to the canon-authority repo per Phase D, 2026-04-16).
 
 **Canonical Schema** — The UIAO-internal data schema to which all adapter inputs and outputs are normalized. The canonical schema is owned by the Truth Fabric and versioned in `uiao-core`.
 
