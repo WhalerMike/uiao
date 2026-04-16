@@ -302,3 +302,118 @@ def build_adapter_poam(
     # build_poam expects a context dict; pass empty since we're using manual_findings
     poam = build_poam(context={}, manual_findings=findings)
     return poam
+
+
+# ---------------------------------------------------------------------------
+# Adapter → SSP injection
+# ---------------------------------------------------------------------------
+
+
+def _minimal_ssp_skeleton(
+    system_name: str = "UIAO Adapter-Assessed System",
+    system_id: str = "",
+) -> Dict[str, Any]:
+    """Create a minimal OSCAL SSP skeleton suitable for evidence injection.
+
+    This is a lightweight alternative to build_ssp_skeleton() that doesn't
+    require the full canon data directory. Used for adapter-only testing
+    and adapter-first SSP bootstrapping.
+    """
+    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return {
+        "uuid": str(uuid.uuid4()),
+        "metadata": {
+            "title": system_name,
+            "version": "1.0",
+            "oscal-version": "1.0.4",
+            "last-modified": now,
+            "published": now,
+        },
+        "system-characteristics": {
+            "system-name": system_name,
+            "system-id": system_id or str(uuid.uuid4()),
+            "security-sensitivity-level": "moderate",
+            "system-information": {
+                "information-types": [{
+                    "title": "Adapter-assessed infrastructure",
+                    "description": "System components assessed via UIAO adapters.",
+                }],
+            },
+            "security-impact-level": {
+                "security-objective-confidentiality": "moderate",
+                "security-objective-integrity": "moderate",
+                "security-objective-availability": "moderate",
+            },
+            "status": {"state": "operational"},
+            "authorization-boundary": {
+                "description": "GCC-Moderate boundary per UIAO ARCHITECTURE.md §2.1",
+            },
+        },
+        "system-implementation": {
+            "components": [{
+                "uuid": str(uuid.uuid4()),
+                "type": "this-system",
+                "title": system_name,
+                "status": {"state": "operational"},
+            }],
+        },
+        "control-implementation": {
+            "description": "Controls implemented via UIAO adapter evidence.",
+            "implemented-requirements": [],
+        },
+    }
+
+
+def inject_adapter_evidence_into_ssp(
+    ssp: Dict[str, Any],
+    bundle: "EvidenceBundle",
+) -> Dict[str, Any]:
+    """Inject adapter evidence from an EvidenceBundle into an SSP.
+
+    Generic wrapper around inject_scuba_evidence() that works with any
+    adapter's bundle. The underlying function is generic despite its
+    SCuBA-specific name.
+
+    Args:
+        ssp: OSCAL SSP plan dict (the value of ssp["system-security-plan"],
+             NOT the outer wrapper).
+        bundle: EvidenceBundle from build_adapter_bundle().
+
+    Returns:
+        The mutated SSP dict with injected evidence.
+    """
+    from ..generators.ssp_inject import inject_scuba_evidence
+    return inject_scuba_evidence(ssp, bundle)
+
+
+def build_adapter_ssp(
+    adapter_id: str,
+    claim_set: "ClaimSet",
+    control_ids: Optional[List[str]] = None,
+    system_name: str = "UIAO Adapter-Assessed System",
+    timestamp: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Build a complete OSCAL SSP from adapter claims.
+
+    Convenience function: adapter claims → bundle → minimal SSP skeleton →
+    inject evidence → return wrapped SSP.
+
+    Args:
+        adapter_id: The adapter ADAPTER_ID.
+        claim_set: ClaimSet from the adapter.
+        control_ids: NIST 800-53 control IDs.
+        system_name: SSP system name.
+        timestamp: Override timestamp.
+
+    Returns:
+        OSCAL SSP document dict with top-level "system-security-plan" key.
+    """
+    bundle = build_adapter_bundle(
+        adapter_id=adapter_id,
+        claim_set=claim_set,
+        control_ids=control_ids,
+        timestamp=timestamp,
+    )
+    ssp = _minimal_ssp_skeleton(system_name=system_name)
+    inject_adapter_evidence_into_ssp(ssp, bundle)
+    return {"system-security-plan": ssp}
