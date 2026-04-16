@@ -44,11 +44,21 @@ class TestBasics:
     def test_evidence(self, adapter: StigComplianceAdapter) -> None:
         assert isinstance(adapter.collect_evidence("KSI-CM-06"), EvidenceObject)
 
-    def test_extension_raises(self, adapter: StigComplianceAdapter) -> None:
-        with pytest.raises(NotImplementedError):
-            adapter.run_stig_assessment()
-        with pytest.raises(NotImplementedError):
-            adapter.generate_stig_evidence()
+    def test_run_assessment(self, adapter: StigComplianceAdapter) -> None:
+        import json
+        from pathlib import Path
+        data = json.loads((Path(__file__).parent / "fixtures" / "stig-results.json").read_text())
+        result = adapter.run_stig_assessment(data)
+        assert len(result.claims) == 4
+
+    def test_evidence_bundle(self, adapter: StigComplianceAdapter) -> None:
+        import json
+        from pathlib import Path
+        data = json.loads((Path(__file__).parent / "fixtures" / "stig-results.json").read_text())
+        result = adapter.generate_stig_evidence(data)
+        assert isinstance(result, EvidenceObject)
+        assert result.raw_data["pass"] == 2
+        assert result.raw_data["fail"] == 1
 
     def test_collect_and_align(self, adapter: StigComplianceAdapter) -> None:
         r = adapter.collect_and_align()

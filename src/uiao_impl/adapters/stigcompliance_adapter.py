@@ -94,11 +94,32 @@ class StigComplianceAdapter(DatabaseAdapterBase):
             remediation="Evaluate XCCDF results against prior accepted-risk register.",
         )
 
-    def run_stig_assessment(self, benchmark: Optional[str] = None) -> ClaimSet:
-        raise NotImplementedError("run_stig_assessment() is a stub — requires SCAP engine integration.")
+    def run_stig_assessment(self, results_data: Optional[Dict[str, Any]] = None) -> ClaimSet:
+        """Parse STIG assessment results and return claims.
 
-    def generate_stig_evidence(self, benchmark: Optional[str] = None) -> EvidenceObject:
-        raise NotImplementedError("generate_stig_evidence() is a stub.")
+        Args:
+            results_data: Parsed JSON with a "results" list of XCCDF rule outcomes.
+        """
+        results = (results_data or {}).get("results", [])
+        return self.normalize(results)
+
+    def generate_stig_evidence(self, results_data: Optional[Dict[str, Any]] = None) -> EvidenceObject:
+        """Generate evidence bundle from STIG assessment results."""
+        conn = self.connect()
+        results = (results_data or {}).get("results", [])
+        claim_set = self.normalize(results)
+        pass_count = sum(1 for r in results if r.get("result") == "pass")
+        fail_count = sum(1 for r in results if r.get("result") == "fail")
+
+        return EvidenceObject(
+            ksi_id=f"KSI-CM-06-{self._engine}",
+            source=self.ADAPTER_ID,
+            timestamp=self._now(),
+            raw_data={"connection": conn.to_dict(), "pass": pass_count, "fail": fail_count, "total": len(results)},
+            normalized_data=claim_set.to_dict(),
+            provenance={"adapter_id": self.ADAPTER_ID, "engine": self._engine, "hash": self._hash(claim_set.to_dict()), "timestamp": self._now().isoformat()},
+            freshness_valid=True,
+        )
 
     def collect_and_align(self) -> Dict[str, Any]:
         claim_set = self.normalize([])
