@@ -94,6 +94,7 @@ Both workflows use the same secret — a GitHub Personal Access Token with cross
 5. Repository permissions:
    - **Contents: Read and write** (needed for the receiver to check out `uiao-core` and to push the `canon-sync/*` branch to `uiao-docs`).
    - **Pull requests: Read and write** (needed to open the PR).
+   - **Actions: Read and write** (required for the dispatcher's `repository_dispatch` call to actually fire the receiver workflow on `uiao-docs`. The `POST /repos/.../dispatches` REST endpoint accepts and returns 204 with only `Contents: write`, so the dispatcher step reports success — but GitHub silently drops the event and the receiver never runs unless the token also carries `Actions: write`).
    - **Metadata: Read-only** (auto-selected).
 6. Expiration: 90 days is a reasonable starting point; set a calendar reminder to rotate.
 7. Generate the token and copy the value (you only see it once).
@@ -122,7 +123,7 @@ This triggers the receiver in `workflow_dispatch` mode against `main` (or your c
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Receiver workflow fails with `Bad credentials` | PAT expired or missing | Regenerate PAT, update `CANON_SYNC_DISPATCH_TOKEN` secret in both repos |
-| Dispatcher runs but receiver never triggers | Dispatch token lacks Contents:write on target repo | Verify fine-grained PAT includes `uiao-docs` with Contents: Read and write |
+| Dispatcher runs green but receiver workflow shows "no runs yet" | Dispatch token lacks `Actions: write` on target repo (the dispatch API accepts the event with just `Contents: write` but GitHub silently skips workflow triggering without `Actions: write`) | Regenerate the fine-grained PAT with `Actions: Read and write` on `uiao-docs`. Verify by re-triggering: either push a whitespace tweak to any `canon/*.yaml` on uiao-core/main, or use **Actions → Canon sync — receive from uiao-core → Run workflow** to test the receiver code path directly. |
 | `peter-evans/create-pull-request` says "Bypassed rule violations" | Required status check not yet registered as a check on `uiao-docs` | Expected for now — will resolve in Step 6 (CI workflows) |
 | `sync_canon.py` reports orphan drift | Folder exists in `uiao-docs` but no adapter with that id in either registry | Either add the adapter to canon, or manually retire the folder. Tool never deletes. |
 | Schema validation fails on dispatch | YAML edit introduced a schema violation | Fix locally, run `python tools/sync_canon.py --core-root . --docs-root ../uiao-docs --check-only` to verify, then push |
