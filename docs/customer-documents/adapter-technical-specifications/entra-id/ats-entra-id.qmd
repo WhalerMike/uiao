@@ -33,19 +33,32 @@ This document is a stub. Replace every `_TODO — ..._` block with authored cont
 
 ## Overview
 
-_TODO — Author an overview of the Microsoft Entra ID adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Microsoft Entra ID Adapter is the **identity-fabric foundation** of the UIAO adapter ecosystem. As an integration-class modernization adapter, it consumes Entra ID (formerly Azure AD) data via the Microsoft Graph API to establish and maintain canonical object identity for every tenant, policy, control, and evidence artifact.
+
+This is the adapter that satisfies the UIAO Adapter Doctrine's core mandate: "Identity ensures every transaction is certificate-anchored." All other adapters depend on the identity graph that this adapter produces.
+
+Key capabilities: user/group/service-principal enumeration, conditional access policy assessment, sign-in activity analysis, authentication methods inventory, and directory role mapping. Uses the `EntraCollector` (real Graph API collector with httpx) for data retrieval.
+
+**Implementation:** `uiao-impl/src/uiao_impl/adapters/entra_adapter.py` + `collectors/entra/entra_collector.py`. Conformance: 30/30 PASS.
 
 ## Scope
 
 Target surfaces / subsystems: `user-objects`, `group-objects`, `service-principals`, `conditional-access-policies`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** Graph API endpoints for users, groups, service principals, conditional access policies, named locations, directory roles, authentication methods policy, organization metadata.
+**Emits:** `ClaimSet` with identity-rooted claims, `EvidenceObject` with KSI provenance.
+**Does NOT:** modify Entra ID configuration, access user credentials or tokens, process person identity (object identity only per canon invariant).
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CM-8`, `IA-2`, `IA-4`, `AC-2`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CM-8** Component Inventory | Primary | Enumerates all identity objects (users, groups, service principals) as canonical claims. |
+| **IA-2** Identification and Authentication | Primary | Conditional access policy assessment verifies MFA enforcement across the tenant. |
+| **IA-4** Identifier Management | Primary | Service principal and application registration inventory ensures all identifiers are tracked. |
+| **AC-2** Account Management | Supporting | User and group enumeration supports account lifecycle verification. |
 
 ## Operational profile
 
