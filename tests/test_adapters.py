@@ -6,6 +6,7 @@ from uiao_impl.adapters import (
     DatabaseAdapterBase,
     EntraAdapter,
     M365Adapter,
+    PaloAltoAdapter,
     ServiceNowAdapter,
     TerraformAdapter,
 )
@@ -15,6 +16,7 @@ ADAPTER_REGISTRY = {
     "database": DatabaseAdapterBase,
     "entra-id": EntraAdapter,
     "m365": M365Adapter,
+    "palo-alto": PaloAltoAdapter,
     "servicenow": ServiceNowAdapter,
     "terraform": TerraformAdapter,
 }
@@ -53,4 +55,3 @@ def test_adapter_connect(adapter_id):
     result = instance.connect()
     # The connect method returns a ConnectionProvenance object, not a bool
     assert result is not None
-
