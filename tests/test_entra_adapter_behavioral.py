@@ -54,7 +54,7 @@ class TestNormalizeRealData:
     def test_source_is_entra(self, adapter: EntraAdapter, users_groups: list) -> None:
         result = adapter.normalize(users_groups)
         for claim in result.claims:
-            assert claim.source == "entra"
+            assert claim.source == "entra-id"
 
     def test_provenance_hash_deterministic(self, adapter: EntraAdapter, users_groups: list) -> None:
         r1 = adapter.normalize(users_groups)
@@ -87,7 +87,7 @@ class TestDriftDetection:
     def test_drift_report(self, adapter: EntraAdapter) -> None:
         result = adapter.detect_drift()
         assert isinstance(result, DriftReport)
-        assert result.details.get("adapter") == "entra"
+        assert result.details.get("adapter") == "entra-id"
 
 
 class TestEvidenceGeneration:
@@ -100,7 +100,7 @@ class TestEvidenceGeneration:
         result = adapter.collect_evidence("KSI-IA-02")
         assert isinstance(result, EvidenceObject)
         assert result.ksi_id == "KSI-IA-02"
-        assert result.source == "entra"
+        assert result.source == "entra-id"
 
     def test_evidence_has_provenance(self, adapter: EntraAdapter) -> None:
         mock_evidence = MagicMock()
@@ -120,7 +120,7 @@ class TestCollectAndAlign:
 
         result = adapter.collect_and_align()
         assert isinstance(result, dict)
-        assert result["adapter_id"] == "entra"
+        assert result["adapter_id"] == "entra-id"
         assert result["metadata"]["total_records"] == 3
 
 
