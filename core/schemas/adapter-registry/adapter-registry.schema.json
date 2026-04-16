@@ -1,0 +1,223 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://uiao.gov/schemas/adapter-registry/adapter-registry.schema.json",
+  "title": "UIAO Adapter Registry Schema",
+  "description": "JSON Schema for UIAO adapter registry entries. Adapters are registered along two orthogonal axes: the operational class (`class`) describes how the adapter behaves at runtime (change-making vs read-only assessing), and the mission class (`mission-class`) maps the adapter to the canonical UIAO_003 Adapter Segmentation Overview doctrinal roles against SSOT. An adapter declares one value on each axis. See ARCHITECTURE.md §3.2 for the dual-axis rationale.",
+  "type": "object",
+  "required": ["schema-version", "adapters"],
+  "properties": {
+    "schema-version": {
+      "type": "string",
+      "description": "Semantic version of this registry document schema.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "registry-class": {
+      "type": "string",
+      "description": "Declares which registry file this is. Each registry file pins to one operational class so that canon review and CI drift-scan can treat modernization and conformance adapters independently.",
+      "enum": ["modernization", "conformance"]
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date of the most recent registry update."
+    },
+    "adapters": {
+      "type": "array",
+      "description": "Ordered list of adapter entries registered in this file.",
+      "items": { "$ref": "#/definitions/adapter" }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "adapter": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "class",
+        "mission-class",
+        "status",
+        "gcc-boundary",
+        "ssot-mutation",
+        "certificate-anchored",
+        "object-identity-only"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Kebab-case stable identifier. Never renamed once assigned; retire via status=DEPRECATED + successor field instead.",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable display name."
+        },
+        "class": {
+          "type": "string",
+          "description": "Operational axis — how the adapter behaves at runtime. `modernization` = change-making adapter (writes to target environment). `conformance` = read-only assessor (observes state, never mutates target).",
+          "enum": ["modernization", "conformance"]
+        },
+        "mission-class": {
+          "type": "string",
+          "description": "Doctrinal axis — canonical UIAO_003 Adapter Segmentation Overview class. `identity|telemetry|policy|enforcement|integration` are the five named classes in UIAO_003 §4.2–§4.7. `integration` (added per resolved ODA-15, 2026-04-15) covers change-making actions against a target environment (create/update/delete in the authoritative system) — e.g., identity provisioning, tenant configuration, network enforcement-point updates, ITSM ticketing, baseline application. Use `unmapped` ONLY when no current doctrinal class cleanly covers the adapter's role; such cases MUST also appear as an open decision in ARCHITECTURE.md §13. Use `mixed` when an adapter straddles two canonical roles (requires `mission-class-notes`).",
+          "enum": ["identity", "telemetry", "policy", "enforcement", "integration", "unmapped", "mixed"]
+        },
+        "mission-class-notes": {
+          "type": "string",
+          "description": "Required when mission-class is `mixed` or `unmapped`; free text explaining the gap or straddle, with reference to the open-decision ID in ARCHITECTURE.md §13 when applicable."
+        },
+        "status": {
+          "type": "string",
+          "description": "Lifecycle state. `reserved` = slot name claimed but no implementation yet. `proposed` = design drafted, not yet approved. `active` = in production use. `deprecated` = being retired; must name successor. `retired` = no longer in use.",
+          "enum": ["reserved", "proposed", "active", "deprecated", "retired"]
+        },
+        "successor": {
+          "type": "string",
+          "description": "Required when status=deprecated or status=retired. Kebab-case id of the replacing adapter.",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+        },
+        "phase": {
+          "type": "string",
+          "description": "Deployment phase marker aligned with CONMON.md §8 runner strategy (Phase 1: GitHub-hosted windows-latest; Phase 2: Azure Government self-hosted; Phase 3+: production rollout).",
+          "enum": ["phase-1", "phase-2", "phase-3", "phase-planning"]
+        },
+        "vendor": {
+          "type": "string",
+          "description": "Originating vendor, agency, or project (e.g., Microsoft, Palo Alto Networks, CISA)."
+        },
+        "license": {
+          "type": "string",
+          "description": "SPDX license identifier or proprietary designation."
+        },
+        "runtime": {
+          "type": "string",
+          "description": "Execution runtime (e.g., powershell-7.4, python-3.12, nodejs-20)."
+        },
+        "runtime-version": {
+          "type": "string",
+          "description": "Pinned runtime or tool version for reproducible runs."
+        },
+        "runner-class": {
+          "type": "string",
+          "description": "Execution environment for the adapter's workflow. See CONMON.md §8.",
+          "enum": ["github-hosted", "azure-gov-self-hosted", "on-prem-self-hosted"]
+        },
+        "tenancy": {
+          "type": "string",
+          "description": "Tenancy model (e.g., single-tenant, multi-tenant, per-customer).",
+          "enum": ["single-tenant", "multi-tenant", "per-customer"]
+        },
+        "policy-engine": {
+          "type": "string",
+          "description": "Policy evaluation engine if applicable (e.g., OPA/Rego, custom, none)."
+        },
+        "policy-pin": {
+          "type": "string",
+          "description": "Pinned policy baseline version or commit SHA."
+        },
+        "scope": {
+          "type": "array",
+          "description": "Target surfaces or subsystems the adapter operates against.",
+          "items": { "type": "string" }
+        },
+        "outputs": {
+          "type": "array",
+          "description": "Output artifact types produced by the adapter (e.g., findings.json, metadata.json, POA&M row, SCR snapshot).",
+          "items": { "type": "string" }
+        },
+        "triggers": {
+          "type": "array",
+          "description": "How the adapter is invoked (e.g., workflow_dispatch, repository_dispatch, schedule, SCR-pre-snapshot, SCR-post-snapshot).",
+          "items": { "type": "string" }
+        },
+        "evidence-class": {
+          "type": "string",
+          "description": "Evidence classification per CONMON.md §4 (baseline, interval, SCR, incident, annual)."
+        },
+        "retention-years": {
+          "type": "integer",
+          "description": "Minimum evidence retention in years per FedRAMP ConMon Playbook §7 and agency policy.",
+          "minimum": 1
+        },
+        "controls": {
+          "type": "array",
+          "description": "NIST SP 800-53 Rev 5 control identifiers this adapter supports (e.g., CA-5, CM-8, RA-5).",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}-[0-9]+(\\([0-9]+\\))?$"
+          }
+        },
+        "automation-domain": {
+          "type": "array",
+          "description": "NIST SP 800-137 Appendix D security automation domain(s). See ARCHITECTURE.md §15.2 for the canonical list of 11.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "vulnerability-management",
+              "patch-management",
+              "event-management",
+              "incident-management",
+              "malware-detection",
+              "asset-management",
+              "configuration-management",
+              "network-management",
+              "license-management",
+              "information-management",
+              "software-assurance"
+            ]
+          }
+        },
+        "gcc-boundary": {
+          "type": "string",
+          "description": "Sanctioned governance boundary. UIAO canon: GCC-Moderate only. Amazon Connect Contact Center in Commercial Cloud is the sole named exception.",
+          "enum": ["gcc-moderate", "commercial-exception-amazon-connect"]
+        },
+        "ssot-mutation": {
+          "type": "string",
+          "description": "Declares whether the adapter mutates SSOT. Canon invariant: no adapter mutates SSOT. Only `never` is permitted; the field exists to make the invariant auditable.",
+          "enum": ["never"]
+        },
+        "certificate-anchored": {
+          "type": "boolean",
+          "description": "Canon invariant: every adapter transaction carries certificate-anchored provenance. Must be true."
+        },
+        "object-identity-only": {
+          "type": "boolean",
+          "description": "Canon invariant: object identity only; no person identity. Must be true."
+        },
+        "references": {
+          "type": "array",
+          "description": "Canonical references (document IDs, URLs, ADRs) that authorize this adapter entry.",
+          "items": { "type": "string" }
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-text notes. Not machine-consumed."
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mission-class": { "enum": ["unmapped", "mixed"] }
+            }
+          },
+          "then": {
+            "required": ["mission-class-notes"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": { "enum": ["deprecated", "retired"] }
+            }
+          },
+          "then": {
+            "required": ["successor"]
+          }
+        }
+      ]
+    }
+  }
+}

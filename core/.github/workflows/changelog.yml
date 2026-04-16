@@ -1,0 +1,44 @@
+name: Generate Changelog
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    # Skip runs triggered by the bot to prevent infinite loops
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+
+      - name: Conventional Changelog Action
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@91be4f3188da74fe85de9caffcebc80b26d43b5b  # v6.3.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          git-message: 'docs: update CHANGELOG.md [skip ci]'
+          preset: 'angular'
+          output-file: 'CHANGELOG.md'
+          skip-on-empty: 'true'
+          skip-version-file: 'true'
+          skip-commit: 'true'
+          skip-tag: 'true'
+          git-push: 'false'
+
+      - name: Push changelog with rebase
+        if: steps.changelog.outputs.skipped != 'true'
+        run: |
+          git add CHANGELOG.md
+          git diff --cached --quiet || git commit -m 'docs: update CHANGELOG.md [skip ci]'
+          git pull --rebase origin main
+          git push origin main

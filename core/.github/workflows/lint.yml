@@ -1,0 +1,59 @@
+name: Lint
+
+# Post four-repo split this repo ships canonical data plus thin Python
+# helpers under ``tools/`` and ``scripts/``. The runtime package lives in
+# uiao-impl, so ``src/`` and ``tests/`` are no longer meaningful lint
+# targets here — attempting to lint them caused ``E902 No such file or
+# directory``. Scope is now ``tools/`` + ``scripts/``, which matches the
+# Python we actually own.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.11'
+
+      - name: Install linters
+        run: pip install ruff mypy types-PyYAML
+
+      - name: Ruff check
+        run: ruff check --fix tools/ scripts/
+
+      - name: Ruff format (auto-fix)
+        run: ruff format tools/ scripts/
+
+      - name: Commit formatting fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tools/ scripts/
+          git diff --cached --quiet || git commit -m "style: auto-format with ruff"
+          git push || true
+
+      - name: Mypy (helpers only)
+        continue-on-error: true
+        run: mypy tools/ scripts/ --ignore-missing-imports
