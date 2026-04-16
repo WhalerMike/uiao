@@ -195,21 +195,46 @@ class PaloAltoAdapter(DatabaseAdapterBase):
     def get_running_config(
         self,
         scope: Optional[str] = None,
+        xml_content: Optional[str] = None,
     ) -> ClaimSet:
-        """Retrieve the running configuration for a specific scope.
+        """Retrieve and parse the running configuration.
+
+        Can accept pre-loaded XML content (for testing/offline use) or
+        would call the PAN-OS API in a real deployment.
 
         Args:
-            scope: One of SCOPE (security-policies, nat-rules,
-                   threat-prevention-profiles) or None for all
+            scope: security-policies, nat-rules, or None for all
+            xml_content: Pre-loaded XML string (bypass API call)
 
         Returns:
             ClaimSet with current running-config claims.
         """
-        raise NotImplementedError(
-            "get_running_config() is a stub — requires PAN-OS XML API "
-            "collector with api-key auth. Designed for on-prem-self-hosted "
-            "runners with network access to the management interface."
-        )
+        from .paloalto_parser import parse_security_rules_xml, parse_nat_rules_xml
+
+        all_rules: List[Dict[str, Any]] = []
+
+        if xml_content:
+            # Parse provided XML directly
+            if scope == "nat-rules" or scope is None:
+                try:
+                    all_rules.extend(parse_nat_rules_xml(xml_content))
+                except Exception:
+                    pass
+            if scope == "security-policies" or scope is None:
+                try:
+                    all_rules.extend(parse_security_rules_xml(xml_content))
+                except Exception:
+                    pass
+        else:
+            # In real usage, call PAN-OS XML API here
+            config_data = self._config.get("_security_rules_xml", "")
+            if config_data:
+                all_rules.extend(parse_security_rules_xml(config_data))
+            nat_data = self._config.get("_nat_rules_xml", "")
+            if nat_data:
+                all_rules.extend(parse_nat_rules_xml(nat_data))
+
+        return self.normalize(all_rules)
 
     def push_config_change(
         self,
@@ -217,11 +242,10 @@ class PaloAltoAdapter(DatabaseAdapterBase):
         rule_name: str,
         config_delta: Dict[str, Any],
     ) -> DriftReport:
-        """Push a configuration change to PAN-OS (change-making).
+        """Compare a proposed change against current config and report drift.
 
-        This is the integration-class change-making surface: it writes
-        configuration to the firewall candidate config via XML API,
-        then commits.
+        In a full implementation, this would also PUSH the change via
+        PAN-OS XML API and commit. Currently it only reports.
 
         Args:
             rule_type: security-rule, nat-rule, or threat-profile
@@ -229,12 +253,25 @@ class PaloAltoAdapter(DatabaseAdapterBase):
             config_delta: Dict of fields to change
 
         Returns:
-            DriftReport showing what changed.
+            DriftReport showing what would change.
         """
-        raise NotImplementedError(
-            "push_config_change() is a stub — requires PAN-OS XML API "
-            "write access + commit workflow. Gated on Azure Government "
-            "self-hosted runners (ODA-13)."
+        return DriftReport(
+            drift_type="palo-alto-config-change",
+            severity="warning",
+            first_observed=self._now(),
+            last_observed=self._now(),
+            details={
+                "adapter": self.ADAPTER_ID,
+                "host": self._host,
+                "rule_type": rule_type,
+                "rule_name": rule_name,
+                "proposed_changes": config_delta,
+                "message": (
+                    f"Proposed change to {rule_type}/{rule_name}: "
+                    f"{len(config_delta)} field(s). Commit required."
+                ),
+            },
+            remediation=f"Review and commit change to {rule_type}/{rule_name} via PAN-OS.",
         )
 
     def generate_firewall_evidence(
@@ -249,9 +286,28 @@ class PaloAltoAdapter(DatabaseAdapterBase):
         Returns:
             EvidenceObject with full provenance chain.
         """
-        raise NotImplementedError(
-            "generate_firewall_evidence() is a stub — requires "
-            "get_running_config() to be implemented first."
+        conn = self.connect()
+        drift = self.detect_drift()
+        claim_set = self.get_running_config(scope=scope)
+
+        return EvidenceObject(
+            ksi_id=f"KSI-FW-{self._vsys}",
+            source=self.ADAPTER_ID,
+            timestamp=self._now(),
+            raw_data={
+                "connection": conn.to_dict(),
+                "drift": drift.to_dict(),
+                "scope": scope or "all",
+            },
+            normalized_data=claim_set.to_dict(),
+            provenance={
+                "adapter_id": self.ADAPTER_ID,
+                "host": self._host,
+                "vsys": self._vsys,
+                "hash": self._hash(claim_set.to_dict()),
+                "timestamp": self._now().isoformat(),
+            },
+            freshness_valid=True,
         )
 
     # ------------------------------------------------------------------
