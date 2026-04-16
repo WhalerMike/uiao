@@ -87,7 +87,6 @@ Optional: **Superseded By** (link to successor ADR when status = SUPERSEDED)
 ## See Also
 
 - [ADR Index](index.md)
-- [Corpus Status Dashboard](../canon/corpus-status-dashboard.md)
-- [Canonical Rules](../canon/canonical-rules.md)
+- [Canonical Rules](../canonical-rules.md)
 
 > **SSOT Reference:** See /ssot/UIAO-SSOT.md
