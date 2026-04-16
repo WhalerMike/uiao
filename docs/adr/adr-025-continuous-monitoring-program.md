@@ -1337,7 +1337,7 @@ Both documents ready for review:
 
 [View ARCHITECTURE.md (federal pair)](https://github.com/WhalerMike/uiao-core/blob/main/ARCHITECTURE.md)
 
-[View uiao-gos ARCHITECTURE.md (commercial companion)](https://github.com/WhalerMike/uiao-gos/blob/main/ARCHITECTURE.md)
+View `uiao-gos/ARCHITECTURE.md` (commercial companion — private repo, firewalled from the federal pair per §2.2)
 
 Summary of what changed vs. the previous draft:
 
