@@ -1,0 +1,98 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-2(8)
+# Title      : Identification and Authentication | Access to Accounts — Replay Resistant
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IA-2(8)
+title: "Identification and Authentication | Access to Accounts — Replay Resistant"
+family: Identification and Authentication
+status: not-implemented
+
+implemented_by:
+  - entra-id
+  - microsoft-authenticator
+  - intune-mdm
+  - cyberark-pas
+
+evidence:
+  - entra-id-authentication-method-policy-replay-resistant
+  - entra-id-fido2-key-registration-report
+  - windows-hello-business-deployment-report
+  - cyberark-session-token-configuration
+
+parameters:
+  - id: ia_2_8_replay_resistant_methods
+    description: >-
+      Authentication mechanisms deployed that provide replay
+      resistance for all organizational user accounts.
+    value: "FIDO2 hardware security keys (WebAuthn/CTAP2 with unique challenge-response per authentication), Windows Hello for Business (TPM-backed asymmetric key pair with nonce), Microsoft Authenticator with OATH TOTP (time-limited, single-use tokens)"
+  - id: ia_2_8_legacy_protocol_controls
+    description: >-
+      Controls applied to prevent use of legacy authentication
+      protocols that are not replay resistant.
+    value: "Entra ID Conditional Access block policy denies all legacy authentication (Basic Auth, NTLM, pre-auth SMTP) for organizational accounts; Microsoft 365 legacy auth disabled at tenant level"
+
+narrative: |
+  **Replay-Resistant Authentication Implementation**
+  The UIAO system implements replay-resistant authentication
+  mechanisms for all user accounts as defined in PARAM
+  ia_2_8_replay_resistant_methods, ensuring that captured
+  authentication credentials or tokens cannot be reused by
+  an adversary to gain unauthorized access. FIDO2 hardware
+  security keys implement the WebAuthn/CTAP2 protocol, which
+  generates a unique cryptographic response for each authentication
+  challenge using the device's private key — a response that
+  is valid only for that specific authentication event and
+  cannot be reused. Windows Hello for Business uses TPM-backed
+  asymmetric key pairs where the authentication response is
+  bound to the specific challenge nonce issued by the relying
+  party, making captured responses worthless for replay.
+  Microsoft Authenticator push notifications with number matching
+  generate time-limited OATH TOTP codes that expire within
+  30 seconds, preventing replay beyond the validity window.
+  This satisfies the IA-2(8) requirement for replay-resistant
+  authentication and supports **IA-2** (Identification and
+  Authentication) and **IA-5(2)** (Public Key-Based Authentication)
+  objectives.
+
+  **Blocking Legacy Non-Replay-Resistant Protocols**
+  Legacy authentication protocols such as Basic Authentication,
+  NTLM, and SMTP AUTH are inherently not replay resistant
+  because they transmit credentials or hash values that can be
+  captured and replayed. The controls defined in PARAM
+  ia_2_8_legacy_protocol_controls block all legacy authentication
+  for organizational accounts through Entra ID Conditional Access
+  policies that deny sign-in attempts using identified legacy
+  client types (ActiveSync without modern auth, Exchange Web
+  Services, older IMAP/POP3 clients). Microsoft 365 legacy
+  authentication is disabled at the tenant level, eliminating
+  the protocol class rather than relying solely on Conditional
+  Access evaluation.
+
+  **Kerberos and Token Freshness Controls**
+  For on-premises and hybrid authentication scenarios, Entra ID
+  Kerberos tokens include short validity windows and session
+  binding controls that reduce the replay window. Entra ID
+  access tokens issued by OAuth 2.0 flows use short-lived
+  access tokens (1-hour lifetime by default) with refresh
+  token rotation, ensuring that token theft provides only
+  a limited window of unauthorized access before the stolen
+  token expires.
+
+  **Monitoring for Replay Attack Indicators**
+  Microsoft Sentinel monitors for authentication patterns
+  consistent with credential replay attacks, including
+  pass-the-hash indicators from CrowdStrike, impossible
+  concurrent sign-in events from Entra ID Identity Protection,
+  and NTLM authentication attempts blocked by Conditional Access.
+  Confirmed replay attack indicators generate Priority 1
+  incidents in ServiceNow and trigger automated account
+  protective actions through Sentinel SOAR playbooks.
+
+related_controls:
+  - IA-2    # Identification and Authentication
+  - IA-2(1) # MFA to Privileged Accounts
+  - IA-5(2) # Public Key-Based Authentication
+  - SC-8    # Transmission Confidentiality and Integrity
+  - AU-2    # Event Logging
+  - SI-4    # System Monitoring

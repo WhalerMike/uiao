@@ -1,0 +1,64 @@
+# AU-10 - Non-repudiation
+# NIST 800-53 Rev 5 | UIAO-Core Control Library
+# Control Family: Audit and Accountability (AU)
+# Last Reviewed: 2025-06-15
+
+control_id: AU-10
+family: Audit and Accountability
+title: Non-repudiation
+status: implemented
+responsible_role: ISSO
+implementation_status: fully-implemented
+
+control_narrative: |
+  **Non-repudiation Through Identity-Bound Audit Records**
+  The UIAO platform provides non-repudiation capabilities by binding
+  all auditable actions to authenticated user identities through Azure
+  Active Directory (Entra ID) as the authoritative identity provider.
+  Every audit record generated across the platform includes the
+  authenticated user principal name, session identifier, source IP
+  address, and timestamp derived from synchronized NTP sources. Multi-
+  factor authentication enforced through **IA-2** (Identification and
+  Authentication) ensures that audit records are attributable to
+  verified individuals, preventing users from successfully denying
+  having performed recorded actions. CyberArk Privileged Access
+  Security provides session recording for all privileged operations,
+  creating video-level evidence of administrative activities.
+
+  **Cryptographic Integrity and Tamper Protection**
+  Audit records are protected against unauthorized modification through
+  cryptographic integrity mechanisms. Microsoft Sentinel ingests audit
+  data into Log Analytics workspaces configured with immutable blob
+  storage policies that prevent deletion or modification of committed
+  audit records. Azure Storage Service Encryption (SSE) with Microsoft-
+  managed keys protects data at rest, while TLS 1.2 encryption secures
+  data in transit from all audit sources. CrowdStrike Falcon EDR
+  endpoint telemetry is cryptographically signed at the sensor level
+  before transmission to the cloud console, ensuring chain of custody
+  from endpoint to centralized storage.
+
+  **Evidence Chain and Legal Admissibility**
+  The non-repudiation architecture supports forensic investigation and
+  legal admissibility requirements by maintaining an unbroken evidence
+  chain from event generation to long-term retention. Palo Alto NGFW
+  logs are forwarded via encrypted syslog to Sentinel with source
+  verification. All audit timestamps are synchronized to authoritative
+  time sources under **AU-8** (Time Stamps) requirements. The
+  combination of identity-bound records, cryptographic protection, and
+  immutable storage satisfies **AU-9** (Protection of Audit
+  Information) and supports incident response activities under **IR-4**
+  (Incident Handling) and **IR-6** (Incident Reporting).
+
+related_controls:
+  - AU-3   # Content of Audit Records
+  - AU-8   # Time Stamps
+  - AU-9   # Protection of Audit Information
+  - IA-2   # Identification and Authentication
+  - IR-4   # Incident Handling
+  - IR-6   # Incident Reporting
+
+automation:
+  tool: Microsoft Sentinel
+  method: Immutable storage policies, cryptographic signing, identity binding
+  frequency: continuous
+  evidence_artifact: sentinel-nonrepudiation-audit-dashboard

@@ -1,0 +1,116 @@
+---
+title: Terraform / OpenTofu Evidence Adapter — Adapter Technical Specification
+doc-type: ats
+adapter-id: terraform
+adapter-class: modernization
+mission-class: integration
+status: active
+phase: phase-1
+gcc-boundary: gcc-moderate
+canon-source: canon/modernization-registry.yaml
+derived-from: uiao-core/canon (sync_canon.py)
+generated: '2026-04-16'
+---
+
+
+# Terraform / OpenTofu Evidence Adapter — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `reserved` · **Class:** `modernization` · **Mission:** `integration` · **Phase:** `phase-planning`
+
+**Canon source:** `canon/modernization-registry.yaml` (propagated by `uiao-core/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+::: {.callout-warning}
+## Scaffold — awaiting authored content
+
+This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
+:::
+
+## Overview
+
+The Terraform / OpenTofu Evidence Adapter is an **integration-class** modernization adapter that consumes Terraform and OpenTofu artifacts — state files (`.tfstate`), plan output (`terraform plan -json`), and HCL configuration files (`.tf`) — to produce object-keyed canonical claims with KSI-anchored provenance.
+
+This adapter serves three primary functions within the UIAO governance perimeter:
+
+1. **State extraction.** Parses Terraform v4 state files to enumerate all managed resources across providers (AWS, Azure, GCP, etc.), producing one `ClaimObject` per resource with full attribute preservation and deterministic provenance hashes.
+
+2. **Plan consumption.** Ingests `terraform plan -json` output and maps each planned action (create, update, delete) to a severity-rated `DriftReport`, which feeds downstream POA&M generation via the OSCAL pipeline.
+
+3. **Three-way drift detection.** Compares live system state (from a companion adapter), Terraform state, and HCL configuration to identify misalignments across all three sources — the most comprehensive drift analysis in the adapter family.
+
+The adapter never invokes the `terraform` CLI directly. It parses the output files that the CLI produces, maintaining a clean separation between infrastructure execution and governance observation.
+
+**Implementation:** `uiao-impl/src/uiao_impl/adapters/terraform_adapter.py` + `terraform_parser.py` (real parsing, not stubs). End-to-end OSCAL SAR generation proven via 7 integration tests.
+
+## Scope
+
+Target surfaces / subsystems: `terraform-state`, `terraform-plan`, `hcl-configuration`
+
+**What the adapter reads:**
+
+- Terraform v4 state files (JSON) — local files, S3 backends, or Terraform Cloud state URLs
+- Terraform plan output (JSON from `terraform plan -json`) — planned infrastructure changes
+- HCL2 configuration files (`.tf`) — desired-state declarations parsed via `python-hcl2`
+
+**What the adapter emits:**
+
+- `ClaimSet` with one `ClaimObject` per managed resource (from state or HCL)
+- `DriftReport` with per-resource planned changes and severity ratings (from plan)
+- `EvidenceObject` with bundled provenance chain (from evidence generation)
+- OSCAL Assessment Results (SAR) via the `adapter_to_oscal.py` bridge
+
+**What the adapter does NOT touch:**
+
+- Does not invoke `terraform apply` or make any infrastructure changes
+- Does not access cloud provider APIs directly (that's the companion live-system adapter's job)
+- Does not modify `.tfstate` files; reads only
+- Does not store credentials; auth is delegated to the runner environment
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `CM-2`, `CM-3`, `CM-6`, `CM-8`, `CA-7`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CM-2** Baseline Configuration | Primary | State extraction captures the current baseline of all managed infrastructure resources. |
+| **CM-3** Configuration Change Control | Primary | Plan consumption maps every planned change to a drift item with create/update/delete action and field-level diff. |
+| **CM-6** Configuration Settings | Supporting | HCL parsing captures declared configuration settings; three-way drift detects deviations from declared state. |
+| **CM-8** Information System Component Inventory | Primary | State extraction produces a complete, deterministic inventory of all Terraform-managed components with provider, type, name, and attribute data. |
+| **CA-7** Continuous Monitoring | Supporting | When run on a schedule, provides continuous evidence of infrastructure drift between desired (HCL), recorded (state), and actual (live) configurations. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `python-3.12` |
+| Runtime pin | `TBD` |
+| Runner class | `github-hosted` |
+| Tenancy | `per-customer` |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+Status transitions `reserved` → `active` when the adapter ships in uiao-impl (separate PR gated on this registry entry landing, per `uiao-impl/.claude/rules/canon-consumer.md`). Proposed adapter surface: `extract_terraform_state`, `parse_hcl_config`, `consume_terraform_plan`, `detect_terraform_drift`, `generate_terraform_evidence` — layered on the seven canonical domains of `DatabaseAdapterBase`.
+
+## References
+
+- UIAO-CANON-003
+- https://www.terraform.io
+- https://opentofu.org
+
+---
+
+*Generated by `uiao-core/tools/sync_canon.py`. See `uiao-core/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*

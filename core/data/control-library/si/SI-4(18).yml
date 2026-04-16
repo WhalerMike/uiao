@@ -1,0 +1,83 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SI-4(18)
+# Title      : System Monitoring | Analyze Traffic and Covert Exfiltration
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SI-4(18)
+title: "System Monitoring | Analyze Traffic and Covert Exfiltration"
+family: System and Information Integrity
+status: not-implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - palo-alto-ngfw
+  - infoblox
+  - servicenow
+
+evidence:
+  - microsoft-sentinel-exfiltration-detection-analytics-rules
+  - palo-alto-dlp-ssl-inspection-configuration
+  - infoblox-dns-tunneling-detection-configuration
+  - sentinel-ueba-configuration-documentation
+
+parameters:
+  - id: PARAM-SI-004-18-001
+    description: >-
+      Techniques and mechanisms employed to analyze network traffic
+      for covert exfiltration of information.
+    value: "Microsoft Sentinel UEBA and network traffic analytics; Palo Alto NGFW SSL inspection and DLP; Infoblox DNS tunneling detection"
+  - id: PARAM-SI-004-18-002
+    description: >-
+      Traffic protocols and channels monitored for covert exfiltration
+      indicators.
+    value: "HTTPS (via SSL inspection), DNS (via Infoblox), ICMP tunneling detection, and unusual protocol usage patterns monitored for exfiltration"
+
+narrative: |
+  **Covert Exfiltration Detection Framework**
+  The organization analyzes outbound communications traffic to discover
+  or detect covert exfiltration of information (PARAM-SI-004-18-001).
+  Microsoft Sentinel's User and Entity Behavioral Analytics (UEBA)
+  establishes baselines for normal data transfer patterns per user,
+  device, and application, and detects statistically anomalous data
+  volumes that may indicate exfiltration. Network traffic analytics
+  identify beaconing patterns, unusual destination geographies, and
+  protocol anomalies associated with data staging and exfiltration.
+
+  **SSL/TLS Inspection for Encrypted Exfiltration**
+  Palo Alto NGFW performs SSL/TLS inspection on outbound HTTPS traffic
+  (PARAM-SI-004-18-002), enabling detection of exfiltration attempts
+  concealed within encrypted channels. Data Loss Prevention (DLP)
+  profiles applied to decrypted outbound traffic detect sensitive
+  data patterns including PII, financial data, and classified
+  information in outbound streams. DLP match events are forwarded
+  to Microsoft Sentinel for correlation with other exfiltration
+  indicators, reducing false positive rates through multi-signal
+  correlation.
+
+  **DNS Tunneling Detection**
+  Infoblox DNS monitoring applies behavioral analytics to DNS query
+  patterns to detect DNS tunneling, a technique that encodes data
+  within DNS queries and responses to bypass network controls.
+  Indicators include unusually long DNS queries, high query frequency
+  to single domains, and entropy analysis of subdomain labels.
+  DNS tunneling detection alerts are forwarded to Microsoft Sentinel
+  for correlation with endpoint and network telemetry to confirm
+  or dismiss exfiltration activity.
+
+  **ICMP and Non-Standard Protocol Monitoring**
+  Microsoft Sentinel network traffic analytics detect covert channel
+  usage in ICMP traffic, unusual TCP/UDP port utilization, and
+  protocol anomalies that may indicate custom exfiltration tooling.
+  Palo Alto NGFW App-ID identifies applications using unexpected
+  protocols, alerting on protocol mismatches that commonly indicate
+  tunneling or obfuscation techniques. Confirmed covert exfiltration
+  indicators generate P1 ServiceNow incidents and trigger automated
+  Sentinel response playbooks for immediate containment actions,
+  supporting **IR-4** (Incident Handling) requirements.
+
+related_controls:
+  - SI-4    # System Monitoring
+  - SI-4(4) # Inbound and Outbound Communications Traffic
+  - SC-7    # Boundary Protection
+  - IR-4    # Incident Handling
+  - AU-6    # Audit Record Review, Analysis, and Reporting
