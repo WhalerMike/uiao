@@ -1,0 +1,116 @@
+---
+title: Palo Alto Networks (Firewall / NGFW) — Adapter Technical Specification
+doc-type: ats
+adapter-id: palo-alto
+adapter-class: modernization
+mission-class: integration
+status: active
+phase: phase-1
+gcc-boundary: gcc-moderate
+canon-source: canon/modernization-registry.yaml
+derived-from: uiao-core/canon (sync_canon.py)
+generated: '2026-04-15'
+---
+
+
+# Palo Alto Networks (Firewall / NGFW) — Adapter Technical Specification
+
+::: {.callout-note}
+## Canon-derived document
+
+**Status:** `active` · **Class:** `modernization` · **Mission:** `integration` · **Phase:** `phase-1`
+
+**Canon source:** `canon/modernization-registry.yaml` (propagated by `uiao-core/tools/sync_canon.py`).
+
+The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
+:::
+
+::: {.callout-warning}
+## Scaffold — awaiting authored content
+
+This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
+:::
+
+## Overview
+
+The Palo Alto Networks Adapter is an **integration-class** modernization adapter that consumes PAN-OS firewall configuration via the XML API to produce object-keyed canonical claims for security policies, NAT rules, and threat-prevention profiles.
+
+This adapter operates at the **network enforcement point** — the boundary where UIAO's governance perimeter meets the physical/virtual network. It is the highest-security-criticality adapter in the registry because firewall rule changes directly impact the organization's attack surface.
+
+Key capabilities:
+
+1. **Security rule extraction.** Parses PAN-OS security rule XML to enumerate all allow/deny rules with source/destination zones, applications, services, and actions. Each rule becomes a `ClaimObject` with provenance hash.
+
+2. **NAT rule extraction.** Parses NAT configuration including destination translation (address + port mapping) for inbound service exposure.
+
+3. **Configuration change reporting.** Produces `DriftReport` entries for proposed rule changes, enabling change-approval workflows before committing to the firewall.
+
+4. **Evidence bundling.** Generates `EvidenceObject` bundles suitable for OSCAL SAR generation, proving the current firewall state to authorizing officials.
+
+**Runner class:** `on-prem-self-hosted`. This adapter requires network access to the PAN-OS management interface, which is typically not reachable from GitHub-hosted runners. Phase 1 development uses fixture data; Phase 2+ deployment uses Azure Government self-hosted runners (ODA-13).
+
+**Implementation:** `uiao-impl/src/uiao_impl/adapters/paloalto_adapter.py` + `paloalto_parser.py` (real PAN-OS XML parsing). End-to-end OSCAL SAR generation proven via 6 integration tests.
+
+## Scope
+
+Target surfaces / subsystems: `security-policies`, `nat-rules`, `threat-prevention-profiles`
+
+**What the adapter reads:**
+
+- PAN-OS security rule XML (via `GET /api/?type=config&action=show&xpath=...`)
+- PAN-OS NAT rule XML (same API, different xpath)
+- Configuration change proposals (via `push_config_change()`)
+
+**What the adapter emits:**
+
+- `ClaimSet` with one `ClaimObject` per firewall rule (rule name, action, zones, applications)
+- `DriftReport` for proposed configuration changes with field-level detail
+- `EvidenceObject` with full provenance chain (connection, drift, normalized rules)
+- OSCAL Assessment Results (SAR) via the `adapter_to_oscal.py` bridge
+
+**What the adapter does NOT touch:**
+
+- Does not commit configuration changes to the firewall (change-making is gated on approval workflow + Phase 2 runners)
+- Does not access the firewall data plane or traffic logs
+- Does not modify candidate configuration without explicit `push_config_change()` invocation
+- mTLS is enabled by default for all management interface connections
+
+## Controls
+
+NIST SP 800-53 Rev 5 controls this adapter supports: `SC-7`, `CM-7`, `AC-4`
+
+| Control | Role | Adapter capability |
+|---|---|---|
+| **SC-7** Boundary Protection | Primary | Security rule extraction provides a complete, auditable inventory of all boundary-enforcement rules. Every allow/deny decision is captured with source/destination zones, applications, and logging status. |
+| **CM-7** Least Functionality | Primary | Rule enumeration enables auditors to verify that only approved services and applications are permitted through the firewall. The deny-all-default rule is explicitly tracked. |
+| **AC-4** Information Flow Enforcement | Supporting | NAT rule extraction and security policy zone mappings document the approved information flow paths between network segments. |
+
+## Operational profile
+
+| Field | Value |
+|---|---|
+| Runtime | `python-3.12` |
+| Runtime pin | `TBD` |
+| Runner class | `on-prem-self-hosted` |
+| Tenancy | `per-customer` |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
+
+## Canon invariants
+
+- `gcc-boundary: gcc-moderate`
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Notes from canon
+
+_(none)_
+
+## References
+
+- UIAO-CANON-003
+
+---
+
+*Generated by `uiao-core/tools/sync_canon.py`. See `uiao-core/ARCHITECTURE.md` §4 for the cross-repo sync contract. See `uiao-docs/_quarto.yml` for rendering configuration.*
