@@ -1,56 +1,66 @@
-# DEPRECATED: This workflow references directories (canon/, templates/, src/, etc.)
-# that exist in uiao-core, not uiao-docs. Disabled to prevent CI noise.
-# Original trigger preserved in comments below.
-# -----------------------------------------------------------------
-# deploy.yml  UDC Pipeline (AI Enhanced)
-# Gemini Imagen 4.0 diagram generation + Pandoc compilation
-# ROUTING: Only processes src/templates/ and files tagged diagram-owner: gemini
-# SERIALIZATION: Runs after render-and-insert-diagrams completes
-# Ref: canon/DIAGRAM-STANDARDS.md
-# -----------------------------------------------------------------
-name: UDC Pipeline (AI Enhanced)
-
-on:
-  workflow_dispatch:  # Manual trigger only  see deprecation notice above
-
-permissions:
-  contents: write
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    # Only run if triggered manually, by push, or if PlantUML workflow succeeded
-    if: >
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.10'
-
-      - name: Install Dependencies
-        run: |
-          pip install google-generativeai
-          sudo apt-get update
-          sudo apt-get install -y pandoc texlive-xetex librsvg2-bin
-
-      - name: Generate AI Diagrams
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/generate_diagrams.py
-
-      - name: Run UDC Compiler
-        run: |
-          chmod +x scripts/compile.sh
-          ./scripts/compile.sh
-
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          folder: docs  # The output folder
-          branch: gh-pages
+# -----------------------------------------------------------------
+# deploy.yml — UDC Pipeline (AI Enhanced)
+# Gemini Imagen 4.0 diagram generation + Pandoc compilation
+# ROUTING: Only processes src/templates/ and files tagged diagram-owner: gemini
+# SERIALIZATION: Runs after render-and-insert-diagrams completes
+# NOTE: Mermaid has been removed; PlantUML is used for all diagram rendering.
+# Ref: generation-inputs/DIAGRAM-STANDARDS.md
+# -----------------------------------------------------------------
+
+name: UDC Pipeline (AI Enhanced)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/templates/**/*.md'
+      - 'scripts/generate_diagrams.py'
+      - 'scripts/compile.sh'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Render & Insert Diagrams"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    # Only run if triggered manually, by push, or if PlantUML workflow succeeded
+    if: >
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install google-generativeai plantweb
+          sudo apt-get update
+          sudo apt-get install -y pandoc texlive-xetex librsvg2-bin
+
+      - name: Generate AI Diagrams
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/generate_diagrams.py
+
+      - name: Run UDC Compiler
+        run: |
+          chmod +x scripts/compile.sh
+          ./scripts/compile.sh
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: docs  # The output folder
+          branch: gh-pages
