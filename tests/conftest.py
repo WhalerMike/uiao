@@ -65,8 +65,11 @@ _CANON_DEPENDENT_MODULES = {
     "test_generators",
     "test_models",
     "test_overlay_loader",
-    "test_scuba_transformer_determinism",
     "test_ssp_inject",
+    # Note: test_scuba_transformer_determinism was previously listed here
+    # but it uses tests/fixtures/scuba_normalized_sample.json, not
+    # generation-inputs/. Removed so the 16 SCuBA transformer tests
+    # actually run.
 }
 
 
