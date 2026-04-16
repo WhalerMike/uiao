@@ -32,19 +32,34 @@ This document is a stub. Replace every `_TODO — ..._` block with authored cont
 
 ## Overview
 
-_TODO — Author an overview of the CISA ScubaGear (M365 SCuBA Assessor) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The CISA ScubaGear Adapter is the **most mature conformance adapter** in the UIAO ecosystem. As a policy-class conformance adapter, it wraps CISA's [ScubaGear](https://github.com/cisagov/ScubaGear) tool to evaluate Microsoft 365 tenant configuration against the SCuBA Secure Configuration Baselines — producing normalized, KSI-anchored assessment findings.
+
+This adapter is **read-only** — it observes and assesses the M365 tenant state without modifying it. It pairs with the `scuba` modernization adapter (which applies the baseline) to form the assess-then-remediate cycle.
+
+Key capabilities: 7-workload SCuBA assessment (AAD, Defender, Exchange Online, PowerBI, Power Platform, SharePoint, Teams), OPA/Rego policy evaluation, KSI-mapped evidence with 150+ policy-to-control mappings, deterministic transform pipeline producing OSCAL-ready output.
+
+**Implementation:** Most mature adapter in the repo. Uses a dedicated IR pipeline (`scuba/transform.py` 384 lines, `ir/adapters/scuba/` with normalize + transformer), not the generic `DatabaseAdapterBase` pattern. Pinned to ScubaGear v1.5.1 with monthly policy-pin bump per CONMON.md §6.
 
 ## Scope
 
 Target surfaces / subsystems: `aad`, `defender`, `exo`, `powerbi`, `powerplatform`, `sharepoint`, `teams`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** ScubaGear PowerShell assessment output (JSON), OPA/Rego policy evaluation results. Requires `powershell-7.4` runtime on the runner.
+**Emits:** KSI-mapped Evidence objects, DriftState records, EvidenceBundle suitable for direct `build_sar()` consumption. The most complete OSCAL pipeline in the ecosystem.
+**Does NOT:** modify M365 tenant configuration (that's the `scuba` modernization adapter), execute arbitrary PowerShell, or access tenant data beyond what ScubaGear itself reads.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CA-2`, `CA-5`, `CA-7`, `CM-6`, `CM-8`, `RA-5`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CA-2** Security Assessments | Primary | Automated SCuBA assessment produces complete security evaluation across 7 M365 workloads. |
+| **CA-5** Plan of Action and Milestones | Supporting | Assessment findings feed POA&M generation via the OSCAL pipeline. |
+| **CA-7** Continuous Monitoring | Primary | Scheduled assessment runs (monthly per CONMON.md cadence) provide continuous posture evidence. |
+| **CM-6** Configuration Settings | Primary | Evaluates 150+ configuration settings against SCuBA baseline policies via OPA/Rego. |
+| **CM-8** Information System Component Inventory | Supporting | Workload enumeration inventories the M365 components under assessment. |
+| **RA-5** Vulnerability Scanning | Supporting | Configuration misalignments detected by SCuBA serve as vulnerability-adjacent findings. |
 
 ## Operational profile
 
