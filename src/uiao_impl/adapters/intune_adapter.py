@@ -83,11 +83,32 @@ class IntuneAdapter(DatabaseAdapterBase):
             remediation="Compare normalize() output against accepted compliance baseline.",
         )
 
-    def get_compliance_status(self, scope: Optional[str] = None) -> ClaimSet:
-        raise NotImplementedError("get_compliance_status() stub — requires Graph API collector with Intune permissions.")
+    def get_compliance_status(self, devices_data: Optional[Dict[str, Any]] = None) -> ClaimSet:
+        """Parse Intune device compliance data and return claims.
 
-    def generate_endpoint_evidence(self, scope: Optional[str] = None) -> EvidenceObject:
-        raise NotImplementedError("generate_endpoint_evidence() stub.")
+        Args:
+            devices_data: Parsed JSON with a "value" list of managed devices.
+        """
+        devices = (devices_data or {}).get("value", [])
+        return self.normalize(devices)
+
+    def generate_endpoint_evidence(self, devices_data: Optional[Dict[str, Any]] = None) -> EvidenceObject:
+        """Generate evidence bundle from Intune compliance data."""
+        conn = self.connect()
+        devices = (devices_data or {}).get("value", [])
+        claim_set = self.normalize(devices)
+        compliant = sum(1 for d in devices if d.get("complianceState") == "compliant")
+        noncompliant = sum(1 for d in devices if d.get("complianceState") == "noncompliant")
+
+        return EvidenceObject(
+            ksi_id=f"KSI-CM-08-intune",
+            source=self.ADAPTER_ID,
+            timestamp=self._now(),
+            raw_data={"connection": conn.to_dict(), "total_devices": len(devices), "compliant": compliant, "noncompliant": noncompliant},
+            normalized_data=claim_set.to_dict(),
+            provenance={"adapter_id": self.ADAPTER_ID, "tenant_id": self._tenant_id, "hash": self._hash(claim_set.to_dict()), "timestamp": self._now().isoformat()},
+            freshness_valid=True,
+        )
 
     def collect_and_align(self) -> Dict[str, Any]:
         claim_set = self.normalize([])

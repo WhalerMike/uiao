@@ -80,10 +80,32 @@ class InfobloxAdapter(DatabaseAdapterBase):
         )
 
     def push_dns_change(self, record_type: str, name: str, data: Dict[str, Any]) -> DriftReport:
-        raise NotImplementedError("push_dns_change() stub — requires Infoblox WAPI write access + on-prem runner.")
+        """Report a proposed DNS change (read-only comparison for now)."""
+        return DriftReport(
+            drift_type="infoblox-dns-change",
+            severity="warning",
+            first_observed=self._now(),
+            last_observed=self._now(),
+            details={"adapter": self.ADAPTER_ID, "record_type": record_type, "name": name, "proposed": data,
+                     "grid_master": self._grid_master},
+            remediation=f"Review and commit DNS change for {record_type}/{name} via WAPI.",
+        )
 
-    def generate_dns_evidence(self, scope: Optional[str] = None) -> EvidenceObject:
-        raise NotImplementedError("generate_dns_evidence() stub.")
+    def generate_dns_evidence(self, records_data: Optional[Dict[str, Any]] = None) -> EvidenceObject:
+        """Generate evidence bundle from DNS record data."""
+        conn = self.connect()
+        records = (records_data or {}).get("result", [])
+        claim_set = self.normalize(records)
+
+        return EvidenceObject(
+            ksi_id=f"KSI-SC-20-{self._network_view}",
+            source=self.ADAPTER_ID,
+            timestamp=self._now(),
+            raw_data={"connection": conn.to_dict(), "records": len(records)},
+            normalized_data=claim_set.to_dict(),
+            provenance={"adapter_id": self.ADAPTER_ID, "grid_master": self._grid_master, "hash": self._hash(claim_set.to_dict()), "timestamp": self._now().isoformat()},
+            freshness_valid=True,
+        )
 
     def collect_and_align(self) -> Dict[str, Any]:
         claim_set = self.normalize([])
