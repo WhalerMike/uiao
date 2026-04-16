@@ -1,0 +1,86 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CP-9(1)
+# Title      : System Backup | Testing for Reliability and Integrity
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: CP-9(1)
+title: "System Backup | Testing for Reliability and Integrity"
+family: Contingency Planning
+status: not-implemented
+
+implemented_by:
+  - azure-backup
+  - azure-site-recovery
+  - microsoft-sentinel
+  - servicenow-grc
+
+evidence:
+  - cp-9-1-backup-test-results-log
+  - cp-9-1-azure-backup-restore-test-reports
+  - cp-9-1-servicenow-backup-test-tracking-records
+  - cp-9-1-sentinel-backup-job-monitoring-alerts
+
+parameters:
+  - id: cp_9_1_backup_test_frequency
+    description: >-
+      Frequency at which backup reliability and integrity testing is
+      performed to confirm backup data is usable for recovery.
+    value: "Quarterly for critical system backups (Tier 1 assets); annually for full system restore tests; ongoing automated integrity hash verification after each backup job completion"
+  - id: cp_9_1_test_scope
+    description: >-
+      Scope of components included in backup testing activities to
+      validate recoverability.
+    value: "Database restore tests for all application data stores; configuration backup restore tests for Palo Alto, Cisco ISE, Infoblox, and CyberArk; VM image restore validation for critical workloads; Sentinel workspace configuration backup verification"
+  - id: cp_9_1_integrity_verification_method
+    description: >-
+      Method used to verify backup data integrity upon completion of
+      each backup job.
+    value: "SHA-256 cryptographic hash verification by Azure Backup service after each backup job; hash values stored in immutable audit log; alerts generated to Sentinel upon hash mismatch detection"
+
+narrative: |
+  **Backup Reliability and Integrity Testing Program**
+  The UIAO organization tests backup reliability and data integrity to confirm
+  that backup copies are complete, uncorrupted, and usable for system recovery
+  in accordance with the timeframes defined in the Contingency Plan. Backup
+  testing is performed on the schedule defined in PARAM cp_9_1_backup_test_frequency,
+  with the scope covering critical system components as defined in
+  PARAM cp_9_1_test_scope. Testing exercises the full restore path — not merely
+  backup job completion status — ensuring that actual recovery from backup is
+  achievable within CP-9 RTO and RPO targets. Backup test results are
+  documented in ServiceNow GRC with pass/fail status, restoration time
+  measurements, and data integrity confirmation, providing evidence that
+  backup capability meets **CP-10** (System Recovery and Reconstitution)
+  requirements.
+
+  **Automated Integrity Verification**
+  Azure Backup implements automated cryptographic integrity verification for
+  all backup jobs using the method defined in PARAM cp_9_1_integrity_verification_method.
+  SHA-256 hash values computed at backup time are verified against the stored
+  backup at each restore test, detecting silent data corruption that might
+  otherwise go unnoticed until a live recovery attempt. Hash verification
+  results and backup job completion status are forwarded to Microsoft Sentinel
+  as security events, where analytics rules alert the UIAO O&M team to any
+  backup job failure or integrity mismatch within fifteen minutes of occurrence.
+  This automated monitoring ensures that backup failures are detected and
+  remediated promptly, maintaining confidence in the organization's recovery
+  capability as required by **CP-9** (System Backup) and supporting
+  **AU-9** (Protection of Audit Information) for audit log backup integrity.
+
+  **Restore Test Execution and Validation**
+  Quarterly restore tests for Tier 1 critical assets are performed in an
+  isolated Azure test environment to avoid impact on production systems.
+  Tests validate both data integrity and application functionality following
+  restore, with system owners confirming that restored instances meet
+  operational readiness criteria before test completion is recorded. Annual
+  full restore tests exercise the complete recovery runbook documented in
+  the Contingency Plan, measuring actual restoration time against documented
+  RTO commitments and identifying procedural gaps. Test results inform
+  **CP-4** (Contingency Plan Testing) after-action reports and drive backup
+  configuration improvements to close any identified gaps.
+
+related_controls:
+  - CP-9   # System Backup (parent control)
+  - CP-10  # System Recovery and Reconstitution
+  - CP-4   # Contingency Plan Testing
+  - AU-9   # Protection of Audit Information
+  - SI-7   # Software, Firmware, and Information Integrity

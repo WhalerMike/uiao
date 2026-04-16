@@ -1,0 +1,83 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-8(1)
+# Title      : Transmission Confidentiality and Integrity | Cryptographic Protection
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SC-8(1)
+title: "Transmission Confidentiality and Integrity | Cryptographic Protection"
+family: System and Communications Protection
+status: not-implemented
+
+implemented_by:
+  - azure-key-vault
+  - palo-alto-ngfw
+  - entra-id
+  - intune-mdm
+
+evidence:
+  - tls-configuration-standards-documentation
+  - palo-alto-ssl-inspection-configuration
+  - azure-key-vault-certificate-inventory
+  - intune-certificate-profile-reports
+
+parameters:
+  - id: PARAM-SC-008-1-001
+    description: >-
+      Cryptographic mechanisms implemented to protect the confidentiality
+      and integrity of information during transmission.
+    value: "TLS 1.2 minimum (TLS 1.3 preferred) for all data in transit; FIPS 140-2 validated cryptographic modules; IPsec for VPN tunnels"
+  - id: PARAM-SC-008-1-002
+    description: >-
+      Certificate management and validation requirements for cryptographic
+      protection of transmissions.
+    value: "Azure Key Vault manages TLS certificates; certificate rotation automated; OCSP and CRL validation enforced for all TLS connections"
+
+narrative: |
+  **Cryptographic Protection of Transmissions**
+  The organization implements cryptographic mechanisms to protect the
+  confidentiality and integrity of information during transmission
+  (PARAM-SC-008-1-001). All UIAO system communications are encrypted
+  using TLS 1.2 at minimum, with TLS 1.3 preferred for all new
+  integrations. Weak cipher suites (RC4, DES, 3DES, MD5, SHA-1) are
+  disabled across all components. VPN tunnels use IPsec with AES-256
+  encryption and SHA-256 or stronger integrity algorithms. All
+  cryptographic implementations use FIPS 140-2 validated modules,
+  meeting federal cryptographic protection requirements per **SC-13**
+  (Cryptographic Protection).
+
+  **Certificate Management via Azure Key Vault**
+  Azure Key Vault centrally manages TLS certificates for all UIAO
+  system endpoints (PARAM-SC-008-1-002). Certificate issuance, renewal,
+  and revocation are managed through Key Vault's certificate lifecycle
+  management capabilities, with automated rotation preventing certificate
+  expiration events. OCSP stapling and CRL validation are enforced
+  on all TLS-protected endpoints to ensure revoked certificates are
+  rejected. Intune deploys trusted CA certificates to managed endpoints
+  via certificate profiles, ensuring consistent validation of
+  organizational TLS certificates.
+
+  **SSL/TLS Inspection at Boundary**
+  Palo Alto NGFW performs SSL/TLS inspection at the organizational
+  boundary, decrypting and re-encrypting outbound HTTPS traffic to
+  enable threat inspection while maintaining end-to-end encryption
+  from the perspective of external servers. Inspection certificates
+  issued by the organizational CA are deployed to managed endpoints
+  via Intune, ensuring transparent SSL inspection. Traffic categories
+  exempt from inspection (banking, healthcare) are defined in Palo
+  Alto policy with documented justification.
+
+  **Cryptographic Standard Compliance**
+  Entra ID enforces TLS minimum version requirements for all
+  authentication and authorization communications. Azure services
+  enforce TLS 1.2 minimum at the platform level, providing an
+  additional layer of cryptographic protection enforcement independent
+  of application configuration. Annual cryptographic review assesses
+  algorithm currency against NIST guidance and updates standards
+  as needed.
+
+related_controls:
+  - SC-8    # Transmission Confidentiality and Integrity
+  - SC-13   # Cryptographic Protection
+  - SC-28(1) # Cryptographic Protection at Rest
+  - IA-5    # Authenticator Management
+  - AC-17   # Remote Access

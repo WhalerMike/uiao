@@ -1,0 +1,88 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IR-6(1)
+# Title      : Incident Reporting | Automated Reporting
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IR-6(1)
+title: "Incident Reporting | Automated Reporting"
+family: Incident Response
+status: not-implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - servicenow-grc
+  - azure-entra-id
+  - palo-alto-ngfw
+
+evidence:
+  - ir-6-1-sentinel-automated-reporting-playbook-configs
+  - ir-6-1-servicenow-us-cert-reporting-workflow-records
+  - ir-6-1-automated-incident-report-submission-logs
+  - ir-6-1-fedramp-incident-report-archive
+
+parameters:
+  - id: ir_6_1_automated_reporting_triggers
+    description: >-
+      Event categories and thresholds that trigger automated external
+      incident reporting workflows without requiring manual initiation.
+    value: "P1 incidents involving confirmed data breach or exfiltration of CUI; P1 ransomware activation; P1 unauthorized access to privileged accounts; all events trigger automated US-CERT reporting workflow within 1 hour of P1 declaration"
+  - id: ir_6_1_reporting_timeframes
+    description: >-
+      Required timeframes for automated incident reports to be submitted
+      to designated external authorities.
+    value: "US-CERT initial report: within 1 hour of P1 declaration (automated); FedRAMP JAB/PMO notification: within 1 hour for US-CERT-reportable events; follow-up reports: within 24 hours with updated incident details"
+  - id: ir_6_1_reporting_recipients
+    description: >-
+      External authorities and stakeholders that receive automated
+      incident reports.
+    value: "US-CERT via automated GovReady API integration; FedRAMP PMO via automated email notification from ServiceNow; Authorizing Official via ServiceNow workflow notification; CISA if critical infrastructure relevant"
+
+narrative: |
+  **Automated Incident Reporting Capability**
+  The UIAO organization implements automated incident reporting mechanisms to
+  ensure that reportable security incidents are communicated to designated
+  authorities within required timeframes without dependency on manual staff
+  initiation during high-stress response operations. Microsoft Sentinel SOAR
+  playbooks and ServiceNow GRC workflow automation collectively implement the
+  automated reporting capability, triggering on the event categories and
+  thresholds defined in PARAM ir_6_1_automated_reporting_triggers and
+  delivering reports to recipients defined in PARAM ir_6_1_reporting_recipients
+  within the timeframes specified in PARAM ir_6_1_reporting_timeframes.
+  Automated reporting supplements rather than replaces the human incident
+  reporting procedures required by **IR-6** (Incident Reporting), with
+  automated reports clearly designated as initial automated notifications
+  pending human-reviewed follow-up reports.
+
+  **Sentinel-to-ServiceNow-to-Authority Reporting Chain**
+  When Sentinel analytics rules classify an incident as meeting P1 automated
+  reporting criteria, the Sentinel SOAR playbook immediately creates or updates
+  a ServiceNow P1 incident record and triggers the US-CERT automated reporting
+  workflow via the GovReady API integration. The automated report includes
+  incident timestamp, affected systems from the **CM-8** (System Component
+  Inventory) asset register, incident category (per US-CERT taxonomy),
+  preliminary severity assessment, and a ServiceNow incident URL for
+  coordination with external response teams. Simultaneously, the FedRAMP PMO
+  notification workflow generates and sends a structured email notification
+  with the same incident details to the FedRAMP PMO reporting inbox, satisfying
+  FedRAMP Moderate incident reporting obligations without manual intervention
+  by the ISSM. Palo Alto and Entra ID event telemetry feeding Sentinel provide
+  the source data that populates automated reports with technical indicators.
+
+  **Automated Report Quality and Human Oversight**
+  Automated incident reports are generated from structured Sentinel incident
+  data to ensure completeness and consistency, but are clearly labeled as
+  automated initial notifications. The ISSM or designated alternate reviews
+  all automated reports within two hours of generation, confirms accuracy,
+  and submits human-reviewed follow-up reports within 24 hours as required
+  by PARAM ir_6_1_reporting_timeframes. All automated report submissions and
+  human review actions are logged in ServiceNow for **AU-2** (Event Logging)
+  and **CA-7** (Continuous Monitoring) metrics reporting. The automated
+  reporting capability is tested during the annual **IR-3** (Incident Response
+  Testing) exercise to validate end-to-end pipeline integrity.
+
+related_controls:
+  - IR-6   # Incident Reporting (parent control)
+  - IR-4   # Incident Handling
+  - IR-4(1) # Automated Incident Handling Processes
+  - IR-8   # Incident Response Plan
+  - AU-2   # Event Logging
