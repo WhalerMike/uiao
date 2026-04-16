@@ -774,7 +774,7 @@ Add an `**Alt-text:**` field to the IMAGE-PROMPTS.md schema alongside `**Placeme
 
 Add a `**Doc-ID:**` field at the top of each IMAGE-PROMPTS.md so the aggregator can trace every prompt in `MASTER-IMAGE-PROMPTS.md` back to its source document.
 
-Use a stable placeholder syntax in the document body — `{{IMAGE:1}}` or `![](./images/image-01-<slug>.png)` — and have `validate_placeholders.py` enforce that every placeholder has a matching prompt and vice versa. This closes the drift gap between doc body and prompt file.
+Use a stable placeholder syntax in the document body — `{{IMAGE:1}}` or the equivalent markdown image reference pointing at `./images/image-01-<slug>.png` — and have `validate_placeholders.py` enforce that every placeholder has a matching prompt and vice versa. This closes the drift gap between doc body and prompt file.
 
 ## Questions before I build anything
 
@@ -1168,7 +1168,7 @@ Let me produce that `ARCHITECTURE.md` in my scratch folder now so you can review
 
 ### **Assistant** — 2026-04-14 13:37:20 UTC
 
-[View ARCHITECTURE.md](computer:///sessions/dreamy-blissful-hamilton/mnt/outputs/ARCHITECTURE.md)
+[View ARCHITECTURE.md](https://github.com/WhalerMike/uiao-core/blob/main/ARCHITECTURE.md)
 
 The draft captures every design decision we've made: canonical registry schema, three-layer cross-repo sync, customer-documents tree, per-document triad (`qmd` + `IMAGE-PROMPTS.md` + `images/`), governance YAML frontmatter, draft/review/locked lifecycle, Gemini NanoBanana pipeline with PNG+WebP+thumbnail variants, Architecture C with Git LFS, the full CI workflow inventory, Pro tier posture, Quarto-canonical rendering with three diagram tracks, and the four-phase on-prem migration roadmap terminating in hardened Apache httpd on RHEL/Rocky/Alma. Open decisions are tabled in Section 13.
 
@@ -1335,9 +1335,9 @@ Now the commercial companion document.
 
 Both documents ready for review:
 
-[View ARCHITECTURE.md (federal pair)](computer:///sessions/dreamy-blissful-hamilton/mnt/outputs/ARCHITECTURE-1.md)
+[View ARCHITECTURE.md (federal pair)](https://github.com/WhalerMike/uiao-core/blob/main/ARCHITECTURE.md)
 
-[View uiao-gos ARCHITECTURE.md (commercial companion)](computer:///sessions/dreamy-blissful-hamilton/mnt/outputs/uiao-gos-ARCHITECTURE.md)
+View `uiao-gos/ARCHITECTURE.md` (commercial companion — private repo, firewalled from the federal pair per §2.2)
 
 Summary of what changed vs. the previous draft:
 
