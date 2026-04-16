@@ -1,5 +1,11 @@
 # uiao-impl
 
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![FedRAMP Moderate](https://img.shields.io/badge/FedRAMP-Moderate%20Rev%205-orange.svg)](https://whalermike.github.io/uiao-docs/docs/03_FedRAMP20x_Crosswalk.html)
+
+**UIAO Ecosystem:** [uiao-core](https://github.com/WhalerMike/uiao-core) (governance engine) · **uiao-impl** (this repo) · [uiao-docs](https://github.com/WhalerMike/uiao-docs) ([live site](https://whalermike.github.io/uiao-docs/docs/index.html))
+
 Python implementation for the UIAO governance ecosystem: library, CLI, generators, adapters, and the pytest suite.
 
 This repository holds **application code only**. Canonical governance artifacts (YAMLs, schemas, rules, playbooks) live in [`WhalerMike/uiao-core`](https://github.com/WhalerMike/uiao-core). Documentation and article series live in [`WhalerMike/uiao-docs`](https://github.com/WhalerMike/uiao-docs).
