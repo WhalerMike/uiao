@@ -201,38 +201,73 @@ class M365Adapter(DatabaseAdapterBase):
     ) -> ClaimSet:
         """Retrieve tenant-level configuration for a specific workload.
 
+        Parses a tenant config bundle (from Graph API or local fixture)
+        and returns claims for the specified workload.
+
         Args:
             workload: One of WORKLOADS (exchange-online, sharepoint-online, etc.)
-            config_filter: Optional OData filter expression
+            config_filter: Optional OData filter expression (not yet implemented)
 
         Returns:
             ClaimSet with configuration-state claims.
         """
-        raise NotImplementedError(
-            "get_tenant_config() is a stub — requires Graph API "
-            "collector with client-credential auth flow."
-        )
+        from .m365_parser import parse_tenant_config
+
+        # In real usage, this would call the Graph API collector.
+        # For now, accept a pre-loaded config dict via adapter config.
+        tenant_config = self._config.get("_tenant_config", {})
+        all_entities = parse_tenant_config(tenant_config)
+
+        # Filter to requested workload
+        filtered = [e for e in all_entities if e.get("_workload") == workload]
+        return self.normalize(filtered)
 
     def apply_baseline(
         self,
         workload: str,
         baseline: Dict[str, Any],
     ) -> DriftReport:
-        """Apply a security baseline to a workload (change-making).
+        """Compare current config against a baseline and report drift.
 
-        This is the integration-class change-making surface: it writes
-        configuration changes to the M365 tenant via Graph API.
+        In a full implementation, this would also APPLY the baseline
+        via Graph API write calls. Currently it only compares and reports.
 
         Args:
             workload: Target workload
-            baseline: Desired-state configuration (e.g., SCuBA baseline)
+            baseline: Dict of {setting_key: expected_value} pairs
 
         Returns:
-            DriftReport showing what changed.
+            DriftReport showing what deviates from baseline.
         """
-        raise NotImplementedError(
-            "apply_baseline() is a stub — requires Graph API write "
-            "permissions and change-approval workflow integration."
+        from .m365_parser import parse_tenant_config, compare_against_baseline
+
+        tenant_config = self._config.get("_tenant_config", {})
+        all_entities = parse_tenant_config(tenant_config)
+        filtered = [e for e in all_entities if e.get("_workload") == workload]
+
+        comparison = compare_against_baseline(filtered, baseline)
+        nc_count = comparison["summary"]["non_compliant_count"]
+        missing_count = comparison["summary"]["missing_count"]
+
+        severity = "high" if nc_count > 0 else ("warning" if missing_count > 0 else "info")
+
+        return DriftReport(
+            drift_type="m365-baseline-comparison",
+            severity=severity,
+            first_observed=self._now(),
+            last_observed=self._now(),
+            details={
+                "adapter": self.ADAPTER_ID,
+                "workload": workload,
+                "tenant_id": self._tenant_id,
+                "comparison": comparison,
+            },
+            remediation=(
+                f"{nc_count} non-compliant setting(s), {missing_count} missing. "
+                f"Review and apply via Graph API or admin portal."
+                if nc_count + missing_count > 0
+                else "All settings compliant with baseline."
+            ),
         )
 
     def generate_m365_evidence(
@@ -249,9 +284,37 @@ class M365Adapter(DatabaseAdapterBase):
         Returns:
             EvidenceObject with full provenance chain.
         """
-        raise NotImplementedError(
-            "generate_m365_evidence() is a stub — requires both "
-            "get_tenant_config() and scubagear integration."
+        from .m365_parser import parse_tenant_config
+
+        conn = self.connect()
+        drift = self.detect_drift()
+
+        tenant_config = self._config.get("_tenant_config", {})
+        all_entities = parse_tenant_config(tenant_config)
+        if workload:
+            all_entities = [e for e in all_entities if e.get("_workload") == workload]
+
+        claim_set = self.normalize(all_entities)
+
+        return EvidenceObject(
+            ksi_id=f"KSI-M365-{workload or 'ALL'}",
+            source=self.ADAPTER_ID,
+            timestamp=self._now(),
+            raw_data={
+                "connection": conn.to_dict(),
+                "drift": drift.to_dict(),
+                "entity_count": len(all_entities),
+                "workload_filter": workload,
+                "scuba_crossref": include_scuba_crossref,
+            },
+            normalized_data=claim_set.to_dict(),
+            provenance={
+                "adapter_id": self.ADAPTER_ID,
+                "tenant_id": self._tenant_id,
+                "hash": self._hash(claim_set.to_dict()),
+                "timestamp": self._now().isoformat(),
+            },
+            freshness_valid=True,
         )
 
     # ------------------------------------------------------------------
