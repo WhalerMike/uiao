@@ -55,7 +55,7 @@ All deliverables below were completed and committed to `uiao-docs/main` and `uia
 
 | File | Target Status | Ratification Required |
 |---|---|---|
-| `docs/canon/canonical-rules.md` | ACTIVE | Governance Board sign-off |
+| `uiao-core/canon/canonical-rules.md` | MIGRATED to uiao-core (Phase D, 2026-04-16) | — |
 | `docs/canon/glossary.md` | ACTIVE | Governance Board sign-off |
 | `docs/canon/migration-plan.md` | ACTIVE | Governance Board sign-off |
 | `docs/canon/pdf-layout-spec.md` | ACTIVE | Governance Board sign-off |
