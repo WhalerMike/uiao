@@ -1,0 +1,135 @@
+---
+title: "0005-Dev-Repo-Promotion-Workflow"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
+# ADR-0005: Dev Repo Promotion Workflow
+
+**Status:** Accepted
+**Date:** 2026-03-31
+**Decision Makers:** Michael (UIAO Architect)
+**Source:** Copilot session "Creating a Dev Repo for UIAO Core"
+
+## Context
+
+UIAO Core requires a safe development sandbox for experimentation, compiler integration, directory restructuring, and docs evolution without polluting the authoritative canonical repo. The question was whether to use feature branches within `uiao-core` or create a separate `uiao-core-dev` repository.
+
+## Decision
+
+**Create `uiao-core-dev` as a temporary staging repo using One-Way Canonical Sync (Model 1).**
+
+### Sync Model
+
+- `uiao-core` is the authoritative canon (source of truth)
+- `uiao-core-dev` regularly pulls from `uiao-core`
+- `uiao-core-dev` never pushes back automatically
+- Promotion happens manually and intentionally via PR
+
+### Rejected Alternatives
+
+| Model | Reason for Rejection |
+|-------|---------------------|
+| Two-Way Sync | Creates merge conflicts, drift, governance ambiguity; violates NO-HALLUCINATION PROTOCOL |
+| Long-Running Feature Branch | Acceptable but less clean separation than dedicated repo |
+
+## Promotion Workflow
+
+### Step 1: Prepare Promotion Candidate
+
+In `uiao-core-dev`:
+- Ensure experimental content is either promoted to canonical form or moved to `/experiments`
+- Run drift checks
+- Run schema validation
+- Run compiler validation
+- Run governance invariants
+
+### Step 2: Create Promotion Branch
+
+```bash
+git checkout -b promote-YYYYMMDD
+```
+
+### Step 3: Sync with Core
+
+```bash
+git fetch core
+git rebase core/main
+```
+
+Resolve conflicts in favor of the canon unless explicitly intended.
+
+### Step 4: Open Promotion PR
+
+Open PR from `uiao-core-dev` -> `uiao-core` with:
+- Summary of changes
+- Validation results
+- Drift report
+- Compiler test results
+- Governance checklist
+
+### Step 5: Human Approval
+
+The human (Michael) approves the PR.
+
+### Step 6: Merge into Canon
+
+Once merged:
+- `uiao-core` becomes the new authoritative truth
+- `uiao-core-dev` pulls from it again to reset drift
+
+## Branching Model
+
+### uiao-core (Authoritative Canon)
+
+- `main` only
+- No feature branches
+- No drafts or experiments
+- No direct commits except via promotion
+
+### uiao-core-dev (Development Sandbox)
+
+| Branch Pattern | Purpose |
+|---------------|----------|
+| `main` | Active development |
+| `feature/*` | Experimental branches |
+| `structure/*` | Directory evolution |
+| `compiler/*` | Compiler changes |
+| `migration/*` | Restructuring |
+| `promote/*` | Promotion candidates |
+
+## GitHub Actions Required
+
+| Action | Scope | Purpose |
+|--------|-------|---------|
+| `drift-check.yml` | Both repos | Validates directory structure against canonical schema, ensures no forbidden dirs, no version refs |
+| `schema-validation.yml` | Both repos | Validates all YAML/JSON against canonical schemas |
+| `compiler-validation.yml` | Both repos | Runs Document Compiler, ensures clean builds |
+| `promotion-gate.yml` | Core only | Blocks PRs unless drift, schema, compiler, and governance checks all pass |
+| `sync-reminder.yml` | Dev only | Weekly job alerting if `uiao-core-dev` is behind `uiao-core` by more than N commits |
+
+## Consequences
+
+### Positive
+
+- Clean separation between canonical and experimental surfaces
+- Drift-resistant canon preserved
+- Aligns with federal modernization sandbox/pre-prod/prod pipeline model
+- Deterministic governance with zero accidental overwrites
+
+### Negative
+
+- Requires maintaining two repositories
+- Additional overhead for sync and promotion workflows
+- Dev repo is temporary and should be retired once canon stabilizes
+
+## References
+
+- [COPILOT-INTEGRATION-LOG.qmd](COPILOT-INTEGRATION-LOG.qmd) - Thread 1
+- UIAO-MEMORY.md - Canonical governance principles
