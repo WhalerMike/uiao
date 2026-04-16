@@ -87,3 +87,37 @@ Aligns with **EO 14028**, **OMB M-22-09**, **FedRAMP GCC-Moderate**, **TIC 3.0**
 ---
 
 *The Modernization Atlas v1.0 represents a structural modernization of how the agency authenticates, addresses, routes, observes, and governs every digital interaction.*
+
+---
+
+# v1.0 Adapter Ecosystem Release — April 16, 2026
+
+## Summary
+
+The UIAO adapter ecosystem is now feature-complete with 16 registered adapters (15 implemented), a proven end-to-end OSCAL pipeline producing SAR/POA&M/SSP artifacts, and a closed governance loop from drift detection through remediation ticketing.
+
+## Key Deliverables
+
+- **16 adapters** in the dual-axis canon registry (9 modernization/integration, 7 conformance/telemetry+policy)
+- **15 implementations** with zero `NotImplementedError` stubs, 420/420 conformance CI-gated
+- **37 end-to-end OSCAL pipeline tests** (SAR 18 + POA&M 11 + SSP 8)
+- **9 remediation pipeline tests** (drift → POA&M → ServiceNow change requests → round-trip)
+- **4 real parser modules** (Terraform state/plan/HCL, M365 Graph API, Palo Alto PAN-OS XML, VulnScan findings)
+- **80+ behavioral tests** against 15 realistic vendor-format fixture files
+- **UIAO_003 ratified** — 12 of 14 doctrinal markers promoted with operational evidence
+- **Phase D complete** — ADRs + canonical-rules → uiao-core; deploy.yml → uiao-docs
+- **5 canonical specifications**: Conformance Test Plan, Integration Test Plan, Training Program, Operations Runbook, Conformance Template
+- **13/13 ATS + 13/13 AVS docs** authored with conformance matrices and integration test plans
+- **Quarto site**: 150 pages, zero warnings
+- **50+ PRs merged** across uiao-core, uiao-docs, uiao-impl in single session
+
+## Phase 4 Acceptance (Pending Credentials)
+
+Acceptance test infrastructure deployed — auto-skip without secrets, auto-run when credentials are added. Covers Entra ID, M365, Intune (Graph API) and ServiceNow (Table API).
+
+## What's Next
+
+1. Credential provisioning → Phase 4 acceptance tests
+2. PAT rotation → canon-sync round-trip validation
+3. Azure Gov self-hosted runners (ODA-13) → on-prem adapter testing
+4. v1.1: live Terraform backend auth, ScubaGear live assessment
