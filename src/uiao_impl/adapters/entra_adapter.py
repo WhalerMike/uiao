@@ -42,7 +42,7 @@ class EntraAdapter(DatabaseAdapterBase):
     This adapter never owns or duplicates data. SSOT remains in the YAML canon.
     """
 
-    ADAPTER_ID: str = "entra"
+    ADAPTER_ID: str = "entra-id"
 
     def __init__(self, config: Dict[str, Any] | None = None) -> None:
         super().__init__(config or {})
