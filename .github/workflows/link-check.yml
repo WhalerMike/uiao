@@ -68,6 +68,21 @@ jobs:
           fail: ${{ github.event_name == 'pull_request' || github.event.inputs.fail_on_broken == 'true' }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Publish lychee report to job summary
+        if: always() && hashFiles('lychee-report.md') != ''
+        shell: bash
+        run: |
+          {
+            echo "## Lychee link-check report"
+            echo ""
+            cat lychee-report.md
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Also echo to the log for easier diagnosis if the artifact is
+          # inaccessible.
+          echo "::group::lychee-report.md"
+          cat lychee-report.md
+          echo "::endgroup::"
+
       - name: Upload report artifact
         if: always()
         uses: actions/upload-artifact@v4
