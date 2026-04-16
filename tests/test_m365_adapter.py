@@ -173,18 +173,110 @@ class TestCollectEvidence:
         assert result.source == "m365"
 
 
-class TestM365Extensions:
-    def test_get_tenant_config_raises(self, adapter: M365Adapter) -> None:
-        with pytest.raises(NotImplementedError, match="get_tenant_config"):
-            adapter.get_tenant_config("exchange-online")
+class TestGetTenantConfig:
+    """Real tenant config parsing tests."""
 
-    def test_apply_baseline_raises(self, adapter: M365Adapter) -> None:
-        with pytest.raises(NotImplementedError, match="apply_baseline"):
-            adapter.apply_baseline("teams", {"setting": "value"})
+    @pytest.fixture
+    def adapter_with_config(self) -> M365Adapter:
+        import json
+        from pathlib import Path
+        config_path = Path(__file__).parent / "fixtures" / "m365-tenant-config.json"
+        tenant_config = json.loads(config_path.read_text())
+        return M365Adapter({
+            "tenant_id": "contoso.onmicrosoft.com",
+            "_tenant_config": tenant_config,
+        })
 
-    def test_generate_m365_evidence_raises(self, adapter: M365Adapter) -> None:
-        with pytest.raises(NotImplementedError, match="generate_m365_evidence"):
-            adapter.generate_m365_evidence()
+    def test_exchange_claims(self, adapter_with_config: M365Adapter) -> None:
+        result = adapter_with_config.get_tenant_config("exchange-online")
+        assert isinstance(result, ClaimSet)
+        assert len(result.claims) >= 2  # mailbox + transport rule
+
+    def test_teams_claims(self, adapter_with_config: M365Adapter) -> None:
+        result = adapter_with_config.get_tenant_config("teams")
+        assert len(result.claims) >= 1
+
+    def test_purview_claims(self, adapter_with_config: M365Adapter) -> None:
+        result = adapter_with_config.get_tenant_config("purview")
+        assert len(result.claims) >= 1
+        assert any("purview" in c.claim_id for c in result.claims)
+
+    def test_unknown_workload_empty(self, adapter_with_config: M365Adapter) -> None:
+        result = adapter_with_config.get_tenant_config("nonexistent")
+        assert len(result.claims) == 0
+
+
+class TestApplyBaseline:
+    """Baseline comparison tests."""
+
+    @pytest.fixture
+    def adapter_with_config(self) -> M365Adapter:
+        import json
+        from pathlib import Path
+        config_path = Path(__file__).parent / "fixtures" / "m365-tenant-config.json"
+        tenant_config = json.loads(config_path.read_text())
+        return M365Adapter({
+            "tenant_id": "contoso.onmicrosoft.com",
+            "_tenant_config": tenant_config,
+        })
+
+    def test_returns_drift_report(self, adapter_with_config: M365Adapter) -> None:
+        result = adapter_with_config.apply_baseline("exchange-online", {})
+        assert isinstance(result, DriftReport)
+        assert result.drift_type == "m365-baseline-comparison"
+
+    def test_compliant_baseline(self, adapter_with_config: M365Adapter) -> None:
+        # Empty baseline = everything compliant
+        result = adapter_with_config.apply_baseline("exchange-online", {})
+        assert result.severity == "info"
+
+    def test_non_compliant_detected(self, adapter_with_config: M365Adapter) -> None:
+        # Baseline expects a value that doesn't match
+        baseline = {"Default Mailbox Policy.automaticRepliesSetting": "enabled"}
+        result = adapter_with_config.apply_baseline("exchange-online", baseline)
+        assert result.details["comparison"]["summary"]["non_compliant_count"] >= 1
+
+    def test_missing_setting_detected(self, adapter_with_config: M365Adapter) -> None:
+        baseline = {"nonexistent.setting": "value"}
+        result = adapter_with_config.apply_baseline("exchange-online", baseline)
+        assert result.details["comparison"]["summary"]["missing_count"] >= 1
+
+
+class TestGenerateM365Evidence:
+    """Evidence bundle generation tests."""
+
+    @pytest.fixture
+    def adapter_with_config(self) -> M365Adapter:
+        import json
+        from pathlib import Path
+        config_path = Path(__file__).parent / "fixtures" / "m365-tenant-config.json"
+        tenant_config = json.loads(config_path.read_text())
+        return M365Adapter({
+            "tenant_id": "contoso.onmicrosoft.com",
+            "_tenant_config": tenant_config,
+        })
+
+    def test_returns_evidence_object(self, adapter_with_config: M365Adapter) -> None:
+        result = adapter_with_config.generate_m365_evidence()
+        assert isinstance(result, EvidenceObject)
+
+    def test_evidence_source(self, adapter_with_config: M365Adapter) -> None:
+        result = adapter_with_config.generate_m365_evidence()
+        assert result.source == "m365"
+
+    def test_evidence_has_normalized_claims(self, adapter_with_config: M365Adapter) -> None:
+        result = adapter_with_config.generate_m365_evidence()
+        assert result.normalized_data is not None
+        assert len(result.normalized_data["claims"]) >= 5  # across all workloads
+
+    def test_workload_filter(self, adapter_with_config: M365Adapter) -> None:
+        result = adapter_with_config.generate_m365_evidence(workload="teams")
+        assert result.normalized_data is not None
+        assert len(result.normalized_data["claims"]) >= 1
+
+    def test_provenance_includes_tenant(self, adapter_with_config: M365Adapter) -> None:
+        result = adapter_with_config.generate_m365_evidence()
+        assert result.provenance["tenant_id"] == "contoso.onmicrosoft.com"
 
 
 class TestCollectAndAlign:
