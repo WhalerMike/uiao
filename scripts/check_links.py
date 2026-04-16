@@ -56,12 +56,19 @@ def iter_markdown_files() -> list[Path]:
     )
 
 
+def _strip_fenced_code(text: str) -> str:
+    """Remove fenced code blocks so link syntax inside them is not checked."""
+    return re.sub(r'```.*?```', '', text, flags=re.DOTALL)
+
+
 def check_file(md_path: Path) -> list[tuple[Path, str]]:
     try:
         text = md_path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError) as exc:
         print(f"[check_links] warn: cannot read {md_path}: {exc}")
         return []
+
+    text = _strip_fenced_code(text)
 
     broken: list[tuple[Path, str]] = []
     for match in LINK_RE.finditer(text):
