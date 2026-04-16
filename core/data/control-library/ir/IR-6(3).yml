@@ -1,0 +1,89 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IR-6(3)
+# Title      : Incident Reporting | Supply Chain Coordination
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: IR-6(3)
+title: "Incident Reporting | Supply Chain Coordination"
+family: Incident Response
+status: not-implemented
+
+implemented_by:
+  - servicenow-grc
+  - microsoft-sentinel
+  - sharepoint-policy-library
+  - azure-entra-id
+
+evidence:
+  - ir-6-3-supply-chain-incident-coordination-procedures
+  - ir-6-3-vendor-security-contact-registry
+  - ir-6-3-servicenow-supply-chain-incident-records
+  - ir-6-3-sentinel-supply-chain-ioc-detection-rules
+
+parameters:
+  - id: ir_6_3_supply_chain_reporting_scope
+    description: >-
+      Categories of incidents that trigger supply chain coordination
+      reporting to external providers and vendors.
+    value: "Confirmed or suspected compromise of vendor-provided software or components integrated in UIAO (Microsoft, Cisco, Palo Alto, Infoblox, CyberArk, ServiceNow); exploitation of vendor-disclosed CVEs before patch availability; incidents involving vendor remote access sessions to UIAO systems"
+  - id: ir_6_3_vendor_notification_timeframe
+    description: >-
+      Required timeframe for notifying affected vendors and supply chain
+      partners following identification of a supply chain-related incident.
+    value: "Critical supply chain incidents: vendor notification within 4 hours of P1 declaration; high severity: within 24 hours; vendor security contact registry maintained current in ServiceNow with 90-day maximum staleness"
+  - id: ir_6_3_supply_chain_coordination_contacts
+    description: >-
+      External parties included in supply chain incident coordination
+      procedures.
+    value: "Microsoft MSRC (Azure, Entra ID, Sentinel, Intune); Cisco PSIRT (ISE, network infrastructure); Palo Alto Unit 42 / PSIRT (NGFW); Infoblox Security (DNS/IPAM); CyberArk Security (PAM); ServiceNow SIR team; FedRAMP PMO for cross-CSP incidents"
+
+narrative: |
+  **Supply Chain Incident Coordination Framework**
+  The UIAO organization implements supply chain incident coordination procedures
+  to ensure that incidents involving vendor-provided components, third-party
+  software, or supply chain compromise indicators are promptly communicated to
+  affected vendors, shared service providers, and oversight authorities. Supply
+  chain incidents covered by PARAM ir_6_3_supply_chain_reporting_scope are
+  handled through a dedicated coordination track within the **IR-8** (Incident
+  Response Plan) that identifies vendor security contacts in PARAM ir_6_3_supply_chain_coordination_contacts
+  and establishes notification timeframes in PARAM ir_6_3_vendor_notification_timeframe.
+  This coordination ensures that vendors receive timely intelligence that may
+  affect other customers of shared software components and that UIAO receives
+  reciprocal vendor-side investigation support.
+
+  **Vendor Security Contact Management and Notification**
+  All supply chain vendors with integrated components in the UIAO environment
+  maintain registered security contacts in ServiceNow GRC, updated at least
+  every ninety days to ensure contact currency. When a supply chain incident
+  is identified, ServiceNow workflow automation generates vendor notification
+  drafts pre-populated with incident details, affected component identifiers,
+  and observed indicators of compromise (IOCs). The ISSM reviews and approves
+  notification content before transmission, with the review-and-send cycle
+  completing within the timeframes defined in PARAM ir_6_3_vendor_notification_timeframe.
+  For critical incidents, Microsoft Sentinel SOAR playbooks generate the
+  initial vendor alert draft automatically upon P1 declaration to minimize
+  preparation time. All vendor communications are logged in the ServiceNow
+  incident record for audit purposes consistent with **AU-2** (Event Logging).
+
+  **Supply Chain IOC Detection and Threat Intelligence Integration**
+  Microsoft Sentinel is configured with detection rules specifically targeting
+  supply chain compromise indicators, including anomalous behavior from
+  vendor-signed software processes, unexpected outbound connections from
+  management tooling (Intune, Sentinel agents, CyberArk components), and
+  DNS queries to vendor infrastructure exhibiting IOC characteristics.
+  Threat intelligence from Microsoft Defender Threat Intelligence and
+  vendor PSIRT advisories is ingested into Sentinel to enable proactive
+  detection of supply chain threats before they manifest as confirmed incidents.
+  When a vendor-originated security advisory (e.g., SolarWinds-style event)
+  is published, the ISSM initiates a supply chain incident investigation in
+  ServiceNow within 24 hours, evaluating UIAO exposure and coordinating
+  with the issuing vendor's security team. This supports **SA-9** (External
+  System Services) vendor risk management and **RA-3** (Risk Assessment)
+  supply chain risk identification objectives.
+
+related_controls:
+  - IR-6   # Incident Reporting (parent control)
+  - IR-4   # Incident Handling
+  - IR-8   # Incident Response Plan
+  - SA-9   # External System Services
+  - RA-3   # Risk Assessment

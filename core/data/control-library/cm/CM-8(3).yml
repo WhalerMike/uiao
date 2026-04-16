@@ -1,0 +1,98 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CM-8(3)
+# Title      : System Component Inventory | Automated Unauthorized Component Detection
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: CM-8(3)
+title: "System Component Inventory | Automated Unauthorized Component Detection"
+family: Configuration Management
+status: not-implemented
+
+implemented_by:
+  - crowdstrike-falcon
+  - palo-alto-ngfw
+  - microsoft-sentinel
+  - servicenow-cmdb
+
+evidence:
+  - crowdstrike-unmanaged-asset-discovery-report
+  - palo-alto-iot-security-unauthorized-device-alert-log
+  - sentinel-unauthorized-component-detection-alert-rules
+  - servicenow-unauthorized-component-incident-records
+
+parameters:
+  - id: cm_8_3_detection_mechanisms
+    description: >-
+      Automated mechanisms used to detect unauthorized system
+      components connected to the organizational network.
+    value: "CrowdStrike Falcon asset discovery (endpoint layer), Palo Alto NGFW IoT Security module (network layer passive discovery), Infoblox IPAM (DHCP/DNS-based device detection), Microsoft Sentinel correlation rules"
+  - id: cm_8_3_response_action
+    description: >-
+      Actions taken when unauthorized components are detected,
+      including containment and investigation steps.
+    value: "Unauthorized components isolated via Cisco Catalyst VLAN quarantine; Sentinel alert triggers ServiceNow Priority 2 incident; CrowdStrike can apply network containment to rogue endpoints"
+
+narrative: |
+  **Automated Detection of Unauthorized Components**
+  The UIAO system employs automated detection mechanisms defined
+  in PARAM cm_8_3_detection_mechanisms to identify system
+  components connected to the organizational network that are not
+  authorized in the ServiceNow CMDB inventory. CrowdStrike Falcon
+  asset discovery continuously identifies all hosts visible on the
+  network, comparing discovered endpoints against the authorized
+  CMDB inventory and flagging any device without a corresponding
+  enrolled CMDB record as a potential unauthorized component.
+  Palo Alto NGFW IoT Security performs passive network traffic
+  analysis to fingerprint and classify all devices communicating
+  on organizational network segments, detecting devices that are
+  not in the authorized device registry and generating security
+  events for further investigation. This satisfies the CM-8(3)
+  requirement for automated unauthorized component detection and
+  supports **CM-8** (System Component Inventory) and **SI-4**
+  (System Monitoring) objectives.
+
+  **Network-Layer Unauthorized Device Detection**
+  Infoblox IPAM detects unauthorized devices through DHCP
+  fingerprinting and DNS registration analysis. Devices requesting
+  DHCP leases that do not match a registered MAC address in the
+  authorized device registry trigger an alert in the Infoblox
+  management console and a corresponding event in Microsoft
+  Sentinel. Network access control enforcement by Cisco Catalyst
+  switches restricts unregistered devices to a quarantine VLAN
+  that permits only limited connectivity for investigation and
+  remediation purposes, limiting the potential impact of
+  unauthorized device connectivity.
+
+  **Automated Alert and Response Workflow**
+  Unauthorized component detection events from CrowdStrike,
+  Palo Alto, and Infoblox converge in Microsoft Sentinel,
+  where analytic rules correlate multi-source signals to
+  reduce false positives and generate high-confidence alerts.
+  Confirmed unauthorized component alerts trigger the automated
+  response defined in PARAM cm_8_3_response_action, including
+  VLAN quarantine via Cisco Catalyst, ServiceNow incident creation,
+  and notification to the ISSO and Security Operations team.
+  CrowdStrike network containment can be applied remotely to
+  isolate rogue endpoints from all network communication pending
+  investigation.
+
+  **Investigation and Remediation**
+  ServiceNow incidents generated for unauthorized component
+  detection include pre-populated investigation templates
+  capturing device identifiers, detection source, network
+  location, and observed traffic. The ISSO investigates each
+  incident to determine whether the component represents an
+  authorized device with an inventory gap, an unauthorized
+  installation requiring removal, or a potential adversarial
+  implant requiring incident response escalation under **IR-4**
+  (Incident Handling). Remediation actions are documented in
+  ServiceNow and CMDB records are updated to reflect the
+  resolution outcome.
+
+related_controls:
+  - CM-8    # System Component Inventory
+  - CM-8(1) # Updates During Installation and Removal
+  - CM-7    # Least Functionality
+  - CA-7    # Continuous Monitoring
+  - IR-4    # Incident Handling
+  - SI-4    # System Monitoring
