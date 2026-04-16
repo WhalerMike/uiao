@@ -3,8 +3,11 @@
 import pytest
 import asyncio
 from uiao_impl.adapters import (
+    CyberArkAdapter,
     DatabaseAdapterBase,
     EntraAdapter,
+    InfobloxAdapter,
+    IntuneAdapter,
     M365Adapter,
     PaloAltoAdapter,
     PatchStateAdapter,
@@ -15,8 +18,11 @@ from uiao_impl.adapters import (
 )
 
 ADAPTER_REGISTRY = {
+    "cyberark": CyberArkAdapter,
     "database": DatabaseAdapterBase,
     "entra-id": EntraAdapter,
+    "infoblox": InfobloxAdapter,
+    "intune": IntuneAdapter,
     "m365": M365Adapter,
     "palo-alto": PaloAltoAdapter,
     "patch-state": PatchStateAdapter,
