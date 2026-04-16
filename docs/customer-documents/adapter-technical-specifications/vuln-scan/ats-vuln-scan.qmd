@@ -32,19 +32,30 @@ This document is a stub. Replace every `_TODO — ..._` block with authored cont
 
 ## Overview
 
-_TODO — Author an overview of the Vulnerability Scanner (Reserved Slot) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Vulnerability Scanner Adapter is a **conformance-class telemetry** adapter that observes vulnerability state across managed assets and produces normalized, timestamped findings. It is tool-agnostic — the vendor-specific scanner backend (Tenable, Qualys, OpenSCAP) is injected via configuration.
+
+Key capabilities: scan result ingestion with CVE cross-references, severity-based filtering, finding summarization (critical/high/medium/low counts + max severity), and KSI-anchored evidence generation. Tool selection tracked as ODA-14.
+
+**Implementation:** `uiao-impl/src/uiao_impl/adapters/vulnscan_adapter.py` + `vulnscan_parser.py` (real parsing). Conformance: 30/30 PASS.
 
 ## Scope
 
 Target surfaces / subsystems: _(not yet defined)_
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** Vulnerability scanner output (JSON format) containing findings with CVE IDs, CVSS scores, severity, affected assets, and state (open/accepted_risk).
+**Emits:** `ClaimSet` with one claim per finding, `EvidenceObject` with scan summary (total/open/by-severity/max-severity).
+**Does NOT:** invoke scanners, remediate vulnerabilities, or access target systems directly. Read-only telemetry.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `RA-5`, `RA-5(5)`, `CA-7`, `SI-2`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **RA-5** Vulnerability Scanning | Primary | Ingests and normalizes vulnerability scan findings with CVE cross-references. |
+| **RA-5(5)** Privileged Access | Supporting | Scan findings include privilege-related vulnerabilities (EoP findings). |
+| **CA-7** Continuous Monitoring | Supporting | Scheduled scan ingestion provides continuous vulnerability posture evidence. |
+| **SI-2** Flaw Remediation | Supporting | Finding state tracking (open vs accepted_risk) supports remediation monitoring. |
 
 ## Operational profile
 

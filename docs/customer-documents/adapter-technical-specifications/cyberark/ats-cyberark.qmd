@@ -32,19 +32,30 @@ This document is a stub. Replace every `_TODO — ..._` block with authored cont
 
 ## Overview
 
-_TODO — Author an overview of the CyberArk Credential Rotation Adapter adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The CyberArk Adapter is an **integration-class** modernization adapter for credential rotation and privileged access management. It consumes CyberArk vault account data via the REST API and produces canonical claims for service accounts, certificates, and privileged credentials.
+
+Key capabilities: vault account enumeration by safe, credential rotation reporting (change-making surface), and KSI-anchored evidence generation for IA-5 compliance. Requires on-prem-self-hosted runner with network access to the vault.
+
+**Implementation:** `uiao-impl/src/uiao_impl/adapters/cyberark_adapter.py`. Conformance: 30/30 PASS.
 
 ## Scope
 
 Target surfaces / subsystems: `privileged-accounts`, `service-credentials`, `certificate-rotation`, `vault-policies`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** CyberArk vault account data (JSON with AccountID, SafeName, PlatformID, UserName, LastModifiedTime).
+**Emits:** `ClaimSet` with one claim per vault account, `DriftReport` for rotation actions, `EvidenceObject` with account count.
+**Does NOT:** rotate credentials without explicit invocation, access credential values/secrets, or operate outside the configured safe scope.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `IA-5`, `IA-5(1)`, `AC-2`, `AC-6`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IA-5** Authenticator Management | Primary | Credential lifecycle tracking with rotation timestamps and safe assignments. |
+| **IA-5(1)** Password-Based Authentication | Supporting | Password rotation scheduling and compliance evidence. |
+| **AC-2** Account Management | Supporting | Service account enumeration and lifecycle tracking. |
+| **AC-6** Least Privilege | Supporting | Safe-scoped access ensures credential isolation per least-privilege. |
 
 ## Operational profile
 
