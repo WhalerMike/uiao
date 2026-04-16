@@ -163,18 +163,85 @@ class TestCollectEvidence:
         assert result.source == "palo-alto"
 
 
-class TestPaloAltoExtensions:
-    def test_get_running_config_raises(self, adapter: PaloAltoAdapter) -> None:
-        with pytest.raises(NotImplementedError, match="get_running_config"):
-            adapter.get_running_config()
+class TestGetRunningConfig:
+    """Real PAN-OS XML parsing tests."""
 
-    def test_push_config_change_raises(self, adapter: PaloAltoAdapter) -> None:
-        with pytest.raises(NotImplementedError, match="push_config_change"):
-            adapter.push_config_change("security-rule", "test", {"action": "deny"})
+    @pytest.fixture
+    def sec_xml(self) -> str:
+        from pathlib import Path
+        return (Path(__file__).parent / "fixtures" / "panos-security-rules.xml").read_text()
 
-    def test_generate_firewall_evidence_raises(self, adapter: PaloAltoAdapter) -> None:
-        with pytest.raises(NotImplementedError, match="generate_firewall_evidence"):
-            adapter.generate_firewall_evidence()
+    @pytest.fixture
+    def nat_xml(self) -> str:
+        from pathlib import Path
+        return (Path(__file__).parent / "fixtures" / "panos-nat-rules.xml").read_text()
+
+    def test_parses_security_rules(self, adapter: PaloAltoAdapter, sec_xml: str) -> None:
+        result = adapter.get_running_config(scope="security-policies", xml_content=sec_xml)
+        assert isinstance(result, ClaimSet)
+        assert len(result.claims) == 3
+
+    def test_rule_names_in_claims(self, adapter: PaloAltoAdapter, sec_xml: str) -> None:
+        result = adapter.get_running_config(scope="security-policies", xml_content=sec_xml)
+        names = {c.fields.get("rule_name", "") for c in result.claims}
+        assert "allow-dns-outbound" in names
+        assert "deny-all-default" in names
+
+    def test_action_preserved(self, adapter: PaloAltoAdapter, sec_xml: str) -> None:
+        result = adapter.get_running_config(scope="security-policies", xml_content=sec_xml)
+        deny_rules = [c for c in result.claims if c.fields.get("action") == "deny"]
+        assert len(deny_rules) == 1
+        assert "deny-all-default" in deny_rules[0].claim_id
+
+    def test_parses_nat_rules(self, adapter: PaloAltoAdapter, nat_xml: str) -> None:
+        result = adapter.get_running_config(scope="nat-rules", xml_content=nat_xml)
+        assert len(result.claims) == 1
+        assert "nat-web-servers" in result.claims[0].claim_id
+
+    def test_provenance_deterministic(self, adapter: PaloAltoAdapter, sec_xml: str) -> None:
+        r1 = adapter.get_running_config(scope="security-policies", xml_content=sec_xml)
+        r2 = adapter.get_running_config(scope="security-policies", xml_content=sec_xml)
+        assert {c.provenance_hash for c in r1.claims} == {c.provenance_hash for c in r2.claims}
+
+
+class TestPushConfigChange:
+    def test_returns_drift_report(self, adapter: PaloAltoAdapter) -> None:
+        result = adapter.push_config_change("security-rule", "test-rule", {"action": "deny"})
+        assert isinstance(result, DriftReport)
+        assert result.drift_type == "palo-alto-config-change"
+
+    def test_proposed_changes_in_details(self, adapter: PaloAltoAdapter) -> None:
+        result = adapter.push_config_change("security-rule", "allow-dns", {"action": "deny"})
+        assert result.details["rule_name"] == "allow-dns"
+        assert result.details["proposed_changes"]["action"] == "deny"
+
+
+class TestGenerateFirewallEvidence:
+    @pytest.fixture
+    def adapter_with_xml(self) -> PaloAltoAdapter:
+        from pathlib import Path
+        sec_xml = (Path(__file__).parent / "fixtures" / "panos-security-rules.xml").read_text()
+        return PaloAltoAdapter({
+            "host": "fw01.agency.gov",
+            "vsys": "vsys1",
+            "_security_rules_xml": sec_xml,
+        })
+
+    def test_returns_evidence(self, adapter_with_xml: PaloAltoAdapter) -> None:
+        result = adapter_with_xml.generate_firewall_evidence()
+        assert isinstance(result, EvidenceObject)
+
+    def test_source(self, adapter_with_xml: PaloAltoAdapter) -> None:
+        assert adapter_with_xml.generate_firewall_evidence().source == "palo-alto"
+
+    def test_has_normalized_claims(self, adapter_with_xml: PaloAltoAdapter) -> None:
+        result = adapter_with_xml.generate_firewall_evidence()
+        assert result.normalized_data is not None
+        assert len(result.normalized_data["claims"]) == 3
+
+    def test_provenance_includes_host(self, adapter_with_xml: PaloAltoAdapter) -> None:
+        result = adapter_with_xml.generate_firewall_evidence()
+        assert result.provenance["host"] == "fw01.agency.gov"
 
 
 class TestCollectAndAlign:
