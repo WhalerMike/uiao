@@ -33,19 +33,57 @@ This document is a stub. Replace every `_TODO — ..._` block with authored cont
 
 ## Overview
 
-_TODO — Author an overview of the Palo Alto Networks (Firewall / NGFW) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Palo Alto Networks Adapter is an **integration-class** modernization adapter that consumes PAN-OS firewall configuration via the XML API to produce object-keyed canonical claims for security policies, NAT rules, and threat-prevention profiles.
+
+This adapter operates at the **network enforcement point** — the boundary where UIAO's governance perimeter meets the physical/virtual network. It is the highest-security-criticality adapter in the registry because firewall rule changes directly impact the organization's attack surface.
+
+Key capabilities:
+
+1. **Security rule extraction.** Parses PAN-OS security rule XML to enumerate all allow/deny rules with source/destination zones, applications, services, and actions. Each rule becomes a `ClaimObject` with provenance hash.
+
+2. **NAT rule extraction.** Parses NAT configuration including destination translation (address + port mapping) for inbound service exposure.
+
+3. **Configuration change reporting.** Produces `DriftReport` entries for proposed rule changes, enabling change-approval workflows before committing to the firewall.
+
+4. **Evidence bundling.** Generates `EvidenceObject` bundles suitable for OSCAL SAR generation, proving the current firewall state to authorizing officials.
+
+**Runner class:** `on-prem-self-hosted`. This adapter requires network access to the PAN-OS management interface, which is typically not reachable from GitHub-hosted runners. Phase 1 development uses fixture data; Phase 2+ deployment uses Azure Government self-hosted runners (ODA-13).
+
+**Implementation:** `uiao-impl/src/uiao_impl/adapters/paloalto_adapter.py` + `paloalto_parser.py` (real PAN-OS XML parsing). End-to-end OSCAL SAR generation proven via 6 integration tests.
 
 ## Scope
 
 Target surfaces / subsystems: `security-policies`, `nat-rules`, `threat-prevention-profiles`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**What the adapter reads:**
+
+- PAN-OS security rule XML (via `GET /api/?type=config&action=show&xpath=...`)
+- PAN-OS NAT rule XML (same API, different xpath)
+- Configuration change proposals (via `push_config_change()`)
+
+**What the adapter emits:**
+
+- `ClaimSet` with one `ClaimObject` per firewall rule (rule name, action, zones, applications)
+- `DriftReport` for proposed configuration changes with field-level detail
+- `EvidenceObject` with full provenance chain (connection, drift, normalized rules)
+- OSCAL Assessment Results (SAR) via the `adapter_to_oscal.py` bridge
+
+**What the adapter does NOT touch:**
+
+- Does not commit configuration changes to the firewall (change-making is gated on approval workflow + Phase 2 runners)
+- Does not access the firewall data plane or traffic logs
+- Does not modify candidate configuration without explicit `push_config_change()` invocation
+- mTLS is enabled by default for all management interface connections
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `SC-7`, `CM-7`, `AC-4`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **SC-7** Boundary Protection | Primary | Security rule extraction provides a complete, auditable inventory of all boundary-enforcement rules. Every allow/deny decision is captured with source/destination zones, applications, and logging status. |
+| **CM-7** Least Functionality | Primary | Rule enumeration enables auditors to verify that only approved services and applications are permitted through the firewall. The deny-all-default rule is explicitly tracked. |
+| **AC-4** Information Flow Enforcement | Supporting | NAT rule extraction and security policy zone mappings document the approved information flow paths between network segments. |
 
 ## Operational profile
 
