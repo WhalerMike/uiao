@@ -49,6 +49,15 @@ from pathlib import Path
 TREES = [
     ("docs/customer-documents/adapter-technical-specifications", "ats"),
     ("docs/customer-documents/adapter-validation-suites",       "avs"),
+    # Canon-level IMAGE-PROMPTS.md files for specification-level diagrams
+    # (UIAO_003 DIAGRAM-01/02/03, IMAGE-05, etc.) that aren't adapter-
+    # specific but still need to flow through the image pipeline.
+    # These sit alongside per-adapter IMAGE-PROMPTS.md in the ATS tree
+    # and are picked up by the ats walk. This entry is a documentation
+    # marker; no additional tree path is needed since canon-level prompts
+    # were co-located in the terraform ATS folder as a pragmatic choice
+    # (see PR #29 commit note). A future extension could add a dedicated
+    # canon IMAGE-PROMPTS tree under docs/canon-images/.
 ]
 
 # Regex for [IMAGE-NN: ...] or [DIAGRAM-NN: ...] tags, possibly spanning
