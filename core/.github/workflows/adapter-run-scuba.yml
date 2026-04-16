@@ -1,0 +1,32 @@
+name: UIAO SCuBA Adapter Run
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"  # Weekly Monday 3 AM
+
+jobs:
+  run-scuba:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PowerShell Modules
+        run: |
+          Install-Module -Name ExchangeOnlineManagement -Force
+          Install-Module -Name Microsoft.Graph -Force
+
+      - name: Run SCuBA Assessment
+        run: |
+          pwsh ./uiao-core/adapters/scuba/run/adapter-run-scuba.ps1 `
+               -OutputDirectory ./uiao-core/artifacts/scuba
+
+      - name: Generate Provenance Manifest
+        run: |
+          pwsh ./uiao-core/provenance/manifests/generate-manifest.ps1 `
+               -RawFilePath ./uiao-core/artifacts/scuba/raw/ScubaResults.json `
+               -NormalizedFilePath ./uiao-core/artifacts/scuba/normalized/ScubaResults.normalized.json `
+               -ReportFilePath ./uiao-core/artifacts/scuba/reports/ScubaResults.report.json `
+               -OutputDirectory ./uiao-core/provenance/manifests
