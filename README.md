@@ -1,5 +1,11 @@
 # UIAO Documentation — Modernization Atlas
 
+[![Live Site](https://img.shields.io/badge/docs-whalermike.github.io%2Fuiao--docs-blue?logo=github-pages)](https://whalermike.github.io/uiao-docs/docs/index.html)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![FedRAMP Moderate](https://img.shields.io/badge/FedRAMP-Moderate%20Rev%205-orange.svg)](https://whalermike.github.io/uiao-docs/docs/03_FedRAMP20x_Crosswalk.html)
+
+**UIAO Ecosystem:** [uiao-core](https://github.com/WhalerMike/uiao-core) (governance engine) · [uiao-impl](https://github.com/WhalerMike/uiao-impl) (Python CLI) · **uiao-docs** (this repo)
+
 **Repository:** `uiao-docs`
 **Role:** Canonical documentation source — Quarto pipeline, YAML schemas, rendered site
 **Live site:** [whalermike.github.io/uiao-docs](https://whalermike.github.io/uiao-docs/docs/index.html)
