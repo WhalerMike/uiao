@@ -97,14 +97,33 @@ class TestEvidence:
         assert adapter.collect_evidence("KSI-RA-05").source == "vuln-scan"
 
 
-class TestExtensions:
-    def test_ingest_raises(self, adapter: VulnScanAdapter) -> None:
-        with pytest.raises(NotImplementedError, match="ingest_scan_results"):
-            adapter.ingest_scan_results()
+class TestIngestScanResults:
+    @pytest.fixture
+    def scan_data(self) -> dict:
+        import json
+        from pathlib import Path
+        return json.loads((Path(__file__).parent / "fixtures" / "vulnscan-findings.json").read_text())
 
-    def test_evidence_raises(self, adapter: VulnScanAdapter) -> None:
-        with pytest.raises(NotImplementedError, match="generate_vuln_evidence"):
-            adapter.generate_vuln_evidence()
+    def test_ingest_all(self, adapter: VulnScanAdapter, scan_data: dict) -> None:
+        result = adapter.ingest_scan_results(scan_data)
+        assert len(result.claims) == 3
+
+    def test_ingest_filter_critical(self, adapter: VulnScanAdapter, scan_data: dict) -> None:
+        result = adapter.ingest_scan_results(scan_data, severity_filter="critical")
+        assert len(result.claims) == 1
+        assert "CVE-2025-21391" in str(result.claims[0].fields)
+
+    def test_cve_in_claims(self, adapter: VulnScanAdapter, scan_data: dict) -> None:
+        result = adapter.ingest_scan_results(scan_data)
+        cves = {c.fields.get("cve_id") for c in result.claims}
+        assert "CVE-2025-21391" in cves
+
+    def test_evidence_bundle(self, adapter: VulnScanAdapter, scan_data: dict) -> None:
+        result = adapter.generate_vuln_evidence(scan_data)
+        assert isinstance(result, EvidenceObject)
+        assert result.source == "vuln-scan"
+        assert result.raw_data["scan_summary"]["total"] == 3
+        assert result.raw_data["scan_summary"]["max_severity"] == "critical"
 
 
 class TestCollectAndAlign:
