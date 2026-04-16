@@ -194,39 +194,63 @@ class VulnScanAdapter(DatabaseAdapterBase):
 
     def ingest_scan_results(
         self,
-        scan_id: Optional[str] = None,
+        scan_data: Dict[str, Any],
         severity_filter: Optional[str] = None,
     ) -> ClaimSet:
         """Ingest results from a completed vulnerability scan.
 
         Args:
-            scan_id: Specific scan run ID, or None for latest
+            scan_data: Parsed JSON with a "findings" list.
             severity_filter: Filter by severity (critical, high, medium, low)
 
         Returns:
             ClaimSet with one ClaimObject per finding.
         """
-        raise NotImplementedError(
-            "ingest_scan_results() is a stub — requires scanner-specific "
-            "API collector (Tenable, Qualys, or OpenSCAP). Tool selection "
-            "is tracked as ODA-14 in ARCHITECTURE.md §13."
-        )
+        from .vulnscan_parser import parse_scan_results
+
+        findings = parse_scan_results(scan_data)
+        if severity_filter:
+            findings = [f for f in findings if f["severity"] == severity_filter]
+        return self.normalize(findings)
 
     def generate_vuln_evidence(
         self,
-        scan_id: Optional[str] = None,
+        scan_data: Optional[Dict[str, Any]] = None,
     ) -> EvidenceObject:
         """Generate KSI evidence bundle from scan results.
 
         Args:
-            scan_id: Specific scan or None for latest
+            scan_data: Parsed scan JSON, or None for empty bundle.
 
         Returns:
             EvidenceObject with RA-5 control provenance.
         """
-        raise NotImplementedError(
-            "generate_vuln_evidence() is a stub — requires "
-            "ingest_scan_results() to be implemented first."
+        from .vulnscan_parser import parse_scan_results, summarize_findings
+
+        conn = self.connect()
+        drift = self.detect_drift()
+
+        findings = parse_scan_results(scan_data) if scan_data else []
+        claim_set = self.normalize(findings)
+        summary = summarize_findings(findings)
+
+        return EvidenceObject(
+            ksi_id=f"KSI-RA-05-{self._scanner}",
+            source=self.ADAPTER_ID,
+            timestamp=self._now(),
+            raw_data={
+                "connection": conn.to_dict(),
+                "drift": drift.to_dict(),
+                "scan_summary": summary,
+            },
+            normalized_data=claim_set.to_dict(),
+            provenance={
+                "adapter_id": self.ADAPTER_ID,
+                "scanner": self._scanner,
+                "hash": self._hash(claim_set.to_dict()),
+                "timestamp": self._now().isoformat(),
+            },
+            freshness_valid=True,
         )
 
     # ------------------------------------------------------------------

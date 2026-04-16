@@ -92,11 +92,31 @@ class PatchStateAdapter(DatabaseAdapterBase):
             remediation="Compare missing_patches against accepted-risk register.",
         )
 
-    def get_patch_status(self, scope: Optional[str] = None) -> ClaimSet:
-        raise NotImplementedError("get_patch_status() is a stub — requires patch-management data source (WSUS, SCCM, Intune, or OS-native).")
+    def get_patch_status(self, status_data: Optional[Dict[str, Any]] = None) -> ClaimSet:
+        """Parse patch status data and return claims.
 
-    def generate_patch_evidence(self, scope: Optional[str] = None) -> EvidenceObject:
-        raise NotImplementedError("generate_patch_evidence() is a stub.")
+        Args:
+            status_data: Parsed JSON with a "devices" list.
+        """
+        devices = (status_data or {}).get("devices", [])
+        return self.normalize(devices)
+
+    def generate_patch_evidence(self, status_data: Optional[Dict[str, Any]] = None) -> EvidenceObject:
+        """Generate evidence bundle from patch status data."""
+        conn = self.connect()
+        devices = (status_data or {}).get("devices", [])
+        claim_set = self.normalize(devices)
+        total_missing = sum(len(d.get("missing_patches", [])) for d in devices)
+
+        return EvidenceObject(
+            ksi_id=f"KSI-SI-02-{self._source}",
+            source=self.ADAPTER_ID,
+            timestamp=self._now(),
+            raw_data={"connection": conn.to_dict(), "devices": len(devices), "total_missing_patches": total_missing},
+            normalized_data=claim_set.to_dict(),
+            provenance={"adapter_id": self.ADAPTER_ID, "source": self._source, "hash": self._hash(claim_set.to_dict()), "timestamp": self._now().isoformat()},
+            freshness_valid=True,
+        )
 
     def collect_and_align(self) -> Dict[str, Any]:
         claim_set = self.normalize([])

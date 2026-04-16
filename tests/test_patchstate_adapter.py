@@ -45,11 +45,20 @@ class TestBasics:
     def test_evidence(self, adapter: PatchStateAdapter) -> None:
         assert isinstance(adapter.collect_evidence("KSI-SI-02"), EvidenceObject)
 
-    def test_extension_raises(self, adapter: PatchStateAdapter) -> None:
-        with pytest.raises(NotImplementedError):
-            adapter.get_patch_status()
-        with pytest.raises(NotImplementedError):
-            adapter.generate_patch_evidence()
+    def test_get_patch_status(self, adapter: PatchStateAdapter) -> None:
+        import json
+        from pathlib import Path
+        data = json.loads((Path(__file__).parent / "fixtures" / "patch-status.json").read_text())
+        result = adapter.get_patch_status(data)
+        assert len(result.claims) == 3
+
+    def test_evidence_bundle(self, adapter: PatchStateAdapter) -> None:
+        import json
+        from pathlib import Path
+        data = json.loads((Path(__file__).parent / "fixtures" / "patch-status.json").read_text())
+        result = adapter.generate_patch_evidence(data)
+        assert isinstance(result, EvidenceObject)
+        assert result.raw_data["total_missing_patches"] == 3
 
     def test_collect_and_align(self, adapter: PatchStateAdapter) -> None:
         r = adapter.collect_and_align()
