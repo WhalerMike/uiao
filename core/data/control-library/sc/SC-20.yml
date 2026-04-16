@@ -1,0 +1,80 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-20
+# Title      : Secure Name/Address Resolution Service (Authoritative Source)
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SC-20
+title: "Secure Name/Address Resolution Service (Authoritative Source)"
+family: System and Communications Protection
+status: not-implemented
+
+implemented_by:
+  - infoblox
+  - azure-key-vault
+  - microsoft-sentinel
+  - palo-alto-ngfw
+
+evidence:
+  - infoblox-dnssec-configuration-documentation
+  - infoblox-authoritative-zone-configuration
+  - dns-security-policy-sharepoint
+  - microsoft-sentinel-dns-anomaly-monitoring-alerts
+
+parameters:
+  - id: PARAM-SC-020-001
+    description: >-
+      Mechanisms implemented to provide data origin authentication and
+      integrity verification for DNS responses provided by the authoritative
+      name resolution service.
+    value: "DNSSEC enabled on all organizational authoritative DNS zones managed by Infoblox; DNSKEY and RRSIG records maintained for all zones"
+  - id: PARAM-SC-020-002
+    description: >-
+      Child zone security indicators provided to parent DNS zones to
+      support the DNS trust chain.
+    value: "DS records submitted to parent zones for all DNSSEC-signed organizational zones; Infoblox manages zone signing key rollover per NIST SP 800-81-2"
+
+narrative: |
+  **DNSSEC Implementation on Authoritative Zones**
+  The organization provides data origin authentication and integrity
+  verification for DNS name and address resolution services
+  (PARAM-SC-020-001). Infoblox serves as the authoritative DNS
+  provider for all organizational zones and is configured with
+  DNSSEC signing on all authoritative zones. DNSSEC Resource Records
+  including DNSKEY, RRSIG, NSEC, and DS records are maintained and
+  automatically managed by Infoblox. This ensures that DNS resolvers
+  can validate the authenticity and integrity of DNS responses,
+  preventing DNS spoofing and cache poisoning attacks.
+
+  **DNS Trust Chain and Parent Zone Signaling**
+  The organization provides indication of the security status of
+  child zones to parent zones to facilitate DNS trust chain validation
+  (PARAM-SC-020-002). Delegation Signer (DS) records for all DNSSEC-
+  signed organizational zones are submitted to and maintained in
+  the parent zone operators. Infoblox automates Zone Signing Key
+  (ZSK) and Key Signing Key (KSK) rollover processes per NIST
+  SP 800-81-2 guidance, maintaining cryptographic key currency
+  without service disruption. Azure Key Vault securely stores
+  DNSSEC key material for organizational zones.
+
+  **DNS Resolution Security at the Boundary**
+  Palo Alto NGFW enforces DNS security policies at the organizational
+  boundary, forwarding DNS queries to Infoblox for resolution and
+  blocking DNS traffic to unapproved resolvers. This prevents
+  clients from bypassing the organizational authoritative DNS
+  infrastructure and ensures all DNS resolution is subject to
+  Infoblox security controls including Response Policy Zones (RPZ).
+
+  **DNS Anomaly Monitoring**
+  Microsoft Sentinel ingests Infoblox DNS query logs and applies
+  detection rules to identify DNS-based attacks including DNS
+  tunneling, DNS exfiltration, and cache poisoning attempts.
+  DNSSEC validation failures are alerted to the ISSO for investigation.
+  Anomalous DNS patterns generate ServiceNow incidents, supporting
+  **SI-4** (System Monitoring) requirements.
+
+related_controls:
+  - SC-21   # Secure Name/Address Resolution Service (Recursive Resolver)
+  - SC-22   # Architecture and Provisioning for Name/Address Resolution
+  - SI-4    # System Monitoring
+  - SC-8(1) # Cryptographic Protection
+  - SC-7    # Boundary Protection

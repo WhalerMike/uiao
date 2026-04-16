@@ -1,0 +1,89 @@
+# Image Prompts for Doc 01 — Executive Brief
+
+> Paste these directly into Gemini, DALL-E, Midjourney, or your preferred image generator.
+> Style direction: clean, professional, federal/government-appropriate. Think McKinsey or Deloitte whitepaper — not startup marketing. Muted blues, grays, whites. No stock-photo people. No clip art.
+
+---
+
+## Image 1: Cover / Hero Image
+
+**Placement:** Page 1, below the title "UIAO" and above the tagline.
+
+**Prompt:**
+A wide, clean, professional illustration representing continuous automated compliance monitoring for a federal government IT environment. A calm, abstract digital landscape where a central glowing blue shield or lens continuously scans a network of connected nodes representing cloud services (email, collaboration, identity, security). The nodes pulse with soft green light when healthy, amber when drifting. The visual feel is calm control — not alarm, not chaos. Color palette: muted navy blue, steel gray, white, with accent touches of teal and amber. No text. No people. No logos. Widescreen aspect ratio (16:9). Style: flat vector with subtle depth, like a modern government whitepaper illustration.
+
+---
+
+## Image 2: The Problem
+
+**Placement:** After the first paragraph of "The Problem" section, or as a sidebar visual.
+
+**Prompt:**
+A conceptual illustration showing the pain of manual federal compliance. On one side, a towering stack of paper documents, binders, and spreadsheets — slightly disorganized, casting shadows. On the other side, a clock face showing months passing. Between them, a fading trail of screenshots and handwritten checkmarks that are visibly outdated. The mood is weary and bureaucratic — not dramatic, just the quiet exhaustion of paperwork that never ends. Color palette: warm grays, muted tan for paper, faded blue for the clock. No people. No text. Widescreen (16:9). Style: editorial illustration, clean lines, minimal detail.
+
+---
+
+## Image 3: UIAO Continuous Monitoring Loop
+
+**Placement:** In the "What UIAO Does About It" section, after the paragraph about watching 24/7.
+
+**Prompt:**
+A clean circular diagram showing a continuous monitoring loop. Four stages flow clockwise: SCAN (a magnifying glass over cloud services), EVALUATE (a checklist being compared against a rulebook), EVIDENCE (a document with a cryptographic lock/seal being created), ALERT (a notification bell with an amber glow for drift detected). The circle has no beginning and no end — it is always running. Arrows connect each stage smoothly. A subtle "< 120 seconds" label sits inside the circle. Color palette: navy blue circle, white background, teal accents for the stages, amber for the alert. No people. Widescreen (16:9). Style: clean infographic, flat design with subtle shadows.
+
+---
+
+## Image 4: Before and After (Effort Comparison)
+
+**Placement:** In "The Effort, Time, and Money Conversation" section, near the comparison table.
+
+**Prompt:**
+A split-screen illustration. LEFT SIDE labeled "Before" (in muted red/gray): A compliance team buried in manual work — stacks of binders, a calendar showing 18 months circled, spreadsheets with red cells, a person-shaped silhouette slumped at a desk (abstract, not a real person). RIGHT SIDE labeled "After" (in clean blue/green): The same desk is nearly empty. A single monitor shows a green dashboard. A signed digital document floats above it with a small lock icon. The calendar shows "always current." The mood shift is immediate: heavy vs. light, cluttered vs. clean, stressed vs. calm. Color palette: left side warm grays and muted red, right side cool blues and soft green. Widescreen (16:9). Style: editorial comparison illustration, minimalist.
+
+---
+
+## Image 5: Three Layers of Rules
+
+**Placement:** In the "How It Works" section, after the paragraph about three layers of rules.
+
+**Prompt:**
+A layered stack diagram showing three horizontal layers, each translucent and stacked like glass shelves. BOTTOM LAYER (widest, navy blue): "FedRAMP Moderate Rev 5 — 323 Controls" — represented by a grid of small shield icons. MIDDLE LAYER (medium, teal): "CISA SCuBA & BOD 25-01" — represented by a governance seal or official stamp icon. TOP LAYER (narrowest, steel gray): "Your Agency Policies" — represented by a small building or agency seal icon. An arrow runs vertically through all three layers labeled "Every configuration checked against all three." The layers are clean, not cluttered. White background. No people. Widescreen (16:9). Style: clean isometric or flat layered diagram.
+
+---
+
+## Image 6: Immutable Evidence Chain
+
+**Placement:** In the "How It Works" section, after the paragraph about cryptographic signatures.
+
+**Prompt:**
+A horizontal chain of linked evidence blocks, like a simplified blockchain visualization but more elegant and government-appropriate. Each block contains a small icon: a timestamp, a check result, a digital signature (lock icon). The blocks are connected by subtle chain links. The first block glows softly (newest evidence), and the chain extends to the right into the distance, showing continuous accumulation. A small magnifying glass hovers over one block showing "March 15 — Compliant — Signed." The mood is trust and permanence. Color palette: navy blue blocks, white background, gold/amber for the signature icons. No people. Widescreen (16:9). Style: clean technical illustration, modern and minimal.
+
+---
+
+## Image 7: What Makes This Different (Three Differentiators)
+
+**Placement:** In the "What Makes This Different" section.
+
+**Prompt:**
+Three distinct icons arranged horizontally with generous whitespace between them, each representing a differentiator. LEFT: "Deterministic" — a binary switch showing ON/OFF (compliant/not compliant), no gray area, no "maybe." Clean and decisive. CENTER: "Produces Deliverables" — a finished document with an official OSCAL seal emerging automatically from a machine or conveyor, not from a person's desk. RIGHT: "Built for Federal M365" — the Microsoft 365 logo (abstract representation) wrapped in a government shield, showing purpose-built specificity. Each icon sits above a thin line with space for a caption. Color palette: muted blue, teal, and gray on white. No people. Widescreen (16:9). Style: icon set, flat vector, consistent weight and style across all three.
+
+---
+
+## Image 8: The Ask (90-Day Pilot)
+
+**Placement:** In "What We Need From Leadership" section, near the three asks.
+
+**Prompt:**
+A simple, confident timeline showing a 90-day arc. DAY 1 on the left: a connection icon (UIAO linking to a GCC-Moderate tenant). DAY 45 in the middle: a side-by-side comparison icon (UIAO output next to manual output). DAY 90 on the right: a green checkmark with the word "Validated" or a thumbs-up seal. The arc is clean and optimistic — not a Gantt chart, not a project plan, just a simple three-milestone journey. Below the arc: "Zero licensing cost. Open source." Color palette: navy blue arc, white background, green for the final milestone. No people. Widescreen (16:9). Style: clean infographic, minimal, executive-friendly.
+
+---
+
+## Style Notes for All Images
+
+- **Aspect ratio:** 16:9 (widescreen) for all — fits well in both DOCX and PPTX layouts
+- **Resolution:** Request highest available (at least 1920x1080)
+- **Color palette consistency:** Navy (#2E75B6), Steel Gray (#5A5A5A), Teal (#1A9E8F), Amber (#D4A017), White (#FFFFFF)
+- **No text baked into images** unless noted — captions will be added in the document
+- **No people, no stock photos, no clip art** — abstract/diagrammatic only
+- **Feel:** Trustworthy, calm, professional. This is for a CIO, not a marketing landing page.
+
+> **SSOT Reference:** See /ssot/UIAO-SSOT.md

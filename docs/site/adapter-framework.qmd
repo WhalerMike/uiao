@@ -1,0 +1,629 @@
+---
+title: "Adapter Framework"
+subtitle: "Concept, Contract & Proof of Concept"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
+# 1. What Is an Adapter?
+
+An **adapter** is a standardized Python interface that connects a vendor system — Azure AD, Cisco ISE, Palo Alto NGFW, Infoblox, EVE-NG, Splunk, ServiceNow, and any other system with a programmable API — to the UIAO canonical schema. It is the *only* component in the UIAO ecosystem that touches raw vendor data.
+
+Every adapter does exactly one job: **translate vendor-specific truth into UIAO canonical truth.** It does not enforce policy, replicate data, perform analytics, or make governance decisions. It is a semantic translator, not a pipeline.
+
+Adapters are the mechanism by which UIAO connects to real systems without polluting canonical schemas with vendor-specific implementation details. When a new vendor system must be integrated, you write a new adapter — the canonical schema, truth model, governance model, and folder structure remain unchanged.
+
+**What an adapter produces:**
+
+- Canonical identity, device, and network objects conforming to UIAO schemas
+- Provenance envelopes with evidence pointers for every claim
+- Drift reports when state changes relative to the previous observation
+- Telemetry events surfaced via `health()`
+- Confidence scores when evidence is partial or inferred
+
+**What an adapter never does:**
+
+- Store raw telemetry or export raw logs
+- Maintain persistent connections across invocations (adapters are stateless)
+- Introduce vendor-specific fields into canonical layers
+- Enforce policy or make governance decisions
+- Execute write operations on source systems without an explicit `enforce()` call from the Controller
+
+---
+
+# 2. The Adapter Contract
+
+All adapters **must** inherit from `BaseAdapter` (located in `uiao-core/adapters/base_adapter.py`) and implement its full contract. The contract is enforced at runtime — an adapter that fails to implement a required method raises `NotImplementedError` and is blocked from emitting canonical claims.
+
+## Required Methods
+
+| Method | Signature | Purpose |
+|---|---|---|
+| `connect()` | `async def connect(config: dict) -> bool` | Establish authenticated, certificate-anchored connection to the vendor system |
+| `discover()` | `async def discover() -> DiscoveryResult` | Enumerate all objects visible to this adapter from the vendor API |
+| `correlate()` | `async def correlate() -> CorrelationResult` | Map discovered vendor objects to UIAO identity model entities |
+| `enforce()` | `async def enforce(action: EnforcementAction) -> EnforcementResult` | Execute a governance-approved action on the vendor system |
+| `audit()` | `async def audit() -> AuditLog` | Return a full audit trail of adapter actions since last invocation |
+| `detect_drift()` | `async def detect_drift() -> DriftReport` | Compare current state against previous observation; emit drift events on change |
+| `health()` | `def health() -> HealthStatus` | Return adapter health, last-run timestamp, and error surface |
+
+## Mandatory Invariants
+
+These invariants are enforced by `BaseAdapter` and cannot be overridden:
+
+- **Read-only by default.** All source system interactions are non-mutating unless `enforce()` is explicitly called by the Controller.
+- **Stateless.** No persistent connections, no in-process state carried between invocations.
+- **Provenance-first.** Every canonical object must carry a provenance envelope conforming to `/schemas/provenance.schema.json`.
+- **Drift before publish.** `detect_drift()` runs before any claim is emitted.
+- **No credential leakage.** Credentials must never appear in logs, claims, or telemetry events.
+- **Confidence scoring required** when truth is inferred, evidence is partial, or the source system is degraded.
+
+## The 10 Responsibility Domains
+
+The full contract is organized into ten domains, each frozen and canonical:
+
+| Domain | Requirement |
+|---|---|
+| 1 — API Structure | Implement all required methods |
+| 2 — Identity | Produce deterministic `uiao_id` values; preserve `local_id` |
+| 3 — Credentials | Authenticate via mTLS or signed token; no plaintext credentials |
+| 4 — Provenance | Attach provenance envelope to every canonical object |
+| 5 — Normalization | Convert raw vendor data to canonical schemas; validate against JSON Schema |
+| 6 — Drift Detection | Detect state transitions, value changes, missing truth |
+| 7 — Confidence | Score confidence when evidence is partial or inferred |
+| 8 — Error Semantics | Distinguish transient vs. permanent errors; quarantine malformed records |
+| 9 — Publication | Publish idempotent canonical claims with provenance and drift |
+| 10 — Security | Run inside the source boundary; restrict outbound connectivity |
+
+See the full [Adapter Contract](adapters/adapter-contract.qmd) for normative requirements in each domain.
+
+---
+
+# 3. Adapter Lifecycle
+
+The adapter lifecycle is deterministic. The Controller orchestrates each stage; the adapter executes within each stage boundary.
+
+![Adapter Lifecycle Sequence](https://www.plantuml.com/plantuml/png/VLHXRzCm4FsUNs6DBwb4rm4QGaYWPLaxAXYRrj8lWAghVKrD7L-mdKu5yT-vjA5pnpf5IXI_T--UtyL9pdm05-hI97wfRGKEIk7nPurMuXLw3mLcHXTMIBG1NSIQWLmMZcghSZBanBD1rbmHW-z1Irs13USFoVqt_Mpm-W2Pd4BN4byDJb-SdqP4S8xkzi44PE3Neo_3x5haP8CZOz0T2V0YJo9bSPGfg48BPVlG1ArYbUnc-CscU5mSY_wat_rysTcG9_laJQkHN6096tYq3uzT7HPY03EdvGOV9qakkkz59juAITQY32a_vxheDExr2WAoeQpXJ9W3NC-9QydhQIUPY6vRx7aecgm8j4JRy7azlnT5zOvxOw8mKhrlhRINj4ANFjxriZyMFGCp_rpqB2bide4g3hjOHnuSt8b_oq91WAt2Y25BhWIZVs7Af4uosjL8i6HvEsPAinzir7_z7hc_Q7sjRz7N9XooByavDDj87lflkfTGJGDDjMgY2-jfoNimQMnZs49NK4NjyrQNWttQWCB0tgVAwNauu45IoPy2ffN3bQQQ8vGrgziGsxXe16wn8XVY5ABL0mRGpib9J1kGxEDJlCd6-OTsWBtVMltf6MsNFXhWovCJSVrnMp7czwgU6UqNKsb0b-bkL9ral2lX0nmvxMzjbBojfmE3Mkd_asfLiWRyHCL-yHcVm-Q7z1S0)
+
+**Stage summary:**
+
+1. **`connect()`** — Adapter authenticates to the vendor API using config-supplied credentials (mTLS, token, or API key injected via secret provider). Returns `True` if the session is established; raises on permanent failure.
+2. **`discover()`** — Adapter queries the vendor API to enumerate all visible objects (users, devices, nodes, links, networks). Raw vendor responses are held in memory only; nothing is persisted.
+3. **`correlate()`** — Raw objects are mapped to UIAO canonical identity model entities. Each entity receives a deterministic `uiao_id` derived from a stable composite key (adapter ID + vendor's local identifier).
+4. **`detect_drift()`** — Current canonical state is compared against the previous observation stored in the truth fabric. Any change — added, removed, or modified entity — produces a `DriftReport`.
+5. **`enforce()`** — If the Controller issues an enforcement action (e.g., isolate, deprovision, reconfigure), the adapter translates it to a vendor-specific API call and records the result.
+6. **`audit()`** — Returns a structured log of all adapter actions in the current session, suitable for inclusion in OSCAL observations and POA&M entries.
+7. **`health()`** — Synchronous. Reports adapter status, last-run duration, error counts, and credential expiry.
+
+---
+
+# 4. Planned Adapters
+
+The following adapters are on the UIAO roadmap. The EVE-NG adapter serves as the proof-of-concept reference implementation.
+
+| Adapter | Vendor | Control Plane | Status |
+|---|---|---|---|
+| Azure AD / Entra ID | Microsoft | Identity | Planned |
+| Cisco ISE | Cisco | Identity | Planned |
+| Palo Alto NGFW | Palo Alto Networks | Overlay / Enforcement | Planned |
+| Infoblox DDI | Infoblox | Addressing | Planned |
+| **EVE-NG Lab** | **EVE-NG** | **All (test harness)** | **Proof of Concept** |
+| Splunk / Microsoft Sentinel | Splunk / Microsoft | Telemetry | Planned |
+| ServiceNow | ServiceNow | Management / ITSM | Planned |
+
+Planned adapters share the same `BaseAdapter` contract. The EVE-NG adapter validates the contract end-to-end in a safe, repeatable lab environment before any production adapter is built.
+
+---
+
+# 5. Proof of Concept: EVE-NG Lab Adapter
+
+## Why EVE-NG?
+
+EVE-NG (Emulated Virtual Environment — Next Generation) is a network emulation platform that hosts virtual routers, switches, firewalls, and workstations in software-defined topologies. It exposes a full REST API — the same API surface a production network control plane would expose, but without production risk.
+
+This makes EVE-NG ideal as a proof-of-concept target:
+
+- **Safe.** Mistakes in enforcement logic destroy a lab node, not a production firewall.
+- **Repeatable.** Labs can be torn down and recreated from YAML definitions in seconds.
+- **Realistic.** EVE-NG runs real network operating system images (Cisco IOS, Arista EOS, VyOS, ASAv). The API response shapes mirror what real vendor APIs return.
+- **Local.** The home lab instance runs on premises, eliminating cloud egress, API rate limits, and credential risk.
+- **Multi-vendor.** A single EVE-NG instance hosts nodes from Cisco, Juniper, Palo Alto, Arista, and Linux — making it a proxy for the full adapter surface area.
+
+The EVE-NG adapter exercises every domain of the `BaseAdapter` contract: connection, discovery, correlation, drift detection, enforcement, and audit. It proves the contract works against a real API before any production adapter is written.
+
+## What the Adapter Controls
+
+The EVE-NG REST API (and the [`evengsdk`](https://ttafsir.github.io/evengsdk/) Python library that wraps it) exposes full programmatic control over:
+
+| API Surface | What UIAO Can Read | What UIAO Can Enforce |
+|---|---|---|
+| Labs | Lab metadata, path, description | Create, delete labs |
+| Nodes | Node name, template, image, status, UUID | Start, stop, wipe nodes |
+| Networks | Bridge/cloud network definitions | Add, remove networks |
+| Topology | Link graph (source node → destination node/network) | Connect, disconnect interfaces |
+| Node interfaces | Interface names, connected endpoints | Reconfigure link targets |
+| Node config | Startup configuration text | Push updated configs |
+
+For UIAO's purposes, the critical surfaces are **node identity** (the UUID and name map to UIAO identity records) and **topology links** (the link graph maps to the network segmentation model).
+
+## EVE-NG Adapter Code Skeleton
+
+The following is the structural skeleton of the EVE-NG adapter. This is not a complete implementation — it shows how `EvengAdapter` extends `BaseAdapter` and where each domain's logic lives.
+
+```python
+# uiao-core/adapters/eveng/eveng_adapter.py
+
+from __future__ import annotations
+import hashlib
+from datetime import datetime, timezone
+from typing import Any
+
+from evengsdk.client import EvengClient
+
+from uiao_core.adapters.base_adapter import BaseAdapter
+from uiao_core.schemas import (
+    CanonicalNode,
+    CorrelationResult,
+    DiscoveryResult,
+    DriftReport,
+    EnforcementAction,
+    EnforcementResult,
+    AuditLog,
+    HealthStatus,
+    ProvenanceEnvelope,
+)
+
+
+class EvengAdapter(BaseAdapter):
+    """
+    UIAO adapter for EVE-NG network emulation platform.
+
+    Connects to a home lab EVE-NG instance via the evengsdk REST client,
+    discovers lab topology (nodes, links, networks), maps nodes to UIAO
+    identity model entities, and demonstrates the full adapter contract.
+
+    Control plane: All (test harness — exercises every BaseAdapter domain).
+    Certification level: 0 (PoC — not for production use with federal Truth Sources).
+    """
+
+    ADAPTER_ID = "eveng-lab"
+    ADAPTER_VERSION = "0.1.0"
+
+    def __init__(self):
+        self._client: EvengClient | None = None
+        self._lab_path: str | None = None
+        self._session_log: list[dict] = []
+        self._previous_state: dict[str, CanonicalNode] = {}
+
+    # ------------------------------------------------------------------
+    # Domain 1 — API Structure / Connection
+    # ------------------------------------------------------------------
+
+    async def connect(self, config: dict) -> bool:
+        """
+        Authenticate to EVE-NG REST API.
+
+        Config keys:
+          host       — EVE-NG hostname or IP
+          username   — API username (never hardcoded; injected from secret provider)
+          password   — API password
+          lab_path   — Default lab path (e.g., "/uiao-poc.unl")
+          ssl_verify — Whether to verify TLS cert (False for self-signed home lab)
+        """
+        self._client = EvengClient(
+            config["host"],
+            ssl_verify=config.get("ssl_verify", False),
+            protocol=config.get("protocol", "https"),
+        )
+        self._client.login(
+            username=config["username"],
+            password=config["password"],
+        )
+        self._lab_path = config["lab_path"]
+        self._log("connect", {"host": config["host"], "lab": self._lab_path})
+        return True
+
+    # ------------------------------------------------------------------
+    # Domain 1 / Domain 5 — Discovery & Normalization
+    # ------------------------------------------------------------------
+
+    async def discover(self) -> DiscoveryResult:
+        """
+        Query EVE-NG API for all nodes, networks, and topology links in the lab.
+        Normalize raw vendor responses into UIAO canonical node objects.
+        """
+        raw_nodes = self._client.api.get_lab_nodes(self._lab_path).get("data", {})
+        raw_topology = self._client.api.get_lab_topology(self._lab_path).get("data", [])
+        raw_networks = self._client.api.get_lab_networks(self._lab_path).get("data", {})
+
+        canonical_nodes = [
+            self._normalize_node(node_id, node_data)
+            for node_id, node_data in raw_nodes.items()
+        ]
+
+        return DiscoveryResult(
+            adapter_id=self.ADAPTER_ID,
+            objects=canonical_nodes,
+            topology_links=raw_topology,
+            networks=list(raw_networks.values()),
+            collected_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    def _normalize_node(self, node_id: str, raw: dict) -> CanonicalNode:
+        """
+        Map a raw EVE-NG node dict to a UIAO CanonicalNode.
+
+        Key mapping:
+          raw["uuid"]     → uiao_id (deterministic; stable across EVE-NG restarts)
+          raw["name"]     → local_id (human-readable lab name)
+          raw["template"] → device_type (vios, asav, linux, etc.)
+          raw["status"]   → operational_state (0=stopped, 2=running)
+        """
+        uiao_id = self._make_uiao_id(raw.get("uuid", node_id))
+        return CanonicalNode(
+            uiao_id=uiao_id,
+            local_id=raw["name"],
+            device_type=raw.get("template", "unknown"),
+            operational_state="running" if raw.get("status") == 2 else "stopped",
+            console_url=raw.get("url"),
+            provenance=ProvenanceEnvelope(
+                source_system="eveng",
+                source_adapter=self.ADAPTER_ID,
+                collected_at=datetime.now(timezone.utc).isoformat(),
+                method="rest_api",
+                evidence_pointer=f"{self._lab_path}/nodes/{node_id}",
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Domain 2 — Identity Correlation
+    # ------------------------------------------------------------------
+
+    async def correlate(self) -> CorrelationResult:
+        """
+        Map discovered EVE-NG nodes to UIAO identity model entities.
+
+        In the PoC, node ownership is encoded in node descriptions or
+        naming conventions (e.g., "alice-router-01" → user "alice").
+        Production adapters would query an authoritative directory.
+        """
+        discovery = await self.discover()
+        identity_map = {}
+
+        for node in discovery.objects:
+            owner = self._extract_owner_from_name(node.local_id)
+            if owner:
+                identity_map[node.uiao_id] = {
+                    "subject_hint": owner,
+                    "node": node,
+                }
+
+        self._log("correlate", {"mapped": len(identity_map)})
+        return CorrelationResult(adapter_id=self.ADAPTER_ID, identity_map=identity_map)
+
+    def _extract_owner_from_name(self, name: str) -> str | None:
+        """
+        Derive owner from node naming convention: "{owner}-{role}-{seq}".
+        Returns None if the name does not match the convention.
+        """
+        parts = name.split("-")
+        return parts[0] if len(parts) >= 2 else None
+
+    # ------------------------------------------------------------------
+    # Domain 6 — Drift Detection
+    # ------------------------------------------------------------------
+
+    async def detect_drift(self) -> DriftReport:
+        """
+        Compare current node state to previous observation.
+        Reports added, removed, and modified nodes.
+        """
+        discovery = await self.discover()
+        current_state = {n.uiao_id: n for n in discovery.objects}
+
+        added = [uid for uid in current_state if uid not in self._previous_state]
+        removed = [uid for uid in self._previous_state if uid not in current_state]
+        changed = [
+            uid for uid in current_state
+            if uid in self._previous_state
+            and current_state[uid].operational_state
+               != self._previous_state[uid].operational_state
+        ]
+
+        self._previous_state = current_state
+        return DriftReport(
+            adapter_id=self.ADAPTER_ID,
+            added=added,
+            removed=removed,
+            changed=changed,
+            observed_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    # ------------------------------------------------------------------
+    # Domain 1 — Enforcement
+    # ------------------------------------------------------------------
+
+    async def enforce(self, action: EnforcementAction) -> EnforcementResult:
+        """
+        Execute a governance-approved action on the EVE-NG lab.
+
+        Supported actions:
+          ISOLATE   — Disconnect all network links for a node
+          STOP      — Power off a node
+          WIPE      — Reset node to factory configuration
+
+        Every enforcement call is logged with full provenance.
+        """
+        node_uiao_id = action.target_uiao_id
+        node_name = action.target_local_id
+        result = None
+
+        if action.action_type == "ISOLATE":
+            # Disconnect all interfaces: remove node-to-network and node-to-node links
+            interfaces = self._client.api.get_lab_node_interfaces(
+                self._lab_path, action.vendor_node_id
+            ).get("data", {}).get("ethernet", {})
+
+            for iface_id in interfaces:
+                self._client.api.disconnect_node_interface(
+                    self._lab_path, action.vendor_node_id, iface_id
+                )
+
+            result = "interfaces_cleared"
+
+        elif action.action_type == "STOP":
+            self._client.api.stop_node(self._lab_path, action.vendor_node_id)
+            result = "node_stopped"
+
+        self._log("enforce", {
+            "action": action.action_type,
+            "target": node_name,
+            "result": result,
+        })
+
+        return EnforcementResult(
+            adapter_id=self.ADAPTER_ID,
+            target_uiao_id=node_uiao_id,
+            action_type=action.action_type,
+            result=result,
+            enforced_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    # ------------------------------------------------------------------
+    # Domain 9 — Audit
+    # ------------------------------------------------------------------
+
+    async def audit(self) -> AuditLog:
+        return AuditLog(
+            adapter_id=self.ADAPTER_ID,
+            entries=self._session_log,
+        )
+
+    # ------------------------------------------------------------------
+    # Domain 7 — Health
+    # ------------------------------------------------------------------
+
+    def health(self) -> HealthStatus:
+        connected = self._client is not None
+        return HealthStatus(
+            adapter_id=self.ADAPTER_ID,
+            adapter_version=self.ADAPTER_VERSION,
+            connected=connected,
+            last_action=self._session_log[-1] if self._session_log else None,
+        )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _make_uiao_id(self, vendor_uuid: str) -> str:
+        """
+        Derive a deterministic UIAO ID from the vendor UUID.
+        Format: "eveng-{sha256[:12]}"
+        """
+        digest = hashlib.sha256(
+            f"eveng:{vendor_uuid}".encode()
+        ).hexdigest()[:12]
+        return f"eveng-{digest}"
+
+    def _log(self, stage: str, detail: dict) -> None:
+        self._session_log.append({
+            "stage": stage,
+            "detail": detail,
+            "ts": datetime.now(timezone.utc).isoformat(),
+        })
+```
+
+## Sample Workflow: Leaver Event
+
+When a joiner-mover-leaver (JML) event triggers the leaver path, the EVE-NG adapter executes the following sequence:
+
+![Leaver Enforcement Workflow](https://www.plantuml.com/plantuml/png/RLFDQXin4BxhAGRtae3hfPIKigQGJRek1fEaJTfhaQMnLxLMiuoqTeCnv27wX7sIZ5oRngNiIT8ttv-qwZ8cpQbllOeh5phDkeMvDgibKn_iDNbYU3MfylS2eKroQvSUh_v5rk_hQlBkVqXYYtn0lPrSlBcwU8bYfitfeTeRK-KCzHePS8qX0QD1jqOB2wOMlawhMxYca9YyHnwhilvMlxxv1DhgBicGqTv7i2uQ4ewpSq5yxf4VuO2hxgQm44s1WTVpg7ICP9nEeh1ngG6BuY-vi8G-xWKCCQCNmDavjBgBUGm2MOmg4JWh9YLizYbvurW5IWZibarI03U2WnQJs4iQN32-bq6WJK0UoddcwdHgXg23XO1fGxm2yUIMeHNcg33l2wKgBIOqwRjbjqZYnL1OE6uZc5uCXgIEqzAYE6XrCer8uSzEfj1A4WoItEGSkQLZu7nT53vCxszdrKCjiEgaoh-zbUBtOpsh7seeTEUAN5-npUvtnRwFOklihl0khAI6ygwVUnSReGaKd921yTgrcMKx-2CwA67W8kLo1qCOn7x-GxpctT5eb7T4uhZQgLBtrkNaXwhXa2VtT4YXzeaMlLnkn_80WWu61RT6JnsAgI_O4ITeK7i1_dxwTK9YgEsyj3oMbqYTkfJkys_o3000)
+
+**Step-by-step:**
+
+1. The UIAO Controller receives a leaver event for user `alice` from the identity governance pipeline.
+2. The Controller calls `eveng_adapter.discover()`. The adapter queries `GET /api/labs/{path}/nodes` and receives the full node inventory for the lab.
+3. `correlate()` applies the naming convention parser. Nodes named `alice-*` are mapped to `alice`'s identity record. In this lab, three nodes are identified: `alice-router-01`, `alice-fw-01`, `alice-workstation-01`.
+4. `detect_drift()` confirms current network state matches the last recorded observation — no unexpected changes have occurred since the last poll.
+5. The Controller issues `enforce(action=ISOLATE, targets=[alice_nodes])`.
+6. For each node, the adapter calls `GET /api/labs/{path}/nodes/{id}/interfaces` to enumerate active network interfaces, then calls the EVE-NG disconnect endpoint for each connected interface.
+7. The adapter publishes a canonical claim to the UIAO truth fabric:
+   ```json
+   {
+     "claim_type": "enforcement",
+     "action": "ISOLATE",
+     "subject": "alice",
+     "targets": ["alice-router-01", "alice-fw-01", "alice-workstation-01"],
+     "adapter": "eveng-lab",
+     "enforced_at": "2026-04-04T12:00:00Z",
+     "provenance": {
+       "source_system": "eveng",
+       "method": "rest_api",
+       "evidence_pointer": "/uiao-poc.unl/nodes/[1,2,3]/interfaces"
+     }
+   }
+   ```
+8. `audit()` returns the full session log. The Controller packages this as an OSCAL observation.
+9. `health()` confirms the adapter session completed without errors.
+
+## Running the PoC Locally
+
+```bash
+# Install dependencies
+pip install evengsdk
+
+# Set environment variables (never hardcode credentials)
+export EVE_NG_HOST=192.168.1.100
+export EVE_NG_USERNAME=admin
+export EVE_NG_PASSWORD=eve
+export EVE_NG_LAB_PATH=/uiao-poc.unl
+
+# Run the adapter in discovery mode
+python -m uiao_core.adapters.eveng discover
+
+# Run a full leaver simulation
+python -m uiao_core.adapters.eveng leaver --subject alice
+```
+
+The `evengsdk` library handles session management, cookie-based authentication, and request serialization. It supports both the EVE-NG Community and PRO editions and works with self-signed TLS certificates, which is the standard configuration for home lab deployments.
+
+## OpenZiti Integration Path
+
+When the EVE-NG adapter graduates from PoC to a production network adapter, it will communicate with vendor APIs over an OpenZiti overlay network rather than direct IP. The integration pattern is straightforward:
+
+```python
+import openziti
+
+# Load enrolled identity from secure store (never from disk in production)
+ziti_identity_path = config["ziti_identity_path"]
+
+# Monkey-patch Python's socket layer to route all traffic over the overlay
+# This requires no changes to the evengsdk client code
+openziti.monkeypatch(identities=[ziti_identity_path])
+
+# All subsequent HTTP calls from evengsdk traverse the Ziti fabric
+client = EvengClient(config["host"])
+client.login(username=config["username"], password=config["password"])
+```
+
+The OpenZiti overlay provides:
+
+- **Zero open ports.** The EVE-NG instance has no listening TCP ports on the underlay network. Only enrolled Ziti identities can reach it.
+- **mTLS everywhere.** All connections are mutually authenticated with X.509 certificates managed by the Ziti controller.
+- **Identity-bound access.** The adapter's Ziti identity is the credential. No static API keys, no SSH tunnels, no VPN split-tunneling.
+- **Audit trail.** The Ziti controller logs every connection attempt, enabling a second independent audit trail alongside the adapter's own session log.
+
+The adapter's Ziti identity is enrolled once using `python -m openziti enroll --jwt adapter.jwt --identity adapter.json`, then injected into the adapter runtime via a secret provider. The identity file is never stored on disk in the adapter's working directory.
+
+---
+
+# 6. Building Your Own Adapter
+
+Five steps to add a new vendor to the UIAO adapter registry:
+
+## Step 1 — Extend `BaseAdapter`
+
+```python
+# uiao-core/adapters/{vendor}/{vendor}_adapter.py
+
+from uiao_core.adapters.base_adapter import BaseAdapter
+
+class MyVendorAdapter(BaseAdapter):
+    ADAPTER_ID = "my-vendor"
+    ADAPTER_VERSION = "0.1.0"
+```
+
+The `ADAPTER_ID` must be globally unique across the adapter registry. Use the format `{vendor}-{product}` (e.g., `cisco-ise`, `palo-alto-ngfw`, `infoblox-ddi`).
+
+## Step 2 — Implement the 5 Required Methods
+
+Implement `connect()`, `discover()`, `correlate()`, `enforce()`, and `audit()`. The `detect_drift()` and `health()` methods have default implementations in `BaseAdapter` that call `discover()` and compare against the previous state — override them only if the vendor provides a native change-feed API.
+
+**Key discipline for `discover()`:**
+
+- Call the vendor API. Do not cache or persist raw responses.
+- Normalize every object through your `_normalize_*` methods before returning.
+- Every canonical object must carry a `ProvenanceEnvelope`.
+
+**Key discipline for `correlate()`:**
+
+- The identity mapping must be deterministic. Given the same raw vendor object, `correlate()` must always produce the same `uiao_id`.
+- Use `_make_uiao_id()` inherited from `BaseAdapter`: it derives a stable ID from `f"{ADAPTER_ID}:{vendor_local_id}"`.
+
+## Step 3 — Register in the Adapter Registry
+
+Add an entry to `uiao-core/adapters/registry.yaml`:
+
+```yaml
+adapters:
+  - id: my-vendor
+    class: uiao_core.adapters.my_vendor.MyVendorAdapter
+    version: "0.1.0"
+    control_planes:
+      - identity          # or: overlay, addressing, telemetry, management
+    certification_level: 0
+    status: planned       # planned | poc | certified
+    contact: adapter-steward@agency.gov
+```
+
+The registry entry is how the Controller discovers and instantiates adapters at runtime. Without a registry entry, an adapter cannot be loaded.
+
+## Step 4 — Write Tests Using the Adapter Test Harness
+
+The `uiao-core` test harness (`tests/adapters/harness.py`) provides:
+
+- A mock vendor API server (configurable via YAML fixtures)
+- Pre-built drift scenario fixtures (add, remove, modify objects)
+- Schema validation against all UIAO canonical schemas
+- Provenance envelope completeness checks
+- Idempotency tests (call `discover()` twice; assert identical output)
+
+```bash
+# Run the full harness against your adapter
+pytest tests/adapters/test_my_vendor.py -v --adapter=my-vendor
+```
+
+Your adapter must pass all harness tests before the PR is opened. The CI pipeline enforces this gate — PRs that fail harness tests are not merged.
+
+## Step 5 — Submit PR with Adapter, Tests, and Documentation
+
+A complete adapter PR contains:
+
+```
+uiao-core/adapters/{vendor}/
+  __init__.py
+  {vendor}_adapter.py         # The adapter implementation
+  {vendor}_normalizer.py      # Normalization logic (if complex)
+  README.md                   # Vendor-specific setup notes
+
+tests/adapters/
+  test_{vendor}_adapter.py    # Harness-based tests
+  fixtures/{vendor}/
+    discovery_response.json   # Realistic mock API fixture
+    drift_scenario_add.json
+    drift_scenario_remove.json
+    drift_scenario_modify.json
+
+docs/adapters/
+  {vendor}-adapter.qmd        # Adapter documentation (this format)
+```
+
+The Adapter Steward reviews the PR for contract compliance, security controls, and governance alignment before merging. Adapters that reach certification level 1 or above are published in the public UIAO Adapter Registry with a versioned certification badge.
+
+---
+
+**Cross-references:**
+
+- [Adapter Contract](adapters/adapter-contract.qmd) — Normative specification for all 10 responsibility domains
+- [Adapter Responsibilities Diagram Set](adapters/adapter-responsibilities-diagram-set.qmd) — Visual reference for the responsibility model
+- [FIMF Adapter Registry](13_FIMF_AdapterRegistry.qmd) — Registry of certified and planned adapters
+- [Drift Detection Standard](16_DriftDetectionStandard.qmd) — Drift taxonomy, severity levels, and remediation guidance
+- [Provenance Profile](15_ProvenanceProfile.qmd) — Mandatory provenance record structure
+- [Reconciliation Model](19_ReconciliationModel.qmd) — Conflict resolution for multi-adapter claims

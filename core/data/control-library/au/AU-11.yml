@@ -1,0 +1,66 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AU-11
+# Title      : Audit Record Retention
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AU-11
+title: Audit Record Retention
+family: Audit and Accountability
+status: implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - splunk-siem
+  - azure-log-analytics
+
+evidence:
+  - sentinel-workspace-retention-policy-configuration
+  - azure-archive-storage-retention-policy
+  - splunk-index-retention-policy-report
+
+parameters:
+  - id: au_11_retention_period
+    description: >-
+      Minimum retention period for audit records to provide support
+      for after-the-fact investigations and compliance.
+    value: "90 days online (hot); 1 year total with archive tier; 3 years for privileged access logs"
+
+narrative: |
+  **Tiered Audit Record Retention Architecture**
+  The organization retains audit records for a period consistent with
+  the records retention policy to provide support for after-the-fact
+  investigations of security incidents and to meet regulatory and
+  organizational information retention requirements. Microsoft Sentinel
+  Log Analytics workspaces retain audit records for 90 days in online
+  (hot) storage, enabling rapid query and investigation. After 90 days,
+  records are automatically transitioned to Azure archive storage with
+  immutable retention policies extending total retention to one year
+  for standard audit data. Privileged access session recordings from
+  CyberArk PSM are retained for three years, supporting **AU-9**
+  (Protection of Audit Information) and **AC-6** (Least Privilege)
+  forensic requirements.
+
+  **Secondary SIEM Retention and Redundancy**
+  Splunk SIEM indexes maintain parallel retention schedules aligned
+  with the primary Sentinel retention tiers. Splunk frozen bucket
+  archival extends long-term retention for compliance-critical log
+  sources. The dual-SIEM retention architecture ensures that audit
+  records remain available even in the event of a single-platform
+  data loss, supporting **AU-4** (Audit Log Storage Capacity) and
+  **CP-9** (System Backup) continuity objectives.
+
+  **Retention Policy Governance and Compliance Validation**
+  Audit record retention policies are reviewed annually as part of
+  the continuous monitoring program and updated to reflect changes
+  in regulatory requirements or organizational retention schedules.
+  Automated compliance checks validate that retention configurations
+  remain aligned with policy, with deviations triggering ServiceNow
+  incidents for remediation. Retention policy compliance supports
+  **AU-6** (Audit Record Review) and **CA-7** (Continuous Monitoring).
+
+related_controls:
+  - AU-4   # Audit Log Storage Capacity
+  - AU-6   # Audit Record Review, Analysis, and Reporting
+  - AU-9   # Protection of Audit Information
+  - CA-7   # Continuous Monitoring
+  - CP-9   # System Backup

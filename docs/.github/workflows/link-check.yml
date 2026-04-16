@@ -1,0 +1,120 @@
+name: Link Check
+
+on:
+  pull_request:
+    paths:
+      - '**/*.md'
+      - '**/*.qmd'
+      - '.lychee.toml'
+      - '.github/workflows/link-check.yml'
+  schedule:
+    # Mondays at 07:00 UTC — after Sunday's nightly build has had a chance
+    # to render heavy formats. Weekly cadence is plenty for external link rot.
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      fail_on_broken:
+        description: 'Fail the run if broken links found (default: report only)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: read
+  issues: write    # needed to create issue on scheduled runs
+
+concurrency:
+  group: link-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lychee:
+    name: Check links
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Restore lychee cache
+        uses: actions/cache@v5
+        with:
+          path: .lycheecache
+          # Include .lychee.toml hash in the key so config changes (e.g. a new
+          # exclude pattern) invalidate the cache. Without this, stale failures
+          # for URLs later added to the exclude list persist indefinitely via
+          # the restore-keys prefix match. (Parity with uiao-core's link-check
+          # workflow, which hit this exact bug during ODA-15.)
+          key: lychee-cache-${{ hashFiles('.lychee.toml') }}-${{ github.run_id }}
+          restore-keys: |
+            lychee-cache-${{ hashFiles('.lychee.toml') }}-
+
+      - name: Count input files (sanity check)
+        shell: bash
+        run: |
+          md=$(find . -name '*.md'  -not -path './.git/*' -not -path './_site/*' -not -path './_freeze/*' -not -path './site/*' -not -path './node_modules/*' -not -path './docs/session-logs/*' | wc -l)
+          qmd=$(find . -name '*.qmd' -not -path './.git/*' -not -path './_site/*' -not -path './_freeze/*' -not -path './site/*' -not -path './node_modules/*' -not -path './docs/session-logs/*' | wc -l)
+          echo "Found ${md} .md files and ${qmd} .qmd files"
+          echo "INPUT_MD=${md}" >> "$GITHUB_ENV"
+          echo "INPUT_QMD=${qmd}" >> "$GITHUB_ENV"
+
+      - name: Run lychee
+        id: lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --config .lychee.toml
+            --cache
+            --extensions md,qmd
+            .
+          output: ./lychee-report.md
+          # fail on PRs (blocking); schedule + dispatch produce report only
+          fail: ${{ github.event_name == 'pull_request' || github.event.inputs.fail_on_broken == 'true' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish lychee report to job summary + annotations
+        if: always() && hashFiles('lychee-report.md') != ''
+        shell: bash
+        run: |
+          # Human-readable summary for the Actions UI.
+          {
+            echo "## Lychee link-check report"
+            echo ""
+            cat lychee-report.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Echo to log (requires admin access to view).
+          echo "::group::lychee-report.md"
+          cat lychee-report.md
+          echo "::endgroup::"
+
+          # Emit the report as a single CI error annotation. Annotations on a
+          # check-run are exposed via the public REST endpoint
+          # `/check-runs/{id}/annotations`, so the failing URLs become
+          # readable without admin access to logs or artifact downloads.
+          # URL-encode newlines to %0A per GitHub workflow-command rules.
+          # (Parity with uiao-core's link-check workflow.)
+          report_encoded=$(awk '{printf "%s%%0A", $0}' lychee-report.md)
+          echo "::error title=Lychee link-check report::${report_encoded}"
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: lychee-report
+          path: lychee-report.md
+          retention-days: 30
+
+      - name: Create issue on broken links (scheduled only)
+        if: >-
+          github.event_name == 'schedule'
+          && steps.lychee.outputs.exit_code != '0'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Broken links detected — weekly sweep ${{ github.run_number }}"
+          content-filepath: ./lychee-report.md
+          labels: |
+            link-rot
+            maintenance
