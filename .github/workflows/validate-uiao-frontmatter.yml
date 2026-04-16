@@ -46,7 +46,11 @@ jobs:
             fi
 
             # Check uiao_id (flexible: accepts uiao_id: or id: patterns)
-            UIAO_ID=$(echo "$FRONT" | grep -E '^(uiao_id|uiao.id)\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1)
+            # `|| true` guards each pipe against `set -o pipefail` aborting
+            # the whole step when grep finds no match — which would stop the
+            # validator mid-file and fail CI even on files that only generate
+            # warnings. Missing fields are handled by the [ -z ] checks below.
+            UIAO_ID=$(echo "$FRONT" | grep -E '^(uiao_id|uiao.id)\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1 || true)
             if [ -z "$UIAO_ID" ]; then
               echo "::warning file=$f::Missing uiao_id in frontmatter. Expected pattern: UIAO_A_01"
             else
@@ -57,19 +61,26 @@ jobs:
             fi
 
             # Check status
-            STATUS=$(echo "$FRONT" | grep -E '^status\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1)
+            # Documents (canonical specs, guides, articles) use doc-lifecycle
+            # vocabulary: Current | Draft | Needs Replacing | Needs Creating |
+            # Deprecated.
+            # ADRs (docs/adr/*) use the standard ADR lifecycle vocabulary per
+            # Michael Nygard's ADR spec: Proposed | Accepted | Rejected |
+            # Superseded | Deprecated. Both are accepted case-insensitively.
+            STATUS=$(echo "$FRONT" | grep -E '^status\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1 || true)
+            ALLOWED_STATUS_RE='^(Current|Draft|Needs Replacing|Needs Creating|Proposed|Accepted|Rejected|Superseded|Deprecated)$'
             if [ -z "$STATUS" ]; then
-              echo "::error file=$f::Missing status in frontmatter. Allowed: Current, Draft, Needs Replacing, Needs Creating, Deprecated"
+              echo "::error file=$f::Missing status in frontmatter. Allowed (docs): Current, Draft, Needs Replacing, Needs Creating, Deprecated. Allowed (ADRs): Proposed, Accepted, Rejected, Superseded, Deprecated."
               FAIL=1
             else
-              if ! echo "$STATUS" | grep -Eiq '^(Current|Draft|Needs Replacing|Needs Creating|Deprecated)$'; then
-                echo "::error file=$f::Invalid status '$STATUS'. Allowed: Current, Draft, Needs Replacing, Needs Creating, Deprecated"
+              if ! echo "$STATUS" | grep -Eiq "$ALLOWED_STATUS_RE"; then
+                echo "::error file=$f::Invalid status '$STATUS'. Allowed (docs): Current, Draft, Needs Replacing, Needs Creating, Deprecated. Allowed (ADRs): Proposed, Accepted, Rejected, Superseded, Deprecated."
                 FAIL=1
               fi
             fi
 
             # Check owner (warning only)
-            OWNER=$(echo "$FRONT" | grep -E '^owner\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1)
+            OWNER=$(echo "$FRONT" | grep -E '^owner\s*:' | sed 's/.*://;s/^\s*//;s/["'"'"']//g' | head -1 || true)
             if [ -z "$OWNER" ]; then
               echo "::warning file=$f::Missing owner in frontmatter."
             fi
