@@ -1,0 +1,88 @@
+name: Dashboard Export
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  dashboard-export:
+    name: Export Governance Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 30
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml jsonschema
+
+      - name: Create export directory
+        run: mkdir -p dashboard/exports
+
+      - name: Run metadata validation (metrics collection)
+        run: |
+          python tools/metadata_validator.py \
+            --path canon/ \
+            --schema schemas/metadata-schema.json \
+            --output reports/validation-metrics.json \
+            --ci --metrics-only
+        continue-on-error: true
+
+      - name: Run drift scan (metrics collection)
+        run: |
+          python tools/drift_detector.py \
+            --path . \
+            --mode full \
+            --schema schemas/metadata-schema.json \
+            --output reports/drift-metrics.json \
+            --ci --metrics-only
+        continue-on-error: true
+
+      - name: Export dashboard data
+        id: export
+        run: |
+          python tools/dashboard_exporter.py \
+            --schema schemas/dashboard-schema.json \
+            --export json \
+            --output dashboard/exports/ \
+            --trends 30 \
+            --metrics-dir reports/
+        continue-on-error: true
+
+      - name: Validate export against schema
+        run: |
+          python tools/dashboard_exporter.py \
+            --schema schemas/dashboard-schema.json \
+            --validate \
+            --input dashboard/exports/
+
+      - name: Upload dashboard exports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-exports
+          path: dashboard/exports/
+          retention-days: 90
+
+      - name: Commit dashboard export
+        if: github.event_name != 'pull_request' && steps.export.outcome == 'success'
+        run: |
+          git config user.name "UIAO Governance Bot"
+          git config user.email "governance-bot@uiao.local"
+          git add dashboard/exports/
+          git diff --staged --quiet || git commit -m "[UIAO-CORE] UPDATE: Dashboard export"
+          git push

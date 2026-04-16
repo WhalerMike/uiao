@@ -1,0 +1,79 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-7(8)
+# Title      : Boundary Protection | Route Traffic to Authenticated Proxy Servers
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: SC-7(8)
+title: "Boundary Protection | Route Traffic to Authenticated Proxy Servers"
+family: System and Communications Protection
+status: not-implemented
+
+implemented_by:
+  - palo-alto-ngfw
+  - entra-id
+  - microsoft-sentinel
+  - infoblox
+
+evidence:
+  - palo-alto-proxy-routing-configuration-documentation
+  - entra-id-proxy-authentication-policy
+  - microsoft-sentinel-proxy-traffic-monitoring
+  - infoblox-dns-proxy-resolution-records
+
+parameters:
+  - id: PARAM-SC-007-8-001
+    description: >-
+      Internal communications traffic types required to be routed through
+      authenticated proxy servers prior to transmission to external networks.
+    value: "All HTTP and HTTPS traffic from internal systems destined for external networks is routed through Palo Alto NGFW proxy inspection"
+  - id: PARAM-SC-007-8-002
+    description: >-
+      Authentication requirements for proxy server access by internal
+      systems and users.
+    value: "Entra ID user identity presented to proxy via Kerberos; device identity verified through Entra ID Conditional Access before proxy authentication"
+
+narrative: |
+  **Proxy Routing Requirements**
+  The organization routes internal communications traffic through
+  authenticated proxy servers before transmission to external networks
+  (PARAM-SC-007-8-001). All HTTP and HTTPS traffic from UIAO internal
+  systems destined for external networks is routed through Palo Alto
+  NGFW proxy inspection capabilities. Palo Alto's SSL/TLS decryption
+  and inspection ensures that encrypted traffic is examined for threats,
+  policy violations, and data loss prevention triggers before external
+  transmission. This architecture eliminates direct unmonitored
+  communications between internal endpoints and external internet resources.
+
+  **Proxy Authentication**
+  Proxy server access is authenticated using Entra ID user identity
+  presented via Kerberos authentication (PARAM-SC-007-8-002). User
+  identity is mapped to Palo Alto User-ID, enabling security policies
+  scoped to individual users and groups rather than IP addresses alone.
+  Device identity verification through Entra ID Conditional Access
+  ensures that only compliant, managed endpoints can establish proxy-
+  authenticated connections. Service accounts and automated processes
+  use dedicated proxy credentials with restricted URL category access.
+
+  **DNS Integration for Proxy Routing**
+  Infoblox DNS provides authoritative resolution for proxy server
+  addresses, ensuring internal systems consistently resolve to
+  organizational proxy endpoints. DNS response policy zones prevent
+  clients from bypassing proxy servers by directly resolving external
+  addresses for proxy-exempt categories. This DNS-layer control
+  complements the network-layer proxy enforcement.
+
+  **Traffic Monitoring and Anomaly Detection**
+  Microsoft Sentinel analyzes proxy logs from Palo Alto NGFW to detect
+  anomalous proxy usage including unusual volumes, access to threat-
+  indicator domains, and potential data exfiltration patterns. User
+  behavioral analytics applied to proxy telemetry identify deviations
+  from normal access patterns. Alerts generate ServiceNow incidents
+  for ISSO investigation, supporting **SI-4(18)** (Analyze Traffic
+  and Covert Exfiltration) requirements.
+
+related_controls:
+  - SC-7    # Boundary Protection
+  - AC-4    # Information Flow Enforcement
+  - SI-4    # System Monitoring
+  - SI-4(18) # Analyze Traffic and Covert Exfiltration
+  - AC-3    # Access Enforcement
