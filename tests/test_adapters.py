@@ -5,6 +5,7 @@ import asyncio
 from uiao_impl.adapters import (
     DatabaseAdapterBase,
     EntraAdapter,
+    M365Adapter,
     ServiceNowAdapter,
     TerraformAdapter,
 )
@@ -13,6 +14,7 @@ from uiao_impl.adapters import (
 ADAPTER_REGISTRY = {
     "database": DatabaseAdapterBase,
     "entra-id": EntraAdapter,
+    "m365": M365Adapter,
     "servicenow": ServiceNowAdapter,
     "terraform": TerraformAdapter,
 }
