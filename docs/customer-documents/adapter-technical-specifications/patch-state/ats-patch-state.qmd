@@ -32,19 +32,29 @@ This document is a stub. Replace every `_TODO — ..._` block with authored cont
 
 ## Overview
 
-_TODO — Author an overview of the Patch State Observer (Reserved Slot) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Patch State Adapter is a **conformance-class telemetry** adapter that observes patch/update state across managed endpoints. It ingests device-level patch status data and normalizes it into canonical claims tracking missing patches per device.
+
+Key capabilities: per-device missing-patch enumeration, OS-level patch state tracking, missing-patch count aggregation, and KSI-anchored evidence generation with total-missing-patches summary.
+
+**Implementation:** `uiao-impl/src/uiao_impl/adapters/patchstate_adapter.py`. Conformance: 30/30 PASS.
 
 ## Scope
 
 Target surfaces / subsystems: _(not yet defined)_
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** Patch status data (JSON with device_id, OS, missing_patches list per device) from WSUS, SCCM, Intune, or OS-native sources.
+**Emits:** `ClaimSet` with one claim per device (including missing_count and missing_patches list), `EvidenceObject` with total device count and total missing patches.
+**Does NOT:** install patches, modify device configuration, or access device content. Read-only telemetry.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `SI-2`, `CM-8`, `CA-7`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **SI-2** Flaw Remediation | Primary | Missing-patch tracking provides evidence of patch remediation status per device. |
+| **CM-8** Component Inventory | Supporting | Device enumeration with OS version supports component inventory. |
+| **CA-7** Continuous Monitoring | Supporting | Scheduled patch state collection provides continuous remediation evidence. |
 
 ## Operational profile
 

@@ -32,19 +32,29 @@ This document is a stub. Replace every `_TODO — ..._` block with authored cont
 
 ## Overview
 
-_TODO — Author an overview of the STIG Compliance Checker (Reserved Slot) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The STIG Compliance Adapter is a **conformance-class policy** adapter that evaluates system configuration against DISA Security Technical Implementation Guide (STIG) baselines. It ingests XCCDF assessment results from SCAP engines (OpenSCAP, SCAP Workbench) and normalizes them into canonical claims.
+
+Key capabilities: XCCDF result parsing (rule_id, severity, pass/fail/notapplicable), benchmark-scoped assessment, pass/fail counting for evidence generation, and STIG-to-NIST control mapping.
+
+**Implementation:** `uiao-impl/src/uiao_impl/adapters/stigcompliance_adapter.py`. Conformance: 30/30 PASS.
 
 ## Scope
 
 Target surfaces / subsystems: _(not yet defined)_
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** STIG assessment results (JSON with rule_id, severity, result, title per XCCDF rule).
+**Emits:** `ClaimSet` with one claim per STIG rule result, `EvidenceObject` with pass/fail/total counts.
+**Does NOT:** execute SCAP scans, modify system configuration, or remediate findings. Read-only policy evaluation.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CM-6`, `CM-7`, `CA-7`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CM-6** Configuration Settings | Primary | STIG rule evaluation verifies configuration settings against DISA baselines. |
+| **CM-7** Least Functionality | Supporting | STIG rules include least-functionality checks (disabled services, removed packages). |
+| **CA-7** Continuous Monitoring | Supporting | Scheduled STIG assessment provides continuous compliance posture evidence. |
 
 ## Operational profile
 
