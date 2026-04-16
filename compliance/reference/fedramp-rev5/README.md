@@ -5,9 +5,9 @@ This folder contains reference copies and links to official FedRAMP OSCAL Rev 5 
 ## Source
 All content is derived from the official (now archived) FedRAMP OSCAL repository:
 
-- **Repository**: https://github.com/GSA/fedramp-automation
+- **Repository**: `GSA/fedramp-automation` (formerly on GitHub; archived July 1, 2025 and subsequently removed — no longer reachable)
 - **Last used release/tag**: `fedramp-2.0.0-oscal-1.0.4` (September 2024)
-- **Status**: Archived July 1, 2025 - read-only. No active successor repo identified; contact oscal@fedramp.gov for latest guidance.
+- **Status**: Archived 2025-07-01 read-only, later removed entirely. No active successor repo identified; contact oscal@fedramp.gov for latest guidance.
 - **Key paths**:
   - Baselines: `/dist/content/rev5/baselines/json/` (e.g., FedRAMP_rev5_MODERATE-baseline_profile.json)
   - Templates: `/documents/` (SSP, POA&M in JSON/XML/YAML)
