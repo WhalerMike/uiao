@@ -226,6 +226,13 @@ def main() -> int:
             json_output = True
         elif arg == "--markdown":
             markdown_output = True
+        elif arg == "--version":
+            classes = _get_adapter_classes()
+            print(f"UIAO Adapter Conformance Check v1.0")
+            print(f"Adapters registered: {len(classes)}")
+            print(f"Conformance criteria per adapter: 30")
+            print(f"Total criteria: {len(classes) * 30}")
+            return 0
         elif arg.startswith("--adapter="):
             adapter_filter = arg.split("=", 1)[1]
         elif arg == "--adapter" and sys.argv.index(arg) + 1 < len(sys.argv):
