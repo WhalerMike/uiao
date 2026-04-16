@@ -205,18 +205,30 @@ class TerraformAdapter(DatabaseAdapterBase):
         pointer-first CanonicalClaims.
 
         Args:
-            state_source: State backend URI (local://, s3://, tfc://, etc.)
+            state_source: Path to .tfstate file (local path or URI).
+                          Currently supports local files only.
             workspace: Terraform workspace name (default: "default")
             resource_filter: Optional resource type filter (e.g., "aws_instance")
 
         Returns:
             ClaimSet with one ClaimObject per managed resource.
         """
-        raise NotImplementedError(
-            "extract_terraform_state() is a stub -- scheduled for "
-            "implementation when terraform-state parsing is wired up. "
-            "See uiao-core/canon/modernization-registry.yaml terraform entry."
-        )
+        from .terraform_parser import parse_tfstate
+        from pathlib import Path
+        import json
+
+        path = Path(state_source.replace("local://", ""))
+        state_json = json.loads(path.read_text(encoding="utf-8"))
+        raw_resources = parse_tfstate(state_json)
+
+        # Apply optional filter
+        if resource_filter:
+            raw_resources = [r for r in raw_resources if r["type"] == resource_filter]
+
+        # Filter by mode — skip data sources by default for managed-only
+        managed = [r for r in raw_resources if r.get("mode") == "managed"]
+
+        return self.normalize(managed)
 
     def parse_hcl_config(
         self,
@@ -226,16 +238,23 @@ class TerraformAdapter(DatabaseAdapterBase):
         """Treat desired-state HCL as a policy/truth source.
 
         Args:
-            hcl_content_or_path: Raw HCL string or path to .tf file(s)
+            hcl_content_or_path: Raw HCL string or path to .tf file
             variables: Variable overrides for interpolation
 
         Returns:
             ClaimSet representing the declared desired state.
         """
-        raise NotImplementedError(
-            "parse_hcl_config() is a stub -- requires python-hcl2 or "
-            "equivalent parser dependency. Scheduled for Stage 3 follow-up."
-        )
+        from .terraform_parser import parse_hcl
+        from pathlib import Path
+
+        path = Path(hcl_content_or_path)
+        if path.exists() and path.is_file():
+            hcl_content = path.read_text(encoding="utf-8")
+        else:
+            hcl_content = hcl_content_or_path
+
+        raw_resources = parse_hcl(hcl_content, variables)
+        return self.normalize(raw_resources)
 
     def consume_terraform_plan(
         self,
@@ -254,9 +273,47 @@ class TerraformAdapter(DatabaseAdapterBase):
         Returns:
             DriftReport with per-resource planned changes as drift items.
         """
-        raise NotImplementedError(
-            "consume_terraform_plan() is a stub -- scheduled for "
-            "implementation. Input: `terraform plan -json` output."
+        from .terraform_parser import parse_plan_json
+
+        changes = parse_plan_json(plan_json)
+
+        # Determine overall severity from the worst action
+        severities = [c["severity"] for c in changes]
+        if "high" in severities:
+            overall_severity = "high"
+        elif "warning" in severities:
+            overall_severity = "warning"
+        else:
+            overall_severity = "info"
+
+        # Build per-resource detail
+        resource_details: Dict[str, Any] = {}
+        for c in changes:
+            resource_details[c["address"]] = {
+                "actions": c["actions"],
+                "severity": c["severity"],
+                "diff": c["diff"],
+            }
+
+        return DriftReport(
+            drift_type="terraform-plan",
+            severity=overall_severity,
+            first_observed=self._now(),
+            last_observed=self._now(),
+            details={
+                "adapter": self.ADAPTER_ID,
+                "workspace": workspace or self._workspace,
+                "total_changes": len(changes),
+                "creates": sum(1 for c in changes if "create" in c["actions"]),
+                "updates": sum(1 for c in changes if "update" in c["actions"]),
+                "deletes": sum(1 for c in changes if "delete" in c["actions"]),
+                "resources": resource_details,
+            },
+            remediation=(
+                f"Review {len(changes)} planned change(s). "
+                f"Run `terraform apply` to reconcile, or update HCL config "
+                f"to match current state."
+            ),
         )
 
     def detect_terraform_drift(
@@ -280,10 +337,47 @@ class TerraformAdapter(DatabaseAdapterBase):
         Returns:
             DriftReport covering all three comparison axes.
         """
-        raise NotImplementedError(
-            "detect_terraform_drift() is a stub -- three-way drift "
-            "detection requires extract_terraform_state() and "
-            "parse_hcl_config() to be implemented first."
+        from .terraform_parser import parse_tfstate, parse_hcl, three_way_diff
+
+        # Convert live claims to resource dicts for comparison
+        live_resources = [
+            {
+                "type": c.fields.get("resource_type", c.entity.split(":")[1] if ":" in c.entity else ""),
+                "name": c.fields.get("resource_name", c.entity.split(":")[-1] if ":" in c.entity else ""),
+                "provider": c.fields.get("provider", ""),
+                "mode": "managed",
+                "attributes": c.fields,
+            }
+            for c in live_claims
+        ]
+
+        state_resources = parse_tfstate(tf_state) if tf_state else []
+        config_resources = parse_hcl(tf_config, None) if tf_config else []
+
+        diff_result = three_way_diff(live_resources, state_resources, config_resources)
+
+        drift_count = diff_result["summary"]["drift_count"]
+        severity = "high" if drift_count > 0 else "info"
+
+        return DriftReport(
+            drift_type="terraform-three-way",
+            severity=severity,
+            first_observed=self._now(),
+            last_observed=self._now(),
+            details={
+                "adapter": self.ADAPTER_ID,
+                "workspace": self._workspace,
+                "live_vs_state": diff_result["live_vs_state"],
+                "state_vs_config": diff_result["state_vs_config"],
+                "summary": diff_result["summary"],
+            },
+            remediation=(
+                f"{drift_count} resource(s) drifted across state/config/live. "
+                f"Run `terraform plan` to see proposed changes, then "
+                f"`terraform apply` to reconcile."
+                if drift_count > 0
+                else "All resources aligned across live, state, and config."
+            ),
         )
 
     def generate_terraform_evidence(
@@ -291,7 +385,7 @@ class TerraformAdapter(DatabaseAdapterBase):
         plan_or_apply_json: Optional[Dict[str, Any]] = None,
         state_snapshot: Optional[Dict[str, Any]] = None,
     ) -> EvidenceObject:
-        """Generate a signed KSI evidence bundle for a Terraform run.
+        """Generate a KSI evidence bundle for a Terraform run.
 
         Bundles connection provenance, state snapshot, plan/apply output,
         and drift detection results into a canonical EvidenceObject
@@ -304,10 +398,44 @@ class TerraformAdapter(DatabaseAdapterBase):
         Returns:
             EvidenceObject with full provenance chain.
         """
-        raise NotImplementedError(
-            "generate_terraform_evidence() is a stub -- scheduled for "
-            "implementation once extract_terraform_state() and "
-            "consume_terraform_plan() are wired up."
+        conn = self.connect()
+        drift = self.detect_drift()
+
+        # Build raw data bundle
+        raw_data: Dict[str, Any] = {
+            "connection": conn.to_dict(),
+            "drift": drift.to_dict(),
+        }
+        if plan_or_apply_json:
+            raw_data["plan"] = plan_or_apply_json
+        if state_snapshot:
+            raw_data["state_snapshot"] = state_snapshot
+
+        # Normalize state if provided
+        normalized = None
+        if state_snapshot:
+            from .terraform_parser import parse_tfstate
+            try:
+                resources = parse_tfstate(state_snapshot)
+                managed = [r for r in resources if r.get("mode") == "managed"]
+                claim_set = self.normalize(managed)
+                normalized = claim_set.to_dict()
+            except Exception:
+                normalized = None
+
+        return EvidenceObject(
+            ksi_id=f"KSI-TF-{self._workspace}",
+            source=self.ADAPTER_ID,
+            timestamp=self._now(),
+            raw_data=raw_data,
+            normalized_data=normalized,
+            provenance={
+                "adapter_id": self.ADAPTER_ID,
+                "workspace": self._workspace,
+                "hash": self._hash(raw_data),
+                "timestamp": self._now().isoformat(),
+            },
+            freshness_valid=True,
         )
 
     # ------------------------------------------------------------------
