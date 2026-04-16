@@ -33,19 +33,30 @@ This document is a stub. Replace every `_TODO — ..._` block with authored cont
 
 ## Overview
 
-_TODO — Author an overview of the ServiceNow (Ticketing / ITSM) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The ServiceNow Adapter is an **integration-class** modernization adapter that creates alignments between ServiceNow ITSM records and the UIAO canonical claim schema. It is intentionally lightweight ("DNS-style") — it resolves how to reach the data and maps it to canonical form, but does NOT perform heavy OSCAL conversion (that happens downstream in `generators/`).
+
+Key capabilities: incident ticket normalization with UIAO control mapping (`uiao_control_id` custom field), change request tracking, problem record alignment, and vendor-overlay reference generation. Uses the `ServiceNowCollector` (real Table API collector with requests) for data retrieval.
+
+**Implementation:** `uiao-impl/src/uiao_impl/adapters/servicenow_adapter.py` + `collectors/servicenow_collector.py` (117 lines, real API). 18 behavioral tests against realistic fixtures.
 
 ## Scope
 
 Target surfaces / subsystems: `incident-tickets`, `change-requests`, `problem-records`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** ServiceNow Table API (`/api/now/table/{table}`) for incidents, changes, problems. Custom field `uiao_control_id` maps records to NIST 800-53 controls (defaults to AC-2 if unmapped).
+**Emits:** `ClaimSet` with one `ClaimObject` per ITSM record, `EvidenceObject` with KSI provenance.
+**Does NOT:** create or modify ServiceNow records (read-only for evidence collection), access attachments or knowledge base articles, store ServiceNow credentials.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `IR-4`, `IR-5`, `IR-6`, `CM-3`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IR-4** Incident Handling | Primary | Incident ticket normalization produces evidence of incident response activity with provenance hashes. |
+| **IR-5** Incident Monitoring | Supporting | Ongoing ticket collection provides continuous monitoring evidence of incident volume and resolution. |
+| **IR-6** Incident Reporting | Supporting | Normalized incident claims feed downstream OSCAL artifact generation for reporting. |
+| **CM-3** Configuration Change Control | Primary | Change request tracking documents all approved configuration changes with control mapping. |
 
 ## Operational profile
 
