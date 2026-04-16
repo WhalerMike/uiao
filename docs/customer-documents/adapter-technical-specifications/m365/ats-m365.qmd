@@ -33,19 +33,57 @@ This document is a stub. Replace every `_TODO — ..._` block with authored cont
 
 ## Overview
 
-_TODO — Author an overview of the Microsoft 365 Tenant (Graph API) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Microsoft 365 Tenant Adapter is an **integration-class** modernization adapter that consumes Microsoft 365 tenant configuration via the Microsoft Graph API to produce object-keyed canonical claims across five core workloads.
+
+This adapter is the primary interface between UIAO and the M365 SaaS boundary — the GCC-Moderate tenant that hosts the organization's Exchange Online, SharePoint, Teams, Defender for Office 365, and Purview services. It pairs naturally with:
+
+- The **Entra ID adapter** (identity fabric for the same tenant)
+- The **ScubaGear conformance adapter** (read-only assessment of the same M365 surfaces)
+- The **Intune adapter** (endpoint compliance telemetry for managed devices)
+
+Key capabilities:
+
+1. **Tenant configuration retrieval.** Queries Graph API to capture current configuration state per workload — mailbox settings, transport rules, site collections, team configurations, security policies, and sensitivity labels.
+
+2. **Baseline comparison.** Compares current tenant configuration against a declared security baseline (e.g., CISA SCuBA) and produces a `DriftReport` with compliant/non-compliant/missing breakdowns.
+
+3. **Evidence generation.** Bundles connection provenance, normalized claims, and drift analysis into `EvidenceObject` artifacts suitable for OSCAL SAR generation.
+
+**Implementation:** `uiao-impl/src/uiao_impl/adapters/m365_adapter.py` + `m365_parser.py` (real Graph API response parsing with entity normalization, security policy parsing, multi-workload tenant config parsing, and baseline comparison). End-to-end OSCAL SAR generation proven via 5 integration tests.
 
 ## Scope
 
 Target surfaces / subsystems: `exchange-online`, `sharepoint-online`, `teams`, `defender-o365`, `purview`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**What the adapter reads:**
+
+- Microsoft Graph API entity responses (`/organization`, `/users`, `/groups`, etc.)
+- Conditional access policies (`/identity/conditionalAccessPolicies`)
+- Multi-workload tenant configuration (mailbox settings, transport rules, site collections, team configs, safe attachment policies, sensitivity labels)
+
+**What the adapter emits:**
+
+- `ClaimSet` with one `ClaimObject` per Graph entity, tagged by workload
+- `DriftReport` from baseline comparison (compliant/non-compliant/missing per setting)
+- `EvidenceObject` with per-workload or cross-workload provenance chain
+- OSCAL Assessment Results (SAR) via the `adapter_to_oscal.py` bridge
+
+**What the adapter does NOT touch:**
+
+- Does not modify tenant configuration (baseline application is gated on Graph API write permissions + change-approval workflow)
+- Does not access user mailbox content or file content (metadata only)
+- Does not store user credentials; uses client-credential OAuth flow
+- Does not bypass GCC-Moderate tenant boundary constraints
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CM-2`, `CM-3`, `CM-8`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CM-2** Baseline Configuration | Primary | Tenant config retrieval + baseline comparison captures the current configuration baseline across all 5 workloads and identifies deviations from the declared security baseline. |
+| **CM-3** Configuration Change Control | Supporting | Baseline comparison produces a diff report that documents which settings changed, enabling change-control review before applying remediation. |
+| **CM-8** Information System Component Inventory | Primary | Multi-workload tenant config retrieval produces a complete inventory of all M365 components (mailboxes, sites, teams, policies, labels) with Graph entity metadata. |
 
 ## Operational profile
 
