@@ -6,6 +6,7 @@ from uiao_impl.adapters import (
     DatabaseAdapterBase,
     EntraAdapter,
     ServiceNowAdapter,
+    TerraformAdapter,
 )
 
 # For testing purposes, create a simple registry
@@ -13,6 +14,7 @@ ADAPTER_REGISTRY = {
     "database": DatabaseAdapterBase,
     "entra-id": EntraAdapter,
     "servicenow": ServiceNowAdapter,
+    "terraform": TerraformAdapter,
 }
 
 # For type checking
