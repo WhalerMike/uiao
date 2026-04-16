@@ -25,7 +25,7 @@
 
 schema-version: "1.0.0"
 registry-class: modernization
-updated: "2026-04-15"
+updated: "2026-04-16"
 
 adapters:
 
@@ -233,3 +233,60 @@ adapters:
     notes: >-
       Pair with conformance adapter `scubagear` (canon/adapter-registry.yaml)
       which assesses the applied baseline without mutating it.
+
+  - id: terraform
+    name: Terraform / OpenTofu Evidence Adapter
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Consumes Terraform / OpenTofu state, plans, and HCL configuration to
+      produce object-keyed canonical claims with KSI provenance, supports
+      three-way drift detection (live ↔ state ↔ HCL), and enables controlled
+      change-making actions against target environments (per UIAO_003 §4.7
+      Integration Adapter Class). Implementation planned in uiao-impl
+      (`src/uiao_impl/adapters/terraform_adapter.py`) subclassing
+      `DatabaseAdapterBase`.
+    status: reserved
+    phase: phase-planning
+    vendor: HashiCorp / OpenTofu Foundation
+    license: MPL-2.0
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - terraform-state
+      - terraform-plan
+      - hcl-configuration
+    outputs:
+      - terraform-claim-manifest.json
+      - terraform-drift-report.json
+      - terraform-ksi-bundle.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-2
+      - CM-3
+      - CM-6
+      - CM-8
+      - CA-7
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - https://www.terraform.io
+      - https://opentofu.org
+    notes: >-
+      Status transitions `reserved` → `active` when the adapter ships in
+      uiao-impl (separate PR gated on this registry entry landing, per
+      `uiao-impl/.claude/rules/canon-consumer.md`). Proposed adapter
+      surface: `extract_terraform_state`, `parse_hcl_config`,
+      `consume_terraform_plan`, `detect_terraform_drift`,
+      `generate_terraform_evidence` — layered on the seven canonical
+      domains of `DatabaseAdapterBase`.
