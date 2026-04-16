@@ -23,6 +23,7 @@ from .database_base import (
     ConnectionProvenance,
     DatabaseAdapterBase,
     DriftReport,
+    EvidenceObject,
     QueryProvenance,
     SchemaMappingObject,
 )
@@ -181,19 +182,37 @@ class EntraAdapter(DatabaseAdapterBase):
     # ------------------------------------------------------------------
     # 2.6 Evidence Collection -- delegate to collector
     # ------------------------------------------------------------------
-    def collect_evidence(self, ksi_id: str = "IA-2") -> Dict[str, Any]:
+    def collect_evidence(self, ksi_id: str = "IA-2") -> EvidenceObject:
         """
         Collect Entra ID evidence for a given KSI.
 
-        Delegates to the EntraCollector which handles Graph API calls.
+        Delegates to the EntraCollector which handles Graph API calls,
+        then wraps the result in a canonical EvidenceObject.
         """
         evidence = self.collector.collect(ksi_id=ksi_id)
-        return {
-            "ksi_id": ksi_id,
-            "source": "EntraID",
-            "evidence": evidence.raw_data if hasattr(evidence, "raw_data") else {},
-            "timestamp": self._now().isoformat(),
-        }
+        raw_data = evidence.raw_data if hasattr(evidence, "raw_data") else {}
+
+        conn = self.connect()
+        claim_set = self.normalize(
+            raw_data.get("sign_in_events", []) or raw_data.get("value", [])
+        )
+
+        return EvidenceObject(
+            ksi_id=ksi_id,
+            source=self.ADAPTER_ID,
+            timestamp=self._now(),
+            raw_data={
+                "connection": conn.to_dict(),
+                "collector_evidence": raw_data,
+            },
+            normalized_data=claim_set.to_dict(),
+            provenance={
+                "adapter_id": self.ADAPTER_ID,
+                "hash": self._hash(raw_data),
+                "timestamp": self._now().isoformat(),
+            },
+            freshness_valid=False,
+        )
 
     # ------------------------------------------------------------------
     # Convenience: collect + normalize in one call
