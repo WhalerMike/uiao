@@ -6,6 +6,8 @@
 [![FedRAMP Moderate](https://img.shields.io/badge/FedRAMP-Moderate%20Rev%205-orange.svg)](#control-library-status)
 [![Controls](https://img.shields.io/badge/controls-247%20(163%20base%20%2B%2084%20enhancements)-blueviolet.svg)](#control-library-status)
 
+**UIAO Ecosystem:** **uiao-core** (this repo) · [uiao-impl](https://github.com/WhalerMike/uiao-impl) (Python CLI) · [uiao-docs](https://github.com/WhalerMike/uiao-docs) ([live site](https://whalermike.github.io/uiao-docs/docs/index.html))
+
 ## Mission
 
 > UIAO is a federal compliance and network modernization platform that eliminates
