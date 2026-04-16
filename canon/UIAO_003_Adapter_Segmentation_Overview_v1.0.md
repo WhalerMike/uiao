@@ -6,7 +6,7 @@ status: Current
 classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-14"
-updated_at: "2026-04-14"
+updated_at: "2026-04-15"
 boundary: "GCC-Moderate"
 ---
 
@@ -38,6 +38,7 @@ No-Hallucination Mode: ENABLED
    4.4 Policy Adapter Class — NEW (Proposed)
    4.5 Enforcement Adapter Class — NEW (Proposed)
    4.6 Cross-Adapter Truth Flow
+   4.7 Integration Adapter Class — NEW (Proposed)
 5. Implementation Guidance
 6. Risks & Mitigations
 7. Appendices
@@ -57,11 +58,11 @@ UIAO organizes its governance of modernized cloud environments into segmented ad
 
 The segmentation is identity-rooted and certificate-anchored. The Single Source of Truth (SSOT) is singular; adapters consume and emit against it but never rewrite it. Identity ensures every adapter transaction is certificate-anchored. Security ensures every adapter interaction remains within the governance perimeter, which for UIAO is GCC-Moderate only, with Amazon Connect Contact Center as the single Commercial Cloud exception.
 
-This Overview names the adapter classes referenced in the UIAO canon — Identity, Telemetry, Policy, and Enforcement — and summarizes the mission each class serves. Where the source text does not define a specific behavior, surface, or prohibition for a class, this document flags that content as **NEW (Proposed)** so that leadership and customers can distinguish canon from proposal.
+This Overview names the adapter classes referenced in the UIAO canon — Identity, Telemetry, Policy, Enforcement, and Integration — and summarizes the mission each class serves. Where the source text does not define a specific behavior, surface, or prohibition for a class, this document flags that content as **NEW (Proposed)** so that leadership and customers can distinguish canon from proposal.
 
-*As shown in Diagram 1, the four named adapter classes orbit a singular, certificate-anchored SSOT core.*
+*As shown in Diagram 1, the five named adapter classes orbit a singular, certificate-anchored SSOT core.*
 
-[DIAGRAM-01: A 16:9 muted-blue schematic showing a singular SSOT core at center, four adapter-class nodes labeled Identity, Telemetry, Policy, Enforcement arranged symmetrically around it, directional arrows from each adapter toward the core and back, and a surrounding GCC-Moderate governance perimeter ring. No text baked into the image. Publication-grade.]
+[DIAGRAM-01: A 16:9 muted-blue schematic showing a singular SSOT core at center, five adapter-class nodes labeled Identity, Telemetry, Policy, Enforcement, Integration arranged symmetrically around it, directional arrows from each adapter toward the core and back, and a surrounding GCC-Moderate governance perimeter ring. No text baked into the image. Publication-grade.]
 
 ---
 
@@ -84,16 +85,16 @@ The UIAO architecture is governed by five canonical elements that every adapter 
 1. **Boundary model.** GCC-Moderate is the sanctioned boundary. Amazon Connect is the sole named Commercial Cloud exception. No other boundary crossings are permitted.
 2. **Identity model.** Object identity only. No person identity is stored, derived, or processed by any adapter class.
 3. **SSOT role.** The Single Source of Truth is singular and certificate-anchored. Adapters never mutate truth; they consume from and emit to the SSOT only through certificate-anchored transactions.
-4. **Adapter classes.** Adapters are plural in class but singular in mission. The named adapter classes in this Overview are Identity, Telemetry, Policy, and Enforcement.
+4. **Adapter classes.** Adapters are plural in class but singular in mission. The named adapter classes in this Overview are Identity, Telemetry, Policy, Enforcement, and Integration.
 5. **Certificate-anchored provenance.** Every adapter transaction carries certificate-anchored provenance so that any downstream artifact can be traced back to its originating identity and SSOT state.
 
 *See Diagram 2 for the adapter-class arrangement against the SSOT boundary and certificate chain.*
 
-[DIAGRAM-02: A 16:9 muted-blue schematic showing the SSOT boundary, four adapter classes (Identity, Telemetry, Policy, Enforcement), certificate chain nodes (C1–C4), directional flow arrows, and the Governance OS substrate. No text baked into the image. Publication-grade.]
+[DIAGRAM-02: A 16:9 muted-blue schematic showing the SSOT boundary, five adapter classes (Identity, Telemetry, Policy, Enforcement, Integration), certificate chain nodes (C1–C5), directional flow arrows, and the Governance OS substrate. No text baked into the image. Publication-grade.]
 
 *As shown in Table 1, each named adapter class maps to a defined role against SSOT, Identity, and Security.*
 
-[TABLE-01: A 4-column table mapping adapter classes (Identity, Telemetry, Policy, Enforcement) to their SSOT interaction, Identity interaction, and Security interaction, with a fifth row for the singular mission statement.]
+[TABLE-01: A 4-column table mapping adapter classes (Identity, Telemetry, Policy, Enforcement, Integration) to their SSOT interaction, Identity interaction, and Security interaction, with a sixth row for the singular mission statement.]
 
 ---
 
@@ -164,7 +165,21 @@ The master specification names the adapter classes canonically as belonging to a
 
 *As shown in Diagram 3, the canonical truth flow is unidirectional from SSOT through the adapter classes and back only as certificate-anchored provenance.*
 
-[DIAGRAM-03: A 16:9 muted-blue schematic showing unidirectional truth flow from a singular SSOT through the four named adapter classes and back to SSOT only as certificate-anchored provenance arrows, with a drift-signal annotation at the Policy/Enforcement interface. No text baked into the image. Publication-grade.]
+[DIAGRAM-03: A 16:9 muted-blue schematic showing unidirectional truth flow from a singular SSOT through the five named adapter classes and back to SSOT only as certificate-anchored provenance arrows, with a drift-signal annotation at the Policy/Enforcement interface and a change-intent annotation at the Integration interface. No text baked into the image. Publication-grade.]
+
+### 4.7 Integration Adapter Class — NEW (Proposed)
+
+Added per resolved ODA-15 (see `ARCHITECTURE.md` §13, 2026-04-15, Option a). The Integration Adapter class closes the modernization gap in the UIAO_003 doctrinal taxonomy: where Telemetry, Policy, and Enforcement are read/assure roles, Integration is the single doctrinal class for *change-making actions against a target environment*.
+
+**NEW (Proposed) — role statement.** Translate authorized change intent — expressed as object-keyed, certificate-anchored requests — into create / update / delete actions against a target environment (identity systems, tenant configuration, network enforcement points, ticketing and ITSM systems, declarative security baselines), and emit an object-keyed, certificate-anchored change record back to the SSOT as provenance. Integration adapters are *change-makers*; they never mutate SSOT directly, and the change record they emit is the only artifact that crosses back to SSOT.
+
+**NEW (Proposed) — canonical constraints retained.** Serves SSOT + Identity + Security; never mutates SSOT; certificate-anchored; GCC-Moderate boundary; object identity only. Every create / update / delete action carries a certificate-anchored provenance record identifying the requesting identity, the target object, and the SSOT state against which the change was authorized.
+
+**NEW (Proposed) — boundary with Enforcement.** Enforcement produces *external assurance artifacts* from policy outcome records (read-only, audit-facing). Integration produces *target-environment changes* from authorized intent (change-making, operator-facing). The two classes are complementary: an Enforcement adapter may emit an assurance artifact that cites an Integration adapter's change record as evidence of remediation, but neither class subsumes the other.
+
+**UNSURE.** Whether "Integration" is the canonical class name in the full UIAO Master Document Specification or whether an alternative label (for example, "Modernization" or "Actuation") appears there. The term "Integration" was adopted via resolved ODA-15 pending canon review; flagged as **NEW (Proposed)** until ratified in the Master Document.
+
+[IMAGE-05: A muted-blue wrench-on-target icon representing an Integration adapter issuing a change-making action against a target environment, with an outbound certificate-anchored change-record arrow back toward the SSOT. No text baked into the image.]
 
 ---
 
@@ -177,7 +192,7 @@ Implementation of the adapter segmentation model proceeds deterministically in t
 3. **Enforce the non-mutation invariant.** No adapter class writes to the SSOT except through certificate-anchored provenance records.
 4. **Enforce the boundary invariant.** No adapter class crosses the GCC-Moderate boundary except through the named Amazon Connect Contact Center exception.
 5. **Enforce the object-identity invariant.** No adapter class stores, derives, or processes person identity.
-6. **Stand up remaining adapter classes in sequence.** The source text does not mandate a specific sequence among Telemetry, Policy, and Enforcement; this ordering is **NEW (Proposed)**: Telemetry before Policy before Enforcement, reflecting the direction of truth flow in §4.6.
+6. **Stand up remaining adapter classes in sequence.** The source text does not mandate a specific sequence among Telemetry, Policy, Enforcement, and Integration; this ordering is **NEW (Proposed)**: Telemetry before Policy before Enforcement before Integration, reflecting the direction of truth flow in §4.6 followed by change-making actuation in §4.7.
 
 ---
 
@@ -212,13 +227,14 @@ Implementation of the adapter segmentation model proceeds deterministically in t
 | Object ID | Type | Title |
 |---|---|---|
 | DIAGRAM-01 | Diagram | Adapter classes around singular SSOT core |
-| DIAGRAM-02 | Diagram | SSOT boundary with four adapter classes and certificate chain |
+| DIAGRAM-02 | Diagram | SSOT boundary with five adapter classes and certificate chain |
 | DIAGRAM-03 | Diagram | Cross-adapter unidirectional truth flow |
 | TABLE-01 | Table | Adapter class → SSOT / Identity / Security role mapping |
 | IMAGE-01 | Image | Identity adapter class icon |
 | IMAGE-02 | Image | Telemetry adapter class icon — NEW (Proposed) |
 | IMAGE-03 | Image | Policy adapter class icon — NEW (Proposed) |
 | IMAGE-04 | Image | Enforcement adapter class icon — NEW (Proposed) |
+| IMAGE-05 | Image | Integration adapter class icon — NEW (Proposed) |
 
 ### Appendix C — Copy Sections
 
