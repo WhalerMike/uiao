@@ -14,10 +14,6 @@ jobs:
   mypy:
     name: mypy static type check (impl)
     runs-on: ubuntu-latest
-    # Advisory first-run: mypy has never been invoked on this codebase in
-    # CI, so the baseline is dirty. Keep the job running so findings surface
-    # in logs, but do not block PRs until CI-011 tightens the gate.
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,6 +26,10 @@ jobs:
       - name: Install impl with dev extras
         run: pip install --quiet -e './impl[dev]'
 
-      - name: Run mypy
+      - name: Run mypy (advisory)
         working-directory: impl
+        # Advisory first-run: mypy has never been invoked on this codebase in
+        # CI, so the baseline is dirty. Keep the step running so findings
+        # surface in logs, but do not fail the job until CI-011 tightens.
+        continue-on-error: true
         run: mypy src/
