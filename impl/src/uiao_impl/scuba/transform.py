@@ -29,6 +29,8 @@ import yaml
 
 from uiao_impl.ir.adapters.scuba.transformer import (
     SCuBATransformResult,
+)
+from uiao_impl.ir.adapters.scuba.transformer import (
     transform_scuba_to_ir as _core_transform,
 )
 

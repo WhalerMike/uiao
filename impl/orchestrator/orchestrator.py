@@ -20,10 +20,8 @@ File: orchestrator/orchestrator.py
 
 from __future__ import annotations
 
-import argparse
 import json
 import logging
-import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -597,9 +595,9 @@ def orchestrate(
         last_output_path = result.output_path
         if not result.success:
             all_success = False
-            logger.error(f"Plane 1 failed, stopping pipeline")
+            logger.error("Plane 1 failed, stopping pipeline")
         else:
-            logger.info(f"Plane 1 succeeded")
+            logger.info("Plane 1 succeeded")
 
     if "plane2" in planes_to_run and all_success and last_output_path:
         result = _run_plane_2(last_output_path, ksi_dir, config_dir, max_retries)
@@ -607,9 +605,9 @@ def orchestrate(
         last_output_path = result.output_path
         if not result.success:
             all_success = False
-            logger.error(f"Plane 2 failed, stopping pipeline")
+            logger.error("Plane 2 failed, stopping pipeline")
         else:
-            logger.info(f"Plane 2 succeeded")
+            logger.info("Plane 2 succeeded")
 
     if "plane3" in planes_to_run and all_success and last_output_path:
         result = _run_plane_3(last_output_path, evidence_dir, config_dir, max_retries)
@@ -617,18 +615,18 @@ def orchestrate(
         last_output_path = result.output_path
         if not result.success:
             all_success = False
-            logger.error(f"Plane 3 failed, stopping pipeline")
+            logger.error("Plane 3 failed, stopping pipeline")
         else:
-            logger.info(f"Plane 3 succeeded")
+            logger.info("Plane 3 succeeded")
 
     if "plane4" in planes_to_run and all_success and last_output_path:
         result = _run_plane_4(last_output_path, oscal_dir, config_dir, max_retries)
         manifest.add_result(result)
         if not result.success:
             all_success = False
-            logger.error(f"Plane 4 failed")
+            logger.error("Plane 4 failed")
         else:
-            logger.info(f"Plane 4 succeeded")
+            logger.info("Plane 4 succeeded")
 
     overall_duration = time.time() - overall_start
     manifest.finalize(overall_duration, all_success)

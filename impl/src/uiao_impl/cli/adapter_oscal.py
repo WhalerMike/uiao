@@ -95,9 +95,9 @@ def _create_app():
 
 def _load_adapter_claims(adapter_id: str, state_file: Path):
     """Load adapter and extract claims from a state/config file."""
-    from uiao_impl.adapters.terraform_adapter import TerraformAdapter
     from uiao_impl.adapters.m365_adapter import M365Adapter
     from uiao_impl.adapters.paloalto_adapter import PaloAltoAdapter
+    from uiao_impl.adapters.terraform_adapter import TerraformAdapter
 
     if adapter_id == "terraform":
         a = TerraformAdapter({})
@@ -115,7 +115,6 @@ def _load_adapter_claims(adapter_id: str, state_file: Path):
         # Generic: load JSON, normalize raw
         data = json.loads(state_file.read_text())
         records = data if isinstance(data, list) else data.get("value", data.get("result", []))
-        from uiao_impl.adapters import _get_adapter_class
         raise NotImplementedError(f"Generic adapter loading for '{adapter_id}' not yet implemented. Use terraform, m365, or palo-alto.")
 
 

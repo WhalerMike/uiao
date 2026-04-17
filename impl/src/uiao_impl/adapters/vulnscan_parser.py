@@ -5,7 +5,8 @@ Handles JSON output from Tenable, Qualys, or generic scanner formats.
 """
 
 from __future__ import annotations
-from typing import Any, Dict, List
+
+from typing import Dict, List
 
 _SEVERITY_PRIORITY = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
 
