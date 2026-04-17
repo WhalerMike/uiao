@@ -1,5 +1,5 @@
 ---
-document_id: UIAO_ADAPTER_TRAINING
+document_id: UIAO_122
 title: "UIAO Adapter Developer Training Program"
 version: "1.0"
 status: Current
