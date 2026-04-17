@@ -1,30 +1,31 @@
-# UIAO Customer Documentation Platform — Architecture
+# UIAO Architecture
 
-> **Status:** NEW (Proposed) — pending sign-off
-> **Canonical location (proposed):** `uiao-core/ARCHITECTURE.md`
-> **Scope:** End-to-end architecture for the UIAO Customer Documentation platform spanning the federal pair — `uiao-core` (canonical authority) and `uiao-docs` (derived publication surface).
-> **Out of scope:** `uiao-gos` — a separate commercial product with its own companion architecture document (`uiao-gos/ARCHITECTURE.md`). No canon, tooling, secrets, or workflows are shared between the federal pair and `uiao-gos`.
-> **Authoring convention:** Per UIAO No-Hallucination Protocol, proposed artifacts are marked `NEW (Proposed)`, unknowns are marked `UNSURE`, and gaps are marked `MISSING`.
+> **Status:** Current
+> **Canonical location:** `core/ARCHITECTURE.md` (within the consolidated `WhalerMike/uiao` monorepo)
+> **Scope:** End-to-end architecture for the UIAO substrate: canon authority (`core/`), derived documentation (`docs/`), and Python implementation (`impl/`). Covers the directory-migration subsystem as an integrated modernization-adapter domain (per ADR-028).
+> **Authoring convention:** Per the UIAO No-Hallucination Protocol, proposed artifacts are marked `NEW (Proposed)`, unknowns `UNSURE`, and gaps `MISSING`.
 
 ---
 
 ## 1. Purpose
 
-Define the canonical architecture, governance contracts, compliance posture, and operational mechanics of the Customer Documentation platform for the federal-government offering. This document is the single source of truth for how `uiao-core` and `uiao-docs` coordinate to produce FedRAMP-Moderate-appropriate customer-facing documentation, and for how on-prem production in Azure Government is reached from GitHub-based development.
+Define the canonical architecture, governance contracts, compliance posture, and operational mechanics of the UIAO substrate. This document is the single source of truth for how `core/`, `docs/`, and `impl/` coordinate under the FedRAMP-Moderate posture, and for how on-prem production in Azure Government is reached from GitHub-based development.
 
-This document **does not** cover `uiao-gos`. See `uiao-gos/ARCHITECTURE.md` for the commercial product's governance model.
+Historical note (see ADR-028): prior to 2026-04-17 this document described a four-repository topology with a firewall between the federal pair and a separate commercial `uiao-gos` product. That firewall has been retired; `uiao-gos` contents are integrated under `impl/src/uiao_impl/directory_migration/` and its two IPAM adapters are registered in the canonical `core/canon/modernization-registry.yaml`.
 
-## 2. Repository topology
+## 2. Module topology
 
-| Repo | Role | Authority | Compliance Posture | Contents |
+| Module | Role | Authority | Compliance Posture | Contents |
 |---|---|---|---|---|
-| `WhalerMike/uiao-core` | Canonical governance | Authoritative | FedRAMP Moderate | State machines, enforcement rules, canon manifests, playbooks, appendices |
-| `WhalerMike/uiao-docs` | Derived publication | Consumer of canon | FedRAMP Moderate | Articles, guides, customer-documents tree, rendered Quarto site |
-| `WhalerMike/uiao-gos` | **Out of scope** | Commercial product | Commercial — no federal controls | See `uiao-gos/ARCHITECTURE.md` |
+| `core/` | Canonical governance | Authoritative | FedRAMP Moderate | Schemas, canon documents, control library, enforcement tooling, reference implementations |
+| `docs/` | Derived publication | Consumer of canon | FedRAMP Moderate | Articles, guides, narrative, rendered Quarto site |
+| `impl/` | Python implementation | Consumer of canon | FedRAMP Moderate | Drift detector, conformance runner, OSCAL/SSP generators, evidence collectors, **directory-migration subsystem** (`impl/src/uiao_impl/directory_migration/`) |
 
-### 2.1 Compliance posture (federal pair)
+Declared machine-readably in `core/canon/substrate-manifest.yaml` (UIAO_200) and schema-enforced via `core/schemas/substrate-manifest/substrate-manifest.schema.json`.
 
-The `uiao-core` + `uiao-docs` pair is designed to be offered free of charge to U.S. Government agencies under FedRAMP-Moderate-compatible constraints:
+### 2.1 Compliance posture
+
+The UIAO substrate is designed to be offered free of charge to U.S. Government agencies under FedRAMP-Moderate-compatible constraints:
 
 - **FedRAMP Moderate** — system categorization
 - **NIST SP 800-53 Rev 5** — control baseline, moderate impact tailoring
@@ -34,17 +35,16 @@ The `uiao-core` + `uiao-docs` pair is designed to be offered free of charge to U
 - **Microsoft GCC-Moderate inheritances** — telemetry, location data, and dashboard restrictions inherited from the GCC-Moderate tenant boundary
 - **Exception** — Amazon Connect Contact Center operates in Commercial Cloud per existing UIAO exception
 
-### 2.2 Firewall between federal and commercial
+### 2.2 Uniform canon invariants
 
-`uiao-gos` is explicitly firewalled from the federal pair:
+Every adapter in the monorepo, including those in the directory-migration subsystem, is subject to the same canon invariants, enforced via `core/schemas/adapter-registry/adapter-registry.schema.json`:
 
-- **No canon sync** in either direction
-- **No shared secrets** — each repo has its own `GEMINI_API_KEY` and PAT tokens
-- **No cross-referenced artifacts** — the federal pair must not reference `uiao-gos` content, and vice versa
-- **No shared workflows** — CI/CD pipelines are independent
-- **No shared branding language** — the federal offering uses federal-specific terminology; `uiao-gos` uses commercial-neutral terminology
+- `gcc-boundary: gcc-moderate` (Amazon Connect exception noted per-adapter)
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
 
-Violation of the firewall is CI-blocking via the `firewall-check` workflow (see §9).
+Commercial-variant adapters (e.g. `bluecat-address-manager`, not FedRAMP-authorized) coexist with federal-preferred adapters (e.g. `infoblox`, FedRAMP-Moderate authorized, CDM-integrated) in the same registry. Consumers select by manifest field, not by repository boundary. The previous federal/commercial firewall (ADR-025 §D7) is retired; see ADR-028.
 
 ## 3. Canon registry mechanism
 
@@ -332,7 +332,6 @@ customer-documents/**/*.webp filter=lfs diff=lfs merge=lfs -text
 | `master-prompts-sync.yml` | uiao-docs | merge to main | Rebuild `MASTER-IMAGE-PROMPTS.md` |
 | `quarto-build.yml` | uiao-docs | merge to main, release tag | Render site, publish to GitHub Pages |
 | `lfs-budget-check.yml` | uiao-docs | PR, weekly schedule | Report LFS quota consumption |
-| `firewall-check.yml` | uiao-core, uiao-docs | PR | Block any PR that references `uiao-gos` content or identifiers |
 | `conformance-run.yml` | uiao-core | `repository_dispatch: modernization-completed`, manual | Execute named conformance adapter (e.g. ScubaGear) against target tenant; commit findings to `evidence/conformance/<adapter>/<run-id>/` |
 | `conmon-scheduled.yml` | uiao-core | schedule (monthly, 1st at 0200 UTC) | Fan-out all `class: conformance, status: active` adapters; aggregate outputs |
 | `conmon-aggregate.yml` | uiao-core | after `conformance-run.yml` or `conmon-scheduled.yml` | Roll findings into POA&M CSV + dashboard JSON; open tracking issues on regressions |
@@ -415,7 +414,7 @@ For a static Quarto site, the production server does not need Git running at all
 
 | # | Decision | Owner | Resolution needed by |
 |---|---|---|---|
-| 1 | ~~`uiao-gos` role~~ **RESOLVED** — Out of scope (commercial, separate architecture doc) | — | — |
+| 1 | ~~`uiao-gos` role~~ **RESOLVED** (superseded 2026-04-17) — See ADR-028: firewall retired, directory-migration subsystem integrated under `impl/src/uiao_impl/directory_migration/`; IPAM adapters registered in `core/canon/modernization-registry.yaml`. | — | — |
 | 2 | ~~Specific draw.io adoption trigger~~ | Michael | Before architecture-series authoring |
 | 3 | LFS data pack purchase trigger threshold | Michael | When budget-check first alerts (~800 MB) |
 | 4 | Customer-specific branding overrides (LaTeX/CSS per agency) | Michael | When first customer deliverable is scoped |
@@ -444,6 +443,7 @@ For a static Quarto site, the production server does not need Git running at all
 | 2026-04-16 | 0.7.0 | **Terraform / OpenTofu adapter reserved.** New modernization-registry entry `terraform` added at `status: reserved`, `mission-class: integration` (first adopter of the newly-ratified class beyond the original five). Canon-level slot reservation only; implementation lands separately in `uiao-impl` per the canon-consumer rule. Scope: Terraform/OpenTofu state, plans, HCL configuration; three-way drift detection (live ↔ state ↔ HCL); KSI-anchored evidence bundles per run. Status transitions `reserved` → `active` once `src/uiao_impl/adapters/terraform_adapter.py` ships with test coverage | Claude (Cowork) |
 | 2026-04-16 | 0.8.0 | **Terraform adapter activated.** Registry entry `terraform` flipped from `status: reserved` → `active`, `phase: phase-planning` → `phase-1` after `TerraformAdapter(DatabaseAdapterBase)` shipped in `uiao-impl` (WhalerMike/uiao-impl#8, commit 3635110). All 7 canonical adapter domains implemented with scaffold bodies; 5 Terraform-specific extension methods (stubs pending `python-hcl2` integration). 37 new tests, all passing | Claude (Cowork) |
 | 2026-04-16 | 0.9.0 | **UIAO_003 promotion pass.** Evidence-based ratification of 12 markers across UIAO_003 §4.2–§4.7: all five role statements promoted from NEW (Proposed) to ratified (citing operational adapter registry entries, schema invariants, and ODA-15); all canonical-constraints blocks ratified (schema-enforced); §4.4 MISSING frameworks resolved (NIST SP 800-53 Rev 5, FedRAMP Moderate, CISA SCuBA); §4.5 MISSING artifact types resolved (OSCAL SSP, POA\&M, SAR); §4.7 UNSURE on "Integration" name closed (ODA-15 owner decision); §6 UNSURE drift cadence resolved (CONMON.md §6.3). §4.6 Cross-Adapter Truth Flow ratified (SSOT.md + schema). Remaining: §5.6 sequence stays NEW (Proposed); §4.3 "Telemetry" name UNSURE pending Master Doc. Appendix B IMAGE icons and Appendix D references updated | Claude (Cowork) |
+| 2026-04-17 | 1.0.0 | **Monorepo consolidation + `uiao-gos` integration (ADR-028).** Four repositories merged into the consolidated `WhalerMike/uiao` monorepo (PR #1, 3,549 commits with history preserved). `gos/` dissolved; its Python code relocated to `impl/src/uiao_impl/directory_migration/` (PR #3); its two IPAM adapters (`bluecat-address-manager`, `infoblox`) registered in `core/canon/modernization-registry.yaml`. Substrate manifest (`core/canon/substrate-manifest.yaml`, UIAO_200) and schema (`core/schemas/substrate-manifest/substrate-manifest.schema.json`) landed (PR #4). This document (§2, §9, §13, §17) updated to retire the federal/commercial firewall (ADR-025 §D7 superseded). `firewall-check.yml` workflow row removed from §9. Status: `NEW (Proposed)` → `Current`. | Claude (Cowork) |
 | 2026-04-16 | 1.0.0 | **v1.0 — Adapter ecosystem complete.** 16 adapters registered (9 modernization + 7 conformance); 15 implemented with zero stubs; 420/420 conformance CI-gated. OSCAL trifecta proven end-to-end: SAR (18 tests) + POA\&M (11 tests) + SSP (8 tests) = 37 pipeline tests. Governance loop closed: drift → POA\&M → ServiceNow remediation tickets → resolution tracking (9 tests). 4 real parser modules (terraform, m365, paloalto, vulnscan) with 80+ behavioral tests against 15 fixture files. Phase D repo-split complete (ADRs + canonical-rules → uiao-core; deploy.yml → uiao-docs). All 13 adapter ATS + AVS docs authored with conformance matrices. Quarto site builds clean (150 pages, zero warnings). Canonical specs delivered: Conformance Test Plan, Integration Test Plan, Developer Training Program, Operations Runbook. Phase 4 acceptance test infrastructure deployed (auto-skip without credentials, auto-run when secrets are set). 50+ PRs merged across 3 repos in single session | Claude (Cowork) |
 
 ## 15. Federal compliance mapping
@@ -457,7 +457,7 @@ The architectural choices in this document map to NIST SP 800-53 Rev 5 control f
 | **CM** — Configuration Management | Canon registry (§3); three-layer sync (§4); `drift-scan` CI gate; semantic versioning with git tags | Baseline managed as code; deviations detected and blocked |
 | **CP** — Contingency Planning | Mirror to Azure Gov (Phase 1); air-gap option (Phase 4); LFS content-addressable storage | Supports recovery and continuity requirements |
 | **IA** — Identification and Authentication | GitHub + Azure Gov identity; federal PKI for TLS (Phase 2) | Authorized user identification at all tiers |
-| **RA** — Risk Assessment | Release-lock policy (§6); firewall-check workflow (§9) | Frozen locked content prevents unauthorized changes; firewall prevents scope creep |
+| **RA** — Risk Assessment | Release-lock policy (§6); canon-validation + drift-scan + metadata-validator CI gates (§9) | Frozen locked content prevents unauthorized changes; schema-enforced canon prevents scope creep |
 | **SA** — System and Services Acquisition | Open-source toolchain (Quarto, Apache, Rocky/RHEL); OSS licensing tracked per dependency | Supply-chain transparency |
 | **SC** — System and Communications Protection | FIPS 140-3 mode on Apache (Phase 2); TLS via federal PKI; Azure Gov boundary | Cryptographic protections consistent with federal requirements |
 | **SI** — System and Information Integrity | Prompt-hash caching (§7.4); LFS content-addressability; CI-enforced drift-scan | Integrity of generated content is detectable and verifiable |
@@ -555,7 +555,7 @@ Defined in §3.2 with full schema. Key class-specific fields: `vendor`, `license
 
 `conmon-aggregate.yml` reads every `evidence/conformance/<adapter>/<run-id>/findings.json`, groups by control-family and severity, writes two artifacts: (1) `dashboard/conmon-dashboard.json` for site rendering, (2) `poam/poam-<YYYY-MM>.csv` for FedRAMP POA&M submission. Regressions (new findings relative to prior run) automatically open GitHub issues labeled `conmon/regression` with adapter + control context.
 
-**Secrets** for Conformance Adapters live in GitHub Actions secrets scoped to `uiao-core` only. Naming pattern: `<ADAPTER>_<TENANT>_<PURPOSE>` (e.g. `SCUBAGEAR_TENANT_APP_ID`). Rotation via the `canon-steward` subagent on a 90-day cadence (UNSURE — confirm federal rotation requirement). Never committed; never passed to `uiao-docs` or `uiao-gos`.
+**Secrets** for Conformance Adapters live in GitHub Actions secrets scoped to the monorepo, with per-environment (not per-module) access control. Naming pattern: `<ADAPTER>_<TENANT>_<PURPOSE>` (e.g. `SCUBAGEAR_TENANT_APP_ID`). Rotation via the `canon-steward` subagent on a 90-day cadence (UNSURE — confirm federal rotation requirement). Secrets are never committed to the repo.
 
 ### 16.7 Significant Change Request (SCR) evidence pattern
 
@@ -618,8 +618,8 @@ Source documents for FedRAMP ConMon and NIST 800-137 are now local at `complianc
 ---
 
 **Next actions upon sign-off:**
-1. Commit this file to `uiao-core/ARCHITECTURE.md`
-2. Commit companion `uiao-gos/ARCHITECTURE.md` to `uiao-gos` repo
-3. Add pointer paragraphs to `uiao-core/README.md`, `uiao-docs/README.md`, and `uiao-gos/README.md`
-4. Commit companion `uiao-core/CONMON.md` (standalone operational detail)
+1. Commit this file to `core/ARCHITECTURE.md`
+2. ~~Commit companion `uiao-gos/ARCHITECTURE.md`~~ — superseded by ADR-028: `uiao-gos` dissolved into `impl/src/uiao_impl/directory_migration/`; no separate architecture document needed.
+3. Repo-root `README.md` initialized as of UIAO_200 substrate manifest (PR #4); `core/README.md` references this document.
+4. Commit companion `core/CONMON.md` (standalone operational detail)
 5. Proceed with build steps 0a–7 per todo list
