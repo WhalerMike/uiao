@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write  # required for sigstore keyless signing
 
 jobs:
   build:
@@ -20,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,7 +34,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install build tooling
-        run: pip install --quiet build
+        run: pip install --quiet build cyclonedx-bom
 
       - name: Resolve tag / version
         id: version
@@ -49,7 +51,28 @@ jobs:
         working-directory: impl
         run: python -m build --sdist --wheel --outdir ../dist/
 
-      - name: Upload distributions as workflow artifact
+      - name: Generate CycloneDX SBOM
+        run: |
+          # Install the wheel into a fresh venv so cyclonedx-bom reads the
+          # live install graph, not the build env. Output as JSON next to
+          # the distribution artifacts so it rides along in the release.
+          python -m venv /tmp/sbom-env
+          /tmp/sbom-env/bin/pip install --quiet dist/*.whl cyclonedx-bom
+          /tmp/sbom-env/bin/cyclonedx-py environment \
+            --output-format json \
+            --output-file dist/uiao-impl-${{ steps.version.outputs.version }}.sbom.cyclonedx.json
+          echo "SBOM bytes: $(wc -c < dist/uiao-impl-${{ steps.version.outputs.version }}.sbom.cyclonedx.json)"
+
+      - name: Sign distributions with sigstore (keyless)
+        uses: sigstore/gh-action-sigstore-python@v3.0.0
+        with:
+          inputs: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/*.sbom.cyclonedx.json
+          release-signing-artifacts: false
+
+      - name: Upload distributions + SBOM + signatures as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: impl-dist-${{ steps.version.outputs.tag }}
@@ -61,19 +84,41 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download build artifacts
+      - name: Download build artifacts (wheel + sdist + SBOM + signatures)
         uses: actions/download-artifact@v4
         with:
-          name: impl-dist-${{ needs.build.outputs.tag || github.ref_name }}
+          name: impl-dist-${{ needs.build.outputs.tag }}
           path: dist/
 
-      - name: Create GitHub Release and attach wheel + sdist
+      - name: Create GitHub Release and attach all artifacts
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           generate_release_notes: true
           fail_on_unmatched_files: true
+          body: |
+            ## Artifacts
+
+            | File | Purpose |
+            |---|---|
+            | `*.whl` | Installable Python wheel |
+            | `*.tar.gz` | Source distribution |
+            | `*.sbom.cyclonedx.json` | CycloneDX 1.5 Software Bill of Materials |
+            | `*.sigstore` | Sigstore keyless signature bundle (verify via `sigstore verify`) |
+
+            ## Verification
+
+            ```bash
+            pip install sigstore
+            sigstore verify identity \
+              --cert-identity-regex "https://github\.com/WhalerMike/uiao/\.github/workflows/release\.yml@refs/tags/${{ needs.build.outputs.tag }}" \
+              --cert-oidc-issuer https://token.actions.githubusercontent.com \
+              uiao_impl-${{ needs.build.outputs.version }}-py3-none-any.whl \
+              --bundle uiao_impl-${{ needs.build.outputs.version }}-py3-none-any.whl.sigstore
+            ```
