@@ -1,0 +1,285 @@
+---
+title: "Adapter Integration Guide — Entra ID"
+subtitle: "Step-by-step. One item at a time. Production-grade."
+date: today
+date-format: "MMMM D, YYYY"
+description: "Complete integration walkthrough for the Entra ID adapter: vendor-side setup, certificate acquisition, UIAO-side configuration, first call, fixture capture, conformance verification."
+aspirational: true
+---
+
+One step at a time. Each step names **what you do**, **how to verify**, and **what to do if it fails**. Do not skip steps — the verify checks in each step are what unlock the next.
+
+::: {.callout-note}
+## What this guide produces
+
+By the end of this guide:
+
+- A working Microsoft 365 Developer Program tenant with an app registration dedicated to UIAO
+- A client certificate uploaded to the app registration (cert-anchored auth per UIAO_129 §2)
+- A tier-1 evidence bundle under `impl/out/tier1/entra-id/`
+- A tier-2 contract fixture candidate under `impl/tests/fixtures/contract/entra-id/`
+- The `entra-id` adapter registry status advanced from `draft` → `beta`
+:::
+
+## Prerequisites
+
+- A Microsoft account (personal or work; for production-facing contribution, a dedicated UIAO-contributor account is recommended)
+- PowerShell 7+ OR Python 3.10+ on your workstation
+- OpenSSL (Linux/macOS) or `New-SelfSignedCertificate` (Windows PowerShell) for generating the client certificate
+- Local clone of [`WhalerMike/uiao`](https://github.com/WhalerMike/uiao) with `$UIAO_WORKSPACE_ROOT` set
+- ~60 minutes for first-time completion (~20 minutes thereafter)
+
+---
+
+## Step 1 — Create the Microsoft 365 Developer Program tenant
+
+Follow the shared walkthrough: [Academy — Setting up a tier-1 test environment](../contributor-tier-1-setup.qmd).
+
+**Verify:** you can sign in at `https://admin.microsoft.com` with the admin account. Admin center shows 25 E5 licenses including Entra ID P2.
+
+**If it fails:** the Developer Program sign-up occasionally rejects new accounts due to Microsoft's automated fraud screening. If you hit a sign-up block, try a different region on the profile or use a different source IP (not a known VPN exit). Microsoft's [FAQ](https://learn.microsoft.com/en-us/office/developer-program/microsoft-365-developer-program-faq) lists the current constraints.
+
+---
+
+## Step 2 — Generate a client certificate
+
+UIAO's canon invariant `certificate-anchored: true` (UIAO_129 §2) requires cert-based auth wherever the vendor supports it. Entra ID supports client certificates on app registrations; we use them instead of client secrets.
+
+### Option A — PowerShell (Windows)
+
+```powershell
+$cert = New-SelfSignedCertificate `
+  -Subject "CN=UIAO-EntraID-Adapter" `
+  -KeyExportPolicy Exportable `
+  -KeyLength 2048 `
+  -KeyAlgorithm RSA `
+  -HashAlgorithm SHA256 `
+  -CertStoreLocation "Cert:\CurrentUser\My" `
+  -NotAfter (Get-Date).AddDays(90)
+
+# Export the public cert (upload this to Entra) and the PFX (keep locally, encrypted)
+$pwd = ConvertTo-SecureString -String "<strong-pfx-password>" -Force -AsPlainText
+Export-Certificate -Cert $cert -FilePath "uiao-entra.cer"
+Export-PfxCertificate -Cert $cert -FilePath "uiao-entra.pfx" -Password $pwd
+```
+
+### Option B — OpenSSL (Linux/macOS)
+
+```bash
+# Generate a 2048-bit RSA key + self-signed cert, 90-day validity
+openssl req -x509 -newkey rsa:2048 -sha256 -days 90 -nodes \
+  -keyout uiao-entra.key -out uiao-entra.cer \
+  -subj "/CN=UIAO-EntraID-Adapter"
+
+# Bundle key + cert into a PFX for app use
+openssl pkcs12 -export -out uiao-entra.pfx \
+  -inkey uiao-entra.key -in uiao-entra.cer \
+  -passout pass:<strong-pfx-password>
+```
+
+**Verify:** two files exist. `uiao-entra.cer` (public cert, upload to Entra). `uiao-entra.pfx` (keep private, never commit).
+
+**If it fails:** on Windows, ensure you run PowerShell as a regular user, not Admin (cert store location differs). On Linux, if `openssl` isn't installed: `sudo apt install openssl` or `brew install openssl`.
+
+---
+
+## Step 3 — Register an app in Entra ID
+
+1. Sign in to `https://entra.microsoft.com` with your Developer Program tenant admin account.
+2. Go to **Applications → App registrations → New registration**.
+3. Name: `UIAO-EntraID-Adapter`.
+4. Supported account types: **Accounts in this organizational directory only (Single tenant)**.
+5. Redirect URI: leave blank.
+6. Register.
+
+On the new app's **Overview** page, copy and save to your password manager:
+
+- **Application (client) ID**
+- **Directory (tenant) ID**
+
+**Verify:** app appears in the app registration list; both IDs are saved.
+
+**If it fails:** if "New registration" is grayed out, you're signed in as a non-admin. Switch accounts.
+
+---
+
+## Step 4 — Upload the client certificate
+
+1. App registration → **Certificates & secrets → Certificates → Upload certificate**.
+2. Select `uiao-entra.cer` from Step 2.
+3. Description: `UIAO adapter 90-day cert (<YYYY-MM-DD>)`.
+4. Click **Add**.
+
+**Verify:** certificate appears with a thumbprint and expiration date. Save the thumbprint to your password manager — you'll need it for adapter config.
+
+**If it fails:** if Entra rejects the certificate, it's likely because the cert is password-protected. The `.cer` file (public half) should NOT have a password — only the `.pfx` does.
+
+---
+
+## Step 5 — Grant API permissions
+
+1. App registration → **API permissions → Add a permission → Microsoft Graph → Application permissions**.
+2. Add each of:
+   - `Directory.Read.All`
+   - `Policy.Read.All`
+   - `User.Read.All`
+   - `Group.Read.All`
+   - `AuditLog.Read.All`
+3. **Grant admin consent for <your-tenant>** (button at the top of the permissions list).
+
+**Verify:** each permission row shows a green check under "Status" (Granted for tenant).
+
+**If it fails:** if the consent grant fails with a 403, the account lacks Global Administrator. Use the Developer Program's initial admin account you created in Step 1.
+
+---
+
+## Step 6 — Configure the UIAO adapter
+
+Set the adapter environment variables. In a shell session that won't be shared:
+
+```bash
+# Bash
+export UIAO_ENTRA_TENANT_ID="<directory-id>"
+export UIAO_ENTRA_CLIENT_ID="<application-id>"
+export UIAO_ENTRA_CERT_THUMBPRINT="<thumbprint-from-step-4>"
+export UIAO_ENTRA_PFX_PATH="/absolute/path/to/uiao-entra.pfx"
+export UIAO_ENTRA_PFX_PASSWORD="<strong-pfx-password>"
+```
+
+```powershell
+# PowerShell (session-scoped)
+$env:UIAO_ENTRA_TENANT_ID = "<directory-id>"
+$env:UIAO_ENTRA_CLIENT_ID = "<application-id>"
+$env:UIAO_ENTRA_CERT_THUMBPRINT = "<thumbprint>"
+$env:UIAO_ENTRA_PFX_PATH = "C:\Users\you\uiao-entra.pfx"
+$env:UIAO_ENTRA_PFX_PASSWORD = "<strong-pfx-password>"
+```
+
+**Verify:** `echo $UIAO_ENTRA_TENANT_ID` (or `$env:...`) returns the expected value. No variable is empty.
+
+**If it fails:** if a later step reads `None` for any variable, the shell lost the exports. Re-run. For persistence across sessions, use a secrets manager (1Password CLI, `pass`, Azure Key Vault) — **never** commit these to any file in the repo.
+
+---
+
+## Step 7 — Verify the token flow
+
+Confirm the app + cert + permissions stack issues a valid Graph token. Run the UIAO-provided smoke test:
+
+```bash
+cd $UIAO_WORKSPACE_ROOT
+python3 -m impl.scripts.adapter_smoke_test entra-id
+```
+
+Expected output:
+
+```
+[entra-id] token acquired via certificate auth (thumbprint: <THUMB>)
+[entra-id] /v1.0/organization → 200 OK, tenant displayName: "<Your Dev Tenant>"
+[entra-id] /v1.0/users → 200 OK, 25 users returned
+SMOKE TEST PASSED
+```
+
+**Verify:** exit code 0; "SMOKE TEST PASSED" in stdout.
+
+**If it fails:**
+
+- **`401 Unauthorized`**: certificate mismatch. Thumbprint in env var must match the one uploaded to Entra. Re-copy from the Entra portal.
+- **`403 Forbidden`**: admin consent not granted. Return to Step 5, click **Grant admin consent**.
+- **`invalid_client`**: the PFX password is wrong, or the key in the PFX doesn't match the cert uploaded to Entra. Regenerate from Step 2.
+
+---
+
+## Step 8 — Run tier-1 conformance tests
+
+```bash
+cd $UIAO_WORKSPACE_ROOT/impl
+pytest tests/integration/test_entra_id_tier1.py -v
+```
+
+A successful run produces:
+
+1. All tests pass (exit 0)
+2. An OSCAL evidence bundle under `impl/out/tier1/entra-id/<timestamp>/`
+3. A contract-fixture candidate at `impl/tests/fixtures/contract/entra-id/tier1-capture-<timestamp>.yaml` (un-sanitized)
+
+**Verify:** `ls impl/out/tier1/entra-id/` shows a timestamped directory with `evidence.json`, `provenance.json`, `summary.md`.
+
+**If it fails:** test failures usually indicate a Graph API permission missing. Check Step 5 — specifically, `AuditLog.Read.All` is commonly forgotten and fails the audit-log enumeration test.
+
+---
+
+## Step 9 — Sanitize and commit the tier-2 fixture
+
+The fixture candidate from Step 8 contains live tenant data. Sanitize before committing per `impl/tests/fixtures/contract/README.md`:
+
+1. Open `impl/tests/fixtures/contract/entra-id/tier1-capture-<timestamp>.yaml` in an editor.
+2. Replace all tenant IDs with `<TENANT_ID>`.
+3. Replace all user principal names (`user@tenant.onmicrosoft.com`) with `user<N>@example.com`.
+4. Replace all object GUIDs with `<OBJECT_ID_NN>` and add an id-table at the top if multiple.
+5. Replace `Bearer <long-token>` with `Bearer <TOKEN>`.
+6. Rename to describe the operation: e.g., `list-users-commercial.yaml`.
+7. Add the `provenance` block per the fixture contract:
+
+```yaml
+provenance:
+  source: "live-capture"
+  url: "https://graph.microsoft.com/v1.0/users"
+  accessed: "<YYYY-MM-DD>"
+  captured_by: "<your name or handle>"
+  sanitization: "Tenant ID, UPNs, object GUIDs, and bearer token replaced with placeholders."
+```
+
+**Verify:** `grep -E '(tenant|@|Bearer [A-Za-z0-9])' impl/tests/fixtures/contract/entra-id/<file>.yaml` returns zero matches for raw values.
+
+**If it fails:** if the pre-commit hook rejects the file, it found a pattern that looks like a real secret. Review the highlighted line and complete the sanitization.
+
+---
+
+## Step 10 — Advance the adapter registry status
+
+In `core/canon/modernization-registry.yaml`, update the `entra-id` entry:
+
+```yaml
+- id: entra-id
+  status: beta           # was: draft (advancing per UIAO_131 §4)
+  test-tier-1-status: green
+  test-tier-2-status: green
+  test-tier-1-evidence: impl/out/tier1/entra-id/<timestamp>/
+  test-tier-2-fixtures: impl/tests/fixtures/contract/entra-id/
+  ...
+```
+
+Open a canon PR with:
+
+- The sanitized tier-2 fixture (Step 9)
+- The registry status advance
+- A one-line entry in `docs/findings/` if the tier-1 run surfaced any new governance findings
+
+**Verify:** `python3 scripts/validate_schemas.py` passes. `uiao substrate walk` returns zero findings. CI green on the canon PR.
+
+---
+
+## Troubleshooting — top three failure modes
+
+1. **Certificate thumbprint mismatch.** The thumbprint env var must match the thumbprint Entra shows in the portal. If you regenerated the cert without re-uploading, they diverge. Re-upload from Step 4.
+
+2. **Token caches across tests.** If the smoke test passes but pytest fails with `401`, the Python MSAL library cached a token from a stale cert. Clear `~/.uiao/msal-cache/` and retry.
+
+3. **Tenant renewed, cert still old.** The 90-day cert expires on the same schedule as the Developer Program tenant but via a separate clock. If you renew the tenant but not the cert (or vice versa), auth breaks. Set a day-60 reminder to regenerate both.
+
+## Registry status impact
+
+| State before | After this guide | Gate per [UIAO_131 §4](https://github.com/WhalerMike/uiao/blob/main/core/canon/specs/adapter-test-strategy.md) |
+|---|---|---|
+| `status: draft` | `status: beta` | Tier 1 + Tier 2 both green |
+
+To advance `beta → active`: requires a Tier-3 reference-deployment run against a partner agency's non-production GCC-Moderate tenant. Out of scope for this guide; gated on agency engagement.
+
+## Cross-references
+
+- [UIAO_131 Adapter Test Strategy](https://github.com/WhalerMike/uiao/blob/main/core/canon/specs/adapter-test-strategy.md) — the three-tier model this guide executes against
+- [UIAO_129 Application Identity Model](https://github.com/WhalerMike/uiao/blob/main/core/canon/specs/application-identity-model.md) — the canon invariant `certificate-anchored: true` this guide implements
+- [Academy — Contributor tier-1 setup](../contributor-tier-1-setup.qmd) — the Developer Program sign-up flow referenced in Step 1
+- [Tier-2 fixture contract README](https://github.com/WhalerMike/uiao/blob/main/impl/tests/fixtures/contract/README.md) — sanitization rules + provenance classes
+- [Microsoft Entra identity platform — test environment setup](https://learn.microsoft.com/en-us/entra/identity-platform/test-setup-environment)
+- [Create a free Microsoft Entra developer tenant](https://learn.microsoft.com/en-us/entra/verified-id/how-to-create-a-free-developer-account)
