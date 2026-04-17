@@ -1,0 +1,86 @@
+name: Metadata Validator
+
+on:
+  pull_request:
+    paths:
+      - 'core/canon/**/*.md'
+      - 'core/schemas/metadata-schema.json'
+      - '.github/workflows/metadata-validator.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'core/canon/**/*.md'
+      - 'core/schemas/metadata-schema.json'
+
+jobs:
+  metadata:
+    name: Validate canon document frontmatter
+    runs-on: ubuntu-latest
+    # Fail-soft initially: 4 pre-existing canon docs under core/canon/specs/
+    # use slug-style document_id values (UIAO_ADAPTER_TEST_PLAN, etc.) that
+    # don't match the metadata-schema's ^UIAO_\d{3}$ pattern. Flip to
+    # blocking once those are either (a) renumbered to a UIAO_NNN id or
+    # (b) explicitly carved out of the schema. Tracked as follow-up.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install validators
+        run: pip install --quiet jsonschema pyyaml
+
+      - name: Validate frontmatter across core/canon/**/*.md
+        run: |
+          python - <<'EOF'
+          import json, pathlib, re, sys, yaml
+          from jsonschema import Draft202012Validator
+
+          schema = json.load(open('core/schemas/metadata-schema.json'))
+          validator = Draft202012Validator(schema)
+
+          fm_pattern = re.compile(r'^---\s*\n(.*?)\n---\s*(?:\n|$)', re.DOTALL)
+
+          checked = 0
+          skipped_no_frontmatter = 0
+          failures = []
+
+          for md_path in sorted(pathlib.Path('core/canon').rglob('*.md')):
+              text = md_path.read_text(encoding='utf-8')
+              m = fm_pattern.match(text)
+              if not m:
+                  skipped_no_frontmatter += 1
+                  continue
+              try:
+                  frontmatter = yaml.safe_load(m.group(1)) or {}
+              except yaml.YAMLError as e:
+                  failures.append((str(md_path), f'invalid YAML: {e}'))
+                  continue
+
+              # Only validate docs that declare a document_id — those are
+              # the canonical UIAO_NNN docs the schema applies to. ADRs
+              # and other canon docs use a different frontmatter shape
+              # (adr: ADR-NNN) and are out of scope for metadata-schema.
+              if 'document_id' not in frontmatter:
+                  skipped_no_frontmatter += 1
+                  continue
+
+              checked += 1
+              errors = list(validator.iter_errors(frontmatter))
+              if errors:
+                  for e in errors[:5]:
+                      loc = '.'.join(str(p) for p in e.absolute_path) or '<root>'
+                      failures.append((str(md_path), f'[{loc}] {e.message}'))
+
+          print(f'Checked:                   {checked} docs with document_id')
+          print(f'Skipped (no frontmatter):  {skipped_no_frontmatter}')
+          print(f'Failures:                  {len(failures)}')
+          for path, err in failures[:30]:
+              print(f'  FAIL  {path} — {err}')
+          if failures:
+              sys.exit(1)
+          EOF
