@@ -213,9 +213,10 @@ class TerraformAdapter(DatabaseAdapterBase):
         Returns:
             ClaimSet with one ClaimObject per managed resource.
         """
-        from .terraform_parser import parse_tfstate
-        from pathlib import Path
         import json
+        from pathlib import Path
+
+        from .terraform_parser import parse_tfstate
 
         path = Path(state_source.replace("local://", ""))
         state_json = json.loads(path.read_text(encoding="utf-8"))
@@ -244,8 +245,9 @@ class TerraformAdapter(DatabaseAdapterBase):
         Returns:
             ClaimSet representing the declared desired state.
         """
-        from .terraform_parser import parse_hcl
         from pathlib import Path
+
+        from .terraform_parser import parse_hcl
 
         path = Path(hcl_content_or_path)
         if path.exists() and path.is_file():
@@ -337,7 +339,7 @@ class TerraformAdapter(DatabaseAdapterBase):
         Returns:
             DriftReport covering all three comparison axes.
         """
-        from .terraform_parser import parse_tfstate, parse_hcl, three_way_diff
+        from .terraform_parser import parse_hcl, parse_tfstate, three_way_diff
 
         # Convert live claims to resource dicts for comparison
         live_resources = [

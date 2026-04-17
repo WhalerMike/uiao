@@ -1353,14 +1353,19 @@ def ir_ssp_inject(
 # Plane 1 -- SCuBA -> IR  (registered at module load time)
 # ---------------------------------------------------------------------------
 from uiao_impl.cli.scuba import scuba_app  # noqa: E402
+
 app.add_typer(scuba_app, name="scuba")
 from uiao_impl.cli.ksi import ksi_app  # noqa: E402
+
 app.add_typer(ksi_app, name="ksi")
 from uiao_impl.cli.evidence import evidence_app  # noqa: E402
+
 app.add_typer(evidence_app, name="evidence")
 from uiao_impl.cli.oscal import oscal_app  # noqa: E402
+
 app.add_typer(oscal_app, name="oscal")
 from uiao_impl.cli.substrate import substrate_app  # noqa: E402
+
 app.add_typer(substrate_app, name="substrate")
 
 

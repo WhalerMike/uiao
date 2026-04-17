@@ -13,9 +13,9 @@ Usage in adapters:
 
 from __future__ import annotations
 
-import time
 import logging
-from typing import Any, Callable, Optional, TypeVar
+import time
+from typing import Callable, Optional, TypeVar
 
 logger = logging.getLogger(__name__)
 

@@ -10,7 +10,7 @@ Internal module consumed by PaloAltoAdapter. Handles:
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from typing import Any, Dict, List
+from typing import List
 
 
 def _members(element: ET.Element | None) -> List[str]:
