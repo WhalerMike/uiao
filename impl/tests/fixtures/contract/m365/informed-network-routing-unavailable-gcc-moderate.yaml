@@ -1,0 +1,61 @@
+# Tier-2 contract fixture codifying FINDING-001 (FedRAMP GCC-Moderate INR
+# unavailability) per UIAO_131 §7. When the m365 adapter is configured for a
+# GCC-Moderate tenant and attempts to query the Informed Network Routing
+# status endpoint, it must handle the unavailability gracefully — no retry
+# loop, no exception, no silent pass. Tier-2 proves this without a live call.
+
+adapter: "m365"
+operation: "get_informed_network_routing_status"
+cloud_variant:
+  - gcc-moderate
+  - gcc-high
+  - dod
+  - germany
+  - china
+
+request:
+  method: GET
+  url: "https://graph.microsoft.com/v1.0/admin/informedNetworkRouting/status"
+  headers:
+    Authorization: "Bearer <TOKEN>"
+    Accept: "application/json"
+  body: null
+
+response:
+  # Microsoft Learn states the feature "supports tenants in WW Commercial
+  # cloud but not the GCC Moderate, GCC High, DoD, Germany, or China
+  # clouds." Operationally this surfaces as a 404 or a feature-not-available
+  # error. Either shape must be handled. The canonical response used here
+  # is the 404 shape; the adapter also treats {ErrorCode: "NotSupported"}
+  # on 400 as equivalent.
+  status: 404
+  headers:
+    Content-Type: "application/json"
+  body:
+    error:
+      code: "Request_ResourceNotFound"
+      message: "Informed Network Routing is not available in this tenant's cloud variant."
+
+expected_behavior:
+  - "Adapter MUST return a CapabilityUnavailable claim object, not raise."
+  - "Claim object cites FINDING-001 in its provenance block."
+  - "Adapter MUST NOT retry the call within the same provision cycle."
+  - "Drift engine (UIAO_110) MUST NOT emit a DRIFT-PROVENANCE finding for this specific capability gap — it is a documented external constraint, not substrate drift."
+  - "Evidence graph (UIAO_113) records the CapabilityUnavailable claim with link to FINDING-001."
+
+provenance:
+  source: "finding-001"
+  primary_citation:
+    url: "https://learn.microsoft.com/en-us/microsoft-365/enterprise/office-365-network-mac-perf-cpe?view=o365-worldwide"
+    quote: "Microsoft 365 informed network routing supports tenants in WW Commercial cloud but not the GCC Moderate, GCC High, DoD, Germany, or China clouds."
+    accessed: "2026-04-17"
+  supporting_citation:
+    url: "https://techcommunity.microsoft.com/discussions/deploymentnetworking/announcing-general-availability-of-microsoft-365-informed-network-routing/3021309"
+    accessed: "2026-04-17"
+  captured_by: "ADR-030 §5.2 governance-finding infrastructure; codified into this fixture per UIAO_131 §7"
+  sanitization: "Bearer token redacted (was never captured live; request shape is schema-derived)."
+
+finding_reference:
+  id: "FINDING-001"
+  status: "Awaiting-External-Remediation"
+  path: "docs/findings/fedramp-gcc-moderate-informed-network-routing.md"
