@@ -36,8 +36,8 @@ Since that decision, two material changes occurred:
    files implementing a provider framework, drift engine, governance engine,
    evidence store, and two IPAM adapters (BlueCat, Infoblox NIOS). These
    overlap substantially with `uiao-impl`'s existing
-   `src/uiao_impl/adapters/` (Entra, M365, Infoblox, ServiceNow) and
-   `src/uiao_impl/governance/drift.py`. The two IPAM adapters slot cleanly
+   `src/uiao/impl/adapters/` (Entra, M365, Infoblox, ServiceNow) and
+   `src/uiao/impl/governance/drift.py`. The two IPAM adapters slot cleanly
    into the existing `modernization-registry.yaml` under
    `mission-class: integration`.
 
@@ -62,7 +62,7 @@ the canonical UIAO substrate:
    custom `adapter-manifest.json` schema is retired.
 
 2. **Reference implementation.** The Python code under `gos/core/*` is
-   relocated to `impl/src/uiao_impl/directory_migration/*`, preserving the
+   relocated to `impl/src/uiao/impl/directory_migration/*`, preserving the
    subsystem identity under a neutral (non-commercial) name. Full file
    history is preserved via git rename detection.
 
@@ -114,8 +114,8 @@ the canonical UIAO substrate:
 **Neutral.**
 
 - **Code reconciliation is out of scope for this ADR.** The overlap between
-  `impl/src/uiao_impl/adapters/*.py` and
-  `impl/src/uiao_impl/directory_migration/providers/*/` (e.g. two
+  `impl/src/uiao/impl/adapters/*.py` and
+  `impl/src/uiao/impl/directory_migration/providers/*/` (e.g. two
   `entra_adapter.py` files) is tracked as follow-up and governed by a
   subsequent ADR if a doctrinal decision is required; the mechanical
   de-duplication itself is ordinary engineering.

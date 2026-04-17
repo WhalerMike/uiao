@@ -1,11 +1,11 @@
-"""Tests for uiao_impl.coverage: CoverageLink building and SSP section formatting."""
+"""Tests for uiao.impl.coverage: CoverageLink building and SSP section formatting."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from uiao_impl.coverage.coverage import build_coverage_links, format_ssp_section
-from uiao_impl.ir.models.core import Evidence, ProvenanceRecord
+from uiao.impl.coverage.coverage import build_coverage_links, format_ssp_section
+from uiao.impl.ir.models.core import Evidence, ProvenanceRecord
 
 
 def _prov() -> ProvenanceRecord:

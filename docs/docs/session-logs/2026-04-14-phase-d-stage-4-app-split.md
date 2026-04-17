@@ -41,7 +41,7 @@ Safe sequencing:
 | `orchestrator/` | (small) | `orchestrator.py` imports `uiao_core` |
 | `inject_ssp.py` (root) | 1 file | `uiao_core`-importing |
 | `write_engine.py` (root) | 1 file | `uiao_core`-importing |
-| `pyproject.toml` | — | Rename `name = "uiao-core"` → `"uiao-impl"`, CLI entry `uiao_core.cli.app:app` → `uiao_impl.cli.app:app` |
+| `pyproject.toml` | — | Rename `name = "uiao-core"` → `"uiao-impl"`, CLI entry `uiao_core.cli.app:app` → `uiao.impl.cli.app:app` |
 
 ### B. Stays in `uiao-core`
 
@@ -96,9 +96,9 @@ Rationale:
 - One atomic rename pass is cheaper than two (rename now vs. rename later)
 
 Mechanical scope of rename:
-- `src/uiao_core/` → `src/uiao_impl/` (directory)
-- `from uiao_core` → `from uiao_impl` (~150 occurrences across 94 files)
-- `import uiao_core` → `import uiao_impl` (handful)
+- `src/uiao_core/` → `src/uiao/impl/` (directory)
+- `from uiao_core` → `from uiao.impl` (~150 occurrences across 94 files)
+- `import uiao_core` → `import uiao.impl` (handful)
 - `pyproject.toml`: `name`, `[project.scripts]` entry, `[tool.setuptools.packages.find]`
 - `src/uiao_core/__init__.py` references to `__version__` — stay local
 - `src/uiao_core/__version__.py` — carried over, namespace follows
@@ -124,11 +124,11 @@ Happens on Michael's side via GitHub web UI or `gh repo create WhalerMike/uiao-i
 
 PowerShell block on Michael's machine:
 1. `cd C:\Users\whale\uiao-impl`
-2. Copy `src/uiao_core/` → `src/uiao_impl/`
+2. Copy `src/uiao_core/` → `src/uiao/impl/`
 3. Copy `adapters/`, `scripts/`, `tests/`, `cli/`, `compliance/`, `orchestrator/`
 4. Copy `inject_ssp.py`, `write_engine.py`
 5. Copy `pyproject.toml`, rename package, update CLI entry
-6. Run the rename sweep: `Get-ChildItem -Recurse -Include *.py | ForEach-Object { (Get-Content $_) -replace 'from uiao_core', 'from uiao_impl' -replace 'import uiao_core', 'import uiao_impl' | Set-Content $_ }`
+6. Run the rename sweep: `Get-ChildItem -Recurse -Include *.py | ForEach-Object { (Get-Content $_) -replace 'from uiao_core', 'from uiao.impl' -replace 'import uiao_core', 'import uiao.impl' | Set-Content $_ }`
 7. Add a minimal `README.md`, `CLAUDE.md`, `.github/workflows/ci.yml`
 8. `pip install -e .` locally, `pytest` to verify nothing broke
 9. Commit + push + tag `v0.1.0`
@@ -168,7 +168,7 @@ PowerShell block:
 | Repo | Role | Top-level entries (approx) |
 |---|---|---|
 | `uiao-core` | Canon + schemas + enforcement | `canon/`, `schemas/`, `tools/`, `playbooks/`, `appendices/`, `.claude/`, `.github/workflows/` (5 validators), root docs |
-| `uiao-impl` | Python package + CLI + tests | `src/uiao_impl/`, `adapters/`, `tests/`, `scripts/`, `cli/`, `compliance/`, `pyproject.toml`, `README.md`, `.github/workflows/` (ci, publish) |
+| `uiao-impl` | Python package + CLI + tests | `src/uiao/impl/`, `adapters/`, `tests/`, `scripts/`, `cli/`, `compliance/`, `pyproject.toml`, `README.md`, `.github/workflows/` (ci, publish) |
 | `uiao-docs` | Documentation + Quarto | `docs/`, `visuals/`, `assets/`, `exports/`, `canon` (if docs need local canon reference) |
 | `uiao-gos` | Commercial AD→Entra product | unchanged (separate boundary) |
 
@@ -210,7 +210,7 @@ Between the initial plan draft and execution, a cleanup-script mishap over-delet
 Fresh scan confirmed the following buckets. Differences from the initial plan are flagged **(CORRECTION)**.
 
 **Bucket A — moves to `uiao-impl`** (Python app code)
-- `src/uiao_core/` → `src/uiao_impl/` (rename during copy)
+- `src/uiao_core/` → `src/uiao/impl/` (rename during copy)
 - `tests/` (43 files with `from uiao_core` imports)
 - `scripts/` (9 files with `from uiao_core` imports)
 - `adapters/` (top-level; 4 subdirs; no `uiao_core` imports — move as-is)
@@ -274,7 +274,7 @@ Fresh scan confirmed the following buckets. Differences from the initial plan ar
 Four scripts now live under `docs/session-logs/scripts/`:
 
 1. `stage-4-batch-4.0-init-uiao-impl.ps1` — clone empty `uiao-impl`, seed `pyproject.toml`, `README.md`, `CLAUDE.md`, `.gitignore`, `.github/workflows/ci.yml`, commit as `chore(init)`.
-2. `stage-4-batch-4.1-populate-uiao-impl.ps1` — copy Bucket A from `uiao-core` working tree into `uiao-impl`, rename `src/uiao_core/` → `src/uiao_impl/`, sed-sweep `uiao_core` → `uiao_impl` across `*.py` and `pyproject.toml`, `pip install -e .`, `pytest`, commit as `feat(split): migrate app code from uiao-core`, tag `v0.1.0`.
+2. `stage-4-batch-4.1-populate-uiao-impl.ps1` — copy Bucket A from `uiao-core` working tree into `uiao-impl`, rename `src/uiao_core/` → `src/uiao/impl/`, sed-sweep `uiao_core` → `uiao_impl` across `*.py` and `pyproject.toml`, `pip install -e .`, `pytest`, commit as `feat(split): migrate app code from uiao-core`, tag `v0.1.0`.
 3. `stage-4-batch-4.2-strip-uiao-core.ps1` — in `uiao-core`: `git rm` Bucket A + Bucket C, consolidate Bucket D to `canon/specs/`, rewrite `pyproject.toml` to canon-only, update `.gitignore`, commit as `[UIAO-CORE] MIGRATE: uiao_impl — app code split out, canon spec consolidation`.
 4. `stage-4-batch-4.3-smoke-test.ps1` — verify `uiao-impl` is pip-installable from tag, `uiao --help` works, canon tools in `uiao-core/tools/` still import without the app package.
 

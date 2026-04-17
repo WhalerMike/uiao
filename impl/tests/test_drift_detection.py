@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from uiao_impl.governance.drift import build_drift_state
-from uiao_impl.ir.models.core import ProvenanceRecord
+from uiao.impl.governance.drift import build_drift_state
+from uiao.impl.ir.models.core import ProvenanceRecord
 
 
 def _prov() -> ProvenanceRecord:

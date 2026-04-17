@@ -1,4 +1,4 @@
-"""Tests for the substrate repo-walker (impl/src/uiao_impl/substrate/walker.py)
+"""Tests for the substrate repo-walker (impl/src/uiao/impl/substrate/walker.py)
 and the `uiao substrate walk` / `uiao substrate drift` CLI commands.
 
 Happy paths and failure modes per the test-coverage rule
@@ -14,8 +14,8 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from uiao_impl.cli.substrate import substrate_app as app
-from uiao_impl.substrate.walker import walk_substrate
+from uiao.impl.cli.substrate import substrate_app as app
+from uiao.impl.substrate.walker import walk_substrate
 
 runner = CliRunner()
 
@@ -197,7 +197,7 @@ def test_walker_detects_missing_impl_reference(tmp_path: Path) -> None:
     canon_spec.write_text(
         "---\ndocument_id: UIAO_999\n---\n"
         "# Fake spec\n\n"
-        "The implementation lives at `impl/src/uiao_impl/nonexistent/module.py`.\n"
+        "The implementation lives at `impl/src/uiao/impl/nonexistent/module.py`.\n"
     )
     report = walk_substrate(workspace_root=root)
     assert not report.ok
@@ -213,7 +213,7 @@ def test_walker_detects_missing_impl_reference(tmp_path: Path) -> None:
 def test_walker_accepts_valid_impl_reference(tmp_path: Path) -> None:
     """Canon reference to an existing impl path is clean."""
     root = _make_workspace(tmp_path)
-    real = root / "impl/src/uiao_impl/real_module.py"
+    real = root / "impl/src/uiao/impl/real_module.py"
     real.parent.mkdir(parents=True, exist_ok=True)
     real.write_text("# real module\n")
     canon_spec = root / "core/canon/specs/real-spec.md"
@@ -221,7 +221,7 @@ def test_walker_accepts_valid_impl_reference(tmp_path: Path) -> None:
     canon_spec.write_text(
         "---\ndocument_id: UIAO_998\n---\n"
         "# Real spec\n\n"
-        "See `impl/src/uiao_impl/real_module.py` for the implementation.\n"
+        "See `impl/src/uiao/impl/real_module.py` for the implementation.\n"
     )
     report = walk_substrate(workspace_root=root)
     prov = [
@@ -240,9 +240,9 @@ def test_walker_dedupes_same_impl_ref_within_file(tmp_path: Path) -> None:
     canon_spec.parent.mkdir(parents=True, exist_ok=True)
     canon_spec.write_text(
         "---\ndocument_id: UIAO_997\n---\n"
-        "First mention: `impl/src/uiao_impl/dupe.py`\n"
-        "Second mention: `impl/src/uiao_impl/dupe.py`\n"
-        "Third mention: `impl/src/uiao_impl/dupe.py`\n"
+        "First mention: `impl/src/uiao/impl/dupe.py`\n"
+        "Second mention: `impl/src/uiao/impl/dupe.py`\n"
+        "Third mention: `impl/src/uiao/impl/dupe.py`\n"
     )
     report = walk_substrate(workspace_root=root)
     prov = [
@@ -259,7 +259,7 @@ def test_walker_scans_markdown_links_in_canon(tmp_path: Path) -> None:
     canon_spec.parent.mkdir(parents=True, exist_ok=True)
     canon_spec.write_text(
         "---\ndocument_id: UIAO_996\n---\n"
-        "See [the module](impl/src/uiao_impl/missing_link.py) for details.\n"
+        "See [the module](impl/src/uiao/impl/missing_link.py) for details.\n"
     )
     report = walk_substrate(workspace_root=root)
     prov = [
@@ -286,7 +286,7 @@ def test_cli_drift_passes_on_p2_only(tmp_path: Path) -> None:
     canon_spec.parent.mkdir(parents=True, exist_ok=True)
     canon_spec.write_text(
         "---\ndocument_id: UIAO_995\n---\n"
-        "See `impl/src/uiao_impl/ghost.py`.\n"
+        "See `impl/src/uiao/impl/ghost.py`.\n"
     )
     result = runner.invoke(app, ["drift", "--workspace-root", str(root)])
     assert result.exit_code == 0, result.stdout
@@ -310,7 +310,7 @@ def test_cli_walk_shows_warnings_separately(tmp_path: Path) -> None:
     canon_spec.parent.mkdir(parents=True, exist_ok=True)
     canon_spec.write_text(
         "---\ndocument_id: UIAO_994\n---\n"
-        "See `impl/src/uiao_impl/phantom.py`.\n"
+        "See `impl/src/uiao/impl/phantom.py`.\n"
     )
     result = runner.invoke(app, ["walk", "--workspace-root", str(root)])
     assert result.exit_code == 0, result.stdout

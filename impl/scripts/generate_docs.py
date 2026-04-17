@@ -1,7 +1,7 @@
-"""Legacy shim - delegates to uiao_impl.generators.docs.
+"""Legacy shim - delegates to uiao.impl.generators.docs.
 
 This script is kept for backward compatibility. New code should
-import ``build_docs`` from ``uiao_impl.generators.docs``.
+import ``build_docs`` from ``uiao.impl.generators.docs``.
 
 Deprecated: Use `uiao generate-docs` CLI command instead.
 """
@@ -13,11 +13,11 @@ import warnings
 from pathlib import Path
 from typing import Any  # noqa: F401
 
-from uiao_impl.generators.docs import (
+from uiao.impl.generators.docs import (
     DATA_DIR,
     build_docs,
 )
-from uiao_impl.generators.docs import (
+from uiao.impl.generators.docs import (
     load_overlays as _load_overlays_impl,
 )
 

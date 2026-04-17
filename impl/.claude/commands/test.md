@@ -14,7 +14,7 @@
 
 1. Runs `pytest -q` from the repo root.
 2. With `<expr>`, appends `-k <expr>`.
-3. With `--cov`, appends `--cov=src/uiao_impl --cov-report=term-missing`.
+3. With `--cov`, appends `--cov=src/uiao/impl --cov-report=term-missing`.
 4. Reports pass/fail summary and surfaces first-failure traceback if any.
 
 ## Guardrails

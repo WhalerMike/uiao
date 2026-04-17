@@ -11,7 +11,7 @@
 
 Where `<target>` is one of:
 - A CLI command path (e.g., `validate`, `generate-ssp`)
-- A source file path (e.g., `src/uiao_impl/commands/validate.py`)
+- A source file path (e.g., `src/uiao/impl/commands/validate.py`)
 - An adapter module (e.g., `adapters/azure_gov/`)
 
 ## Responsibilities

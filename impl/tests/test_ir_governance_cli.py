@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from uiao_impl.cli.app import app
+from uiao.impl.cli.app import app
 
 runner = CliRunner()
 

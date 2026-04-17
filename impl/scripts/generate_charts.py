@@ -1,7 +1,7 @@
-"""Legacy shim - delegates to uiao_impl.generators.charts.
+"""Legacy shim - delegates to uiao.impl.generators.charts.
 
 This script is kept for backward compatibility. New code should
-import ``build_charts`` from ``uiao_impl.generators.charts``.
+import ``build_charts`` from ``uiao.impl.generators.charts``.
 
 Deprecated: Use `uiao generate-charts` CLI command instead.
 """
@@ -9,7 +9,7 @@ Deprecated: Use `uiao generate-charts` CLI command instead.
 import logging
 import warnings
 
-from uiao_impl.generators.charts import build_charts
+from uiao.impl.generators.charts import build_charts
 
 warnings.warn(
     "scripts/generate_charts.py is deprecated. Use `uiao generate-charts` instead.",

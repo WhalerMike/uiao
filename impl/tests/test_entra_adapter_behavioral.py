@@ -14,8 +14,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from uiao_impl.adapters.entra_adapter import EntraAdapter
-from uiao_impl.adapters.database_base import (
+from uiao.impl.adapters.entra_adapter import EntraAdapter
+from uiao.impl.adapters.database_base import (
     ClaimSet,
     ConnectionProvenance,
     DriftReport,
@@ -128,8 +128,8 @@ class TestEntraToOscal:
     """End-to-end: Entra ID → OSCAL SAR."""
 
     def test_entra_claims_to_sar(self, adapter: EntraAdapter, users_groups: list) -> None:
-        from uiao_impl.adapters.adapter_to_oscal import build_adapter_bundle
-        from uiao_impl.generators.sar import build_sar
+        from uiao.impl.adapters.adapter_to_oscal import build_adapter_bundle
+        from uiao.impl.generators.sar import build_sar
 
         claims = adapter.normalize(users_groups)
         bundle = build_adapter_bundle(
