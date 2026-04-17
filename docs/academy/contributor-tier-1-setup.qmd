@@ -1,0 +1,155 @@
+---
+title: "Academy — Setting up a tier-1 test environment (Microsoft 365 Developer Program)"
+subtitle: "Contributor-track prerequisite: one free tenant, one API credential, one fixture-ready pipeline"
+date: today
+date-format: "MMMM D, YYYY"
+description: "Step-by-step setup for the UIAO_131 Tier 1 live-commercial-tenant tests. Walks from zero to a working Microsoft 365 Developer Program tenant with recorded first evidence under impl/tests/fixtures/contract/."
+aspirational: true
+---
+
+Tier-1 evidence in [UIAO_131 §3.1](https://github.com/WhalerMike/uiao/blob/main/core/canon/specs/adapter-test-strategy.md) requires a live commercial-cloud tenant for the adapter under test. The substrate has none of its own — UIAO lives outside any tenant boundary. Each contributor brings their own.
+
+This page is the opinionated setup for the **recommended first target: the Microsoft 365 Developer Program**. It's free, it ships with Entra ID P2, and it gives you enough scope to exercise the `entra-id`, `m365`, and `scuba`-family adapters (the three highest-priority adapters in the [Substrate Status test-tier table](../docs/substrate-status.qmd)).
+
+::: {.callout-warning}
+## Commercial cloud, not GCC-Moderate
+The Developer Program tenant is **WW Commercial cloud**. Tests against it validate common-plane adapter logic, not GCC-Moderate-specific behavior. For the GCC-Moderate side — including the documented [FINDING-001 INR unavailability](../findings/fedramp-gcc-moderate-informed-network-routing.md) — you record tier-2 contract fixtures from Microsoft Learn sources, not from this tenant.
+:::
+
+## Prerequisites
+
+- A Microsoft account (personal, work, or dedicated UIAO-contributor account). If you use a work account, confirm with your employer that test-tenant sign-up is permitted under their policy.
+- Approximately **15 minutes** for first-time sign-up.
+- PowerShell 7+ or Python 3.10+ on your workstation (for running adapter code).
+
+## Step 1 — Create the developer tenant
+
+1. Go to the Microsoft 365 Developer Program: **`https://developer.microsoft.com/en-us/microsoft-365/dev-program`** ([Microsoft Learn FAQ](https://learn.microsoft.com/en-us/office/developer-program/microsoft-365-developer-program-faq) for program details).
+
+2. Sign in with your Microsoft account. Complete the profile:
+   - Region
+   - Company name (your own is fine)
+   - Developer interests (pick Microsoft 365 + Identity + Security)
+
+3. Click **"Set up subscription"**. Choose one:
+   - **Instant sandbox** — pre-provisioned with Teams, SharePoint, Outlook, Office, and 24 test users + 1 admin. Recommended for first-time contributors.
+   - **Configurable sandbox** — blank slate; you provision users and data yourself.
+
+4. Pick a domain name (`.onmicrosoft.com`) and set the initial admin password. **Save both somewhere encrypted** — you'll use these for every test run.
+
+5. Wait ~5 minutes. Microsoft provisions the tenant and emails confirmation.
+
+**Verify:** you can sign in at `https://admin.microsoft.com` with the admin account. The admin center shows 25 E5 licenses including Entra ID P2.
+
+## Step 2 — Register an app for adapter authentication
+
+UIAO adapters authenticate to M365/Entra via an **app registration** using the client-credentials OAuth flow.
+
+1. In the Entra admin center (`https://entra.microsoft.com`), go to **Applications → App registrations → New registration**.
+2. Name: `UIAO-Adapter-Test` (or similar — use a name that identifies this as test-environment credentials).
+3. Supported account types: **Accounts in this organizational directory only** (Single tenant).
+4. Redirect URI: leave blank.
+5. Create.
+6. On the new app's overview page, copy and save (encrypted):
+   - **Application (client) ID**
+   - **Directory (tenant) ID**
+
+## Step 3 — Grant API permissions
+
+The adapter needs read permissions on Microsoft Graph (and, for `scuba`, the Office 365 Management APIs).
+
+1. App registration → **API permissions → Add a permission → Microsoft Graph → Application permissions**.
+2. Add (at minimum): `Directory.Read.All`, `Policy.Read.All`, `User.Read.All`, `Group.Read.All`, `AuditLog.Read.All`.
+3. For `scuba` adapter testing: add **Office 365 Management APIs → Application → ServiceHealth.Read**.
+4. Click **Grant admin consent for <your-tenant>**. Confirm.
+
+## Step 4 — Create a client secret
+
+1. App registration → **Certificates & secrets → New client secret**.
+2. Description: `UIAO adapter test secret`. Expiry: 90 days (match the developer-tenant renewal cycle).
+3. **Copy the secret value immediately** — it is displayed exactly once. Save encrypted.
+
+## Step 5 — Store credentials
+
+The substrate never commits credentials. Store them in an environment that only your workstation can see:
+
+```powershell
+# PowerShell (per-session)
+$env:UIAO_TEST_TENANT_ID   = "<directory-id>"
+$env:UIAO_TEST_CLIENT_ID   = "<application-id>"
+$env:UIAO_TEST_CLIENT_SECRET = "<client-secret-value>"
+```
+
+```bash
+# Bash (add to ~/.bashrc or ~/.zshrc — consider a password manager instead)
+export UIAO_TEST_TENANT_ID="<directory-id>"
+export UIAO_TEST_CLIENT_ID="<application-id>"
+export UIAO_TEST_CLIENT_SECRET="<client-secret-value>"
+```
+
+A credentials-from-file pattern (`.env` loaded via `python-dotenv` or similar) is also fine. **Never** commit any file containing the secret value, even in `inbox/` — the `.gitignore` won't save you from a `git add -f`.
+
+## Step 6 — Verify the token flow
+
+Confirm the app can issue a Graph token:
+
+```bash
+curl -X POST "https://login.microsoftonline.com/$UIAO_TEST_TENANT_ID/oauth2/v2.0/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=$UIAO_TEST_CLIENT_ID" \
+  -d "client_secret=$UIAO_TEST_CLIENT_SECRET" \
+  -d "scope=https://graph.microsoft.com/.default" \
+  -d "grant_type=client_credentials"
+```
+
+**Verify:** returns `{ "access_token": "...", "expires_in": 3599, ... }`. Copy `access_token` and test one Graph call:
+
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+  "https://graph.microsoft.com/v1.0/organization"
+```
+
+If both return 200 OK, your tenant + app + permissions + secret are wired correctly. You're ready to run adapter tests.
+
+## Step 7 — Record your first tier-1 evidence
+
+From the repo root:
+
+```bash
+cd impl
+pip install -e .[dev]
+# Replace <adapter> with the adapter you're contributing (e.g., entra-id):
+pytest tests/integration/test_<adapter>_tier1.py -v
+```
+
+A successful tier-1 run produces:
+
+1. Test exit code 0.
+2. An OSCAL evidence bundle written under `impl/out/tier1/<adapter>/<timestamp>/`.
+3. An auto-generated contract fixture candidate under `impl/tests/fixtures/contract/<adapter>/<operation>.yaml` — raw request/response pairs ready to become tier-2 fixtures after review and sanitization.
+
+**Verify:** commit the sanitized fixture (with all tenant IDs / user principals replaced by placeholder tokens like `<TENANT_ID>`, `<USER_PRINCIPAL>`) in a canon PR that advances the adapter's registry `status` from `draft` → `alpha` (tier-2 green achievable) or `alpha` → `beta` (tier-1 + tier-2 green).
+
+## Renewal
+
+The Developer Program subscription lasts **90 days** and renews automatically on qualified developer activity (e.g., running tests against it, making Graph calls). If you stop using it for 90 days, it expires. A calendar reminder at day 60 to run `pytest tests/integration/` once is enough to maintain it.
+
+## Alternate vendors (when not testing Microsoft adapters)
+
+| Adapter | Alternate tier-1 target | Sign-up |
+|---|---|---|
+| `service-now` | [ServiceNow Developer Program](https://developer.servicenow.com/) — free personal instance, hibernates on idle | Developer Program sign-up |
+| `cyberark` | CyberArk developer program — identity/vault eval | Vendor site |
+| `palo-alto` | Beacon / eval programs | Vendor site |
+| `terraform` | Local tfstate fixtures — no tenant required | No sign-up |
+| `scuba` / `scubagear` | CISA open-source, local run against M365 Dev tenant above | No separate sign-up |
+| `infoblox` / `bluecat-address-manager` | **Tier-1 blocked** — vendor sales contact only (see [UIAO_131 §5.1](https://github.com/WhalerMike/uiao/blob/main/core/canon/specs/adapter-test-strategy.md) and [FINDING candidates in docs/findings/](../findings/index.qmd)) |
+
+## Cross-references
+
+- [UIAO_131 Adapter Test Strategy](https://github.com/WhalerMike/uiao/blob/main/core/canon/specs/adapter-test-strategy.md) — the three-tier model this page executes against
+- [Academy — Contributor Track](contributor-track.qmd) — where this setup slots in (Stage 4: Adapter development)
+- [Substrate Status](../docs/substrate-status.qmd) — current tier-1/2/3 evidence state per adapter
+- [FINDING-001 — M365 INR unavailability in GCC-Moderate](../findings/fedramp-gcc-moderate-informed-network-routing.md) — why Developer Program tier-1 tests don't prove GCC-M behavior
+- [Microsoft 365 Developer Program — Microsoft Learn](https://learn.microsoft.com/en-us/office/developer-program/microsoft-365-developer-program-faq)
+- [Set up your application's Microsoft Entra test environment — Microsoft Learn](https://learn.microsoft.com/en-us/entra/identity-platform/test-setup-environment)
