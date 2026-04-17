@@ -14,13 +14,8 @@ import pytest
 
 from uiao_impl.adapters.servicenow_adapter import ServiceNowAdapter
 from uiao_impl.adapters.database_base import (
-    ClaimObject,
     ClaimSet,
-    ConnectionProvenance,
-    DriftReport,
     EvidenceObject,
-    QueryProvenance,
-    SchemaMappingObject,
 )
 
 

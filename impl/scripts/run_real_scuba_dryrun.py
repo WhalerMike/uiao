@@ -207,7 +207,7 @@ def main() -> int:
             dry_run=not args.execute,
             max_retries=args.max_retries,
         )
-    except Exception as exc:
+    except Exception:
         logger.error("Pipeline execution failed with unhandled exception", exc_info=True)
         return 1
 

@@ -1,11 +1,19 @@
 """SqlAdapter - placeholder for direct SQL-based identity stores."""
 from __future__ import annotations
+
+from typing import Any, List
+
 from adapters import register
 from adapters.base_adapter import (
-    BaseAdapter, AdapterMetadata, CanonicalClaim, ClaimFilter,
-    DriftReport, KSIBundle, ProvenanceRecord,
+    AdapterMetadata,
+    BaseAdapter,
+    CanonicalClaim,
+    ClaimFilter,
+    DriftReport,
+    KSIBundle,
+    ProvenanceRecord,
 )
-from typing import Any, List
+
 
 @register("sql")
 class SqlAdapter(BaseAdapter):
