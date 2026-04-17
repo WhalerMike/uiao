@@ -363,7 +363,7 @@ class TestBuildEvidenceIntegration:
         out_dir = tmp_path / "output" / "evidence" / "tenant-a"
         build_evidence(str(ksi_path), str(out_dir))
         lines = (out_dir / "evidence.jsonl").read_text(encoding="utf-8").strip().splitlines()
-        records = {json.loads(l)["control_id"]: json.loads(l) for l in lines}
+        records = {json.loads(line)["control_id"]: json.loads(line) for line in lines}
         assert records["c1"]["status"] == "satisfied"
         assert records["c1"]["fresh"] is True
         assert records["c2"]["status"] == "not-satisfied"

@@ -581,7 +581,6 @@ def orchestrate(
     ksi_dir = run_dir / "ksi"
     evidence_dir = run_dir / "evidence"
     oscal_dir = run_dir / "oscal"
-    logs_dir = run_dir / "logs"
 
     overall_start = time.time()
     all_success = True

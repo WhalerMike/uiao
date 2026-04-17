@@ -250,10 +250,7 @@ class TerraformAdapter(DatabaseAdapterBase):
         from .terraform_parser import parse_hcl
 
         path = Path(hcl_content_or_path)
-        if path.exists() and path.is_file():
-            hcl_content = path.read_text(encoding="utf-8")
-        else:
-            hcl_content = hcl_content_or_path
+        hcl_content = path.read_text(encoding="utf-8") if path.exists() and path.is_file() else hcl_content_or_path
 
         raw_resources = parse_hcl(hcl_content, variables)
         return self.normalize(raw_resources)
