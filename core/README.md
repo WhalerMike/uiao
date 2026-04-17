@@ -1,12 +1,12 @@
-# UIAO Core — Generation Engine & Adapter Framework
+# UIAO Core — Canon Authority & Control Library
 
-[![CI](https://github.com/WhalerMike/uiao-core/actions/workflows/ci.yml/badge.svg)](https://github.com/WhalerMike/uiao-core/actions/workflows/ci.yml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](../LICENSE)
 [![FedRAMP Moderate](https://img.shields.io/badge/FedRAMP-Moderate%20Rev%205-orange.svg)](#control-library-status)
 [![Controls](https://img.shields.io/badge/controls-247%20(163%20base%20%2B%2084%20enhancements)-blueviolet.svg)](#control-library-status)
 
-**UIAO Ecosystem:** **uiao-core** (this repo) · [uiao-impl](https://github.com/WhalerMike/uiao-impl) (Python CLI) · [uiao-docs](https://github.com/WhalerMike/uiao-docs) ([live site](https://whalermike.github.io/uiao-docs/docs/index.html))
+**Module in the consolidated monorepo:** [`core/`](.) · sibling modules: [`docs/`](../docs/) · [`impl/`](../impl/)
+
+> **Canon authority.** Source of truth for every UIAO governance artifact — schemas, canon documents, ADRs, adapter registries, control library. Everything under `docs/` and `impl/` derives from here. See the repo-root [`CLAUDE.md`](../CLAUDE.md) and [`CONTRIBUTING.md`](../CONTRIBUTING.md) for the substrate-level model; this README covers the `core/` module specifically.
 
 ## Mission
 
