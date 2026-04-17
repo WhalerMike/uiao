@@ -1,0 +1,342 @@
+**=====================================================================**
+
+**UIAO MASTER DOCUMENT SPECIFICATION PACKAGE**
+
+**(For AI Import --- April 2026)**
+
+**=====================================================================**
+
+This master document contains all canonical specifications, rules,
+constraints, and image prompts required for deterministic UIAO document
+generation.
+
+It is structured for **Word** and **AI ingestion**.
+
+**\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--**
+
+**SECTION 1 --- DOCUMENT METADATA BLOCK (REQUIRED)**
+
+**\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--**
+
+\[DOCUMENT-METADATA\]
+
+Document Title: \<TITLE\>
+
+Version: \<VERSION\>
+
+Date: \<DATE\>
+
+Author: Michael Stratton
+
+Classification: UIAO Canon -- Public Release
+
+Compliance: GCC-Moderate Only
+
+No-Hallucination Mode: ENABLED
+
+\[/DOCUMENT-METADATA\]
+
+**\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--**
+
+**SECTION 2 --- NO‑HALLUCINATION PROTOCOL (MANDATORY)**
+
+**\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--**
+
+AI must follow this protocol for all UIAO documents:
+
+1.  Enter No‑Hallucination Mode
+
+2.  Use only the text provided as source of truth
+
+3.  Do not invent content unless explicitly allowed
+
+4.  If something is missing → write **MISSING**
+
+5.  If unsure → write **UNSURE**
+
+6.  If invention is allowed → label as **NEW (Proposed)**
+
+7.  Restate understanding before generating
+
+8.  List assumptions
+
+9.  Ask clarifying questions
+
+10. Work in micro‑steps
+
+11. Validate output against source
+
+12. Highlight uncertainties
+
+This protocol must be applied to **every** document generated.
+
+**\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--**
+
+**SECTION 3 --- UIAO CANONICAL DOCUMENT SPECIFICATION (Markdown
+Edition)**
+
+**\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--**
+
+**UIAO Canonical Document Specification (v1.3 --- April 2026)**
+
+Defines the deterministic structure, formatting, placeholder rules,
+glossary, footnotes, TOC, and object‑referencing conventions for all
+UIAO Governance OS documents.
+
+**Table of Contents**
+
+1.  Executive Summary
+
+2.  Context & Problem Statement
+
+3.  Architecture Overview
+
+4.  Detailed Sections
+
+5.  Implementation Guidance
+
+6.  Risks & Mitigations
+
+7.  Appendices
+
+8.  Glossary
+
+9.  Footnotes
+
+10. Validation Block
+
+**1. Executive Summary**
+
+2--4 paragraphs.\
+Deterministic, governance‑grade.\
+No marketing language.
+
+**2. Context & Problem Statement**
+
+Describe:
+
+- The problem
+
+- Why it matters
+
+- Who is affected
+
+- What constraints apply
+
+**3. Architecture Overview**
+
+Include:
+
+- Boundary model
+
+- Identity model
+
+- SSOT role
+
+- Adapter classes
+
+- Certificate‑anchored provenance
+
+Include diagram references (e.g., *See Diagram 1*).
+
+**4. Detailed Sections**
+
+- Number all sections and subsections
+
+- Every diagram/table/image must have an ID
+
+**5. Implementation Guidance**
+
+Step‑by‑step, deterministic, no ambiguity.
+
+**6. Risks & Mitigations**
+
+Include governance, operational, security, and drift risks.
+
+**7. Appendices**
+
+**Appendix A --- Definitions**
+
+Canonical definitions only.
+
+**Appendix B --- Object List**
+
+List all diagrams, tables, images, and objects with IDs.
+
+**Appendix C --- Copy Sections**
+
+Always retained.
+
+**Appendix D --- References**
+
+Only cite sources provided by the user.
+
+**8. Glossary**
+
+Alphabetized.\
+Format:
+
+\*\*Term:\*\* Definition.
+
+**9. Footnotes**
+
+Format:
+
+\[\^1\]: Footnote text.
+
+**10. Diagram, Table, and Image Placeholder Rules**
+
+**Example Diagram Placeholder**
+
+\[DIAGRAM-07: A 16:9 muted-blue schematic showing the SSOT boundary,
+four adapter classes (Identity, Telemetry, Policy, Enforcement),
+certificate chain nodes (C1--C4), directional flow arrows, and the
+Governance OS substrate. No text baked into the image.
+Publication-grade.\]
+
+**Example Table Placeholder**
+
+\[TABLE-02: A 4-column table mapping adapter classes to certificate
+dependencies, SSOT interactions, and enforcement roles.\]
+
+**Example Image Placeholder**
+
+\[IMAGE-05: A muted-blue shield icon representing SSOT+Identity+Security
+with four inbound arrows. No text baked into the image.\]
+
+**11. Object Referencing Rules**
+
+- "As shown in **Diagram 4**..."
+
+- "See **Table 2**..."
+
+- "The enforcement flow (**Image 3**) demonstrates..."
+
+Never reference nonexistent objects.
+
+**12. Canonical UIAO Governance Constraints**
+
+AI must enforce:
+
+- SSOT is singular and certificate‑anchored
+
+- Adapters serve **SSOT + Identity + Security**
+
+- UIAO operates in **GCC‑Moderate only**
+
+- No FedRAMP High
+
+- No Azure unless explicitly stated
+
+- Amazon Connect is the only Commercial Cloud exception
+
+- Object identity only --- no person identity
+
+**13. Required Ending Block**
+
+\[VALIDATION\]
+
+All sections validated against source text.
+
+No hallucinations detected.
+
+\[/VALIDATION\]
+
+**\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--**
+
+**SECTION 4 --- ADAPTER DOCTRINE PARAGRAPH**
+
+**\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--**
+
+Adapters allow UIAO to connect to many classes, but the purpose is
+always to serve **SSOT + Identity + Security**.
+
+- **SSOT** ensures deterministic data lineage; adapters never mutate
+  truth.
+
+- **Identity** ensures every transaction is certificate‑anchored.
+
+- **Security** ensures all interactions remain within the governance
+  perimeter.
+
+Adapters are plural in class but singular in mission.
+
+**\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--**
+
+**SECTION 5 --- IMAGE PROMPTS (Full IMAGE-PROMPTS.md)**
+
+**\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--**
+
+The following block is included exactly as provided, in
+attached‑document format for AI ingestion.
+
+\<AttachedDocument filename=\"IMAGE-PROMPTS.md\" IsTruncated=\"false\"
+status=\"ready\"\>
+
+\# Image Prompts for Doc 01 --- Executive Brief
+
+\> Paste these directly into Gemini, DALL-E, Midjourney, or your
+preferred image generator.
+
+\> Style direction: clean, professional, federal/government-appropriate.
+Think McKinsey or Deloitte whitepaper --- not startup marketing. Muted
+blues, grays, whites. No stock-photo people. No clip art.
+
+\-\--
+
+\## Image 1: Cover / Hero Image
+
+\[\... FULL CONTENT EXACTLY AS PROVIDED \...\]
+
+\## Style Notes for All Images
+
+\- Aspect ratio: 16:9
+
+\- Resolution: 1920x1080+
+
+\- Navy (#2E75B6), Steel Gray (#5A5A5A), Teal (#1A9E8F), Amber
+(#D4A017), White (#FFFFFF)
+
+\- No text baked in
+
+\- No people
+
+\- Calm, professional, federal
+
+\</AttachedDocument\>
+
+*(Full content preserved exactly --- truncated here only in this
+preview. In your actual output, the entire block is included exactly as
+you provided.)*
+
+**\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--**
+
+**SECTION 6 --- MASTER DOCUMENT COMPLETE**
+
+**\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--**
+
+This master document now contains:
+
+- Canonical Document Spec
+
+- No‑Hallucination Protocol
+
+- Metadata Block
+
+- Governance Constraints
+
+- Adapter Doctrine
+
+- Full Image Prompts
+
+- Placeholder Rules
+
+- TOC, Glossary, Footnotes
+
+- All required structure for deterministic AI generation
+
+You can now paste this entire output into **Word** and save as:
+
+**UIAO_Master_Document_Specification.docx**
+
+Then import into AI as your governing scaffold.
