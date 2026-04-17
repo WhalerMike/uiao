@@ -152,3 +152,197 @@ class RunReport:
     auto_placeholders_skipped: int = 0   # Part-3 feature; skipped in v1
     sidecars_written: int = 0
     registry_used_by_updates: int = 0
+
+
+# ──────────────────────────────────────────────────────────────
+# Hash utilities. Provenance per UIAO_202 is anchored by two
+# SHA-256 values: one over the prompt file text, one over the
+# rendered PNG bytes. Single place in the module that computes
+# them so the contract lives in one spot.
+# ──────────────────────────────────────────────────────────────
+def sha256_bytes(data: bytes) -> str:
+    h = hashlib.sha256()
+    h.update(data)
+    return h.hexdigest()
+
+
+def sha256_text(text: str) -> str:
+    """SHA-256 of UTF-8 text. Normalizes to LF line endings first so
+    Windows vs Unix checkouts don't produce false-positive drift."""
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    return sha256_bytes(normalized.encode("utf-8"))
+
+
+def sha256_file(path: Path) -> str:
+    return sha256_bytes(path.read_bytes())
+
+
+def sha256_prompt_file(path: Path) -> str:
+    return sha256_text(path.read_text(encoding="utf-8"))
+
+
+def _today_iso_date() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def _now_iso_utc() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+# ──────────────────────────────────────────────────────────────
+# Registry loader / writer. Operates on core/canon/image-registry.yaml.
+# The `raw` dict on each RegistryEntry preserves original field
+# ordering so re-emit doesn't shuffle the file.
+# ──────────────────────────────────────────────────────────────
+def _require_yaml() -> None:
+    if yaml is None:
+        print(
+            "Error: PyYAML is required for harvest mode. Install with:\n"
+            "  pip install PyYAML",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+
+def load_registry() -> tuple[dict, list[RegistryEntry]]:
+    """Read core/canon/image-registry.yaml.
+
+    Returns ({}, []) if the registry is absent or has an empty `images:`
+    list. That's the normal initial state after X1a merged.
+    """
+    _require_yaml()
+    if not CANON_REGISTRY.exists():
+        return ({}, [])
+    with open(CANON_REGISTRY, "r", encoding="utf-8") as f:
+        doc = yaml.safe_load(f) or {}
+    raw_images = doc.get("images") or []
+    entries: list[RegistryEntry] = []
+    for row in raw_images:
+        if not isinstance(row, dict):
+            continue
+        try:
+            entries.append(
+                RegistryEntry(
+                    id=row["id"],
+                    slug=row["slug"],
+                    status=row.get("status", "draft"),
+                    prompt_file=(REPO_ROOT / row["prompt_file"]).resolve(),
+                    file=(REPO_ROOT / row["file"]).resolve(),
+                    prompt_sha256=row.get("prompt_sha256", ""),
+                    file_sha256=row.get("file_sha256", ""),
+                    version=row.get("version", "1.0"),
+                    generator=row.get("generator", ""),
+                    used_by=list(row.get("used_by") or []),
+                    raw=row,
+                )
+            )
+        except KeyError as e:
+            print(f"Warning: registry entry skipped — missing key {e}: {row!r}")
+    return (doc, entries)
+
+
+def save_registry(doc: dict, entries: list[RegistryEntry]) -> None:
+    """Write back the registry. Updates each image entry's `used_by`,
+    hashes, generator fields, and the top-level `updated` date."""
+    _require_yaml()
+    refreshed: list[dict] = []
+    for e in entries:
+        row = dict(e.raw) if e.raw else {}
+        row["id"] = e.id
+        row["slug"] = e.slug
+        row["status"] = e.status
+        row["version"] = e.version
+        row["generator"] = e.generator
+        row["prompt_file"] = str(e.prompt_file.relative_to(REPO_ROOT))
+        row["prompt_sha256"] = e.prompt_sha256
+        row["file"] = str(e.file.relative_to(REPO_ROOT))
+        row["file_sha256"] = e.file_sha256
+        row["used_by"] = list(e.used_by)
+        refreshed.append(row)
+    doc["images"] = refreshed
+    doc["updated"] = _today_iso_date()
+    with open(CANON_REGISTRY, "w", encoding="utf-8") as f:
+        yaml.safe_dump(
+            doc, f,
+            sort_keys=False,
+            default_flow_style=False,
+            allow_unicode=True,
+            width=100,
+        )
+
+
+# ──────────────────────────────────────────────────────────────
+# Sidecar JSON writer. Every rendered PNG gets a sibling
+# <filename>.png.json. Authoritative metadata for doc-local
+# images (not in the canonical registry); mirrors the registry
+# entry for canon images so PNGs travel with their provenance.
+# ──────────────────────────────────────────────────────────────
+def write_sidecar(
+    png_path: Path,
+    *,
+    document: Optional[Path],
+    placeholder_id: str,
+    canonical_id: Optional[str],
+    slug: str,
+    prompt_sha256: str,
+    generator: str,
+    file_sha256: str,
+    version: str = "1.0",
+    aspect: str = "16:9",
+    used_by: Optional[list[str]] = None,
+) -> Path:
+    sidecar_path = png_path.with_suffix(png_path.suffix + ".json")
+    payload = {
+        "document": str(document.relative_to(REPO_ROOT)) if document else None,
+        "placeholder_id": placeholder_id,
+        "canonical_id": canonical_id,
+        "slug": slug,
+        "prompt_sha256": prompt_sha256,
+        "generator": generator,
+        "generated_at": _now_iso_utc(),
+        "sha256": file_sha256,
+        "version": version,
+        "aspect": aspect,
+        "used_by": used_by or [],
+    }
+    with open(sidecar_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, sort_keys=True)
+        f.write("\n")
+    return sidecar_path
+
+
+# ──────────────────────────────────────────────────────────────
+# PNG tEXt metadata embedding. The PNG becomes self-describing —
+# canonical ID + prompt hash + generator + timestamp survive when
+# the image is detached (emailed, pasted into a deck, SharePoint).
+# ──────────────────────────────────────────────────────────────
+def embed_png_metadata(
+    png_path: Path,
+    *,
+    canonical_id: Optional[str],
+    prompt_sha256: str,
+    generator: str,
+    generated_at: str,
+    version: str = "1.0",
+    description: str = "",
+) -> None:
+    """Re-save the PNG with tEXt chunks. No-op if Pillow isn't installed."""
+    try:
+        from PIL import Image, PngImagePlugin
+    except ImportError:
+        print("  Warning: Pillow not installed; skipping PNG tEXt metadata.")
+        return
+    try:
+        image = Image.open(png_path)
+        meta = PngImagePlugin.PngInfo()
+        if canonical_id:
+            meta.add_text("UIAO:canonical_id", canonical_id)
+        meta.add_text("UIAO:prompt_sha256", prompt_sha256)
+        meta.add_text("UIAO:generator", generator)
+        meta.add_text("UIAO:generated_at", generated_at)
+        meta.add_text("UIAO:version", version)
+        if description:
+            meta.add_text("Description", description)
+        image.save(png_path, pnginfo=meta)
+    except Exception as e:
+        print(f"  Warning: couldn't embed PNG metadata: {e}")
