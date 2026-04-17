@@ -186,3 +186,133 @@ def test_cli_substrate_drift_fails(tmp_path: Path) -> None:
     result = runner.invoke(app, ["drift", "--workspace-root", str(root)])
     assert result.exit_code == 1
     assert "FAIL" in result.stdout
+
+
+def test_walker_detects_missing_impl_reference(tmp_path: Path) -> None:
+    """Canon document cites an impl/ path that does not exist."""
+    root = _make_workspace(tmp_path)
+    # Write a canon doc citing a non-existent impl path
+    canon_spec = root / "core/canon/specs/fake-spec.md"
+    canon_spec.parent.mkdir(parents=True, exist_ok=True)
+    canon_spec.write_text(
+        "---\ndocument_id: UIAO_999\n---\n"
+        "# Fake spec\n\n"
+        "The implementation lives at `impl/src/uiao_impl/nonexistent/module.py`.\n"
+    )
+    report = walk_substrate(workspace_root=root)
+    assert not report.ok
+    prov = [
+        f for f in report.findings
+        if f.drift_class == "DRIFT-PROVENANCE" and "nonexistent" in f.path
+    ]
+    assert prov, report.findings
+    assert prov[0].severity == "P2"
+    assert report.impl_refs_checked >= 1
+
+
+def test_walker_accepts_valid_impl_reference(tmp_path: Path) -> None:
+    """Canon reference to an existing impl path is clean."""
+    root = _make_workspace(tmp_path)
+    real = root / "impl/src/uiao_impl/real_module.py"
+    real.parent.mkdir(parents=True, exist_ok=True)
+    real.write_text("# real module\n")
+    canon_spec = root / "core/canon/specs/real-spec.md"
+    canon_spec.parent.mkdir(parents=True, exist_ok=True)
+    canon_spec.write_text(
+        "---\ndocument_id: UIAO_998\n---\n"
+        "# Real spec\n\n"
+        "See `impl/src/uiao_impl/real_module.py` for the implementation.\n"
+    )
+    report = walk_substrate(workspace_root=root)
+    prov = [
+        f for f in report.findings
+        if f.drift_class == "DRIFT-PROVENANCE" and "real_module" in f.path
+    ]
+    assert not prov, f"unexpected findings for existing impl ref: {report.findings}"
+    assert report.impl_refs_checked >= 1
+
+
+def test_walker_dedupes_same_impl_ref_within_file(tmp_path: Path) -> None:
+    """Multiple mentions of the same missing impl path in one canon doc
+    report once, not N times."""
+    root = _make_workspace(tmp_path)
+    canon_spec = root / "core/canon/specs/dupe-spec.md"
+    canon_spec.parent.mkdir(parents=True, exist_ok=True)
+    canon_spec.write_text(
+        "---\ndocument_id: UIAO_997\n---\n"
+        "First mention: `impl/src/uiao_impl/dupe.py`\n"
+        "Second mention: `impl/src/uiao_impl/dupe.py`\n"
+        "Third mention: `impl/src/uiao_impl/dupe.py`\n"
+    )
+    report = walk_substrate(workspace_root=root)
+    prov = [
+        f for f in report.findings
+        if f.drift_class == "DRIFT-PROVENANCE" and "dupe.py" in f.path
+    ]
+    assert len(prov) == 1, [f.path for f in prov]
+
+
+def test_walker_scans_markdown_links_in_canon(tmp_path: Path) -> None:
+    """Markdown link syntax like [label](impl/foo.py) is also scanned."""
+    root = _make_workspace(tmp_path)
+    canon_spec = root / "core/canon/specs/link-spec.md"
+    canon_spec.parent.mkdir(parents=True, exist_ok=True)
+    canon_spec.write_text(
+        "---\ndocument_id: UIAO_996\n---\n"
+        "See [the module](impl/src/uiao_impl/missing_link.py) for details.\n"
+    )
+    report = walk_substrate(workspace_root=root)
+    prov = [
+        f for f in report.findings
+        if f.drift_class == "DRIFT-PROVENANCE" and "missing_link" in f.path
+    ]
+    assert prov, report.findings
+
+
+def test_walker_report_includes_impl_refs_counter(tmp_path: Path) -> None:
+    """Report exposes impl_refs_checked counter for operators."""
+    root = _make_workspace(tmp_path)
+    report = walk_substrate(workspace_root=root)
+    assert hasattr(report, "impl_refs_checked")
+    assert report.impl_refs_checked >= 0
+    # JSON output must include the counter
+    assert "impl_refs_checked" in report.as_dict()
+
+
+def test_cli_drift_passes_on_p2_only(tmp_path: Path) -> None:
+    """P2-only findings (canon→impl drift) do not block the drift CLI."""
+    root = _make_workspace(tmp_path)
+    canon_spec = root / "core/canon/specs/warn-only.md"
+    canon_spec.parent.mkdir(parents=True, exist_ok=True)
+    canon_spec.write_text(
+        "---\ndocument_id: UIAO_995\n---\n"
+        "See `impl/src/uiao_impl/ghost.py`.\n"
+    )
+    result = runner.invoke(app, ["drift", "--workspace-root", str(root)])
+    assert result.exit_code == 0, result.stdout
+    assert "PASS" in result.stdout
+    assert "warning" in result.stdout.lower()
+
+
+def test_cli_drift_fails_on_p1(tmp_path: Path) -> None:
+    """P1 blocker still fails the drift CLI."""
+    root = _make_workspace(tmp_path)
+    (root / "impl").rmdir()  # P1 DRIFT-SCHEMA
+    result = runner.invoke(app, ["drift", "--workspace-root", str(root)])
+    assert result.exit_code == 1
+    assert "FAIL" in result.stdout
+
+
+def test_cli_walk_shows_warnings_separately(tmp_path: Path) -> None:
+    """Walk CLI displays WARN section for P2 findings, exit 0 if only P2."""
+    root = _make_workspace(tmp_path)
+    canon_spec = root / "core/canon/specs/warn-display.md"
+    canon_spec.parent.mkdir(parents=True, exist_ok=True)
+    canon_spec.write_text(
+        "---\ndocument_id: UIAO_994\n---\n"
+        "See `impl/src/uiao_impl/phantom.py`.\n"
+    )
+    result = runner.invoke(app, ["walk", "--workspace-root", str(root)])
+    assert result.exit_code == 0, result.stdout
+    assert "WARN" in result.stdout
+    assert "P2" in result.stdout
