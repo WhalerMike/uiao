@@ -1,134 +1,154 @@
 #!/usr/bin/env python3
 # Generate images from prompts using Google Gemini's Nano Banana model.
 #
-# Requires GEMINI_API_KEY set in the environment. Never commit a key to source.
+# Two input modes, both supported in this version:
+#
+#   A. Legacy (prompts.json): backward-compatible. If docs/prompts.json
+#      exists and is non-empty, each entry {id, filename, prompt} is
+#      generated straight into docs/images/.
+#
+#   B. Harvested (default for new content): the pipeline scans every
+#      .qmd and .md file under the rendered roots for three placeholder
+#      types per UIAO_202 and the Academy image-pipeline guide:
+#
+#        [IMAGE-NN: <prompt>]       doc-local, prompt provided
+#        [IMAGE-REF: UIAO-FIG-NNN]  canon reuse
+#        [IMAGE-NN: AUTO]           pipeline-drafted (Part-3 feature)
+#
+#      For every doc-local placeholder with a prompt, the pipeline
+#      writes/refreshes the sibling IMAGE-PROMPTS.md block, generates
+#      the PNG, writes a sidecar JSON, embeds PNG tEXt metadata, and
+#      updates the canonical image-registry.yaml `used_by` list for any
+#      [IMAGE-REF:] reference it sees.
+#
+# Requires GEMINI_API_KEY set in the environment. Never commit a key.
 #
 # Usage (run from any cwd inside the repo):
 #   export GEMINI_API_KEY="<your-key>"
-#   python docs/generate_images.py
-#   python docs/generate_images.py --dry-run
+#   python docs/generate_images.py                 # harvest + legacy
+#   python docs/generate_images.py --dry-run       # report; no API calls
+#   python docs/generate_images.py --mode legacy   # prompts.json only
+#   python docs/generate_images.py --mode harvest  # scanner only
+#   python docs/generate_images.py --scan-only     # placeholders; no gen
+#
+# Environment variables:
+#   GEMINI_API_KEY   Required unless --dry-run / --scan-only
+#   UIAO_REPO_ROOT   Optional override of repo root detection. Defaults
+#                    to the git toplevel containing this script.
+
+from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
+import subprocess
 import sys
 import time
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
-
-def _default_script_dir() -> Path:
-    """Locate the docs/ dir relative to this script, not a hardcoded user path."""
-    return Path(__file__).resolve().parent
+try:
+    import yaml  # type: ignore
+except ImportError:  # pragma: no cover - yaml is a tiny dep; install on demand
+    yaml = None  # Flagged at runtime; harvest mode requires yaml.
 
 
 # ──────────────────────────────────────────────────────────────
 # CONFIGURATION — env-driven. Key MUST come from environment.
 # ──────────────────────────────────────────────────────────────
-SCRIPT_DIR = _default_script_dir()
+SCRIPT_DIR = Path(__file__).resolve().parent                 # docs/
+REPO_ROOT = Path(os.environ.get("UIAO_REPO_ROOT") or SCRIPT_DIR.parent)
 PROMPTS_FILE = SCRIPT_DIR / "prompts.json"
-OUTPUT_DIR = SCRIPT_DIR / "images"
+LEGACY_OUTPUT_DIR = SCRIPT_DIR / "images"
+CANONICAL_OUTPUT_DIR = SCRIPT_DIR / "images" / "canonical"
+CANON_REGISTRY = REPO_ROOT / "core" / "canon" / "image-registry.yaml"
+CANON_PROMPTS_DIR = REPO_ROOT / "core" / "canon" / "image-prompts"
 MODEL = "gemini-2.5-flash-image"
 DELAY_SECONDS = 2.0
+SCAN_ROOTS = [
+    REPO_ROOT / "docs",
+    REPO_ROOT / "core" / "canon" / "specs",
+    REPO_ROOT / "core" / "canon" / "adr",
+]
+SCAN_EXTS = (".qmd", ".md")
+EXCLUDE_PATH_PARTS = {"_site", "_freeze", ".quarto", "node_modules", ".venv", "__pycache__"}
 # ──────────────────────────────────────────────────────────────
 
 
-def load_prompts(prompts_file: Path) -> list[dict]:
-    """Load prompts from a JSON file."""
-    if not prompts_file.exists():
-        print(f"Error: Prompts file not found at:\n  {prompts_file}")
-        sys.exit(1)
-    with open(prompts_file, "r", encoding="utf-8") as f:
-        prompts = json.load(f)
-    print(f"Loaded {len(prompts)} prompt(s) from:\n  {prompts_file}")
-    return prompts
+# ──────────────────────────────────────────────────────────────
+# Placeholder grammar per UIAO_202 §"Three placeholder types":
+#
+#   Type A:  [IMAGE-03: A 16:9 schematic ...]          local + prompt
+#   Type B:  [IMAGE-REF: UIAO-FIG-007]                 canon reuse
+#   Type C:  [IMAGE-03: AUTO]                          pipeline drafts
+#
+# We also tolerate DIAGRAM-NN and FIGURE-NN as local variants.
+# ──────────────────────────────────────────────────────────────
+PLACEHOLDER_LOCAL_RE = re.compile(
+    r"\[(?P<kind>IMAGE|DIAGRAM|FIGURE)-(?P<num>\d{2,3}):\s*(?P<body>[^\]]+)\]",
+    re.MULTILINE,
+)
+PLACEHOLDER_REF_RE = re.compile(
+    r"\[IMAGE-REF:\s*(?P<id>UIAO-FIG-\d{3})\s*\]",
+    re.MULTILINE,
+)
+AUTO_MARKER = "AUTO"
+CANON_ID_RE = re.compile(r"^UIAO-FIG-\d{3}$")
 
 
-def generate_image(client, prompt_text: str, output_path: Path, model: str) -> bool:
-    """Generate a single image from a prompt and save it."""
-    try:
-        response = client.models.generate_content(
-            model=model,
-            contents=[prompt_text],
-        )
-
-        for part in response.parts:
-            if part.inline_data is not None:
-                image = part.as_image()
-                image.save(str(output_path))
-                return True
-            elif part.text is not None:
-                print(f"  Model text response: {part.text[:200]}")
-
-        print(f"  Warning: No image data returned for this prompt.")
-        return False
-
-    except Exception as e:
-        print(f"  Error generating image: {e}")
-        return False
+# ──────────────────────────────────────────────────────────────
+# Dataclasses. Intentionally small & immutable so the scanner can
+# produce them cheaply and the orchestrator can consume them in any
+# order.
+# ──────────────────────────────────────────────────────────────
+@dataclass(frozen=True)
+class DocLocalPlaceholder:
+    """A [IMAGE-NN: prompt] or [IMAGE-NN: AUTO] in some .qmd/.md file."""
+    document: Path              # repo-relative-ish; resolved Path()
+    placeholder_id: str         # e.g. "IMAGE-03"
+    body: str                   # raw text between ':' and ']'
+    line_number: int            # 1-indexed
+    is_auto: bool               # True iff body == "AUTO"
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate images from prompts via Nano Banana (Gemini API)")
-    parser.add_argument("--dry-run", action="store_true", help="Print prompts without generating images")
-    args = parser.parse_args()
-
-    # Change to the script directory
-    print(f"Working directory: {SCRIPT_DIR}")
-    os.chdir(SCRIPT_DIR)
-
-    # Resolve API key (env-only; no in-source fallback)
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key and not args.dry_run:
-        print("Error: No API key provided. Set GEMINI_API_KEY in the environment.")
-        sys.exit(1)
-
-    # Load prompts
-    prompts = load_prompts(PROMPTS_FILE)
-
-    if args.dry_run:
-        print("\n=== DRY RUN — No images will be generated ===\n")
-        for i, item in enumerate(prompts, 1):
-            print(f"[{i}/{len(prompts)}] {item['id']} -> {item['filename']}")
-            print(f"  Prompt: {item['prompt'][:120]}...\n")
-        return
-
-    # Set up output directory
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Output directory: {OUTPUT_DIR}")
-
-    # Initialize the Gemini client
-    from google import genai
-    client = genai.Client(api_key=api_key)
-
-    print(f"\nGenerating {len(prompts)} image(s) using model: {MODEL}\n")
-
-    succeeded = 0
-    failed = 0
-
-    for i, item in enumerate(prompts, 1):
-        prompt_id = item["id"]
-        filename = item["filename"]
-        prompt_text = item["prompt"]
-        output_path = OUTPUT_DIR / filename
-
-        print(f"[{i}/{len(prompts)}] Generating: {prompt_id} -> {filename}")
-
-        if generate_image(client, prompt_text, output_path, MODEL):
-            file_size = output_path.stat().st_size / 1024
-            print(f"  Saved: {output_path} ({file_size:.0f} KB)")
-            succeeded += 1
-        else:
-            failed += 1
-
-        # Rate-limit pause between requests (skip after the last one)
-        if i < len(prompts):
-            time.sleep(DELAY_SECONDS)
-
-    print(f"\nDone! {succeeded} succeeded, {failed} failed.")
-    print(f"Images saved to: {OUTPUT_DIR}")
-    if failed > 0:
-        sys.exit(1)
+@dataclass(frozen=True)
+class CanonRefPlaceholder:
+    """A [IMAGE-REF: UIAO-FIG-NNN] reference."""
+    document: Path
+    canon_id: str
+    line_number: int
 
 
-if __name__ == "__main__":
-    main()
+@dataclass
+class RegistryEntry:
+    """Mutable view of one entry from core/canon/image-registry.yaml."""
+    id: str
+    slug: str
+    status: str                 # draft | current | deprecated
+    prompt_file: Path           # absolute
+    file: Path                  # absolute
+    prompt_sha256: str
+    file_sha256: str
+    version: str
+    generator: str
+    used_by: list[dict]         # [{document: str, placeholder_id: str}]
+    raw: dict = field(default_factory=dict)  # full YAML dict, for roundtrip
+
+
+@dataclass
+class RunReport:
+    """What happened during this pipeline run. Prints at the end."""
+    placeholders_scanned: int = 0
+    canon_refs_seen: int = 0
+    canon_refs_missing: list[str] = field(default_factory=list)
+    canon_refs_deprecated: list[str] = field(default_factory=list)
+    doc_local_generated: int = 0
+    doc_local_cached: int = 0
+    doc_local_failed: int = 0
+    auto_placeholders_skipped: int = 0   # Part-3 feature; skipped in v1
+    sidecars_written: int = 0
+    registry_used_by_updates: int = 0
