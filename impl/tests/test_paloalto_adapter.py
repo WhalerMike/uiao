@@ -10,7 +10,6 @@ import pytest
 
 from uiao_impl.adapters.paloalto_adapter import PaloAltoAdapter
 from uiao_impl.adapters.database_base import (
-    ClaimObject,
     ClaimSet,
     ConnectionProvenance,
     DriftReport,

@@ -26,7 +26,7 @@ from uiao_impl.adapters.adapter_to_oscal import (
 
 class TestTerraformDriftToPoam:
     @pytest.fixture
-    def plan_drift(self) -> "DriftReport":
+    def plan_drift(self) -> DriftReport:
         adapter = TerraformAdapter({"workspace": "prod"})
         plan = json.loads(
             (Path(__file__).parent / "fixtures" / "terraform-plan.json").read_text()
@@ -63,7 +63,7 @@ class TestTerraformDriftToPoam:
 
 class TestM365BaselineDriftToPoam:
     @pytest.fixture
-    def baseline_drift(self) -> "DriftReport":
+    def baseline_drift(self) -> DriftReport:
         config = json.loads(
             (Path(__file__).parent / "fixtures" / "m365-tenant-config.json").read_text()
         )

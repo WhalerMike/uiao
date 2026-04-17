@@ -2,12 +2,20 @@
 and src/uiao_impl/collectors/entra/entra_collector.py (Graph API).
 Retained for backward compatibility only. Do not extend."""
 from __future__ import annotations
+
+from typing import Any, List
+
 from adapters import register
 from adapters.base_adapter import (
-    BaseAdapter, AdapterMetadata, CanonicalClaim, ClaimFilter,
-    DriftReport, KSIBundle, ProvenanceRecord,
+    AdapterMetadata,
+    BaseAdapter,
+    CanonicalClaim,
+    ClaimFilter,
+    DriftReport,
+    KSIBundle,
+    ProvenanceRecord,
 )
-from typing import Any, List
+
 
 @register("entra-id")
 class EntraIdAdapter(BaseAdapter):

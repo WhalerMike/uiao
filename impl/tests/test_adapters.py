@@ -1,7 +1,6 @@
 """Smoke tests for the adapter registry and base contracts."""
 
 import pytest
-import asyncio
 from uiao_impl.adapters import (
     CyberArkAdapter,
     DatabaseAdapterBase,

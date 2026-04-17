@@ -239,7 +239,7 @@ class M365Adapter(DatabaseAdapterBase):
         Returns:
             DriftReport showing what deviates from baseline.
         """
-        from .m365_parser import parse_tenant_config, compare_against_baseline
+        from .m365_parser import compare_against_baseline, parse_tenant_config
 
         tenant_config = self._config.get("_tenant_config", {})
         all_entities = parse_tenant_config(tenant_config)
