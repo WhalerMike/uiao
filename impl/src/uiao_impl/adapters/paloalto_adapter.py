@@ -21,6 +21,7 @@ File: src/uiao_impl/adapters/paloalto_adapter.py
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any, Dict, List, Optional
 
 from .database_base import (
@@ -216,15 +217,11 @@ class PaloAltoAdapter(DatabaseAdapterBase):
         if xml_content:
             # Parse provided XML directly
             if scope == "nat-rules" or scope is None:
-                try:
+                with contextlib.suppress(Exception):
                     all_rules.extend(parse_nat_rules_xml(xml_content))
-                except Exception:
-                    pass
             if scope == "security-policies" or scope is None:
-                try:
+                with contextlib.suppress(Exception):
                     all_rules.extend(parse_security_rules_xml(xml_content))
-                except Exception:
-                    pass
         else:
             # In real usage, call PAN-OS XML API here
             config_data = self._config.get("_security_rules_xml", "")

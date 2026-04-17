@@ -170,11 +170,11 @@ def parse_hcl(
     """
     try:
         import hcl2
-    except ImportError:
+    except ImportError as exc:
         raise ImportError(
             "python-hcl2 is required for HCL parsing. "
             "Install with: pip install python-hcl2"
-        )
+        ) from exc
 
     parsed = hcl2.load(StringIO(hcl_content))
     vars_dict = variables or {}

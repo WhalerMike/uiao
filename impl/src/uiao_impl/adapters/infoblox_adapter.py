@@ -67,7 +67,6 @@ class InfobloxAdapter(DatabaseAdapterBase):
     def normalize(self, raw_rows: List[Dict[str, Any]]) -> ClaimSet:
         claims = []
         for record in raw_rows:
-            ref = record.get("_ref", "unknown")
             name = record.get("name", "unknown")
             claims.append(ClaimObject(
                 claim_id=f"infoblox:{self._network_view}:{name}",
