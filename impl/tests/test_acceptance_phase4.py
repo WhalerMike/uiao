@@ -64,7 +64,7 @@ class TestEntraIdAcceptance:
 
     @pytest.fixture
     def adapter(self):
-        from uiao_impl.adapters.entra_adapter import EntraAdapter
+        from uiao.impl.adapters.entra_adapter import EntraAdapter
         return EntraAdapter({"tenant_id": GRAPH_CREDS["tenant_id"]})
 
     def test_a1_connect_to_graph(self, adapter) -> None:
@@ -82,15 +82,15 @@ class TestEntraIdAcceptance:
 
     def test_a3_evidence_bundle(self, adapter) -> None:
         """A4: Generate evidence with real data."""
-        from uiao_impl.adapters.database_base import EvidenceObject
+        from uiao.impl.adapters.database_base import EvidenceObject
         result = adapter.collect_evidence("KSI-IA-02")
         assert isinstance(result, EvidenceObject)
         assert result.source == "entra-id"
 
     def test_a4_oscal_sar_from_real_data(self, adapter) -> None:
         """A6: Full OSCAL SAR from real Entra data."""
-        from uiao_impl.adapters.adapter_to_oscal import build_adapter_bundle
-        from uiao_impl.generators.sar import build_sar
+        from uiao.impl.adapters.adapter_to_oscal import build_adapter_bundle
+        from uiao.impl.generators.sar import build_sar
 
         result = adapter.collect_and_align()
         records = result.get("claims", {}).get("claims", [])
@@ -115,7 +115,7 @@ class TestM365Acceptance:
     """Phase 4: Real M365 tenant config retrieval."""
 
     def test_a1_connect(self) -> None:
-        from uiao_impl.adapters.m365_adapter import M365Adapter
+        from uiao.impl.adapters.m365_adapter import M365Adapter
         adapter = M365Adapter({"tenant_id": GRAPH_CREDS["tenant_id"]})
         conn = adapter.connect()
         assert "graph.microsoft.com" in conn.endpoint
@@ -125,7 +125,7 @@ class TestM365Acceptance:
         # Placeholder — the M365 adapter currently uses _tenant_config
         # from config dict, not live Graph calls. This test validates
         # the config injection pattern works.
-        from uiao_impl.adapters.m365_adapter import M365Adapter
+        from uiao.impl.adapters.m365_adapter import M365Adapter
         adapter = M365Adapter({
             "tenant_id": GRAPH_CREDS["tenant_id"],
             "_tenant_config": {"workloads": {}},
@@ -144,7 +144,7 @@ class TestServiceNowAcceptance:
 
     @pytest.fixture
     def adapter(self):
-        from uiao_impl.adapters.servicenow_adapter import ServiceNowAdapter
+        from uiao.impl.adapters.servicenow_adapter import ServiceNowAdapter
         return ServiceNowAdapter(SERVICENOW_CREDS)
 
     def test_a1_connect(self, adapter) -> None:

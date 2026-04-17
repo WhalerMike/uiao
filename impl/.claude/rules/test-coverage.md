@@ -14,7 +14,7 @@ with their tests in the same PR.
 2. **A CLI behavior change must update the existing tests** — no silent
    behavior drift.
 3. **Tests live under `tests/`** mirroring the source tree
-   (`src/uiao_impl/commands/foo.py` → `tests/commands/test_foo.py`).
+   (`src/uiao/impl/commands/foo.py` → `tests/commands/test_foo.py`).
 4. **Fixtures for canon paths** live under `tests/fixtures/canon/`. Do not
    reach into a sibling `uiao-core` checkout from tests.
 

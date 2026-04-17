@@ -14,7 +14,7 @@ from pathlib import Path
 
 def test_utils_context_imports():
     """Shared utils module exposes expected symbols."""
-    from uiao_impl.utils.context import get_settings, load_canon, load_context
+    from uiao.impl.utils.context import get_settings, load_canon, load_context
 
     assert callable(get_settings)
     assert callable(load_context)
@@ -22,15 +22,15 @@ def test_utils_context_imports():
 
 
 def test_utils_package_reexports():
-    """uiao_impl.utils re-exports context helpers."""
-    from uiao_impl.utils import get_settings
+    """uiao.impl.utils re-exports context helpers."""
+    from uiao.impl.utils import get_settings
 
     assert callable(get_settings)
 
 
 def test_get_settings_returns_settings():
     """get_settings returns a Settings instance without .env."""
-    from uiao_impl.utils.context import get_settings
+    from uiao.impl.utils.context import get_settings
 
     s = get_settings()
     assert hasattr(s, "canon_dir")
@@ -41,7 +41,7 @@ def test_get_settings_returns_settings():
 
 def test_load_context_empty_dir(tmp_path):
     """load_context returns empty dict when data dir has no yml files."""
-    from uiao_impl.utils.context import load_context
+    from uiao.impl.utils.context import load_context
 
     canon = tmp_path / "canon.yaml"
     canon.write_text("key: value\n")
@@ -52,7 +52,7 @@ def test_load_context_empty_dir(tmp_path):
 
 def test_load_context_merges_data(tmp_path):
     """load_context merges data YAML files into context."""
-    from uiao_impl.utils.context import load_context
+    from uiao.impl.utils.context import load_context
 
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -72,42 +72,42 @@ def test_load_context_merges_data(tmp_path):
 
 def test_docs_generator_import():
     """docs.py exposes build_docs."""
-    from uiao_impl.generators.docs import build_docs
+    from uiao.impl.generators.docs import build_docs
 
     assert callable(build_docs)
 
 
 def test_oscal_generator_import():
     """oscal.py exposes build_oscal."""
-    from uiao_impl.generators.oscal import build_oscal
+    from uiao.impl.generators.oscal import build_oscal
 
     assert callable(build_oscal)
 
 
 def test_poam_generator_import():
     """poam.py exposes build_poam."""
-    from uiao_impl.generators.poam import build_poam
+    from uiao.impl.generators.poam import build_poam
 
     assert callable(build_poam)
 
 
 def test_charts_generator_import():
     """charts.py exposes build_charts."""
-    from uiao_impl.generators.charts import build_charts
+    from uiao.impl.generators.charts import build_charts
 
     assert callable(build_charts)
 
 
 def test_ssp_generator_import():
     """ssp.py exposes build_ssp."""
-    from uiao_impl.generators.ssp import build_ssp
+    from uiao.impl.generators.ssp import build_ssp
 
     assert callable(build_ssp)
 
 
 def test_rich_docx_generator_import():
     """rich_docx.py exposes build_rich_docx."""
-    from uiao_impl.generators.rich_docx import build_rich_docx
+    from uiao.impl.generators.rich_docx import build_rich_docx
 
     assert callable(build_rich_docx)
     sig = inspect.signature(build_rich_docx)
@@ -117,7 +117,7 @@ def test_rich_docx_generator_import():
 
 def test_trestle_generator_import():
     """trestle.py exposes assemble_ssp."""
-    from uiao_impl.generators.trestle import assemble_ssp
+    from uiao.impl.generators.trestle import assemble_ssp
 
     assert callable(assemble_ssp)
     sig = inspect.signature(assemble_ssp)

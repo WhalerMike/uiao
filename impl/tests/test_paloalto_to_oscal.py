@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from uiao_impl.adapters.paloalto_adapter import PaloAltoAdapter
-from uiao_impl.adapters.adapter_to_oscal import build_adapter_bundle
-from uiao_impl.generators.sar import build_sar
+from uiao.impl.adapters.paloalto_adapter import PaloAltoAdapter
+from uiao.impl.adapters.adapter_to_oscal import build_adapter_bundle
+from uiao.impl.generators.sar import build_sar
 
 
 @pytest.fixture
@@ -86,7 +86,7 @@ class TestPaloAltoToOscal:
         assert evidence.normalized_data is not None
 
         # Feed evidence normalized data back through the pipeline
-        from uiao_impl.adapters.database_base import ClaimSet, ClaimObject
+        from uiao.impl.adapters.database_base import ClaimSet, ClaimObject
         claims_data = evidence.normalized_data
         # Reconstruct ClaimSet from evidence for pipeline test
         claim_objects = [

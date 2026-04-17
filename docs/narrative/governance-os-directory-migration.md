@@ -71,7 +71,7 @@ Treating a migration as a governed pipeline rather than a rip-and-replace projec
 Drift is detected at two layers:
 
 - **At rest** — the substrate walker (`uiao substrate walk`) validates that every declared module path and every canon document exists (`DRIFT-SCHEMA`, `DRIFT-PROVENANCE`). Runs on every PR via `.github/workflows/substrate-drift.yml`.
-- **Runtime** — per-resource drift detection (`impl/src/uiao_impl/governance/drift.py`) classifies field-level deltas between expected canonical state and live target state. Integrated into the governance pipeline.
+- **Runtime** — per-resource drift detection (`impl/src/uiao/impl/governance/drift.py`) classifies field-level deltas between expected canonical state and live target state. Integrated into the governance pipeline.
 
 The five-class drift taxonomy (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`) defined in `docs/docs/16_DriftDetectionStandard.qmd` applies uniformly to directory-migration runs as to any other adapter.
 
@@ -93,13 +93,13 @@ The commercial-firewall framing is preserved in the canon archive (ADR-025 §D7 
 | Workspace contract | `core/canon/workspace-contract.yaml` (UIAO_201) |
 | Modernization adapter registry | `core/canon/modernization-registry.yaml` |
 | Adapter schema | `core/schemas/adapter-registry/adapter-registry.schema.json` |
-| IPAM adapter reference docs | `impl/src/uiao_impl/directory_migration/adapters/ipam/` |
-| Drift engine (runtime) | `impl/src/uiao_impl/governance/drift.py` |
-| Substrate walker (at rest) | `impl/src/uiao_impl/substrate/walker.py` |
+| IPAM adapter reference docs | `impl/src/uiao/impl/directory_migration/adapters/ipam/` |
+| Drift engine (runtime) | `impl/src/uiao/impl/governance/drift.py` |
+| Substrate walker (at rest) | `impl/src/uiao/impl/substrate/walker.py` |
 | Drift detection standard | `docs/docs/16_DriftDetectionStandard.qmd` |
 | Adapter Segmentation Overview | `core/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md` |
 | Integration decision record | `core/canon/adr/adr-028-monorepo-consolidation-gos-integration.md` |
 
 ## What ships next
 
-The two current IPAM adapters are the seed of a broader directory-migration adapter family. Adapters for the remaining object classes (users, GPOs, PKI, RADIUS, Kerberos) will be promoted from `status: reserved, phase: phase-planning` to `active/phase-1` as implementations land in `impl/src/uiao_impl/adapters/` and pass the test-coverage rule (`impl/.claude/rules/test-coverage.md`). Each registration is a canon PR; the canon/CI machinery surrounding modernization adapters needs no change.
+The two current IPAM adapters are the seed of a broader directory-migration adapter family. Adapters for the remaining object classes (users, GPOs, PKI, RADIUS, Kerberos) will be promoted from `status: reserved, phase: phase-planning` to `active/phase-1` as implementations land in `impl/src/uiao/impl/adapters/` and pass the test-coverage rule (`impl/.claude/rules/test-coverage.md`). Each registration is a canon PR; the canon/CI machinery surrounding modernization adapters needs no change.

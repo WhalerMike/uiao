@@ -1,10 +1,10 @@
-"""Tests for uiao_impl.models.canon module."""
+"""Tests for uiao.impl.models.canon module."""
 
 from __future__ import annotations
 
 import pytest
 
-from uiao_impl.models.canon import CanonEntry
+from uiao.impl.models.canon import CanonEntry
 
 
 class TestCanonEntry:
@@ -38,7 +38,7 @@ class TestDiagramDefinition:
 
     def test_create_minimal_diagram(self) -> None:
         """DiagramDefinition can be created with only content."""
-        from uiao_impl.models.canon import DiagramDefinition
+        from uiao.impl.models.canon import DiagramDefinition
 
         d = DiagramDefinition(content="flowchart TD\n    A --> B")
         assert d.content == "flowchart TD\n    A --> B"
@@ -48,7 +48,7 @@ class TestDiagramDefinition:
 
     def test_create_full_diagram(self) -> None:
         """DiagramDefinition accepts all documented fields."""
-        from uiao_impl.models.canon import DiagramDefinition
+        from uiao.impl.models.canon import DiagramDefinition
 
         d = DiagramDefinition(
             title="My Diagram",
@@ -63,14 +63,14 @@ class TestDiagramDefinition:
 
     def test_extra_fields_allowed(self) -> None:
         """DiagramDefinition allows extra fields (permissive mode)."""
-        from uiao_impl.models.canon import DiagramDefinition
+        from uiao.impl.models.canon import DiagramDefinition
 
         d = DiagramDefinition(content="flowchart TD\n    A --> B", author="alice")
         assert d.author == "alice"  # type: ignore[attr-defined]
 
     def test_empty_diagram_is_valid(self) -> None:
         """DiagramDefinition with no fields is valid (all default to empty)."""
-        from uiao_impl.models.canon import DiagramDefinition
+        from uiao.impl.models.canon import DiagramDefinition
 
         d = DiagramDefinition()
         assert d.content == ""
@@ -82,7 +82,7 @@ class TestCanonModelDiagrams:
 
     def test_canon_model_has_diagrams_field(self) -> None:
         """CanonModel exposes a 'diagrams' dict field defaulting to empty."""
-        from uiao_impl.models.canon import CanonModel
+        from uiao.impl.models.canon import CanonModel
 
         model = CanonModel()
         assert hasattr(model, "diagrams")
@@ -90,7 +90,7 @@ class TestCanonModelDiagrams:
 
     def test_canon_model_validates_diagrams(self) -> None:
         """CanonModel correctly validates a diagrams mapping."""
-        from uiao_impl.models.canon import CanonModel
+        from uiao.impl.models.canon import CanonModel
 
         data = {
             "version": "1.0",
@@ -109,7 +109,7 @@ class TestCanonModelDiagrams:
 
     def test_canon_model_backward_compatible_without_diagrams(self) -> None:
         """Existing canon YAML without 'diagrams' still validates."""
-        from uiao_impl.models.canon import CanonModel
+        from uiao.impl.models.canon import CanonModel
 
         data = {"version": "1.0", "document": "Test Canon"}
         model = CanonModel.model_validate(data)
@@ -119,7 +119,7 @@ class TestCanonModelDiagrams:
         """generation-inputs/uiao_leadership_briefing_v1.0.yaml loads cleanly and has diagrams."""
         import yaml
 
-        from uiao_impl.models.canon import CanonModel
+        from uiao.impl.models.canon import CanonModel
 
         canon_path = canon_dir / "uiao_leadership_briefing_v1.0.yaml"
         assert canon_path.exists(), f"Canon file not found: {canon_path}"

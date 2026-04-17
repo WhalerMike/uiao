@@ -1,6 +1,6 @@
 import json
-from uiao_impl.diff.engine import diff_runs, format_diff_markdown, format_diff_json
-from uiao_impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+from uiao.impl.diff.engine import diff_runs, format_diff_markdown, format_diff_json
+from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
 
 
 def _run(tmp_path, name, ksi_results):

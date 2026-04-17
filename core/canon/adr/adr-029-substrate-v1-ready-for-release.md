@@ -61,9 +61,9 @@ All 10 validate against `adapter-registry.schema.json` with canonical invariants
 
 ### 4. Runtime tooling
 
-- **Substrate Walker** (`impl/src/uiao_impl/substrate/walker.py`) — detects `DRIFT-SCHEMA` + `DRIFT-PROVENANCE` at rest. Exposed via `uiao substrate walk` / `uiao substrate drift` with 10 passing tests.
-- **Drift Engine** (`impl/src/uiao_impl/governance/drift.py`) — per-resource runtime drift classification. Unchanged since the consolidation but now the sole drift implementation (`directory_migration/drift/drift_engine.py` retired).
-- **Directory-migration reference code** under `impl/src/uiao_impl/directory_migration/adapters/ipam/` — four markdown reference docs pointed to by the IPAM adapter registry entries. Previous ARC-5 Python scaffolding (38 files, ~1,600 LOC of broken imports) retired.
+- **Substrate Walker** (`impl/src/uiao/impl/substrate/walker.py`) — detects `DRIFT-SCHEMA` + `DRIFT-PROVENANCE` at rest. Exposed via `uiao substrate walk` / `uiao substrate drift` with 10 passing tests.
+- **Drift Engine** (`impl/src/uiao/impl/governance/drift.py`) — per-resource runtime drift classification. Unchanged since the consolidation but now the sole drift implementation (`directory_migration/drift/drift_engine.py` retired).
+- **Directory-migration reference code** under `impl/src/uiao/impl/directory_migration/adapters/ipam/` — four markdown reference docs pointed to by the IPAM adapter registry entries. Previous ARC-5 Python scaffolding (38 files, ~1,600 LOC of broken imports) retired.
 
 ### 5. CI stack
 

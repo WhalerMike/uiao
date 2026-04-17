@@ -11,7 +11,7 @@ canon without reaching into sibling checkouts directly.
 ## Interface
 
 ```python
-from uiao_impl.canon import load_document, load_registry
+from uiao.impl.canon import load_document, load_registry
 
 doc = load_document("UIAO_001", canon_path=canon_path)
 registry = load_registry("document-registry", canon_path=canon_path)

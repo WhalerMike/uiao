@@ -33,7 +33,7 @@ These rules apply to all automated agents that read, generate, or modify files i
 ### Prohibited Actions
 
 - Committing secrets, credentials, API keys, or PII directly into any file.
-- Modifying the package version in `pyproject.toml` or `src/uiao_impl/__init__.py` without a human-reviewed pull request.
+- Modifying the package version in `pyproject.toml` or `src/uiao/impl/__init__.py` without a human-reviewed pull request.
 - Disabling or bypassing branch protection rules, required status checks, or secret-scanning alerts.
 - Exfiltrating repository contents to unapproved external endpoints.
 - Self-modifying workflow files (`.github/workflows/`) without explicit human approval.
@@ -55,7 +55,7 @@ Every action taken by an AI agent must be traceable via:
 The following changes **always** require a human reviewer to approve before merging:
 
 - Changes to `pyproject.toml` (dependency pins, package metadata, entry points).
-- Changes to `src/uiao_impl/__init__.py` (version declaration).
+- Changes to `src/uiao/impl/__init__.py` (version declaration).
 - Changes to `.github/workflows/` (CI/CD pipeline configuration).
 - Changes to `SECURITY.md` or `CLAUDE.md`.
 - Any change that modifies GitHub Actions permissions or secrets.

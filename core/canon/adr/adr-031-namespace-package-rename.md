@@ -1,7 +1,7 @@
 ---
 title: "ADR-031: Rename Python Package uiao_impl to uiao.impl (PEP 420 Namespace)"
 adr: "ADR-031"
-status: PROPOSED
+status: ACCEPTED
 date: "2026-04-17"
 deciders: ["WhalerMike"]
 extends: ["ADR-028"]
@@ -11,7 +11,7 @@ extends: ["ADR-028"]
 
 ## Status
 
-PROPOSED
+ACCEPTED
 
 ## Context
 

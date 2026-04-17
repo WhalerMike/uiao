@@ -56,7 +56,7 @@ After completing this program, participants will be able to:
 | ARCHITECTURE.md §3.2 | uiao-core | Dual-axis taxonomy |
 | UIAO_003 §4.1–§4.7 | uiao-core/canon | Five adapter classes |
 | Adapter Doctrine | UIAO_003 §4.1 | SSOT + Identity + Security |
-| DatabaseAdapterBase | impl/src/uiao_impl/adapters/database_base.py | 7 canonical domains |
+| DatabaseAdapterBase | impl/src/uiao/impl/adapters/database_base.py | 7 canonical domains |
 
 ### 2.2 Key Concepts
 
@@ -100,7 +100,7 @@ returns, (c) how it computes the provenance hash.
 ### 3.2 Step-by-Step: Building a "Hello World" Adapter
 
 ```python
-# src/uiao_impl/adapters/hello_adapter.py
+# src/uiao/impl/adapters/hello_adapter.py
 from .database_base import (
     ClaimObject, ClaimSet, ConnectionProvenance, DatabaseAdapterBase,
     DriftReport, EvidenceObject, QueryProvenance, SchemaMappingObject,
@@ -238,9 +238,9 @@ adapter output → claims_to_ir_evidence() → IR Evidence
 Generate all three OSCAL artifacts from the Terraform adapter fixture:
 
 ```python
-from uiao_impl.adapters.terraform_adapter import TerraformAdapter
-from uiao_impl.adapters.adapter_to_oscal import *
-from uiao_impl.generators.sar import build_sar
+from uiao.impl.adapters.terraform_adapter import TerraformAdapter
+from uiao.impl.adapters.adapter_to_oscal import *
+from uiao.impl.generators.sar import build_sar
 
 adapter = TerraformAdapter({})
 claims = adapter.extract_terraform_state("tests/fixtures/terraform.tfstate")
