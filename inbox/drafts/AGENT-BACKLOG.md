@@ -88,7 +88,7 @@
 
 ## TST — Test Infrastructure
 
-- [ ] **TST-001** [P0] Fix `impl/.coveragerc` — currently points to `src/uiao_core` (wrong package); omits uiao-core generators
+- [x] **TST-001** [P0] Fix `impl/.coveragerc` — currently points to `src/uiao_core` (wrong package); omits uiao-core generators  ✓ 2026-04-17 — @claude — PR #72
       Path: `impl/.coveragerc`
       Done-when: `source = src/uiao_impl`, omit patterns updated, `coverage run -m pytest` reports for the correct tree.
 - [ ] **TST-002** [P0] Populate empty test file `impl/tests/test_briefing.py` (currently 2 bytes)
@@ -110,16 +110,16 @@
 
 ## CI — CI / Security
 
-- [ ] **CI-001** [P0] Invoke `mypy src/` in impl CI (mypy is in dev deps but never runs)
-      Path: `impl/.github/workflows/ci.yml`
+- [x] **CI-001** [P0] Invoke `mypy src/` in impl CI (mypy is in dev deps but never runs)  ✓ 2026-04-17 — @claude — PR #72
+      Path: `.github/workflows/mypy.yml` (new, at repo root — the in-folder `impl/.github/workflows/ci.yml` still does a stale cross-repo checkout; see **CI-010**).
       Done-when: mypy step runs on every PR and fails on new type errors.
-- [ ] **CI-002** [P1] CodeQL SAST workflow
+- [x] **CI-002** [P1] CodeQL SAST workflow  ✓ 2026-04-17 — @claude — PR #72
       Path: `.github/workflows/codeql.yml`
       Done-when: CodeQL runs weekly + on PR; findings surface in the Security tab.
-- [ ] **CI-003** [P1] Dependency-review workflow
+- [x] **CI-003** [P1] Dependency-review workflow  ✓ 2026-04-17 — @claude — PR #72
       Path: `.github/workflows/dependency-review.yml`
       Done-when: PRs changing `pyproject.toml` / lockfiles get a diff review with license + vuln flags.
-- [ ] **CI-004** [P1] actionlint workflow — validate all workflow YAML against schema
+- [x] **CI-004** [P1] actionlint workflow — validate all workflow YAML against schema  ✓ 2026-04-17 — @claude — PR #72
       Path: `.github/workflows/actionlint.yml`
       Done-when: actionlint runs on PRs that touch `.github/workflows/**`.
 - [ ] **CI-005** [P1] Monorepo path filters on `pytest.yml` + `metadata-validator.yml` so core-only changes skip impl pytest (and vice versa)
@@ -137,12 +137,17 @@
 - [ ] **CI-009** [P2] Consolidate duplicate link-check workflows (repo-root lychee vs impl PowerShell)
       Paths: `.github/workflows/link-check.yml` (extend), `impl/.github/workflows/link-check.yml` (delete)
       Done-when: only one link-check workflow remains; it covers root + impl; `make check-links` still works.
+- [ ] **CI-010** [P1] Retire stale `impl/.github/workflows/ci.yml`
+      Path: `impl/.github/workflows/ci.yml`
+      Context: this workflow still does `actions/checkout@v4 with: repository: WhalerMike/uiao-core, ref: main, path: uiao-core` — that's the pre-consolidation split. The authoritative impl test workflow is `.github/workflows/pytest.yml` at the repo root. The in-folder file either needs to be deleted or rewritten to use local `core/` (and repoint `UIAO_CANON_PATH` accordingly).
+      Done-when: only one impl pytest workflow runs per PR; no job references the old separate repo.
 
 ## INT — Integration / Monorepo
 
 - [ ] **INT-001** [P0] Pin `uiao-core` dependency in `impl/pyproject.toml` (path dep now, package dep once core is published)
       Path: `impl/pyproject.toml`
       Done-when: `pip install -e impl/` pulls core automatically; `UIAO_CANON_PATH` env fallback is documented, not required.
+      Note (2026-04-17): deferred — `core/pyproject.toml` declares `packages = []` (data-only, no Python package). Choose one first: (a) make core an installable package that ships canon data, or (b) formalise the `UIAO_CANON_PATH` env-var resolver with a fallback that locates `../core` relative to the installed impl. Landing either change is a prerequisite for this item.
 - [ ] **INT-002** [P0] Root `pyproject.toml` with `uv` workspace binding core + impl
       Path: `pyproject.toml` (new, repo root)
       Done-when: `uv sync` at repo root installs both packages editable.
@@ -179,4 +184,4 @@
 
 ## Completed
 
-_Closed items stay in their workstream section above (checkbox flipped to `[x]`, completion line appended). This section intentionally lists none yet — it is a future aggregator once the log grows long enough to warrant a summary._
+_Closed items stay in their workstream section above (checkbox flipped to `[x]`, completion line appended). This section intentionally stays short — it is a future aggregator once the log grows long enough to warrant a summary._
