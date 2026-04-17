@@ -4,7 +4,10 @@ canon document registry to detect structural and provenance drift.
 
 Drift classes reported (per docs/docs/16_DriftDetectionStandard.qmd):
   DRIFT-SCHEMA      — declared module path or registry path does not exist
-  DRIFT-PROVENANCE  — canon document referenced by the registry is missing
+  DRIFT-PROVENANCE  — canon document referenced by the registry is missing,
+                      OR a canon document cites an impl/ path that does not
+                      exist (e.g., UIAO_106 claims `impl/src/.../cli/app.py`
+                      ships but the file is absent).
 
 Resolution order for the workspace root:
   1. Explicit `workspace_root` argument
@@ -15,6 +18,7 @@ Resolution order for the workspace root:
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,6 +32,15 @@ DOCUMENT_REGISTRY = "core/canon/document-registry.yaml"
 
 # document-registry paths are core-relative by convention; resolve under core/
 DOCUMENT_REGISTRY_BASE = "core"
+
+# Canon-to-impl provenance scan: match references in canon prose to paths
+# under impl/ with a recognized file extension. Matches bare paths in code
+# blocks, inline code, markdown links, and plain prose. Trailing punctuation
+# (comma, period, closing brace/paren/bracket) is trimmed on resolve.
+CANON_ROOT = "core/canon"
+IMPL_REF_PATTERN = re.compile(
+    r"\bimpl/[\w./\-]+\.(?:py|md|yaml|yml|json|toml|lua|sh|ini|cfg)\b"
+)
 
 
 @dataclass
@@ -45,11 +58,26 @@ class SubstrateReport:
     contract_present: bool
     modules_checked: int = 0
     documents_checked: int = 0
+    impl_refs_checked: int = 0
     findings: list[DriftFinding] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
+        """Truthy when there are no findings of any severity."""
         return not self.findings
+
+    @property
+    def blocking(self) -> bool:
+        """Truthy when there is at least one P1 finding. Drives CI exit code."""
+        return any(f.severity == "P1" for f in self.findings)
+
+    @property
+    def warnings(self) -> list[DriftFinding]:
+        return [f for f in self.findings if f.severity != "P1"]
+
+    @property
+    def blockers(self) -> list[DriftFinding]:
+        return [f for f in self.findings if f.severity == "P1"]
 
     def as_dict(self) -> dict:
         return {
@@ -58,7 +86,9 @@ class SubstrateReport:
             "contract_present": self.contract_present,
             "modules_checked": self.modules_checked,
             "documents_checked": self.documents_checked,
+            "impl_refs_checked": self.impl_refs_checked,
             "ok": self.ok,
+            "blocking": self.blocking,
             "findings": [
                 {
                     "drift_class": f.drift_class,
@@ -178,4 +208,53 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
                     )
                 )
 
+    _scan_canon_impl_refs(root, report)
+
     return report
+
+
+def _scan_canon_impl_refs(root: Path, report: SubstrateReport) -> None:
+    """Scan canon .md files for references to impl/ paths; emit
+    DRIFT-PROVENANCE for any cited path that does not resolve.
+
+    Severity P2. A missing impl path is a spec/impl drift warning — the
+    substrate still loads and serves, but a canon document claims an
+    implementation exists where it does not. This is the inverse of a
+    DRIFT-PROVENANCE on the document registry: there the registry points
+    at a missing canon doc; here a canon doc points at missing impl.
+    """
+    canon_dir = root / CANON_ROOT
+    if not canon_dir.is_dir():
+        return
+
+    # Track unique (canon_file, impl_path) pairs so the same dangling
+    # reference inside the same file is reported once, but distinct files
+    # citing the same dangling path each report.
+    seen: set[tuple[str, str]] = set()
+
+    for md_file in sorted(canon_dir.rglob("*.md")):
+        try:
+            text = md_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+
+        for match in IMPL_REF_PATTERN.finditer(text):
+            impl_rel = match.group(0)
+            report.impl_refs_checked += 1
+            canon_rel = md_file.relative_to(root).as_posix()
+            key = (canon_rel, impl_rel)
+            if key in seen:
+                continue
+            seen.add(key)
+            if not (root / impl_rel).exists():
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-PROVENANCE",
+                        severity="P2",
+                        path=impl_rel,
+                        detail=(
+                            f"canon document {canon_rel} cites impl path "
+                            f"{impl_rel} which does not exist"
+                        ),
+                    )
+                )

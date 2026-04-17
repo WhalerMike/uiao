@@ -56,7 +56,7 @@ After completing this program, participants will be able to:
 | ARCHITECTURE.md §3.2 | uiao-core | Dual-axis taxonomy |
 | UIAO_003 §4.1–§4.7 | uiao-core/canon | Five adapter classes |
 | Adapter Doctrine | UIAO_003 §4.1 | SSOT + Identity + Security |
-| DatabaseAdapterBase | uiao-impl/adapters/database_base.py | 7 canonical domains |
+| DatabaseAdapterBase | impl/src/uiao_impl/adapters/database_base.py | 7 canonical domains |
 
 ### 2.2 Key Concepts
 
