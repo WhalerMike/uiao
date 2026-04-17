@@ -3,13 +3,14 @@
 All paths are configurable via UIAO_ prefixed environment variables
 or .env file. Defaults assume running from repo root.
 
-Post four-repo split, canonical artifacts (``generation-inputs/``, ``data/``,
-``rules/``, ``schemas/``, ``compliance/``) live in the sibling ``uiao-core``
-repository. :meth:`Settings.model_post_init` auto-discovers those directories
-when the working directory does not contain them locally, so source modules
-that consume ``settings.canon_dir`` / ``settings.data_dir`` / etc. resolve
-the correct canon location regardless of whether the caller ran from
-``uiao-impl`` (post-split) or the old monorepo root.
+Canonical artifacts (``generation-inputs/``, ``data/``, ``rules/``,
+``schemas/``, ``compliance/``) live in the ``core/`` module of the
+consolidated monorepo (since PR #1). :meth:`Settings.model_post_init`
+auto-discovers those directories so source modules that consume
+``settings.canon_dir`` / ``settings.data_dir`` / etc. resolve the
+correct canon location regardless of whether the caller ran from
+``<repo>/impl/`` (monorepo), ``uiao-impl/`` (pre-consolidation sibling
+checkout), or the old pre-split monorepo root.
 """
 
 from __future__ import annotations
@@ -22,20 +23,24 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _resolve_canon_root() -> Optional[Path]:
-    """Resolve the canon repository root (``uiao-core``) if discoverable.
+    """Resolve the canon root if discoverable.
 
     Order of precedence:
 
     1. ``UIAO_CANON_PATH`` environment variable.
-    2. Sibling checkout at ``../uiao-core`` relative to CWD (common local
-       and CI layout).
-    3. ``None`` — caller falls back to CWD-relative defaults.
+    2. Monorepo layout: ``../core`` sibling of CWD (post-consolidation;
+       primary expected path since the four-repo merge).
+    3. Pre-monorepo sibling checkout at ``../uiao-core`` (legacy).
+    4. ``None`` — caller falls back to CWD-relative defaults.
     """
     env = os.environ.get("UIAO_CANON_PATH")
     if env:
         p = Path(env).expanduser().resolve()
         if p.exists():
             return p
+    monorepo_core = (Path.cwd().parent / "core").resolve()
+    if (monorepo_core / "data").is_dir():
+        return monorepo_core
     sibling = (Path.cwd().parent / "uiao-core").resolve()
     if sibling.exists():
         return sibling
