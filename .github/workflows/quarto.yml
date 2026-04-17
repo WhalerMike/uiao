@@ -27,9 +27,13 @@ jobs:
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: Render
+      - name: Render (HTML site only — PDF/DOCX outputs skipped in CI)
         working-directory: docs
-        run: quarto render
+        # Many .qmd files declare format: { html, docx, pdf }. Full multi-format
+        # render needs TinyTeX (pdf) plus pandoc docx runtime, which inflates CI
+        # time significantly and is unnecessary for the published site. Restrict
+        # to HTML here; ad-hoc PDF/DOCX can be generated locally.
+        run: quarto render --to html
 
       - name: Upload site artifact
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
