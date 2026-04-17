@@ -4,9 +4,12 @@
 # This follows the exact same pattern as generate_images.py (Doc 01).
 # Reads scuba_prompts.json, calls Gemini NanoBanana, saves PNGs to images/.
 #
-# Usage (just run from anywhere):
-#   python C:\Users\whale\uiao-docs\generate_scuba_images.py
-#   python C:\Users\whale\uiao-docs\generate_scuba_images.py --dry-run
+# Requires GEMINI_API_KEY set in the environment. Never commit a key to source.
+#
+# Usage (run from any cwd inside the repo):
+#   export GEMINI_API_KEY="<your-key>"
+#   python docs/generate_scuba_images.py
+#   python docs/generate_scuba_images.py --dry-run
 
 import argparse
 import json
@@ -15,11 +18,16 @@ import sys
 import time
 from pathlib import Path
 
+
+def _default_script_dir() -> Path:
+    """Locate the docs/ dir relative to this script, not a hardcoded user path."""
+    return Path(__file__).resolve().parent
+
+
 # ──────────────────────────────────────────────────────────────
-# CONFIGURATION — edit these to match your setup
+# CONFIGURATION — env-driven. Key MUST come from environment.
 # ──────────────────────────────────────────────────────────────
-API_KEY = "AIzaSyCQ-BRx8IuLV23ybUjluLY1WfT6mxS9-jQ"
-SCRIPT_DIR = Path(r"C:\Users\whale\uiao-docs")
+SCRIPT_DIR = _default_script_dir()
 PROMPTS_FILE = SCRIPT_DIR / "scuba_prompts.json"
 OUTPUT_DIR = SCRIPT_DIR / "images"
 MODEL = "gemini-2.5-flash-image"
@@ -71,10 +79,10 @@ def main():
     print(f"Working directory: {SCRIPT_DIR}")
     os.chdir(SCRIPT_DIR)
 
-    # Resolve API key
-    api_key = API_KEY or os.environ.get("GEMINI_API_KEY")
+    # Resolve API key (env-only; no in-source fallback)
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key and not args.dry_run:
-        print("Error: No API key provided. Set API_KEY in the script or GEMINI_API_KEY env var.")
+        print("Error: No API key provided. Set GEMINI_API_KEY in the environment.")
         sys.exit(1)
 
     # Load prompts
