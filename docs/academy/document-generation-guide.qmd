@@ -1,0 +1,329 @@
+---
+title: "User's Guide — Document Generation & Image Pipeline"
+subtitle: "End-to-end: prompts.json → Gemini Nano Banana → PNGs → DOCX / PPTX / PDF / EPUB"
+date: today
+date-format: "MMMM D, YYYY"
+description: "Production-grade walkthrough for the UIAO document-generation pipeline. Covers Gemini API setup, prompts authoring, image generation, document assembly, and operational guardrails."
+aspirational: true
+---
+
+The UIAO Modernization Atlas ships with a **deterministic document-generation pipeline** that turns a prompts specification into a set of rendered publication binaries (DOCX, PPTX, PDF, EPUB) with AI-generated images embedded at the correct positions. This page is the canonical user's guide for running that pipeline end-to-end.
+
+::: {.callout-warning}
+## Requires a Gemini API key
+The image-generation step calls Google's Gemini API (specifically the `gemini-2.5-flash-image` model, also known as **Nano Banana**). You need an active key stored in the `GEMINI_API_KEY` environment variable. Never commit a key to source — see [§ Key management](#key-management) below.
+:::
+
+## The pipeline, in one picture
+
+```
+prompts.json              (you author this)
+    │
+    ▼
+generate_images.py        (calls Gemini; writes PNGs)
+    │
+    ▼
+docs/images/*.png         (review, accept, or regenerate)
+    │
+    ▼
+build.py                  (assembles publication)
+    │
+    ▼
+UIAO-<Publication>.docx + .pptx + .pdf + .epub
+```
+
+Each stage is **idempotent**, **inspectable**, and **replayable**. Images persist across runs so a second build doesn't re-spend API calls unless you force regeneration.
+
+## The three scripts
+
+| Script | Purpose | When you run it |
+|---|---|---|
+| [`docs/generate_images.py`](https://github.com/WhalerMike/uiao/blob/main/docs/generate_images.py) | General-purpose image generation from a `prompts.json` | You've added new prompts; want new PNGs |
+| [`docs/generate_scuba_images.py`](https://github.com/WhalerMike/uiao/blob/main/docs/generate_scuba_images.py) | Same pattern, scoped to the SCuBA Technical Specification series (reads `scuba_prompts.json`) | SCuBA publication-specific image runs |
+| [`docs/publications/01-executive-brief/build.py`](https://github.com/WhalerMike/uiao/blob/main/docs/publications/01-executive-brief/build.py) | Full publication assembler: generates images (optional), inserts into DOCX, produces all output formats | You're cutting a publication release |
+
+All three are **env-variable-driven** and **path-self-locating** — they work from any clone, any OS, any user. No hardcoded paths.
+
+## Prerequisites
+
+### Tools
+
+| Dependency | Install | Used by |
+|---|---|---|
+| **Python 3.10+** | `python --version` to check | All 3 scripts |
+| **google-genai** | `pip install google-genai` | Image generation |
+| **Pillow** | `pip install Pillow` | Image manipulation in `build.py` |
+| **python-pptx** | `pip install python-pptx` | PPTX output in `build.py` |
+| **ebooklib** | `pip install ebooklib` | EPUB output in `build.py` |
+| **lxml** | `pip install lxml` | DOCX XML edits in `build.py` |
+| **LibreOffice** | `sudo apt install libreoffice` / `brew install libreoffice` / installer on Windows | PDF conversion in `build.py` |
+
+Or install all at once:
+
+```bash
+pip install google-genai Pillow python-pptx ebooklib lxml
+```
+
+### Accounts
+
+- **Google AI Studio account** with an active project (`gen-lang-client-<id>`) and an API key created at [https://aistudio.google.com/api-keys](https://aistudio.google.com/api-keys).
+- Tier 1 billing is sufficient for normal authoring volumes. The `gemini-2.5-flash-image` model has a free quota; exceeding it requires billing enabled.
+
+## Key management
+
+The scripts read exactly **one** environment variable: **`GEMINI_API_KEY`**.
+
+### For local workstation use (one-time setup)
+
+**Windows PowerShell (persistent, user-level):**
+
+```powershell
+[Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "<paste-key>", "User")
+# Open a fresh PowerShell to pick it up, then verify:
+echo $env:GEMINI_API_KEY
+```
+
+**macOS / Linux (persistent, in your shell profile):**
+
+```bash
+# Bash — add to ~/.bashrc
+export GEMINI_API_KEY="<paste-key>"
+
+# Zsh — add to ~/.zshrc
+export GEMINI_API_KEY="<paste-key>"
+
+# Verify in a fresh shell:
+echo $GEMINI_API_KEY
+```
+
+### For CI (GitHub Actions)
+
+Store at **Repository Settings → Secrets and variables → Actions → New repository secret**:
+
+- **Name:** `GEMINI_API_KEY`
+- **Secret:** (paste the key value)
+
+Workflows reference it as `${{ secrets.GEMINI_API_KEY }}`. No workflow currently calls the image-gen scripts; add one if/when you need batched CI generation.
+
+### Hard rules
+
+- ❌ **Never** hardcode the key in any source file. PR #76 rotated out the first leak; PR review gates should catch any reintroduction.
+- ❌ **Never** paste the key into a PR body, issue, commit message, or chat you're willing to share.
+- ✅ Password manager (1Password, Bitwarden, KeePass) is the canonical home.
+- ✅ Rotate if you suspect exposure (free at [https://aistudio.google.com/api-keys](https://aistudio.google.com/api-keys)).
+
+## Stage 1 — Authoring prompts
+
+Each publication (or series) maintains a JSON file naming the images it needs and the prompts that generate them. Default locations:
+
+- `docs/prompts.json` — general site prompts consumed by `generate_images.py`
+- `docs/scuba_prompts.json` — SCuBA series prompts consumed by `generate_scuba_images.py`
+- `docs/publications/<publication>/prompts.json` — publication-scoped prompts consumed by that publication's `build.py`
+
+### Schema
+
+Each file is a JSON array of objects, each object being one image:
+
+```json
+[
+  {
+    "filename": "address-governance-flow.png",
+    "prompt": "A federal agency network administrator at a terminal, surrounded by glowing IPAM records flowing between authoritative directories and DHCP leases, drawn in the UIAO narrative-comic style with soft governmental blues and yellows. The operator's face shows quiet focus; the records are stylized to suggest policy provenance.",
+    "width": 1024,
+    "height": 1024,
+    "retries": 3
+  },
+  {
+    "filename": "drift-detection-loop.png",
+    "prompt": "A closed-loop diagram depicted as a flowing river of signals — scan, classify, remediate — with a human-scale operator figure standing in the center, calm, observing.",
+    "width": 1024,
+    "height": 1024,
+    "retries": 3
+  }
+]
+```
+
+**Required keys** per entry:
+
+- `filename` — output PNG name (relative to `docs/images/`)
+- `prompt` — the generation prompt (natural language; vendor constraints apply)
+
+**Optional keys**:
+
+- `width`, `height` — default 1024×1024 (Gemini Nano Banana sweet spot)
+- `retries` — number of attempts per prompt if the first response is flagged/truncated (default: 3)
+
+### Prompt authoring principles
+
+1. **Be specific about style.** The UIAO narrative comics (`docs/publications/series-assets/UIAO-*.jpg`) are the canonical style anchor — soft governmental blues and yellows, human-scale operators, restrained typography, policy-provenance aesthetic.
+2. **Name the subject, the setting, and the feeling.** Nano Banana follows explicit composition cues more reliably than impressionistic ones.
+3. **Avoid logos, real people, or proprietary marks.** Gemini's safety filters will block these and you'll waste an API call.
+4. **Test one prompt before bulk-generating.** The `--dry-run` flag (below) prints prompts without calling the API.
+
+## Stage 2 — Running image generation
+
+From the repo root:
+
+```bash
+# Set the key (once per shell session, if not persisted)
+export GEMINI_API_KEY="<your-key>"
+
+# General site images
+python docs/generate_images.py
+
+# SCuBA series images
+python docs/generate_scuba_images.py
+
+# Dry-run (prints prompts, no API calls, no cost)
+python docs/generate_images.py --dry-run
+```
+
+Output:
+
+- PNGs written to `docs/images/` (or the `OUTPUT_DIR` override)
+- One line of stdout per prompt, naming the file and the result (success / retry / failure)
+- A 2-second delay between prompts to stay well under Gemini's rate limits
+
+### What to expect
+
+- **~3-8 seconds per image** at current Gemini Nano Banana speeds
+- **Transient failures retry automatically** per the `retries` key in the prompt entry
+- **Permanent failures** (safety-filter blocks, quota exhaustion) print a red error and skip to the next prompt — rerun after adjusting the prompt or upgrading billing
+
+### Force-regeneration
+
+Images persist across runs. If you want to re-run a specific prompt (e.g., the style didn't land), delete the PNG from `docs/images/` and rerun. Or change the `filename` in `prompts.json` so the new output doesn't collide.
+
+## Stage 3 — Reviewing and accepting images
+
+Generated PNGs land in `docs/images/`. Before committing:
+
+1. **Open each new PNG.** Does the composition match the canonical comic style? Does it communicate the abstraction?
+2. **Delete rejects.** A single `docs/images/<name>.png` is the canonical artifact; don't commit draft variants.
+3. **Size-check.** If an image exceeds ~2 MB, consider regenerating with a prompt that produces simpler composition — large files inflate the repo and slow GitHub Pages.
+4. **Confirm filename matches the consuming document.** `build.py` and the book article `.qmd` pages reference specific filenames (see the book's `images/article-NN.png` convention).
+
+When satisfied, commit the PNGs in a single PR scoped to the publication or article they support.
+
+## Stage 4 — Document assembly (the `build.py` pipeline)
+
+`docs/publications/01-executive-brief/build.py` is the reference publication assembler. Other publications can copy the pattern.
+
+### Usage
+
+```bash
+cd docs/publications/01-executive-brief/
+
+# Full pipeline — generate images + all output formats
+python build.py
+
+# Skip image generation (use images already in docs/images/)
+python build.py --skip-images
+
+# Only specific output formats
+python build.py --formats docx pdf
+
+# Dry-run (print the plan, no action)
+python build.py --dry-run
+```
+
+### What `build.py` does
+
+1. Reads `prompts.json` (sibling to the script).
+2. If `--skip-images` is NOT set: calls `generate_images(...)` with the environment's `GEMINI_API_KEY`, writing PNGs to `docs/images/`.
+3. Opens `UIAO-Executive-Brief-SOURCE.docx` (the authoring source).
+4. Inserts each image at its designated position (images are 4" × 4", 914400 EMU = 1 inch).
+5. Writes `UIAO-Executive-Brief.docx` with images embedded.
+6. Converts DOCX → PPTX (via `python-pptx`).
+7. Converts DOCX → PDF (via LibreOffice subprocess — requires LibreOffice installed).
+8. Converts DOCX → EPUB (via `ebooklib`).
+
+### Outputs
+
+In the same directory as `build.py`:
+
+- `UIAO-Executive-Brief.docx` — the canonical published form
+- `UIAO-Executive-Brief.pptx` — briefing deck
+- `UIAO-Executive-Brief.pdf` — print-ready / auditor-ready
+- `UIAO-Executive-Brief.epub` — ebook reader / accessibility
+
+These are **committed binaries** for agency readers who don't have Quarto or Python installed. The Quarto-rendered HTML remains the website canon; these formats are derivatives.
+
+## Stage 5 — Quarto rendering (orthogonal path)
+
+The main Modernization Atlas site is **Quarto-rendered** from `.qmd` files in `docs/`, independent of the DOCX/PPTX pipeline above. Quarto consumes images via markdown image references (`![alt](images/foo.png)`) — the PNGs from Stage 3 are reused.
+
+```bash
+cd docs/
+quarto render --to html    # renders the full site to _site/
+```
+
+CI runs this automatically on every PR via `.github/workflows/quarto.yml`. The site deploys to `https://whalermike.github.io/uiao/` on push to `main`.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Error: GEMINI_API_KEY environment variable not set` | The env var isn't exported in this shell | `export GEMINI_API_KEY=...` (or re-open PowerShell if you set it at User level) |
+| `google.api_core.exceptions.PermissionDenied: 403` | Key is valid but the model / project isn't authorized | Enable `Generative Language API` in the GCP console for your project |
+| `API_KEY_INVALID` | Key is dead (rotated, revoked, or mistyped) | Generate a new key; update the env var / Actions secret |
+| `SafetyError: PROHIBITED_CONTENT` | Prompt triggered Gemini's safety filter | Rewrite prompt to remove restricted content (logos, real people, political framing, weapons, etc.) |
+| `Quota exceeded` | Free tier hit; you're on Postpay but haven't enabled billing | Enable billing at `https://aistudio.google.com/billing` |
+| `PDF conversion failed` | LibreOffice not installed or not on PATH | Install LibreOffice; verify `soffice --version` on PATH |
+| Image inserted at wrong position in DOCX | Filename in `prompts.json` doesn't match the placeholder in `SOURCE.docx` | Either rename the PNG or edit the placeholder in the source DOCX |
+| `generate_images_from_prompts.py` is empty | It's a placeholder file | Either ignore, delete, or fill it with a variant implementation |
+
+## Security checklist (before pushing new content)
+
+- [ ] `grep -r 'AIzaSy' .` in your working tree returns zero matches (or only ADR-025 historical mentions)
+- [ ] `GEMINI_API_KEY` is NOT in any file you're about to commit (including `.env`)
+- [ ] `.gitignore` includes `.env` and any local credential files
+- [ ] Generated PNGs do not contain embedded EXIF with PII (strip with `exiftool -all= *.png` if in doubt)
+- [ ] No prompts in `prompts.json` reference real people, real agency logos, or names that would cause a safety filter block OR a political/legal issue if the image leaks
+
+## Automation (future)
+
+A GitHub Actions workflow for on-demand image generation could be added at `.github/workflows/image-gen.yml`:
+
+```yaml
+name: Generate images (on-demand)
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompts_file:
+        description: "Path to prompts.json (relative to repo root)"
+        required: true
+        default: "docs/prompts.json"
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install google-genai Pillow
+      - run: python docs/generate_images.py
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-images
+          path: docs/images/
+```
+
+**Not yet wired.** Ship this workflow when:
+
+1. `prompts.json` files exist (currently absent from the repo)
+2. You want reproducible CI-driven regeneration
+3. You want the GitHub Actions secret you already set to actually be used
+
+## Cross-references
+
+- [UIAO_128 Education Program](https://github.com/WhalerMike/uiao/blob/main/core/canon/specs/program-education.md) — the canon this pipeline supports (comic-led agency onboarding)
+- [FINDING-001 FedRAMP-INR](../findings/fedramp-gcc-moderate-informed-network-routing.md) — an example governance finding whose existence the comics help communicate
+- [Academy — Contributor tier-1 setup](contributor-tier-1-setup.qmd) — separate pipeline; authentication model is similar (env-var-only, never hardcoded)
+- [Academy — Entra ID integration guide](adapters/entra-id.qmd) — reference for the "step-by-step, production-grade, certificate-anchored" guide pattern
+- [Gemini API — model reference](https://ai.google.dev/gemini-api/docs/models/gemini)
+- [Google AI Studio — API keys](https://aistudio.google.com/api-keys)
