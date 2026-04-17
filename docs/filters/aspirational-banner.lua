@@ -39,7 +39,7 @@ development.
 - **Not yet battle-tested** — real-world behavior, edge cases, and tool integrations may differ from the prose here as the substrate matures.
 - **Changes are governed** — modifications follow the canon-change protocol in [`CONTRIBUTING.md`](https://github.com/WhalerMike/uiao/blob/main/CONTRIBUTING.md) with ADR-anchored decisions for doctrinal changes.
 
-Track current adoption state on the [Substrate Status](/docs/substrate-status.html) page. The banner is removed from a page once the program or capability it describes is in routine operational use with green CI, documented evidence, and at least one reference deployment.
+Track current adoption state on the [Substrate Status](https://whalermike.github.io/uiao/docs/substrate-status.html) page. The banner is removed from a page once the program or capability it describes is in routine operational use with green CI, documented evidence, and at least one reference deployment.
 :::
 ]]
 
