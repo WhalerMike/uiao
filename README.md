@@ -1,1 +1,76 @@
-# uiao
+# UIAO — Unified Identity-Addressing-Overlay Architecture
+
+Governance OS for FedRAMP-Moderate identity, telemetry, policy, and enforcement
+modernization. Identity-first. Canon-anchored. Drift-detected.
+
+> **Canonical substrate manifest:** [`core/canon/substrate-manifest.yaml`](core/canon/substrate-manifest.yaml) (UIAO_200).
+> **Document registry:** [`core/canon/document-registry.yaml`](core/canon/document-registry.yaml).
+> **Schemas:** [`core/schemas/`](core/schemas/).
+
+## What UIAO is
+
+UIAO is a governance substrate, not a product. It defines:
+
+- **SSOT** — a single source of truth per claim, certificate-anchored,
+  certified via provenance chains that cannot be backfilled.
+- **Canon** — the authoritative artifacts (schemas, registries, policies,
+  executive-order mappings). Canon lives in `core/`; everything else derives.
+- **Substrate** — the cross-cutting data and control layer that adapters
+  consume and emit against. Documented here in the substrate manifest.
+- **Overlay** — the identity-derived certificate-anchored tunnel abstraction.
+- **Adapters** — externally-facing connectors. Two operational classes
+  (`conformance` = read-only, `modernization` = change-making) × five
+  mission classes (`identity | telemetry | policy | enforcement | integration`).
+  Registered in `core/canon/adapter-registry.yaml` and
+  `core/canon/modernization-registry.yaml`.
+- **Drift** — deviation between live state and canon, detected in five
+  classes (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`,
+  `DRIFT-IDENTITY`) at four severities (`P1`–`P4`). Taxonomy defined in
+  [`docs/docs/16_DriftDetectionStandard.qmd`](docs/docs/16_DriftDetectionStandard.qmd).
+- **KSI** — Key Security Indicators. 163 continuous-compliance signals,
+  cryptographically signed.
+
+## Module layout
+
+| Module | Role | Canon consumer | Summary |
+|---|---|---|---|
+| [`core/`](core/) | authority | no | Canon authority. Schemas, canonical governance documents, control library, enforcement tooling. Single source of truth. |
+| [`docs/`](docs/) | consumer | yes | Derived documentation. Articles, guides, playbooks. All content traces provenance to `core/`. |
+| [`impl/`](impl/) | consumer | yes | Python implementation. Drift detector, conformance runner, OSCAL/SSP generators, evidence collectors, directory-migration subsystem. |
+
+### Sub-boundaries inside `core/`
+
+- [`core/schemas/`](core/schemas/) — schema authority (JSON Schema drafts 07 and 2020-12).
+- [`core/canon/`](core/canon/) — canonical governance documents. UIAO_NNN allocations via [`document-registry.yaml`](core/canon/document-registry.yaml).
+- [`core/tools/`](core/tools/) — enforcement tooling (metadata validator, drift detector, canon sync).
+- [`core/data/`](core/data/) — control library. 247 NIST Moderate baseline controls (163 base + 84 enhancements).
+- [`core/dashboard/`](core/dashboard/) — export and visualization surface.
+- [`core/compliance/`](core/compliance/) — reference implementations (FedRAMP Rev 5, NIST SP 800-137 ConMon, FedRAMP ConMon playbook).
+
+## Quick start
+
+Set `UIAO_WORKSPACE_ROOT` to the absolute path of your local checkout — the
+canon-consumer rule (`impl/.claude/rules/canon-consumer.md`) forbids
+hardcoded canon paths.
+
+```bash
+# Linux / macOS
+export UIAO_WORKSPACE_ROOT="$HOME/src/uiao"
+
+# Windows (PowerShell)
+$env:UIAO_WORKSPACE_ROOT = "$env:USERPROFILE\src\uiao"
+```
+
+## Governance gates
+
+Every PR into `main` must pass the canon enforcement gates (CI workflows
+in [`core/.github/workflows/`](core/.github/workflows/)):
+
+- `metadata-validator` — frontmatter conforms to [`core/schemas/metadata-schema.json`](core/schemas/metadata-schema.json).
+- `drift-scan` — detects metadata and provenance drift.
+- `appendix-sync` — appendix index integrity.
+- `dashboard-export` — dashboard schema and export readiness.
+
+## License
+
+Apache 2.0. See [`LICENSE`](LICENSE).
