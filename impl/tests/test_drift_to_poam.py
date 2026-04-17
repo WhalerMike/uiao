@@ -18,6 +18,7 @@ import pytest
 from uiao_impl.adapters.terraform_adapter import TerraformAdapter
 from uiao_impl.adapters.m365_adapter import M365Adapter
 from uiao_impl.adapters.paloalto_adapter import PaloAltoAdapter
+from uiao_impl.adapters.database_base import DriftReport
 from uiao_impl.adapters.adapter_to_oscal import (
     drift_to_poam_findings,
     build_adapter_poam,
@@ -97,7 +98,7 @@ class TestPaloAltoChangeDriftToPoam:
             "security-rule", "allow-dns", {"action": "deny"}
         )
         # push_config_change doesn't populate resources dict, so aggregate path
-        findings = drift_to_poam_findings(drift, "palo-alto", ["SC-7"])
+        drift_to_poam_findings(drift, "palo-alto", ["SC-7"])
         # No per-resource items but the drift is non-empty
         # (push_config_change returns a warning-severity DriftReport)
         poam = build_adapter_poam("palo-alto", drift, ["SC-7"])
