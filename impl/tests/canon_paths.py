@@ -1,15 +1,18 @@
 """Canon path resolution for uiao-impl tests.
 
 Canon (the single source of truth YAMLs, schemas, and generation inputs)
-lives in the sibling ``uiao-core`` repository post four-repo-split. Tests
-that depend on canon resolve the canon root in this order:
+now lives in the ``core/`` sibling module of the consolidated ``uiao``
+monorepo. Tests resolve the canon root in this order:
 
-1. ``UIAO_CANON_PATH`` environment variable (set in CI to the uiao-core
-   checkout path).
-2. Sibling checkout at ``../uiao-core`` (common local dev layout).
-3. Legacy in-tree location at the project root (pre-split fallback — will
-   fail at assertion time if canon files do not exist, which is the
-   correct signal).
+1. ``UIAO_CANON_PATH`` environment variable (explicit override for
+   non-default layouts or downstream consumers with custom checkouts).
+2. Monorepo layout: ``<repo-root>/core/`` — the canonical location
+   since the four-repo consolidation (PR #1). Primary expected path.
+3. Pre-monorepo sibling checkout at ``../uiao-core`` (legacy local dev
+   layout — kept for any stragglers still operating four-repo locally).
+4. Legacy in-tree location at the project root (pre-split fallback —
+   will fail at assertion time if canon files do not exist, which is
+   the correct signal).
 
 Usage::
 
@@ -30,6 +33,11 @@ def _resolve_canon_root() -> Path:
         candidate = Path(env).expanduser().resolve()
         if candidate.exists():
             return candidate
+    # Monorepo layout: impl/ and core/ are siblings under the repo root.
+    monorepo_core = (_PROJECT_ROOT.parent / "core").resolve()
+    if (monorepo_core / "data" / "control-library").is_dir():
+        return monorepo_core
+    # Pre-monorepo sibling-checkout layout.
     sibling = (_PROJECT_ROOT.parent / "uiao-core").resolve()
     if sibling.exists():
         return sibling
