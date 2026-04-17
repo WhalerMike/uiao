@@ -173,4 +173,12 @@ The UIAO Narrative Layer establishes seven distinct narrative constructs:
 
 This is the layer that makes UIAO **legible**, **fundable**, **buyable**, and **inevitable**.
 
+## A note on pre-UIAO vocabulary
+
+You may encounter earlier-vintage narrative content that uses labels like *"V3 Architecture"* or a flat four-layer model (Authority / Control / Overlay / Underlay). That content predates the UIAO substrate's formalization and is being progressively rewritten on promotion to canon per [ADR-030](https://github.com/WhalerMike/uiao/blob/main/core/canon/adr/adr-030-pre-uiao-terminology-reconciliation.md). The canonical architecture is referred to by its full name — **Unified Identity-Addressing-Overlay Architecture**, UIAO — or by canonical document ID (UIAO_001, UIAO_101, etc.). Per-document `version` fields in frontmatter are the only governed versioning surface.
+
+## Governance findings live adjacent
+
+A finding is neither canon nor narrative — it is a structured record of a constraint the substrate operates around but does not control (e.g., a vendor capability unavailable in a federal cloud variant). Findings occupy their own artifact class under [`docs/findings/`](https://github.com/WhalerMike/uiao/tree/main/docs/findings) per ADR-030 §5.2. They are read alongside narrative but treated differently in governance.
+
 > **SSOT Reference:** See /ssot/UIAO-SSOT.md
