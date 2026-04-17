@@ -35,7 +35,8 @@ BASE_DIR = Path(__file__).resolve().parent
 PROMPTS_FILE = BASE_DIR.parent.parent / "prompts.json"
 IMAGES_DIR = BASE_DIR.parent.parent / "images"
 SOURCE_DOCX = BASE_DIR / "UIAO-Executive-Brief-SOURCE.docx"
-API_KEY = "AIzaSyCQ-BRx8IuLV23ybUjluLY1WfT6mxS9-jQ"
+# API key MUST come from environment; never commit to source.
+# Set GEMINI_API_KEY before running: export GEMINI_API_KEY="<your-key>"
 MODEL = "gemini-2.5-flash-image"
 
 # Output filenames
@@ -539,7 +540,12 @@ def main():
             print(f"Error: Prompts file not found: {PROMPTS_FILE}")
             sys.exit(1)
 
-        generate_images(PROMPTS_FILE, IMAGES_DIR, API_KEY, MODEL)
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            print("Error: GEMINI_API_KEY environment variable not set.")
+            print("       export GEMINI_API_KEY=\"<your-key>\" and re-run, or use --skip-images.")
+            sys.exit(1)
+        generate_images(PROMPTS_FILE, IMAGES_DIR, api_key, MODEL)
 
     # Build image map
     image_map = get_image_map(PROMPTS_FILE, IMAGES_DIR)
