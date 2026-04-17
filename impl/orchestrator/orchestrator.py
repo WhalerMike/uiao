@@ -34,29 +34,29 @@ from rich.logging import RichHandler
 
 # Import plane entry points
 try:
-    from uiao_impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
 except ImportError:
     transform_scuba_to_ir = None  # type: ignore[assignment]
 
 try:
-    from uiao_impl.ir.adapters.scuba.normalize_scuba import normalize_scuba
+    from uiao.impl.ir.adapters.scuba.normalize_scuba import normalize_scuba
 except ImportError:
     normalize_scuba = None  # type: ignore[assignment]
 
 try:
-    from uiao_impl.ksi.evaluate import evaluate_ksi
+    from uiao.impl.ksi.evaluate import evaluate_ksi
 except ImportError:
     evaluate_ksi = None  # type: ignore[assignment]
 
 try:
-    from uiao_impl.evidence.builder import build_evidence
+    from uiao.impl.evidence.builder import build_evidence
 except ImportError:
     build_evidence = None  # type: ignore[assignment]
 
 try:
-    from uiao_impl.generators.oscal import build_oscal
-    from uiao_impl.generators.poam import build_poam_export
-    from uiao_impl.generators.ssp import build_ssp
+    from uiao.impl.generators.oscal import build_oscal
+    from uiao.impl.generators.poam import build_poam_export
+    from uiao.impl.generators.ssp import build_ssp
 except ImportError:
     build_oscal = build_poam_export = build_ssp = None  # type: ignore[assignment]
 

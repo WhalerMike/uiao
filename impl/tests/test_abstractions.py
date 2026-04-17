@@ -1,10 +1,10 @@
-"""Tests for src/uiao_impl/abstractions/."""
+"""Tests for src/uiao/impl/abstractions/."""
 
 from __future__ import annotations
 
 import pytest
 
-from uiao_impl.abstractions import (
+from uiao.impl.abstractions import (
     DNSProvider,
     IdentityProvider,
     NetworkEdge,
@@ -12,7 +12,7 @@ from uiao_impl.abstractions import (
     PolicyEnforcementPoint,
     VulnerabilityScanner,
 )
-from uiao_impl.abstractions.providers import Capability
+from uiao.impl.abstractions.providers import Capability
 
 # ---------------------------------------------------------------------------
 # Smoke-test: public API is importable
@@ -147,7 +147,7 @@ class ConcretePIV(PIVAuthenticationService):
 
     @property
     def capabilities(self):
-        from uiao_impl.abstractions.providers import Capability
+        from uiao.impl.abstractions.providers import Capability
 
         return [Capability("PIV"), Capability("CAC"), Capability("FPKI")]
 
@@ -174,7 +174,7 @@ class ConcreteScanner(VulnerabilityScanner):
 
     @property
     def capabilities(self):
-        from uiao_impl.abstractions.providers import Capability
+        from uiao.impl.abstractions.providers import Capability
 
         return [Capability("authenticated-scan"), Capability("CVE-detection")]
 

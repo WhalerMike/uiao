@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from uiao_impl.evidence.bundle import build_bundle_from_transform_result
-from uiao_impl.evidence.poam import build_poam, poam_summary, poam_to_json
-from uiao_impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+from uiao.impl.evidence.bundle import build_bundle_from_transform_result
+from uiao.impl.evidence.poam import build_poam, poam_summary, poam_to_json
+from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
 
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "scuba_normalized_sample.json"

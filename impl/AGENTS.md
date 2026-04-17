@@ -21,7 +21,7 @@ impl/
 ├── CLAUDE.md            # thin stub → AGENTS.md
 ├── pyproject.toml
 ├── README.md
-├── src/uiao_impl/        # Python package
+├── src/uiao/impl/        # Python package
 ├── tests/                # pytest suite
 ├── scripts/              # one-off generators, assemblers
 ├── adapters/             # cloud/database/government/scuba adapter plugins

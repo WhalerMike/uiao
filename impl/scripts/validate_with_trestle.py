@@ -1,7 +1,7 @@
-"""Legacy shim - delegates to uiao_impl.generators.trestle.
+"""Legacy shim - delegates to uiao.impl.generators.trestle.
 
 This script is kept for backward compatibility. New code should
-import ``validate_oscal_artifacts`` from ``uiao_impl.generators.trestle``.
+import ``validate_oscal_artifacts`` from ``uiao.impl.generators.trestle``.
 
 Deprecated: Use `uiao validate-ssp` CLI command instead.
 """
@@ -10,7 +10,7 @@ import logging
 import sys
 import warnings
 
-from uiao_impl.generators.trestle import validate_oscal_artifacts
+from uiao.impl.generators.trestle import validate_oscal_artifacts
 
 warnings.warn(
     "scripts/validate_with_trestle.py is deprecated. Use `uiao validate-ssp` instead.",

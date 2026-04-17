@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 import pytest
-from uiao_impl.adapters.patchstate_adapter import PatchStateAdapter
-from uiao_impl.adapters.database_base import (
+from uiao.impl.adapters.patchstate_adapter import PatchStateAdapter
+from uiao.impl.adapters.database_base import (
     ConnectionProvenance, EvidenceObject, SchemaMappingObject,
 )
 

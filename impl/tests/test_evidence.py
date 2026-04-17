@@ -1,4 +1,4 @@
-"""Tests for uiao_impl.evidence and uiao_impl.models.evidence modules.
+"""Tests for uiao.impl.evidence and uiao.impl.models.evidence modules.
 
 Covers:
 - EvidenceArtifact, EvidenceMap, EvidenceBundle Pydantic models
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from uiao_impl.models.evidence import EvidenceArtifact, EvidenceBundle, EvidenceMap
+from uiao.impl.models.evidence import EvidenceArtifact, EvidenceBundle, EvidenceMap
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -133,7 +133,7 @@ class TestEvidenceBundle:
 
 class TestEvidenceLinker:
     def test_build_control_map(self, two_artifacts: list[EvidenceArtifact]) -> None:
-        from uiao_impl.evidence.linker import EvidenceLinker
+        from uiao.impl.evidence.linker import EvidenceLinker
 
         linker = EvidenceLinker(two_artifacts)
         cmap = linker.build_control_map()
@@ -145,14 +145,14 @@ class TestEvidenceLinker:
 
     def test_control_map_no_duplicates(self, sample_artifact: EvidenceArtifact) -> None:
         """Same artifact should not appear twice in a control map entry."""
-        from uiao_impl.evidence.linker import EvidenceLinker
+        from uiao.impl.evidence.linker import EvidenceLinker
 
         linker = EvidenceLinker([sample_artifact])
         cmap = linker.build_control_map()
         assert len(cmap["ac-2"].artifacts) == 1
 
     def test_to_oscal_back_matter_structure(self, sample_artifact: EvidenceArtifact) -> None:
-        from uiao_impl.evidence.linker import EvidenceLinker
+        from uiao.impl.evidence.linker import EvidenceLinker
 
         linker = EvidenceLinker([sample_artifact])
         bm = linker.to_oscal_back_matter()
@@ -167,7 +167,7 @@ class TestEvidenceLinker:
 
     def test_every_prop_has_uuid_prop_id_rule(self, sample_artifact: EvidenceArtifact) -> None:
         """UIAO-MEMORY rule: every prop in back-matter must carry its own UUIDv4."""
-        from uiao_impl.evidence.linker import EvidenceLinker
+        from uiao.impl.evidence.linker import EvidenceLinker
 
         linker = EvidenceLinker([sample_artifact])
         bm = linker.to_oscal_back_matter()
@@ -179,7 +179,7 @@ class TestEvidenceLinker:
 
     def test_prop_id_prop_present(self, sample_artifact: EvidenceArtifact) -> None:
         """A prop with name='id' must be present in every back-matter resource."""
-        from uiao_impl.evidence.linker import EvidenceLinker
+        from uiao.impl.evidence.linker import EvidenceLinker
 
         linker = EvidenceLinker([sample_artifact])
         bm = linker.to_oscal_back_matter()
@@ -190,7 +190,7 @@ class TestEvidenceLinker:
 
     def test_control_ref_props(self, sample_artifact: EvidenceArtifact) -> None:
         """Each control ref gets its own prop with a fresh UUID."""
-        from uiao_impl.evidence.linker import EvidenceLinker
+        from uiao.impl.evidence.linker import EvidenceLinker
 
         linker = EvidenceLinker([sample_artifact])
         bm = linker.to_oscal_back_matter()
@@ -206,7 +206,7 @@ class TestEvidenceLinker:
 
     def test_fedramp_ns_on_all_props(self, sample_artifact: EvidenceArtifact) -> None:
         """All props must carry the FedRAMP OSCAL namespace."""
-        from uiao_impl.evidence.linker import FEDRAMP_NS, EvidenceLinker
+        from uiao.impl.evidence.linker import FEDRAMP_NS, EvidenceLinker
 
         linker = EvidenceLinker([sample_artifact])
         bm = linker.to_oscal_back_matter()
@@ -215,7 +215,7 @@ class TestEvidenceLinker:
                 assert prop.get("ns") == FEDRAMP_NS, f"prop missing FedRAMP ns: {prop}"
 
     def test_inject_into_ssp_adds_resources(self, two_artifacts: list[EvidenceArtifact]) -> None:
-        from uiao_impl.evidence.linker import EvidenceLinker
+        from uiao.impl.evidence.linker import EvidenceLinker
 
         ssp: dict = {"system-security-plan": {"metadata": {}, "back-matter": {"resources": []}}}
         linker = EvidenceLinker(two_artifacts)
@@ -224,7 +224,7 @@ class TestEvidenceLinker:
         assert len(resources) == 2
 
     def test_inject_into_ssp_no_duplicates(self, sample_artifact: EvidenceArtifact) -> None:
-        from uiao_impl.evidence.linker import EvidenceLinker
+        from uiao.impl.evidence.linker import EvidenceLinker
 
         ssp: dict = {"system-security-plan": {}}
         linker = EvidenceLinker([sample_artifact])
@@ -236,7 +236,7 @@ class TestEvidenceLinker:
 
     def test_inject_bare_ssp_dict(self, sample_artifact: EvidenceArtifact) -> None:
         """inject_into_ssp should also accept a bare SSP dict without the outer wrapper."""
-        from uiao_impl.evidence.linker import EvidenceLinker
+        from uiao.impl.evidence.linker import EvidenceLinker
 
         ssp: dict = {"metadata": {}}
         linker = EvidenceLinker([sample_artifact])
@@ -244,7 +244,7 @@ class TestEvidenceLinker:
         assert "back-matter" in ssp
 
     def test_empty_linker_returns_empty_resources(self) -> None:
-        from uiao_impl.evidence.linker import EvidenceLinker
+        from uiao.impl.evidence.linker import EvidenceLinker
 
         linker = EvidenceLinker([])
         bm = linker.to_oscal_back_matter()
@@ -258,7 +258,7 @@ class TestEvidenceLinker:
 
 class TestEvidenceBundler:
     def test_build_manifest_structure(self, two_artifacts: list[EvidenceArtifact]) -> None:
-        from uiao_impl.evidence.bundler import EvidenceBundler
+        from uiao.impl.evidence.bundler import EvidenceBundler
 
         bundler = EvidenceBundler(two_artifacts, control_family="au")
         manifest = bundler.build_manifest()
@@ -269,7 +269,7 @@ class TestEvidenceBundler:
         uuid.UUID(manifest["bundle_id"])
 
     def test_build_bundle_model(self, two_artifacts: list[EvidenceArtifact]) -> None:
-        from uiao_impl.evidence.bundler import EvidenceBundler
+        from uiao.impl.evidence.bundler import EvidenceBundler
 
         bundler = EvidenceBundler(two_artifacts)
         model = bundler.build_bundle_model()
@@ -279,7 +279,7 @@ class TestEvidenceBundler:
     def test_write_zip_creates_file(self, two_artifacts: list[EvidenceArtifact]) -> None:
         import zipfile
 
-        from uiao_impl.evidence.bundler import EvidenceBundler
+        from uiao.impl.evidence.bundler import EvidenceBundler
 
         bundler = EvidenceBundler(two_artifacts)
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -295,7 +295,7 @@ class TestEvidenceBundler:
         """ZIP's oscal-back-matter.json must follow the prop:id rule."""
         import zipfile
 
-        from uiao_impl.evidence.bundler import EvidenceBundler
+        from uiao.impl.evidence.bundler import EvidenceBundler
 
         bundler = EvidenceBundler(two_artifacts)
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -310,7 +310,7 @@ class TestEvidenceBundler:
 
     def test_write_zip_include_files_skips_missing(self, two_artifacts: list[EvidenceArtifact]) -> None:
         """include_files=True silently skips non-existent files."""
-        from uiao_impl.evidence.bundler import EvidenceBundler
+        from uiao.impl.evidence.bundler import EvidenceBundler
 
         bundler = EvidenceBundler(two_artifacts)
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -320,7 +320,7 @@ class TestEvidenceBundler:
             assert result.exists()
 
     def test_empty_bundler(self) -> None:
-        from uiao_impl.evidence.bundler import EvidenceBundler
+        from uiao.impl.evidence.bundler import EvidenceBundler
 
         bundler = EvidenceBundler([])
         manifest = bundler.build_manifest()
@@ -334,14 +334,14 @@ class TestEvidenceBundler:
 
 class TestEvidenceCollector:
     def test_import_package(self) -> None:
-        from uiao_impl.evidence import EvidenceBundler, EvidenceCollector, EvidenceLinker
+        from uiao.impl.evidence import EvidenceBundler, EvidenceCollector, EvidenceLinker
 
         assert callable(EvidenceCollector)
         assert callable(EvidenceLinker)
         assert callable(EvidenceBundler)
 
     def test_collector_stub_returns_artifacts(self) -> None:
-        from uiao_impl.evidence.collector import AzureSentinelCollector, VulnScanCollector
+        from uiao.impl.evidence.collector import AzureSentinelCollector, VulnScanCollector
 
         sentinel = AzureSentinelCollector()
         results = sentinel.collect()
@@ -354,7 +354,7 @@ class TestEvidenceCollector:
         assert "ra-5" in results2[0].control_refs
 
     def test_collector_default_runs_without_error(self) -> None:
-        from uiao_impl.evidence.collector import EvidenceCollector
+        from uiao.impl.evidence.collector import EvidenceCollector
 
         collector = EvidenceCollector.default()
         artifacts = collector.run()
@@ -364,7 +364,7 @@ class TestEvidenceCollector:
         assert len(artifacts) >= 4
 
     def test_manual_upload_missing_yaml_returns_empty(self) -> None:
-        from uiao_impl.evidence.collector import ManualUploadCollector
+        from uiao.impl.evidence.collector import ManualUploadCollector
 
         mc = ManualUploadCollector({"uploads_yaml": "/nonexistent/path/uploads.yaml"})
         results = mc.collect()
@@ -372,7 +372,7 @@ class TestEvidenceCollector:
 
     def test_collector_connector_error_does_not_propagate(self) -> None:
         """An exception in one connector should be swallowed; others still run."""
-        from uiao_impl.evidence.collector import BaseCollector, EvidenceCollector
+        from uiao.impl.evidence.collector import BaseCollector, EvidenceCollector
 
         class BrokenConnector(BaseCollector):
             name = "broken"
@@ -393,7 +393,7 @@ class TestEvidenceCollector:
 
     def test_vuln_scan_with_files(self, tmp_path: Path) -> None:
         """VulnScanCollector with real scan_files list returns one artifact per file."""
-        from uiao_impl.evidence.collector import VulnScanCollector
+        from uiao.impl.evidence.collector import VulnScanCollector
 
         f1 = tmp_path / "scan1.nessus"
         f1.touch()

@@ -1,7 +1,7 @@
-"""Legacy shim - delegates to uiao_impl.generators.oscal.
+"""Legacy shim - delegates to uiao.impl.generators.oscal.
 
 This script is kept for backward compatibility. New code should
-import ``build_oscal`` from ``uiao_impl.generators.oscal``.
+import ``build_oscal`` from ``uiao.impl.generators.oscal``.
 
 Deprecated: Use `uiao generate-oscal` CLI command instead.
 """
@@ -9,7 +9,7 @@ Deprecated: Use `uiao generate-oscal` CLI command instead.
 import logging
 import warnings
 
-from uiao_impl.generators.oscal import build_oscal
+from uiao.impl.generators.oscal import build_oscal
 
 warnings.warn(
     "scripts/generate_oscal.py is deprecated. Use `uiao generate-oscal` instead.",

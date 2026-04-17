@@ -57,15 +57,15 @@ uiao adapter-oscal poam terraform path/to/plan.json --controls CM-3
 uiao adapter-oscal ssp terraform path/to/terraform.tfstate --system-name "My System"
 
 # Run conformance check
-python -m uiao_impl.adapters.conformance_check
-python -m uiao_impl.adapters.conformance_check --json > report.json
-python -m uiao_impl.adapters.conformance_check --markdown --adapter=terraform
+python -m uiao.impl.adapters.conformance_check
+python -m uiao.impl.adapters.conformance_check --json > report.json
+python -m uiao.impl.adapters.conformance_check --markdown --adapter=terraform
 ```
 
 ### 2.2 Programmatic Usage
 
 ```python
-from uiao_impl.adapters.terraform_adapter import TerraformAdapter
+from uiao.impl.adapters.terraform_adapter import TerraformAdapter
 
 adapter = TerraformAdapter({"workspace": "prod"})
 claims = adapter.extract_terraform_state("path/to/terraform.tfstate")
@@ -115,13 +115,13 @@ evidence = adapter.generate_terraform_evidence(state_snapshot=state)
 
 ```bash
 # Run single adapter conformance with detail
-python -m uiao_impl.adapters.conformance_check --adapter=terraform
+python -m uiao.impl.adapters.conformance_check --adapter=terraform
 
 # Run specific test file with verbose output
 pytest tests/test_terraform_adapter.py -v --tb=long
 
 # Generate JSON report for analysis
-python -m uiao_impl.adapters.conformance_check --json | python -m json.tool
+python -m uiao.impl.adapters.conformance_check --json | python -m json.tool
 ```
 
 ---

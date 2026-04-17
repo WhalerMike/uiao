@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from uiao_impl.adapters.paloalto_adapter import PaloAltoAdapter
-from uiao_impl.adapters.database_base import (
+from uiao.impl.adapters.paloalto_adapter import PaloAltoAdapter
+from uiao.impl.adapters.database_base import (
     ClaimSet,
     ConnectionProvenance,
     DriftReport,
@@ -53,7 +53,7 @@ class TestInstantiation:
         assert "security-policies" in adapter.SCOPE
 
     def test_is_database_adapter_base(self, adapter: PaloAltoAdapter) -> None:
-        from uiao_impl.adapters.database_base import DatabaseAdapterBase
+        from uiao.impl.adapters.database_base import DatabaseAdapterBase
         assert isinstance(adapter, DatabaseAdapterBase)
 
 

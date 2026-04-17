@@ -22,7 +22,7 @@ MUST be populated from this template.
 Every adapter registered in `canon/adapter-registry.yaml` or
 `canon/modernization-registry.yaml` must pass conformance testing
 against the 7 canonical responsibility domains defined in
-`DatabaseAdapterBase` (see `uiao-impl/src/uiao_impl/adapters/database_base.py`),
+`DatabaseAdapterBase` (see `uiao-impl/src/uiao/impl/adapters/database_base.py`),
 plus any adapter-specific extension methods.
 
 Testing is structured in three tiers:
@@ -123,7 +123,7 @@ Extension methods that are **implemented** must additionally pass:
 | # | Criterion | Pass | Fail |
 |---|-----------|------|------|
 | 4.1 | `ADAPTER_ID` matches canon registry `id` field | Exact match against `canon/{modernization,adapter}-registry.yaml` | Mismatch |
-| 4.2 | Adapter is registered in `__init__.py` `__all__` | Import succeeds from `uiao_impl.adapters` | ImportError |
+| 4.2 | Adapter is registered in `__init__.py` `__all__` | Import succeeds from `uiao.impl.adapters` | ImportError |
 | 4.3 | Adapter appears in `test_adapters.py` `ADAPTER_REGISTRY` | Parametrized smoke tests cover it | Missing from registry |
 | 4.4 | Schema invariants hold | `gcc-boundary`, `ssot-mutation: never`, `certificate-anchored: true`, `object-identity-only: true` are respected in adapter behavior | Violation |
 

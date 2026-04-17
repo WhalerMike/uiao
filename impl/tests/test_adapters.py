@@ -1,7 +1,7 @@
 """Smoke tests for the adapter registry and base contracts."""
 
 import pytest
-from uiao_impl.adapters import (
+from uiao.impl.adapters import (
     CyberArkAdapter,
     DatabaseAdapterBase,
     EntraAdapter,

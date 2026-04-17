@@ -22,7 +22,7 @@ artifacts live in [`uiao-core`](https://github.com/WhalerMike/uiao-core).
 ## Runtime canon resolution
 
 All runtime canon reads go through the `--canon-path` CLI argument. **Do not
-hard-code `../uiao-core` paths.** See `src/uiao_impl/canon.py` for the
+hard-code `../uiao-core` paths.** See `src/uiao/impl/canon.py` for the
 resolution helpers.
 
 ```bash
@@ -50,7 +50,7 @@ noted in an ADR.
 |---|---|
 | How does Claude Code work in this repo? | [`CLAUDE.md`](CLAUDE.md) |
 | Repo-level Claude rules, agents, skills, commands | [`.claude/`](.claude/) |
-| Python package entry point | `src/uiao_impl/` |
+| Python package entry point | `src/uiao/impl/` |
 | Adapter plugins (cloud / database / gov / SCuBA) | `adapters/` |
 | Test suite | `tests/` |
 | CI workflows | `.github/workflows/` |

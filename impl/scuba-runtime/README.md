@@ -1,6 +1,6 @@
 # impl/scuba-runtime/
 
-Non-Python runtime artifacts for the SCuBA / ScubaGear adapter. Moved here from the (now-removed) `impl/adapters/scuba/` as part of dissolving the deprecated flat-tree `impl/adapters/` directory (replaced by the src-layout at `impl/src/uiao_impl/adapters/`).
+Non-Python runtime artifacts for the SCuBA / ScubaGear adapter. Moved here from the (now-removed) `impl/adapters/scuba/` as part of dissolving the deprecated flat-tree `impl/adapters/` directory (replaced by the src-layout at `impl/src/uiao/impl/adapters/`).
 
 ## Layout
 
@@ -12,7 +12,7 @@ Non-Python runtime artifacts for the SCuBA / ScubaGear adapter. Moved here from 
 
 ## Relationship to the Python adapter
 
-The Python SCuBA adapter lives at `impl/src/uiao_impl/adapters/scuba_adapter.py` and is the canonical integration point. This directory hosts **operator-run scripts** for cases where the PowerShell path is preferred (Windows operator workstations, environments where `pwsh` is the scripting norm). Both paths feed the same canonical schema under `schemas/`.
+The Python SCuBA adapter lives at `impl/src/uiao/impl/adapters/scuba_adapter.py` and is the canonical integration point. This directory hosts **operator-run scripts** for cases where the PowerShell path is preferred (Windows operator workstations, environments where `pwsh` is the scripting norm). Both paths feed the same canonical schema under `schemas/`.
 
 ## Known tech debt (tracked for a follow-on PR)
 
