@@ -1,18 +1,38 @@
 ---
 document_id: UIAO_101
 title: "UIAO Platform Overview"
-version: "1.0"
+version: "1.1"
 status: Current
 classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-14"
-updated_at: "2026-04-14"
+updated_at: "2026-04-17"
 boundary: "GCC-Moderate"
 ---
 
 # UIAO Platform Overview
 
 This layer describes the UIAO compliance platform — a system that can be extended, integrated, delegated, audited, and operated at scale.
+
+## Positioning in the reconciled layer model (ADR-030 §2)
+
+The UIAO platform described here is not itself a single layer — it
+**spans** all four Tier A layers defined in ADR-030 §2 and draws on
+the six-plane Control-Plane decomposition of Tier B. This table
+names where each subsystem below sits in the reconciled model:
+
+| Subsystem (this doc §) | Tier A layer(s) | Tier B plane(s) |
+|---|---|---|
+| §1 Compliance Data Lake | Authority Plane (storage authority) + Control Plane (curated zone) | Telemetry + Governance |
+| §2 Compliance Query Language (CQL) | Control Plane | Governance |
+| §3 Tenancy | Authority Plane (identity scoping) + Control Plane (policy binding) | Identity + Governance |
+| §4 Compliance Orchestrator | Control Plane (scheduler + closed-loop automation) | Management + Governance |
+| §5 Zero-Trust Integration | Overlay Fabric (enforcement) — detailed in [UIAO_120](./zero-trust.md) | Identity + Policy + Enforcement |
+
+The four-layer model lives in prose (reader-facing); the six-plane
+model lives inside Tier A's Control Plane (decision-surface
+granularity). Both describe the same substrate at different
+abstraction tiers.
 
 ---
 
