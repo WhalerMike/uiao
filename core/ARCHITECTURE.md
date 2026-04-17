@@ -19,7 +19,7 @@ Historical note (see ADR-028): prior to 2026-04-17 this document described a fou
 |---|---|---|---|---|
 | `core/` | Canonical governance | Authoritative | FedRAMP Moderate | Schemas, canon documents, control library, enforcement tooling, reference implementations |
 | `docs/` | Derived publication | Consumer of canon | FedRAMP Moderate | Articles, guides, narrative, rendered Quarto site |
-| `impl/` | Python implementation | Consumer of canon | FedRAMP Moderate | Drift detector, conformance runner, OSCAL/SSP generators, evidence collectors, **directory-migration subsystem** (`impl/src/uiao_impl/directory_migration/`) |
+| `impl/` | Python implementation | Consumer of canon | FedRAMP Moderate | Drift detector, conformance runner, OSCAL/SSP generators, evidence collectors, substrate walker, and the **directory-migration adapter reference docs** (`impl/src/uiao_impl/directory_migration/adapters/ipam/`) referenced by `core/canon/modernization-registry.yaml` (`bluecat-address-manager`, `infoblox`) |
 
 Declared machine-readably in `core/canon/substrate-manifest.yaml` (UIAO_200) and schema-enforced via `core/schemas/substrate-manifest/substrate-manifest.schema.json`.
 
