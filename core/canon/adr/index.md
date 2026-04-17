@@ -65,6 +65,15 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-024](adr-024-evidence-diffing.md) | Evidence Diffing | ACCEPTED | 2026-03-03 |
 | [ADR-026](adr-026-evidence-lifecycle-guarantees.md) | Evidence Lifecycle Guarantees | ACCEPTED | 2026-03-08 |
 
+### Substrate & Packaging
+
+| ADR | Title | Status | Date |
+|-----|-------|--------|------|
+| [ADR-028](adr-028-monorepo-consolidation-gos-integration.md) | Monorepo Consolidation and GOS Integration | ACCEPTED | 2026-04-15 |
+| [ADR-029](adr-029-substrate-v1-ready-for-release.md) | Substrate v1 Ready for Release | ACCEPTED | 2026-04-16 |
+| [ADR-030](adr-030-pre-uiao-terminology-reconciliation.md) | Pre-UIAO Terminology Reconciliation | ACCEPTED | 2026-04-17 |
+| [ADR-031](adr-031-namespace-package-rename.md) | Python Package uiao_impl → uiao.impl (PEP 420 Namespace) | PROPOSED | 2026-04-17 |
+
 ## ADR Governance Rules
 
 Per CR-003 (ADR Immutability), once an ADR is ACCEPTED:
