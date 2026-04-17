@@ -1,5 +1,5 @@
 ---
-document_id: UIAO_ADAPTER_ITP
+document_id: UIAO_123
 title: "UIAO Adapter Integration & Test Plan — Canonical Template"
 version: "1.0"
 status: Current
