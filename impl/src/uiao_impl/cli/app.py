@@ -1360,6 +1360,8 @@ from uiao_impl.cli.evidence import evidence_app  # noqa: E402
 app.add_typer(evidence_app, name="evidence")
 from uiao_impl.cli.oscal import oscal_app  # noqa: E402
 app.add_typer(oscal_app, name="oscal")
+from uiao_impl.cli.substrate import substrate_app  # noqa: E402
+app.add_typer(substrate_app, name="substrate")
 
 
 
