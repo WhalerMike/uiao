@@ -11,10 +11,18 @@ File: src/uiao_impl/adapters/intune_adapter.py
 """
 
 from __future__ import annotations
+
 from typing import Any, Dict, List, Optional
+
 from .database_base import (
-    ClaimObject, ClaimSet, ConnectionProvenance, DatabaseAdapterBase,
-    DriftReport, EvidenceObject, QueryProvenance, SchemaMappingObject,
+    ClaimObject,
+    ClaimSet,
+    ConnectionProvenance,
+    DatabaseAdapterBase,
+    DriftReport,
+    EvidenceObject,
+    QueryProvenance,
+    SchemaMappingObject,
 )
 
 
@@ -101,7 +109,7 @@ class IntuneAdapter(DatabaseAdapterBase):
         noncompliant = sum(1 for d in devices if d.get("complianceState") == "noncompliant")
 
         return EvidenceObject(
-            ksi_id=f"KSI-CM-08-intune",
+            ksi_id="KSI-CM-08-intune",
             source=self.ADAPTER_ID,
             timestamp=self._now(),
             raw_data={"connection": conn.to_dict(), "total_devices": len(devices), "compliant": compliant, "noncompliant": noncompliant},

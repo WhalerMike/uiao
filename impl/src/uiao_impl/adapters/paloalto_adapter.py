@@ -209,7 +209,7 @@ class PaloAltoAdapter(DatabaseAdapterBase):
         Returns:
             ClaimSet with current running-config claims.
         """
-        from .paloalto_parser import parse_security_rules_xml, parse_nat_rules_xml
+        from .paloalto_parser import parse_nat_rules_xml, parse_security_rules_xml
 
         all_rules: List[Dict[str, Any]] = []
 

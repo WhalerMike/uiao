@@ -31,7 +31,6 @@ from uiao_impl.evidence.builder import (
     _load_config,
     _load_ksi,
     _stable_hash,
-    _write_bundle_json,
     _write_evidence_jsonl,
     _write_hash_sidecars,
     _write_provenance_files,
