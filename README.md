@@ -1,11 +1,19 @@
 # UIAO — Unified Identity-Addressing-Overlay Architecture
 
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![FedRAMP Moderate](https://img.shields.io/badge/FedRAMP-Moderate%20Rev%205-orange.svg)](core/canon/compliance/executive-orders.md)
+[![Substrate](https://img.shields.io/badge/substrate-3%20modules%20%7C%2027%20canon%20docs-blueviolet.svg)](core/canon/substrate-manifest.yaml)
+[![Adapters](https://img.shields.io/badge/modernization%20adapters-9%20active%20%7C%201%20reserved-success.svg)](core/canon/modernization-registry.yaml)
+[![CI](https://img.shields.io/badge/CI-7%20workflows-informational.svg)](.github/workflows/)
+
 Governance OS for FedRAMP-Moderate identity, telemetry, policy, and enforcement
 modernization. Identity-first. Canon-anchored. Drift-detected.
 
 > **Canonical substrate manifest:** [`core/canon/substrate-manifest.yaml`](core/canon/substrate-manifest.yaml) (UIAO_200).
 > **Document registry:** [`core/canon/document-registry.yaml`](core/canon/document-registry.yaml).
 > **Schemas:** [`core/schemas/`](core/schemas/).
+> **Contributing:** [`CONTRIBUTING.md`](CONTRIBUTING.md) · **Security:** [`SECURITY.md`](SECURITY.md) · **Changelog:** [`CHANGELOG.md`](CHANGELOG.md).
 
 ## What UIAO is
 
