@@ -192,26 +192,26 @@ def export_markdown(report: Dict[str, Any], adapter_id: str) -> str:
         return f"<!-- No conformance data for {adapter_id} -->"
 
     lines = [
-        f"## Conformance Matrix",
-        f"",
-        f"Per `uiao-core/canon/specs/adapter-conformance-test-plan-template.md` v1.0.",
+        "## Conformance Matrix",
+        "",
+        "Per `uiao-core/canon/specs/adapter-conformance-test-plan-template.md` v1.0.",
         f"Adapter: `{adapter_id}` · Class: `{data['class']}` · "
         f"Pass: **{data['pass']}/{data['criteria_count']}**",
-        f"",
-        f"| Domain | Criterion | Status |",
-        f"|--------|-----------|--------|",
+        "",
+        "| Domain | Criterion | Status |",
+        "|--------|-----------|--------|",
     ]
     for r in data["results"]:
         lines.append(f"| {r['criterion']} | {r['description']} | {r['status']} |")
 
     lines.extend([
-        f"",
-        f"### Extension Methods",
-        f"",
-        f"| Method | Status | Notes |",
-        f"|--------|--------|-------|",
-        f"| _(adapter-specific methods)_ | IMPLEMENTED | All extension methods have real implementations (zero stubs remaining) |",
-        f"",
+        "",
+        "### Extension Methods",
+        "",
+        "| Method | Status | Notes |",
+        "|--------|--------|-------|",
+        "| _(adapter-specific methods)_ | IMPLEMENTED | All extension methods have real implementations (zero stubs remaining) |",
+        "",
         f"_Matrix auto-generated {report['generated']}. {data['pass']}/{data['criteria_count']} conformance CI-gated._",
     ])
     return "\n".join(lines)
@@ -228,9 +228,9 @@ def main() -> int:
             markdown_output = True
         elif arg == "--version":
             classes = _get_adapter_classes()
-            print(f"UIAO Adapter Conformance Check v1.0")
+            print("UIAO Adapter Conformance Check v1.0")
             print(f"Adapters registered: {len(classes)}")
-            print(f"Conformance criteria per adapter: 30")
+            print("Conformance criteria per adapter: 30")
             print(f"Total criteria: {len(classes) * 30}")
             return 0
         elif arg.startswith("--adapter="):

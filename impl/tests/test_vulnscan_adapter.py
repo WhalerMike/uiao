@@ -6,7 +6,7 @@ import pytest
 
 from uiao_impl.adapters.vulnscan_adapter import VulnScanAdapter
 from uiao_impl.adapters.database_base import (
-    ClaimObject, ClaimSet, ConnectionProvenance,
+    ConnectionProvenance,
     DriftReport, EvidenceObject, QueryProvenance, SchemaMappingObject,
 )
 

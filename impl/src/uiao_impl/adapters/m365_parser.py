@@ -10,8 +10,7 @@ Internal module consumed by M365Adapter. Handles:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-
+from typing import Any, Dict, List
 
 # ---------------------------------------------------------------------------
 # Graph entity parsing

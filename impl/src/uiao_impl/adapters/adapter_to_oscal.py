@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from ..adapters.database_base import ClaimSet, DriftReport, EvidenceObject
+from ..adapters.database_base import ClaimSet, DriftReport
 from ..evidence.bundle import EvidenceBundle
 from ..ir.models.core import (
     Control,
@@ -366,7 +366,7 @@ def _minimal_ssp_skeleton(
 
 def inject_adapter_evidence_into_ssp(
     ssp: Dict[str, Any],
-    bundle: "EvidenceBundle",
+    bundle: EvidenceBundle,
 ) -> Dict[str, Any]:
     """Inject adapter evidence from an EvidenceBundle into an SSP.
 
@@ -388,7 +388,7 @@ def inject_adapter_evidence_into_ssp(
 
 def build_adapter_ssp(
     adapter_id: str,
-    claim_set: "ClaimSet",
+    claim_set: ClaimSet,
     control_ids: Optional[List[str]] = None,
     system_name: str = "UIAO Adapter-Assessed System",
     timestamp: Optional[str] = None,

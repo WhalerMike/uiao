@@ -11,10 +11,18 @@ File: src/uiao_impl/adapters/mainframe_adapter.py
 """
 
 from __future__ import annotations
+
 from typing import Any, Dict, List, Optional
+
 from .database_base import (
-    ClaimObject, ClaimSet, ConnectionProvenance, DatabaseAdapterBase,
-    DriftReport, EvidenceObject, QueryProvenance, SchemaMappingObject,
+    ClaimObject,
+    ClaimSet,
+    ConnectionProvenance,
+    DatabaseAdapterBase,
+    DriftReport,
+    EvidenceObject,
+    QueryProvenance,
+    SchemaMappingObject,
 )
 
 
@@ -92,7 +100,7 @@ class MainframeAdapter(DatabaseAdapterBase):
         records = (data or {}).get("transactions", [])
         claim_set = self.normalize(records)
         return EvidenceObject(
-            ksi_id=f"KSI-CM-08-mainframe",
+            ksi_id="KSI-CM-08-mainframe",
             source=self.ADAPTER_ID, timestamp=self._now(),
             raw_data={"connection": conn.to_dict(), "transactions": len(records)},
             normalized_data=claim_set.to_dict(),
