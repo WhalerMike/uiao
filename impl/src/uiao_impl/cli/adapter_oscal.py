@@ -112,9 +112,6 @@ def _load_adapter_claims(adapter_id: str, state_file: Path):
         a = PaloAltoAdapter({"_security_rules_xml": xml})
         return a.get_running_config()
     else:
-        # Generic: load JSON, normalize raw
-        data = json.loads(state_file.read_text())
-        records = data if isinstance(data, list) else data.get("value", data.get("result", []))
         raise NotImplementedError(f"Generic adapter loading for '{adapter_id}' not yet implemented. Use terraform, m365, or palo-alto.")
 
 
