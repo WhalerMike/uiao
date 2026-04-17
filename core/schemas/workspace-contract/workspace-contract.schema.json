@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://whalermike.github.io/uiao/schemas/workspace-contract/workspace-contract.schema.json",
+  "title": "UIAO Workspace Contract Schema",
+  "description": "Binds the local developer workspace to the canonical GitHub monorepo: root paths, module paths, drift-scan roots, and build-output locations. Consumed by repo-walker and drift tooling so local invocations are deterministic regardless of operator host.",
+  "type": "object",
+  "required": [
+    "metadata",
+    "local",
+    "remote",
+    "module_paths",
+    "drift_scan_roots",
+    "build_outputs"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "description": "Canonical frontmatter per core/schemas/metadata-schema.json.",
+      "type": "object"
+    },
+    "local": {
+      "type": "object",
+      "required": ["root_env"],
+      "additionalProperties": false,
+      "properties": {
+        "root_env": {
+          "type": "string",
+          "const": "UIAO_WORKSPACE_ROOT",
+          "description": "Environment variable holding the absolute local workspace root. Never hardcode the path value."
+        },
+        "platform_examples": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "linux": { "type": "string" },
+            "macos": { "type": "string" },
+            "windows": { "type": "string" }
+          }
+        }
+      }
+    },
+    "remote": {
+      "type": "object",
+      "required": ["root", "default_branch"],
+      "additionalProperties": false,
+      "properties": {
+        "root": {
+          "type": "string",
+          "format": "uri"
+        },
+        "default_branch": { "type": "string" },
+        "protected_branches": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "module_paths": {
+      "type": "object",
+      "description": "Repo-relative paths to each module root. Keys match module names declared in substrate-manifest.yaml.",
+      "additionalProperties": false,
+      "properties": {
+        "core": { "type": "string" },
+        "docs": { "type": "string" },
+        "impl": { "type": "string" }
+      },
+      "required": ["core", "docs", "impl"]
+    },
+    "drift_scan_roots": {
+      "type": "array",
+      "description": "Repo-relative paths the drift detector walks. Must subset module_paths.",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    },
+    "build_outputs": {
+      "type": "object",
+      "description": "Repo-relative build/rendered-output paths. All must be .gitignore'd; tools emit here and never commit.",
+      "additionalProperties": false,
+      "properties": {
+        "docs_site": { "type": "string" },
+        "docs_exports": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "impl_dist": { "type": "string" }
+      }
+    },
+    "canon_consumer_rule": {
+      "type": "string",
+      "description": "Path to the canon-consumer rule that forbids hardcoded canon paths.",
+      "const": "impl/.claude/rules/canon-consumer.md"
+    }
+  }
+}
