@@ -1,0 +1,111 @@
+# yaml-language-server: $schema=../schemas/substrate-manifest/substrate-manifest.schema.json
+#
+# UIAO Substrate Manifest
+# =======================
+# Top-level declaration of the UIAO monorepo substrate: modules, roles,
+# canon authority relationships, and drift-scan scope. Registered as
+# UIAO_200 in core/canon/document-registry.yaml.
+#
+# Frontmatter conforms to core/schemas/metadata-schema.json.
+# Body conforms to core/schemas/substrate-manifest/substrate-manifest.schema.json.
+#
+# Vocabulary: see docs/docs/00_CorePrinciples.qmd (SSOT, Canon, Substrate,
+# Overlay, Control Plane, Adapter, Pillar).
+# Drift taxonomy: see docs/docs/16_DriftDetectionStandard.qmd.
+
+metadata:
+  document_id: UIAO_200
+  title: "UIAO Substrate Manifest"
+  version: "1.0"
+  status: Current
+  classification: OPERATIONAL
+  owner: WhalerMike
+  created_at: "2026-04-17"
+  updated_at: "2026-04-17"
+  boundary: GCC-Moderate
+  provenance:
+    source: "canon/UIAO-SSOT.md + canon/document-registry.yaml"
+    version: "1.0"
+    derived_at: "2026-04-17"
+    derived_by: "substrate initialization (PR after gos-integration)"
+
+workspace:
+  root_env: UIAO_WORKSPACE_ROOT
+  fallbacks:
+    linux: "$HOME/src/uiao"
+    macos: "$HOME/src/uiao"
+    windows: "%USERPROFILE%\\src\\uiao"
+
+github:
+  root: "https://github.com/WhalerMike/uiao"
+  default_branch: main
+
+modules:
+  - name: core
+    path: core
+    role: authority
+    canon_consumer: false
+    summary: >-
+      Canon authority. Defines schemas, canonical governance documents,
+      the control library, and enforcement tooling. Source of truth for
+      all UIAO governance artifacts.
+    registry_refs:
+      - canon/document-registry.yaml
+      - canon/adapter-registry.yaml
+      - canon/modernization-registry.yaml
+
+  - name: docs
+    path: docs
+    role: consumer
+    canon_consumer: true
+    summary: >-
+      Derived documentation. Articles, guides, playbooks, and published
+      materials. Every document traces provenance to core/ canon.
+
+  - name: impl
+    path: impl
+    role: consumer
+    canon_consumer: true
+    summary: >-
+      Python implementation. Consumes canon via the --canon-path contract
+      (see impl/.claude/rules/canon-consumer.md). Provides the drift
+      detector, conformance runner, OSCAL/SSP generators, evidence
+      collectors, and the directory_migration subsystem.
+
+sub_boundaries:
+  core:
+    - name: schemas
+      path: core/schemas
+      role: schema-authority
+    - name: canon
+      path: core/canon
+      role: canon-authority
+    - name: tools
+      path: core/tools
+      role: enforcement-tooling
+    - name: data
+      path: core/data
+      role: control-library
+    - name: dashboard
+      path: core/dashboard
+      role: export-surface
+    - name: compliance
+      path: core/compliance
+      role: reference-implementation
+
+drift_scan:
+  classes:
+    - DRIFT-SCHEMA
+    - DRIFT-PROVENANCE
+  roots:
+    - core
+    - docs
+    - impl
+  severity_model: P1
+
+registry_refs:
+  document_registry: core/canon/document-registry.yaml
+  adapter_registry: core/canon/adapter-registry.yaml
+  modernization_registry: core/canon/modernization-registry.yaml
+  metadata_schema: core/schemas/metadata-schema.json
+  adapter_registry_schema: core/schemas/adapter-registry/adapter-registry.schema.json
