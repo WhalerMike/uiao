@@ -346,3 +346,157 @@ def embed_png_metadata(
         image.save(png_path, pnginfo=meta)
     except Exception as e:
         print(f"  Warning: couldn't embed PNG metadata: {e}")
+
+
+# ──────────────────────────────────────────────────────────────
+# Placeholder scanner. Walks .qmd / .md under SCAN_ROOTS, extracts
+# all three placeholder types. Skips _site/, _freeze/, .quarto/,
+# node_modules/, __pycache__/ and anything under EXCLUDE_PATH_PARTS.
+# ──────────────────────────────────────────────────────────────
+def _is_excluded(path: Path) -> bool:
+    return any(part in EXCLUDE_PATH_PARTS for part in path.parts)
+
+
+def iter_source_files() -> list[Path]:
+    """Yield every .qmd / .md file under SCAN_ROOTS, filtered for excludes."""
+    seen: set[Path] = set()
+    for root in SCAN_ROOTS:
+        if not root.exists():
+            continue
+        for ext in SCAN_EXTS:
+            for p in root.rglob(f"*{ext}"):
+                if _is_excluded(p):
+                    continue
+                resolved = p.resolve()
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
+    # Stable order for reproducible runs.
+    return sorted(seen)
+
+
+def scan_placeholders(
+    files: list[Path],
+) -> tuple[list[DocLocalPlaceholder], list[CanonRefPlaceholder]]:
+    """Extract both placeholder types from every file. Returns
+    (doc-local list, canon-ref list). Both are ordered stably by
+    (document path, line number)."""
+    locals_: list[DocLocalPlaceholder] = []
+    refs: list[CanonRefPlaceholder] = []
+    for path in files:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+
+        # Track line numbers by pre-computing newline offsets once.
+        line_starts = [0]
+        for idx, ch in enumerate(text):
+            if ch == "\n":
+                line_starts.append(idx + 1)
+
+        def line_of(offset: int) -> int:
+            # bisect equivalent, small loop is fine at this scale
+            lo, hi = 0, len(line_starts) - 1
+            while lo < hi:
+                mid = (lo + hi + 1) // 2
+                if line_starts[mid] <= offset:
+                    lo = mid
+                else:
+                    hi = mid - 1
+            return lo + 1
+
+        for m in PLACEHOLDER_LOCAL_RE.finditer(text):
+            body = m.group("body").strip()
+            # Skip matches that are actually [IMAGE-REF: ...] (belt & suspenders
+            # since the ref regex handles them — but our local regex kind='IMAGE'
+            # could match [IMAGE-REF: ...] structurally, we want that filtered).
+            if body.upper().startswith("UIAO-FIG-"):
+                continue
+            kind = m.group("kind")
+            placeholder_id = f"{kind}-{m.group('num')}"
+            is_auto = body.strip().upper() == AUTO_MARKER
+            locals_.append(
+                DocLocalPlaceholder(
+                    document=path,
+                    placeholder_id=placeholder_id,
+                    body=body,
+                    line_number=line_of(m.start()),
+                    is_auto=is_auto,
+                )
+            )
+
+        for m in PLACEHOLDER_REF_RE.finditer(text):
+            refs.append(
+                CanonRefPlaceholder(
+                    document=path,
+                    canon_id=m.group("id"),
+                    line_number=line_of(m.start()),
+                )
+            )
+
+    locals_.sort(key=lambda p: (str(p.document), p.line_number))
+    refs.sort(key=lambda p: (str(p.document), p.line_number))
+    return (locals_, refs)
+
+
+# ──────────────────────────────────────────────────────────────
+# Doc-local output path resolver. Given the owning document and
+# the placeholder ID, produces the on-disk PNG path that the
+# rendered image will occupy.
+#
+# Example:
+#   document       = docs/publications/01-executive-brief/UIAO-Executive-Brief.qmd
+#   placeholder_id = IMAGE-03
+#   slug           = monitoring-loop
+#   → docs/publications/01-executive-brief/images/doc-01-image-03-monitoring-loop.png
+# ──────────────────────────────────────────────────────────────
+def _slugify(text: str, maxlen: int = 40) -> str:
+    """Derive a kebab-case slug from free-form text (e.g., the first
+    line of the prompt). Used for filenames when no explicit slug is
+    given. Keeps [a-z0-9-] only; collapses whitespace to '-'."""
+    s = text.strip().lower()
+    s = re.sub(r"[^a-z0-9\s-]", "", s)
+    s = re.sub(r"[\s-]+", "-", s).strip("-")
+    return (s[:maxlen] or "image").rstrip("-")
+
+
+def doc_local_output_path(
+    document: Path, placeholder_id: str, slug: str
+) -> Path:
+    """Compute the sibling images/ path for a doc-local image."""
+    doc_dir = document.parent
+    images_dir = doc_dir / "images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+    doc_slug = _slugify(document.stem, maxlen=32)
+    return images_dir / f"{doc_slug}-{placeholder_id.lower()}-{slug}.png"
+
+
+# ──────────────────────────────────────────────────────────────
+# Image generator. Wraps the Gemini client call. Centralized so
+# error handling, retry, and rate limiting have one home.
+# ──────────────────────────────────────────────────────────────
+def generate_image(
+    client, prompt_text: str, output_path: Path, model: str = MODEL
+) -> bool:
+    """Generate a single image from a prompt; save to output_path.
+    Returns True on success. Prints diagnostic text responses on partial
+    failure (e.g., the model replied with refusal text instead of an
+    image)."""
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=[prompt_text],
+        )
+        for part in response.parts:
+            if part.inline_data is not None:
+                image = part.as_image()
+                image.save(str(output_path))
+                return True
+            elif part.text is not None:
+                print(f"  Model text response: {part.text[:200]}")
+        print("  Warning: No image data returned for this prompt.")
+        return False
+    except Exception as e:
+        print(f"  Error generating image: {e}")
+        return False
