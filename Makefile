@@ -22,7 +22,7 @@ PYTHON       ?= python3
 IMPL         := $(REPO_ROOT)/impl
 DOCS         := $(REPO_ROOT)/docs
 
-.PHONY: help bootstrap walk drift test test-substrate lint fmt schemas docs clean release branch-prune
+.PHONY: help bootstrap walk drift test test-substrate lint fmt schemas docs check-links clean release branch-prune
 
 help:
 	@echo "UIAO monorepo targets:"
@@ -36,6 +36,8 @@ help:
 	@echo "  fmt             ruff check --fix + ruff format (mutate files)"
 	@echo "  schemas         Validate canon YAML/JSON against their schemas"
 	@echo "  docs            Render Quarto site to HTML (docs/_site/)"
+	@echo "  check-links     Crawl live Pages site for broken links (requires pwsh)"
+	@echo "                    override: URL=<url> DEPTH=<n>"
 	@echo "  clean           Remove build artifacts (docs/_site, impl/dist, __pycache__)"
 	@echo "  release TAG=vX.Y.Z  Cut a release (push tag → triggers release.yml)"
 	@echo "  branch-prune    Delete local claude/* branches merged to main"
@@ -68,6 +70,10 @@ schemas:
 
 docs:
 	@cd $(DOCS) && quarto render --to html
+
+check-links:
+	@command -v pwsh >/dev/null 2>&1 || { echo "ERROR: pwsh (PowerShell) not found. Install from https://github.com/PowerShell/PowerShell"; exit 1; }
+	@pwsh scripts/check-links.ps1 $(if $(URL),-StartUrl $(URL)) $(if $(DEPTH),-MaxDepth $(DEPTH))
 
 clean:
 	@rm -rf $(DOCS)/_site $(DOCS)/.quarto $(IMPL)/dist $(IMPL)/build $(IMPL)/*.egg-info
