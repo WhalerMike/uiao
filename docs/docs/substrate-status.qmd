@@ -1,0 +1,143 @@
+---
+title: "UIAO Substrate Status"
+description: "At-a-glance view of the substrate manifest, workspace contract, active adapters, and CI enforcement stack."
+uiao.id: narrative-substrate-status
+uiao.status: Current
+uiao.owner: WhalerMike
+uiao.tags: [status, reference, substrate, adapter, ci]
+provenance:
+  source_commit: main
+  derived_from:
+    - core/canon/substrate-manifest.yaml
+    - core/canon/workspace-contract.yaml
+    - core/canon/modernization-registry.yaml
+    - core/canon/adapter-registry.yaml
+    - core/canon/document-registry.yaml
+  derived_at: "2026-04-17"
+  derived_by: "substrate status page — human-readable snapshot of machine-readable substrate state"
+---
+
+# UIAO Substrate Status
+
+Snapshot of the substrate's current state, derived from the canonical artifacts listed in the provenance block above. This page is regenerable: running `make walk` produces the same facts in machine form; this page renders them for humans.
+
+## Topology
+
+Three modules, declared in [`core/canon/substrate-manifest.yaml`](/core/canon/substrate-manifest.yaml) (UIAO_200):
+
+| Module | Role | Canon consumer | Purpose |
+|---|---|---|---|
+| [`core/`](/core/) | authority | — | Schemas, canon documents, control library, enforcement tooling |
+| [`docs/`](/docs/) | consumer | yes | Articles, guides, narrative, rendered Quarto site |
+| [`impl/`](/impl/) | consumer | yes | Python CLI, generators, adapters, substrate walker |
+
+Workspace root: `$UIAO_WORKSPACE_ROOT` (never hardcoded — see [`impl/.claude/rules/canon-consumer.md`](/impl/.claude/rules/canon-consumer.md)).
+
+## Adapter registry
+
+Source: [`core/canon/modernization-registry.yaml`](/core/canon/modernization-registry.yaml) + [`core/canon/adapter-registry.yaml`](/core/canon/adapter-registry.yaml).
+
+### Modernization adapters (change-making)
+
+| Adapter | Status | Phase | Mission class | FedRAMP | Vendor |
+|---|---|---|---|---|---|
+| `entra-id` | active | phase-1 | integration | — | Microsoft |
+| `m365` | active | phase-1 | integration | — | Microsoft |
+| `service-now` | active | phase-1 | integration | — | ServiceNow |
+| `palo-alto` | active | phase-1 | integration | — | Palo Alto Networks |
+| `scuba` | active | phase-1 | integration | — | CISA |
+| `terraform` | active | phase-1 | integration | — | HashiCorp / OpenTofu |
+| `cyberark` | active | phase-1 | integration | — | CyberArk |
+| `infoblox` | active | phase-1 | integration | **Moderate, CDM-integrated** | Infoblox |
+| `bluecat-address-manager` | active | phase-1 | integration | — | BlueCat |
+| `mainframe` | reserved | phase-planning | integration | — | IBM |
+
+**9 of 10 active.** Only `mainframe` remains reserved — blocks on z/OS Connect / MQ bridge infrastructure (see its `notes:` field).
+
+### Conformance adapters (read-only)
+
+See `core/canon/adapter-registry.yaml` for the complete list. Notable: `scubagear` (CISA SCuBA assessor).
+
+## Canon invariants
+
+Every registered modernization adapter satisfies the four canon invariants, schema-enforced:
+
+- `gcc-boundary: gcc-moderate` *(Amazon Connect exception noted per-adapter)*
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Document registry
+
+Source: [`core/canon/document-registry.yaml`](/core/canon/document-registry.yaml).
+
+**Reserved ranges:**
+
+| Range | Purpose | Examples |
+|---|---|---|
+| `UIAO_001` | Single Source of Truth | `UIAO-SSOT.md` |
+| `UIAO_002–099` | Top-level canon documents | UIAO_002 SCuBA Spec, UIAO_003 Adapter Segmentation Overview, UIAO_004 Executive Orders |
+| `UIAO_100–199` | Subsystem specifications | UIAO_100 Compliance Orchestrator, UIAO_110 Drift Engine Spec, UIAO_121–124 Adapter-framework specs |
+| `UIAO_200–299` | Operational / runtime artifacts | UIAO_200 Substrate Manifest, UIAO_201 Workspace Contract |
+| `UIAO_900–999` | Test fixtures | — |
+
+**31 documents registered** as of this writing.
+
+## CI enforcement stack
+
+Source: [`.github/workflows/`](/.github/workflows/).
+
+| Workflow | Status | Trigger |
+|---|---|---|
+| `schema-validation.yml` | **blocking** | Canon / schema PRs |
+| `pytest.yml` | **blocking** (substrate + full impl) | `impl/**` PRs |
+| `substrate-drift.yml` | **blocking** | Substrate / registry PRs |
+| `metadata-validator.yml` | **blocking** | Canon doc PRs |
+| `quarto.yml` | **blocking** render; deploy on main | `docs/**` PRs |
+| `ruff.yml` | **blocking** | `impl/**` PRs |
+| `link-check.yml` | soft-fail | Any Markdown/Quarto PR + weekly cron |
+| `release.yml` | tag-triggered | `v*.*.*` push → wheel + sdist + CycloneDX SBOM + sigstore signing |
+| `release-drafter.yml` | continuous | Every main push / PR label — maintains the draft release |
+
+**6 of 7 substantive workflows are blocking.** The seventh (link-check) remains soft-fail until the baseline is burned down.
+
+## Drift taxonomy
+
+Five classes defined in [`docs/docs/16_DriftDetectionStandard.qmd`](16_DriftDetectionStandard.qmd):
+
+| Class | Detected by | Severity max | Status |
+|---|---|---|---|
+| `DRIFT-SCHEMA` | `uiao substrate walk` | P1 | **implemented** |
+| `DRIFT-PROVENANCE` | `uiao substrate walk` | P1 | **implemented** |
+| `DRIFT-SEMANTIC` | runtime (freshness engine — partial) | P2 | partial |
+| `DRIFT-AUTHZ` | runtime (consent envelope) | P1 | pending |
+| `DRIFT-IDENTITY` | runtime (issuer resolution) | P1 | pending |
+
+Runtime classes have their home in `core/canon/specs/drift.md` (UIAO_110); implementation is tracked as future engineering work (see ADR-029 §Consequences).
+
+## Optimization posture
+
+Cumulative from the consolidation (2026-04-17):
+
+- **History preserved:** 3,549 commits across the four predecessor repos
+- **Working-tree reduction:** ~290 MB (128.9 MB via pngquant, 160 MB of tracked build artifacts retired, 795 KB of junk text files removed)
+- **Dead code retired:** 38 Python files (~1,600 LOC) of ARC-5 scaffolding under `directory_migration/` + 3 stub duplicate provider adapters
+- **Quality burn-down:** 16 ruff errors fixed (gate flipped to blocking), 4 slug-style `document_id`s renumbered, 10 mechanical stale-ref fixes
+
+## How to verify any of this
+
+```bash
+# Validate schemas (canon YAML/JSON vs their JSON Schemas)
+make schemas
+
+# Walk the substrate (structural + provenance drift)
+make walk
+
+# Run substrate walker tests only (fast)
+make test-substrate
+
+# Render this page as part of the full site
+make docs
+```
+
+Every cell above is regenerable from the canonical artifacts. If this page disagrees with the live `core/canon/*.yaml`, **the canon wins** — this page is a derived view, not a source.
