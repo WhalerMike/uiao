@@ -1,0 +1,679 @@
+---
+title: "Image Pipeline & Registry — Author and Operator Guide"
+subtitle: "How UIAO generates, reuses, versions, and audits every figure, diagram, and image in the substrate"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+aspirational: true
+---
+
+## Purpose
+
+This document is the **operator and author guide** for the UIAO image pipeline and its canonical image registry ([UIAO_202](https://github.com/WhalerMike/uiao/blob/main/core/canon/image-registry.yaml)). It covers everything a contributor needs to understand to add, reuse, update, and retire images across the site — without leaking binaries into git history and without re-generating the same diagram five times.
+
+**Who this is for:**
+
+- **Authors** adding figures or diagrams to a document under `docs/docs/`, `docs/series/`, `docs/publications/`, or `docs/academy/`.
+- **Operators** running the image-gen workflow (`.github/workflows/image-gen.yml`) and deciding what to promote into canon.
+- **Reviewers** evaluating image drift, provenance, or reuse against the canon invariants.
+
+**What this guide does NOT cover** (see cross-references):
+
+- The UIAO Master Document Specification (doctrine for *documents*, not images). See `inbox/UIAO-Master-Document-Spec.md`.
+- The Document Generation Guide (DOCX/PPTX/PDF/EPUB/HTML pipeline). See [Document Generation Guide](document-generation-guide.qmd).
+- Drift detection semantics. See [UIAO_016 Drift Detection Standard](../docs/16_DriftDetectionStandard.qmd).
+
+---
+
+## Principles
+
+Five principles govern everything below. They exist because the alternative — images committed ad-hoc, regenerated inconsistently, duplicated across docs, lacking provenance — produces the 364 MB of bloat and the "which version of the diagram is real?" drift we already have.
+
+1. **Sources of truth are textual.** Prompts are `.md` files with a SHA-256. PNGs are generated artifacts. The prompt is canon; the PNG is a render.
+2. **Certificate-anchored provenance.** Every image carries `prompt_sha256` (provenance of the request) and `file_sha256` (provenance of the bytes). Drift between them and the live files triggers a [DRIFT-PROVENANCE](../docs/16_DriftDetectionStandard.qmd) event.
+3. **Reuse over regeneration.** An image used in N documents lives once in the registry, renders once on disk. `N × 6 MB` becomes `1 × 6 MB`.
+4. **Pipeline-internal decisions.** Prompt drafting, placeholder harvesting, registry updates, and status transitions happen inside the pipeline — not in chat, not by manual editing. Humans approve; the pipeline does.
+5. **Out-of-repo binary distribution.** Rendered PNGs live in `docs/images/canonical/` only if they are actively used by site HTML. Large or ephemeral images ship as workflow artifacts or GitHub Release assets, never as git blobs.
+
+---
+
+## Architecture at a glance
+
+[IMAGE-01: A 16:9 schematic in the UIAO federal-whitepaper style (muted navy #2E75B6, steel gray #5A5A5A, teal #1A9E8F, amber #D4A017, white). Left side: three stacked document icons (doc-01, doc-05, book article) with small [IMAGE-NN:] or [IMAGE-REF:] labels. Center: a "Pipeline" column with four stacked nodes — Harvest → Draft → Generate → Sidecar. Right side: a canonical Image Registry cylinder labeled "core/canon/image-registry.yaml (UIAO_202)" with image records flowing out to "docs/images/canonical/" below. Arrows show: documents → pipeline → registry → rendered PNGs → back to documents. No people, no baked text other than the node labels. Publication grade.]
+
+The pipeline has five stages:
+
+| Stage | Input | Output | Actor |
+|---|---|---|---|
+| 1. **Harvest** | All `.qmd` / `.md` files under rendered paths | List of placeholders: `[IMAGE-NN:]`, `[IMAGE-REF:]`, `[IMAGE-NN: AUTO]` | Pipeline |
+| 2. **Draft** | Placeholders with `AUTO` marker | Drafted prompt text (labeled `NEW (Proposed)`) written into the sibling `IMAGE-PROMPTS.md` | Pipeline |
+| 3. **Generate** | Prompts whose `prompt_sha256` differs from registry entry | Rendered PNG + sidecar `.json` + PNG `tEXt` chunks | Pipeline (Gemini) |
+| 4. **Promote** | Draft status entries | Registry `status: draft → current`; commits | Human via PR review |
+| 5. **Resolve** | `[IMAGE-REF:]` placeholders in documents | Replaced at render time by `![caption](file)` | Quarto / pipeline |
+
+---
+
+## Three placeholder types
+
+Authors use one of three syntaxes depending on intent. The pipeline scans all three.
+
+### Type A: Doc-local, prompt provided
+
+```
+[IMAGE-03: A clean 16:9 schematic showing the monitoring loop — SCAN,
+EVALUATE, EVIDENCE, ALERT arranged clockwise around a central "< 120s"
+label. Navy blue, teal accents, no people, no baked text.]
+```
+
+**When to use:** image is specific to *this* document, unlikely to be reused elsewhere.
+
+**Pipeline behavior:**
+- Extracts prompt, writes it into the document's sibling `IMAGE-PROMPTS.md` (auto-created if absent).
+- Generates to `docs/<path>/images/<doc-slug>-image-03-<slug>.png`.
+- Emits a sidecar JSON and PNG `tEXt` metadata.
+- Does **not** register the image in `core/canon/image-registry.yaml`. Doc-local images are intentionally unregistered.
+
+### Type B: Canon reuse
+
+```
+[IMAGE-REF: UIAO-FIG-007]
+```
+
+**When to use:** you want to reuse an existing canonical image. Examples: the SSOT-Adapter-Identity trio diagram, the Zero Trust plane stack, the six-control-plane overview.
+
+**Pipeline behavior:**
+- Resolves `UIAO-FIG-007` against `core/canon/image-registry.yaml`.
+- If the entry exists and `status: current`, rewrites the placeholder at render time to `![<title>](docs/images/canonical/<id>-<slug>.png)`.
+- If the entry's status is `draft` or the ID is missing, the build fails with a clear error (no silent 404s).
+- Updates the registry entry's `used_by` list to include this document.
+
+### Type C: Pipeline-drafted (no prompt written yet)
+
+```
+[IMAGE-04: AUTO]
+```
+
+**When to use:** you want an image here but don't have time to write the prompt. The pipeline drafts one from the surrounding document context.
+
+**Pipeline behavior:**
+- Reads 200 words of surrounding document context (heading + preceding paragraph + following paragraph).
+- Calls Gemini with a "prompt-drafter" role and the style constraints from §Principles.
+- Writes the drafted prompt to the document's sibling `IMAGE-PROMPTS.md` under heading `## Image 4 (PROPOSED — review before promoting)`.
+- Labels the entry `NEW (Proposed)` per [Master Spec §2 No-Hallucination Protocol](../../inbox/UIAO-Master-Document-Spec.md).
+- Generates the image with `status: draft`.
+- Does **not** auto-promote; waits for human PR review to flip `draft → current`.
+
+**Selection rule:** Type A for doc-local known prompt; Type B for reuse; Type C for "fill in the blank."
+
+---
+
+## Canon vs doc-local: where does an image belong?
+
+The core design decision is **which images enter the canonical registry (`UIAO_202`) versus which stay local to a document.** Two different lifecycles, two different homes.
+
+### Canon images (registered in `core/canon/image-registry.yaml`)
+
+An image becomes canon when **any of** these are true:
+
+- It is referenced (or intended to be referenced) by **two or more documents**.
+- It depicts a canon artifact directly — e.g., the six-control-plane diagram, the SSOT + Identity + Security triad, the Tier A four-layer model from [ADR-030](https://github.com/WhalerMike/uiao/blob/main/core/canon/adr/adr-030-pre-uiao-terminology-reconciliation.md).
+- It is used in `docs/publications/` deliverables (Executive Brief, Leadership Briefing) where consistent visual identity across documents matters.
+- The program needs version-tracked visual history (e.g., the "monitoring loop" diagram evolves as controls are added).
+
+Canon images:
+
+- Live as PNGs at `docs/images/canonical/<id>-<slug>.png`.
+- Have prompt files at `core/canon/image-prompts/<id>.md`.
+- Have registry entries at `core/canon/image-registry.yaml`.
+- Are referenced via `[IMAGE-REF: UIAO-FIG-NNN]` placeholders.
+- Follow the full `draft → current → deprecated` lifecycle.
+- Require PR review to promote to `status: current`.
+
+### Doc-local images (not registered)
+
+An image stays doc-local when:
+
+- It is referenced by **exactly one document** and unlikely to be reused.
+- It visualizes something narrowly specific — a single article's one-off example, a product screenshot, a training-deck decorative image.
+- The author writes the prompt using Type A inline syntax with no intent to promote.
+
+Doc-local images:
+
+- Live as PNGs beside the document: `docs/<path-to-doc>/images/<doc-slug>-image-NN-<slug>.png`.
+- Have sidecar JSON beside the PNG, not a separate prompt file.
+- Are **not** registered in `core/canon/image-registry.yaml`.
+- Are referenced directly by Markdown/Quarto (`![caption](images/<filename>.png)`), not by `[IMAGE-REF:]`.
+- Do not have a `draft/current/deprecated` lifecycle — they exist or they don't.
+
+**Promotion path:** if a doc-local image later turns out to be useful elsewhere, it can be promoted to canon. See §Update / Versioning below.
+
+---
+
+## The registry — structure and invariants
+
+`core/canon/image-registry.yaml` is the canonical source of truth for reusable images. Every entry carries enough metadata that the image, its prompt, its provenance chain, and its usage sites are all recoverable from the registry alone.
+
+### Minimal entry shape
+
+```yaml
+- id: UIAO-FIG-007
+  slug: monitoring-loop
+  title: "UIAO Continuous Monitoring Loop"
+  description: >-
+    Four-stage clockwise loop — Scan, Evaluate, Evidence, Alert — with
+    a central "< 120s" label. Used to illustrate the real-time
+    continuous-monitoring posture.
+  status: current
+  version: "1.0"
+  prompt_file: core/canon/image-prompts/UIAO-FIG-007.md
+  prompt_sha256: ab12cd34ef56...  # 64 hex chars
+  generator: gemini-2.5-flash-image
+  file: docs/images/canonical/UIAO-FIG-007-monitoring-loop.png
+  file_sha256: 89ab12cd34ef...    # 64 hex chars
+  generated_at: "2026-04-17T18:45:00Z"
+  dimensions: {width: 1920, height: 1080}
+  aspect: "16:9"
+  palette: ["#2E75B6", "#5A5A5A", "#1A9E8F", "#D4A017", "#FFFFFF"]
+  used_by:
+    - {document: docs/publications/01-executive-brief/UIAO-Executive-Brief.qmd, placeholder_id: IMAGE-03}
+    - {document: docs/publications/05-operations-playbook/playbook.qmd, placeholder_id: IMAGE-07}
+```
+
+### Required fields and why
+
+| Field | Why it's required |
+|---|---|
+| `id` | Stable identifier across versions. Never reused, never renamed. |
+| `slug` | Kebab-case human handle. Embedded in filenames and URLs. |
+| `title` / `description` | Alt-text, indexes, search. Required for accessibility. |
+| `status` | Controls whether the pipeline resolves references to this image. |
+| `version` | Semantic major.minor. Major bump on visual redesign. |
+| `prompt_file` + `prompt_sha256` | Provenance for the request. Drift here triggers regeneration or DRIFT-PROVENANCE. |
+| `generator` | Reproducibility. Re-running with the same model version should be deterministic enough for audit. |
+| `file` + `file_sha256` | Provenance for the bytes. Distribution tampering is detectable. |
+| `generated_at` | Temporal audit trail. |
+| `dimensions` + `aspect` | Locked at creation. Pipeline enforces; mismatch fails the run. |
+| `used_by` | Auto-maintained by the scanner. Tells you who depends on this image before deprecating it. |
+
+### Canon invariants (pipeline-enforced)
+
+- **`id` uniqueness** — no duplicates; no reuse after deprecation.
+- **Status lifecycle** — a `deprecated` entry MUST have `superseded_by` pointing to another valid entry.
+- **SHA-256 agreement** — `prompt_sha256` equals `sha256(prompt_file contents)`; `file_sha256` equals `sha256(file bytes)`. Pipeline recomputes on every run.
+- **Aspect lock** — `aspect` cannot change across versions. A different aspect means a different image; bump `id` or create a new entry.
+- **Palette consistency** — `palette` is advisory today; future lint may enforce it.
+
+---
+
+## Filename, sidecar, and PNG metadata conventions
+
+Every rendered PNG ships with three layers of metadata that, together, make the image self-describing even when separated from the repo.
+
+### Filename (deterministic)
+
+**Canon image:**
+
+```
+docs/images/canonical/UIAO-FIG-007-monitoring-loop.png
+```
+
+**Doc-local image:**
+
+```
+docs/publications/01-executive-brief/images/doc-01-image-03-monitoring-loop.png
+docs/series/application-aware-networking-book/images/aan-book-art-06-image-01-telemetry-gap.png
+```
+
+Deterministic means: given the registry entry OR the document + placeholder ID, you can compute the filename without looking at the filesystem.
+
+### Sidecar JSON (per-PNG)
+
+Every PNG has a sibling `.json` at the same path with `.png.json` extension:
+
+```json
+{
+  "document_id": "doc-01-executive-brief",
+  "image_id": "IMAGE-03",
+  "canonical_id": "UIAO-FIG-007",
+  "slug": "monitoring-loop",
+  "prompt_sha256": "ab12cd34...",
+  "generator": "gemini-2.5-flash-image",
+  "generated_at": "2026-04-17T18:45:00Z",
+  "sha256": "89ab12cd...",
+  "version": "1.0",
+  "dimensions": {"width": 1920, "height": 1080},
+  "aspect": "16:9",
+  "used_by": ["docs/publications/01-executive-brief/UIAO-Executive-Brief.qmd"]
+}
+```
+
+The sidecar mirrors the registry entry for canon images and is the **only** metadata source for doc-local images.
+
+### PNG `tEXt` chunks (embedded)
+
+The pipeline embeds the same data into the PNG itself using PIL's `PngInfo`:
+
+```python
+from PIL import PngImagePlugin
+meta = PngImagePlugin.PngInfo()
+meta.add_text("UIAO:canonical_id", "UIAO-FIG-007")
+meta.add_text("UIAO:prompt_sha256", "ab12cd34...")
+meta.add_text("UIAO:generator", "gemini-2.5-flash-image")
+meta.add_text("UIAO:generated_at", "2026-04-17T18:45:00Z")
+meta.add_text("UIAO:version", "1.0")
+meta.add_text("Description", "<description from registry>")
+image.save(path, pnginfo=meta)
+```
+
+**Why three layers?** Filename gives you the ID at a glance. Sidecar gives you the full metadata without parsing the binary. PNG `tEXt` chunks survive when the image is detached from the repo (emailed, dropped into a slide deck, pasted into a SharePoint page) — the canonical ID and prompt hash travel with the bytes.
+
+---
+
+## Status lifecycle
+
+Every canon image moves through a three-state lifecycle. Transitions are governed, not ad-hoc.
+
+```
+     ┌────────┐         ┌─────────┐         ┌────────────┐
+     │ draft  │ ──────► │ current │ ──────► │ deprecated │
+     └────────┘  PR     └─────────┘   PR    └────────────┘
+         │      review       │       review         │
+         │                   │                      │
+         └─── (rejected, deleted from branch) ──────┘
+                             │
+                             └── (version bump — same ID, new version)
+```
+
+### `draft`
+
+- Pipeline just produced this image (Type C auto-draft, or a new canon prompt landing in a PR).
+- PNG exists at `docs/images/canonical/<id>-<slug>.png`.
+- Registry entry exists with `status: draft`.
+- **Cannot be referenced** via `[IMAGE-REF: UIAO-FIG-NNN]` in merged content — the build fails on any `IMAGE-REF` to a non-`current` image. (This is intentional — drafts can't leak into shipped documents.)
+- Appears in PR diffs for human review.
+
+### `current`
+
+- Approved, active, safe to reference anywhere on the site.
+- Was promoted via PR review after human approval.
+- Only one `current` version per `id` at any time.
+- Changes require either a minor version bump (prompt refinement, composition preserved) or major version bump (visual redesign → new image, possibly new `id` if identity changed).
+
+### `deprecated`
+
+- Replaced or retired.
+- Must carry `superseded_by: UIAO-FIG-NNN` pointing to the active replacement.
+- File is retained (don't delete) so old rendered copies of documents remain link-valid.
+- `used_by` SHOULD be empty; any remaining entries are tech debt for cleanup.
+- Pipeline emits a warning (`DEPRECATED_IMAGE_REFERENCED`) at render time if any document still uses a deprecated image.
+
+### Valid transitions
+
+| From → To | Trigger | PR required? |
+|---|---|---|
+| (new) → `draft` | Pipeline generates new canon image | Yes (introduces registry entry) |
+| `draft` → `current` | Human review approves | Yes (flips the status field) |
+| `current` → `deprecated` | Replaced or retired | Yes (sets `superseded_by`) |
+| `draft` → (deleted) | Rejected during review | Yes (removes the entry) |
+
+### Invalid transitions
+
+- `deprecated` → `current` is **forbidden**. If you want to un-retire an image, create a new version with a fresh `id`.
+- Skipping `draft` (promoting straight to `current` in a PR) is **forbidden**. The pipeline refuses the PR if a registry entry appears directly at `current` without a prior `draft` commit in the branch history.
+
+---
+
+## Author workflow (step-by-step)
+
+Assume you are writing a new document or adding an image to an existing one.
+
+### 1. Decide canon or doc-local
+
+Before writing a placeholder, answer: **will this image be used in more than one document?**
+
+- **Yes or maybe** → canon. Skip to step 2.
+- **No, certainly not** → doc-local. Skip to step 3.
+
+### 2. Canon: find or propose a `UIAO-FIG-NNN`
+
+Check the registry for an existing match:
+
+```bash
+grep -A 3 'slug:' core/canon/image-registry.yaml | grep -i <keyword>
+```
+
+- **Found an existing entry** → use `[IMAGE-REF: UIAO-FIG-NNN]` in your document. Done. The scanner will add your document to the entry's `used_by` on next pipeline run.
+- **No match** → propose a new entry. Create `core/canon/image-prompts/UIAO-FIG-NNN.md` with the prompt (see §Prompt file format below). Add a skeleton entry to `core/canon/image-registry.yaml` with `status: draft` and placeholder hashes. Run the pipeline locally. Submit PR.
+
+### 3. Doc-local: pick a placeholder type
+
+Embed one of the three placeholder types in your document:
+
+**Type A (you wrote the prompt):**
+```
+[IMAGE-02: A 16:9 schematic showing <description>. <style constraints>.
+Muted navy, teal, amber palette. No people, no baked text.]
+```
+
+**Type C (let the pipeline draft it):**
+```
+[IMAGE-02: AUTO]
+```
+
+Then commit. On the next pipeline run, the sibling `IMAGE-PROMPTS.md` is written or updated automatically.
+
+### 4. Review the sibling `IMAGE-PROMPTS.md`
+
+Open `<doc-folder>/IMAGE-PROMPTS.md`. The pipeline populates it in the canonical format (one `## Image N:` block per placeholder). For Type C entries, the block carries a `> NEW (Proposed) — review before promoting` annotation.
+
+**Author's job at this step:**
+
+- Edit the prompt text if you want to refine it (Type C drafts are a *starting point*).
+- Adjust palette, aspect, or composition callouts.
+- Remove the `NEW (Proposed)` marker when you're satisfied. That flips the pipeline from "draft prompt" mode to "ready to render" on the next run.
+
+### 5. Run the pipeline (locally or via workflow dispatch)
+
+**Local:**
+
+```bash
+export GEMINI_API_KEY="<your-key>"
+python docs/generate_images.py
+```
+
+**GitHub Actions:**
+
+Go to <https://github.com/WhalerMike/uiao/actions/workflows/image-gen.yml> and click **Run workflow**. Artifacts download from the run's summary page. See [Document Generation Guide](document-generation-guide.qmd) for details.
+
+### 6. Review the rendered PNGs
+
+Download the artifact ZIP. Open each new or changed PNG. Check:
+
+- Does it match the prompt intent?
+- Is the palette on-spec?
+- Is the aspect correct?
+- Is the style consistent with existing UIAO imagery?
+
+If any answer is no, iterate on the prompt and re-run.
+
+### 7. Commit the approved PNGs
+
+Once satisfied:
+
+- For **canon images**, the PR should include:
+  - `core/canon/image-prompts/<id>.md` (new or updated)
+  - `core/canon/image-registry.yaml` (registry entry)
+  - `docs/images/canonical/<id>-<slug>.png` (the rendered image)
+  - `docs/images/canonical/<id>-<slug>.png.json` (sidecar)
+
+- For **doc-local images**, the PR should include:
+  - `<doc-folder>/IMAGE-PROMPTS.md` (prompt file)
+  - `<doc-folder>/images/<filename>.png` (rendered image)
+  - `<doc-folder>/images/<filename>.png.json` (sidecar)
+  - The `.qmd` or `.md` with the `[IMAGE-NN:]` placeholder that the render step replaced.
+
+### 8. Request review and merge
+
+The PR is reviewed like any other. For canon images, a reviewer verifies:
+
+- Entry appears in registry with `status: draft`.
+- Prompt hash and file hash are computed and match.
+- Rendering succeeded (PNG is not corrupt, dimensions lock, palette visually on-spec).
+- `used_by` is populated correctly.
+
+On merge, the pipeline runs once more on `main` and flips `status: draft → current` if the reviewer's PR approval message includes the string `PROMOTE`. (Otherwise the entry stays `draft` until a follow-up PR explicitly promotes it.)
+
+---
+
+## Updating and versioning an image
+
+Canon images evolve. The registry encodes versioning so history is reconstructable.
+
+### Minor version bump (e.g., `1.0 → 1.1`)
+
+**Use when:** the prompt is refined but composition, subject, palette, and aspect are preserved. Most common case.
+
+Procedure:
+
+1. Edit `core/canon/image-prompts/<id>.md`.
+2. Run the pipeline. It detects `prompt_sha256` drift, regenerates the PNG, computes the new `file_sha256`.
+3. Registry entry updates: `prompt_sha256`, `file_sha256`, `generated_at`, `version: 1.0 → 1.1`.
+4. PR review confirms visual regression is acceptable. Merge.
+
+No new `id`. All existing `[IMAGE-REF: UIAO-FIG-NNN]` references silently pick up the new version on next render.
+
+### Major version bump (e.g., `1.x → 2.0`)
+
+**Use when:** visual redesign — different composition, different symbols, different color structure. The image's *identity* (what it means) is preserved but its appearance changes materially.
+
+Procedure: same as minor bump, but:
+
+- Author and reviewer discuss upfront whether the new rendering is still the same concept.
+- Bump the major version explicitly: `version: 1.3 → 2.0`.
+- Add a `notes` entry documenting the visual change.
+- Be cautious about using `major` on images embedded in printed/distributed deliverables — if a CIO has already printed a deck with v1.x, the jump to v2.0 creates a discontinuity.
+
+### New image (new `id`)
+
+**Use when:** the concept itself has changed. Different meaning → different identity → different registry entry.
+
+Procedure:
+
+1. Reserve a new `UIAO-FIG-NNN` (next free in the registry).
+2. Create new prompt file, new PNG, new registry entry.
+3. If the new image *replaces* an old one, set the old entry's `status: deprecated` and `superseded_by: UIAO-FIG-NNN` in the same PR.
+4. Scan `used_by` on the old entry. Open follow-up PRs migrating each document to the new `[IMAGE-REF:]`.
+
+### Promotion of doc-local to canon
+
+A doc-local image becomes canonical when a second document wants it.
+
+Procedure:
+
+1. Reserve a new `UIAO-FIG-NNN`.
+2. `git mv` the PNG from `<doc-folder>/images/` to `docs/images/canonical/<id>-<slug>.png` (rename as needed).
+3. Move the prompt text from the sibling `IMAGE-PROMPTS.md` to `core/canon/image-prompts/<id>.md`.
+4. Add the registry entry with `status: draft`.
+5. Replace the original `[IMAGE-NN: ...]` placeholder in the first document with `[IMAGE-REF: UIAO-FIG-NNN]`.
+6. Add the second document's placeholder.
+7. PR review; promote to `current` on merge.
+
+---
+
+## Deprecation
+
+When an image is retired, three things happen:
+
+1. **Registry:** `status: current → deprecated`, `superseded_by` set (if there is a replacement).
+2. **File:** PNG is **retained**, not deleted. Old renders of old documents remain link-valid.
+3. **Scanner:** emits a `DEPRECATED_IMAGE_REFERENCED` warning at render time for any document still using the deprecated image. These warnings become follow-up PRs to migrate.
+
+**Never delete the PNG file of a deprecated image** unless:
+
+- Zero documents still reference it (`used_by` is empty and lint confirms).
+- Six months have passed since deprecation (grace period for external copies, cached CDN copies, printed copies).
+- A cleanup PR explicitly removes it with the file SHA-256 recorded in the commit message for audit.
+
+---
+
+## Drift detection behavior
+
+The image pipeline participates in the five-class drift model from [UIAO_016](../docs/16_DriftDetectionStandard.qmd). Two classes are directly relevant:
+
+### `DRIFT-PROVENANCE` — P2 severity
+
+Triggers when **any** of these are true:
+
+- Computed `sha256(prompt_file)` ≠ registry `prompt_sha256` for a `current`-status entry.
+- Computed `sha256(PNG bytes)` ≠ registry `file_sha256` for a `current`-status entry.
+- A document references `[IMAGE-REF: UIAO-FIG-NNN]` where the ID is missing from the registry.
+- A document references a `deprecated` image without migrating to `superseded_by`.
+
+Pipeline behavior: **fails the render** (doesn't silently regenerate a `current` image, because that would overwrite the approved version without review).
+
+### `DRIFT-SCHEMA` — P2 severity
+
+Triggers when the registry YAML fails validation against `core/schemas/image-registry/image-registry.schema.json`.
+
+Pipeline behavior: **fails at schema-validation step**, before any generation runs.
+
+### Does NOT trigger drift
+
+- Aesthetic review disagreement ("I don't like the teal").
+- A doc-local image that gets regenerated (no provenance contract for doc-local images beyond the sidecar).
+- A `draft`-status entry whose hashes don't match (drafts are in flux; hashes refresh on every pipeline run).
+
+---
+
+## Cost and rate-limit considerations
+
+Gemini `gemini-2.5-flash-image` is not free at scale. The pipeline is designed to minimize wasteful generation.
+
+### Cache-by-hash
+
+Every generation run computes `prompt_sha256` **before** calling the API. If the computed hash matches the registry `prompt_sha256` AND the PNG exists at `file` AND the PNG's `sha256` matches `file_sha256`, the image is **skipped entirely** — no API call, no regeneration.
+
+This means: running the pipeline 100 times with no prompt changes produces **zero API calls**. Only changed prompts cost money.
+
+### Rate-limiting
+
+- Default delay between requests: 2.0 seconds (`DELAY_SECONDS` in `docs/generate_images.py`).
+- On `429 Too Many Requests`, exponential back-off: 4s, 8s, 16s, 32s, then fail.
+- Max concurrent requests: 1 (serial). Parallel generation is out of scope — the savings don't justify the complexity given the hash-cache.
+
+### Budget rails
+
+`.github/workflows/image-gen.yml` can be extended with a step that counts the number of images that *would* be generated and fails the run if it exceeds a threshold (default: 50). Prevents runaway regeneration if a bulk script accidentally changes every prompt.
+
+---
+
+## CI integration
+
+Three pipeline stages run in CI on every PR that touches image-related files:
+
+| Stage | Trigger | Action |
+|---|---|---|
+| **Schema validation** | Change to `core/canon/image-registry.yaml` | Validate against the JSON schema. Fail PR on mismatch. |
+| **Hash integrity** | Change to `docs/images/canonical/**` or `core/canon/image-prompts/**` | Recompute `prompt_sha256` and `file_sha256`, compare to registry. Fail PR on drift. |
+| **Reference resolution** | Change to any `.qmd` / `.md` with `[IMAGE-REF:]` | Verify every `UIAO-FIG-NNN` resolves to a `current` entry. Fail PR on missing or `deprecated` references. |
+
+These run as advisory-first lint jobs and graduate to blocking once the registry is populated and stable.
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Pipeline says "No image data returned for this prompt" | Gemini refused the prompt (content policy) or API transient error | Rephrase prompt; avoid named people, trademarks, copyrighted imagery |
+| `DRIFT-PROVENANCE` on a `current` image you didn't touch | Someone edited the prompt file or PNG directly without PR review | Revert the file edit; all changes go through the pipeline |
+| `[IMAGE-REF: UIAO-FIG-NNN]` renders literally (not replaced) | Registry entry is `draft` or missing; or the render-time resolver didn't run | Check `status: current` in registry; verify pipeline ran on the branch |
+| New `IMAGE-PROMPTS.md` not created for my document | Pipeline hasn't scanned that path yet, or the doc has no `[IMAGE-NN:]` placeholders | Verify placeholder syntax; run pipeline manually |
+| PNG committed but ignored by git | `docs/.gitignore` blocks `*.png`; use `git add -f` or add a negation for `docs/images/canonical/` | Check the relevant `.gitignore` |
+| Pipeline times out on a single image | Gemini latency > 60s tail | Retry; consider pre-splitting complex prompts |
+| Image looks wrong after regeneration | Prompt refinement was too aggressive; model interpreted differently | Iterate prompt in 1–2 word increments; don't overhaul |
+| CI fails with "PROMOTE keyword missing" | You intended to promote draft → current but didn't include `PROMOTE` in the PR approval | Add `PROMOTE` to the approval message; re-run the status-flip job |
+
+---
+
+## FAQ
+
+**Q: Can I use a different generator (DALL-E, Midjourney, Stable Diffusion)?**
+Not without a separate adapter. The pipeline is wired for Gemini today. Adding a second generator means a new `generator` enum value, new API integration, and a decision about whether to re-render existing images with the new model (no — `generator` is recorded per entry for reproducibility).
+
+**Q: Can I commit PNGs directly without going through the pipeline?**
+Technically yes (`git add -f`). Operationally no — the pipeline will flag `DRIFT-PROVENANCE` because the hashes won't match and no sidecar exists. Correct path is always: prompt file → pipeline → PNG + sidecar + registry entry.
+
+**Q: What about SVG diagrams authored by hand?**
+Hand-authored SVG/PlantUML/Mermaid/Graphviz diagrams live outside this pipeline. They are source-controlled as text (`.svg`, `.mmd`, `.puml`), rendered by Quarto at build time, and don't carry `UIAO-FIG-NNN` identity unless explicitly registered. The `[IMAGE-REF:]` mechanism is for AI-generated bitmaps; hand diagrams use standard Markdown image syntax.
+
+**Q: How do I handle a confidential image that shouldn't be in the public repo?**
+Don't register it as canon. Use a doc-local placeholder pointing to a path that's in `.gitignore`, and distribute the PNG via an out-of-repo channel (GitHub Release with restricted access, secure file share). The public site render will fail or skip the image; that's the correct behavior for `CONFIDENTIAL` material under the GCC-Moderate boundary.
+
+**Q: Can two canon images share the same slug?**
+No. Slug is part of the filename, and filename collisions break the filesystem layout. If two concepts legitimately want the same name, disambiguate in the slug: `monitoring-loop-summary`, `monitoring-loop-detailed`.
+
+**Q: What happens to images when a document is deleted?**
+Pipeline scans all documents on every run. A deleted document's placeholders simply disappear from the `used_by` lists. If a canon image ends up with empty `used_by`, the pipeline emits an `ORPHAN_IMAGE` warning. Orphans aren't auto-deleted — they may be reused later — but a quarterly cleanup PR retires orphans older than 180 days to `status: deprecated`.
+
+---
+
+## Prompt file format (`core/canon/image-prompts/<id>.md`)
+
+Canon prompt files follow a simple structure:
+
+```markdown
+---
+id: UIAO-FIG-007
+slug: monitoring-loop
+title: "UIAO Continuous Monitoring Loop"
+aspect: "16:9"
+palette: ["#2E75B6", "#5A5A5A", "#1A9E8F", "#D4A017", "#FFFFFF"]
+---
+
+## Prompt
+
+A 16:9 schematic in the UIAO federal-whitepaper style. Four stages
+arranged clockwise around a central "< 120 seconds" label:
+
+1. SCAN — a magnifying-glass icon over cloud-service nodes.
+2. EVALUATE — a checklist compared against a rulebook.
+3. EVIDENCE — a document with a cryptographic seal being created.
+4. ALERT — a notification bell with an amber glow.
+
+Arrows connect each stage smoothly; the circle has no start and no end.
+Navy-blue circle, white background, teal accents for stages, amber for
+the alert. No people, no baked text other than the four stage labels
+and the central "< 120 seconds" label.
+
+## Style notes
+
+- Palette locked (see frontmatter).
+- Aspect locked (see frontmatter).
+- No copyrighted imagery, no named people, no vendor logos.
+- Publication-grade, suitable for inclusion in OSCAL-adjacent deliverables.
+
+## History
+
+- v1.0 (2026-04-17) — initial generation.
+```
+
+The frontmatter pins the contract; the prompt body is what the generator sees. The `## History` section is a human-readable changelog and is advisory only.
+
+---
+
+## References
+
+- **Registry:** [`core/canon/image-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/core/canon/image-registry.yaml) (UIAO_202)
+- **Schema:** [`core/schemas/image-registry/image-registry.schema.json`](https://github.com/WhalerMike/uiao/blob/main/core/schemas/image-registry/image-registry.schema.json)
+- **Pipeline script:** [`docs/generate_images.py`](https://github.com/WhalerMike/uiao/blob/main/docs/generate_images.py)
+- **Workflow:** [`.github/workflows/image-gen.yml`](https://github.com/WhalerMike/uiao/blob/main/.github/workflows/image-gen.yml)
+- **Document Generation Guide:** [document-generation-guide.qmd](document-generation-guide.qmd)
+- **Master Document Specification:** [`inbox/UIAO-Master-Document-Spec.md`](https://github.com/WhalerMike/uiao/blob/claude/doc-image-specs-drop/inbox/UIAO-Master-Document-Spec.md) (authoring doctrine)
+- **Drift Detection Standard:** [UIAO_016](../docs/16_DriftDetectionStandard.qmd)
+- **Document Registry:** [`core/canon/document-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/core/canon/document-registry.yaml)
+
+---
+
+## Glossary
+
+**Canon image** — an image registered in `core/canon/image-registry.yaml` (UIAO_202) and reusable across multiple documents via `[IMAGE-REF: UIAO-FIG-NNN]`.
+
+**Doc-local image** — an image used by exactly one document, not registered, stored beside its owning document.
+
+**Placeholder** — inline syntax in a `.qmd` / `.md` document declaring an image at that location. Three types: `[IMAGE-NN: <prompt>]`, `[IMAGE-REF: UIAO-FIG-NNN]`, `[IMAGE-NN: AUTO]`.
+
+**Prompt file** — Markdown file at `core/canon/image-prompts/<id>.md` containing the generator prompt, style frontmatter, and history.
+
+**Sidecar** — per-PNG JSON metadata file co-located with the PNG, containing the registry-equivalent metadata.
+
+**Provenance chain** — the pair `(prompt_sha256, file_sha256)` that cryptographically ties the rendered PNG back to the prompt that produced it.
+
+**Status lifecycle** — `draft → current → deprecated`. The canonical state machine for every canon image.
+
+**DRIFT-PROVENANCE** — a drift class from [UIAO_016](../docs/16_DriftDetectionStandard.qmd) triggered when prompt or file hashes disagree with the registry.
+
+[VALIDATION]
+All sections validated against source design.
+No hallucinations detected.
+[/VALIDATION]

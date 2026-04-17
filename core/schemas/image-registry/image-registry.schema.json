@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://whalermike.github.io/uiao/schemas/image-registry/image-registry.schema.json",
+  "title": "UIAO Image Registry Schema",
+  "description": "Schema for the canonical UIAO image registry. Governs figures, diagrams, and images that are reusable across multiple documents. Doc-local images (single-use images embedded in exactly one document) are out of scope for this registry and live under the document's own folder. Every registry entry carries full provenance: the prompt file, the prompt hash (sha256), the generator model, the rendered file path, the file hash, and the list of documents/placeholders that reference it. Drift between prompt_sha256 and the hash of prompt_file contents triggers DRIFT-PROVENANCE per UIAO_016 Drift Detection Standard.",
+  "type": "object",
+  "required": [
+    "metadata",
+    "schema-version",
+    "updated",
+    "images"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "description": "Canonical frontmatter per core/schemas/metadata-schema.json. Required fields: document_id, title, version, status, classification, owner, created_at, updated_at, boundary.",
+      "type": "object"
+    },
+    "schema-version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of this registry document schema."
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date of the most recent registry update."
+    },
+    "images": {
+      "type": "array",
+      "description": "Ordered list of canonical image entries. Order is stable; new entries append at the end.",
+      "items": { "$ref": "#/definitions/image" }
+    }
+  },
+  "definitions": {
+    "image": {
+      "type": "object",
+      "required": [
+        "id",
+        "slug",
+        "title",
+        "description",
+        "status",
+        "version",
+        "prompt_file",
+        "prompt_sha256",
+        "generator",
+        "file",
+        "file_sha256",
+        "generated_at",
+        "dimensions",
+        "aspect",
+        "used_by"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^UIAO-FIG-\\d{3}$",
+          "description": "Canonical image identifier. Format: UIAO-FIG-NNN (exactly three digits). Stable across versions and reuse sites."
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Kebab-case human handle. Embedded in filenames and URLs."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Short human label for indexes and captions."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One-paragraph description of what the image depicts. Used by search and alt text."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "current", "deprecated"],
+          "description": "Lifecycle. draft = pipeline-generated, awaiting human promotion. current = approved for use. deprecated = replaced or retired."
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+$",
+          "description": "Semantic major.minor version. Increment major on visual redesign; minor on prompt refinement that preserves composition."
+        },
+        "prompt_file": {
+          "type": "string",
+          "description": "Path (repo-relative) to the markdown prompt file for this image. Must exist. Always lives under core/canon/image-prompts/<id>.md for canon images."
+        },
+        "prompt_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of the prompt_file contents. Pipeline recomputes and compares on every run; mismatch triggers regeneration (if status: draft) or DRIFT-PROVENANCE (if status: current)."
+        },
+        "generator": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Generator model identifier (e.g., gemini-2.5-flash-image). Recorded for reproducibility."
+        },
+        "file": {
+          "type": "string",
+          "description": "Path (repo-relative) to the rendered PNG. Always lives under docs/images/canonical/ for canon images. Filename convention: <id>-<slug>.png."
+        },
+        "file_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of the rendered PNG bytes. The certificate anchor for this image. Distribution tampering is detectable."
+        },
+        "generated_at": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+          "description": "ISO 8601 UTC timestamp of the generation run that produced this file."
+        },
+        "dimensions": {
+          "type": "object",
+          "required": ["width", "height"],
+          "additionalProperties": false,
+          "properties": {
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "aspect": {
+          "type": "string",
+          "enum": ["16:9", "4:3", "1:1", "3:2", "2:3", "9:16"],
+          "description": "Locked aspect ratio. Enforced by the pipeline; mismatch fails the run."
+        },
+        "palette": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "description": "Optional declared color palette (hex). Used by style-drift checks."
+        },
+        "used_by": {
+          "type": "array",
+          "description": "Every site that references this image. Populated by the pipeline scanner; hand-editable for bootstrapping.",
+          "items": {
+            "type": "object",
+            "required": ["document", "placeholder_id"],
+            "additionalProperties": false,
+            "properties": {
+              "document": {
+                "type": "string",
+                "description": "Repo-relative path to the .qmd or .md that references this image."
+              },
+              "placeholder_id": {
+                "type": "string",
+                "pattern": "^(IMAGE|DIAGRAM|FIGURE)-\\d{2,3}$",
+                "description": "The local placeholder identifier inside the referencing document, e.g., IMAGE-03."
+              }
+            }
+          }
+        },
+        "supersedes": {
+          "type": "string",
+          "pattern": "^UIAO-FIG-\\d{3}$",
+          "description": "Optional. If this image replaced an older one, cite the predecessor ID here. The predecessor's status must be deprecated."
+        },
+        "superseded_by": {
+          "type": "string",
+          "pattern": "^UIAO-FIG-\\d{3}$",
+          "description": "Required when status: deprecated. Points to the replacement."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional free-text notes (style guidance, related images, known issues)."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "deprecated" } } },
+          "then": { "required": ["superseded_by"] }
+        }
+      ]
+    }
+  }
+}
