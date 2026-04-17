@@ -44,7 +44,7 @@ def walk(
     if as_json:
         json.dump(report.as_dict(), sys.stdout, indent=2)
         sys.stdout.write("\n")
-        if not report.ok:
+        if report.blocking:
             raise typer.Exit(code=1)
         return
 
@@ -55,27 +55,35 @@ def walk(
     console.print(
         f"  workspace-contract: {'found' if report.contract_present else 'absent (optional)'}"
     )
-    console.print(
-        f"  modules checked:    {report.modules_checked}"
-    )
-    console.print(
-        f"  documents checked:  {report.documents_checked}"
-    )
+    console.print(f"  modules checked:    {report.modules_checked}")
+    console.print(f"  documents checked:  {report.documents_checked}")
+    console.print(f"  impl refs checked:  {report.impl_refs_checked}")
 
     if report.ok:
         console.print("\n[green]PASS[/green] — no drift detected.")
         return
 
-    console.print(f"\n[red]FAIL[/red] — {len(report.findings)} finding(s):")
-    table = Table(show_header=True, header_style="bold red")
-    table.add_column("Class")
-    table.add_column("Sev")
-    table.add_column("Path")
-    table.add_column("Detail")
-    for f in report.findings:
-        table.add_row(f.drift_class, f.severity, f.path, f.detail)
-    console.print(table)
-    raise typer.Exit(code=1)
+    def _print_table(findings, style: str) -> None:
+        table = Table(show_header=True, header_style=f"bold {style}")
+        table.add_column("Class")
+        table.add_column("Sev")
+        table.add_column("Path")
+        table.add_column("Detail")
+        for f in findings:
+            table.add_row(f.drift_class, f.severity, f.path, f.detail)
+        console.print(table)
+
+    if report.blockers:
+        console.print(f"\n[red]FAIL[/red] — {len(report.blockers)} P1 blocking finding(s):")
+        _print_table(report.blockers, "red")
+    if report.warnings:
+        console.print(
+            f"\n[yellow]WARN[/yellow] — {len(report.warnings)} P2 non-blocking finding(s):"
+        )
+        _print_table(report.warnings, "yellow")
+
+    if report.blocking:
+        raise typer.Exit(code=1)
 
 
 @substrate_app.command("drift")
@@ -97,5 +105,14 @@ def drift(
     if report.ok:
         console.print("[green]PASS[/green] — no DRIFT-SCHEMA or DRIFT-PROVENANCE findings.")
         return
-    console.print(f"[red]FAIL[/red] — {len(report.findings)} finding(s). Run `uiao substrate walk` for detail.")
+    if not report.blocking:
+        console.print(
+            f"[green]PASS[/green] with {len(report.warnings)} P2 warning(s). "
+            "Run `uiao substrate walk` for detail."
+        )
+        return
+    console.print(
+        f"[red]FAIL[/red] — {len(report.blockers)} P1 blocker(s) + "
+        f"{len(report.warnings)} warning(s). Run `uiao substrate walk` for detail."
+    )
     raise typer.Exit(code=1)
