@@ -3,6 +3,7 @@ title: "UIAO Documentation Migration Plan"
 status: ACTIVE
 version: "1.0"
 last_updated: "2026-04-07"
+aspirational: true
 ---
 
 # UIAO Documentation Migration Plan
