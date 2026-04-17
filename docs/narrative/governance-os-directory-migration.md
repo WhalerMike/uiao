@@ -1,7 +1,15 @@
-# uiao-gos — Governance OS for Enterprise Directory Migration
+# Governance OS for Enterprise Directory Migration
+
+> **Provenance:** Migrated from the former `uiao-gos` repository (2026-04-17) into
+> the consolidated `WhalerMike/uiao` monorepo as narrative documentation for the
+> `directory_migration` subsystem. The former commercial-firewall framing is
+> retired; the IPAM adapters described here are now registered in
+> `core/canon/modernization-registry.yaml` (`infoblox`, `bluecat-address-manager`)
+> and the reference implementations live under
+> `impl/src/uiao_impl/directory_migration/`.
 
 **Universal governance platform for AD to Entra ID and M365 migration.**
-Not government-specific. Identity-first. No rip-and-replace.
+Identity-first. No rip-and-replace.
 
 ## The Problem
 Active Directory was not just an identity store. It was the implicit governance
