@@ -91,6 +91,14 @@ Cross-module commits are permitted but must describe the cross-cutting nature in
 
 The monorepo was consolidated from four predecessor repos (`uiao-core`, `uiao-docs`, `uiao-gos`, `uiao-impl`) on 2026-04-17 with full history preserved. The `uiao-gos` federal/commercial firewall was retired per [ADR-028](core/canon/adr/adr-028-monorepo-consolidation-gos-integration.md); its directory-migration adapters (`bluecat-address-manager`, `infoblox`) are now canonical modernization adapters. See [`docs/narrative/governance-os-directory-migration.md`](docs/narrative/governance-os-directory-migration.md) for the substrate-aligned narrative.
 
+## Writing patterns
+
+- **Chunked writes for long content (>≈150 lines), regardless of filetype.** Applies equally to `.md`, `.qmd`, `.py`, `.yaml`, and `.json`. Write the file in 3–5 logical sections using an initial `Write` for section 1 then `Edit` calls to append subsequent sections via unique anchor text. Length — not filetype — determines when to chunk.
+    - **Why**: stream-idle timeouts truncate single-Write operations on multi-hundred-line files; each chunk persists as it lands, so a timeout mid-document costs at most one section, not the whole file. Also produces reviewable increments.
+    - **Ordering for Python**: imports → constants/dataclasses → utilities → higher-level functions → `main` / CLI. Each chunk depends only on what's already above it.
+    - **Ordering for Markdown/Quarto**: frontmatter → overview → principles → body sections → appendices → references. Each chunk is self-contained prose; dependencies are by narrative flow, not execution.
+- **Session memory is ephemeral.** Within-session pledges ("I'll use this pattern from now on") do not persist across session boundaries or context compactions. Durable behavior lives in this file — if a pattern is worth adopting, commit it here.
+
 ## Agent usage notes
 
 - **Always run `uiao substrate walk` first** on a fresh clone to validate the tree is intact.
