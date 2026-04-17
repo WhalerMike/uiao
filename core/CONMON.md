@@ -4,7 +4,7 @@
 
 **Version:** 0.1.0 (NEW, Proposed)
 **Cloud boundary:** GCC-Moderate (M365 SaaS); Azure Government for Phase 3+ host-level.
-**Scope:** All modules of the consolidated `WhalerMike/uiao` monorepo (`core/`, `docs/`, `impl/`) under a single FedRAMP-Moderate posture. The directory-migration subsystem under `impl/src/uiao_impl/directory_migration/` and its registered IPAM adapters (`bluecat-address-manager`, `infoblox`) are in scope like any other modernization adapter; see ADR-028 for the history of the dissolved federal/commercial firewall.
+**Scope:** All modules of the consolidated `WhalerMike/uiao` monorepo (`core/`, `docs/`, `impl/`) under a single FedRAMP-Moderate posture. The registered directory-migration IPAM adapters (`bluecat-address-manager`, `infoblox` in `core/canon/modernization-registry.yaml`) are in scope like any other modernization adapter; see ADR-028 for the history of the dissolved federal/commercial firewall.
 
 ---
 
