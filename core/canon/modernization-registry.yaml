@@ -342,18 +342,21 @@ adapters:
       future integration-class adapter example.
 
   - id: infoblox
-    name: Infoblox DNS / IPAM Adapter
+    name: Infoblox NIOS DNS / IPAM Adapter
     class: modernization
     mission-class: integration
     mission-class-notes: >-
-      DNS and IP Address Management — change-making actions against
-      network infrastructure (DNS records, DHCP scopes, IP allocations).
-      Classified per UIAO_003 §4.7 Integration Adapter Class.
-    status: reserved
-    phase: phase-planning
+      DNS, DHCP, and IP Address Management — change-making actions against
+      network infrastructure (DNS records, DHCP scopes, IP allocations,
+      network views). Supports side-by-side AD and event-stream egress for
+      directory-migration flows. Classified per UIAO_003 §4.7 Integration
+      Adapter Class.
+    status: active
+    phase: phase-1
     vendor: Infoblox
     license: Commercial
     runtime: python-3.12
+    runtime-version: ">=8.0"
     runner-class: on-prem-self-hosted
     tenancy: per-customer
     scope:
@@ -361,9 +364,11 @@ adapters:
       - dhcp-scopes
       - ip-allocations
       - network-views
+      - side-by-side-ad
     outputs:
       - dns-change-manifest.json
       - ipam-audit.json
+      - event-stream.ndjson
     triggers:
       - workflow_dispatch
       - repository_dispatch
@@ -382,8 +387,63 @@ adapters:
     references:
       - UIAO-CANON-003
     notes: >-
-      Tier 4 adapter. Requires on-prem-self-hosted runner with network
-      access to Infoblox WAPI.
+      Tier 4 adapter. Product: Infoblox NIOS (>=8.0). FedRAMP-authorized
+      (Moderate). CDM-integrated. Federal-preferred IPAM for GCC-Moderate
+      directory-migration engagements. Requires on-prem-self-hosted runner
+      with network access to the Infoblox WAPI. Reference implementation
+      migrated from uiao-gos (2026-04-17) to
+      impl/src/uiao_impl/directory_migration/adapters/ipam/infoblox/.
+
+  - id: bluecat-address-manager
+    name: BlueCat Address Manager
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      DNS, DHCP, and IP Address Management — change-making actions against
+      network infrastructure (DNS records, DHCP scopes, IP allocations).
+      Supports side-by-side AD and event-stream egress for
+      directory-migration flows. Classified per UIAO_003 §4.7 Integration
+      Adapter Class.
+    status: active
+    phase: phase-1
+    vendor: BlueCat
+    license: Commercial
+    runtime: python-3.12
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    scope:
+      - dns-records
+      - dhcp-scopes
+      - ip-allocations
+      - side-by-side-ad
+    outputs:
+      - dns-change-manifest.json
+      - ipam-audit.json
+      - event-stream.ndjson
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - SC-20
+      - SC-21
+      - CM-8
+    automation-domain:
+      - network-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+    notes: >-
+      Tier 4 adapter. Product: BlueCat Address Manager. Not FedRAMP-authorized
+      (commercial deployments only; federal-preferred sibling is the
+      `infoblox` adapter). Requires on-prem-self-hosted runner with network
+      access to the BlueCat API. Reference implementation migrated from
+      uiao-gos (2026-04-17) to
+      impl/src/uiao_impl/directory_migration/adapters/ipam/bluecat/.
 
   - id: mainframe
     name: Mainframe (z/OS Connect / MQ) Adapter
