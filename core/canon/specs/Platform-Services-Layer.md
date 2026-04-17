@@ -1,18 +1,39 @@
 ---
 document_id: UIAO_102
 title: "UIAO Platform Services Layer"
-version: "1.0"
+version: "1.1"
 status: Current
 classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-14"
-updated_at: "2026-04-14"
+updated_at: "2026-04-17"
 boundary: "GCC-Moderate"
 ---
 
 # UIAO Platform Services Layer
 
 This layer defines the extensibility and marketplace infrastructure that transforms UIAO from a compliance engine into a compliance platform.
+
+## Positioning in the reconciled layer model (ADR-030 §2)
+
+The platform services described here provide the **extensibility
+surfaces** through which third parties and internal teams add
+capability to UIAO. In the reconciled Tier A four-layer model,
+these services operate predominantly across the Authority Plane
+and Control Plane:
+
+| Service (this doc §) | Tier A layer | Tier B plane |
+|---|---|---|
+| §1 Plugin System (evidence, control, enforcement plugins) | Authority Plane (evidence) + Control Plane (orchestration) + Overlay Fabric (enforcement-plugin runtime) | Identity + Telemetry + Policy + Enforcement |
+| §2 Control Pack SDK | Authority Plane (control definitions) + Control Plane (binding) | Governance |
+| §3 Marketplace | Control Plane (distribution) | Management |
+| §4 Customer Adapter SDK | Authority Plane (vendor schema) + Control Plane (translation) | Integration (mission-class) |
+| §5 UIAO API Gateway | Control Plane | Management + Governance |
+
+Plugins and SDKs extend UIAO without modifying the core; the Tier
+A model names **which** layers they plug into. The Tier B planes
+identify **which decision surface** within the Control Plane a
+given plugin participates in.
 
 ---
 
