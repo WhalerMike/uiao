@@ -1,12 +1,20 @@
 """DEPRECATED: Stub adapter. Real implementation pending in
 src/uiao_impl/adapters/. Do not extend."""
 from __future__ import annotations
+
+from typing import Any, List
+
 from adapters import register
 from adapters.base_adapter import (
-    BaseAdapter, AdapterMetadata, CanonicalClaim, ClaimFilter,
-    DriftReport, KSIBundle, ProvenanceRecord,
+    AdapterMetadata,
+    BaseAdapter,
+    CanonicalClaim,
+    ClaimFilter,
+    DriftReport,
+    KSIBundle,
+    ProvenanceRecord,
 )
-from typing import Any, List
+
 
 @register("m365")
 class M365Adapter(BaseAdapter):

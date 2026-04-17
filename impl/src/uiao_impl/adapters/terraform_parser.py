@@ -13,12 +13,9 @@ files that the CLI produces.
 
 from __future__ import annotations
 
-import json
 import re
 from io import StringIO
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-
 
 # ---------------------------------------------------------------------------
 # State file parsing (v4 JSON format)
