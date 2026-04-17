@@ -1,0 +1,107 @@
+name: Schema Validation
+
+on:
+  pull_request:
+    paths:
+      - 'core/canon/**'
+      - 'core/schemas/**'
+      - '.github/workflows/schema-validation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'core/canon/**'
+      - 'core/schemas/**'
+
+jobs:
+  validate:
+    name: Validate canon documents against schemas
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install validators
+        run: pip install --quiet jsonschema pyyaml
+
+      - name: Validate adapter registries against adapter-registry schema
+        run: |
+          python - <<'EOF'
+          import json, sys, yaml
+          from jsonschema import Draft7Validator
+
+          schema = json.load(open('core/schemas/adapter-registry/adapter-registry.schema.json'))
+          validator = Draft7Validator(schema)
+
+          failures = []
+          for path in [
+              'core/canon/adapter-registry.yaml',
+              'core/canon/modernization-registry.yaml',
+          ]:
+              data = yaml.safe_load(open(path))
+              errors = list(validator.iter_errors(data))
+              if errors:
+                  failures.append((path, errors))
+              print(f"[{path}] {'PASS' if not errors else 'FAIL'} ({len(data.get('adapters', []))} adapters)")
+
+          if failures:
+              print("\nFailures:")
+              for path, errors in failures:
+                  for e in errors[:10]:
+                      loc = '.'.join(str(p) for p in e.absolute_path)
+                      print(f"  {path} [{loc}] {e.message}")
+              sys.exit(1)
+          EOF
+
+      - name: Validate substrate manifest against substrate-manifest + metadata schemas
+        run: |
+          python - <<'EOF'
+          import json, sys, yaml
+          from jsonschema import Draft202012Validator
+
+          substrate_schema = json.load(open('core/schemas/substrate-manifest/substrate-manifest.schema.json'))
+          metadata_schema = json.load(open('core/schemas/metadata-schema.json'))
+          data = yaml.safe_load(open('core/canon/substrate-manifest.yaml'))
+
+          errors_body = list(Draft202012Validator(substrate_schema).iter_errors(data))
+          errors_meta = list(Draft202012Validator(metadata_schema).iter_errors(data.get('metadata', {})))
+
+          print(f"[substrate-manifest.yaml vs substrate-manifest.schema.json] {'PASS' if not errors_body else 'FAIL'}")
+          print(f"[substrate-manifest.yaml.metadata vs metadata-schema.json]   {'PASS' if not errors_meta else 'FAIL'}")
+
+          failed = False
+          for label, errs in (('body', errors_body), ('metadata', errors_meta)):
+              for e in errs[:10]:
+                  loc = '.'.join(str(p) for p in e.absolute_path)
+                  print(f"  {label} [{loc}] {e.message}")
+                  failed = True
+          if failed:
+              sys.exit(1)
+          EOF
+
+      - name: Validate document-registry paths resolve
+        run: |
+          python - <<'EOF'
+          import sys, yaml
+          from pathlib import Path
+
+          reg = yaml.safe_load(open('core/canon/document-registry.yaml'))
+          core_root = Path('core')
+          missing = []
+          for doc in reg['documents']:
+              # Paths in document-registry.yaml are core-relative by convention.
+              resolved = core_root / doc['path']
+              if not resolved.exists():
+                  missing.append((doc['id'], doc['path']))
+
+          print(f"document-registry.yaml: {len(reg['documents'])} entries, "
+                f"{len(reg['documents']) - len(missing)} resolve")
+          if missing:
+              for doc_id, path in missing:
+                  print(f"  MISSING: {doc_id} -> {path}")
+              sys.exit(1)
+          EOF
