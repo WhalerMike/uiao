@@ -75,7 +75,11 @@ SCAN_ROOTS = [
     REPO_ROOT / "core" / "canon" / "adr",
 ]
 SCAN_EXTS = (".qmd", ".md")
-EXCLUDE_PATH_PARTS = {"_site", "_freeze", ".quarto", "node_modules", ".venv", "__pycache__"}
+EXCLUDE_PATH_PARTS = {
+    "_site", "_freeze", ".quarto", "node_modules", ".venv", "__pycache__",
+    "session-logs",     # working dev logs, not rendered site content
+    "inbox",            # raw intake drops; may contain example placeholders
+}
 # ──────────────────────────────────────────────────────────────
 
 
@@ -357,6 +361,30 @@ def _is_excluded(path: Path) -> bool:
     return any(part in EXCLUDE_PATH_PARTS for part in path.parts)
 
 
+def _fenced_code_ranges(text: str) -> list[tuple[int, int]]:
+    """Return [(start, end), ...] byte ranges of fenced code blocks
+    (delimited by ``` lines). Placeholders inside these ranges are
+    treated as illustrative syntax, not harvested."""
+    ranges: list[tuple[int, int]] = []
+    offset = 0
+    in_fence = False
+    fence_start = 0
+    for line in text.split("\n"):
+        line_bytes = len(line) + 1  # +1 for the newline we split on
+        stripped = line.lstrip()
+        if stripped.startswith("```"):
+            if not in_fence:
+                fence_start = offset
+                in_fence = True
+            else:
+                ranges.append((fence_start, offset + line_bytes))
+                in_fence = False
+        offset += line_bytes
+    if in_fence:  # unclosed fence — treat the rest of the file as code
+        ranges.append((fence_start, len(text)))
+    return ranges
+
+
 def iter_source_files() -> list[Path]:
     """Yield every .qmd / .md file under SCAN_ROOTS, filtered for excludes."""
     seen: set[Path] = set()
@@ -396,7 +424,6 @@ def scan_placeholders(
                 line_starts.append(idx + 1)
 
         def line_of(offset: int) -> int:
-            # bisect equivalent, small loop is fine at this scale
             lo, hi = 0, len(line_starts) - 1
             while lo < hi:
                 mid = (lo + hi + 1) // 2
@@ -406,7 +433,19 @@ def scan_placeholders(
                     hi = mid - 1
             return lo + 1
 
+        # Compute fenced-code ranges so placeholders inside ``` ... ``` are
+        # treated as illustrative, not harvested.
+        fence_ranges = _fenced_code_ranges(text)
+
+        def in_fence(offset: int) -> bool:
+            for start, end in fence_ranges:
+                if start <= offset < end:
+                    return True
+            return False
+
         for m in PLACEHOLDER_LOCAL_RE.finditer(text):
+            if in_fence(m.start()):
+                continue
             body = m.group("body").strip()
             # Skip matches that are actually [IMAGE-REF: ...] (belt & suspenders
             # since the ref regex handles them — but our local regex kind='IMAGE'
@@ -427,6 +466,8 @@ def scan_placeholders(
             )
 
         for m in PLACEHOLDER_REF_RE.finditer(text):
+            if in_fence(m.start()):
+                continue
             refs.append(
                 CanonRefPlaceholder(
                     document=path,
@@ -500,3 +541,275 @@ def generate_image(
     except Exception as e:
         print(f"  Error generating image: {e}")
         return False
+
+
+# ──────────────────────────────────────────────────────────────
+# Canon-reference resolver. For every [IMAGE-REF: UIAO-FIG-NNN],
+# verify the entry exists and is `current`; update the entry's
+# `used_by` list to record this document reference.
+# ──────────────────────────────────────────────────────────────
+def resolve_canon_refs(
+    refs: list[CanonRefPlaceholder],
+    entries: list[RegistryEntry],
+    report: RunReport,
+) -> None:
+    """Validate each canon reference; mutate entries' used_by in place.
+    Does NOT write the registry — the caller decides when to persist."""
+    entries_by_id = {e.id: e for e in entries}
+    for ref in refs:
+        report.canon_refs_seen += 1
+        entry = entries_by_id.get(ref.canon_id)
+        if entry is None:
+            report.canon_refs_missing.append(
+                f"{ref.document.relative_to(REPO_ROOT)}:{ref.line_number} → {ref.canon_id}"
+            )
+            continue
+        if entry.status == "deprecated":
+            report.canon_refs_deprecated.append(
+                f"{ref.document.relative_to(REPO_ROOT)}:{ref.line_number} → {ref.canon_id} (deprecated)"
+            )
+        # Update used_by (append if this document/placeholder pair isn't there)
+        doc_rel = str(ref.document.relative_to(REPO_ROOT))
+        # We don't know placeholder_id from a canon-ref (it's just UIAO-FIG-NNN
+        # inline; the placeholder_id is the ref itself). Record the
+        # document path; placeholder_id defaults to IMAGE-REF for refs.
+        new_entry = {"document": doc_rel, "placeholder_id": "IMAGE-REF"}
+        if new_entry not in entry.used_by:
+            entry.used_by.append(new_entry)
+            report.registry_used_by_updates += 1
+
+
+# ──────────────────────────────────────────────────────────────
+# Doc-local processor. For every [IMAGE-NN: <prompt>] placeholder
+# with a real prompt body (not AUTO), decide whether to regenerate
+# (cache miss) or skip (cache hit by sidecar prompt_sha256). Writes
+# sidecar + PNG tEXt on successful generation.
+# ──────────────────────────────────────────────────────────────
+def process_doc_local_placeholders(
+    placeholders: list[DocLocalPlaceholder],
+    client,
+    report: RunReport,
+    dry_run: bool = False,
+) -> None:
+    for p in placeholders:
+        # AUTO placeholders are a Part-3 feature (pipeline drafts the prompt
+        # via a secondary Gemini call). Skipped in this v1 pipeline; the
+        # author is expected to provide Type A or Type C handling manually.
+        if p.is_auto:
+            report.auto_placeholders_skipped += 1
+            continue
+
+        slug = _slugify(p.body.split(".")[0], maxlen=32) or "image"
+        output_path = doc_local_output_path(p.document, p.placeholder_id, slug)
+        sidecar_path = output_path.with_suffix(output_path.suffix + ".json")
+
+        # Cache-by-hash: if the prompt hasn't changed AND the PNG exists,
+        # skip the API call. Drift-free, cost-free re-runs.
+        prompt_sha = sha256_text(p.body)
+        if (
+            sidecar_path.exists()
+            and output_path.exists()
+            and not dry_run
+        ):
+            try:
+                with open(sidecar_path, "r", encoding="utf-8") as f:
+                    existing = json.load(f)
+                if existing.get("prompt_sha256") == prompt_sha:
+                    report.doc_local_cached += 1
+                    print(
+                        f"  [cache] {p.document.relative_to(REPO_ROOT)}:"
+                        f"{p.placeholder_id} → {output_path.name}"
+                    )
+                    continue
+            except (OSError, json.JSONDecodeError):
+                pass
+
+        if dry_run:
+            print(
+                f"  [dry-run] {p.document.relative_to(REPO_ROOT)}:"
+                f"{p.placeholder_id} → {output_path.name}"
+            )
+            continue
+
+        print(
+            f"  Generating: {p.document.relative_to(REPO_ROOT)}:"
+            f"{p.placeholder_id} → {output_path.name}"
+        )
+        ok = generate_image(client, p.body, output_path)
+        if not ok:
+            report.doc_local_failed += 1
+            continue
+
+        file_sha = sha256_file(output_path)
+        now = _now_iso_utc()
+        write_sidecar(
+            output_path,
+            document=p.document,
+            placeholder_id=p.placeholder_id,
+            canonical_id=None,
+            slug=slug,
+            prompt_sha256=prompt_sha,
+            generator=MODEL,
+            file_sha256=file_sha,
+        )
+        embed_png_metadata(
+            output_path,
+            canonical_id=None,
+            prompt_sha256=prompt_sha,
+            generator=MODEL,
+            generated_at=now,
+            description=p.body[:120],
+        )
+        report.doc_local_generated += 1
+        report.sidecars_written += 1
+        time.sleep(DELAY_SECONDS)
+
+
+# ──────────────────────────────────────────────────────────────
+# Legacy prompts.json path — preserved so existing uiao-pipeline-test
+# and similar entries still generate without edits.
+# ──────────────────────────────────────────────────────────────
+def load_legacy_prompts(prompts_file: Path) -> list[dict]:
+    if not prompts_file.exists():
+        return []
+    with open(prompts_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return data if isinstance(data, list) else []
+
+
+def process_legacy_prompts(
+    prompts: list[dict], client, report: RunReport, dry_run: bool = False
+) -> None:
+    LEGACY_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    for i, item in enumerate(prompts, 1):
+        prompt_id = item.get("id", f"legacy-{i}")
+        filename = item.get("filename", f"{prompt_id}.png")
+        prompt_text = item.get("prompt", "")
+        output_path = LEGACY_OUTPUT_DIR / filename
+        if dry_run:
+            print(f"  [dry-run legacy] {prompt_id} → {filename}")
+            continue
+        print(f"  [legacy] {prompt_id} → {filename}")
+        if generate_image(client, prompt_text, output_path):
+            report.doc_local_generated += 1
+        else:
+            report.doc_local_failed += 1
+        if i < len(prompts):
+            time.sleep(DELAY_SECONDS)
+
+
+# ──────────────────────────────────────────────────────────────
+# Main orchestrator.
+# ──────────────────────────────────────────────────────────────
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Generate UIAO images from placeholders + prompts (Gemini Nano Banana).",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="Scan and report what would happen; make no API calls.",
+    )
+    parser.add_argument(
+        "--scan-only", action="store_true",
+        help="Scan placeholders and print the report; skip all generation.",
+    )
+    parser.add_argument(
+        "--mode", choices=("both", "legacy", "harvest"), default="both",
+        help="Input mode. 'both' (default) runs legacy prompts.json AND harvest; "
+             "'legacy' only reads prompts.json; 'harvest' only scans .qmd/.md.",
+    )
+    args = parser.parse_args()
+
+    print(f"Repo root:        {REPO_ROOT}")
+    print(f"Script dir:       {SCRIPT_DIR}")
+    print(f"Canon registry:   {CANON_REGISTRY}")
+    print()
+
+    report = RunReport()
+
+    # Always scan — cheap, informs the report, and enables canon-ref
+    # validation even in --scan-only mode.
+    files = iter_source_files()
+    print(f"Scanning {len(files)} .qmd / .md files under SCAN_ROOTS...")
+    locals_, refs = scan_placeholders(files)
+    report.placeholders_scanned = len(locals_) + len(refs)
+    print(
+        f"Found {len(locals_)} doc-local placeholder(s) and "
+        f"{len(refs)} canon-ref placeholder(s)."
+    )
+
+    # Load registry (may be empty — that's fine for v1)
+    registry_doc, entries = load_registry()
+    if entries:
+        print(f"Loaded {len(entries)} registry entrie(s).")
+    else:
+        print("Registry is empty (expected at X1a initial state).")
+
+    # Resolve canon refs — mutates entries[].used_by in place
+    resolve_canon_refs(refs, entries, report)
+
+    # Short-circuit modes that don't generate
+    if args.scan_only:
+        _print_report(report)
+        return 0 if not report.canon_refs_missing else 1
+
+    # API key is required from here on (unless dry-run)
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key and not args.dry_run:
+        print("Error: GEMINI_API_KEY is not set in the environment.", file=sys.stderr)
+        return 2
+
+    client = None
+    if not args.dry_run:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+
+    if args.mode in ("both", "legacy"):
+        legacy = load_legacy_prompts(PROMPTS_FILE)
+        if legacy:
+            print(f"\nProcessing {len(legacy)} legacy prompt(s) from prompts.json...")
+            process_legacy_prompts(legacy, client, report, dry_run=args.dry_run)
+
+    if args.mode in ("both", "harvest"):
+        if locals_:
+            print(f"\nProcessing {len(locals_)} doc-local placeholder(s)...")
+            process_doc_local_placeholders(
+                locals_, client, report, dry_run=args.dry_run,
+            )
+        else:
+            print("\nNo doc-local placeholders found. Skipping harvest generation.")
+
+    # Persist used_by updates (only if the registry had entries and we
+    # actually made changes). Never overwrite an empty registry.
+    if entries and report.registry_used_by_updates > 0 and not args.dry_run:
+        save_registry(registry_doc, entries)
+        print(f"\nRegistry updated: {report.registry_used_by_updates} used_by addition(s).")
+
+    _print_report(report)
+    return 0 if report.doc_local_failed == 0 and not report.canon_refs_missing else 1
+
+
+def _print_report(report: RunReport) -> None:
+    print("\n=== Run report ===")
+    print(f"Placeholders scanned:    {report.placeholders_scanned}")
+    print(f"Canon refs seen:         {report.canon_refs_seen}")
+    if report.canon_refs_missing:
+        print(f"Canon refs MISSING:      {len(report.canon_refs_missing)}")
+        for line in report.canon_refs_missing[:10]:
+            print(f"  - {line}")
+        if len(report.canon_refs_missing) > 10:
+            print(f"  ... and {len(report.canon_refs_missing) - 10} more")
+    if report.canon_refs_deprecated:
+        print(f"Canon refs DEPRECATED:   {len(report.canon_refs_deprecated)}")
+        for line in report.canon_refs_deprecated[:10]:
+            print(f"  - {line}")
+    print(f"Doc-local generated:     {report.doc_local_generated}")
+    print(f"Doc-local cached (hit):  {report.doc_local_cached}")
+    print(f"Doc-local failed:        {report.doc_local_failed}")
+    print(f"AUTO placeholders (v2):  {report.auto_placeholders_skipped}")
+    print(f"Sidecars written:        {report.sidecars_written}")
+    print(f"Registry used_by adds:   {report.registry_used_by_updates}")
+
+
+if __name__ == "__main__":
+    sys.exit(main())
