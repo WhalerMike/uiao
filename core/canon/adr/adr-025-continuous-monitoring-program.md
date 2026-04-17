@@ -72,6 +72,8 @@ See `uiao-core/CONMON.md` §9.
 
 ### D7. `uiao-gos` is firewalled from the federal pair
 
+> **SUPERSEDED (2026-04-17) — see ADR-028.** The firewall is retired. `uiao-gos` was dissolved into the consolidated `WhalerMike/uiao` monorepo: its Python code lives under `impl/src/uiao_impl/directory_migration/`, its IPAM adapters are registered canonically in `core/canon/modernization-registry.yaml` (`bluecat-address-manager`, `infoblox`), and the planned `firewall-check.yml` workflow is withdrawn. The original decision text is retained below for historical record only.
+
 `uiao-gos` is commercial. No shared canon, no references to federal controls, no inherited secrets or workflows. Tracked in `uiao-gos/ARCHITECTURE.md` and enforced in CI via `firewall-check.yml` (blocks any `uiao-core` / `uiao-docs` PR that references `uiao-gos` content or identifiers).
 
 See `uiao-core/ARCHITECTURE.md` §2.2 and `uiao-gos/ARCHITECTURE.md`.

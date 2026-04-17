@@ -28,7 +28,7 @@
 
 → **[Full mission scope, mandate alignment, and architectural invariants: VISION.md](./VISION.md)**
 
-→ **[Customer Documentation Platform architecture (federal pair): ARCHITECTURE.md](./ARCHITECTURE.md)** — canonical architecture for the `uiao-core` + `uiao-docs` federal FedRAMP-Moderate pair. Covers canon registry, cross-repo sync, image pipeline, Git LFS strategy, Azure Government migration roadmap, and NIST 800-53 compliance mapping. **Out of scope:** `uiao-gos` (commercial product, separate architecture).
+→ **[UIAO Architecture: ARCHITECTURE.md](./ARCHITECTURE.md)** — canonical architecture for the consolidated `WhalerMike/uiao` monorepo (`core/`, `docs/`, `impl/`) under FedRAMP-Moderate posture. Covers canon registry, cross-module sync, image pipeline, Git LFS strategy, Azure Government migration roadmap, NIST 800-53 compliance mapping, and the directory-migration subsystem (formerly `uiao-gos`, integrated per ADR-028).
 
 ## Compliance with Presidential Executive Orders
 
