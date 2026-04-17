@@ -4,7 +4,6 @@ Validates that the JML canon correctly defines the revoke/grant actions
 for an internal department transfer scenario.
 """
 
-import os
 import unittest
 
 import yaml

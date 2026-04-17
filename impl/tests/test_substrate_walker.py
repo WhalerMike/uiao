@@ -8,7 +8,6 @@ Happy paths and failure modes per the test-coverage rule
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest

@@ -1,0 +1,43 @@
+name: Ruff
+
+on:
+  pull_request:
+    paths:
+      - 'impl/**/*.py'
+      - 'impl/pyproject.toml'
+      - '.github/workflows/ruff.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'impl/**/*.py'
+      - 'impl/pyproject.toml'
+
+jobs:
+  ruff:
+    name: Lint impl/ with ruff
+    runs-on: ubuntu-latest
+    # Fail-soft: 19 residual lint errors remain after the bulk auto-fix landed
+    # alongside this workflow (F841 unused-variable and SIM105 contextlib.suppress
+    # opportunities). Flip to blocking once the residual 19 are resolved in a
+    # follow-up PR — same pattern as metadata-validator.yml → PR #20.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff
+        run: pip install --quiet ruff
+
+      - name: Run ruff check
+        working-directory: impl
+        run: ruff check .
+
+      - name: Run ruff format (diff-only check)
+        working-directory: impl
+        run: ruff format --check .
+        continue-on-error: true
