@@ -2,17 +2,17 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
-[![FedRAMP Moderate](https://img.shields.io/badge/FedRAMP-Moderate%20Rev%205-orange.svg)](core/canon/compliance/executive-orders.md)
-[![Substrate](https://img.shields.io/badge/substrate-3%20modules%20%7C%2027%20canon%20docs-blueviolet.svg)](core/canon/substrate-manifest.yaml)
-[![Adapters](https://img.shields.io/badge/modernization%20adapters-9%20active%20%7C%201%20reserved-success.svg)](core/canon/modernization-registry.yaml)
+[![FedRAMP Moderate](https://img.shields.io/badge/FedRAMP-Moderate%20Rev%205-orange.svg)](src/uiao/canon/compliance/executive-orders.md)
+[![Substrate](https://img.shields.io/badge/substrate-3%20modules%20%7C%2027%20canon%20docs-blueviolet.svg)](src/uiao/canon/substrate-manifest.yaml)
+[![Adapters](https://img.shields.io/badge/modernization%20adapters-9%20active%20%7C%201%20reserved-success.svg)](src/uiao/canon/modernization-registry.yaml)
 [![CI](https://img.shields.io/badge/CI-7%20workflows-informational.svg)](.github/workflows/)
 
 Governance OS for FedRAMP-Moderate identity, telemetry, policy, and enforcement
 modernization. Identity-first. Canon-anchored. Drift-detected.
 
-> **Canonical substrate manifest:** [`core/canon/substrate-manifest.yaml`](core/canon/substrate-manifest.yaml) (UIAO_200).
-> **Document registry:** [`core/canon/document-registry.yaml`](core/canon/document-registry.yaml).
-> **Schemas:** [`core/schemas/`](core/schemas/).
+> **Canonical substrate manifest:** [`src/uiao/canon/substrate-manifest.yaml`](src/uiao/canon/substrate-manifest.yaml) (UIAO_200).
+> **Document registry:** [`src/uiao/canon/document-registry.yaml`](src/uiao/canon/document-registry.yaml).
+> **Schemas:** [`src/uiao/schemas/`](src/uiao/schemas/).
 > **Contributing:** [`CONTRIBUTING.md`](CONTRIBUTING.md) · **Security:** [`SECURITY.md`](SECURITY.md) · **Changelog:** [`CHANGELOG.md`](CHANGELOG.md).
 
 ## What UIAO is
@@ -29,8 +29,8 @@ UIAO is a governance substrate, not a product. It defines:
 - **Adapters** — externally-facing connectors. Two operational classes
   (`conformance` = read-only, `modernization` = change-making) × five
   mission classes (`identity | telemetry | policy | enforcement | integration`).
-  Registered in `core/canon/adapter-registry.yaml` and
-  `core/canon/modernization-registry.yaml`.
+  Registered in `src/uiao/canon/adapter-registry.yaml` and
+  `src/uiao/canon/modernization-registry.yaml`.
 - **Drift** — deviation between live state and canon, detected in five
   classes (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`,
   `DRIFT-IDENTITY`) at four severities (`P1`–`P4`). Taxonomy defined in
@@ -48,8 +48,8 @@ UIAO is a governance substrate, not a product. It defines:
 
 ### Sub-boundaries inside `core/`
 
-- [`core/schemas/`](core/schemas/) — schema authority (JSON Schema drafts 07 and 2020-12).
-- [`core/canon/`](core/canon/) — canonical governance documents. UIAO_NNN allocations via [`document-registry.yaml`](core/canon/document-registry.yaml).
+- [`src/uiao/schemas/`](src/uiao/schemas/) — schema authority (JSON Schema drafts 07 and 2020-12).
+- [`src/uiao/canon/`](src/uiao/canon/) — canonical governance documents. UIAO_NNN allocations via [`document-registry.yaml`](src/uiao/canon/document-registry.yaml).
 - [`core/tools/`](core/tools/) — enforcement tooling (metadata validator, drift detector, canon sync).
 - [`core/data/`](core/data/) — control library. 247 NIST Moderate baseline controls (163 base + 84 enhancements).
 - [`core/dashboard/`](core/dashboard/) — export and visualization surface.
@@ -74,7 +74,7 @@ $env:UIAO_WORKSPACE_ROOT = "$env:USERPROFILE\src\uiao"
 Every PR into `main` must pass the canon enforcement gates (CI workflows
 in [`core/.github/workflows/`](core/.github/workflows/)):
 
-- `metadata-validator` — frontmatter conforms to [`core/schemas/metadata-schema.json`](core/schemas/metadata-schema.json).
+- `metadata-validator` — frontmatter conforms to [`src/uiao/schemas/metadata-schema.json`](src/uiao/schemas/metadata-schema.json).
 - `drift-scan` — detects metadata and provenance drift.
 - `appendix-sync` — appendix index integrity.
 - `dashboard-export` — dashboard schema and export readiness.

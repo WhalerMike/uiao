@@ -13,7 +13,7 @@
 
 ## Module topology
 
-Declared machine-readably in [`core/canon/substrate-manifest.yaml`](core/canon/substrate-manifest.yaml) (UIAO_200):
+Declared machine-readably in [`src/uiao/canon/substrate-manifest.yaml`](src/uiao/canon/substrate-manifest.yaml) (UIAO_200):
 
 | Module | Role | Canon consumer | Contents |
 |---|---|---|---|
@@ -28,7 +28,7 @@ Workspace resolution: `$UIAO_WORKSPACE_ROOT` environment variable, never a hardc
 1. **SSOT** — every claim has exactly one canonical source in `core/`. All other representations are provenance-anchored pointers.
 2. **Canon-anchored evidence** — every artifact the substrate produces cites the canon document ID and version it derives from.
 3. **Dual-axis adapter taxonomy** — every adapter declares `class` (modernization | conformance) × `mission-class` (identity | telemetry | policy | enforcement | integration) per UIAO_003.
-4. **Schema-first governance** — five JSON Schemas under `core/schemas/` validate every registry, manifest, and frontmatter edit in CI.
+4. **Schema-first governance** — five JSON Schemas under `src/uiao/schemas/` validate every registry, manifest, and frontmatter edit in CI.
 5. **Drift is explicit** — five-class taxonomy (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`) defined in [`docs/docs/16_DriftDetectionStandard.qmd`](docs/docs/16_DriftDetectionStandard.qmd).
 6. **Version isolation** — no references to any previous version in active canon context; ADRs are append-only with supersession markers.
 
@@ -36,15 +36,15 @@ Workspace resolution: `$UIAO_WORKSPACE_ROOT` environment variable, never a hardc
 
 | Concern | Artifact | Purpose |
 |---|---|---|
-| Module declaration | `core/canon/substrate-manifest.yaml` (UIAO_200) | What modules exist, their roles, drift-scan scope |
-| Workspace binding | `core/canon/workspace-contract.yaml` (UIAO_201) | Local-root env var, module paths, build-output paths |
-| Document registry | `core/canon/document-registry.yaml` | UIAO_NNN allocations across the canon |
-| Modernization adapters | `core/canon/modernization-registry.yaml` | Change-making adapters (10 entries) |
-| Conformance adapters | `core/canon/adapter-registry.yaml` | Read-only adapters (ScubaGear etc.) |
-| Adapter schema | `core/schemas/adapter-registry/adapter-registry.schema.json` | Constrains both registries |
-| Metadata schema | `core/schemas/metadata-schema.json` | Constrains canon document frontmatter |
-| Substrate schema | `core/schemas/substrate-manifest/substrate-manifest.schema.json` | Constrains UIAO_200 |
-| Workspace schema | `core/schemas/workspace-contract/workspace-contract.schema.json` | Constrains UIAO_201 |
+| Module declaration | `src/uiao/canon/substrate-manifest.yaml` (UIAO_200) | What modules exist, their roles, drift-scan scope |
+| Workspace binding | `src/uiao/canon/workspace-contract.yaml` (UIAO_201) | Local-root env var, module paths, build-output paths |
+| Document registry | `src/uiao/canon/document-registry.yaml` | UIAO_NNN allocations across the canon |
+| Modernization adapters | `src/uiao/canon/modernization-registry.yaml` | Change-making adapters (10 entries) |
+| Conformance adapters | `src/uiao/canon/adapter-registry.yaml` | Read-only adapters (ScubaGear etc.) |
+| Adapter schema | `src/uiao/schemas/adapter-registry/adapter-registry.schema.json` | Constrains both registries |
+| Metadata schema | `src/uiao/schemas/metadata-schema.json` | Constrains canon document frontmatter |
+| Substrate schema | `src/uiao/schemas/substrate-manifest/substrate-manifest.schema.json` | Constrains UIAO_200 |
+| Workspace schema | `src/uiao/schemas/workspace-contract/workspace-contract.schema.json` | Constrains UIAO_201 |
 
 ## Substrate walker (the tool agents run first)
 
@@ -89,7 +89,7 @@ Cross-module commits are permitted but must describe the cross-cutting nature in
 
 ## History
 
-The monorepo was consolidated from four predecessor repos (`uiao-core`, `uiao-docs`, `uiao-gos`, `uiao-impl`) on 2026-04-17 with full history preserved. The `uiao-gos` federal/commercial firewall was retired per [ADR-028](core/canon/adr/adr-028-monorepo-consolidation-gos-integration.md); its directory-migration adapters (`bluecat-address-manager`, `infoblox`) are now canonical modernization adapters. See [`docs/narrative/governance-os-directory-migration.md`](docs/narrative/governance-os-directory-migration.md) for the substrate-aligned narrative.
+The monorepo was consolidated from four predecessor repos (`uiao-core`, `uiao-docs`, `uiao-gos`, `uiao-impl`) on 2026-04-17 with full history preserved. The `uiao-gos` federal/commercial firewall was retired per [ADR-028](src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md); its directory-migration adapters (`bluecat-address-manager`, `infoblox`) are now canonical modernization adapters. See [`docs/narrative/governance-os-directory-migration.md`](docs/narrative/governance-os-directory-migration.md) for the substrate-aligned narrative.
 
 ## Writing patterns
 
@@ -102,6 +102,6 @@ The monorepo was consolidated from four predecessor repos (`uiao-core`, `uiao-do
 ## Agent usage notes
 
 - **Always run `uiao substrate walk` first** on a fresh clone to validate the tree is intact.
-- **Canon changes belong in `core/`.** If a change would create a new canonical governance document, make the PR against `core/canon/` with a UIAO_NNN allocation.
+- **Canon changes belong in `core/`.** If a change would create a new canonical governance document, make the PR against `src/uiao/canon/` with a UIAO_NNN allocation.
 - **Read the relevant ADR before touching doctrinal canon.** ADR-028 retires the firewall; ADR-025 §D7 is superseded; ADR-027 defines adapter retirement.
 - **CI is comprehensive.** 6 blocking workflows will catch schema violations, drift, and test regressions before merge.

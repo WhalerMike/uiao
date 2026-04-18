@@ -26,19 +26,19 @@ If `uiao substrate walk` prints `PASS — no drift detected`, the repo is health
 | [`docs/`](docs/) | Derived documentation | Consumer — every doc traces provenance to `core/` canon |
 | [`impl/`](impl/) | Python implementation | Consumer — CLI, generators, adapters, tests |
 
-Declared machine-readably in [`core/canon/substrate-manifest.yaml`](core/canon/substrate-manifest.yaml) (UIAO_200).
+Declared machine-readably in [`src/uiao/canon/substrate-manifest.yaml`](src/uiao/canon/substrate-manifest.yaml) (UIAO_200).
 
 ## The three things you need to know before contributing
 
-1. **Canon lives in `core/` only.** If your change creates a new canonical governance document (SSOT, document registry, adapter registry, spec, ADR, crosswalk), it belongs under `core/canon/`. Anything in `docs/` or `impl/` must **consume** canon, not define it. Enforced by the canon-consumer rule in [`impl/.claude/rules/canon-consumer.md`](impl/.claude/rules/canon-consumer.md).
+1. **Canon lives in `core/` only.** If your change creates a new canonical governance document (SSOT, document registry, adapter registry, spec, ADR, crosswalk), it belongs under `src/uiao/canon/`. Anything in `docs/` or `impl/` must **consume** canon, not define it. Enforced by the canon-consumer rule in [`impl/.claude/rules/canon-consumer.md`](impl/.claude/rules/canon-consumer.md).
 
-2. **Every canon document has a schema-validated frontmatter.** If you add a `.md` under `core/canon/` with a `document_id:`, it must match `^UIAO_\d{3}$` and be allocated in [`core/canon/document-registry.yaml`](core/canon/document-registry.yaml). CI enforces this via `.github/workflows/metadata-validator.yml`.
+2. **Every canon document has a schema-validated frontmatter.** If you add a `.md` under `src/uiao/canon/` with a `document_id:`, it must match `^UIAO_\d{3}$` and be allocated in [`src/uiao/canon/document-registry.yaml`](src/uiao/canon/document-registry.yaml). CI enforces this via `.github/workflows/metadata-validator.yml`.
 
 3. **Adapters are a dual-axis taxonomy.** Every adapter declares:
    - `class:` — `modernization` (change-making) or `conformance` (read-only)
    - `mission-class:` — `identity | telemetry | policy | enforcement | integration`
 
-   See [`core/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md`](core/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md).
+   See [`src/uiao/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md`](src/uiao/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md).
 
 ## Commit convention
 
@@ -70,7 +70,7 @@ git checkout -b feat/mainframe-adapter-activation
 
 ### 2. Make the change
 
-Follow the scope rules above. If your change touches canon, read the relevant ADR history under [`core/canon/adr/`](core/canon/adr/) to understand prior decisions.
+Follow the scope rules above. If your change touches canon, read the relevant ADR history under [`src/uiao/canon/adr/`](src/uiao/canon/adr/) to understand prior decisions.
 
 ### 3. Run the checks locally
 
@@ -92,7 +92,7 @@ uiao substrate walk
 python -c "
 import json, pathlib, re, sys, yaml
 from jsonschema import Draft202012Validator
-schema = json.load(open('core/schemas/metadata-schema.json'))
+schema = json.load(open('src/uiao/schemas/metadata-schema.json'))
 v = Draft202012Validator(schema)
 fm = re.compile(r'^---\s*\n(.*?)\n---\s*(?:\n|$)', re.DOTALL)
 for md in pathlib.Path('core/canon').rglob('*.md'):
@@ -121,9 +121,9 @@ Seven workflows run on every PR. See [`.github/workflows/`](.github/workflows/).
 
 ## Canon-change protocol
 
-If your PR modifies `core/canon/**`:
+If your PR modifies `src/uiao/canon/**`:
 
-1. **Search for the UIAO_NNN ID first.** Every new canon document needs a unique ID allocated in [`core/canon/document-registry.yaml`](core/canon/document-registry.yaml) before it's authored. Reserved ranges:
+1. **Search for the UIAO_NNN ID first.** Every new canon document needs a unique ID allocated in [`src/uiao/canon/document-registry.yaml`](src/uiao/canon/document-registry.yaml) before it's authored. Reserved ranges:
    - `UIAO_001` — Single Source of Truth
    - `UIAO_002–UIAO_099` — Top-level canon documents
    - `UIAO_100–UIAO_199` — `canon/specs/` subsystem specifications
@@ -141,7 +141,7 @@ Promoting an adapter from `status: reserved, phase: phase-planning` → `active/
 - [ ] Implementation exists at `impl/src/uiao/impl/adapters/<adapter_id>_adapter.py`
 - [ ] Adapter inherits `DatabaseAdapterBase` and implements all 7 canonical domain methods
 - [ ] At least one test in `impl/tests/test_<adapter_id>_*.py` passes
-- [ ] Registry entry in `core/canon/modernization-registry.yaml` or `core/canon/adapter-registry.yaml` has all required fields per `core/schemas/adapter-registry/adapter-registry.schema.json`
+- [ ] Registry entry in `src/uiao/canon/modernization-registry.yaml` or `src/uiao/canon/adapter-registry.yaml` has all required fields per `src/uiao/schemas/adapter-registry/adapter-registry.schema.json`
 - [ ] `status:` and `phase:` fields flipped in the registry entry as the final commit
 
 See [PR #32 (cyberark activation)](https://github.com/WhalerMike/uiao/pull/32) as a canonical example.
