@@ -48,10 +48,10 @@ bootstrap:
 	@bash scripts/bootstrap.sh
 
 walk:
-	@PYTHONPATH=$(IMPL)/src $(PYTHON) -c "from uiao_impl.cli.substrate import substrate_app; substrate_app(['walk'])"
+	@PYTHONPATH=$(IMPL)/src $(PYTHON) -c "from uiao.impl.cli.substrate import substrate_app; substrate_app(['walk'])"
 
 drift:
-	@PYTHONPATH=$(IMPL)/src $(PYTHON) -c "from uiao_impl.cli.substrate import substrate_app; substrate_app(['drift'])"
+	@PYTHONPATH=$(IMPL)/src $(PYTHON) -c "from uiao.impl.cli.substrate import substrate_app; substrate_app(['drift'])"
 
 test:
 	@cd $(IMPL) && PYTHONPATH=src $(PYTHON) -m pytest -q
