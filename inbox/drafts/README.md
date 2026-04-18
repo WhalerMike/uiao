@@ -63,6 +63,6 @@ continuity with existing series); reconciliation is the agent's again
 
 - Not a publishing location.
 - Not a staging area for canon PRs (each canon PR authors the canonical
-  file directly in `core/canon/` with proper frontmatter).
+  file directly in `src/uiao/canon/` with proper frontmatter).
 - Not a long-term archive. Drafts promoted into canon or narrative are
   deleted from here.

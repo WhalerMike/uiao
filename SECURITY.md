@@ -54,7 +54,7 @@ UIAO is designed to operate within a FedRAMP-Moderate boundary. Vulnerabilities 
 
 - Boundary isolation (GCC-Moderate tenant confinement)
 - Certificate-anchored provenance integrity
-- SSOT mutation invariants (`ssot-mutation: never` per `core/schemas/adapter-registry/adapter-registry.schema.json`)
+- SSOT mutation invariants (`ssot-mutation: never` per `src/uiao/schemas/adapter-registry/adapter-registry.schema.json`)
 - Drift detection bypass paths (see `docs/docs/16_DriftDetectionStandard.qmd`)
 
 …are treated as **high-severity** and take priority in triage.

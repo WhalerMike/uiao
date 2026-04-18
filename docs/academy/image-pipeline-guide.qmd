@@ -9,7 +9,7 @@ aspirational: true
 
 ## Purpose
 
-This document is the **operator and author guide** for the UIAO image pipeline and its canonical image registry ([UIAO_202](https://github.com/WhalerMike/uiao/blob/main/core/canon/image-registry.yaml)). It covers everything a contributor needs to understand to add, reuse, update, and retire images across the site — without leaking binaries into git history and without re-generating the same diagram five times.
+This document is the **operator and author guide** for the UIAO image pipeline and its canonical image registry ([UIAO_202](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/image-registry.yaml)). It covers everything a contributor needs to understand to add, reuse, update, and retire images across the site — without leaking binaries into git history and without re-generating the same diagram five times.
 
 **Who this is for:**
 
@@ -39,7 +39,7 @@ Five principles govern everything below. They exist because the alternative — 
 
 ## Architecture at a glance
 
-[IMAGE-01: A 16:9 schematic in the UIAO federal-whitepaper style (muted navy #2E75B6, steel gray #5A5A5A, teal #1A9E8F, amber #D4A017, white). Left side: three stacked document icons (doc-01, doc-05, book article) with small [IMAGE-NN:] or [IMAGE-REF:] labels. Center: a "Pipeline" column with four stacked nodes — Harvest → Draft → Generate → Sidecar. Right side: a canonical Image Registry cylinder labeled "core/canon/image-registry.yaml (UIAO_202)" with image records flowing out to "docs/images/canonical/" below. Arrows show: documents → pipeline → registry → rendered PNGs → back to documents. No people, no baked text other than the node labels. Publication grade.]
+[IMAGE-01: A 16:9 schematic in the UIAO federal-whitepaper style (muted navy #2E75B6, steel gray #5A5A5A, teal #1A9E8F, amber #D4A017, white). Left side: three stacked document icons (doc-01, doc-05, book article) with small [IMAGE-NN:] or [IMAGE-REF:] labels. Center: a "Pipeline" column with four stacked nodes — Harvest → Draft → Generate → Sidecar. Right side: a canonical Image Registry cylinder labeled "src/uiao/canon/image-registry.yaml (UIAO_202)" with image records flowing out to "docs/images/canonical/" below. Arrows show: documents → pipeline → registry → rendered PNGs → back to documents. No people, no baked text other than the node labels. Publication grade.]
 
 The pipeline has five stages:
 
@@ -71,7 +71,7 @@ label. Navy blue, teal accents, no people, no baked text.]
 - Extracts prompt, writes it into the document's sibling `IMAGE-PROMPTS.md` (auto-created if absent).
 - Generates to `docs/<path>/images/<doc-slug>-image-03-<slug>.png`.
 - Emits a sidecar JSON and PNG `tEXt` metadata.
-- Does **not** register the image in `core/canon/image-registry.yaml`. Doc-local images are intentionally unregistered.
+- Does **not** register the image in `src/uiao/canon/image-registry.yaml`. Doc-local images are intentionally unregistered.
 
 ### Type B: Canon reuse
 
@@ -82,7 +82,7 @@ label. Navy blue, teal accents, no people, no baked text.]
 **When to use:** you want to reuse an existing canonical image. Examples: the SSOT-Adapter-Identity trio diagram, the Zero Trust plane stack, the six-control-plane overview.
 
 **Pipeline behavior:**
-- Resolves `UIAO-FIG-007` against `core/canon/image-registry.yaml`.
+- Resolves `UIAO-FIG-007` against `src/uiao/canon/image-registry.yaml`.
 - If the entry exists and `status: current`, rewrites the placeholder at render time to `![<title>](docs/images/canonical/<id>-<slug>.png)`.
 - If the entry's status is `draft` or the ID is missing, the build fails with a clear error (no silent 404s).
 - Updates the registry entry's `used_by` list to include this document.
@@ -111,20 +111,20 @@ label. Navy blue, teal accents, no people, no baked text.]
 
 The core design decision is **which images enter the canonical registry (`UIAO_202`) versus which stay local to a document.** Two different lifecycles, two different homes.
 
-### Canon images (registered in `core/canon/image-registry.yaml`)
+### Canon images (registered in `src/uiao/canon/image-registry.yaml`)
 
 An image becomes canon when **any of** these are true:
 
 - It is referenced (or intended to be referenced) by **two or more documents**.
-- It depicts a canon artifact directly — e.g., the six-control-plane diagram, the SSOT + Identity + Security triad, the Tier A four-layer model from [ADR-030](https://github.com/WhalerMike/uiao/blob/main/core/canon/adr/adr-030-pre-uiao-terminology-reconciliation.md).
+- It depicts a canon artifact directly — e.g., the six-control-plane diagram, the SSOT + Identity + Security triad, the Tier A four-layer model from [ADR-030](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-030-pre-uiao-terminology-reconciliation.md).
 - It is used in `docs/publications/` deliverables (Executive Brief, Leadership Briefing) where consistent visual identity across documents matters.
 - The program needs version-tracked visual history (e.g., the "monitoring loop" diagram evolves as controls are added).
 
 Canon images:
 
 - Live as PNGs at `docs/images/canonical/<id>-<slug>.png`.
-- Have prompt files at `core/canon/image-prompts/<id>.md`.
-- Have registry entries at `core/canon/image-registry.yaml`.
+- Have prompt files at `src/uiao/canon/image-prompts/<id>.md`.
+- Have registry entries at `src/uiao/canon/image-registry.yaml`.
 - Are referenced via `[IMAGE-REF: UIAO-FIG-NNN]` placeholders.
 - Follow the full `draft → current → deprecated` lifecycle.
 - Require PR review to promote to `status: current`.
@@ -141,7 +141,7 @@ Doc-local images:
 
 - Live as PNGs beside the document: `docs/<path-to-doc>/images/<doc-slug>-image-NN-<slug>.png`.
 - Have sidecar JSON beside the PNG, not a separate prompt file.
-- Are **not** registered in `core/canon/image-registry.yaml`.
+- Are **not** registered in `src/uiao/canon/image-registry.yaml`.
 - Are referenced directly by Markdown/Quarto (`![caption](images/<filename>.png)`), not by `[IMAGE-REF:]`.
 - Do not have a `draft/current/deprecated` lifecycle — they exist or they don't.
 
@@ -151,7 +151,7 @@ Doc-local images:
 
 ## The registry — structure and invariants
 
-`core/canon/image-registry.yaml` is the canonical source of truth for reusable images. Every entry carries enough metadata that the image, its prompt, its provenance chain, and its usage sites are all recoverable from the registry alone.
+`src/uiao/canon/image-registry.yaml` is the canonical source of truth for reusable images. Every entry carries enough metadata that the image, its prompt, its provenance chain, and its usage sites are all recoverable from the registry alone.
 
 ### Minimal entry shape
 
@@ -165,7 +165,7 @@ Doc-local images:
     continuous-monitoring posture.
   status: current
   version: "1.0"
-  prompt_file: core/canon/image-prompts/UIAO-FIG-007.md
+  prompt_file: src/uiao/canon/image-prompts/UIAO-FIG-007.md
   prompt_sha256: ab12cd34ef56...  # 64 hex chars
   generator: gemini-2.5-flash-image
   file: docs/images/canonical/UIAO-FIG-007-monitoring-loop.png
@@ -339,11 +339,11 @@ Before writing a placeholder, answer: **will this image be used in more than one
 Check the registry for an existing match:
 
 ```bash
-grep -A 3 'slug:' core/canon/image-registry.yaml | grep -i <keyword>
+grep -A 3 'slug:' src/uiao/canon/image-registry.yaml | grep -i <keyword>
 ```
 
 - **Found an existing entry** → use `[IMAGE-REF: UIAO-FIG-NNN]` in your document. Done. The scanner will add your document to the entry's `used_by` on next pipeline run.
-- **No match** → propose a new entry. Create `core/canon/image-prompts/UIAO-FIG-NNN.md` with the prompt (see §Prompt file format below). Add a skeleton entry to `core/canon/image-registry.yaml` with `status: draft` and placeholder hashes. Run the pipeline locally. Submit PR.
+- **No match** → propose a new entry. Create `src/uiao/canon/image-prompts/UIAO-FIG-NNN.md` with the prompt (see §Prompt file format below). Add a skeleton entry to `src/uiao/canon/image-registry.yaml` with `status: draft` and placeholder hashes. Run the pipeline locally. Submit PR.
 
 ### 3. Doc-local: pick a placeholder type
 
@@ -401,8 +401,8 @@ If any answer is no, iterate on the prompt and re-run.
 Once satisfied:
 
 - For **canon images**, the PR should include:
-  - `core/canon/image-prompts/<id>.md` (new or updated)
-  - `core/canon/image-registry.yaml` (registry entry)
+  - `src/uiao/canon/image-prompts/<id>.md` (new or updated)
+  - `src/uiao/canon/image-registry.yaml` (registry entry)
   - `docs/images/canonical/<id>-<slug>.png` (the rendered image)
   - `docs/images/canonical/<id>-<slug>.png.json` (sidecar)
 
@@ -435,7 +435,7 @@ Canon images evolve. The registry encodes versioning so history is reconstructab
 
 Procedure:
 
-1. Edit `core/canon/image-prompts/<id>.md`.
+1. Edit `src/uiao/canon/image-prompts/<id>.md`.
 2. Run the pipeline. It detects `prompt_sha256` drift, regenerates the PNG, computes the new `file_sha256`.
 3. Registry entry updates: `prompt_sha256`, `file_sha256`, `generated_at`, `version: 1.0 → 1.1`.
 4. PR review confirms visual regression is acceptable. Merge.
@@ -472,7 +472,7 @@ Procedure:
 
 1. Reserve a new `UIAO-FIG-NNN`.
 2. `git mv` the PNG from `<doc-folder>/images/` to `docs/images/canonical/<id>-<slug>.png` (rename as needed).
-3. Move the prompt text from the sibling `IMAGE-PROMPTS.md` to `core/canon/image-prompts/<id>.md`.
+3. Move the prompt text from the sibling `IMAGE-PROMPTS.md` to `src/uiao/canon/image-prompts/<id>.md`.
 4. Add the registry entry with `status: draft`.
 5. Replace the original `[IMAGE-NN: ...]` placeholder in the first document with `[IMAGE-REF: UIAO-FIG-NNN]`.
 6. Add the second document's placeholder.
@@ -513,7 +513,7 @@ Pipeline behavior: **fails the render** (doesn't silently regenerate a `current`
 
 ### `DRIFT-SCHEMA` — P2 severity
 
-Triggers when the registry YAML fails validation against `core/schemas/image-registry/image-registry.schema.json`.
+Triggers when the registry YAML fails validation against `src/uiao/schemas/image-registry/image-registry.schema.json`.
 
 Pipeline behavior: **fails at schema-validation step**, before any generation runs.
 
@@ -553,8 +553,8 @@ Three pipeline stages run in CI on every PR that touches image-related files:
 
 | Stage | Trigger | Action |
 |---|---|---|
-| **Schema validation** | Change to `core/canon/image-registry.yaml` | Validate against the JSON schema. Fail PR on mismatch. |
-| **Hash integrity** | Change to `docs/images/canonical/**` or `core/canon/image-prompts/**` | Recompute `prompt_sha256` and `file_sha256`, compare to registry. Fail PR on drift. |
+| **Schema validation** | Change to `src/uiao/canon/image-registry.yaml` | Validate against the JSON schema. Fail PR on mismatch. |
+| **Hash integrity** | Change to `docs/images/canonical/**` or `src/uiao/canon/image-prompts/**` | Recompute `prompt_sha256` and `file_sha256`, compare to registry. Fail PR on drift. |
 | **Reference resolution** | Change to any `.qmd` / `.md` with `[IMAGE-REF:]` | Verify every `UIAO-FIG-NNN` resolves to a `current` entry. Fail PR on missing or `deprecated` references. |
 
 These run as advisory-first lint jobs and graduate to blocking once the registry is populated and stable.
@@ -598,7 +598,7 @@ Pipeline scans all documents on every run. A deleted document's placeholders sim
 
 ---
 
-## Prompt file format (`core/canon/image-prompts/<id>.md`)
+## Prompt file format (`src/uiao/canon/image-prompts/<id>.md`)
 
 Canon prompt files follow a simple structure:
 
@@ -644,26 +644,26 @@ The frontmatter pins the contract; the prompt body is what the generator sees. T
 
 ## References
 
-- **Registry:** [`core/canon/image-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/core/canon/image-registry.yaml) (UIAO_202)
-- **Schema:** [`core/schemas/image-registry/image-registry.schema.json`](https://github.com/WhalerMike/uiao/blob/main/core/schemas/image-registry/image-registry.schema.json)
+- **Registry:** [`src/uiao/canon/image-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/image-registry.yaml) (UIAO_202)
+- **Schema:** [`src/uiao/schemas/image-registry/image-registry.schema.json`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/schemas/image-registry/image-registry.schema.json)
 - **Pipeline script:** [`docs/generate_images.py`](https://github.com/WhalerMike/uiao/blob/main/docs/generate_images.py)
 - **Workflow:** [`.github/workflows/image-gen.yml`](https://github.com/WhalerMike/uiao/blob/main/.github/workflows/image-gen.yml)
 - **Document Generation Guide:** [document-generation-guide.qmd](document-generation-guide.qmd)
 - **Master Document Specification:** [`inbox/UIAO-Master-Document-Spec.md`](https://github.com/WhalerMike/uiao/blob/claude/doc-image-specs-drop/inbox/UIAO-Master-Document-Spec.md) (authoring doctrine)
 - **Drift Detection Standard:** [UIAO_016](../docs/16_DriftDetectionStandard.qmd)
-- **Document Registry:** [`core/canon/document-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/core/canon/document-registry.yaml)
+- **Document Registry:** [`src/uiao/canon/document-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/document-registry.yaml)
 
 ---
 
 ## Glossary
 
-**Canon image** — an image registered in `core/canon/image-registry.yaml` (UIAO_202) and reusable across multiple documents via `[IMAGE-REF: UIAO-FIG-NNN]`.
+**Canon image** — an image registered in `src/uiao/canon/image-registry.yaml` (UIAO_202) and reusable across multiple documents via `[IMAGE-REF: UIAO-FIG-NNN]`.
 
 **Doc-local image** — an image used by exactly one document, not registered, stored beside its owning document.
 
 **Placeholder** — inline syntax in a `.qmd` / `.md` document declaring an image at that location. Three types: `[IMAGE-NN: <prompt>]`, `[IMAGE-REF: UIAO-FIG-NNN]`, `[IMAGE-NN: AUTO]`.
 
-**Prompt file** — Markdown file at `core/canon/image-prompts/<id>.md` containing the generator prompt, style frontmatter, and history.
+**Prompt file** — Markdown file at `src/uiao/canon/image-prompts/<id>.md` containing the generator prompt, style frontmatter, and history.
 
 **Sidecar** — per-PNG JSON metadata file co-located with the PNG, containing the registry-equivalent metadata.
 

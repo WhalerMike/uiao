@@ -31,7 +31,7 @@ transformation, and eventual landing into their canonical home.
 2. Extract content via the appropriate tool (Python, Quarto,
    pandoc, manual review).
 3. Place the extracted content in its canonical home:
-   - Canonical governance text → `core/canon/` (new UIAO_NNN
+   - Canonical governance text → `src/uiao/canon/` (new UIAO_NNN
      entry in the document registry).
    - Derived narrative / explainer → `docs/narrative/` or
      `docs/docs/` (provenance block required).
@@ -48,12 +48,12 @@ transformation, and eventual landing into their canonical home.
 - Not a staging area for pull requests. Open a PR against the
   canonical destination, not against `inbox/`.
 - Not a substitute for `core/`. If you find yourself writing
-  canonical content here, move it to `core/canon/` with a proper
+  canonical content here, move it to `src/uiao/canon/` with a proper
   document ID before the PR lands.
 
 ## CI behavior
 
-- `metadata-validator.yml` scans `core/canon/` only — does not
+- `metadata-validator.yml` scans `src/uiao/canon/` only — does not
   inspect `inbox/`.
 - `schema-validation.yml` validates registries — does not
   inspect `inbox/`.
