@@ -1,4 +1,4 @@
-"""uiao.impl.cli.scuba — Typer sub-application for the SCuBA→IR plane.
+"""uiao.impl.cli.scuba — Typer sub-application for the SCuBA->IR plane.
 
 Registered on the root ``uiao`` app as the ``scuba`` command group so
 callers use::
@@ -20,7 +20,7 @@ from rich.console import Console
 
 scuba_app = typer.Typer(
     name="scuba",
-    help="SCuBA assessment operations (Plane 1: SCuBA → IR).",
+    help="SCuBA assessment operations (Plane 1: SCuBA -> IR).",
     no_args_is_help=True,
 )
 
@@ -66,8 +66,8 @@ def transform_cmd(  # noqa: B008
     from uiao.impl.scuba.transform import transform_scuba_to_ir
 
     console.print(
-        f"[bold cyan]SCuBA → IR[/bold cyan]  "
-        f"[dim]{input_path.name}[/dim] → [dim]{output_path.name}[/dim]"
+        f"[bold cyan]SCuBA -> IR[/bold cyan]  "
+        f"[dim]{input_path.name}[/dim] -> [dim]{output_path.name}[/dim]"
     )
 
     try:

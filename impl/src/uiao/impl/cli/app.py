@@ -489,7 +489,7 @@ def conmon_process(
     else:
         poam_entry = hook.upsert_poam_entry(alert, poam_path=poam_path)
         console.print(f"  POA&M ID : [green]{poam_entry['id']}[/green]")
-        console.print(f"[green]POA&M entry upserted → {poam_path}[/green]")
+        console.print(f"[green]POA&M entry upserted -> {poam_path}[/green]")
 
 
 @app.command()
@@ -614,7 +614,7 @@ def generate_all(
         help="Skip SBOM generation.",
     ),
 ) -> None:
-    """Run the full UIAO generation pipeline: YAML canon → all output artifacts.
+    """Run the full UIAO generation pipeline: YAML canon -> all output artifacts.
 
     Executes every generator in order:
     1. PlantUML diagram rendering (PNG)
@@ -668,7 +668,7 @@ def generate_all(
             generate_diagrams=False,
             force_visuals=False,
         )
-        console.print(f"[green]✓ Generated {len(generated)} document(s) → {docs_dir}/[/green]")
+        console.print(f"[green]✓ Generated {len(generated)} document(s) -> {docs_dir}/[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"Docs generation failed: {exc}"
         errors.append(msg)
@@ -682,7 +682,7 @@ def generate_all(
             data_dir=Path(data_dir),
             output_dir=Path(exports_dir),
         )
-        console.print(f"[green]✓ OSCAL CD → {oscal_out}[/green]")
+        console.print(f"[green]✓ OSCAL CD -> {oscal_out}[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"OSCAL CD failed: {exc}"
         errors.append(msg)
@@ -696,7 +696,7 @@ def generate_all(
             data_dir=Path(data_dir),
             output_path=Path(exports_dir) / "oscal" / "uiao-ssp-skeleton.json",
         )
-        console.print(f"[green]✓ SSP → {ssp_out}[/green]")
+        console.print(f"[green]✓ SSP -> {ssp_out}[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"SSP failed: {exc}"
         errors.append(msg)
@@ -710,7 +710,7 @@ def generate_all(
             data_dir=Path(data_dir),
             output_dir=Path(exports_dir),
         )
-        console.print(f"[green]✓ POA&M → {poam_out}[/green]")
+        console.print(f"[green]✓ POA&M -> {poam_out}[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"POA&M failed: {exc}"
         errors.append(msg)
@@ -724,7 +724,7 @@ def generate_all(
             data_dir=Path(data_dir),
             exports_dir=Path(exports_dir),
         )
-        console.print(f"[green]✓ DOCX → {docx_out}[/green]")
+        console.print(f"[green]✓ DOCX -> {docx_out}[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"DOCX failed: {exc}"
         errors.append(msg)
@@ -738,7 +738,7 @@ def generate_all(
             data_dir=Path(data_dir),
             exports_dir=Path(exports_dir),
         )
-        console.print(f"[green]✓ PPTX → {pptx_out}[/green]")
+        console.print(f"[green]✓ PPTX -> {pptx_out}[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"PPTX failed: {exc}"
         errors.append(msg)
@@ -752,7 +752,7 @@ def generate_all(
             exports_dir=Path(exports_dir),
             classification=context_classification,
         )
-        console.print(f"[green]✓ Generated {len(topic_docs)} topic DOCX(s) → {exports_dir}/docx/[/green]")
+        console.print(f"[green]✓ Generated {len(topic_docs)} topic DOCX(s) -> {exports_dir}/docx/[/green]")
     except Exception as exc:  # noqa: BLE001
         msg = f"Topic DOCX failed: {exc}"
         errors.append(msg)
@@ -765,7 +765,7 @@ def generate_all(
             sbom_out = build_sbom(
                 output_path=f"{exports_dir}/sbom/sbom.cyclonedx.json",
             )
-            console.print(f"[green]✓ SBOM → {sbom_out}[/green]")
+            console.print(f"[green]✓ SBOM -> {sbom_out}[/green]")
         except Exception as exc:  # noqa: BLE001
             msg = f"SBOM failed: {exc}"
             errors.append(msg)
