@@ -15,8 +15,8 @@
 
 ## Canon impact
 
-- [ ] **None** — no files under `core/canon/**` changed
-- [ ] New canon document (new `UIAO_NNN` ID allocated in `core/canon/document-registry.yaml`)
+- [ ] **None** — no files under `src/uiao/canon/**` changed
+- [ ] New canon document (new `UIAO_NNN` ID allocated in `src/uiao/canon/document-registry.yaml`)
 - [ ] Updated existing canon document (cite the ID)
 - [ ] ADR added / superseded (cite ADR-NNN)
 - [ ] Registry edit (adapter-registry / modernization-registry / document-registry)
