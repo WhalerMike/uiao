@@ -1,5 +1,5 @@
 """
-CLI commands for adapter → OSCAL artifact generation.
+CLI commands for adapter -> OSCAL artifact generation.
 
 Provides subcommands for generating SAR, POA&M, and SSP from adapter
 data. Each command accepts an adapter ID, state/config file paths,
