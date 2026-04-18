@@ -72,9 +72,9 @@ Quick commands:
   (cd docs && quarto render)       # render docs site
 
 Canon reference:
-  core/canon/substrate-manifest.yaml      (UIAO_200)
-  core/canon/workspace-contract.yaml      (UIAO_201)
-  core/canon/document-registry.yaml
+  src/uiao/canon/substrate-manifest.yaml      (UIAO_200)
+  src/uiao/canon/workspace-contract.yaml      (UIAO_201)
+  src/uiao/canon/document-registry.yaml
 
 Rules loaded:
   impl/.claude/rules/canon-consumer.md    (no hardcoded canon paths)

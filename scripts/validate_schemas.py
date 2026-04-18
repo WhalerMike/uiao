@@ -16,31 +16,31 @@ from jsonschema import Draft7Validator, Draft202012Validator
 CHECKS = [
     (
         "adapter-registry",
-        "core/canon/adapter-registry.yaml",
-        "core/schemas/adapter-registry/adapter-registry.schema.json",
+        "src/uiao/canon/adapter-registry.yaml",
+        "src/uiao/schemas/adapter-registry/adapter-registry.schema.json",
         Draft7Validator,
     ),
     (
         "modernization-registry",
-        "core/canon/modernization-registry.yaml",
-        "core/schemas/adapter-registry/adapter-registry.schema.json",
+        "src/uiao/canon/modernization-registry.yaml",
+        "src/uiao/schemas/adapter-registry/adapter-registry.schema.json",
         Draft7Validator,
     ),
     (
         "substrate-manifest",
-        "core/canon/substrate-manifest.yaml",
-        "core/schemas/substrate-manifest/substrate-manifest.schema.json",
+        "src/uiao/canon/substrate-manifest.yaml",
+        "src/uiao/schemas/substrate-manifest/substrate-manifest.schema.json",
         Draft202012Validator,
     ),
     (
         "workspace-contract",
-        "core/canon/workspace-contract.yaml",
-        "core/schemas/workspace-contract/workspace-contract.schema.json",
+        "src/uiao/canon/workspace-contract.yaml",
+        "src/uiao/schemas/workspace-contract/workspace-contract.schema.json",
         Draft202012Validator,
     ),
 ]
 
-METADATA_SCHEMA = "core/schemas/metadata-schema.json"
+METADATA_SCHEMA = "src/uiao/schemas/metadata-schema.json"
 
 
 def main() -> int:
@@ -60,8 +60,8 @@ def main() -> int:
     meta_schema = json.load(open(METADATA_SCHEMA))
     meta_validator = Draft202012Validator(meta_schema)
     for name, data_path in [
-        ("substrate-manifest.metadata", "core/canon/substrate-manifest.yaml"),
-        ("workspace-contract.metadata", "core/canon/workspace-contract.yaml"),
+        ("substrate-manifest.metadata", "src/uiao/canon/substrate-manifest.yaml"),
+        ("workspace-contract.metadata", "src/uiao/canon/workspace-contract.yaml"),
     ]:
         data = yaml.safe_load(open(data_path)).get("metadata", {})
         errors = list(meta_validator.iter_errors(data))
