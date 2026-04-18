@@ -105,3 +105,49 @@ The monorepo was consolidated from four predecessor repos (`uiao-core`, `uiao-do
 - **Canon changes belong in `core/`.** If a change would create a new canonical governance document, make the PR against `src/uiao/canon/` with a UIAO_NNN allocation.
 - **Read the relevant ADR before touching doctrinal canon.** ADR-028 retires the firewall; ADR-025 §D7 is superseded; ADR-027 defines adapter retirement.
 - **CI is comprehensive.** 6 blocking workflows will catch schema violations, drift, and test regressions before merge.
+
+## Repository Invariants
+
+These rules define how the monorepo is organized and why. Violating any of them breaks either the CLI, the governance model, or the build pipeline. Changes that cross an invariant require an ADR and human review, not a quick fix.
+
+### Directory intent
+
+`src/uiao/` is the **Core Canon + CLI bridge**. Canon is the governance authority — SSOT, ADRs, schemas, rules, KSI, specs, registries, image registry. Once canon is production-frozen, it is protected: changes require a canon-change ADR and governance-board review. Runtime code consumes canon as resources, never by reaching outside its package.
+
+`impl/` is the **Python implementation layer** — adapters, collectors, governance engine, OSCAL generation, IR transforms, tests. Everything that executes at runtime lives here. Canon is a read target; impl is a change surface.
+
+`core/` is **non-Python reference material** — architecture docs, runtime config JSON, script tooling, compliance reference PDFs. No Python packages live here.
+
+`docs/` is **human-readable documentation source only**. Source extensions: `.qmd`, `.md`, `.yml`, `.yaml`, `.puml`. Binary build output (`.docx`, `.pdf`, `.png`, `.epub`, `.pptx`) is **generated**, not authored, and should live in build output directories (`docs/_site/`, `docs/publications/`) that are either gitignored or release-pinned. Never commit binary output into the source tree alongside source files.
+
+`scripts/` is **workspace tooling** — bootstrap, link check, schema validators, reorganization helpers. Short-lived; not imported at runtime.
+
+`inbox/` is **draft staging** — content that isn't canonized yet. Promote to `src/uiao/canon/` or `docs/` when ready.
+
+### Technical invariants
+
+**I1. `src/uiao/` is a PEP 420 namespace package.**
+No `__init__.py` at `src/uiao/` level. This lets `src/uiao/*` and `impl/src/uiao/impl/*` coexist under the `uiao` namespace at import time. Adding a `src/uiao/__init__.py` — even an empty one — captures the namespace and causes `ModuleNotFoundError: No module named 'uiao.impl'`.
+
+**I2. `src/uiao/cli.py` is a lazy-import bridge.**
+The import `from uiao.impl.cli.app import app` lives inside `main()`, not at module top level. This defers resolution until after sys.path is fully populated. Do not rewrite it to eager-import at module level, and do not add `sys.path` manipulation — if `uiao.impl` is not resolving, the fix is elsewhere (I1 or I3), not in `cli.py`.
+
+**I3. Install order: impl first, root last.**
+Both `pyproject.toml` (root) and `impl/pyproject.toml` register a `uiao` console script. Last install wins the entry-point collision; the root bridge must win. Canonical install sequence:
+
+    pip install -e impl/
+    pip install -e .
+
+Installing in the other order makes `impl`'s direct `uiao.impl.cli.app:app` entry point win, which eagerly imports and fails the moment I1 is ever violated.
+
+**I4. Canon is a read-only dependency of code.**
+Code reads canon via `importlib.resources.files("uiao.canon")` and similar. Code must not write to canon, and must not assume canon is at a particular filesystem path — it may be packaged as resources inside an installed wheel.
+
+**I5. Canon changes flow through the canon-change process.**
+Adding, modifying, retiring, or superseding anything under `src/uiao/canon/` requires:
+
+- A new `UIAO_NNN` allocation in `document-registry.yaml` (for new docs)
+- A new ADR in `src/uiao/canon/adr/` (for doctrinal changes)
+- Governance review
+
+Direct commits that touch canon without an ADR reference are a governance drift signal.
