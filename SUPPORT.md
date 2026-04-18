@@ -11,7 +11,7 @@ UIAO is a pre-1.0 project. Support channels are intentionally limited and asynch
 | **Canon change proposal** | [Canon change request](https://github.com/WhalerMike/uiao/issues/new?template=canon-change-request.yml) — UIAO_NNN / ADR-NNN form. |
 | **Adapter promotion request** | [Adapter activation](https://github.com/WhalerMike/uiao/issues/new?template=adapter-activation.yml) — checklist form. |
 | **Governance drift** | [Governance drift](https://github.com/WhalerMike/uiao/issues/new?template=governance-drift.yml) — 5-class taxonomy form. |
-| **Open-ended question / design discussion** | [GitHub Discussions](https://github.com/WhalerMike/uiao/discussions) |
+| **Open-ended question / design discussion** | [Open an issue with the `question` label](https://github.com/WhalerMike/uiao/issues/new?labels=question) |
 | **Contributing** | Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first — it covers setup, commit convention, canon protocol, and adapter activation. |
 
 ## What's a good question

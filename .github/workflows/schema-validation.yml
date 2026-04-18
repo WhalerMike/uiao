@@ -3,14 +3,14 @@ name: Schema Validation
 on:
   pull_request:
     paths:
-      - 'core/canon/**'
-      - 'core/schemas/**'
+      - 'src/uiao/canon/**'
+      - 'src/uiao/schemas/**'
       - '.github/workflows/schema-validation.yml'
   push:
     branches: [main]
     paths:
-      - 'core/canon/**'
-      - 'core/schemas/**'
+      - 'src/uiao/canon/**'
+      - 'src/uiao/schemas/**'
 
 jobs:
   validate:
@@ -34,13 +34,13 @@ jobs:
           import json, sys, yaml
           from jsonschema import Draft7Validator
 
-          schema = json.load(open('core/schemas/adapter-registry/adapter-registry.schema.json'))
+          schema = json.load(open('src/uiao/schemas/adapter-registry/adapter-registry.schema.json'))
           validator = Draft7Validator(schema)
 
           failures = []
           for path in [
-              'core/canon/adapter-registry.yaml',
-              'core/canon/modernization-registry.yaml',
+              'src/uiao/canon/adapter-registry.yaml',
+              'src/uiao/canon/modernization-registry.yaml',
           ]:
               data = yaml.safe_load(open(path))
               errors = list(validator.iter_errors(data))
@@ -63,9 +63,9 @@ jobs:
           import json, sys, yaml
           from jsonschema import Draft202012Validator
 
-          substrate_schema = json.load(open('core/schemas/substrate-manifest/substrate-manifest.schema.json'))
-          metadata_schema = json.load(open('core/schemas/metadata-schema.json'))
-          data = yaml.safe_load(open('core/canon/substrate-manifest.yaml'))
+          substrate_schema = json.load(open('src/uiao/schemas/substrate-manifest/substrate-manifest.schema.json'))
+          metadata_schema = json.load(open('src/uiao/schemas/metadata-schema.json'))
+          data = yaml.safe_load(open('src/uiao/canon/substrate-manifest.yaml'))
 
           errors_body = list(Draft202012Validator(substrate_schema).iter_errors(data))
           errors_meta = list(Draft202012Validator(metadata_schema).iter_errors(data.get('metadata', {})))
@@ -89,13 +89,11 @@ jobs:
           import sys, yaml
           from pathlib import Path
 
-          reg = yaml.safe_load(open('core/canon/document-registry.yaml'))
-          core_root = Path('core')
+          reg = yaml.safe_load(open('src/uiao/canon/document-registry.yaml'))
           missing = []
           for doc in reg['documents']:
-              # Paths in document-registry.yaml are core-relative by convention.
-              resolved = core_root / doc['path']
-              if not resolved.exists():
+              # Paths in document-registry.yaml are repo-root-relative.
+              if not Path(doc['path']).exists():
                   missing.append((doc['id'], doc['path']))
 
           print(f"document-registry.yaml: {len(reg['documents'])} entries, "
