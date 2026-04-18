@@ -54,7 +54,7 @@ uiao substrate walk --json       # machine-readable
 uiao substrate drift             # exit-code-only summary (CI-friendly)
 ```
 
-Source: [`impl/src/uiao_impl/substrate/walker.py`](impl/src/uiao_impl/substrate/walker.py).
+Source: [`impl/src/uiao/impl/substrate/walker.py`](impl/src/uiao/impl/substrate/walker.py).
 
 Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs resolve) findings.
 

@@ -138,7 +138,7 @@ If your PR modifies `core/canon/**`:
 
 Promoting an adapter from `status: reserved, phase: phase-planning` → `active/phase-1` requires:
 
-- [ ] Implementation exists at `impl/src/uiao_impl/adapters/<adapter_id>_adapter.py`
+- [ ] Implementation exists at `impl/src/uiao/impl/adapters/<adapter_id>_adapter.py`
 - [ ] Adapter inherits `DatabaseAdapterBase` and implements all 7 canonical domain methods
 - [ ] At least one test in `impl/tests/test_<adapter_id>_*.py` passes
 - [ ] Registry entry in `core/canon/modernization-registry.yaml` or `core/canon/adapter-registry.yaml` has all required fields per `core/schemas/adapter-registry/adapter-registry.schema.json`
