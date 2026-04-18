@@ -1,6 +1,8 @@
 # UIAO Continuous Monitoring Program (CONMON)
 
 > Operational companion to `ARCHITECTURE.md` §16. This document holds the runbook detail — adapter schemas, workflow yaml skeletons, evidence schema, POA&M feed, SCR playbook, reference-monitoring procedure. For strategy and architectural context, read `ARCHITECTURE.md` §16 first.
+>
+> **Supersession banner (added 2026-04-18, ADR-032).** Sections **§2.5**, **§3** (`outputs: poam-csv` field and `retention-years` alignment), **§4.3**, **§5.3**, **§6**, and **§7** are **SUPERSEDED-ON-ADOPTION** of the FedRAMP VDR Rev5 Open Beta. See per-section markers inline. Until UIAO is formally accepted into the Open Beta, the original content remains authoritative; post-acceptance, live operational guidance shifts to `core/canon/conmon/vdr-rev5-gap-map.md` (UIAO_204). Strategy: `core/canon/conmon/iscm-strategy.md` (UIAO_203).
 
 **Version:** 0.1.0 (NEW, Proposed)
 **Cloud boundary:** GCC-Moderate (M365 SaaS); Azure Government for Phase 3+ host-level.
@@ -66,6 +68,8 @@ Entry-adding workflow:
 
 ### 2.5 Respond to findings (800-137 §3.5)
 
+> **SUPERSEDED-ON-ADOPTION (2026-04-18, ADR-032).** On VDR Open Beta acceptance, POA&M monthly submission is retired in favor of the VDR Monthly Activity Report (VDR-TFR-MHR) + machine-readable feed (VDR-TFR-MRH / VDR-RPT-PER). See `core/canon/conmon/vdr-rev5-gap-map.md` §6 (Timeframes) and §7 (Reporting).
+
 **Artifact:** POA&M lifecycle in `uiao-docs` plus `poam/` tracking folder in `uiao-core`.
 **Owner:** Michael (CSP role).
 **Cadence:** Monthly POA&M submission (Playbook §2).
@@ -79,6 +83,8 @@ Entry-adding workflow:
 ---
 
 ## 3. Conformance Adapter schema (full)
+
+> **SUPERSEDED-ON-ADOPTION (2026-04-18, ADR-032) — PARTIAL.** The schema's `outputs: poam-csv` field and `retention-years` alignment supersede on VDR Open Beta acceptance; the rest of the schema stands. Replacement outputs (Monthly Activity Report + machine-readable feed) declared in `ADR-032` §D5 and `core/canon/conmon/vdr-rev5-gap-map.md` §7.
 
 Defined in `ARCHITECTURE.md` §3.2 with abbreviated schema. Full operational schema below.
 
@@ -217,6 +223,8 @@ Note: `tenant-id-hash` rather than raw tenant ID to avoid identifier leakage int
 
 ### 4.3 POA&M row shape
 
+> **SUPERSEDED-ON-ADOPTION (2026-04-18, ADR-032).** On VDR Open Beta acceptance, POA&M row shape is retired. Replacement record shape is `findings.json` v2 with VDR-aligned fields (evaluation, timeframes, accepted, grouping) — see `ADR-032` §D4 and `core/canon/conmon/vdr-rev5-gap-map.md` §4.
+
 Column set is FedRAMP Template-dependent (Playbook notes "periodically updated"). `tools/conmon_aggregate.py` maps `findings.json` fail-rows to the current FedRAMP POA&M Template columns. **Action item:** Obtain the current FedRAMP POA&M Template version and pin column map (open UNSURE #4 in `ARCHITECTURE.md` §16.9).
 
 ---
@@ -320,6 +328,8 @@ jobs:
 
 ### 5.3 `conmon-aggregate.yml` (after any run)
 
+> **SUPERSEDED-ON-ADOPTION (2026-04-18, ADR-032).** On VDR Open Beta acceptance, the POA&M-feed step is retired. Aggregation logic moves to `tools/conmon/vdr_aggregate.py` producing `evidence/vdr-reports/monthly/YYYY-MM.md` and `evidence/vdr-reports/machine/current.json`. See `core/canon/conmon/vdr-rev5-gap-map.md` §10 (Gap summary).
+
 ```yaml
 name: ConMon — aggregate and POA&M feed
 on:
@@ -350,6 +360,8 @@ jobs:
 ---
 
 ## 6. Significant Change Request (SCR) playbook
+
+> **SUPERSEDED-ON-ADOPTION (2026-04-18, ADR-032) — PARTIAL.** On VDR Open Beta acceptance, the SCR concept stands but POA&M-shaped evidence attachments (§6.2) are replaced by VDR `findings.json` v2 pre/post diffs. The diff pattern in §6.1 remains valid with the new payload shape.
 
 Per FedRAMP Playbook §5. Change types (Playbook §5):
 
@@ -397,6 +409,8 @@ Template location: `canon/conmon/scr-template.md` (to be created).
 ---
 
 ## 7. POA&M feed
+
+> **SUPERSEDED-ON-ADOPTION (2026-04-18, ADR-032).** Entire section retired on VDR Open Beta acceptance. Replacement pipeline: `tools/conmon/vdr_aggregate.py` → `evidence/vdr-reports/monthly/YYYY-MM.md` (VDR-TFR-MHR) + `evidence/vdr-reports/machine/current.json` (VDR-TFR-MRH / VDR-RPT-PER). Submission target shifts from USDA Connect.gov (§7.2) to the FedRAMP Authorization Data Sharing (ADS) process. Regression issues (§7.3) remain — re-parameterized over VDR LEV/IRV/N-rating dimensions per `core/canon/conmon/vdr-rev5-gap-map.md` §6.
 
 ### 7.1 Generation
 
@@ -527,3 +541,4 @@ Separate from `ARCHITECTURE.md` §13 open decisions. These are operational-progr
 | Date | Version | Change | Author |
 |---|---|---|---|
 | 2026-04-14 | 0.1.0 | Initial draft. Operational companion to `ARCHITECTURE.md` §16. ISCM lifecycle runbook, full Conformance Adapter schema, evidence schema, workflow skeletons, SCR playbook, POA&M feed, runner strategy, reference monitoring pattern, open items C1–C8. Sources verified against local copies of NIST SP 800-137 and FedRAMP ConMon Playbook v1.0 (2025-11-17) | Claude (Cowork) |
+| 2026-04-18 | 0.1.1 | Added SUPERSEDED-ON-ADOPTION top-of-file banner + per-section markers on §§2.5, 3 (partial), 4.3, 5.3, 6 (partial), 7. Conditional on FedRAMP VDR Rev5 Open Beta acceptance (ADR-032 D3). Live operational guidance on adoption: `core/canon/conmon/vdr-rev5-gap-map.md` (UIAO_204) and `core/canon/conmon/iscm-strategy.md` (UIAO_203). Closes open item C2 (ISCM strategy authored as UIAO_203). | Claude (Cowork, session `claude/fedramp-continuous-monitoring-WXbxO`) |
