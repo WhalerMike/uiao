@@ -16,7 +16,7 @@ and understanding export workflows.
 - **Primary site:** <https://whalermike.github.io/uiao-docs/>
 - **Canon Overview:** [/canon/](canon/index.md)
 - **Corpus Status Dashboard:** [/canon/corpus-status-dashboard/](canon/corpus-status-dashboard.md)
-- **ADR Index:** [/adr/](adr/index.md)
+- **ADR Index:** [/adr/](../../src/uiao/canon/adr/index.md)
 
 ## Downloads
 
@@ -85,7 +85,7 @@ All changes must pass:
 Metadata contracts:
 
 - **ADR metadata:** [ADR Metadata Contract](meta/adr-metadata-contract.md)
-- **ADR process:** [ADR-000 ADR Process and Lifecycle](adr/adr-000-adr-process.md)
+- **ADR process:** [ADR-000 ADR Process and Lifecycle](../../src/uiao/canon/adr/adr-000-adr-process.md)
 
 Contact the Governance Board for questions about access, exports, or governance.
 

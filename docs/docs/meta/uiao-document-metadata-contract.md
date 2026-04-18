@@ -162,7 +162,7 @@ version: 1.0
 ## See Also
 
 - [ADR Metadata Contract](uiao-adr-metadata-contract.md)
-- [ADR-000 ADR Process](../adr/adr-000-adr-process.md)
+- [ADR-000 ADR Process](../../../src/uiao/canon/adr/adr-000-adr-process.md)
 - [Corpus Status Dashboard](../canon/corpus-status-dashboard.md)
 
 > **SSOT Reference:** See /ssot/UIAO-SSOT.md
