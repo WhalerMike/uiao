@@ -45,7 +45,7 @@ fi
 # 5. Substrate walker -----------------------------------------------------
 echo "==> Running substrate walker"
 if PYTHONPATH="$REPO_ROOT/impl/src" python3 -c "
-from uiao_impl.substrate.walker import walk_substrate
+from uiao.impl.substrate.walker import walk_substrate
 from pathlib import Path
 r = walk_substrate(workspace_root=Path('$REPO_ROOT'))
 print('    modules:   %d' % r.modules_checked)
