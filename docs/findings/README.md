@@ -7,7 +7,7 @@ degrade capability. Findings are not canon (they don't declare
 how UIAO works); they are not pure narrative (they carry structured
 evidence and ownership). They occupy a distinct artifact class
 established by [ADR-030
-§5.2](../../core/canon/adr/adr-030-pre-uiao-terminology-reconciliation.md).
+§5.2](../../src/uiao/canon/adr/adr-030-pre-uiao-terminology-reconciliation.md).
 
 ## When to create a finding
 
@@ -116,7 +116,7 @@ FedRAMP-INR telemetry constraint) in a follow-on PR.
 
 ## Not in this directory
 
-- Agency-specific runbooks → `core/canon/specs/`
+- Agency-specific runbooks → `src/uiao/canon/specs/`
 - Risk assessments of UIAO itself → security review process, not
   findings
 - Open bugs in UIAO code → GitHub Issues

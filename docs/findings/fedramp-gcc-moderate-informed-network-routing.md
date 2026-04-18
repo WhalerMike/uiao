@@ -69,12 +69,12 @@ finding uses the Microsoft term throughout for citation alignment.
    GCC-Moderate agency deployment. The INR feedback channel does
    not exist for those tenants, so UIAO adapters that would
    forward M365 path quality to the drift engine
-   ([UIAO_110](https://github.com/WhalerMike/uiao/blob/main/core/canon/specs/drift.md))
+   ([UIAO_110](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/drift.md))
    have no upstream input.
 
 2. **Feed Microsoft-authenticated M365 traffic signals into the
    evidence graph**
-   ([UIAO_113](https://github.com/WhalerMike/uiao/blob/main/core/canon/specs/graph-schema.md))
+   ([UIAO_113](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/graph-schema.md))
    as first-class evidence objects sourced from INR. The signals
    are absent at the tenant boundary.
 
@@ -87,7 +87,7 @@ finding uses the Microsoft term throughout for citation alignment.
 ### What this does NOT affect
 
 - UIAO's adapter registry and test framework ([UIAO_131
-  §3.1](https://github.com/WhalerMike/uiao/blob/main/core/canon/specs/adapter-test-strategy.md))
+  §3.1](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/adapter-test-strategy.md))
   — tier-1 live commercial-tenant tests can still be run against
   the M365 Developer Program (WW Commercial), which has INR
   available. Tier-2 contract fixtures can record INR's
@@ -110,7 +110,7 @@ Split between internal (inside UIAO's scope) and external
    as `unavailable` for GCC-Moderate deployments and asserts the
    M365 adapter does not attempt to call INR endpoints when
    configured for a GCC-Moderate tenant. This follows [UIAO_131
-   §7](https://github.com/WhalerMike/uiao/blob/main/core/canon/specs/adapter-test-strategy.md)
+   §7](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/adapter-test-strategy.md)
    (relationship to the FedRAMP-INR finding).
 2. **Equivalent-capability adapter** in UIAO's telemetry control
    plane: an agency-side path-quality collector that pulls signals
@@ -166,10 +166,10 @@ substrate response and proceeds independently.
 
 ## 6. Related
 
-- [ADR-030 §5.2](https://github.com/WhalerMike/uiao/blob/main/core/canon/adr/adr-030-pre-uiao-terminology-reconciliation.md)
+- [ADR-030 §5.2](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-030-pre-uiao-terminology-reconciliation.md)
   — established the governance-findings artifact class that this
   document instantiates.
-- [UIAO_131 §7](https://github.com/WhalerMike/uiao/blob/main/core/canon/specs/adapter-test-strategy.md)
+- [UIAO_131 §7](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/adapter-test-strategy.md)
   — Adapter Test Strategy explicitly anticipates this finding as
   a tier-2 fixture class for M365 adapter tests.
 - [Application-Aware Networking book](../series/application-aware-networking-book/index.qmd)

@@ -8,9 +8,9 @@ uiao.tags: [adapter, identity, integration, modernization, narrative]
 provenance:
   source_commit: main
   derived_from:
-    - core/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md
-    - core/canon/modernization-registry.yaml
-    - core/canon/adr/adr-028-monorepo-consolidation-gos-integration.md
+    - src/uiao/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md
+    - src/uiao/canon/modernization-registry.yaml
+    - src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md
   derived_at: "2026-04-17"
   derived_by: "narrative rewrite (closes ADR-028 doctrinal loop)"
 ---
@@ -35,7 +35,7 @@ Directory migration is **modernization + integration** by construction: it perfo
 - `certificate-anchored: true` — every transaction is tied to an identity certificate, provenance chain immutable.
 - `object-identity-only: true` — adapters act on identities, not on opaque infrastructure references.
 
-These are enforced by the JSON Schema at `core/schemas/adapter-registry/adapter-registry.schema.json` and validated by the `schema-validation` CI gate on every PR touching `core/canon/modernization-registry.yaml`.
+These are enforced by the JSON Schema at `src/uiao/schemas/adapter-registry/adapter-registry.schema.json` and validated by the `schema-validation` CI gate on every PR touching `src/uiao/canon/modernization-registry.yaml`.
 
 ## The objects governed
 
@@ -53,7 +53,7 @@ Directory migration governs every object AD was holding together:
 
 The two registered reference implementations today are the IPAM adapters — the network-services tier:
 
-- **`infoblox`** (`core/canon/modernization-registry.yaml`) — Infoblox NIOS ≥ 8.0. FedRAMP-Moderate authorized, CDM-integrated, federal-preferred.
+- **`infoblox`** (`src/uiao/canon/modernization-registry.yaml`) — Infoblox NIOS ≥ 8.0. FedRAMP-Moderate authorized, CDM-integrated, federal-preferred.
 - **`bluecat-address-manager`** — BlueCat Address Manager. Not FedRAMP-authorized; commercial-variant sibling of the infoblox adapter.
 
 Both declare `mission-class: integration` per resolved ODA-15 (UIAO_003 §4.7) and conform to the same schema as every other modernization adapter.
@@ -89,16 +89,16 @@ The commercial-firewall framing is preserved in the canon archive (ADR-025 §D7 
 
 | Concern | Location |
 |---|---|
-| Substrate manifest | `core/canon/substrate-manifest.yaml` (UIAO_200) |
-| Workspace contract | `core/canon/workspace-contract.yaml` (UIAO_201) |
-| Modernization adapter registry | `core/canon/modernization-registry.yaml` |
-| Adapter schema | `core/schemas/adapter-registry/adapter-registry.schema.json` |
+| Substrate manifest | `src/uiao/canon/substrate-manifest.yaml` (UIAO_200) |
+| Workspace contract | `src/uiao/canon/workspace-contract.yaml` (UIAO_201) |
+| Modernization adapter registry | `src/uiao/canon/modernization-registry.yaml` |
+| Adapter schema | `src/uiao/schemas/adapter-registry/adapter-registry.schema.json` |
 | IPAM adapter reference docs | `impl/src/uiao/impl/directory_migration/adapters/ipam/` |
 | Drift engine (runtime) | `impl/src/uiao/impl/governance/drift.py` |
 | Substrate walker (at rest) | `impl/src/uiao/impl/substrate/walker.py` |
 | Drift detection standard | `docs/docs/16_DriftDetectionStandard.qmd` |
-| Adapter Segmentation Overview | `core/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md` |
-| Integration decision record | `core/canon/adr/adr-028-monorepo-consolidation-gos-integration.md` |
+| Adapter Segmentation Overview | `src/uiao/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md` |
+| Integration decision record | `src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md` |
 
 ## What ships next
 

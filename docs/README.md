@@ -9,7 +9,7 @@
 
 **Live site:** <https://whalermike.github.io/uiao/> — served by `.github/workflows/quarto.yml` on every push to `main`. Requires repo Settings → Pages → source = GitHub Actions.
 
-→ **[UIAO Architecture](../core/ARCHITECTURE.md)** in `core/ARCHITECTURE.md`. Defines how this module's pipeline, image flow, and rendering inherit from `core/` canon. See [ADR-028](../core/canon/adr/adr-028-monorepo-consolidation-gos-integration.md) for the history of the monorepo consolidation.
+→ **[UIAO Architecture](../core/ARCHITECTURE.md)** in `core/ARCHITECTURE.md`. Defines how this module's pipeline, image flow, and rendering inherit from `core/` canon. See [ADR-028](../src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md) for the history of the monorepo consolidation.
 
 ## Compliance with Presidential Executive Orders
 
