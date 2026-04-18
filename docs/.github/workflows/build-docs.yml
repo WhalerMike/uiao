@@ -1,0 +1,203 @@
+name: Build and Deploy Documentation
+
+on:
+  push:
+    branches: [ "main" ]
+  schedule:
+    # Nightly at 06:00 UTC - renders all heavy formats (DOCX/PPTX/PDF/EPUB)
+    # so the downloads index stays fresh. Push builds stay HTML-only for speed.
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      render_heavy_formats:
+        description: 'Also render DOCX/PPTX/PDF/EPUB (resource-intensive)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Free disk space on runner
+        run: |
+          echo "=== before ==="
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          sudo docker image prune --all --force 2>/dev/null || true
+          echo "=== after ==="
+          df -h /
+
+      - name: Setup Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Install TinyTeX for PDF support
+        if: github.event.inputs.render_heavy_formats == 'true' || github.event_name == 'schedule'
+        run: quarto install tinytex
+
+      - name: Render HTML site
+        run: quarto render --to html
+
+      - name: Render DOCX files
+        if: github.event.inputs.render_heavy_formats == 'true' || github.event_name == 'schedule'
+        run: |
+          mkdir -p _site/downloads
+          find docs -name "*.qmd" | sort | while read f; do
+            subdir=$(dirname "$f" | sed 's|^docs/||')
+            mkdir -p "_site/downloads/$subdir"
+            quarto render "$f" --to docx --output-dir "_site/downloads/$subdir" || true
+          done
+
+      - name: Render PPTX files
+        if: github.event.inputs.render_heavy_formats == 'true' || github.event_name == 'schedule'
+        run: |
+          find docs -name "*.qmd" | sort | while read f; do
+            subdir=$(dirname "$f" | sed 's|^docs/||')
+            mkdir -p "_site/downloads/$subdir"
+            quarto render "$f" --to pptx --output-dir "_site/downloads/$subdir" || true
+          done
+
+      - name: Render PDF files
+        if: github.event.inputs.render_heavy_formats == 'true' || github.event_name == 'schedule'
+        run: |
+          find docs -name "*.qmd" | sort | while read f; do
+            subdir=$(dirname "$f" | sed 's|^docs/||')
+            mkdir -p "_site/downloads/$subdir"
+            quarto render "$f" --to pdf --output-dir "_site/downloads/$subdir" || true
+          done
+
+      - name: Render EPUB files
+        if: github.event.inputs.render_heavy_formats == 'true' || github.event_name == 'schedule'
+        run: |
+          find docs -name "*.qmd" | sort | while read f; do
+            subdir=$(dirname "$f" | sed 's|^docs/||')
+            mkdir -p "_site/downloads/$subdir"
+            quarto render "$f" --to epub --output-dir "_site/downloads/$subdir" || true
+          done
+
+      - name: Generate downloads index
+        run: |
+          DOWNLOADS_DIR="_site/downloads"
+          mkdir -p "$DOWNLOADS_DIR"
+
+          mapfile -t BASES < <(
+            find "$DOWNLOADS_DIR" -name "*.docx" \
+              | sed "s|${DOWNLOADS_DIR}/||" \
+              | sed 's|\.docx$||' \
+              | sort
+          )
+
+          cat > "$DOWNLOADS_DIR/index.html" << 'STYLE_EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>UIAO Document Downloads</title>
+            <style>
+              body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+              h1 { color: #1B3A5C; }
+              p.subtitle { color: #555; margin-bottom: 1.5rem; }
+              table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9em; }
+              th { background: #1B3A5C; color: white; padding: 0.5rem 0.75rem; text-align: left; }
+              td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #e0e0e0; vertical-align: middle; }
+              tr:hover td { background: #f5f7fa; }
+              a { text-decoration: none; }
+              .badge {
+                display: inline-block; padding: 2px 8px; border-radius: 4px;
+                font-size: 0.78em; font-weight: bold; margin: 0 2px;
+              }
+              .html  { background: #1B3A5C; color: white; }
+              .docx  { background: #2B5797; color: white; }
+              .pptx  { background: #C43E1C; color: white; }
+              .pdf   { background: #B00020; color: white; }
+              .epub  { background: #2E7D32; color: white; }
+              .na    { background: #ccc;    color: #555;  }
+              footer { margin-top: 2rem; color: #888; font-size: 0.82em; }
+            </style>
+          </head>
+          <body>
+            <h1>UIAO Document Downloads</h1>
+            <p class="subtitle">
+              All UIAO governance documents — available in HTML, Word (DOCX),
+              PowerPoint (PPTX), PDF, and EPUB. Generated automatically on every
+              push to <code>main</code>. All formats reflect the current canon state.
+            </p>
+            <table>
+              <tr>
+                <th>Document</th>
+                <th>HTML</th>
+                <th>DOCX</th>
+                <th>PPTX</th>
+                <th>PDF</th>
+                <th>EPUB</th>
+              </tr>
+          STYLE_EOF
+
+          for base in "${BASES[@]}"; do
+            name=$(basename "$base" | sed 's/_/ /g; s/-/ /g')
+            html_href="../docs/${base}.html"
+
+            [ -f "$DOWNLOADS_DIR/${base}.docx" ] \
+              && docx_cell="<a href=\"${base}.docx\"><span class=\"badge docx\">DOCX</span></a>" \
+              || docx_cell="<span class=\"badge na\">N/A</span>"
+
+            [ -f "$DOWNLOADS_DIR/${base}.pptx" ] \
+              && pptx_cell="<a href=\"${base}.pptx\"><span class=\"badge pptx\">PPTX</span></a>" \
+              || pptx_cell="<span class=\"badge na\">N/A</span>"
+
+            [ -f "$DOWNLOADS_DIR/${base}.pdf" ] \
+              && pdf_cell="<a href=\"${base}.pdf\"><span class=\"badge pdf\">PDF</span></a>" \
+              || pdf_cell="<span class=\"badge na\">N/A</span>"
+
+            [ -f "$DOWNLOADS_DIR/${base}.epub" ] \
+              && epub_cell="<a href=\"${base}.epub\"><span class=\"badge epub\">EPUB</span></a>" \
+              || epub_cell="<span class=\"badge na\">N/A</span>"
+
+            echo "      <tr>" >> "$DOWNLOADS_DIR/index.html"
+            echo "        <td>${name}</td>" >> "$DOWNLOADS_DIR/index.html"
+            echo "        <td><a href=\"${html_href}\"><span class=\"badge html\">HTML</span></a></td>" >> "$DOWNLOADS_DIR/index.html"
+            echo "        <td>${docx_cell}</td>" >> "$DOWNLOADS_DIR/index.html"
+            echo "        <td>${pptx_cell}</td>" >> "$DOWNLOADS_DIR/index.html"
+            echo "        <td>${pdf_cell}</td>" >> "$DOWNLOADS_DIR/index.html"
+            echo "        <td>${epub_cell}</td>" >> "$DOWNLOADS_DIR/index.html"
+            echo "      </tr>" >> "$DOWNLOADS_DIR/index.html"
+          done
+
+          cat >> "$DOWNLOADS_DIR/index.html" << 'FOOT_EOF'
+            </table>
+            <footer>Generated automatically on every push to main. All documents reflect the current canon state.</footer>
+          </body>
+          </html>
+          FOOT_EOF
+
+      - name: Upload HTML site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

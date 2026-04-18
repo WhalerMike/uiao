@@ -1,0 +1,91 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AU-6(3)
+# Title      : Audit Record Review, Analysis, and Reporting | Correlate Audit Record Repositories
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AU-6(3)
+title: "Audit Record Review, Analysis, and Reporting | Correlate Audit Record Repositories"
+family: Audit and Accountability
+status: not-implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - microsoft-defender-xdr
+  - crowdstrike-falcon
+  - palo-alto-ngfw
+
+evidence:
+  - sentinel-data-connector-inventory
+  - sentinel-cross-source-correlation-query-library
+  - defender-xdr-cross-workload-investigation-report
+  - sentinel-ueba-entity-profile-report
+
+parameters:
+  - id: au_6_3_repositories_correlated
+    description: >-
+      Audit record repositories that are aggregated and correlated
+      in the centralized analysis platform.
+    value: "Entra ID sign-in and audit logs, Microsoft 365 unified audit log, CrowdStrike Falcon telemetry, Palo Alto NGFW logs, CyberArk audit trail, Cisco SD-WAN logs, Azure platform diagnostic logs, ServiceNow ITSM change logs"
+  - id: au_6_3_correlation_method
+    description: >-
+      Technical approach used to correlate audit records across
+      disparate source repositories.
+    value: "Microsoft Sentinel Log Analytics with Kusto Query Language (KQL) cross-table joins; Sentinel UEBA entity graph correlating user, device, IP, and application entities across all data sources"
+
+narrative: |
+  **Centralized Multi-Source Audit Correlation**
+  The UIAO system correlates audit records across all organizational
+  audit repositories through Microsoft Sentinel, which serves as
+  the single aggregation and analysis plane for all audit sources
+  defined in PARAM au_6_3_repositories_correlated. Sentinel data
+  connectors ingest structured audit records from Entra ID, Microsoft
+  365, CrowdStrike Falcon, Palo Alto NGFW, CyberArk, Cisco SD-WAN,
+  and Azure platform services into a unified Log Analytics workspace.
+  Correlation queries written in Kusto Query Language (KQL) join
+  audit records across tables using shared entity identifiers
+  (user UPN, device hostname, IP address, session ID), enabling
+  analysts to trace a single security event across identity, endpoint,
+  network, and cloud layers in a single query. This satisfies the
+  AU-6(3) requirement to analyze and correlate audit records from
+  different repositories and supports **AU-6(1)** (Automated Process
+  Integration) and **SI-4** (System Monitoring) objectives.
+
+  **UEBA Entity-Based Correlation**
+  Microsoft Sentinel User and Entity Behavior Analytics (UEBA) builds
+  behavioral baselines for individual users, devices, and IP addresses
+  by correlating activity signals across all connected data sources
+  using the method defined in PARAM au_6_3_correlation_method.
+  UEBA entity graphs automatically link related audit records
+  from different repositories that share a common entity, surfacing
+  anomalous patterns that would not be visible when analyzing any
+  single repository in isolation. UEBA insights are used to prioritize
+  alert triage and enhance incident investigation context.
+
+  **Microsoft Defender XDR Cross-Workload Correlation**
+  Microsoft Defender XDR correlates audit and telemetry signals
+  across endpoint (Defender for Endpoint/CrowdStrike), identity
+  (Defender for Identity/Entra ID), email (Defender for Office 365),
+  and cloud apps (Defender for Cloud Apps) to construct unified
+  incident timelines spanning multiple audit domains. XDR incidents
+  are forwarded to Microsoft Sentinel for enrichment with network
+  and infrastructure audit data, completing the cross-repository
+  correlation picture for complex multi-stage attacks.
+
+  **Network-Identity-Endpoint Correlation Use Cases**
+  Specific cross-repository correlation use cases implemented in
+  Sentinel include: matching Palo Alto NGFW source IPs to Entra ID
+  sign-in records to detect impossible travel and VPN bypass;
+  correlating CrowdStrike process execution events with CyberArk
+  credential check-out records to detect unauthorized privileged
+  tool usage; and linking Entra ID account creation events with
+  ServiceNow change records to identify unauthorized provisioning.
+  These use cases directly support **IR-4** (Incident Handling) and
+  **CA-7** (Continuous Monitoring) requirements.
+
+related_controls:
+  - AU-6    # Audit Record Review, Analysis, and Reporting
+  - AU-6(1) # Automated Process Integration
+  - AU-12   # Audit Record Generation
+  - CA-7    # Continuous Monitoring
+  - IR-4    # Incident Handling
+  - SI-4    # System Monitoring

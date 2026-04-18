@@ -1,0 +1,74 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AU-5
+# Title      : Response to Audit Logging Process Failures
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AU-5
+title: Response to Audit Logging Process Failures
+family: Audit and Accountability
+status: implemented
+
+implemented_by:
+  - microsoft-sentinel
+  - splunk-siem
+  - servicenow-itsm
+
+evidence:
+  - sentinel-audit-ingestion-health-monitoring-rules
+  - splunk-forwarder-health-dashboard
+  - servicenow-audit-failure-incident-records
+
+parameters:
+  - id: au_5_failure_alert_recipients
+    description: >-
+      Personnel or roles notified when an audit logging process
+      failure is detected.
+    value: "SOC analysts, ISSO, and system administrators via Sentinel automated alert"
+  - id: au_5_failure_response_actions
+    description: >-
+      Organizational response actions taken upon detection of an
+      audit logging process failure.
+    value: >-
+      Immediate alert to SOC; ServiceNow P2 incident auto-created;
+      affected system isolated if audit cannot be restored within 1 hour
+
+narrative: |
+  **Automated Detection of Audit Logging Failures**
+  The organization alerts designated personnel in the event of an
+  audit logging process failure and takes defined additional actions
+  to ensure audit continuity. Microsoft Sentinel ingestion health
+  monitoring rules continuously validate that all configured data
+  connectors are actively forwarding audit records at expected
+  intervals. Splunk deployment server and forwarder health dashboards
+  monitor agent connectivity and indexing throughput. Any detected
+  interruption in audit log ingestion triggers automated alerts to
+  SOC analysts and the ISSO within minutes, supporting **SI-4**
+  (System Monitoring) real-time detection capabilities.
+
+  **Incident Response and Escalation Procedures**
+  Upon detection of an audit logging failure, a ServiceNow ITSM
+  Priority 2 incident is automatically created with pre-populated
+  remediation runbook steps. System administrators are dispatched to
+  restore audit logging within the defined one-hour restoration
+  window. If audit logging cannot be restored within this timeframe,
+  the affected system is isolated from organizational network segments
+  via Cisco Catalyst VLAN quarantine policies to prevent unaudited
+  activity, directly supporting **IR-4** (Incident Handling) and
+  **AC-4** (Information Flow Enforcement) requirements.
+
+  **Audit Continuity and Failover Architecture**
+  The dual-SIEM architecture (Sentinel and Splunk) provides inherent
+  audit logging redundancy. If the primary Sentinel ingestion path
+  fails, Splunk continues to collect and retain audit records from
+  shared log forwarding infrastructure. This failover capability
+  ensures that no audit record gaps occur during single-platform
+  outages, supporting **AU-4** (Audit Log Storage Capacity) and
+  **CP-2** (Contingency Plan) continuity objectives.
+
+related_controls:
+  - AU-2   # Event Logging
+  - AU-4   # Audit Log Storage Capacity
+  - AC-4   # Information Flow Enforcement
+  - CP-2   # Contingency Plan
+  - IR-4   # Incident Handling
+  - SI-4   # System Monitoring

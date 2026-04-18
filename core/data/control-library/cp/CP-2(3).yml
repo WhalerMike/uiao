@@ -1,0 +1,79 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CP-2(3)
+# Title      : Contingency Plan | Resume Mission and Business Functions
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: CP-2(3)
+title: "Contingency Plan | Resume Mission and Business Functions"
+family: Contingency Planning
+status: not-implemented
+
+implemented_by:
+  - azure-site-recovery
+  - servicenow-grc
+  - sharepoint-policy-library
+  - microsoft-sentinel
+
+evidence:
+  - cp-2-3-contingency-plan-resumption-procedures
+  - cp-2-3-rto-rpo-documentation
+  - cp-2-3-azure-site-recovery-replication-configuration
+  - cp-2-3-servicenow-recovery-task-workflow-records
+
+parameters:
+  - id: cp_2_3_resumption_timeframe
+    description: >-
+      Defined timeframe within which essential mission and business
+      functions must be resumed following a disruption.
+    value: "Essential mission functions: resume within 4 hours (RTO); full mission capability: restore within 24 hours; maximum tolerable downtime for FedRAMP-hosted services: 72 hours"
+  - id: cp_2_3_resumption_priority_tiers
+    description: >-
+      Priority tiers defining the sequence in which mission and
+      business functions are resumed during recovery operations.
+    value: "Tier 1 (0-4 hrs): Authentication services (Entra ID), network access control (Cisco ISE), security monitoring (Sentinel); Tier 2 (4-12 hrs): Application services, data access; Tier 3 (12-24 hrs): Full operational capability"
+
+narrative: |
+  **Mission Function Resumption Planning**
+  The UIAO Contingency Plan defines specific procedures and timeframes for
+  resuming essential mission and business functions following a system
+  disruption, ensuring that recovery activities are sequenced to restore
+  the highest-priority functions first. Resumption timeframes are established
+  in PARAM cp_2_3_resumption_timeframe based on business impact analysis (BIA)
+  findings documenting the maximum tolerable downtime for each mission function.
+  Priority tiers defined in PARAM cp_2_3_resumption_priority_tiers govern the
+  sequence of recovery activities, with identity and access management services
+  (Azure Entra ID), network access enforcement (Cisco ISE), and security
+  monitoring (Microsoft Sentinel) restored in Tier 1 because all other
+  functions depend on these foundational capabilities.
+
+  **Azure Site Recovery and Technical Resumption**
+  Technical resumption procedures leverage Azure Site Recovery for replication
+  and failover of system workloads to the designated alternate processing
+  facility. Replication policies are configured to achieve the RPO requirements
+  documented in the BIA, with continuous replication for Tier 1 systems and
+  scheduled replication for lower-priority workloads. Failover runbooks stored
+  in SharePoint document the step-by-step sequence for activating Azure Site
+  Recovery failover plans, reconfiguring Palo Alto firewall policies for the
+  alternate environment, and validating Infoblox DNS resolution for failover
+  endpoints. ServiceNow GRC workflow automation generates recovery task
+  assignments to the appropriate technical teams immediately upon contingency
+  plan activation, supporting the **CP-10** (System Recovery and Reconstitution)
+  recovery sequence.
+
+  **Resumption Validation and Monitoring**
+  Following activation of recovery procedures, Microsoft Sentinel monitors the
+  restored environment for security anomalies and validates that all control
+  systems are operational before mission function resumption is declared
+  complete. A structured recovery checklist in ServiceNow documents sign-off
+  requirements for each Tier, ensuring that resumption decisions are
+  documented and authorized by the ISSM. Successful resumption of each tier
+  is recorded in the contingency activation log, providing evidence for
+  after-action review and supporting **CP-4(1)** (Contingency Plan Testing
+  with Coordinate with Related Plans) improvement cycles.
+
+related_controls:
+  - CP-2   # Contingency Plan (parent control)
+  - CP-2(5) # Continue Mission and Business Functions
+  - CP-4   # Contingency Plan Testing
+  - CP-10  # System Recovery and Reconstitution
+  - IR-4   # Incident Handling

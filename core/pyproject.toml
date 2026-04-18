@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uiao-core"
+version = "0.2.0"
+description = "UIAO canonical governance artifacts — YAMLs, schemas, playbooks, and canon enforcement tooling. Consumed by the uiao-impl package (impl/) for generators and validators."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Michael Stratton", email = "michael.francis.stratton@gmail.com" }]
+
+# Canon-enforcement tooling dependencies only (tools/*.py).
+dependencies = [
+    "pyyaml>=6.0",
+    "jsonschema>=4.0",
+]
+
+[project.optional-dependencies]
+# Minimal developer/CI extras. Canon enforcement tooling does not require
+# a heavy stack — ruff/mypy/pytest are here so workflows like ai-security-audit
+# and security-scan can install with `pip install -e ".[dev]"` without
+# reinventing their own pin list.
+dev = [
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "pip-audit>=2.7",
+    "safety>=3.2",
+]
+
+# uiao-core ships canonical data (YAML/JSON/Markdown) plus ``tools/`` and
+# ``scripts/`` helper modules invoked directly via ``python <path>``. It does
+# NOT expose a Python import package — the runtime library and CLI live in
+# the sibling ``impl/`` module of the consolidated monorepo. Declaring an
+# empty package list here
+# disables setuptools' auto-discovery (which otherwise errors with
+# "Multiple top-level packages discovered in a flat-layout" because the repo
+# contains many top-level directories: ``adapters/``, ``analytics/``,
+# ``canon/``, ``generation-inputs/``, etc.). ``pip install -e .`` now
+# succeeds and only installs the dependencies above.
+[tool.setuptools]
+packages = []
