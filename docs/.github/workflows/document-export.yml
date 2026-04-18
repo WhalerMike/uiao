@@ -1,0 +1,88 @@
+name: Document Export (Word/PDF)
+
+on:
+  workflow_dispatch:
+    inputs:
+      doc_path:
+        description: 'File path relative to docs/ -- required for mode=single, ignored for mode=all (e.g., canon/index.md)'
+        required: false
+        default: 'canon/index.md'
+        type: string
+      format:
+        description: 'Output format'
+        required: true
+        type: choice
+        options:
+          - docx
+          - pdf
+          - both
+        default: docx
+      mode:
+        description: 'single = export one file (uses doc_path), all = export entire docs/ tree'
+        required: true
+        type: choice
+        options:
+          - single
+          - all
+        default: single
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Pandoc and LaTeX (for PDF)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y pandoc texlive-xetex texlive-fonts-recommended
+
+      - name: Export document(s)
+        run: |
+          mkdir -p exports
+
+          do_export() {
+            local DOC="$1"
+            local BASE
+            BASE=$(basename "$DOC" .md)
+            local SUBDIR
+            SUBDIR=$(dirname "$DOC" | sed 's|^docs/||')
+            mkdir -p "exports/$SUBDIR"
+
+            if [ "${{ inputs.format }}" = "docx" ] || [ "${{ inputs.format }}" = "both" ]; then
+              REF_FLAG=""
+              if [ -f .github/export-template.docx ]; then
+                REF_FLAG="--reference-doc=.github/export-template.docx"
+              fi
+              pandoc "$DOC" -o "exports/$SUBDIR/${BASE}.docx" $REF_FLAG
+            fi
+
+            if [ "${{ inputs.format }}" = "pdf" ] || [ "${{ inputs.format }}" = "both" ]; then
+              pandoc "$DOC" --pdf-engine=xelatex -o "exports/$SUBDIR/${BASE}.pdf"
+            fi
+          }
+
+          if [ "${{ inputs.mode }}" = "all" ]; then
+            find docs/ -name "*.md" | while read -r f; do
+              do_export "$f"
+            done
+          else
+            TARGET="docs/${{ inputs.doc_path }}"
+            if [ ! -f "$TARGET" ]; then
+              echo "ERROR: File not found: $TARGET"
+              exit 1
+            fi
+            do_export "$TARGET"
+          fi
+
+      - name: Upload export artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: document-export
+          path: exports/
+          retention-days: 30

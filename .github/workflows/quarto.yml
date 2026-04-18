@@ -1,0 +1,66 @@
+name: Quarto
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '.github/workflows/quarto.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+
+# Only allow one concurrent deploy per branch; cancel in-progress on new push
+concurrency:
+  group: quarto-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  render:
+    name: Render Quarto site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Render (HTML site only — PDF/DOCX outputs skipped in CI)
+        working-directory: docs
+        # Many .qmd files declare format: { html, docx, pdf }. Full multi-format
+        # render needs TinyTeX (pdf) plus pandoc docx runtime, which inflates CI
+        # time significantly and is unnecessary for the published site. Restrict
+        # to HTML here; ad-hoc PDF/DOCX can be generated locally.
+        run: quarto render --to html
+
+      - name: Upload site artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs/_site
+
+      - name: Upload PR preview artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: quarto-site-pr-${{ github.event.pull_request.number }}
+          path: docs/_site
+          retention-days: 14
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: render
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

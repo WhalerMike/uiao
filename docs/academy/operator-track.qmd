@@ -1,0 +1,84 @@
+---
+title: "Academy — Operator Track"
+subtitle: "Run the substrate against your environment; interpret its outputs"
+date: today
+date-format: "MMMM D, YYYY"
+description: "Stage-by-stage walkthrough of the UIAO_125 Operator track. For agency users, auditors, and integrators running UIAO against their own environment."
+aspirational: true
+---
+
+The Operator track comes out of [UIAO_125 §1.3](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/program-training.md) unchanged — this page is the reader-facing walkthrough. Each stage names what to **read**, what to **do**, and how to **verify**. You don't need to write code; you need to run the substrate and trust what it says.
+
+## Prerequisites (shared core)
+
+Same as the Contributor track: finish [UIAO_125 §1.1](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/program-training.md) first — substrate orientation, vocabulary, artifact literacy, governance flow.
+
+---
+
+## Stage 1 — Substrate walker (first tool to run)
+
+**Read:** [Substrate Status](../docs/substrate-status.qmd) page — specifically the adapter test-tier status table and the canon implementation-reality table.
+
+**Do:** on a fresh clone of UIAO against your environment, run
+
+```bash
+uiao substrate walk       # structured report
+uiao substrate drift      # exit-code-only CI gate
+```
+
+**Verify:** both commands exit 0 against a clean tree. If they don't, the report tells you exactly which module path or canon reference is missing.
+
+---
+
+## Stage 2 — Drift interpretation
+
+**Read:** [UIAO_110 Drift Engine](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/drift.md) and the [Drift Detection Standard](../docs/16_DriftDetectionStandard.qmd) — five classes, four severities.
+
+**Do:** introduce an intentional drift to your environment (rename a module directory; remove an adapter entry). Run `uiao substrate walk --json` and read the findings.
+
+**Verify:** you can map each finding to (a) its drift class, (b) its severity, (c) its remediation path. When you restore the original state, the finding clears.
+
+---
+
+## Stage 3 — Evidence pipeline
+
+**Read:**
+
+- [UIAO_107 Collector Interface](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/collector-interface.md)
+- [UIAO_113 Evidence Graph Model](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/graph-schema.md)
+
+**Do:** run an adapter against an instance of its target (e.g., `entra-id` against a Microsoft 365 Developer Program tenant). Watch the OSCAL evidence bundle land in `impl/out/`.
+
+**Verify:** the bundle contains identifiable claims. Each claim cites its source adapter and the timestamp of collection. Provenance chain is complete back to the canon registry entry.
+
+---
+
+## Stage 4 — Canon-safe customization
+
+**Read:** [UIAO_127 Project Plans Program](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/program-project-plans.md) — the four agency templates (greenfield adopt, directory-migration modernization, SCuBA conformance rollout, OSCAL ATO preparation).
+
+**Do:** pick one template. Instantiate it against your environment. Configure everything **via overlay** — do not edit canon files. Use `$UIAO_WORKSPACE_ROOT`, vendor credentials in secrets, environmental values in overlay config.
+
+**Verify:** `uiao substrate walk` still exits clean after customization. No canon file changed. No hard-coded paths or credentials in the customized overlay.
+
+---
+
+## Stage 5 — KSI attestation
+
+**Read:** the KSI evidence bundle schema ([`src/uiao/schemas/ksi/evidence-bundle.schema.json`](https://github.com/WhalerMike/uiao/tree/main/src/uiao/schemas/ksi)) and [UIAO_118 Release Engineering](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/release.md) — same release pipeline signs KSI bundles.
+
+**Do:** generate a KSI evidence bundle from your pipeline output. Verify the signature with `sigstore verify identity`.
+
+**Verify:** the bundle's signature resolves to a named identity, a trusted certificate, and a signed timestamp. A tamper in the bundle causes verification to fail.
+
+---
+
+## Completion
+
+You're done with the Operator track when you can (a) run `uiao substrate walk` cleanly against your environment, (b) interpret any finding it produces, and (c) trace any OSCAL artifact back to the canon document it derives from. That's the criterion in [UIAO_125 §3](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/program-training.md).
+
+## Adjacent paths
+
+- [Contributor track](contributor-track.qmd) — if you want to contribute fixes upstream while you operate
+- [Comic tour](comics.qmd) — if you want the mental model sharpened before digging deeper
+- [Findings](../findings/index.qmd) — constraints the substrate operates around (e.g., FINDING-001: M365 INR unavailable in GCC-Moderate)

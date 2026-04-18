@@ -1,0 +1,51 @@
+# Image Prompts for Doc 02 — SCuBA Technical Specification
+
+> Paste these directly into Gemini NanoBanana, or run via the generation script.
+> Style direction: clean, professional, federal/government-appropriate. Think McKinsey or Deloitte whitepaper — not startup marketing. Muted blues, grays, whites. No stock-photo people. No clip art.
+
+---
+
+## Image 1: Four-Plane Pipeline Architecture
+
+**Placement:** Section 3 (Architecture Overview), after the opening paragraph.
+
+**Prompt:**
+A wide, professional architectural schematic showing a four-plane sequential data processing pipeline for federal compliance automation. On the far left, a source system represented by a shield icon with a magnifying glass executes against a cloud tenant within a clearly marked governance boundary. Four horizontal processing planes flow left to right, each as a distinct colored block: Plane 1 (data ingestion and normalization, blue), Plane 2 (control evaluation against a security framework, teal), Plane 3 (evidence bundle assembly with a digital signature lock icon, steel gray), Plane 4 (compliance artifact generation producing three output documents, navy). Directional arrows connect each plane in sequence. At the right edge, three output artifacts: a System Security Plan document, a remediation tracker, and an assessment report. A continuous provenance chain line runs beneath all four planes, representing end-to-end traceability. The governance boundary is clearly marked around the entire pipeline. Color palette: Navy (#2E75B6), Steel Gray (#5A5A5A), Teal (#1A9E8F), Amber (#D4A017), White (#FFFFFF). No text baked in. No people. Widescreen (16:9). Style: clean infographic, flat design with subtle depth.
+
+---
+
+## Image 2: Module Dependency Architecture
+
+**Placement:** Section 3 (Architecture Overview), after the Adapter Classes paragraph.
+
+**Prompt:**
+A professional software module dependency diagram with four horizontal layers stacked vertically. BOTTOM LAYER (widest, navy blue): Foundation modules — abstractions, data models, utilities, configuration — represented by simple rectangular blocks. SECOND LAYER (teal): Core Pipeline modules — assessment adapter, control evaluation, evidence building, compliance output, intermediate representation — each as a distinct block with thin connecting lines to the foundation. THIRD LAYER (steel gray): Analysis modules — diff engine, freshness grading, coverage tracking, validators. TOP LAYER (amber accent on white): Output modules — system security plan, governance dashboard, auditor bundle, generators, monitoring. Thin directional arrows flow upward showing dependencies between layers. A separate Integration column on the right side shows: pluggable adapters, CLI interface, data collectors, governance actions, onboarding flow. Generous whitespace between all elements. White background. Color palette: Navy (#2E75B6), Steel Gray (#5A5A5A), Teal (#1A9E8F), Amber (#D4A017), White (#FFFFFF). No text baked in. No people. Widescreen (16:9). Style: clean architectural diagram, modern and minimal.
+
+---
+
+## Image 3: Three-Hop Mapping Chain
+
+**Placement:** Section 4.1 (Three-Hop Mapping Chain), after the Hop 3 description.
+
+**Prompt:**
+A professional horizontal flow diagram showing a three-stage data mapping chain for compliance automation. LEFT COLUMN (steel gray boxes arranged vertically): A stack of source policy identifiers grouped by product category — identity management (28 items shown as a tall block), threat protection (9 items), email security (3 items), collaboration (8 items), communication (14 items), automation platform (9 items), analytics (8 items), security operations (23 items). Each block is proportional to its count. CENTER COLUMN (teal boxes): Federal security control identifiers from a 247-control framework, organized by family — Access Control, Identification and Authentication, Audit and Accountability, System and Information Integrity, Configuration Management, Incident Response, Media Protection, Boundary Protection. RIGHT COLUMN (navy boxes): Consolidated security indicators (163 total), organized by category — IAM, boundary protection, monitoring and logging, configuration management, incident response, planning and personnel, other. Smooth curved arrows connect each stage showing the mapping flow. A summary annotation at the bottom shows the funnel: 143 source policies resolving through 247 controls into 163 indicators. White background with generous spacing. Color palette: Navy (#2E75B6), Steel Gray (#5A5A5A), Teal (#1A9E8F), White (#FFFFFF). No text baked in. No people. Widescreen (16:9). Style: clean infographic, data visualization aesthetic.
+
+---
+
+## Image 4: Evidence Integrity Chain
+
+**Placement:** Section 4.5 (Plane 4 — OSCAL Generate), after the output description.
+
+**Prompt:**
+A professional vertical flow diagram showing a cryptographic evidence integrity chain for compliance automation. At the TOP: a raw assessment scan output represented as a JSON document icon with subtle code lines visible. Four processing stages flow downward, each adding a provenance layer visualized as a translucent overlay that accumulates. STAGE 1 (blue block): Normalization — attaches an intermediate representation envelope with a content hash, shown as a small fingerprint or hash icon appended. STAGE 2 (teal block): Evaluation — adds control mapping and pass/fail determination, shown as a checklist icon with green checks and amber warnings. STAGE 3 (steel gray block): Evidence Signing — adds an HMAC digital signature and stable hash, shown as a prominent lock/seal icon with an amber glow radiating from it. STAGE 4 (navy block): Artifact Generation — adds schema validation and lineage traces, shown as a certificate icon with connected lines tracing back upward. At the BOTTOM: three final compliance artifacts (three distinct document icons). A verification arrow runs from bottom back to top along the right side, representing the concept that any auditor can trace any statement to the original scan. Each stage visually shows the provenance accumulating — the blocks get slightly wider as more provenance layers attach. Color palette: Navy (#2E75B6), Steel Gray (#5A5A5A), Teal (#1A9E8F), Amber (#D4A017), White (#FFFFFF). No text baked in. No people. Widescreen (16:9). Style: clean technical illustration, modern and minimal, government-appropriate.
+
+---
+
+## Style Notes for All Images
+
+- **Aspect ratio:** 16:9 (widescreen) for all — fits well in both DOCX and PPTX layouts
+- **Resolution:** Request highest available (at least 1920x1080)
+- **Color palette consistency:** Navy (#2E75B6), Steel Gray (#5A5A5A), Teal (#1A9E8F), Amber (#D4A017), White (#FFFFFF)
+- **No text baked into images** unless noted — captions will be added in the document
+- **No people, no stock photos, no clip art** — abstract/diagrammatic only
+- **Feel:** Trustworthy, calm, professional. This is for a CIO, not a marketing landing page.

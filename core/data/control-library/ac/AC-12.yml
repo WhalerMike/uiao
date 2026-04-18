@@ -1,0 +1,67 @@
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-12
+# Title      : Session Termination
+# Schema     : data/control-library (uiao-core canonical format)
+
+control_id: AC-12
+title: Session Termination
+family: Access Control
+status: implemented
+
+implemented_by:
+  - entra-id
+  - cyberark-psm
+  - intune-mdm
+
+evidence:
+  - entra-id-conditional-access-session-policies
+  - cyberark-psm-session-timeout-configuration
+  - intune-compliance-policy-report
+
+parameters:
+  - id: PARAM-IAM-002
+    description: >-
+      Maximum session duration for privileged accounts before automatic
+      termination is enforced by CyberArk PSM.
+    value: "15 minutes"
+  - id: PARAM-IAM-003
+    description: >-
+      Maximum session duration for standard user accounts before Entra ID
+      token expiration forces re-authentication.
+    value: "30 minutes"
+
+narrative: |
+  **Automated Session Termination Controls**
+  The organization enforces automatic session termination for all user
+  sessions through a layered approach spanning identity and endpoint
+  management platforms. Entra ID Conditional Access policies enforce
+  token lifetimes aligned to PARAM-IAM-003, requiring standard users to
+  re-authenticate after 30 minutes of inactivity. This directly supports
+  **AC-11** (Session Lock) and **AC-2** (Account Management) by ensuring
+  dormant sessions cannot be hijacked or reused without re-establishing
+  authenticated identity.
+
+  **Privileged Session Governance**
+  CyberArk Privileged Session Manager (PSM) enforces the 15-minute
+  session timeout defined in PARAM-IAM-002 for all privileged access
+  workflows. PSM sessions are isolated, recorded, and automatically
+  terminated upon timeout, with session recordings retained as audit
+  evidence in support of **AU-2** and **AU-6**. All privileged session
+  activity is streamed to Microsoft Sentinel for real-time anomaly
+  detection, providing SIEM-layer enforcement correlation.
+
+  **Endpoint and Mobile Session Policy**
+  Microsoft Intune MDM compliance policies extend session termination
+  controls to managed endpoints and mobile devices, enforcing screen lock
+  and session expiry thresholds consistent with **AC-11**. Non-compliant
+  devices are blocked from cloud resource access via Entra ID device
+  compliance signals integrated into Conditional Access, ensuring
+  session termination is uniformly applied across the hybrid environment.
+
+related_controls:
+  - AC-2   # Account Management
+  - AC-7   # Unsuccessful Logon Attempts
+  - AC-11  # Session Lock
+  - IA-2   # Identification and Authentication
+  - AU-2   # Event Logging
+  - AU-6   # Audit Record Review, Analysis, and Reporting

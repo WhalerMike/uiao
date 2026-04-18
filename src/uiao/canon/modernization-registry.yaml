@@ -1,0 +1,488 @@
+# yaml-language-server: $schema=../schemas/adapter-registry/adapter-registry.schema.json
+#
+# UIAO Modernization Adapter Registry
+# ===================================
+# Operational axis: `modernization` — change-making adapters that write to
+# target environments (e.g., Entra ID migration, M365 tenant configuration,
+# ticket creation, firewall rule updates).
+#
+# Doctrinal axis (UIAO_003 §4.2–§4.7): five canonical classes — Identity,
+# Telemetry, Policy, Enforcement, Integration. Per resolved ODA-15
+# (2026-04-15, Option a), the `integration` class covers change-making
+# actions against a target environment, and every adapter below declares
+# `mission-class: integration`. See ARCHITECTURE.md §13 (resolution) and
+# UIAO_003 §4.7 (Integration Adapter Class).
+#
+# Canon invariants enforced on every entry:
+#   * gcc-boundary: gcc-moderate (Amazon Connect exception noted per-adapter)
+#   * ssot-mutation: never
+#   * certificate-anchored: true
+#   * object-identity-only: true
+#
+# Pair registry: canon/adapter-registry.yaml (conformance class)
+# Schema:        schemas/adapter-registry/adapter-registry.schema.json
+# Governance:    ARCHITECTURE.md §3.2, §3.5, §15.2, §16.4
+
+schema-version: "1.0.0"
+registry-class: modernization
+updated: "2026-04-16"
+
+adapters:
+
+  - id: entra-id
+    name: Microsoft Entra ID
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — performs change-making actions against identity
+      systems (user/group/service-principal provisioning, conditional-access
+      policy updates). Classified per resolved ODA-15 (UIAO_003 §4.7).
+    status: active
+    phase: phase-1
+    vendor: Microsoft
+    license: Commercial
+    runtime: powershell-7.4
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - user-objects
+      - group-objects
+      - service-principals
+      - conditional-access-policies
+    outputs:
+      - migration-manifest.json
+      - migration-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-8
+      - IA-2
+      - IA-4
+      - AC-2
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-002
+      - UIAO-CANON-003
+
+  - id: m365
+    name: Microsoft 365 Tenant (Graph API)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — performs change-making actions against M365
+      tenant configuration (Exchange Online, SharePoint, Teams, Defender,
+      Purview). Classified per resolved ODA-15 (UIAO_003 §4.7).
+    status: active
+    phase: phase-1
+    vendor: Microsoft
+    license: Commercial
+    runtime: powershell-7.4
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - exchange-online
+      - sharepoint-online
+      - teams
+      - defender-o365
+      - purview
+    outputs:
+      - tenant-config-manifest.json
+      - change-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-2
+      - CM-3
+      - CM-8
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-002
+      - UIAO-CANON-003
+
+  - id: service-now
+    name: ServiceNow (Ticketing / ITSM)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — performs change-making actions (create/update
+      incident, change-request, and problem records) in an external system
+      of record. Classified per resolved ODA-15 (UIAO_003 §4.7).
+    status: active
+    phase: phase-1
+    vendor: ServiceNow
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - incident-tickets
+      - change-requests
+      - problem-records
+    outputs:
+      - ticket-manifest.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: incident
+    retention-years: 3
+    controls:
+      - IR-4
+      - IR-5
+      - IR-6
+      - CM-3
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+
+  - id: palo-alto
+    name: Palo Alto Networks (Firewall / NGFW)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — performs change-making actions against network
+      enforcement points (security policies, NAT rules, threat-prevention
+      profiles). Classified per resolved ODA-15 (UIAO_003 §4.7).
+    status: active
+    phase: phase-1
+    vendor: Palo Alto Networks
+    license: Commercial
+    runtime: python-3.12
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    scope:
+      - security-policies
+      - nat-rules
+      - threat-prevention-profiles
+    outputs:
+      - firewall-config-manifest.json
+      - rule-change-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - SC-7
+      - CM-7
+      - AC-4
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+
+  - id: scuba
+    name: CISA SCuBA M365 Secure Baseline (Target)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — applies the declarative CISA SCuBA security
+      posture (change-making) to M365 tenants. Distinct from `scubagear`
+      (the read-only conformance assessor) in canon/adapter-registry.yaml.
+      Classified per resolved ODA-15 (UIAO_003 §4.7).
+    status: active
+    phase: phase-1
+    vendor: CISA
+    license: CC0-1.0
+    runtime: powershell-7.4
+    runner-class: github-hosted
+    tenancy: per-customer
+    policy-engine: none
+    scope:
+      - aad-baseline
+      - defender-baseline
+      - exo-baseline
+      - powerbi-baseline
+      - powerplatform-baseline
+      - sharepoint-baseline
+      - teams-baseline
+    outputs:
+      - baseline-apply-manifest.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-2
+      - CM-6
+      - CM-7
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-002
+      - https://github.com/cisagov/ScubaGoggles
+    notes: >-
+      Pair with conformance adapter `scubagear` (canon/adapter-registry.yaml)
+      which assesses the applied baseline without mutating it.
+
+  - id: terraform
+    name: Terraform / OpenTofu Evidence Adapter
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Consumes Terraform / OpenTofu state, plans, and HCL configuration to
+      produce object-keyed canonical claims with KSI provenance, supports
+      three-way drift detection (live ↔ state ↔ HCL), and enables controlled
+      change-making actions against target environments (per UIAO_003 §4.7
+      Integration Adapter Class). Implementation planned in uiao-impl
+      (`src/uiao/impl/adapters/terraform_adapter.py`) subclassing
+      `DatabaseAdapterBase`.
+    status: active
+    phase: phase-1
+    vendor: HashiCorp / OpenTofu Foundation
+    license: MPL-2.0
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - terraform-state
+      - terraform-plan
+      - hcl-configuration
+    outputs:
+      - terraform-claim-manifest.json
+      - terraform-drift-report.json
+      - terraform-ksi-bundle.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-2
+      - CM-3
+      - CM-6
+      - CM-8
+      - CA-7
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - https://www.terraform.io
+      - https://opentofu.org
+    notes: >-
+      Adapter shipped in uiao-impl as `TerraformAdapter(DatabaseAdapterBase)`
+      (WhalerMike/uiao-impl#8, commit 3635110). Status flipped from
+      `reserved` to `active` per the three-stage lifecycle: canon (Stage 1,
+      uiao-core#183), docs scaffolds (Stage 2, uiao-docs#26), impl code
+      (Stage 3, uiao-impl#8). Five Terraform-specific extension methods
+      (`extract_terraform_state`, `parse_hcl_config`,
+      `consume_terraform_plan`, `detect_terraform_drift`,
+      `generate_terraform_evidence`) are currently stubs; real parsing
+      ships as a follow-up when `python-hcl2` dependency is added.
+
+  - id: cyberark
+    name: CyberArk Credential Rotation Adapter
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Credential rotation and privileged access management — change-making
+      actions against vault/PAM systems. Rotates secrets, certificates, and
+      service account credentials with certificate-anchored provenance.
+      Classified per UIAO_003 §4.7 Integration Adapter Class.
+    status: active
+    phase: phase-1
+    vendor: CyberArk
+    license: Commercial
+    runtime: python-3.12
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    scope:
+      - privileged-accounts
+      - service-credentials
+      - certificate-rotation
+      - vault-policies
+    outputs:
+      - rotation-manifest.json
+      - credential-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+      - schedule
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - IA-5
+      - IA-5(1)
+      - AC-2
+      - AC-6
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+    notes: >-
+      Tier 4 adapter. Requires on-prem-self-hosted runner with network
+      access to CyberArk vault API. Cited in ODA-15 resolution as a
+      future integration-class adapter example.
+
+  - id: infoblox
+    name: Infoblox NIOS DNS / IPAM Adapter
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      DNS, DHCP, and IP Address Management — change-making actions against
+      network infrastructure (DNS records, DHCP scopes, IP allocations,
+      network views). Supports side-by-side AD and event-stream egress for
+      directory-migration flows. Classified per UIAO_003 §4.7 Integration
+      Adapter Class.
+    status: active
+    phase: phase-1
+    vendor: Infoblox
+    license: Commercial
+    runtime: python-3.12
+    runtime-version: ">=8.0"
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    scope:
+      - dns-records
+      - dhcp-scopes
+      - ip-allocations
+      - network-views
+      - side-by-side-ad
+    outputs:
+      - dns-change-manifest.json
+      - ipam-audit.json
+      - event-stream.ndjson
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - SC-20
+      - SC-21
+      - CM-8
+    automation-domain:
+      - network-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+    notes: >-
+      Tier 4 adapter. Product: Infoblox NIOS (>=8.0). FedRAMP-authorized
+      (Moderate). CDM-integrated. Federal-preferred IPAM for GCC-Moderate
+      directory-migration engagements. Requires on-prem-self-hosted runner
+      with network access to the Infoblox WAPI. Reference implementation
+      migrated from uiao-gos (2026-04-17) to
+      impl/src/uiao/impl/directory_migration/adapters/ipam/infoblox/.
+
+  - id: bluecat-address-manager
+    name: BlueCat Address Manager
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      DNS, DHCP, and IP Address Management — change-making actions against
+      network infrastructure (DNS records, DHCP scopes, IP allocations).
+      Supports side-by-side AD and event-stream egress for
+      directory-migration flows. Classified per UIAO_003 §4.7 Integration
+      Adapter Class.
+    status: active
+    phase: phase-1
+    vendor: BlueCat
+    license: Commercial
+    runtime: python-3.12
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    scope:
+      - dns-records
+      - dhcp-scopes
+      - ip-allocations
+      - side-by-side-ad
+    outputs:
+      - dns-change-manifest.json
+      - ipam-audit.json
+      - event-stream.ndjson
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - SC-20
+      - SC-21
+      - CM-8
+    automation-domain:
+      - network-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+    notes: >-
+      Tier 4 adapter. Product: BlueCat Address Manager. Not FedRAMP-authorized
+      (commercial deployments only; federal-preferred sibling is the
+      `infoblox` adapter). Requires on-prem-self-hosted runner with network
+      access to the BlueCat API. Reference implementation migrated from
+      uiao-gos (2026-04-17) to
+      impl/src/uiao/impl/directory_migration/adapters/ipam/bluecat/.
+
+  - id: mainframe
+    name: Mainframe (z/OS Connect / MQ) Adapter
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Legacy mainframe integration — maps COBOL records and MQ messages
+      to canonical claims via z/OS Connect or MQ bridge. Highest-priority
+      FIMF adapter for federal legacy migration use cases.
+    status: reserved
+    phase: phase-planning
+    vendor: IBM
+    license: Commercial
+    runtime: python-3.12
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    scope:
+      - cobol-records
+      - mq-messages
+      - cics-transactions
+    outputs:
+      - mainframe-claim-manifest.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-8
+      - AC-2
+      - AU-2
+    automation-domain:
+      - asset-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+    notes: >-
+      FIMF Tier 5 adapter. Requires z/OS Connect or MQ bridge
+      infrastructure. Highest-priority legacy migration adapter.

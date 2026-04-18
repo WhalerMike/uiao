@@ -1,0 +1,92 @@
+name: Generate images (on-demand)
+
+# Human-triggered workflow that runs docs/generate_images.py against
+# docs/prompts.json, calls Google Gemini Nano Banana, and uploads the
+# resulting PNGs as a downloadable artifact.
+#
+# Pipeline context and operator runbook:
+#   https://whalermike.github.io/uiao/academy/document-generation-guide.html
+#
+# Run this workflow from the GitHub Actions UI:
+#   https://github.com/WhalerMike/uiao/actions/workflows/image-gen.yml
+# Click "Run workflow" on the right side of the page.
+#
+# Not triggered automatically. Images are ephemeral artifacts by default;
+# opt-in commit-back is a future enhancement (documented in the User's
+# Guide "Future automation" section).
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run (print prompts, no Gemini API calls)"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  generate:
+    name: Generate images via Gemini Nano Banana
+    runs-on: ubuntu-latest
+    # The workflow needs no special permissions — it only reads secrets
+    # and writes to the ephemeral runner filesystem. No git write-back
+    # on this version; see "Future enhancements" in the User's Guide.
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-genai Pillow
+
+      - name: Verify GEMINI_API_KEY is set
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error::GEMINI_API_KEY secret is not set on this repository."
+            echo "         Add it at: Settings → Secrets and variables → Actions → New repository secret"
+            echo "         Name: GEMINI_API_KEY  Value: <your Gemini API key>"
+            exit 1
+          fi
+          echo "GEMINI_API_KEY is present (length: ${#GEMINI_API_KEY}, first 6 chars: ${GEMINI_API_KEY:0:6}...)"
+
+      - name: Generate images
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python docs/generate_images.py --dry-run
+          else
+            python docs/generate_images.py
+          fi
+
+      - name: Upload images as workflow artifact
+        if: ${{ ! inputs.dry_run }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: generated-images-run-${{ github.run_number }}
+          path: docs/images/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Summary
+        if: ${{ ! inputs.dry_run }}
+        run: |
+          echo "### Image generation complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Generated images are attached as the artifact **generated-images-run-${{ github.run_number }}**." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download them by scrolling to the bottom of this run's summary page and clicking the artifact link, OR by visiting:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          ls -la docs/images/ || true

@@ -1,0 +1,34 @@
+name: UIAO Governance CLI Check
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  governance-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then
+            npm ci || npm install
+          else
+            npm init -y > /dev/null 2>&1
+            npm install js-yaml
+          fi
+
+      - name: Make CLI executable
+        run: chmod +x tools/uiao-governance-cli.js
+
+      - name: Run local drift inspection
+        continue-on-error: true
+        run: node tools/uiao-governance-cli.js

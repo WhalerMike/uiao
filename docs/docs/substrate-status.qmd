@@ -1,0 +1,232 @@
+---
+title: "UIAO Substrate Status"
+description: "At-a-glance view of the substrate manifest, workspace contract, active adapters, and CI enforcement stack."
+uiao.id: narrative-substrate-status
+uiao.status: Current
+uiao.owner: WhalerMike
+uiao.tags: [status, reference, substrate, adapter, ci]
+provenance:
+  source_commit: main
+  derived_from:
+    - src/uiao/canon/substrate-manifest.yaml
+    - src/uiao/canon/workspace-contract.yaml
+    - src/uiao/canon/modernization-registry.yaml
+    - src/uiao/canon/adapter-registry.yaml
+    - src/uiao/canon/document-registry.yaml
+  derived_at: "2026-04-17"
+  derived_by: "substrate status page — human-readable snapshot of machine-readable substrate state"
+---
+
+# UIAO Substrate Status
+
+Snapshot of the substrate's current state, derived from the canonical artifacts listed in the provenance block above. This page is regenerable: running `make walk` produces the same facts in machine form; this page renders them for humans.
+
+## Topology
+
+Three modules, declared in [`src/uiao/canon/substrate-manifest.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/substrate-manifest.yaml) (UIAO_200):
+
+| Module | Role | Canon consumer | Purpose |
+|---|---|---|---|
+| [`core/`](https://github.com/WhalerMike/uiao/tree/main/core) | authority | — | Schemas, canon documents, control library, enforcement tooling |
+| [`docs/`](https://github.com/WhalerMike/uiao/tree/main/docs) | consumer | yes | Articles, guides, narrative, rendered Quarto site |
+| [`impl/`](https://github.com/WhalerMike/uiao/tree/main/impl) | consumer | yes | Python CLI, generators, adapters, substrate walker |
+
+Workspace root: `$UIAO_WORKSPACE_ROOT` (never hardcoded — see [`impl/.claude/rules/canon-consumer.md`](https://github.com/WhalerMike/uiao/blob/main/impl/.claude/rules/canon-consumer.md)).
+
+## Adapter registry
+
+Source: [`src/uiao/canon/modernization-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/modernization-registry.yaml) + [`src/uiao/canon/adapter-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adapter-registry.yaml).
+
+### Modernization adapters (change-making)
+
+| Adapter | Status | Phase | Mission class | FedRAMP | Vendor |
+|---|---|---|---|---|---|
+| `entra-id` | active | phase-1 | integration | — | Microsoft |
+| `m365` | active | phase-1 | integration | — | Microsoft |
+| `service-now` | active | phase-1 | integration | — | ServiceNow |
+| `palo-alto` | active | phase-1 | integration | — | Palo Alto Networks |
+| `scuba` | active | phase-1 | integration | — | CISA |
+| `terraform` | active | phase-1 | integration | — | HashiCorp / OpenTofu |
+| `cyberark` | active | phase-1 | integration | — | CyberArk |
+| `infoblox` | active | phase-1 | integration | **Moderate, CDM-integrated** | Infoblox |
+| `bluecat-address-manager` | active | phase-1 | integration | — | BlueCat |
+| `mainframe` | reserved | phase-planning | integration | — | IBM |
+
+**9 of 10 active.** Only `mainframe` remains reserved — blocks on z/OS Connect / MQ bridge infrastructure (see its `notes:` field).
+
+### Conformance adapters (read-only)
+
+See `src/uiao/canon/adapter-registry.yaml` for the complete list. Notable: `scubagear` (CISA SCuBA assessor).
+
+### Test-tier status
+
+Per [UIAO_131 Adapter Test Strategy](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/adapter-test-strategy.md), every adapter is tested across three tiers: live commercial tenant (tier 1), contract fixtures (tier 2), reference deployment against a partner agency's GCC-Moderate tenant (tier 3). UIAO lives outside the federal boundary — this table is the honest map of what's been exercised.
+
+| Adapter | Registry status | Tier 1 (live) | Tier 2 (contract) | Tier 3 (reference) | Gate achievable |
+|---|---|:-:|:-:|:-:|---|
+| `entra-id` | active | ⏳ pending | ⏳ pending | 🚫 none | fixture setup required for `beta` |
+| `m365` | active | ⏳ pending | ⏳ pending | 🚫 none | fixture setup required for `beta` |
+| `service-now` | active | ⏳ pending | ⏳ pending | 🚫 none | vendor developer program sign-up pending |
+| `palo-alto` | active | ⏳ pending | ⏳ pending | 🚫 none | vendor sandbox pending |
+| `scuba` | active | ⏳ pending | ⏳ pending | 🚫 none | ScubaGear fixture + live run |
+| `terraform` | active | ⏳ pending | ⏳ pending | 🚫 none | tfstate fixture pending |
+| `cyberark` | active | ⏳ pending | ⏳ pending | 🚫 none | vendor developer program pending |
+| `infoblox` | active | 🟥 blocked | ⏳ pending | 🚫 none | No public developer sandbox — exclusion per UIAO_131 §5.1 |
+| `bluecat-address-manager` | active | 🟥 excluded | ⏳ pending | 🚫 none | Vendor-contact-only access — exclusion per UIAO_131 §5.1 |
+| `mainframe` | reserved | N/A | N/A | N/A | No impl; no target |
+
+Legend: ✅ green · ⏳ pending (author work required) · 🟥 blocked/excluded · 🚫 requires partner agency · N/A not applicable
+
+**Reality at writing:** zero adapters have completed tier-1 or tier-2 evidence. All currently-`active` adapter registry entries sit above the UIAO_131 conformance gate threshold. That's drift — flagged below.
+
+## Canon invariants
+
+Every registered modernization adapter satisfies the four canon invariants, schema-enforced:
+
+- `gcc-boundary: gcc-moderate` *(Amazon Connect exception noted per-adapter)*
+- `ssot-mutation: never`
+- `certificate-anchored: true`
+- `object-identity-only: true`
+
+## Document registry
+
+Source: [`src/uiao/canon/document-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/document-registry.yaml).
+
+**Reserved ranges:**
+
+| Range | Purpose | Examples |
+|---|---|---|
+| `UIAO_001` | Single Source of Truth | `UIAO-SSOT.md` |
+| `UIAO_002–099` | Top-level canon documents | UIAO_002 SCuBA Spec, UIAO_003 Adapter Segmentation Overview, UIAO_004 Executive Orders |
+| `UIAO_100–199` | Subsystem specifications | UIAO_100 Compliance Orchestrator, UIAO_110 Drift Engine Spec, UIAO_121–124 Adapter-framework specs |
+| `UIAO_200–299` | Operational / runtime artifacts | UIAO_200 Substrate Manifest, UIAO_201 Workspace Contract |
+| `UIAO_900–999` | Test fixtures | — |
+
+**31 documents registered** (32 with UIAO_131). Of those, the implementation-reality map:
+
+| UIAO_NNN | Doc | Spec | Impl | Deployed | Real today? |
+|---|---|:-:|:-:|:-:|---|
+| UIAO_001 | [SSOT](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO-SSOT.md) | ✅ | n/a (doctrine) | referenced across substrate | ✅ |
+| UIAO_002 | [SCuBA Spec](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_002_SCuBA_Technical_Specification_v1.0.md) | ✅ | impl/ CLI exists | partial (no live run) | 🟡 partial |
+| UIAO_003 | [Adapter Segmentation](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md) | ✅ | registry enforces | 10 registered adapters | ✅ |
+| UIAO_004 | [Executive Orders](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/compliance/executive-orders.md) | ✅ | n/a (doctrine) | — | ✅ declared |
+| UIAO_100 | Compliance Orchestrator | ✅ | partial | — | ⚠️ aspirational |
+| UIAO_101 | Platform Overview | ✅ | partial | — | ⚠️ aspirational |
+| UIAO_102 | Platform Services Layer | ✅ | partial | — | ⚠️ aspirational |
+| UIAO_103 | Spec-Test Enforcement | ✅ | impl partial | pytest wired | 🟡 partial |
+| UIAO_104 | Test Harness & CI | ✅ | impl | CI running | ✅ |
+| UIAO_105 | Auditor API | ✅ | — | — | ⚠️ aspirational |
+| UIAO_106 | Compliance CLI | ✅ | impl | `uiao` CLI ships in v0.2.1 | ✅ |
+| UIAO_107 | Collector Interface | ✅ | partial | — | ⚠️ aspirational |
+| UIAO_108 | CQL | ✅ | — | — | ⚠️ aspirational |
+| UIAO_109 | Data Lake Model | ✅ | — | — | ⚠️ aspirational |
+| UIAO_110 | Drift Engine | ✅ | DRIFT-SCHEMA + DRIFT-PROVENANCE only | walker runs | 🟡 partial (2/5 classes) |
+| UIAO_111 | Enforcement Runtime | ✅ | — | — | ⚠️ aspirational |
+| UIAO_112 | Multi-Tenant Isolation | ✅ | — | — | ⚠️ aspirational |
+| UIAO_113 | Evidence Graph | ✅ | impl partial | schema only | 🟡 partial |
+| UIAO_114 | HA / Fault Tolerance | ✅ | — | — | ⚠️ aspirational |
+| UIAO_115 | Performance Engineering | ✅ | — | — | ⚠️ aspirational |
+| UIAO_116 | EPL | ✅ | — | — | ⚠️ aspirational |
+| UIAO_117 | Recovery Layer | ✅ | — | — | ⚠️ aspirational |
+| UIAO_118 | Release Engineering | ✅ | impl | release.yml signs v0.2.1 | ✅ |
+| UIAO_119 | Tenancy Strategy | ✅ | — | — | ⚠️ aspirational |
+| UIAO_120 | Zero-Trust Integration | ✅ | — | — | ⚠️ aspirational |
+| UIAO_121 | Adapter Conformance TP | ✅ (template) | — | 0 adapters filled | ⚠️ aspirational |
+| UIAO_122 | Adapter Developer Training | ✅ (subset of UIAO_125) | — | — | ⚠️ aspirational |
+| UIAO_123 | Adapter Integration TP | ✅ (template) | — | 0 adapters filled | ⚠️ aspirational |
+| UIAO_124 | Adapter Ops Runbook | ✅ | — | — | ⚠️ aspirational |
+| UIAO_125 | Training Program | ✅ | — | program not running | ⚠️ aspirational |
+| UIAO_126 | Test Plans Program | ✅ | — | catalog published, plans partial | 🟡 partial |
+| UIAO_127 | Project Plans Program | ✅ | — | no templates instantiated | ⚠️ aspirational |
+| UIAO_128 | Education Program | ✅ | — | 0 walkthroughs run | ⚠️ aspirational |
+| UIAO_129 | Application Identity Model | draft | — | — | ⚠️ draft only |
+| UIAO_130 | App Identity Onboarding Runbook | draft | — | — | ⚠️ draft only |
+| UIAO_131 | Adapter Test Strategy | ✅ | — | 0 adapters have any tier evidence | ⚠️ aspirational |
+| UIAO_200 | Substrate Manifest | ✅ | impl enforces | substrate walker uses daily | ✅ |
+| UIAO_201 | Workspace Contract | ✅ | impl enforces | `$UIAO_WORKSPACE_ROOT` in use | ✅ |
+
+### Summary
+
+- **✅ Real today:** 8 of 37 artifacts (UIAO_001, 003, 004, 104, 106, 118, 200, 201)
+- **🟡 Partially implemented:** 5 (UIAO_002, 103, 110, 113, 126)
+- **⚠️ Aspirational or draft:** 24
+
+That's the honest state. An aspirational banner is applied per ADR-030 §6 to pages describing ⚠️ and 🟡 artifacts.
+
+## CI enforcement stack
+
+Source: [`.github/workflows/`](https://github.com/WhalerMike/uiao/tree/main/.github/workflows).
+
+| Workflow | Status | Trigger |
+|---|---|---|
+| `schema-validation.yml` | **blocking** | Canon / schema PRs |
+| `pytest.yml` | **blocking** (substrate + full impl) | `impl/**` PRs |
+| `substrate-drift.yml` | **blocking** | Substrate / registry PRs |
+| `metadata-validator.yml` | **blocking** | Canon doc PRs |
+| `quarto.yml` | **blocking** render; deploy on main | `docs/**` PRs |
+| `ruff.yml` | **blocking** | `impl/**` PRs |
+| `link-check.yml` | soft-fail | Any Markdown/Quarto PR + weekly cron |
+| `release.yml` | tag-triggered | `v*.*.*` push → wheel + sdist + CycloneDX SBOM + sigstore signing |
+| `release-drafter.yml` | continuous | Every main push / PR label — maintains the draft release |
+
+**6 of 7 substantive workflows are blocking.** The seventh (link-check) remains soft-fail until the baseline is burned down.
+
+## Drift taxonomy
+
+Five classes defined in [`docs/docs/16_DriftDetectionStandard.qmd`](16_DriftDetectionStandard.qmd):
+
+| Class | Detected by | Severity max | Status |
+|---|---|---|---|
+| `DRIFT-SCHEMA` | `uiao substrate walk` | P1 | **implemented** |
+| `DRIFT-PROVENANCE` | `uiao substrate walk` | P1 | **implemented** |
+| `DRIFT-SEMANTIC` | runtime (freshness engine — partial) | P2 | partial |
+| `DRIFT-AUTHZ` | runtime (consent envelope) | P1 | pending |
+| `DRIFT-IDENTITY` | runtime (issuer resolution) | P1 | pending |
+
+Runtime classes have their home in `src/uiao/canon/specs/drift.md` (UIAO_110); implementation is tracked as future engineering work (see ADR-029 §Consequences).
+
+## Aspirational-content triage
+
+A grep-heuristic scan across all rendered `.qmd` and `.md` in `docs/` found **283 files with 692 matches** for aspirational-signal phrases (`not yet implemented | coming soon | TBD | TODO | placeholder | aspirational | proposed | draft | stub | to be defined | planned | roadmap | will be | future | intends to`).
+
+The scan is intentionally noisy — about 30–40% are false positives (session logs using "planned" in past-tense context, status dashboards naturally listing roadmaps, glossaries defining terms). Full triage report: [`inbox/drafts/aspirational-candidates.txt`](https://github.com/WhalerMike/uiao/blob/main/inbox/drafts/aspirational-candidates.txt) (when landed).
+
+**Mechanically flagged as aspirational** (via Lua filter + `aspirational: true` frontmatter — see PR #57):
+
+- All program pages (UIAO_125–128) and narrative companions — 9 pages
+- Series landings + book landing — 4 pages
+- All `PHASE5_*.qmd` files — 8 pages
+- All `customer-documents/adapter-validation-suites/*` — 13 pages
+- All `customer-documents/adapter-technical-specifications/*` — 7 pages
+- `docs/docs/canon/migration-plan.md`, `docs/docs/mvp-roadmap.qmd`
+
+**Total flagged ≈ 44 pages (~9% of the 504 rendered surfaces).** Selective flagging preserves signal — a banner on half the site is noise.
+
+The remaining 263 hits are under per-file review; not mass-flagged pending author judgment.
+
+## Optimization posture
+
+Cumulative from the consolidation (2026-04-17):
+
+- **History preserved:** 3,549 commits across the four predecessor repos
+- **Working-tree reduction:** ~290 MB (128.9 MB via pngquant, 160 MB of tracked build artifacts retired, 795 KB of junk text files removed)
+- **Dead code retired:** 38 Python files (~1,600 LOC) of ARC-5 scaffolding under `directory_migration/` + 3 stub duplicate provider adapters
+- **Quality burn-down:** 16 ruff errors fixed (gate flipped to blocking), 4 slug-style `document_id`s renumbered, 10 mechanical stale-ref fixes
+
+## How to verify any of this
+
+```bash
+# Validate schemas (canon YAML/JSON vs their JSON Schemas)
+make schemas
+
+# Walk the substrate (structural + provenance drift)
+make walk
+
+# Run substrate walker tests only (fast)
+make test-substrate
+
+# Render this page as part of the full site
+make docs
+```
+
+Every cell above is regenerable from the canonical artifacts. If this page disagrees with the live `src/uiao/canon/*.yaml`, **the canon wins** — this page is a derived view, not a source.
