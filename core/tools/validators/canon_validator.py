@@ -22,9 +22,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-SCHEMA_PATH = REPO_ROOT / "tools" / "schema" / "canon_schema.json"
-CANON_ROOT = REPO_ROOT / "canon"
+CORE_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = CORE_ROOT.parent
+SCHEMA_PATH = CORE_ROOT / "tools" / "schema" / "canon_schema.json"
+CANON_ROOT = REPO_ROOT / "src" / "uiao" / "canon"
 
 
 def _load_schema() -> dict[str, Any]:

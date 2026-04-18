@@ -23,7 +23,7 @@ To prevent Agent formatting conflicts, follow this order of precedence for **for
 * **Primary Repo**: uiao-core <https://github.com/WhalerMike/uiao-core>
 * **Document Compiler Repo**: uiao-docs <https://github.com/WhalerMike/uiao-docs>
 * **Validation Target**: uiao-validation-targets <https://github.com/WhalerMike/uiao-validation-targets>
-  + FastAPI mock service running at <http://localhost:8000> (or Docker)
+  + FastAPI mock service running at `http://localhost:8000` (or Docker)
   + Endpoints: /health, /ingest-evidence, /telemetry, /validation/fedramp-rev5-baseline
   + All evidence must use `prop:id` prefix and valid UUIDv4
 * **Single Source of Truth**: The YAML canon file in uiao-core
