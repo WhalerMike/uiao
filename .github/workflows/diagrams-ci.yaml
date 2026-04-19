@@ -1,0 +1,102 @@
+##
+## UIAO Diagram Pipeline CI — v2.1
+##
+## Validates, renders, injects, and (optionally) triggers Quarto rebuild
+## when diagram sources change.
+##
+## Location: .github/workflows/diagrams-ci.yaml  (GitHub Actions root)
+## Replaces: diagrams/.github/workflows/diagrams-ci.yaml (misplaced in v2.0)
+##
+## Boundary: GCC-Moderate · Classification: Controlled
+##
+
+name: Diagram Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'diagrams/sources/**'
+      - 'diagrams/registry/**'
+      - 'diagrams/governance/**'
+      - 'diagrams/scripts/**'
+  pull_request:
+    paths:
+      - 'diagrams/sources/**'
+      - 'diagrams/registry/**'
+      - 'diagrams/governance/**'
+      - 'diagrams/scripts/**'
+
+permissions:
+  contents: write
+
+jobs:
+
+  # ──────────────────────────────────────────────────────────
+  # Job 1: Validate (runs on every push and PR)
+  # ──────────────────────────────────────────────────────────
+  validate:
+    name: Validate Diagram Sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Run diagram validation
+        run: python diagrams/scripts/validate.py
+
+  # ──────────────────────────────────────────────────────────
+  # Job 2: Render + Inject (runs only on merge to main)
+  # ──────────────────────────────────────────────────────────
+  render:
+    name: Render & Inject Diagrams
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install pyyaml
+
+      - name: Install Mermaid CLI
+        run: |
+          npm install -g @mermaid-js/mermaid-cli
+          # Verify installation
+          mmdc --version
+
+      - name: Render diagrams (dual form factor)
+        run: python diagrams/scripts/render.py
+
+      - name: Inject diagram references into docs
+        run: python diagrams/scripts/inject.py --scope docs/
+
+      - name: Inject diagram references into canon
+        run: python diagrams/scripts/inject.py --scope canon/
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git diff --quiet && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit rendered diagrams and injected references
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add diagrams/rendered/
+          git add docs/ canon/
+          git commit -m "ci(diagrams): render SVGs and inject references [skip ci]"
+          git push
