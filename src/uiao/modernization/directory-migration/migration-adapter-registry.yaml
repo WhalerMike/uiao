@@ -1,0 +1,129 @@
+# Migration Adapter Registry
+# Separate from compliance adapters (modernization-registry.yaml)
+# These adapters govern AD infrastructure migration, not compliance scanning
+
+registry_type: directory-migration
+version: "1.0"
+created_at: "2026-04-19"
+owner: "Michael Stratton"
+
+adapters:
+  - adapter_id: ipam
+    document_id: DM_010
+    title: "IPAM Adapter Interface"
+    path: "adapters/ipam/ipam-adapter-interface.md"
+    priority: HIGH
+    risk_class: "Silent DNS/DHCP failure"
+    core_concepts: ["#1 SSOT", "#4 Deterministic Addressing"]
+    implementations:
+      - id: infoblox-nios-8x
+        vendor: InfoBlox
+        fedramp_authorized: true
+        federal_preferred: true
+      - id: bluecat-address-manager
+        vendor: BlueCat
+        fedramp_authorized: false
+      - id: generic-ipam
+        vendor: Any
+        fedramp_authorized: false
+
+  - adapter_id: pki
+    document_id: DM_020
+    title: "PKI / Certificate Services Adapter Interface"
+    path: "adapters/pki/pki-adapter-interface.md"
+    priority: CRITICAL
+    risk_class: "Silent auth failure weeks post-migration"
+    core_concepts: ["#5 Certificate-anchored overlay"]
+    implementations:
+      - id: adcs
+        vendor: Microsoft
+      - id: digicert
+        vendor: DigiCert
+      - id: entrust
+        vendor: Entrust
+      - id: entra-cba
+        vendor: Microsoft
+
+  - adapter_id: radius
+    document_id: DM_030
+    title: "RADIUS / NPS Adapter Interface"
+    path: "adapters/radius/radius-adapter-interface.md"
+    priority: CRITICAL
+    risk_class: "Network access failure pre-migration"
+    core_concepts: ["#3 Identity as root namespace", "#5 Certificate-anchored overlay"]
+    implementations:
+      - id: nps
+        vendor: Microsoft
+      - id: cisco-ise
+        vendor: Cisco
+      - id: aruba-clearpass
+        vendor: HPE/Aruba
+      - id: entra-radius
+        vendor: Microsoft
+
+  - adapter_id: ldap-proxy
+    document_id: DM_040
+    title: "LDAP Proxy / Application Authentication Adapter Interface"
+    path: "adapters/ldap-proxy/ldap-adapter-interface.md"
+    priority: CRITICAL
+    risk_class: "Largest hidden surface — silent app auth failure"
+    core_concepts: ["#3 Identity as root namespace"]
+    implementations:
+      - id: entra-domain-services
+        vendor: Microsoft
+      - id: generic-ldap-proxy
+        vendor: Any
+
+  - adapter_id: sync-engine
+    document_id: DM_050
+    title: "Sync Engine Adapter Interface"
+    path: "adapters/sync-engine/sync-adapter-interface.md"
+    priority: HIGH
+    risk_class: "Permanent AD dependency if lifecycle unmanaged"
+    core_concepts: ["#1 SSOT"]
+    implementations:
+      - id: entra-connect
+        vendor: Microsoft
+      - id: entra-cloud-sync
+        vendor: Microsoft
+
+  - adapter_id: device-management
+    document_id: DM_060
+    title: "Device Management Adapter Interface"
+    path: "adapters/device-management/device-adapter-interface.md"
+    priority: HIGH
+    risk_class: "Non-deterministic policy without clean groups"
+    core_concepts: ["#7 Embedded governance"]
+    implementations:
+      - id: sccm-intune
+        vendor: Microsoft
+      - id: intune-native
+        vendor: Microsoft
+
+  - adapter_id: ntp
+    document_id: DM_070
+    title: "NTP Adapter Interface"
+    path: "adapters/ntp/ntp-adapter-interface.md"
+    priority: MEDIUM
+    risk_class: "Kerberos clock skew failures"
+    core_concepts: ["#5 Certificate-anchored overlay"]
+
+  - adapter_id: dfs
+    document_id: DM_080
+    title: "DFS Adapter Interface"
+    path: "adapters/dfs/dfs-adapter-interface.md"
+    priority: MEDIUM
+    risk_class: "Silent UNC path failure"
+    core_concepts: ["#8 User experience first"]
+
+# Cross-reference to core canon
+core_canon_touchpoints:
+  - dm_adapter: sync-engine
+    core_doc: UIAO_110
+    relationship: "DM_050 uses UIAO_110 drift patterns for sync lifecycle"
+  - dm_adapter: ipam
+    core_doc: UIAO_001
+    relationship: "DM_010 implements SSOT for addressing (Core Concept #1)"
+  - dm_adapter: device-management
+    core_doc: UIAO_106
+    relationship: "DM_060 extends CLI for device migration validation"
