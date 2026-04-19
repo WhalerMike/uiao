@@ -6,6 +6,7 @@ Adapters are DNS-style alignment resolvers -- they do NOT perform
 heavy OSCAL/SBOM/SSP conversions. That work lives in generators/.
 """
 
+# InfobloxAdapter export verified 2026-04-19 (task 6/6, PR #98)
 from .cyberark_adapter import CyberArkAdapter
 from .database_base import DatabaseAdapterBase
 from .entra_adapter import EntraAdapter
