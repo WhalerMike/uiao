@@ -1,0 +1,98 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2563eb', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#1e40af', 'lineColor': '#6b7280', 'secondaryColor': '#f7f5f0', 'tertiaryColor': '#e5e7eb'}}}%%
+%% ---
+%% diagram_id: DIAG_080
+%% title: "UIAO Drift Detection Pipeline"
+%% version: "1.0"
+%% status: ACTIVE
+%% classification: Controlled
+%% owner: Michael Stratton
+%% source_format: mermaid
+%% document_category: data
+%% form_factors:
+%%   - full
+%%   - nano
+%% created_at: 2026-04-18
+%% updated_at: 2026-04-18
+%% boundary: GCC-Moderate
+%% description: "Five-class drift detection engine from state collection through classification, severity assignment, and remediation orchestration."
+%% tags:
+%%   - data
+%%   - drift
+%%   - detection
+%%   - remediation
+%%   - five-class
+%% related_documents:
+%%   - UIAO_110
+%%   - UIAO_100
+%% nano_config:
+%%   max_nodes: 12
+%%   collapse_groups:
+%%     - subgraph_collect
+%%     - subgraph_classify
+%%   label_mode: abbreviated
+%%   edge_simplification: true
+%%   hide_annotations: true
+%% ---
+
+graph TD
+    LIVE["Live Environment<br/>State Snapshot"]
+
+    subgraph subgraph_collect ["State Collection"]
+        SC_ADAPTER["Adapter<br/>Data Pull"]
+        SC_NORMALIZE["Normalize<br/>to Schema"]
+        SC_BASELINE["Load Canon<br/>Baseline"]
+        SC_ADAPTER --> SC_NORMALIZE
+        SC_NORMALIZE --> SC_BASELINE
+    end
+
+    subgraph subgraph_classify ["Drift Classification"]
+        DC_SCHEMA["DRIFT-SCHEMA<br/>Structure Mismatch"]
+        DC_SEMANTIC["DRIFT-SEMANTIC<br/>Value Deviation"]
+        DC_PROVENANCE["DRIFT-PROVENANCE<br/>Chain Break"]
+        DC_AUTHZ["DRIFT-AUTHZ<br/>Permission Drift"]
+        DC_IDENTITY["DRIFT-IDENTITY<br/>Identity Mismatch"]
+    end
+
+    subgraph subgraph_severity ["Severity Assignment"]
+        SV_P1["P1 Critical<br/>Immediate Action"]
+        SV_P2["P2 High<br/>24h SLA"]
+        SV_P3["P3 Medium<br/>Sprint SLA"]
+        SV_P4["P4 Low<br/>Backlog"]
+    end
+
+    subgraph subgraph_remediation ["Remediation"]
+        RM_PLAN["Remediation<br/>Plan Generated"]
+        RM_EXECUTE["Auto/Manual<br/>Execution"]
+        RM_VERIFY["Drift Re-Scan<br/>Verification"]
+        RM_CLOSE["Finding<br/>Closed"]
+        RM_PLAN --> RM_EXECUTE
+        RM_EXECUTE --> RM_VERIFY
+        RM_VERIFY --> RM_CLOSE
+    end
+
+    LIVE --> SC_ADAPTER
+    SC_BASELINE --> DC_SCHEMA
+    SC_BASELINE --> DC_SEMANTIC
+    SC_BASELINE --> DC_PROVENANCE
+    SC_BASELINE --> DC_AUTHZ
+    SC_BASELINE --> DC_IDENTITY
+
+    DC_SCHEMA --> SV_P1
+    DC_SEMANTIC --> SV_P2
+    DC_PROVENANCE --> SV_P2
+    DC_AUTHZ --> SV_P1
+    DC_IDENTITY --> SV_P1
+
+    SV_P1 --> RM_PLAN
+    SV_P2 --> RM_PLAN
+    SV_P3 --> RM_PLAN
+    SV_P4 --> RM_PLAN
+
+    RM_CLOSE --> RESOLVED["Drift<br/>Resolved"]
+    RM_VERIFY -->|"Still Drifted"| RM_PLAN
+
+    NOTE_5CLASS["Note: 5 drift classes x<br/>4 severity levels"]
+
+    style NOTE_5CLASS fill:#fffbeb,stroke:#f59e0b,stroke-width:1px
+    style LIVE fill:#2563eb,color:#ffffff,stroke:#1e40af
+    style RESOLVED fill:#059669,color:#ffffff,stroke:#047857
