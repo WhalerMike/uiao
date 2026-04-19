@@ -1,0 +1,77 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2563eb', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#1e40af', 'lineColor': '#6b7280', 'secondaryColor': '#f7f5f0', 'tertiaryColor': '#e5e7eb'}}}%%
+%% ---
+%% diagram_id: DIAG_061
+%% title: "UIAO Recovery Layer"
+%% version: "1.0"
+%% status: ACTIVE
+%% classification: Controlled
+%% owner: Michael Stratton
+%% source_format: mermaid
+%% document_category: operations
+%% form_factors:
+%%   - full
+%%   - nano
+%% created_at: 2026-04-18
+%% updated_at: 2026-04-18
+%% boundary: GCC-Moderate
+%% description: "Recovery pipeline from failure detection through active-passive failover, state reconciliation, and return to service."
+%% tags:
+%%   - operations
+%%   - recovery
+%%   - failover
+%%   - HA
+%% related_documents:
+%%   - UIAO_117
+%%   - UIAO_114
+%% nano_config:
+%%   max_nodes: 12
+%%   collapse_groups:
+%%     - subgraph_detection
+%%     - subgraph_failover
+%%   label_mode: abbreviated
+%%   edge_simplification: true
+%%   hide_annotations: true
+%% ---
+
+graph TD
+    FAILURE["Failure<br/>Detected"]
+
+    subgraph subgraph_detection ["Detection & Classification"]
+        DT_TYPE["Failure Type<br/>Classification"]
+        DT_SCOPE["Impact Scope<br/>Assessment"]
+        DT_NOTIFY["Stakeholder<br/>Notification"]
+        DT_TYPE --> DT_SCOPE
+        DT_SCOPE --> DT_NOTIFY
+    end
+
+    subgraph subgraph_failover ["Failover Execution"]
+        FO_PASSIVE["Activate<br/>Passive Node"]
+        FO_DNS["DNS/Routing<br/>Cutover"]
+        FO_VERIFY["Service<br/>Health Verify"]
+        FO_PASSIVE --> FO_DNS
+        FO_DNS --> FO_VERIFY
+    end
+
+    subgraph subgraph_reconcile ["State Reconciliation"]
+        RC_SYNC["Data<br/>Sync Check"]
+        RC_DRIFT["Drift<br/>Assessment"]
+        RC_REPAIR["State<br/>Repair"]
+        RC_VALIDATE["Consistency<br/>Validation"]
+        RC_SYNC --> RC_DRIFT
+        RC_DRIFT --> RC_REPAIR
+        RC_REPAIR --> RC_VALIDATE
+    end
+
+    FAILURE --> DT_TYPE
+    DT_NOTIFY --> FO_PASSIVE
+    FO_VERIFY --> RC_SYNC
+
+    RC_VALIDATE --> RESTORED["Service<br/>Restored"]
+
+    FO_VERIFY -->|"Health Fail"| DT_TYPE
+
+    NOTE_HA["Note: Active-passive replication<br/>per governance architecture"]
+
+    style NOTE_HA fill:#fffbeb,stroke:#f59e0b,stroke-width:1px
+    style FAILURE fill:#dc2626,color:#ffffff,stroke:#991b1b
+    style RESTORED fill:#059669,color:#ffffff,stroke:#047857

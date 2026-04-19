@@ -1,0 +1,78 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2563eb', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#1e40af', 'lineColor': '#6b7280', 'secondaryColor': '#f7f5f0', 'tertiaryColor': '#e5e7eb'}}}%%
+%% ---
+%% diagram_id: DIAG_060
+%% title: "UIAO Adapter Operations Runbook Flow"
+%% version: "1.0"
+%% status: ACTIVE
+%% classification: Controlled
+%% owner: Michael Stratton
+%% source_format: mermaid
+%% document_category: operations
+%% form_factors:
+%%   - full
+%%   - nano
+%% created_at: 2026-04-18
+%% updated_at: 2026-04-18
+%% boundary: GCC-Moderate
+%% description: "Operational lifecycle for deployed adapters: health monitoring, incident response, recovery, and performance tuning."
+%% tags:
+%%   - operations
+%%   - runbook
+%%   - adapter
+%%   - monitoring
+%% related_documents:
+%%   - UIAO_124
+%%   - UIAO_117
+%% nano_config:
+%%   max_nodes: 12
+%%   collapse_groups:
+%%     - subgraph_monitoring
+%%     - subgraph_incident
+%%   label_mode: abbreviated
+%%   edge_simplification: true
+%%   hide_annotations: true
+%% ---
+
+graph TD
+    DEPLOY["Adapter<br/>Deployed"]
+
+    subgraph subgraph_monitoring ["Health Monitoring"]
+        HM_HEARTBEAT["Heartbeat<br/>Check"]
+        HM_KSI["KSI Signal<br/>Collection"]
+        HM_PERF["Performance<br/>Metrics"]
+        HM_ALERT["Alert<br/>Threshold Check"]
+        HM_HEARTBEAT --> HM_KSI
+        HM_KSI --> HM_PERF
+        HM_PERF --> HM_ALERT
+    end
+
+    subgraph subgraph_incident ["Incident Response"]
+        IR_DETECT["Anomaly<br/>Detection"]
+        IR_TRIAGE["Severity<br/>Triage P1-P4"]
+        IR_ISOLATE["Fault<br/>Isolation"]
+        IR_RECOVER["Recovery<br/>Execution"]
+        IR_DETECT --> IR_TRIAGE
+        IR_TRIAGE --> IR_ISOLATE
+        IR_ISOLATE --> IR_RECOVER
+    end
+
+    subgraph subgraph_maintenance ["Maintenance"]
+        MT_UPDATE["Version<br/>Update"]
+        MT_CONFORM["Re-Conformance<br/>Test"]
+        MT_ROLLBACK["Rollback<br/>Procedure"]
+        MT_UPDATE --> MT_CONFORM
+        MT_CONFORM --> MT_ROLLBACK
+    end
+
+    DEPLOY --> HM_HEARTBEAT
+    HM_ALERT -->|"Threshold Exceeded"| IR_DETECT
+    HM_ALERT -->|"Healthy"| DEPLOY
+    IR_RECOVER --> MT_UPDATE
+
+    MT_CONFORM -->|"Pass"| DEPLOY
+    MT_ROLLBACK -->|"Fail"| IR_TRIAGE
+
+    NOTE_SLA["Note: P1 incidents require<br/>recovery within SLA window"]
+
+    style NOTE_SLA fill:#fffbeb,stroke:#f59e0b,stroke-width:1px
+    style DEPLOY fill:#2563eb,color:#ffffff,stroke:#1e40af
