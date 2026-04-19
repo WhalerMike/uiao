@@ -1,29 +1,116 @@
 ---
 title: "Modernization Canon"
-subtitle: "Microsoft-Driven Identity & Infrastructure Migration"
+subtitle: "Microsoft-Driven Identity & Infrastructure Migration Framework"
+date: 2026-04-19
 ---
 
-## What This Is
+::: {.callout-warning}
+## Aspirational — canonically declared, not yet fully adopted
 
-Federal agencies are frozen in 2003. Active Directory was not just an identity
-store — it was the implicit governance model for every network service in the
-enterprise. Microsoft is deprecating the entire Client/Server stack, but nobody
-gave agencies a framework for what decisions to make with the new tools.
+This section describes the UIAO Modernization Canon — a framework for governing the
+transition from legacy Active Directory infrastructure to modern Entra ID and M365.
+The specifications are authoritative and governed by the canon-change protocol; operational
+instantiation is under development. Track current adoption state on the
+[Substrate Status](../docs/substrate-status.html) page.
+:::
 
-This modernization canon is that framework.
+## The Problem
 
-## Two Domains, One Landing Zone
+Federal agencies — and most enterprises — are frozen in 2003.
 
-| Domain | Namespace | Focus |
-|--------|-----------|-------|
-| **Identity Modernization** | MOD_xxx | OrgPath hierarchy, dynamic groups, HR-driven lifecycle, x.500-to-flat mapping |
-| **Directory Migration** | DM_xxx | DNS, PKI, RADIUS, LDAP, devices, file services |
+Active Directory was never just an identity store. It was the *implicit governance model*
+for every network service in the enterprise: DNS, DHCP, PKI, RADIUS, LDAP authentication,
+GPO-based device policy, file services, and cross-domain trust relationships. When an
+administrator created an OU, they were not just organizing users — they were defining
+delegation boundaries, security policy scope, group policy inheritance, and operational
+accountability. The OU tree *was* the governance model.
 
-- [Identity Modernization (OrgTree)](orgtree.qmd)
-- [Directory Migration](directory-migration.qmd)
+Microsoft is now deprecating the entire Client/Server stack. Entra ID replaces Active
+Directory. Intune replaces Group Policy. Conditional Access replaces network-perimeter
+enforcement. But Microsoft gave agencies the *tools* — nobody gave them the *framework*
+for what decisions to make with those tools.
 
-### Canon Rule
+The result: agencies migrate users into Entra ID's flat directory and lose every governance
+relationship that the OU hierarchy encoded. Delegation boundaries vanish. Policy inheritance
+breaks. Group membership becomes a manual spreadsheet exercise. Security groups proliferate
+without governance. And the infrastructure services that depended on AD — DNS, PKI, RADIUS,
+LDAP — lose their governance anchor entirely.
 
-> uiao-gos is a universal enterprise product. It is NOT government-specific.
-> Federal compliance (FedRAMP, OSCAL, KSI) is one vertical adapter on top of
-> the universal core. Never frame the core engine as federal-only.
+## The Solution
+
+The UIAO Modernization Canon is that missing framework.
+
+It provides the complete, deterministic, drift-resistant architecture for governing the
+AD-to-Entra ID transition — not just user migration, but the full governance surface
+that Active Directory was silently holding together. Two complementary canons cover the
+entire migration surface:
+
+| Domain | Namespace | Scope | Documents |
+|--------|-----------|-------|-----------|
+| **Identity Modernization** | MOD_xxx | User hierarchy, OrgPath attributes, dynamic groups, AUs, HR-driven lifecycle, delegation, Conditional Access | 28 files (MOD_001 + A-Z) |
+| **Directory Migration** | DM_xxx | DNS, DHCP, PKI, RADIUS, LDAP, sync engines, device management, NTP, DFS | 15 files (DM_000-090) |
+
+Both canons share a universal design principle:
+
+::: {.callout-important}
+## Canon Rule
+uiao-gos is a universal enterprise product. It is NOT government-specific. Federal
+compliance (FedRAMP, OSCAL, KSI) is one vertical adapter on top of the universal core.
+Never frame the core engine as federal-only.
+:::
+
+## Architecture: The Four-Layer Governance Stack
+
+The OrgTree architecture is a four-layer governance stack. Each layer has a defined
+responsibility, explicit dependency relationships, and canonical artifacts.
+
+| Layer | Responsibility | Key Artifacts |
+|-------|---------------|---------------|
+| **Governance Layer** | Drift detection, enforcement testing, telemetry, SLA tracking, provenance | MOD_M (Drift Engine); MOD_L (SLA Heatmap); MOD_X (Telemetry) |
+| **Policy Layer** | RBAC, Conditional Access, lifecycle workflows, delegation | MOD_D (Delegation Matrix); MOD_K (Decision Trees); MOD_Q (Escalation) |
+| **Structure Layer** | OrgPath attributes, dynamic groups, Administrative Units | MOD_A (Codebook); MOD_B (Dynamic Groups); MOD_C (Attribute Mapping) |
+| **Identity Layer** | User accounts, group objects, service principals, extension attributes | MOD_001 (Executive Summary); MOD_F (Migration Runbook) |
+
+## Seven Governance Principles
+
+Every decision, artifact, and action within the Modernization Canon is governed by
+seven non-negotiable principles:
+
+1. **Deterministic State** — Every identity object has exactly one canonical state at any point in time. If two systems disagree, the Governance OS canonical state is authoritative.
+
+2. **Schema Fixity** — Schema is fixed; values are flexible. The structure of the OrgPath codebook, JSON schemas, and dynamic group rules is immutable once canonized. Only values within defined enumerations may change through governed workflows.
+
+3. **Provenance Traceability** — Every change to every governance artifact is attributable to a source: a human operator, an automation engine, or the governance engine itself. Unsigned, unattributed changes are drift by definition.
+
+4. **Drift Resistance** — The system detects, classifies, and remediates drift automatically. Drift categories: Schema, Value, Hierarchy, Orphan, or Phantom.
+
+5. **Boundary Enforcement** — No governance artifact may extend beyond the M365 GCC-Moderate SaaS boundary. Out-of-scope references are non-canonical and rejected at validation.
+
+6. **Two-Brain Execution** — Copilot governs (canonical review, policy enforcement, validation). Execution Substrate executes (PowerShell, Graph API, tenant provisioning). Governance logic and execution logic never co-mingle.
+
+7. **Tenant Agnosticism** — All artifacts are portable across any M365 GCC-Moderate tenant. No tenant-specific identifiers, UPNs, or GUIDs. All environment values are injected at deployment time.
+
+## Who This Is For
+
+| Audience | What They Get |
+|----------|--------------|
+| **Federal CISOs and CIOs** | A governed framework for AD retirement that does not create compliance gaps |
+| **IT Modernization Program Managers** | Step-by-step runbooks with deterministic outcomes, not "it depends" guidance |
+| **Identity Architects** | OrgPath codebook, dynamic group library, AU delegation matrix |
+| **Network and Infrastructure Engineers** | Adapter interfaces for every AD-dependent service |
+| **Compliance Officers** | Provenance-tracked, drift-resistant artifacts that satisfy FedRAMP continuous monitoring |
+| **Enterprise Architects (non-federal)** | Universal framework — federal compliance is a vertical adapter, not the core |
+
+## Navigation
+
+| Section | What is There |
+|---------|-------------|
+| [Identity Modernization (OrgTree)](orgtree.html) | The A-Z Suite: 28 canonical artifacts governing user hierarchy, dynamic groups, delegation, migration, drift detection, and operational governance |
+| [Directory Migration](directory-migration.html) | 8 adapter interfaces for every infrastructure service AD was holding together: IPAM, PKI, RADIUS, LDAP, sync engines, devices, NTP, DFS |
+
+## Source Files
+
+All canonical source files are maintained in the monorepo:
+
+- **Identity Modernization:** `src/uiao/modernization/orgtree/`
+- **Directory Migration:** `src/uiao/modernization/directory-migration/`
