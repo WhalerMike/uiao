@@ -1,0 +1,201 @@
+# Diagram Metadata Schema
+# Validates YAML frontmatter in all .mmd source files
+# Referenced by: DIAGRAM-GOVERNANCE.md (UIAO_DG_001)
+# Boundary: GCC-Moderate
+# Version: 2.0 — expanded with document_category and category ID ranges
+
+schema_version: "2.0"
+created_at: "2026-04-18"
+updated_at: "2026-04-18"
+
+required_fields:
+  diagram_id:
+    type: string
+    pattern: "^DIAG_\\d{3}$"
+    description: "Unique diagram identifier (DIAG_NNN format)"
+    example: "DIAG_001"
+
+  title:
+    type: string
+    min_length: 3
+    max_length: 120
+    description: "Human-readable diagram title"
+
+  version:
+    type: string
+    pattern: "^\\d+\\.\\d+$"
+    description: "Semantic version in Major.Minor format"
+    example: "1.0"
+
+  status:
+    type: string
+    enum:
+      - DRAFT
+      - ACTIVE
+      - DEPRECATED
+    description: "Lifecycle status of the diagram"
+
+  classification:
+    type: string
+    enum:
+      - Controlled
+    description: "Data classification — never FOUO"
+
+  owner:
+    type: string
+    description: "Responsible individual for this diagram"
+
+  document_category:
+    type: string
+    enum:
+      - training
+      - architecture
+      - testing
+      - planning
+      - governance
+      - identity
+      - operations
+      - enforcement
+      - data
+    description: "Canonical document category — must match source subdirectory"
+
+  source_format:
+    type: string
+    enum:
+      - mermaid
+    description: "SSOT source format"
+
+  form_factors:
+    type: array
+    items:
+      type: string
+      enum:
+        - full
+        - nano
+    min_items: 2
+    description: "Must include both full and nano form factors"
+
+  created_at:
+    type: string
+    format: date
+    description: "ISO 8601 creation date"
+
+  updated_at:
+    type: string
+    format: date
+    description: "ISO 8601 last-updated date"
+
+  boundary:
+    type: string
+    enum:
+      - GCC-Moderate
+    description: "Deployment boundary — GCC-Moderate only"
+
+optional_fields:
+  description:
+    type: string
+    max_length: 500
+    description: "Brief description of what the diagram depicts"
+
+  superseded_by:
+    type: string
+    pattern: "^DIAG_\\d{3}$"
+    description: "Pointer to replacement diagram (required when status is DEPRECATED)"
+
+  tags:
+    type: array
+    items:
+      type: string
+    description: "Searchable tags for diagram discovery"
+
+  related_documents:
+    type: array
+    items:
+      type: string
+      pattern: "^UIAO_\\d{3}$"
+    description: "UIAO document IDs this diagram supports"
+
+  nano_config:
+    type: object
+    description: "NanoBanana-specific rendering overrides"
+    properties:
+      max_nodes:
+        type: integer
+        description: "Maximum node count for nano form factor"
+      collapse_groups:
+        type: array
+        items:
+          type: string
+        description: "Subgraph IDs to collapse in nano rendering"
+      label_mode:
+        type: string
+        enum:
+          - full
+          - abbreviated
+          - icon_only
+        description: "Label rendering mode for nano output"
+      edge_simplification:
+        type: boolean
+        description: "Merge parallel edges in nano output"
+      hide_annotations:
+        type: boolean
+        description: "Remove annotation nodes in nano output"
+
+# ── Category-to-ID-Range Mapping ──────────────────────────────────────────
+# CI validates that diagram_id falls within the correct range for its category.
+
+category_id_ranges:
+  training:
+    min: 1
+    max: 9
+    directory: "sources/training/"
+  architecture:
+    min: 10
+    max: 19
+    directory: "sources/architecture/"
+  testing:
+    min: 20
+    max: 29
+    directory: "sources/testing/"
+  planning:
+    min: 30
+    max: 39
+    directory: "sources/planning/"
+  governance:
+    min: 40
+    max: 49
+    directory: "sources/governance/"
+  identity:
+    min: 50
+    max: 59
+    directory: "sources/identity/"
+  operations:
+    min: 60
+    max: 69
+    directory: "sources/operations/"
+  enforcement:
+    min: 70
+    max: 79
+    directory: "sources/enforcement/"
+  data:
+    min: 80
+    max: 89
+    directory: "sources/data/"
+
+validation_rules:
+  - rule: "superseded_by is required when status is DEPRECATED"
+    severity: error
+  - rule: "form_factors must contain both 'full' and 'nano'"
+    severity: error
+  - rule: "updated_at must be >= created_at"
+    severity: error
+  - rule: "classification must never be 'FOUO'"
+    severity: error
+  - rule: "boundary must be 'GCC-Moderate'"
+    severity: error
+  - rule: "diagram_id numeric part must fall within category_id_ranges for the declared document_category"
+    severity: error
+  - rule: "source file directory must match category_id_ranges[document_category].directory"
+    severity: error
+  - rule: "related_documents entries must exist in src/uiao/canon/document-registry.yaml"
+    severity: warning

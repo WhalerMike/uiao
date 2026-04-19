@@ -1,0 +1,79 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2563eb', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#1e40af', 'lineColor': '#6b7280', 'secondaryColor': '#f7f5f0', 'tertiaryColor': '#e5e7eb'}}}%%
+%% ---
+%% diagram_id: DIAG_050
+%% title: "UIAO Application Identity Model"
+%% version: "1.0"
+%% status: ACTIVE
+%% classification: Controlled
+%% owner: Michael Stratton
+%% source_format: mermaid
+%% document_category: identity
+%% form_factors:
+%%   - full
+%%   - nano
+%% created_at: 2026-04-18
+%% updated_at: 2026-04-18
+%% boundary: GCC-Moderate
+%% description: "Application identity lifecycle from registration through certificate anchoring, overlay binding, and continuous attestation."
+%% tags:
+%%   - identity
+%%   - application
+%%   - certificate
+%%   - overlay
+%% related_documents:
+%%   - UIAO_129
+%%   - UIAO_130
+%% nano_config:
+%%   max_nodes: 12
+%%   collapse_groups:
+%%     - subgraph_registration
+%%     - subgraph_attestation
+%%   label_mode: abbreviated
+%%   edge_simplification: true
+%%   hide_annotations: true
+%% ---
+
+graph TD
+    APP["Application<br/>Discovery"]
+
+    subgraph subgraph_registration ["Identity Registration"]
+        REG_DISCOVER["Application<br/>Enumeration"]
+        REG_CLASSIFY["Mission Class<br/>Assignment"]
+        REG_CERT["Certificate<br/>Anchoring"]
+        REG_BIND["Overlay<br/>Binding"]
+        REG_DISCOVER --> REG_CLASSIFY
+        REG_CLASSIFY --> REG_CERT
+        REG_CERT --> REG_BIND
+    end
+
+    subgraph subgraph_attestation ["Continuous Attestation"]
+        AT_COLLECT["KSI Signal<br/>Collection"]
+        AT_VERIFY["Certificate<br/>Validation"]
+        AT_DRIFT["Identity Drift<br/>Detection"]
+        AT_REPORT["Attestation<br/>Report"]
+        AT_COLLECT --> AT_VERIFY
+        AT_VERIFY --> AT_DRIFT
+        AT_DRIFT --> AT_REPORT
+    end
+
+    subgraph subgraph_lifecycle ["Lifecycle Management"]
+        LC_ROTATE["Certificate<br/>Rotation"]
+        LC_REVOKE["Revocation<br/>Processing"]
+        LC_AUDIT["Audit Trail<br/>& Evidence"]
+        LC_ROTATE --> LC_REVOKE
+        LC_REVOKE --> LC_AUDIT
+    end
+
+    APP --> REG_DISCOVER
+    REG_BIND --> AT_COLLECT
+    AT_REPORT --> LC_ROTATE
+
+    AT_DRIFT -->|"DRIFT-IDENTITY"| REG_CERT
+
+    LC_AUDIT --> GOVERNED["Identity<br/>Governed"]
+
+    NOTE_ZT["Note: Zero-trust model requires<br/>continuous identity verification"]
+
+    style NOTE_ZT fill:#fffbeb,stroke:#f59e0b,stroke-width:1px
+    style APP fill:#2563eb,color:#ffffff,stroke:#1e40af
+    style GOVERNED fill:#059669,color:#ffffff,stroke:#047857
