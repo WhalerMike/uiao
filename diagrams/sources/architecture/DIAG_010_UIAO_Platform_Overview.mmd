@@ -1,0 +1,80 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2563eb', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#1e40af', 'lineColor': '#6b7280', 'secondaryColor': '#f7f5f0', 'tertiaryColor': '#e5e7eb'}}}%%
+%% ---
+%% diagram_id: DIAG_010
+%% title: "UIAO Platform Overview"
+%% version: "1.0"
+%% status: ACTIVE
+%% classification: Controlled
+%% owner: Michael Stratton
+%% source_format: mermaid
+%% document_category: architecture
+%% form_factors:
+%%   - full
+%%   - nano
+%% created_at: 2026-04-18
+%% updated_at: 2026-04-18
+%% boundary: GCC-Moderate
+%% description: "Top-level platform architecture showing module topology, canon authority flow, and consumer relationships."
+%% tags:
+%%   - architecture
+%%   - platform
+%%   - topology
+%%   - overview
+%% related_documents:
+%%   - UIAO_101
+%%   - UIAO_100
+%%   - UIAO_102
+%% nano_config:
+%%   max_nodes: 12
+%%   collapse_groups:
+%%     - subgraph_canon_authority
+%%     - subgraph_consumers
+%%   label_mode: abbreviated
+%%   edge_simplification: true
+%%   hide_annotations: true
+%% ---
+
+graph TD
+    CANON["Canon Authority<br/>src/uiao/canon/"]
+
+    subgraph subgraph_canon_authority ["Canon Layer"]
+        CA_SSOT["SSOT<br/>UIAO_001"]
+        CA_SCHEMAS["Schemas<br/>JSON Schema"]
+        CA_REGISTRIES["Registries<br/>Document · Adapter"]
+        CA_ADR["ADR<br/>Decision Records"]
+        CA_SSOT --> CA_SCHEMAS
+        CA_SCHEMAS --> CA_REGISTRIES
+        CA_REGISTRIES --> CA_ADR
+    end
+
+    subgraph subgraph_consumers ["Consumer Layer"]
+        CON_CORE["core/<br/>Compliance & Tools"]
+        CON_DOCS["docs/<br/>Quarto Site"]
+        CON_IMPL["impl/<br/>Python Runtime"]
+        CON_CORE --- CON_DOCS
+        CON_DOCS --- CON_IMPL
+    end
+
+    subgraph subgraph_platform_svc ["Platform Services"]
+        PS_DRIFT["Drift Engine<br/>5 Classes"]
+        PS_EVIDENCE["Evidence<br/>Pipeline"]
+        PS_ENFORCE["Enforcement<br/>Runtime"]
+        PS_ORCHESTR["Compliance<br/>Orchestrator"]
+        PS_DRIFT --> PS_EVIDENCE
+        PS_EVIDENCE --> PS_ENFORCE
+        PS_ENFORCE --> PS_ORCHESTR
+    end
+
+    CANON --> CA_SSOT
+    CA_ADR --> CON_CORE
+    CA_ADR --> CON_DOCS
+    CA_ADR --> CON_IMPL
+    CON_IMPL --> PS_DRIFT
+
+    PS_ORCHESTR --> OUTPUT["OSCAL Output<br/>SAR · POA&M · SSP"]
+
+    NOTE_BOUNDARY["Note: All modules operate<br/>within GCC-Moderate boundary"]
+
+    style NOTE_BOUNDARY fill:#fffbeb,stroke:#f59e0b,stroke-width:1px
+    style CANON fill:#2563eb,color:#ffffff,stroke:#1e40af
+    style OUTPUT fill:#059669,color:#ffffff,stroke:#047857

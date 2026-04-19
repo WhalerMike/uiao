@@ -1,0 +1,79 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2563eb', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#1e40af', 'lineColor': '#6b7280', 'secondaryColor': '#f7f5f0', 'tertiaryColor': '#e5e7eb'}}}%%
+%% ---
+%% diagram_id: DIAG_021
+%% title: "UIAO Adapter Conformance Test Flow"
+%% version: "1.0"
+%% status: ACTIVE
+%% classification: Controlled
+%% owner: Michael Stratton
+%% source_format: mermaid
+%% document_category: testing
+%% form_factors:
+%%   - full
+%%   - nano
+%% created_at: 2026-04-18
+%% updated_at: 2026-04-18
+%% boundary: GCC-Moderate
+%% description: "Conformance test execution pipeline for individual adapters against the canonical test plan template."
+%% tags:
+%%   - testing
+%%   - conformance
+%%   - adapter
+%%   - test-plan
+%% related_documents:
+%%   - UIAO_121
+%%   - UIAO_131
+%% nano_config:
+%%   max_nodes: 12
+%%   collapse_groups:
+%%     - subgraph_setup
+%%     - subgraph_execution
+%%   label_mode: abbreviated
+%%   edge_simplification: true
+%%   hide_annotations: true
+%% ---
+
+graph TD
+    ADAPTER["Adapter Under<br/>Test"]
+
+    subgraph subgraph_setup ["Test Setup"]
+        TS_FIXTURE["Load Test<br/>Fixtures"]
+        TS_MOCK["Configure<br/>Mock Endpoints"]
+        TS_CANON["Load Canon<br/>Expected State"]
+        TS_FIXTURE --> TS_MOCK
+        TS_MOCK --> TS_CANON
+    end
+
+    subgraph subgraph_execution ["Test Execution"]
+        TX_READ["Read Operations<br/>Conformance"]
+        TX_WRITE["Write Operations<br/>Conformance"]
+        TX_DRIFT["Drift Detection<br/>Accuracy"]
+        TX_EVIDENCE["Evidence Format<br/>OSCAL Compliance"]
+        TX_READ --> TX_WRITE
+        TX_WRITE --> TX_DRIFT
+        TX_DRIFT --> TX_EVIDENCE
+    end
+
+    subgraph subgraph_validation ["Result Validation"]
+        VL_COMPARE["Expected vs<br/>Actual Compare"]
+        VL_COVERAGE["Coverage<br/>Threshold Check"]
+        VL_REPORT["Conformance<br/>Report Generation"]
+        VL_COMPARE --> VL_COVERAGE
+        VL_COVERAGE --> VL_REPORT
+    end
+
+    ADAPTER --> TS_FIXTURE
+    TS_CANON --> TX_READ
+    TX_EVIDENCE --> VL_COMPARE
+
+    VL_REPORT --> RESULT{"Pass<br/>Threshold?"}
+    RESULT -->|"Pass"| CERTIFIED["Adapter<br/>Conformance Certified"]
+    RESULT -->|"Fail"| REMEDIATE["Remediation<br/>Required"]
+    REMEDIATE --> ADAPTER
+
+    NOTE_THRESH["Note: Coverage threshold<br/>defined per adapter class"]
+
+    style NOTE_THRESH fill:#fffbeb,stroke:#f59e0b,stroke-width:1px
+    style ADAPTER fill:#2563eb,color:#ffffff,stroke:#1e40af
+    style CERTIFIED fill:#059669,color:#ffffff,stroke:#047857
+    style REMEDIATE fill:#dc2626,color:#ffffff,stroke:#991b1b
