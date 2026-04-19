@@ -135,5 +135,5 @@ def test_ksi_library_loads_163_entries_end_to_end(
     from uiao.impl.ir.mapping import ksi_to_ir
     importlib.reload(ksi_to_ir)
     lib = ksi_to_ir.load_ksi_library()
-    assert len(lib) >= 100, f"expected >=100 KSIs, got {len(lib)}"
+    assert len(lib) >= 163, f"expected >=163 KSIs, got {len(lib)}"
     assert "KSI-IA-01" in lib
