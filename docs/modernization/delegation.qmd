@@ -1,0 +1,119 @@
+---
+title: "Delegation Matrix"
+subtitle: "Administrative Units and Role-Based Access Control"
+date: 2026-04-19
+---
+
+::: {.callout-warning}
+## Aspirational — canonically declared, not yet fully adopted
+
+The Delegation Matrix specifications are canonical. Operational instantiation
+across production tenants is under development.
+:::
+
+## The Delegation Problem
+
+In Active Directory, delegation was implicit. Place a user in an OU, grant an admin
+group permissions on that OU, and delegation was done. The OU tree *was* the delegation
+model — every branch of the hierarchy defined a scope of management authority.
+
+Entra ID has no OUs. It has a flat directory where every user is at the same level. Without
+a replacement for OU-based delegation, organizations face two bad choices:
+
+1. **Over-delegate**: Give administrators tenant-wide permissions (Global Admin, User Admin)
+   because there is no scope boundary. This violates least-privilege and creates audit findings.
+
+2. **Under-delegate**: Lock down all administration to a tiny team, creating bottlenecks
+   where every password reset, group change, and user update requires a central IT ticket.
+
+Administrative Units (AUs) solve this — they create virtual scope boundaries within the
+flat directory. But AUs without a governance framework are just empty containers. The
+Delegation Matrix (MOD_D) provides the framework.
+
+## Three-Tier Model
+
+| Tier | Scope | Who | What They Can Do |
+|------|-------|-----|-----------------|
+| **Tier 1** | Enterprise | Security team, Compliance, Executives | Read-only visibility across all governed users |
+| **Tier 2** | Division | Division administrators | Full user lifecycle management within their division |
+| **Tier 3** | Department | Department helpdesk | Password resets and basic user support within their department |
+
+Each tier maps to an Administrative Unit whose membership rule mirrors the
+OrgPath hierarchy from MOD_A:
+
+- Tier 1: `AU-ORG-Enterprise` — `-startsWith "ORG"`
+- Tier 2: `AU-ORG-FIN` — `-startsWith "ORG-FIN"`
+- Tier 3: `AU-ORG-FIN-AP` — `-startsWith "ORG-FIN-AP"`
+
+## Administrative Unit Registry
+
+### Enterprise AU
+
+| AU | Rule | Restricted |
+|----|------|-----------|
+| `AU-ORG-Enterprise` | `(user.extensionAttribute1 -startsWith "ORG")` | Yes |
+
+### Division AUs
+
+| AU | Rule | Division | Restricted |
+|----|------|----------|-----------|
+| `AU-ORG-FIN` | `-startsWith "ORG-FIN"` | Finance | Yes |
+| `AU-ORG-HR` | `-startsWith "ORG-HR"` | Human Resources | Yes |
+| `AU-ORG-IT` | `-startsWith "ORG-IT"` | IT | Yes |
+| `AU-ORG-OPS` | `-startsWith "ORG-OPS"` | Operations | Yes |
+| `AU-ORG-LEG` | `-startsWith "ORG-LEG"` | Legal | Yes |
+| `AU-ORG-EXEC` | `-startsWith "ORG-EXEC"` | Executive | Yes |
+
+### Department AUs (Created on Demand)
+
+| AU | Rule | Department | Restricted |
+|----|------|-----------|-----------|
+| `AU-ORG-IT-SEC` | `-startsWith "ORG-IT-SEC"` | IT Security | Yes |
+| `AU-ORG-IT-INF` | `-startsWith "ORG-IT-INF"` | Infrastructure | Yes |
+| `AU-ORG-IT-DEV` | `-startsWith "ORG-IT-DEV"` | Development | Yes |
+| `AU-ORG-FIN-AP` | `-startsWith "ORG-FIN-AP"` | Accounts Payable | Yes |
+| `AU-ORG-FIN-BUD` | `-startsWith "ORG-FIN-BUD"` | Budget | Yes |
+
+## Role Assignment Matrix
+
+| Role | Assigned To | Scoped To | Tier |
+|------|-----------|----------|------|
+| Global Reader | `OrgTree-IT-SEC-Users` | `AU-ORG-Enterprise` | 1 |
+| Security Reader | `OrgTree-LEG-COM-Users` | `AU-ORG-Enterprise` | 1 |
+| Reports Reader | `OrgTree-EXEC-Users` | `AU-ORG-Enterprise` | 1 |
+| User Administrator | `OrgTree-FIN-Admins` | `AU-ORG-FIN` | 2 |
+| Groups Administrator | `OrgTree-FIN-Admins` | `AU-ORG-FIN` | 2 |
+| User Administrator | `OrgTree-HR-Admins` | `AU-ORG-HR` | 2 |
+| User Administrator | `OrgTree-IT-Admins` | `AU-ORG-IT` | 2 |
+| Helpdesk Administrator | `OrgTree-IT-SEC-Admins` | `AU-ORG-IT-SEC` | 3 |
+| Helpdesk Administrator | `OrgTree-FIN-AP-Admins` | `AU-ORG-FIN-AP` | 3 |
+| Password Administrator | `OrgTree-HR-REC-Admins` | `AU-ORG-HR-REC` | 3 |
+| Authentication Admin | `OrgTree-IT-SEC-IAM-Users` | `AU-ORG-Enterprise` | 1 |
+
+## Restricted Management
+
+**Every AU in this matrix is Restricted Management.** This is non-negotiable.
+
+Restricted Management means:
+
+- Global Administrators **cannot** manage AU members without explicit AU-scoped role assignment
+- Only users with roles scoped to the specific AU can manage objects within it
+- This **prevents privilege escalation** — even a Global Admin cannot bypass division-level delegation
+
+An unrestricted AU is classified as **CRITICAL drift** and triggers immediate remediation.
+
+## Drift Detection
+
+| Drift Type | Severity | Auto-Fix |
+|-----------|----------|----------|
+| AU Membership Drift — rule mismatch | HIGH | Yes |
+| Role Assignment Drift — unauthorized assignment | CRITICAL | No — investigate |
+| Unrestricted AU — missing Restricted flag | CRITICAL | Yes |
+| Orphaned AU — no role assignments | LOW | No — flag |
+| Missing AU — canonical entry with no tenant AU | HIGH | Yes |
+
+::: {.callout-tip}
+## Source
+Full canonical definitions with decision tree and PowerShell validation:
+`src/uiao/modernization/orgtree/MOD_D_Delegation_Matrix_AUs_Roles.md`
+:::
