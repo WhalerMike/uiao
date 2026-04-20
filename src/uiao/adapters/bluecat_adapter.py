@@ -18,9 +18,9 @@ Classification (per src/uiao/canon/modernization-registry.yaml):
 This adapter is intentionally lightweight and sits OUTSIDE the main data
 path. Its only job: create alignments (vendor-overlay + claim + evidence
 hash). It does NOT perform OSCAL JSON, SSP, POA&M, or SBOM conversions.
-Those happen downstream in src/uiao/impl/generators/.
+Those happen downstream in src/uiao/generators/.
 
-File: src/uiao/impl/adapters/bluecat_adapter.py
+File: src/uiao/adapters/bluecat_adapter.py
 """
 
 from __future__ import annotations
