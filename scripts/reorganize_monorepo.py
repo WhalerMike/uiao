@@ -190,7 +190,7 @@ CLI_PY = '''\
 """uiao CLI entry point (top-level).
 
 Thin bridge over the existing Typer app at `uiao.cli.app:app`.
-As adapters migrate from `uiao.*` into `uiao.*` directly, this
+As adapters migrate from `uiao.impl.*` into `uiao.*` directly, this
 file can absorb those commands.
 
 Today this enables:
