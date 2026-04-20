@@ -43,7 +43,7 @@ When a UIAO governance decision requires ARB involvement:
 
 ## Mission Channel Enforcement
 
-Per ADR-018, mission channels are designated integration pathways that carry mission-critical data and require elevated governance oversight. Changes to mission channel enforcement rules require ARB approval. Mission channel definitions are maintained in `uiao-core` and referenced in this documentation.
+Per ADR-018, mission channels are designated integration pathways that carry mission-critical data and require elevated governance oversight. Changes to mission channel enforcement rules require ARB approval. Mission channel definitions are maintained in `uiao` and referenced in this documentation.
 
 ## ARB Representation
 

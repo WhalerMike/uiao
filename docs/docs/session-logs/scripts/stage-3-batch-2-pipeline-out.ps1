@@ -1,10 +1,10 @@
-# Phase D — Stage 3 Batch 3.2: strip doc pipeline OUT of uiao-core
+# Phase D — Stage 3 Batch 3.2: strip doc pipeline OUT of uiao
 # Run AFTER stage-3-batch-1-pipeline-in.ps1 has pushed to uiao-docs.
 # This is the largest delete batch in Phase D (~170 MB).
 
 $ErrorActionPreference = 'Stop'
 
-Set-Location 'C:\Users\whale\uiao-core'
+Set-Location 'C:\Users\whale\uiao'
 
 Write-Host "--- Pre-flight ---" -ForegroundColor Cyan
 git status

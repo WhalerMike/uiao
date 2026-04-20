@@ -1,11 +1,11 @@
-# Phase D — Stage 2 Batch 2.1: canon content INTO uiao-core
-# Run from anywhere; script self-locates. Expects C:\Users\whale\uiao-core and C:\Users\whale\uiao-docs to exist side-by-side.
+# Phase D — Stage 2 Batch 2.1: canon content INTO uiao
+# Run from anywhere; script self-locates. Expects C:\Users\whale\uiao and C:\Users\whale\uiao-docs to exist side-by-side.
 
 $ErrorActionPreference = 'Stop'
 
-Set-Location 'C:\Users\whale\uiao-core'
+Set-Location 'C:\Users\whale\uiao'
 
-Write-Host "--- Pre-flight: uiao-core ---" -ForegroundColor Cyan
+Write-Host "--- Pre-flight: uiao ---" -ForegroundColor Cyan
 git status
 git pull --rebase origin main
 
@@ -14,7 +14,7 @@ Set-Location 'C:\Users\whale\uiao-docs'
 git status
 git pull --rebase origin main
 
-Set-Location 'C:\Users\whale\uiao-core'
+Set-Location 'C:\Users\whale\uiao'
 
 Write-Host "--- Creating canon/data target ---" -ForegroundColor Cyan
 New-Item -ItemType Directory -Force -Path 'canon\data' | Out-Null

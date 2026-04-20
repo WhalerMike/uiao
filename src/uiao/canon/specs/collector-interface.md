@@ -103,7 +103,7 @@ Binds evidence to an IR object and control.
 ## File Locations
 
 ```
-uiao-core/evidence/
+uiao/evidence/
   ├── collector-interface.md     (this file)
   ├── graph-schema.md            (evidence graph model)
   ├── collectors/

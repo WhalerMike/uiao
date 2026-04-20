@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Deterministic full-sync script for uiao-core.
+    Deterministic full-sync script for uiao.
 
 .DESCRIPTION
     Provides three governance-aligned sync modes:
@@ -41,7 +41,7 @@
 .NOTES
     Canonical UIAO-Core Sync Script
     Classification: Controlled
-    Repository: uiao-core
+    Repository: uiao
     Author: Michael Stratton
 #>
 
@@ -57,8 +57,8 @@ param(
 # =======================================================
 $ErrorActionPreference = 'Stop'
 
-$RepoPath     = "C:\Users\whale\uiao-core"
-$RepoUrl      = "https://github.com/WhalerMike/uiao-core.git"
+$RepoPath     = "C:\Users\whale\uiao"
+$RepoUrl      = "https://github.com/WhalerMike/uiao.git"
 $OriginBranch = "origin/main"
 $Branch       = "main"
 $StashLabel   = "uiao-auto-stash"

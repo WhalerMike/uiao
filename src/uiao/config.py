@@ -1,16 +1,14 @@
-"""UIAO Core configuration via Pydantic Settings.
+"""UIAO configuration via Pydantic Settings.
 
-All paths are configurable via UIAO_ prefixed environment variables
-or .env file. Defaults assume running from repo root.
+All paths are configurable via ``UIAO_`` prefixed environment variables or a
+``.env`` file. Defaults assume running from the repo root (or any directory
+where the installed ``uiao`` package is importable).
 
-Canonical artifacts (``generation-inputs/``, ``data/``, ``rules/``,
-``schemas/``, ``compliance/``) live in the ``core/`` module of the
-consolidated monorepo (since PR #1). :meth:`Settings.model_post_init`
-auto-discovers those directories so source modules that consume
-``settings.canon_dir`` / ``settings.data_dir`` / etc. resolve the
-correct canon location regardless of whether the caller ran from
-``<repo>/impl/`` (monorepo), ``uiao-impl/`` (pre-consolidation sibling
-checkout), or the old pre-split monorepo root.
+Canonical artifacts (``canon/``, ``rules/``, ``schemas/``, ``compliance/``)
+ship inside the package at ``src/uiao/``. :meth:`Settings.model_post_init`
+auto-discovers those directories so modules consuming ``settings.canon_dir``
+/ ``settings.data_dir`` / etc. resolve to the packaged location regardless
+of CWD.
 """
 
 from __future__ import annotations
@@ -28,33 +26,24 @@ def _resolve_canon_root() -> Optional[Path]:
     Order of precedence:
 
     1. ``UIAO_CANON_PATH`` environment variable.
-    2. Monorepo layout: ``../core`` sibling of CWD (post-consolidation;
-       primary expected path since the four-repo merge).
-    3. Pre-monorepo sibling checkout at ``../uiao-core`` (legacy).
-    4. ``None`` — caller falls back to CWD-relative defaults.
+    2. Packaged canon: the directory containing this module
+       (``src/uiao/``) — the primary path in the consolidated repo.
+    3. ``None`` — caller falls back to CWD-relative defaults.
     """
     env = os.environ.get("UIAO_CANON_PATH")
     if env:
         p = Path(env).expanduser().resolve()
         if p.exists():
             return p
-    # Post-reorg: canon + rules + schemas live under the installed uiao package.
     pkg_root = Path(__file__).resolve().parent
     if (pkg_root / "canon" / "data").is_dir() or (pkg_root / "rules").is_dir():
         return pkg_root
-    # Pre-reorg monorepo: ../core sibling of CWD.
-    monorepo_core = (Path.cwd().parent / "core").resolve()
-    if (monorepo_core / "data").is_dir():
-        return monorepo_core
-    sibling = (Path.cwd().parent / "uiao-core").resolve()
-    if sibling.exists():
-        return sibling
     return None
 
 
-# Fields that should be rerouted to the sibling ``uiao-core`` checkout
-# when their CWD-relative default does not exist locally but does exist
-# under the canon root.
+# Fields that are rerouted to the packaged canon root when their
+# CWD-relative default does not exist locally but does exist under
+# the canon root.
 _CANON_BACKED_FIELDS: tuple[str, ...] = (
     "canon_dir",
     "data_dir",
@@ -88,18 +77,14 @@ class Settings(BaseSettings):
     plantuml_jar: Optional[Path] = None
 
     def model_post_init(self, __context: object) -> None:  # noqa: D401
-        """Reroute canon-backed paths to sibling ``uiao-core`` when present.
+        """Reroute canon-backed paths to the packaged canon when present.
 
         A field is rerouted only when ALL of the following hold:
 
         * the current value is a relative ``Path`` (so an explicit absolute
           override via env var or .env is always honoured);
         * the default location does not exist under CWD;
-        * the sibling canon root contains a directory with the same name.
-
-        This keeps single-repo / pre-split workflows working unchanged while
-        letting post-split callers transparently reach canon in the sibling
-        ``uiao-core`` checkout.
+        * the packaged canon root contains a directory with the same name.
         """
         canon_root = _resolve_canon_root()
         if canon_root is None:

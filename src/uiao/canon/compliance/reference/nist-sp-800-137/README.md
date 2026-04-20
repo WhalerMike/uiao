@@ -12,11 +12,11 @@
 | Local copy | `NIST.SP.800-137.pdf` |
 | Upstream URL | https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-137.pdf |
 | License | U.S. Government work — public domain (17 U.S.C. § 105) |
-| Verified against source | pending — see `uiao-core/ARCHITECTURE.md` §16.9 for UNSURE markers requiring verification |
+| Verified against source | pending — see `uiao/ARCHITECTURE.md` §16.9 for UNSURE markers requiring verification |
 
 ## How UIAO uses this document
 
-This publication is the canonical authority for the UIAO Information Security Continuous Monitoring (ISCM) program, implemented via the Conformance Adapter class (see `uiao-core/ARCHITECTURE.md` §3.5 and §16).
+This publication is the canonical authority for the UIAO Information Security Continuous Monitoring (ISCM) program, implemented via the Conformance Adapter class (see `uiao/ARCHITECTURE.md` §3.5 and §16).
 
 Primary references into this document:
 
@@ -26,7 +26,7 @@ Primary references into this document:
 
 ## Update policy
 
-- **Monitoring cadence:** See `uiao-core/CONMON.md` §Reference Monitoring for the scheduled task pattern.
+- **Monitoring cadence:** See `uiao/CONMON.md` §Reference Monitoring for the scheduled task pattern.
 - **Replacement policy:** Superseding revisions (if NIST issues SP 800-137A, Rev 1, etc.) must be vetted by the `canon-steward` subagent, stored alongside this copy with a new subdirectory, and diffed against this revision before canon updates are accepted.
 - **Never delete:** Historical revisions are retained for audit traceability.
 

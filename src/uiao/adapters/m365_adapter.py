@@ -6,7 +6,7 @@ produce object-keyed canonical claims with KSI provenance. Covers
 Exchange Online, SharePoint Online, Teams, Defender for Office 365, and
 Purview workloads.
 
-Classification (per uiao-core/canon/modernization-registry.yaml):
+Classification (per uiao/canon/modernization-registry.yaml):
     class:         modernization
     mission-class: integration  (UIAO_003 s4.7, ratified ODA-15 2026-04-15)
     status:        active

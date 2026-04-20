@@ -21,12 +21,12 @@ The UIAO Compliance CLI provides a command-line interface for operators and main
 The CLI is a PowerShell module located at:
 
 ```
-uiao-core/cli/uiao-cli.ps1
+uiao/cli/uiao-cli.ps1
 ```
 
 Import and use:
 ```powershell
-Import-Module ./uiao-core/cli/uiao-cli.ps1
+Import-Module ./uiao/cli/uiao-cli.ps1
 ```
 
 ---
@@ -148,7 +148,7 @@ Checks: ScubaGear installation, PowerShell version, repo access, credential stat
 ## File Location
 
 ```
-uiao-core/cli/
+uiao/cli/
   ├── uiao-cli.md        (this file)
   └── uiao-cli.ps1       (implementation)
 ```

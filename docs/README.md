@@ -23,7 +23,7 @@ following Executive Orders:
 These orders drive UIAO's emphasis on Zero Trust architecture, federal
 cybersecurity modernization, FedRAMP / cloud transition, post-quantum
 cryptography, and continuous compliance. The canonical mapping between
-UIAO artifacts and EO provisions lives in [`uiao-core/canon/compliance/executive-orders.md`](https://github.com/WhalerMike/uiao-core/blob/main/canon/compliance/executive-orders.md)
+UIAO artifacts and EO provisions lives in [`uiao/canon/compliance/executive-orders.md`](https://github.com/WhalerMike/uiao/blob/main/canon/compliance/executive-orders.md)
 (UIAO_004). This repository is a **consumer** of that canon — do not
 back-fill EO citations into `uiao-docs` artifacts without a
 corresponding entry in UIAO_004.
@@ -49,8 +49,8 @@ The rendered site auto-deploys on every push to `main`.
 | Documentation canon (`.qmd`) | **This repo** |
 | YAML data schemas | **This repo** (`data/`) |
 | Rendered HTML site | [whalermike.github.io/uiao-docs](https://whalermike.github.io/uiao-docs/docs/index.html) (build artifact) |
-| OSCAL generation engine | [uiao-core](https://github.com/WhalerMike/uiao-core) |
-| Adapter framework | [uiao-core](https://github.com/WhalerMike/uiao-core) |
+| OSCAL generation engine | [uiao](https://github.com/WhalerMike/uiao) |
+| Adapter framework | [uiao](https://github.com/WhalerMike/uiao) |
 | Operational wiki | [Wiki](https://github.com/WhalerMike/uiao-docs/wiki) |
 
 See the [SSOT Policy](https://github.com/WhalerMike/uiao-docs/wiki/Repository-Ownership-and-SSOT-Policy) for the full ownership table and duplication rules.

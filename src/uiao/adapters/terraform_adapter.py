@@ -6,7 +6,7 @@ produce object-keyed canonical claims with KSI provenance.  Supports
 three-way drift detection (live system vs Terraform state vs HCL config)
 and controlled change-making actions against target environments.
 
-Classification (per uiao-core/canon/modernization-registry.yaml):
+Classification (per uiao/canon/modernization-registry.yaml):
     class:         modernization
     mission-class: integration  (UIAO_003 s4.7, ratified ODA-15 2026-04-15)
     status:        reserved     (-> active once tests pass and canon is bumped)

@@ -1,6 +1,6 @@
 # =============================================================================
 # stage-4-batch-5.1-workflow-reconciliation.ps1
-# Phase D Stage 5, Batch 5.1 — reconcile uiao-core GH Actions workflows to the
+# Phase D Stage 5, Batch 5.1 — reconcile uiao GH Actions workflows to the
 #                              post-split repo layout.
 # -----------------------------------------------------------------------------
 # What this does (single atomic commit, no push):
@@ -20,13 +20,13 @@
 #
 # Assumptions / prereqs:
 #   - Batch 4.4 landed (tools/*.py compile cleanly).
-#   - Working tree on uiao-core main is clean (or only CRLF noise we'll ignore).
+#   - Working tree on uiao main is clean (or only CRLF noise we'll ignore).
 #   - $env:PYTHONIOENCODING = 'utf-8' is set if you want clean Rich output.
 # =============================================================================
 
 $ErrorActionPreference = 'Stop'
 $RepoRoot = 'C:\Users\whale'
-$CoreDir  = Join-Path $RepoRoot 'uiao-core'
+$CoreDir  = Join-Path $RepoRoot 'uiao'
 
 function Write-Step($msg) { Write-Host "`n>>> $msg" -ForegroundColor Cyan }
 function Write-OK($msg)   { Write-Host "[OK]  $msg"  -ForegroundColor Green }
@@ -281,7 +281,7 @@ jobs:
     Write-Host '--- staged summary ---' -ForegroundColor Cyan
     git status --short
 
-    $msgFile = Join-Path $env:TEMP 'uiao-core-5-1-msg.txt'
+    $msgFile = Join-Path $env:TEMP 'uiao-5-1-msg.txt'
     @(
         '[UIAO-CORE] ENFORCE: workflow reconciliation — post-split cleanup',
         '',
@@ -303,7 +303,7 @@ jobs:
     Write-Host ''
     Write-OK 'Commit created locally. Review with: git show --stat HEAD'
     Write-Host 'Next step (manual):' -ForegroundColor Yellow
-    Write-Host '  git -C C:\Users\whale\uiao-core push origin main' -ForegroundColor Yellow
+    Write-Host '  git -C C:\Users\whale\uiao push origin main' -ForegroundColor Yellow
     Write-Host 'Then rerun the Batch 4.3 smoke test to confirm nothing regressed.' -ForegroundColor Yellow
 }
 finally {

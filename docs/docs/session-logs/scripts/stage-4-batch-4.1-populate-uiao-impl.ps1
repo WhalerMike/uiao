@@ -1,14 +1,14 @@
 # =============================================================================
-# stage-4-batch-4.1-populate-uiao-impl.ps1
-# Phase D Stage 4, Batch 4.1 — Populate uiao-impl from uiao-core
+# stage-4-batch-4.1-populate-uiao.ps1
+# Phase D Stage 4, Batch 4.1 — Populate uiao from uiao
 # -----------------------------------------------------------------------------
 # Prereqs:
-#   - Batch 4.0 already committed+pushed on uiao-impl.
-#   - uiao-core clone at C:\Users\whale\uiao-core is at HEAD 02af2e63 or later,
+#   - Batch 4.0 already committed+pushed on uiao.
+#   - uiao clone at C:\Users\whale\uiao is at HEAD 02af2e63 or later,
 #     working tree clean (verify with: git status).
 # What this does:
-#   - Copies Bucket A (Python app code) from uiao-core -> uiao-impl WITHOUT
-#     touching uiao-core's tree (Batch 4.2 will do the uiao-core deletions).
+#   - Copies Bucket A (Python app code) from uiao -> uiao WITHOUT
+#     touching uiao's tree (Batch 4.2 will do the uiao deletions).
 #   - Renames src/uiao_core/ -> src/uiao_impl/.
 #   - Sed-sweeps 'from uiao_core' / 'import uiao_core' -> uiao_impl across
 #     *.py and pyproject.toml.
@@ -21,8 +21,8 @@
 
 $ErrorActionPreference = 'Stop'
 $RepoRoot = 'C:\Users\whale'
-$CoreDir  = Join-Path $RepoRoot 'uiao-core'
-$ImplDir  = Join-Path $RepoRoot 'uiao-impl'
+$CoreDir  = Join-Path $RepoRoot 'uiao'
+$ImplDir  = Join-Path $RepoRoot 'uiao'
 
 function Write-Step($msg) { Write-Host "`n>>> $msg" -ForegroundColor Cyan }
 function Confirm-Or-Exit($prompt) {
@@ -32,13 +32,13 @@ function Confirm-Or-Exit($prompt) {
 
 # --- Preflight -----------------------------------------------------------------
 Write-Step 'Preflight checks'
-if (-not (Test-Path $CoreDir)) { throw "uiao-core not found at $CoreDir" }
-if (-not (Test-Path $ImplDir)) { throw "uiao-impl not found at $ImplDir — run Batch 4.0 first" }
+if (-not (Test-Path $CoreDir)) { throw "uiao not found at $CoreDir" }
+if (-not (Test-Path $ImplDir)) { throw "uiao not found at $ImplDir — run Batch 4.0 first" }
 
 Push-Location $CoreDir
 $coreStatus = git status --porcelain
 if ($coreStatus) {
-    Write-Host 'uiao-core has uncommitted changes — resolve before proceeding:' -ForegroundColor Red
+    Write-Host 'uiao has uncommitted changes — resolve before proceeding:' -ForegroundColor Red
     Write-Host $coreStatus
     Pop-Location
     exit 1
@@ -48,7 +48,7 @@ Pop-Location
 Push-Location $ImplDir
 $implStatus = git status --porcelain
 if ($implStatus) {
-    Write-Host 'uiao-impl has uncommitted changes — resolve before proceeding:' -ForegroundColor Red
+    Write-Host 'uiao has uncommitted changes — resolve before proceeding:' -ForegroundColor Red
     Write-Host $implStatus
     Pop-Location
     exit 1
@@ -57,8 +57,8 @@ Pop-Location
 
 Set-Location $ImplDir
 
-# --- 1. Copy Bucket A from uiao-core ------------------------------------------
-Write-Step 'Copying Bucket A (Python app code) from uiao-core'
+# --- 1. Copy Bucket A from uiao ------------------------------------------
+Write-Step 'Copying Bucket A (Python app code) from uiao'
 
 # 1a. Package source: src/uiao_core/ -> src/uiao_impl/
 # Remove the Batch 4.0 placeholder before copying
@@ -85,7 +85,7 @@ foreach ($f in @('inject_ssp.py', 'write_engine.py')) {
 $srcCov = Join-Path $CoreDir '.coveragerc'
 if (Test-Path $srcCov) { Copy-Item -Path $srcCov -Destination '.coveragerc' -Force }
 
-# 1e. pyproject.toml — carry over the full uiao-core version, then rename
+# 1e. pyproject.toml — carry over the full uiao version, then rename
 Copy-Item -Path (Join-Path $CoreDir 'pyproject.toml') -Destination 'pyproject.toml' -Force
 
 # 1f. Prune compiled + build artifacts that tag along
@@ -133,7 +133,7 @@ Write-Host "  rewrote uiao_core -> uiao_impl in $touched .py files"
 # pyproject.toml updates
 $py = Get-Content -Raw 'pyproject.toml'
 $py = $py `
-    -replace 'name\s*=\s*"uiao-core"',            'name = "uiao-impl"' `
+    -replace 'name\s*=\s*"uiao"',            'name = "uiao"' `
     -replace 'uiao_core\.cli\.app:app',           'uiao_impl.cli.app:app' `
     -replace '\buiao_core\b',                     'uiao_impl'
 Set-Content 'pyproject.toml' -Value $py -NoNewline:$false
@@ -173,11 +173,11 @@ Write-Host "Total changed paths: $totalChanges"
 Confirm-Or-Exit 'Stage all, commit as feat(split), and tag v0.1.0?'
 
 git add -A
-git commit -m "[UIAO-IMPL] CREATE: migrate app code from uiao-core; rename uiao_core -> uiao_impl"
-git tag -a v0.1.0 -m 'Initial uiao-impl release — migrated from uiao-core Phase D Stage 4'
+git commit -m "[UIAO-IMPL] CREATE: migrate app code from uiao; rename uiao_core -> uiao_impl"
+git tag -a v0.1.0 -m 'Initial uiao release — migrated from uiao Phase D Stage 4'
 
 Write-Step 'Batch 4.1 complete'
 Write-Host 'Push when ready:'                           -ForegroundColor Green
 Write-Host '  git push origin main'                     -ForegroundColor Green
 Write-Host '  git push origin v0.1.0'                   -ForegroundColor Green
-Write-Host 'Then proceed to Batch 4.2 (strip uiao-core).' -ForegroundColor Green
+Write-Host 'Then proceed to Batch 4.2 (strip uiao).' -ForegroundColor Green

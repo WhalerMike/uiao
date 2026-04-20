@@ -22,7 +22,7 @@ MUST be populated from this template.
 Every adapter registered in `canon/adapter-registry.yaml` or
 `canon/modernization-registry.yaml` must pass conformance testing
 against the 7 canonical responsibility domains defined in
-`DatabaseAdapterBase` (see `uiao-impl/src/uiao/impl/adapters/database_base.py`),
+`DatabaseAdapterBase` (see `uiao/src/uiao/impl/adapters/database_base.py`),
 plus any adapter-specific extension methods.
 
 Testing is structured in three tiers:
@@ -147,7 +147,7 @@ Status values: `PASS`, `FAIL`, `PENDING`, `N/A` (for stubs not yet implemented).
 ## 6. Automation
 
 The conformance criteria in §2–§4 are designed to be machine-verifiable.
-The existing `tests/test_<adapter>_adapter.py` files in `uiao-impl`
+The existing `tests/test_<adapter>_adapter.py` files in `uiao`
 implement most T1 criteria as pytest assertions. A future
 `tools/adapter_conformance_check.py` could run the full matrix and
 produce a JSON report suitable for the Evidence Fabric.

@@ -40,7 +40,7 @@ safely within the GCC-Moderate governance boundary.
 
 - Adapter code subclasses `DatabaseAdapterBase` (all 7 abstract methods)
 - Adapter registered in `__init__.py` `__all__` and `test_adapters.py` registry
-- Canon registry entry exists in `uiao-core/canon/{modernization,adapter}-registry.yaml`
+- Canon registry entry exists in `uiao/canon/{modernization,adapter}-registry.yaml`
 - At least one realistic fixture file in `tests/fixtures/`
 
 ---

@@ -232,7 +232,7 @@ def generate_stub(control_id: str) -> str:
     return f"""# NIST SP 800-53 Rev 5 - Control Narrative
 # Control ID : {control_id}
 # Title      : [TITLE REQUIRED]
-# Schema     : data/control-library (uiao-core canonical format)
+# Schema     : data/control-library (uiao canonical format)
 
 control_id: {control_id}
 title: "[TITLE REQUIRED]"

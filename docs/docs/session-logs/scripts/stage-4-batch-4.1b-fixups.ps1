@@ -1,6 +1,6 @@
 # =============================================================================
 # stage-4-batch-4.1b-fixups.ps1
-# Phase D Stage 4, Batch 4.1b — Post-populate fix-ups for uiao-impl
+# Phase D Stage 4, Batch 4.1b — Post-populate fix-ups for uiao
 # -----------------------------------------------------------------------------
 # Fixes three issues surfaced by the Batch 4.1 pytest run:
 #   1. Git merge-conflict markers in src/uiao_impl/generators/ssp_inject.py.
@@ -11,12 +11,12 @@
 # Runs pytest again to verify.
 # STOPS before push.
 # -----------------------------------------------------------------------------
-# PRECONDITION: Batch 4.1 has committed locally on uiao-impl/main, v0.1.0 tagged,
+# PRECONDITION: Batch 4.1 has committed locally on uiao/main, v0.1.0 tagged,
 # NOTHING pushed yet.
 # =============================================================================
 
 $ErrorActionPreference = 'Stop'
-$ImplDir = 'C:\Users\whale\uiao-impl'
+$ImplDir = 'C:\Users\whale\uiao'
 
 function Write-Step($msg) { Write-Host "`n>>> $msg" -ForegroundColor Cyan }
 function Confirm-Or-Exit($prompt) {
@@ -161,7 +161,7 @@ git commit --amend --no-edit
 
 # Retag — delete old tag (local) and recreate on amended commit
 git tag -d v0.1.0 2>$null
-git tag -a v0.1.0 -m 'Initial uiao-impl release — migrated from uiao-core Phase D Stage 4 (amended: conflict-fix + broad rename + scripts pkg + version align)'
+git tag -a v0.1.0 -m 'Initial uiao release — migrated from uiao Phase D Stage 4 (amended: conflict-fix + broad rename + scripts pkg + version align)'
 
 Write-Step 'Batch 4.1b complete'
 Write-Host "HEAD is now: $(git log --oneline -1)" -ForegroundColor Green
@@ -176,4 +176,4 @@ if ($script:NeedsForcePush) {
     Write-Host '  git push -u origin main'             -ForegroundColor Green
     Write-Host '  git push origin v0.1.0'              -ForegroundColor Green
 }
-Write-Host 'Then proceed to Batch 4.2 (strip uiao-core).' -ForegroundColor Green
+Write-Host 'Then proceed to Batch 4.2 (strip uiao).' -ForegroundColor Green

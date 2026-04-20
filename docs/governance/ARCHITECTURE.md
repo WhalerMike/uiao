@@ -48,16 +48,16 @@ Commercial-variant adapters (e.g. `bluecat-address-manager`, not FedRAMP-authori
 
 ## 3. Canon registry mechanism
 
-Every piece of canon that `uiao-docs` must mirror is declared in a machine-readable manifest in `uiao-core`. Nothing downstream ever hardcodes an adapter name or domain identifier — all structure is derived from the registry.
+Every piece of canon that `uiao-docs` must mirror is declared in a machine-readable manifest in `uiao`. Nothing downstream ever hardcodes an adapter name or domain identifier — all structure is derived from the registry.
 
 ### 3.1 Registry files
 
 ```
-uiao-core/canon/
+uiao/canon/
 ├── adapter-registry.yaml         # canonical conformance adapters (class=conformance)
 └── modernization-registry.yaml   # canonical modernization adapters (class=modernization)
 
-uiao-core/schemas/adapter-registry/
+uiao/schemas/adapter-registry/
 └── adapter-registry.schema.json  # JSON Schema (draft-07) for both manifests
 ```
 
@@ -161,7 +161,7 @@ Additional slots (malware detection, network monitoring, asset inventory, licens
 
 ### 4.1 Layer 1 — Real-time push (`repository_dispatch`)
 
-On merge to `uiao-core` main branch that modifies either registry manifest, workflow `canon-sync-dispatch.yml` fires a `repository_dispatch` event of type `canon-updated` to `uiao-docs` with the diff payload. `uiao-docs` workflow `canon-sync-receive.yml` consumes the event, runs `tools/sync_canon.py`, and opens a labeled PR (`canon-sync`) with scaffolded additions and drift annotations.
+On merge to `uiao` main branch that modifies either registry manifest, workflow `canon-sync-dispatch.yml` fires a `repository_dispatch` event of type `canon-updated` to `uiao-docs` with the diff payload. `uiao-docs` workflow `canon-sync-receive.yml` consumes the event, runs `tools/sync_canon.py`, and opens a labeled PR (`canon-sync`) with scaffolded additions and drift annotations.
 
 **Propagation SLO:** under 5 minutes from canon merge to pending `uiao-docs` PR.
 
@@ -177,7 +177,7 @@ Report posts as commit status and opens a tracking issue if non-zero.
 
 ### 4.3 Layer 3 — PR-gate drift check
 
-CI check `drift-scan` runs on every PR to `uiao-docs`. Executes `sync_canon.py --check-only` and fails the build if the PR leaves `uiao-docs` out of sync with the current `uiao-core` canon. This is the enforcement gate that makes drift unmergeable.
+CI check `drift-scan` runs on every PR to `uiao-docs`. Executes `sync_canon.py --check-only` and fails the build if the PR leaves `uiao-docs` out of sync with the current `uiao` canon. This is the enforcement gate that makes drift unmergeable.
 
 ## 5. Customer documentation tree
 
@@ -226,7 +226,7 @@ Every `.qmd` carries:
 artifact-id: <family>-<slug>
 version: 0.1.0
 status: draft                    # draft | review | locked
-provenance: uiao-core/canon/<source>.md
+provenance: uiao/canon/<source>.md
 cloud-boundary: gcc-moderate
 images:
   regeneration-policy: auto-on-hash-change
@@ -324,7 +324,7 @@ customer-documents/**/*.webp filter=lfs diff=lfs merge=lfs -text
 
 | Workflow | Repo | Trigger | Purpose |
 |---|---|---|---|
-| `canon-sync-dispatch.yml` | uiao-core | merge to main touching `canon/*-registry.yaml` | Fire `repository_dispatch` to uiao-docs |
+| `canon-sync-dispatch.yml` | uiao | merge to main touching `canon/*-registry.yaml` | Fire `repository_dispatch` to uiao-docs |
 | `canon-sync-receive.yml` | uiao-docs | `repository_dispatch: canon-updated` | Run `sync_canon.py`, open PR |
 | `drift-scan-nightly.yml` | uiao-docs | schedule (daily) | Compare tree vs. manifests, report drift |
 | `drift-scan-pr.yml` | uiao-docs | PR | Block merge on drift |
@@ -332,11 +332,11 @@ customer-documents/**/*.webp filter=lfs diff=lfs merge=lfs -text
 | `master-prompts-sync.yml` | uiao-docs | merge to main | Rebuild `MASTER-IMAGE-PROMPTS.md` |
 | `quarto-build.yml` | uiao-docs | merge to main, release tag | Render site, publish to GitHub Pages |
 | `lfs-budget-check.yml` | uiao-docs | PR, weekly schedule | Report LFS quota consumption |
-| `conformance-run.yml` | uiao-core | `repository_dispatch: modernization-completed`, manual | Execute named conformance adapter (e.g. ScubaGear) against target tenant; commit findings to `evidence/conformance/<adapter>/<run-id>/` |
-| `conmon-scheduled.yml` | uiao-core | schedule (monthly, 1st at 0200 UTC) | Fan-out all `class: conformance, status: active` adapters; aggregate outputs |
-| `conmon-aggregate.yml` | uiao-core | after `conformance-run.yml` or `conmon-scheduled.yml` | Roll findings into POA&M CSV + dashboard JSON; open tracking issues on regressions |
+| `conformance-run.yml` | uiao | `repository_dispatch: modernization-completed`, manual | Execute named conformance adapter (e.g. ScubaGear) against target tenant; commit findings to `evidence/conformance/<adapter>/<run-id>/` |
+| `conmon-scheduled.yml` | uiao | schedule (monthly, 1st at 0200 UTC) | Fan-out all `class: conformance, status: active` adapters; aggregate outputs |
+| `conmon-aggregate.yml` | uiao | after `conformance-run.yml` or `conmon-scheduled.yml` | Roll findings into POA&M CSV + dashboard JSON; open tracking issues on regressions |
 
-Secrets required in `uiao-docs` Actions: `GEMINI_API_KEY`. Secrets required in `uiao-core` Actions: `CANON_DISPATCH_TOKEN` (fine-grained PAT with contents:write and metadata:read scope on `uiao-docs`) for cross-repo `repository_dispatch`; `SCUBAGEAR_TENANT_APP_ID` + `SCUBAGEAR_TENANT_APP_SECRET` (service principal with read-only Graph scopes) for `conformance-run.yml`. See §16.6 for secret handling and §16.8 for runner strategy.
+Secrets required in `uiao-docs` Actions: `GEMINI_API_KEY`. Secrets required in `uiao` Actions: `CANON_DISPATCH_TOKEN` (fine-grained PAT with contents:write and metadata:read scope on `uiao-docs`) for cross-repo `repository_dispatch`; `SCUBAGEAR_TENANT_APP_ID` + `SCUBAGEAR_TENANT_APP_SECRET` (service principal with read-only Graph scopes) for `conformance-run.yml`. See §16.6 for secret handling and §16.8 for runner strategy.
 
 ## 10. GitHub plan posture — revised for FedRAMP context
 
@@ -440,11 +440,11 @@ For a static Quarto site, the production server does not need Git running at all
 | 2026-04-14 | 0.4.0 | Source verification pass. Two authority PDFs placed at `compliance/reference/nist-sp-800-137/` and `compliance/reference/fedramp-conmon-playbook/` with provenance READMEs and SHA-256 checksums. §15.2 corrected to canonical 11 security automation domains (added Incident Management; corrected IAM placement). §16.2 lifecycle citations added verbatim from 800-137 §§3.1–3.6. §16.3 cadence table rebuilt against Playbook v1.0 (2025-11-17) with control citations (CA-5, CM-8, RA-5, SI-2, CM-3, CM-4, CA-2). §16.9 updated with verified/UNSURE split and five newly-surfaced requirements from verified Playbook read | Claude (Cowork) |
 | 2026-04-14 | 0.5.0 | **Step 0a — Adapter registries landed.** Dual-axis taxonomy established in §3.2: every adapter declares both `class` (operational: modernization\|conformance) and `mission-class` (doctrinal: identity\|telemetry\|policy\|enforcement\|unmapped\|mixed). Schema `schemas/adapter-registry/adapter-registry.schema.json` created (draft-07, conditional requirements for deprecated/mixed/unmapped). Seeded registries: `canon/modernization-registry.yaml` (5 adapters: entra-id, m365, service-now, palo-alto, scuba — all `unmapped` pending ODA-15); `canon/adapter-registry.yaml` (4 conformance adapters: scubagear active/policy, vuln-scan reserved/telemetry, stig-compliance reserved/policy, patch-state reserved/telemetry). Open decision ODA-15 added to §13 for modernization mission-class gap. Both registries validate clean against the schema | Claude (Cowork) |
 | 2026-04-15 | 0.6.0 | **ODA-15 resolved (Option a) — `integration` mission-class added.** Fifth canonical doctrinal class `integration` introduced in UIAO_003 §4.7 covering change-making actions against a target environment. Schema `mission-class` enum extended to six values (`identity\|telemetry\|policy\|enforcement\|integration\|unmapped\|mixed`). All five seeded modernization adapters migrated from `mission-class: unmapped` → `mission-class: integration` in `canon/modernization-registry.yaml`, with per-adapter rationale notes updated. §3.2 dual-axis explanation refreshed to reflect five canonical doctrinal values. §13 ODA-15 row marked RESOLVED. Dual-axis taxonomy ratified; UIAO_003 §4.2–§4.7 ready for promotion from NEW (Proposed) to canonical pending Master Document review | Claude (Cowork) |
-| 2026-04-16 | 0.7.0 | **Terraform / OpenTofu adapter reserved.** New modernization-registry entry `terraform` added at `status: reserved`, `mission-class: integration` (first adopter of the newly-ratified class beyond the original five). Canon-level slot reservation only; implementation lands separately in `uiao-impl` per the canon-consumer rule. Scope: Terraform/OpenTofu state, plans, HCL configuration; three-way drift detection (live ↔ state ↔ HCL); KSI-anchored evidence bundles per run. Status transitions `reserved` → `active` once `src/uiao/impl/adapters/terraform_adapter.py` ships with test coverage | Claude (Cowork) |
-| 2026-04-16 | 0.8.0 | **Terraform adapter activated.** Registry entry `terraform` flipped from `status: reserved` → `active`, `phase: phase-planning` → `phase-1` after `TerraformAdapter(DatabaseAdapterBase)` shipped in `uiao-impl` (WhalerMike/uiao-impl#8, commit 3635110). All 7 canonical adapter domains implemented with scaffold bodies; 5 Terraform-specific extension methods (stubs pending `python-hcl2` integration). 37 new tests, all passing | Claude (Cowork) |
+| 2026-04-16 | 0.7.0 | **Terraform / OpenTofu adapter reserved.** New modernization-registry entry `terraform` added at `status: reserved`, `mission-class: integration` (first adopter of the newly-ratified class beyond the original five). Canon-level slot reservation only; implementation lands separately in `uiao` per the canon-consumer rule. Scope: Terraform/OpenTofu state, plans, HCL configuration; three-way drift detection (live ↔ state ↔ HCL); KSI-anchored evidence bundles per run. Status transitions `reserved` → `active` once `src/uiao/impl/adapters/terraform_adapter.py` ships with test coverage | Claude (Cowork) |
+| 2026-04-16 | 0.8.0 | **Terraform adapter activated.** Registry entry `terraform` flipped from `status: reserved` → `active`, `phase: phase-planning` → `phase-1` after `TerraformAdapter(DatabaseAdapterBase)` shipped in `uiao` (WhalerMike/uiao#8, commit 3635110). All 7 canonical adapter domains implemented with scaffold bodies; 5 Terraform-specific extension methods (stubs pending `python-hcl2` integration). 37 new tests, all passing | Claude (Cowork) |
 | 2026-04-16 | 0.9.0 | **UIAO_003 promotion pass.** Evidence-based ratification of 12 markers across UIAO_003 §4.2–§4.7: all five role statements promoted from NEW (Proposed) to ratified (citing operational adapter registry entries, schema invariants, and ODA-15); all canonical-constraints blocks ratified (schema-enforced); §4.4 MISSING frameworks resolved (NIST SP 800-53 Rev 5, FedRAMP Moderate, CISA SCuBA); §4.5 MISSING artifact types resolved (OSCAL SSP, POA\&M, SAR); §4.7 UNSURE on "Integration" name closed (ODA-15 owner decision); §6 UNSURE drift cadence resolved (CONMON.md §6.3). §4.6 Cross-Adapter Truth Flow ratified (SSOT.md + schema). Remaining: §5.6 sequence stays NEW (Proposed); §4.3 "Telemetry" name UNSURE pending Master Doc. Appendix B IMAGE icons and Appendix D references updated | Claude (Cowork) |
 | 2026-04-17 | 1.0.0 | **Monorepo consolidation + `uiao-gos` integration (ADR-028).** Four repositories merged into the consolidated `WhalerMike/uiao` monorepo (PR #1, 3,549 commits with history preserved). `gos/` dissolved; its Python code relocated to `impl/src/uiao/impl/directory_migration/` (PR #3); its two IPAM adapters (`bluecat-address-manager`, `infoblox`) registered in `core/canon/modernization-registry.yaml`. Substrate manifest (`core/canon/substrate-manifest.yaml`, UIAO_200) and schema (`core/schemas/substrate-manifest/substrate-manifest.schema.json`) landed (PR #4). This document (§2, §9, §13, §17) updated to retire the federal/commercial firewall (ADR-025 §D7 superseded). `firewall-check.yml` workflow row removed from §9. Status: `NEW (Proposed)` → `Current`. | Claude (Cowork) |
-| 2026-04-16 | 1.0.0 | **v1.0 — Adapter ecosystem complete.** 16 adapters registered (9 modernization + 7 conformance); 15 implemented with zero stubs; 420/420 conformance CI-gated. OSCAL trifecta proven end-to-end: SAR (18 tests) + POA\&M (11 tests) + SSP (8 tests) = 37 pipeline tests. Governance loop closed: drift → POA\&M → ServiceNow remediation tickets → resolution tracking (9 tests). 4 real parser modules (terraform, m365, paloalto, vulnscan) with 80+ behavioral tests against 15 fixture files. Phase D repo-split complete (ADRs + canonical-rules → uiao-core; deploy.yml → uiao-docs). All 13 adapter ATS + AVS docs authored with conformance matrices. Quarto site builds clean (150 pages, zero warnings). Canonical specs delivered: Conformance Test Plan, Integration Test Plan, Developer Training Program, Operations Runbook. Phase 4 acceptance test infrastructure deployed (auto-skip without credentials, auto-run when secrets are set). 50+ PRs merged across 3 repos in single session | Claude (Cowork) |
+| 2026-04-16 | 1.0.0 | **v1.0 — Adapter ecosystem complete.** 16 adapters registered (9 modernization + 7 conformance); 15 implemented with zero stubs; 420/420 conformance CI-gated. OSCAL trifecta proven end-to-end: SAR (18 tests) + POA\&M (11 tests) + SSP (8 tests) = 37 pipeline tests. Governance loop closed: drift → POA\&M → ServiceNow remediation tickets → resolution tracking (9 tests). 4 real parser modules (terraform, m365, paloalto, vulnscan) with 80+ behavioral tests against 15 fixture files. Phase D repo-split complete (ADRs + canonical-rules → uiao; deploy.yml → uiao-docs). All 13 adapter ATS + AVS docs authored with conformance matrices. Quarto site builds clean (150 pages, zero warnings). Canonical specs delivered: Conformance Test Plan, Integration Test Plan, Developer Training Program, Operations Runbook. Phase 4 acceptance test infrastructure deployed (auto-skip without credentials, auto-run when secrets are set). 50+ PRs merged across 3 repos in single session | Claude (Cowork) |
 
 ## 15. Federal compliance mapping
 
@@ -496,7 +496,7 @@ NIST SP 800-137 Appendix D, §D.1 (September 2011), page D-3, enumerates **eleve
 
 ### 16.1 Purpose
 
-Establish and operate an Information Security Continuous Monitoring (ISCM) program for the `uiao-core` + `uiao-docs` federal pair, satisfying FedRAMP Continuous Monitoring Playbook cadence and NIST SP 800-137 ISCM lifecycle requirements. The program is anchored on the Conformance Adapter class (§3.5) and produces structured evidence suitable for SSP inheritance and auditor review.
+Establish and operate an Information Security Continuous Monitoring (ISCM) program for the `uiao` + `uiao-docs` federal pair, satisfying FedRAMP Continuous Monitoring Playbook cadence and NIST SP 800-137 ISCM lifecycle requirements. The program is anchored on the Conformance Adapter class (§3.5) and produces structured evidence suitable for SSP inheritance and auditor review.
 
 ### 16.2 NIST SP 800-137 lifecycle mapping (VERIFIED against source 2026-04-14)
 

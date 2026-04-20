@@ -8,7 +8,7 @@ These YAML files are **synced from [uiao-docs/data/](https://github.com/WhalerMi
 
 The Python generation engine (`src/`) and scripts (`scripts/`) read from `data/` at runtime. Rather than adding a submodule or remote fetch dependency, we sync the authoritative copy from `uiao-docs` on every push to `main` that touches `data/`.
 
-## Files unique to uiao-core
+## Files unique to uiao
 
 | File | Purpose |
 |------|---------|

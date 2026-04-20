@@ -1,7 +1,7 @@
 # UIAO Vision & Mission Scope
 
 > **Classification:** Public
-> **Canonical source:** This file is the authoritative mission statement for `uiao-core`.
+> **Canonical source:** This file is the authoritative mission statement for `uiao`.
 > It is referenced by the README, the uiao-docs canon, and the UIAO Codex.
 
 ---
@@ -125,7 +125,7 @@ The full UIAO architecture is specified across a 20-document modernization canon
 maintained in [uiao-docs](https://github.com/WhalerMike/uiao-docs) and rendered
 at [whalermike.github.io/uiao-docs](https://whalermike.github.io/uiao-docs).
 
-`uiao-core` is the execution engine for everything described in this document.
+`uiao` is the execution engine for everything described in this document.
 
 ---
 

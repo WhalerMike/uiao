@@ -81,7 +81,7 @@ boundary: "GCC-Moderate"
 
 ## Integration Points
 
-- **Input**: EPL policy files from `uiao-core/policy/`
+- **Input**: EPL policy files from `uiao/policy/`
 - **IR Objects**: Read from normalized SCuBA evidence
-- **Enforcement Adapters**: Located in `uiao-core/adapters/enforcement/`
+- **Enforcement Adapters**: Located in `uiao/adapters/enforcement/`
 - **Output**: Updated evidence, POA&M entries, OSCAL SAR

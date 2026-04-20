@@ -217,7 +217,7 @@ def normalize_scuba(
         input_path: Path to ScubaResults.json, a directory with MS.*.json,
                     or an already-normalized file.
         tenant_id: Tenant UUID for metadata.
-        repo_root: Root of uiao-core repo (for finding KSI mapping file).
+        repo_root: Root of uiao repo (for finding KSI mapping file).
 
     Returns:
         Dict conforming to the scuba-normalized schema, ready for
@@ -396,7 +396,7 @@ def main():
     parser.add_argument("--input", "-i", required=True, help="Path to ScubaGear output (file or directory)")
     parser.add_argument("--output", "-o", help="Output path for normalized JSON (default: stdout)")
     parser.add_argument("--tenant-id", default="unknown-tenant", help="Tenant UUID")
-    parser.add_argument("--repo-root", help="Path to uiao-core repo root")
+    parser.add_argument("--repo-root", help="Path to uiao repo root")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()

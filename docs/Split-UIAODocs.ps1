@@ -1,5 +1,5 @@
 # Split-UIAODocs.ps1
-# Run from your uiao-core repo root after downloading the Word doc
+# Run from your uiao repo root after downloading the Word doc
 # Requires: pip install python-docx (or use pandoc)
 
 param(

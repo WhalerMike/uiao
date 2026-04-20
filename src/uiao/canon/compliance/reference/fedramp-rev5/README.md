@@ -1,6 +1,6 @@
 # FedRAMP Rev 5 OSCAL Reference Materials
 
-This folder contains reference copies and links to official FedRAMP OSCAL Rev 5 artifacts used for alignment in uiao-core generation/validation.
+This folder contains reference copies and links to official FedRAMP OSCAL Rev 5 artifacts used for alignment in uiao generation/validation.
 
 ## Source
 All content is derived from the official (now archived) FedRAMP OSCAL repository:

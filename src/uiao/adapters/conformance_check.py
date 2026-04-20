@@ -2,7 +2,7 @@
 adapter_conformance_check.py — Automated Adapter Conformance Matrix Runner
 
 Runs the 32 domain-level criteria from the canonical Adapter Conformance
-Test Plan (uiao-core/canon/specs/adapter-conformance-test-plan-template.md)
+Test Plan (uiao/canon/specs/adapter-conformance-test-plan-template.md)
 against every registered adapter and produces a JSON report suitable for
 the Evidence Fabric.
 
@@ -158,7 +158,7 @@ def run_all(adapter_filter: str | None = None) -> Dict[str, Any]:
 
     report = {
         "generated": datetime.now(timezone.utc).isoformat(),
-        "template": "uiao-core/canon/specs/adapter-conformance-test-plan-template.md v1.0",
+        "template": "uiao/canon/specs/adapter-conformance-test-plan-template.md v1.0",
         "adapters": {},
         "summary": {"total": 0, "pass": 0, "fail": 0},
     }
@@ -194,7 +194,7 @@ def export_markdown(report: Dict[str, Any], adapter_id: str) -> str:
     lines = [
         "## Conformance Matrix",
         "",
-        "Per `uiao-core/canon/specs/adapter-conformance-test-plan-template.md` v1.0.",
+        "Per `uiao/canon/specs/adapter-conformance-test-plan-template.md` v1.0.",
         f"Adapter: `{adapter_id}` · Class: `{data['class']}` · "
         f"Pass: **{data['pass']}/{data['criteria_count']}**",
         "",

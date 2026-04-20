@@ -5,7 +5,7 @@ Observes vulnerability state across managed assets and produces
 normalized, timestamped findings suitable for downstream evaluation
 by the Policy Adapter class. Never mutates the target environment.
 
-Classification (per uiao-core/canon/adapter-registry.yaml):
+Classification (per uiao/canon/adapter-registry.yaml):
     class:            conformance
     mission-class:    telemetry  (UIAO_003 s4.3)
     status:           reserved   (-> active when impl ships)

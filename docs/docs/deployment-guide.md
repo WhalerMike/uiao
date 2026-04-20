@@ -34,11 +34,11 @@ UIAO-Core Deployment Guide
 
 2.2 Install from Source
 
-\# Clone repository git clone https://github.com/WhalerMike/uiao-core.git cd uiao-core \# Create virtual environment python -m venv .venv \# Activate (Windows) .venv\\Scripts\\activate \# Activate (Linux/macOS) source .venv/bin/activate \# Install with dev dependencies pip install -e \'.\[dev\]\' \# Verify installation uiao \--version pytest tests/ -v \--tb=short
+\# Clone repository git clone https://github.com/WhalerMike/uiao.git cd uiao \# Create virtual environment python -m venv .venv \# Activate (Windows) .venv\\Scripts\\activate \# Activate (Linux/macOS) source .venv/bin/activate \# Install with dev dependencies pip install -e \'.\[dev\]\' \# Verify installation uiao \--version pytest tests/ -v \--tb=short
 
 2.3 Install from PyPI
 
-pip install uiao-core
+pip install uiao
 
 2.4 Dependencies
 
@@ -76,7 +76,7 @@ pip install uiao-core
 
 3.1 Build
 
-\# Build production image docker build -t uiao-core:latest . \# Build with specific version tag docker build -t uiao-core:2.0.0 .
+\# Build production image docker build -t uiao:latest . \# Build with specific version tag docker build -t uiao:2.0.0 .
 
 3.2 Dockerfile
 
@@ -84,21 +84,21 @@ The multi-stage Dockerfile uses a Python 3.12-slim base, installs only productio
 
 3.3 Run Commands
 
-\# Run full pipeline docker run \--rm \\ -v \$(pwd)/config:/app/config \\ -v \$(pwd)/output:/app/output \\ -e UIAO_SIGNING_KEY=\"\${UIAO_SIGNING_KEY}\" \\ uiao-core:latest scuba run \--products all \# Run specific plane docker run \--rm \\ -v \$(pwd)/results:/app/results \\ uiao-core:latest scuba transform \--input /app/results/ScubaResults.json \# Interactive shell docker run \--rm -it \\ -v \$(pwd):/app \\ uiao-core:latest /bin/bash \# Run tests inside container docker run \--rm \\ uiao-core:latest pytest tests/ -v
+\# Run full pipeline docker run \--rm \\ -v \$(pwd)/config:/app/config \\ -v \$(pwd)/output:/app/output \\ -e UIAO_SIGNING_KEY=\"\${UIAO_SIGNING_KEY}\" \\ uiao:latest scuba run \--products all \# Run specific plane docker run \--rm \\ -v \$(pwd)/results:/app/results \\ uiao:latest scuba transform \--input /app/results/ScubaResults.json \# Interactive shell docker run \--rm -it \\ -v \$(pwd):/app \\ uiao:latest /bin/bash \# Run tests inside container docker run \--rm \\ uiao:latest pytest tests/ -v
 
 3.4 Docker Compose
 
-\# docker-compose.yml version: \"3.8\" services: pipeline: build: . image: uiao-core:latest volumes: - ./config:/app/config - ./output:/app/output - ./results:/app/results environment: - UIAO_SIGNING_KEY=\${UIAO_SIGNING_KEY} - UIAO_M365_TENANT_ID=\${UIAO_M365_TENANT_ID} - UIAO_LOG_LEVEL=INFO command: \[\"scuba\", \"run\", \"\--products\", \"all\"\] nightly: build: . image: uiao-core:latest volumes: - ./config:/app/config - ./output:/app/output environment: - UIAO_SIGNING_KEY=\${UIAO_SIGNING_KEY} - UIAO_M365_TENANT_ID=\${UIAO_M365_TENANT_ID} command: \> sh -c \"uiao scuba run \--products all && uiao ksi evaluate \--ir latest && uiao evidence build \--eval latest && uiao oscal generate \--evidence latest\" profiles: - nightly dashboard: build: . image: uiao-core:latest volumes: - ./output:/app/output command: \[\"dashboard\", \"export\", \"\--format\", \"html\"\] profiles: - reporting
+\# docker-compose.yml version: \"3.8\" services: pipeline: build: . image: uiao:latest volumes: - ./config:/app/config - ./output:/app/output - ./results:/app/results environment: - UIAO_SIGNING_KEY=\${UIAO_SIGNING_KEY} - UIAO_M365_TENANT_ID=\${UIAO_M365_TENANT_ID} - UIAO_LOG_LEVEL=INFO command: \[\"scuba\", \"run\", \"\--products\", \"all\"\] nightly: build: . image: uiao:latest volumes: - ./config:/app/config - ./output:/app/output environment: - UIAO_SIGNING_KEY=\${UIAO_SIGNING_KEY} - UIAO_M365_TENANT_ID=\${UIAO_M365_TENANT_ID} command: \> sh -c \"uiao scuba run \--products all && uiao ksi evaluate \--ir latest && uiao evidence build \--eval latest && uiao oscal generate \--evidence latest\" profiles: - nightly dashboard: build: . image: uiao:latest volumes: - ./output:/app/output command: \[\"dashboard\", \"export\", \"\--format\", \"html\"\] profiles: - reporting
 
 4\. Bare Metal / VM Deployment
 
 4.1 Windows Server
 
-\# PowerShell deployment script \# 1. Create service account (run as Administrator) \$svcAccount = \"uiao-svc\" \# 2. Install Python and create venv python -m venv C:\\uiao\\.venv C:\\uiao\\.venv\\Scripts\\Activate.ps1 \# 3. Install package cd C:\\uiao git clone https://github.com/WhalerMike/uiao-core.git . pip install -e \'.\[dev\]\' \# 4. Set environment variables (Machine scope) \[System.Environment\]::SetEnvironmentVariable(\"UIAO_SIGNING_KEY\", \$signingKey, \"Machine\") \[System.Environment\]::SetEnvironmentVariable(\"UIAO_M365_TENANT_ID\", \$tenantId, \"Machine\") \[System.Environment\]::SetEnvironmentVariable(\"UIAO_CONFIG_PATH\", \"C:\\uiao\\config\", \"Machine\") \# 5. Create scheduled task for nightly assessment \$action = New-ScheduledTaskAction \` -Execute \"C:\\uiao\\.venv\\Scripts\\python.exe\" \` -Argument \"-m uiao_core.cli scuba run \--products all\" \` -WorkingDirectory \"C:\\uiao\" \$trigger = New-ScheduledTaskTrigger -Daily -At 2:00AM Register-ScheduledTask -TaskName \"UIAO-Nightly\" -Action \$action -Trigger \$trigger -User \$svcAccount
+\# PowerShell deployment script \# 1. Create service account (run as Administrator) \$svcAccount = \"uiao-svc\" \# 2. Install Python and create venv python -m venv C:\\uiao\\.venv C:\\uiao\\.venv\\Scripts\\Activate.ps1 \# 3. Install package cd C:\\uiao git clone https://github.com/WhalerMike/uiao.git . pip install -e \'.\[dev\]\' \# 4. Set environment variables (Machine scope) \[System.Environment\]::SetEnvironmentVariable(\"UIAO_SIGNING_KEY\", \$signingKey, \"Machine\") \[System.Environment\]::SetEnvironmentVariable(\"UIAO_M365_TENANT_ID\", \$tenantId, \"Machine\") \[System.Environment\]::SetEnvironmentVariable(\"UIAO_CONFIG_PATH\", \"C:\\uiao\\config\", \"Machine\") \# 5. Create scheduled task for nightly assessment \$action = New-ScheduledTaskAction \` -Execute \"C:\\uiao\\.venv\\Scripts\\python.exe\" \` -Argument \"-m uiao_core.cli scuba run \--products all\" \` -WorkingDirectory \"C:\\uiao\" \$trigger = New-ScheduledTaskTrigger -Daily -At 2:00AM Register-ScheduledTask -TaskName \"UIAO-Nightly\" -Action \$action -Trigger \$trigger -User \$svcAccount
 
 4.2 Linux
 
-#!/bin/bash \# Linux deployment script \# 1. Create service account sudo useradd -r -s /bin/false uiao-svc sudo mkdir -p /opt/uiao sudo chown uiao-svc:uiao-svc /opt/uiao \# 2. Install Python and create venv cd /opt/uiao sudo -u uiao-svc python3 -m venv .venv sudo -u uiao-svc .venv/bin/pip install \--upgrade pip \# 3. Install package sudo -u uiao-svc git clone https://github.com/WhalerMike/uiao-core.git . sudo -u uiao-svc .venv/bin/pip install -e \'.\[dev\]\' \# 4. Set environment variables cat \> /opt/uiao/.env \<\<EOF UIAO_SIGNING_KEY=your-signing-key-here UIAO_M365_TENANT_ID=your-tenant-id UIAO_CONFIG_PATH=/opt/uiao/config UIAO_LOG_LEVEL=INFO EOF chmod 600 /opt/uiao/.env \# 5. Create cron job for nightly assessment echo \"0 2 \* \* \* uiao-svc cd /opt/uiao && .venv/bin/uiao scuba run \--products all\" \\ \| sudo tee /etc/cron.d/uiao-nightly
+#!/bin/bash \# Linux deployment script \# 1. Create service account sudo useradd -r -s /bin/false uiao-svc sudo mkdir -p /opt/uiao sudo chown uiao-svc:uiao-svc /opt/uiao \# 2. Install Python and create venv cd /opt/uiao sudo -u uiao-svc python3 -m venv .venv sudo -u uiao-svc .venv/bin/pip install \--upgrade pip \# 3. Install package sudo -u uiao-svc git clone https://github.com/WhalerMike/uiao.git . sudo -u uiao-svc .venv/bin/pip install -e \'.\[dev\]\' \# 4. Set environment variables cat \> /opt/uiao/.env \<\<EOF UIAO_SIGNING_KEY=your-signing-key-here UIAO_M365_TENANT_ID=your-tenant-id UIAO_CONFIG_PATH=/opt/uiao/config UIAO_LOG_LEVEL=INFO EOF chmod 600 /opt/uiao/.env \# 5. Create cron job for nightly assessment echo \"0 2 \* \* \* uiao-svc cd /opt/uiao && .venv/bin/uiao scuba run \--products all\" \\ \| sudo tee /etc/cron.d/uiao-nightly
 
 5\. GCC Moderate Considerations
 
@@ -148,11 +148,11 @@ The multi-stage Dockerfile uses a Python 3.12-slim base, installs only productio
 
 6.1 Prepare Packages
 
-\# On internet-connected machine mkdir -p uiao-airgap/packages pip download -d uiao-airgap/packages uiao-core\[dev\] cp -r uiao-core/ uiao-airgap/source/ \# Transfer uiao-airgap/ to air-gapped machine via approved media
+\# On internet-connected machine mkdir -p uiao-airgap/packages pip download -d uiao-airgap/packages uiao\[dev\] cp -r uiao/ uiao-airgap/source/ \# Transfer uiao-airgap/ to air-gapped machine via approved media
 
 6.2 Install on Air-Gapped Machine
 
-\# On air-gapped machine python -m venv /opt/uiao/.venv source /opt/uiao/.venv/bin/activate pip install \--no-index \--find-links=/media/uiao-airgap/packages uiao-core\[dev\]
+\# On air-gapped machine python -m venv /opt/uiao/.venv source /opt/uiao/.venv/bin/activate pip install \--no-index \--find-links=/media/uiao-airgap/packages uiao\[dev\]
 
 6.3 Air-Gapped Workflow
 

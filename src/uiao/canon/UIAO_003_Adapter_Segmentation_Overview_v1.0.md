@@ -153,7 +153,7 @@ The Identity Adapter class is a named adapter class in the UIAO canon. It exists
 
 **Canonical constraints.** Serves SSOT + Identity + Security; never mutates SSOT; certificate-anchored; GCC-Moderate boundary; object identity only. *Schema-enforced invariants verified on all adapter entries.*
 
-**Canonical artifact types.** The following external artifact types are named canonically for the Enforcement Adapter class, based on their implementation in `uiao-impl/src/uiao/impl/generators/` and canonical data structures in `uiao-core/canon/data/fedramp_ssp_template_structure.yaml`: **OSCAL SSP** (System Security Plan), **POA&M** (Plan of Action and Milestones), **SAR** (Security Assessment Report). *Resolved 2026-04-16; previously flagged as MISSING.*
+**Canonical artifact types.** The following external artifact types are named canonically for the Enforcement Adapter class, based on their implementation in `uiao/src/uiao/impl/generators/` and canonical data structures in `uiao/canon/data/fedramp_ssp_template_structure.yaml`: **OSCAL SSP** (System Security Plan), **POA&M** (Plan of Action and Milestones), **SAR** (Security Assessment Report). *Resolved 2026-04-16; previously flagged as MISSING.*
 
 [IMAGE-04: A muted-blue machine-seal icon producing a signed artifact along a certificate chain, with an arrow toward an external "Authorizing Official / Assessor" node. No text baked into the image.]
 

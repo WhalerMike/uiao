@@ -5,7 +5,7 @@
 **Status:** Registered  Federal Preferred
 
 ## Overview
-InfoBlox NIOS is the named IPAM solution in uiao-core for federal deployments. This adapter implements the IPAM Adapter Interface (`../ipam-adapter-interface.md`) for InfoBlox NIOS version 8.x and above.
+InfoBlox NIOS is the named IPAM solution in uiao for federal deployments. This adapter implements the IPAM Adapter Interface (`../ipam-adapter-interface.md`) for InfoBlox NIOS version 8.x and above.
 
 ## FedRAMP Authorization
 - **FedRAMP Authorized:** Yes

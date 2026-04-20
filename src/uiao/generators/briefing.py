@@ -458,7 +458,7 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     meta_lines = [
         f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
         "Owner: Michael Stratton (whalermike)",
-        "Repo: https://github.com/WhalerMike/uiao-core",
+        "Repo: https://github.com/WhalerMike/uiao",
         "Classification: Public",
     ]
     for line in meta_lines:

@@ -1,7 +1,7 @@
 # sync-uiao.ps1  Canonical UIAO-Core Sync Script
 
 **Classification:** Controlled
-**Repository:** `uiao-core`
+**Repository:** `uiao`
 **Location:** `/scripts/sync-uiao.ps1`
 **Author:** Michael Stratton
 
@@ -9,7 +9,7 @@
 
 ## Purpose
 
-Deterministic, governance-aligned sync script for aligning a local `uiao-core` clone to `origin/main`. Designed for VM-based substrates where reproducibility, zero-drift, and zero-loss guarantees are non-negotiable.
+Deterministic, governance-aligned sync script for aligning a local `uiao` clone to `origin/main`. Designed for VM-based substrates where reproducibility, zero-drift, and zero-loss guarantees are non-negotiable.
 
 Every run produces a timestamped transcript log. Every mode emits deterministic, parseable output. No hidden state, no surprises.
 
@@ -137,7 +137,7 @@ Every run produces a timestamped transcript log. Every mode emits deterministic,
 > > ### Scheduled Task (Windows Task Scheduler)
 > >
 > > ```powershell
-> > $Action  = New-ScheduledTaskAction -Execute "pwsh.exe" -Argument "-File C:\Users\whale\uiao-core\scripts\sync-uiao.ps1"
+> > $Action  = New-ScheduledTaskAction -Execute "pwsh.exe" -Argument "-File C:\Users\whale\uiao\scripts\sync-uiao.ps1"
 > > $Trigger = New-ScheduledTaskTrigger -Daily -At 6am
 > > Register-ScheduledTask -TaskName "UIAO-Core-DailySync" -Action $Action -Trigger $Trigger
 > > ```

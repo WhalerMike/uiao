@@ -5,7 +5,7 @@ Observes patch/update state across managed endpoints and produces
 normalized, timestamped records for downstream policy evaluation.
 Telemetry-class adapter.
 
-Classification (per uiao-core/canon/adapter-registry.yaml):
+Classification (per uiao/canon/adapter-registry.yaml):
     class:            conformance
     mission-class:    telemetry  (UIAO_003 s4.3)
     status:           reserved

@@ -319,7 +319,7 @@ def main():
     parser.add_argument("--metrics-dir", default="reports/",
                         help="Directory containing metric report files")
     parser.add_argument("--input", help="Input directory for validation mode")
-    parser.add_argument("--repository", default="uiao-core",
+    parser.add_argument("--repository", default="uiao",
                         help="Repository name for export")
     args = parser.parse_args()
     schema_path = Path(args.schema)

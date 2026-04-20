@@ -114,7 +114,7 @@ Primary concern:
   - ActionPlan.csv
 - Provenance Manifest ID: prov-scuba-20260407-01
 
-All hashes, lineage, and environment details are recorded in the corresponding provenance manifest in uiao-core/provenance/manifests/.
+All hashes, lineage, and environment details are recorded in the corresponding provenance manifest in uiao/provenance/manifests/.
 
 ---
 

@@ -20,13 +20,13 @@ To prevent Agent formatting conflicts, follow this order of precedence for **for
 
 ## Core Architecture (Do Not Deviate Without Updating This File)
 
-* **Primary Repo**: uiao-core <https://github.com/WhalerMike/uiao-core>
+* **Primary Repo**: uiao <https://github.com/WhalerMike/uiao>
 * **Document Compiler Repo**: uiao-docs <https://github.com/WhalerMike/uiao-docs>
 * **Validation Target**: uiao-validation-targets <https://github.com/WhalerMike/uiao-validation-targets>
   + FastAPI mock service running at `http://localhost:8000` (or Docker)
   + Endpoints: /health, /ingest-evidence, /telemetry, /validation/fedramp-rev5-baseline
   + All evidence must use `prop:id` prefix and valid UUIDv4
-* **Single Source of Truth**: The YAML canon file in uiao-core
+* **Single Source of Truth**: The YAML canon file in uiao
 * **Output Artifacts**: OSCAL 1.3.0 (Component Definition, SSP skeleton, POA&M), Markdown/DOCX/PDF/HTML via uiao CLI
 
 ## AI Orchestration Rules (All Agents Must Follow)
@@ -60,7 +60,7 @@ To prevent Agent formatting conflicts, follow this order of precedence for **for
 
    * **[SESSION ZERO]** Claude Code: read [`docs/BRIEFING-SPEC.qmd`](https://github.com/WhalerMike/uiao-docs/blob/main/docs/BRIEFING-SPEC.qmd) and implement `uiao generate-briefing` command
    * Claude Code established as Canon Steward and lead GitHub agent (Grok retired)
-   * Tight integration between uiao-core and uiao-validation-targets (CLI commands to test against live target)
+   * Tight integration between uiao and uiao-validation-targets (CLI commands to test against live target)
    * Full SSP control narrative templating with organization-defined parameters
    * Realistic POA&M generation from telemetry events
    * Evidence collection & linking (OSCAL back-matter) — browser-driven collection via Comet-Perplexity

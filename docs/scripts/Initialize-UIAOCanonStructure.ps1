@@ -2,20 +2,20 @@
 .SYNOPSIS
     Initialize-UIAOCanonStructure.ps1
     Scaffolds the full UIAO Governance Canon directory structure across
-    uiao-docs and uiao-core. Guards against overwrites. Supports -WhatIf.
+    uiao-docs and uiao. Guards against overwrites. Supports -WhatIf.
 
 .DESCRIPTION
     Creates all missing directories and placeholder stub files for the
     hierarchical appendix canon (A-01 through E-03), 23 ADRs (ADR-005
     through ADR-027), canon docs, diagrams, onboarding, exports, and the
-    uiao-core CANON_POINTER.md. Existing files are NEVER overwritten.
+    uiao CANON_POINTER.md. Existing files are NEVER overwritten.
     mkdocs.yml is backed up with a timestamp before replacement.
 
 .PARAMETER DocsRoot
     Path to local uiao-docs repo root. Default: C:\Users\whale\uiao-docs
 
 .PARAMETER CoreRoot
-    Path to local uiao-core repo root. Default: C:\Users\whale\uiao-core
+    Path to local uiao repo root. Default: C:\Users\whale\uiao
 
 .PARAMETER WhatIf
     Preview all actions without writing anything.
@@ -23,13 +23,13 @@
 .EXAMPLE
     .\Initialize-UIAOCanonStructure.ps1 -WhatIf
     .\Initialize-UIAOCanonStructure.ps1
-    .\Initialize-UIAOCanonStructure.ps1 -DocsRoot "D:\repos\uiao-docs" -CoreRoot "D:\repos\uiao-core"
+    .\Initialize-UIAOCanonStructure.ps1 -DocsRoot "D:\repos\uiao-docs" -CoreRoot "D:\repos\uiao"
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [string]$DocsRoot = "C:\Users\whale\uiao-docs",
-    [string]$CoreRoot = "C:\Users\whale\uiao-core"
+    [string]$CoreRoot = "C:\Users\whale\uiao"
 )
 
 Set-StrictMode -Version Latest
@@ -251,8 +251,8 @@ The UIAO Governance Canon lives exclusively in:
 
   https://github.com/WhalerMike/uiao-docs
 
-Do NOT duplicate canon content in this repository (uiao-core).
-uiao-core contains machine artifacts only:
+Do NOT duplicate canon content in this repository (uiao).
+uiao contains machine artifacts only:
 - Adapter schemas and transforms
 - KSI evaluation scripts and rules
 - Provenance manifests
@@ -430,7 +430,7 @@ Write-Host ""
 Write-Host "================================================================" -ForegroundColor Magenta
 Write-Host "  UIAO Canon Structure Initializer" -ForegroundColor Magenta
 Write-Host "  uiao-docs : $DocsRoot" -ForegroundColor Magenta
-Write-Host "  uiao-core : $CoreRoot" -ForegroundColor Magenta
+Write-Host "  uiao : $CoreRoot" -ForegroundColor Magenta
 if ($WhatIfPreference) { Write-Host "  MODE      : WhatIf (no writes)" -ForegroundColor Yellow }
 Write-Host "================================================================" -ForegroundColor Magenta
 Write-Host ""
@@ -541,9 +541,9 @@ New-Stub -Path (Join-Path $onboardDir "index.md") `
 New-Stub -Path (Join-Path $onboardDir "adapter-developer-guide.md") `
          -Content (Get-CanonStub "Adapter Developer Onboarding Guide")
 
-# uiao-core/docs/CANON_POINTER.md
+# uiao/docs/CANON_POINTER.md
 Write-Host ""
-Write-Host "-- uiao-core/docs/CANON_POINTER.md --" -ForegroundColor Magenta
+Write-Host "-- uiao/docs/CANON_POINTER.md --" -ForegroundColor Magenta
 $coreDocsDir = Join-Path $CoreRoot "docs"
 New-Dir  -Path $coreDocsDir
 New-Stub -Path (Join-Path $coreDocsDir "CANON_POINTER.md") -Content (Get-CanonPointer)

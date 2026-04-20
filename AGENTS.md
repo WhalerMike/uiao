@@ -89,7 +89,7 @@ Cross-module commits are permitted but must describe the cross-cutting nature in
 
 ## History
 
-The monorepo was consolidated from four predecessor repos (`uiao-core`, `uiao-docs`, `uiao-gos`, `uiao-impl`) on 2026-04-17 with full history preserved. The `uiao-gos` federal/commercial firewall was retired per [ADR-028](src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md); its directory-migration adapters (`bluecat-address-manager`, `infoblox`) are now canonical modernization adapters. See [`docs/narrative/governance-os-directory-migration.md`](docs/narrative/governance-os-directory-migration.md) for the substrate-aligned narrative.
+The monorepo was consolidated from four predecessor repos (`uiao`, `uiao-docs`, `uiao-gos`, `uiao`) on 2026-04-17 with full history preserved. The `uiao-gos` federal/commercial firewall was retired per [ADR-028](src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md); its directory-migration adapters (`bluecat-address-manager`, `infoblox`) are now canonical modernization adapters. See [`docs/narrative/governance-os-directory-migration.md`](docs/narrative/governance-os-directory-migration.md) for the substrate-aligned narrative.
 
 ## Writing patterns
 

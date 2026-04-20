@@ -17,12 +17,12 @@
 - Each document lives in its own numbered folder: `NN-short-name/`
 - The primary file is a `.docx` — the format leadership actually opens
 - `series-assets/` holds shared images, diagrams, and templates used across multiple documents
-- Documents trace provenance to `uiao-core` canonical artifacts
+- Documents trace provenance to `uiao` canonical artifacts
 - Pseudonym for all authored content: Michal Doroszewski
 
 ## Status Values
 
-- **CURRENT** — Published and up to date with uiao-core canon
+- **CURRENT** — Published and up to date with uiao canon
 - **DRAFT** — In progress, not yet reviewed
 - **PLANNED** — Defined but not yet started
 - **STALE** — Exists but needs refresh against current canon

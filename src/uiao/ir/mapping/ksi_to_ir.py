@@ -14,9 +14,8 @@ from uiao.ir.models.core import (
 def load_ksi_library() -> Dict[str, dict]:
     """Load all KSI files from the 7 category subdirectories.
 
-    Resolves the rules directory via :class:`uiao.config.Settings`
-    so the sibling ``uiao-core/rules`` checkout is found post four-repo
-    split.
+    Resolves the rules directory via :class:`uiao.config.Settings`,
+    which points at the packaged ``uiao/rules/`` by default.
     """
     from uiao.config import Settings
 

@@ -73,10 +73,10 @@ def build_sbom(output_path: str | Path = "exports/sbom/sbom.cyclonedx.json") -> 
         "version": 1,
         "metadata": {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "tools": [{"vendor": "uiao-core", "name": "uiao generate-sbom"}],
+            "tools": [{"vendor": "uiao", "name": "uiao generate-sbom"}],
             "component": {
                 "type": "application",
-                "name": "uiao-core",
+                "name": "uiao",
                 "version": _get_uiao_version(),
             },
         },
@@ -88,8 +88,8 @@ def build_sbom(output_path: str | Path = "exports/sbom/sbom.cyclonedx.json") -> 
 
 
 def _get_uiao_version() -> str:
-    """Return the uiao-core package version."""
+    """Return the uiao package version."""
     try:
-        return importlib.metadata.version("uiao-core")
+        return importlib.metadata.version("uiao")
     except importlib.metadata.PackageNotFoundError:
         return "unknown"
