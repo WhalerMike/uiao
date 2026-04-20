@@ -73,7 +73,7 @@ impl/tests/
 ### 2. Adapter (`bluecat_adapter.py`, ~440 lines)
 - `SCOPE = ["dns-records", "dhcp-scopes", "ip-allocations", "side-by-side-ad"]` (4 items).
 - `connect()` — identity `bluecat:<bam_host>:<config>`, endpoint
-  `https://<bam_host>/Services/REST/v1/`, mTLS defaults True.
+  `<bam_host>/Services/REST/v1/` (HTTPS), mTLS defaults True.
 - `discover_schema()` — vendor schema for HostRecord, AliasRecord,
   DHCP4Range, IP4Address.
 - `execute_query()` — dispatch on `from` ∈ SCOPE to distinct BAM REST paths
