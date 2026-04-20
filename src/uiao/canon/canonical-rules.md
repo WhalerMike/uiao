@@ -13,13 +13,13 @@ The Canonical Rules define the immutable governance constraints for the Universa
 
 **Rule:** All UIAO artifacts MUST be classified as either *machine* artifacts or *human* artifacts. No artifact may belong to both classifications.
 
-**Machine artifacts** are stored exclusively in the `uiao-core` repository. These include adapter schemas, orchestration logic, drift-detection algorithms, evidence manifests, and any artifact consumed directly by automated processes.
+**Machine artifacts** are stored exclusively in the `uiao` repository. These include adapter schemas, orchestration logic, drift-detection algorithms, evidence manifests, and any artifact consumed directly by automated processes.
 
 **Human artifacts** are stored exclusively in the `uiao-docs` repository. These include governance documents, architectural decision records, appendices, diagrams, glossaries, migration plans, and any artifact intended for human interpretation.
 
-**Rationale:** Mixing machine and human artifacts creates ambiguity in ownership, versioning, and deployment pipelines. Deterministic separation ensures that `uiao-core` can be consumed by CI/CD tooling without inadvertently pulling human-readable governance prose, and that `uiao-docs` can be published as a documentation site without exposing executable logic.
+**Rationale:** Mixing machine and human artifacts creates ambiguity in ownership, versioning, and deployment pipelines. Deterministic separation ensures that `uiao` can be consumed by CI/CD tooling without inadvertently pulling human-readable governance prose, and that `uiao-docs` can be published as a documentation site without exposing executable logic.
 
-**Enforcement:** The `Initialize-UIAOCanonStructure.ps1` script enforces directory separation at scaffold time. CI checks validate that no `.md` governance files land in `uiao-core` outside of `docs/`, and that no `.ps1`, `.json`, or `.yaml` machine artifacts land in `uiao-docs` outside of `scripts/` or `data/`.
+**Enforcement:** The `Initialize-UIAOCanonStructure.ps1` script enforces directory separation at scaffold time. CI checks validate that no `.md` governance files land in `uiao` outside of `docs/`, and that no `.ps1`, `.json`, or `.yaml` machine artifacts land in `uiao-docs` outside of `scripts/` or `data/`.
 
 ---
 

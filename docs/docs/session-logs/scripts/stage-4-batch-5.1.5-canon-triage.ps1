@@ -3,7 +3,7 @@
 # Phase D Stage 5, Batch 5.1.5 — READ-ONLY canon backfill triage
 # -----------------------------------------------------------------------------
 # What this does:
-#   1. Runs tools/metadata_validator.py against uiao-core/canon/ to get a fresh
+#   1. Runs tools/metadata_validator.py against uiao/canon/ to get a fresh
 #      JSON report (using the renamed schemas/metadata-schema.json).
 #   2. Invokes canon_triage.py to group findings by failure pattern and emit
 #      a human-readable markdown report.
@@ -15,13 +15,13 @@
 #
 # Prereqs:
 #   - Batch 5.1 landed (commit d1b5ce2b or later) so schemas/metadata-schema.json
-#     exists in uiao-core. Local run works whether or not 5.1 has been pushed.
+#     exists in uiao. Local run works whether or not 5.1 has been pushed.
 #   - python 3.12 on PATH with pyyaml + jsonschema installed
 #     (`pip install pyyaml jsonschema`).
 # =============================================================================
 
 $ErrorActionPreference = 'Stop'
-$CoreDir    = 'C:\Users\whale\uiao-core'
+$CoreDir    = 'C:\Users\whale\uiao'
 $DocsDir    = 'C:\Users\whale\uiao-docs'
 $ScriptsDir = Join-Path $DocsDir 'docs\session-logs\scripts'
 $ReportDir  = Join-Path $DocsDir 'docs\session-logs\reports'

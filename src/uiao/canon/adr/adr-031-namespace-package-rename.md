@@ -42,14 +42,14 @@ Rename the Python package from `uiao_impl` to `uiao.impl` using a **PEP 420 impl
 1. **Directory move:** `impl/src/uiao_impl/` → `impl/src/uiao/impl/`.
 2. **No `__init__.py` at `impl/src/uiao/`** — PEP 420 implicit namespace. This is the critical design point: it allows `uiao.core`, `uiao.docs`, or any future `uiao.<module>` to coexist under the `uiao` namespace without coordination, even when published from different distributions.
 3. **Distribution name unchanged** — `pyproject.toml` keeps `name = "uiao-impl"`. Only the *importable package* path changes. Wheels continue to build as `uiao_impl-<version>-py3-none-any.whl` because setuptools derives wheel filenames from the distribution name (replacing hyphens with underscores), not from the package path.
-4. **CLI entry point path updated** — `uiao = "uiao_impl.cli.app:app"` becomes `uiao = "uiao.impl.cli.app:app"`. Users see no change; the `uiao` command continues to work identically.
+4. **CLI entry point path updated** — `uiao = "uiao_impl.cli.app:app"` becomes `uiao = "uiao.cli.app:app"`. Users see no change; the `uiao` command continues to work identically.
 5. **214 import sites across 123 files** get mechanically rewritten (`from uiao_impl` → `from uiao.impl`; `import uiao_impl` → `import uiao.impl`).
 6. **Dynamic string imports** in `cli/app.py` (adapter registry), `adapters/conformance_check.py` (runtime adapter discovery), and module docstrings are rewritten in the same pass.
 7. **No backward-compat shim.** Pre-1.0 + no external consumers + atomic PR makes a shim pure drag; it would ossify the old name and create two supported import paths.
 
 ### Migration is atomic
 
-The rename lands as a single PR. Staged migrations (e.g., per-submodule) are worse here because Python imports resolve at import time: the interpreter either finds `uiao.impl.X` or it finds `uiao_impl.X`, not both. A half-migrated state is a broken state.
+The rename lands as a single PR. Staged migrations (e.g., per-submodule) are worse here because Python imports resolve at import time: the interpreter either finds `uiao.X` or it finds `uiao_impl.X`, not both. A half-migrated state is a broken state.
 
 ### Canon invariants
 
@@ -124,7 +124,7 @@ The executing PR for this ADR will:
 1. `git mv impl/src/uiao_impl impl/src/uiao/impl` (preserves history).
 2. Delete `impl/src/uiao_impl.egg-info/` (regenerates on next `pip install -e .`).
 3. Sed-rewrite `from uiao_impl` / `import uiao_impl` across all `.py`, `.toml`, `.yml`, `.yaml`, `.md`, `.qmd` files.
-4. Rewrite dynamic string imports (`"uiao_impl.adapters..."` → `"uiao.impl.adapters..."`) in CLI and conformance code.
+4. Rewrite dynamic string imports (`"uiao_impl.adapters..."` → `"uiao.adapters..."`) in CLI and conformance code.
 5. Update `pyproject.toml` fields: `entry-points`, `tool.setuptools.packages.find`, `tool.ruff.lint.isort.known-first-party`, `tool.ruff.lint.per-file-ignores`.
 6. Update `.github/workflows/substrate-drift.yml` (contains a literal import) and verify `release.yml` artifact patterns still match.
 7. Update `AGENTS.md` substrate walker source reference.

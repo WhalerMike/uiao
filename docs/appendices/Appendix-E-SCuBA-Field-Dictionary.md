@@ -5,7 +5,7 @@
 This appendix is the canonical human-readable reference for all fields in the UIAO normalized SCuBA schema. It maps every field to its source, type, KSI rule, and governance notes.
 
 The machine-readable schema is at:
-`uiao-core/adapters/scuba/schemas/scuba-normalized.schema.json`
+`uiao/adapters/scuba/schemas/scuba-normalized.schema.json`
 
 ---
 
@@ -98,7 +98,7 @@ These fields are produced by the KSI evaluation engine and appended to the norma
 ## E.8 Schema Governance
 
 - Schema version: 1.0
-- Schema location: `uiao-core/adapters/scuba/schemas/scuba-normalized.schema.json`
+- Schema location: `uiao/adapters/scuba/schemas/scuba-normalized.schema.json`
 - Changes to this schema require an ADR (see [Appendix D](Appendix-D-ADR-Index.md))
 - `additionalProperties: true` is set to allow forward compatibility as ScubaGear evolves
 

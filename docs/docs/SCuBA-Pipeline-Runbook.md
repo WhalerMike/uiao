@@ -14,7 +14,7 @@ The UIAO SCuBA Pipeline automates the execution of CISA's ScubaGear assessment t
 - A full KSI evaluation
 - A provenance manifest
 - A human-facing canonical report
-- A drift-resistant artifact chain stored across uiao-core and uiao-docs
+- A drift-resistant artifact chain stored across uiao and uiao-docs
 
 This runbook defines every step, every script, every output, and every governance boundary.
 
@@ -33,7 +33,7 @@ This runbook defines every step, every script, every output, and every governanc
         ↓
 [5] Provenance Manifest (generate-manifest.ps1)
         ↓
-[6] Machine Artifacts → uiao-core
+[6] Machine Artifacts → uiao
         ↓
 [7] Human Report → uiao-docs
 ```
@@ -47,12 +47,12 @@ This runbook defines every step, every script, every output, and every governanc
 - PowerShell 7+
 - ScubaGear installed and authenticated
 - Access to the UIAO repository
-- Permissions to write to uiao-core and uiao-docs
+- Permissions to write to uiao and uiao-docs
 
 **Directory Structure:**
 
 ```
-uiao-core/
+uiao/
   adapters/scuba/run/
   adapters/scuba/transforms/
   artifacts/scuba/{raw,normalized,reports}
@@ -72,8 +72,8 @@ uiao-docs/
 The pipeline is executed through a single wrapper:
 
 ```powershell
-pwsh ./uiao-core/adapters/scuba/run/adapter-run-scuba.ps1 `
-     -OutputDirectory ./uiao-core/artifacts/scuba
+pwsh ./uiao/adapters/scuba/run/adapter-run-scuba.ps1 `
+     -OutputDirectory ./uiao/artifacts/scuba
 ```
 
 This wrapper performs: SCuBA execution, normalization, KSI evaluation, and provenance generation.
@@ -87,40 +87,40 @@ This wrapper performs: SCuBA execution, normalization, KSI evaluation, and prove
 Executed inside the wrapper. Output stored in:
 
 ```
-uiao-core/artifacts/scuba/raw/
+uiao/artifacts/scuba/raw/
 ```
 
 ### Step 2 — Normalize SCuBA Output
 
-**Script:** `uiao-core/adapters/scuba/transforms/normalize.ps1`
+**Script:** `uiao/adapters/scuba/transforms/normalize.ps1`
 
 Converts raw ScubaGear JSON → UIAO normalized schema. Key responsibilities: extract metadata, map SCuBA fields to UIAO fields, enforce types, produce deterministic structure.
 
-**Output:** `uiao-core/artifacts/scuba/normalized/ScubaResults.normalized.json`
+**Output:** `uiao/artifacts/scuba/normalized/ScubaResults.normalized.json`
 
 ### Step 3 — Evaluate KSI Rules
 
-**Script:** `uiao-core/ksi/evaluations/evaluate-ksi.ps1`
+**Script:** `uiao/ksi/evaluations/evaluate-ksi.ps1`
 
 Applies the full KSI ruleset (KSI-001 through KSI-010) to normalized SCuBA fields.
 
-**Output:** `uiao-core/artifacts/scuba/reports/ScubaResults.report.json`
+**Output:** `uiao/artifacts/scuba/reports/ScubaResults.report.json`
 
 Contains: KSI IDs, PASS/WARN/FAIL status, severity, details.
 
 ### Step 4 — Generate Provenance Manifest
 
-**Script:** `uiao-core/provenance/manifests/generate-manifest.ps1`
+**Script:** `uiao/provenance/manifests/generate-manifest.ps1`
 
 Hashes all artifacts, captures environment metadata, records lineage, produces immutable provenance.
 
-**Output:** `uiao-core/provenance/manifests/prov-scuba-YYYYMMDD-HHMMSS.json`
+**Output:** `uiao/provenance/manifests/prov-scuba-YYYYMMDD-HHMMSS.json`
 
 ---
 
 ## 6. Artifact Storage Model
 
-### Machine-Facing (uiao-core)
+### Machine-Facing (uiao)
 
 | Directory | Contents |
 |---|---|
@@ -153,7 +153,7 @@ Contains: Executive summary, metadata, KSI summary, control mappings, detailed f
 ## 8. Governance Boundaries
 
 - Machine artifacts never stored in uiao-docs
-- Human artifacts never stored in uiao-core
+- Human artifacts never stored in uiao
 - No duplication across repos
 - Every run produces a provenance manifest
 - Every KSI rule is versioned
@@ -176,31 +176,31 @@ Contains: Executive summary, metadata, KSI summary, control mappings, detailed f
 
 **Run entire pipeline:**
 ```powershell
-pwsh ./uiao-core/adapters/scuba/run/adapter-run-scuba.ps1 `
-     -OutputDirectory ./uiao-core/artifacts/scuba
+pwsh ./uiao/adapters/scuba/run/adapter-run-scuba.ps1 `
+     -OutputDirectory ./uiao/artifacts/scuba
 ```
 
 **Normalize only:**
 ```powershell
-pwsh ./uiao-core/adapters/scuba/transforms/normalize.ps1 `
+pwsh ./uiao/adapters/scuba/transforms/normalize.ps1 `
      -InputPath raw.json `
      -OutputPath normalized.json
 ```
 
 **Evaluate KSI only:**
 ```powershell
-pwsh ./uiao-core/ksi/evaluations/evaluate-ksi.ps1 `
+pwsh ./uiao/ksi/evaluations/evaluate-ksi.ps1 `
      -InputPath normalized.json `
      -OutputPath report.json
 ```
 
 **Generate provenance only:**
 ```powershell
-pwsh ./uiao-core/provenance/manifests/generate-manifest.ps1 `
+pwsh ./uiao/provenance/manifests/generate-manifest.ps1 `
      -RawFilePath raw.json `
      -NormalizedFilePath normalized.json `
      -ReportFilePath report.json `
-     -OutputDirectory ./uiao-core/provenance/manifests
+     -OutputDirectory ./uiao/provenance/manifests
 ```
 
 ---

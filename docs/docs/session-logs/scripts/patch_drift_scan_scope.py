@@ -13,7 +13,7 @@ Usage:
 from pathlib import Path
 import sys
 
-TARGET = Path(r"C:\Users\whale\uiao-core\.github\workflows\drift-scan.yml")
+TARGET = Path(r"C:\Users\whale\uiao\.github\workflows\drift-scan.yml")
 OLD = b"--path . \\"
 NEW = b"--path canon/ \\"
 EXPECTED = 2

@@ -1,8 +1,8 @@
 # =============================================================================
 # stage-4-batch-5.2-branch-protection.ps1
-# Phase D Stage 5, Batch 5.2 - branch protection on uiao-core/main
+# Phase D Stage 5, Batch 5.2 - branch protection on uiao/main
 # -----------------------------------------------------------------------------
-# Creates a GitHub Ruleset named 'uiao-core-main-protection' targeting the
+# Creates a GitHub Ruleset named 'uiao-main-protection' targeting the
 # default branch (main) with:
 #
 #   - Require pull request before merging (0 approvals; self-merge OK)
@@ -25,7 +25,7 @@
 #     it in 'active' mode but the flip can be reverted with one PATCH.
 #   - Uses the ruleset API (not the older classic branch protection API) so
 #     the configuration shows up cleanly under Settings > Rules.
-#   - Does NOT touch uiao-docs or any other repo. 5.2 is uiao-core only.
+#   - Does NOT touch uiao-docs or any other repo. 5.2 is uiao only.
 #
 # Prerequisites:
 #   - gh CLI installed and authenticated as a repo admin
@@ -34,8 +34,8 @@
 
 $ErrorActionPreference = 'Stop'
 $Owner     = 'WhalerMike'
-$Repo      = 'uiao-core'
-$RuleName  = 'uiao-core-main-protection'
+$Repo      = 'uiao'
+$RuleName  = 'uiao-main-protection'
 
 function Write-Step($msg) { Write-Host "`n>>> $msg" -ForegroundColor Cyan }
 function Write-OK($msg)   { Write-Host "[OK]  $msg"  -ForegroundColor Green }
@@ -141,7 +141,7 @@ $payload = [ordered]@{
 }
 
 $json = $payload | ConvertTo-Json -Depth 10 -Compress
-$payloadFile = Join-Path $env:TEMP 'uiao-core-5-2-ruleset.json'
+$payloadFile = Join-Path $env:TEMP 'uiao-5-2-ruleset.json'
 [System.IO.File]::WriteAllText(
     $payloadFile,
     $json,

@@ -8,7 +8,7 @@ UIAO-Core Master Test Plan
 
 **Date:** 2026-04-11
 
-**Repository:** uiao-core v2.0.0
+**Repository:** uiao v2.0.0
 
 **Author:** Michael Stratton, Canon Steward
 
@@ -16,7 +16,7 @@ UIAO-Core Master Test Plan
 
 1\. Purpose and Scope
 
-This Master Test Plan (MTP) defines the test strategy, coverage requirements, test classification taxonomy, and validation criteria for the uiao-core repository. It maps every source module to its test suite, identifies coverage gaps, and establishes the quality gates enforced by CI.
+This Master Test Plan (MTP) defines the test strategy, coverage requirements, test classification taxonomy, and validation criteria for the uiao repository. It maps every source module to its test suite, identifies coverage gaps, and establishes the quality gates enforced by CI.
 
 1.1 In Scope
 

@@ -13,10 +13,10 @@ Run from a clean working tree in each repo. If `git status` shows untracked chan
 
 ---
 
-## Block 1 — `uiao-core` cleanup
+## Block 1 — `uiao` cleanup
 
 ```powershell
-Set-Location 'C:\Users\whale\uiao-core'
+Set-Location 'C:\Users\whale\uiao'
 git pull --rebase origin main
 
 # Remove generated/derived directories
@@ -32,10 +32,10 @@ git rm `
     pytest-results.txt `
     refresh_actions.json `
     uaio-core-dir.txt `
-    uiao-core-dirtree.txt `
-    uiao-core-tree.txt `
+    uiao-dirtree.txt `
     uiao-tree.txt `
-    Deploy-uiao-core-Claude.ps1
+    uiao-tree.txt `
+    Deploy-uiao-Claude.ps1
 
 # Update .gitignore to prevent regeneration
 @"
@@ -63,19 +63,19 @@ git push
 |---|---|
 | `dryrun-output/` | 1027 files of build artifacts, not canon |
 | `build/` | pip/setuptools build output |
-| `UNKNOWN.egg-info/` | stale setuptools metadata (package name should be `uiao-core`, so `UNKNOWN` name is itself a bug) |
+| `UNKNOWN.egg-info/` | stale setuptools metadata (package name should be `uiao`, so `UNKNOWN` name is itself a bug) |
 | `site/` | 32 files — rendered-site output (canonical rendered site lives in uiao-docs) |
 | `check_marker.py` | 254-byte one-off script |
 | `pytest-results.txt` | 117 KB test run artifact |
 | `refresh_actions.json` | zero-byte placeholder |
-| `uaio-core-dir.txt`, `uiao-core-dirtree.txt`, `uiao-core-tree.txt`, `uiao-tree.txt` | 185–354 KB each, directory-listing dumps |
-| `Deploy-uiao-core-Claude.ps1` | 88 KB personal deploy script, not repo infra |
+| `uaio-core-dir.txt`, `uiao-dirtree.txt`, `uiao-tree.txt`, `uiao-tree.txt` | 185–354 KB each, directory-listing dumps |
+| `Deploy-uiao-Claude.ps1` | 88 KB personal deploy script, not repo infra |
 
 ### What this does NOT remove (deferred to later stages)
 
 - `_quarto.yml` (Stage 3 — doc pipeline out)
 - `docs/`, `templates/`, `visuals/`, `exports/`, `assets/`, `plantuml.jar` (Stage 3)
-- `src/`, `adapters/`, `scripts/`, `tests/`, `cli/`, `pyproject.toml`, etc. (Stage 4 — `uiao-impl` split)
+- `src/`, `adapters/`, `scripts/`, `tests/`, `cli/`, `pyproject.toml`, etc. (Stage 4 — `uiao` split)
 - `inject_ssp.py`, `write_engine.py` (Stage 4)
 - Root `.docx` files (Stage 3 — move to uiao-docs/exports/docx/)
 
@@ -174,7 +174,7 @@ git push
 ### What this does NOT remove (deferred)
 
 - Root-level `.pdf` / `.docx` / `.png` files (Stage 3 — move them into proper locations in `docs/` subtree)
-- `ssot/UIAO-SSOT.md`, `schemas/*.json` (Stage 2 — move to uiao-core)
+- `ssot/UIAO-SSOT.md`, `schemas/*.json` (Stage 2 — move to uiao)
 - Any content under `docs/` (no bulk deletions planned)
 
 ---
@@ -183,9 +183,9 @@ git push
 
 | Repo | Before | After | Drop |
 |---|---|---|---|
-| `uiao-core` top-level entries | ~106 | ~90 | 16 files/dirs |
+| `uiao` top-level entries | ~106 | ~90 | 16 files/dirs |
 | `uiao-docs` top-level entries | ~75 | ~45 | 30 files/dirs |
-| `uiao-core` tracked size | ~XX MB | ~XX MB − (dryrun-output + build + pytest-results + site + tree dumps + PS1) | substantial |
+| `uiao` tracked size | ~XX MB | ~XX MB − (dryrun-output + build + pytest-results + site + tree dumps + PS1) | substantial |
 | `uiao-docs` tracked size | ~XX MB | ~XX MB − (_site + site + tree dumps + mkdocs + PS1 + _fix scripts) | substantial |
 | Workflows untouched | 32 / 40 | 32 / 40 | deferred to Stage 5 |
 

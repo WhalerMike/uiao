@@ -127,6 +127,6 @@ Returns the current OSCAL POA&M JSON.
 ## File Location
 
 ```
-uiao-core/api/
+uiao/api/
   └── auditor-api.md     (this file)
 ```

@@ -20,7 +20,7 @@ The UIAO Spec-to-Test Enforcement Layer ensures every spec artifact becomes an e
 
 ## 1. Spec-Driven Test Matrix
 
-Every file in uiao-core/spec/ must map to one or more test suites.
+Every file in uiao/spec/ must map to one or more test suites.
 
 | Spec File | Test Suite |
 |-----------|------------|

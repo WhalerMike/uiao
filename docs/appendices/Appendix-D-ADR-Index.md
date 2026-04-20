@@ -4,7 +4,7 @@
 
 This appendix is the canonical index of Architecture Decision Records (ADRs) governing the UIAO SCuBA integration. Each ADR documents a decision, its rationale, alternatives considered, and consequences.
 
-ADR source files (machine-readable JSON) live in: `uiao-core/adr/`
+ADR source files (machine-readable JSON) live in: `uiao/adr/`
 ADR human-readable files live in: `uiao-docs/adr/`
 
 ---
@@ -14,10 +14,10 @@ ADR human-readable files live in: `uiao-docs/adr/`
 | ADR ID | Title | Status | Date | Summary |
 |---|---|---|---|---|
 | ADR-SCuBA-001 | SCuBA Integration via UIAO Adapter | Accepted | 2026-04-07 | SCuBA runs via a UIAO adapter wrapper rather than standalone, enabling normalization, KSI mapping, and provenance. |
-| ADR-SCuBA-002 | KSI Rules Stored as YAML in uiao-core | Accepted | 2026-04-07 | KSI rules are stored as individual YAML files in `uiao-core/ksi/rules/` for deterministic versioning and machine readability. |
+| ADR-SCuBA-002 | KSI Rules Stored as YAML in uiao | Accepted | 2026-04-07 | KSI rules are stored as individual YAML files in `uiao/ksi/rules/` for deterministic versioning and machine readability. |
 | ADR-SCuBA-003 | Normalization Schema in JSON Schema Format | Accepted | 2026-04-07 | The UIAO normalized SCuBA schema is defined as a JSON Schema document to enable validation, tooling, and drift detection. |
 | ADR-SCuBA-004 | Provenance Manifest per SCuBA Run | Accepted | 2026-04-07 | Every SCuBA pipeline run produces a SHA-256 hashed provenance manifest capturing lineage, environment, and artifact chain. |
-| ADR-SCuBA-005 | Machine/Human Artifact Separation | Accepted | 2026-04-07 | Machine artifacts (schemas, scripts, KSI rules, provenance) are stored exclusively in uiao-core. Human artifacts (reports, appendices, runbooks) are stored exclusively in uiao-docs. No duplication. |
+| ADR-SCuBA-005 | Machine/Human Artifact Separation | Accepted | 2026-04-07 | Machine artifacts (schemas, scripts, KSI rules, provenance) are stored exclusively in uiao. Human artifacts (reports, appendices, runbooks) are stored exclusively in uiao-docs. No duplication. |
 | ADR-SCuBA-006 | GitHub Actions for Automated SCuBA Execution | Accepted | 2026-04-07 | SCuBA pipeline runs are automated via GitHub Actions (weekly scheduled + manual dispatch) to ensure repeatable, documented execution. |
 
 ---
@@ -62,7 +62,7 @@ Version:      1.0
 - Every non-trivial change to the SCuBA pipeline requires an ADR
 - ADRs are immutable once Accepted — supersede, do not edit
 - ADR IDs are unique and sequential within the SCuBA namespace
-- Machine-readable ADR JSON lives in `uiao-core/adr/`
+- Machine-readable ADR JSON lives in `uiao/adr/`
 - Human-readable ADR Markdown lives in `uiao-docs/adr/`
 
 ---

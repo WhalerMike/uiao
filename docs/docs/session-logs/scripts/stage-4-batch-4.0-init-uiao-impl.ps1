@@ -1,13 +1,13 @@
 # =============================================================================
-# stage-4-batch-4.0-init-uiao-impl.ps1
-# Phase D Stage 4, Batch 4.0 — Initialize WhalerMike/uiao-impl
+# stage-4-batch-4.0-init-uiao.ps1
+# Phase D Stage 4, Batch 4.0 — Initialize WhalerMike/uiao
 # -----------------------------------------------------------------------------
 # Prereqs:
-#   - WhalerMike/uiao-impl already created on GitHub (done — empty repo).
+#   - WhalerMike/uiao already created on GitHub (done — empty repo).
 #   - gh auth status is clean; git is configured for WhalerMike.
 #   - Repo root for sibling clones: C:\Users\whale\
 # What this does:
-#   - Clones uiao-impl locally.
+#   - Clones uiao locally.
 #   - Seeds pyproject.toml, README.md, CLAUDE.md, .gitignore, LICENSE,
 #     src/uiao_impl/__init__.py, tests/__init__.py, .github/workflows/ci.yml.
 #   - Commits a single chore(init) commit on main.
@@ -17,8 +17,8 @@
 
 $ErrorActionPreference = 'Stop'
 $RepoRoot              = 'C:\Users\whale'
-$ImplDir               = Join-Path $RepoRoot 'uiao-impl'
-$RepoUrl               = 'https://github.com/WhalerMike/uiao-impl.git'
+$ImplDir               = Join-Path $RepoRoot 'uiao'
+$RepoUrl               = 'https://github.com/WhalerMike/uiao.git'
 
 function Write-Step($msg) { Write-Host "`n>>> $msg" -ForegroundColor Cyan }
 function Confirm-Or-Exit($prompt) {
@@ -27,20 +27,20 @@ function Confirm-Or-Exit($prompt) {
 }
 
 # --- 1. Clone or locate --------------------------------------------------------
-Write-Step 'Locating uiao-impl clone'
+Write-Step 'Locating uiao clone'
 if (-not (Test-Path $ImplDir)) {
-    Write-Host "uiao-impl not found at $ImplDir — cloning..."
+    Write-Host "uiao not found at $ImplDir — cloning..."
     Push-Location $RepoRoot
     git clone $RepoUrl
     Pop-Location
 } else {
-    Write-Host "uiao-impl already cloned at $ImplDir"
+    Write-Host "uiao already cloned at $ImplDir"
 }
 Set-Location $ImplDir
 
 # Sanity: is it the right repo?
 $remoteUrl = git config --get remote.origin.url
-if ($remoteUrl -notmatch 'uiao-impl') {
+if ($remoteUrl -notmatch 'uiao') {
     Write-Host "ERROR: $ImplDir remote is $remoteUrl — aborting." -ForegroundColor Red
     exit 1
 }
@@ -55,9 +55,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "uiao-impl"
+name = "uiao"
 version = "0.1.0"
-description = "UIAO implementation — Python library, CLI, generators, adapters, and tests. Consumes canon from WhalerMike/uiao-core."
+description = "UIAO implementation — Python library, CLI, generators, adapters, and tests. Consumes canon from WhalerMike/uiao."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
@@ -73,16 +73,16 @@ where = ["src"]
 
 # README.md
 @'
-# uiao-impl
+# uiao
 
 Python implementation for the UIAO governance ecosystem: library, CLI, generators, adapters, and the pytest suite.
 
-This repository holds **application code only**. Canonical governance artifacts (YAMLs, schemas, rules, playbooks) live in [`WhalerMike/uiao-core`](https://github.com/WhalerMike/uiao-core). Documentation and article series live in [`WhalerMike/uiao-docs`](https://github.com/WhalerMike/uiao-docs).
+This repository holds **application code only**. Canonical governance artifacts (YAMLs, schemas, rules, playbooks) live in [`WhalerMike/uiao`](https://github.com/WhalerMike/uiao). Documentation and article series live in [`WhalerMike/uiao-docs`](https://github.com/WhalerMike/uiao-docs).
 
 ## Install
 
 ```bash
-pip install git+https://github.com/WhalerMike/uiao-impl.git@v0.1.0
+pip install git+https://github.com/WhalerMike/uiao.git@v0.1.0
 ```
 
 ## CLI
@@ -94,8 +94,8 @@ uiao --help
 ## Development
 
 ```bash
-git clone https://github.com/WhalerMike/uiao-impl.git
-cd uiao-impl
+git clone https://github.com/WhalerMike/uiao.git
+cd uiao
 pip install -e .[dev]
 pytest
 ```
@@ -105,8 +105,8 @@ pytest
 All generators and validators need a canon path at runtime:
 
 ```bash
-uiao validate --canon-path ../uiao-core/canon
-uiao generate-ssp --canon-path ../uiao-core/canon --out out/ssp.docx
+uiao validate --canon-path ../uiao/canon
+uiao generate-ssp --canon-path ../uiao/canon --out out/ssp.docx
 ```
 
 ## License
@@ -121,20 +121,20 @@ Apache 2.0
 > Python application code for the UIAO governance ecosystem.
 
 ## Repository Identity
-- **Name:** uiao-impl
+- **Name:** uiao
 - **Purpose:** Python library, CLI, generators, adapters, and pytest suite.
-- **Canon Authority:** CONSUMER of `uiao-core` canon. Does NOT define canonical artifacts.
+- **Canon Authority:** CONSUMER of `uiao` canon. Does NOT define canonical artifacts.
 - **Cloud Boundary:** GCC-Moderate (Microsoft 365 SaaS). Exception: Amazon Connect in Commercial Cloud.
 
 ## Operating Principles
 1. No-Hallucination Protocol available on demand.
-2. All runtime canon reads go through `--canon-path` (no hard-coded `../uiao-core` paths).
+2. All runtime canon reads go through `--canon-path` (no hard-coded `../uiao` paths).
 3. Every CLI command is covered by pytest.
 4. Breaking changes bump the minor version until `v1.0.0`.
 
 ## Directory Convention
 ```
-uiao-impl/
+uiao/
 ├── CLAUDE.md
 ├── pyproject.toml
 ├── README.md
@@ -191,8 +191,8 @@ artifacts/
 reports/
 '@ | Set-Content '.gitignore' -Encoding UTF8
 
-# LICENSE — Apache 2.0 (match uiao-core)
-Copy-Item -Path '..\uiao-core\LICENSE' -Destination '.\LICENSE' -Force
+# LICENSE — Apache 2.0 (match uiao)
+Copy-Item -Path '..\uiao\LICENSE' -Destination '.\LICENSE' -Force
 
 # src/uiao_impl/__init__.py placeholder — real contents arrive in Batch 4.1
 New-Item -ItemType Directory -Force -Path 'src\uiao_impl' | Out-Null

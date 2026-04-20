@@ -1,5 +1,5 @@
 # Phase D — Stage 2 Batch 2.2: canon content OUT of uiao-docs + dashboard-export workflow patch
-# Run AFTER stage-2-batch-1-canon-in.ps1 has pushed successfully to uiao-core.
+# Run AFTER stage-2-batch-1-canon-in.ps1 has pushed successfully to uiao.
 
 $ErrorActionPreference = 'Stop'
 
@@ -9,7 +9,7 @@ Write-Host "--- Pre-flight: uiao-docs ---" -ForegroundColor Cyan
 git status
 git pull --rebase origin main
 
-Write-Host "--- Removing 12 YAMLs that moved to uiao-core ---" -ForegroundColor Cyan
+Write-Host "--- Removing 12 YAMLs that moved to uiao ---" -ForegroundColor Cyan
 git rm `
     data/control-planes.yml `
     data/core-stack.yml `
@@ -30,10 +30,10 @@ git rm ssot/UIAO-SSOT.md
 Write-Host "--- Removing governance schema ---" -ForegroundColor Cyan
 git rm schemas/uiao-governance.schema.json
 
-Write-Host "--- Removing truncated dashboard-schema.json (canonical copy lives in uiao-core) ---" -ForegroundColor Cyan
+Write-Host "--- Removing truncated dashboard-schema.json (canonical copy lives in uiao) ---" -ForegroundColor Cyan
 git rm schemas/dashboard-schema.json
 
-Write-Host "--- Retiring validate-uiao-metadata.yml (canon-validation.yml in uiao-core covers this) ---" -ForegroundColor Cyan
+Write-Host "--- Retiring validate-uiao-metadata.yml (canon-validation.yml in uiao covers this) ---" -ForegroundColor Cyan
 git rm .github/workflows/validate-uiao-metadata.yml
 
 Write-Host "--- Cleaning up empty directories ---" -ForegroundColor Cyan
@@ -46,9 +46,9 @@ if ((Get-ChildItem 'schemas' -Force -ErrorAction SilentlyContinue | Measure-Obje
     Write-Host "  - schemas/ (empty)"
 }
 
-Write-Host "--- Patching dashboard-export.yml to read schema from uiao-core ---" -ForegroundColor Cyan
+Write-Host "--- Patching dashboard-export.yml to read schema from uiao ---" -ForegroundColor Cyan
 (Get-Content .github/workflows/dashboard-export.yml) `
-    -replace '--schema schemas/dashboard-schema\.json', '--schema ../uiao-core/schemas/dashboard-schema.json' `
+    -replace '--schema schemas/dashboard-schema\.json', '--schema ../uiao/schemas/dashboard-schema.json' `
     | Set-Content .github/workflows/dashboard-export.yml
 git add .github/workflows/dashboard-export.yml
 
@@ -59,7 +59,7 @@ Write-Host "--- Workflow diff (should be exactly one changed line) ---" -Foregro
 git diff --cached -- .github/workflows/dashboard-export.yml
 
 Write-Host "--- Committing + pushing ---" -ForegroundColor Cyan
-git commit -m "[UIAO-DOCS] MIGRATE: Phase D Stage 2 — release canon content to uiao-core + rewire dashboard-export workflow"
+git commit -m "[UIAO-DOCS] MIGRATE: Phase D Stage 2 — release canon content to uiao + rewire dashboard-export workflow"
 git push
 
 Write-Host "--- Stage 2 complete. Verify then run Stage 3 scripts. ---" -ForegroundColor Green

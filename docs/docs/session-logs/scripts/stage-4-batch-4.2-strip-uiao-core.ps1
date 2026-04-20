@@ -1,11 +1,11 @@
 # =============================================================================
-# stage-4-batch-4.2-strip-uiao-core.ps1
-# Phase D Stage 4, Batch 4.2 — Strip app-code from uiao-core, consolidate specs
+# stage-4-batch-4.2-strip-uiao.ps1
+# Phase D Stage 4, Batch 4.2 — Strip app-code from uiao, consolidate specs
 # -----------------------------------------------------------------------------
 # Prereqs:
-#   - Batch 4.1 committed + tagged v0.1.0 on uiao-impl (ideally pushed, but
+#   - Batch 4.1 committed + tagged v0.1.0 on uiao (ideally pushed, but
 #     local tag is enough — Batch 4.3 will verify the push state).
-#   - uiao-core working tree clean.
+#   - uiao working tree clean.
 # What this does:
 #   - git rm Bucket A (Python app code).
 #   - rm -rf Bucket C (Stage 3 residue + build cruft). Uses git rm where tracked,
@@ -27,7 +27,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $RepoRoot = 'C:\Users\whale'
-$CoreDir  = Join-Path $RepoRoot 'uiao-core'
+$CoreDir  = Join-Path $RepoRoot 'uiao'
 
 function Write-Step($msg) { Write-Host "`n>>> $msg" -ForegroundColor Cyan }
 function Confirm-Or-Exit($prompt) {
@@ -54,11 +54,11 @@ Set-Location $CoreDir
 Write-Step 'Preflight'
 $status = git status --porcelain
 if ($status) {
-    Write-Host 'uiao-core has uncommitted changes — resolve before proceeding:' -ForegroundColor Red
+    Write-Host 'uiao has uncommitted changes — resolve before proceeding:' -ForegroundColor Red
     Write-Host $status
     exit 1
 }
-Write-Host "uiao-core clean at $(git rev-parse --short HEAD)" -ForegroundColor Green
+Write-Host "uiao clean at $(git rev-parse --short HEAD)" -ForegroundColor Green
 
 if ($DryRun) { Write-Host 'DRY-RUN MODE — no filesystem or git changes will be made.' -ForegroundColor Yellow }
 
@@ -177,9 +177,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "uiao-core"
+name = "uiao"
 version = "0.2.0"
-description = "UIAO canonical governance artifacts — YAMLs, schemas, playbooks, and canon enforcement tooling. Consumed by uiao-impl for generators and validators."
+description = "UIAO canonical governance artifacts — YAMLs, schemas, playbooks, and canon enforcement tooling. Consumed by uiao for generators and validators."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
@@ -191,8 +191,8 @@ dependencies = [
     "jsonschema>=4.0",
 ]
 
-# No [project.scripts] — CLI lives in uiao-impl.
-# No [tool.setuptools.packages.find] — uiao-core is not a Python package.
+# No [project.scripts] — CLI lives in uiao.
+# No [tool.setuptools.packages.find] — uiao is not a Python package.
 '@
 if ($DryRun) {
     Write-Host '  [dry] would overwrite pyproject.toml'
@@ -264,7 +264,7 @@ git commit -m @"
 [UIAO-CORE] MIGRATE: uiao_impl - app code split out; canon spec consolidation
 
 - Removed: src/, tests/, scripts/, adapters/, orchestrator/, inject_ssp.py,
-  write_engine.py, .coveragerc (moved to WhalerMike/uiao-impl @ v0.1.0)
+  write_engine.py, .coveragerc (moved to WhalerMike/uiao @ v0.1.0)
 - Purged: dryrun-output/, scuba-real-run/, site/, artifacts/, reports/,
   provenance/, machine/, dashboard/_quarto.yml, dashboard/index.qmd
 - Consolidated: 18 single-.md spec dirs -> canon/specs/
@@ -275,6 +275,6 @@ Canon-side tools/ and workflows untouched; tools/*.py has zero uiao_core imports
 "@
 
 Write-Step 'Batch 4.2 complete'
-Write-Host "uiao-core is now canon+enforcement-only. Review with: git show --stat HEAD" -ForegroundColor Green
+Write-Host "uiao is now canon+enforcement-only. Review with: git show --stat HEAD" -ForegroundColor Green
 Write-Host 'Push when ready:  git push origin main'                                    -ForegroundColor Green
 Write-Host 'Then run Batch 4.3 (smoke test).'                                          -ForegroundColor Green

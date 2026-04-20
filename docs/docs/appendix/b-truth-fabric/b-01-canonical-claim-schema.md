@@ -16,7 +16,7 @@ This appendix defines the Canonical Claim Schema — the authoritative data stru
 
 ## Scope
 
-Applies to all data structures consumed by or produced by the Truth Fabric. Adapter schemas in `uiao-core` MUST validate against the Canonical Claim Schema.
+Applies to all data structures consumed by or produced by the Truth Fabric. Adapter schemas in `uiao` MUST validate against the Canonical Claim Schema.
 
 ## What Is a Canonical Claim?
 
@@ -60,7 +60,7 @@ A Canonical Claim is a structured, versioned, and typed assertion about a specif
 
 ## Claim Type Registry
 
-The Claim Type Registry is maintained in `uiao-core` as a machine-readable JSON file. Human-readable descriptions are maintained here. Core claim types:
+The Claim Type Registry is maintained in `uiao` as a machine-readable JSON file. Human-readable descriptions are maintained here. Core claim types:
 
 | Claim Type | Description |
 |---|---|
@@ -85,7 +85,7 @@ Claims failing validation are rejected and an Evidence Fabric audit event is gen
 ## Dependencies
 
 - **ADR-005:** Decision record for the Canonical Claim Schema design
-- **uiao-core:** Machine-readable Canonical Claim Schema and Claim Type Registry
+- **uiao:** Machine-readable Canonical Claim Schema and Claim Type Registry
 - **Appendix B-02:** Identity anchoring for subject identifiers
 
 > **SSOT Reference:** See /ssot/UIAO-SSOT.md

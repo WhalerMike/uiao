@@ -16,10 +16,10 @@ Phase C (qmd conversion, Master Document, image pipeline, aggregate_prompts) is 
 
 ## Task A1 — Commit UIAO_003 into canon (2 min, PowerShell)
 
-The doctrinal source doc is sitting untracked in `uiao-core/canon/`. Until it's committed, the schema validates `mission-class` values against a document that isn't in canon — which makes the governance story weak.
+The doctrinal source doc is sitting untracked in `uiao/canon/`. Until it's committed, the schema validates `mission-class` values against a document that isn't in canon — which makes the governance story weak.
 
 ```powershell
-Set-Location 'C:\Users\whale\uiao-core'
+Set-Location 'C:\Users\whale\uiao'
 git add canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md
 git commit -m "[UIAO-CORE] CREATE: canon/UIAO_003 — adapter segmentation overview v1.0"
 git push
@@ -33,7 +33,7 @@ git push
 
 ## Task A2 — Set up `CANON_SYNC_DISPATCH_TOKEN` PAT (5 min, GitHub web UI)
 
-Hard blocker for canon-sync workflows. Neither the dispatcher (`uiao-core`) nor the receiver (`uiao-docs`) can function without this shared secret.
+Hard blocker for canon-sync workflows. Neither the dispatcher (`uiao`) nor the receiver (`uiao-docs`) can function without this shared secret.
 
 ### A2.1 — Generate fine-grained PAT
 
@@ -42,11 +42,11 @@ Open: **https://github.com/settings/personal-access-tokens/new**
 | Field | Value |
 |---|---|
 | Token name | `UIAO canon-sync dispatch` |
-| Description | `Cross-repo canon propagation (uiao-core → uiao-docs)` |
+| Description | `Cross-repo canon propagation (uiao → uiao-docs)` |
 | Resource owner | `WhalerMike` |
 | Expiration | Custom → 90 days from today (2026-07-13) |
 | Repository access | **Only select repositories** |
-| Repositories | `WhalerMike/uiao-core` **AND** `WhalerMike/uiao-docs` (pick both) |
+| Repositories | `WhalerMike/uiao` **AND** `WhalerMike/uiao-docs` (pick both) |
 
 **Permissions (Repository permissions section):**
 
@@ -58,9 +58,9 @@ Open: **https://github.com/settings/personal-access-tokens/new**
 
 Click **Generate token**. Copy the token value (starts with `github_pat_`). You won't see it again.
 
-### A2.2 — Add as repository secret in `uiao-core`
+### A2.2 — Add as repository secret in `uiao`
 
-Open: **https://github.com/WhalerMike/uiao-core/settings/secrets/actions/new**
+Open: **https://github.com/WhalerMike/uiao/settings/secrets/actions/new**
 
 | Field | Value |
 |---|---|
@@ -77,7 +77,7 @@ Same values as A2.2. Click **Add secret**.
 
 ### A2.4 — Set a calendar reminder
 
-Calendar entry for **2026-07-06** (1 week before PAT expires): "Rotate CANON_SYNC_DISPATCH_TOKEN per `uiao-core/tools/README.md §Rotation`."
+Calendar entry for **2026-07-06** (1 week before PAT expires): "Rotate CANON_SYNC_DISPATCH_TOKEN per `uiao/tools/README.md §Rotation`."
 
 ---
 
@@ -88,7 +88,7 @@ Proves the dispatcher + receiver plumbing actually works end-to-end.
 ### A3.1 — Trigger with trivial canon edit
 
 ```powershell
-Set-Location 'C:\Users\whale\uiao-core'
+Set-Location 'C:\Users\whale\uiao'
 # Add a whitespace-only change to adapter-registry.yaml (end-of-file newline)
 Add-Content -Path 'canon/adapter-registry.yaml' -Value ''
 git add canon/adapter-registry.yaml
@@ -100,8 +100,8 @@ git push
 
 Open side-by-side:
 
-- **https://github.com/WhalerMike/uiao-core/actions** — watch for `Canon sync — dispatch to uiao-docs` workflow. Should go green in ~30 sec.
-- **https://github.com/WhalerMike/uiao-docs/actions** — watch for `Canon sync — receive from uiao-core` workflow. Should trigger ~5 sec after dispatcher finishes.
+- **https://github.com/WhalerMike/uiao/actions** — watch for `Canon sync — dispatch to uiao-docs` workflow. Should go green in ~30 sec.
+- **https://github.com/WhalerMike/uiao-docs/actions** — watch for `Canon sync — receive from uiao` workflow. Should trigger ~5 sec after dispatcher finishes.
 
 ### A3.3 — Expected outcomes
 
@@ -109,9 +109,9 @@ Open side-by-side:
 |---|---|---|
 | Both workflows green, no new PR in uiao-docs | Idempotent — uiao-docs already in sync. **Plumbing works, nothing to merge.** | Done. Move to B1. |
 | Receiver opens a `canon-sync`-labeled PR in uiao-docs | Plumbing works, and receiver detected drift worth propagating. | Review the PR, merge if clean. |
-| Dispatcher fails with auth error | PAT not configured correctly in uiao-core. | Recheck A2.2 (must be exact secret name, exact token). |
+| Dispatcher fails with auth error | PAT not configured correctly in uiao. | Recheck A2.2 (must be exact secret name, exact token). |
 | Receiver fails with auth error | PAT not configured correctly in uiao-docs. | Recheck A2.3. |
-| Receiver fails during checkout of `.uiao-core-sync` | PAT lacks Contents:read on uiao-core. | Recheck A2.1 permissions. |
+| Receiver fails during checkout of `.uiao-sync` | PAT lacks Contents:read on uiao. | Recheck A2.1 permissions. |
 | Receiver fails during PR creation | PAT lacks Pull requests:write on uiao-docs. | Recheck A2.1 permissions. |
 
 If any failure, grab the Actions log link and paste into chat — I'll triage.
@@ -176,7 +176,7 @@ I inspected `uiao-docs/.github/workflows/build-docs.yml` and confirmed the workf
 - [ ] **A1** — Commit UIAO_003 (2 min)
 - [ ] **A2** — Generate PAT + add secret to both repos (5 min)
 - [ ] **A3** — Trigger round-trip probe + watch Actions (3-5 min)
-- [x] **B1** — ~~Reply in chat with ODA-15 choice (a/b/c)~~ **RESOLVED 2026-04-15 as Option (a) — new `integration` mission-class** (see Turn 8 append in `2026-04-14-customer-docs-platform.md` and `uiao-core` v0.6.0 changelog entry)
+- [x] **B1** — ~~Reply in chat with ODA-15 choice (a/b/c)~~ **RESOLVED 2026-04-15 as Option (a) — new `integration` mission-class** (see Turn 8 append in `2026-04-14-customer-docs-platform.md` and `uiao` v0.6.0 changelog entry)
 - [ ] **B2** — Watch cisagov/ScubaGear releases (30 sec)
 - [ ] **B3** — No action, parked for Step 6
 
@@ -192,14 +192,14 @@ Ping me when A1-A3 are done or if anything fails. While you're running these, I'
 
 **Impact:** Dual-axis taxonomy is now complete and ratifiable. UIAO_003 §4.2–§4.7 ready for promotion from NEW (Proposed) to canonical pending Master Document review. No breaking changes to existing code or adapters.
 
-**Files landed** (see `uiao-core` commit on branch `claude/implement-oda15-updates-UofSn`):
-- `uiao-core/schemas/adapter-registry/adapter-registry.schema.json` — enum extended.
-- `uiao-core/canon/modernization-registry.yaml` — 5 adapters migrated.
-- `uiao-core/canon/adapter-registry.yaml` — header comment refreshed.
-- `uiao-core/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md` — new §4.7 Integration Adapter Class + TOC / §3 / §5 / Appendix B updates.
-- `uiao-core/ARCHITECTURE.md` — §3.2, §13 row 15 (RESOLVED), §14 v0.6.0 changelog.
+**Files landed** (see `uiao` commit on branch `claude/implement-oda15-updates-UofSn`):
+- `uiao/schemas/adapter-registry/adapter-registry.schema.json` — enum extended.
+- `uiao/canon/modernization-registry.yaml` — 5 adapters migrated.
+- `uiao/canon/adapter-registry.yaml` — header comment refreshed.
+- `uiao/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md` — new §4.7 Integration Adapter Class + TOC / §3 / §5 / Appendix B updates.
+- `uiao/ARCHITECTURE.md` — §3.2, §13 row 15 (RESOLVED), §14 v0.6.0 changelog.
 
 **Downstream in this repo** (see `uiao-docs` commit on the same branch):
 - `docs/13_FIMF_AdapterRegistry.qmd` — inserted **Doctrinal Mission-Classes** section with the 5-row table.
-- 10 adapter scaffolds under `docs/customer-documents/adapter-{technical-specifications,validation-suites}/{entra-id,m365,service-now,palo-alto,scuba}/*.qmd` — frontmatter regenerated via `uiao-core/tools/sync_canon.py --scaffold` (idempotent; `--check-only` exits 0).
+- 10 adapter scaffolds under `docs/customer-documents/adapter-{technical-specifications,validation-suites}/{entra-id,m365,service-now,palo-alto,scuba}/*.qmd` — frontmatter regenerated via `uiao/tools/sync_canon.py --scaffold` (idempotent; `--check-only` exits 0).
 - This session log + paired `.docx`.

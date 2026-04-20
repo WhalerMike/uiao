@@ -7,7 +7,7 @@ Operates on an EXPLICIT ALLOWLIST; leaves historical artifacts
 (ADRs, session logs, CHANGELOG, appendices, canon body text) alone.
 
 Uses a negative-lookbehind regex so pre-monorepo references with the
-`uiao-core/` hyphenated form (cross-repo references from before the
+`uiao/` hyphenated form (cross-repo references from before the
 consolidation) are NOT matched.
 
 Usage (from the monorepo root):
@@ -25,7 +25,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Negative lookbehind (?<![\w-]) prevents matching the tail of
-# `uiao-core/canon/` while still matching `core/canon/`, `/core/canon/`,
+# `uiao/canon/` while still matching `core/canon/`, `/core/canon/`,
 # `main/core/canon/`, `(core/canon/`, etc.
 SUBS = [
     (re.compile(r"(?<![\w-])core/canon/"),   "src/uiao/canon/"),

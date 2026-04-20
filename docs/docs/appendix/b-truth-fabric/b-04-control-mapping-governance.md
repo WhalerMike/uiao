@@ -16,7 +16,7 @@ This appendix defines how UIAO Canonical Claims are mapped to compliance control
 
 ## Scope
 
-Applies to all Canonical Claims of type `compliance.asserted` and to the Truth Fabric's control mapping engine. The control mapping registry is maintained as a machine artifact in `uiao-core`.
+Applies to all Canonical Claims of type `compliance.asserted` and to the Truth Fabric's control mapping engine. The control mapping registry is maintained as a machine artifact in `uiao`.
 
 ## Control Mapping Model
 
@@ -30,7 +30,7 @@ A control mapping record associates a Canonical Claim type (or a specific claim 
 
 ## Control Mapping Registry
 
-The Control Mapping Registry is stored in `uiao-core/data/control-mappings/`. It is machine-readable JSON and is versioned alongside the Canonical Claim Schema. Changes to the registry MUST be reviewed by the Governance Plane and recorded in an ADR if they affect existing mappings.
+The Control Mapping Registry is stored in `uiao/data/control-mappings/`. It is machine-readable JSON and is versioned alongside the Canonical Claim Schema. Changes to the registry MUST be reviewed by the Governance Plane and recorded in an ADR if they affect existing mappings.
 
 ## Compliance Attestation Generation
 
@@ -58,7 +58,7 @@ Some controls require evidence from multiple adapters to establish full satisfac
 
 - **ADR-005:** Canonical Claim Schema (claim_type definitions)
 - **ADR-011:** Multi-adapter correlation decision record
-- **uiao-core:** Machine-readable control mapping registry
+- **uiao:** Machine-readable control mapping registry
 - **Appendix D-03:** Compliance attestation process
 
 > **SSOT Reference:** See /ssot/UIAO-SSOT.md

@@ -24,7 +24,7 @@
 # =============================================================================
 
 $ErrorActionPreference = 'Stop'
-$CoreDir     = 'C:\Users\whale\uiao-core'
+$CoreDir     = 'C:\Users\whale\uiao'
 $DocsDir     = 'C:\Users\whale\uiao-docs'
 $Driver      = Join-Path $DocsDir 'docs\session-logs\scripts\canon_backfill.py'
 $CanonDir    = Join-Path $CoreDir 'canon'
@@ -169,7 +169,7 @@ try {
     Write-Host '--- staged summary ---' -ForegroundColor Cyan
     git status --short
 
-    $msgFile = Join-Path $env:TEMP 'uiao-core-5-1-7-msg.txt'
+    $msgFile = Join-Path $env:TEMP 'uiao-5-1-7-msg.txt'
     $lines = @(
         '[UIAO-CORE] CREATE: canon frontmatter backfill + document-registry',
         '',
@@ -218,8 +218,8 @@ try {
     Write-OK 'Commit created locally. Review with: git show HEAD --stat'
     Write-Host ''
     Write-Host 'Next steps (manual):' -ForegroundColor Yellow
-    Write-Host '  git -C C:\Users\whale\uiao-core pull --rebase origin main' -ForegroundColor Yellow
-    Write-Host '  git -C C:\Users\whale\uiao-core push origin main' -ForegroundColor Yellow
+    Write-Host '  git -C C:\Users\whale\uiao pull --rebase origin main' -ForegroundColor Yellow
+    Write-Host '  git -C C:\Users\whale\uiao push origin main' -ForegroundColor Yellow
     Write-Host ''
     Write-Host 'After push:' -ForegroundColor Yellow
     Write-Host '  5.1.8 - surgical frontmatter fix for UIAO_002 (blocking drops to 0)' -ForegroundColor Yellow

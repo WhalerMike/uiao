@@ -28,10 +28,10 @@ Phase 1 is complete as of April 2026. Phase 2 is ongoing.
 - Create stub files for all 18 appendices, 23 ADRs, and 5 canon documents
 - Validate that mkdocs.yml nav reflects the canonical structure
 - Commit PlantUML diagram sources for all 6 architecture diagrams
-- Establish the Canon Pointer in `uiao-core`
+- Establish the Canon Pointer in `uiao`
 
 ### Deliverables
-All deliverables below were completed and committed to `uiao-docs/main` and `uiao-core/main` between January and April 2026.
+All deliverables below were completed and committed to `uiao-docs/main` and `uiao/main` between January and April 2026.
 
 | Deliverable | Repository | Status |
 |---|---|---|
@@ -39,7 +39,7 @@ All deliverables below were completed and committed to `uiao-docs/main` and `uia
 | Canonical directory structure (9 dirs, 70 files) | uiao-docs/docs/ | ✅ Complete |
 | `diagrams/*.puml` (6 PlantUML sources) | uiao-docs/diagrams/ | ✅ Complete |
 | `mkdocs.yml` hierarchical nav | uiao-docs/ | ✅ Complete |
-| `docs/CANON_POINTER.md` | uiao-core/docs/ | ✅ Complete |
+| `docs/CANON_POINTER.md` | uiao/docs/ | ✅ Complete |
 | `.gitignore` patterns for stray files | uiao-docs/ | ✅ Complete |
 
 ---
@@ -56,7 +56,7 @@ All deliverables below were completed and committed to `uiao-docs/main` and `uia
 
 | File | Target Status | Ratification Required |
 |---|---|---|
-| `uiao-core/canon/canonical-rules.md` | MIGRATED to uiao-core (Phase D, 2026-04-16) | — |
+| `uiao/canon/canonical-rules.md` | MIGRATED to uiao (Phase D, 2026-04-16) | — |
 | `docs/canon/glossary.md` | ACTIVE | Governance Board sign-off |
 | `docs/canon/migration-plan.md` | ACTIVE | Governance Board sign-off |
 | `docs/canon/pdf-layout-spec.md` | ACTIVE | Governance Board sign-off |
@@ -101,7 +101,7 @@ The following constraints apply to Phase 2 content migration:
 
 3. **ADR immutability applies immediately.** Once an ADR is set to `status: ACCEPTED`, CR-003 applies and the Decision field is immutable.
 
-4. **Machine artifacts stay in uiao-core.** Any content discovered during migration that is a machine artifact (schema, algorithm, manifest) MUST be routed to `uiao-core`, not committed to `uiao-docs`.
+4. **Machine artifacts stay in uiao.** Any content discovered during migration that is a machine artifact (schema, algorithm, manifest) MUST be routed to `uiao`, not committed to `uiao-docs`.
 
 ---
 

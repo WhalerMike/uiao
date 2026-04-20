@@ -34,7 +34,7 @@ The UIAO framework requires RSA-2048 or RSA-4096 with SHA-256 (RS256) for all si
 
 Adapter signing keys are:
 - Generated per adapter at registration time
-- Stored in the key management service configured in `uiao-core`
+- Stored in the key management service configured in `uiao`
 - Rotated on a configurable schedule (default: annually, or immediately on suspected compromise)
 - Retired keys are retained for verification of historical evidence records even after rotation
 
@@ -69,7 +69,7 @@ Evidence records for a given subject are linked in a hash chain: each record con
 
 - **ADR-006:** Evidence determinism (no silent drops, content integrity)
 - **ADR-014:** Evidence severity model
-- **uiao-core:** Key management configuration
+- **uiao:** Key management configuration
 - **Appendix D-01:** Evidence determinism principles
 
 > **SSOT Reference:** See /ssot/UIAO-SSOT.md

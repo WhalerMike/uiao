@@ -2,7 +2,7 @@
 # Addresses three residual items from Stage 2/3 execution:
 #  (1) force-track branded DOCX/PPTX in uiao-docs that were blocked by .gitignore
 #  (2) prune uiao-docs .gitignore so "exports/" as a directory isn't blanket-ignored
-#  (3) remove filesystem-only cruft from uiao-core (never tracked, but still on disk)
+#  (3) remove filesystem-only cruft from uiao (never tracked, but still on disk)
 
 $ErrorActionPreference = 'Stop'
 
@@ -42,12 +42,12 @@ git commit -m "[UIAO-DOCS] FIX: Phase D Stage 3 follow-up — track 3 branded de
 git push
 
 # ------------------------------------------------------------------
-# Part B — uiao-core: purge filesystem-only cruft
+# Part B — uiao: purge filesystem-only cruft
 # ------------------------------------------------------------------
 
-Set-Location 'C:\Users\whale\uiao-core'
+Set-Location 'C:\Users\whale\uiao'
 
-Write-Host "--- Removing untracked branded DOCX and plantuml.jar from uiao-core working tree ---" -ForegroundColor Cyan
+Write-Host "--- Removing untracked branded DOCX and plantuml.jar from uiao working tree ---" -ForegroundColor Cyan
 Remove-Item -Force -ErrorAction SilentlyContinue `
     'UIAO_003_Adapter_Segmentation_Overview_v1.0.docx', `
     'UIAO_SCuBA_Technical_Specification.docx', `
@@ -65,7 +65,7 @@ Remove-Item -Force -Recurse -ErrorAction SilentlyContinue dryrun-output
 Remove-Item -Force -Recurse -ErrorAction SilentlyContinue site
 Remove-Item -Force -Recurse -ErrorAction SilentlyContinue UNKNOWN.egg-info
 
-Write-Host "--- Verifying uiao-core is clean ---" -ForegroundColor Cyan
+Write-Host "--- Verifying uiao is clean ---" -ForegroundColor Cyan
 git status
 
-Write-Host "--- Done. No git commit needed in uiao-core (all removed files were untracked). ---" -ForegroundColor Green
+Write-Host "--- Done. No git commit needed in uiao (all removed files were untracked). ---" -ForegroundColor Green

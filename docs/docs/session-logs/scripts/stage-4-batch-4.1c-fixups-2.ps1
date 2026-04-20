@@ -1,6 +1,6 @@
 # =============================================================================
 # stage-4-batch-4.1c-fixups-2.ps1
-# Phase D Stage 4, Batch 4.1c — Second-round fix-ups for uiao-impl
+# Phase D Stage 4, Batch 4.1c — Second-round fix-ups for uiao
 # -----------------------------------------------------------------------------
 # Fixes what Batch 4.1b didn't actually fix:
 #   1. ssp_inject.py merge-conflict markers still present (my PS regex didn't
@@ -13,7 +13,7 @@
 # =============================================================================
 
 $ErrorActionPreference = 'Stop'
-$ImplDir = 'C:\Users\whale\uiao-impl'
+$ImplDir = 'C:\Users\whale\uiao'
 
 function Write-Step($msg) { Write-Host "`n>>> $msg" -ForegroundColor Cyan }
 function Confirm-Or-Exit($prompt) {
@@ -141,7 +141,7 @@ git add -A
 git commit --amend --no-edit
 
 git tag -d v0.1.0 2>$null
-git tag -a v0.1.0 -m 'Initial uiao-impl release (amended 2: ssp_inject conflict + pytest pythonpath)'
+git tag -a v0.1.0 -m 'Initial uiao release (amended 2: ssp_inject conflict + pytest pythonpath)'
 
 Write-Step 'Batch 4.1c complete'
 Write-Host "HEAD: $(git log --oneline -1)" -ForegroundColor Green

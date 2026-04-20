@@ -67,7 +67,7 @@ Goal: system correctness.
 Golden files are stored under:
 
 ```
-uiao-core/tests/golden/
+uiao/tests/golden/
   ir/
   ksi/
   evidence/
@@ -145,7 +145,7 @@ Every pipeline run is pinned to:
 - Evidence schema version
 - OSCAL fragment version
 
-Pinned in `uiao-core/spec/version.json`:
+Pinned in `uiao/spec/version.json`:
 
 ```json
 {
