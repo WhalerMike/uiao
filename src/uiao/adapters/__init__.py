@@ -17,6 +17,7 @@ from .mainframe_adapter import MainframeAdapter
 from .paloalto_adapter import PaloAltoAdapter
 from .patchstate_adapter import PatchStateAdapter
 from .pkica_adapter import PkiCaAdapter
+from .scubagear_adapter import ScubaGearAdapter
 from .servicenow_adapter import ServiceNowAdapter
 from .siem_adapter import SiemAdapter
 from .stigcompliance_adapter import StigComplianceAdapter
@@ -34,6 +35,7 @@ __all__ = [
     "PaloAltoAdapter",
     "PatchStateAdapter",
     "PkiCaAdapter",
+    "ScubaGearAdapter",
     "ServiceNowAdapter",
     "SiemAdapter",
     "StigComplianceAdapter",
