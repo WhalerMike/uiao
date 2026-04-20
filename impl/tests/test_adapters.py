@@ -2,6 +2,7 @@
 
 import pytest
 from uiao.impl.adapters import (
+    BlueCatAdapter,
     CyberArkAdapter,
     DatabaseAdapterBase,
     EntraAdapter,
@@ -20,6 +21,7 @@ from uiao.impl.adapters import (
 )
 
 ADAPTER_REGISTRY = {
+    "bluecat-address-manager": BlueCatAdapter,
     "cyberark": CyberArkAdapter,
     "database": DatabaseAdapterBase,
     "entra-id": EntraAdapter,
