@@ -1,35 +1,40 @@
 #!/usr/bin/env python3
-"""reorganize_to_clean_monorepo.py
+"""reorganize_to_clean_monorepo.py — v2
 
 Safely reorganize the UIAO repo into the clean `src/uiao/*` monorepo layout.
 
-Default is DRY-RUN. Nothing changes until you pass --apply.
+Default is DRY-RUN. Nothing changes until you pass --execute.
 
-Phases:
-  backup    - create a local backup branch `pre-reorg/<timestamp>` from HEAD
-  canon     - move YAML/JSON SSOT from `core/data/` and
-              `core/compliance/reference/` under `src/uiao/canon/`
-  adapters  - move `impl/src/uiao/impl/adapters/` -> `src/uiao/adapters/`
-              move `impl/src/uiao/impl/scuba/`    -> `src/uiao/adapters/scuba/`
-  imports   - rewrite  uiao.impl.adapters -> uiao.adapters
-                       uiao.impl.scuba    -> uiao.adapters.scuba
-              across *.py *.yaml *.yml *.toml *.md *.cfg *.ini
-  pyproject - add uiao.adapters to package-data globs (already covers code)
-  all       - backup -> canon -> adapters -> imports -> pyproject
+Phases (select with --phase; default 'core' runs backup+canon+scuba+imports+pyproject):
+  backup    - local safety branch `pre-reorg-backup-YYYYMMDD`
+  canon     - core/data/** + core/compliance/reference/** -> src/uiao/canon/
+  scuba     - every SCuBA source under impl/** -> src/uiao/adapters/scuba/
+              ALSO: other adapters in impl/src/uiao/impl/adapters/ -> src/uiao/adapters/
+  imports   - rewrite  uiao.impl.adapters       -> uiao.adapters
+                       uiao.impl.scuba          -> uiao.adapters.scuba
+                       uiao.impl.ir.adapters.scuba -> uiao.adapters.scuba.ir
+              across *.py *.yaml *.yml *.toml *.md *.cfg *.ini *.json
+  pyproject - declare uiao.adapters package-data + CLI entrypoint
+  flatten   - (OPTIONAL, --phase flatten) move remaining impl/src/uiao/impl/*
+              subpackages up into src/uiao/* and rewrite uiao.impl.* imports.
+              Risky: dozens of files, likely test churn. Run separately.
+  core      - backup,canon,scuba,imports,pyproject
+  all       - core + flatten
 
 Usage:
-    python reorganize_to_clean_monorepo.py                # dry-run everything
-    python reorganize_to_clean_monorepo.py --phase canon  # dry-run one phase
-    python reorganize_to_clean_monorepo.py --apply        # really do it
-    python reorganize_to_clean_monorepo.py --apply --phase canon
-    python reorganize_to_clean_monorepo.py --apply --no-backup  # skip safety branch
+    python reorganize_to_clean_monorepo.py                  # dry-run core phases
+    python reorganize_to_clean_monorepo.py --phase canon    # dry-run one phase
+    python reorganize_to_clean_monorepo.py --execute        # actually do core
+    python reorganize_to_clean_monorepo.py --execute --phase scuba
+    python reorganize_to_clean_monorepo.py --execute --phase flatten
+    python reorganize_to_clean_monorepo.py --execute --no-backup
 
-Rules:
-  * Uses `git mv` so rename history is preserved. Falls back to shutil for
-    untracked files.
-  * Never overwrites an existing destination; logs SKIP and continues.
-  * Prints every action; dry-run prefix is `[DRY]`, apply prefix is `[DO ]`.
-  * Idempotent: re-running after a partial run is safe.
+Safety:
+  * DRY-RUN is the default. Must pass --execute to mutate files.
+  * Uses `git mv` when source is tracked; `shutil.move` otherwise.
+  * Never overwrites; skips with `SKIP dst exists` so re-runs are idempotent.
+  * Never deletes. Conflicts are logged, not resolved automatically.
+  * Backup branch created from HEAD before the first mutation.
 """
 from __future__ import annotations
 
@@ -43,53 +48,100 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent
 
 # --------------------------------------------------------------------------- #
-# File moves for the canon phase.
-#   src (relative to repo root)  ->  dst (relative to repo root)
-# Directories are moved wholesale; individual files are moved one by one.
+# Phase: canon
 # --------------------------------------------------------------------------- #
 CANON_MOVES: list[tuple[str, str]] = [
-    # Everything under core/data/ becomes src/uiao/canon/data/
-    ("core/data/control-planes.yml",                 "src/uiao/canon/data/control-planes.yml"),
-    ("core/data/fedramp_ssp_template_structure.yaml","src/uiao/canon/data/fedramp_ssp_template_structure.yaml"),
-    ("core/data/overlay-config.yml",                 "src/uiao/canon/data/overlay-config.yml"),
-    ("core/data/plantuml-config.json",               "src/uiao/canon/data/plantuml-config.json"),
-    ("core/data/schema.json",                        "src/uiao/canon/data/schema.json"),
-    ("core/data/style-guide.yml",                    "src/uiao/canon/data/style-guide.yml"),
-    ("core/data/README.md",                          "src/uiao/canon/data/README.md"),
-    ("core/data/control-library",                    "src/uiao/canon/data/control-library"),
-    ("core/data/overlays",                           "src/uiao/canon/data/overlays"),
-    ("core/data/vendor-overlays",                    "src/uiao/canon/data/vendor-overlays"),
-    # Compliance reference mappings
-    ("core/compliance/reference",                    "src/uiao/canon/compliance/reference"),
+    ("core/data/control-planes.yml",                  "src/uiao/canon/data/control-planes.yml"),
+    ("core/data/fedramp_ssp_template_structure.yaml", "src/uiao/canon/data/fedramp_ssp_template_structure.yaml"),
+    ("core/data/overlay-config.yml",                  "src/uiao/canon/data/overlay-config.yml"),
+    ("core/data/plantuml-config.json",                "src/uiao/canon/data/plantuml-config.json"),
+    ("core/data/schema.json",                         "src/uiao/canon/data/schema.json"),
+    ("core/data/style-guide.yml",                     "src/uiao/canon/data/style-guide.yml"),
+    ("core/data/README.md",                           "src/uiao/canon/data/README.md"),
+    ("core/data/control-library",                     "src/uiao/canon/data/control-library"),
+    ("core/data/overlays",                            "src/uiao/canon/data/overlays"),
+    ("core/data/vendor-overlays",                     "src/uiao/canon/data/vendor-overlays"),
+    ("core/compliance/reference",                     "src/uiao/canon/compliance/reference"),
 ]
 
 # --------------------------------------------------------------------------- #
-# Directory moves for the adapters phase.
+# Phase: scuba  (SCuBA + sibling adapters)
+#
+# Real paths in this repo:
+#   impl/src/uiao/impl/adapters/          - flat adapter modules incl. scuba_adapter.py
+#   impl/src/uiao/impl/scuba/             - scuba transform subpackage
+#   impl/src/uiao/impl/ir/adapters/scuba/ - scuba IR normalizer
+#   impl/scuba-runtime/                   - runtime artifacts (run/ schemas/ transforms/)
 # --------------------------------------------------------------------------- #
-ADAPTER_MOVES: list[tuple[str, str]] = [
-    ("impl/src/uiao/impl/adapters", "src/uiao/adapters"),
-    ("impl/src/uiao/impl/scuba",    "src/uiao/adapters/scuba"),
+SCUBA_MOVES: list[tuple[str, str]] = [
+    # All flat adapters (keeps scuba_adapter.py alongside siblings).
+    ("impl/src/uiao/impl/adapters",       "src/uiao/adapters"),
+    # Scuba transform subpackage.
+    ("impl/src/uiao/impl/scuba",          "src/uiao/adapters/scuba"),
+    # Scuba IR normalizer.
+    ("impl/src/uiao/impl/ir/adapters/scuba", "src/uiao/adapters/scuba/ir"),
+    # Scuba runtime assets (yaml schemas, transforms, run fixtures).
+    ("impl/scuba-runtime",                "src/uiao/adapters/scuba/runtime"),
 ]
 
 # --------------------------------------------------------------------------- #
-# Import rewrite rules (ordered; longer prefixes first).
+# Phase: imports — rewrite rules (longer prefixes first).
 # --------------------------------------------------------------------------- #
-IMPORT_REWRITES: list[tuple[str, str]] = [
-    ("uiao.impl.adapters", "uiao.adapters"),
-    ("uiao.impl.scuba",    "uiao.adapters.scuba"),
+IMPORT_REWRITES_CORE: list[tuple[str, str]] = [
+    ("uiao.impl.ir.adapters.scuba", "uiao.adapters.scuba.ir"),
+    ("uiao.impl.adapters",          "uiao.adapters"),
+    ("uiao.impl.scuba",             "uiao.adapters.scuba"),
+]
+
+# Used by the flatten phase (after other subpackages move up):
+IMPORT_REWRITES_FLATTEN: list[tuple[str, str]] = [
+    # MUST be ordered longest-prefix-first so partial matches don't corrupt.
+    ("uiao.impl.", "uiao."),
 ]
 
 REWRITE_SUFFIXES = {".py", ".yaml", ".yml", ".toml", ".md", ".cfg", ".ini", ".json"}
 REWRITE_EXCLUDE_DIRS = {".git", ".venv", "node_modules", "__pycache__",
                         "uiao.egg-info", "src/uiao.egg-info"}
 
+# --------------------------------------------------------------------------- #
+# Phase: flatten — everything still under impl/src/uiao/impl/ after scuba ran.
+# --------------------------------------------------------------------------- #
+# Subdirs we expect may remain. Any not listed will still be detected and
+# moved, but listing them here documents the target layout.
+FLATTEN_IMPL_ROOT = "impl/src/uiao/impl"
+FLATTEN_DST_ROOT = "src/uiao"
+
+# Known collisions with existing top-level package names. For these we merge
+# files instead of moving the whole directory.
+FLATTEN_MERGE_DIRS = {"ksi"}
+
+# Name collision: src/uiao/cli.py (file) vs impl/src/uiao/impl/cli/ (dir).
+# We do NOT auto-resolve — we log a warning. User decides how to fold them.
+FLATTEN_SKIP_DIRS = {"cli"}
+
 
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
-def log(apply: bool, msg: str) -> None:
-    tag = "[DO ]" if apply else "[DRY]"
+class Counter:
+    def __init__(self) -> None:
+        self.moved = 0
+        self.skipped = 0
+        self.rewritten = 0
+        self.warnings: list[str] = []
+
+
+CTR = Counter()
+
+
+def log(execute: bool, msg: str) -> None:
+    tag = "[DO ]" if execute else "[DRY]"
     print(f"{tag} {msg}")
+
+
+def warn(msg: str) -> None:
+    CTR.warnings.append(msg)
+    print(f"[WARN] {msg}")
 
 
 def run(cmd: list[str], *, check: bool = True) -> subprocess.CompletedProcess:
@@ -105,64 +157,92 @@ def is_tracked(path: Path) -> bool:
     return cp.returncode == 0
 
 
-def ensure_parent(dst: Path, apply: bool) -> None:
+def ensure_parent(dst: Path, execute: bool) -> None:
     if dst.parent.exists():
         return
-    log(apply, f"mkdir -p {dst.parent.relative_to(REPO)}")
-    if apply:
+    log(execute, f"mkdir -p {dst.parent.relative_to(REPO)}")
+    if execute:
         dst.parent.mkdir(parents=True, exist_ok=True)
 
 
-def move(src_rel: str, dst_rel: str, *, apply: bool) -> None:
+def move(src_rel: str, dst_rel: str, *, execute: bool) -> None:
     src = REPO / src_rel
     dst = REPO / dst_rel
     if not src.exists():
-        log(apply, f"SKIP missing {src_rel}")
+        log(execute, f"SKIP missing {src_rel}")
+        CTR.skipped += 1
         return
     if dst.exists():
-        log(apply, f"SKIP dst exists {dst_rel}")
+        log(execute, f"SKIP dst exists {dst_rel}")
+        CTR.skipped += 1
         return
-    ensure_parent(dst, apply)
+    ensure_parent(dst, execute)
     if is_tracked(src):
-        log(apply, f"git mv {src_rel} {dst_rel}")
-        if apply:
+        log(execute, f"git mv {src_rel} {dst_rel}")
+        if execute:
             run(["git", "mv", src_rel, dst_rel])
     else:
-        log(apply, f"mv (untracked) {src_rel} {dst_rel}")
-        if apply:
+        log(execute, f"mv (untracked) {src_rel} {dst_rel}")
+        if execute:
             shutil.move(str(src), str(dst))
+    CTR.moved += 1
+
+
+def merge_dir(src_rel: str, dst_rel: str, *, execute: bool) -> None:
+    """Move files from src into dst, preserving subdir structure; skip collisions."""
+    src = REPO / src_rel
+    dst = REPO / dst_rel
+    if not src.is_dir():
+        log(execute, f"SKIP not a dir {src_rel}")
+        CTR.skipped += 1
+        return
+    for item in sorted(src.rglob("*")):
+        if item.is_dir():
+            continue
+        rel_inside = item.relative_to(src)
+        target = dst / rel_inside
+        move(item.relative_to(REPO).as_posix(), target.relative_to(REPO).as_posix(),
+             execute=execute)
 
 
 # --------------------------------------------------------------------------- #
-# Phases
+# Phase implementations
 # --------------------------------------------------------------------------- #
-def phase_backup(apply: bool) -> None:
-    stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    branch = f"pre-reorg/{stamp}"
-    log(apply, f"git branch {branch}  (safety snapshot of HEAD)")
-    if apply:
+def phase_backup(execute: bool) -> None:
+    stamp = _dt.datetime.now().strftime("%Y%m%d")
+    branch = f"pre-reorg-backup-{stamp}"
+    existing = subprocess.run(
+        ["git", "rev-parse", "--verify", branch],
+        cwd=REPO, capture_output=True, text=True,
+    )
+    if existing.returncode == 0:
+        log(execute, f"backup branch {branch} already exists; reusing")
+        return
+    log(execute, f"git branch {branch}  (safety snapshot of HEAD)")
+    if execute:
         run(["git", "branch", branch])
 
 
-def phase_canon(apply: bool) -> None:
+def phase_canon(execute: bool) -> None:
     print("\n=== phase: canon ===")
-    (REPO / "src/uiao/canon/data").mkdir(parents=True, exist_ok=True) if apply else None
-    (REPO / "src/uiao/canon/compliance").mkdir(parents=True, exist_ok=True) if apply else None
     for src_rel, dst_rel in CANON_MOVES:
-        move(src_rel, dst_rel, apply=apply)
+        move(src_rel, dst_rel, execute=execute)
 
 
-def phase_adapters(apply: bool) -> None:
-    print("\n=== phase: adapters ===")
-    for src_rel, dst_rel in ADAPTER_MOVES:
-        move(src_rel, dst_rel, apply=apply)
-    # Guarantee a package marker at src/uiao/adapters/__init__.py
-    init = REPO / "src/uiao/adapters/__init__.py"
-    if not init.exists():
-        log(apply, f"create {init.relative_to(REPO)}")
-        if apply:
-            init.parent.mkdir(parents=True, exist_ok=True)
-            init.write_text('"""uiao.adapters — connector packages."""\n')
+def phase_scuba(execute: bool) -> None:
+    print("\n=== phase: scuba (+ sibling adapters) ===")
+    for src_rel, dst_rel in SCUBA_MOVES:
+        move(src_rel, dst_rel, execute=execute)
+    # Ensure package markers.
+    for pkg in ("src/uiao/adapters/__init__.py",
+                "src/uiao/adapters/scuba/__init__.py"):
+        p = REPO / pkg
+        if p.exists():
+            continue
+        log(execute, f"create {pkg}")
+        if execute:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(f'"""{p.parent.name} package."""\n')
 
 
 def _iter_rewrite_files() -> list[Path]:
@@ -179,8 +259,7 @@ def _iter_rewrite_files() -> list[Path]:
     return out
 
 
-def phase_imports(apply: bool) -> None:
-    print("\n=== phase: imports ===")
+def _apply_rewrites(rules: list[tuple[str, str]], execute: bool, label: str) -> None:
     files = _iter_rewrite_files()
     touched = 0
     for f in files:
@@ -189,82 +268,144 @@ def phase_imports(apply: bool) -> None:
         except UnicodeDecodeError:
             continue
         new = text
-        for old, newtok in IMPORT_REWRITES:
+        for old, newtok in rules:
             new = new.replace(old, newtok)
         if new != text:
             touched += 1
-            log(apply, f"rewrite {f.relative_to(REPO)}")
-            if apply:
+            log(execute, f"rewrite ({label}) {f.relative_to(REPO)}")
+            if execute:
                 f.write_text(new, encoding="utf-8")
-    print(f"    {touched} file(s) need rewrite")
+    CTR.rewritten += touched
+    print(f"    {label}: {touched} file(s) rewritten")
 
 
-def phase_pyproject(apply: bool) -> None:
+def phase_imports(execute: bool) -> None:
+    print("\n=== phase: imports (scuba/adapters) ===")
+    _apply_rewrites(IMPORT_REWRITES_CORE, execute, "core")
+
+
+def phase_pyproject(execute: bool) -> None:
     print("\n=== phase: pyproject ===")
     pp = REPO / "pyproject.toml"
     text = pp.read_text(encoding="utf-8")
-    marker = '"uiao.adapters"'
-    if marker in text:
-        log(apply, "pyproject already declares uiao.adapters package-data")
-        return
-    insertion = (
-        '"uiao.adapters" = ["**/*.yaml", "**/*.yml", "**/*.json"]\n'
-    )
-    anchor = '[tool.setuptools.package-data]\n'
+    anchor = "[tool.setuptools.package-data]\n"
     if anchor not in text:
-        log(apply, "pyproject has no [tool.setuptools.package-data]; skipping")
+        warn("pyproject has no [tool.setuptools.package-data]; skipping")
         return
-    new_text = text.replace(anchor, anchor + insertion, 1)
-    log(apply, "add uiao.adapters entry to [tool.setuptools.package-data]")
-    if apply:
+    additions: list[str] = []
+    if '"uiao.adapters"' not in text:
+        additions.append(
+            '"uiao.adapters" = ["**/*.yaml", "**/*.yml", "**/*.json", "**/*.md"]\n'
+        )
+    if not additions:
+        log(execute, "pyproject already up to date")
+        return
+    new_text = text.replace(anchor, anchor + "".join(additions), 1)
+    log(execute, "add uiao.adapters package-data entry")
+    if execute:
         pp.write_text(new_text, encoding="utf-8")
+
+
+def phase_flatten(execute: bool) -> None:
+    print("\n=== phase: flatten (uiao.impl.* -> uiao.*) ===")
+    impl_root = REPO / FLATTEN_IMPL_ROOT
+    if not impl_root.is_dir():
+        log(execute, f"SKIP {FLATTEN_IMPL_ROOT} absent")
+        return
+    for child in sorted(impl_root.iterdir()):
+        if child.name.startswith("__"):
+            continue  # __init__.py, __pycache__
+        src_rel = child.relative_to(REPO).as_posix()
+        dst_rel = f"{FLATTEN_DST_ROOT}/{child.name}"
+        if child.name in FLATTEN_SKIP_DIRS:
+            warn(f"collision: {src_rel} vs existing {dst_rel}.py — manual merge required")
+            continue
+        if child.name in FLATTEN_MERGE_DIRS or (REPO / dst_rel).exists():
+            log(execute, f"merge {src_rel} into {dst_rel}")
+            merge_dir(src_rel, dst_rel, execute=execute)
+        else:
+            move(src_rel, dst_rel, execute=execute)
+    # Catch-all import rewrite after flatten.
+    _apply_rewrites(IMPORT_REWRITES_FLATTEN, execute, "flatten")
+
+
+# --------------------------------------------------------------------------- #
+# Summary
+# --------------------------------------------------------------------------- #
+def summarize_before() -> None:
+    print("=== BEFORE ===")
+    for p in ("core/data", "core/compliance/reference",
+              "impl/src/uiao/impl/adapters", "impl/src/uiao/impl/scuba",
+              "impl/src/uiao/impl/ir/adapters/scuba", "impl/scuba-runtime",
+              "src/uiao/canon", "src/uiao/adapters"):
+        full = REPO / p
+        state = "present" if full.exists() else "absent"
+        print(f"  {p:<45s} {state}")
+
+
+def summarize_after(execute: bool) -> None:
+    print("\n=== SUMMARY ===")
+    print(f"  moves:      {CTR.moved}")
+    print(f"  skipped:    {CTR.skipped}")
+    print(f"  rewritten:  {CTR.rewritten}")
+    print(f"  warnings:   {len(CTR.warnings)}")
+    for w in CTR.warnings:
+        print(f"    - {w}")
+    if not execute:
+        print("\nNo changes were made. Re-run with --execute to perform them.")
+    else:
+        print("\nNext steps:")
+        print("  1. git status")
+        print("  2. pip install -e .")
+        print("  3. uiao --help")
+        print("  4. pytest -q")
+        print("  5. git add -A && git commit -m 'chore: reorganize to clean src/uiao monorepo'")
 
 
 # --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
 PHASES = {
-    "backup":   phase_backup,
-    "canon":    phase_canon,
-    "adapters": phase_adapters,
-    "imports":  phase_imports,
-    "pyproject":phase_pyproject,
+    "backup":    phase_backup,
+    "canon":     phase_canon,
+    "scuba":     phase_scuba,
+    "imports":   phase_imports,
+    "pyproject": phase_pyproject,
+    "flatten":   phase_flatten,
 }
-DEFAULT_ORDER = ["backup", "canon", "adapters", "imports", "pyproject"]
+CORE_ORDER = ["backup", "canon", "scuba", "imports", "pyproject"]
+ALL_ORDER = CORE_ORDER + ["flatten"]
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--apply", action="store_true",
+    ap = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ap.add_argument("--execute", action="store_true",
                     help="actually perform changes (default: dry-run)")
-    ap.add_argument("--phase", choices=list(PHASES) + ["all"], default="all",
-                    help="run a single phase (default: all)")
+    ap.add_argument("--phase", choices=list(PHASES) + ["core", "all"], default="core",
+                    help="which phase(s) to run (default: core)")
     ap.add_argument("--no-backup", action="store_true",
                     help="skip the safety backup branch")
     args = ap.parse_args()
 
-    if args.phase == "all":
-        order = [p for p in DEFAULT_ORDER if not (p == "backup" and args.no_backup)]
+    if args.phase == "core":
+        order = [p for p in CORE_ORDER if not (p == "backup" and args.no_backup)]
+    elif args.phase == "all":
+        order = [p for p in ALL_ORDER if not (p == "backup" and args.no_backup)]
     else:
         order = [args.phase]
 
-    mode = "APPLY" if args.apply else "DRY-RUN"
-    print(f"=== UIAO monorepo reorg :: mode={mode} :: phases={order} ===")
-    print(f"=== repo: {REPO} ===")
+    mode = "EXECUTE" if args.execute else "DRY-RUN"
+    print(f"=== UIAO monorepo reorg v2 :: mode={mode} :: phases={order} ===")
+    print(f"=== repo: {REPO} ===\n")
+    summarize_before()
 
     for name in order:
-        PHASES[name](args.apply)
+        PHASES[name](args.execute)
 
-    print("\n=== done ===")
-    if not args.apply:
-        print("No changes were made. Re-run with --apply to execute.")
-    else:
-        print("Next steps:")
-        print("  1. git status            # review moves")
-        print("  2. pip install -e .      # verify install works")
-        print("  3. uiao --help           # verify CLI")
-        print("  4. pytest -q             # run tests")
-        print("  5. git commit -m 'chore: reorganize into clean src/uiao monorepo'")
+    summarize_after(args.execute)
     return 0
 
 
