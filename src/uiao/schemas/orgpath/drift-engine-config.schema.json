@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.io/schemas/orgpath/drift-engine-config.schema.json",
+  "title": "UIAO OrgTree Drift Engine Configuration",
+  "description": "Declares participating phase adapters and the op-type → drift_class + severity mapping the engine applies when building the unified finding stream. Bound to MOD_M by ADR-040.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_id",
+    "parent_canon",
+    "defaults",
+    "phases",
+    "severity_policy"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "document_id": { "const": "MOD_M" },
+    "parent_canon": { "type": "string" },
+    "updated": { "type": "string", "format": "date" },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dry_run", "severity_floor", "halt_on_critical"],
+      "properties": {
+        "dry_run": { "type": "boolean" },
+        "severity_floor": { "enum": ["P1", "P2", "P3", "P4"] },
+        "halt_on_critical": { "type": "boolean" }
+      }
+    },
+    "phases": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/phase" }
+    },
+    "severity_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["P1", "P2", "P3", "P4", "halt_at"],
+      "properties": {
+        "P1": { "type": "string", "minLength": 1 },
+        "P2": { "type": "string", "minLength": 1 },
+        "P3": { "type": "string", "minLength": 1 },
+        "P4": { "type": "string", "minLength": 1 },
+        "halt_at": { "enum": ["P1", "P2", "P3", "P4"] }
+      }
+    }
+  },
+  "$defs": {
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "adapter_module", "adapter_class", "op_map"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^mod-[a-z]-[a-z0-9-]+$"
+        },
+        "adapter_module": {
+          "type": "string",
+          "pattern": "^uiao\\.adapters\\."
+        },
+        "adapter_class": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]+$"
+        },
+        "op_map": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/opEntry" }
+        }
+      }
+    },
+    "opEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "drift_class", "severity", "auto_remediate"],
+      "properties": {
+        "op": { "type": "string", "minLength": 1 },
+        "drift_class": {
+          "enum": [
+            "DRIFT-SCHEMA",
+            "DRIFT-SEMANTIC",
+            "DRIFT-PROVENANCE",
+            "DRIFT-AUTHZ",
+            "DRIFT-IDENTITY",
+            "DRIFT-BOUNDARY"
+          ]
+        },
+        "severity": { "enum": ["P1", "P2", "P3", "P4"] },
+        "auto_remediate": { "type": "boolean" }
+      }
+    }
+  }
+}
