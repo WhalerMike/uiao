@@ -24,7 +24,7 @@
 #
 # Prereqs:
 #   - Batch 4.3 run (smoke test). `canon-tools` was the only non-cosmetic fail.
-#   - uiao-core working tree may have unrelated M lines; that's fine. This
+#   - uiao working tree may have unrelated M lines; that's fine. This
 #     script only touches the four tool files.
 #
 # Safety:
@@ -39,7 +39,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $RepoRoot = 'C:\Users\whale'
-$CoreDir  = Join-Path $RepoRoot 'uiao-core'
+$CoreDir  = Join-Path $RepoRoot 'uiao'
 
 function Write-Step($msg) { Write-Host "`n>>> $msg" -ForegroundColor Cyan }
 function Write-OK($msg)   { Write-Host "    $msg"   -ForegroundColor Green }
@@ -192,7 +192,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
         Write-Host $msg
     } else {
         # Use a temp file for the multi-line message to avoid PowerShell quoting games.
-        $msgFile = Join-Path $env:TEMP "uiao-core-4.4-commit-$([guid]::NewGuid().ToString('N').Substring(0,8)).txt"
+        $msgFile = Join-Path $env:TEMP "uiao-4.4-commit-$([guid]::NewGuid().ToString('N').Substring(0,8)).txt"
         Set-Content -LiteralPath $msgFile -Value $msg -Encoding UTF8
         try {
             git commit --file=$msgFile

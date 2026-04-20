@@ -8,7 +8,7 @@ UIAO SCuBA Architecture Guide
 
 **Date:** 2026-04-11
 
-**Repository:** uiao-core v2.0.0
+**Repository:** uiao v2.0.0
 
 1\. Overview
 

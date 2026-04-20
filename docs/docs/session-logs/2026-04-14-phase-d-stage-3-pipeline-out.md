@@ -8,7 +8,7 @@ prerequisite: Stage 2 canon-in must be pushed first
 
 # Phase D — Stage 3 doc pipeline out (hand-off)
 
-Relocates the documentation rendering pipeline from `uiao-core` into `uiao-docs` and retires the redundant Jinja2 sub-pipeline. After Stage 3, `uiao-core` contains canon + enforcement only; `uiao-docs` owns all authoring, rendering, and derived outputs.
+Relocates the documentation rendering pipeline from `uiao` into `uiao-docs` and retires the redundant Jinja2 sub-pipeline. After Stage 3, `uiao` contains canon + enforcement only; `uiao-docs` owns all authoring, rendering, and derived outputs.
 
 **Prerequisite**: Stages 1 and 2 must be pushed on both repos first.
 
@@ -18,20 +18,20 @@ Relocates the documentation rendering pipeline from `uiao-core` into `uiao-docs`
 
 ## Architectural decision recorded: Jinja2 pipeline retired
 
-Stage 0 inspection surfaced a duplication: `uiao-core/templates/` holds 51 `.j2` files that `generate_docs.py` renders into `uiao-core/docs/*.md`. Meanwhile `uiao-docs/docs/` contains 128 hand-authored `.qmd` files covering the same topic space with richer content (the Quarto sources).
+Stage 0 inspection surfaced a duplication: `uiao/templates/` holds 51 `.j2` files that `generate_docs.py` renders into `uiao/docs/*.md`. Meanwhile `uiao-docs/docs/` contains 128 hand-authored `.qmd` files covering the same topic space with richer content (the Quarto sources).
 
 The two pipelines produce overlapping outputs (e.g. both generate `executive_summary`, `management_stack`, `vendor_stack`, `fedramp_crosswalk` documents). The `.qmd` sources are authoritative going forward — they are human-edited, richer, and feed the Quarto rendering that `uiao-docs/.github/workflows/deploy-docs.yml` already publishes.
 
 **Decision (recommended default — applied in this batch): retire the Jinja2 pipeline.**
 
 This means:
-- Delete `uiao-core/templates/` (51 `.j2` files)
-- Delete `uiao-core/docs/*.md` (Jinja2 outputs — `.qmd` equivalents already live in `uiao-docs/docs/`)
-- Delete `uiao-core/generation-inputs/` (Jinja2 YAML inputs)
-- Retire 6 Jinja2-dependent workflows in `uiao-core`
-- The dual-use YAMLs (`management-stack.yml`, `program.yml`, `vendor-stack.yml`) still live in `uiao-core/canon/data/` after Stage 2; post-retirement they are consumed by `generators/docs.py` (canon-side) and by `.qmd` Quarto code blocks (docs-side) only — no more `.j2` consumers
+- Delete `uiao/templates/` (51 `.j2` files)
+- Delete `uiao/docs/*.md` (Jinja2 outputs — `.qmd` equivalents already live in `uiao-docs/docs/`)
+- Delete `uiao/generation-inputs/` (Jinja2 YAML inputs)
+- Retire 6 Jinja2-dependent workflows in `uiao`
+- The dual-use YAMLs (`management-stack.yml`, `program.yml`, `vendor-stack.yml`) still live in `uiao/canon/data/` after Stage 2; post-retirement they are consumed by `generators/docs.py` (canon-side) and by `.qmd` Quarto code blocks (docs-side) only — no more `.j2` consumers
 
-**If you reject this decision**, stop here and tell me. The alternative is Option B: move `templates/` + `generation-inputs/` + 6 workflows into `uiao-docs`, rewire their data-source paths to `../uiao-core/canon/data/`, and keep both pipelines alive. Cost: ~2x the CI minutes, ongoing drift risk between the two output sets, and three additional workflow cross-repo checkouts to maintain.
+**If you reject this decision**, stop here and tell me. The alternative is Option B: move `templates/` + `generation-inputs/` + 6 workflows into `uiao-docs`, rewire their data-source paths to `../uiao/canon/data/`, and keep both pipelines alive. Cost: ~2x the CI minutes, ongoing drift risk between the two output sets, and three additional workflow cross-repo checkouts to maintain.
 
 Silent = consent to retire.
 
@@ -40,7 +40,7 @@ Silent = consent to retire.
 ## Pre-flight — confirm repos are in sync
 
 ```powershell
-Set-Location 'C:\Users\whale\uiao-core'
+Set-Location 'C:\Users\whale\uiao'
 git status   # expect: nothing to commit, working tree clean
 git pull --rebase origin main
 
@@ -53,7 +53,7 @@ git pull --rebase origin main
 
 ## Batch 3.1 — move static doc assets into `uiao-docs`
 
-Moves files that `uiao-docs` Quarto pipeline needs but that currently live in `uiao-core`: PlantUML sources, PNG visuals, SVG assets, and the two root-level branded `.docx` exports.
+Moves files that `uiao-docs` Quarto pipeline needs but that currently live in `uiao`: PlantUML sources, PNG visuals, SVG assets, and the two root-level branded `.docx` exports.
 
 ```powershell
 Set-Location 'C:\Users\whale\uiao-docs'
@@ -66,28 +66,28 @@ New-Item -ItemType Directory -Force -Path 'exports\docx' | Out-Null
 New-Item -ItemType Directory -Force -Path 'exports\pptx' | Out-Null
 
 # Copy visuals/ (23 files: PlantUML + PNG + IMAGE-PROMPTS + README)
-Copy-Item '..\uiao-core\visuals\*' -Destination 'visuals\' -Recurse -Force
+Copy-Item '..\uiao\visuals\*' -Destination 'visuals\' -Recurse -Force
 
 # Copy assets/ (demo.svg + images/)
-Copy-Item '..\uiao-core\assets\demo.svg' -Destination 'assets\demo.svg' -Force
-if (Test-Path '..\uiao-core\assets\images') {
-    Copy-Item '..\uiao-core\assets\images\*' -Destination 'assets\images\' -Recurse -Force
+Copy-Item '..\uiao\assets\demo.svg' -Destination 'assets\demo.svg' -Force
+if (Test-Path '..\uiao\assets\images') {
+    Copy-Item '..\uiao\assets\images\*' -Destination 'assets\images\' -Recurse -Force
 }
 
 # Copy the two root-level branded DOCX exports into exports/docx/
-Copy-Item '..\uiao-core\UIAO_003_Adapter_Segmentation_Overview_v1.0.docx' `
+Copy-Item '..\uiao\UIAO_003_Adapter_Segmentation_Overview_v1.0.docx' `
           -Destination 'exports\docx\UIAO_003_Adapter_Segmentation_Overview_v1.0.docx' -Force
-Copy-Item '..\uiao-core\UIAO_SCuBA_Technical_Specification.docx' `
+Copy-Item '..\uiao\UIAO_SCuBA_Technical_Specification.docx' `
           -Destination 'exports\docx\UIAO_SCuBA_Technical_Specification.docx' -Force
 
 # Move the PPTX leadership briefing (only one that exists)
-if (Test-Path '..\uiao-core\exports\pptx\UIAO_Leadership_Briefing_v1.0.pptx') {
-    Copy-Item '..\uiao-core\exports\pptx\UIAO_Leadership_Briefing_v1.0.pptx' `
+if (Test-Path '..\uiao\exports\pptx\UIAO_Leadership_Briefing_v1.0.pptx') {
+    Copy-Item '..\uiao\exports\pptx\UIAO_Leadership_Briefing_v1.0.pptx' `
               -Destination 'exports\pptx\UIAO_Leadership_Briefing_v1.0.pptx' -Force
 }
 
 git add visuals/ assets/ exports/docx/ exports/pptx/
-git commit -m "[UIAO-DOCS] MIGRATE: Phase D Stage 3 — pull visuals, assets, and branded DOCX/PPTX exports from uiao-core"
+git commit -m "[UIAO-DOCS] MIGRATE: Phase D Stage 3 — pull visuals, assets, and branded DOCX/PPTX exports from uiao"
 git push
 ```
 
@@ -95,28 +95,28 @@ git push
 
 | Source | Destination | Reason |
 |---|---|---|
-| `uiao-core/visuals/` (23 files) | `uiao-docs/visuals/` | PlantUML sources + rendered PNGs feed Quarto diagrams |
-| `uiao-core/assets/demo.svg` | `uiao-docs/assets/demo.svg` | Referenced by `.qmd` render |
-| `uiao-core/assets/images/` | `uiao-docs/assets/images/` | Images consumed by doc build |
-| `uiao-core/UIAO_003_*.docx` (root) | `uiao-docs/exports/docx/` | Branded deliverable lives with other exports |
-| `uiao-core/UIAO_SCuBA_*.docx` (root) | `uiao-docs/exports/docx/` | Same — belongs with other exports |
-| `uiao-core/exports/pptx/UIAO_Leadership_Briefing_v1.0.pptx` | `uiao-docs/exports/pptx/` | Only file in that dir; rest of exports are deletable build artifacts |
+| `uiao/visuals/` (23 files) | `uiao-docs/visuals/` | PlantUML sources + rendered PNGs feed Quarto diagrams |
+| `uiao/assets/demo.svg` | `uiao-docs/assets/demo.svg` | Referenced by `.qmd` render |
+| `uiao/assets/images/` | `uiao-docs/assets/images/` | Images consumed by doc build |
+| `uiao/UIAO_003_*.docx` (root) | `uiao-docs/exports/docx/` | Branded deliverable lives with other exports |
+| `uiao/UIAO_SCuBA_*.docx` (root) | `uiao-docs/exports/docx/` | Same — belongs with other exports |
+| `uiao/exports/pptx/UIAO_Leadership_Briefing_v1.0.pptx` | `uiao-docs/exports/pptx/` | Only file in that dir; rest of exports are deletable build artifacts |
 
 ### What is NOT copied (deleted in Batch 3.2 instead)
 
-- `uiao-core/exports/docx/` (28 auto-generated `.docx` — regeneratable from `.qmd` via Quarto+pandoc)
-- `uiao-core/exports/quarto/` (Quarto build output tree — regeneratable)
-- `uiao-core/exports/ksi/`, `oscal/`, `sbom/`, `schedule/` — canon-generation build outputs, regenerated by Stage 4 tools
-- `uiao-core/exports/uiao-component-definition.json`, `uiao-poam.json` — if still needed, regenerate from `canon/`
+- `uiao/exports/docx/` (28 auto-generated `.docx` — regeneratable from `.qmd` via Quarto+pandoc)
+- `uiao/exports/quarto/` (Quarto build output tree — regeneratable)
+- `uiao/exports/ksi/`, `oscal/`, `sbom/`, `schedule/` — canon-generation build outputs, regenerated by Stage 4 tools
+- `uiao/exports/uiao-component-definition.json`, `uiao-poam.json` — if still needed, regenerate from `canon/`
 
 ---
 
-## Batch 3.2 — remove doc pipeline from `uiao-core`
+## Batch 3.2 — remove doc pipeline from `uiao`
 
 Deletes the Jinja2 template pipeline, `_quarto.yml`, the rendered doc tree, build outputs, and retires the six workflows that drove Jinja2 generation.
 
 ```powershell
-Set-Location 'C:\Users\whale\uiao-core'
+Set-Location 'C:\Users\whale\uiao'
 
 # --- Jinja2 pipeline retirement ---
 
@@ -188,11 +188,11 @@ git push
 | `generate-docs.yml` | Calls `generate_docs.py`; Jinja2 pipeline gone |
 | `generate-docx-exports.yml` | Produces `.docx` from Jinja2 `.md` output; `.qmd`→`.docx` handled by `uiao-docs/deploy-docs.yml` via pandoc |
 | `render-and-insert-diagrams.yml` | Renders PlantUML into now-deleted `visuals/` + inserts into now-deleted `docs/` |
-| `deploy-docs.yml` (uiao-core) | Duplicate pair with `uiao-docs/deploy-docs.yml`; docs publish from uiao-docs |
+| `deploy-docs.yml` (uiao) | Duplicate pair with `uiao-docs/deploy-docs.yml`; docs publish from uiao-docs |
 | `generate-artifacts.yml` / `generate_artifacts.yml` | Both triggered Jinja2; Stage 5 will introduce a canon-only artifact refresh workflow if needed |
 | `docs.yml` | Generic docs trigger, redundant with uiao-docs publish path |
 
-### Workflows intentionally kept in `uiao-core` (not retired here)
+### Workflows intentionally kept in `uiao` (not retired here)
 
 - `drift-detection.yml`, `drift-scan.yml` — canon drift enforcement (references Jinja2 in comments only per inspection; if a grep-check finds actual Jinja2 calls, Stage 5 will prune those steps)
 - `canon-validation.yml` — core canon gate
@@ -247,7 +247,7 @@ Test-Path exports\docx\UIAO_003_Adapter_Segmentation_Overview_v1.0.docx
 Test-Path exports\docx\UIAO_SCuBA_Technical_Specification.docx
 Test-Path exports\pptx\UIAO_Leadership_Briefing_v1.0.pptx
 
-Set-Location 'C:\Users\whale\uiao-core'
+Set-Location 'C:\Users\whale\uiao'
 -not (Test-Path templates)
 -not (Test-Path generation-inputs)
 -not (Test-Path visuals)
@@ -283,11 +283,11 @@ If `quarto render` errors on missing assets, the most likely cause is a `.qmd` f
 
 | Repo | Before | After | Change |
 |---|---|---|---|
-| `uiao-core` tracked size | ~XX MB | **~XX MB − 170 MB** | massive drop |
-| `uiao-core` top-level entries (post-Stage-1) | ~90 | ~72 | drops `_quarto.yml`, `templates/`, `docs/`, `generation-inputs/`, `visuals/`, `assets/`, `exports/`, `plantuml.jar`, 2 root `.docx`, 7 workflows |
+| `uiao` tracked size | ~XX MB | **~XX MB − 170 MB** | massive drop |
+| `uiao` top-level entries (post-Stage-1) | ~90 | ~72 | drops `_quarto.yml`, `templates/`, `docs/`, `generation-inputs/`, `visuals/`, `assets/`, `exports/`, `plantuml.jar`, 2 root `.docx`, 7 workflows |
 | `uiao-docs` tracked size | ~XX MB | +~30 MB (visuals, assets, branded DOCX) | modest increase |
 | `uiao-docs` top-level entries (post-Stage-1) | ~45 | ~48 | gains `visuals/`, `assets/`; `exports/` populates |
-| Jinja2 pipeline | active in `uiao-core` | **retired** | one canonical rendering path (Quarto in uiao-docs) |
+| Jinja2 pipeline | active in `uiao` | **retired** | one canonical rendering path (Quarto in uiao-docs) |
 | Cross-repo workflow references | 2 (drift-scan, dashboard-export — already cross-repo-aware) | 2 | no new cross-repo plumbing |
 
 ---
@@ -298,8 +298,8 @@ If `quarto render` errors on missing assets, the most likely cause is a `.qmd` f
 |---|---|
 | `.qmd` files referencing `../visuals/` or `../assets/` need path updates | **Stage 6** (ref fixup sweep) |
 | Duplicate workflow pairs remaining between repos (~21 pairs post-Stage-3) | **Stage 5** |
-| `uiao-core/src/`, `adapters/`, `scripts/`, `tests/`, `cli/`, `compliance/`, `pyproject.toml` — app code | **Stage 4** (uiao-impl split) |
-| `uiao-core/inject_ssp.py`, `write_engine.py` | **Stage 4** |
+| `uiao/src/`, `adapters/`, `scripts/`, `tests/`, `cli/`, `compliance/`, `pyproject.toml` — app code | **Stage 4** (uiao split) |
+| `uiao/inject_ssp.py`, `write_engine.py` | **Stage 4** |
 | Canon-sync scaffold scanner update (`sync_canon.py` walk `canon/data/`) | **Stage 5** |
 | Refresh of `ARCHITECTURE.md`, both `CLAUDE.md`, both `README.md` | **Stage 7** |
 
@@ -307,6 +307,6 @@ If `quarto render` errors on missing assets, the most likely cause is a `.qmd` f
 
 ## Next up after Stage 3 lands
 
-**Stage 4** (uiao-impl repo creation and app-code split). This is the biggest conceptual change remaining — creates a fourth repo `WhalerMike/uiao-impl` and moves `src/`, `adapters/`, `scripts/`, `tests/`, `cli/`, `compliance/`, `pyproject.toml`, `inject_ssp.py`, `write_engine.py` out of `uiao-core`. After Stage 4, `uiao-core` is pure canon: YAMLs, schemas, SSOT markdown, and the handful of validator workflows that enforce them. Both CIs switch to installing `uiao-impl` as a pip dependency.
+**Stage 4** (uiao repo creation and app-code split). This is the biggest conceptual change remaining — creates a fourth repo `WhalerMike/uiao` and moves `src/`, `adapters/`, `scripts/`, `tests/`, `cli/`, `compliance/`, `pyproject.toml`, `inject_ssp.py`, `write_engine.py` out of `uiao`. After Stage 4, `uiao` is pure canon: YAMLs, schemas, SSOT markdown, and the handful of validator workflows that enforce them. Both CIs switch to installing `uiao` as a pip dependency.
 
 Planning for Stage 4 needs its own scan pass (150+ internal `from uiao_core.*` imports to trace) and will produce its own plan + stage-0 artifact + hand-off batch in the next session.

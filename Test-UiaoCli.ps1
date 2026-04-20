@@ -15,7 +15,7 @@
 
 .NOTES
     Generated 2026-04-18 — UIAO monorepo (WhalerMike/uiao)
-    Requires: Python >= 3.10, uiao-impl installed, Windows PowerShell 5.1+
+    Requires: Python >= 3.10, uiao installed, Windows PowerShell 5.1+
 #>
 
 [CmdletBinding()]

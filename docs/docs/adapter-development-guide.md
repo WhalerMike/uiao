@@ -228,7 +228,7 @@ Place adapter code under src/uiao_core/adapters/ and register in config/adapters
 
 7.2 Plugin Package
 
-\# pyproject.toml for external adapter package \[project\] name = \"uiao-adapter-qualys\" version = \"1.0.0\" dependencies = \[\"uiao-core\>=2.0.0\"\] \[project.entry-points.\"uiao_core.adapters\"\] qualys_vmdr = \"uiao_adapter_qualys.adapter:QualysVMDRAdapter\"
+\# pyproject.toml for external adapter package \[project\] name = \"uiao-adapter-qualys\" version = \"1.0.0\" dependencies = \[\"uiao\>=2.0.0\"\] \[project.entry-points.\"uiao_core.adapters\"\] qualys_vmdr = \"uiao_adapter_qualys.adapter:QualysVMDRAdapter\"
 
 8\. Pre-Submission Checklist
 
