@@ -95,7 +95,7 @@ class TestGeneratorsSmoke:
         canon_file, data_dir = _setup_minimal_canon(tmp_path)
         output = tmp_path / "ssp.json"
 
-        from uiao.impl.generators.ssp import build_ssp
+        from uiao.generators.ssp import build_ssp
 
         result = build_ssp(
             canon_path=str(canon_file),
@@ -110,7 +110,7 @@ class TestGeneratorsSmoke:
         """build_docs should run without raising."""
         canon_file, data_dir = _setup_minimal_canon(tmp_path)
 
-        from uiao.impl.generators.docs import build_docs
+        from uiao.generators.docs import build_docs
 
         # build_docs may not produce files if templates are missing,
         # but it should not raise an unhandled exception.
@@ -130,7 +130,7 @@ class TestGeneratorsSmoke:
         """build_oscal should produce OSCAL JSON artifacts."""
         canon_file, data_dir = _setup_minimal_canon(tmp_path)
 
-        from uiao.impl.generators.oscal import build_oscal
+        from uiao.generators.oscal import build_oscal
 
         result = build_oscal(
             canon_path=str(canon_file),
@@ -147,7 +147,7 @@ class TestGeneratorsSmoke:
         """build_charts should return a list (possibly empty)."""
         canon_file, data_dir = _setup_minimal_canon(tmp_path)
 
-        from uiao.impl.generators.charts import build_charts
+        from uiao.generators.charts import build_charts
 
         result = build_charts(
             canon_path=str(canon_file),
@@ -160,7 +160,7 @@ class TestGeneratorsSmoke:
         """validate_oscal_artifacts on a valid SSP should return 0 failures."""
         oscal_dir = _setup_oscal_artifacts(tmp_path)
 
-        from uiao.impl.generators.trestle import validate_oscal_artifacts
+        from uiao.generators.trestle import validate_oscal_artifacts
 
         failures = validate_oscal_artifacts(oscal_dir)
         # Even if validation notes are logged, structural validation should pass

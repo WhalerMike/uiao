@@ -44,19 +44,19 @@ except ImportError:
     normalize_scuba = None  # type: ignore[assignment]
 
 try:
-    from uiao.impl.ksi.evaluate import evaluate_ksi
+    from uiao.ksi.evaluate import evaluate_ksi
 except ImportError:
     evaluate_ksi = None  # type: ignore[assignment]
 
 try:
-    from uiao.impl.evidence.builder import build_evidence
+    from uiao.evidence.builder import build_evidence
 except ImportError:
     build_evidence = None  # type: ignore[assignment]
 
 try:
-    from uiao.impl.generators.oscal import build_oscal
-    from uiao.impl.generators.poam import build_poam_export
-    from uiao.impl.generators.ssp import build_ssp
+    from uiao.generators.oscal import build_oscal
+    from uiao.generators.poam import build_poam_export
+    from uiao.generators.ssp import build_ssp
 except ImportError:
     build_oscal = build_poam_export = build_ssp = None  # type: ignore[assignment]
 

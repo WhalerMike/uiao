@@ -4,9 +4,9 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from uiao.impl.dashboard.ir_dashboard import build_ir_dashboard, export_ir_dashboard
-from uiao.impl.governance.actions import GovernanceAction
-from uiao.impl.ir.models.core import Evidence, ProvenanceRecord
+from uiao.dashboard.ir_dashboard import build_ir_dashboard, export_ir_dashboard
+from uiao.governance.actions import GovernanceAction
+from uiao.ir.models.core import Evidence, ProvenanceRecord
 
 
 def _prov() -> ProvenanceRecord:

@@ -18,35 +18,35 @@ class TestGeneratorImports:
     """Verify all generator modules import cleanly."""
 
     def test_import_ssp(self):
-        from uiao.impl.generators import ssp
+        from uiao.generators import ssp
 
         assert hasattr(ssp, "build_ssp")
         assert hasattr(ssp, "load_context")
         assert hasattr(ssp, "build_set_parameters")
 
     def test_import_oscal(self):
-        from uiao.impl.generators import oscal
+        from uiao.generators import oscal
 
         assert hasattr(oscal, "build_oscal")
         assert hasattr(oscal, "build_component_definition")
         assert hasattr(oscal, "load_context")
 
     def test_import_poam(self):
-        from uiao.impl.generators import poam
+        from uiao.generators import poam
 
         assert hasattr(poam, "build_poam_export")
         assert hasattr(poam, "build_poam")
         assert hasattr(poam, "detect_gaps")
 
     def test_import_docs(self):
-        from uiao.impl.generators import docs
+        from uiao.generators import docs
 
         assert hasattr(docs, "build_docs")
         assert hasattr(docs, "load_canon")
         assert hasattr(docs, "load_data_files")
 
     def test_import_package_init(self):
-        from uiao.impl.generators import (
+        from uiao.generators import (
             build_docs,
             build_oscal,
             build_poam_export,
@@ -63,7 +63,7 @@ class TestOSCALBuilder:
     """Test OSCAL component-definition builder with empty context."""
 
     def test_build_component_definition_empty(self):
-        from uiao.impl.generators.oscal import build_component_definition
+        from uiao.generators.oscal import build_component_definition
 
         cd = build_component_definition({})
         assert "uuid" in cd
@@ -72,7 +72,7 @@ class TestOSCALBuilder:
         assert isinstance(cd["components"], list)
 
     def test_build_component_definition_with_planes(self):
-        from uiao.impl.generators.oscal import build_component_definition
+        from uiao.generators.oscal import build_component_definition
 
         context = {
             "control_planes": [
@@ -89,14 +89,14 @@ class TestPOAMBuilder:
     """Test POA&M gap detection and builder."""
 
     def test_detect_gaps_empty(self):
-        from uiao.impl.generators.poam import detect_gaps
+        from uiao.generators.poam import detect_gaps
 
         gaps = detect_gaps({})
         assert isinstance(gaps, list)
         assert len(gaps) == 0
 
     def test_detect_gaps_low_maturity(self):
-        from uiao.impl.generators.poam import detect_gaps
+        from uiao.generators.poam import detect_gaps
 
         context = {
             "unified_compliance_matrix": [
@@ -108,7 +108,7 @@ class TestPOAMBuilder:
         assert "Low maturity" in gaps[0]["title"]
 
     def test_build_poam_empty(self):
-        from uiao.impl.generators.poam import build_poam
+        from uiao.generators.poam import build_poam
 
         poam = build_poam({})
         assert "uuid" in poam
@@ -120,7 +120,7 @@ class TestSSPBuilder:
     """Test SSP builder with empty context."""
 
     def test_build_ssp_empty_context(self, tmp_path):
-        from uiao.impl.generators.ssp import build_ssp
+        from uiao.generators.ssp import build_ssp
 
         output = tmp_path / "ssp.json"
         _result = build_ssp(
@@ -135,7 +135,7 @@ class TestSSPBuilder:
 
     def test_build_ssp_output_path_alias(self, tmp_path):
         """Verify that the deprecated output_path kwarg still works."""
-        from uiao.impl.generators.ssp import build_ssp
+        from uiao.generators.ssp import build_ssp
 
         output = tmp_path / "ssp_alias.json"
         build_ssp(
@@ -147,7 +147,7 @@ class TestSSPBuilder:
 
     def test_build_ssp_skeleton_required_top_level_keys(self, tmp_path):
         """SSP skeleton must contain all OSCAL top-level keys."""
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         ssp = build_ssp_skeleton({}, data_dir=tmp_path)
         for key in (
@@ -164,7 +164,7 @@ class TestSSPBuilder:
         """Metadata must carry fedramp-version=rev5 and impact-level=moderate when template is present."""
         import shutil
 
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         # Copy real template into tmp_path so the generator can load it
         src = _TEMPLATE_PATH
@@ -180,7 +180,7 @@ class TestSSPBuilder:
         """SSP metadata must include all FedRAMP Rev 5 required roles."""
         import shutil
 
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         src = _TEMPLATE_PATH
         shutil.copy(src, tmp_path / "fedramp_ssp_template_structure.yaml")
@@ -201,7 +201,7 @@ class TestSSPBuilder:
         """SSP metadata must include responsible-parties for key FedRAMP roles."""
         import shutil
 
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         src = _TEMPLATE_PATH
         shutil.copy(src, tmp_path / "fedramp_ssp_template_structure.yaml")
@@ -215,7 +215,7 @@ class TestSSPBuilder:
         """Section 7-10: system-characteristics must include status, props, network-architecture, data-flow."""
         import shutil
 
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         src = _TEMPLATE_PATH
         shutil.copy(src, tmp_path / "fedramp_ssp_template_structure.yaml")
@@ -234,7 +234,7 @@ class TestSSPBuilder:
         """Section 8: system-characteristics props must include cloud-service-model and cloud-deployment-model."""
         import shutil
 
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         src = _TEMPLATE_PATH
         shutil.copy(src, tmp_path / "fedramp_ssp_template_structure.yaml")
@@ -248,7 +248,7 @@ class TestSSPBuilder:
         """Section 12: SSP must contain back-matter with laws/regulations resources."""
         import shutil
 
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         src = _TEMPLATE_PATH
         shutil.copy(src, tmp_path / "fedramp_ssp_template_structure.yaml")
@@ -263,7 +263,7 @@ class TestSSPBuilder:
 
     def test_build_ssp_information_type_has_uuid(self, tmp_path):
         """Section 2: information-types must include a uuid (OSCAL 1.0.4 requirement)."""
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         ssp = build_ssp_skeleton({}, data_dir=tmp_path)
         info_types = ssp["system-characteristics"]["system-information"]["information-types"]
@@ -272,7 +272,7 @@ class TestSSPBuilder:
 
     def test_build_ssp_all_matrix_controls_included(self, tmp_path):
         """Appendix A: all unique NIST controls from compliance matrix must appear in implemented-requirements."""
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         context = {
             "unified_compliance_matrix": [
@@ -287,7 +287,7 @@ class TestSSPBuilder:
 
     def test_build_ssp_no_duplicate_control_ids(self, tmp_path):
         """Appendix A: implemented-requirements must not contain duplicate control-ids."""
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         context = {
             "unified_compliance_matrix": [
@@ -301,7 +301,7 @@ class TestSSPBuilder:
 
     def test_build_ssp_users_include_all_roles(self, tmp_path):
         """Section 11: system-implementation users must include all standard user types."""
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         ssp = build_ssp_skeleton({}, data_dir=tmp_path)
         user_role_ids = {r for u in ssp["system-implementation"]["users"] for r in u.get("role-ids", [])}
@@ -331,12 +331,12 @@ class TestInventoryFromCoreStack:
     """Test inventory_items_from_core_stack helper in ssp.py."""
 
     def test_empty_list_returns_empty(self):
-        from uiao.impl.generators.ssp import inventory_items_from_core_stack
+        from uiao.generators.ssp import inventory_items_from_core_stack
 
         assert inventory_items_from_core_stack([]) == []
 
     def test_basic_component_becomes_inventory_item(self):
-        from uiao.impl.generators.ssp import inventory_items_from_core_stack
+        from uiao.generators.ssp import inventory_items_from_core_stack
 
         core_stack = [{"id": "INR", "name": "Microsoft INR", "pillar": "identity"}]
         items = inventory_items_from_core_stack(core_stack)
@@ -348,7 +348,7 @@ class TestInventoryFromCoreStack:
         assert "component-identity" in item["implemented_components"]
 
     def test_pillar_prop_is_included(self):
-        from uiao.impl.generators.ssp import inventory_items_from_core_stack
+        from uiao.generators.ssp import inventory_items_from_core_stack
 
         items = inventory_items_from_core_stack([{"id": "IB", "name": "Infoblox IPAM", "pillar": "addressing"}])
         prop_names = [p["name"] for p in items[0]["props"]]
@@ -357,7 +357,7 @@ class TestInventoryFromCoreStack:
         assert pillar_val == "addressing"
 
     def test_vendor_prop_is_included_when_present(self):
-        from uiao.impl.generators.ssp import inventory_items_from_core_stack
+        from uiao.generators.ssp import inventory_items_from_core_stack
 
         items = inventory_items_from_core_stack(
             [{"id": "INR", "name": "Microsoft INR", "pillar": "identity", "vendor": "Microsoft"}]
@@ -366,19 +366,19 @@ class TestInventoryFromCoreStack:
         assert vendor_val == "Microsoft"
 
     def test_missing_pillar_produces_empty_implemented_components(self):
-        from uiao.impl.generators.ssp import inventory_items_from_core_stack
+        from uiao.generators.ssp import inventory_items_from_core_stack
 
         items = inventory_items_from_core_stack([{"id": "UNKNOWN", "name": "Unknown Component"}])
         assert items[0]["implemented_components"] == []
 
     def test_entry_without_id_is_skipped(self):
-        from uiao.impl.generators.ssp import inventory_items_from_core_stack
+        from uiao.generators.ssp import inventory_items_from_core_stack
 
         items = inventory_items_from_core_stack([{"name": "No ID Component", "pillar": "identity"}])
         assert items == []
 
     def test_non_dict_entries_are_skipped(self):
-        from uiao.impl.generators.ssp import inventory_items_from_core_stack
+        from uiao.generators.ssp import inventory_items_from_core_stack
 
         items = inventory_items_from_core_stack(["not-a-dict", None, {"id": "OK", "name": "OK"}])
         assert len(items) == 1
@@ -389,7 +389,7 @@ class TestSSPInventoryMerge:
     """Test that build_ssp_skeleton merges core-stack and inventory-items correctly."""
 
     def test_core_stack_items_appear_in_ssp_inventory(self, tmp_path):
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         context = {
             "core_stack": [{"id": "INR", "name": "Microsoft INR", "pillar": "identity"}],
@@ -402,7 +402,7 @@ class TestSSPInventoryMerge:
         assert any("Microsoft INR" in d for d in descriptions)
 
     def test_manual_inventory_items_take_precedence_over_core_stack(self, tmp_path):
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         context = {
             "inventory_items": [
@@ -426,7 +426,7 @@ class TestSSPInventoryMerge:
 
     def test_inventory_item_links_to_component_uuid(self, tmp_path):
         """Inventory items from core-stack must link to a valid component uuid via implemented-components."""
-        from uiao.impl.generators.ssp import build_ssp_skeleton
+        from uiao.generators.ssp import build_ssp_skeleton
 
         context = {
             "core_stack": [{"id": "INR", "name": "Microsoft INR", "pillar": "identity"}],
@@ -448,12 +448,12 @@ class TestDetectInventoryGaps:
     """Test detect_inventory_gaps in poam.py."""
 
     def test_empty_context_returns_empty(self):
-        from uiao.impl.generators.poam import detect_inventory_gaps
+        from uiao.generators.poam import detect_inventory_gaps
 
         assert detect_inventory_gaps({}) == []
 
     def test_known_pillar_produces_no_gap(self):
-        from uiao.impl.generators.poam import detect_inventory_gaps
+        from uiao.generators.poam import detect_inventory_gaps
 
         context = {
             "core_stack": [{"id": "INR", "name": "Microsoft INR", "pillar": "identity"}],
@@ -463,7 +463,7 @@ class TestDetectInventoryGaps:
         assert gaps == []
 
     def test_unknown_pillar_produces_gap(self):
-        from uiao.impl.generators.poam import detect_inventory_gaps
+        from uiao.generators.poam import detect_inventory_gaps
 
         context = {
             "core_stack": [{"id": "CAT", "name": "Cisco Catalyst", "pillar": "overlay"}],
@@ -476,7 +476,7 @@ class TestDetectInventoryGaps:
         assert "CM-8" in gaps[0]["related_controls"]
 
     def test_multiple_unknown_pillars(self):
-        from uiao.impl.generators.poam import detect_inventory_gaps
+        from uiao.generators.poam import detect_inventory_gaps
 
         context = {
             "core_stack": [
@@ -490,7 +490,7 @@ class TestDetectInventoryGaps:
         assert len(gaps) == 2
 
     def test_detect_gaps_includes_inventory_gaps(self):
-        from uiao.impl.generators.poam import detect_gaps
+        from uiao.generators.poam import detect_gaps
 
         context = {
             "core_stack": [{"id": "CAT", "name": "Cisco Catalyst", "pillar": "overlay"}],
@@ -501,7 +501,7 @@ class TestDetectInventoryGaps:
         assert len(inventory_gaps) >= 1
 
     def test_component_without_pillar_is_not_flagged(self):
-        from uiao.impl.generators.poam import detect_inventory_gaps
+        from uiao.generators.poam import detect_inventory_gaps
 
         context = {
             "core_stack": [{"id": "MISC", "name": "Misc Component"}],

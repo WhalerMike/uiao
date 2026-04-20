@@ -240,7 +240,7 @@ Generate all three OSCAL artifacts from the Terraform adapter fixture:
 ```python
 from uiao.adapters.terraform_adapter import TerraformAdapter
 from uiao.adapters.adapter_to_oscal import *
-from uiao.impl.generators.sar import build_sar
+from uiao.generators.sar import build_sar
 
 adapter = TerraformAdapter({})
 claims = adapter.extract_terraform_state("tests/fixtures/terraform.tfstate")

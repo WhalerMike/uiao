@@ -14,8 +14,8 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from uiao.impl.cli.substrate import substrate_app as app
-from uiao.impl.substrate.walker import walk_substrate
+from uiao.cli.substrate import substrate_app as app
+from uiao.substrate.walker import walk_substrate
 
 runner = CliRunner()
 

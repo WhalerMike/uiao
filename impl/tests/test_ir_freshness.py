@@ -3,14 +3,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 
-from uiao.impl.freshness.engine import (
+from uiao.freshness.engine import (
     build_freshness_records,
     classify_age,
     generate_refresh_actions,
     parseiso,
 )
-from uiao.impl.governance.actions import GovernanceAction
-from uiao.impl.ir.models.core import Evidence, ProvenanceRecord
+from uiao.governance.actions import GovernanceAction
+from uiao.ir.models.core import Evidence, ProvenanceRecord
 
 
 def _prov() -> ProvenanceRecord:

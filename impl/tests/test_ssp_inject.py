@@ -6,15 +6,15 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from uiao.impl.cli.app import app
-from uiao.impl.evidence.bundle import EvidenceBundle
-from uiao.impl.generators.ssp_inject import (
+from uiao.cli.app import app
+from uiao.evidence.bundle import EvidenceBundle
+from uiao.generators.ssp_inject import (
     _find_component_uuid,
     _oscal_status,
     inject_scuba_evidence,
     live_ssp_summary,
 )
-from uiao.impl.ir.models.core import Evidence, ProvenanceRecord
+from uiao.ir.models.core import Evidence, ProvenanceRecord
 
 runner = CliRunner()
 
@@ -285,14 +285,14 @@ class TestLiveSspSummary:
 
 class TestBuildLiveSsp:
     def test_writes_ssp_json_file(self, scuba_json: Path, tmp_path: Path) -> None:
-        from uiao.impl.generators.ssp_inject import build_live_ssp
+        from uiao.generators.ssp_inject import build_live_ssp
 
         out = tmp_path / "live-ssp.json"
         path = build_live_ssp(normalized_json_path=scuba_json, output_path=str(out))
         assert Path(path).exists()
 
     def test_output_is_valid_oscal_ssp(self, scuba_json: Path, tmp_path: Path) -> None:
-        from uiao.impl.generators.ssp_inject import build_live_ssp
+        from uiao.generators.ssp_inject import build_live_ssp
 
         out = tmp_path / "live-ssp.json"
         build_live_ssp(normalized_json_path=scuba_json, output_path=str(out))
@@ -300,7 +300,7 @@ class TestBuildLiveSsp:
         assert "system-security-plan" in data
 
     def test_output_has_implemented_requirements(self, scuba_json: Path, tmp_path: Path) -> None:
-        from uiao.impl.generators.ssp_inject import build_live_ssp
+        from uiao.generators.ssp_inject import build_live_ssp
 
         out = tmp_path / "live-ssp.json"
         build_live_ssp(normalized_json_path=scuba_json, output_path=str(out))
@@ -310,7 +310,7 @@ class TestBuildLiveSsp:
         assert len(reqs) > 0
 
     def test_some_requirements_have_implementation_status(self, scuba_json: Path, tmp_path: Path) -> None:
-        from uiao.impl.generators.ssp_inject import build_live_ssp
+        from uiao.generators.ssp_inject import build_live_ssp
 
         out = tmp_path / "live-ssp.json"
         build_live_ssp(normalized_json_path=scuba_json, output_path=str(out))
@@ -321,7 +321,7 @@ class TestBuildLiveSsp:
         assert len(injected) > 0
 
     def test_creates_parent_dirs(self, scuba_json: Path, tmp_path: Path) -> None:
-        from uiao.impl.generators.ssp_inject import build_live_ssp
+        from uiao.generators.ssp_inject import build_live_ssp
 
         out = tmp_path / "deep" / "nested" / "live-ssp.json"
         build_live_ssp(normalized_json_path=scuba_json, output_path=str(out))

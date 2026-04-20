@@ -1,18 +1,18 @@
-"""Tests for uiao.impl.governance: ownership, SLA, actions, report."""
+"""Tests for uiao.governance: ownership, SLA, actions, report."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
 
-from uiao.impl.governance.actions import (
+from uiao.governance.actions import (
     build_governance_actions,
     classify_action_type,
 )
-from uiao.impl.governance.ownership import resolve_owner_for_ksi
-from uiao.impl.governance.report import format_governance_report, summarize_actions
-from uiao.impl.governance.sla import resolve_sla_days
-from uiao.impl.ir.models.core import DriftState, Evidence, ProvenanceRecord
+from uiao.governance.ownership import resolve_owner_for_ksi
+from uiao.governance.report import format_governance_report, summarize_actions
+from uiao.governance.sla import resolve_sla_days
+from uiao.ir.models.core import DriftState, Evidence, ProvenanceRecord
 
 
 # ---------------------------------------------------------------------------

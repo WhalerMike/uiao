@@ -1,7 +1,7 @@
-"""Legacy shim - delegates to uiao.impl.generators.ssp.
+"""Legacy shim - delegates to uiao.generators.ssp.
 
 This script is kept for backward compatibility. New code should
-import ``build_ssp`` from ``uiao.impl.generators.ssp``.
+import ``build_ssp`` from ``uiao.generators.ssp``.
 
 Deprecated: Use `uiao generate-ssp` CLI command instead.
 """
@@ -9,7 +9,7 @@ Deprecated: Use `uiao generate-ssp` CLI command instead.
 import logging
 import warnings
 
-from uiao.impl.generators.ssp import build_ssp
+from uiao.generators.ssp import build_ssp
 
 warnings.warn(
     "scripts/generate_ssp.py is deprecated. Use `uiao generate-ssp` instead.",

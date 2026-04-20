@@ -129,7 +129,7 @@ class TestEntraToOscal:
 
     def test_entra_claims_to_sar(self, adapter: EntraAdapter, users_groups: list) -> None:
         from uiao.adapters.adapter_to_oscal import build_adapter_bundle
-        from uiao.impl.generators.sar import build_sar
+        from uiao.generators.sar import build_sar
 
         claims = adapter.normalize(users_groups)
         bundle = build_adapter_bundle(

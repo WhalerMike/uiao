@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
-from uiao.impl.ir.mapping.ksi_to_ir import build_ksi_ir_mapping
-from uiao.impl.ir.models.core import (
+from uiao.ir.mapping.ksi_to_ir import build_ksi_ir_mapping
+from uiao.ir.models.core import (
     Control,
     Evidence,
     Policy,

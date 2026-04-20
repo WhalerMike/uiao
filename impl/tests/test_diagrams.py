@@ -61,14 +61,14 @@ class TestDiagramsCanon:
             assert meta["content"].strip(), f"Diagram '{key}' has empty 'content'"
 
     def test_load_diagrams_canon_function(self) -> None:
-        from uiao.impl.generators.diagrams import load_diagrams_canon
+        from uiao.generators.diagrams import load_diagrams_canon
 
         diagrams = load_diagrams_canon(_DIAGRAMS_CANON)
         assert isinstance(diagrams, dict)
         assert len(diagrams) >= 6
 
     def test_load_diagrams_canon_missing_file(self, tmp_path: Path) -> None:
-        from uiao.impl.generators.diagrams import load_diagrams_canon
+        from uiao.generators.diagrams import load_diagrams_canon
 
         result = load_diagrams_canon(tmp_path / "nonexistent.yaml")
         assert result == {}
@@ -81,7 +81,7 @@ class TestGenerateDiagramsFromCanon:
     """Verify that generate_diagrams_from_canon() writes .puml files."""
 
     def test_creates_plantuml_files(self, tmp_path: Path) -> None:
-        from uiao.impl.generators.diagrams import generate_diagrams_from_canon
+        from uiao.generators.diagrams import generate_diagrams_from_canon
 
         visuals_dir = tmp_path / "visuals"
         output_dir = tmp_path / "images"
@@ -89,7 +89,7 @@ class TestGenerateDiagramsFromCanon:
         # Skip PNG rendering (no mmdc/Playwright in CI) — only check .puml writes
         import unittest.mock as mock
 
-        with mock.patch("uiao.impl.generators.diagrams.render_plantuml_file", return_value=None):
+        with mock.patch("uiao.generators.diagrams.render_plantuml_file", return_value=None):
             generate_diagrams_from_canon(
                 canon_path=_DIAGRAMS_CANON,
                 visuals_dir=visuals_dir,
@@ -100,13 +100,13 @@ class TestGenerateDiagramsFromCanon:
         assert len(plantuml_files) >= 6, f"Expected ≥6 .puml files, got {len(plantuml_files)}"
 
     def test_plantuml_file_names_match_keys(self, tmp_path: Path) -> None:
-        from uiao.impl.generators.diagrams import generate_diagrams_from_canon
+        from uiao.generators.diagrams import generate_diagrams_from_canon
 
         visuals_dir = tmp_path / "visuals"
 
         import unittest.mock as mock
 
-        with mock.patch("uiao.impl.generators.diagrams.render_plantuml_file", return_value=None):
+        with mock.patch("uiao.generators.diagrams.render_plantuml_file", return_value=None):
             generate_diagrams_from_canon(
                 canon_path=_DIAGRAMS_CANON,
                 visuals_dir=visuals_dir,
@@ -125,13 +125,13 @@ class TestGenerateDiagramsFromCanon:
         assert expected.issubset(stems), f"Missing .puml files: {expected - stems}"
 
     def test_plantuml_file_content_is_nonempty(self, tmp_path: Path) -> None:
-        from uiao.impl.generators.diagrams import generate_diagrams_from_canon
+        from uiao.generators.diagrams import generate_diagrams_from_canon
 
         visuals_dir = tmp_path / "visuals"
 
         import unittest.mock as mock
 
-        with mock.patch("uiao.impl.generators.diagrams.render_plantuml_file", return_value=None):
+        with mock.patch("uiao.generators.diagrams.render_plantuml_file", return_value=None):
             generate_diagrams_from_canon(
                 canon_path=_DIAGRAMS_CANON,
                 visuals_dir=visuals_dir,
@@ -145,11 +145,11 @@ class TestGenerateDiagramsFromCanon:
         """Each generated .puml file must contain PlantUML flowchart keywords."""
         import unittest.mock as mock
 
-        from uiao.impl.generators.diagrams import generate_diagrams_from_canon
+        from uiao.generators.diagrams import generate_diagrams_from_canon
 
         visuals_dir = tmp_path / "visuals"
 
-        with mock.patch("uiao.impl.generators.diagrams.render_plantuml_file", return_value=None):
+        with mock.patch("uiao.generators.diagrams.render_plantuml_file", return_value=None):
             generate_diagrams_from_canon(
                 canon_path=_DIAGRAMS_CANON,
                 visuals_dir=visuals_dir,
@@ -165,10 +165,10 @@ class TestGenerateDiagramsFromCanon:
     def test_strict_mode_raises_on_render_failure(self, tmp_path: Path) -> None:
         import unittest.mock as mock
 
-        from uiao.impl.generators.diagrams import generate_diagrams_from_canon
+        from uiao.generators.diagrams import generate_diagrams_from_canon
 
         with (
-            mock.patch("uiao.impl.generators.diagrams.render_plantuml_file", return_value=None),
+            mock.patch("uiao.generators.diagrams.render_plantuml_file", return_value=None),
             pytest.raises(RuntimeError, match="Failed to render"),
         ):
             generate_diagrams_from_canon(
@@ -179,7 +179,7 @@ class TestGenerateDiagramsFromCanon:
             )
 
     def test_returns_empty_list_for_missing_canon(self, tmp_path: Path) -> None:
-        from uiao.impl.generators.diagrams import generate_diagrams_from_canon
+        from uiao.generators.diagrams import generate_diagrams_from_canon
 
         result = generate_diagrams_from_canon(
             canon_path=tmp_path / "nonexistent.yaml",
@@ -191,9 +191,9 @@ class TestGenerateDiagramsFromCanon:
     def test_build_diagrams_returns_output_dir(self, tmp_path: Path) -> None:
         import unittest.mock as mock
 
-        from uiao.impl.generators.diagrams import build_diagrams
+        from uiao.generators.diagrams import build_diagrams
 
-        with mock.patch("uiao.impl.generators.diagrams.render_plantuml_file", return_value=None):
+        with mock.patch("uiao.generators.diagrams.render_plantuml_file", return_value=None):
             result = build_diagrams(
                 canon_path=_DIAGRAMS_CANON,
                 visuals_dir=tmp_path / "visuals",
@@ -210,7 +210,7 @@ class TestReplacePlantUMLBlocks:
     """Verify the PlantUML fence → <img> post-processing helper."""
 
     def test_replaces_single_block(self) -> None:
-        from uiao.impl.generators.docs import replace_plantuml_blocks_with_images
+        from uiao.generators.docs import replace_plantuml_blocks_with_images
 
         md = "# Title\n\n```plantuml\nflowchart TD\n    A --> B\n```\n\nEnd."
         result = replace_plantuml_blocks_with_images(md)
@@ -219,7 +219,7 @@ class TestReplacePlantUMLBlocks:
         assert ".png" in result
 
     def test_replaces_multiple_blocks(self) -> None:
-        from uiao.impl.generators.docs import replace_plantuml_blocks_with_images
+        from uiao.generators.docs import replace_plantuml_blocks_with_images
 
         md = "```plantuml\nflowchart LR\n    A --> B\n```\n\n```plantuml\nflowchart TD\n    C --> D\n```\n"
         result = replace_plantuml_blocks_with_images(md)
@@ -227,27 +227,27 @@ class TestReplacePlantUMLBlocks:
         assert "```plantuml" not in result
 
     def test_leaves_non_plantuml_fences_intact(self) -> None:
-        from uiao.impl.generators.docs import replace_plantuml_blocks_with_images
+        from uiao.generators.docs import replace_plantuml_blocks_with_images
 
         md = "```python\nprint('hello')\n```\n"
         result = replace_plantuml_blocks_with_images(md)
         assert result == md
 
     def test_no_plantuml_blocks_unchanged(self) -> None:
-        from uiao.impl.generators.docs import replace_plantuml_blocks_with_images
+        from uiao.generators.docs import replace_plantuml_blocks_with_images
 
         md = "# No diagrams here\n\nJust text."
         assert replace_plantuml_blocks_with_images(md) == md
 
     def test_img_contains_images_dir(self) -> None:
-        from uiao.impl.generators.docs import replace_plantuml_blocks_with_images
+        from uiao.generators.docs import replace_plantuml_blocks_with_images
 
         md = "```plantuml\nflowchart TD\n    A --> B\n```"
         result = replace_plantuml_blocks_with_images(md, images_dir="custom/dir")
         assert "custom/dir" in result
 
     def test_empty_string_unchanged(self) -> None:
-        from uiao.impl.generators.docs import replace_plantuml_blocks_with_images
+        from uiao.generators.docs import replace_plantuml_blocks_with_images
 
         assert replace_plantuml_blocks_with_images("") == ""
 
@@ -259,14 +259,14 @@ class TestDiagramsModuleImports:
     """Verify diagrams module exports the expected symbols."""
 
     def test_import_diagrams_module(self) -> None:
-        from uiao.impl.generators import diagrams
+        from uiao.generators import diagrams
 
         assert hasattr(diagrams, "generate_diagrams_from_canon")
         assert hasattr(diagrams, "build_diagrams")
         assert hasattr(diagrams, "load_diagrams_canon")
 
     def test_build_diagrams_in_package(self) -> None:
-        from uiao.impl.generators import build_diagrams
+        from uiao.generators import build_diagrams
 
         assert callable(build_diagrams)
 
@@ -283,7 +283,7 @@ class TestBuildDocsDiagramIntegration:
 
         import yaml
 
-        from uiao.impl.generators.docs import build_docs
+        from uiao.generators.docs import build_docs
 
         # Minimal template and context so build_docs can complete
         templates_dir = tmp_path / "templates"
@@ -294,7 +294,7 @@ class TestBuildDocsDiagramIntegration:
         canon_file.write_text(yaml.dump({"version": "1.0", "diagrams": {}}), encoding="utf-8")
 
         with mock.patch(
-            "uiao.impl.generators.diagrams.generate_diagrams_from_canon",
+            "uiao.generators.diagrams.generate_diagrams_from_canon",
             return_value=[],
         ) as mock_gen:
             build_docs(
@@ -315,7 +315,7 @@ class TestBuildDocsDiagramIntegration:
 
         import yaml
 
-        from uiao.impl.generators.docs import build_docs
+        from uiao.generators.docs import build_docs
 
         templates_dir = tmp_path / "templates"
         templates_dir.mkdir()
@@ -323,7 +323,7 @@ class TestBuildDocsDiagramIntegration:
         canon_file.write_text(yaml.dump({"version": "1.0", "diagrams": {}}), encoding="utf-8")
 
         with mock.patch(
-            "uiao.impl.generators.diagrams.generate_diagrams_from_canon",
+            "uiao.generators.diagrams.generate_diagrams_from_canon",
             return_value=[],
         ) as mock_gen:
             build_docs(
@@ -344,7 +344,7 @@ class TestBuildDocsDiagramIntegration:
 
         import yaml
 
-        from uiao.impl.generators.docs import build_docs
+        from uiao.generators.docs import build_docs
 
         templates_dir = tmp_path / "templates"
         templates_dir.mkdir()
@@ -352,7 +352,7 @@ class TestBuildDocsDiagramIntegration:
         canon_file.write_text(yaml.dump({"version": "1.0", "diagrams": {}}), encoding="utf-8")
 
         with mock.patch(
-            "uiao.impl.generators.diagrams.generate_diagrams_from_canon",
+            "uiao.generators.diagrams.generate_diagrams_from_canon",
             return_value=[],
         ) as mock_gen:
             build_docs(
@@ -370,12 +370,12 @@ class TestBuildDocsDiagramIntegration:
         """generate_diagrams_from_canon reads diagrams from the main leadership briefing canon."""
         import unittest.mock as mock
 
-        from uiao.impl.generators.diagrams import generate_diagrams_from_canon
+        from uiao.generators.diagrams import generate_diagrams_from_canon
 
         leadership_canon = _LEADERSHIP_CANON
         assert leadership_canon.exists(), f"Canon not found: {leadership_canon}"
 
-        with mock.patch("uiao.impl.generators.diagrams.render_plantuml_file", return_value=None) as mock_render:
+        with mock.patch("uiao.generators.diagrams.render_plantuml_file", return_value=None) as mock_render:
             import tempfile
 
             with tempfile.TemporaryDirectory() as td:
@@ -424,18 +424,18 @@ class TestPlantUMLThemeConfiguration:
         )
 
     def test_plantuml_html_uses_canonical_theme(self) -> None:
-        from uiao.impl.generators.puml import PLANTUML_THEME, _plantuml_html
+        from uiao.generators.puml import PLANTUML_THEME, _plantuml_html
 
         html = _plantuml_html("flowchart TD\n    A --> B")
         assert f"theme:'{PLANTUML_THEME}'" in html, f"_plantuml_html() must use theme '{PLANTUML_THEME}'"
 
     def test_plantuml_module_theme_constant_is_neutral(self) -> None:
-        from uiao.impl.generators.puml import PLANTUML_THEME
+        from uiao.generators.puml import PLANTUML_THEME
 
         assert PLANTUML_THEME == "neutral", f"PLANTUML_THEME constant must be 'neutral', got {PLANTUML_THEME!r}"
 
     def test_config_theme_matches_module_constant(self) -> None:
-        from uiao.impl.generators.puml import PLANTUML_THEME
+        from uiao.generators.puml import PLANTUML_THEME
 
         data = json.loads(_PLANTUML_CONFIG.read_text(encoding="utf-8"))
         assert data.get("theme") == PLANTUML_THEME, (
@@ -447,7 +447,7 @@ class TestPlantUMLThemeConfiguration:
         """_render_mmdc must include either --configFile or --theme in its command."""
         import unittest.mock as mock
 
-        from uiao.impl.generators.puml import _render_mmdc
+        from uiao.generators.puml import _render_mmdc
 
         mmd_path = tmp_path / "test.puml"
         mmd_path.write_text("flowchart TD\n    A --> B", encoding="utf-8")

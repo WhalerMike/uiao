@@ -1,7 +1,7 @@
-"""Legacy shim - delegates to uiao.impl.generators.poam.
+"""Legacy shim - delegates to uiao.generators.poam.
 
 This script is kept for backward compatibility. New code should
-import ``build_poam_export`` from ``uiao.impl.generators.poam``.
+import ``build_poam_export`` from ``uiao.generators.poam``.
 
 Deprecated: Use `uiao generate-poam` CLI command instead.
 """
@@ -9,7 +9,7 @@ Deprecated: Use `uiao generate-poam` CLI command instead.
 import logging
 import warnings
 
-from uiao.impl.generators.poam import build_poam_export
+from uiao.generators.poam import build_poam_export
 
 warnings.warn(
     "scripts/generate_poam.py is deprecated. Use `uiao generate-poam` instead.",

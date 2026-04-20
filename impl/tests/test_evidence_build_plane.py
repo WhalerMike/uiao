@@ -24,7 +24,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Module under test
 # ---------------------------------------------------------------------------
-from uiao.impl.evidence.builder import (
+from uiao.evidence.builder import (
     _build_manifest,
     _canonical_json,
     _ksi_result_to_evidence_record,

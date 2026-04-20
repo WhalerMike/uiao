@@ -14,7 +14,7 @@ import pytest
 
 from uiao.adapters.m365_adapter import M365Adapter
 from uiao.adapters.adapter_to_oscal import build_adapter_bundle
-from uiao.impl.generators.sar import build_sar
+from uiao.generators.sar import build_sar
 
 
 @pytest.fixture

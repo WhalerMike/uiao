@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from uiao.impl.cli.app import app
-from uiao.impl.evidence.bundle import EvidenceBundle
-from uiao.impl.generators.sar import (
+from uiao.cli.app import app
+from uiao.evidence.bundle import EvidenceBundle
+from uiao.generators.sar import (
     _finding_state,
     _finding_risk_state,
     _severity,
@@ -17,7 +17,7 @@ from uiao.impl.generators.sar import (
     build_sar_summary,
     export_sar,
 )
-from uiao.impl.ir.models.core import Evidence, ProvenanceRecord
+from uiao.ir.models.core import Evidence, ProvenanceRecord
 
 runner = CliRunner()
 

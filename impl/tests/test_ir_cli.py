@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from uiao.impl.cli.app import app
+from uiao.cli.app import app
 
 runner = CliRunner()
 

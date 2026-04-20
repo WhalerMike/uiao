@@ -1,6 +1,6 @@
 import json
 import pytest
-from uiao.impl.validators.ir_validator import validate_normalized_json
+from uiao.validators.ir_validator import validate_normalized_json
 
 VALID = {
     "assessment_metadata": {

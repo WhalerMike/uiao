@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from uiao.impl.evidence.bundle import EvidenceBundle, build_bundle_from_transform_result
+from uiao.evidence.bundle import EvidenceBundle, build_bundle_from_transform_result
 from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
 
