@@ -91,7 +91,7 @@ ADR-031's `uiao.impl.*` namespace is superseded: there is no `uiao.impl` anymore
 ### Positive
 
 - **One install step.** `pip install -e .` from a clean clone produces a working CLI and passing test suite.
-- **Canon is addressable.** `importlib.resources.files("uiao.canon") / "data/control-library/AC-2.yml"` works from any CWD and survives `pip install --wheel`.
+- **Canon is addressable.** `importlib.resources.files("uiao.canon") / "data/control-library/AC-2.yml"` works from any CWD and survives installation from a built wheel (`pip wheel .` + `pip install dist/<wheel>`).
 - **Version SSOT.** Drift between `pyproject.toml` and `__version__.py` (0.3.0 vs 0.2.1 pre-flatten) is mechanically impossible.
 - **CI simplification.** One workflows directory, one pyproject, one package-data manifest. Future CI changes don't risk skew between the `impl/` and root copies.
 - **AI agent onboarding.** Subagents no longer need to reason about which of `core/`, `impl/src/uiao/impl/`, or `src/uiao/` owns a given concern. The answer is always `src/uiao/<subpackage>/`.
