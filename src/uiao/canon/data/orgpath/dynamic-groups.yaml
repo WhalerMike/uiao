@@ -1,0 +1,224 @@
+# yaml-language-server: $schema=../../../schemas/orgpath/dynamic-groups.schema.json
+#
+# UIAO Dynamic Group Library — machine-readable SSOT
+# ==================================================
+# Canonical source: src/uiao/modernization/orgtree/MOD_B_Dynamic_Group_Library.md
+# Binding ADR:      src/uiao/canon/adr/adr-036-dynamic-group-provisioning.md
+# Depends on:       canon/data/orgpath/codebook.yaml (MOD_A / ADR-035)
+#
+# Every entry under `groups:` becomes a Graph API `POST /groups` body (with
+# MembershipRule) executed by the `entra-dynamic-groups` modernization
+# adapter. A group appearing in the Entra tenant with the `OrgTree-`
+# prefix but NOT in this file is Phantom Drift (MOD_B §Drift).
+#
+# Boundary: GCC-Moderate. Groups live in Microsoft Entra ID only.
+
+schema_version: "1.0.0"
+document_id: MOD_B
+parent_canon: UIAO_007
+updated: "2026-04-20"
+
+naming:
+  prefix: "OrgTree-"
+  # Scope is either an OrgPath-derived upper-case segment chain (e.g.
+  # IT-SEC-SOC) or a cross-functional descriptor (e.g. SecurityCompliance,
+  # AllRegionalAP, Standard, AllUsers). Purpose is a canonical suffix.
+  regex: "^OrgTree-[A-Za-z0-9]+(-[A-Za-z0-9]+)*-(Users|Licensed|CA|Admins)$"
+  purpose_suffixes: [Users, Licensed, CA, Admins]
+
+# Graph API MembershipRule processing parameters.
+membership:
+  processing_state: "On"
+  rule_processing_state: "On"
+  rule_template:
+    root_regex: "^\\(user\\.extensionAttribute1 "
+    allowed_operators: [-startsWith, -eq, -or, -and, -notMatch]
+
+groups:
+  # ------------------------------------------------------------------
+  # Level 1 — Division Groups (Branch Queries, -startsWith)
+  # ------------------------------------------------------------------
+  - name: OrgTree-FIN-Users
+    category: level-1-division
+    rule: '(user.extensionAttribute1 -startsWith "ORG-FIN")'
+    orgpath_refs: [ORG-FIN]
+    description: All Finance division users
+  - name: OrgTree-HR-Users
+    category: level-1-division
+    rule: '(user.extensionAttribute1 -startsWith "ORG-HR")'
+    orgpath_refs: [ORG-HR]
+    description: All Human Resources users
+  - name: OrgTree-IT-Users
+    category: level-1-division
+    rule: '(user.extensionAttribute1 -startsWith "ORG-IT")'
+    orgpath_refs: [ORG-IT]
+    description: All IT users
+  - name: OrgTree-OPS-Users
+    category: level-1-division
+    rule: '(user.extensionAttribute1 -startsWith "ORG-OPS")'
+    orgpath_refs: [ORG-OPS]
+    description: All Operations users
+  - name: OrgTree-LEG-Users
+    category: level-1-division
+    rule: '(user.extensionAttribute1 -startsWith "ORG-LEG")'
+    orgpath_refs: [ORG-LEG]
+    description: All Legal/Compliance users
+  - name: OrgTree-EXEC-Users
+    category: level-1-division
+    rule: '(user.extensionAttribute1 -startsWith "ORG-EXEC")'
+    orgpath_refs: [ORG-EXEC]
+    description: All Executive/Leadership users
+
+  # ------------------------------------------------------------------
+  # Level 2 — Department Groups (Branch Queries)
+  # ------------------------------------------------------------------
+  - name: OrgTree-FIN-AP-Users
+    category: level-2-department
+    rule: '(user.extensionAttribute1 -startsWith "ORG-FIN-AP")'
+    orgpath_refs: [ORG-FIN-AP]
+    description: Accounts Payable
+  - name: OrgTree-FIN-AR-Users
+    category: level-2-department
+    rule: '(user.extensionAttribute1 -startsWith "ORG-FIN-AR")'
+    orgpath_refs: [ORG-FIN-AR]
+    description: Accounts Receivable
+  - name: OrgTree-FIN-BUD-Users
+    category: level-2-department
+    rule: '(user.extensionAttribute1 -startsWith "ORG-FIN-BUD")'
+    orgpath_refs: [ORG-FIN-BUD]
+    description: Budget & Forecasting
+  - name: OrgTree-IT-SEC-Users
+    category: level-2-department
+    rule: '(user.extensionAttribute1 -startsWith "ORG-IT-SEC")'
+    orgpath_refs: [ORG-IT-SEC]
+    description: Security
+  - name: OrgTree-IT-INF-Users
+    category: level-2-department
+    rule: '(user.extensionAttribute1 -startsWith "ORG-IT-INF")'
+    orgpath_refs: [ORG-IT-INF]
+    description: Infrastructure
+  - name: OrgTree-IT-DEV-Users
+    category: level-2-department
+    rule: '(user.extensionAttribute1 -startsWith "ORG-IT-DEV")'
+    orgpath_refs: [ORG-IT-DEV]
+    description: Development / Engineering
+  - name: OrgTree-HR-REC-Users
+    category: level-2-department
+    rule: '(user.extensionAttribute1 -startsWith "ORG-HR-REC")'
+    orgpath_refs: [ORG-HR-REC]
+    description: Recruitment
+  - name: OrgTree-HR-BEN-Users
+    category: level-2-department
+    rule: '(user.extensionAttribute1 -startsWith "ORG-HR-BEN")'
+    orgpath_refs: [ORG-HR-BEN]
+    description: Benefits
+  - name: OrgTree-OPS-LOG-Users
+    category: level-2-department
+    rule: '(user.extensionAttribute1 -startsWith "ORG-OPS-LOG")'
+    orgpath_refs: [ORG-OPS-LOG]
+    description: Logistics
+  - name: OrgTree-LEG-COM-Users
+    category: level-2-department
+    rule: '(user.extensionAttribute1 -startsWith "ORG-LEG-COM")'
+    orgpath_refs: [ORG-LEG-COM]
+    description: Compliance
+
+  # ------------------------------------------------------------------
+  # Level 3 — Unit Groups (Branch or Node Queries)
+  # ------------------------------------------------------------------
+  - name: OrgTree-IT-SEC-SOC-Users
+    category: level-3-unit
+    rule: '(user.extensionAttribute1 -startsWith "ORG-IT-SEC-SOC")'
+    orgpath_refs: [ORG-IT-SEC-SOC]
+    description: SOC (all tiers)
+  - name: OrgTree-IT-SEC-IAM-Users
+    category: level-3-unit
+    rule: '(user.extensionAttribute1 -startsWith "ORG-IT-SEC-IAM")'
+    orgpath_refs: [ORG-IT-SEC-IAM]
+    description: Identity & Access Management
+  - name: OrgTree-IT-INF-NET-Users
+    category: level-3-unit
+    rule: '(user.extensionAttribute1 -startsWith "ORG-IT-INF-NET")'
+    orgpath_refs: [ORG-IT-INF-NET]
+    description: Networking
+  - name: OrgTree-FIN-AP-EAST-Users
+    category: level-3-unit
+    rule: '(user.extensionAttribute1 -eq "ORG-FIN-AP-EAST")'
+    orgpath_refs: [ORG-FIN-AP-EAST]
+    description: AP East Region
+  - name: OrgTree-FIN-AP-WEST-Users
+    category: level-3-unit
+    rule: '(user.extensionAttribute1 -eq "ORG-FIN-AP-WEST")'
+    orgpath_refs: [ORG-FIN-AP-WEST]
+    description: AP West Region
+
+  # ------------------------------------------------------------------
+  # Level 4 — Team Groups (Node Queries, -eq)
+  # ------------------------------------------------------------------
+  - name: OrgTree-IT-SEC-SOC-T1-Users
+    category: level-4-team
+    rule: '(user.extensionAttribute1 -eq "ORG-IT-SEC-SOC-T1")'
+    orgpath_refs: [ORG-IT-SEC-SOC-T1]
+    description: SOC Tier 1 Analysts
+  - name: OrgTree-IT-SEC-SOC-T2-Users
+    category: level-4-team
+    rule: '(user.extensionAttribute1 -eq "ORG-IT-SEC-SOC-T2")'
+    orgpath_refs: [ORG-IT-SEC-SOC-T2]
+    description: SOC Tier 2 Engineers
+  - name: OrgTree-IT-DEV-APP1-Users
+    category: level-4-team
+    rule: '(user.extensionAttribute1 -eq "ORG-IT-DEV-APP1")'
+    orgpath_refs: [ORG-IT-DEV-APP1]
+    description: Application Team 1
+
+  # ------------------------------------------------------------------
+  # Cross-Functional (Compound Queries)
+  # ------------------------------------------------------------------
+  - name: OrgTree-SecurityCompliance-Users
+    category: cross-functional
+    rule: '(user.extensionAttribute1 -startsWith "ORG-IT-SEC") -or (user.extensionAttribute1 -startsWith "ORG-LEG-COM")'
+    orgpath_refs: [ORG-IT-SEC, ORG-LEG-COM]
+    description: Joint Security + Compliance visibility
+  - name: OrgTree-AllRegionalAP-Users
+    category: cross-functional
+    rule: '(user.extensionAttribute1 -startsWith "ORG-FIN-AP-EAST") -or (user.extensionAttribute1 -startsWith "ORG-FIN-AP-WEST")'
+    orgpath_refs: [ORG-FIN-AP-EAST, ORG-FIN-AP-WEST]
+    description: All regional AP teams
+
+  # ------------------------------------------------------------------
+  # Conditional Access
+  # ------------------------------------------------------------------
+  - name: OrgTree-EXEC-CA
+    category: conditional-access
+    rule: '(user.extensionAttribute1 -startsWith "ORG-EXEC")'
+    orgpath_refs: [ORG-EXEC]
+    description: Executive MFA enforcement, device compliance
+  - name: OrgTree-IT-SEC-CA
+    category: conditional-access
+    rule: '(user.extensionAttribute1 -startsWith "ORG-IT-SEC")'
+    orgpath_refs: [ORG-IT-SEC]
+    description: Security team privileged access policies
+  - name: OrgTree-AllUsers-CA
+    category: conditional-access
+    rule: '(user.extensionAttribute1 -startsWith "ORG")'
+    orgpath_refs: [ORG]
+    description: Baseline CA policies for all governed users
+
+  # ------------------------------------------------------------------
+  # Licensing
+  # ------------------------------------------------------------------
+  - name: OrgTree-EXEC-Licensed
+    category: licensing
+    rule: '(user.extensionAttribute1 -startsWith "ORG-EXEC")'
+    orgpath_refs: [ORG-EXEC]
+    description: E5 + Copilot
+  - name: OrgTree-IT-Licensed
+    category: licensing
+    rule: '(user.extensionAttribute1 -startsWith "ORG-IT")'
+    orgpath_refs: [ORG-IT]
+    description: E5
+  - name: OrgTree-Standard-Licensed
+    category: licensing
+    rule: '(user.extensionAttribute1 -startsWith "ORG") -and (user.extensionAttribute1 -notMatch "ORG-EXEC.*|ORG-IT.*")'
+    orgpath_refs: [ORG]
+    description: E3 (all except EXEC and IT)

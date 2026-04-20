@@ -13,11 +13,21 @@ from .codebook import (
     DeprecatedEntry,
     load_codebook,
 )
+from .dynamic_groups import (
+    DynamicGroupLibrary,
+    DynamicGroupSpec,
+    DynamicGroupValidationError,
+    load_dynamic_group_library,
+)
 
 __all__ = [
     "Codebook",
     "CodebookEntry",
     "CodebookValidationError",
     "DeprecatedEntry",
+    "DynamicGroupLibrary",
+    "DynamicGroupSpec",
+    "DynamicGroupValidationError",
     "load_codebook",
+    "load_dynamic_group_library",
 ]
