@@ -23,7 +23,7 @@ following Executive Orders:
 These orders drive UIAO's emphasis on Zero Trust architecture, federal
 cybersecurity modernization, FedRAMP / cloud transition, post-quantum
 cryptography, and continuous compliance. The canonical mapping between
-UIAO artifacts and EO provisions lives in [`uiao/canon/compliance/executive-orders.md`](https://github.com/WhalerMike/uiao/blob/main/canon/compliance/executive-orders.md)
+UIAO artifacts and EO provisions lives in [`src/uiao/canon/compliance/executive-orders.md`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/compliance/executive-orders.md)
 (UIAO_004). This repository is a **consumer** of that canon — do not
 back-fill EO citations into `uiao-docs` artifacts without a
 corresponding entry in UIAO_004.
