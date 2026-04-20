@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from uiao.impl.adapters.vulnscan_adapter import VulnScanAdapter
-from uiao.impl.adapters.database_base import (
+from uiao.adapters.vulnscan_adapter import VulnScanAdapter
+from uiao.adapters.database_base import (
     ConnectionProvenance,
     DriftReport, EvidenceObject, QueryProvenance, SchemaMappingObject,
 )
@@ -36,7 +36,7 @@ class TestInstantiation:
         assert adapter._scanner == "tenable"
 
     def test_is_database_adapter_base(self, adapter: VulnScanAdapter) -> None:
-        from uiao.impl.adapters.database_base import DatabaseAdapterBase
+        from uiao.adapters.database_base import DatabaseAdapterBase
         assert isinstance(adapter, DatabaseAdapterBase)
 
 

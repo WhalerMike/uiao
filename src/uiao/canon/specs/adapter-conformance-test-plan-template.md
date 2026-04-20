@@ -123,7 +123,7 @@ Extension methods that are **implemented** must additionally pass:
 | # | Criterion | Pass | Fail |
 |---|-----------|------|------|
 | 4.1 | `ADAPTER_ID` matches canon registry `id` field | Exact match against `canon/{modernization,adapter}-registry.yaml` | Mismatch |
-| 4.2 | Adapter is registered in `__init__.py` `__all__` | Import succeeds from `uiao.impl.adapters` | ImportError |
+| 4.2 | Adapter is registered in `__init__.py` `__all__` | Import succeeds from `uiao.adapters` | ImportError |
 | 4.3 | Adapter appears in `test_adapters.py` `ADAPTER_REGISTRY` | Parametrized smoke tests cover it | Missing from registry |
 | 4.4 | Schema invariants hold | `gcc-boundary`, `ssot-mutation: never`, `certificate-anchored: true`, `object-identity-only: true` are respected in adapter behavior | Violation |
 

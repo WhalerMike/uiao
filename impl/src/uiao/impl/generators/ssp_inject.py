@@ -24,7 +24,7 @@ from typing import Any
 
 from uiao.impl.evidence.bundle import EvidenceBundle, build_bundle_from_transform_result
 from uiao.impl.generators.ssp import build_ssp_skeleton
-from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 from uiao.impl.utils.context import load_context
 
 

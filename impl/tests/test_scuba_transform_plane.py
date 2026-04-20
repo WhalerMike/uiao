@@ -1,6 +1,6 @@
 """Tests for Plane 1: SCuBA -> IR transformation.
 
-These tests exercise uiao.impl.scuba.transform.transform_scuba_to_ir
+These tests exercise uiao.adapters.scuba.transform.transform_scuba_to_ir
 against the canonical fixture already used by test_scuba_transformer_determinism.py,
 verifying the *new* file-in / file-out contract (paths, schema envelope, logging).
 """
@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from uiao.impl.scuba.transform import (
+from uiao.adapters.scuba.transform import (
     _apply_config_overrides,
     _ir_result_to_dict,
     _load_config,
@@ -132,7 +132,7 @@ def test_resolve_log_path_format(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_ir_result_to_dict_schema():
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir as _core
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir as _core
     result = _core(FIXTURE)
     d = _ir_result_to_dict(result)
     assert d["schema_version"] == "1.0"
@@ -146,7 +146,7 @@ def test_ir_result_to_dict_schema():
 
 
 def test_ir_result_to_dict_summary_counts():
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir as _core
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir as _core
     result = _core(FIXTURE)
     d = _ir_result_to_dict(result)
     s = d["summary"]

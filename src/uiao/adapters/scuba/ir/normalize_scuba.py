@@ -20,12 +20,12 @@ The mapping chain is:
   ScubaGear PolicyId  ──►  NIST SP 800-53 control  ──►  UIAO KSI ID
 
 Usage:
-    python -m uiao.impl.ir.adapters.scuba.normalize_scuba \\
+    python -m uiao.adapters.scuba.ir.normalize_scuba \\
         --input path/to/ScubaResults \\
         --output normalized.json
 
     Or programmatically:
-        from uiao.impl.ir.adapters.scuba.normalize_scuba import normalize_scuba
+        from uiao.adapters.scuba.ir.normalize_scuba import normalize_scuba
         result = normalize_scuba("path/to/ScubaResults")
 """
 
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 # PolicyId -> NIST control (e.g. "MS.AAD.1.1v1" -> "IA-2(1)")
 try:
-    from uiao.impl.adapters.scuba_adapter import SCUBA_TO_KSI_MAP
+    from uiao.adapters.scuba_adapter import SCUBA_TO_KSI_MAP
 except ImportError:
     # Fallback for standalone use — will be populated from file
     SCUBA_TO_KSI_MAP: Dict[str, str] = {}

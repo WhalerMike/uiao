@@ -124,7 +124,7 @@ The executing PR for this ADR will:
 1. `git mv impl/src/uiao_impl impl/src/uiao/impl` (preserves history).
 2. Delete `impl/src/uiao_impl.egg-info/` (regenerates on next `pip install -e .`).
 3. Sed-rewrite `from uiao_impl` / `import uiao_impl` across all `.py`, `.toml`, `.yml`, `.yaml`, `.md`, `.qmd` files.
-4. Rewrite dynamic string imports (`"uiao_impl.adapters..."` → `"uiao.impl.adapters..."`) in CLI and conformance code.
+4. Rewrite dynamic string imports (`"uiao_impl.adapters..."` → `"uiao.adapters..."`) in CLI and conformance code.
 5. Update `pyproject.toml` fields: `entry-points`, `tool.setuptools.packages.find`, `tool.ruff.lint.isort.known-first-party`, `tool.ruff.lint.per-file-ignores`.
 6. Update `.github/workflows/substrate-drift.yml` (contains a literal import) and verify `release.yml` artifact patterns still match.
 7. Update `AGENTS.md` substrate walker source reference.

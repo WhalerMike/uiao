@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 import pytest
-from uiao.impl.adapters.stigcompliance_adapter import StigComplianceAdapter
-from uiao.impl.adapters.database_base import (
+from uiao.adapters.stigcompliance_adapter import StigComplianceAdapter
+from uiao.adapters.database_base import (
     ConnectionProvenance, EvidenceObject, SchemaMappingObject,
 )
 

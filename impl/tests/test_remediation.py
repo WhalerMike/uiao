@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from uiao.impl.adapters.remediation import (
+from uiao.adapters.remediation import (
     poam_findings_to_change_requests,
     generate_remediation_report,
 )
-from uiao.impl.adapters.adapter_to_oscal import drift_to_poam_findings
-from uiao.impl.adapters.terraform_adapter import TerraformAdapter
+from uiao.adapters.adapter_to_oscal import drift_to_poam_findings
+from uiao.adapters.terraform_adapter import TerraformAdapter
 
 
 @pytest.fixture
@@ -103,7 +103,7 @@ class TestEndToEndRemediationPipeline:
         assert report["assignee"] == "terraform-team"
 
         # Step 5: Feed CRs back through ServiceNow adapter (round-trip)
-        from uiao.impl.adapters.servicenow_adapter import ServiceNowAdapter
+        from uiao.adapters.servicenow_adapter import ServiceNowAdapter
         sn = ServiceNowAdapter({"instance": "contoso-gov", "token": "test"})
         claims = sn.normalize(crs)
         assert len(claims.claims) == 3

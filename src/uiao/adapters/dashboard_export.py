@@ -5,7 +5,7 @@ Generates a machine-readable summary of all adapter statuses,
 conformance scores, test counts, and OSCAL pipeline readiness.
 
 Usage:
-    python -m uiao.impl.adapters.dashboard_export > dashboard.json
+    python -m uiao.adapters.dashboard_export > dashboard.json
 """
 
 from __future__ import annotations

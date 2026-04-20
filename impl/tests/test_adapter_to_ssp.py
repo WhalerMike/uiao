@@ -14,10 +14,10 @@ from pathlib import Path
 
 import pytest
 
-from uiao.impl.adapters.terraform_adapter import TerraformAdapter
-from uiao.impl.adapters.m365_adapter import M365Adapter
-from uiao.impl.adapters.paloalto_adapter import PaloAltoAdapter
-from uiao.impl.adapters.adapter_to_oscal import build_adapter_ssp
+from uiao.adapters.terraform_adapter import TerraformAdapter
+from uiao.adapters.m365_adapter import M365Adapter
+from uiao.adapters.paloalto_adapter import PaloAltoAdapter
+from uiao.adapters.adapter_to_oscal import build_adapter_ssp
 
 
 class TestTerraformToSsp:
@@ -62,7 +62,7 @@ class TestM365ToSsp:
         return M365Adapter({"tenant_id": "contoso", "_tenant_config": config})
 
     def test_produces_valid_ssp(self, adapter: M365Adapter) -> None:
-        from uiao.impl.adapters.m365_parser import parse_tenant_config
+        from uiao.adapters.m365_parser import parse_tenant_config
         config = adapter._config.get("_tenant_config", {})
         claims = adapter.normalize(parse_tenant_config(config))
         ssp = build_adapter_ssp("m365", claims, ["CM-2", "CM-3", "CM-8"])
@@ -104,7 +104,7 @@ class TestMultiAdapterSsp:
     """Prove multiple adapters can inject into the same SSP."""
 
     def test_terraform_plus_paloalto(self) -> None:
-        from uiao.impl.adapters.adapter_to_oscal import (
+        from uiao.adapters.adapter_to_oscal import (
             build_adapter_bundle,
             inject_adapter_evidence_into_ssp,
             _minimal_ssp_skeleton,

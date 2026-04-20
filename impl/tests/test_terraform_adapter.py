@@ -16,8 +16,8 @@ from __future__ import annotations
 from pathlib import Path
 import pytest
 
-from uiao.impl.adapters.terraform_adapter import TerraformAdapter
-from uiao.impl.adapters.database_base import (
+from uiao.adapters.terraform_adapter import TerraformAdapter
+from uiao.adapters.database_base import (
     ClaimObject,
     ClaimSet,
     ConnectionProvenance,
@@ -69,7 +69,7 @@ class TestInstantiation:
         assert adapter._workspace == "prod"
 
     def test_is_database_adapter_base(self, adapter: TerraformAdapter) -> None:
-        from uiao.impl.adapters.database_base import DatabaseAdapterBase
+        from uiao.adapters.database_base import DatabaseAdapterBase
 
         assert isinstance(adapter, DatabaseAdapterBase)
 

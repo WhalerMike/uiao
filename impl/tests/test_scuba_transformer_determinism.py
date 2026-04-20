@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 
-from uiao.impl.ir.adapters.scuba.transformer import (
+from uiao.adapters.scuba.ir.transformer import (
     SCuBATransformResult,
     transform_scuba_to_ir,
 )

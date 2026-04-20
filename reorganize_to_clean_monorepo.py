@@ -10,8 +10,8 @@ Phases (select with --phase; default 'core' runs backup+canon+scuba+imports+pypr
   canon     - core/data/** + core/compliance/reference/** -> src/uiao/canon/
   scuba     - every SCuBA source under impl/** -> src/uiao/adapters/scuba/
               ALSO: other adapters in impl/src/uiao/impl/adapters/ -> src/uiao/adapters/
-  imports   - rewrite  uiao.impl.adapters       -> uiao.adapters
-                       uiao.impl.scuba          -> uiao.adapters.scuba
+  imports   - rewrite  uiao.impl.adapters          -> uiao.adapters
+                       uiao.impl.scuba             -> uiao.adapters.scuba
                        uiao.impl.ir.adapters.scuba -> uiao.adapters.scuba.ir
               across *.py *.yaml *.yml *.toml *.md *.cfg *.ini *.json
   pyproject - declare uiao.adapters package-data + CLI entrypoint
@@ -87,10 +87,15 @@ SCUBA_MOVES: list[tuple[str, str]] = [
 # --------------------------------------------------------------------------- #
 # Phase: imports — rewrite rules (longer prefixes first).
 # --------------------------------------------------------------------------- #
+# NOTE: keep the literal keys intact; add this file to REWRITE_EXCLUDE_FILES
+# below so the imports phase does not rewrite its own rules.
+_OLD_IR = "uiao" + ".impl.ir.adapters.scuba"
+_OLD_AD = "uiao" + ".impl.adapters"
+_OLD_SC = "uiao" + ".impl.scuba"
 IMPORT_REWRITES_CORE: list[tuple[str, str]] = [
-    ("uiao.impl.ir.adapters.scuba", "uiao.adapters.scuba.ir"),
-    ("uiao.impl.adapters",          "uiao.adapters"),
-    ("uiao.impl.scuba",             "uiao.adapters.scuba"),
+    (_OLD_IR, "uiao.adapters.scuba.ir"),
+    (_OLD_AD, "uiao.adapters"),
+    (_OLD_SC, "uiao.adapters.scuba"),
 ]
 
 # Used by the flatten phase (after other subpackages move up):
@@ -102,6 +107,7 @@ IMPORT_REWRITES_FLATTEN: list[tuple[str, str]] = [
 REWRITE_SUFFIXES = {".py", ".yaml", ".yml", ".toml", ".md", ".cfg", ".ini", ".json"}
 REWRITE_EXCLUDE_DIRS = {".git", ".venv", "node_modules", "__pycache__",
                         "uiao.egg-info", "src/uiao.egg-info"}
+REWRITE_EXCLUDE_FILES = {"reorganize_to_clean_monorepo.py"}
 
 # --------------------------------------------------------------------------- #
 # Phase: flatten — everything still under impl/src/uiao/impl/ after scuba ran.
@@ -166,6 +172,9 @@ def ensure_parent(dst: Path, execute: bool) -> None:
 
 
 def move(src_rel: str, dst_rel: str, *, execute: bool) -> None:
+    """Move src -> dst. Uses git mv when possible; falls back to shutil + git add/rm
+    on cross-device or other git mv failures. Git still detects the rename when
+    both src (deleted) and dst (added) are staged together."""
     src = REPO / src_rel
     dst = REPO / dst_rel
     if not src.exists():
@@ -177,10 +186,20 @@ def move(src_rel: str, dst_rel: str, *, execute: bool) -> None:
         CTR.skipped += 1
         return
     ensure_parent(dst, execute)
-    if is_tracked(src):
+    tracked = is_tracked(src)
+    if tracked:
         log(execute, f"git mv {src_rel} {dst_rel}")
         if execute:
-            run(["git", "mv", src_rel, dst_rel])
+            cp = subprocess.run(
+                ["git", "mv", src_rel, dst_rel],
+                cwd=REPO, capture_output=True, text=True,
+            )
+            if cp.returncode != 0:
+                # Cross-device or other failure: fall back.
+                log(execute, f"  (git mv failed: {cp.stderr.strip()[:80]}; using shutil)")
+                shutil.move(str(src), str(dst))
+                run(["git", "rm", "-r", "--cached", "--quiet", src_rel], check=False)
+                run(["git", "add", dst_rel])
     else:
         log(execute, f"mv (untracked) {src_rel} {dst_rel}")
         if execute:
@@ -254,6 +273,8 @@ def _iter_rewrite_files() -> list[Path]:
             continue
         rel = p.relative_to(REPO).as_posix()
         if any(rel == d or rel.startswith(d + "/") for d in REWRITE_EXCLUDE_DIRS):
+            continue
+        if p.name in REWRITE_EXCLUDE_FILES:
             continue
         out.append(p)
     return out

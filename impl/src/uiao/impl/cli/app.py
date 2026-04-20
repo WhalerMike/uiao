@@ -800,8 +800,8 @@ def adapter_run(
     import json as _json
 
     adapter_registry = {
-        "servicenow": "uiao.impl.adapters.servicenow_adapter.ServiceNowAdapter",
-        "entra": "uiao.impl.adapters.entra_adapter.EntraAdapter",
+        "servicenow": "uiao.adapters.servicenow_adapter.ServiceNowAdapter",
+        "entra": "uiao.adapters.entra_adapter.EntraAdapter",
     }
 
     vendor_lower = vendor.lower()
@@ -888,7 +888,7 @@ def adapter_run_scuba(
     """
     import json as _json
 
-    from uiao.impl.adapters.scuba_adapter import ScubaAdapter
+    from uiao.adapters.scuba_adapter import ScubaAdapter
 
     typer.echo(f"\U0001f50d Reading SCuBA report: {report}")
     adapter = ScubaAdapter(config={"report_path": report})
@@ -925,7 +925,7 @@ def ir_scuba_transform(
     """Transform normalized SCuBA JSON -> IR Evidence objects and print summary."""
     import json as _json
 
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     console.print(f"[bold]Transforming SCuBA JSON: {normalized_json}...[/bold]")
     result = transform_scuba_to_ir(normalized_json)
@@ -945,7 +945,7 @@ def ir_evidence_bundle(
 ) -> None:
     """Build a canonical EvidenceBundle from a SCuBA transform and print summary."""
     from uiao.impl.evidence.bundle import build_bundle_from_transform_result
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     console.print(f"[bold]Building EvidenceBundle from: {normalized_json}...[/bold]")
     result = transform_scuba_to_ir(normalized_json)
@@ -967,7 +967,7 @@ def ir_poam_export(
     """Export POA&M rows (FAIL + WARN only) from a SCuBA run and print summary."""
     from uiao.impl.evidence.bundle import build_bundle_from_transform_result
     from uiao.impl.evidence.poam import build_poam, poam_summary, poam_to_json
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     console.print(f"[bold]Generating POA&M from: {normalized_json}...[/bold]")
     result = transform_scuba_to_ir(normalized_json)
@@ -1040,7 +1040,7 @@ def ir_governance_report(
     from uiao.impl.evidence.bundle import build_bundle_from_transform_result
     from uiao.impl.governance.actions import build_governance_actions
     from uiao.impl.governance.report import format_governance_report
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     console.print(f"[bold]Running governance pipeline for: {normalized_json}...[/bold]")
     result = transform_scuba_to_ir(normalized_json)
@@ -1083,7 +1083,7 @@ def ir_ssp_report(
     from uiao.impl.coverage.coverage import build_coverage_links
     from uiao.impl.evidence.bundle import build_bundle_from_transform_result
     from uiao.impl.governance.actions import build_governance_actions
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.impl.ssp.lineage import build_lineage_index
     from uiao.impl.ssp.narrative import build_control_narratives, format_ssp_markdown
 
@@ -1132,7 +1132,7 @@ def ir_diff(
     from pathlib import Path as _Path
 
     from uiao.impl.diff.engine import diff_runs, format_diff_json, format_diff_markdown
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     result_a = transform_scuba_to_ir(run_a)
     result_b = transform_scuba_to_ir(run_b)
@@ -1180,7 +1180,7 @@ def ir_freshness(
     from uiao.impl.evidence.bundle import build_bundle_from_transform_result
     from uiao.impl.freshness.engine import build_freshness_records, generate_refresh_actions
     from uiao.impl.governance.actions import build_governance_actions
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     result = transform_scuba_to_ir(normalized_json)
     bundle = build_bundle_from_transform_result(result)
@@ -1232,7 +1232,7 @@ def ir_dashboard(
     from uiao.impl.dashboard.ir_dashboard import export_ir_dashboard
     from uiao.impl.evidence.bundle import build_bundle_from_transform_result
     from uiao.impl.governance.actions import build_governance_actions
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     result = transform_scuba_to_ir(normalized_json)
     bundle = build_bundle_from_transform_result(result)
@@ -1270,7 +1270,7 @@ def ir_freshness_schedule(
     from uiao.impl.freshness.engine import build_freshness_records, generate_refresh_actions
     from uiao.impl.freshness.scheduler import build_refresh_schedule, schedule_summary
     from uiao.impl.governance.actions import build_governance_actions
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     result = transform_scuba_to_ir(normalized_json)
     bundle = build_bundle_from_transform_result(result)
@@ -1299,7 +1299,7 @@ def ir_generate_sar(
     """Generate an OSCAL Assessment Results (SAR) document from a SCuBA run."""
     from uiao.impl.evidence.bundle import build_bundle_from_transform_result
     from uiao.impl.generators.sar import build_sar, build_sar_summary, export_sar
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     result = transform_scuba_to_ir(normalized_json)
     bundle = build_bundle_from_transform_result(result)
@@ -1332,7 +1332,7 @@ def ir_ssp_inject(
 
     from uiao.impl.evidence.bundle import build_bundle_from_transform_result
     from uiao.impl.generators.ssp_inject import build_live_ssp, live_ssp_summary
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     kw = {}
     if canon_path:
