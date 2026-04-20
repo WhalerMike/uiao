@@ -1,0 +1,223 @@
+# computer-object-crosswalk.yaml
+# ============================================================
+# UIAO Canonical Artifact — AD Computer Object Crosswalk
+# ============================================================
+# Canon ref:    Appendix GAE, ADR-031
+# Purpose:      Machine-readable mapping of AD computer-object
+#               functions to Entra/Azure replacements.
+#               Consumed by disposition classifier and
+#               migration readiness assessment.
+# ============================================================
+
+schema_version: "1.0"
+id: UIAO_GAE_CROSSWALK
+status: canonical
+date: "2026-04-20"
+
+functions:
+
+  - id: XW-001
+    function: Security principal
+    ad_construct: "Computer account (SID-backed, Kerberos TGT, NTLM)"
+    replacement:
+      construct: "Service Principal / Managed Identity / Workload Identity"
+      plane: workload
+      notes: >
+        Machine is no longer a first-class security principal.
+        Workload identity moves to app-first OAuth2/OIDC model.
+    applies_to: [servers, clients]
+    migration_track: 3
+    retirement_blocker: true
+
+  - id: XW-002
+    function: Device identity
+    ad_construct: "Computer object (domain member)"
+    replacement:
+      construct: "Entra Device (Joined / Registered / Hybrid)"
+      plane: identity
+      notes: >
+        Non-security-principal. Token anchor for PRT and Conditional
+        Access only. Does not replace machine security principal.
+    applies_to: [clients]
+    migration_track: 1
+    retirement_blocker: false
+
+  - id: XW-003
+    function: OU placement
+    ad_construct: "Distinguished Name / OU container"
+    replacement:
+      construct: "OrgPath + Dynamic Groups + Intune scope tags"
+      plane: governance
+      notes: >
+        OrgPath (extensionAttribute1 for Entra, ARM tag for Arc)
+        is the canonical organizational encoding. Dynamic groups
+        materialize OrgPath into assignable policy scopes.
+    applies_to: [servers, clients]
+    migration_track: 1
+    retirement_blocker: false
+
+  - id: XW-004
+    function: Policy inheritance
+    ad_construct: "GPO via OU hierarchy"
+    replacement:
+      construct: "Intune Config Profiles, Settings Catalog, Security Baselines"
+      plane: management
+      notes: >
+        GPO Computer Configuration → Intune configuration profiles.
+        Scoped via OrgPath dynamic groups, not OUs.
+        Azure Policy for Arc-enrolled servers.
+    applies_to: [clients]
+    migration_track: 1
+    retirement_blocker: false
+
+  - id: XW-005
+    function: Delegation and admin scoping
+    ad_construct: "ACLs on OUs and computer objects"
+    replacement:
+      construct: "Entra RBAC + PIM + Delegation Matrix (Appendix D)"
+      plane: governance
+      notes: >
+        OU-scoped delegation → Administrative Units with scoped roles.
+        Dynamic AU membership driven by OrgPath.
+    applies_to: [servers, clients]
+    migration_track: 1
+    retirement_blocker: false
+
+  - id: XW-006
+    function: Service Principal Names (SPNs)
+    ad_construct: "SPNs registered on computer account"
+    replacement:
+      construct: "App Registration + Service Principal + OAuth2/OIDC endpoints"
+      plane: workload
+      notes: >
+        Each SPN must be individually catalogued and mapped.
+        Apps must be rebuilt to OAuth2/OIDC or a wrapper deployed.
+        Legacy Kerberos-only apps block AD retirement.
+    applies_to: [servers]
+    migration_track: 3
+    retirement_blocker: true
+
+  - id: XW-007
+    function: Kerberos constrained delegation
+    ad_construct: "KCD on computer account (msDS-AllowedToDelegateTo)"
+    replacement:
+      construct: "App-to-app OAuth2 flows / API permissions / managed identities"
+      plane: workload
+      notes: >
+        Each KCD entry must be individually mapped.
+        No automatic migration path. Must be rebuilt per service.
+    applies_to: [servers]
+    migration_track: 3
+    retirement_blocker: true
+
+  - id: XW-008
+    function: Machine-based auth to resources
+    ad_construct: "Computer account Kerberos ticket to resource"
+    replacement:
+      construct: "Device-based Conditional Access + app tokens + managed identities"
+      plane: identity
+      notes: >
+        Device compliance (Entra device object) satisfies device-level
+        access controls. Service tokens (managed identities) satisfy
+        application-level access controls.
+    applies_to: [servers, clients]
+    migration_track: 3
+    retirement_blocker: false
+
+  - id: XW-009
+    function: Inventory and discovery anchor
+    ad_construct: "Computer object in AD"
+    replacement:
+      construct: "Intune device record (clients) / Azure Arc machine (servers)"
+      plane: management
+      notes: >
+        No single authoritative directory object. Inventory is split
+        across Intune and Arc. UIAO survey adapter reconciles both.
+    applies_to: [servers, clients]
+    migration_track: 2
+    retirement_blocker: false
+
+  - id: XW-010
+    function: Configuration management
+    ad_construct: "GPO + SCCM tied to computer object"
+    replacement:
+      construct: "Intune (clients), Azure Arc + extensions (servers)"
+      plane: management
+      notes: >
+        Clients: Intune profiles targeted via OrgPath dynamic groups.
+        Servers: Arc extensions + Azure Policy targeted via OrgPath ARM tags.
+    applies_to: [servers, clients]
+    migration_track: [1, 2]
+    retirement_blocker: false
+
+  - id: XW-011
+    function: Local admin policy scoping
+    ad_construct: "GPO linked to OU (LAPS, local admin rights)"
+    replacement:
+      construct: "Intune Local Admin policies + Entra LAPS"
+      plane: management
+      notes: >
+        Entra LAPS replaces legacy LAPS for Entra-joined devices.
+        Local admin policies deployed via Intune endpoint security.
+    applies_to: [clients]
+    migration_track: 1
+    retirement_blocker: false
+
+  - id: XW-012
+    function: Trust boundary (domain join)
+    ad_construct: "Domain membership"
+    replacement:
+      construct: "Entra Join / Hybrid Join (clients), AD join retained for servers"
+      plane: identity
+      notes: >
+        Servers remain AD-joined during migration. Domain join is
+        the last thing removed, after all workload identities are
+        migrated to managed identities/service principals.
+    applies_to: [servers, clients]
+    migration_track: [1, 3]
+    retirement_blocker: true
+
+  - id: XW-013
+    function: Group Managed Service Accounts (GMSAs)
+    ad_construct: "GMSA tied to computer account and security group"
+    replacement:
+      construct: "Managed Identity (system-assigned or user-assigned)"
+      plane: workload
+      notes: >
+        Each GMSA must be individually catalogued. Azure resources
+        can use managed identities directly. On-prem workloads using
+        GMSAs have no direct equivalent — each is a migration task.
+    applies_to: [servers]
+    migration_track: 3
+    retirement_blocker: true
+
+# ---------------------------------------------------------------
+# RETIREMENT BLOCKERS SUMMARY
+# ---------------------------------------------------------------
+retirement_blockers:
+  - XW-001   # All SPNs migrated to SP/MI
+  - XW-006   # All SPNs catalogued and migrated
+  - XW-007   # All KCD entries rebuilt
+  - XW-012   # Trust boundary (domain join) retired
+  - XW-013   # All GMSAs migrated to managed identities
+
+# ---------------------------------------------------------------
+# PLANE SUMMARY
+# ---------------------------------------------------------------
+planes:
+  identity:
+    construct: "Entra ID Device (clients)"
+    orgpath_storage: "extensionAttribute1 on Entra device object"
+    policy_targeting: "Dynamic Entra groups"
+  management_clients:
+    construct: "Microsoft Intune"
+    orgpath_storage: "extensionAttribute1 (synced via Entra Connect)"
+    policy_targeting: "Dynamic Entra groups → Intune scope"
+  management_servers:
+    construct: "Azure Arc (ARM resource)"
+    orgpath_storage: "ARM resource tag: OrgPath"
+    policy_targeting: "Azure Policy assignments by resource group/subscription"
+  workload:
+    construct: "Service Principal / Managed Identity / Workload Identity"
+    orgpath_storage: "App tag or custom claim"
+    policy_targeting: "API permissions, app roles, OAuth2 scopes"
