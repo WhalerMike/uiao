@@ -38,6 +38,11 @@ def _resolve_canon_root() -> Optional[Path]:
         p = Path(env).expanduser().resolve()
         if p.exists():
             return p
+    # Post-reorg: canon + rules + schemas live under the installed uiao package.
+    pkg_root = Path(__file__).resolve().parent
+    if (pkg_root / "canon" / "data").is_dir() or (pkg_root / "rules").is_dir():
+        return pkg_root
+    # Pre-reorg monorepo: ../core sibling of CWD.
     monorepo_core = (Path.cwd().parent / "core").resolve()
     if (monorepo_core / "data").is_dir():
         return monorepo_core
