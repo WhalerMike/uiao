@@ -6,6 +6,15 @@ executable canon is :mod:`uiao.modernization.orgtree.codebook`, which loads
 ``schemas/orgpath/codebook.schema.json``.
 """
 
+from .admin_units import (
+    AdminGroup,
+    AdministrativeUnit,
+    DelegationMatrix,
+    DelegationMatrixValidationError,
+    RoleAssignment,
+    RoleTemplate,
+    load_delegation_matrix,
+)
 from .codebook import (
     Codebook,
     CodebookEntry,
@@ -21,13 +30,20 @@ from .dynamic_groups import (
 )
 
 __all__ = [
+    "AdminGroup",
+    "AdministrativeUnit",
     "Codebook",
     "CodebookEntry",
     "CodebookValidationError",
+    "DelegationMatrix",
+    "DelegationMatrixValidationError",
     "DeprecatedEntry",
     "DynamicGroupLibrary",
     "DynamicGroupSpec",
     "DynamicGroupValidationError",
+    "RoleAssignment",
+    "RoleTemplate",
     "load_codebook",
+    "load_delegation_matrix",
     "load_dynamic_group_library",
 ]
