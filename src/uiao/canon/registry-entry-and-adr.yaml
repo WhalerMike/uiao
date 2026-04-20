@@ -1,0 +1,128 @@
+# -----------------------------------------------------------------------
+# UIAO Modernization Registry — Active Directory Adapter Entry
+# -----------------------------------------------------------------------
+# Add this block to: src/uiao/canon/modernization-registry.yaml
+# Per Appendix V (Contributor Workflow): requires PR with 2 approvals.
+# Schema validated by: src/uiao/schemas/adapter-registry/adapter-registry.schema.json
+# -----------------------------------------------------------------------
+
+- adapter_id: active-directory-survey-v1
+  adapter_type: modernization
+  mission_class: identity
+  class: modernization
+  vendor: Microsoft
+  product: Active Directory
+  version_range: ">=2008R2"
+  fedramp_authorized: false
+  fedramp_note: >
+    On-premises source system; not a FedRAMP cloud service.
+    Target (Entra ID via Entra Connect) is FedRAMP Moderate authorized.
+  uiao_doc_ref: UIAO_AD_001
+  canon_refs:
+    - Appendix_F_Migration_Runbook
+    - Appendix_C_Attribute_Mapping_Table
+    - Appendix_A_OrgPath_Codebook
+    - Appendix_M_Drift_Detection_Engine
+  impl_path: impl/src/uiao/impl/adapters/modernization/active-directory/
+  scripts_path: scripts/ad-survey/
+  capabilities:
+    ou_intent_classification: true
+    sites_services_audit: true
+    gpo_archaeology: true
+    service_account_inventory: true
+    computer_object_survey: true
+    orgpath_assignment: true
+    orgpath_writeback: true
+    sync_enrichment_validation: true
+    forest_trust_inventory: false    # planned: trust-inventory-adapter
+    identity_collision_detection: true
+  read_only_modes: [survey, dry-run]
+  write_modes: [orgpath-writeback]
+  drift_classes_emitted:
+    - DRIFT-IDENTITY
+    - DRIFT-SCHEMA
+    - DRIFT-PROVENANCE
+    - DRIFT-SEMANTIC
+  gov_error_codes:
+    - GOV-MIG-001
+    - GOV-MIG-002
+    - GOV-MIG-003
+    - GOV-MIG-004
+    - GOV-MIG-005
+    - GOV-DRF-001
+    - GOV-DRF-003
+    - GOV-SCH-001
+    - GOV-SCH-003
+  known_gaps:
+    - "ADCS certificate template enumeration: see pki-adapter"
+    - "RADIUS/NPS service account resolution: see radius-adapter"
+    - "Cross-forest trust resolution: trust-inventory-adapter (planned)"
+  status: draft
+  introduced_in_adr: ADR-029
+
+---
+# -----------------------------------------------------------------------
+# ADR-029 STUB
+# -----------------------------------------------------------------------
+# File: src/uiao/canon/adr/adr-029-active-directory-survey-adapter.md
+# -----------------------------------------------------------------------
+# This ADR stub needs to be completed and submitted via PR before the
+# adapter can move from draft to canonical status.
+# Governance gate: Appendix V, 2 approvals required.
+# -----------------------------------------------------------------------
+
+title: "ADR-029: Active Directory Survey Modernization Adapter"
+status: proposed
+date: 2026-04-19
+deciders:
+  - governance-steward
+  - identity-engineer
+  - security-steward
+
+context: |
+  The UIAO substrate currently has no adapter for reading on-premises
+  Active Directory. The consolidated monorepo includes the gos directory-
+  migration subsystem (merged per ADR-028) but the actual AD survey
+  capability was specified in documents rather than implemented as a
+  canonical modernization adapter.
+
+  The forest archaeology problem (2003-era distributed forests, geographic
+  OU topology, stale Sites and Services, undocumented service accounts)
+  requires a formal adapter that:
+    1. Runs read-only surveys against AD forests
+    2. Classifies OU intent (functional vs geographic vs orphan)
+    3. Derives or assigns OrgPath values per Appendix A codebook
+    4. Writes OrgPath back to extensionAttributes in AD for Entra Connect pickup
+    5. Emits DriftFinding objects compatible with the substrate walker
+
+decision: |
+  Introduce active-directory-survey-v1 as a modernization/identity adapter
+  registered in modernization-registry.yaml.
+
+  The adapter is split into:
+    - survey.py   : read-only forest enumeration + OU intent classification
+    - orgpath.py  : OrgPath assignment engine + AD write-back (Phase F.2/F.3)
+    - __init__.py : adapter registration surface
+
+  PowerShell fallback (Invoke-ADSurvey.ps1) provides survey capability on
+  domain-joined Windows hosts where ldap3 is unavailable.
+
+  The adapter uses the existing DriftFinding dataclass from walker.py so
+  its findings merge cleanly into substrate reports without special casing.
+
+consequences:
+  positive:
+    - Forest archaeology findings are first-class substrate drift findings
+    - OrgPath assignment is deterministic and auditable per Principle 1
+    - Entra Connect enrichment happens through standard attribute sync
+    - No changes to Entra Connect rules required
+    - Works alongside existing sync (no rip-and-replace)
+  negative:
+    - ldap3 is a new dependency in impl/
+    - Write-back requires AD write permissions (principle of least privilege
+      requires a dedicated service account)
+    - Multi-forest identity collision resolution is not automated;
+      requires HR export as authoritative source
+
+supersedes: []
+related_adrs: [ADR-028]
