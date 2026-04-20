@@ -1,4 +1,4 @@
-"""Tests for ScubaAdapter (SCuBA / ScubaGear assessment ingestion)."""
+"""Tests for ScubaGearAdapter (SCuBA / ScubaGear assessment ingestion)."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from uiao.adapters.scuba_adapter import (
+from uiao.adapters.scubagear_adapter import (
     SCUBA_TO_KSI_MAP,
-    ScubaAdapter,
+    ScubaGearAdapter,
 )
 
 
@@ -64,9 +64,9 @@ def report_file(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def adapter(report_file: Path) -> ScubaAdapter:
-    """Return a connected ScubaAdapter pointing at the sample report."""
-    a = ScubaAdapter(config={"report_path": str(report_file)})
+def adapter(report_file: Path) -> ScubaGearAdapter:
+    """Return a connected ScubaGearAdapter pointing at the sample report."""
+    a = ScubaGearAdapter(config={"report_path": str(report_file)})
     a.connect()
     return a
 
@@ -76,97 +76,97 @@ def adapter(report_file: Path) -> ScubaAdapter:
 # ---------------------------------------------------------------------------
 
 
-class TestScubaAdapterInit:
+class TestScubaGearAdapterInit:
     def test_adapter_id(self) -> None:
-        a = ScubaAdapter()
-        assert a.ADAPTER_ID == "scuba"
+        a = ScubaGearAdapter()
+        assert a.ADAPTER_ID == "scubagear"
 
     def test_no_report_path(self) -> None:
-        a = ScubaAdapter()
+        a = ScubaGearAdapter()
         provenance = a.connect()
         assert "no-report-loaded" in provenance.identity
 
     def test_report_path_set(self, report_file: Path) -> None:
-        a = ScubaAdapter(config={"report_path": str(report_file)})
+        a = ScubaGearAdapter(config={"report_path": str(report_file)})
         assert a._report_path == report_file
 
 
-class TestScubaAdapterConnect:
-    def test_connect_loads_report(self, adapter: ScubaAdapter) -> None:
+class TestScubaGearAdapterConnect:
+    def test_connect_loads_report(self, adapter: ScubaGearAdapter) -> None:
         assert adapter._raw_report is not None
         assert "TestResults" in adapter._raw_report
 
-    def test_connect_provenance_identity(self, adapter: ScubaAdapter, report_file: Path) -> None:
+    def test_connect_provenance_identity(self, adapter: ScubaGearAdapter, report_file: Path) -> None:
         provenance = adapter.connect()
         assert "scuba:" in provenance.identity
         assert provenance.auth_method == "file"
 
-    def test_extract_results(self, adapter: ScubaAdapter) -> None:
+    def test_extract_results(self, adapter: ScubaGearAdapter) -> None:
         results = adapter._extract_results()
         assert len(results) == 4
         assert results[0]["PolicyId"] == "MS.AAD.2.1v1"
 
 
-class TestScubaAdapterNormalize:
-    def test_normalize_returns_claim_set(self, adapter: ScubaAdapter) -> None:
+class TestScubaGearAdapterNormalize:
+    def test_normalize_returns_claim_set(self, adapter: ScubaGearAdapter) -> None:
         results = adapter._extract_results()
         claim_set = adapter.normalize(results)
         assert len(claim_set.claims) == 4
 
-    def test_normalize_pass_result(self, adapter: ScubaAdapter) -> None:
+    def test_normalize_pass_result(self, adapter: ScubaGearAdapter) -> None:
         results = [r for r in adapter._extract_results() if r["RequirementMet"] is True]
         claim_set = adapter.normalize(results)
         for claim in claim_set.claims:
             assert claim.fields["scuba_result"] == "pass"
 
-    def test_normalize_fail_result(self, adapter: ScubaAdapter) -> None:
+    def test_normalize_fail_result(self, adapter: ScubaGearAdapter) -> None:
         results = [r for r in adapter._extract_results() if r["RequirementMet"] is False]
         claim_set = adapter.normalize(results)
         assert all(c.fields["scuba_result"] == "fail" for c in claim_set.claims)
 
-    def test_normalize_control_id_mapping(self, adapter: ScubaAdapter) -> None:
+    def test_normalize_control_id_mapping(self, adapter: ScubaGearAdapter) -> None:
         results = adapter._extract_results()
         claim_set = adapter.normalize(results)
         # MS.AAD.2.1v1 maps to AC-3 (role-based access / conditional access)
         aad_claim = next(c for c in claim_set.claims if "MS.AAD.2.1v1" in c.claim_id)
         assert aad_claim.fields["control_id"] == "AC-3"
 
-    def test_normalize_unmapped_policy(self, adapter: ScubaAdapter) -> None:
+    def test_normalize_unmapped_policy(self, adapter: ScubaGearAdapter) -> None:
         # An unknown policy should get control_id "N/A"
         results = [{"PolicyId": "MS.UNKNOWN.1.1v1", "RequirementMet": True}]
         claim_set = adapter.normalize(results)
         assert claim_set.claims[0].fields["control_id"] == "N/A"
 
 
-class TestScubaAdapterCollectAndAlign:
-    def test_collect_and_align_structure(self, adapter: ScubaAdapter) -> None:
+class TestScubaGearAdapterCollectAndAlign:
+    def test_collect_and_align_structure(self, adapter: ScubaGearAdapter) -> None:
         result = adapter.collect_and_align()
         assert result["vendor"] == "CISA SCuBA / ScubaGear"
-        assert result["adapter_id"] == "scuba"
+        assert result["adapter_id"] == "scubagear"
         assert "claims" in result
         assert "metadata" in result
 
-    def test_collect_and_align_counts(self, adapter: ScubaAdapter) -> None:
+    def test_collect_and_align_counts(self, adapter: ScubaGearAdapter) -> None:
         result = adapter.collect_and_align()
         meta = result["metadata"]
         assert meta["total_policies"] == 4
         assert meta["passing"] == 3
         assert meta["failing"] == 1
 
-    def test_collect_and_align_overlay_ref(self, adapter: ScubaAdapter) -> None:
+    def test_collect_and_align_overlay_ref(self, adapter: ScubaGearAdapter) -> None:
         result = adapter.collect_and_align()
         assert result["vendor_overlay_ref"] == "data/vendor-overlays/scuba.yaml"
 
 
-class TestScubaAdapterDriftDetection:
-    def test_detect_drift_has_failing(self, adapter: ScubaAdapter) -> None:
+class TestScubaGearAdapterDriftDetection:
+    def test_detect_drift_has_failing(self, adapter: ScubaGearAdapter) -> None:
         report = adapter.detect_drift()
         assert report.drift_type == "scuba-policy-regression"
         assert report.severity == "high"
         assert report.details["failing_policies"] == 1
 
     def test_detect_drift_no_failing(self) -> None:
-        a = ScubaAdapter()
+        a = ScubaGearAdapter()
         a._raw_report = {"TestResults": [{"PolicyId": "MS.AAD.2.1v1", "RequirementMet": True}]}
         report = a.detect_drift()
         assert report.severity == "none"
@@ -180,12 +180,12 @@ class TestScubaKsiMapping:
     def test_ksi_map_defender_entries(self) -> None:
         assert SCUBA_TO_KSI_MAP["MS.DEFENDER.2.1v1"] == "SI-8"
 
-    def test_get_ksi_evidence(self, adapter: ScubaAdapter) -> None:
+    def test_get_ksi_evidence(self, adapter: ScubaGearAdapter) -> None:
         evidence = adapter.get_ksi_evidence("AC-3")
         assert len(evidence) == 1
         assert evidence[0]["PolicyId"] == "MS.AAD.2.1v1"
 
-    def test_get_ksi_evidence_no_match(self, adapter: ScubaAdapter) -> None:
+    def test_get_ksi_evidence_no_match(self, adapter: ScubaGearAdapter) -> None:
         evidence = adapter.get_ksi_evidence("XX-99")
         assert evidence == []
 
