@@ -2,47 +2,6 @@
 
 All notable changes to UIAO are documented here. Format adapted from [Keep a Changelog](https://keepachangelog.com/); versioning follows [Semantic Versioning](https://semver.org/). Pre-1.0 minor versions may carry breaking changes.
 
-## [0.3.0] — 2026-04-20
-
-### Added
-- **Single-package monorepo** consolidating `core/`, `impl/`, and partial `src/` into one `src/uiao/` Python package. `pip install -e .` now installs everything in one step; canon, rules, schemas, and KSI library ship as package data via `importlib.resources`. See [ADR-032](src/uiao/canon/adr/adr-032-single-package-consolidation.md).
-- Full runtime dependency declarations in `pyproject.toml` (`jinja2`, `jsonschema`, `python-docx/pptx/openpyxl`, `matplotlib`, `compliance-trestle[-fedramp]`, `lxml`, etc.) — previously inherited from the separate `uiao-impl` editable install.
-- Dynamic version from `src/uiao/__version__.py` via `[tool.setuptools.dynamic]` (SSOT; resolves prior drift between `pyproject.toml` and the module).
-- Optional extras: `[dev]`, `[visuals]`, `[plantuml]`. Classifiers, keywords, `[project.urls]`, and root-level `[tool.pytest.ini_options]` added.
-- `BlueCatAdapter` (BAM Tier-4 IPAM adapter) under `src/uiao/adapters/bluecat_{adapter,parser}.py` with 69 unit/OSCAL tests and fixtures (#114).
-- Briefing generator test suite — 39 tests across `collect_ci_status`, `collect_memory_entries`, `collect_adapter_status`, `collect_control_coverage`, `collect_oscal_status`, `collect_priorities`, `collect_changelog`, and end-to-end `build_briefing()` (#112).
-- Mypy CI workflow (`.github/workflows/mypy.yml`) — non-blocking while the 57 pre-existing type debts are burned down.
-- `docs/governance/` — promoted governance docs (`ARCHITECTURE.md`, `VISION.md`, `CONMON.md`, `PROJECT-CONTEXT.md`, `CODE_OF_CONDUCT.md`, `NOTICE`) from the old `core/` root.
-
-### Changed
-- CLI entry point: `uiao = "uiao.cli.app:app"` (was `uiao.cli:main`); `uiao --version` now prints `uiao X.Y.Z` (was `uiao-core X.Y.Z`).
-- `scuba_adapter` renamed to `scubagear_adapter`; class `ScubaAdapter` → `ScubaGearAdapter`; `ADAPTER_ID` `"scuba"` → `"scubagear"`. Resolves the canon/code inversion where the `scubagear` adapter-registry entry had no implementation while the `scuba` modernization entry had a conformance-behavior implementation (#113).
-- All imports rewritten: `uiao.impl.*` → `uiao.*` across ~150 files.
-- `uiao-core` / `uiao-impl` narrative references sanitized across 430+ non-ADR files. ADRs, `CHANGELOG.md`, and `RELEASE_NOTES.md` preserved as the archival record.
-- `Settings._resolve_canon_root()` simplified to a two-tier resolver (`UIAO_CANON_PATH` env var, then packaged canon at `src/uiao/canon/`). Dead `../core` and `../uiao-core` sibling-checkout fallbacks removed.
-- KSI `collector_id: uiao-core-ksi-builder` → `uiao-ksi-builder` across 84 YAMLs (metadata only; not matched by any runtime `COLLECTOR_ID`).
-
-### Removed
-- `core/` directory (content absorbed into `src/uiao/canon/`, `docs/governance/`, `scripts/tools/`, or removed as obsolete duplicates).
-- `impl/` directory (content absorbed into `src/uiao/`, `tests/`, `scripts/`, `.github/workflows/`). `impl/pyproject.toml` and the `uiao-impl` editable distribution retired; `pip uninstall uiao-impl` clears the old install.
-- Per-module `CLAUDE.md` / `AGENTS.md` under `core/` and `impl/` (module-scoped docs consolidated into the repo-root pair).
-
-### Fixed
-- `src/uiao/__version__.py` normalized to LF-only, no trailing blank.
-- `ScubaGearAdapter` conformance: `ConnectionProvenance.identity`, `claim_id`, `entity`, `evidence.source`, `DriftReport.drift_type`, and `DriftReport.details["adapter"]` now carry the `scubagear` prefix (was `scuba`) — 30/30 conformance criteria pass.
-
-### Migration
-
-```bash
-pip uninstall uiao-impl -y   # retire the old editable install (if present)
-git pull origin main
-pip install -e .             # single install step — all runtime deps declared
-uiao --version               # -> uiao 0.3.0
-pytest -q                    # baseline: ~1071 passed, ~156 skipped
-```
-
-Code that still imports from `uiao.impl.*` should be rewritten to import from `uiao.*`.
-
 ## [Unreleased]
 
 ### Added
@@ -109,3 +68,45 @@ Code that still imports from `uiao.impl.*` should be rewritten to import from `u
 **Pre-1.0 semantics:** minor version bumps may include breaking changes; read the [Unreleased] section carefully before upgrading across minor versions.
 
 **Issue links:** `(#NN)` refers to `https://github.com/WhalerMike/uiao/pull/NN` unless otherwise noted.
+
+## [0.3.0] — 2026-04-20
+
+### Added
+- **Single-package monorepo** consolidating `core/`, `impl/`, and partial `src/` into one `src/uiao/` Python package. `pip install -e .` now installs everything in one step; canon, rules, schemas, and KSI library ship as package data via `importlib.resources`. See [ADR-032](src/uiao/canon/adr/adr-032-single-package-consolidation.md).
+- Full runtime dependency declarations in `pyproject.toml` (`jinja2`, `jsonschema`, `python-docx`, `python-pptx`, `openpyxl`, `matplotlib`, `compliance-trestle`, `compliance-trestle-fedramp`, `lxml`, etc.) — previously inherited from the separate `uiao-impl` editable install.
+- Dynamic version from `src/uiao/__version__.py` via `[tool.setuptools.dynamic]` (SSOT; resolves prior drift between `pyproject.toml` and the module).
+- Optional extras: `[dev]`, `[visuals]`, `[plantuml]`. Classifiers, keywords, `[project.urls]`, and root-level `[tool.pytest.ini_options]` added.
+- `BlueCatAdapter` (BAM Tier-4 IPAM adapter) under `src/uiao/adapters/bluecat_{adapter,parser}.py` with 69 unit/OSCAL tests and fixtures (#114).
+- Briefing generator test suite — 39 tests across `collect_ci_status`, `collect_memory_entries`, `collect_adapter_status`, `collect_control_coverage`, `collect_oscal_status`, `collect_priorities`, `collect_changelog`, and end-to-end `build_briefing()` (#112).
+- Mypy CI workflow (`.github/workflows/mypy.yml`) — non-blocking while the 57 pre-existing type debts are burned down.
+- `docs/governance/` — promoted governance docs (`ARCHITECTURE.md`, `VISION.md`, `CONMON.md`, `PROJECT-CONTEXT.md`, `CODE_OF_CONDUCT.md`, `NOTICE`) from the old `core/` root.
+
+### Changed
+- CLI entry point: `uiao = "uiao.cli.app:app"` (was `uiao.cli:main`); `uiao --version` now prints `uiao X.Y.Z` (was `uiao-core X.Y.Z`).
+- `scuba_adapter` renamed to `scubagear_adapter`; class `ScubaAdapter` → `ScubaGearAdapter`; `ADAPTER_ID` `"scuba"` → `"scubagear"`. Resolves the canon/code inversion where the `scubagear` adapter-registry entry had no implementation while the `scuba` modernization entry had a conformance-behavior implementation (#113).
+- All imports rewritten: `uiao.impl.*` → `uiao.*` across ~150 files.
+- `uiao-core` / `uiao-impl` narrative references sanitized across 430+ non-ADR files. ADRs, `CHANGELOG.md`, and `RELEASE_NOTES.md` preserved as the archival record.
+- `Settings._resolve_canon_root()` simplified to a two-tier resolver (`UIAO_CANON_PATH` env var, then packaged canon at `src/uiao/canon/`). Dead `../core` and `../uiao-core` sibling-checkout fallbacks removed.
+- KSI `collector_id: uiao-core-ksi-builder` → `uiao-ksi-builder` across 84 YAMLs (metadata only; not matched by any runtime `COLLECTOR_ID`).
+
+### Removed
+- `core/` directory (content absorbed into `src/uiao/canon/`, `docs/governance/`, `scripts/tools/`, or removed as obsolete duplicates).
+- `impl/` directory (content absorbed into `src/uiao/`, `tests/`, `scripts/`, `.github/workflows/`). `impl/pyproject.toml` and the `uiao-impl` editable distribution retired; `pip uninstall uiao-impl` clears the old install.
+- Per-module `CLAUDE.md` / `AGENTS.md` under `core/` and `impl/` (module-scoped docs consolidated into the repo-root pair).
+
+### Fixed
+- `src/uiao/__version__.py` normalized to LF-only, no trailing blank.
+- `ScubaGearAdapter` conformance: `ConnectionProvenance.identity`, `claim_id`, `entity`, `evidence.source`, `DriftReport.drift_type`, and `DriftReport.details["adapter"]` now carry the `scubagear` prefix (was `scuba`) — 30/30 conformance criteria pass.
+
+### Migration
+
+```bash
+pip uninstall uiao-impl -y   # retire the old editable install (if present)
+git pull origin main
+pip install -e .             # single install step — all runtime deps declared
+uiao --version               # -> uiao 0.3.0
+pytest -q                    # baseline: ~1071 passed, ~156 skipped
+```
+
+Code that still imports from `uiao.impl.*` should be rewritten to import from `uiao.*`.
+
