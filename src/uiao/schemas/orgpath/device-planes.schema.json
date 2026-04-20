@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.io/schemas/orgpath/device-planes.schema.json",
+  "title": "UIAO Device OrgPath Plane Registry",
+  "description": "Declares the write mechanism for each OrgPath storage plane a ComputerDisposition may land on (MOD_C / ADR-038 / ADR-034). Consumed by src/uiao/adapters/entra_device_orgpath.py to dispatch Graph vs ARM calls.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_id",
+    "parent_canon",
+    "planes",
+    "skip_dispositions",
+    "arm_tag"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "document_id": { "const": "MOD_C" },
+    "parent_canon": { "type": "string" },
+    "updated": { "type": "string", "format": "date" },
+    "planes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/plane" }
+    },
+    "skip_dispositions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/skipDisposition" }
+    },
+    "arm_tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "key_regex", "value_regex"],
+      "properties": {
+        "key": { "const": "OrgPath" },
+        "key_regex": { "type": "string", "minLength": 1 },
+        "value_regex": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "plane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "transport",
+        "target_object",
+        "http_method",
+        "endpoint_template",
+        "body_template",
+        "read_endpoint_template",
+        "read_value_path",
+        "dispositions",
+        "description"
+      ],
+      "properties": {
+        "name": {
+          "enum": ["extensionAttribute1", "ARM-tag", "app-tag"],
+          "description": "app-tag is reserved for Phase 5 (workload identity); Phase 4 ships only extensionAttribute1 and ARM-tag."
+        },
+        "transport": {
+          "enum": ["microsoft-graph", "azure-resource-manager"]
+        },
+        "target_object": { "type": "string", "minLength": 1 },
+        "http_method": { "enum": ["PATCH", "POST", "PUT"] },
+        "endpoint_template": { "type": "string", "minLength": 1 },
+        "body_template": { "type": "object" },
+        "read_endpoint_template": { "type": "string", "minLength": 1 },
+        "read_value_path": { "type": "string", "minLength": 1 },
+        "dispositions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "ENTRA-DEVICE",
+              "ARC-SERVER",
+              "MANAGED-IDENTITY-CANDIDATE",
+              "STAY-AD-DEPENDENCY",
+              "STAY-AD-DC",
+              "DECOMMISSION"
+            ]
+          }
+        },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "skipDisposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "reason"],
+      "properties": {
+        "name": { "enum": ["STAY-AD-DC", "DECOMMISSION"] },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

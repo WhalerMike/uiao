@@ -22,6 +22,14 @@ from .codebook import (
     DeprecatedEntry,
     load_codebook,
 )
+from .device_planes import (
+    ArmTagSpec,
+    DevicePlane,
+    DevicePlaneRegistry,
+    DevicePlaneValidationError,
+    SkipDisposition,
+    load_device_plane_registry,
+)
 from .dynamic_groups import (
     DynamicGroupLibrary,
     DynamicGroupSpec,
@@ -32,18 +40,24 @@ from .dynamic_groups import (
 __all__ = [
     "AdminGroup",
     "AdministrativeUnit",
+    "ArmTagSpec",
     "Codebook",
     "CodebookEntry",
     "CodebookValidationError",
     "DelegationMatrix",
     "DelegationMatrixValidationError",
     "DeprecatedEntry",
+    "DevicePlane",
+    "DevicePlaneRegistry",
+    "DevicePlaneValidationError",
     "DynamicGroupLibrary",
     "DynamicGroupSpec",
     "DynamicGroupValidationError",
     "RoleAssignment",
     "RoleTemplate",
+    "SkipDisposition",
     "load_codebook",
     "load_delegation_matrix",
+    "load_device_plane_registry",
     "load_dynamic_group_library",
 ]

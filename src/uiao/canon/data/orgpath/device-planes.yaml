@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=../../../schemas/orgpath/device-planes.schema.json
+#
+# UIAO Device OrgPath Plane Registry
+# ==================================
+# Canonical source: src/uiao/modernization/orgtree/MOD_C_Attribute_Mapping_Table.md
+# Binding ADR:      src/uiao/canon/adr/adr-038-device-plane-orgpath.md
+# Related canon:    src/uiao/canon/adr/adr-034-three-plane-device-model.md
+# Depends on:       canon/data/orgpath/codebook.yaml (MOD_A / ADR-035)
+#
+# Unlike user objects (one storage plane: Entra extensionAttribute1), a
+# computer object's OrgPath plane depends on its migration disposition
+# (GAE.4 decision tree). This registry declares the write mechanism for
+# each plane so the entra-device-orgpath adapter can dispatch
+# deterministically without embedding Graph/ARM endpoint strings in
+# code.
+#
+# Boundary: GCC-Moderate for Entra devices; the ARM plane also reaches
+# into Azure Resource Manager (Arc), still within gcc-moderate.
+
+schema_version: "1.0.0"
+document_id: MOD_C
+parent_canon: UIAO_007
+updated: "2026-04-20"
+
+# Every `ComputerDisposition.orgpath_plane` value surfaced by
+# src/uiao/adapters/modernization/active-directory/disposition.py MUST
+# match one of these plane names (or the sentinel `none`).
+planes:
+  - name: extensionAttribute1
+    transport: microsoft-graph
+    target_object: directoryObject/device
+    http_method: PATCH
+    endpoint_template: "/devices/{object_id}"
+    body_template:
+      onPremisesExtensionAttributes:
+        extensionAttribute1: "{orgpath}"
+    read_endpoint_template: "/devices?$select=id,displayName,onPremisesExtensionAttributes"
+    read_value_path: "onPremisesExtensionAttributes.extensionAttribute1"
+    dispositions: [ENTRA-DEVICE]
+    description: >-
+      Entra-joined client device. OrgPath rides on
+      onPremisesExtensionAttributes.extensionAttribute1, the same field
+      Entra Connect syncs in from on-prem AD for user objects
+      (ADR-035/Phase 1).
+
+  - name: ARM-tag
+    transport: azure-resource-manager
+    target_object: Microsoft.HybridCompute/machines
+    http_method: PATCH
+    endpoint_template: "{arm_resource_id}?api-version=2023-03-15-preview"
+    body_template:
+      tags:
+        OrgPath: "{orgpath}"
+    read_endpoint_template: "/subscriptions/{subscription_id}/resources?$filter=resourceType eq 'Microsoft.HybridCompute/machines'&$expand=tags"
+    read_value_path: "tags.OrgPath"
+    dispositions: [ARC-SERVER, STAY-AD-DEPENDENCY, MANAGED-IDENTITY-CANDIDATE]
+    description: >-
+      Azure Arc server resource. OrgPath is stored as an ARM tag (not an
+      extensionAttribute). Applies to Arc-enrolled servers, Arc-visible
+      AD-dependency boxes, and workload-identity-candidate servers (MI
+      rebuild target).
+
+  # NOTE: The `app-tag` plane (workload identity / service principal) is
+  # intentionally deferred to Phase 5. MANAGED-IDENTITY-CANDIDATE objects
+  # transit on the ARM-tag plane during the Arc + rebuild window;
+  # post-rebuild workload identities get their own plane entry in
+  # Phase 5, at which point the disposition taxonomy will grow to cover
+  # them explicitly.
+
+# Dispositions that legitimately have no OrgPath write. The adapter emits
+# a `skip-no-plane` operation for each so operators see them in the plan.
+skip_dispositions:
+  - name: STAY-AD-DC
+    reason: Domain controllers do not migrate; no OrgPath.
+  - name: DECOMMISSION
+    reason: EOL or stale; object will be retired, not governed.
+
+# Tag convention for the ARM plane. Keeping this explicit lets the drift
+# engine distinguish "OrgPath tag missing" from "tag set to something
+# else" from "tag set to a deprecated codebook value".
+arm_tag:
+  key: OrgPath
+  key_regex: "^OrgPath$"
+  value_regex: "^ORG(-[A-Z0-9]{2,6}){0,4}$"
