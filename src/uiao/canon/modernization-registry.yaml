@@ -708,3 +708,65 @@ adapters:
       src/uiao/adapters/entra_device_orgpath.py. apply(dry_run=False)
       requires subclass override of _execute because the two transports
       (Graph vs ARM) need distinct credentials.
+
+  - id: entra-policy-targeting
+    name: OrgTree Policy Targeting — Intune + Azure Policy Dual Transport (MOD_N)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — binds existing Intune configuration
+      profiles and existing Azure Policy definitions to the OrgTree.
+      Intune profiles assign to OrgTree-* dynamic groups via Microsoft
+      Graph; Azure Policy definitions scope to Arc machines by OrgPath
+      ARM tag via Azure Resource Manager. Policy BODIES are out of
+      scope — only the targeting/scope binding is canon-governed.
+      Classified per UIAO_003 §4.7 `integration`. Policy-consumer drift
+      (phantom assignments, missing profiles, missing definitions) is
+      NEVER auto-remediated — blast radius is broadest in the stack.
+    status: active
+    phase: phase-1
+    vendor: Microsoft
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - intune-policy-assignments
+      - azure-policy-arc-assignments
+      - orgtree-policy-targeting
+    outputs:
+      - policy-targeting-plan.json
+      - policy-targeting-report.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-2
+      - CM-6
+      - CM-7
+      - CM-8
+      - AC-3
+      - CA-7
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - UIAO_007
+    notes: >-
+      Binds to MOD_N through ADR-039; executable canon at
+      canon/data/orgpath/policy-targets.yaml, JSON Schema at
+      schemas/orgpath/policy-targets.schema.json. Depends on MOD_A
+      (codebook, ADR-035), MOD_B (dynamic groups, ADR-036), MOD_C
+      (device planes, ADR-038) — every Intune target_group must resolve
+      to a MOD_B group; every Arc prefix must resolve to an active
+      MOD_A code. Implementation:
+      src/uiao/adapters/entra_policy_targeting.py. Azure Policy
+      definitions MUST accept the canonical parameters `orgPathPrefix`
+      and `matchMode` — policy authors follow this contract or surface
+      as drift.
