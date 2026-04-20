@@ -1,0 +1,272 @@
+# yaml-language-server: $schema=../../../schemas/orgpath/admin-units.schema.json
+#
+# UIAO Delegation Matrix — Administrative Units + Scoped Roles
+# ============================================================
+# Canonical source: src/uiao/modernization/orgtree/MOD_D_Delegation_Matrix_AUs_Roles.md
+# Binding ADR:      src/uiao/canon/adr/adr-037-admin-unit-provisioning.md
+# Depends on:       canon/data/orgpath/codebook.yaml          (MOD_A / ADR-035)
+#                   canon/data/orgpath/dynamic-groups.yaml    (MOD_B / ADR-036)
+#
+# Every `administrative_units[]` entry is provisioned via Graph API
+# POST /directoryAdministrativeUnits with isMemberManagementRestricted=true
+# plus a dynamic membership rule. Every `role_assignments[]` entry becomes
+# a POST /roleManagement/directory/roleAssignments with directoryScopeId
+# pointing at the corresponding AU.
+#
+# Admin groups (OrgTree-*-Admins) are NOT provisioned by the adapter — they
+# are governance-approved assigned groups (MOD_D §Administrator Groups,
+# MOD_E Workflow 5). The loader only asserts that every principal referenced
+# by a role_assignment resolves to either a MOD_B dynamic group or one of
+# these admin_groups entries, i.e. the reference is live canon.
+#
+# Boundary: GCC-Moderate.
+
+schema_version: "1.0.0"
+document_id: MOD_D
+parent_canon: UIAO_007
+updated: "2026-04-20"
+
+naming:
+  au_prefix: "AU-ORG"
+  au_regex: "^AU-ORG(-[A-Za-z0-9]+)*$"
+  admin_group_regex: "^OrgTree-[A-Za-z0-9]+(-[A-Za-z0-9]+)*-Admins$"
+
+# ---------------------------------------------------------------------------
+# Administrative Units
+# ---------------------------------------------------------------------------
+administrative_units:
+  # Tier 1 — Enterprise
+  - name: AU-ORG-Enterprise
+    tier: enterprise
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG")'
+    orgpath_refs: [ORG]
+    restricted: true
+    description: All governed users
+
+  # Tier 2 — Division
+  - name: AU-ORG-FIN
+    tier: division
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-FIN")'
+    orgpath_refs: [ORG-FIN]
+    restricted: true
+    description: All Finance division users
+  - name: AU-ORG-HR
+    tier: division
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-HR")'
+    orgpath_refs: [ORG-HR]
+    restricted: true
+    description: All Human Resources users
+  - name: AU-ORG-IT
+    tier: division
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-IT")'
+    orgpath_refs: [ORG-IT]
+    restricted: true
+    description: All IT users
+  - name: AU-ORG-OPS
+    tier: division
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-OPS")'
+    orgpath_refs: [ORG-OPS]
+    restricted: true
+    description: All Operations users
+  - name: AU-ORG-LEG
+    tier: division
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-LEG")'
+    orgpath_refs: [ORG-LEG]
+    restricted: true
+    description: All Legal users
+  - name: AU-ORG-EXEC
+    tier: division
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-EXEC")'
+    orgpath_refs: [ORG-EXEC]
+    restricted: true
+    description: All Executive users
+
+  # Tier 3 — Department
+  - name: AU-ORG-IT-SEC
+    tier: department
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-IT-SEC")'
+    orgpath_refs: [ORG-IT-SEC]
+    restricted: true
+    description: IT Security
+  - name: AU-ORG-IT-INF
+    tier: department
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-IT-INF")'
+    orgpath_refs: [ORG-IT-INF]
+    restricted: true
+    description: IT Infrastructure
+  - name: AU-ORG-IT-DEV
+    tier: department
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-IT-DEV")'
+    orgpath_refs: [ORG-IT-DEV]
+    restricted: true
+    description: IT Development
+  - name: AU-ORG-FIN-AP
+    tier: department
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-FIN-AP")'
+    orgpath_refs: [ORG-FIN-AP]
+    restricted: true
+    description: Accounts Payable
+  - name: AU-ORG-FIN-BUD
+    tier: department
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-FIN-BUD")'
+    orgpath_refs: [ORG-FIN-BUD]
+    restricted: true
+    description: Budget
+  - name: AU-ORG-HR-REC
+    tier: department
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-HR-REC")'
+    orgpath_refs: [ORG-HR-REC]
+    restricted: true
+    description: Recruitment
+  - name: AU-ORG-HR-BEN
+    tier: department
+    membership_rule: '(user.extensionAttribute1 -startsWith "ORG-HR-BEN")'
+    orgpath_refs: [ORG-HR-BEN]
+    restricted: true
+    description: Benefits
+
+# ---------------------------------------------------------------------------
+# Built-in directory roles — well-known Microsoft Graph roleDefinitionId
+# values. Used verbatim when issuing
+# POST /roleManagement/directory/roleAssignments so that reconcile is
+# deterministic (no display-name lookup required at apply time).
+# ---------------------------------------------------------------------------
+roles:
+  - display_name: Global Reader
+    template_id: f2ef992c-3afb-46b9-b7cf-a126ee74c451
+  - display_name: Security Reader
+    template_id: 5d6b6bb7-de71-4623-b4af-96380a352509
+  - display_name: Reports Reader
+    template_id: 4a5d8f65-41da-4de4-8968-e035b65339cf
+  - display_name: User Administrator
+    template_id: fe930be7-5e62-47db-91af-98c3a49a38b1
+  - display_name: Groups Administrator
+    template_id: fdd7a751-b60b-444a-984c-02652fe8fa1c
+  - display_name: Helpdesk Administrator
+    template_id: 729827e3-9c14-49f7-bb1b-9608f156bbb8
+  - display_name: Password Administrator
+    template_id: 966707d0-3269-4727-9be2-8c3a10f19b9d
+  - display_name: Authentication Administrator
+    template_id: c4e39bd9-1100-46d3-8c65-fb160da0071f
+
+# ---------------------------------------------------------------------------
+# Admin groups. Referenced as role-assignment principals but NEVER
+# provisioned by this adapter — membership is governed by MOD_E Workflow 5.
+# Listed here so the loader can validate that every principal_group in
+# role_assignments resolves to a live canon entry (MOD_B dynamic group OR
+# admin_group).
+# ---------------------------------------------------------------------------
+admin_groups:
+  - name: OrgTree-FIN-Admins
+    description: Finance division administrators
+    governance_workflow: MOD_E/Workflow-5
+  - name: OrgTree-HR-Admins
+    description: HR division administrators
+    governance_workflow: MOD_E/Workflow-5
+  - name: OrgTree-IT-Admins
+    description: IT division administrators
+    governance_workflow: MOD_E/Workflow-5
+  - name: OrgTree-OPS-Admins
+    description: Operations division administrators
+    governance_workflow: MOD_E/Workflow-5
+  - name: OrgTree-LEG-Admins
+    description: Legal division administrators
+    governance_workflow: MOD_E/Workflow-5
+  - name: OrgTree-IT-SEC-Admins
+    description: IT Security department administrators
+    governance_workflow: MOD_E/Workflow-5
+  - name: OrgTree-FIN-AP-Admins
+    description: AP department administrators
+    governance_workflow: MOD_E/Workflow-5
+  - name: OrgTree-HR-REC-Admins
+    description: Recruitment department administrators
+    governance_workflow: MOD_E/Workflow-5
+
+# ---------------------------------------------------------------------------
+# Role Assignments. `principal_group` must resolve to a MOD_B dynamic group
+# (OrgTree-*-Users / -CA / -Licensed) or an admin_group defined above.
+# `au_scope` must resolve to an administrative_units entry.
+# ---------------------------------------------------------------------------
+role_assignments:
+  # Tier 1 — Enterprise-scoped
+  - role: Global Reader
+    principal_group: OrgTree-IT-SEC-Users
+    au_scope: AU-ORG-Enterprise
+    tier: tier-1
+    purpose: Security team read-all for monitoring
+  - role: Security Reader
+    principal_group: OrgTree-LEG-COM-Users
+    au_scope: AU-ORG-Enterprise
+    tier: tier-1
+    purpose: Compliance team audit visibility
+  - role: Reports Reader
+    principal_group: OrgTree-EXEC-Users
+    au_scope: AU-ORG-Enterprise
+    tier: tier-1
+    purpose: Executive dashboard access
+
+  # Tier 2 — Division-scoped
+  - role: User Administrator
+    principal_group: OrgTree-FIN-Admins
+    au_scope: AU-ORG-FIN
+    tier: tier-2
+    purpose: Finance division user lifecycle
+  - role: Groups Administrator
+    principal_group: OrgTree-FIN-Admins
+    au_scope: AU-ORG-FIN
+    tier: tier-2
+    purpose: Finance division group management
+  - role: User Administrator
+    principal_group: OrgTree-HR-Admins
+    au_scope: AU-ORG-HR
+    tier: tier-2
+    purpose: HR division user lifecycle
+  - role: Groups Administrator
+    principal_group: OrgTree-HR-Admins
+    au_scope: AU-ORG-HR
+    tier: tier-2
+    purpose: HR division group management
+  - role: User Administrator
+    principal_group: OrgTree-IT-Admins
+    au_scope: AU-ORG-IT
+    tier: tier-2
+    purpose: IT division user lifecycle
+  - role: Groups Administrator
+    principal_group: OrgTree-IT-Admins
+    au_scope: AU-ORG-IT
+    tier: tier-2
+    purpose: IT division group management
+  - role: User Administrator
+    principal_group: OrgTree-OPS-Admins
+    au_scope: AU-ORG-OPS
+    tier: tier-2
+    purpose: Operations user lifecycle
+  - role: User Administrator
+    principal_group: OrgTree-LEG-Admins
+    au_scope: AU-ORG-LEG
+    tier: tier-2
+    purpose: Legal user lifecycle
+
+  # Tier 3 — Department-scoped
+  - role: Helpdesk Administrator
+    principal_group: OrgTree-IT-SEC-Admins
+    au_scope: AU-ORG-IT-SEC
+    tier: tier-3
+    purpose: Security dept password resets, basic user support
+  - role: Helpdesk Administrator
+    principal_group: OrgTree-FIN-AP-Admins
+    au_scope: AU-ORG-FIN-AP
+    tier: tier-3
+    purpose: AP department user support
+  - role: Password Administrator
+    principal_group: OrgTree-HR-REC-Admins
+    au_scope: AU-ORG-HR-REC
+    tier: tier-3
+    purpose: Recruitment password resets
+
+  # IAM exception — enterprise-wide MFA management anchored to MOD_B group
+  - role: Authentication Administrator
+    principal_group: OrgTree-IT-SEC-IAM-Users
+    au_scope: AU-ORG-Enterprise
+    tier: tier-1
+    purpose: IAM team MFA management (enterprise-wide)

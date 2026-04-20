@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.io/schemas/orgpath/admin-units.schema.json",
+  "title": "UIAO Delegation Matrix (AUs + Scoped Roles)",
+  "description": "Machine-readable enumeration of Entra ID Administrative Units and scoped role assignments. Bound to MOD_D (src/uiao/modernization/orgtree/MOD_D_Delegation_Matrix_AUs_Roles.md) by ADR-037. Depends on codebook (MOD_A/ADR-035) and dynamic-groups (MOD_B/ADR-036) — loader enforces cross-canon integrity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_id",
+    "parent_canon",
+    "naming",
+    "administrative_units",
+    "roles",
+    "admin_groups",
+    "role_assignments"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "document_id": { "const": "MOD_D" },
+    "parent_canon": { "type": "string" },
+    "updated": { "type": "string", "format": "date" },
+    "naming": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["au_prefix", "au_regex", "admin_group_regex"],
+      "properties": {
+        "au_prefix": { "const": "AU-ORG" },
+        "au_regex": { "type": "string", "minLength": 1 },
+        "admin_group_regex": { "type": "string", "minLength": 1 }
+      }
+    },
+    "administrative_units": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/administrativeUnit" }
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/role" }
+    },
+    "admin_groups": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/adminGroup" }
+    },
+    "role_assignments": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/roleAssignment" }
+    }
+  },
+  "$defs": {
+    "administrativeUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "tier",
+        "membership_rule",
+        "orgpath_refs",
+        "restricted",
+        "description"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^AU-ORG(-[A-Za-z0-9]+)*$"
+        },
+        "tier": {
+          "enum": ["enterprise", "division", "department"]
+        },
+        "membership_rule": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\(user\\.extensionAttribute1 "
+        },
+        "orgpath_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^ORG(-[A-Z0-9]{2,6}){0,4}$"
+          }
+        },
+        "restricted": {
+          "description": "Every AU in this matrix must be a Restricted Management AU (MOD_D §Restricted Management).",
+          "const": true
+        },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "role": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["display_name", "template_id"],
+      "properties": {
+        "display_name": { "type": "string", "minLength": 1 },
+        "template_id": {
+          "type": "string",
+          "description": "Microsoft Graph roleDefinitionId (well-known built-in template GUID).",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      }
+    },
+    "adminGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "governance_workflow"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^OrgTree-[A-Za-z0-9]+(-[A-Za-z0-9]+)*-Admins$"
+        },
+        "description": { "type": "string", "minLength": 1 },
+        "governance_workflow": { "type": "string", "minLength": 1 }
+      }
+    },
+    "roleAssignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "principal_group", "au_scope", "tier", "purpose"],
+      "properties": {
+        "role": { "type": "string", "minLength": 1 },
+        "principal_group": {
+          "type": "string",
+          "pattern": "^OrgTree-[A-Za-z0-9]+(-[A-Za-z0-9]+)*-(Users|Licensed|CA|Admins)$"
+        },
+        "au_scope": {
+          "type": "string",
+          "pattern": "^AU-ORG(-[A-Za-z0-9]+)*$"
+        },
+        "tier": { "enum": ["tier-1", "tier-2", "tier-3"] },
+        "purpose": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
