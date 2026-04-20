@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 # PolicyId -> NIST control (e.g. "MS.AAD.1.1v1" -> "IA-2(1)")
 try:
-    from uiao.impl.adapters.scuba_adapter import SCUBA_TO_KSI_MAP
+    from uiao.impl.adapters.scubagear_adapter import SCUBA_TO_KSI_MAP
 except ImportError:
     # Fallback for standalone use — will be populated from file
     SCUBA_TO_KSI_MAP: Dict[str, str] = {}
