@@ -7,6 +7,7 @@ heavy OSCAL/SBOM/SSP conversions. That work lives in generators/.
 """
 
 # InfobloxAdapter export verified 2026-04-19 (task 6/6, PR #98)
+from .bluecat_adapter import BlueCatAdapter
 from .cyberark_adapter import CyberArkAdapter
 from .database_base import DatabaseAdapterBase
 from .entra_adapter import EntraAdapter
@@ -25,6 +26,7 @@ from .terraform_adapter import TerraformAdapter
 from .vulnscan_adapter import VulnScanAdapter
 
 __all__ = [
+    "BlueCatAdapter",
     "CyberArkAdapter",
     "DatabaseAdapterBase",
     "EntraAdapter",
