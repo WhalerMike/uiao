@@ -24,7 +24,7 @@ class TestCLIBasics:
         """--version prints version string and exits 0."""
         result = runner.invoke(app, ["--version"])
         assert result.exit_code == 0
-        assert "uiao-core" in result.stdout
+        assert "uiao" in result.stdout
 
     def test_help_flag(self) -> None:
         """--help prints help text and exits 0."""

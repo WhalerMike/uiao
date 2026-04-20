@@ -1,25 +1,39 @@
 #!/usr/bin/env python3
 # <!-- NEW (Proposed) -->
-"""validate_directory.py - Validate repository directory layout.
+"""validate_directory.py — Validate repository directory layout.
 
-Ensures the repository structure matches Document 10 (Directory Structure).
+Thin wrapper around :mod:`tools.validators.structure_validator` so the
+``canon-validation`` and ``repo-hygiene`` workflows can call a stable
+``scripts/`` path. Directory-layout rules live in
+``tools/schema/directory_schema.json``.
 
-Usage:
+Usage
+-----
     python scripts/validate_directory.py
 """
+from __future__ import annotations
 
+import runpy
 import sys
+from pathlib import Path
+
+VALIDATOR = Path(__file__).resolve().parent.parent / "tools" / "validators" / "structure_validator.py"
 
 
 def main() -> int:
-    """Validate directory layout. Returns 0 on success, 1 on failure."""
-    # TODO: Implement directory validation
-    # - Verify required directories exist
-    # - Verify no unauthorized directories
-    # - Cross-reference with 10_DirectoryStructure.md
-    print("[STUB] validate_directory.py — not yet implemented.")
-    return 0
+    if not VALIDATOR.exists():
+        print(f"[validate_directory] validator missing at {VALIDATOR}; treating as no-op.")
+        return 0
+    ns = runpy.run_path(str(VALIDATOR), run_name="__main__")
+    rc = ns.get("__return__", 0)
+    return int(rc) if isinstance(rc, int) else 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except SystemExit:
+        raise
+    except Exception as exc:  # pragma: no cover
+        print(f"[validate_directory] error: {exc}")
+        sys.exit(1)

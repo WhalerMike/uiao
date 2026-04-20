@@ -1,4 +1,4 @@
-"""UIAO-Core CLI application.
+"""UIAO CLI application.
 
 Provides command-line interface for OSCAL document generation,
 validation, and canon management.
@@ -17,7 +17,7 @@ from uiao.generators.trestle import validate_oscal_artifacts
 
 app = typer.Typer(
     name="uiao",
-    help="UIAO-Core: OSCAL compliance toolkit for US Government systems.",
+    help="UIAO: OSCAL compliance toolkit for US Government systems.",
     add_completion=False,
 )
 
@@ -27,7 +27,7 @@ console = Console()
 def version_callback(value: bool) -> None:
     """Print version and exit."""
     if value:
-        console.print(f"uiao-core {__version__}")
+        console.print(f"uiao {__version__}")
         raise typer.Exit()
 
 
@@ -42,7 +42,7 @@ def main(
         is_eager=True,
     ),
 ) -> None:
-    """UIAO-Core OSCAL compliance toolkit."""
+    """UIAO OSCAL compliance toolkit."""
 
 
 @app.command()
