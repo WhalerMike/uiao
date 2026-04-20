@@ -3,35 +3,31 @@ name: Mypy
 on:
   pull_request:
     paths:
-      - 'src/uiao/**/*.py'
-      - 'pyproject.toml'
+      - 'impl/**/*.py'
+      - 'impl/pyproject.toml'
       - '.github/workflows/mypy.yml'
   push:
     branches: [main]
     paths:
-      - 'src/uiao/**/*.py'
-      - 'pyproject.toml'
+      - 'impl/**/*.py'
+      - 'impl/pyproject.toml'
 
 jobs:
   mypy:
-    name: Type-check src/uiao with mypy
+    name: Type-check impl/ with mypy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
-      - name: Install uiao with dev extras
-        run: pip install --quiet -e ".[dev]"
+      - name: Install impl package with dev extras
+        run: pip install --quiet -e "./impl[dev]"
 
       - name: Run mypy
-        # Non-blocking: 57 pre-existing type debts from the pre-reorg code.
-        # Surface signal in CI without holding up PRs. Tighten via
-        # [tool.mypy] in pyproject.toml and burn down errors incrementally,
-        # then remove this continue-on-error.
-        continue-on-error: true
-        run: mypy src/uiao --ignore-missing-imports
+        working-directory: impl
+        run: mypy src/uiao/impl --ignore-missing-imports
