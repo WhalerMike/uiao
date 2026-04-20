@@ -6,7 +6,7 @@ normalized compliance findings. Policy-class adapter: ingests
 configuration state and evaluates it against declared security technical
 implementation guides.
 
-Classification (per uiao-core/canon/adapter-registry.yaml):
+Classification (per uiao/canon/adapter-registry.yaml):
     class:            conformance
     mission-class:    policy  (UIAO_003 s4.4)
     status:           reserved

@@ -184,7 +184,7 @@ def main() -> int:
         except ImportError as exc:
             logger.error(
                 "Could not import orchestrator.  Make sure you run from the "
-                "uiao-core repo root or install the package.\n  %s", exc,
+                "uiao repo root or install the package.\n  %s", exc,
             )
             return 2
 

@@ -8,7 +8,7 @@ Usage:
 python drift_detector.py --path . --mode full --schema schemas/metadata-schema.json
 python drift_detector.py --path canon/UIAO_001.md --mode targeted
 python drift_detector.py --base main --head feature/update --mode diff
-python drift_detector.py --path . --mode full --cross-repo ../uiao-core
+python drift_detector.py --path . --mode full --cross-repo ../uiao
 """
 import argparse
 import hashlib
@@ -266,7 +266,7 @@ def detect_owner_drift(filepath: Path, fm: dict, base_path: Path) -> list[dict]:
 # ─── Cross-Repo Drift ────────────────────────────────────────────────────────
 def detect_cross_repo_drift(filepath: Path, fm: dict, base_path: Path,
                             core_path: Path) -> list[dict]:
-    """Detect drift between derived doc and its uiao-core canonical source."""
+    """Detect drift between derived doc and its uiao canonical source."""
     findings = []
     if fm is None:
         return findings
@@ -277,16 +277,16 @@ def detect_cross_repo_drift(filepath: Path, fm: dict, base_path: Path,
     source = prov.get("source", "")
     if not source:
         return findings
-    # Resolve source in uiao-core
-    source_clean = source.replace("uiao-core/", "")
+    # Resolve source in uiao
+    source_clean = source.replace("uiao/", "")
     source_path = core_path / source_clean
     if not source_path.exists():
         findings.append({
             "file": rel,
             "category": "CROSS_REPO_DRIFT",
             "severity": SEVERITY_BLOCKING,
-            "detail": f"Canonical source not found in uiao-core: {source_clean}",
-            "remediation": "Verify provenance.source path in uiao-core",
+            "detail": f"Canonical source not found in uiao: {source_clean}",
+            "remediation": "Verify provenance.source path in uiao",
         })
         return findings
     # Compare versions
@@ -300,7 +300,7 @@ def detect_cross_repo_drift(filepath: Path, fm: dict, base_path: Path,
                 "category": "CROSS_REPO_DRIFT",
                 "severity": SEVERITY_BLOCKING,
                 "detail": f"Version mismatch: local={local_version}, core={core_version}",
-                "remediation": f"Re-derive from uiao-core version {core_version}",
+                "remediation": f"Re-derive from uiao version {core_version}",
             })
     return findings
 
@@ -390,7 +390,7 @@ def main():
     parser.add_argument("--base", help="Base Git ref for diff mode")
     parser.add_argument("--head", default="HEAD", help="Head Git ref for diff mode")
     parser.add_argument("--schema", help="Path to metadata schema")
-    parser.add_argument("--cross-repo", help="Path to uiao-core for cross-repo drift")
+    parser.add_argument("--cross-repo", help="Path to uiao for cross-repo drift")
     parser.add_argument("--template", help="Formatting template name")
     parser.add_argument("--output", help="Output report JSON file")
     parser.add_argument("--ci", action="store_true", help="CI mode: exit 1 on BLOCKING")

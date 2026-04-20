@@ -1,11 +1,11 @@
-# uiao-core/tools
+# uiao/tools
 
 Python tooling that enforces canon governance and propagates canonical artifacts into `uiao-docs`. All tools share the pinned dependency set in `requirements.txt`.
 
 ## Install
 
 ```powershell
-# One-time, from uiao-core root
+# One-time, from uiao root
 python -m pip install -r tools\requirements.txt
 ```
 
@@ -54,7 +54,7 @@ The frontmatter block is **generated from canon** and regenerated whenever the r
 
 ```powershell
 # Both repos checked out side by side at C:\Users\whale
-cd C:\Users\whale\uiao-core
+cd C:\Users\whale\uiao
 python tools\sync_canon.py --core-root . --docs-root ..\uiao-docs --check-only
 ```
 
@@ -78,8 +78,8 @@ The canon→docs propagation runs through two GitHub Actions workflows:
 
 | Side | File | Trigger | Action |
 |---|---|---|---|
-| Dispatch | `uiao-core/.github/workflows/canon-sync-dispatch.yml` | Push to `main` modifying `canon/adapter-registry.yaml`, `canon/modernization-registry.yaml`, or `schemas/adapter-registry/**` | Validates registries, sends `canon-updated` repository_dispatch to `WhalerMike/uiao-docs` |
-| Receive | `uiao-docs/.github/workflows/canon-sync-receive.yml` | `canon-updated` repository_dispatch (or manual `workflow_dispatch`) | Checks out `uiao-core`, runs `sync_canon.py --scaffold`, opens a labeled PR (`canon-sync`) with peter-evans/create-pull-request |
+| Dispatch | `uiao/.github/workflows/canon-sync-dispatch.yml` | Push to `main` modifying `canon/adapter-registry.yaml`, `canon/modernization-registry.yaml`, or `schemas/adapter-registry/**` | Validates registries, sends `canon-updated` repository_dispatch to `WhalerMike/uiao-docs` |
+| Receive | `uiao-docs/.github/workflows/canon-sync-receive.yml` | `canon-updated` repository_dispatch (or manual `workflow_dispatch`) | Checks out `uiao`, runs `sync_canon.py --scaffold`, opens a labeled PR (`canon-sync`) with peter-evans/create-pull-request |
 
 ### Required secret: `CANON_SYNC_DISPATCH_TOKEN`
 
@@ -90,16 +90,16 @@ Both workflows use the same secret — a GitHub Personal Access Token with cross
 1. Go to GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token.
 2. Token name: `UIAO canon-sync dispatch`.
 3. Resource owner: your account (`WhalerMike`).
-4. Repository access: "Only select repositories" → pick **both** `WhalerMike/uiao-core` and `WhalerMike/uiao-docs`.
+4. Repository access: "Only select repositories" → pick **both** `WhalerMike/uiao` and `WhalerMike/uiao-docs`.
 5. Repository permissions:
-   - **Contents: Read and write** (needed for the receiver to check out `uiao-core` and to push the `canon-sync/*` branch to `uiao-docs`).
+   - **Contents: Read and write** (needed for the receiver to check out `uiao` and to push the `canon-sync/*` branch to `uiao-docs`).
    - **Pull requests: Read and write** (needed to open the PR).
    - **Actions: Read and write** (required for the dispatcher's `repository_dispatch` call to actually fire the receiver workflow on `uiao-docs`. The `POST /repos/.../dispatches` REST endpoint accepts and returns 204 with only `Contents: write`, so the dispatcher step reports success — but GitHub silently drops the event and the receiver never runs unless the token also carries `Actions: write`).
    - **Metadata: Read-only** (auto-selected).
 6. Expiration: 90 days is a reasonable starting point; set a calendar reminder to rotate.
 7. Generate the token and copy the value (you only see it once).
 8. Add it as a secret named `CANON_SYNC_DISPATCH_TOKEN` in **both** repositories:
-   - `WhalerMike/uiao-core` → Settings → Secrets and variables → Actions → New repository secret.
+   - `WhalerMike/uiao` → Settings → Secrets and variables → Actions → New repository secret.
    - Same on `WhalerMike/uiao-docs`.
 
 **Alternative: classic PAT with `repo` scope.** Works but overprovisioned — prefer fine-grained.
@@ -113,17 +113,17 @@ When the PAT expires, regenerate and update the secret in both repos. The workfl
 If you need to force a sync (e.g., after a PAT rotation or to re-scaffold after a merge conflict):
 
 ```
-Actions → Canon sync — receive from uiao-core → Run workflow → (optional) specify ref → Run
+Actions → Canon sync — receive from uiao → Run workflow → (optional) specify ref → Run
 ```
 
-This triggers the receiver in `workflow_dispatch` mode against `main` (or your chosen ref) of `uiao-core`.
+This triggers the receiver in `workflow_dispatch` mode against `main` (or your chosen ref) of `uiao`.
 
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Receiver workflow fails with `Bad credentials` | PAT expired or missing | Regenerate PAT, update `CANON_SYNC_DISPATCH_TOKEN` secret in both repos |
-| Dispatcher runs green but receiver workflow shows "no runs yet" | Dispatch token lacks `Actions: write` on target repo (the dispatch API accepts the event with just `Contents: write` but GitHub silently skips workflow triggering without `Actions: write`) | Regenerate the fine-grained PAT with `Actions: Read and write` on `uiao-docs`. Verify by re-triggering: either push a whitespace tweak to any `canon/*.yaml` on uiao-core/main, or use **Actions → Canon sync — receive from uiao-core → Run workflow** to test the receiver code path directly. |
+| Dispatcher runs green but receiver workflow shows "no runs yet" | Dispatch token lacks `Actions: write` on target repo (the dispatch API accepts the event with just `Contents: write` but GitHub silently skips workflow triggering without `Actions: write`) | Regenerate the fine-grained PAT with `Actions: Read and write` on `uiao-docs`. Verify by re-triggering: either push a whitespace tweak to any `canon/*.yaml` on uiao/main, or use **Actions → Canon sync — receive from uiao → Run workflow** to test the receiver code path directly. |
 | `peter-evans/create-pull-request` says "Bypassed rule violations" | Required status check not yet registered as a check on `uiao-docs` | Expected for now — will resolve in Step 6 (CI workflows) |
 | `sync_canon.py` reports orphan drift | Folder exists in `uiao-docs` but no adapter with that id in either registry | Either add the adapter to canon, or manually retire the folder. Tool never deletes. |
 | Schema validation fails on dispatch | YAML edit introduced a schema violation | Fix locally, run `python tools/sync_canon.py --core-root . --docs-root ../uiao-docs --check-only` to verify, then push |

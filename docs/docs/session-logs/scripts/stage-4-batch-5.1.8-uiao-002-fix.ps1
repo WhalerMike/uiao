@@ -29,7 +29,7 @@
 # =============================================================================
 
 $ErrorActionPreference = 'Stop'
-$CoreDir  = 'C:\Users\whale\uiao-core'
+$CoreDir  = 'C:\Users\whale\uiao'
 $DocsDir  = 'C:\Users\whale\uiao-docs'
 $Driver   = Join-Path $DocsDir 'docs\session-logs\scripts\fix_uiao_002.py'
 $Target   = Join-Path $CoreDir 'canon\UIAO_002_SCuBA_Technical_Specification_v1.0.md'
@@ -151,7 +151,7 @@ try {
     # Build commit message with a BOM-free UTF-8 file (fixes the 5.1.7
     # cosmetic where Set-Content -Encoding UTF8 prepended a BOM to the
     # subject line).
-    $msgFile = Join-Path $env:TEMP 'uiao-core-5-1-8-msg.txt'
+    $msgFile = Join-Path $env:TEMP 'uiao-5-1-8-msg.txt'
     $msg = @"
 [UIAO-CORE] FIX: UIAO_002 frontmatter and body boundary references
 
@@ -195,12 +195,12 @@ metadata cleanup and unblocks 5.2 branch protection.
     Write-OK 'Commit created locally. Review with: git show HEAD --stat'
     Write-Host ''
     Write-Host 'Next steps (manual):' -ForegroundColor Yellow
-    Write-Host '  git -C C:\Users\whale\uiao-core pull --rebase origin main' -ForegroundColor Yellow
-    Write-Host '  git -C C:\Users\whale\uiao-core push origin main' -ForegroundColor Yellow
+    Write-Host '  git -C C:\Users\whale\uiao pull --rebase origin main' -ForegroundColor Yellow
+    Write-Host '  git -C C:\Users\whale\uiao push origin main' -ForegroundColor Yellow
     Write-Host ''
     Write-Host 'After push:' -ForegroundColor Yellow
     Write-Host '  5.2 - branch protection: require metadata-validator as a required' -ForegroundColor Yellow
-    Write-Host '        status check on uiao-core/main (now safe; blocking=0)' -ForegroundColor Yellow
+    Write-Host '        status check on uiao/main (now safe; blocking=0)' -ForegroundColor Yellow
 }
 finally {
     Pop-Location

@@ -1,11 +1,11 @@
-# Sync YAML data schemas from uiao-docs to uiao-core
+# Sync YAML data schemas from uiao-docs to uiao
 # uiao-docs owns the data/ directory. This workflow pushes changes
-# to uiao-core whenever data files are modified on main.
+# to uiao whenever data files are modified on main.
 #
-# Requires: UIAO_CORE_SYNC_TOKEN secret (PAT with repo scope for uiao-core)
+# Requires: UIAO_CORE_SYNC_TOKEN secret (PAT with repo scope for uiao)
 # If the secret is not configured, this workflow will fail silently.
 
-name: Sync Data to uiao-core
+name: Sync Data to uiao
 
 on:
   push:
@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   sync:
-    name: Push data/ to uiao-core
+    name: Push data/ to uiao
     runs-on: ubuntu-latest
     steps:
       - name: Checkout uiao-docs
@@ -27,22 +27,22 @@ jobs:
         with:
           sparse-checkout: data
 
-      - name: Checkout uiao-core
+      - name: Checkout uiao
         uses: actions/checkout@v6
         with:
-          repository: WhalerMike/uiao-core
+          repository: WhalerMike/uiao
           token: ${{ secrets.UIAO_CORE_SYNC_TOKEN }}
-          path: uiao-core
+          path: uiao
 
       - name: Sync data files
         run: |
-          echo "Syncing data/ from uiao-docs to uiao-core..."
+          echo "Syncing data/ from uiao-docs to uiao..."
 
-          # Copy all YAML/JSON data files (preserving uiao-core-only files)
-          cp data/*.yml uiao-core/data/ 2>/dev/null || true
-          cp data/*.yaml uiao-core/data/ 2>/dev/null || true
+          # Copy all YAML/JSON data files (preserving uiao-only files)
+          cp data/*.yml uiao/data/ 2>/dev/null || true
+          cp data/*.yaml uiao/data/ 2>/dev/null || true
 
-          cd uiao-core
+          cd uiao
 
           # Check for changes
           if git diff --quiet && git diff --cached --quiet; then

@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for uiao-impl tests."""
+"""Shared pytest fixtures for uiao tests."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,13 +10,13 @@ from canon_paths import CANON_ROOT, DATA_DIR, GENERATION_INPUTS_DIR
 
 @pytest.fixture
 def project_root() -> Path:
-    """Return the uiao-impl project root directory."""
+    """Return the uiao project root directory."""
     return Path(__file__).resolve().parent.parent
 
 
 @pytest.fixture
 def canon_root() -> Path:
-    """Return the resolved canon root (uiao-core checkout)."""
+    """Return the resolved canon root (uiao checkout)."""
     return CANON_ROOT
 
 
@@ -53,9 +53,9 @@ def sample_canon_entry() -> dict:
 
 # ---------------------------------------------------------------------------
 # Auto-skip canon-dependent modules when generation-inputs/ is not available.
-# Canon lives in uiao-core; generation-inputs/ was not migrated in the split
+# Canon lives in uiao; generation-inputs/ was not migrated in the split
 # (tracked in issue #2). These modules re-activate automatically once canon
-# is restored in uiao-core.
+# is restored in uiao.
 # ---------------------------------------------------------------------------
 from canon_paths import GENERATION_INPUTS_DIR as _GEN_INPUTS_DIR
 
@@ -74,11 +74,11 @@ _CANON_DEPENDENT_MODULES = {
 
 
 def pytest_collection_modifyitems(config, items):
-    """Skip tests depending on canon files not yet migrated to uiao-core."""
+    """Skip tests depending on canon files not yet migrated to uiao."""
     if _GEN_INPUTS_DIR.exists():
         return
     skip_marker = pytest.mark.skip(
-        reason="canon generation-inputs/ not migrated to uiao-core yet (issue #2)"
+        reason="canon generation-inputs/ not migrated to uiao yet (issue #2)"
     )
     for item in items:
         module_name = item.module.__name__.rsplit(".", 1)[-1]

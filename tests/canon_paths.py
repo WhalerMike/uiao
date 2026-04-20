@@ -1,18 +1,11 @@
-"""Canon path resolution for uiao-impl tests.
+"""Canon path resolution for uiao tests.
 
 Canon (the single source of truth YAMLs, schemas, and generation inputs)
-now lives in the ``core/`` sibling module of the consolidated ``uiao``
-monorepo. Tests resolve the canon root in this order:
+ships inside the ``uiao`` package at ``src/uiao/canon/``. Tests resolve the
+canon root in this order:
 
-1. ``UIAO_CANON_PATH`` environment variable (explicit override for
-   non-default layouts or downstream consumers with custom checkouts).
-2. Monorepo layout: ``<repo-root>/core/`` — the canonical location
-   since the four-repo consolidation (PR #1). Primary expected path.
-3. Pre-monorepo sibling checkout at ``../uiao-core`` (legacy local dev
-   layout — kept for any stragglers still operating four-repo locally).
-4. Legacy in-tree location at the project root (pre-split fallback —
-   will fail at assertion time if canon files do not exist, which is
-   the correct signal).
+1. ``UIAO_CANON_PATH`` environment variable (explicit override).
+2. Packaged canon at ``<repo-root>/src/uiao/canon/``.
 
 Usage::
 
@@ -33,20 +26,7 @@ def _resolve_canon_root() -> Path:
         candidate = Path(env).expanduser().resolve()
         if candidate.exists():
             return candidate
-    # Post-reorg layout: canon ships inside the uiao package.
-    repo_root = _PROJECT_ROOT.parent if _PROJECT_ROOT.name == "impl" else _PROJECT_ROOT
-    pkg_canon = (repo_root / "src" / "uiao" / "canon").resolve()
-    if (pkg_canon / "data" / "control-library").is_dir():
-        return pkg_canon
-    # Pre-reorg monorepo layout: core/ sibling of impl/.
-    monorepo_core = (_PROJECT_ROOT.parent / "core").resolve()
-    if (monorepo_core / "data" / "control-library").is_dir():
-        return monorepo_core
-    # Pre-monorepo sibling-checkout layout.
-    sibling = (_PROJECT_ROOT.parent / "uiao-core").resolve()
-    if sibling.exists():
-        return sibling
-    return _PROJECT_ROOT
+    return (_PROJECT_ROOT / "src" / "uiao" / "canon").resolve()
 
 
 CANON_ROOT: Path = _resolve_canon_root()

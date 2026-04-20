@@ -66,7 +66,7 @@ Entry-adding workflow:
 
 ### 2.5 Respond to findings (800-137 §3.5)
 
-**Artifact:** POA&M lifecycle in `uiao-docs` plus `poam/` tracking folder in `uiao-core`.
+**Artifact:** POA&M lifecycle in `uiao-docs` plus `poam/` tracking folder in `uiao`.
 **Owner:** Michael (CSP role).
 **Cadence:** Monthly POA&M submission (Playbook §2).
 

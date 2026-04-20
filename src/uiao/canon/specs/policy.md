@@ -136,7 +136,7 @@ policy restrict_external_sharing {
 EPL policy files are stored in:
 
 ```
-uiao-core/policy/
+uiao/policy/
   ├── EPL-Specification.md   (this file)
   ├── enforce-mfa.epl
   ├── disable-legacy-auth.epl

@@ -12,7 +12,7 @@ As a SCuBA maintainer, you:
 
 - Run SCuBA assessments via the UIAO pipeline
 - Ensure normalization and KSI evaluation succeed
-- Maintain scripts, schemas, and mappings in **uiao-core**
+- Maintain scripts, schemas, and mappings in **uiao**
 - Maintain human-facing reports and docs in **uiao-docs**
 - Preserve provenance and governance boundaries
 
@@ -27,7 +27,7 @@ As a SCuBA maintainer, you:
    [appendices/Appendix-B-UIAO-SCuBA-Pipeline.md](https://github.com/WhalerMike/uiao-docs/tree/main/appendices)
 
 3. **KSI Ruleset and Mapping Tables**
-   - KSI rules: `uiao-core/ksi/rules/`
+   - KSI rules: `uiao/ksi/rules/`
    - Mapping tables: [Appendix C](https://github.com/WhalerMike/uiao-docs/tree/main/appendices)
 
 ---
@@ -37,7 +37,7 @@ As a SCuBA maintainer, you:
 - Install **PowerShell 7+**
 - Install and configure **ScubaGear**
 - Clone both repos:
-  - `git clone https://github.com/WhalerMike/uiao-core.git`
+  - `git clone https://github.com/WhalerMike/uiao.git`
   - `git clone https://github.com/WhalerMike/uiao-docs.git`
 - Ensure you can run PowerShell scripts and commit/push to both repos
 
@@ -45,11 +45,11 @@ As a SCuBA maintainer, you:
 
 ## 5. Running the Pipeline (Day-to-Day)
 
-From the root of uiao-core:
+From the root of uiao:
 
 ```powershell
-pwsh ./uiao-core/adapters/scuba/run/adapter-run-scuba.ps1 `
-     -OutputDirectory ./uiao-core/artifacts/scuba
+pwsh ./uiao/adapters/scuba/run/adapter-run-scuba.ps1 `
+     -OutputDirectory ./uiao/artifacts/scuba
 ```
 
 After a successful run, verify:
@@ -63,7 +63,7 @@ After a successful run, verify:
 
 ## 6. Updating the Human-Facing Report
 
-1. Open the latest machine report: `uiao-core/artifacts/scuba/reports/ScubaResults.report.json`
+1. Open the latest machine report: `uiao/artifacts/scuba/reports/ScubaResults.report.json`
 2. Update the canonical human report: `uiao-docs/reports/SCuBA-Canonical-Report.md`
 3. Commit with a clear message, e.g.:
    `chore(scuba): update canonical report for YYYY-MM-DD run`
@@ -100,7 +100,7 @@ If you cannot resolve: capture the command used, error output, and relevant file
 
 You are maintaining a governed pipeline with clear boundaries between:
 
-- **Machine artifacts** (uiao-core)
+- **Machine artifacts** (uiao)
 - **Human artifacts** (uiao-docs)
 - **Provenance and history** (both repos, no duplication)
 

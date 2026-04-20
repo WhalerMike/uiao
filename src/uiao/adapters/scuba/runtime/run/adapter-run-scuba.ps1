@@ -21,14 +21,14 @@ param(
         # 2. Normalize SCuBA output
         $normalizedFile = Join-Path $normalizedDir "ScubaResults.normalized.json"
         Write-Host "Normalizing SCuBA output..."
-        pwsh ./uiao-core/adapters/scuba/transforms/normalize.ps1 `
+        pwsh ./uiao/adapters/scuba/transforms/normalize.ps1 `
              -InputPath $rawFile `
                   -OutputPath $normalizedFile
 
                   # 3. Evaluate KSI rules
                   $reportFile = Join-Path $reportsDir "ScubaResults.report.json"
                   Write-Host "Evaluating KSI rules..."
-                  pwsh ./uiao-core/ksi/evaluations/evaluate-ksi.ps1 `
+                  pwsh ./uiao/ksi/evaluations/evaluate-ksi.ps1 `
                        -InputPath $normalizedFile `
                             -OutputPath $reportFile
 

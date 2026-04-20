@@ -38,7 +38,7 @@ With UIAO
 ---------
 [ScubaGear] → [Raw Output] → [UIAO Normalization] → [KSI Evaluation]
                                    |                      |
-                              (uiao-core)             (uiao-core)
+                              (uiao)             (uiao)
                                                           ↓
                                                     [Provenance]
                                                           ↓
@@ -54,22 +54,22 @@ With UIAO
 [1] adapter-run-scuba.ps1
         ↓
 [2] Raw SCuBA Output
-    (uiao-core/artifacts/scuba/raw)
+    (uiao/artifacts/scuba/raw)
         ↓
 [3] normalize.ps1
-    (uiao-core/adapters/scuba/transforms)
+    (uiao/adapters/scuba/transforms)
         ↓
 [4] Normalized SCuBA JSON
-    (uiao-core/artifacts/scuba/normalized)
+    (uiao/artifacts/scuba/normalized)
         ↓
 [5] evaluate-ksi.ps1
-    (uiao-core/ksi/evaluations)
+    (uiao/ksi/evaluations)
         ↓
 [6] KSI Report JSON
-    (uiao-core/artifacts/scuba/reports)
+    (uiao/artifacts/scuba/reports)
         ↓
 [7] generate-manifest.ps1
-    (uiao-core/provenance/manifests)
+    (uiao/provenance/manifests)
         ↓
 [8] Human-Facing Report
     (uiao-docs/reports/SCuBA-Canonical-Report.md)
@@ -106,7 +106,7 @@ With UIAO
 
 ## B.6 Governance Boundaries (Summary)
 
-- Machine artifacts: **uiao-core only**
+- Machine artifacts: **uiao only**
 - Human artifacts: **uiao-docs only**
 - No duplication across repos
 - Every SCuBA run produces a provenance manifest

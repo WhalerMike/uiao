@@ -122,7 +122,7 @@ After a finding is created:
 ## File Locations
 
 ```
-uiao-core/drift/
+uiao/drift/
   ├── drift-engine.md        (this file)
   ├── drift-engine.ps1       (implementation)
   └── snapshots/             (evidence snapshot store)

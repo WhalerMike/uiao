@@ -37,9 +37,9 @@ This glossary defines authoritative terminology for the Universal Integration Ad
 
 **Canon DOCX** — The UIAO Governance Canon Master Document in Microsoft Word format. The single authoritative source for all governance content. All published documentation MUST be traceable to the Canon DOCX.
 
-**Canonical Rules** — The five immutable governance constraints (CR-001 through CR-005) that all UIAO artifacts must conform to. See `uiao-core/canon/canonical-rules.md` (moved to the canon-authority repo per Phase D, 2026-04-16).
+**Canonical Rules** — The five immutable governance constraints (CR-001 through CR-005) that all UIAO artifacts must conform to. See `uiao/canon/canonical-rules.md` (moved to the canon-authority repo per Phase D, 2026-04-16).
 
-**Canonical Schema** — The UIAO-internal data schema to which all adapter inputs and outputs are normalized. The canonical schema is owned by the Truth Fabric and versioned in `uiao-core`.
+**Canonical Schema** — The UIAO-internal data schema to which all adapter inputs and outputs are normalized. The canonical schema is owned by the Truth Fabric and versioned in `uiao`.
 
 **Compliance Attestation** — An Evidence Fabric record confirming that a system or component was found to be in compliance with a specific Canonical Rule at a specific point in time.
 
@@ -63,7 +63,7 @@ This glossary defines authoritative terminology for the Universal Integration Ad
 
 **Evidence Fabric** — The UIAO subsystem responsible for recording, storing, and attesting to governance events. All audit events, drift records, and compliance attestations are written to the Evidence Fabric. Evidence records are immutable. See Appendix D.
 
-**Evidence Manifest** — A machine-readable index of all Evidence Fabric records for a given time window or governance scope. Stored in `uiao-core`.
+**Evidence Manifest** — A machine-readable index of all Evidence Fabric records for a given time window or governance scope. Stored in `uiao`.
 
 ---
 
@@ -101,7 +101,7 @@ This glossary defines authoritative terminology for the Universal Integration Ad
 
 ## M
 
-**Machine Artifact** — Any UIAO artifact consumed directly by automated processes: adapter schemas, orchestration logic, drift-detection algorithms, evidence manifests. Stored exclusively in `uiao-core`.
+**Machine Artifact** — Any UIAO artifact consumed directly by automated processes: adapter schemas, orchestration logic, drift-detection algorithms, evidence manifests. Stored exclusively in `uiao`.
 
 **Migration Plan** — The structured plan for transitioning the UIAO documentation structure from a flat layout to a hierarchical canonical layout. See `docs/canon/migration-plan.md`.
 
@@ -143,7 +143,7 @@ This glossary defines authoritative terminology for the Universal Integration Ad
 
 **UIAO** — Universal Integration Adapter Orchestration. The enterprise governance framework for managing, auditing, and orchestrating integration adapters across heterogeneous systems.
 
-**uiao-core** — The GitHub repository containing all UIAO machine artifacts: adapter schemas, orchestration logic, drift algorithms, evidence manifests, and the Canon Pointer.
+**uiao** — The GitHub repository containing all UIAO machine artifacts: adapter schemas, orchestration logic, drift algorithms, evidence manifests, and the Canon Pointer.
 
 **uiao-docs** — The GitHub repository containing all UIAO human artifacts: governance documents, ADRs, appendices, diagrams, glossaries, migration plans, and the MkDocs site configuration.
 

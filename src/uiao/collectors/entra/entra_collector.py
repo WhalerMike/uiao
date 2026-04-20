@@ -67,7 +67,7 @@ class EntraCollector(BaseCollector):
         if httpx is None or ClientSecretCredential is None:
             logger.warning(
                 "azure-identity and httpx are required for EntraCollector; "
-                "install with: pip install 'uiao-core[graph]'"
+                "install with: pip install 'uiao[graph]'"
             )
 
         self._tenant_id: Optional[str] = self._config.get("tenant_id")

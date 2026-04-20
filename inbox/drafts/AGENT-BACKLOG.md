@@ -88,7 +88,7 @@
 
 ## TST — Test Infrastructure
 
-- [ ] **TST-001** [P0] Fix `impl/.coveragerc` — currently points to `src/uiao_core` (wrong package); omits uiao-core generators
+- [ ] **TST-001** [P0] Fix `impl/.coveragerc` — currently points to `src/uiao_core` (wrong package); omits uiao generators
       Path: `impl/.coveragerc`
       Done-when: `source = src/uiao/impl`, omit patterns updated, `coverage run -m pytest` reports for the correct tree.
 - [ ] **TST-002** [P0] Populate empty test file `impl/tests/test_briefing.py` (currently 2 bytes)
@@ -139,7 +139,7 @@
       Done-when: only one link-check workflow remains; it covers root + impl; `make check-links` still works.
 - [ ] **CI-010** [P1] Retire stale `impl/.github/workflows/ci.yml`
       Path: `impl/.github/workflows/ci.yml`
-      Context: this workflow still does `actions/checkout@v4 with: repository: WhalerMike/uiao-core, ref: main, path: uiao-core` — that's the pre-consolidation split. The authoritative impl test workflow is `.github/workflows/pytest.yml` at the repo root. The in-folder file either needs to be deleted or rewritten to use local `core/` (and repoint `UIAO_CANON_PATH` accordingly).
+      Context: this workflow still does `actions/checkout@v4 with: repository: WhalerMike/uiao, ref: main, path: uiao` — that's the pre-consolidation split. The authoritative impl test workflow is `.github/workflows/pytest.yml` at the repo root. The in-folder file either needs to be deleted or rewritten to use local `core/` (and repoint `UIAO_CANON_PATH` accordingly).
       Done-when: only one impl pytest workflow runs per PR; no job references the old separate repo.
 - [ ] **CI-011** [P1] Fix `link-check.yml` rotted URL(s) surfaced by issue #91 (lychee soft-failing on unrelated PRs)
       Path: `.github/workflows/link-check.yml` (or the URL on `main` that lychee can't reach)
@@ -147,7 +147,7 @@
 
 ## INT — Integration / Monorepo
 
-- [ ] **INT-001** [P0] Pin `uiao-core` dependency in `impl/pyproject.toml` (path dep now, package dep once core is published)
+- [ ] **INT-001** [P0] Pin `uiao` dependency in `impl/pyproject.toml` (path dep now, package dep once core is published)
       Path: `impl/pyproject.toml`
       Done-when: `pip install -e impl/` pulls core automatically; `UIAO_CANON_PATH` env fallback is documented, not required.
       Note (2026-04-17): deferred — `core/pyproject.toml` declares `packages = []` (data-only, no Python package). Choose one first: (a) make core an installable package that ships canon data, or (b) formalise the `UIAO_CANON_PATH` env-var resolver with a fallback that locates `../core` relative to the installed impl. Landing either change is a prerequisite for this item.

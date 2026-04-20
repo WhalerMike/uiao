@@ -12,7 +12,7 @@ author: "Michael Stratton"
 no_hallucination_mode: ENABLED
 nhp: true
 provenance:
-  source: "uiao-core repository (v2.0.0)"
+  source: "uiao repository (v2.0.0)"
   version: "1.0"
   derived_at: "2026-04-13T00:00:00Z"
   derived_by: "claude-agent"
@@ -541,7 +541,7 @@ CISA Binding Operational Directive 25-01 mandates that federal agencies implemen
 4. NIST OSCAL 1.1.2: Open Security Controls Assessment Language
 5. CISA BOD 25-01: Binding Operational Directive — Implementation of SCuBA Security Baselines
 6. FedRAMP Moderate Baseline (NIST SP 800-53 Rev 5)
-7. UIAO-Core Repository: uiao-core v2.0.0
+7. UIAO-Core Repository: uiao v2.0.0
 8. UIAO Master Document Specification Package (April 2026)
 
 ---
@@ -605,7 +605,7 @@ CISA Binding Operational Directive 25-01 mandates that federal agencies implemen
 ## Validation Block
 
 [VALIDATION]
-All sections validated against source code in uiao-core repository.
+All sections validated against source code in uiao repository.
 All 143 policy mappings verified against scuba_adapter.py SCUBA_TO_KSI_MAP.
 All four plane descriptions verified against transformer.py, evaluate.py, builder.py, generator.py.
 Orchestrator description verified against orchestrator/orchestrator.py.

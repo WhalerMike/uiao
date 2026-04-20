@@ -19,8 +19,8 @@ The Python SCuBA adapter lives at `impl/src/uiao/impl/adapters/scuba_adapter.py`
 The PowerShell scripts in `run/` and `transforms/` carry hardcoded paths from the pre-consolidation era, e.g.:
 
 ```powershell
-pwsh ./uiao-core/adapters/scuba/transforms/normalize.ps1
-pwsh ./uiao-core/ksi/evaluations/evaluate-ksi.ps1
+pwsh ./uiao/adapters/scuba/transforms/normalize.ps1
+pwsh ./uiao/ksi/evaluations/evaluate-ksi.ps1
 ```
 
-`uiao-core/` was the archived predecessor repository; those paths no longer resolve in the monorepo. The scripts are therefore non-operational as-is and require path rewrites before they can be invoked. This is recorded as a follow-on cleanup; the move in this PR preserves history without touching script internals so the debt is visible as drift the next CI pass will flag.
+`uiao/` was the archived predecessor repository; those paths no longer resolve in the monorepo. The scripts are therefore non-operational as-is and require path rewrites before they can be invoked. This is recorded as a follow-on cleanup; the move in this PR preserves history without touching script internals so the debt is visible as drift the next CI pass will flag.

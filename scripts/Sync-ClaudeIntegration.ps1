@@ -2,10 +2,10 @@
 .SYNOPSIS
     UIAO Claude Integration - Full Two-Way Sync
 .DESCRIPTION
-    Deploys remaining Claude Code integration files to uiao-core (16 files)
+    Deploys remaining Claude Code integration files to uiao (16 files)
     and uiao-docs (27 files) using two atomic commits to main.
     Expects companion payload files in the same directory:
-      - uiao-core-remaining.b64  (base64-encoded zip of uiao-core files)
+      - uiao-remaining.b64  (base64-encoded zip of uiao files)
       - uiao-docs-remaining.b64  (base64-encoded zip of uiao-docs files)
 .PARAMETER WorkDir
     Temporary working directory. Default: $env:TEMP\uiao-sync-<timestamp>
@@ -24,7 +24,7 @@ $ScriptDir = $PSScriptRoot
 # Banner
 Write-Host ""
 Write-Host "=== UIAO Claude Integration - Full Two-Way Sync ===" -ForegroundColor Cyan
-Write-Host "    16 files -> uiao-core  |  27 files -> uiao-docs" -ForegroundColor Cyan
+Write-Host "    16 files -> uiao  |  27 files -> uiao-docs" -ForegroundColor Cyan
 Write-Host ""
 
 # Preflight
@@ -34,7 +34,7 @@ try { $null = & git --version 2>&1 } catch {
     return
 }
 
-$coreB64 = Join-Path $ScriptDir "uiao-core-remaining.b64"
+$coreB64 = Join-Path $ScriptDir "uiao-remaining.b64"
 $docsB64 = Join-Path $ScriptDir "uiao-docs-remaining.b64"
 
 foreach ($f in @($coreB64, $docsB64)) {
@@ -50,9 +50,9 @@ Write-Host "[PREFLIGHT] Work dir: $WorkDir" -ForegroundColor DarkGray
 # Decode Payloads
 Write-Host "[PAYLOAD] Decoding archives..." -ForegroundColor Yellow
 
-$coreZip = Join-Path $WorkDir "uiao-core-remaining.zip"
+$coreZip = Join-Path $WorkDir "uiao-remaining.zip"
 $docsZip = Join-Path $WorkDir "uiao-docs-remaining.zip"
-$coreDir = Join-Path $WorkDir "uiao-core-files"
+$coreDir = Join-Path $WorkDir "uiao-files"
 $docsDir = Join-Path $WorkDir "uiao-docs-files"
 
 [IO.File]::WriteAllBytes($coreZip, [Convert]::FromBase64String((Get-Content $coreB64 -Raw).Trim()))
@@ -115,7 +115,7 @@ function Deploy-ToRepo {
     return $true
 }
 
-# Phase 1: uiao-core
+# Phase 1: uiao
 $coreMsg = @"
 [UIAO-CORE] ADD: Claude integration - skills, commands, CI, tools, schema, CLAUDE.md
 
@@ -126,8 +126,8 @@ Tools: metadata_validator.py, drift_detector.py, appendix_indexer.py, dashboard_
 Schema: dashboard-schema.json  |  CLAUDE.md updated
 "@
 
-$r1 = Deploy-ToRepo -RepoUrl "https://github.com/WhalerMike/uiao-core.git" `
-    -RepoName "uiao-core" -SourcePath $coreDir -CommitMessage $coreMsg
+$r1 = Deploy-ToRepo -RepoUrl "https://github.com/WhalerMike/uiao.git" `
+    -RepoName "uiao" -SourcePath $coreDir -CommitMessage $coreMsg
 
 # Phase 2: uiao-docs
 $docsMsg = @"
@@ -145,7 +145,7 @@ $r2 = Deploy-ToRepo -RepoUrl "https://github.com/WhalerMike/uiao-docs.git" `
 # Summary
 Write-Host ""
 Write-Host "=== SYNC COMPLETE ===" -ForegroundColor Cyan
-Write-Host "  uiao-core: $(if($r1){'PASS'}else{'FAIL'})" -ForegroundColor $(if($r1){'Green'}else{'Red'})
+Write-Host "  uiao: $(if($r1){'PASS'}else{'FAIL'})" -ForegroundColor $(if($r1){'Green'}else{'Red'})
 Write-Host "  uiao-docs: $(if($r2){'PASS'}else{'FAIL'})" -ForegroundColor $(if($r2){'Green'}else{'Red'})
 Write-Host ""
 

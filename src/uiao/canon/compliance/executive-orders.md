@@ -136,7 +136,7 @@ addressed by this document and should not be cited as UIAO authorities:
   EO (AI-leadership, not cybersecurity)
 
 If a downstream agency implementation requires UIAO support for any of
-these out-of-scope EOs, open a Canon Change Request against `uiao-core`;
+these out-of-scope EOs, open a Canon Change Request against `uiao`;
 do not back-fill citations into this document without a traceable source.
 
 ## Maintenance

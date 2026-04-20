@@ -17,7 +17,7 @@ CONTROL_LIB = REPO_ROOT / "data" / "control-library"
 KSI_DIR = REPO_ROOT / "rules" / "ksi"
 
 TIMESTAMP = "2026-04-04T00:00:00Z"
-COLLECTOR_ID = "uiao-core-ksi-builder"
+COLLECTOR_ID = "uiao-ksi-builder"
 VERSION = "1.0.0"
 
 # --- Data source mappings per family ---

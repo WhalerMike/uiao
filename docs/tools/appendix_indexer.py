@@ -8,7 +8,7 @@ Usage:
 python appendix_indexer.py --path appendices/ --mode audit
 python appendix_indexer.py --path appendices/ --mode rebuild
 python appendix_indexer.py --path appendices/ --mode sync
-python appendix_indexer.py --path appendices/ --mode cross-repo --core-path ../uiao-core/appendices/
+python appendix_indexer.py --path appendices/ --mode cross-repo --core-path ../uiao/appendices/
 """
 import argparse
 import json
@@ -227,7 +227,7 @@ def cross_repo_check(entries: list[dict], core_path: Path) -> dict:
             details.append({
                 "appendix_id": doc_entry.get("appendix_id", ""),
                 "parent": parent,
-                "issue": "Parent document not found in uiao-core",
+                "issue": "Parent document not found in uiao",
             })
     return {
         "aligned": aligned,
@@ -267,7 +267,7 @@ def main():
     parser.add_argument("--mode", default="audit",
                         choices=["audit", "rebuild", "sync", "cross-repo"],
                         help="Operation mode")
-    parser.add_argument("--core-path", help="Path to uiao-core appendices (for cross-repo)")
+    parser.add_argument("--core-path", help="Path to uiao appendices (for cross-repo)")
     parser.add_argument("--output", help="Output report JSON file")
     parser.add_argument("--ci", action="store_true", help="CI mode: exit 1 on BLOCKING")
     parser.add_argument("--metrics-only", action="store_true", help="Metrics only")
