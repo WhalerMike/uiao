@@ -42,6 +42,27 @@ transformation, and eventual landing into their canonical home.
 5. Optionally remove the raw file from `inbox/` once
    extraction is verified.
 
+### Pandoc bridge (`make inbox-convert`)
+
+For `.docx` inputs, use the repo-provided pandoc bridge instead of
+converting ad-hoc:
+
+```bash
+make inbox-status    # list docx files without an up-to-date .md sibling
+make inbox-convert   # regenerate stale .md siblings via pandoc
+```
+
+The target runs `pandoc --from=docx --to=gfm --wrap=none
+--markdown-headings=atx` against every `inbox/**/*.docx` and writes a
+sibling `.md` only when the `.docx` is newer (idempotent). Extracted
+media land under `inbox/.media/`. The `.md` siblings **are** tracked
+(allowlisted in `.gitignore`) so they ship with the PR that promotes
+the content to canon; the `.docx` sources stay local unless explicitly
+opted-in via the `.gitignore` allowlist block.
+
+Prerequisite: `pandoc >= 2.19`
+(`winget install pandoc` / `brew install pandoc` / `apt install pandoc`).
+
 ## What this directory is *not*
 
 - Not a publishing location. Nothing here is rendered by Quarto.
