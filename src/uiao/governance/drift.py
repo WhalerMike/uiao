@@ -27,9 +27,16 @@ The two axes are independent. A finding may be "unauthorized" (risk) and
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Union
 
 from uiao.ir.models.core import DriftState, ProvenanceRecord, canonical_hash
+
+# Typing alias for the codebook parameter. Callers may pass either:
+#   - a flat ``set[str]`` of active OrgPath codes (legacy contract), or
+#   - a ``uiao.modernization.orgtree.codebook.Codebook`` instance, which
+#     additionally lets the classifier emit Phantom Drift against deprecated
+#     codes (MOD_A §Drift). Duck-typed to avoid a circular import.
+OrgPathCodebook = Union[Set[str], "Any"]
 
 # ---------------------------------------------------------------------------
 # Canonical drift class strings (mirrors DriftClassType in core.py)
@@ -301,6 +308,29 @@ _LIFECYCLE_ACCOUNT_RULES = {
 }
 
 
+def _resolve_codebook(
+    codebook: Optional[OrgPathCodebook],
+) -> tuple[Optional[set], Optional[set]]:
+    """Return ``(active_codes, deprecated_codes)`` for a codebook argument.
+
+    Accepts either a bare ``set[str]`` of active codes (legacy contract used
+    by ``test_drift_classifiers``) or any object exposing ``.codes`` and
+    ``.deprecated_codes`` — e.g. a
+    :class:`uiao.modernization.orgtree.codebook.Codebook`. Duck-typed to
+    avoid a circular import.
+    """
+    if codebook is None:
+        return None, None
+    if isinstance(codebook, set):
+        return codebook, None
+    active = getattr(codebook, "codes", None)
+    deprecated = getattr(codebook, "deprecated_codes", None)
+    if active is None:
+        # Fall back to iterating — supports any Iterable[str].
+        return set(codebook), None
+    return set(active), set(deprecated) if deprecated else None
+
+
 def classify_identity_drift(
     *,
     resource_id: str,
@@ -309,7 +339,7 @@ def classify_identity_drift(
     actual_state: Dict[str, Any],
     provenance: ProvenanceRecord,
     drift_id: Optional[str] = None,
-    orgpath_codebook: Optional[set] = None,
+    orgpath_codebook: Optional[OrgPathCodebook] = None,
 ) -> Optional[DriftState]:
     """
     Classify identity drift (DRIFT-IDENTITY).
@@ -319,14 +349,17 @@ def classify_identity_drift(
 
     Identity drift is detected when:
       1. Any sentinel identity field has changed, OR
-      2. OrgPath is missing, malformed, or not in codebook, OR
+      2. OrgPath is missing, malformed, not in codebook, or deprecated, OR
       3. Lifecycle state is inconsistent with accountEnabled, OR
       4. Required identity fields are absent from actual_state
 
-    orgpath_codebook: optional set of valid OrgPath codes (Appendix A).
-    If provided, OrgPaths not in the codebook are flagged as drift.
-    If omitted, only format validation is applied.
+    ``orgpath_codebook`` accepts either a ``set[str]`` of active codes
+    (legacy contract — only Value Drift is emitted) or a
+    :class:`uiao.modernization.orgtree.codebook.Codebook`, in which case
+    the classifier additionally recognises Phantom Drift (value landed in
+    the deprecated list). If omitted, only format validation is applied.
     """
+    active_codes, deprecated_codes = _resolve_codebook(orgpath_codebook)
     delta = _dict_delta(expected_state, actual_state)
     all_changed = (
         set(delta.get("changed", []))
@@ -350,7 +383,11 @@ def classify_identity_drift(
         reasons.append("OrgPath missing from identity object")
     elif not _ORGPATH_REGEX.match(str(orgpath_value)):
         reasons.append(f"OrgPath '{orgpath_value}' fails format validation ^ORG(-[A-Z]{{2,6}}){{0,4}}$")
-    elif orgpath_codebook is not None and str(orgpath_value) not in orgpath_codebook:
+    elif deprecated_codes is not None and str(orgpath_value) in deprecated_codes:
+        reasons.append(
+            f"OrgPath '{orgpath_value}' is deprecated in the codebook (Phantom Drift)"
+        )
+    elif active_codes is not None and str(orgpath_value) not in active_codes:
         reasons.append(f"OrgPath '{orgpath_value}' not in canonical codebook")
 
     # Check 3: lifecycle consistency
@@ -408,7 +445,7 @@ def classify_drift(
     actual_state: Dict[str, Any],
     provenance: ProvenanceRecord,
     drift_id: Optional[str] = None,
-    orgpath_codebook: Optional[set] = None,
+    orgpath_codebook: Optional[OrgPathCodebook] = None,
 ) -> DriftState:
     """
     Run all drift classifiers in priority order and return the first match.

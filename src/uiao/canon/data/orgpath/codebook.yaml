@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=../../../schemas/orgpath/codebook.schema.json
+#
+# UIAO OrgPath Codebook — machine-readable SSOT
+# =============================================
+# Canonical source: src/uiao/modernization/orgtree/MOD_A_OrgPath_Codebook.md
+# Binding ADR:      src/uiao/canon/adr/adr-035-orgpath-codebook-binding.md
+#
+# This file is the enumeration the drift engine, the OrgPath assignment
+# adapter (adapters/modernization/active-directory/orgpath.py), and the
+# Entra adapter consume at runtime. MOD_A is the narrative canon; this
+# YAML is the executable canon. When they disagree, the ADR process
+# governs reconciliation — never edit this file without a governed PR.
+#
+# Boundary: GCC-Moderate. OrgPath values live in Entra
+# extensionAttribute1 (users) and extensionAttribute1 / ARM tag (devices).
+
+schema_version: "1.0.0"
+document_id: MOD_A
+parent_canon: UIAO_007
+updated: "2026-04-20"
+
+format:
+  regex: "^ORG(-[A-Z0-9]{2,6}){0,4}$"
+  max_depth: 4
+  segment_pattern: "^[A-Z0-9]{2,6}$"
+  root: ORG
+  separator: "-"
+
+# Every OrgPath appearing in extensionAttribute1 must resolve to a code
+# in `codes[].code`, otherwise it is classified as Value Drift (MOD_A §Drift).
+codes:
+  # Level 0 — Enterprise Root
+  - code: ORG
+    level: 0
+    description: Enterprise Root
+    parent: null
+
+  # Level 1 — Divisions
+  - { code: ORG-EXEC,  level: 1, description: Executive / Leadership,  parent: ORG }
+  - { code: ORG-FIN,   level: 1, description: Finance,                 parent: ORG }
+  - { code: ORG-HR,    level: 1, description: Human Resources,         parent: ORG }
+  - { code: ORG-IT,    level: 1, description: Information Technology,  parent: ORG }
+  - { code: ORG-OPS,   level: 1, description: Operations,              parent: ORG }
+  - { code: ORG-LEG,   level: 1, description: Legal / Compliance,      parent: ORG }
+  - { code: ORG-SALES, level: 1, description: Sales & Marketing,       parent: ORG }
+
+  # Level 2 — Departments
+  - { code: ORG-FIN-AP,  level: 2, description: Accounts Payable,        parent: ORG-FIN }
+  - { code: ORG-FIN-AR,  level: 2, description: Accounts Receivable,     parent: ORG-FIN }
+  - { code: ORG-FIN-BUD, level: 2, description: Budget & Forecasting,    parent: ORG-FIN }
+  - { code: ORG-IT-SEC,  level: 2, description: Security,                parent: ORG-IT }
+  - { code: ORG-IT-INF,  level: 2, description: Infrastructure,          parent: ORG-IT }
+  - { code: ORG-IT-DEV,  level: 2, description: Development / Engineering, parent: ORG-IT }
+  - { code: ORG-HR-REC,  level: 2, description: Recruitment,             parent: ORG-HR }
+  - { code: ORG-HR-BEN,  level: 2, description: Benefits,                parent: ORG-HR }
+  - { code: ORG-OPS-LOG, level: 2, description: Logistics,               parent: ORG-OPS }
+  - { code: ORG-LEG-COM, level: 2, description: Compliance,              parent: ORG-LEG }
+
+  # Level 3 — Units
+  - { code: ORG-IT-SEC-SOC,    level: 3, description: Security Operations Center, parent: ORG-IT-SEC }
+  - { code: ORG-IT-SEC-IAM,    level: 3, description: Identity & Access Management, parent: ORG-IT-SEC }
+  - { code: ORG-IT-INF-NET,    level: 3, description: Networking,            parent: ORG-IT-INF }
+  - { code: ORG-FIN-AP-EAST,   level: 3, description: Accounts Payable East, parent: ORG-FIN-AP }
+  - { code: ORG-FIN-AP-WEST,   level: 3, description: Accounts Payable West, parent: ORG-FIN-AP }
+
+  # Level 4 — Teams
+  - { code: ORG-IT-SEC-SOC-T1, level: 4, description: SOC Tier 1 Analysts,  parent: ORG-IT-SEC-SOC }
+  - { code: ORG-IT-SEC-SOC-T2, level: 4, description: SOC Tier 2 Engineers, parent: ORG-IT-SEC-SOC }
+  - { code: ORG-IT-DEV-APP1,   level: 4, description: Application Team 1,   parent: ORG-IT-DEV }
+
+# Codes that used to be canonical but are no longer accepted. A user who
+# still carries a deprecated code generates Phantom Drift (MOD_A §Drift).
+# `replaced_by` is the governed successor the drift engine proposes.
+deprecated: []
