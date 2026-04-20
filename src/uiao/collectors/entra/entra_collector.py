@@ -334,6 +334,62 @@ class EntraCollector(BaseCollector):
         }
         return normalized
 
+    def _normalize_user_attributes(self, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Normalize a ``/users?$select=...,onPremisesExtensionAttributes`` response
+        into the shape the Entra adapter's ``normalize()`` consumes.
+
+        OrgPath (MOD_A) lives in ``onPremisesExtensionAttributes.extensionAttribute1``
+        after Entra Connect syncs it in from on-prem AD. This method surfaces the
+        attribute alongside the rest of the user record so downstream drift
+        classification can evaluate format + codebook + phantom drift without
+        re-fetching.
+
+        Parameters
+        ----------
+        raw:
+            Raw response from ``/users?$select=id,userPrincipalName,displayName,
+            accountEnabled,onPremisesExtensionAttributes``.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Normalized structure with a ``user_count`` and a flat ``users`` list
+            carrying ``orgpath`` and ``orgpath_source`` alongside core identity
+            fields.
+        """
+        if not raw or "value" not in raw:
+            return {"user_count": 0, "users": [], "orgpath_populated_count": 0}
+
+        users = raw.get("value", [])
+        flattened: list[Dict[str, Any]] = []
+        populated = 0
+        for u in users:
+            ext = u.get("onPremisesExtensionAttributes") or {}
+            orgpath = ext.get("extensionAttribute1")
+            if orgpath:
+                populated += 1
+            flattened.append({
+                "id": u.get("id"),
+                "userPrincipalName": u.get("userPrincipalName"),
+                "displayName": u.get("displayName"),
+                "accountEnabled": u.get("accountEnabled"),
+                "orgpath": orgpath,
+                "orgpath_source": (
+                    "entra:onPremisesExtensionAttributes.extensionAttribute1"
+                    if orgpath else None
+                ),
+                "region": ext.get("extensionAttribute2"),
+                "lifecycle_state": ext.get("extensionAttribute3"),
+                "migration_state": ext.get("extensionAttribute4"),
+            })
+
+        return {
+            "user_count": len(users),
+            "orgpath_populated_count": populated,
+            "users": flattened,
+        }
+
     def _normalize_named_locations(self, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Normalize named locations data.
@@ -402,6 +458,10 @@ class EntraCollector(BaseCollector):
             "auth_methods_policy": self._call_graph_api("/policies/authenticationMethodsPolicy"),
             "organization": self._call_graph_api("/organization"),
             "named_locations": self._call_graph_api("/identity/conditionalAccess/namedLocations"),
+            "user_extension_attributes": self._call_graph_api(
+                "/users?$select=id,userPrincipalName,displayName,accountEnabled,"
+                "onPremisesExtensionAttributes&$top=999"
+            ),
         }
 
         normalized_data: Dict[str, Any] = {
@@ -413,6 +473,9 @@ class EntraCollector(BaseCollector):
             "auth_policy": self._normalize_auth_policy(raw_data.get("auth_methods_policy")),
             "organization": self._normalize_organization(raw_data.get("organization")),
             "named_locations": self._normalize_named_locations(raw_data.get("named_locations")),
+            "user_attributes": self._normalize_user_attributes(
+                raw_data.get("user_extension_attributes")
+            ),
         }
 
         provenance = self._build_provenance(raw_data=raw_data)

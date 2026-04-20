@@ -14,7 +14,8 @@ File: src/uiao/impl/adapters/entra_adapter.py
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+import re
+from typing import Any, Dict, List, Optional
 
 from ..collectors.entra.entra_collector import EntraCollector
 from .database_base import (
@@ -27,6 +28,32 @@ from .database_base import (
     QueryProvenance,
     SchemaMappingObject,
 )
+
+# Local copy of the canonical OrgPath regex (MOD_A). Kept here rather than
+# importing from governance.drift to avoid a dependency cycle between the
+# adapter and the drift engine — both reference the same canon (ADR-035).
+_ORGPATH_REGEX = re.compile(r"^ORG(-[A-Z0-9]{2,6}){0,4}$")
+
+
+def _extract_orgpath(record: Dict[str, Any]) -> Optional[str]:
+    """Return the Entra-stored OrgPath for a user record, or None.
+
+    Supports three shapes the collector may hand us:
+
+    1. Flattened by ``EntraCollector._normalize_user_attributes`` — the
+       ``orgpath`` key is already present at the top level.
+    2. Raw Graph API user object — ``onPremisesExtensionAttributes.extensionAttribute1``.
+    3. Pre-lowered ``extensionAttribute1`` at the top level (some test and
+       governance fixtures take this shortcut).
+    """
+    if "orgpath" in record and record["orgpath"]:
+        return str(record["orgpath"])
+    ext = record.get("onPremisesExtensionAttributes") or {}
+    if ext.get("extensionAttribute1"):
+        return str(ext["extensionAttribute1"])
+    if record.get("extensionAttribute1"):
+        return str(record["extensionAttribute1"])
+    return None
 
 
 class EntraAdapter(DatabaseAdapterBase):
@@ -134,7 +161,7 @@ class EntraAdapter(DatabaseAdapterBase):
         claims: List[ClaimObject] = []
         for record in raw_rows:
             record_id = record.get("id", "unknown")
-            claim_payload = {
+            claim_payload: Dict[str, Any] = {
                 "identity": f"entra:user:{record_id}",
                 "control_id": record.get("uiao_control_id", "AC-2"),
                 "implementation_statement": record.get("displayName", "")
@@ -143,6 +170,20 @@ class EntraAdapter(DatabaseAdapterBase):
                 "telemetry_enabled": True,
                 "raw_link": f"https://portal.azure.com/#view/Microsoft_AAD_UsersAndTenants/UserProfileMenuBlade/~/overview/userId/{record_id}",
             }
+
+            # OrgPath alignment (MOD_A / ADR-035). Codebook membership and
+            # phantom-drift classification belong to governance.drift — the
+            # adapter's job is to surface the raw value + format signal so
+            # downstream classifiers can run without re-fetching.
+            orgpath = _extract_orgpath(record)
+            if orgpath is not None:
+                claim_payload["orgpath"] = orgpath
+                claim_payload["orgpath_source"] = (
+                    record.get("orgpath_source")
+                    or "entra:onPremisesExtensionAttributes.extensionAttribute1"
+                )
+                claim_payload["orgpath_format_valid"] = bool(_ORGPATH_REGEX.match(orgpath))
+
             claim = ClaimObject(
                 claim_id=f"entra:{record_id}",
                 entity=f"entra:user:{record_id}",
