@@ -1,0 +1,78 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2563eb', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#1e40af', 'lineColor': '#6b7280', 'secondaryColor': '#f7f5f0', 'tertiaryColor': '#e5e7eb'}}}%%
+%% ---
+%% diagram_id: DIAG_031
+%% title: "UIAO Release Engineering Pipeline"
+%% version: "1.0"
+%% status: ACTIVE
+%% classification: Controlled
+%% owner: Michael Stratton
+%% source_format: mermaid
+%% document_category: planning
+%% form_factors:
+%%   - full
+%%   - nano
+%% created_at: 2026-04-18
+%% updated_at: 2026-04-18
+%% boundary: GCC-Moderate
+%% description: "Release lifecycle from version bump through tag-triggered build, SBOM generation, sigstore signing, and distribution."
+%% tags:
+%%   - planning
+%%   - release
+%%   - engineering
+%%   - SBOM
+%%   - distribution
+%% related_documents:
+%%   - UIAO_118
+%% nano_config:
+%%   max_nodes: 12
+%%   collapse_groups:
+%%     - subgraph_build
+%%     - subgraph_sign
+%%   label_mode: abbreviated
+%%   edge_simplification: true
+%%   hide_annotations: true
+%% ---
+
+graph TD
+    TRIGGER["Version Bump<br/>Tag Created"]
+
+    subgraph subgraph_build ["Build & Package"]
+        BL_CHECKOUT["Clean<br/>Checkout"]
+        BL_TEST["Full Test<br/>Suite Run"]
+        BL_PACKAGE["Python Package<br/>Build"]
+        BL_SBOM["SBOM<br/>Generation"]
+        BL_CHECKOUT --> BL_TEST
+        BL_TEST --> BL_PACKAGE
+        BL_PACKAGE --> BL_SBOM
+    end
+
+    subgraph subgraph_sign ["Signing & Attestation"]
+        SG_SIGSTORE["Sigstore<br/>Signing"]
+        SG_ATTEST["Evidence Bundle<br/>Attestation"]
+        SG_VERIFY["Signature<br/>Verification"]
+        SG_SIGSTORE --> SG_ATTEST
+        SG_ATTEST --> SG_VERIFY
+    end
+
+    subgraph subgraph_publish ["Distribution"]
+        PB_GITHUB["GitHub Release<br/>Draft"]
+        PB_NOTES["Release Notes<br/>Auto-Generated"]
+        PB_PAGES["Docs Site<br/>Deployment"]
+        PB_GITHUB --> PB_NOTES
+        PB_NOTES --> PB_PAGES
+    end
+
+    TRIGGER --> BL_CHECKOUT
+    BL_SBOM --> SG_SIGSTORE
+    SG_VERIFY --> PB_GITHUB
+
+    PB_PAGES --> RELEASED["Release<br/>Published"]
+
+    BL_TEST -->|"Tests Fail"| ABORT["Release<br/>Aborted"]
+
+    NOTE_REL["Note: Release-drafter categories<br/>auto-label changelog entries"]
+
+    style NOTE_REL fill:#fffbeb,stroke:#f59e0b,stroke-width:1px
+    style TRIGGER fill:#2563eb,color:#ffffff,stroke:#1e40af
+    style RELEASED fill:#059669,color:#ffffff,stroke:#047857
+    style ABORT fill:#dc2626,color:#ffffff,stroke:#991b1b

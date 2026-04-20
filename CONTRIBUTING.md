@@ -153,3 +153,9 @@ Apache 2.0. By contributing, you agree your contributions are licensed under the
 ## Questions
 
 Open a GitHub discussion or an issue using the appropriate template.
+
+## Repository invariants
+
+The monorepo structure and packaging rules are load-bearing. Read [AGENTS.md § Repository Invariants](AGENTS.md#repository-invariants) before making changes. Any PR that modifies an invariant requires an ADR referencing ADR-031 (PEP 420 namespace package) or ADR-028 (monorepo consolidation), as applicable.
+
+The five named technical invariants (I1 through I5) protect: the PEP 420 namespace, the CLI lazy-import bridge, the install order, Canon's read-only status for code, and the canon-change governance process.

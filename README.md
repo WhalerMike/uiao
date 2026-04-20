@@ -82,3 +82,16 @@ in [`core/.github/workflows/`](core/.github/workflows/)):
 ## License
 
 Apache 2.0. See [`LICENSE`](LICENSE).
+
+## Repository Structure
+
+UIAO is organized with explicit directory intent:
+
+- `src/uiao/` — Core Canon (SSOT, ADRs, schemas, rules, KSI, registries) + CLI bridge. **Protected**: canon changes require an ADR.
+- `impl/` — Python implementation layer (adapters, governance, OSCAL, IR pipeline)
+- `core/` — Non-Python reference material (architecture, config, compliance PDFs)
+- `docs/` — Documentation source only (`.qmd`, `.md`, `.yml`); binary output is generated
+- `scripts/` — Workspace tooling (bootstrap, validators)
+- `inbox/` — Draft staging (promoted to canon or docs when ready)
+
+Directory intent, technical invariants, and canon-change rules are documented in [AGENTS.md § Repository Invariants](AGENTS.md#repository-invariants). Any change that crosses an invariant requires an ADR.

@@ -1,0 +1,82 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2563eb', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#1e40af', 'lineColor': '#6b7280', 'secondaryColor': '#f7f5f0', 'tertiaryColor': '#e5e7eb'}}}%%
+%% ---
+%% diagram_id: DIAG_040
+%% title: "UIAO Canon Governance Flow"
+%% version: "1.0"
+%% status: ACTIVE
+%% classification: Controlled
+%% owner: Michael Stratton
+%% source_format: mermaid
+%% document_category: governance
+%% form_factors:
+%%   - full
+%%   - nano
+%% created_at: 2026-04-18
+%% updated_at: 2026-04-18
+%% boundary: GCC-Moderate
+%% description: "End-to-end governance flow from proposal through ADR, schema validation, drift scan, and merge to canonical main."
+%% tags:
+%%   - governance
+%%   - canon
+%%   - ADR
+%%   - workflow
+%% related_documents:
+%%   - UIAO_001
+%%   - UIAO_200
+%%   - UIAO_201
+%% nano_config:
+%%   max_nodes: 12
+%%   collapse_groups:
+%%     - subgraph_proposal
+%%     - subgraph_ci_gates
+%%   label_mode: abbreviated
+%%   edge_simplification: true
+%%   hide_annotations: true
+%% ---
+
+graph TD
+    CHANGE["Canon Change<br/>Proposed"]
+
+    subgraph subgraph_proposal ["Proposal & ADR"]
+        PR_ASSESS["Impact<br/>Assessment"]
+        PR_ADR["ADR Drafted<br/>Decision Recorded"]
+        PR_REVIEW["Canon Steward<br/>Review"]
+        PR_ASSESS --> PR_ADR
+        PR_ADR --> PR_REVIEW
+    end
+
+    subgraph subgraph_ci_gates ["CI Enforcement Gates"]
+        CI_META["metadata-validator<br/>Frontmatter Schema"]
+        CI_DRIFT["drift-scan<br/>Provenance Check"]
+        CI_APPEND["appendix-sync<br/>Index Integrity"]
+        CI_DASH["dashboard-export<br/>Schema Readiness"]
+        CI_LINK["link-check<br/>Reference Integrity"]
+        CI_SBOM["sbom-audit<br/>Dependency Scan"]
+        CI_META --> CI_DRIFT
+        CI_DRIFT --> CI_APPEND
+        CI_APPEND --> CI_DASH
+        CI_DASH --> CI_LINK
+        CI_LINK --> CI_SBOM
+    end
+
+    subgraph subgraph_merge ["Merge & Publish"]
+        MG_SQUASH["Squash Merge<br/>to main"]
+        MG_REGISTRY["Registry<br/>Auto-Update"]
+        MG_DEPLOY["Docs Site<br/>Rebuild"]
+        MG_SQUASH --> MG_REGISTRY
+        MG_REGISTRY --> MG_DEPLOY
+    end
+
+    CHANGE --> PR_ASSESS
+    PR_REVIEW --> CI_META
+    CI_SBOM --> MG_SQUASH
+
+    MG_DEPLOY --> CANON["Canon<br/>Updated"]
+
+    CI_DRIFT -->|"DRIFT-PROVENANCE"| PR_ASSESS
+
+    NOTE_BLOCK["Note: All 6 gates are<br/>CI-blocking on every PR"]
+
+    style NOTE_BLOCK fill:#fffbeb,stroke:#f59e0b,stroke-width:1px
+    style CHANGE fill:#2563eb,color:#ffffff,stroke:#1e40af
+    style CANON fill:#059669,color:#ffffff,stroke:#047857
