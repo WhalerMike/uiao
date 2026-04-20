@@ -15,7 +15,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 import yaml
 
 from uiao.config import Settings
@@ -372,7 +371,9 @@ class TestBuildBriefing:
         assert size_without < size_with
 
     def test_build_with_real_overlays(self, tmp_path):
-        """End-to-end with a real vendor-overlays/ dir populates Page 2."""
+        """End-to-end smoke: vendor-overlays/ present -> build produces a
+        non-empty DOCX. Content verification of Page 2 specifically is left
+        to a future test that inspects word/document.xml."""
         overlays_dir = tmp_path / "data" / "vendor-overlays"
         overlays_dir.mkdir(parents=True)
         (overlays_dir / "splunk.yaml").write_text(
