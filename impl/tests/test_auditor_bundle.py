@@ -3,7 +3,7 @@ import pathlib
 
 import pytest
 
-from uiao.impl.auditor.bundle import build_auditor_bundle
+from uiao.auditor.bundle import build_auditor_bundle
 
 FAKE = {
     "assessment_metadata": {

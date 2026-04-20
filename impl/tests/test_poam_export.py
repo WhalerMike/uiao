@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from uiao.impl.evidence.bundle import build_bundle_from_transform_result
-from uiao.impl.evidence.poam import build_poam, poam_summary, poam_to_json
+from uiao.evidence.bundle import build_bundle_from_transform_result
+from uiao.evidence.poam import build_poam, poam_summary, poam_to_json
 from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
 

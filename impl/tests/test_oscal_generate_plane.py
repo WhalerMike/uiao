@@ -25,7 +25,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Module under test
 # ---------------------------------------------------------------------------
-from uiao.impl.oscal.generator import (
+from uiao.oscal.generator import (
     _build_implemented_requirements,
     _build_poam_items,
     _det_uuid,

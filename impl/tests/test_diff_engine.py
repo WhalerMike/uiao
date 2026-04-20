@@ -1,5 +1,5 @@
 import json
-from uiao.impl.diff.engine import diff_runs, format_diff_markdown, format_diff_json
+from uiao.diff.engine import diff_runs, format_diff_markdown, format_diff_json
 from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
 

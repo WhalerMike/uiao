@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from uiao.impl.coverage.coverage import CoverageLink
-from uiao.impl.governance.actions import GovernanceAction
-from uiao.impl.ssp.narrative import build_control_narratives, format_ssp_markdown
+from uiao.coverage.coverage import CoverageLink
+from uiao.governance.actions import GovernanceAction
+from uiao.ssp.narrative import build_control_narratives, format_ssp_markdown
 
 
 def _link(control: str = "IA-2", ksi: str = "KSI-IA-01", evidence_id: str = "e1") -> CoverageLink:

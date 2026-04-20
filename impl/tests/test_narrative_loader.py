@@ -26,7 +26,7 @@ def _write_yaml(path: Path, data: dict) -> None:
 
 def test_load_empty_dir(tmp_path: Path) -> None:
     """Returns an empty dict when the control-library directory has no YAMLs."""
-    from uiao.impl.generators.narrative_loader import load_control_library
+    from uiao.generators.narrative_loader import load_control_library
 
     control_lib = tmp_path / "control-library"
     control_lib.mkdir()
@@ -37,7 +37,7 @@ def test_load_empty_dir(tmp_path: Path) -> None:
 
 def test_load_renders_jinja2(tmp_path: Path) -> None:
     """{{ organization.name }} and {{ parameters['x'] }} are rendered correctly."""
-    from uiao.impl.generators.narrative_loader import load_control_library
+    from uiao.generators.narrative_loader import load_control_library
 
     control_lib = tmp_path / "control-library"
     _write_yaml(
@@ -74,7 +74,7 @@ def test_load_renders_jinja2(tmp_path: Path) -> None:
 
 def test_load_handles_missing_vars(tmp_path: Path) -> None:
     """Missing Jinja2 variables render as [TBD], not a crash."""
-    from uiao.impl.generators.narrative_loader import load_control_library
+    from uiao.generators.narrative_loader import load_control_library
 
     control_lib = tmp_path / "control-library"
     _write_yaml(
@@ -107,7 +107,7 @@ def test_load_handles_missing_vars(tmp_path: Path) -> None:
 
 def test_both_implemented_by_schemas(tmp_path: Path) -> None:
     """Both simple-string and typed-object implemented_by schemas are handled."""
-    from uiao.impl.generators.narrative_loader import (
+    from uiao.generators.narrative_loader import (
         load_control_library,
         _normalise_implemented_by,
     )

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from uiao.impl.ir.models.core import Evidence, ProvenanceRecord
+from uiao.ir.models.core import Evidence, ProvenanceRecord
 
 
 def _prov() -> ProvenanceRecord:

@@ -1,4 +1,4 @@
-"""Tests for uiao.impl.cli.app module."""
+"""Tests for uiao.cli.app module."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from uiao.impl.cli.app import app
+from uiao.cli.app import app
 
 runner = CliRunner()
 
@@ -68,7 +68,7 @@ class TestCLIBasics:
     def test_generate_docs_runs(self, tmp_path) -> None:
         """generate-docs runs without crashing on a minimal project structure."""
         with patch(
-            "uiao.impl.generators.docs.build_docs",
+            "uiao.generators.docs.build_docs",
             return_value=["docs/test.md"],
         ) as mock_build:
             result = runner.invoke(
@@ -391,14 +391,14 @@ class TestGenerateAll:
     def test_generate_all_runs_all_steps(self, tmp_path) -> None:
         """generate-all invokes every generator and reports success."""
         patches = [
-            patch("uiao.impl.generators.plantuml.render_plantuml_dir", return_value=["img1.png", "img2.png"]),
-            patch("uiao.impl.generators.docs.build_docs", return_value=["docs/a.md", "docs/b.md"]),
-            patch("uiao.impl.generators.oscal.build_oscal", return_value=tmp_path / "oscal.json"),
-            patch("uiao.impl.generators.ssp.build_ssp", return_value=tmp_path / "ssp.json"),
-            patch("uiao.impl.generators.poam.build_poam_export", return_value=tmp_path / "poam.json"),
-            patch("uiao.impl.generators.rich_docx.build_rich_docx", return_value=tmp_path / "brief.docx"),
-            patch("uiao.impl.generators.pptx.build_pptx", return_value=tmp_path / "deck.pptx"),
-            patch("uiao.impl.generators.sbom.build_sbom", return_value=tmp_path / "sbom.json"),
+            patch("uiao.generators.plantuml.render_plantuml_dir", return_value=["img1.png", "img2.png"]),
+            patch("uiao.generators.docs.build_docs", return_value=["docs/a.md", "docs/b.md"]),
+            patch("uiao.generators.oscal.build_oscal", return_value=tmp_path / "oscal.json"),
+            patch("uiao.generators.ssp.build_ssp", return_value=tmp_path / "ssp.json"),
+            patch("uiao.generators.poam.build_poam_export", return_value=tmp_path / "poam.json"),
+            patch("uiao.generators.rich_docx.build_rich_docx", return_value=tmp_path / "brief.docx"),
+            patch("uiao.generators.pptx.build_pptx", return_value=tmp_path / "deck.pptx"),
+            patch("uiao.generators.sbom.build_sbom", return_value=tmp_path / "sbom.json"),
         ]
 
         with contextlib.ExitStack() as stack:
@@ -425,13 +425,13 @@ class TestGenerateAll:
     def test_generate_all_skip_sbom(self, tmp_path) -> None:
         """--skip-sbom skips SBOM generation and still exits 0."""
         patches = [
-            patch("uiao.impl.generators.plantuml.render_plantuml_dir", return_value=[]),
-            patch("uiao.impl.generators.docs.build_docs", return_value=[]),
-            patch("uiao.impl.generators.oscal.build_oscal", return_value=tmp_path / "o.json"),
-            patch("uiao.impl.generators.ssp.build_ssp", return_value=tmp_path / "s.json"),
-            patch("uiao.impl.generators.poam.build_poam_export", return_value=tmp_path / "p.json"),
-            patch("uiao.impl.generators.rich_docx.build_rich_docx", return_value=tmp_path / "d.docx"),
-            patch("uiao.impl.generators.pptx.build_pptx", return_value=tmp_path / "p.pptx"),
+            patch("uiao.generators.plantuml.render_plantuml_dir", return_value=[]),
+            patch("uiao.generators.docs.build_docs", return_value=[]),
+            patch("uiao.generators.oscal.build_oscal", return_value=tmp_path / "o.json"),
+            patch("uiao.generators.ssp.build_ssp", return_value=tmp_path / "s.json"),
+            patch("uiao.generators.poam.build_poam_export", return_value=tmp_path / "p.json"),
+            patch("uiao.generators.rich_docx.build_rich_docx", return_value=tmp_path / "d.docx"),
+            patch("uiao.generators.pptx.build_pptx", return_value=tmp_path / "p.pptx"),
         ]
 
         with contextlib.ExitStack() as stack:
@@ -446,14 +446,14 @@ class TestGenerateAll:
     def test_generate_all_partial_failure_exits_nonzero(self, tmp_path) -> None:
         """generate-all exits with code 1 and reports errors when a generator raises."""
         patches = [
-            patch("uiao.impl.generators.plantuml.render_plantuml_dir", return_value=[]),
-            patch("uiao.impl.generators.docs.build_docs", side_effect=RuntimeError("template missing")),
-            patch("uiao.impl.generators.oscal.build_oscal", return_value=tmp_path / "o.json"),
-            patch("uiao.impl.generators.ssp.build_ssp", return_value=tmp_path / "s.json"),
-            patch("uiao.impl.generators.poam.build_poam_export", return_value=tmp_path / "p.json"),
-            patch("uiao.impl.generators.rich_docx.build_rich_docx", return_value=tmp_path / "d.docx"),
-            patch("uiao.impl.generators.pptx.build_pptx", return_value=tmp_path / "p.pptx"),
-            patch("uiao.impl.generators.sbom.build_sbom", return_value=tmp_path / "sbom.json"),
+            patch("uiao.generators.plantuml.render_plantuml_dir", return_value=[]),
+            patch("uiao.generators.docs.build_docs", side_effect=RuntimeError("template missing")),
+            patch("uiao.generators.oscal.build_oscal", return_value=tmp_path / "o.json"),
+            patch("uiao.generators.ssp.build_ssp", return_value=tmp_path / "s.json"),
+            patch("uiao.generators.poam.build_poam_export", return_value=tmp_path / "p.json"),
+            patch("uiao.generators.rich_docx.build_rich_docx", return_value=tmp_path / "d.docx"),
+            patch("uiao.generators.pptx.build_pptx", return_value=tmp_path / "p.pptx"),
+            patch("uiao.generators.sbom.build_sbom", return_value=tmp_path / "sbom.json"),
         ]
 
         with contextlib.ExitStack() as stack:

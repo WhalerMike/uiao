@@ -121,9 +121,10 @@ FLATTEN_DST_ROOT = "src/uiao"
 # files instead of moving the whole directory.
 FLATTEN_MERGE_DIRS = {"ksi"}
 
-# Name collision: src/uiao/cli.py (file) vs impl/src/uiao/impl/cli/ (dir).
-# We do NOT auto-resolve — we log a warning. User decides how to fold them.
-FLATTEN_SKIP_DIRS = {"cli"}
+# Previously we skipped 'cli' due to the src/uiao/cli.py vs impl/cli/ collision.
+# That bridge file has been removed manually; the cli subpackage now flattens
+# cleanly into src/uiao/cli/.
+FLATTEN_SKIP_DIRS: set[str] = set()
 
 
 # --------------------------------------------------------------------------- #

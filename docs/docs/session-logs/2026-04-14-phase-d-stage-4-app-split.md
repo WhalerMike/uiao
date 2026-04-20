@@ -41,7 +41,7 @@ Safe sequencing:
 | `orchestrator/` | (small) | `orchestrator.py` imports `uiao_core` |
 | `inject_ssp.py` (root) | 1 file | `uiao_core`-importing |
 | `write_engine.py` (root) | 1 file | `uiao_core`-importing |
-| `pyproject.toml` | — | Rename `name = "uiao-core"` → `"uiao-impl"`, CLI entry `uiao_core.cli.app:app` → `uiao.impl.cli.app:app` |
+| `pyproject.toml` | — | Rename `name = "uiao-core"` → `"uiao-impl"`, CLI entry `uiao_core.cli.app:app` → `uiao.cli.app:app` |
 
 ### B. Stays in `uiao-core`
 

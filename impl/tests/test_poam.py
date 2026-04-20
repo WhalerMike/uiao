@@ -1,17 +1,17 @@
-"""Tests for uiao.impl.models.poam and uiao.impl.generators.poam_rules."""
+"""Tests for uiao.models.poam and uiao.generators.poam_rules."""
 
 from __future__ import annotations
 
 import uuid
 
-from uiao.impl.generators.poam_rules import (
+from uiao.generators.poam_rules import (
     _evaluate_low_maturity,
     _evaluate_missing_control,
     _evaluate_missing_evidence,
     evaluate_rules,
     load_rules,
 )
-from uiao.impl.models.poam import (
+from uiao.models.poam import (
     POAMEntry,
     POAMRule,
     RemediationStatus,

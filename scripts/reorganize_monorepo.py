@@ -171,7 +171,7 @@ uiao = "uiao.cli:main"
 
 # This pyproject covers only src/uiao/*. The existing impl/ subtree is
 # installed separately via `pip install -e impl/` and contributes
-# uiao.impl.* to the same PEP 420 `uiao` namespace at runtime.
+# uiao.* to the same PEP 420 `uiao` namespace at runtime.
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["uiao*"]
@@ -189,8 +189,8 @@ namespaces = true
 CLI_PY = '''\
 """uiao CLI entry point (top-level).
 
-Thin bridge over the existing Typer app at `uiao.impl.cli.app:app`.
-As adapters migrate from `uiao.impl.*` into `uiao.*` directly, this
+Thin bridge over the existing Typer app at `uiao.cli.app:app`.
+As adapters migrate from `uiao.*` into `uiao.*` directly, this
 file can absorb those commands.
 
 Today this enables:
@@ -203,7 +203,7 @@ from __future__ import annotations
 
 def main() -> int:
     # Lazy import so the bridge costs nothing at package-load time.
-    from uiao.impl.cli.app import app
+    from uiao.cli.app import app
     app()
     return 0
 

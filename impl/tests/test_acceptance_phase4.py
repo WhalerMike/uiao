@@ -90,7 +90,7 @@ class TestEntraIdAcceptance:
     def test_a4_oscal_sar_from_real_data(self, adapter) -> None:
         """A6: Full OSCAL SAR from real Entra data."""
         from uiao.adapters.adapter_to_oscal import build_adapter_bundle
-        from uiao.impl.generators.sar import build_sar
+        from uiao.generators.sar import build_sar
 
         result = adapter.collect_and_align()
         records = result.get("claims", {}).get("claims", [])

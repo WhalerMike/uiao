@@ -7,18 +7,18 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from uiao.impl.cli.app import app
-from uiao.impl.freshness.engine import (
+from uiao.cli.app import app
+from uiao.freshness.engine import (
     FreshnessRecord,
 )
-from uiao.impl.freshness.scheduler import (
+from uiao.freshness.scheduler import (
     _urgency,
     build_refresh_schedule,
     group_jobs_by_owner,
     schedule_summary,
 )
-from uiao.impl.governance.actions import GovernanceAction
-from uiao.impl.ir.models.core import Evidence, ProvenanceRecord
+from uiao.governance.actions import GovernanceAction
+from uiao.ir.models.core import Evidence, ProvenanceRecord
 
 runner = CliRunner()
 

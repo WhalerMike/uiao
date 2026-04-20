@@ -24,7 +24,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Module under test
 # ---------------------------------------------------------------------------
-from uiao.impl.ksi.evaluate import (
+from uiao.ksi.evaluate import (
     _build_evidence_index,
     _build_summary,
     _evaluate_control,
