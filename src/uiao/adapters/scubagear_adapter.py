@@ -199,7 +199,7 @@ class ScubaGearAdapter(DatabaseAdapterBase):
             source = "no-report-loaded"
 
         return ConnectionProvenance(
-            identity=f"scuba:{source}",
+            identity=f"scubagear:{source}",
             auth_method="file",
             endpoint=source,
             tls_version="N/A",
@@ -222,10 +222,10 @@ class ScubaGearAdapter(DatabaseAdapterBase):
             "NoSuchEvent": "boolean",
         }
         canonical_schema = {
-            "identity": "scuba:<product>:<policy_id>",
+            "identity": "scubagear:<product>:<policy_id>",
             "control_id": "<mapped via SCUBA_TO_KSI_MAP>",
             "implementation_statement": "<policy description>",
-            "evidence.source": "scuba",
+            "evidence.source": "scubagear",
             "evidence.timestamp": "<report_date>",
             "evidence.record_hash": "sha256(<policy_result>)",
         }
@@ -288,7 +288,7 @@ class ScubaGearAdapter(DatabaseAdapterBase):
                 passed = False
 
             claim_payload = {
-                "identity": f"scuba:{policy_id}",
+                "identity": f"scubagear:{policy_id}",
                 "control_id": control_id,
                 "implementation_statement": description or f"SCuBA policy {policy_id}",
                 "vendor_overlay_ref": "scuba.yaml",
@@ -300,8 +300,8 @@ class ScubaGearAdapter(DatabaseAdapterBase):
             }
 
             claim = ClaimObject(
-                claim_id=f"scuba:{policy_id}",
-                entity=f"scuba:policy:{policy_id}",
+                claim_id=f"scubagear:{policy_id}",
+                entity=f"scubagear:policy:{policy_id}",
                 fields=claim_payload,
                 source=self.ADAPTER_ID,
                 provenance_hash=self._hash(result),
@@ -322,11 +322,12 @@ class ScubaGearAdapter(DatabaseAdapterBase):
         results = self._extract_results()
         failing = [r for r in results if not r.get("RequirementMet", False)]
         return DriftReport(
-            drift_type="scuba-policy-regression",
+            drift_type="scubagear-policy-regression",
             severity="high" if failing else "none",
             first_observed=self._now(),
             last_observed=self._now(),
             details={
+                "adapter": self.ADAPTER_ID,
                 "total_policies": len(results),
                 "failing_policies": len(failing),
                 "failing_ids": [r.get("PolicyId") for r in failing[:10]],

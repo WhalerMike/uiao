@@ -98,7 +98,7 @@ class TestScubaGearAdapterConnect:
 
     def test_connect_provenance_identity(self, adapter: ScubaGearAdapter, report_file: Path) -> None:
         provenance = adapter.connect()
-        assert "scuba:" in provenance.identity
+        assert "scubagear:" in provenance.identity
         assert provenance.auth_method == "file"
 
     def test_extract_results(self, adapter: ScubaGearAdapter) -> None:
@@ -161,7 +161,7 @@ class TestScubaGearAdapterCollectAndAlign:
 class TestScubaGearAdapterDriftDetection:
     def test_detect_drift_has_failing(self, adapter: ScubaGearAdapter) -> None:
         report = adapter.detect_drift()
-        assert report.drift_type == "scuba-policy-regression"
+        assert report.drift_type == "scubagear-policy-regression"
         assert report.severity == "high"
         assert report.details["failing_policies"] == 1
 
