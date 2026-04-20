@@ -1,0 +1,103 @@
+# yaml-language-server: $schema=../../../schemas/orgpath/drift-engine-config.schema.json
+#
+# UIAO OrgTree Drift Engine Configuration
+# =======================================
+# Canonical source: src/uiao/modernization/orgtree/MOD_M_Drift_Detection_Engine_Specification.md
+# Binding ADR:      src/uiao/canon/adr/adr-040-drift-engine.md
+# Related ADRs:     ADR-012 (canonical drift taxonomy),
+#                   ADR-035 (MOD_A), ADR-036 (MOD_B),
+#                   ADR-037 (MOD_D), ADR-038 (MOD_C),
+#                   ADR-039 (MOD_N)
+#
+# Declares which OrgTree phases participate in a drift scan, how each
+# phase adapter's planned operation types map to the ADR-012 drift
+# taxonomy (drift_class) + a severity, and the global remediation
+# policy. The engine orchestrator consumes this file at startup;
+# changing the map requires a governed PR.
+#
+# Principle: `dry_run: true` everywhere by default. Write-mode
+# remediation is an explicit opt-in, and governance-review op types are
+# NEVER auto-applied regardless of flag.
+
+schema_version: "1.0.0"
+document_id: MOD_M
+parent_canon: UIAO_007
+updated: "2026-04-20"
+
+defaults:
+  dry_run: true
+  severity_floor: P4         # findings below this severity are dropped
+  halt_on_critical: true     # if any P1 finding fires, skip remediation pass
+
+# ---------------------------------------------------------------------------
+# Participating phases. Each phase names the adapter module the engine
+# imports + invokes, and the op-type → drift_class + severity mapping
+# the engine applies when building the unified finding stream.
+#
+# drift_class values (ADR-012 + ADR-033):
+#   DRIFT-SCHEMA, DRIFT-SEMANTIC, DRIFT-PROVENANCE, DRIFT-AUTHZ,
+#   DRIFT-IDENTITY, DRIFT-BOUNDARY
+#
+# severity values: P1 (critical) | P2 (high) | P3 (medium) | P4 (low)
+#
+# auto_remediate: true means this op type is applied on apply(dry_run=False);
+# false means it surfaces as a governance-review finding and is never
+# auto-applied (matches each adapter's own governance-review list).
+# ---------------------------------------------------------------------------
+phases:
+  - name: mod-b-dynamic-groups
+    adapter_module: uiao.adapters.entra_dynamic_groups
+    adapter_class: EntraDynamicGroupsAdapter
+    op_map:
+      - { op: create,          drift_class: DRIFT-SCHEMA,    severity: P2, auto_remediate: true }
+      - { op: update,          drift_class: DRIFT-SCHEMA,    severity: P2, auto_remediate: true }
+      - { op: delete-phantom,  drift_class: DRIFT-AUTHZ,     severity: P2, auto_remediate: false }
+
+  - name: mod-d-admin-units
+    adapter_module: uiao.adapters.entra_admin_units
+    adapter_class: EntraAdminUnitsAdapter
+    op_map:
+      - { op: au-create,            drift_class: DRIFT-SCHEMA, severity: P2, auto_remediate: true }
+      - { op: au-update,            drift_class: DRIFT-SCHEMA, severity: P2, auto_remediate: true }
+      - { op: au-delete-phantom,    drift_class: DRIFT-AUTHZ,  severity: P1, auto_remediate: false }
+      - { op: role-create,          drift_class: DRIFT-AUTHZ,  severity: P2, auto_remediate: true }
+      - { op: role-delete-unscoped, drift_class: DRIFT-AUTHZ,  severity: P1, auto_remediate: false }
+      - { op: role-delete-phantom,  drift_class: DRIFT-AUTHZ,  severity: P1, auto_remediate: false }
+
+  - name: mod-c-device-orgpath
+    adapter_module: uiao.adapters.entra_device_orgpath
+    adapter_class: EntraDeviceOrgPathAdapter
+    op_map:
+      - { op: device-ext-create,      drift_class: DRIFT-IDENTITY, severity: P3, auto_remediate: true }
+      - { op: device-ext-update,      drift_class: DRIFT-IDENTITY, severity: P3, auto_remediate: true }
+      - { op: device-phantom-orgpath, drift_class: DRIFT-IDENTITY, severity: P2, auto_remediate: false }
+      - { op: arc-tag-create,         drift_class: DRIFT-IDENTITY, severity: P3, auto_remediate: true }
+      - { op: arc-tag-update,         drift_class: DRIFT-IDENTITY, severity: P3, auto_remediate: true }
+      - { op: arc-phantom-orgpath,    drift_class: DRIFT-IDENTITY, severity: P2, auto_remediate: false }
+      - { op: skip-no-plane,          drift_class: DRIFT-PROVENANCE, severity: P4, auto_remediate: false }
+
+  - name: mod-n-policy-targeting
+    adapter_module: uiao.adapters.entra_policy_targeting
+    adapter_class: EntraPolicyTargetingAdapter
+    op_map:
+      - { op: intune-assign-create,           drift_class: DRIFT-SCHEMA, severity: P2, auto_remediate: true }
+      - { op: intune-assign-update,           drift_class: DRIFT-SCHEMA, severity: P2, auto_remediate: true }
+      - { op: intune-assign-phantom,          drift_class: DRIFT-AUTHZ,  severity: P1, auto_remediate: false }
+      - { op: intune-profile-missing,         drift_class: DRIFT-PROVENANCE, severity: P3, auto_remediate: false }
+      - { op: arc-policy-create,              drift_class: DRIFT-SCHEMA, severity: P2, auto_remediate: true }
+      - { op: arc-policy-update,              drift_class: DRIFT-SCHEMA, severity: P2, auto_remediate: true }
+      - { op: arc-policy-phantom,             drift_class: DRIFT-AUTHZ,  severity: P1, auto_remediate: false }
+      - { op: arc-policy-definition-missing,  drift_class: DRIFT-PROVENANCE, severity: P3, auto_remediate: false }
+
+# ---------------------------------------------------------------------------
+# Severity policy. `halt_on_critical=true` means the engine refuses to run
+# the remediation pass if ANY finding at or above this level was emitted
+# during the classify pass — phantom AUs + unscoped role assignments are
+# stop-the-line events that warrant a human before touching the tenant.
+# ---------------------------------------------------------------------------
+severity_policy:
+  P1: critical
+  P2: high
+  P3: medium
+  P4: low
+  halt_at: P1
