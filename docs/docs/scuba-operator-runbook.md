@@ -230,7 +230,7 @@ State Machine: ┌──────────┐ create ┌──────
 
 8.3 Complete Pipeline Rebuild
 
-\# 1. Clean environment pip uninstall uiao -y rm -rf .venv/ \# 2. Fresh install python -m venv .venv source .venv/bin/activate \# Linux/Mac pip install -e \'.\[dev\]\' \# 3. Validate pytest tests/ -v \--cov=src/uiao_core \# 4. Re-run pipeline uiao scuba run \--products all uiao ksi evaluate \--ir latest uiao evidence build \--eval latest uiao oscal generate \--evidence latest
+\# 1. Clean environment pip uninstall uiao -y rm -rf .venv/ \# 2. Fresh install python -m venv .venv source .venv/bin/activate \# Linux/Mac pip install -e \'.\[dev\]\' \# 3. Validate pytest tests/ -v \--cov=src/uiao \# 4. Re-run pipeline uiao scuba run \--products all uiao ksi evaluate \--ir latest uiao evidence build \--eval latest uiao oscal generate \--evidence latest
 
 9\. Operational Metrics
 
