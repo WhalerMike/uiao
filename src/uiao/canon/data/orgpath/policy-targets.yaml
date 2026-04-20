@@ -1,0 +1,122 @@
+# yaml-language-server: $schema=../../../schemas/orgpath/policy-targets.schema.json
+#
+# UIAO OrgTree Policy Targeting Canon
+# ===================================
+# Canonical source: src/uiao/modernization/orgtree/MOD_N_Execution_Substrate_Integration_Layer.md
+# Binding ADR:      src/uiao/canon/adr/adr-039-policy-targeting.md
+# Depends on:       canon/data/orgpath/codebook.yaml         (MOD_A / ADR-035)
+#                   canon/data/orgpath/dynamic-groups.yaml   (MOD_B / ADR-036)
+#                   canon/data/orgpath/device-planes.yaml    (MOD_C / ADR-038)
+#
+# This file declares how existing Intune configuration policies and
+# Azure Policy definitions are **targeted** at the OrgTree. Policy
+# **bodies** are not authored here — that is the job of the GPO-to-Intune
+# migration and the Azure Landing Zone playbooks. Phase 5 ships the
+# binding layer: which policy points at which OrgTree-* group (Intune)
+# or which OrgPath ARM tag pattern (Arc).
+#
+# Boundary: GCC-Moderate on both transports (Microsoft Graph for Intune;
+# Azure Resource Manager for Arc).
+
+schema_version: "1.0.0"
+document_id: MOD_N
+parent_canon: UIAO_007
+updated: "2026-04-20"
+
+# ---------------------------------------------------------------------------
+# Intune — device configuration profiles + compliance policies assigned to
+# OrgTree-* dynamic groups (MOD_B). Each entry is one (profile, group)
+# assignment. `intent: include` adds the group to the profile's
+# `assignments[]`; `intent: exclude` adds an exclusion target.
+#
+# `profile_ref.match_by` tells the adapter how to resolve the tenant
+# profile when the plan runs: `displayName` (recommended — stable) or
+# `id` (fixed GUID, tenant-specific).
+# ---------------------------------------------------------------------------
+intune_assignments:
+  - profile_ref:
+      kind: configurationPolicy
+      match_by: displayName
+      value: Intune-Baseline-Endpoint-Security
+    target_group: OrgTree-IT-Users
+    intent: include
+    purpose: Baseline endpoint security for IT division devices
+
+  - profile_ref:
+      kind: configurationPolicy
+      match_by: displayName
+      value: Intune-Exec-Enhanced-Compliance
+    target_group: OrgTree-EXEC-Users
+    intent: include
+    purpose: Enhanced compliance + MFA enforcement for Executive leadership
+
+  - profile_ref:
+      kind: deviceCompliancePolicy
+      match_by: displayName
+      value: Intune-FIN-Data-Handling
+    target_group: OrgTree-FIN-Users
+    intent: include
+    purpose: Finance data-handling compliance for AP/AR/Budget
+
+  - profile_ref:
+      kind: deviceCompliancePolicy
+      match_by: displayName
+      value: Intune-SOC-Privileged-Workstation
+    target_group: OrgTree-IT-SEC-SOC-Users
+    intent: include
+    purpose: Privileged workstation profile for SOC Tier 1+2 analysts
+
+  - profile_ref:
+      kind: configurationPolicy
+      match_by: displayName
+      value: Intune-Unmanaged-Exclusion
+    target_group: OrgTree-IT-Users
+    intent: exclude
+    purpose: Exclude IT admins from the unmanaged-device broad policy
+
+# ---------------------------------------------------------------------------
+# Azure Policy — assignments scoped to Arc-enrolled machines by ARM tag
+# `OrgPath=<prefix-pattern>`. Phase 4 writes the tags; Phase 5 binds
+# existing Azure Policy definitions to those tags.
+#
+# `orgpath_selector`:
+#   * prefix        — canon-enforced prefix of an OrgPath. Must be the
+#                     root `ORG` or an active codebook entry.
+#   * match_mode    — `startsWith` (subtree) or `equals` (exact node).
+# ---------------------------------------------------------------------------
+arc_policy_assignments:
+  - assignment_name: OrgTree-IT-Infra-Baseline
+    policy_definition:
+      match_by: displayName
+      value: Azure-Arc-Machine-Baseline-Config
+    orgpath_selector:
+      prefix: ORG-IT-INF
+      match_mode: startsWith
+    purpose: Apply Infrastructure baseline config to all IT-INF Arc servers
+
+  - assignment_name: OrgTree-FIN-Data-Residency
+    policy_definition:
+      match_by: displayName
+      value: Azure-Arc-Data-Residency-US
+    orgpath_selector:
+      prefix: ORG-FIN
+      match_mode: startsWith
+    purpose: Data residency assertion for all Finance Arc servers
+
+  - assignment_name: OrgTree-SOC-Audit-Logging
+    policy_definition:
+      match_by: displayName
+      value: Azure-Arc-Enhanced-Audit-Logging
+    orgpath_selector:
+      prefix: ORG-IT-SEC-SOC
+      match_mode: startsWith
+    purpose: Verbose audit logging for SOC-owned Arc servers
+
+  - assignment_name: OrgTree-Enterprise-Defender-Baseline
+    policy_definition:
+      match_by: displayName
+      value: Azure-Arc-Defender-Enrollment
+    orgpath_selector:
+      prefix: ORG
+      match_mode: startsWith
+    purpose: Enroll every governed Arc machine into Microsoft Defender

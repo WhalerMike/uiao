@@ -1,0 +1,68 @@
+{
+  "description": "Synthetic tenant state for MOD_N / ADR-039 contract tests. Mirrors the Graph endpoints the adapter reconciles against: GET /deviceManagement/configurationPolicies + /deviceCompliancePolicies, their /assignments, and GET /providers/Microsoft.Authorization/policyAssignments scoped to OrgTree-* assignment names.",
+  "intuneProfiles": [
+    { "id": "p-baseline", "displayName": "Intune-Baseline-Endpoint-Security" },
+    { "id": "p-exec",     "displayName": "Intune-Exec-Enhanced-Compliance" },
+    { "id": "p-fin",      "displayName": "Intune-FIN-Data-Handling" },
+    { "id": "p-soc",      "displayName": "Intune-SOC-Privileged-Workstation" },
+    { "id": "p-unmanaged","displayName": "Intune-Unmanaged-Exclusion" }
+  ],
+  "intuneAssignmentsByProfileId": {
+    "p-baseline": [
+      {
+        "id": "a-baseline-it",
+        "target": {
+          "@odata.type": "#microsoft.graph.groupAssignmentTarget",
+          "groupId": "g-orgtree-it-users"
+        }
+      }
+    ],
+    "p-unmanaged": [
+      {
+        "id": "a-unmanaged-wrong",
+        "target": {
+          "@odata.type": "#microsoft.graph.groupAssignmentTarget",
+          "groupId": "g-orgtree-it-users"
+        }
+      }
+    ]
+  },
+  "groupIdResolver": {
+    "OrgTree-IT-Users": "g-orgtree-it-users",
+    "OrgTree-EXEC-Users": "g-orgtree-exec-users",
+    "OrgTree-FIN-Users": "g-orgtree-fin-users",
+    "OrgTree-IT-SEC-SOC-Users": "g-orgtree-soc-users"
+  },
+  "arcAssignments": [
+    {
+      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/policyAssignments/OrgTree-IT-Infra-Baseline",
+      "name": "OrgTree-IT-Infra-Baseline",
+      "properties": {
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/def-baseline",
+        "scope": "/subscriptions/00000000-0000-0000-0000-000000000000",
+        "parameters": {
+          "orgPathPrefix": { "value": "ORG-IT-INF" },
+          "matchMode":     { "value": "startsWith" }
+        }
+      }
+    },
+    {
+      "id": "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/policyAssignments/OrgTree-FIN-Data-Residency",
+      "name": "OrgTree-FIN-Data-Residency",
+      "properties": {
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/def-data-residency",
+        "scope": "/subscriptions/00000000-0000-0000-0000-000000000000",
+        "parameters": {
+          "orgPathPrefix": { "value": "ORG-WRONG" },
+          "matchMode":     { "value": "startsWith" }
+        }
+      }
+    }
+  ],
+  "arcDefinitionIdResolver": {
+    "Azure-Arc-Machine-Baseline-Config":  "/providers/Microsoft.Authorization/policyDefinitions/def-baseline",
+    "Azure-Arc-Data-Residency-US":        "/providers/Microsoft.Authorization/policyDefinitions/def-data-residency",
+    "Azure-Arc-Enhanced-Audit-Logging":   "/providers/Microsoft.Authorization/policyDefinitions/def-audit",
+    "Azure-Arc-Defender-Enrollment":      "/providers/Microsoft.Authorization/policyDefinitions/def-defender"
+  }
+}

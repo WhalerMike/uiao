@@ -36,10 +36,21 @@ from .dynamic_groups import (
     DynamicGroupValidationError,
     load_dynamic_group_library,
 )
+from .policy_targets import (
+    ArcPolicyAssignment,
+    IntuneAssignment,
+    OrgPathSelector,
+    PolicyDefinitionRef,
+    PolicyTargetingCanon,
+    PolicyTargetingValidationError,
+    ProfileRef,
+    load_policy_targeting_canon,
+)
 
 __all__ = [
     "AdminGroup",
     "AdministrativeUnit",
+    "ArcPolicyAssignment",
     "ArmTagSpec",
     "Codebook",
     "CodebookEntry",
@@ -53,6 +64,12 @@ __all__ = [
     "DynamicGroupLibrary",
     "DynamicGroupSpec",
     "DynamicGroupValidationError",
+    "IntuneAssignment",
+    "OrgPathSelector",
+    "PolicyDefinitionRef",
+    "PolicyTargetingCanon",
+    "PolicyTargetingValidationError",
+    "ProfileRef",
     "RoleAssignment",
     "RoleTemplate",
     "SkipDisposition",
@@ -60,4 +77,5 @@ __all__ = [
     "load_delegation_matrix",
     "load_device_plane_registry",
     "load_dynamic_group_library",
+    "load_policy_targeting_canon",
 ]
