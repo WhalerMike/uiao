@@ -2,7 +2,7 @@
 
 ## Canon Overview
 * [Introduction](README.md)
-* [Canonical Rules](https://github.com/WhalerMike/uiao/blob/main/canon/canonical-rules.md)
+* [Canonical Rules](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/canonical-rules.md)
 * [Glossary](docs/canon/glossary.md)
 * [Migration Plan](docs/canon/migration-plan.md)
 * [PDF Book Layout Specification](docs/canon/pdf-layout-spec.md)
