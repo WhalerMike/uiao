@@ -770,3 +770,62 @@ adapters:
       definitions MUST accept the canonical parameters `orgPathPrefix`
       and `matchMode` — policy authors follow this contract or surface
       as drift.
+
+  - id: orgtree-drift-engine
+    name: OrgTree Drift Detection Engine — MOD_M Six-Phase Orchestrator
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — orchestrator over the four OrgTree phase
+      adapters (MOD_B/D/C/N). Implements MOD_M's Snapshot → Compare →
+      Classify → Alert → Remediate → Verify loop. Does not talk to
+      Microsoft Graph or ARM directly; delegates planning to each phase
+      adapter. Classified as `integration` per UIAO_003 §4.7 because
+      Remediate may issue writes through the delegated adapters. Halts
+      the remediation pass entirely if any finding at severity >= P1
+      fires during Classify (halt_on_critical = true).
+    status: active
+    phase: phase-1
+    vendor: Microsoft
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - orgtree-drift-observation
+      - unified-finding-stream
+      - cross-phase-remediation
+    outputs:
+      - drift-scan-report.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+      - schedule
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CA-7
+      - CM-6
+      - CM-8
+      - AC-6
+      - SI-4
+    automation-domain:
+      - configuration-management
+      - event-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - UIAO_007
+    notes: >-
+      Binds to MOD_M through ADR-040; executable config at
+      canon/data/orgpath/drift-engine-config.yaml, JSON Schema at
+      schemas/orgpath/drift-engine-config.schema.json. Composes the
+      four Phase 2–5 adapters (entra-dynamic-groups,
+      entra-admin-units, entra-device-orgpath,
+      entra-policy-targeting). Implementation:
+      src/uiao/governance/drift_engine.py. dry_run=True is the default
+      everywhere; governance-review ops (auto_remediate=false) are
+      never dispatched regardless of flag.
