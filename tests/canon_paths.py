@@ -33,7 +33,12 @@ def _resolve_canon_root() -> Path:
         candidate = Path(env).expanduser().resolve()
         if candidate.exists():
             return candidate
-    # Monorepo layout: impl/ and core/ are siblings under the repo root.
+    # Post-reorg layout: canon ships inside the uiao package.
+    repo_root = _PROJECT_ROOT.parent if _PROJECT_ROOT.name == "impl" else _PROJECT_ROOT
+    pkg_canon = (repo_root / "src" / "uiao" / "canon").resolve()
+    if (pkg_canon / "data" / "control-library").is_dir():
+        return pkg_canon
+    # Pre-reorg monorepo layout: core/ sibling of impl/.
     monorepo_core = (_PROJECT_ROOT.parent / "core").resolve()
     if (monorepo_core / "data" / "control-library").is_dir():
         return monorepo_core
