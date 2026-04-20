@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.io/schemas/orgpath/policy-targets.schema.json",
+  "title": "UIAO OrgTree Policy Targeting Canon",
+  "description": "Machine-readable declarations of how Intune device policies and Azure Policy assignments target the OrgTree. Bound to MOD_N by ADR-039. Depends on MOD_A codebook (ADR-035), MOD_B dynamic groups (ADR-036), MOD_C device planes (ADR-038). Policy bodies are out of scope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_id",
+    "parent_canon",
+    "intune_assignments",
+    "arc_policy_assignments"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "document_id": { "const": "MOD_N" },
+    "parent_canon": { "type": "string" },
+    "updated": { "type": "string", "format": "date" },
+    "intune_assignments": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/intuneAssignment" }
+    },
+    "arc_policy_assignments": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/arcPolicyAssignment" }
+    }
+  },
+  "$defs": {
+    "intuneAssignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_ref", "target_group", "intent", "purpose"],
+      "properties": {
+        "profile_ref": { "$ref": "#/$defs/profileRef" },
+        "target_group": {
+          "type": "string",
+          "pattern": "^OrgTree-[A-Za-z0-9]+(-[A-Za-z0-9]+)*-(Users|Licensed|CA|Admins)$"
+        },
+        "intent": { "enum": ["include", "exclude"] },
+        "purpose": { "type": "string", "minLength": 1 }
+      }
+    },
+    "profileRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "match_by", "value"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "configurationPolicy",
+            "deviceConfiguration",
+            "deviceCompliancePolicy",
+            "mobileAppConfiguration"
+          ]
+        },
+        "match_by": { "enum": ["displayName", "id"] },
+        "value": { "type": "string", "minLength": 1 }
+      }
+    },
+    "arcPolicyAssignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assignment_name",
+        "policy_definition",
+        "orgpath_selector",
+        "purpose"
+      ],
+      "properties": {
+        "assignment_name": {
+          "type": "string",
+          "description": "Human-readable binding name. Unique within this file. NOT the tenant-assigned Azure Policy assignment id.",
+          "pattern": "^OrgTree-[A-Za-z0-9]+(-[A-Za-z0-9]+)*$"
+        },
+        "policy_definition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["match_by", "value"],
+          "properties": {
+            "match_by": { "enum": ["displayName", "policyDefinitionId"] },
+            "value": { "type": "string", "minLength": 1 }
+          }
+        },
+        "orgpath_selector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["prefix", "match_mode"],
+          "properties": {
+            "prefix": {
+              "type": "string",
+              "pattern": "^ORG(-[A-Z0-9]{2,6}){0,4}$"
+            },
+            "match_mode": { "enum": ["startsWith", "equals"] }
+          }
+        },
+        "purpose": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
