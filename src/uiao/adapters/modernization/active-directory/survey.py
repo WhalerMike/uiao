@@ -58,6 +58,30 @@ class DriftFinding:
     source_forest: str = ""    # forest FQDN for multi-forest disambiguation
     suggested_orgpath: str = ""  # best-effort OrgPath candidate; empty = unresolvable
 
+    def to_drift_state(self, provenance=None):
+        """Bridge to DriftState for governance engine consumption."""
+        import datetime
+        from uiao.ir.models.core import DriftState, ProvenanceRecord, canonical_hash
+        prov = provenance or ProvenanceRecord(
+            source="ad-survey-adapter",
+            timestamp=datetime.datetime.utcnow().isoformat() + "Z",
+            version="0.1.0",
+        )
+        actual = {"path": self.path, "object_type": self.object_type, "detail": self.detail}
+        h = canonical_hash(actual)
+        risk = "unauthorized" if self.severity == "P1" else "risky"
+        return DriftState(
+            id=f"{self.drift_class.lower()}:{self.path}",
+            resource_id=self.path,
+            policy_ref=self.error_code or "ad-survey",
+            expected_hash=h, actual_hash=h,
+            drift_detected=True,
+            classification=risk,
+            delta={"detail": [self.detail]},
+            provenance=prov,
+            drift_class=self.drift_class,
+        )
+
 
 @dataclass
 class ADSurveyReport:
@@ -648,7 +672,7 @@ def _run_ldap_survey(
         if adcs:
             report.sa_adcs_dependent += 1
             report.findings.append(DriftFinding(
-                drift_class="DRIFT-IDENTITY",
+                drift_class="DRIFT-AUTHZ",
                 severity="P1",
                 path=dn,
                 detail=(
