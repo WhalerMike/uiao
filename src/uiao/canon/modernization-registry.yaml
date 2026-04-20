@@ -544,3 +544,54 @@ adapters:
       schemas/orgpath/codebook.schema.json on load. Implementation:
       src/uiao/adapters/modernization/active-directory/{survey,orgpath}.py.
       Writes are gated on an explicit dry_run=False flag.
+
+  - id: entra-dynamic-groups
+    name: Entra ID Dynamic Group Provisioning (OrgTree MOD_B)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — provisions OrgTree-* dynamic security groups
+      in Microsoft Entra ID from the canonical MOD_B library (Graph API
+      POST /groups + PATCH /groups). Classified per UIAO_003 §4.7
+      `integration`. Phantom groups are NEVER auto-applied: per MOD_B §Drift
+      they surface as governance findings and route through the Workflow 3
+      review in MOD_E.
+    status: active
+    phase: phase-1
+    vendor: Microsoft
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - dynamic-membership-groups
+      - orgpath-governed-groups
+    outputs:
+      - dynamic-group-plan.json
+      - dynamic-group-report.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - AC-2
+      - AC-3
+      - AC-6
+      - CM-8
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - UIAO_007
+    notes: >-
+      Binds to MOD_B (Dynamic Group Library) through ADR-036; executable
+      canon at canon/data/orgpath/dynamic-groups.yaml, JSON Schema at
+      schemas/orgpath/dynamic-groups.schema.json. Implementation:
+      src/uiao/adapters/entra_dynamic_groups.py. plan() and
+      apply(dry_run=True) are offline-safe; apply(dry_run=False) issues
+      POST /groups and PATCH /groups/{id} against Microsoft Graph.

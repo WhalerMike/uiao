@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.io/schemas/orgpath/dynamic-groups.schema.json",
+  "title": "UIAO Dynamic Group Library",
+  "description": "Machine-readable enumeration of Entra ID dynamic groups whose membership is derived from OrgPath values in extensionAttribute1. Bound to MOD_B (src/uiao/modernization/orgtree/MOD_B_Dynamic_Group_Library.md) by ADR-036. Every group appearing in the tenant with the OrgTree- prefix must resolve to `groups[].name`; phantom names are flagged by the drift engine.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_id",
+    "parent_canon",
+    "naming",
+    "groups"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "document_id": { "const": "MOD_B" },
+    "parent_canon": { "type": "string" },
+    "updated": { "type": "string", "format": "date" },
+    "naming": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prefix", "regex", "purpose_suffixes"],
+      "properties": {
+        "prefix": { "const": "OrgTree-" },
+        "regex": { "type": "string", "minLength": 1 },
+        "purpose_suffixes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Z][a-zA-Z]*$" }
+        }
+      }
+    },
+    "membership": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "processing_state": { "const": "On" },
+        "rule_processing_state": { "const": "On" }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/group" }
+    }
+  },
+  "$defs": {
+    "group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "category", "rule", "orgpath_refs", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "OrgTree-<scope>-<purpose>. Scope is either an OrgPath-derived upper-case segment chain (e.g. IT-SEC-SOC) or a cross-functional descriptor (e.g. SecurityCompliance, AllRegionalAP, Standard, AllUsers). Purpose is one of the canonical suffixes.",
+          "pattern": "^OrgTree-[A-Za-z0-9]+(-[A-Za-z0-9]+)*-(Users|Licensed|CA|Admins)$"
+        },
+        "category": {
+          "enum": [
+            "level-1-division",
+            "level-2-department",
+            "level-3-unit",
+            "level-4-team",
+            "cross-functional",
+            "conditional-access",
+            "licensing"
+          ]
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\(user\\.extensionAttribute1 "
+        },
+        "orgpath_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^ORG(-[A-Z0-9]{2,6}){0,4}$"
+          }
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
