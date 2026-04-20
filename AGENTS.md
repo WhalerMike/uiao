@@ -15,13 +15,16 @@
 
 Declared machine-readably in [`src/uiao/canon/substrate-manifest.yaml`](src/uiao/canon/substrate-manifest.yaml) (UIAO_200):
 
-| Module | Role | Canon consumer | Contents |
-|---|---|---|---|
-| [`core/`](core/) | **Authority** | no | Schemas, canon documents, control library, ADRs, enforcement tooling. Single source of truth. |
-| [`docs/`](docs/) | Consumer | yes | Articles, guides, narratives, Quarto site. Every doc traces provenance to `core/`. |
-| [`impl/`](impl/) | Consumer | yes | Python CLI, generators, adapters, substrate walker, pytest suite. |
+| Module | Role | Contents |
+|---|---|---|
+| [`src/uiao/`](src/uiao/) | **Package** — the single installable `uiao` Python distribution. | Canon (`canon/`), rules (`rules/`), schemas (`schemas/`), KSI library (`ksi/`), adapters (`adapters/`), IR (`ir/`), CLI (`cli/`), governance, evidence, oscal, ssp, substrate walker, orchestrator, etc. |
+| [`tests/`](tests/) | Test suite | ~1000+ tests: unit, integration, adapter conformance, substrate drift. |
+| [`docs/`](docs/) | Derived documentation | Articles, guides, narratives, Quarto site. Every published doc traces provenance to canon under `src/uiao/canon/`. |
+| [`scripts/`](scripts/) | Maintenance scripts | Validators, canon-sync, doc generators, one-shot tooling. |
+| [`inbox/`](inbox/) | Scratch surface | Agent-authored drafts. Nothing here is canon. |
+| [`.github/workflows/`](.github/workflows/) | CI | Schema validation, pytest, substrate-drift, mypy (non-blocking), ruff, quarto, link-check, release. |
 
-Workspace resolution: `$UIAO_WORKSPACE_ROOT` environment variable, never a hardcoded path. Enforced by [`impl/.claude/rules/canon-consumer.md`](impl/.claude/rules/canon-consumer.md).
+Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`uiao.cli.app:app`](src/uiao/cli/app.py).
 
 ## Operating principles (substrate-wide)
 
@@ -54,7 +57,7 @@ uiao substrate walk --json       # machine-readable
 uiao substrate drift             # exit-code-only summary (CI-friendly)
 ```
 
-Source: [`impl/src/uiao/impl/substrate/walker.py`](impl/src/uiao/impl/substrate/walker.py).
+Source: [`src/uiao/substrate/walker.py`](src/uiao/substrate/walker.py).
 
 Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs resolve) findings.
 
@@ -71,25 +74,26 @@ Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs 
 | `link-check.yml` | `*.md` / `*.qmd` PRs + weekly | 🟡 soft-fail |
 | `release.yml` | Tag `v*.*.*` | — |
 
-## Commit convention (across the monorepo)
+## Commit convention
 
 ```
-[UIAO-CORE] <verb>: <artifact-id> — <description>    # core/ changes
-[UIAO-DOCS] <verb>: <artifact-id> — <description>    # docs/ changes
-[UIAO-IMPL] <verb>: <module> — <description>         # impl/ changes
-CI: <description>                                     # .github/ changes
+<verb>: <module-or-area> — <description>
 ```
 
-Cross-module commits are permitted but must describe the cross-cutting nature in the body.
+Common `<verb>`s: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`. Use a scope prefix (e.g. `feat(adapters/bluecat):`) when it clarifies blast radius. Cross-cutting commits are permitted — describe the cross-cut in the body.
 
-## Rules loaded automatically
+## Operating rules
 
-- [`impl/.claude/rules/canon-consumer.md`](impl/.claude/rules/canon-consumer.md) — `impl/` is a canon consumer; no hardcoded canon paths
-- [`impl/.claude/rules/test-coverage.md`](impl/.claude/rules/test-coverage.md) — every CLI command needs happy-path + failure-mode tests
+- **Canon edits** → `src/uiao/canon/`, plus a UIAO_NNN entry in `document-registry.yaml` if the document is new. Doctrine changes require an ADR under `src/uiao/canon/adr/`.
+- **New CLI commands** ship with happy-path + failure-mode tests in the same PR.
+- **Adapters** go under `src/uiao/adapters/` and register in `src/uiao/canon/adapter-registry.yaml` (conformance) or `modernization-registry.yaml` (modernization). Every adapter declares `class` × `mission-class` per UIAO_003.
+- **Canon reads at runtime** use `importlib.resources` against `uiao.canon` / `uiao.rules` / `uiao.schemas`, never hardcoded filesystem paths.
 
 ## History
 
-The monorepo was consolidated from four predecessor repos (`uiao-core`, `uiao-docs`, `uiao-gos`, `uiao-impl`) on 2026-04-17 with full history preserved. The `uiao-gos` federal/commercial firewall was retired per [ADR-028](src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md); its directory-migration adapters (`bluecat-address-manager`, `infoblox`) are now canonical modernization adapters. See [`docs/narrative/governance-os-directory-migration.md`](docs/narrative/governance-os-directory-migration.md) for the substrate-aligned narrative.
+The monorepo was consolidated from four predecessor repos (`uiao-core`, `uiao-docs`, `uiao-gos`, `uiao-impl`) on 2026-04-17 with full history preserved ([ADR-028](src/uiao/canon/adr/adr-028-monorepo-consolidation-gos-integration.md)). The `uiao-gos` federal/commercial firewall was retired in that pass; its directory-migration adapters (`bluecat-address-manager`, `infoblox`) are now canonical modernization adapters.
+
+On 2026-04-20 the hybrid `core/` + `impl/` + partial `src/` tree was flattened into a single `src/uiao/` package with `pip install -e .` packaging and full runtime deps declared ([ADR-032](src/uiao/canon/adr/adr-032-single-package-consolidation.md)). Everything that used to import from `uiao.impl.*` now imports from `uiao.*`; canon ships inside the package via `importlib.resources`.
 
 ## Writing patterns
 
