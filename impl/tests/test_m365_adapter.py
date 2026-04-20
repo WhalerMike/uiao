@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import pytest
 
-from uiao.impl.adapters.m365_adapter import M365Adapter
-from uiao.impl.adapters.database_base import (
+from uiao.adapters.m365_adapter import M365Adapter
+from uiao.adapters.database_base import (
     ClaimObject,
     ClaimSet,
     ConnectionProvenance,
@@ -60,7 +60,7 @@ class TestInstantiation:
         assert "teams" in adapter.WORKLOADS
 
     def test_is_database_adapter_base(self, adapter: M365Adapter) -> None:
-        from uiao.impl.adapters.database_base import DatabaseAdapterBase
+        from uiao.adapters.database_base import DatabaseAdapterBase
         assert isinstance(adapter, DatabaseAdapterBase)
 
 

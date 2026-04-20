@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from uiao.impl.adapters.scuba_adapter import (
+from uiao.adapters.scuba_adapter import (
     SCUBA_TO_KSI_MAP,
     ScubaAdapter,
 )

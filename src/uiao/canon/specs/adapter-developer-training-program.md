@@ -238,8 +238,8 @@ adapter output → claims_to_ir_evidence() → IR Evidence
 Generate all three OSCAL artifacts from the Terraform adapter fixture:
 
 ```python
-from uiao.impl.adapters.terraform_adapter import TerraformAdapter
-from uiao.impl.adapters.adapter_to_oscal import *
+from uiao.adapters.terraform_adapter import TerraformAdapter
+from uiao.adapters.adapter_to_oscal import *
 from uiao.impl.generators.sar import build_sar
 
 adapter = TerraformAdapter({})

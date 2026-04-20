@@ -41,7 +41,7 @@ def _create_app():
         output: Optional[Path] = typer.Option(None, help="Output file (default: stdout)"),
     ) -> None:
         """Generate an OSCAL Assessment Results (SAR) from adapter data."""
-        from uiao.impl.adapters.adapter_to_oscal import build_adapter_bundle
+        from uiao.adapters.adapter_to_oscal import build_adapter_bundle
         from uiao.impl.generators.sar import build_sar
 
         claims = _load_adapter_claims(adapter, state_file)
@@ -61,7 +61,7 @@ def _create_app():
         output: Optional[Path] = typer.Option(None, help="Output file"),
     ) -> None:
         """Generate an OSCAL POA&M from adapter drift data."""
-        from uiao.impl.adapters.adapter_to_oscal import build_adapter_poam
+        from uiao.adapters.adapter_to_oscal import build_adapter_poam
 
         drift = _load_adapter_drift(adapter, plan_file)
         ctrl_ids = [c.strip() for c in controls.split(",")]
@@ -80,7 +80,7 @@ def _create_app():
         output: Optional[Path] = typer.Option(None, help="Output file"),
     ) -> None:
         """Generate an OSCAL SSP from adapter claims."""
-        from uiao.impl.adapters.adapter_to_oscal import build_adapter_ssp
+        from uiao.adapters.adapter_to_oscal import build_adapter_ssp
 
         claims = _load_adapter_claims(adapter, state_file)
         ctrl_ids = [c.strip() for c in controls.split(",")]
@@ -95,9 +95,9 @@ def _create_app():
 
 def _load_adapter_claims(adapter_id: str, state_file: Path):
     """Load adapter and extract claims from a state/config file."""
-    from uiao.impl.adapters.m365_adapter import M365Adapter
-    from uiao.impl.adapters.paloalto_adapter import PaloAltoAdapter
-    from uiao.impl.adapters.terraform_adapter import TerraformAdapter
+    from uiao.adapters.m365_adapter import M365Adapter
+    from uiao.adapters.paloalto_adapter import PaloAltoAdapter
+    from uiao.adapters.terraform_adapter import TerraformAdapter
 
     if adapter_id == "terraform":
         a = TerraformAdapter({})
@@ -105,7 +105,7 @@ def _load_adapter_claims(adapter_id: str, state_file: Path):
     elif adapter_id == "m365":
         config = json.loads(state_file.read_text())
         a = M365Adapter({"_tenant_config": config})
-        from uiao.impl.adapters.m365_parser import parse_tenant_config
+        from uiao.adapters.m365_parser import parse_tenant_config
         return a.normalize(parse_tenant_config(config))
     elif adapter_id == "palo-alto":
         xml = state_file.read_text()
@@ -117,7 +117,7 @@ def _load_adapter_claims(adapter_id: str, state_file: Path):
 
 def _load_adapter_drift(adapter_id: str, plan_file: Path):
     """Load drift data from a plan/drift file."""
-    from uiao.impl.adapters.terraform_adapter import TerraformAdapter
+    from uiao.adapters.terraform_adapter import TerraformAdapter
 
     plan = json.loads(plan_file.read_text())
     if adapter_id == "terraform":

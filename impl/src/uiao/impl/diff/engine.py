@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Set
 
-from uiao.impl.ir.adapters.scuba.transformer import SCuBATransformResult
+from uiao.adapters.scuba.ir.transformer import SCuBATransformResult
 
 
 @dataclass

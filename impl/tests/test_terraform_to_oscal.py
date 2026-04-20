@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from uiao.impl.adapters.terraform_adapter import TerraformAdapter
-from uiao.impl.adapters.adapter_to_oscal import build_adapter_bundle
+from uiao.adapters.terraform_adapter import TerraformAdapter
+from uiao.adapters.adapter_to_oscal import build_adapter_bundle
 from uiao.impl.generators.sar import build_sar
 
 

@@ -34,12 +34,12 @@ from rich.logging import RichHandler
 
 # Import plane entry points
 try:
-    from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 except ImportError:
     transform_scuba_to_ir = None  # type: ignore[assignment]
 
 try:
-    from uiao.impl.ir.adapters.scuba.normalize_scuba import normalize_scuba
+    from uiao.adapters.scuba.ir.normalize_scuba import normalize_scuba
 except ImportError:
     normalize_scuba = None  # type: ignore[assignment]
 

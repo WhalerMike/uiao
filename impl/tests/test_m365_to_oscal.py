@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from uiao.impl.adapters.m365_adapter import M365Adapter
-from uiao.impl.adapters.adapter_to_oscal import build_adapter_bundle
+from uiao.adapters.m365_adapter import M365Adapter
+from uiao.adapters.adapter_to_oscal import build_adapter_bundle
 from uiao.impl.generators.sar import build_sar
 
 
@@ -34,7 +34,7 @@ class TestM365ToOscal:
         assert len(claims.claims) >= 2
 
     def test_all_workloads_to_bundle(self, adapter: M365Adapter) -> None:
-        from uiao.impl.adapters.m365_parser import parse_tenant_config
+        from uiao.adapters.m365_parser import parse_tenant_config
         config = adapter._config.get("_tenant_config", {})
         all_entities = parse_tenant_config(config)
         claims = adapter.normalize(all_entities)
@@ -47,7 +47,7 @@ class TestM365ToOscal:
         assert len(bundle.controls) == 3
 
     def test_bundle_to_oscal_sar(self, adapter: M365Adapter) -> None:
-        from uiao.impl.adapters.m365_parser import parse_tenant_config
+        from uiao.adapters.m365_parser import parse_tenant_config
         config = adapter._config.get("_tenant_config", {})
         claims = adapter.normalize(parse_tenant_config(config))
         bundle = build_adapter_bundle(
@@ -66,7 +66,7 @@ class TestM365ToOscal:
         assert len(result["findings"]) >= 5
 
     def test_sar_json_serializable(self, adapter: M365Adapter) -> None:
-        from uiao.impl.adapters.m365_parser import parse_tenant_config
+        from uiao.adapters.m365_parser import parse_tenant_config
         config = adapter._config.get("_tenant_config", {})
         claims = adapter.normalize(parse_tenant_config(config))
         bundle = build_adapter_bundle("m365", claims, control_ids=["CM-8"])
@@ -80,7 +80,7 @@ class TestM365ToOscal:
             "exchange-online",
             {"Default Mailbox Policy.automaticRepliesSetting": "enabled"},
         )
-        from uiao.impl.adapters.m365_parser import parse_tenant_config
+        from uiao.adapters.m365_parser import parse_tenant_config
         config = adapter._config.get("_tenant_config", {})
         claims = adapter.normalize(parse_tenant_config(config))
         bundle = build_adapter_bundle(

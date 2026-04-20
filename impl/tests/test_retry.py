@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from uiao.impl.adapters.retry import (
+from uiao.adapters.retry import (
     RateLimitError,
     TransientError,
     with_retry,

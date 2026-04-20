@@ -15,11 +15,11 @@ from pathlib import Path
 
 import pytest
 
-from uiao.impl.adapters.terraform_adapter import TerraformAdapter
-from uiao.impl.adapters.m365_adapter import M365Adapter
-from uiao.impl.adapters.paloalto_adapter import PaloAltoAdapter
-from uiao.impl.adapters.database_base import DriftReport
-from uiao.impl.adapters.adapter_to_oscal import (
+from uiao.adapters.terraform_adapter import TerraformAdapter
+from uiao.adapters.m365_adapter import M365Adapter
+from uiao.adapters.paloalto_adapter import PaloAltoAdapter
+from uiao.adapters.database_base import DriftReport
+from uiao.adapters.adapter_to_oscal import (
     drift_to_poam_findings,
     build_adapter_poam,
 )
@@ -107,7 +107,7 @@ class TestPaloAltoChangeDriftToPoam:
 
 class TestEmptyDrift:
     def test_no_drift_no_findings(self) -> None:
-        from uiao.impl.adapters.database_base import DriftReport
+        from uiao.adapters.database_base import DriftReport
         from datetime import datetime, timezone
         clean = DriftReport(
             drift_type="test-clean",
@@ -120,7 +120,7 @@ class TestEmptyDrift:
         assert len(findings) == 0
 
     def test_empty_poam_still_valid(self) -> None:
-        from uiao.impl.adapters.database_base import DriftReport
+        from uiao.adapters.database_base import DriftReport
         from datetime import datetime, timezone
         clean = DriftReport(
             drift_type="test-clean",

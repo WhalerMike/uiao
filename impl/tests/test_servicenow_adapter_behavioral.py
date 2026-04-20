@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from uiao.impl.adapters.servicenow_adapter import ServiceNowAdapter
-from uiao.impl.adapters.database_base import (
+from uiao.adapters.servicenow_adapter import ServiceNowAdapter
+from uiao.adapters.database_base import (
     ClaimSet,
     EvidenceObject,
 )

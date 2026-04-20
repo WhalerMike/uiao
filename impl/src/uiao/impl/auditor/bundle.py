@@ -10,7 +10,7 @@ from uiao.impl.evidence.bundle import build_bundle_from_transform_result
 from uiao.impl.evidence.poam import build_poam, poam_to_json
 from uiao.impl.governance.actions import build_governance_actions
 from uiao.impl.governance.report import format_governance_report
-from uiao.impl.ir.adapters.scuba.transformer import transform_scuba_to_ir
+from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 from uiao.impl.ir.models.core import canonical_hash
 from uiao.impl.ssp.lineage import build_lineage_index
 from uiao.impl.ssp.narrative import build_control_narratives, format_ssp_markdown

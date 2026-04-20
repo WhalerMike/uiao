@@ -7,7 +7,7 @@ against every registered adapter and produces a JSON report suitable for
 the Evidence Fabric.
 
 Usage:
-    python -m uiao.impl.adapters.conformance_check [--json] [--adapter ID]
+    python -m uiao.adapters.conformance_check [--json] [--adapter ID]
 
 Exit codes:
     0 — all adapters pass all criteria
@@ -36,7 +36,7 @@ from .database_base import (
 def _get_adapter_classes() -> Dict[str, type]:
     """Dynamically import all adapter classes from the package."""
     import importlib
-    mod = importlib.import_module("uiao.impl.adapters")
+    mod = importlib.import_module("uiao.adapters")
     classes = {}
     for name in ADAPTER_NAMES:
         cls = getattr(mod, name, None)
