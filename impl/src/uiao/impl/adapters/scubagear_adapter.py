@@ -1,7 +1,11 @@
-"""UIAO-Core SCuBA (Secure Cloud Business Applications) Adapter
+"""UIAO ScubaGear Conformance Adapter
 
-Reads CISA SCuBA assessment output (JSON or YAML) and maps findings
-to UIAO KSI evidence, producing OSCAL-aligned claims.
+Reads CISA ScubaGear assessment output (JSON or YAML) and maps findings
+to UIAO KSI evidence, producing OSCAL-aligned claims. This is the
+read-only conformance-class adapter per canon `scubagear` entry
+(`src/uiao/canon/adapter-registry.yaml`). It pairs with the
+(currently unimplemented) modernization-class `scuba` entry that
+applies baselines; this file only assesses them.
 
 SCuBA assessments are produced by the ScubaGear tool:
   https://github.com/cisagov/ScubaGear
@@ -10,7 +14,7 @@ Each SCuBA report contains policy baseline results per product
 (AAD, Defender, EXO, TEAMS, etc.). This adapter ingests those
 results and creates KSI evidence records in the UIAO canon format.
 
-File: src/uiao/impl/adapters/scuba_adapter.py
+File: src/uiao/impl/adapters/scubagear_adapter.py
 """
 
 from __future__ import annotations
@@ -154,8 +158,8 @@ RESULT_PASS = {"Pass", "pass", "PASS", "true", "True"}
 RESULT_FAIL = {"Fail", "fail", "FAIL", "false", "False", "Warning", "warning"}
 
 
-class ScubaAdapter(DatabaseAdapterBase):
-    """CISA SCuBA assessment adapter.
+class ScubaGearAdapter(DatabaseAdapterBase):
+    """CISA ScubaGear conformance adapter.
 
     Ingests ScubaGear output reports and converts policy baseline
     results into UIAO KSI evidence records (alignment only -- no
@@ -167,12 +171,12 @@ class ScubaAdapter(DatabaseAdapterBase):
 
     Usage::
 
-        adapter = ScubaAdapter(config={"report_path": "path/to/report.json"})
+        adapter = ScubaGearAdapter(config={"report_path": "path/to/report.json"})
         adapter.connect()
         claims = adapter.collect_and_align()
     """
 
-    ADAPTER_ID: str = "scuba"
+    ADAPTER_ID: str = "scubagear"
 
     def __init__(self, config: Dict[str, Any] | None = None) -> None:
         super().__init__(config or {})
