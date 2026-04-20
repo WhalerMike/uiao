@@ -888,10 +888,10 @@ def adapter_run_scuba(
     """
     import json as _json
 
-    from uiao.adapters.scuba_adapter import ScubaAdapter
+    from uiao.adapters.scubagear_adapter import ScubaGearAdapter
 
     typer.echo(f"\U0001f50d Reading SCuBA report: {report}")
-    adapter = ScubaAdapter(config={"report_path": report})
+    adapter = ScubaGearAdapter(config={"report_path": report})
     result = adapter.collect_and_align()
 
     meta = result.get("metadata", {})
