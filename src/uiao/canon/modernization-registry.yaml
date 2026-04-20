@@ -651,3 +651,60 @@ adapters:
       src/uiao/adapters/entra_admin_units.py. Admin groups
       (OrgTree-*-Admins) are referenced but NOT provisioned — those are
       MOD_E Workflow 5 assigned groups.
+
+  - id: entra-device-orgpath
+    name: Device OrgPath Provisioning — Graph + ARM Dual-Plane (OrgTree MOD_C)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — writes OrgPath to the correct device plane
+      per AD disposition: Entra device
+      onPremisesExtensionAttributes.extensionAttribute1 via Microsoft
+      Graph for clients, and the `OrgPath` ARM tag on
+      Microsoft.HybridCompute/machines for Arc-enrolled servers. Phantom
+      OrgPath values (format-invalid or outside the MOD_A codebook) are
+      NEVER auto-remediated — they surface as skipped-manual per
+      MOD_C §Phantom. Classified per UIAO_003 §4.7 `integration`.
+    status: active
+    phase: phase-1
+    vendor: Microsoft
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - entra-device-objects
+      - azure-arc-machines
+      - orgpath-device-plane
+    outputs:
+      - device-orgpath-plan.json
+      - device-orgpath-report.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-8
+      - AC-2
+      - AC-3
+      - CA-7
+    automation-domain:
+      - configuration-management
+      - asset-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - UIAO_007
+    notes: >-
+      Binds to MOD_C (Attribute Mapping Table) through ADR-038;
+      executable canon at canon/data/orgpath/device-planes.yaml, JSON
+      Schema at schemas/orgpath/device-planes.schema.json. Depends on
+      MOD_A (codebook, ADR-035) — ARM-tag regex is cross-checked against
+      the codebook regex at load. Implementation:
+      src/uiao/adapters/entra_device_orgpath.py. apply(dry_run=False)
+      requires subclass override of _execute because the two transports
+      (Graph vs ARM) need distinct credentials.
