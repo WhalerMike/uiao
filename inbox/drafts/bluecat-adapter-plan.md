@@ -15,12 +15,12 @@ structure. Closes the last canon → code drift in the IPAM family.
 
 | Artifact | Lines | State |
 |---|---|---|
-| `impl/src/uiao/impl/adapters/bluecat_adapter.py` | — | **missing** |
-| `impl/src/uiao/impl/adapters/bluecat_parser.py` | — | **missing** |
-| `impl/src/uiao/impl/directory_migration/adapters/ipam/bluecat/` | 6 | README placeholder only |
-| `impl/tests/test_bluecat_adapter.py` | — | **missing** |
-| `impl/tests/test_bluecat_to_oscal.py` | — | **missing** |
-| `impl/tests/fixtures/bluecat-*.json` | — | **missing** |
+| `src/uiao/adapters/bluecat_adapter.py` | — | **missing** |
+| `src/uiao/adapters/bluecat_parser.py` | — | **missing** |
+| `src/uiao/directory_migration/adapters/ipam/bluecat/` | 6 | README placeholder only |
+| `tests/test_bluecat_adapter.py` | — | **missing** |
+| `tests/test_bluecat_to_oscal.py` | — | **missing** |
+| `tests/fixtures/bluecat-*.json` | — | **missing** |
 | Canon registry entry `bluecat-address-manager` | — | `status: active`, 4-item scope |
 
 ## Scope mapping (BlueCat ↔ Infoblox)
@@ -43,10 +43,10 @@ queryable object per se). `SCOPE` constant therefore has 4 entries, not
 Mirror `infoblox_adapter.py` + `infoblox_parser.py` + tests:
 
 ```
-impl/src/uiao/impl/adapters/
+src/uiao/adapters/
   bluecat_adapter.py        # ~440 lines — full DB contract + 5 extensions
   bluecat_parser.py         # ~150 lines — BAM JSON → flat dicts per type
-impl/tests/
+tests/
   test_bluecat_adapter.py   # ~260 lines — instantiation, connect, schema,
                             #   query, normalize, drift, evidence, failures
   test_bluecat_to_oscal.py  # ~100 lines — SC-20/SC-21/CM-8 OSCAL round-trip
@@ -112,9 +112,9 @@ SAR, all three SC-20/SC-21/CM-8 controls wired into bundle.controls and
 bundle.policies.
 
 ### 6. Export
-- `impl/src/uiao/impl/adapters/__init__.py` — add `BlueCatAdapter` to
+- `src/uiao/adapters/__init__.py` — add `BlueCatAdapter` to
   imports and `__all__`.
-- `impl/tests/test_adapters.py` — verify the registry entry resolves.
+- `tests/test_adapters.py` — verify the registry entry resolves.
 
 ## Out of scope
 
@@ -127,9 +127,9 @@ bundle.policies.
 
 ## Test / exit criteria
 
-- [ ] `pytest impl/tests/test_bluecat_adapter.py` green (≥ 40 tests)
-- [ ] `pytest impl/tests/test_bluecat_to_oscal.py` green (8 tests)
-- [ ] `pytest impl/tests/test_adapters.py` still 31 passed / 1 skipped
+- [ ] `pytest tests/test_bluecat_adapter.py` green (≥ 40 tests)
+- [ ] `pytest tests/test_bluecat_to_oscal.py` green (8 tests)
+- [ ] `pytest tests/test_adapters.py` still 31 passed / 1 skipped
 - [ ] Full regression: no new failures in paloalto / infoblox / m365 /
       terraform / scuba suites
 - [ ] `ruff check` clean on all new files
