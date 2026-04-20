@@ -486,3 +486,61 @@ adapters:
     notes: >-
       FIMF Tier 5 adapter. Requires z/OS Connect or MQ bridge
       infrastructure. Highest-priority legacy migration adapter.
+
+  - id: active-directory
+    name: Active Directory OrgPath Assignment (OrgTree Phase F)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — performs change-making actions against
+      on-premises Active Directory (extensionAttribute1–4 write-back during
+      OrgPath assignment, Phase F.3 of MOD_F). The surveying side (Phase
+      F.1) is read-only; the pair is grouped under a single adapter id per
+      UIAO_003 §4.7 `integration` classification. OrgPath values propagate
+      to Entra ID via Entra Connect sync (no direct Graph API writes from
+      this adapter — that is the `entra-id` adapter's job).
+    status: active
+    phase: phase-1
+    vendor: Microsoft
+    license: Commercial
+    runtime: python-3.12
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    scope:
+      - ou-objects
+      - user-objects
+      - computer-objects
+      - orgpath-attributes
+      - group-policy-objects
+    outputs:
+      - ou-orgpath-mapping.csv
+      - user-orgpath-assignments.csv
+      - unresolved-queue.csv
+      - orgpath-assignment-report.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-8
+      - IA-2
+      - IA-4
+      - AC-2
+      - AC-6
+    automation-domain:
+      - configuration-management
+      - asset-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - UIAO_007
+    notes: >-
+      Binds to MOD_A (OrgPath Codebook) through ADR-035; the executable
+      canon lives at canon/data/orgpath/codebook.yaml and is validated by
+      schemas/orgpath/codebook.schema.json on load. Implementation:
+      src/uiao/adapters/modernization/active-directory/{survey,orgpath}.py.
+      Writes are gated on an explicit dry_run=False flag.

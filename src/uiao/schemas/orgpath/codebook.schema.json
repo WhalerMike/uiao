@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.io/schemas/orgpath/codebook.schema.json",
+  "title": "UIAO OrgPath Codebook",
+  "description": "Machine-readable enumeration of canonical OrgPath codes. Bound to MOD_A (src/uiao/modernization/orgtree/MOD_A_OrgPath_Codebook.md) by ADR-035. Every OrgPath value appearing in Entra extensionAttribute1 must resolve to `codes[].code` or it is classified as Value Drift (DRIFT-SEMANTIC).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_id",
+    "parent_canon",
+    "format",
+    "codes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "document_id": {
+      "const": "MOD_A"
+    },
+    "parent_canon": {
+      "type": "string"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date"
+    },
+    "format": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["regex", "max_depth", "segment_pattern", "root", "separator"],
+      "properties": {
+        "regex": { "const": "^ORG(-[A-Z0-9]{2,6}){0,4}$" },
+        "max_depth": { "const": 4 },
+        "segment_pattern": { "const": "^[A-Z0-9]{2,6}$" },
+        "root": { "const": "ORG" },
+        "separator": { "const": "-" }
+      }
+    },
+    "codes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/code" }
+    },
+    "deprecated": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/deprecatedCode" }
+    }
+  },
+  "$defs": {
+    "code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "level", "description", "parent"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^ORG(-[A-Z0-9]{2,6}){0,4}$"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parent": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^ORG(-[A-Z0-9]{2,6}){0,4}$" }
+          ]
+        }
+      }
+    },
+    "deprecatedCode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "replaced_by"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^ORG(-[A-Z0-9]{2,6}){0,4}$"
+        },
+        "replaced_by": {
+          "type": "string",
+          "pattern": "^ORG(-[A-Z0-9]{2,6}){0,4}$"
+        },
+        "deprecated_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "reason": { "type": "string" }
+      }
+    }
+  }
+}
