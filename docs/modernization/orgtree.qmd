@@ -1,0 +1,118 @@
+---
+title: "OrgTree — Identity Modernization"
+subtitle: "x.500 AD Hierarchy to Flat Entra ID — The Complete A-Z Suite"
+date: 2026-04-19
+---
+
+::: {.callout-warning}
+## Aspirational — canonically declared, not yet fully adopted
+
+The OrgTree specifications are canonical and govern all identity modernization work.
+Operational instantiation across production tenants is under development.
+:::
+
+## The Problem Nobody Talks About
+
+When Microsoft deprecated Active Directory's hierarchical model in favor of Entra ID's
+flat directory, they solved the *identity* problem. But they broke the *governance* problem.
+
+Active Directory's Organizational Unit tree was never just a folder structure. It was:
+
+- **A delegation model** — OU-level permissions defined who could manage what
+- **A policy inheritance engine** — Group Policy Objects cascaded through the tree
+- **An operational boundary** — each OU represented a unit of accountability
+- **A security scope** — group membership, resource access, and trust relationships traced back to OU placement
+
+Entra ID has none of this. It gives you a flat directory with powerful tools — dynamic
+groups, Administrative Units, Conditional Access policies — but no framework for how to
+use them to replace what the OU tree was doing.
+
+The OrgTree canon is that framework.
+
+## The OrgPath Architecture
+
+The core innovation is the **OrgPath** — a deterministic, attribute-encoded organizational
+hierarchy that reconstructs AD's governance model inside Entra ID's flat directory. Instead
+of OU placement, governance relationships are encoded in user extension attributes using a
+structured codebook.
+
+**Example:** An employee in the Finance department, Budget division, East region would carry:
+
+`extensionAttribute1: FIN-BUD-EAST`
+
+This single attribute drives:
+
+- **Dynamic group membership** — automatically placed in `SG-FIN-BUD-EAST-Users`
+- **Administrative Unit scoping** — managed by the `AU-FIN-BUD` delegation boundary
+- **Conditional Access targeting** — policies applied via group membership, not manual assignment
+- **License assignment** — governed by OrgPath-to-SKU mapping rules
+- **Drift detection** — any mismatch between HR source and OrgPath value is flagged
+
+## The Complete A-Z Suite
+
+Twenty-eight canonical artifacts organized into four governance layers:
+
+### Identity Layer — What Gets Migrated
+
+| ID | Title | Purpose |
+|----|-------|---------|
+| MOD_001 | Executive Summary | Architecture overview, governance principles, migration strategy |
+| MOD_A | OrgPath Codebook | The master encoding scheme — every valid OrgPath value, hierarchy rules, and validation regex |
+| MOD_B | Dynamic Group Library | Complete library of dynamic membership rules keyed to OrgPath segments |
+| MOD_C | Attribute Mapping Table | Full x.500 DN to flat-attribute translation — every AD attribute to its Entra ID equivalent |
+
+### Structure Layer — How It Is Organized
+
+| ID | Title | Purpose |
+|----|-------|---------|
+| MOD_D | Delegation Matrix (AUs and Roles) | Administrative Unit design — who manages what, RBAC role assignments, scope boundaries |
+| MOD_E | Governance Workflow Catalog | Every workflow type: onboarding, offboarding, transfer, role change, exception handling |
+| MOD_F | Migration Runbook (OU to Entra) | Step-by-step migration execution — phased rollout, validation gates, rollback triggers |
+| MOD_G | Diagram Pack (Text-Rendered) | PlantUML architecture diagrams — OrgPath flow, group hierarchy, delegation boundaries |
+| MOD_H | OrgPath JSON Schema | Machine-readable schema for OrgPath validation — used by drift engine and CI pipelines |
+
+### Policy Layer — What Governs Behavior
+
+| ID | Title | Purpose |
+|----|-------|---------|
+| MOD_I | PowerShell Validation Module | Validation cmdlets — Test-OrgPath, Test-DynamicGroupRule, Test-AUScope |
+| MOD_J | Governance Enforcement Test Suite | Pester test suite — validates every governance rule against live or mock tenant state |
+| MOD_K | Enforcement Decision Trees | If-then decision logic for every governance scenario — no ambiguity, no judgment calls |
+| MOD_L | SLA Heatmap and Owner Reliability Model | Tracks governance artifact owners, response times, reliability scores, escalation triggers |
+| MOD_N | Execution Substrate Integration Layer | Interface spec for Copilot-to-Execution Substrate handoff — what gets governed vs. executed |
+| MOD_O | Enforcement Test Harness (Mock Tenant) | Mock tenant configuration for testing governance rules without touching production |
+
+### Governance Layer — What Watches Everything
+
+| ID | Title | Purpose |
+|----|-------|---------|
+| MOD_M | Drift Detection Engine Specification | The core drift engine — schema drift, value drift, hierarchy drift, orphan detection, phantom detection |
+| MOD_P | Governance Boundary Impact Model | Maps every governance decision to its blast radius — what breaks if this changes |
+| MOD_Q | SLA Escalation Playbooks | Time-bound escalation procedures when governance violations exceed SLA thresholds |
+| MOD_R | Canonical Repository Structure | Defines the repo layout — where every artifact lives, naming conventions, CI integration |
+| MOD_S | Governance OS State Machine | Formal state machine — every governance object has defined states and legal transitions |
+| MOD_T | Identity Risk Scoring Model | Risk scores for identity objects based on privilege level, staleness, drift history |
+| MOD_U | Multi-Cloud Boundary Model (GCC-Moderate Safe) | Defines what is in-scope and out-of-scope for M365 GCC-Moderate governance |
+| MOD_V | Canonical Contributor Workflow (PR to Merge) | How changes enter the canon — PR, validation, review, merge, provenance chain |
+| MOD_W | Canonical Error Taxonomy | Every error type the governance engine can produce — codes, severity, remediation |
+| MOD_X | Governance Telemetry Model | What gets measured, how it gets reported, dashboard specifications |
+| MOD_Y | Identity Graph Normalization Model | How identity relationships are normalized across AD, Entra ID, HR systems, and apps |
+| MOD_Z | Full Governance OS Glossary | Authoritative definitions for every term used across the modernization canon |
+
+## Five Drift Categories
+
+The drift detection engine (MOD_M) classifies every detected anomaly into exactly
+one of five categories:
+
+| Category | Definition | Example |
+|----------|-----------|---------|
+| **Schema Drift** | The structure of a governance artifact has changed | A dynamic group rule references an attribute not in the OrgPath schema |
+| **Value Drift** | An attribute value does not match the canonical source | User's OrgPath says FIN-BUD-EAST but HR system says FIN-TAX-EAST |
+| **Hierarchy Drift** | Parent-child governance relationships are broken | An AU references an OrgPath segment that no longer exists in the codebook |
+| **Orphan Drift** | An object exists in the tenant but has no canonical governance anchor | A security group exists that is not in the Dynamic Group Library |
+| **Phantom Drift** | A canonical artifact references an object that does not exist in the tenant | The codebook defines an OrgPath segment with zero matching users |
+
+## Source Files
+
+All OrgTree source files are in the monorepo at `src/uiao/modernization/orgtree/`.
+The document registry with full metadata is at `src/uiao/modernization/orgtree/document-registry.yaml`.

@@ -22,7 +22,7 @@ See root-level [NOTICE](../../../NOTICE) file for full attribution to GSA/FedRAM
 - Validation uses `compliance-trestle-fedramp` plugin against Rev 5 profiles.
 
 ## Recommendations
-- Periodically check https://www.fedramp.gov/developers/ or https://www.fedramp.gov/rev5/documents-templates for updates.
+- Periodically check https://www.fedramp.gov/developers/ for updates (the former `/rev5/documents-templates` path was removed in the 2025 FedRAMP 20x relaunch).
 - If new canonical OSCAL repo emerges, update hrefs and copies here.
 
 Do not modify files in this folder directly - treat as vendor/reference.

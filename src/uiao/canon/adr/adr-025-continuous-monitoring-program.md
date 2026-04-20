@@ -720,7 +720,7 @@ A GitHub-hosted "Front Door" site over `uiao-docs` that serves two audiences: pe
 
 ## Three things you need to know about the uploaded file before it goes anywhere near GitHub
 
-**1. Hardcoded API key on line 111.** `AIzaSyBWzdY5k8sp1nsc4-nQCWU59uMjbUv1b7Y` is embedded in the script. If that file has ever touched a public repo, git history, a gist, or a Slack paste, treat the key as burned — revoke it in Google AI Studio today and rotate. The script should read from `os.environ["GEMINI_API_KEY"]` (or `.env` via `python-dotenv`), never a literal. I will not commit this file as-is to either repo.
+**1. Hardcoded API key on line 111.** `[REDACTED — key revoked 2026-04-19]` is embedded in the script. If that file has ever touched a public repo, git history, a gist, or a Slack paste, treat the key as burned — revoke it in Google AI Studio today and rotate. The script should read from `os.environ["GEMINI_API_KEY"]` (or `.env` via `python-dotenv`), never a literal. I will not commit this file as-is to either repo.
 
 **2. Hardcoded Windows path.** `DEFAULT_OUTPUT_DIR = Path(r"c:\UIAO\harness")` locks the tool to your laptop. For the repo version it should resolve relative to the repo root or the `IMAGE-PROMPTS.md` file being processed.
 
@@ -1492,7 +1492,7 @@ Summary:
      ```
 
    - `/sessions/dreamy-blissful-hamilton/mnt/uploads/generate_images_from_prompts.py` — User-uploaded template file
-     - Contains HARDCODED API KEY on line 111: `AIzaSyBWzdY5k8sp1nsc4-nQCWU59uMjbUv1b7Y` (flagged for revocation)
+     - Contains HARDCODED API KEY on line 111: `[REDACTED — key revoked 2026-04-19]` (flagged for revocation)
      - Contains Windows path `c:\UIAO\harness` (flagged for repo-relative fix)
      - Model string `gemini-3.1-flash-image-preview` (flagged UNSURE)
      - Parses `## Image N: Title` → `**Placement:**` → `**Prompt:**` pattern
@@ -1500,7 +1500,7 @@ Summary:
 
 4. Errors and fixes:
    - **Scaffold filename drift**: Initially created `ats-palo-alto.md` and `ats-service-now.md` (hyphenated) but spec used unhyphenated `ats-paloalto.md` and `ats-servicenow.md`. Fixed with `mv` commands to match canonical spec exactly (4 files renamed).
-   - **Hardcoded API key in uploaded template**: Flagged prominently; user must revoke `AIzaSyBWzdY5k8sp1nsc4-nQCWU59uMjbUv1b7Y` and rotate, store in GitHub Actions secrets as `GEMINI_API_KEY`.
+   - **Hardcoded API key in uploaded template**: Flagged prominently; user must revoke `[REDACTED — key revoked 2026-04-19]` and rotate, store in GitHub Actions secrets as `GEMINI_API_KEY`.
    - **MkDocs Material vs Quarto**: Initially recommended MkDocs Material for Front Door UX. User pushed back: "I thought Quarto was better for generating the multiple output types." I honestly revised to Quarto-only since user needs multiple output formats (HTML/PDF/DOCX).
    - **Free tier vs Pro**: User initially said Free tier; later clarified on Pro ($48/year). I initially recommended stay-on-Pro; user then revealed FedRAMP-Moderate context, forcing major revision to recommend Team tier instead.
    - **Tomcat confusion**: User said "Tiger??" meaning Tomcat. Clarified and confirmed Apache httpd on hardened Linux.

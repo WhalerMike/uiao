@@ -1,0 +1,82 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2563eb', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#1e40af', 'lineColor': '#6b7280', 'secondaryColor': '#f7f5f0', 'tertiaryColor': '#e5e7eb'}}}%%
+%% ---
+%% diagram_id: DIAG_070
+%% title: "UIAO Enforcement Runtime Pipeline"
+%% version: "1.0"
+%% status: ACTIVE
+%% classification: Controlled
+%% owner: Michael Stratton
+%% source_format: mermaid
+%% document_category: enforcement
+%% form_factors:
+%%   - full
+%%   - nano
+%% created_at: 2026-04-18
+%% updated_at: 2026-04-18
+%% boundary: GCC-Moderate
+%% description: "Policy evaluation pipeline from EPL rule loading through evidence matching, decision rendering, and action dispatch."
+%% tags:
+%%   - enforcement
+%%   - runtime
+%%   - policy
+%%   - EPL
+%% related_documents:
+%%   - UIAO_111
+%%   - UIAO_116
+%%   - UIAO_120
+%% nano_config:
+%%   max_nodes: 12
+%%   collapse_groups:
+%%     - subgraph_evaluation
+%%     - subgraph_action
+%%   label_mode: abbreviated
+%%   edge_simplification: true
+%%   hide_annotations: true
+%% ---
+
+graph TD
+    EVENT["Compliance<br/>Event Received"]
+
+    subgraph subgraph_evaluation ["Policy Evaluation"]
+        PE_LOAD["EPL Rule<br/>Loading"]
+        PE_MATCH["Evidence<br/>Pattern Match"]
+        PE_EVAL["Rule<br/>Evaluation"]
+        PE_DECIDE["Decision<br/>Rendering"]
+        PE_LOAD --> PE_MATCH
+        PE_MATCH --> PE_EVAL
+        PE_EVAL --> PE_DECIDE
+    end
+
+    subgraph subgraph_action ["Action Dispatch"]
+        AD_ROUTE["Action<br/>Routing"]
+        AD_EXEC["Enforcement<br/>Execution"]
+        AD_VERIFY["Result<br/>Verification"]
+        AD_RECORD["Audit Trail<br/>Recording"]
+        AD_ROUTE --> AD_EXEC
+        AD_EXEC --> AD_VERIFY
+        AD_VERIFY --> AD_RECORD
+    end
+
+    subgraph subgraph_zero_trust ["Zero-Trust Gate"]
+        ZT_IDENTITY["Identity<br/>Verification"]
+        ZT_CONTEXT["Context<br/>Evaluation"]
+        ZT_AUTHORIZE["Authorization<br/>Decision"]
+        ZT_IDENTITY --> ZT_CONTEXT
+        ZT_CONTEXT --> ZT_AUTHORIZE
+    end
+
+    EVENT --> ZT_IDENTITY
+    ZT_AUTHORIZE --> PE_LOAD
+    PE_DECIDE --> AD_ROUTE
+
+    AD_RECORD --> ENFORCED["Policy<br/>Enforced"]
+
+    PE_DECIDE -->|"Deny"| BLOCK["Action<br/>Blocked"]
+    AD_VERIFY -->|"Failed"| PE_EVAL
+
+    NOTE_EPL["Note: EPL policies are<br/>canon-governed artifacts"]
+
+    style NOTE_EPL fill:#fffbeb,stroke:#f59e0b,stroke-width:1px
+    style EVENT fill:#2563eb,color:#ffffff,stroke:#1e40af
+    style ENFORCED fill:#059669,color:#ffffff,stroke:#047857
+    style BLOCK fill:#dc2626,color:#ffffff,stroke:#991b1b

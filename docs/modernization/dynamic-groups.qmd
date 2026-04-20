@@ -1,0 +1,109 @@
+---
+title: "Dynamic Group Library"
+subtitle: "OrgPath-Driven Group Membership for Entra ID"
+date: 2026-04-19
+---
+
+::: {.callout-warning}
+## Aspirational — canonically declared, not yet fully adopted
+
+The Dynamic Group Library specifications are canonical. Operational instantiation
+across production tenants is under development.
+:::
+
+## Why Dynamic Groups Matter
+
+In Active Directory, group membership was a manual operation. An administrator added
+a user to a security group, and that membership persisted until someone remembered to
+remove it. Transfer to a new department? Hope someone updated the groups. Leave the
+organization? Hope the offboarding checklist included every group. The result: group
+sprawl, stale memberships, and access control that drifted from organizational reality
+within weeks of any personnel change.
+
+Entra ID dynamic groups solve this — membership is computed from user attributes, not
+manually assigned. When a user's OrgPath changes (because HR updated their department),
+every dynamic group membership recalculates automatically. No tickets, no manual steps,
+no drift.
+
+But dynamic groups without a governance library are just a different kind of sprawl.
+Instead of manually-managed groups drifting, you get hundreds of dynamic groups with
+inconsistent naming, overlapping membership rules, and no canonical source of truth.
+
+The Dynamic Group Library (MOD_B) is that source of truth.
+
+## Three Query Patterns
+
+Every dynamic group in the library uses one of three membership rule patterns against
+`user.extensionAttribute1` (the OrgPath attribute defined in MOD_A):
+
+| Pattern | Operator | Use Case | Example |
+|---------|----------|----------|---------|
+| **Branch** | `-startsWith` | All users at and below a hierarchy level | `(user.extensionAttribute1 -startsWith "ORG-FIN")` |
+| **Node** | `-eq` | Users at exactly one hierarchy level | `(user.extensionAttribute1 -eq "ORG-IT-SEC-SOC-T1")` |
+| **Compound** | `-or` / `-and` | Cross-divisional or exclusion groups | `(...-startsWith "ORG-IT-SEC") -or (...-startsWith "ORG-LEG-COM")` |
+
+**Branch** queries are the workhorse — they capture entire organizational subtrees and
+automatically include any new teams or units added below that level.
+
+**Node** queries target leaf teams for granular access control.
+
+**Compound** queries handle cross-cutting concerns that do not map to a single OrgPath branch.
+
+## Canonical Group Inventory
+
+### Division Groups (Level 1 — Branch)
+
+| Group | Rule | Scope |
+|-------|------|-------|
+| `OrgTree-FIN-Users` | `-startsWith "ORG-FIN"` | All Finance |
+| `OrgTree-HR-Users` | `-startsWith "ORG-HR"` | All Human Resources |
+| `OrgTree-IT-Users` | `-startsWith "ORG-IT"` | All IT |
+| `OrgTree-OPS-Users` | `-startsWith "ORG-OPS"` | All Operations |
+| `OrgTree-LEG-Users` | `-startsWith "ORG-LEG"` | All Legal/Compliance |
+| `OrgTree-EXEC-Users` | `-startsWith "ORG-EXEC"` | All Executive |
+
+### Department Groups (Level 2 — Branch)
+
+| Group | Rule | Scope |
+|-------|------|-------|
+| `OrgTree-FIN-AP-Users` | `-startsWith "ORG-FIN-AP"` | Accounts Payable |
+| `OrgTree-FIN-AR-Users` | `-startsWith "ORG-FIN-AR"` | Accounts Receivable |
+| `OrgTree-FIN-BUD-Users` | `-startsWith "ORG-FIN-BUD"` | Budget |
+| `OrgTree-IT-SEC-Users` | `-startsWith "ORG-IT-SEC"` | Security |
+| `OrgTree-IT-INF-Users` | `-startsWith "ORG-IT-INF"` | Infrastructure |
+| `OrgTree-IT-DEV-Users` | `-startsWith "ORG-IT-DEV"` | Development |
+| `OrgTree-HR-REC-Users` | `-startsWith "ORG-HR-REC"` | Recruitment |
+| `OrgTree-HR-BEN-Users` | `-startsWith "ORG-HR-BEN"` | Benefits |
+
+### Specialized Groups
+
+| Group | Rule | Purpose |
+|-------|------|---------|
+| `OrgTree-EXEC-CA` | `-startsWith "ORG-EXEC"` | Executive Conditional Access |
+| `OrgTree-IT-SEC-CA` | `-startsWith "ORG-IT-SEC"` | Security team privileged access CA |
+| `OrgTree-EXEC-Licensed` | `-startsWith "ORG-EXEC"` | E5 + Copilot licensing |
+| `OrgTree-IT-Licensed` | `-startsWith "ORG-IT"` | E5 licensing |
+| `OrgTree-SecurityCompliance-Users` | `-startsWith "ORG-IT-SEC" -or -startsWith "ORG-LEG-COM"` | Cross-functional |
+
+## Five Drift Categories for Groups
+
+| Category | What It Means | Severity | Auto-Fix |
+|----------|-------------|----------|----------|
+| **Rule Drift** | Tenant rule differs from canonical rule | HIGH | Yes |
+| **Phantom Group** | `OrgTree-` group exists in tenant but not in library | MEDIUM | No |
+| **Missing Group** | Library entry has no corresponding tenant group | HIGH | Yes |
+| **Name Drift** | Correct rule, wrong name | LOW | Yes |
+| **Membership Drift** | Unexpected member count — root cause is OrgPath values (MOD_A) | MEDIUM | Fix at source |
+
+## Governance Rules
+
+1. **No manual members** — dynamic groups in this library are dynamic-only
+2. **One rule per group** — no multi-rule groups; split into separate groups
+3. **Deterministic naming** — name derives from OrgPath scope + purpose
+4. **Governed changes only** — additions/modifications follow MOD_E Workflow 3
+
+::: {.callout-tip}
+## Source
+Full canonical definitions with PowerShell validation scripts:
+`src/uiao/modernization/orgtree/MOD_B_Dynamic_Group_Library.md`
+:::

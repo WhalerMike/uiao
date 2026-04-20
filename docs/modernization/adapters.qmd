@@ -1,0 +1,235 @@
+---
+title: "Directory Migration Adapters"
+subtitle: "Everything Active Directory Was Holding Together"
+date: 2026-04-19
+---
+
+::: {.callout-warning}
+## Aspirational — canonically declared, not yet fully adopted
+
+The adapter interface specifications are canonical. Vendor-specific implementations
+are under development.
+:::
+
+## The Hidden Surface
+
+When people say "migrate off Active Directory," they mean move users to Entra ID.
+But Active Directory was not just an identity store. It was the implicit governance model
+for every network service in the enterprise:
+
+- **DNS** — AD-integrated DNS zones, SRV records for domain controllers
+- **DHCP** — Scope-to-subnet-to-OU mappings
+- **PKI** — Active Directory Certificate Services, auto-enrollment via GPO
+- **RADIUS** — Network Policy Server authenticating against AD groups
+- **LDAP** — Hundreds of applications doing LDAP binds to domain controllers
+- **Device Management** — SCCM collections querying AD, GPO-based device policy
+- **Time Services** — Every domain-joined machine syncing NTP from the PDC emulator
+- **File Services** — DFS namespaces resolving through AD domain names
+
+Migrating users to Entra ID without migrating these services is not a migration — it is
+a liability. The Directory Migration canon provides a governed adapter interface for each
+of these eight service categories.
+
+## Adapter Priority Matrix
+
+| ID | Adapter | Priority | Risk If Ignored |
+|----|---------|----------|----------------|
+| DM_010 | [IPAM (DNS/DHCP)](#ipam) | HIGH | DNS resolution failure, rogue DHCP |
+| DM_020 | [PKI / Certificate Services](#pki) | **CRITICAL** | Silent auth failure weeks post-migration |
+| DM_030 | [RADIUS / 802.1X / VPN](#radius) | **CRITICAL** | Network access failure |
+| DM_040 | [LDAP Proxy](#ldap) | **CRITICAL** | Silent application auth failure — largest hidden surface |
+| DM_050 | [Sync Engine (Entra Connect)](#sync) | HIGH | Permanent AD dependency |
+| DM_060 | [Device Management](#devices) | HIGH | Non-deterministic policy application |
+| DM_070 | [NTP / Time Services](#ntp) | MEDIUM | Kerberos clock skew failures |
+| DM_080 | [DFS / File Services](#dfs) | MEDIUM | Silent UNC path failure |
+
+Three adapters are **CRITICAL** — they must be addressed before any AD infrastructure
+can be decommissioned: PKI, RADIUS, and LDAP.
+
+---
+
+## IPAM (DNS / DHCP / IP Management) {#ipam}
+
+**Document:** DM_010 | **Priority:** HIGH
+
+AD-integrated DNS is the most visible dependency. Every domain-joined machine resolves
+domain controller locations through SRV records (`_kerberos._tcp`, `_ldap._tcp`,
+`_gc._tcp`). AD retirement requires migrating these zones to standalone DNS.
+
+**Required capabilities:**
+
+- Full zone export as canonical snapshot for drift detection baseline
+- SRV record migration (`_kerberos`, `_ldap`, `_gc`)
+- Side-by-side operation with AD-integrated DNS during hybrid window
+- DHCP scope inventory and rogue DHCP detection
+- Subnet-to-OrgPath mapping for IP governance
+
+**Registered implementations:** InfoBlox NIOS (FedRAMP authorized), BlueCat Address Manager, Generic RFC-compliant IPAM
+
+---
+
+## PKI / Certificate Services {#pki}
+
+**Document:** DM_020 | **Priority:** CRITICAL | **Risk:** Silent auth failure weeks post-migration
+
+Active Directory Certificate Services (ADCS) is deeply embedded in federal environments.
+Smart card / PIV / CAC authentication depends on it. Auto-enrollment policies flow through
+Group Policy. The entire certificate chain is anchored in AD.
+
+The failure mode is insidious: certificates work fine until they expire. If the replacement
+CA is not operational before the first expiry wave, authentication fails silently across
+the organization — weeks or months after the migration was declared "complete."
+
+**Required capabilities:**
+
+- Full certificate inventory (issued, pending, revoked, expired)
+- Certificate-to-identity binding (who owns each cert)
+- Expiry timeline export (90/180/365-day windows)
+- CA hierarchy mapping (root, issuing, subordinate chains)
+- Smart card / PIV / CAC certificate inventory (federal critical)
+- Auto-enrollment migration from GPO to Intune/SCEP/EST
+
+**Migration sequence:**
+
+1. Inventory all issued certificates and expiry dates
+2. Map certificates to identity objects
+3. Establish replacement CA **before** any AD retirement begins
+4. Migrate auto-enrollment to Intune/SCEP/EST
+5. Validate certificate chain through new CA
+6. Retire ADCS only after all renewals confirmed through new CA
+
+**Registered implementations:** ADCS (migration source), DigiCert, Entrust, Entra CBA
+
+---
+
+## RADIUS / Network Policy Server {#radius}
+
+**Document:** DM_030 | **Priority:** CRITICAL | **Risk:** Network access failure pre-migration completion
+
+Windows Network Policy Server (NPS) authenticates 802.1X wired/wireless, VPN, and
+dial-up connections against Active Directory groups. Every access point, VPN concentrator,
+and managed switch that uses RADIUS is an AD dependency.
+
+If NPS goes down before the replacement RADIUS is validated, users cannot connect to
+the network. This is not a degraded experience — it is a total access failure.
+
+**Required capabilities:**
+
+- Inventory all NPS policies (Connection Request, Network, Health)
+- Map NPS policies to AD group dependencies
+- Identify all RADIUS clients (APs, VPN concentrators, switches)
+- 802.1X certificate profile and EAP method inventory
+- Policy translation from AD groups to Entra ID dynamic groups
+- Side-by-side validation before cutover
+
+**Migration sequence:**
+
+1. Inventory all RADIUS clients and NPS policies
+2. Map all NPS AD group dependencies to Entra ID equivalents
+3. Deploy replacement RADIUS (Cisco ISE / ClearPass / Entra proxy)
+4. Validate in parallel — both NPS and replacement serving simultaneously
+5. Cut over RADIUS clients to new server
+6. Decommission NPS only after 30-day validation window
+
+**Registered implementations:** NPS (migration source), Cisco ISE, Aruba ClearPass, Entra RADIUS Proxy
+
+---
+
+## LDAP Proxy {#ldap}
+
+**Document:** DM_040 | **Priority:** CRITICAL | **Risk:** Silent application auth failure — largest hidden surface
+
+LDAP is the largest hidden AD dependency. Applications that were deployed 10-15 years ago
+do LDAP binds to domain controllers for authentication. Nobody maintains an inventory of
+these applications because nobody had to — AD was always there.
+
+The discovery phase for LDAP is the longest of any adapter because you cannot migrate
+what you cannot see, and you cannot see LDAP dependencies without passive traffic analysis.
+
+**Required capabilities:**
+
+- Network traffic analysis: identify all hosts making LDAP binds to DCs
+- Service account inventory for LDAP binds
+- Application-to-LDAP dependency map
+- Query analysis (what attributes are being read)
+- Bind type inventory (simple, SASL, certificate-based)
+- Attribute mapping (AD names to Entra ID equivalents)
+
+**Migration sequence:**
+
+1. Deploy passive LDAP traffic monitor on DC network segment
+2. Run **30-day discovery window** — capture all LDAP bind sources
+3. Build application-to-LDAP-dependency map
+4. Deploy LDAP proxy (Entra Domain Services or standalone)
+5. Validate each application against proxy
+6. Cut over applications **in waves — never all at once**
+
+**Registered implementations:** Entra Domain Services, Generic LDAP Proxy
+
+---
+
+## Sync Engine (Entra Connect) {#sync}
+
+**Document:** DM_050 | **Priority:** HIGH | **Risk:** Permanent AD dependency if lifecycle unmanaged
+
+The sync engine is the bridge between AD and Entra ID — and it is also the tether that
+keeps AD alive. As long as the sync engine runs, AD is a production dependency. The sync
+engine is not retired until **every other adapter** has been migrated.
+
+**Retirement criteria (ALL must be true):**
+
+- All users provisioned from authoritative HR source (not AD sync)
+- All groups migrated to dynamic or Entra-managed
+- All applications off on-prem AD authentication
+- All devices managed by Intune (no AD dependency)
+- All service accounts migrated to Entra service principals
+- ADCS replaced; DNS migrated; RADIUS migrated; LDAP apps validated
+
+---
+
+## Device Management {#devices}
+
+**Document:** DM_060 | **Priority:** HIGH
+
+SCCM collections query AD. Group Policy Objects flow through the OU tree. Co-management
+workloads split responsibility between SCCM and Intune. The device adapter governs the
+transition from AD-dependent device policy to Intune-native management.
+
+**Key capability:** Run Group Policy Analytics to identify GPO settings without Intune equivalents before migrating any workload.
+
+---
+
+## NTP / Time Services {#ntp}
+
+**Document:** DM_070 | **Priority:** MEDIUM
+
+Every domain-joined machine syncs time from the PDC emulator. Kerberos allows a maximum
+5-minute clock skew. If domain controllers are decommissioned without redirecting NTP,
+Kerberos authentication fails across the environment.
+
+**Fix:** Deploy Intune policy redirecting `w32tm` to external NTP sources (`time.windows.com`)
+before any DC decommission.
+
+---
+
+## DFS / File Services {#dfs}
+
+**Document:** DM_080 | **Priority:** MEDIUM
+
+DFS namespaces resolve through AD domain names. Domain-based DFS namespaces
+(`\\domain\share`) fail silently when the domain is retired. Migration targets:
+SharePoint Online, Azure Files, or standalone DFS with non-AD names.
+
+---
+
+## Post-Migration Validation
+
+After all adapters are migrated, the [Validation Checklist (DM_090)](https://github.com/WhalerMike/uiao/blob/main/src/uiao/modernization/directory-migration/validation-checklist.md)
+provides a comprehensive pass/fail gate for each service category before AD infrastructure
+decommission is authorized.
+
+::: {.callout-tip}
+## Source
+Full adapter interface specifications with vendor manifests:
+`src/uiao/modernization/directory-migration/adapters/`
+:::

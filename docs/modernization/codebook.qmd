@@ -1,0 +1,152 @@
+---
+title: "OrgPath Codebook"
+subtitle: "The Master Encoding Scheme for Identity Hierarchy in Entra ID"
+date: 2026-04-19
+---
+
+::: {.callout-warning}
+## Aspirational — canonically declared, not yet fully adopted
+
+The OrgPath Codebook is canonical and governs all OrgPath assignments. The sample
+entries below are illustrative; production codebooks will be customized per tenant.
+:::
+
+## Why This Is the Most Important Document in the Suite
+
+Every other artifact in the OrgTree suite depends on the OrgPath Codebook:
+
+- **Dynamic groups** (MOD_B) key their membership rules off OrgPath values
+- **Administrative Units** (MOD_D) scope delegation boundaries to OrgPath segments
+- **Drift detection** (MOD_M) validates every user's `extensionAttribute1` against this codebook
+- **Conditional Access** policies target groups built from OrgPath membership
+- **License assignment** maps OrgPath segments to M365 SKUs
+
+If the codebook is wrong, everything downstream is wrong. If the codebook is not governed, nothing downstream is governed.
+
+## The Format
+
+**Canonical:** `ORG-[DIV]-[DEPT]-[UNIT]-[TEAM]`
+
+- Fixed root prefix (`ORG`) enables regex validation and subtree matching
+- Uppercase alphanumeric segments, 2-6 characters, hyphen-separated
+- Maximum 4 segments after root (Level 4 = Team)
+- Regex: `^ORG(-[A-Z0-9]{2,6}){0,4}$`
+- Stored in: `extensionAttribute1` — the single source of truth
+- HR system is authoritative — IT never manually edits OrgPath
+
+## Level Structure
+
+| Level | Segments | Example | Description | Dynamic Group Pattern |
+|-------|----------|---------|-------------|----------------------|
+| 0 | 1 | `ORG` | Enterprise Root | All users |
+| 1 | 2 | `ORG-FIN` | Division | `-eq` or `-startsWith` |
+| 2 | 3 | `ORG-FIN-AP` | Department | `-startsWith` |
+| 3 | 4 | `ORG-FIN-AP-EAST` | Unit / Region | `-startsWith` |
+| 4 | 5 | `ORG-FIN-AP-EAST-T1` | Team | `-eq` |
+
+## Sample Codebook
+
+### Divisions (Level 1)
+
+| OrgPath | Description |
+|---------|-------------|
+| `ORG-EXEC` | Executive / Leadership |
+| `ORG-FIN` | Finance |
+| `ORG-HR` | Human Resources |
+| `ORG-IT` | Information Technology |
+| `ORG-OPS` | Operations |
+| `ORG-LEG` | Legal / Compliance |
+| `ORG-SALES` | Sales & Marketing |
+
+### Departments (Level 2)
+
+| OrgPath | Description | Parent |
+|---------|-------------|--------|
+| `ORG-FIN-AP` | Accounts Payable | ORG-FIN |
+| `ORG-FIN-AR` | Accounts Receivable | ORG-FIN |
+| `ORG-FIN-BUD` | Budget & Forecasting | ORG-FIN |
+| `ORG-IT-SEC` | Security | ORG-IT |
+| `ORG-IT-INF` | Infrastructure | ORG-IT |
+| `ORG-IT-DEV` | Development / Engineering | ORG-IT |
+| `ORG-HR-REC` | Recruitment | ORG-HR |
+| `ORG-HR-BEN` | Benefits | ORG-HR |
+| `ORG-OPS-LOG` | Logistics | ORG-OPS |
+| `ORG-LEG-COM` | Compliance | ORG-LEG |
+
+### Units (Level 3)
+
+| OrgPath | Description | Parent |
+|---------|-------------|--------|
+| `ORG-IT-SEC-SOC` | Security Operations Center | ORG-IT-SEC |
+| `ORG-IT-SEC-IAM` | Identity & Access Management | ORG-IT-SEC |
+| `ORG-IT-INF-NET` | Networking | ORG-IT-INF |
+| `ORG-FIN-AP-EAST` | Accounts Payable East | ORG-FIN-AP |
+| `ORG-FIN-AP-WEST` | Accounts Payable West | ORG-FIN-AP |
+
+### Teams (Level 4)
+
+| OrgPath | Description | Parent |
+|---------|-------------|--------|
+| `ORG-IT-SEC-SOC-T1` | SOC Tier 1 Analysts | ORG-IT-SEC-SOC |
+| `ORG-IT-SEC-SOC-T2` | SOC Tier 2 Engineers | ORG-IT-SEC-SOC |
+| `ORG-IT-DEV-APP1` | Application Team 1 | ORG-IT-DEV |
+
+## Dynamic Group Rules
+
+### Branch Groups (Subtree)
+
+Use `-startsWith` to capture all users in a branch and everything below it:
+
+| Group | Entra ID Rule |
+|-------|--------------|
+| `SG-FIN-All` | `(user.extensionAttribute1 -startsWith "ORG-FIN")` |
+| `SG-IT-SEC-All` | `(user.extensionAttribute1 -startsWith "ORG-IT-SEC")` |
+| `SG-FIN-AP-All` | `(user.extensionAttribute1 -startsWith "ORG-FIN-AP")` |
+
+### Node Groups (Exact)
+
+Use `-eq` for leaf-node precision:
+
+| Group | Entra ID Rule |
+|-------|--------------|
+| `SG-IT-SEC-SOC-T1` | `(user.extensionAttribute1 -eq "ORG-IT-SEC-SOC-T1")` |
+| `SG-EXEC` | `(user.extensionAttribute1 -eq "ORG-EXEC")` |
+
+### Compound Rules
+
+| Group | Entra ID Rule | Use Case |
+|-------|--------------|----------|
+| `SG-IT-Privileged` | `... -startsWith "ORG-IT-SEC") -or (... -startsWith "ORG-IT-INF")` | Elevated access scope |
+
+## Administrative Unit Mapping
+
+| AU | Membership Rule | Scoped Role | Delegate |
+|----|-----------------|-------------|----------|
+| `AU-IT` | `extensionAttribute1 -startsWith "ORG-IT"` | User Administrator | IT Division Lead |
+| `AU-IT-SEC` | `extensionAttribute1 -startsWith "ORG-IT-SEC"` | User Administrator | CISO |
+| `AU-FIN` | `extensionAttribute1 -startsWith "ORG-FIN"` | User Administrator | CFO |
+| `AU-HR` | `extensionAttribute1 -startsWith "ORG-HR"` | User Administrator | CHRO |
+
+## Five Drift Categories
+
+| Category | What Broke | Severity | Auto-Fix? |
+|----------|-----------|----------|-----------|
+| **Value** | OrgPath not in codebook | High | No |
+| **Format** | Fails regex | Critical | No |
+| **Hierarchy** | Parent path missing | Critical | No |
+| **Orphan** | Code in codebook, zero users | Medium | Flag |
+| **Phantom** | Deprecated code still assigned | Medium | Reassign |
+
+## Implementation Sequence
+
+1. **Export** your current AD OU structure
+2. **Normalize** into `ORG-` codes — get HR sign-off
+3. **Populate** `extensionAttribute1` via HR provisioning or Entra Connect
+4. **Create** dynamic groups — start with Level 1-2 branches
+5. **Create** Administrative Units — mirror group structure
+6. **Validate** with PowerShell (see MOD_A source for validation script)
+7. **Enable** drift detection (MOD_M) for continuous monitoring
+
+## Source
+
+Canonical source: [`src/uiao/modernization/orgtree/MOD_A_OrgPath_Codebook.md`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/modernization/orgtree/MOD_A_OrgPath_Codebook.md)

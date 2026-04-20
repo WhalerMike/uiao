@@ -1,0 +1,81 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2563eb', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#1e40af', 'lineColor': '#6b7280', 'secondaryColor': '#f7f5f0', 'tertiaryColor': '#e5e7eb'}}}%%
+%% ---
+%% diagram_id: DIAG_020
+%% title: "UIAO Three-Tier Test Strategy"
+%% version: "1.0"
+%% status: ACTIVE
+%% classification: Controlled
+%% owner: Michael Stratton
+%% source_format: mermaid
+%% document_category: testing
+%% form_factors:
+%%   - full
+%%   - nano
+%% created_at: 2026-04-18
+%% updated_at: 2026-04-18
+%% boundary: GCC-Moderate
+%% description: "Three-tier test model for boundary-outside substrate: unit/conformance, integration, and system/governance tiers."
+%% tags:
+%%   - testing
+%%   - strategy
+%%   - conformance
+%%   - three-tier
+%% related_documents:
+%%   - UIAO_131
+%%   - UIAO_121
+%%   - UIAO_123
+%% nano_config:
+%%   max_nodes: 12
+%%   collapse_groups:
+%%     - subgraph_tier1
+%%     - subgraph_tier2
+%%     - subgraph_tier3
+%%   label_mode: abbreviated
+%%   edge_simplification: true
+%%   hide_annotations: true
+%% ---
+
+graph TD
+    CODE["Code Change<br/>PR Submitted"]
+
+    subgraph subgraph_tier1 ["Tier 1: Unit & Conformance"]
+        T1_UNIT["Unit Tests<br/>pytest"]
+        T1_SCHEMA["Schema<br/>Validation"]
+        T1_CONFORM["Adapter<br/>Conformance Suite"]
+        T1_UNIT --> T1_SCHEMA
+        T1_SCHEMA --> T1_CONFORM
+    end
+
+    subgraph subgraph_tier2 ["Tier 2: Integration"]
+        T2_ADAPTER["Adapter<br/>Integration Tests"]
+        T2_PIPELINE["Evidence Pipeline<br/>End-to-End"]
+        T2_DRIFT["Drift Detection<br/>Regression"]
+        T2_ADAPTER --> T2_PIPELINE
+        T2_PIPELINE --> T2_DRIFT
+    end
+
+    subgraph subgraph_tier3 ["Tier 3: System & Governance"]
+        T3_METADATA["Metadata<br/>Validator"]
+        T3_DRIFT_SCAN["Drift Scan<br/>Full Corpus"]
+        T3_APPENDIX["Appendix<br/>Sync Check"]
+        T3_DASHBOARD["Dashboard<br/>Export Validation"]
+        T3_METADATA --> T3_DRIFT_SCAN
+        T3_DRIFT_SCAN --> T3_APPENDIX
+        T3_APPENDIX --> T3_DASHBOARD
+    end
+
+    CODE --> T1_UNIT
+    T1_CONFORM --> T2_ADAPTER
+    T2_DRIFT --> T3_METADATA
+
+    T3_DASHBOARD --> GATE{"All 6 CI<br/>Gates Pass?"}
+    GATE -->|"Yes"| MERGE["Merge to<br/>main"]
+    GATE -->|"No"| BLOCK["PR Blocked<br/>Fix Required"]
+    BLOCK --> CODE
+
+    NOTE_CI["Note: All three tiers<br/>run in CI pipeline"]
+
+    style NOTE_CI fill:#fffbeb,stroke:#f59e0b,stroke-width:1px
+    style CODE fill:#2563eb,color:#ffffff,stroke:#1e40af
+    style MERGE fill:#059669,color:#ffffff,stroke:#047857
+    style BLOCK fill:#dc2626,color:#ffffff,stroke:#991b1b

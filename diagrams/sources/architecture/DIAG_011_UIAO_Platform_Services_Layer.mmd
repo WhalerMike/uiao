@@ -1,0 +1,98 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2563eb', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#1e40af', 'lineColor': '#6b7280', 'secondaryColor': '#f7f5f0', 'tertiaryColor': '#e5e7eb'}}}%%
+%% ---
+%% diagram_id: DIAG_011
+%% title: "UIAO Platform Services Layer"
+%% version: "1.0"
+%% status: ACTIVE
+%% classification: Controlled
+%% owner: Michael Stratton
+%% source_format: mermaid
+%% document_category: architecture
+%% form_factors:
+%%   - full
+%%   - nano
+%% created_at: 2026-04-18
+%% updated_at: 2026-04-18
+%% boundary: GCC-Moderate
+%% description: "Detailed service architecture showing drift engine, evidence pipeline, enforcement runtime, and compliance orchestrator interactions."
+%% tags:
+%%   - architecture
+%%   - services
+%%   - drift
+%%   - enforcement
+%%   - compliance
+%% related_documents:
+%%   - UIAO_102
+%%   - UIAO_110
+%%   - UIAO_111
+%%   - UIAO_100
+%% nano_config:
+%%   max_nodes: 12
+%%   collapse_groups:
+%%     - subgraph_drift_engine
+%%     - subgraph_evidence_pipe
+%%     - subgraph_enforce_rt
+%%   label_mode: abbreviated
+%%   edge_simplification: true
+%%   hide_annotations: true
+%% ---
+
+graph TD
+    ADAPTERS["Adapter Layer<br/>Conformance & Modernization"]
+
+    subgraph subgraph_drift_engine ["Drift Engine"]
+        DE_COLLECT["State<br/>Collection"]
+        DE_COMPARE["Canon<br/>Comparison"]
+        DE_CLASSIFY["Drift Class<br/>Assignment"]
+        DE_SEVERITY["Severity<br/>P1-P4 Rating"]
+        DE_COLLECT --> DE_COMPARE
+        DE_COMPARE --> DE_CLASSIFY
+        DE_CLASSIFY --> DE_SEVERITY
+    end
+
+    subgraph subgraph_evidence_pipe ["Evidence Pipeline"]
+        EP_INGEST["Vendor Data<br/>Ingestion"]
+        EP_NORMALIZE["OSCAL<br/>Normalization"]
+        EP_SIGN["Cryptographic<br/>Signing"]
+        EP_STORE["Evidence<br/>Graph Store"]
+        EP_INGEST --> EP_NORMALIZE
+        EP_NORMALIZE --> EP_SIGN
+        EP_SIGN --> EP_STORE
+    end
+
+    subgraph subgraph_enforce_rt ["Enforcement Runtime"]
+        ER_POLICY["EPL Policy<br/>Evaluation"]
+        ER_DECIDE["Enforcement<br/>Decision"]
+        ER_ACT["Action<br/>Dispatch"]
+        ER_AUDIT["Audit Trail<br/>Record"]
+        ER_POLICY --> ER_DECIDE
+        ER_DECIDE --> ER_ACT
+        ER_ACT --> ER_AUDIT
+    end
+
+    subgraph subgraph_orchestrator ["Compliance Orchestrator"]
+        CO_SCHEDULE["Scan<br/>Scheduling"]
+        CO_AGGREGATE["Finding<br/>Aggregation"]
+        CO_SLA["SLA<br/>Enforcement"]
+        CO_REPORT["Report<br/>Generation"]
+        CO_SCHEDULE --> CO_AGGREGATE
+        CO_AGGREGATE --> CO_SLA
+        CO_SLA --> CO_REPORT
+    end
+
+    ADAPTERS --> DE_COLLECT
+    ADAPTERS --> EP_INGEST
+    DE_SEVERITY --> ER_POLICY
+    EP_STORE --> CO_AGGREGATE
+    ER_AUDIT --> CO_AGGREGATE
+
+    CO_REPORT --> OUTPUT["OSCAL Deliverables<br/>SAR · POA&M · SSP"]
+
+    DE_SEVERITY -->|"P1 Critical"| ER_POLICY
+    DE_SEVERITY -->|"P2-P4"| CO_AGGREGATE
+
+    NOTE_KSI["Note: 163 KSI signals<br/>feed evidence pipeline"]
+
+    style NOTE_KSI fill:#fffbeb,stroke:#f59e0b,stroke-width:1px
+    style ADAPTERS fill:#2563eb,color:#ffffff,stroke:#1e40af
+    style OUTPUT fill:#059669,color:#ffffff,stroke:#047857
