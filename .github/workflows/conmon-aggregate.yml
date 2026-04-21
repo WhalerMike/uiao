@@ -1,0 +1,124 @@
+name: ConMon Aggregate
+
+# Monthly POA&M rollup + RFC-0026 dashboard card + 72-hour critical-finding
+# SLA gate per ADR-025 D3, ADR-043 D2 / D4, and UIAO_132 §2.2.
+#
+# Inputs: per-adapter `findings.json` artifacts under
+#   evidence/conformance/<adapter-id>/<run-id>/findings.json
+# Outputs (exports/conmon/):
+#   - conmon-poam.csv                 (FedRAMP-shaped CSV subset)
+#   - conmon-aggregate-summary.json   (RFC-0026 dashboard card per adapter)
+#   - conmon-sla-issues.json          (governance-issue payloads for SLA breaches)
+#
+# This workflow is intentionally scaffold-level today. The Connect.gov
+# upload step (UIAO_132 §7 O1) is not wired yet; artifact upload to
+# GitHub's artifact store is the current handoff.
+
+on:
+  schedule:
+    # First day of each month, 09:00 UTC. Gives the prior month's
+    # monthly scans time to land before aggregation runs.
+    - cron: '0 9 1 * *'
+  workflow_dispatch:
+    inputs:
+      open_sla_issues:
+        description: 'Open governance issues for 72-hour SLA breaches'
+        type: boolean
+        default: true
+  repository_dispatch:
+    types: [conformance-run-complete]
+  pull_request:
+    paths:
+      - 'scripts/conmon/**'
+      - 'src/uiao/canon/adapter-registry.yaml'
+      - '.github/workflows/conmon-aggregate.yml'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  aggregate:
+    name: Aggregate ConMon deliverables (RFC-0026)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install minimal deps
+        run: pip install --quiet pyyaml
+
+      - name: Run aggregator
+        run: |
+          python scripts/conmon/aggregate.py \
+            --registry src/uiao/canon/adapter-registry.yaml \
+            --evidence-root evidence/conformance \
+            --output-dir exports/conmon
+
+      - name: Summarize to step output
+        run: |
+          echo '## ConMon Aggregate — RFC-0026 CA-7' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          jq '.adapters | map({id, status, requirement, pathway, last_run_at, counts: .finding_counts, sla: .sla_breach_count})' \
+            exports/conmon/conmon-aggregate-summary.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload aggregate artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: conmon-aggregate-${{ github.run_id }}
+          path: exports/conmon/
+          retention-days: 90
+
+      - name: Open governance issues for SLA breaches
+        # PRs and scheduled runs open issues; workflow_dispatch respects
+        # its input flag (default true). Skip on pull_request events so
+        # PR CI doesn't file issues.
+        if: >-
+          github.event_name != 'pull_request' &&
+          (github.event_name != 'workflow_dispatch' || inputs.open_sla_issues)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const payloads = JSON.parse(
+              fs.readFileSync('exports/conmon/conmon-sla-issues.json', 'utf8')
+            );
+            if (payloads.length === 0) {
+              core.info('No 72-hour SLA breaches — no issues to open.');
+              return;
+            }
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'conmon-cure',
+              per_page: 100,
+            });
+            const existingFingerprints = new Set(
+              existing
+                .map(i => (i.body || '').match(/fingerprint:\s*`([0-9a-f]+)`/))
+                .filter(Boolean)
+                .map(m => m[1])
+            );
+            for (const p of payloads) {
+              if (existingFingerprints.has(p.fingerprint)) {
+                core.info(`Skipping existing SLA issue ${p.fingerprint}`);
+                continue;
+              }
+              const body = `${p.body}\n\n---\nfingerprint: \`${p.fingerprint}\``;
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: p.title,
+                body,
+                labels: p.labels,
+              });
+              core.info(`Opened SLA issue for ${p.fingerprint}`);
+            }
