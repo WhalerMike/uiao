@@ -1,12 +1,12 @@
 ---
 document_id: UIAO_132
 title: "UIAO FedRAMP RFC-0026 CA-7 Pathway Integration"
-version: "0.1"
+version: "0.2"
 status: Draft
 classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-21"
-updated_at: "2026-04-21"
+updated_at: "2026-04-21T17:00:00Z"
 boundary: "GCC-Moderate"
 ---
 
@@ -210,8 +210,8 @@ position:
 | O2 | Schema-promote the `fedramp-rfc-0026` block in `adapter-registry.schema.json` | governance-steward | RFC-0026 ratification |
 | O3 | Publish the monthly ConMon meeting landing page under `docs/docs/conmon/` | docs-steward | 2026-06-30 effective date |
 | O4 | Draft Pathway-1 migration ADR once VDR / CCM Balance Improvement Releases publish | conmon-steward | upstream publication |
-| O5 | Add a `conmon-rfc0026` dashboard card to `conmon-aggregate.yml` output that renders pathway + last-month deliverable state per adapter | devex | 2026-06-30 effective date |
-| O6 | Stand up `docs/docs/conmon-corrective-action-playbook.qmd` (45-day internal cure window per ADR-043 D5) | governance-steward | 2026-06-30 effective date |
+| O5 | Add a `conmon-rfc0026` dashboard card to `conmon-aggregate.yml` output that renders pathway + last-month deliverable state per adapter | devex | ✅ 2026-04-21 — scaffolded: `.github/workflows/conmon-aggregate.yml` + `scripts/conmon/aggregate.py` emit `conmon-aggregate-summary.json` with per-adapter RFC-0026 card; wires SLA issue filing for O4-style cure start. |
+| O6 | Stand up `docs/docs/conmon-corrective-action-playbook.qmd` (45-day internal cure window per ADR-043 D5) | governance-steward | ✅ 2026-04-21 — `docs/docs/conmon-corrective-action-playbook.qmd` landed alongside ADR-043. |
 
 ---
 
@@ -237,3 +237,4 @@ position:
 | Version | Date | Change | Author |
 |---|---|---|---|
 | 0.1 | 2026-04-21 | Initial draft during RFC-0026 comment window | Automation |
+| 0.2 | 2026-04-21 | O5 + O6 checked off — `conmon-aggregate.yml` + `scripts/conmon/aggregate.py` scaffolded; tests land under `tests/conmon/`; July-2026 dry-run agenda seeded under `docs/docs/conmon/templates/` | Automation |
