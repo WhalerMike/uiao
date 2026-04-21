@@ -1,0 +1,110 @@
+---
+title: "UIAO ConMon Corrective-Action Playbook"
+subtitle: "45-day internal cure window for RFC-0026 CA-7 deliverables"
+author: "UIAO Governance"
+date: "2026-04-21"
+categories: [conmon, fedramp, rfc-0026, ca-7, corrective-action]
+---
+
+## Purpose
+
+FedRAMP RFC-0026 (discussion [#130](https://github.com/FedRAMP/community/discussions/130))
+specifies a five-strike corrective-action ladder that begins at the point
+the FedRAMP PMO detects a failure to meet a monthly CA-7 deliverable.
+Strike 1 issues a notification, a Corrective Action Plan (CAP) request,
+and a one-month grace period; strikes escalate through agency
+notification, Marketplace status changes, revocation-pending, and
+certification revocation + Marketplace removal.
+
+This playbook layers a **45-day internal cure window** *in front of* the
+PMO-issued strike clock, per **ADR-043 D5**. The internal cure is
+self-imposed — it is not an RFC-0026 obligation — and exists solely so
+UIAO catches its own drift before the PMO notification fires. It
+operationalizes the comment filed by `lrSpriggs` on discussion #130 that
+asked for an accelerated, single-opportunity cure window.
+
+## Scope
+
+Triggered by any of the following detected internally:
+
+1. **RV5-CA07-VLN — missed monthly scan.** Any CA-7-tagged
+   conformance adapter (`scubagear`, `vuln-scan`, `stig-compliance`,
+   `patch-state`, `intune`) fails to produce `findings.json` for a
+   scheduled calendar month.
+2. **RV5-CA07-VLN — missed monthly POA&M.** The `conmon-aggregate`
+   workflow fails to emit the POA&M CSV, or the CSV fails schema
+   validation, or the Connect.gov upload is not completed before the
+   calendar-month rollover.
+3. **RV5-CA07-VLN — missed annual IA scan.** The 3PAO engagement
+   anniversary lapses without a scheduled assessment.
+4. **RV5-CA07-CCM — missed monthly meeting.** No monthly ConMon
+   meeting is held, or the agenda / minutes / recording is not
+   attached to the evidence pack for that month.
+5. **72-hour critical-finding SLA breach.** Any `CRITICAL` finding
+   (per ADR-043 D2 / UIAO_132 §2.2) has no acknowledged remediation
+   plan within 72 hours of issue creation.
+
+## The 45-day clock
+
+Day `D+0` is the first business day on which the missed deliverable
+could have been detected (for monthly items, the first business day
+following the calendar-month rollover; for the 72-hour SLA, the SLA
+breach timestamp).
+
+| Day | Action | Owner |
+|---|---|---|
+| D+0 | Governance issue opened with label `conmon-cure` and the triggering evidence path | `conmon-aggregate` workflow (automatic) |
+| D+1 | Root-cause analysis assigned; missing deliverable re-scheduled | conmon-steward |
+| D+7 | Interim status post to the `conmon-cure` issue; if unresolved, escalate to governance-steward | conmon-steward |
+| D+14 | Draft remediation merged; re-run of missed scan(s) begun | adapter owner |
+| D+30 | Re-run complete; missed deliverable emitted; POA&M amended if required | conmon-steward |
+| D+45 | Cure closeout; `conmon-cure` issue closed with evidence linking to the remediated month's artifact | conmon-steward |
+
+If day D+45 passes with the deliverable still missing, the cure has
+failed. At that point:
+
+1. The `conmon-cure` issue is relabeled `conmon-cure-failed` and
+   remains open.
+2. A pre-emptive notification is sent to the FedRAMP PMO in advance
+   of the first PMO-issued strike.
+3. An ADR-043-superseding ADR is opened to reconsider the pathway
+   posture (typically: does Pathway 2's manual cadence still fit, or
+   does the failure argue for accelerating the Pathway 1 migration?).
+
+## Governance issue template
+
+```
+Title: [conmon-cure] <deliverable> missed — <yyyy-mm>
+Labels: conmon-cure, ca-7, rfc-0026
+Body:
+  Trigger: <scope item 1–5 above>
+  Deliverable: <e.g., "scubagear monthly findings.json">
+  Expected by: <yyyy-mm-dd>
+  Detected at: <yyyy-mm-ddThh:mmZ>
+  Evidence path (expected): <evidence/conformance/<adapter>/<run-id>/>
+  Root cause (D+1): <fill in>
+  Remediation plan (D+1): <fill in>
+  Closeout evidence (D+45): <fill in when resolved>
+```
+
+## Relationship to the PMO strike ladder
+
+The internal cure runs **in parallel with**, not instead of, the PMO
+clock. If the PMO issues Strike 1 during the 45-day cure window, the
+PMO's one-month grace period and CAP requirement take precedence; the
+internal cure continues as a tracking wrapper. If the internal cure
+closes before the PMO notices — the design target — no external strike
+is ever issued.
+
+## Cross-references
+
+- **ADR-043 D5** — the decision that establishes this playbook.
+- **UIAO_132 §2.2** — 72-hour critical-finding SLA (scope item 5).
+- **UIAO_132 §7 O6** — the open item this playbook closes.
+- **FedRAMP RFC-0026** — [FedRAMP/community discussion #130](https://github.com/FedRAMP/community/discussions/130).
+
+## Change log
+
+| Version | Date | Change |
+|---|---|---|
+| 0.1 | 2026-04-21 | Initial draft alongside ADR-043 / UIAO_132 |
