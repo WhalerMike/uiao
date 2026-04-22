@@ -9,7 +9,7 @@ and controlled change-making actions against target environments.
 Classification (per uiao/canon/modernization-registry.yaml):
     class:         modernization
     mission-class: integration  (UIAO_003 s4.7, ratified ODA-15 2026-04-15)
-    status:        reserved     (-> active once tests pass and canon is bumped)
+    status:        active     (-> active once tests pass and canon is bumped)
 
 This adapter is intentionally lightweight and sits OUTSIDE the main data
 path.  Its only job: create alignments (vendor-overlay + claim + evidence
