@@ -437,6 +437,72 @@ def classify_identity_drift(
 # Composite classifier — runs all taxonomy classifiers in priority order
 # ---------------------------------------------------------------------------
 
+
+
+# ---------------------------------------------------------------------------
+# DRIFT-SEMANTIC Classifier  (ADR-012 DT-02)
+# ---------------------------------------------------------------------------
+
+_SEMANTIC_WEAKENING_FIELDS = {
+    "mfa_enabled":               (False, "MFA must be enabled"),
+    "legacy_auth_enabled":       (True,  "Legacy auth must be disabled"),
+    "modern_auth_enabled":       (False, "Modern auth must be enabled"),
+    "password_never_expires":    (True,  "Passwords must expire"),
+    "external_sharing_enabled":  (True,  "External sharing must be disabled"),
+    "anonymous_sharing_enabled": (True,  "Anonymous sharing must be disabled"),
+    "public_access_enabled":     (True,  "Public access must be disabled"),
+    "audit_log_enabled":         (False, "Audit logging must be enabled"),
+    "unified_audit_log_enabled": (False, "Unified audit log must be enabled"),
+    "encryption_at_rest":        (False, "Encryption at rest must be enabled"),
+    "tls_enforcement":           (False, "TLS enforcement must be enabled"),
+    "ca_scope_tenant_wide":      (True,  "CA policy must not be tenant-wide"),
+    "safe_links_enabled":        (False, "Safe Links must be enabled"),
+    "safe_attachments_enabled":  (False, "Safe Attachments must be enabled"),
+}
+_SEMANTIC_UPPER_BOUND = {"max_inactive_days": 90, "patch_sla_days": 30, "session_timeout_minutes": 480, "sign_in_frequency_hours": 24}
+_SEMANTIC_LOWER_BOUND = {"audit_retention_days": 90}
+
+
+def classify_semantic_drift(*, resource_id, policy_ref, expected_state, actual_state, provenance, drift_id=None):
+    delta = _dict_delta(expected_state, actual_state)
+    reasons = []
+    for field, (bad_val, msg) in _SEMANTIC_WEAKENING_FIELDS.items():
+        if field in actual_state:
+            val = actual_state[field]
+            if (val == bad_val or str(val).lower() == str(bad_val).lower()) and expected_state.get(field) != val:
+                reasons.append(f"{field}={val!r}: {msg}")
+    for field, max_val in _SEMANTIC_UPPER_BOUND.items():
+        n = actual_state.get(field)
+        if n is not None:
+            try:
+                if float(n) > max_val:
+                    reasons.append(f"{field}={n} exceeds policy maximum {max_val}")
+            except (TypeError, ValueError):
+                pass
+    for field, min_val in _SEMANTIC_LOWER_BOUND.items():
+        n = actual_state.get(field)
+        if n is not None:
+            try:
+                if float(n) < min_val:
+                    reasons.append(f"{field}={n} below policy minimum {min_val}")
+            except (TypeError, ValueError):
+                pass
+    if not reasons:
+        return None
+    expected_hash = canonical_hash(expected_state)
+    actual_hash = canonical_hash(actual_state)
+    security_critical = any(kw in r for r in reasons for kw in ("mfa_enabled", "audit_log", "encryption", "tls"))
+    risk = "unauthorized" if security_critical else _classify_drift(expected_hash, actual_hash, delta)
+    return DriftState(
+        id=drift_id or f"drift-semantic:{resource_id}:{policy_ref}",
+        resource_id=resource_id, policy_ref=policy_ref,
+        expected_hash=expected_hash, actual_hash=actual_hash,
+        drift_detected=True, classification=risk,
+        delta={**delta, "semantic_reasons": reasons},
+        provenance=provenance, drift_class=DRIFT_SEMANTIC,
+    )
+
+
 def classify_drift(
     *,
     resource_id: str,
@@ -473,7 +539,16 @@ def classify_drift(
     if authz is not None:
         return authz
 
-    # DRIFT-IDENTITY second
+    # DRIFT-SEMANTIC second
+    semantic = classify_semantic_drift(
+        resource_id=resource_id, policy_ref=policy_ref,
+        expected_state=expected_state, actual_state=actual_state,
+        provenance=provenance, drift_id=drift_id,
+    )
+    if semantic is not None:
+        return semantic
+
+    # DRIFT-IDENTITY third
     identity = classify_identity_drift(
         resource_id=resource_id,
         policy_ref=policy_ref,
