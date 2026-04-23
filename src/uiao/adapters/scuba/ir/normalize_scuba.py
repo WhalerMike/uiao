@@ -186,13 +186,13 @@ def _resolve_ksi(policy_id: str, nist_control: str, control_to_ksi: Dict) -> Dic
     # Try exact match first
     ksi_meta = control_to_ksi.get(nist_control)
     if ksi_meta:
-        return ksi_meta
+        return ksi_meta  # type: ignore[no-any-return]
 
     # Try base control without enhancement (e.g. "SC-8(1)" -> "SC-8")
     base_control = nist_control.split("(")[0]
     ksi_meta = control_to_ksi.get(base_control)
     if ksi_meta:
-        return ksi_meta
+        return ksi_meta  # type: ignore[no-any-return]
 
     # No mapping — return synthetic
     return {
@@ -240,7 +240,7 @@ def normalize_scuba(
             with open(input_path, encoding="utf-8") as f:
                 existing = json.load(f)
             if "ksi_results" in existing:
-                return existing
+                return existing  # type: ignore[no-any-return]
 
     # Map each raw TestResult to a ksi_results entry
     ksi_results: List[Dict[str, str]] = []
@@ -396,7 +396,7 @@ def _aggregate_by_ksi(results: List[Dict[str, str]]) -> List[Dict[str, str]]:
 # ---------------------------------------------------------------------------
 
 
-def main():
+def main():  # type: ignore[no-untyped-def]
     import argparse
 
     parser = argparse.ArgumentParser(description="Normalize raw Invoke-SCuBA output for the UIAO pipeline")

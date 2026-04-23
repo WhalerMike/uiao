@@ -369,10 +369,10 @@ class ScubaGearAdapter(DatabaseAdapterBase):
             return []
         # ScubaGear JSON: {"TestResults": [...]}
         if "TestResults" in self._raw_report:
-            return self._raw_report["TestResults"]
+            return self._raw_report["TestResults"]  # type: ignore[no-any-return]
         # ScubaGear YAML summary: {"Results": [...]}
         if "Results" in self._raw_report:
-            return self._raw_report["Results"]
+            return self._raw_report["Results"]  # type: ignore[no-any-return]
         # Direct list
         if isinstance(self._raw_report, list):
             return self._raw_report

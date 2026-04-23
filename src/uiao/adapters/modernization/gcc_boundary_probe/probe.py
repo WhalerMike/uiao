@@ -491,7 +491,7 @@ def _find_registry_gap(registry: dict, gap_id: str) -> dict:
     """Look up a gap entry by ID in the loaded registry."""
     for gap in registry.get("gaps", []):
         if gap.get("id") == gap_id:
-            return gap
+            return gap  # type: ignore[no-any-return]
     return {}
 
 

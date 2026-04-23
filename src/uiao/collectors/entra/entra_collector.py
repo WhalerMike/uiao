@@ -179,7 +179,7 @@ class EntraCollector(BaseCollector):
         try:
             response = client.get(url)
             response.raise_for_status()
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         except Exception as e:
             logger.warning(f"Graph API call to {endpoint} failed: {e}")
             return None

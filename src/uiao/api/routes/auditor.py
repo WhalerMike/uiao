@@ -59,7 +59,7 @@ def _require_auditor(
         if len(parts) == 3:
             padded = parts[1] + "=" * (4 - len(parts[1]) % 4)
             payload = _json.loads(base64.urlsafe_b64decode(padded))
-            return payload.get("sub", payload.get("oid", "auditor"))
+            return payload.get("sub", payload.get("oid", "auditor"))  # type: ignore[no-any-return]
     except Exception:
         pass
     return "auditor"
@@ -274,7 +274,7 @@ def _load_oscal(doc_type: str) -> dict:
         if not candidates:
             return {}
         latest = max(candidates, key=lambda p: p.stat().st_mtime)
-        return json.loads(latest.read_text(encoding="utf-8"))
+        return json.loads(latest.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
     except Exception:
         return {}
 
