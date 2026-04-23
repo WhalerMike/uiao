@@ -335,9 +335,7 @@ def normalize_scuba(
     # #2075 — see docs/docs/uiao-rfc-0026-roadmap.md, enhancement E3). The
     # "ScubaGear-normalized" fallback preserves pre-existing behavior for
     # inputs that don't carry a ToolVersion field.
-    tool_version = (
-        source_metadata.get("ToolVersion") or source_metadata.get("tool_version") or "ScubaGear-normalized"
-    )
+    tool_version = source_metadata.get("ToolVersion") or source_metadata.get("tool_version") or "ScubaGear-normalized"
     normalized = {
         "assessment_metadata": {
             "assessment_date": now,
