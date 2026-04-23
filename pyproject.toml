@@ -164,12 +164,14 @@ module = ["docx.*", "jinja2.*"]
 ignore_missing_imports = true
 
 # Generators that do heavy python-docx / python-pptx / matplotlib work.
-# Those third-party libs ship no usable type stubs, so every attribute
-# access on a `Document` / `Presentation` / `Figure` type-narrows to
-# `Any`/`Optional[Any]` and mypy raises attr-defined for every method
-# call. Tests cover these at runtime (1582/1582 pass); suppress the
-# attr-defined class per-file rather than spray `cast()` or `# type:
-# ignore` across every line. Flip back on if upstream stubs appear.
+# Those third-party libs ship no usable type stubs, so attribute access
+# on `Document` / `Presentation` / `Figure` narrows to `Any` / `Optional[Any]`
+# and mypy raises whole families of shape errors (attr-defined, valid-type,
+# arg-type, assignment, index, operator, call-arg, union-attr). Runtime
+# behavior is covered by the pytest suite. Suppress the shape-error codes
+# per-file rather than spray `cast()` or `# type: ignore` across every line;
+# the full list is in `disable_error_code` below. Flip back on if upstream
+# stubs appear.
 [[tool.mypy.overrides]]
 module = [
     "uiao.generators.briefing",
