@@ -18,7 +18,7 @@ docs/docs/
   GAE-computer-object-decomposition.md      [NEW — B: Appendix GAE]
   GAD-modernization-impact-model.md         [NEW — D: Appendix GAD]
 
-impl/src/uiao/impl/adapters/modernization/active-directory/
+src/uiao/adapters/modernization/active_directory/
   disposition.py                            [NEW — extends survey.py]
 
 ## PR SEQUENCE
@@ -26,12 +26,12 @@ impl/src/uiao/impl/adapters/modernization/active-directory/
 # PR 1 — Canon first (governance gate)
 # [UIAO-CORE] add: ADR-031 — three-plane device model
 # [UIAO-CORE] add: computer-object-crosswalk.yaml
-src/uiao/canon/adr/adr-031-three-plane-device-model.md
+src/uiao/canon/adr/adr-034-three-plane-device-model.md
 src/uiao/canon/computer-object-crosswalk.yaml
 
 # PR 2 — Implementation
 # [UIAO-IMPL] add: computer disposition classifier
-impl/src/uiao/impl/adapters/modernization/active-directory/disposition.py
+src/uiao/adapters/modernization/active_directory/disposition.py
 
 # Also update survey.py to call classify_all_computers() and
 # include disposition in ADSurveyReport output.
