@@ -22,7 +22,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from .auth.entra_token import EntraTokenProvider
-from .routes import health, orgpath, survey
+from .routes import health, orgpath, survey, auditor
 
 
 # ------------------------------------------------------------------
@@ -91,3 +91,4 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 app.include_router(health.router, tags=["Health"])
 app.include_router(survey.router, prefix="/api/v1/survey", tags=["AD Survey"])
 app.include_router(orgpath.router, prefix="/api/v1/orgpath", tags=["OrgPath"])
+app.include_router(auditor.router, prefix="/api/auditor", tags=["Auditor API"])
