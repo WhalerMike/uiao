@@ -57,7 +57,7 @@ def walk(
     )
     console.print(f"  modules checked:    {report.modules_checked}")
     console.print(f"  documents checked:  {report.documents_checked}")
-    console.print(f"  impl refs checked:  {report.impl_refs_checked}")
+    console.print(f"  code refs checked:  {report.code_refs_checked}")
 
     if report.ok:
         console.print("\n[green]PASS[/green] — no drift detected.")
