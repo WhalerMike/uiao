@@ -75,7 +75,7 @@ def build_ksi_ir_mapping(
         source="ksi-to-ir-mapping",
         timestamp="1970-01-01T00:00:00Z",
         version="1.2",
-        hash=None,
+        content_hash=None,
     )
     for _ksi_id, ksi in sorted(ksi_library.items()):
         control = ksi_to_ir_control(ksi, provenance)

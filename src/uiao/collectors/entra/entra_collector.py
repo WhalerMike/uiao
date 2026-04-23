@@ -20,7 +20,7 @@ try:
     import httpx
     from azure.identity import ClientSecretCredential
 except ImportError:
-    httpx = None
+    httpx = None  # type: ignore[assignment]
     ClientSecretCredential = None
 
 # In-package import; adjust if package layout changes

@@ -210,8 +210,8 @@ class EvidenceGraph:
         return res
 
     def stats(self):
-        tc = {}
-        ec = {}
+        tc: Dict[str, int] = {}
+        ec: Dict[str, int] = {}
         for n in self._nodes.values():
             tc[n.node_type] = tc.get(n.node_type, 0) + 1
         for e in self._edges:

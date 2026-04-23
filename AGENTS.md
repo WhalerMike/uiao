@@ -72,11 +72,11 @@ Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs 
 | `quarto.yml` | `docs/**` PRs | ✅ render; deploy on main |
 | `adapter-conformance.yml` | `src/uiao/adapters/**` + adapter tests | ✅ |
 | `ruff.yml` | Python PRs | ✅ |
-| `mypy.yml` | Python PRs | 🟡 soft-fail (never enforced pre-ADR-032) |
+| `mypy.yml` | Python PRs | ✅ |
 | `link-check.yml` | `*.md` / `*.qmd` PRs + weekly | 🟡 soft-fail |
 | `release.yml` | Tag `v*.*.*` | — |
 
-> **Type debt:** `mypy.yml` remains `continue-on-error: true` pending a type-annotation burn-down — the mypy baseline was never enforced pre-ADR-032 and hundreds of undocumented signatures surface under the restored gate. `ruff.yml` was returned to blocking after the 230-finding baseline was cleared (135 via `--fix`, ~76 via `ruff format` splitting one-line dataclasses, 13 manual fixes). The full pytest suite was restored to blocking once the `fastapi`/`httpx`/`uvicorn` runtime dependencies of `uiao.api` were declared as an `[api]` optional extra.
+> **Gate restoration history:** `ruff.yml` was returned to blocking after the 230-finding baseline was cleared (135 via `--fix`, ~76 via `ruff format` splitting one-line dataclasses, 13 manual fixes). The full pytest suite was restored to blocking once the `fastapi`/`httpx`/`uvicorn` runtime dependencies of `uiao.api` were declared as an `[api]` optional extra. `mypy.yml` was returned to blocking after a 4-batch burn-down (130 → 0) combining per-module suppressions for third-party-stub-less surfaces (python-docx, python-pptx, matplotlib, jinja2, etc.), duck-typed pattern ignores (adapter-class reflection, importlib.metadata), and real type fixes (entra_token None-narrowing, drift-class Literal typing, ProvenanceRecord `content_hash` kwarg).
 
 ## Commit convention
 

@@ -131,7 +131,7 @@ class SiemAdapter(DatabaseAdapterBase):
         conn = self.connect()
         events = (events_data or {}).get("events", [])
         claim_set = self.normalize(events)
-        severity_counts = {}
+        severity_counts: dict[str, int] = {}
         for e in events:
             s = e.get("severity", "unknown")
             severity_counts[s] = severity_counts.get(s, 0) + 1

@@ -80,10 +80,10 @@ class DriftFinding:
             expected_hash=h,
             actual_hash=h,
             drift_detected=True,
-            classification=risk,
+            classification=risk,  # type: ignore[arg-type]  # duck-typed: risk is narrowed to "benign"/"risky"/"unauthorized" upstream
             delta={"detail": [self.detail]},
             provenance=prov,
-            drift_class=self.drift_class,
+            drift_class=self.drift_class,  # type: ignore[arg-type]  # duck-typed: caller passes canonical DRIFT-* constant
         )
 
 

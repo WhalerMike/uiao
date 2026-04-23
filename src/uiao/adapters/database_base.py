@@ -295,7 +295,7 @@ class DatabaseAdapterBase(abc.ABC):
         query_prov = self.execute_query(canonical_query)
 
         # Placeholder: raw rows would come from vendor query execution
-        raw_rows = []  # Real implementation populates this
+        raw_rows: list[dict] = []  # Real implementation populates this
         claim_set = self.normalize(raw_rows)
 
         drift = self.detect_drift()

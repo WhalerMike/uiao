@@ -50,7 +50,7 @@ try:
     from uiao.adapters.scubagear_adapter import SCUBA_TO_KSI_MAP
 except ImportError:
     # Fallback for standalone use — will be populated from file
-    SCUBA_TO_KSI_MAP: Dict[str, str] = {}
+    SCUBA_TO_KSI_MAP: Dict[str, str] = {}  # type: ignore[no-redef]
 
 # NIST control -> KSI metadata (loaded at runtime from rules/ksi/)
 _CONTROL_TO_KSI: Optional[Dict[str, Dict[str, Any]]] = None
