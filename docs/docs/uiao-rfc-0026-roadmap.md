@@ -89,9 +89,9 @@ This roadmap sequences eight enhancements by enforcement-clock risk × implement
 - [x] T3.1 — Add `opa_version_minimum` pin to `scuba.yaml` under `uiao_extensions` *(PR 1)*
 - [x] T3.2 — Extend `normalize_scuba.py` to preserve ScubaGear top-level metadata envelope (ToolVersion, OpaVersion when present, AssessmentDate) instead of discarding it — *(PR 1: `discover_scuba_input` / `_load_single_file` now return a 3-tuple with source_metadata; envelope surfaces in `assessment_metadata.source_envelope`; `tool_version` now reflects real `ToolVersion` when present, falling back to `ScubaGear-normalized` for backward compat)*
 - [x] T3.5 — Run full scuba test suite (`test_scuba_transform_plane.py`, `test_scuba_transformer_determinism.py`, `test_scubagear_adapter.py`) — 59/59 passing after PR 1
-- [ ] T3.3 — Pre-flight check: if OPA version is absent, emit DRIFT-PROVENANCE warning; if below pin, emit DRIFT-PROVENANCE risky classification *(PR 2)*
-- [ ] T3.4 — Unit tests in `tests/test_normalize_scuba_provenance.py` — three paths: missing / old / current *(PR 2)*
-- [ ] T3.6 — Post Response C on cisagov/ScubaGear #2075 citing the implementation *(after PR 2)*
+- [x] T3.3 — Pre-flight check: if OPA version is absent, emit DRIFT-PROVENANCE warning; if below pin, emit DRIFT-PROVENANCE unauthorized classification *(PR 2: `_preflight_opa_provenance` + `_load_scuba_overlay` + `_parse_version` in `normalize_scuba.py`; result attached to `assessment_metadata.provenance_preflight`)*
+- [x] T3.4 — Unit tests in `tests/test_normalize_scuba_provenance.py` — five status paths (ok / missing / below_pin / unparseable / skipped) plus integration tests via `normalize_scuba` *(PR 2: 21 new tests, 80/80 green)*
+- [ ] T3.6 — Post Response C on cisagov/ScubaGear #2075 citing the implementation *(after PR 2 merges)*
 
 ### E2 · ScubaGear release tracking + mapping drift CI gate
 **Target:** 2026-06-15 (two weeks before Qwilfish)
