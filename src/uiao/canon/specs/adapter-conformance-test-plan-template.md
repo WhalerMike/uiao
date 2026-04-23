@@ -14,7 +14,7 @@ boundary: "GCC-Moderate"
 
 This template defines the standard test plan structure and pass/fail
 criteria for every UIAO adapter. Each adapter's Adapter Validation Suite
-(AVS) document in `uiao-docs/docs/customer-documents/adapter-validation-suites/<adapter-id>/`
+(AVS) document in `docs/customer-documents/validation-suites/adapters/<adapter-id>/`
 MUST be populated from this template.
 
 ## 1. Scope

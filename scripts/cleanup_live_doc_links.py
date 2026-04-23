@@ -66,10 +66,10 @@ ALLOWLIST = [
     "docs/docs/substrate-status.qmd",
     "docs/docs/canon/glossary.md",
     "docs/docs/adr/index.md",
-    # docs/docs/customer-documents/ (hand-listed roots; per-adapter avs are globbed)
-    "docs/docs/customer-documents/index.qmd",
-    "docs/docs/customer-documents/adapter-technical-specifications/index.qmd",
-    "docs/docs/customer-documents/adapter-validation-suites/index.qmd",
+    # docs/customer-documents/ (hand-listed roots; per-adapter avs are globbed)
+    "docs/customer-documents/index.qmd",
+    "docs/customer-documents/adapter-specs/index.qmd",
+    "docs/customer-documents/validation-suites/index.qmd",
     # docs/findings/
     "docs/findings/README.md",
     "docs/findings/index.qmd",
@@ -98,7 +98,7 @@ ALLOWLIST = [
 
 # Glob patterns added on top of the literal allowlist.
 ALLOWLIST_GLOBS = [
-    "docs/docs/customer-documents/adapter-validation-suites/*/avs-*.qmd",
+    "docs/customer-documents/validation-suites/adapters/*/*.qmd",
 ]
 
 

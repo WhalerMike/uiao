@@ -64,14 +64,16 @@ REPO_ROOT = Path(os.environ.get("UIAO_REPO_ROOT") or SCRIPT_DIR.parent)
 PROMPTS_FILE = SCRIPT_DIR / "prompts.json"
 LEGACY_OUTPUT_DIR = SCRIPT_DIR / "images"
 CANONICAL_OUTPUT_DIR = SCRIPT_DIR / "images" / "canonical"
-CANON_REGISTRY = REPO_ROOT / "core" / "canon" / "image-registry.yaml"
-CANON_PROMPTS_DIR = REPO_ROOT / "core" / "canon" / "image-prompts"
+CANON_REGISTRY = REPO_ROOT / "src" / "uiao" / "canon" / "image-registry.yaml"
+CANON_PROMPTS_DIR = REPO_ROOT / "src" / "uiao" / "canon" / "image-prompts"
+MANIFEST_PATH = SCRIPT_DIR / "images" / ".image-manifest.json"
+MANIFEST_SCHEMA_VERSION = "1.0.0"
 MODEL = "gemini-2.5-flash-image"
 DELAY_SECONDS = 2.0
 SCAN_ROOTS = [
     REPO_ROOT / "docs",
-    REPO_ROOT / "core" / "canon" / "specs",
-    REPO_ROOT / "core" / "canon" / "adr",
+    REPO_ROOT / "src" / "uiao" / "canon" / "specs",
+    REPO_ROOT / "src" / "uiao" / "canon" / "adr",
 ]
 SCAN_EXTS = (".qmd", ".md")
 EXCLUDE_PATH_PARTS = {
@@ -104,8 +106,39 @@ PLACEHOLDER_REF_RE = re.compile(
     r"\[IMAGE-REF:\s*(?P<id>UIAO-FIG-\d{3})\s*\]",
     re.MULTILINE,
 )
+
+# Heading-style authoring dialect used inside sibling IMAGE-PROMPTS.md
+# files. sync_canon.py scaffolds these per adapter; the body becomes the
+# prompt when the author fills in the _TODO_ stub. Three accepted forms:
+#
+#     ## IMAGE-01
+#     ## IMAGE-01 — Title
+#     ## Image 1: Title
+#
+# Everything between this heading and the next level-2 heading (or EOF)
+# is treated as the body. The placeholder attaches to the "companion
+# document" — the non-IMAGE-PROMPTS sibling .qmd / .md in the same folder.
+PLACEHOLDER_HEADING_RE = re.compile(
+    r"^##\s+(?:"
+    r"(?P<kind1>IMAGE|DIAGRAM|FIGURE)-(?P<num1>\d{1,3})"
+    r"|"
+    r"Image\s+(?P<num2>\d{1,3})"
+    r")"
+    r"(?:\s*[:—\-]\s*(?P<title>.+?))?\s*$",
+    re.MULTILINE,
+)
+
 AUTO_MARKER = "AUTO"
 CANON_ID_RE = re.compile(r"^UIAO-FIG-\d{3}$")
+IMAGE_PROMPTS_FILENAME = "IMAGE-PROMPTS.md"
+
+# Bodies that count as unfilled scaffolds — treated as absent, not
+# harvested. Matches the default text `sync_canon.py` writes plus
+# common synonyms.
+_TODO_LINE_RE = re.compile(
+    r"^\s*[_*]*\s*((?:TODO|TBD|FIXME)\b|<[^>]*>\s*$)",
+    re.IGNORECASE,
+)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -135,7 +168,7 @@ class CanonRefPlaceholder:
 
 @dataclass
 class RegistryEntry:
-    """Mutable view of one entry from core/canon/image-registry.yaml."""
+    """Mutable view of one entry from src/uiao/canon/image-registry.yaml."""
 
     id: str
     slug: str
@@ -164,6 +197,8 @@ class RunReport:
     auto_placeholders_skipped: int = 0  # Part-3 feature; skipped in v1
     sidecars_written: int = 0
     registry_used_by_updates: int = 0
+    sidecar_slots_harvested: int = 0  # filled heading-style slots found
+    sidecar_slots_merged: int = 0  # slots that became effective placeholders
 
 
 # ──────────────────────────────────────────────────────────────
@@ -202,7 +237,7 @@ def _now_iso_utc() -> str:
 
 
 # ──────────────────────────────────────────────────────────────
-# Registry loader / writer. Operates on core/canon/image-registry.yaml.
+# Registry loader / writer. Operates on src/uiao/canon/image-registry.yaml.
 # The `raw` dict on each RegistryEntry preserves original field
 # ordering so re-emit doesn't shuffle the file.
 # ──────────────────────────────────────────────────────────────
@@ -216,7 +251,7 @@ def _require_yaml() -> None:
 
 
 def load_registry() -> tuple[dict, list[RegistryEntry]]:
-    """Read core/canon/image-registry.yaml.
+    """Read src/uiao/canon/image-registry.yaml.
 
     Returns ({}, []) if the registry is absent or has an empty `images:`
     list. That's the normal initial state after X1a merged.
@@ -490,6 +525,186 @@ def scan_placeholders(
 
 
 # ──────────────────────────────────────────────────────────────
+# IMAGE-PROMPTS.md sidecar harvester.
+#
+# `sync_canon.py` scaffolds one IMAGE-PROMPTS.md per adapter / doc with
+# `## IMAGE-NN` heading blocks. Authors fill the body with their prompt.
+# This harvester picks those filled bodies up and attaches them as
+# synthetic DocLocalPlaceholder entries against the companion document
+# (the sibling .qmd/.md in the same folder), so downstream generation
+# treats them exactly like inline `[IMAGE-NN: ...]` placeholders.
+#
+# Merge rule with the inline scanner: inline wins. If a document already
+# has `[IMAGE-NN: body]` inline for a given placeholder_id, the heading
+# slot with the same ID is ignored.
+# ──────────────────────────────────────────────────────────────
+def _is_todo_body(body: str) -> bool:
+    """True if the body is an unfilled scaffold (TODO / TBD / placeholder)."""
+    stripped = body.strip()
+    if not stripped:
+        return True
+    # Only look at non-blank, non-quote content lines.
+    for raw in stripped.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        # Strip common markdown emphasis wrappers so `_TODO — ..._` matches.
+        unwrapped = line.strip("_*")
+        if _TODO_LINE_RE.match(unwrapped):
+            continue
+        # Any substantive line means the body is real.
+        return False
+    return True
+
+
+def _find_companion_document(image_prompts_path: Path) -> Optional[Path]:
+    """Given a path to an IMAGE-PROMPTS.md file, return the sibling
+    document it annotates. Resolution order:
+
+        1. <folder>/<folder-name>.qmd
+        2. <folder>/<folder-name>.md
+        3. Exactly one other .qmd in the same folder
+        4. Exactly one other .md in the same folder (excluding this file
+           and any README)
+
+    Returns None if no deterministic companion can be identified.
+    """
+    folder = image_prompts_path.parent
+    folder_name = folder.name
+
+    for ext in (".qmd", ".md"):
+        candidate = folder / f"{folder_name}{ext}"
+        if candidate.is_file():
+            return candidate
+
+    # Fallback: a single other .qmd/.md sibling.
+    ignore_names = {image_prompts_path.name.lower(), "readme.md", "index.md", "index.qmd"}
+    for ext in (".qmd", ".md"):
+        siblings = [
+            p for p in folder.iterdir() if p.is_file() and p.suffix == ext and p.name.lower() not in ignore_names
+        ]
+        if len(siblings) == 1:
+            return siblings[0]
+
+    return None
+
+
+def _extract_heading_blocks(text: str) -> list[tuple[str, str, str, int]]:
+    """Parse heading-style image slots in an IMAGE-PROMPTS.md body.
+
+    Returns a list of tuples: (placeholder_id, title, body, line_number).
+    `body` is the text between this heading and the next ## heading (or EOF),
+    with leading/trailing whitespace stripped.
+    """
+    blocks: list[tuple[str, str, str, int]] = []
+    # Line offsets for line-number translation.
+    line_starts = [0]
+    for idx, ch in enumerate(text):
+        if ch == "\n":
+            line_starts.append(idx + 1)
+
+    def line_of(offset: int) -> int:
+        lo, hi = 0, len(line_starts) - 1
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if line_starts[mid] <= offset:
+                lo = mid
+            else:
+                hi = mid - 1
+        return lo + 1
+
+    matches = list(PLACEHOLDER_HEADING_RE.finditer(text))
+    for i, m in enumerate(matches):
+        kind = m.group("kind1") or "IMAGE"
+        num_raw = m.group("num1") or m.group("num2")
+        if not num_raw:
+            continue
+        # Normalize to two-digit width so downstream filenames are consistent
+        # with inline placeholders (e.g. IMAGE-03, not IMAGE-3).
+        num = f"{int(num_raw):02d}"
+        placeholder_id = f"{kind}-{num}"
+        title = (m.group("title") or "").strip()
+
+        body_start = m.end()
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        body = text[body_start:body_end].strip()
+
+        # Strip any leading "**Placement:** ..." and "**Prompt:**" markers
+        # (the older docs/visuals/IMAGE-PROMPTS-SCUBA.md dialect). The
+        # actual prompt is the remaining prose.
+        body = re.sub(r"^\*\*Placement:\*\*.*?(?=\n\n|\n\*\*|\Z)", "", body, flags=re.DOTALL).strip()
+        body = re.sub(r"^\*\*Prompt:\*\*\s*\n?", "", body).strip()
+
+        blocks.append((placeholder_id, title, body, line_of(m.start())))
+    return blocks
+
+
+def scan_image_prompts_files(
+    files: list[Path],
+) -> list[DocLocalPlaceholder]:
+    """Walk every IMAGE-PROMPTS.md in `files` and emit DocLocalPlaceholder
+    entries for each heading-style slot that carries real prompt text.
+
+    Unfilled scaffolds (TODO / TBD / empty bodies) are skipped.
+    Companion-less sidecars (no sibling .qmd/.md to attach to) are skipped
+    with a warning printed once per file so authors see the drift.
+    """
+    out: list[DocLocalPlaceholder] = []
+    for path in files:
+        if path.name != IMAGE_PROMPTS_FILENAME:
+            continue
+        companion = _find_companion_document(path)
+        if companion is None:
+            # Silent in test-heavy invocations; main() still surfaces a
+            # summary count. Print once per path for author feedback.
+            print(f"  Warning: {_repo_rel(path)} has no companion .qmd/.md in the same folder; skipping.")
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+
+        for placeholder_id, title, body, line_no in _extract_heading_blocks(text):
+            # Filled prompt? If body starts with a real prompt (not TODO),
+            # we harvest it. Title can be used as filename slug later.
+            if _is_todo_body(body):
+                continue
+            is_auto = body.strip().upper() == AUTO_MARKER
+            # Attach the synthetic placeholder to the companion document so
+            # image output lands beside the rendered HTML/PDF.
+            out.append(
+                DocLocalPlaceholder(
+                    document=companion,
+                    placeholder_id=placeholder_id,
+                    body=body if not title else f"{title} — {body}",
+                    line_number=line_no,
+                    is_auto=is_auto,
+                )
+            )
+    out.sort(key=lambda p: (str(p.document), p.placeholder_id))
+    return out
+
+
+def merge_placeholders(
+    inline: list[DocLocalPlaceholder],
+    sidecar: list[DocLocalPlaceholder],
+) -> list[DocLocalPlaceholder]:
+    """Merge inline + sidecar placeholder lists. Inline entries win on
+    conflict (same document + placeholder_id); duplicate sidecar entries
+    are dropped. Returns a stable-sorted merged list."""
+    seen: set[tuple[str, str]] = {(str(p.document), p.placeholder_id) for p in inline}
+    merged = list(inline)
+    for p in sidecar:
+        key = (str(p.document), p.placeholder_id)
+        if key in seen:
+            continue
+        merged.append(p)
+        seen.add(key)
+    merged.sort(key=lambda p: (str(p.document), p.placeholder_id, p.line_number))
+    return merged
+
+
+# ──────────────────────────────────────────────────────────────
 # Doc-local output path resolver. Given the owning document and
 # the placeholder ID, produces the on-disk PNG path that the
 # rendered image will occupy.
@@ -724,9 +939,23 @@ def main() -> int:
     # validation even in --scan-only mode.
     files = iter_source_files()
     print(f"Scanning {len(files)} .qmd / .md files under SCAN_ROOTS...")
-    locals_, refs = scan_placeholders(files)
+    inline_locals, refs = scan_placeholders(files)
+    sidecar_locals = scan_image_prompts_files(files)
+    locals_ = merge_placeholders(inline_locals, sidecar_locals)
     report.placeholders_scanned = len(locals_) + len(refs)
-    print(f"Found {len(locals_)} doc-local placeholder(s) and {len(refs)} canon-ref placeholder(s).")
+    report.sidecar_slots_harvested = len(sidecar_locals)
+    report.sidecar_slots_merged = len(locals_) - len(inline_locals)
+    print(
+        f"Found {len(inline_locals)} inline placeholder(s), "
+        f"{len(sidecar_locals)} filled IMAGE-PROMPTS.md slot(s), "
+        f"{len(refs)} canon-ref placeholder(s)."
+    )
+    if sidecar_locals:
+        print(
+            f"  → merged into {len(locals_)} effective doc-local placeholder(s) "
+            f"({report.sidecar_slots_merged} added from sidecars, "
+            f"{len(sidecar_locals) - report.sidecar_slots_merged} shadowed by inline)."
+        )
 
     # Load registry (may be empty — that's fine for v1)
     registry_doc, entries = load_registry()
@@ -740,6 +969,9 @@ def main() -> int:
 
     # Short-circuit modes that don't generate
     if args.scan_only:
+        manifest = build_manifest(entries, refs)
+        write_manifest(manifest)
+        print(f"\nManifest written to {_repo_rel(MANIFEST_PATH)}")
         _print_report(report)
         return 0 if not report.canon_refs_missing else 1
 
@@ -779,8 +1011,145 @@ def main() -> int:
         save_registry(registry_doc, entries)
         print(f"\nRegistry updated: {report.registry_used_by_updates} used_by addition(s).")
 
+    # Always rebuild the manifest at the end — cheap, deterministic,
+    # and gives downstream consumers (editors, LFS audit, render) one
+    # authoritative file to consult.
+    manifest = build_manifest(entries, refs)
+    write_manifest(manifest)
+    print(f"\nManifest written to {_repo_rel(MANIFEST_PATH)}")
+
     _print_report(report)
     return 0 if report.doc_local_failed == 0 and not report.canon_refs_missing else 1
+
+
+# ──────────────────────────────────────────────────────────────
+# Top-level manifest. Aggregates every sidecar on disk plus the
+# canon-ref resolution from this run into one discoverable JSON
+# document at docs/images/.image-manifest.json. Consumers: editor
+# integrations, LFS audits, the Quarto render pipeline.
+# ──────────────────────────────────────────────────────────────
+def _repo_rel(path: Path) -> str:
+    """Best-effort repo-relative path (POSIX separators) for stable output."""
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT)).replace("\\", "/")
+    except ValueError:
+        return str(path).replace("\\", "/")
+
+
+def _iter_sidecars() -> list[Path]:
+    """Find every *.png.json sidecar under the scanned doc trees
+    plus the canonical image directory. Stable-sorted output."""
+    roots = [REPO_ROOT / "docs", CANONICAL_OUTPUT_DIR]
+    seen: set[Path] = set()
+    for root in roots:
+        if not root.exists():
+            continue
+        for p in root.rglob("*.png.json"):
+            if _is_excluded(p):
+                continue
+            resolved = p.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+    return sorted(seen)
+
+
+def _read_sidecar(path: Path) -> dict | None:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def build_manifest(
+    registry_entries: list[RegistryEntry],
+    canon_refs: list[CanonRefPlaceholder],
+) -> dict:
+    """Assemble the top-level manifest document.
+
+    The manifest is a pure aggregation — running it repeatedly produces
+    the same output given the same on-disk state. It never calls an API.
+    """
+    # Doc-local entries come from sidecar files on disk.
+    doc_local: list[dict] = []
+    for sidecar_path in _iter_sidecars():
+        payload = _read_sidecar(sidecar_path)
+        if not payload:
+            continue
+        image_path = sidecar_path.with_suffix("")
+        if image_path.suffix != ".png":
+            continue
+        doc_local.append(
+            {
+                "document": payload.get("document"),
+                "placeholder_id": payload.get("placeholder_id"),
+                "canonical_id": payload.get("canonical_id"),
+                "image_file": _repo_rel(image_path),
+                "sidecar": _repo_rel(sidecar_path),
+                "prompt_sha256": payload.get("prompt_sha256"),
+                "sha256": payload.get("sha256"),
+                "generator": payload.get("generator"),
+                "generated_at": payload.get("generated_at"),
+                "version": payload.get("version"),
+                "aspect": payload.get("aspect"),
+            }
+        )
+
+    # Canon-ref entries come from the current scan (they're cross-document
+    # links, not disk artifacts).
+    refs_by_id: dict[str, RegistryEntry] = {e.id: e for e in registry_entries}
+    canon_entries: list[dict] = []
+    for ref in canon_refs:
+        entry = refs_by_id.get(ref.canon_id)
+        canon_entries.append(
+            {
+                "document": _repo_rel(ref.document),
+                "placeholder_id": f"IMAGE-REF:{ref.canon_id}",
+                "canon_id": ref.canon_id,
+                "file": _repo_rel(entry.file) if entry else None,
+                "status": entry.status if entry else "missing",
+                "line_number": ref.line_number,
+            }
+        )
+
+    # Registry snapshot — small, cheap, and lets consumers verify canon
+    # state without re-parsing the YAML.
+    status_counts: dict[str, int] = {}
+    for e in registry_entries:
+        status_counts[e.status] = status_counts.get(e.status, 0) + 1
+
+    unique_canon = sorted({c["canon_id"] for c in canon_entries if c["canon_id"]})
+    return {
+        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "generated_at": _now_iso_utc(),
+        "registry": {
+            "path": _repo_rel(CANON_REGISTRY),
+            "total_entries": len(registry_entries),
+            "by_status": dict(sorted(status_counts.items())),
+        },
+        "doc_local": sorted(
+            doc_local,
+            key=lambda d: (d.get("document") or "", d.get("placeholder_id") or ""),
+        ),
+        "canon_refs": sorted(
+            canon_entries,
+            key=lambda d: (d.get("document") or "", d.get("line_number") or 0),
+        ),
+        "stats": {
+            "doc_local_count": len(doc_local),
+            "canon_refs_count": len(canon_entries),
+            "unique_canon_images_referenced": len(unique_canon),
+            "canon_refs_missing_count": sum(1 for c in canon_entries if c["status"] == "missing"),
+        },
+    }
+
+
+def write_manifest(manifest: dict, path: Path = MANIFEST_PATH) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2, sort_keys=False)
+        f.write("\n")
+    return path
 
 
 def _print_report(report: RunReport) -> None:
@@ -802,6 +1171,10 @@ def _print_report(report: RunReport) -> None:
     print(f"Doc-local failed:        {report.doc_local_failed}")
     print(f"AUTO placeholders (v2):  {report.auto_placeholders_skipped}")
     print(f"Sidecars written:        {report.sidecars_written}")
+    print(
+        f"IMAGE-PROMPTS slots:     {report.sidecar_slots_harvested} filled "
+        f"(+{report.sidecar_slots_merged} merged as new placeholders)"
+    )
     print(f"Registry used_by adds:   {report.registry_used_by_updates}")
 
 

@@ -298,7 +298,7 @@ Work required:
 The adapter conformance and integration test plan templates are currently empty. Every adapter that clears tier-1 and tier-2 in this phase must have both templates filled.
 
 Work required:
-- Create `docs/customer-documents/adapter-validation-suites/<adapter-id>/` for each passing adapter.
+- Create `docs/customer-documents/validation-suites/adapters/<adapter-id>/` for each passing adapter.
 - Remove the aspirational banner from these pages.
 - Register the filled plans in `document-registry.yaml` (new UIAO_NNN IDs in the 900-range test fixture space or a new 400-range operational space — needs ADR).
 

@@ -71,8 +71,8 @@ SCHEMA_FILE = "schemas/adapter-registry/adapter-registry.schema.json"
 
 # Trees in uiao-docs that mirror per-adapter canon
 ADAPTER_DOC_TREES = [
-    ("docs/customer-documents/adapter-technical-specifications", "ats", "Adapter Technical Specification"),
-    ("docs/customer-documents/adapter-validation-suites", "avs", "Adapter Validation Suite"),
+    ("docs/customer-documents/adapter-specs", "ats", "Adapter Technical Specification"),
+    ("docs/customer-documents/validation-suites/adapters", "avs", "Adapter Validation Suite"),
 ]
 
 FRONTMATTER_MARKER = "---"
@@ -405,12 +405,12 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
 
             # Status drift check
             adapter = adapter_ids[folder_id]
-            primary = child / f"{kind}-{folder_id}{PRIMARY_EXT}"
+            primary = child / f"{folder_id}{PRIMARY_EXT}"
 
             # Legacy-file detection: report same-basename .md files as
             # informational orphans (never delete — owner removes via git rm).
             for legacy_ext in LEGACY_PRIMARY_EXTS:
-                legacy = child / f"{kind}-{folder_id}{legacy_ext}"
+                legacy = child / f"{folder_id}{legacy_ext}"
                 if legacy.is_file() and primary.is_file() and primary != legacy:
                     report.drift.append(
                         DriftItem(
@@ -467,7 +467,7 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
         # 2. Walk registries → detect additives (adapter with no folder)
         for adapter in adapters:
             folder = tree / adapter["id"]
-            primary = folder / f"{kind}-{adapter['id']}{PRIMARY_EXT}"
+            primary = folder / f"{adapter['id']}{PRIMARY_EXT}"
             prompts = folder / "IMAGE-PROMPTS.md"
             images = folder / "images"
             gitkeep = images / ".gitkeep"
