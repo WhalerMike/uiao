@@ -13,9 +13,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from uiao.evidence.bundle import EvidenceBundle
+from uiao.evidence.graph import EvidenceGraph
 from uiao.ir.models.core import Evidence
 
 _FEDRAMP_NS = "https://fedramp.gov/ns/oscal"
+_UIAO_GRAPH_NS = "https://uiao.gov/ns/oscal/graph"
 
 
 def _now() -> str:
@@ -41,11 +43,38 @@ def _severity(evidence: Evidence) -> str:
     return mapping.get(sev, "moderate")
 
 
-def _build_observation(evidence: Evidence, now: str) -> Dict[str, Any]:
-    """Build a single OSCAL observation from an Evidence object."""
+def _build_observation(
+    evidence: Evidence,
+    now: str,
+    *,
+    graph: Optional[EvidenceGraph] = None,
+) -> Dict[str, Any]:
+    """Build a single OSCAL observation from an Evidence object.
+
+    When a UIAO_113 evidence graph is provided, graph-derived props
+    (adapter run, scheduler run, top finding severity) are attached to
+    the subject's prop list under the ``_UIAO_GRAPH_NS`` namespace so
+    auditors can trace each observation back to its scheduler dispatch.
+    """
     ksi_id = evidence.data.get("ksi_id", evidence.id)
     status = evidence.data.get("status", "UNKNOWN")
     details = evidence.data.get("details", "")
+
+    subject_props: List[Dict[str, Any]] = [
+        {"name": "ksi-id", "value": ksi_id, "ns": _FEDRAMP_NS},
+        {"name": "status", "value": status, "ns": _FEDRAMP_NS},
+        {
+            "name": "evidence-hash",
+            "value": evidence.evaluation.get("canonical_hash", "")[:16] or "n/a",
+            "ns": _FEDRAMP_NS,
+        },
+    ]
+    if graph is not None:
+        control_id = evidence.control_id or ksi_id
+        graph_props = graph.sar_props_for_evidence(control_id)
+        for name, value in graph_props.items():
+            subject_props.append({"name": name, "value": str(value), "ns": _UIAO_GRAPH_NS})
+
     return {
         "uuid": str(uuid.uuid4()),
         "title": "SCuBA Assessment: " + ksi_id,
@@ -57,15 +86,7 @@ def _build_observation(evidence: Evidence, now: str) -> Dict[str, Any]:
                 "subject-uuid": str(uuid.uuid4()),
                 "type": "inventory-item",
                 "title": ksi_id,
-                "props": [
-                    {"name": "ksi-id", "value": ksi_id, "ns": _FEDRAMP_NS},
-                    {"name": "status", "value": status, "ns": _FEDRAMP_NS},
-                    {
-                        "name": "evidence-hash",
-                        "value": evidence.evaluation.get("canonical_hash", "")[:16] or "n/a",
-                        "ns": _FEDRAMP_NS,
-                    },
-                ],
+                "props": subject_props,
             }
         ],
         "collected": evidence.timestamp or now,
@@ -185,6 +206,7 @@ def build_sar(
     tenant_id: str = "",
     ap_href: str = "",
     now: Optional[str] = None,
+    graph: Optional[EvidenceGraph] = None,
 ) -> Dict[str, Any]:
     """Build a full OSCAL Assessment Results document from an EvidenceBundle.
 
@@ -194,6 +216,11 @@ def build_sar(
         tenant_id:   M365 tenant identifier.
         ap_href:     Optional href to an existing Assessment Plan.
         now:         Override assessment timestamp (ISO 8601).
+        graph:       Optional UIAO_113 EvidenceGraph. When present, each
+                     observation is augmented with graph-derived props
+                     (adapter run, scheduler run id, top finding severity)
+                     so auditors can trace each finding back through the
+                     adapter dispatch that produced it.
 
     Returns:
         Dict with top-level key "assessment-results".
@@ -209,7 +236,7 @@ def build_sar(
     risks: List[Dict[str, Any]] = []
 
     for evidence in bundle.evidence:
-        obs = _build_observation(evidence, prov_ts)
+        obs = _build_observation(evidence, prov_ts, graph=graph)
         observations.append(obs)
         finding = _build_finding(evidence, obs["uuid"], now)
         findings.append(finding)
@@ -328,9 +355,21 @@ def export_sar(
     system_name: str = "UIAO SCuBA Assessment System",
     tenant_id: str = "",
     ap_href: str = "",
+    graph: Optional[EvidenceGraph] = None,
 ) -> str:
-    """Build and write the OSCAL SAR JSON to output_path. Returns the path."""
-    sar_doc = build_sar(bundle, system_name=system_name, tenant_id=tenant_id, ap_href=ap_href)
+    """Build and write the OSCAL SAR JSON to output_path. Returns the path.
+
+    Forwards the optional ``graph`` kwarg to :func:`build_sar` so the
+    emitted SAR carries UIAO_113 graph-derived links when a scheduler
+    run has been ingested.
+    """
+    sar_doc = build_sar(
+        bundle,
+        system_name=system_name,
+        tenant_id=tenant_id,
+        ap_href=ap_href,
+        graph=graph,
+    )
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(sar_doc, indent=2, ensure_ascii=False), encoding="utf-8")
