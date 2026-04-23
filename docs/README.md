@@ -48,7 +48,7 @@ The rendered site auto-deploys on every push to `main`.
 |------|-------|
 | Documentation canon (`.qmd`) | **This repo** |
 | YAML data schemas | **This repo** (`data/`) |
-| Rendered HTML site | [whalermike.github.io/uiao-docs](https://whalermike.github.io/uiao-docs/docs/index.html) (build artifact) |
+| Rendered HTML site | [whalermike.github.io/uiao](https://whalermike.github.io/uiao/) (build artifact) |
 | OSCAL generation engine | [uiao](https://github.com/WhalerMike/uiao) |
 | Adapter framework | [uiao](https://github.com/WhalerMike/uiao) |
 | Operational wiki | [Wiki](https://github.com/WhalerMike/uiao-docs/wiki) |
@@ -94,7 +94,7 @@ Plus 100+ additional documents: Phase 5 operations, deep dives, v1.0 specificati
 
 ## Navigation
 
-The site uses a structured sidebar with 11 sections. See `_quarto.yml` for the full navigation tree, or browse the [live site](https://whalermike.github.io/uiao-docs/docs/index.html).
+The site uses a structured sidebar with 11 sections. See `_quarto.yml` for the full navigation tree, or browse the [live site](https://whalermike.github.io/uiao/).
 
 ---
 
@@ -119,7 +119,7 @@ UIAO (Unified Identity-Addressing-Overlay Architecture) is a federal network mod
 
 - See the [Contributing Guidelines](https://github.com/WhalerMike/uiao-docs/wiki/Contributing-Guidelines) wiki page
 - Canon documents (00–20) require Canon Steward review for changes
-- All contributions must follow the [Style Guide](https://whalermike.github.io/uiao-docs/docs/STYLE-GUIDE.html) and [Format Canon](https://whalermike.github.io/uiao-docs/docs/FORMAT-CANON.html)
+- All contributions must follow the [Style Guide](https://github.com/WhalerMike/uiao/blob/main/docs/docs/STYLE-GUIDE.qmd) and [Format Canon](https://github.com/WhalerMike/uiao/blob/main/docs/docs/FORMAT-CANON.qmd)
 - Diagrams use PlantUML (server-rendered PNG) or Gemini AI images — PlantUML is deprecated
 
 ---

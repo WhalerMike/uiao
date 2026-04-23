@@ -13,7 +13,7 @@ and understanding export workflows.
 
 ## Online Canon
 
-- **Primary site:** <https://whalermike.github.io/uiao-docs/>
+- **Primary site:** <https://whalermike.github.io/uiao/>
 - **Canon Overview:** [/canon/](canon/index.md)
 - **Corpus Status Dashboard:** [/canon/corpus-status-dashboard/](canon/corpus-status-dashboard.md)
 - **ADR Index:** [/adr/](../../src/uiao/canon/adr/index.md)
