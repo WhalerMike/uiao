@@ -16,7 +16,7 @@
 # ---------------------------------------------------------------
 # Commit: [UIAO-CORE] add: ADR-030 — gcc-boundary-drift-class
 
-src/uiao/canon/adr/adr-030-gcc-boundary-drift-class.md
+src/uiao/canon/adr/adr-033-gcc-boundary-drift-class.md
 src/uiao/canon/gcc-boundary-gap-registry.yaml
 
 # Requires: 2 reviewer approvals, governance-steward + security-steward
@@ -27,16 +27,16 @@ src/uiao/canon/gcc-boundary-gap-registry.yaml
 # ---------------------------------------------------------------
 # Commit: [UIAO-IMPL] add: gcc-boundary-probe-v1 adapter
 
-impl/src/uiao/impl/adapters/modernization/gcc-boundary-probe/__init__.py
-impl/src/uiao/impl/adapters/modernization/gcc-boundary-probe/probe.py
-impl/src/uiao/impl/adapters/modernization/gcc-boundary-probe/telemetry.py
-impl/src/uiao/impl/adapters/modernization/gcc-boundary-probe/adapter-manifest.json
-impl/src/uiao/impl/api/routes/boundary.py
+src/uiao/adapters/modernization/gcc_boundary_probe/__init__.py
+src/uiao/adapters/modernization/gcc_boundary_probe/probe.py
+src/uiao/adapters/modernization/gcc_boundary_probe/telemetry.py
+src/uiao/adapters/modernization/gcc_boundary_probe/adapter-manifest.json
+src/uiao/api/routes/boundary.py
 
 # Also update:
-# impl/src/uiao/impl/api/app.py — add boundary router include
-# impl/src/uiao/canon/modernization-registry.yaml — add adapter entry
-# impl/pyproject.toml — add httpx if not already present
+# src/uiao/api/app.py — add boundary router include
+# src/uiao/canon/modernization-registry.yaml — add adapter entry
+# pyproject.toml (repo root) — add httpx if not already present
 
 # Requires: 2 approvals, identity-engineer
 # CI gates: pytest, ruff, schema-validation
@@ -72,7 +72,7 @@ uiao/
 │   │   └── adr-030-gcc-boundary-drift-class.md      [NEW — PR 1]
 │   └── gcc-boundary-gap-registry.yaml               [NEW — PR 1]
 │
-├── impl/src/uiao/impl/
+├── src/uiao/
 │   ├── adapters/modernization/
 │   │   ├── active-directory/                        [FROM PREVIOUS SESSION]
 │   │   │   ├── __init__.py
@@ -109,7 +109,7 @@ uiao/
 # UPDATES TO EXISTING FILES
 # ---------------------------------------------------------------
 
-# impl/src/uiao/impl/api/app.py
+# src/uiao/api/app.py
 # Add after existing router includes:
 #   from .routes.boundary import router as boundary_router
 #   app.include_router(boundary_router, prefix="/api/v1/boundary", tags=["GCC Boundary"])
@@ -117,7 +117,7 @@ uiao/
 # src/uiao/canon/modernization-registry.yaml
 # Append the gcc-boundary-probe entry from adapter-manifest.json
 
-# impl/pyproject.toml
+# pyproject.toml (repo root)
 # Under [project].dependencies, confirm or add:
 #   "httpx>=0.27",
 #   "pyyaml>=6.0",

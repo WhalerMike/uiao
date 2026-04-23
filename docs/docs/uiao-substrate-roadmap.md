@@ -117,8 +117,8 @@ Referenced docs: UIAO_131 §3.1, UIAO_121 (conformance test plan template).
 Contract fixtures are static JSON/YAML snapshots of the API responses each adapter expects. They allow CI to exercise parsing, normalization, and output-generation logic without a live tenant.
 
 Work required:
-- Create `impl/tests/fixtures/entra-id/` with canonical response payloads for each adapter method (user list, group list, CA policies, sign-in logs).
-- Create `impl/tests/fixtures/m365/` equivalents.
+- Create `tests/fixtures/entra-id/` with canonical response payloads for each adapter method (user list, group list, CA policies, sign-in logs).
+- Create `tests/fixtures/m365/` equivalents.
 - Wire `test_adapters.py` (already exists) to assert against these fixtures.
 - Fixtures must be version-pinned to the API version declared in the adapter registry entry.
 
@@ -128,7 +128,7 @@ ScubaGear produces structured JSON output. Fixtures are ScubaGear output files c
 
 Work required:
 - Capture ScubaGear v1.5.1 output against the M365 developer tenant (same tenant used for tier-1 above).
-- Store in `impl/tests/fixtures/scubagear/`.
+- Store in `tests/fixtures/scubagear/`.
 - Wire `test_adapters.py` to assert the conformance adapter normalizes ScubaGear output correctly.
 
 ### 0.4 — DRIFT-AUTHZ implementation
@@ -136,7 +136,7 @@ Work required:
 DRIFT-AUTHZ detects consent-envelope violations: when an adapter asserts authority over an object it was not granted access to. This is P1 severity and has no runtime implementation.
 
 Work required:
-- Implement `ConsentEnvelopeValidator` in `impl/src/uiao/impl/governance/` that reads the adapter's declared `scope:` fields from the registry and validates observed API calls against that scope.
+- Implement `ConsentEnvelopeValidator` in `src/uiao/governance/` that reads the adapter's declared `scope:` fields from the registry and validates observed API calls against that scope.
 - Emit `DRIFT-AUTHZ` findings when out-of-scope access is detected.
 - Add pytest coverage in `test_drift_detection.py`.
 - Wire to the substrate walker so `uiao substrate walk` reports DRIFT-AUTHZ findings.
@@ -148,7 +148,7 @@ Referenced docs: UIAO_110 §3 (drift class taxonomy).
 DRIFT-IDENTITY detects issuer-resolution failures: when a certificate or identity claim cannot be traced to the expected trust anchor. P1 severity.
 
 Work required:
-- Implement `IssuerResolver` in `impl/src/uiao/impl/governance/` that validates the `certificate-anchored: true` invariant at runtime by checking the issuer chain on adapter-produced artifacts.
+- Implement `IssuerResolver` in `src/uiao/governance/` that validates the `certificate-anchored: true` invariant at runtime by checking the issuer chain on adapter-produced artifacts.
 - Emit `DRIFT-IDENTITY` findings when the chain breaks.
 - Add pytest coverage.
 - Wire to the substrate walker.
@@ -188,7 +188,7 @@ The freshness engine is partial. The remaining work is defining and enforcing st
 
 Work required:
 - Define per-adapter `freshness-window-hours` in `modernization-registry.yaml` (new field, schema update required).
-- Implement freshness evaluator in `impl/src/uiao/impl/freshness/` that compares evidence timestamps against declared windows.
+- Implement freshness evaluator in `src/uiao/freshness/` that compares evidence timestamps against declared windows.
 - Emit `DRIFT-SEMANTIC` findings.
 - Add pytest coverage.
 
@@ -207,7 +207,7 @@ Work required:
 The Compliance Orchestrator is the scheduler that triggers adapter runs, collects evidence, and routes findings to the drift engine and OSCAL generator. Without it, every evidence collection is a manual operation.
 
 Work required:
-- Implement `OrchestratorScheduler` in `impl/src/uiao/impl/` with: adapter run dispatch (via GitHub Actions `repository_dispatch`), evidence receipt and storage, routing to drift engine.
+- Implement `OrchestratorScheduler` in `src/uiao/` with: adapter run dispatch (via GitHub Actions `repository_dispatch`), evidence receipt and storage, routing to drift engine.
 - The orchestrator does not need to be production-grade in Phase 1. It needs to be functional enough that a complete evidence → drift → finding pipeline can be demonstrated end-to-end.
 - Add integration test (`test_e2e.py` already exists — extend it).
 
@@ -218,7 +218,7 @@ Referenced doc: UIAO_100.
 The evidence graph model has a schema but no implementation. The graph is what makes OSCAL evidence navigable: each finding traces back to a control, which traces back to an adapter run, which traces back to a canon document.
 
 Work required:
-- Implement `EvidenceGraph` in `impl/src/uiao/impl/evidence/` that builds the graph from adapter output and canon provenance fields.
+- Implement `EvidenceGraph` in `src/uiao/evidence/` that builds the graph from adapter output and canon provenance fields.
 - Wire to the OSCAL generator so produced SARs include graph-derived evidence links.
 - Add pytest coverage.
 
@@ -229,7 +229,7 @@ Referenced doc: UIAO_113.
 The Terraform adapter (`terraform_adapter.py`) exists but all five extension methods are stubs. The `python-hcl2` dependency is not yet added.
 
 Work required:
-- Add `python-hcl2` to `impl/pyproject.toml`.
+- Add `python-hcl2` to `pyproject.toml (repo root)`.
 - Implement `extract_terraform_state`, `parse_hcl_config`, `consume_terraform_plan`.
 - Implement `detect_terraform_drift` (three-way: live ↔ state ↔ HCL).
 - Implement `generate_terraform_evidence`.
@@ -325,7 +325,7 @@ CQL is the query interface for interrogating the evidence graph. Without it, evi
 
 Work required:
 - Define the CQL grammar (subset of a structured query language, not a general-purpose one).
-- Implement parser and evaluator in `impl/src/uiao/impl/`.
+- Implement parser and evaluator in `src/uiao/`.
 - Wire to the Auditor API (`/query` endpoint).
 - Document in UIAO_108.
 
@@ -451,9 +451,9 @@ The highest-leverage actions require no additional infrastructure — they use r
 
 **Day 1–2:** Sign up for the M365 Developer Program tenant. This is the unlock for Phase 0.1, 0.2, 0.3, and 2.4 simultaneously. A single free tenant is tier-1 evidence for `entra-id`, `m365`, `scuba` (modernization), and `scubagear` (conformance).
 
-**Day 2–3:** Create `impl/tests/fixtures/entra-id/` with static API response payloads captured from the Microsoft Graph Explorer (no live tenant required for the fixture structure — the schema is public). Wire them into `test_adapters.py`. This closes the tier-2 gap independently of the developer tenant signup.
+**Day 2–3:** Create `tests/fixtures/entra-id/` with static API response payloads captured from the Microsoft Graph Explorer (no live tenant required for the fixture structure — the schema is public). Wire them into `test_adapters.py`. This closes the tier-2 gap independently of the developer tenant signup.
 
-**Day 3–4:** Implement `DRIFT-AUTHZ` in `impl/src/uiao/impl/governance/`. The consent envelope model is already defined in UIAO_110; this is an implementation task, not a design task.
+**Day 3–4:** Implement `DRIFT-AUTHZ` in `src/uiao/governance/`. The consent envelope model is already defined in UIAO_110; this is an implementation task, not a design task.
 
 **Day 4–5:** Run `make check-links` and audit the output. Identify how many failures are genuine vs. lychee false-positives. If the genuine failures are fewer than 20, fix them and flip link-check to blocking within this sprint.
 

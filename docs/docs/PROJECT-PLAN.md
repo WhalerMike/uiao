@@ -56,7 +56,7 @@
 ```
 uiao/
 ├── impl/
-│   └── src/uiao/impl/
+│   └── src/uiao/
 │       ├── adapters/
 │       │   └── modernization/
 │       │       └── active-directory/       ← ADAPTER (already built)
@@ -92,7 +92,7 @@ uiao/
 │
 └── src/uiao/canon/
     ├── adr/
-    │   └── adr-029-ad-survey-adapter.md   ← Needs completion
+    │   └── adr-029-* (ad-survey-adapter, pending authoring)   ← Needs completion
     └── modernization-registry.yaml        ← Add adapter entry
 ```
 
@@ -149,7 +149,7 @@ git checkout -b governance/modernization/active-directory-api
 
 **Step 0.2 — Place adapter files** (from previous session)
 ```
-impl/src/uiao/impl/adapters/modernization/active-directory/
+src/uiao/adapters/modernization/active_directory/
   __init__.py   (provided)
   survey.py     (provided)
   orgpath.py    (provided)
@@ -157,18 +157,18 @@ impl/src/uiao/impl/adapters/modernization/active-directory/
 
 **Step 0.3 — Create API directory skeleton**
 ```bash
-mkdir -p impl/src/uiao/impl/api/auth
-mkdir -p impl/src/uiao/impl/api/routes
+mkdir -p src/uiao/api/auth
+mkdir -p src/uiao/api/routes
 mkdir -p deploy/windows-server
 mkdir -p scripts/deploy
-touch impl/src/uiao/impl/api/__init__.py
-touch impl/src/uiao/impl/api/auth/__init__.py
-touch impl/src/uiao/impl/api/routes/__init__.py
+mkdir src/uiao/api  # PEP 420 namespace; no __init__ needed
+mkdir src/uiao/api/auth  # PEP 420 namespace; no __init__ needed
+touch src/uiao/api/routes/__init__.py
 ```
 
 **Step 0.4 — Place all files** (see Section 5 — File Inventory)
 
-**Step 0.5 — Update impl/pyproject.toml**
+**Step 0.5 — Update pyproject.toml (repo root)**
 Add under `[project].dependencies`:
 ```toml
 "fastapi>=0.111",
@@ -394,7 +394,7 @@ Invoke-RestMethod `
 ### Phase 6: Governance Gates (Days 6–8)
 
 **Step 6.1 — Complete ADR-029**
-Edit `src/uiao/canon/adr/adr-029-ad-survey-adapter.md` — fill in the
+Edit `src/uiao/canon/adr/adr-029-*` (pending creation) — fill in the
 `status: proposed` stub with real decision rationale.
 
 **Step 6.2 — Update modernization-registry.yaml**
@@ -403,7 +403,7 @@ Apply the entry from `registry-entry-and-adr.yaml` (from previous session).
 **Step 6.3 — Add to document-registry.yaml**
 ```yaml
 - id: UIAO_AD_001
-  path: adr/adr-029-ad-survey-adapter.md
+  path: adr/adr-029-<ad-survey-adapter>.md
   title: Active Directory Survey Adapter
   status: proposed
 ```
