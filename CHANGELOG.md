@@ -2,6 +2,95 @@
 
 All notable changes to UIAO are documented here. Format adapted from [Keep a Changelog](https://keepachangelog.com/); versioning follows [Semantic Versioning](https://semver.org/). Pre-1.0 minor versions may carry breaking changes.
 
+## [0.4.0] — 2026-04-23
+
+**Theme: substrate-governance realignment + CI-gate restoration.** Landing this arc closes every silently-disabled quality gate that accumulated after the ADR-032 single-package consolidation (2026-04-20). Every Python quality signal on `main` is now actively enforced.
+
+### Added
+
+- **ADR-044** (`src/uiao/canon/adr/adr-044-substrate-governance-realignment.md`) — ratifies the post-ADR-032 alignment of UIAO_200, UIAO_201, the workspace-contract schema, the substrate walker, and the substrate-drift CI step to the single-package topology (#151).
+- **UIAO_200 Substrate Manifest v2.0** — six-module topology (`uiao`, `tests`, `docs`, `scripts`, `inbox`, `deploy`); sub-boundaries inside `uiao/`; `role` enum widened from `[authority, consumer]` to `[authority, consumer, package, tooling, staging, deploy]` (#151).
+- **UIAO_201 Workspace Contract v2.0** — `module_paths` mirrors v2.0 manifest; `build_outputs.package_dist` (was `impl_dist`); `canon_consumer_rule` retargeted (#151).
+- **UIAO_008 CLI Reference v1.0** — promoted from top-level shadow `canon/UIAO_132_CLI_Reference_v1.0.md`; reallocated from UIAO_132 (collision with FedRAMP RFC-0026 spec) into the UIAO_002-099 top-level-canon range (#154).
+- **UIAO_005 / UIAO_006 / UIAO_007** — promoted from top-level shadow canon (`SCuBA Value Proposition`, `AODIM Architecture`, `OrgTree Modernization`) with schema-conformant provenance (#154).
+- **UIAO_001 SSOT v1.1** — expanded from a 21-line stub into a full authoritative doctrine: post-ADR-032 topology table, canon-consumer rule pointer, provenance chain model, 5-class drift taxonomy, canon change process (#167).
+- **`src/uiao/rules/canon-consumer.md`** — new post-ADR-032 canon-consumer rule (importlib.resources reads, read-only runtime); supersedes the retired pre-consolidation rule under `impl/.claude/rules/` (#151).
+- **`tests/test_api_smoke.py`** — three smoke tests on `uiao.api.app:app` (importability, route-prefix presence, openapi schema generation). Caught a latent production-deploy import bug that no other test surfaced (#158).
+- **`[api]` optional extra** — declares `fastapi>=0.110`, `httpx>=0.27`, `uvicorn>=0.29`, `msal>=1.28` so `uiao.api.*` and the gcc-boundary-probe adapter actually resolve (#152, #158).
+- **`[dev]` extra** — adds `types-PyYAML`, `types-requests` for mypy typeshed stubs.
+- **Substrate-walker `docs/` scan** — extended to walk `docs/**/*.{md,qmd}` for code-path citations; new tests; 42 P2 narrative-drift warnings surface on current tree (non-blocking) (#166).
+- **Two new walker tests** covering the docs-scan behavior (#166).
+
+### Changed
+
+- **Ruff gate → blocking.** 230-finding baseline cleared (128 via `ruff check --fix`, 7 via `--unsafe-fixes`, ~76 via `ruff format` splitting one-line dataclasses, 13 manual). Step-level `continue-on-error` on `ruff format --check` also removed (Copilot review) (#153).
+- **Mypy gate → blocking with strict flags.** 130 findings burned down across four batches (#161, #162, #163, #164); `disallow_untyped_defs = true` + `warn_return_any = true` restored with 77 additional fixes (#165). Per-module overrides for docx-heavy generators + adapter-reflection surfaces documented inline.
+- **Full pytest gate → blocking.** Restored after `[api]` dep declaration unblocked `tests/test_auditor_api.py` collection (#152).
+- **`substrate-drift.yml`** — gates on `report.blocking` (P1) rather than `report.ok` (any finding), matching the `uiao substrate drift` CLI semantics; push-path filters made symmetric with pull_request filters (#151, #157).
+- **CI path filters** repaired in all 7 workflows that still referenced the retired `impl/**` / `core/canon/` / `src/uiao/impl/**` paths (#150, #151). `adapter-conformance.yml` triggers widened to include registry + schema edits (#157).
+- **Substrate walker** (`src/uiao/substrate/walker.py`) retargeted from `core/canon/*` to `src/uiao/canon/*`; `IMPL_REF_PATTERN` renamed `CODE_REF_PATTERN` and broadened to match both `src/uiao/` and `impl/` prefixes; `SubstrateReport.impl_refs_checked` renamed `code_refs_checked` (JSON contract change) (#151).
+- **`workspace-contract.schema.json`** — `module_paths.required` narrowed to `[uiao, tests, docs]` with `minProperties: 3`; `build_outputs.impl_dist` → `package_dist`; `canon_consumer_rule.const` retargeted (#151).
+- **`src/uiao/api/routes/routes.py`** split into `health.py` / `survey.py` / `orgpath.py`. The stitched file had been preventing `uiao.api.app` from importing — another latent production bug (#158).
+- **README.md / Makefile / AGENTS.md** — rewritten for the flattened `src/uiao/` layout; obsolete `core/` / `impl/` references removed (#147, #151, #153-165).
+- **`adapter-conformance.yml`** — now triggers on registry + schema edits in addition to adapter code (#157).
+- **`release.yml`** — job renamed ("Build impl/ wheel and sdist" → "Build wheel and sdist"); `impl-dist-*` artifact → `uiao-dist-*`; `working-directory: impl` dropped; sigstore-verify snippet retargeted `uiao_impl-*` → `uiao-*` to match the distribution name (#150).
+- **Schema-description cleanup** across `src/uiao/schemas/` — 4 stale `core/schemas/` / `core/canon/` path references in description strings retired to `src/uiao/schemas/` / `src/uiao/canon/` (#159).
+- **Canon narrative drift cleared** — 11 P2 DRIFT-PROVENANCE warnings from ADR prose retired (ADR-028/029/031/032/044, UIAO_121/122/126) by retargeting `impl/...` citations to current `src/uiao/...` paths with historical notes (#156).
+
+### Fixed
+
+- **Production-deploy bug #1** — `deploy/windows-server/run.py` retargeted from the retired `uiao.impl.api.app:app` to `uiao.api.app:app`; `C:\srv\uiao\impl\src` sys.path shim removed (#150, #153).
+- **Production-deploy bug #2** — two adapter directories with hyphens in their names (`active-directory/`, `gcc-boundary-probe/`) renamed to the underscore form (`active_directory/`, `gcc_boundary_probe/`). Hyphenated dir names are invalid Python package identifiers; every `from uiao.adapters.modernization.active_directory...` import was literally unresolvable. Locally masked because `msal` was missing; would have failed at startup on IIS (#155).
+- **Production-deploy bug #3** — `src/uiao/api/app.py` imported `health`, `survey`, `orgpath` from `.routes` as if they were modules, but the symbols lived inside a single stitched `routes.py`. Split into separate files (#158).
+- **Production-deploy bug #4** — `src/uiao/ir/mapping/ksi_to_ir.py` passed `hash=None` to `ProvenanceRecord(...)`; the field is `content_hash` (#165).
+- **Hyphen-named dirs elsewhere** — substrate-walker now discoverable by mypy (was aborting at startup) (#155).
+
+### Deprecated / Removed
+
+- Top-level shadow canon directory (`canon/UIAO_005_*.md`, etc.) removed; contents promoted under `src/uiao/canon/` with registry entries (#154).
+
+### Canon
+
+- UIAO_001 SSOT v1.0 → **v1.1** (CANONICAL)
+- UIAO_200 Substrate Manifest v1.0 → **v2.0** (OPERATIONAL)
+- UIAO_201 Workspace Contract v1.0 → **v2.0** (OPERATIONAL)
+- **UIAO_005** SCuBA Value Proposition (new registered) (CANONICAL)
+- **UIAO_006** AODIM Architecture (new registered) (CANONICAL)
+- **UIAO_007** OrgTree Modernization — AD to Entra ID (new registered) (CANONICAL)
+- **UIAO_008** UIAO-Core CLI Reference (new registered) (CANONICAL, Draft)
+- **ADR-044** Substrate Governance Realignment to Post-ADR-032 Single Package (ACCEPTED)
+- **`src/uiao/rules/canon-consumer.md`** rewritten for the post-ADR-032 world
+
+### CI stack state after 0.4.0
+
+| Gate | Status |
+|---|---|
+| `schema-validation.yml` | ✅ blocking |
+| `pytest.yml` | ✅ blocking (substrate fast + full suite) |
+| `substrate-drift.yml` | ✅ blocking (P1 only; walker now works) |
+| `metadata-validator.yml` | ✅ blocking |
+| `adapter-conformance.yml` | ✅ blocking (330/330) |
+| `ruff.yml` | ✅ blocking |
+| `mypy.yml` | ✅ blocking (strict flags) |
+| `quarto.yml` | ✅ render; deploy on main |
+| `link-check.yml` | 🟡 soft-fail (repo config) |
+| `release.yml` | build/sigstore/SBOM on tag |
+
+### Infrastructure
+
+- **Release workflow dry-run** — `python -m build --sdist --wheel` verified clean from the repo root; `uiao-0.4.0-py3-none-any.whl` + `uiao-0.4.0.tar.gz` produced; wheel filename pattern matches `release.yml`'s sigstore verification snippet. End-to-end run with sigstore signing requires a tag push from the owner's session.
+
+### Local verification (pre-0.4.0 cut)
+
+- `mypy src/uiao --ignore-missing-imports` → Success: no issues found in 171 source files.
+- `pytest -q` → 1587 passed, 156 skipped, 0 failed.
+- `ruff check .` → All checks passed.
+- `ruff format --check .` → clean.
+- `uiao substrate drift` → PASS with 42 P2 docs-narrative warnings (P1-only gate, non-blocking).
+- `python -m build` → wheel + sdist produced clean.
+
+---
+
 ## [Unreleased]
 
 ### Added
