@@ -106,8 +106,39 @@ PLACEHOLDER_REF_RE = re.compile(
     r"\[IMAGE-REF:\s*(?P<id>UIAO-FIG-\d{3})\s*\]",
     re.MULTILINE,
 )
+
+# Heading-style authoring dialect used inside sibling IMAGE-PROMPTS.md
+# files. sync_canon.py scaffolds these per adapter; the body becomes the
+# prompt when the author fills in the _TODO_ stub. Three accepted forms:
+#
+#     ## IMAGE-01
+#     ## IMAGE-01 — Title
+#     ## Image 1: Title
+#
+# Everything between this heading and the next level-2 heading (or EOF)
+# is treated as the body. The placeholder attaches to the "companion
+# document" — the non-IMAGE-PROMPTS sibling .qmd / .md in the same folder.
+PLACEHOLDER_HEADING_RE = re.compile(
+    r"^##\s+(?:"
+    r"(?P<kind1>IMAGE|DIAGRAM|FIGURE)-(?P<num1>\d{1,3})"
+    r"|"
+    r"Image\s+(?P<num2>\d{1,3})"
+    r")"
+    r"(?:\s*[:—\-]\s*(?P<title>.+?))?\s*$",
+    re.MULTILINE,
+)
+
 AUTO_MARKER = "AUTO"
 CANON_ID_RE = re.compile(r"^UIAO-FIG-\d{3}$")
+IMAGE_PROMPTS_FILENAME = "IMAGE-PROMPTS.md"
+
+# Bodies that count as unfilled scaffolds — treated as absent, not
+# harvested. Matches the default text `sync_canon.py` writes plus
+# common synonyms.
+_TODO_LINE_RE = re.compile(
+    r"^\s*[_*]*\s*((?:TODO|TBD|FIXME)\b|<[^>]*>\s*$)",
+    re.IGNORECASE,
+)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -166,6 +197,8 @@ class RunReport:
     auto_placeholders_skipped: int = 0  # Part-3 feature; skipped in v1
     sidecars_written: int = 0
     registry_used_by_updates: int = 0
+    sidecar_slots_harvested: int = 0  # filled heading-style slots found
+    sidecar_slots_merged: int = 0     # slots that became effective placeholders
 
 
 # ──────────────────────────────────────────────────────────────
@@ -492,6 +525,190 @@ def scan_placeholders(
 
 
 # ──────────────────────────────────────────────────────────────
+# IMAGE-PROMPTS.md sidecar harvester.
+#
+# `sync_canon.py` scaffolds one IMAGE-PROMPTS.md per adapter / doc with
+# `## IMAGE-NN` heading blocks. Authors fill the body with their prompt.
+# This harvester picks those filled bodies up and attaches them as
+# synthetic DocLocalPlaceholder entries against the companion document
+# (the sibling .qmd/.md in the same folder), so downstream generation
+# treats them exactly like inline `[IMAGE-NN: ...]` placeholders.
+#
+# Merge rule with the inline scanner: inline wins. If a document already
+# has `[IMAGE-NN: body]` inline for a given placeholder_id, the heading
+# slot with the same ID is ignored.
+# ──────────────────────────────────────────────────────────────
+def _is_todo_body(body: str) -> bool:
+    """True if the body is an unfilled scaffold (TODO / TBD / placeholder)."""
+    stripped = body.strip()
+    if not stripped:
+        return True
+    # Only look at non-blank, non-quote content lines.
+    for raw in stripped.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        # Strip common markdown emphasis wrappers so `_TODO — ..._` matches.
+        unwrapped = line.strip("_*")
+        if _TODO_LINE_RE.match(unwrapped):
+            continue
+        # Any substantive line means the body is real.
+        return False
+    return True
+
+
+def _find_companion_document(image_prompts_path: Path) -> Optional[Path]:
+    """Given a path to an IMAGE-PROMPTS.md file, return the sibling
+    document it annotates. Resolution order:
+
+        1. <folder>/<folder-name>.qmd
+        2. <folder>/<folder-name>.md
+        3. Exactly one other .qmd in the same folder
+        4. Exactly one other .md in the same folder (excluding this file
+           and any README)
+
+    Returns None if no deterministic companion can be identified.
+    """
+    folder = image_prompts_path.parent
+    folder_name = folder.name
+
+    for ext in (".qmd", ".md"):
+        candidate = folder / f"{folder_name}{ext}"
+        if candidate.is_file():
+            return candidate
+
+    # Fallback: a single other .qmd/.md sibling.
+    ignore_names = {image_prompts_path.name.lower(), "readme.md", "index.md", "index.qmd"}
+    for ext in (".qmd", ".md"):
+        siblings = [
+            p for p in folder.iterdir()
+            if p.is_file() and p.suffix == ext and p.name.lower() not in ignore_names
+        ]
+        if len(siblings) == 1:
+            return siblings[0]
+
+    return None
+
+
+def _extract_heading_blocks(text: str) -> list[tuple[str, str, str, int]]:
+    """Parse heading-style image slots in an IMAGE-PROMPTS.md body.
+
+    Returns a list of tuples: (placeholder_id, title, body, line_number).
+    `body` is the text between this heading and the next ## heading (or EOF),
+    with leading/trailing whitespace stripped.
+    """
+    blocks: list[tuple[str, str, str, int]] = []
+    # Line offsets for line-number translation.
+    line_starts = [0]
+    for idx, ch in enumerate(text):
+        if ch == "\n":
+            line_starts.append(idx + 1)
+
+    def line_of(offset: int) -> int:
+        lo, hi = 0, len(line_starts) - 1
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if line_starts[mid] <= offset:
+                lo = mid
+            else:
+                hi = mid - 1
+        return lo + 1
+
+    matches = list(PLACEHOLDER_HEADING_RE.finditer(text))
+    for i, m in enumerate(matches):
+        kind = m.group("kind1") or "IMAGE"
+        num_raw = m.group("num1") or m.group("num2")
+        if not num_raw:
+            continue
+        # Normalize to two-digit width so downstream filenames are consistent
+        # with inline placeholders (e.g. IMAGE-03, not IMAGE-3).
+        num = f"{int(num_raw):02d}"
+        placeholder_id = f"{kind}-{num}"
+        title = (m.group("title") or "").strip()
+
+        body_start = m.end()
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        body = text[body_start:body_end].strip()
+
+        # Strip any leading "**Placement:** ..." and "**Prompt:**" markers
+        # (the older docs/visuals/IMAGE-PROMPTS-SCUBA.md dialect). The
+        # actual prompt is the remaining prose.
+        body = re.sub(r"^\*\*Placement:\*\*.*?(?=\n\n|\n\*\*|\Z)", "", body, flags=re.DOTALL).strip()
+        body = re.sub(r"^\*\*Prompt:\*\*\s*\n?", "", body).strip()
+
+        blocks.append((placeholder_id, title, body, line_of(m.start())))
+    return blocks
+
+
+def scan_image_prompts_files(
+    files: list[Path],
+) -> list[DocLocalPlaceholder]:
+    """Walk every IMAGE-PROMPTS.md in `files` and emit DocLocalPlaceholder
+    entries for each heading-style slot that carries real prompt text.
+
+    Unfilled scaffolds (TODO / TBD / empty bodies) are skipped.
+    Companion-less sidecars (no sibling .qmd/.md to attach to) are skipped
+    with a warning printed once per file so authors see the drift.
+    """
+    out: list[DocLocalPlaceholder] = []
+    for path in files:
+        if path.name != IMAGE_PROMPTS_FILENAME:
+            continue
+        companion = _find_companion_document(path)
+        if companion is None:
+            # Silent in test-heavy invocations; main() still surfaces a
+            # summary count. Print once per path for author feedback.
+            print(
+                f"  Warning: {_repo_rel(path)} "
+                "has no companion .qmd/.md in the same folder; skipping."
+            )
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+
+        for placeholder_id, title, body, line_no in _extract_heading_blocks(text):
+            # Filled prompt? If body starts with a real prompt (not TODO),
+            # we harvest it. Title can be used as filename slug later.
+            if _is_todo_body(body):
+                continue
+            is_auto = body.strip().upper() == AUTO_MARKER
+            # Attach the synthetic placeholder to the companion document so
+            # image output lands beside the rendered HTML/PDF.
+            out.append(
+                DocLocalPlaceholder(
+                    document=companion,
+                    placeholder_id=placeholder_id,
+                    body=body if not title else f"{title} — {body}",
+                    line_number=line_no,
+                    is_auto=is_auto,
+                )
+            )
+    out.sort(key=lambda p: (str(p.document), p.placeholder_id))
+    return out
+
+
+def merge_placeholders(
+    inline: list[DocLocalPlaceholder],
+    sidecar: list[DocLocalPlaceholder],
+) -> list[DocLocalPlaceholder]:
+    """Merge inline + sidecar placeholder lists. Inline entries win on
+    conflict (same document + placeholder_id); duplicate sidecar entries
+    are dropped. Returns a stable-sorted merged list."""
+    seen: set[tuple[str, str]] = {(str(p.document), p.placeholder_id) for p in inline}
+    merged = list(inline)
+    for p in sidecar:
+        key = (str(p.document), p.placeholder_id)
+        if key in seen:
+            continue
+        merged.append(p)
+        seen.add(key)
+    merged.sort(key=lambda p: (str(p.document), p.placeholder_id, p.line_number))
+    return merged
+
+
+# ──────────────────────────────────────────────────────────────
 # Doc-local output path resolver. Given the owning document and
 # the placeholder ID, produces the on-disk PNG path that the
 # rendered image will occupy.
@@ -726,9 +943,23 @@ def main() -> int:
     # validation even in --scan-only mode.
     files = iter_source_files()
     print(f"Scanning {len(files)} .qmd / .md files under SCAN_ROOTS...")
-    locals_, refs = scan_placeholders(files)
+    inline_locals, refs = scan_placeholders(files)
+    sidecar_locals = scan_image_prompts_files(files)
+    locals_ = merge_placeholders(inline_locals, sidecar_locals)
     report.placeholders_scanned = len(locals_) + len(refs)
-    print(f"Found {len(locals_)} doc-local placeholder(s) and {len(refs)} canon-ref placeholder(s).")
+    report.sidecar_slots_harvested = len(sidecar_locals)
+    report.sidecar_slots_merged = len(locals_) - len(inline_locals)
+    print(
+        f"Found {len(inline_locals)} inline placeholder(s), "
+        f"{len(sidecar_locals)} filled IMAGE-PROMPTS.md slot(s), "
+        f"{len(refs)} canon-ref placeholder(s)."
+    )
+    if sidecar_locals:
+        print(
+            f"  → merged into {len(locals_)} effective doc-local placeholder(s) "
+            f"({report.sidecar_slots_merged} added from sidecars, "
+            f"{len(sidecar_locals) - report.sidecar_slots_merged} shadowed by inline)."
+        )
 
     # Load registry (may be empty — that's fine for v1)
     registry_doc, entries = load_registry()
@@ -946,6 +1177,8 @@ def _print_report(report: RunReport) -> None:
     print(f"Doc-local failed:        {report.doc_local_failed}")
     print(f"AUTO placeholders (v2):  {report.auto_placeholders_skipped}")
     print(f"Sidecars written:        {report.sidecars_written}")
+    print(f"IMAGE-PROMPTS slots:     {report.sidecar_slots_harvested} filled "
+          f"(+{report.sidecar_slots_merged} merged as new placeholders)")
     print(f"Registry used_by adds:   {report.registry_used_by_updates}")
 
 

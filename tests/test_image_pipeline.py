@@ -559,3 +559,184 @@ def test_write_manifest_produces_valid_json(generator, tmp_path):
     assert result_path == target
     roundtrip = json.loads(target.read_text(encoding="utf-8"))
     assert roundtrip["schema_version"] == generator.MANIFEST_SCHEMA_VERSION
+
+
+# ─────────────────────────────────────────────────────────────────────
+# IMAGE-PROMPTS.md heading-style harvester (Option 2 of the dialects)
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _write_image_prompts(folder: Path, blocks: str) -> Path:
+    folder.mkdir(parents=True, exist_ok=True)
+    p = folder / "IMAGE-PROMPTS.md"
+    p.write_text(blocks, encoding="utf-8")
+    return p
+
+
+def test_is_todo_body_detects_scaffold_variants(generator):
+    assert generator._is_todo_body("")
+    assert generator._is_todo_body("   \n  ")
+    assert generator._is_todo_body("_TODO — describe the intended illustration._")
+    assert generator._is_todo_body("*TODO* fill in later")
+    assert generator._is_todo_body("TBD")
+    assert generator._is_todo_body("<placeholder>")
+    # Real content — even one substantive line — is not TODO.
+    assert not generator._is_todo_body("A 16:9 schematic of the pipeline.")
+    assert not generator._is_todo_body(
+        "_TODO — ignore this note._\n\nA real prompt paragraph follows."
+    )
+
+
+def test_extract_heading_blocks_basic(generator):
+    text = (
+        "# Image Prompts\n\n"
+        "## IMAGE-01\n\n"
+        "First prompt body.\n\n"
+        "## IMAGE-02 — Second\n\n"
+        "Second prompt body.\n"
+    )
+    blocks = generator._extract_heading_blocks(text)
+    ids = [b[0] for b in blocks]
+    titles = [b[1] for b in blocks]
+    bodies = [b[2] for b in blocks]
+    assert ids == ["IMAGE-01", "IMAGE-02"]
+    assert titles == ["", "Second"]
+    assert "First prompt body." in bodies[0]
+    assert "Second prompt body." in bodies[1]
+
+
+def test_extract_heading_blocks_image_n_dialect(generator):
+    """The `## Image 1: Title` dialect (docs/visuals/IMAGE-PROMPTS-SCUBA.md)
+    normalizes to IMAGE-01 so filenames stay consistent."""
+    text = "## Image 1: Four-Plane Pipeline\n\n**Prompt:**\nA wide schematic.\n"
+    blocks = generator._extract_heading_blocks(text)
+    assert len(blocks) == 1
+    placeholder_id, title, body, _ = blocks[0]
+    assert placeholder_id == "IMAGE-01"
+    assert title == "Four-Plane Pipeline"
+    assert "A wide schematic." in body
+
+
+def test_extract_heading_blocks_strips_placement_and_prompt_markers(generator):
+    text = (
+        "## IMAGE-03\n\n"
+        "**Placement:** Section 4, after the architecture paragraph.\n\n"
+        "**Prompt:**\n"
+        "A clean infographic showing the four planes.\n"
+    )
+    blocks = generator._extract_heading_blocks(text)
+    assert len(blocks) == 1
+    body = blocks[0][2]
+    assert "Placement" not in body
+    assert body.startswith("A clean infographic")
+
+
+def test_find_companion_document_folder_named(generator, tmp_path):
+    folder = tmp_path / "cyberark"
+    folder.mkdir()
+    (folder / "cyberark.qmd").write_text("# CyberArk\n", encoding="utf-8")
+    (folder / "IMAGE-PROMPTS.md").write_text("## IMAGE-01\n\nbody.\n", encoding="utf-8")
+    prompts = folder / "IMAGE-PROMPTS.md"
+    companion = generator._find_companion_document(prompts)
+    assert companion == folder / "cyberark.qmd"
+
+
+def test_find_companion_document_single_sibling(generator, tmp_path):
+    folder = tmp_path / "custom"
+    folder.mkdir()
+    (folder / "oddly-named-doc.qmd").write_text("# Doc\n", encoding="utf-8")
+    (folder / "IMAGE-PROMPTS.md").write_text("## IMAGE-01\n\nbody.\n", encoding="utf-8")
+    companion = generator._find_companion_document(folder / "IMAGE-PROMPTS.md")
+    assert companion == folder / "oddly-named-doc.qmd"
+
+
+def test_find_companion_document_none_when_ambiguous(generator, tmp_path):
+    folder = tmp_path / "multi"
+    folder.mkdir()
+    (folder / "a.qmd").write_text("a", encoding="utf-8")
+    (folder / "b.qmd").write_text("b", encoding="utf-8")
+    (folder / "IMAGE-PROMPTS.md").write_text("## IMAGE-01\n\nbody.\n", encoding="utf-8")
+    companion = generator._find_companion_document(folder / "IMAGE-PROMPTS.md")
+    assert companion is None
+
+
+def test_find_companion_document_ignores_readme_and_index(generator, tmp_path):
+    folder = tmp_path / "docs"
+    folder.mkdir()
+    (folder / "README.md").write_text("readme", encoding="utf-8")
+    (folder / "index.qmd").write_text("index", encoding="utf-8")
+    (folder / "actual-doc.qmd").write_text("real", encoding="utf-8")
+    (folder / "IMAGE-PROMPTS.md").write_text("## IMAGE-01\n\nbody.\n", encoding="utf-8")
+    companion = generator._find_companion_document(folder / "IMAGE-PROMPTS.md")
+    assert companion == folder / "actual-doc.qmd"
+
+
+def test_scan_image_prompts_files_attaches_to_companion(generator, tmp_path):
+    folder = tmp_path / "cyberark"
+    folder.mkdir()
+    companion = folder / "cyberark.qmd"
+    companion.write_text("# CyberArk\n", encoding="utf-8")
+    prompts = _write_image_prompts(
+        folder,
+        "## IMAGE-01\n\nA 16:9 schematic of the rotation flow.\n\n"
+        "## IMAGE-02\n\n_TODO — describe second._\n",
+    )
+    out = generator.scan_image_prompts_files([prompts])
+    # Only IMAGE-01 (real body) should be harvested; IMAGE-02 is TODO.
+    assert len(out) == 1
+    assert out[0].document == companion
+    assert out[0].placeholder_id == "IMAGE-01"
+    assert "rotation flow" in out[0].body
+
+
+def test_scan_image_prompts_files_skips_missing_companion(generator, tmp_path, capsys):
+    folder = tmp_path / "publication"
+    folder.mkdir()
+    # Only .docx sibling (common for the publications/ tree); no .qmd/.md.
+    (folder / "UIAO-Brief.docx").write_bytes(b"fake")
+    prompts = _write_image_prompts(folder, "## IMAGE-01\n\nreal body.\n")
+    out = generator.scan_image_prompts_files([prompts])
+    assert out == []
+    captured = capsys.readouterr()
+    assert "no companion" in captured.out.lower()
+
+
+def test_merge_placeholders_inline_wins_on_conflict(generator, tmp_path):
+    doc = tmp_path / "doc.qmd"
+    doc.write_text("", encoding="utf-8")
+    inline = [
+        generator.DocLocalPlaceholder(
+            document=doc, placeholder_id="IMAGE-01",
+            body="INLINE body", line_number=10, is_auto=False,
+        ),
+    ]
+    sidecar = [
+        generator.DocLocalPlaceholder(
+            document=doc, placeholder_id="IMAGE-01",
+            body="SIDECAR body", line_number=42, is_auto=False,
+        ),
+        generator.DocLocalPlaceholder(
+            document=doc, placeholder_id="IMAGE-02",
+            body="new from sidecar", line_number=55, is_auto=False,
+        ),
+    ]
+    merged = generator.merge_placeholders(inline, sidecar)
+    assert len(merged) == 2
+    by_id = {p.placeholder_id: p for p in merged}
+    assert by_id["IMAGE-01"].body == "INLINE body"
+    assert by_id["IMAGE-02"].body == "new from sidecar"
+
+
+def test_merge_placeholders_stable_sort(generator, tmp_path):
+    a = tmp_path / "a.qmd"
+    a.write_text("", encoding="utf-8")
+    b = tmp_path / "b.qmd"
+    b.write_text("", encoding="utf-8")
+    placeholders = [
+        generator.DocLocalPlaceholder(document=b, placeholder_id="IMAGE-02",
+                                      body="", line_number=5, is_auto=False),
+        generator.DocLocalPlaceholder(document=a, placeholder_id="IMAGE-01",
+                                      body="", line_number=3, is_auto=False),
+    ]
+    merged = generator.merge_placeholders(placeholders, [])
+    assert [p.document for p in merged] == [a, b]
