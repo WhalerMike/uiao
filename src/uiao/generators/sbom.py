@@ -23,7 +23,10 @@ def _get_installed_packages() -> list[dict[str, str]]:
     """Return a list of installed packages with name, version, and metadata."""
     packages = []
     for dist in importlib.metadata.distributions():
-        meta = dist.metadata
+        # dist.metadata is a PackageMetadata (email.message.Message subclass);
+        # typeshed's PackageMetadata stub omits .get(), but the runtime object
+        # supports it. Cast to the email.Message interface via dict().
+        meta = dict(dist.metadata)
         name = meta.get("Name") or ""
         version = meta.get("Version") or ""
         if name and version:
@@ -32,7 +35,7 @@ def _get_installed_packages() -> list[dict[str, str]]:
                     "name": name,
                     "version": version,
                     "description": meta.get("Summary") or "",
-                    "homepage": meta.get("Home-page") or _first_project_url(meta),
+                    "homepage": meta.get("Home-page") or _first_project_url(dist.metadata),
                     "license": meta.get("License") or "",
                 }
             )
