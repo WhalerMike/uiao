@@ -1,18 +1,23 @@
 ---
-document_id: UIAO_132
+document_id: UIAO_008
 title: "UIAO-Core CLI Reference"
 version: "1.0"
-status: DRAFT
+status: Draft
 classification: CANONICAL
 owner: Michael Stratton
-created_at: 2026-04-18
-updated_at: 2026-04-18
+created_at: "2026-04-18"
+updated_at: "2026-04-23"
 boundary: GCC-Moderate
+provenance:
+  source: "canon/UIAO_132_CLI_Reference_v1.0.md (retired top-level shadow canon file)"
+  version: "1.0"
+  derived_at: "2026-04-23"
+  derived_by: "ADR-044 shadow-canon cleanup: reassigned from UIAO_132 (FedRAMP RFC-0026 CA-7 Pathway Integration spec) into the UIAO_002-099 top-level-canon range (UIAO_100-199 is reserved for canon/specs/). Promoted from top-level canon/ shadow location into src/uiao/canon/"
 ---
 
 # UIAO-Core CLI Reference
 
-**Version:** Current (April 2026)
+**Version:** Draft 1.0 (April 2026)
 
 **Environment:** Commercial Cloud (FedRAMP-governed); GCC-Moderate applies to Microsoft 365 SaaS services only.
 

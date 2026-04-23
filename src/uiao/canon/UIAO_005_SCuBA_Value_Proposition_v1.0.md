@@ -2,8 +2,8 @@
 document_id: UIAO_005
 title: "UIAO-core Value Proposition — Two-Way Governance Architecture for SCuBA and BOD 25-01"
 version: "1.0"
-status: CANONICAL
-classification: Controlled
+status: Current
+classification: CANONICAL
 owner: "Michael Stratton"
 author: "Michal Doroszewski"
 created_at: "2026-04-18"
@@ -11,9 +11,10 @@ updated_at: "2026-04-18"
 boundary: GCC-Moderate
 audience: "CISOs, Federal Modernization Leads, Venture Capital, Analysts, Agency Security Architects"
 provenance:
-  source_file: "inbox/UIAO SCuBA Value Proposition - Two-Way Governance Architecture/UIAO SCuBA Value Proposition - Two-Way Governance Architecture.docx"
-  extracted_by: "Copilot Tasks"
-  extraction_date: "2026-04-18"
+  source: "inbox/UIAO SCuBA Value Proposition - Two-Way Governance Architecture/UIAO SCuBA Value Proposition - Two-Way Governance Architecture.docx"
+  version: "1.0"
+  derived_at: "2026-04-18"
+  derived_by: "Copilot Tasks docx extraction; promoted to canon in ADR-044 shadow-canon cleanup on 2026-04-23"
   images:
     - "image_1a4aa92b.png — SCuBA/ScubaConnect/M365 Relationship Diagram"
     - "image_a611cce0.png — Azure SCuBA Scan JSON Results"
