@@ -27,7 +27,7 @@ The two axes are independent. A finding may be "unauthorized" (risk) and
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Literal, Optional, Set, Union
 
 from uiao.ir.models.core import DriftState, ProvenanceRecord, canonical_hash
 
@@ -60,7 +60,7 @@ def _classify_drift(
     expected_hash: str,
     actual_hash: str,
     delta: Dict[str, List[str]],
-) -> str:
+) -> Literal["benign", "risky", "unauthorized"]:
     if expected_hash == actual_hash:
         return "benign"
     changed_fields = set(delta.get("changed", [])) | set(delta.get("added", [])) | set(delta.get("removed", []))
