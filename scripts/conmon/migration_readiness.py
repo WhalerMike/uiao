@@ -46,16 +46,23 @@ import yaml
 # READINESS_LEAD_DAYS constants. If a future Pathway-1 adapter is
 # added, extend this list rather than duplicating dates into this
 # script.
+#
+# ``stub_path`` is the repo-relative path to the stub source file. The
+# script loads each stub via ``importlib.util.spec_from_file_location``
+# rather than importing the ``uiao.adapters`` package — that package's
+# ``__init__`` pulls in transitive dependencies (requests, graph SDKs,
+# etc.) that the conmon-aggregate runner intentionally does not
+# install. Loading by file path keeps the script dependency-light.
 _PATHWAY_1_STUB_SPECS = (
     {
         "adapter_id": "vdr-bir",
-        "module_path": "uiao.adapters.vdr_adapter",
+        "stub_path": "src/uiao/adapters/vdr_adapter.py",
         "requirement": "RV5-CA07-VLN",
         "notice_0009_ref": "VDR BIR adoption",
     },
     {
         "adapter_id": "ccm-bir",
-        "module_path": "uiao.adapters.ccm_bir_adapter",
+        "stub_path": "src/uiao/adapters/ccm_bir_adapter.py",
         "requirement": "RV5-CA07-CCM",
         "notice_0009_ref": "CCM BIR adoption",
     },
@@ -110,24 +117,46 @@ def _registry_status_for(registry: Dict[str, Any], adapter_id: str) -> Optional[
     return None
 
 
-def _load_stub_constants(module_path: str) -> Dict[str, Any]:
-    """Import a Pathway-1 adapter stub and extract its readiness constants.
+# Repo root = two directories up from this file (scripts/conmon/…).
+_DEFAULT_REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
-    The constants live on the module, not in the registry, because the
-    adapter-registry schema is strict (additionalProperties: false).
+
+def _load_stub_constants(stub_path: str, *, repo_root: Optional[pathlib.Path] = None) -> Dict[str, Any]:
+    """Load a Pathway-1 adapter stub by file path and extract its readiness constants.
+
+    Uses ``importlib.util.spec_from_file_location`` rather than
+    ``importlib.import_module('uiao.adapters.*')`` because the
+    ``uiao.adapters`` package ``__init__`` imports transitive adapters
+    that pull in heavy dependencies (requests, graph SDKs) which the
+    lean conmon-aggregate runner deliberately does not install. Loading
+    the stub file directly keeps this script stdlib + PyYAML only.
+
+    The constants live on the stub module, not in the registry, because
+    the adapter-registry schema is strict (additionalProperties: false).
     """
-    import importlib
+    import importlib.util
 
-    mod = importlib.import_module(module_path)
+    root = repo_root if repo_root is not None else _DEFAULT_REPO_ROOT
+    abs_path = (root / stub_path).resolve()
+    if not abs_path.is_file():
+        raise ValueError(f"Stub source file not found: {abs_path}")
+
+    spec_name = "_migration_readiness_stub_" + abs_path.stem
+    spec = importlib.util.spec_from_file_location(spec_name, abs_path)
+    if spec is None or spec.loader is None:
+        raise ValueError(f"Cannot build import spec for {abs_path}")
+
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
     try:
         mandatory_by = str(mod.MANDATORY_ADOPTION_DATE)
         lead_days = int(mod.READINESS_LEAD_DAYS)
         adapter_id = str(mod.ADAPTER_ID)
     except AttributeError as exc:
         raise ValueError(
-            f"Stub module {module_path} is missing a required readiness "
-            f"constant (MANDATORY_ADOPTION_DATE, READINESS_LEAD_DAYS, "
-            f"ADAPTER_ID)."
+            f"Stub {abs_path} is missing a required readiness constant "
+            f"(MANDATORY_ADOPTION_DATE, READINESS_LEAD_DAYS, ADAPTER_ID)."
         ) from exc
     return {
         "adapter_id": adapter_id,
@@ -146,6 +175,7 @@ def evaluate_pathway_readiness(
     *,
     now: dt.date,
     stub_specs: Iterable[Dict[str, Any]] = _PATHWAY_1_STUB_SPECS,
+    repo_root: Optional[pathlib.Path] = None,
 ) -> List[PathwayReadiness]:
     """Evaluate each Pathway-1 stub against the registry + a reference date.
 
@@ -158,11 +188,11 @@ def evaluate_pathway_readiness(
     results: List[PathwayReadiness] = []
 
     for spec in stub_specs:
-        stub = _load_stub_constants(spec["module_path"])
+        stub = _load_stub_constants(spec["stub_path"], repo_root=repo_root)
         adapter_id = spec["adapter_id"]
         if stub["adapter_id"] != adapter_id:
             raise ValueError(
-                f"Stub module {spec['module_path']} declares ADAPTER_ID="
+                f"Stub {spec['stub_path']} declares ADAPTER_ID="
                 f"{stub['adapter_id']!r} but spec expects {adapter_id!r}; "
                 "keep the two in sync."
             )
