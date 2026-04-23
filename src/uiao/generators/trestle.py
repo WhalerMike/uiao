@@ -185,7 +185,7 @@ def validate_oscal_artifacts(
             continue
 
         try:
-            model_class.model_validate(data[root_key])
+            model_class.model_validate(data[root_key])  # type: ignore[attr-defined]  # pydantic BaseModel subclass inferred as plain `type`
             logger.info("PASS: %s", json_path.name)
         except Exception as exc:
             logger.error("FAIL: %s", json_path.name)
