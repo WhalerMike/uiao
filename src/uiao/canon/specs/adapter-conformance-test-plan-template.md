@@ -22,7 +22,7 @@ MUST be populated from this template.
 Every adapter registered in `canon/adapter-registry.yaml` or
 `canon/modernization-registry.yaml` must pass conformance testing
 against the 7 canonical responsibility domains defined in
-`DatabaseAdapterBase` (see `uiao/src/uiao/impl/adapters/database_base.py`),
+`DatabaseAdapterBase` (see `src/uiao/adapters/database_base.py`),
 plus any adapter-specific extension methods.
 
 Testing is structured in three tiers:
