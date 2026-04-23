@@ -179,10 +179,7 @@ def format_text(matches: list[Match], verbose: bool) -> str:
         marker = f"[score={m.score}]" if m.score else "[listed]"
         reuse = e.get("reuse_score", 0)
         status = e.get("status", "?")
-        lines.append(
-            f"{e.get('id', '?')}  {e.get('title', '(untitled)')}  "
-            f"{marker}  reuse={reuse}  status={status}"
-        )
+        lines.append(f"{e.get('id', '?')}  {e.get('title', '(untitled)')}  {marker}  reuse={reuse}  status={status}")
         if verbose:
             if e.get("description"):
                 lines.append(f"    desc: {e['description']}")
@@ -253,9 +250,7 @@ def format_audit_text(reports: list[dict[str, Any]]) -> str:
         return "(no entries to audit)"
     lines: list[str] = []
     complete = sum(1 for r in reports if r["complete"])
-    lines.append(
-        f"Reuse-metadata audit — {complete}/{len(reports)} entries are reuse-complete"
-    )
+    lines.append(f"Reuse-metadata audit — {complete}/{len(reports)} entries are reuse-complete")
     lines.append("")
     for r in reports:
         flag = "OK " if r["complete"] else "GAP"

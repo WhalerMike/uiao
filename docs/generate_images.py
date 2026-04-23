@@ -198,7 +198,7 @@ class RunReport:
     sidecars_written: int = 0
     registry_used_by_updates: int = 0
     sidecar_slots_harvested: int = 0  # filled heading-style slots found
-    sidecar_slots_merged: int = 0     # slots that became effective placeholders
+    sidecar_slots_merged: int = 0  # slots that became effective placeholders
 
 
 # ──────────────────────────────────────────────────────────────
@@ -581,8 +581,7 @@ def _find_companion_document(image_prompts_path: Path) -> Optional[Path]:
     ignore_names = {image_prompts_path.name.lower(), "readme.md", "index.md", "index.qmd"}
     for ext in (".qmd", ".md"):
         siblings = [
-            p for p in folder.iterdir()
-            if p.is_file() and p.suffix == ext and p.name.lower() not in ignore_names
+            p for p in folder.iterdir() if p.is_file() and p.suffix == ext and p.name.lower() not in ignore_names
         ]
         if len(siblings) == 1:
             return siblings[0]
@@ -658,10 +657,7 @@ def scan_image_prompts_files(
         if companion is None:
             # Silent in test-heavy invocations; main() still surfaces a
             # summary count. Print once per path for author feedback.
-            print(
-                f"  Warning: {_repo_rel(path)} "
-                "has no companion .qmd/.md in the same folder; skipping."
-            )
+            print(f"  Warning: {_repo_rel(path)} has no companion .qmd/.md in the same folder; skipping.")
             continue
         try:
             text = path.read_text(encoding="utf-8")
@@ -1143,9 +1139,7 @@ def build_manifest(
             "doc_local_count": len(doc_local),
             "canon_refs_count": len(canon_entries),
             "unique_canon_images_referenced": len(unique_canon),
-            "canon_refs_missing_count": sum(
-                1 for c in canon_entries if c["status"] == "missing"
-            ),
+            "canon_refs_missing_count": sum(1 for c in canon_entries if c["status"] == "missing"),
         },
     }
 
@@ -1177,8 +1171,10 @@ def _print_report(report: RunReport) -> None:
     print(f"Doc-local failed:        {report.doc_local_failed}")
     print(f"AUTO placeholders (v2):  {report.auto_placeholders_skipped}")
     print(f"Sidecars written:        {report.sidecars_written}")
-    print(f"IMAGE-PROMPTS slots:     {report.sidecar_slots_harvested} filled "
-          f"(+{report.sidecar_slots_merged} merged as new placeholders)")
+    print(
+        f"IMAGE-PROMPTS slots:     {report.sidecar_slots_harvested} filled "
+        f"(+{report.sidecar_slots_merged} merged as new placeholders)"
+    )
     print(f"Registry used_by adds:   {report.registry_used_by_updates}")
 
 

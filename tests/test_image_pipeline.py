@@ -105,8 +105,7 @@ def test_scan_placeholders_local_and_ref(generator, tmp_path):
     doc = _write_doc(
         tmp_path,
         "doc.qmd",
-        "# Title\n\nSee [IMAGE-03: schematic of the pipeline].\n\n"
-        "And reuse [IMAGE-REF: UIAO-FIG-007].\n",
+        "# Title\n\nSee [IMAGE-03: schematic of the pipeline].\n\nAnd reuse [IMAGE-REF: UIAO-FIG-007].\n",
     )
     locals_, refs = generator.scan_placeholders([doc])
     assert len(locals_) == 1
@@ -187,9 +186,7 @@ def test_registry_validates_against_schema():
     data = yaml.safe_load(REGISTRY_PATH.read_text(encoding="utf-8"))
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     errors = list(Draft202012Validator(schema).iter_errors(data))
-    assert errors == [], "\n".join(
-        f"{list(e.absolute_path)}: {e.message}" for e in errors
-    )
+    assert errors == [], "\n".join(f"{list(e.absolute_path)}: {e.message}" for e in errors)
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -258,9 +255,7 @@ def test_schema_accepts_full_reuse_metadata(schema):
         reuse_score=3,
     )
     errors = list(Draft202012Validator(schema).iter_errors(_wrap(entry)))
-    assert errors == [], "\n".join(
-        f"{list(e.absolute_path)}: {e.message}" for e in errors
-    )
+    assert errors == [], "\n".join(f"{list(e.absolute_path)}: {e.message}" for e in errors)
 
 
 def test_schema_rejects_unknown_visual_style(schema):
@@ -304,10 +299,14 @@ def search_tool():
 
 
 def _registry_data(*entries):
-    return _wrap(entries[0]) if len(entries) == 1 else {
-        **_wrap(entries[0]),
-        "images": list(entries),
-    }
+    return (
+        _wrap(entries[0])
+        if len(entries) == 1
+        else {
+            **_wrap(entries[0]),
+            "images": list(entries),
+        }
+    )
 
 
 def test_search_ranks_tag_hits_above_description_hits(search_tool):
@@ -468,16 +467,28 @@ def test_manifest_has_expected_top_level_keys(generator):
 
 def test_manifest_registry_status_breakdown(generator):
     e1 = generator.RegistryEntry(
-        id="UIAO-FIG-200", slug="a", status="current",
-        prompt_file=Path("/x"), file=Path("/x"),
-        prompt_sha256="a" * 64, file_sha256="b" * 64,
-        version="1.0", generator="g", used_by=[],
+        id="UIAO-FIG-200",
+        slug="a",
+        status="current",
+        prompt_file=Path("/x"),
+        file=Path("/x"),
+        prompt_sha256="a" * 64,
+        file_sha256="b" * 64,
+        version="1.0",
+        generator="g",
+        used_by=[],
     )
     e2 = generator.RegistryEntry(
-        id="UIAO-FIG-201", slug="b", status="draft",
-        prompt_file=Path("/x"), file=Path("/x"),
-        prompt_sha256="c" * 64, file_sha256="d" * 64,
-        version="1.0", generator="g", used_by=[],
+        id="UIAO-FIG-201",
+        slug="b",
+        status="draft",
+        prompt_file=Path("/x"),
+        file=Path("/x"),
+        prompt_sha256="c" * 64,
+        file_sha256="d" * 64,
+        version="1.0",
+        generator="g",
+        used_by=[],
     )
     manifest = generator.build_manifest([e1, e2], [])
     assert manifest["registry"]["total_entries"] == 2
@@ -488,13 +499,21 @@ def test_manifest_resolves_canon_refs(generator, tmp_path):
     doc = tmp_path / "doc.qmd"
     doc.write_text("[IMAGE-REF: UIAO-FIG-300]\n", encoding="utf-8")
     entry = generator.RegistryEntry(
-        id="UIAO-FIG-300", slug="s", status="current",
-        prompt_file=Path("/x"), file=Path("/x/canonical.png"),
-        prompt_sha256="a" * 64, file_sha256="b" * 64,
-        version="1.0", generator="g", used_by=[],
+        id="UIAO-FIG-300",
+        slug="s",
+        status="current",
+        prompt_file=Path("/x"),
+        file=Path("/x/canonical.png"),
+        prompt_sha256="a" * 64,
+        file_sha256="b" * 64,
+        version="1.0",
+        generator="g",
+        used_by=[],
     )
     ref = generator.CanonRefPlaceholder(
-        document=doc, canon_id="UIAO-FIG-300", line_number=1,
+        document=doc,
+        canon_id="UIAO-FIG-300",
+        line_number=1,
     )
     manifest = generator.build_manifest([entry], [ref])
     assert manifest["stats"]["canon_refs_count"] == 1
@@ -508,7 +527,9 @@ def test_manifest_flags_missing_canon_refs(generator, tmp_path):
     doc = tmp_path / "doc.qmd"
     doc.write_text("[IMAGE-REF: UIAO-FIG-404]\n", encoding="utf-8")
     ref = generator.CanonRefPlaceholder(
-        document=doc, canon_id="UIAO-FIG-404", line_number=1,
+        document=doc,
+        canon_id="UIAO-FIG-404",
+        line_number=1,
     )
     manifest = generator.build_manifest([], [ref])
     assert manifest["canon_refs"][0]["status"] == "missing"
@@ -541,7 +562,9 @@ def test_manifest_doc_local_picks_up_sidecars(generator, tmp_path, monkeypatch):
     monkeypatch.setattr(generator, "CANONICAL_OUTPUT_DIR", image_dir)
     # Point the scanner at our tmp dir.
     monkeypatch.setattr(
-        generator, "_iter_sidecars", lambda: [sidecar],
+        generator,
+        "_iter_sidecars",
+        lambda: [sidecar],
     )
 
     manifest = generator.build_manifest([], [])
@@ -582,19 +605,11 @@ def test_is_todo_body_detects_scaffold_variants(generator):
     assert generator._is_todo_body("<placeholder>")
     # Real content — even one substantive line — is not TODO.
     assert not generator._is_todo_body("A 16:9 schematic of the pipeline.")
-    assert not generator._is_todo_body(
-        "_TODO — ignore this note._\n\nA real prompt paragraph follows."
-    )
+    assert not generator._is_todo_body("_TODO — ignore this note._\n\nA real prompt paragraph follows.")
 
 
 def test_extract_heading_blocks_basic(generator):
-    text = (
-        "# Image Prompts\n\n"
-        "## IMAGE-01\n\n"
-        "First prompt body.\n\n"
-        "## IMAGE-02 — Second\n\n"
-        "Second prompt body.\n"
-    )
+    text = "# Image Prompts\n\n## IMAGE-01\n\nFirst prompt body.\n\n## IMAGE-02 — Second\n\nSecond prompt body.\n"
     blocks = generator._extract_heading_blocks(text)
     ids = [b[0] for b in blocks]
     titles = [b[1] for b in blocks]
@@ -678,8 +693,7 @@ def test_scan_image_prompts_files_attaches_to_companion(generator, tmp_path):
     companion.write_text("# CyberArk\n", encoding="utf-8")
     prompts = _write_image_prompts(
         folder,
-        "## IMAGE-01\n\nA 16:9 schematic of the rotation flow.\n\n"
-        "## IMAGE-02\n\n_TODO — describe second._\n",
+        "## IMAGE-01\n\nA 16:9 schematic of the rotation flow.\n\n## IMAGE-02\n\n_TODO — describe second._\n",
     )
     out = generator.scan_image_prompts_files([prompts])
     # Only IMAGE-01 (real body) should be harvested; IMAGE-02 is TODO.
@@ -706,18 +720,27 @@ def test_merge_placeholders_inline_wins_on_conflict(generator, tmp_path):
     doc.write_text("", encoding="utf-8")
     inline = [
         generator.DocLocalPlaceholder(
-            document=doc, placeholder_id="IMAGE-01",
-            body="INLINE body", line_number=10, is_auto=False,
+            document=doc,
+            placeholder_id="IMAGE-01",
+            body="INLINE body",
+            line_number=10,
+            is_auto=False,
         ),
     ]
     sidecar = [
         generator.DocLocalPlaceholder(
-            document=doc, placeholder_id="IMAGE-01",
-            body="SIDECAR body", line_number=42, is_auto=False,
+            document=doc,
+            placeholder_id="IMAGE-01",
+            body="SIDECAR body",
+            line_number=42,
+            is_auto=False,
         ),
         generator.DocLocalPlaceholder(
-            document=doc, placeholder_id="IMAGE-02",
-            body="new from sidecar", line_number=55, is_auto=False,
+            document=doc,
+            placeholder_id="IMAGE-02",
+            body="new from sidecar",
+            line_number=55,
+            is_auto=False,
         ),
     ]
     merged = generator.merge_placeholders(inline, sidecar)
@@ -733,10 +756,8 @@ def test_merge_placeholders_stable_sort(generator, tmp_path):
     b = tmp_path / "b.qmd"
     b.write_text("", encoding="utf-8")
     placeholders = [
-        generator.DocLocalPlaceholder(document=b, placeholder_id="IMAGE-02",
-                                      body="", line_number=5, is_auto=False),
-        generator.DocLocalPlaceholder(document=a, placeholder_id="IMAGE-01",
-                                      body="", line_number=3, is_auto=False),
+        generator.DocLocalPlaceholder(document=b, placeholder_id="IMAGE-02", body="", line_number=5, is_auto=False),
+        generator.DocLocalPlaceholder(document=a, placeholder_id="IMAGE-01", body="", line_number=3, is_auto=False),
     ]
     merged = generator.merge_placeholders(placeholders, [])
     assert [p.document for p in merged] == [a, b]
