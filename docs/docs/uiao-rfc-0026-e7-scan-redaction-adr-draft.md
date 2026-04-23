@@ -1,12 +1,23 @@
 # E7 Draft ADR — Scan Artifact Redaction Policy for Multi-Agency Distribution
 
 **Proposed ADR number:** ADR-045 (next free)
-**Status:** **DRAFT — awaiting review; not yet canon**
+**Status:** **DRAFT — all four open questions resolved; ready for canon promotion on merge**
 **Date:** 2026-04-23
 **Roadmap entry:** [`docs/docs/uiao-rfc-0026-roadmap.md`](uiao-rfc-0026-roadmap.md) § E7
 **Extends:** ADR-025, ADR-043
 
 > When approved, this document moves to `src/uiao/canon/adr/adr-045-scan-redaction-policy.md` and the status promotes from DRAFT → PROPOSED. This copy is deliberately kept outside `canon/` to avoid accidentally taking canonical effect before review.
+
+---
+
+## Resolved decisions (from review)
+
+| Question | Decision | Rationale |
+|---|---|---|
+| **Q3.1** — Field allow / deny lists | **Ship the lists as drafted.** Strip plugin IDs, CVE IDs, asset names/IPs/FQDNs, raw payloads, exploit-availability flags. Retain tracking ID, risk level, finding state, control family, timestamps, ≤280-char remediation summary, planned completion date, finding category. | User selected default. Conservative profile; tighter than the SCuBA baseline floor. Future loosening (e.g. surfacing CVEs to specific agencies) is a focused profile-amendment ADR. |
+| **Q3.2** — Tier-1 access model | **CODEOWNERS + branch protection on `evidence/raw/**`.** Lightweight; matches the rest of UIAO's evidence-tier access model. | User selected default (option a). Promote to access-controlled bucket (option b) or cryptographic separation (option c) in a follow-up ADR if 3PAO posture demands it. |
+| **Q3.3** — Remediation summary length | **280-char cap with truncation + linking to the unredacted Tier-1 source.** Findings whose summary exceeds the cap get a link to the full record (3PAO-accessible only). | User selected default. Reasonable round number; aligned with most ConMon-template column widths. |
+| **Q3.4** — Pathway-1 (VDR BIR) interaction | **Maintain ADR-045 as a supplemental policy *above* VDR-RPT-NID's floor** when the VDR BIR publishes (Notice 0009 deadline 2027-06-01). Don't auto-retire. | User selected default (option b). UIAO's profile is more conservative than VDR's likely floor; keeping it lets us tighten faster than upstream changes. If VDR-RPT-NID later supersets ADR-045's strictness, *that's* the moment to retire. |
 
 ---
 
@@ -122,10 +133,12 @@ Before this draft can promote to `src/uiao/canon/adr/adr-045-scan-redaction-poli
 
 ## Open questions for the user
 
-1. **Field list tuning.** Is anything in the "retained" list you'd rather strip (e.g. finding-category strings that might reveal a vendor stack), or anything in the "stripped" list you'd rather keep (e.g. CVE IDs because some agencies specifically ask for them)?
-2. **Tier-1 access model.** CODEOWNERS + branch protection is the lightweight option; a separate restricted bucket (GitHub Releases + access control, or an S3 bucket with IAM) is the stronger option. Your preference?
-3. **"Remediation plan summary" length.** 280 chars is a guess. Is there a ConMon-template column length that makes more sense?
-4. **Pathway-1 readiness.** When the VDR BIR publishes (2027-06-01 deadline), do you want this ADR to auto-retire in favor of VDR-RPT-NID, or do you want UIAO to maintain the profile as a supplemental policy above VDR's floor?
+1. ~~**Field list tuning.**~~ **RESOLVED — ship lists as drafted.** See "Resolved decisions" at the top.
+2. ~~**Tier-1 access model.**~~ **RESOLVED — CODEOWNERS + branch protection.** Promotion to access-controlled bucket or cryptographic separation deferred to a follow-up ADR.
+3. ~~**Remediation plan summary length.**~~ **RESOLVED — 280-char cap with truncation + Tier-1 link.**
+4. ~~**Pathway-1 readiness.**~~ **RESOLVED — maintain ADR-045 as supplemental above VDR-RPT-NID floor when the VDR BIR publishes; do not auto-retire.**
+
+**All four E7 open questions are resolved.** The implementation PR can promote this draft to `src/uiao/canon/adr/adr-045-scan-redaction-policy.md` (status PROPOSED), commit the companion `redaction-profile.yaml` canon artifact, and ship `scripts/conmon/redact.py` as the pipeline stage.
 
 ---
 

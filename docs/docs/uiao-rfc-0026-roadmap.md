@@ -33,9 +33,9 @@ This roadmap sequences eight enhancements by enforcement-clock risk × implement
 | ScubaGear upstream tracking | ✅ Shipped PR [#174](https://github.com/WhalerMike/uiao/pull/174) — weekly tracker + golden-fixture consistency gate |
 | PIM-for-Groups gap (ScubaGear #2072) | ✅ Shipped PR [#175](https://github.com/WhalerMike/uiao/pull/175) — GAP-ENT-001 + supplemental DRIFT-AUTHZ classifier |
 | Pathway-1 BIR migration gates | ✅ Shipped PR [#176](https://github.com/WhalerMike/uiao/pull/176) — reserved stubs + readiness check wired into `conmon-aggregate.yml` |
-| Connect.gov POA&M submission | 🟡 **Design draft** [e1-connect-gov-design.md](uiao-rfc-0026-e1-connect-gov-design.md) — awaiting upload-mechanics confirmation |
-| Multi-agency distribution layer | 🟡 **Design draft** [e5-multi-agency-design.md](uiao-rfc-0026-e5-multi-agency-design.md) — awaiting schema review |
-| Scan redaction pipeline | 🟡 **Draft ADR** [e7-scan-redaction-adr-draft.md](uiao-rfc-0026-e7-scan-redaction-adr-draft.md) — awaiting profile sign-off |
+| Connect.gov POA&M submission | 🟢 **Design draft locked** [e1-connect-gov-design.md](uiao-rfc-0026-e1-connect-gov-design.md) — all 4 questions resolved; awaiting PR [#177](https://github.com/WhalerMike/uiao/pull/177) merge |
+| Multi-agency distribution layer | 🟢 **Design draft locked** [e5-multi-agency-design.md](uiao-rfc-0026-e5-multi-agency-design.md) — all 6 questions resolved; awaiting PR [#177](https://github.com/WhalerMike/uiao/pull/177) merge |
+| Scan redaction pipeline | 🟢 **Draft ADR locked** [e7-scan-redaction-adr-draft.md](uiao-rfc-0026-e7-scan-redaction-adr-draft.md) — all 4 questions resolved; ready for canon promotion to `adr-045-*.md` after PR [#177](https://github.com/WhalerMike/uiao/pull/177) merge |
 
 ---
 

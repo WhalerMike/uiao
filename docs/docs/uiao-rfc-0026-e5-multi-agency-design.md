@@ -2,9 +2,22 @@
 
 **Roadmap entry:** [`docs/docs/uiao-rfc-0026-roadmap.md`](uiao-rfc-0026-roadmap.md) § E5
 **Canon refs:** UIAO_132 §3.2 / §3.3; ADR-043 D3
-**Status:** **DRAFT — review-only, no canon edit yet**
+**Status:** **DRAFT — all six open questions resolved; implementation PR unblocked**
 **Date:** 2026-04-23
 **Target delivery:** 2026-11-30 (60-day buffer before 2027-01-01 enforcement)
+
+---
+
+## Resolved decisions (from review)
+
+| Question | Decision | Rationale |
+|---|---|---|
+| **Q2.1** — Field set | **Ship the schema as drafted.** Proposed fields cover the RFC-0026 + UIAO_132 surface; extension fields (e.g. `cmmc-level`, `region`, `ato-expiry-date`) are deferred to focused follow-up PRs as concrete need emerges. | User selected default. Schema's `additionalProperties: false` keeps the registry strict; extending is a one-line PR when warranted. |
+| **Q2.2** — Agency ID convention | **Department-abbrev + sub-org kebab-case (e.g. `treasury-ocio`, `dhs-cisa`).** Matches the existing `adapter-registry.yaml` convention for short stable IDs. | User selected default (option a). Concise, stable, matches kebab-case canon pattern. |
+| **Q2.3** — KSI subscription model | **Default to all-KSIs but allow per-agency subsetting** via the `ksi-subscription` field. Agencies that omit the field receive the full KSI surface; agencies that declare a subset receive only those. | User selected default (option b). Flexible without forcing per-agency curation on day one. |
+| **Q2.4** — `data-classification` differentiation | **Moderate-only profile day one.** `data-classification` field exists in the schema (future-proof hook), but the redaction profile (E7) treats Moderate and High identically until a real High-classification agency onboards and a follow-up ADR amends the profile. | User selected default (option a). Avoids day-one over-engineering; the hook is in the schema so the future split is a focused change. |
+| **Q2.5** — Canon placement | **`src/uiao/canon/agency-customer-registry.yaml`** alongside `adapter-registry.yaml`. Agency customers are first-class canon citizens. | User selected default (option a). |
+| **Q2.6** — Schema enforcement timing | **Blocking from day one.** Schema validator gates every PR from PR-1 of the registry. Matches every other UIAO registry's enforcement posture. | User selected default (option a). Soft-warning mode would create a window where invalid entries land silently. |
 
 ---
 
@@ -176,14 +189,14 @@ Delivery-channel coupling: `connect-gov-folder` reuses whatever E1 ships; `oscal
 
 ## Open questions for the user
 
-1. **Field set.** Does the proposed `contacts` / `ksi-subscription` / `data-classification` triple match how you actually think about agency customers, or is it too much? Too little? Add / drop fields before I commit this to canon.
-2. **Agency IDs.** Do you have a preferred naming convention (e.g. `treasury-ocio`, `dhs-cisa`, internal shorthand) or should I propose one as part of the schema?
-3. **KSI subscription model.** Is every agency subscribed to the full KSI surface, or do some agencies only care about a subset (e.g. "we only route audit KSIs to Agency X")? This affects whether `ksi-subscription` is `required` or `default: all`.
-4. **`data-classification`.** If any customer is operating at FedRAMP-High, the redaction profile for E7 must differentiate between Moderate and High distribution targets. Do we need this day-one, or can it be a post-E7 extension?
-5. **Canon placement.** I've proposed `src/uiao/canon/agency-customer-registry.yaml` alongside `adapter-registry.yaml`. Object customers are first-class canon citizens in UIAO's architecture. Agree, or would you put this somewhere else?
-6. **Schema enforcement timing.** Should the schema validator be blocking from PR-1, or soft-warning until the first real agency entry lands?
+1. ~~**Field set.**~~ **RESOLVED — ship as drafted.** See "Resolved decisions" at the top.
+2. ~~**Agency IDs.**~~ **RESOLVED — department-abbrev + sub-org kebab-case.**
+3. ~~**KSI subscription model.**~~ **RESOLVED — default to all-KSIs; per-agency subsetting allowed via the field.**
+4. ~~**`data-classification`.**~~ **RESOLVED — Moderate-only profile day one; field present as future-proof hook.**
+5. ~~**Canon placement.**~~ **RESOLVED — `src/uiao/canon/agency-customer-registry.yaml`.**
+6. ~~**Schema enforcement timing.**~~ **RESOLVED — blocking from day one.**
 
-Answer any of these inline in the PR review and I'll lock the schema, generate the actual `agency-customer-registry.schema.json`, and ship the distribute.py + workflow step as the E5 implementation PR.
+**All six E5 open questions are resolved.** The implementation PR is unblocked and can start once you merge this design-draft PR.
 
 ---
 
