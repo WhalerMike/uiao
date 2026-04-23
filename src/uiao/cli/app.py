@@ -1366,6 +1366,9 @@ app.add_typer(oscal_app, name="oscal")
 from uiao.cli.substrate import substrate_app  # noqa: E402
 
 app.add_typer(substrate_app, name="substrate")
+from uiao.cli.orchestrator import orchestrator_app  # noqa: E402
+
+app.add_typer(orchestrator_app, name="orchestrator")
 
 
 if __name__ == "__main__":
