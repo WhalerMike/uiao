@@ -13,8 +13,21 @@
 | Question | Decision | Evidence / rationale |
 |---|---|---|
 | **Q1.1** — Upload mechanics | **Option C — portal-only (USDA Connect.gov).** The FedRAMP 20x trust-center API path is a *separate future enhancement*, not a variant of E1. | Public-doc sweep (fedramp.gov, RFC-0024, OMB OSCAL memo, Authorization Data Sharing): every description of the Connect.gov ingest surface is portal-shaped ("upload to the secure repository"). FedRAMP 20x explicitly routes API-driven ingest through *FedRAMP-compatible trust centers*, not Connect.gov itself. As of 2025, zero of 100+ Rev5 authorizations used OSCAL ingest. |
+| **Q1.2** — Agency stakeholder briefing | **No stakeholder briefing — ship Option C with documented best-guess defaults; first real submission acts as the validation pass; first follow-up PR adjusts assumptions if needed.** | Default option per memo. Best-guess defaults must be explicitly documented in the implementation PR so first-submission validation has clear pass/fail criteria. |
 
 **Implication:** E1 implementation proceeds as the Option C plan below (operator-in-the-loop + signed submission bundle). The REST (Option A) and SFTP (Option B) branches below are retained for historical context only — they are not the selected path for this enhancement. When FedRAMP 20x trust centers become operational (post-Notice-0009 window), a *follow-up* enhancement will add a trust-center submission adapter alongside Option C; that work is out of scope for E1.
+
+**Best-guess defaults to document in implementation PR (per Q1.2):**
+
+| Assumption | Default | Validation point |
+|---|---|---|
+| Connect.gov folder layout | `submissions/<yyyy-mm>/` under the CSP's root | First real submission |
+| POA&M filename | `poam-<yyyy-mm>.csv` (kebab-case, ISO date) | First real submission |
+| Bundle filename | `uiao-conmon-<yyyy-mm>.zip` | First real submission |
+| Receipt format | Operator pastes Connect.gov submission ID into the GitHub issue body | First real submission |
+| One-month-one-bundle vs per-artifact | One bundle per month containing all artifacts | First real submission |
+
+If any of these assumptions prove wrong on the first submission, the fix is a focused follow-up PR — small surface, no churn through the rest of the pipeline.
 
 ---
 
@@ -148,7 +161,7 @@ When mechanics arrive, the remaining work is the transport swap (< 1 day for RES
 ## Open questions for the user
 
 1. ~~**Can you get a maintainer-level Connect.gov account** and confirm which of A / B / C best matches the current ingest surface?~~ **RESOLVED — Option C locked; see "Resolved decisions" at the top of this memo.**
-2. **Is there an agency stakeholder** (your ConMon PM or ISSO) who has uploaded to Connect.gov in the last 6 months and can describe their path by example? This would surface any CSP-specific portal quirks (e.g. folder structure conventions, required filename patterns, or receipt-format expectations) before we hardcode assumptions into the submission bundle.
+2. ~~**Is there an agency stakeholder** (your ConMon PM or ISSO) who has uploaded to Connect.gov in the last 6 months and can describe their path by example?~~ **RESOLVED — no stakeholder briefing; ship best-guess defaults table above; first real submission validates them.**
 3. **Option C notification scope:** do you want the workflow to *also* auto-email the operator when a monthly upload task issue is opened (requires SMTP secret + PII-free audit trail), or leave notification at the GitHub-issue layer only?
 4. **Security posture for the operator's Connect.gov credential state:** is there any part of the submission workflow that needs to handle a Connect.gov session token or portal credential (e.g. if a future sub-task auto-logs-in to check upload history), or is the credential material 100% on the operator side and never touches UIAO infrastructure?
 
