@@ -2,9 +2,19 @@
 
 **Roadmap entry:** [`docs/docs/uiao-rfc-0026-roadmap.md`](uiao-rfc-0026-roadmap.md) § E1
 **Canon ref:** UIAO_132 Open Item O1; ADR-043 N3
-**Status:** **DRAFT — review-only, no implementation yet**
+**Status:** **DRAFT — review in progress; Q1.1 resolved, Q1.2–Q1.4 pending**
 **Date:** 2026-04-23
 **Target delivery:** 2026-10-31 (60-day buffer before 2027-01-01 enforcement)
+
+---
+
+## Resolved decisions (from review)
+
+| Question | Decision | Evidence / rationale |
+|---|---|---|
+| **Q1.1** — Upload mechanics | **Option C — portal-only (USDA Connect.gov).** The FedRAMP 20x trust-center API path is a *separate future enhancement*, not a variant of E1. | Public-doc sweep (fedramp.gov, RFC-0024, OMB OSCAL memo, Authorization Data Sharing): every description of the Connect.gov ingest surface is portal-shaped ("upload to the secure repository"). FedRAMP 20x explicitly routes API-driven ingest through *FedRAMP-compatible trust centers*, not Connect.gov itself. As of 2025, zero of 100+ Rev5 authorizations used OSCAL ingest. |
+
+**Implication:** E1 implementation proceeds as the Option C plan below (operator-in-the-loop + signed submission bundle). The REST (Option A) and SFTP (Option B) branches below are retained for historical context only — they are not the selected path for this enhancement. When FedRAMP 20x trust centers become operational (post-Notice-0009 window), a *follow-up* enhancement will add a trust-center submission adapter alongside Option C; that work is out of scope for E1.
 
 ---
 
@@ -103,15 +113,15 @@ These are the items that block code and that this memo cannot resolve without yo
 
 ---
 
-## Recommended path if mechanics do not arrive by 2026-09-01
+## Selected path — Option C (portal-only)
 
-**Build Option C now; upgrade to A or B when mechanics arrive.**
+**Locked per Q1.1 resolution above.** E1 implementation ships Option C only. The Option A / Option B sections above are kept for historical reference.
 
-Rationale:
-- Option C is *always valuable* even if the final answer is REST or SFTP — the submission-bundle artifact and signed hash manifest are useful in every world.
-- Option C can be built with zero Connect.gov-side assumptions.
-- When mechanics arrive, only the "upload" step needs to swap from "operator task" to "REST/SFTP call". The bundle, the hash manifest, and the receipt-ingestion logic all remain.
-- Shipping Option C by the 2026-10-31 target means we start the enforcement clock with *a worse version of the right thing* rather than *the right version of nothing*.
+Rationale (unchanged from earlier draft, now promoted from "fallback recommendation" to "selected"):
+- Option C is *always valuable* — the submission-bundle artifact and signed hash manifest are useful in every world, including eventual trust-center migration.
+- Option C can be built with zero Connect.gov-side assumptions that depend on internal contacts.
+- If FedRAMP 20x trust-center ingest later becomes the CSP's submission path, only the "upload" stage needs to swap; the bundle, the hash manifest, the receipt-file schema, and the SLA issue logic all carry forward.
+- Shipping Option C by the 2026-10-31 target means we start the enforcement clock with a clean, auditable, mostly-automated pipeline — the manual step is narrowed to "operator pastes Connect.gov submission ID back into an issue," which is the smallest possible residual.
 
 ---
 
@@ -137,9 +147,9 @@ When mechanics arrive, the remaining work is the transport swap (< 1 day for RES
 
 ## Open questions for the user
 
-1. **Can you get a maintainer-level Connect.gov account** and confirm which of A / B / C best matches the current ingest surface? If yes, say so and I'll pause this memo.
-2. **Is there an agency stakeholder** (your ConMon PM or ISSO) who has uploaded to Connect.gov in the last 6 months and can describe their path by example?
-3. **Preference on Option C scope** if we have to fall back to it: do you want the workflow to *also* auto-email the operator (requires SMTP secret + PII-free audit trail), or leave notification at the GitHub-issue layer only?
-4. **Security posture for secrets:** is GitHub Actions' native secret store acceptable for a Connect.gov credential, or does your tenant require HashiCorp Vault / Azure Key Vault / ACME integration?
+1. ~~**Can you get a maintainer-level Connect.gov account** and confirm which of A / B / C best matches the current ingest surface?~~ **RESOLVED — Option C locked; see "Resolved decisions" at the top of this memo.**
+2. **Is there an agency stakeholder** (your ConMon PM or ISSO) who has uploaded to Connect.gov in the last 6 months and can describe their path by example? This would surface any CSP-specific portal quirks (e.g. folder structure conventions, required filename patterns, or receipt-format expectations) before we hardcode assumptions into the submission bundle.
+3. **Option C notification scope:** do you want the workflow to *also* auto-email the operator when a monthly upload task issue is opened (requires SMTP secret + PII-free audit trail), or leave notification at the GitHub-issue layer only?
+4. **Security posture for the operator's Connect.gov credential state:** is there any part of the submission workflow that needs to handle a Connect.gov session token or portal credential (e.g. if a future sub-task auto-logs-in to check upload history), or is the credential material 100% on the operator side and never touches UIAO infrastructure?
 
-Answer any of these inline in the PR review comments and I'll lock the memo into an implementation plan.
+Answer any of these inline in the PR review comments and I'll lock the remaining decisions into the implementation plan.
