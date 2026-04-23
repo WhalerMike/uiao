@@ -66,15 +66,17 @@ Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs 
 | Workflow | Trigger | Blocking? |
 |---|---|---|
 | `schema-validation.yml` | Canon / schemas PRs | ✅ |
-| `pytest.yml` | Python / test PRs | ✅ (substrate + full suite) |
-| `substrate-drift.yml` | Substrate / registry PRs | ✅ |
-| `metadata-validator.yml` | Canon doc PRs | ✅ |
+| `pytest.yml` | `src/uiao/**`, `tests/**`, `pyproject.toml` | ✅ substrate (fast); 🟡 full suite (soft-fail) |
+| `substrate-drift.yml` | Canon / substrate / workspace PRs | ✅ |
+| `metadata-validator.yml` | `src/uiao/canon/**/*.md` + metadata schema | ✅ |
 | `quarto.yml` | `docs/**` PRs | ✅ render; deploy on main |
-| `ruff.yml` | Python PRs | ✅ |
+| `adapter-conformance.yml` | `src/uiao/adapters/**` + adapter tests | ✅ |
+| `ruff.yml` | Python PRs | 🟡 soft-fail (pending lint-debt burn-down) |
+| `mypy.yml` | Python PRs | 🟡 soft-fail (never enforced pre-ADR-032) |
 | `link-check.yml` | `*.md` / `*.qmd` PRs + weekly | 🟡 soft-fail |
 | `release.yml` | Tag `v*.*.*` | — |
 
-> **Known drift:** several workflows (`pytest.yml`, `ruff.yml`, `mypy.yml`, `adapter-conformance.yml`, `metadata-validator.yml`, `release.yml`) still carry pre-ADR-032 path filters that reference `impl/**`, `src/uiao/impl/**`, or `core/canon/` — paths that no longer exist. Those gates therefore do not trigger on current PRs. Fixing the filters is tracked as a follow-up to ADR-032.
+> **Lint / type / test debt:** when the `ruff.yml`, `mypy.yml`, and `pytest.yml` path filters were repaired post-ADR-032, 230 pre-existing ruff findings, an unenforced mypy baseline, and an undeclared `fastapi` test dependency (collection error in `tests/test_auditor_api.py`) all surfaced. All three full-suite gates are marked `continue-on-error: true` until the debt is cleared; they still publish findings on every PR. The fast substrate job in `pytest.yml` remains blocking — it catches real package-integrity breakage.
 
 ## Commit convention
 
