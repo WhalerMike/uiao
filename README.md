@@ -22,15 +22,15 @@ UIAO is a governance substrate, not a product. It defines:
 - **SSOT** — a single source of truth per claim, certificate-anchored,
   certified via provenance chains that cannot be backfilled.
 - **Canon** — the authoritative artifacts (schemas, registries, policies,
-  executive-order mappings). Canon lives in `core/`; everything else derives.
+  executive-order mappings). Canon lives under [`src/uiao/canon/`](src/uiao/canon/) and ships with the wheel as package data; everything else derives.
 - **Substrate** — the cross-cutting data and control layer that adapters
   consume and emit against. Documented here in the substrate manifest.
 - **Overlay** — the identity-derived certificate-anchored tunnel abstraction.
 - **Adapters** — externally-facing connectors. Two operational classes
   (`conformance` = read-only, `modernization` = change-making) × five
   mission classes (`identity | telemetry | policy | enforcement | integration`).
-  Registered in `src/uiao/canon/adapter-registry.yaml` and
-  `src/uiao/canon/modernization-registry.yaml`.
+  Registered in [`src/uiao/canon/adapter-registry.yaml`](src/uiao/canon/adapter-registry.yaml) and
+  [`src/uiao/canon/modernization-registry.yaml`](src/uiao/canon/modernization-registry.yaml).
 - **Drift** — deviation between live state and canon, detected in five
   classes (`DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`,
   `DRIFT-IDENTITY`) at four severities (`P1`–`P4`). Taxonomy defined in
@@ -38,28 +38,40 @@ UIAO is a governance substrate, not a product. It defines:
 - **KSI** — Key Security Indicators. 163 continuous-compliance signals,
   cryptographically signed.
 
-## Module layout
+## Repository layout
 
-| Module | Role | Canon consumer | Summary |
-|---|---|---|---|
-| [`core/`](core/) | authority | no | Canon authority. Schemas, canonical governance documents, control library, enforcement tooling. Single source of truth. |
-| [`docs/`](docs/) | consumer | yes | Derived documentation. Articles, guides, playbooks. All content traces provenance to `core/`. |
-| [`impl/`](impl/) | consumer | yes | Python implementation. Drift detector, conformance runner, OSCAL/SSP generators, evidence collectors, directory-migration subsystem. |
+As of [ADR-032](src/uiao/canon/adr/adr-032-single-package-consolidation.md) (2026-04-20) UIAO is a **single Python package** rooted at `src/uiao/`. The pre-consolidation `core/` and `impl/` directories no longer exist — every concern they held now lives under `src/uiao/<subpackage>/`.
 
-### Sub-boundaries inside `core/`
+| Path | Role | Notes |
+|---|---|---|
+| [`src/uiao/`](src/uiao/) | Installable `uiao` distribution | Single source of all runtime code, canon, schemas, rules, KSI library, adapters. |
+| [`src/uiao/canon/`](src/uiao/canon/) | Canon authority (SSOT) | Governance documents, ADRs, registries, control library, specs. Canon-change rules in [`AGENTS.md`](AGENTS.md#repository-invariants). |
+| [`src/uiao/schemas/`](src/uiao/schemas/) | Schema authority | JSON Schema drafts 07 and 2020-12. Validates registries, manifest, workspace contract, metadata. |
+| [`src/uiao/adapters/`](src/uiao/adapters/) | Connector implementations | 13 adapters across modernization (change-making) and conformance (read-only) classes. |
+| [`src/uiao/cli/`](src/uiao/cli/) | Typer CLI entry point | `uiao` console script → `uiao.cli.app:app`. |
+| [`tests/`](tests/) | Test suite | Unit, integration, adapter conformance, substrate drift. |
+| [`docs/`](docs/) | Documentation source | `.qmd`/`.md`/`.yml` only; Quarto site renders to `docs/_site/` (gitignored). |
+| [`scripts/`](scripts/) | Workspace tooling | Bootstrap, schema validators, link check, doc generators. |
+| [`inbox/`](inbox/) | Draft staging | Not canon. Promote to `src/uiao/canon/` or `docs/` when ready. |
+| [`deploy/windows-server/`](deploy/windows-server/) | Windows IIS deploy artifacts | uvicorn entrypoint + `web.config` referenced by [`src/uiao/api/app.py`](src/uiao/api/app.py). |
+| [`.github/workflows/`](.github/workflows/) | CI | Schema validation, pytest, substrate-drift, ruff, mypy (non-blocking), quarto, link-check, release. |
 
-- [`src/uiao/schemas/`](src/uiao/schemas/) — schema authority (JSON Schema drafts 07 and 2020-12).
-- [`src/uiao/canon/`](src/uiao/canon/) — canonical governance documents. UIAO_NNN allocations via [`document-registry.yaml`](src/uiao/canon/document-registry.yaml).
-- [`core/tools/`](core/tools/) — enforcement tooling (metadata validator, drift detector, canon sync).
-- [`core/data/`](core/data/) — control library. 247 NIST Moderate baseline controls (163 base + 84 enhancements).
-- [`core/dashboard/`](core/dashboard/) — export and visualization surface.
-- [`core/compliance/`](core/compliance/) — reference implementations (FedRAMP Rev 5, NIST SP 800-137 ConMon, FedRAMP ConMon playbook).
+Canon authority lives in [`src/uiao/canon/`](src/uiao/canon/) and is **protected**: changes require a UIAO_NNN allocation in [`document-registry.yaml`](src/uiao/canon/document-registry.yaml), and doctrinal changes require an ADR under [`src/uiao/canon/adr/`](src/uiao/canon/adr/). See [AGENTS.md § Repository Invariants](AGENTS.md#repository-invariants) for the full invariant set.
 
 ## Quick start
 
-Set `UIAO_WORKSPACE_ROOT` to the absolute path of your local checkout — the
-canon-consumer rule (`impl/.claude/rules/canon-consumer.md`) forbids
-hardcoded canon paths.
+```bash
+# Install the package + CLI in editable mode
+pip install -e .
+
+# (Optional) dev tooling
+pip install -e ".[dev]"
+
+# Validate substrate integrity
+uiao substrate walk
+```
+
+Set `UIAO_WORKSPACE_ROOT` to the absolute path of your local checkout when running tooling that needs to resolve workspace-relative paths:
 
 ```bash
 # Linux / macOS
@@ -69,29 +81,19 @@ export UIAO_WORKSPACE_ROOT="$HOME/src/uiao"
 $env:UIAO_WORKSPACE_ROOT = "$env:USERPROFILE\src\uiao"
 ```
 
+Common Make targets: `make help`, `make walk`, `make drift`, `make test`, `make lint`, `make schemas`, `make docs`.
+
 ## Governance gates
 
-Every PR into `main` must pass the canon enforcement gates (CI workflows
-in [`core/.github/workflows/`](core/.github/workflows/)):
+Every PR into `main` is gated by CI workflows in [`.github/workflows/`](.github/workflows/):
 
-- `metadata-validator` — frontmatter conforms to [`src/uiao/schemas/metadata-schema.json`](src/uiao/schemas/metadata-schema.json).
-- `drift-scan` — detects metadata and provenance drift.
-- `appendix-sync` — appendix index integrity.
-- `dashboard-export` — dashboard schema and export readiness.
+- `schema-validation` — adapter registries, substrate manifest, workspace contract conform to their schemas.
+- `metadata-validator` — canon document frontmatter conforms to [`src/uiao/schemas/metadata-schema.json`](src/uiao/schemas/metadata-schema.json).
+- `substrate-drift` — `uiao substrate drift` exit-code gate on canon / substrate-manifest changes.
+- `pytest` — substrate walker (fast) + full suite (blocking).
+- `ruff` — lint and format check (blocking).
+- `quarto` — render docs on PR; deploy to GitHub Pages on push to `main`.
 
 ## License
 
 Apache 2.0. See [`LICENSE`](LICENSE).
-
-## Repository Structure
-
-UIAO is organized with explicit directory intent:
-
-- `src/uiao/` — Core Canon (SSOT, ADRs, schemas, rules, KSI, registries) + CLI bridge. **Protected**: canon changes require an ADR.
-- `impl/` — Python implementation layer (adapters, governance, OSCAL, IR pipeline)
-- `core/` — Non-Python reference material (architecture, config, compliance PDFs)
-- `docs/` — Documentation source only (`.qmd`, `.md`, `.yml`); binary output is generated
-- `scripts/` — Workspace tooling (bootstrap, validators)
-- `inbox/` — Draft staging (promoted to canon or docs when ready)
-
-Directory intent, technical invariants, and canon-change rules are documented in [AGENTS.md § Repository Invariants](AGENTS.md#repository-invariants). Any change that crosses an invariant requires an ADR.
