@@ -438,7 +438,7 @@ def build_ssp_skeleton(
                     item_props.append({"name": prop.get("name", ""), "value": prop.get("value", "")})
             impl_components = []
             for comp_ref in item.get("implemented_components", []):
-                comp_uuid = component_id_to_uuid.get(comp_ref)
+                comp_uuid = component_id_to_uuid.get(comp_ref)  # type: ignore[assignment]  # str | None; truthy check follows
                 if comp_uuid:
                     impl_components.append({"component-uuid": comp_uuid})
             oscal_item: dict[str, Any] = {

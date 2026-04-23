@@ -43,12 +43,20 @@ OrgPathCodebook = Union[Set[str], "Any"]
 # Imported here as plain strings to avoid circular imports if core.py is
 # patched later.
 # ---------------------------------------------------------------------------
-DRIFT_SCHEMA = "DRIFT-SCHEMA"
-DRIFT_SEMANTIC = "DRIFT-SEMANTIC"
-DRIFT_PROVENANCE = "DRIFT-PROVENANCE"
-DRIFT_AUTHZ = "DRIFT-AUTHZ"
-DRIFT_IDENTITY = "DRIFT-IDENTITY"
-DRIFT_BOUNDARY = "DRIFT-BOUNDARY"
+DriftClassLiteral = Literal[
+    "DRIFT-SCHEMA",
+    "DRIFT-SEMANTIC",
+    "DRIFT-PROVENANCE",
+    "DRIFT-AUTHZ",
+    "DRIFT-IDENTITY",
+    "DRIFT-BOUNDARY",
+]
+DRIFT_SCHEMA: DriftClassLiteral = "DRIFT-SCHEMA"
+DRIFT_SEMANTIC: DriftClassLiteral = "DRIFT-SEMANTIC"
+DRIFT_PROVENANCE: DriftClassLiteral = "DRIFT-PROVENANCE"
+DRIFT_AUTHZ: DriftClassLiteral = "DRIFT-AUTHZ"
+DRIFT_IDENTITY: DriftClassLiteral = "DRIFT-IDENTITY"
+DRIFT_BOUNDARY: DriftClassLiteral = "DRIFT-BOUNDARY"
 
 
 # ---------------------------------------------------------------------------
@@ -97,7 +105,7 @@ def build_drift_state(
     actual_state: Dict[str, Any],
     provenance: ProvenanceRecord,
     drift_id: Optional[str] = None,
-    drift_class: Optional[str] = None,
+    drift_class: Optional[DriftClassLiteral] = None,
 ) -> DriftState:
     """
     Deterministically compute a DriftState from expected vs actual state.
@@ -211,7 +219,7 @@ def classify_authz_drift(
                 if pattern(val):
                     escalation_hit = True
                     break
-            elif val in pattern:
+            elif val in pattern:  # type: ignore[operator]  # pattern is Set when reached (callable branch handled above)
                 escalation_hit = True
                 break
 

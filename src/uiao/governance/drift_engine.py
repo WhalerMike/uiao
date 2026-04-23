@@ -321,5 +321,5 @@ def _filter_plan_for_remediation(plan: Any, phase: PhaseConfig) -> Any:
             setattr(copy, attr, getattr(plan, attr))
         except AttributeError:
             continue
-    copy.operations = kept
+    copy.operations = kept  # type: ignore[attr-defined]
     return copy

@@ -105,7 +105,7 @@ def drift_to_ir_states(
             expected_hash=canonical_hash(info.get("diff", {})),
             actual_hash=canonical_hash(info),
             drift_detected=drift_detected,
-            classification=classification,
+            classification=classification,  # type: ignore[arg-type]  # duck-typed: canonical classifier returns the Literal set
             delta={"changed_fields": list(info.get("diff", {}).keys())},
             provenance=prov,
         )

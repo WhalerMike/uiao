@@ -31,7 +31,7 @@ def get_settings() -> Settings:
     try:
         return Settings()
     except Exception:
-        return Settings(_env_file=None)
+        return Settings(_env_file=None)  # type: ignore[call-arg]  # pydantic-settings dunder kwarg, mypy lacks pydantic-settings stubs
 
 
 def _deep_merge(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
