@@ -51,7 +51,7 @@ Once converted, this document is expected to contain at minimum:
    KCD/GMSA dependencies).
 2. **Disposition selection** — how to route each machine through the
    GAE.4 decision tree (implemented today in
-   `src/uiao/adapters/modernization/active-directory/disposition.py`).
+   `src/uiao/adapters/modernization/active_directory/disposition.py`).
 3. **Track 1 — Entra-joined clients** — Entra join, Intune enrollment,
    OrgPath write via Phase 4 adapter (`device-ext-create`).
 4. **Track 2 — Arc-enrolled servers** — `Connect-AzConnectedMachine`
@@ -77,5 +77,5 @@ Once converted, this document is expected to contain at minimum:
 - [ ] [ADR-042](../../src/uiao/canon/adr/adr-042-ad-computer-conversion-guide-integration.md)
       flipped from `draft` to `accepted`.
 - [ ] `src/uiao/canon/document-registry.yaml` lists `UIAO_GAE_CG`.
-- [ ] `src/uiao/adapters/modernization/active-directory/adapter-manifest.json`
+- [ ] `src/uiao/adapters/modernization/active_directory/adapter-manifest.json`
       `uiao_doc_ref` references `UIAO_GAE_CG`.

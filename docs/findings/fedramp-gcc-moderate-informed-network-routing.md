@@ -106,7 +106,7 @@ Split between internal (inside UIAO's scope) and external
 ### Internal remedy (already in scope)
 
 1. **Tier-2 fixture encoding the INR unavailability** under
-   `impl/tests/fixtures/contract/m365/` that records the feature
+   `tests/fixtures/contract/m365/` that records the feature
    as `unavailable` for GCC-Moderate deployments and asserts the
    M365 adapter does not attempt to call INR endpoints when
    configured for a GCC-Moderate tenant. This follows [UIAO_131
