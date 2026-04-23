@@ -1,6 +1,5 @@
 # sync-uiao.ps1  Canonical UIAO-Core Sync Script
 
-**Classification:** Controlled
 **Repository:** `uiao`
 **Location:** `/scripts/sync-uiao.ps1`
 **Author:** Michael Stratton

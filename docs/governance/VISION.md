@@ -1,6 +1,5 @@
 # UIAO Vision & Mission Scope
 
-> **Classification:** Public
 > **Canonical source:** This file is the authoritative mission statement for `uiao`.
 > It is referenced by the README, the uiao-docs canon, and the UIAO Codex.
 

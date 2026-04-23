@@ -20,7 +20,7 @@ Usage:
     python inject.py --scope canon/ --dry-run  # Preview changes
     python inject.py --default-form full    # Override default form factor
 
-Boundary: GCC-Moderate · Classification: Controlled
+Boundary: GCC-Moderate
 """
 
 import argparse

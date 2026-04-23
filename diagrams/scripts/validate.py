@@ -12,7 +12,7 @@ Checks performed (all CI-blocking):
   5. Every .mmd file is registered in diagram-registry.yaml
   6. No orphaned renders exist without a matching source
   7. Both full and nano renders exist for every active source (if rendered/)
-  8. No FOUO markings present in any diagram or metadata
+  8. No classification banners (FOUO, CUI, Controlled) in any diagram or metadata
 
 Usage:
     python validate.py [--strict] [--category CATEGORY]
@@ -72,7 +72,6 @@ REQUIRED_FIELDS = [
     "title",
     "version",
     "status",
-    "classification",
     "owner",
     "document_category",
     "source_format",
@@ -85,7 +84,15 @@ REQUIRED_FIELDS = [
 VALID_STATUSES = ["DRAFT", "ACTIVE", "DEPRECATED"]
 DIAGRAM_ID_PATTERN = re.compile(r"^DIAG_(\d{3})$")
 VERSION_PATTERN = re.compile(r"^\d+\.\d+$")
-FOUO_PATTERN = re.compile(r"FOUO|For\s+Official\s+Use\s+Only", re.IGNORECASE)
+CLASSIFICATION_BANNER_PATTERN = re.compile(
+    r"\bFOUO\b"
+    r"|FOR\s+OFFICIAL\s+USE\s+ONLY"
+    r"|(?:\*\*)?Classification:(?:\*\*)?\s*(?:Controlled|CUI)"
+    r"|^\s*classification:\s*(?:Controlled|CUI|FOUO)\s*$"
+    r"|Status:\s*Controlled\b"
+    r"|^\s*CONTROLLED\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 # ── Source Discovery ────────────────────────────────────────────────────────
@@ -191,11 +198,6 @@ def check_frontmatter(source: Path, result: ValidationResult):
     if status and status not in VALID_STATUSES:
         result.error(name, f"Invalid status: '{status}' (expected one of {VALID_STATUSES})")
 
-    # classification must not be FOUO
-    classification = metadata.get("classification", "")
-    if classification and classification.upper() == "FOUO":
-        result.error(name, "Classification must not be FOUO — use 'Controlled'")
-
     # boundary must be GCC-Moderate
     boundary = metadata.get("boundary", "")
     if boundary and boundary != "GCC-Moderate":
@@ -253,11 +255,12 @@ def check_category_alignment(source: Path, metadata: dict, result: ValidationRes
                     )
 
 
-def check_fouo(source: Path, result: ValidationResult):
-    """Check for prohibited FOUO markings in diagram sources and data files.
-    Governance docs, schemas, and specs that *define* the no-FOUO rule are excluded
-    from this scan — they mention FOUO only to prohibit it."""
-    # Skip governance/spec files that define the FOUO prohibition rule
+def check_classification_banners(source: Path, result: ValidationResult):
+    """Check for prohibited classification banners (FOUO, CUI, Controlled) in diagram
+    sources and data files. UIAO is OSS — no classification markings belong in any
+    artifact. Governance docs that describe this rule, and the NIST control library
+    that references classification terminology as compliance subject matter, are
+    excluded."""
     skip_dirs = {"governance", "specs"}
     skip_files = {
         "README.md",
@@ -266,12 +269,16 @@ def check_fouo(source: Path, result: ValidationResult):
         "NANOBANANA-SPEC.md",
         "AUTO-SELECTION-LOGIC.md",
     }
+    skip_path_parts = {"control-library", "session-logs"}
     if source.parent.name in skip_dirs or source.name in skip_files:
+        return
+    if any(part in source.parts for part in skip_path_parts):
         return
 
     content = source.read_text(encoding="utf-8")
-    if FOUO_PATTERN.search(content):
-        result.error(source.name, "Prohibited FOUO marking detected — use 'Controlled'")
+    m = CLASSIFICATION_BANNER_PATTERN.search(content)
+    if m:
+        result.error(source.name, f"Prohibited classification banner: {m.group(0).strip()!r}")
 
 
 def check_registry(sources: list, result: ValidationResult) -> dict:
@@ -401,12 +408,12 @@ def main():
                 doc_cat = metadata.get("document_category", "?")
                 print(f"    ✓ {source.name}: {did} [{doc_cat}] — {title}")
 
-    print("\n── FOUO Check ──")
+    print("\n── Classification Banner Check ──")
     all_files = list(REPO_ROOT.rglob("*"))
     text_files = [f for f in all_files if f.is_file() and f.suffix in (".mmd", ".md", ".yaml", ".yml")]
     for f in text_files:
-        check_fouo(f, result)
-    print(f"  Scanned {len(text_files)} files for FOUO markings")
+        check_classification_banners(f, result)
+    print(f"  Scanned {len(text_files)} files for classification banners")
 
     print("\n── Registry Check ──")
     check_registry(sources, result)

@@ -4,7 +4,6 @@
 
 **Status:** Production-Ready (Sandbox/Pilot)
 
-**Classification:** CUI // FED-ONLY
 
 ---
 

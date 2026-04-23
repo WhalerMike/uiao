@@ -4,7 +4,6 @@ UIAO SCuBA Architecture Guide
 
 **Version:** 1.0.0
 
-**Classification:** Controlled
 
 **Date:** 2026-04-11
 
@@ -189,8 +188,6 @@ uiao ├── scuba │ ├── run \# Execute ScubaGear assessment │ ├�
   -------------------------------------------------------------------------------------------------------------------------------------------
   **Classification**   **Scope**                                             **Handling**
   -------------------- ----------------------------------------------------- ----------------------------------------------------------------
-  Controlled           Architecture docs, test plans, internal procedures    Internal use; version-controlled in private repo
-
   Public               README, API docs, open-source components              Published to documentation site
 
   Tenant-Specific      ScubaGear output, evidence bundles, OSCAL artifacts   Scoped to tenant; encrypted at rest; retention policy enforced

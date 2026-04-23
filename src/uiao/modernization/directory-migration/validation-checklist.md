@@ -31,4 +31,4 @@ After all adapter files are committed, validate the following:
 | `adapters/dfs/dfs-adapter-interface.md` exists | DFS adapter defined |
 | All adapter files reference UIAO Eight Core Concepts | Architectural alignment confirmed |
 | No file references federal compliance as a core requirement | Universal framing confirmed |
-| No "CONTROLLED" or "FOUO" markings present | Classification cleanup confirmed |
+| Repo content free of classification banners (CUI, Controlled, FOUO) | OSS hygiene confirmed; adopters apply their own markings at runtime |

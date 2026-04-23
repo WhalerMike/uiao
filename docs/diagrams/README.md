@@ -1,6 +1,6 @@
 # UIAO Diagrams — Quarto Integration Guide
 
-**Boundary:** GCC-Moderate · **Classification:** Controlled · **Version:** 1.0
+**Boundary:** GCC-Moderate · **Version:** 1.0
 
 ## Overview
 

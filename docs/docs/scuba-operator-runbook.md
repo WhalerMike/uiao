@@ -4,7 +4,6 @@ UIAO SCuBA Operator Runbook
 
 **Version:** 1.0.0
 
-**Classification:** Controlled
 
 **Date:** 2026-04-11
 
