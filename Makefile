@@ -9,7 +9,7 @@
 #   make bootstrap     # first-time setup
 #   make walk          # substrate walker report
 #   make drift         # substrate-drift exit-code gate
-#   make test          # full impl pytest
+#   make test          # full pytest suite
 #   make lint          # ruff check + format-check
 #   make fmt           # ruff auto-format
 #   make schemas       # validate canon YAML + JSON against schemas
@@ -26,7 +26,6 @@ REPO_ROOT    := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 export UIAO_WORKSPACE_ROOT := $(REPO_ROOT)
 PYTHON       ?= python3
 PANDOC       ?= pandoc
-IMPL         := $(REPO_ROOT)/impl
 DOCS         := $(REPO_ROOT)/docs
 INBOX        := $(REPO_ROOT)/inbox
 
@@ -38,7 +37,7 @@ help:
 	@echo "  bootstrap       First-time setup (pip install, pre-commit, substrate check)"
 	@echo "  walk            uiao substrate walk (full drift report)"
 	@echo "  drift           uiao substrate drift (exit-code gate)"
-	@echo "  test            Full impl pytest suite"
+	@echo "  test            Full pytest suite"
 	@echo "  test-substrate  Fast substrate walker tests only"
 	@echo "  lint            ruff check + ruff format --check"
 	@echo "  fmt             ruff check --fix + ruff format (mutate files)"
@@ -46,7 +45,7 @@ help:
 	@echo "  docs            Render Quarto site to HTML (docs/_site/)"
 	@echo "  check-links     Crawl live Pages site for broken links (requires pwsh)"
 	@echo "                    override: URL=<url> DEPTH=<n>"
-	@echo "  clean           Remove build artifacts (docs/_site, impl/dist, __pycache__)"
+	@echo "  clean           Remove build artifacts (docs/_site, dist/, build/, *.egg-info, __pycache__)"
 	@echo "  release TAG=vX.Y.Z  Cut a release (push tag → triggers release.yml)"
 	@echo "  branch-prune    Delete local claude/* branches merged to main"
 	@echo "  inbox-convert   Convert inbox/*.docx → .md siblings via pandoc (idempotent)"
@@ -58,22 +57,22 @@ bootstrap:
 	@bash scripts/bootstrap.sh
 
 walk:
-	@PYTHONPATH=$(IMPL)/src $(PYTHON) -c "from uiao.impl.cli.substrate import substrate_app; substrate_app(['walk'])"
+	@uiao substrate walk
 
 drift:
-	@PYTHONPATH=$(IMPL)/src $(PYTHON) -c "from uiao.impl.cli.substrate import substrate_app; substrate_app(['drift'])"
+	@uiao substrate drift
 
 test:
-	@cd $(IMPL) && PYTHONPATH=src $(PYTHON) -m pytest -q
+	@$(PYTHON) -m pytest -q
 
 test-substrate:
-	@cd $(IMPL) && PYTHONPATH=src $(PYTHON) -m pytest tests/test_substrate_walker.py -q
+	@$(PYTHON) -m pytest tests/test_substrate_walker.py -q
 
 lint:
-	@cd $(IMPL) && ruff check . && ruff format --check .
+	@ruff check . && ruff format --check .
 
 fmt:
-	@cd $(IMPL) && ruff check --fix . && ruff format .
+	@ruff check --fix . && ruff format .
 
 schemas:
 	@$(PYTHON) scripts/validate_schemas.py
@@ -86,7 +85,7 @@ check-links:
 	@pwsh scripts/check-links.ps1 $(if $(URL),-StartUrl $(URL)) $(if $(DEPTH),-MaxDepth $(DEPTH))
 
 clean:
-	@rm -rf $(DOCS)/_site $(DOCS)/.quarto $(IMPL)/dist $(IMPL)/build $(IMPL)/*.egg-info
+	@rm -rf $(DOCS)/_site $(DOCS)/.quarto $(REPO_ROOT)/dist $(REPO_ROOT)/build $(REPO_ROOT)/src/uiao.egg-info
 	@find . -type d -name "__pycache__" -prune -exec rm -rf {} +
 	@find . -type d -name ".pytest_cache" -prune -exec rm -rf {} +
 	@echo "Cleaned build artifacts + __pycache__ + .pytest_cache"
