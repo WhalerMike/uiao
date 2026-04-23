@@ -82,21 +82,29 @@ class EntraTokenProvider:
         Construct from machine-level environment variables.
         Raises clear RuntimeError if any required variable is missing.
         """
-        required = {
-            "UIAO_ENTRA_TENANT_ID": os.environ.get("UIAO_ENTRA_TENANT_ID"),
-            "UIAO_ENTRA_CLIENT_ID": os.environ.get("UIAO_ENTRA_CLIENT_ID"),
-        }
-        missing = [k for k, v in required.items() if not v]
+        tenant_id = os.environ.get("UIAO_ENTRA_TENANT_ID")
+        client_id = os.environ.get("UIAO_ENTRA_CLIENT_ID")
+        missing = [
+            name
+            for name, value in (
+                ("UIAO_ENTRA_TENANT_ID", tenant_id),
+                ("UIAO_ENTRA_CLIENT_ID", client_id),
+            )
+            if not value
+        ]
         if missing:
             raise RuntimeError(
                 f"Missing required environment variables: {', '.join(missing)}. "
                 "Set these as Machine-level variables on the IIS server. "
                 "Never put credentials in code or git."
             )
+        # Required vars are non-None after the missing check.
+        assert tenant_id is not None
+        assert client_id is not None
 
         return cls(
-            tenant_id=required["UIAO_ENTRA_TENANT_ID"],
-            client_id=required["UIAO_ENTRA_CLIENT_ID"],
+            tenant_id=tenant_id,
+            client_id=client_id,
             client_secret=os.environ.get("UIAO_ENTRA_CLIENT_SECRET"),
             cert_path=os.environ.get("UIAO_ENTRA_CERT_PATH"),
             cert_password=os.environ.get("UIAO_ENTRA_CERT_PASSWORD"),
