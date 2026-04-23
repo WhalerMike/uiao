@@ -2,17 +2,17 @@
 document_id: UIAO_007
 title: "OrgTree Modernization — Active Directory to Entra ID Migration Guide"
 version: "1.0"
-status: CANONICAL
-classification: Controlled
+status: Current
+classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-18"
 updated_at: "2026-04-18"
 boundary: GCC-Moderate
 provenance:
-  source_file: "inbox/EntraID Governance/AD to EntraID Tree.docx"
-  extracted_by: "Copilot Tasks"
-  extraction_date: "2026-04-18"
-  note: "Source document truncated during extraction; Section 4 (Delegation) tail is partial. Core content complete."
+  source: "inbox/EntraID Governance/AD to EntraID Tree.docx"
+  version: "1.0"
+  derived_at: "2026-04-18"
+  derived_by: "Copilot Tasks docx extraction; source document truncated during extraction, Section 4 (Delegation) tail is partial, core content complete. Promoted to canon in ADR-044 shadow-canon cleanup on 2026-04-23"
 ---
 
 # OrgTree Modernization — Active Directory to Entra ID Migration Guide

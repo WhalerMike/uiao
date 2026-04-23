@@ -2,19 +2,17 @@
 document_id: UIAO_006
 title: "AODIM — Attribute-Oriented Directory & Identity Model"
 version: "1.0"
-status: CANONICAL
-classification: Controlled
+status: Current
+classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-18"
 updated_at: "2026-04-18"
 boundary: GCC-Moderate
 provenance:
-  source_files:
-    - "inbox/EntraID Governance/AODIM_Architecture_Document.docx"
-    - "inbox/EntraID Governance/AODIM_Executive_Whitepaper.docx"
-  merge_strategy: "Architecture Document as base with Reference Implementation; Executive Whitepaper language polish applied"
-  extracted_by: "Copilot Tasks"
-  extraction_date: "2026-04-18"
+  source: "inbox/EntraID Governance/AODIM_Architecture_Document.docx + inbox/EntraID Governance/AODIM_Executive_Whitepaper.docx"
+  version: "1.0"
+  derived_at: "2026-04-18"
+  derived_by: "Copilot Tasks docx extraction; Architecture Document as base with Reference Implementation; Executive Whitepaper language polish applied. Promoted to canon in ADR-044 shadow-canon cleanup on 2026-04-23"
 ---
 
 # AODIM — Attribute-Oriented Directory & Identity Model
