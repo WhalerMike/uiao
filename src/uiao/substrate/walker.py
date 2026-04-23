@@ -123,7 +123,7 @@ def _load_yaml(path: Path) -> Optional[dict]:
     if not path.exists():
         return None
     with path.open() as fh:
-        return yaml.safe_load(fh)
+        return yaml.safe_load(fh)  # type: ignore[no-any-return]
 
 
 def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:

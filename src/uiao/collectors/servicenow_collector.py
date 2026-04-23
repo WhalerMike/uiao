@@ -88,7 +88,7 @@ class ServiceNowCollector:
             timeout=self.TIMEOUT,
         )
         response.raise_for_status()
-        return response.json()
+        return response.json()  # type: ignore[no-any-return]
 
     # ------------------------------------------------------------------
     # Drift comparison helper (engine handles the full diff)

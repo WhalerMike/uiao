@@ -310,7 +310,7 @@ class EntraDynamicGroupsAdapter:
         else:
             raise ValueError(f"Unsupported op for Graph execution: {op.op}")
 
-    def _graph_client(self):  # pragma: no cover - network path
+    def _graph_client(self):  # type: ignore[no-untyped-def]  # pragma: no cover - network path
         """Return an httpx client authenticated against Graph, or ``None``.
 
         Mirrors :class:`uiao.collectors.entra.entra_collector.EntraCollector`
@@ -336,11 +336,11 @@ class EntraDynamicGroupsAdapter:
         )
 
         class _Auth(httpx.Auth):
-            def __init__(self, cred):
+            def __init__(self, cred):  # type: ignore[no-untyped-def]
                 self.cred = cred
                 self.token = None
 
-            def auth_flow(self, request):
+            def auth_flow(self, request):  # type: ignore[no-untyped-def]
                 if self.token is None:
                     tok = self.cred.get_token("https://graph.microsoft.com/.default")
                     self.token = tok.token

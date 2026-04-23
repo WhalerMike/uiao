@@ -62,5 +62,5 @@ ENRICHMENT_RULES = {
 }
 
 
-def get_enrichment_for_category(category: str):
+def get_enrichment_for_category(category: str):  # type: ignore[no-untyped-def]
     return ENRICHMENT_RULES.get(category.lower(), ENRICHMENT_RULES["default"])

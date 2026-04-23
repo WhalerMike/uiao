@@ -117,7 +117,7 @@ def _read_default_canon() -> str:
 
 def _read_default_schema() -> Dict:
     package, name = _DEFAULT_SCHEMA_RESOURCE
-    return json.loads(resources.files(package).joinpath(name).read_text(encoding="utf-8"))
+    return json.loads(resources.files(package).joinpath(name).read_text(encoding="utf-8"))  # type: ignore[no-any-return]
 
 
 def _validate_schema(document: Dict) -> None:

@@ -216,7 +216,7 @@ try {{
             ["powershell", "-NonInteractive", "-Command", script], capture_output=True, text=True, timeout=30
         )
         if result.returncode == 0:
-            return json.loads(result.stdout)
+            return json.loads(result.stdout)  # type: ignore[no-any-return]
         return {"error": result.stderr[:500]}
     except subprocess.TimeoutExpired:
         return {"error": "WMI query timed out"}

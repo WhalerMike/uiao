@@ -59,7 +59,7 @@ class DriftFinding:
     source_forest: str = ""  # forest FQDN for multi-forest disambiguation
     suggested_orgpath: str = ""  # best-effort OrgPath candidate; empty = unresolvable
 
-    def to_drift_state(self, provenance=None):
+    def to_drift_state(self, provenance=None):  # type: ignore[no-untyped-def]
         """Bridge to DriftState for governance engine consumption."""
         import datetime
 
