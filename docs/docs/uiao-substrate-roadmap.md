@@ -202,16 +202,38 @@ Work required:
 - For each untested invariant, write a pytest that would catch the violation.
 - Gate this in CI: the spec-test coverage table must not shrink between PRs.
 
-### 1.3 — UIAO_100 Compliance Orchestrator (aspirational → partial)
+### 1.3 — UIAO_100 Compliance Orchestrator (aspirational → **partial** ✅)
 
 The Compliance Orchestrator is the scheduler that triggers adapter runs, collects evidence, and routes findings to the drift engine and OSCAL generator. Without it, every evidence collection is a manual operation.
 
-Work required:
-- Implement `OrchestratorScheduler` in `src/uiao/` with: adapter run dispatch (via GitHub Actions `repository_dispatch`), evidence receipt and storage, routing to drift engine.
-- The orchestrator does not need to be production-grade in Phase 1. It needs to be functional enough that a complete evidence → drift → finding pipeline can be demonstrated end-to-end.
-- Add integration test (`test_e2e.py` already exists — extend it).
+**Status (2026-04-23):** `partial` — scheduler shipped, real adapter wiring
+incremental.
 
-Referenced doc: UIAO_100.
+Shipped:
+- `src/uiao/orchestrator/scheduler.py` — `OrchestratorScheduler` reads the
+  canonical adapter registry, iterates active entries, invokes each
+  adapter's `collect_evidence()` + `detect_drift()`, persists per-adapter
+  evidence and drift to a deterministic run directory, and emits a
+  `manifest.json` + `drift-summary.json` per run.
+- Retry with exponential backoff per adapter; `not-wired` status for
+  registry entries without a factory binding (non-fatal).
+- Pluggable adapter factory so tests inject mocks and production wires
+  real adapter classes incrementally.
+- `uiao orchestrator {schedule,dispatch,list}` Typer CLI.
+- `tests/test_orchestrator_scheduler.py` (14 unit tests) and a new
+  `TestOrchestratorSchedulerE2E` class in `tests/test_e2e.py` closing the
+  evidence → drift → manifest loop end-to-end with mock adapters.
+
+Deferred to §1.4 or Phase 2:
+- Cron scheduler daemon (Phase 1 runs under GitHub Actions cron).
+- Dead-letter queue + email/webhook alerting.
+- Multi-tenant per-tenant schedule dispatch.
+- Real factory bindings for every adapter in the registry (ScubaGear is
+  wired as a built-in; remaining adapters promote one at a time).
+- Wiring drift findings into the evidence graph (UIAO_113, §1.4) for
+  cross-service correlation.
+
+Referenced doc: UIAO_100 (`src/uiao/canon/specs/Compliance-Orchestrator.md`).
 
 ### 1.4 — UIAO_113 Evidence Graph (schema-only → working)
 
