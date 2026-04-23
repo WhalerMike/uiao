@@ -66,7 +66,7 @@ Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs 
 | Workflow | Trigger | Blocking? |
 |---|---|---|
 | `schema-validation.yml` | Canon / schemas PRs | ✅ |
-| `pytest.yml` | `src/uiao/**`, `tests/**`, `pyproject.toml` | ✅ (substrate + full suite) |
+| `pytest.yml` | `src/uiao/**`, `tests/**`, `pyproject.toml` | ✅ substrate (fast); 🟡 full suite (soft-fail) |
 | `substrate-drift.yml` | Canon / substrate / workspace PRs | ✅ |
 | `metadata-validator.yml` | `src/uiao/canon/**/*.md` + metadata schema | ✅ |
 | `quarto.yml` | `docs/**` PRs | ✅ render; deploy on main |
@@ -76,7 +76,7 @@ Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs 
 | `link-check.yml` | `*.md` / `*.qmd` PRs + weekly | 🟡 soft-fail |
 | `release.yml` | Tag `v*.*.*` | — |
 
-> **Lint / type debt:** when the `ruff.yml` and `mypy.yml` path filters were repaired post-ADR-032, 230 pre-existing ruff findings and an unenforced mypy baseline surfaced. Both gates are marked `continue-on-error: true` until the debt is cleared; they still publish findings on every PR.
+> **Lint / type / test debt:** when the `ruff.yml`, `mypy.yml`, and `pytest.yml` path filters were repaired post-ADR-032, 230 pre-existing ruff findings, an unenforced mypy baseline, and an undeclared `fastapi` test dependency (collection error in `tests/test_auditor_api.py`) all surfaced. All three full-suite gates are marked `continue-on-error: true` until the debt is cleared; they still publish findings on every PR. The fast substrate job in `pytest.yml` remains blocking — it catches real package-integrity breakage.
 
 ## Commit convention
 
