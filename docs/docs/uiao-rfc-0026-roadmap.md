@@ -123,15 +123,16 @@ This roadmap sequences eight enhancements by enforcement-clock risk × implement
 
 ## Tier 4 — High-value, softer deadline
 
-### E4 · PIM-for-Groups escalation gap (ScubaGear #2072) as agency-specific desired state
+### E4 · PIM-for-Groups escalation gap (ScubaGear #2072) as agency-specific desired state *(PR 4)*
 **Target:** 2026-08-31
 **Risk:** MS.AAD.7.4v1 maps to AU-6 in SCUBA_TO_KSI_MAP but the password-reset escalation path via PIM for Groups actually implicates AC-2 / AC-6; ScubaGear baseline doesn't yet warn. This is exactly the category UIAO's agency-specific desired-state layer exists for.
 **Tasks:**
-- [ ] T4.1 — Add entry to `gcc-boundary-gap-registry.yaml` documenting the PIM-for-Groups escalation risk
-- [ ] T4.2 — Create desired-state rule (Rego or KSI supplemental) evaluating whether PIM-for-Groups is active on any group with password-reset permissions for privileged accounts
-- [ ] T4.3 — Wire rule to `entra_policy_targeting.py` adapter
-- [ ] T4.4 — Register as DRIFT-AUTHZ-class finding
-- [ ] T4.5 — Document in UIAO_132 as an agency-specific-above-minimum example
+- [x] T4.1 — Add GAP-ENT-001 entry to `gcc-boundary-gap-registry.yaml` documenting the PIM-for-Groups escalation risk *(PR 4: new "ENTRA ID AUTHORIZATION — SCuBA DETECTION GAPS" section distinguishes detection-coverage gaps from GCC feature gaps; `scuba_baseline_gap: MS.AAD.7.4v1` field added for traceability; compensating control `UIAO-AUTHZ-001`)*
+- [x] T4.2 — Create desired-state rule evaluating PIM-for-Groups enrollments against password-reset-capable directory roles *(PR 4: `src/uiao/governance/entra_authz_supplements.py::detect_pim_groups_password_reset_escalation`; default risky-role set covers Password/Helpdesk/User/Authentication/Privileged Authentication/Global Administrator; extensible via `additional_risky_roles` for agency-specific custom roles)*
+- [x] T4.3 — Rule lives alongside `drift.py` in `src/uiao/governance/` — `entra_policy_targeting.py` is policy-*assignment* plumbing (Intune/Arc bindings) and is not the right consumer; the roadmap entry has been corrected to reflect the architectural reality *(PR 4)*
+- [x] T4.4 — Emits `DriftState` with `drift_class=DRIFT-AUTHZ` + `classification=unauthorized` directly (not via `build_drift_state`, which would downgrade a 2-field delta to "risky" — mirrors `classify_authz_drift`'s escalation_hit pattern) *(PR 4)*
+- [ ] T4.5 — Document in UIAO_132 as an agency-specific-above-minimum example *(deferred to a canon-scoped follow-up PR since UIAO_132 is canon and deserves its own review cycle)*
+- [ ] T4.6 — Wire classifier into the aggregation pipeline once an Entra state adapter that emits `pim_for_groups` + `group_role_assignments` is in flight *(follow-up: depends on upstream adapter shape)*
 
 ### E6 · ATO onboarding workflow (depends on E5)
 **Target:** 2026-12-15
