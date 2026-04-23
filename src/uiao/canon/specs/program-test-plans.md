@@ -42,18 +42,18 @@ live only in this document.
 |---|---|---|---|
 | Adapter Conformance Test Plan — Template | UIAO_121 | Per-adapter conformance contract | Every adapter, modernization and conformance |
 | Adapter Integration & Test Plan — Canonical Template | UIAO_123 | End-to-end integration envelope | Every adapter + the overlay that ingests it |
-| Substrate Smoke Tests | `impl/tests/test_substrate_walker.py` | Walker resolves workspace root; DRIFT-SCHEMA / DRIFT-PROVENANCE emit on missing paths / registries | Every clone |
+| Substrate Smoke Tests | `tests/test_substrate_walker.py` | Walker resolves workspace root; DRIFT-SCHEMA / DRIFT-PROVENANCE emit on missing paths / registries | Every clone |
 | Schema Validation Suite | `scripts/validate_schemas.py` | Every registry validates against its pinned JSON Schema | Every canon PR |
-| Metadata Validator | `core/tools/metadata_validator.py` | Frontmatter contract on every doc under `canon/` | Every canon PR |
-| CLI Coverage Tests | `impl/tests/` per `impl/.claude/rules/test-coverage.md` | Happy-path + failure-mode per CLI subcommand | Every CLI PR |
+| Metadata Validator | `.github/workflows/metadata-validator.yml` (inline body) | Frontmatter contract on every doc under `src/uiao/canon/` | Every canon PR |
+| CLI Coverage Tests | `tests/` per the canon-consumer rule at `src/uiao/rules/canon-consumer.md` | Happy-path + failure-mode per CLI subcommand | Every CLI PR |
 
 ---
 
 ## 3. Plan-Entry Rules
 
 1. A new test plan is a canonical artifact. It goes under
-   `core/canon/specs/` (if doctrinal) or is a runnable suite under
-   `impl/tests/` / `scripts/` (if executable). Either way it gets
+   `src/uiao/canon/specs/` (if doctrinal) or is a runnable suite under
+   `tests/` / `scripts/` (if executable). Either way it gets
    an entry in this catalog.
 2. Every plan declares what it covers, what it does **not** cover,
    and what its pass / fail signal is. A plan whose pass signal is
@@ -75,7 +75,7 @@ path filter. The doctrinal templates (UIAO_121, UIAO_123) are
 applied per-adapter: a new adapter lands with a filled-out copy of
 each, validated in the same PR.
 
-- `pytest.yml` — runs `impl/tests/` (substrate smoke + full suite)
+- `pytest.yml` — runs `tests/` (substrate smoke + full suite)
 - `schema-validation.yml` — runs `scripts/validate_schemas.py`
 - `metadata-validator.yml` — runs the validator on canon frontmatter
 - `substrate-drift.yml` — runs `uiao substrate drift` against the tree

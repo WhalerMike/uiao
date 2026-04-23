@@ -41,7 +41,7 @@ Symptoms observed pre-consolidation:
 1. **Two-step install.** A fresh clone needed both `pip install -e .` and `pip install -e ./impl` to bring a working CLI up. The first install gave you `uiao` as a namespace package with canon; the second populated `uiao.impl.*`. Either alone failed silently in surprising ways (e.g., `uiao --help` worked but every subcommand errored on import).
 2. **Canon duplication.** `core/data/control-library/*.yml` and `src/uiao/canon/data/control-library/*.yml` held divergent snapshots because the reorg was mid-flight. The divergence wasn't detected until content comparison.
 3. **Path drift in runtime code.** `Settings._resolve_canon_root()` searched `../core`, `../uiao-core`, and CWD-relative fallbacks in sequence to cope with the half-moved canon.
-4. **Dependency inheritance.** Runtime deps (`jinja2`, `jsonschema`, `compliance-trestle`, `python-docx`, etc.) were declared only in `impl/pyproject.toml`; the root `pyproject.toml` listed a minimal set. `pip install -e .` alone therefore failed on first adapter invocation.
+4. **Dependency inheritance.** Runtime deps (`jinja2`, `jsonschema`, `compliance-trestle`, `python-docx`, etc.) were declared only in the retired `impl/` tree's packaging metadata; the root `pyproject.toml` listed a minimal set. `pip install -e .` alone therefore failed on first adapter invocation.
 5. **Test authority unclear.** `impl/tests/` was authoritative but `core/tests/` also had a single test that duplicated coverage.
 
 ## Decision
