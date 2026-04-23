@@ -33,6 +33,7 @@ Mutation rules (mirrors Copilot Plane 3 spec)
   KSI verdict = inconclusive-> EvidenceRecord status "not-applicable", fresh=False
   KSI verdict = excluded    -> EvidenceRecord status "not-applicable", fresh=False
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -67,6 +68,7 @@ _VERDICT_FRESH: Dict[str, bool] = {
 # Logging helpers
 # ---------------------------------------------------------------------------
 
+
 def _setup_logger(log_path: Path) -> logging.Logger:
     """Emit to both stderr and a timestamped log file."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -96,14 +98,13 @@ def _derive_log_path(output_dir: Path) -> Path:
 # I/O helpers
 # ---------------------------------------------------------------------------
 
+
 def _load_ksi(ksi_path: Path) -> Dict[str, Any]:
     """Load and validate a canonical KSI JSON envelope."""
     with ksi_path.open(encoding="utf-8") as fh:
         data = json.load(fh)
     if not isinstance(data, dict):
-        raise ValueError(
-            f"KSI file must deserialize to a dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"KSI file must deserialize to a dict, got {type(data).__name__}")
     if "ksi" not in data:
         raise ValueError("KSI envelope missing required top-level key: 'ksi'")
     return data  # type: ignore[return-value]
@@ -123,6 +124,7 @@ def _load_config(config_path: Optional[str]) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Record construction
 # ---------------------------------------------------------------------------
+
 
 def _canonical_json(data: Any) -> str:
     """Deterministic JSON serialization (sorted keys, no trailing whitespace)."""
@@ -206,6 +208,7 @@ def _ksi_result_to_evidence_record(
 # Bundle assembly
 # ---------------------------------------------------------------------------
 
+
 def _write_evidence_jsonl(records: List[Dict[str, Any]], dst: Path) -> None:
     """Write records as newline-delimited JSON (one record per line)."""
     dst.parent.mkdir(parents=True, exist_ok=True)
@@ -288,6 +291,7 @@ def _write_bundle_json(
 # ---------------------------------------------------------------------------
 # Public entry-point
 # ---------------------------------------------------------------------------
+
 
 def build_evidence(
     ksi_path: str,
@@ -388,4 +392,3 @@ def build_evidence(
     )
     logger.info("Output directory : %s", dst_dir)
     logger.info("build_evidence complete — run_id=%s", run_id)
-

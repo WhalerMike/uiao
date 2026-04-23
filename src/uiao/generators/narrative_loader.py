@@ -390,4 +390,3 @@ def load_control_library(
         logger.info("Control library: loaded %d controls", len(result))
 
     return result
-

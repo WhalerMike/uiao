@@ -72,7 +72,7 @@ SCHEMA_FILE = "schemas/adapter-registry/adapter-registry.schema.json"
 # Trees in uiao-docs that mirror per-adapter canon
 ADAPTER_DOC_TREES = [
     ("docs/customer-documents/adapter-technical-specifications", "ats", "Adapter Technical Specification"),
-    ("docs/customer-documents/adapter-validation-suites",       "avs", "Adapter Validation Suite"),
+    ("docs/customer-documents/adapter-validation-suites", "avs", "Adapter Validation Suite"),
 ]
 
 FRONTMATTER_MARKER = "---"
@@ -88,9 +88,10 @@ LEGACY_PRIMARY_EXTS = (".md",)
 # Report dataclasses
 # ------------------------------------------------------------------
 
+
 @dataclass
 class DriftItem:
-    kind: str          # "additive" | "orphan" | "status-mismatch" | "schema-error"
+    kind: str  # "additive" | "orphan" | "status-mismatch" | "schema-error"
     adapter_id: str | None
     path: str
     detail: str
@@ -98,7 +99,7 @@ class DriftItem:
 
 @dataclass
 class ScaffoldAction:
-    kind: str          # "created-folder" | "created-file" | "updated-frontmatter"
+    kind: str  # "created-folder" | "created-file" | "updated-frontmatter"
     path: str
     detail: str
 
@@ -155,6 +156,7 @@ class SyncReport:
 # Helpers
 # ------------------------------------------------------------------
 
+
 def load_registries(core_root: Path, report: SyncReport) -> list[dict[str, Any]]:
     """Load registries, validate against schema, and return the merged adapter list."""
     schema_path = core_root / SCHEMA_FILE
@@ -172,7 +174,9 @@ def load_registries(core_root: Path, report: SyncReport) -> list[dict[str, Any]]
         reg_path = core_root / rel_path
         if not reg_path.is_file():
             report.drift.append(
-                DriftItem("schema-error", None, str(reg_path), f"Registry file missing (expected class={expected_class})")
+                DriftItem(
+                    "schema-error", None, str(reg_path), f"Registry file missing (expected class={expected_class})"
+                )
             )
             report.schema_ok = False
             continue
@@ -186,9 +190,7 @@ def load_registries(core_root: Path, report: SyncReport) -> list[dict[str, Any]]
             report.schema_ok = False
             for e in errors:
                 err_path = "/".join(str(x) for x in e.absolute_path) or "<root>"
-                report.drift.append(
-                    DriftItem("schema-error", None, f"{rel_path}:{err_path}", e.message)
-                )
+                report.drift.append(DriftItem("schema-error", None, f"{rel_path}:{err_path}", e.message))
             continue
 
         # Cross-check registry-class matches file's stated purpose
@@ -227,7 +229,7 @@ def parse_frontmatter(path: Path) -> dict[str, Any] | None:
     if not text.startswith(FRONTMATTER_MARKER):
         return None
     # Split on the second --- marker
-    rest = text[len(FRONTMATTER_MARKER):]
+    rest = text[len(FRONTMATTER_MARKER) :]
     end = rest.find("\n" + FRONTMATTER_MARKER)
     if end < 0:
         return None
@@ -269,14 +271,14 @@ def render_placeholder_body(adapter: dict[str, Any], doc_kind: str, doc_title: s
     references = adapter.get("references", [])
     references_block = "\n".join(f"- {r}" for r in references) if references else "_(none declared yet)_"
 
-    return f"""# {adapter['name']} — {doc_title}
+    return f"""# {adapter["name"]} — {doc_title}
 
 ::: {{.callout-note}}
 ## Canon-derived document
 
-**Status:** `{adapter['status']}` · **Class:** `{adapter['class']}` · **Mission:** `{adapter['mission-class']}` · **Phase:** `{adapter.get('phase', 'unspecified')}`
+**Status:** `{adapter["status"]}` · **Class:** `{adapter["class"]}` · **Mission:** `{adapter["mission-class"]}` · **Phase:** `{adapter.get("phase", "unspecified")}`
 
-**Canon source:** `{adapter['_source_registry']}` (propagated by `uiao/tools/sync_canon.py`).
+**Canon source:** `{adapter["_source_registry"]}` (propagated by `uiao/tools/sync_canon.py`).
 
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
@@ -289,7 +291,7 @@ This document is a stub. Replace every `_TODO — ..._` block with authored cont
 
 ## Overview
 
-_TODO — Author an overview of the {adapter['name']} adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion {'AVS' if doc_kind == 'ats' else 'ATS'} document where relevant._
+_TODO — Author an overview of the {adapter["name"]} adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion {"AVS" if doc_kind == "ats" else "ATS"} document where relevant._
 
 ## Scope
 
@@ -307,16 +309,16 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 | Field | Value |
 |---|---|
-| Runtime | `{adapter.get('runtime', 'TBD')}` |
-| Runtime pin | `{adapter.get('runtime-version', 'TBD')}` |
-| Runner class | `{adapter.get('runner-class', 'TBD')}` |
-| Tenancy | `{adapter.get('tenancy', 'TBD')}` |
-| Evidence class | `{adapter.get('evidence-class', 'TBD')}` |
-| Retention | `{adapter.get('retention-years', 'TBD')}` year(s) |
+| Runtime | `{adapter.get("runtime", "TBD")}` |
+| Runtime pin | `{adapter.get("runtime-version", "TBD")}` |
+| Runner class | `{adapter.get("runner-class", "TBD")}` |
+| Tenancy | `{adapter.get("tenancy", "TBD")}` |
+| Evidence class | `{adapter.get("evidence-class", "TBD")}` |
+| Retention | `{adapter.get("retention-years", "TBD")}` year(s) |
 
 ## Canon invariants
 
-- `gcc-boundary: {adapter['gcc-boundary']}`
+- `gcc-boundary: {adapter["gcc-boundary"]}`
 - `ssot-mutation: never`
 - `certificate-anchored: true`
 - `object-identity-only: true`
@@ -337,7 +339,7 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 def render_image_prompts(adapter: dict[str, Any], doc_kind: str) -> str:
     """Seed an IMAGE-PROMPTS.md sibling file."""
-    return f"""# Image Prompts — {adapter['name']} ({doc_kind.upper()})
+    return f"""# Image Prompts — {adapter["name"]} ({doc_kind.upper()})
 
 > Scaffold generated by `sync_canon.py`. Add one prompt per `[IMAGE-NN:]` or
 > `[DIAGRAM-NN:]` placeholder in the companion document. When images are
@@ -353,16 +355,17 @@ _TODO — describe the intended first illustration for this document._
 def compute_frontmatter_hash(fm: dict[str, Any]) -> str:
     """Stable hash of the auto-generated frontmatter fields for drift detection."""
     # Only hash the registry-derived fields; ignore user-added keys
-    subset = {k: fm.get(k) for k in (
-        "adapter-id", "adapter-class", "mission-class", "status", "phase",
-        "gcc-boundary", "canon-source"
-    )}
+    subset = {
+        k: fm.get(k)
+        for k in ("adapter-id", "adapter-class", "mission-class", "status", "phase", "gcc-boundary", "canon-source")
+    }
     return hashlib.sha256(json.dumps(subset, sort_keys=True).encode()).hexdigest()[:12]
 
 
 # ------------------------------------------------------------------
 # Core scanner
 # ------------------------------------------------------------------
+
 
 def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncReport, write: bool) -> None:
     adapter_ids = {a["id"]: a for a in adapters}
@@ -375,9 +378,7 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
                 tree.mkdir(parents=True, exist_ok=True)
                 report.actions.append(ScaffoldAction("created-folder", str(tree), "doc tree root"))
             else:
-                report.drift.append(
-                    DriftItem("additive", None, str(tree), "Doc tree missing (would create)")
-                )
+                report.drift.append(DriftItem("additive", None, str(tree), "Doc tree missing (would create)"))
                 continue
 
         # 1. Scan existing folders → detect orphans + status drift
@@ -389,9 +390,7 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
                 # _template, _assets, _tools — reserved, skip
                 continue
             if not id_pattern.match(folder_id):
-                report.drift.append(
-                    DriftItem("orphan", folder_id, str(child), "Folder name fails adapter id pattern")
-                )
+                report.drift.append(DriftItem("orphan", folder_id, str(child), "Folder name fails adapter id pattern"))
                 continue
             if folder_id not in adapter_ids:
                 report.drift.append(
@@ -455,19 +454,15 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
                         drifted_fields.append(f"{key}: '{actual}' → '{expected}'")
                 if drifted_fields:
                     detail = "; ".join(drifted_fields)
-                    report.drift.append(
-                        DriftItem("status-mismatch", folder_id, str(primary), detail)
-                    )
+                    report.drift.append(DriftItem("status-mismatch", folder_id, str(primary), detail))
                     if write:
                         # Regenerate the frontmatter block, preserve body
                         text = primary.read_text(encoding="utf-8")
                         body_start = text.find("\n---", len(FRONTMATTER_MARKER))
-                        body = text[body_start + len("\n---"):] if body_start > 0 else "\n"
+                        body = text[body_start + len("\n---") :] if body_start > 0 else "\n"
                         new_fm = render_frontmatter(adapter, kind, doc_title)
                         primary.write_text(new_fm + body, encoding="utf-8")
-                        report.actions.append(
-                            ScaffoldAction("updated-frontmatter", str(primary), detail)
-                        )
+                        report.actions.append(ScaffoldAction("updated-frontmatter", str(primary), detail))
 
         # 2. Walk registries → detect additives (adapter with no folder)
         for adapter in adapters:
@@ -483,9 +478,7 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
                 )
                 if write:
                     folder.mkdir(parents=True, exist_ok=True)
-                    report.actions.append(
-                        ScaffoldAction("created-folder", str(folder), f"adapter={adapter['id']}")
-                    )
+                    report.actions.append(ScaffoldAction("created-folder", str(folder), f"adapter={adapter['id']}"))
 
             if write and folder.is_dir():
                 if not primary.exists() or primary.stat().st_size == 0:
@@ -510,6 +503,7 @@ def scan_and_sync(adapters: list[dict[str, Any]], docs_root: Path, report: SyncR
 # ------------------------------------------------------------------
 # CLI
 # ------------------------------------------------------------------
+
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Sync uiao adapter canon into uiao-docs customer-documentation tree")

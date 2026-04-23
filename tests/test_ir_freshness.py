@@ -123,4 +123,3 @@ class TestGenerateRefreshActions:
         ]
         actions = generate_refresh_actions(records, existing_actions=existing)
         assert len(actions) == 0
-

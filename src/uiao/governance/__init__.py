@@ -16,4 +16,3 @@ __all__ = [
     "resolve_sla_days",
     "summarize_actions",
 ]
-

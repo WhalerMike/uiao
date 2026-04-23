@@ -72,4 +72,3 @@ def test_evidence_hash_is_64_hex_chars() -> None:
     h = e.hash()
     assert len(h) == 64
     assert all(c in "0123456789abcdef" for c in h)
-

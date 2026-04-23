@@ -35,11 +35,11 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "uiao.impl.api.app:app",
-        host="127.0.0.1",   # loopback only — IIS handles external TLS
+        host="127.0.0.1",  # loopback only — IIS handles external TLS
         port=port,
         workers=1,
         log_level=log_level,
-        access_log=False,   # IIS W3C logs are authoritative
-        proxy_headers=True, # Trust X-Forwarded-* from IIS
+        access_log=False,  # IIS W3C logs are authoritative
+        proxy_headers=True,  # Trust X-Forwarded-* from IIS
         forwarded_allow_ips="127.0.0.1",
     )

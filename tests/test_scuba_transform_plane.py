@@ -4,6 +4,7 @@ These tests exercise uiao.adapters.scuba.transform.transform_scuba_to_ir
 against the canonical fixture already used by test_scuba_transformer_determinism.py,
 verifying the *new* file-in / file-out contract (paths, schema envelope, logging).
 """
+
 from __future__ import annotations
 
 import json
@@ -27,6 +28,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "scuba_normalized_sample.json"
 # ---------------------------------------------------------------------------
 # _load_scuba
 # ---------------------------------------------------------------------------
+
 
 def test_load_scuba_json(tmp_path):
     src = tmp_path / "sample.json"
@@ -58,6 +60,7 @@ def test_load_scuba_bad_type(tmp_path):
 # _load_config
 # ---------------------------------------------------------------------------
 
+
 def test_load_config_none_returns_empty():
     assert _load_config(None) == {}
 
@@ -84,6 +87,7 @@ def test_load_config_yaml(tmp_path):
 # ---------------------------------------------------------------------------
 # _apply_config_overrides
 # ---------------------------------------------------------------------------
+
 
 def test_apply_config_overrides_empty_cfg():
     scuba = {"ksi_results": [{"status": "FAIL"}]}
@@ -118,6 +122,7 @@ def test_apply_config_overrides_does_not_mutate_original():
 # _resolve_log_path
 # ---------------------------------------------------------------------------
 
+
 def test_resolve_log_path_format(tmp_path):
     output = tmp_path / "ir" / "tenant.ir.json"
     log = _resolve_log_path(output)
@@ -131,8 +136,10 @@ def test_resolve_log_path_format(tmp_path):
 # _ir_result_to_dict
 # ---------------------------------------------------------------------------
 
+
 def test_ir_result_to_dict_schema():
     from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir as _core
+
     result = _core(FIXTURE)
     d = _ir_result_to_dict(result)
     assert d["schema_version"] == "1.0"
@@ -147,6 +154,7 @@ def test_ir_result_to_dict_schema():
 
 def test_ir_result_to_dict_summary_counts():
     from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir as _core
+
     result = _core(FIXTURE)
     d = _ir_result_to_dict(result)
     s = d["summary"]
@@ -159,6 +167,7 @@ def test_ir_result_to_dict_summary_counts():
 # ---------------------------------------------------------------------------
 # transform_scuba_to_ir (full pipeline)
 # ---------------------------------------------------------------------------
+
 
 def test_full_pipeline_creates_output_file(tmp_path):
     out = tmp_path / "ir" / "tenant.ir.json"
@@ -239,4 +248,3 @@ def test_full_pipeline_creates_parent_directories(tmp_path):
     out = tmp_path / "deep" / "nested" / "output" / "tenant.ir.json"
     transform_scuba_to_ir(str(FIXTURE), str(out))
     assert out.exists()
-

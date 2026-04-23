@@ -382,4 +382,3 @@ class ScubaGearAdapter(DatabaseAdapterBase):
         """Return all SCuBA policy results that map to a given KSI/control ID."""
         results = self._extract_results()
         return [r for r in results if SCUBA_TO_KSI_MAP.get(r.get("PolicyId", ""), "") == ksi_id]
-

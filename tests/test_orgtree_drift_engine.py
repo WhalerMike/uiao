@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-from collections import Counter
-from typing import Any, Dict, List
 
 import pytest
 
 from uiao.governance.drift_engine import (
     DriftEngineError,
     OrgTreeDriftEngine,
-)
-from uiao.modernization.orgtree import (
-    DriftEngineConfigValidationError,
-    load_drift_engine_config,
 )
 from uiao.modernization.orgtree.drift_engine_config import (
     default_drift_engine_config,
@@ -69,9 +63,7 @@ class TestConfigLoader:
         for phase in cfg.phases:
             for entry in phase.op_map.values():
                 if entry.op in governance_review_ops:
-                    assert entry.auto_remediate is False, (
-                        f"{phase.name}/{entry.op} must be auto_remediate=false"
-                    )
+                    assert entry.auto_remediate is False, f"{phase.name}/{entry.op} must be auto_remediate=false"
 
 
 # ---------------------------------------------------------------------------
@@ -86,21 +78,24 @@ def engine() -> OrgTreeDriftEngine:
 
 class TestScanEmptyTenant:
     def test_full_empty_tenant_plans_everything(
-        self, engine: OrgTreeDriftEngine,
+        self,
+        engine: OrgTreeDriftEngine,
     ) -> None:
-        snap = engine.build_snapshot({
-            "mod-b-dynamic-groups": {"current_tenant_state": []},
-            "mod-d-admin-units": {
-                "current_tenant_aus": [],
-                "current_tenant_role_assignments": [],
-            },
-            "mod-c-device-orgpath": {
-                "targets": [],
-                "current_entra_devices": [],
-                "current_arc_resources": [],
-            },
-            "mod-n-policy-targeting": {},
-        })
+        snap = engine.build_snapshot(
+            {
+                "mod-b-dynamic-groups": {"current_tenant_state": []},
+                "mod-d-admin-units": {
+                    "current_tenant_aus": [],
+                    "current_tenant_role_assignments": [],
+                },
+                "mod-c-device-orgpath": {
+                    "targets": [],
+                    "current_entra_devices": [],
+                    "current_arc_resources": [],
+                },
+                "mod-n-policy-targeting": {},
+            }
+        )
         report = engine.scan(snap, dry_run=True)
         assert report.dry_run is True
         assert report.halted is False
@@ -113,11 +108,14 @@ class TestScanEmptyTenant:
             assert f.target != ""
 
     def test_partial_scan_skips_missing_phases(
-        self, engine: OrgTreeDriftEngine,
+        self,
+        engine: OrgTreeDriftEngine,
     ) -> None:
-        snap = engine.build_snapshot({
-            "mod-b-dynamic-groups": {"current_tenant_state": []},
-        })
+        snap = engine.build_snapshot(
+            {
+                "mod-b-dynamic-groups": {"current_tenant_state": []},
+            }
+        )
         report = engine.scan(snap, dry_run=True)
         phases_seen = {f.phase for f in report.findings}
         assert phases_seen == {"mod-b-dynamic-groups"}
@@ -125,37 +123,43 @@ class TestScanEmptyTenant:
 
 class TestClassification:
     def test_severity_floor_drops_low(
-        self, engine: OrgTreeDriftEngine,
+        self,
+        engine: OrgTreeDriftEngine,
     ) -> None:
         """P4 findings are emitted (floor=P4 by default)."""
-        snap = engine.build_snapshot({
-            "mod-c-device-orgpath": {
-                "targets": [],
-                "current_entra_devices": [],
-                "current_arc_resources": [],
-            },
-        })
+        snap = engine.build_snapshot(
+            {
+                "mod-c-device-orgpath": {
+                    "targets": [],
+                    "current_entra_devices": [],
+                    "current_arc_resources": [],
+                },
+            }
+        )
         report = engine.scan(snap, dry_run=True)
         # targets=[] → no operations, no findings. Sanity: the floor
         # machinery runs without error.
         assert report.findings == []
 
     def test_unscoped_role_assignment_triggers_p1_halt(
-        self, engine: OrgTreeDriftEngine,
+        self,
+        engine: OrgTreeDriftEngine,
     ) -> None:
-        snap = engine.build_snapshot({
-            "mod-d-admin-units": {
-                "current_tenant_aus": [],
-                "current_tenant_role_assignments": [
-                    {
-                        "id": "ra-escalation",
-                        "roleDefinitionId": "fe930be7-5e62-47db-91af-98c3a49a38b1",
-                        "principalId": "p-escalation-candidate",
-                        "directoryScopeId": "/",
-                    },
-                ],
-            },
-        })
+        snap = engine.build_snapshot(
+            {
+                "mod-d-admin-units": {
+                    "current_tenant_aus": [],
+                    "current_tenant_role_assignments": [
+                        {
+                            "id": "ra-escalation",
+                            "roleDefinitionId": "fe930be7-5e62-47db-91af-98c3a49a38b1",
+                            "principalId": "p-escalation-candidate",
+                            "directoryScopeId": "/",
+                        },
+                    ],
+                },
+            }
+        )
         report = engine.scan(snap, dry_run=False)
         assert report.halted is True
         assert "P1" in report.halt_reason
@@ -167,19 +171,22 @@ class TestClassification:
         assert any(f.op == "role-delete-unscoped" for f in p1)
 
     def test_phantom_group_classified_as_authz(
-        self, engine: OrgTreeDriftEngine,
+        self,
+        engine: OrgTreeDriftEngine,
     ) -> None:
-        snap = engine.build_snapshot({
-            "mod-b-dynamic-groups": {
-                "current_tenant_state": [
-                    {
-                        "id": "g-phantom",
-                        "displayName": "OrgTree-LegacyContractors-Users",
-                        "membershipRule": "bogus",
-                    },
-                ],
-            },
-        })
+        snap = engine.build_snapshot(
+            {
+                "mod-b-dynamic-groups": {
+                    "current_tenant_state": [
+                        {
+                            "id": "g-phantom",
+                            "displayName": "OrgTree-LegacyContractors-Users",
+                            "membershipRule": "bogus",
+                        },
+                    ],
+                },
+            }
+        )
         report = engine.scan(snap, dry_run=True)
         phantoms = [f for f in report.findings if f.op == "delete-phantom"]
         assert len(phantoms) == 1
@@ -189,11 +196,14 @@ class TestClassification:
 
 class TestRemediation:
     def test_dry_run_delegation(
-        self, engine: OrgTreeDriftEngine,
+        self,
+        engine: OrgTreeDriftEngine,
     ) -> None:
-        snap = engine.build_snapshot({
-            "mod-b-dynamic-groups": {"current_tenant_state": []},
-        })
+        snap = engine.build_snapshot(
+            {
+                "mod-b-dynamic-groups": {"current_tenant_state": []},
+            }
+        )
         report = engine.scan(snap, dry_run=True)
         # A remediation pass ran, but in dry-run mode.
         assert len(report.remediation_results) == 1
@@ -203,32 +213,37 @@ class TestRemediation:
         assert pass_["succeeded"] == 0  # dry-run means zero writes
 
     def test_phantoms_not_dispatched_even_with_dry_run_false(
-        self, engine: OrgTreeDriftEngine, monkeypatch: pytest.MonkeyPatch,
+        self,
+        engine: OrgTreeDriftEngine,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Phantom findings must never end up in the write path even
         when dry_run=False is requested."""
-        snap = engine.build_snapshot({
-            "mod-b-dynamic-groups": {
-                "current_tenant_state": [
-                    {
-                        "id": "g-phantom",
-                        "displayName": "OrgTree-LegacyContractors-Users",
-                        "membershipRule": "bogus",
-                    },
-                ],
-            },
-        })
+        snap = engine.build_snapshot(
+            {
+                "mod-b-dynamic-groups": {
+                    "current_tenant_state": [
+                        {
+                            "id": "g-phantom",
+                            "displayName": "OrgTree-LegacyContractors-Users",
+                            "membershipRule": "bogus",
+                        },
+                    ],
+                },
+            }
+        )
         # Spy on _execute to confirm phantom ops never reach it.
         calls: list[str] = []
         from uiao.adapters.entra_dynamic_groups import (
             EntraDynamicGroupsAdapter,
         )
+
         monkeypatch.setattr(
             EntraDynamicGroupsAdapter,
             "_execute",
             lambda self, op: calls.append(op.op),
         )
-        report = engine.scan(snap, dry_run=False)
+        engine.scan(snap, dry_run=False)
         assert "delete-phantom" not in calls
 
 
@@ -259,8 +274,10 @@ class TestEngineErrors:
             "plan",
             lambda self, current_tenant_state=None: BrokenPlan(),
         )
-        snap = engine.build_snapshot({
-            "mod-b-dynamic-groups": {"current_tenant_state": []},
-        })
+        snap = engine.build_snapshot(
+            {
+                "mod-b-dynamic-groups": {"current_tenant_state": []},
+            }
+        )
         with pytest.raises(DriftEngineError, match="unmapped op"):
             engine.scan(snap)

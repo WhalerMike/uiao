@@ -101,6 +101,7 @@ def _interpret_status(requirement_met: Any) -> str:
 # Input discovery
 # ---------------------------------------------------------------------------
 
+
 def discover_scuba_input(input_path: Path) -> Tuple[str, List[Dict[str, Any]]]:
     """Discover and load ScubaGear output from a path.
 
@@ -143,8 +144,7 @@ def discover_scuba_input(input_path: Path) -> Tuple[str, List[Dict[str, Any]]]:
                     return f"nested per-product ({len(sub_products)} files in {subdir.name})", all_results
 
     raise FileNotFoundError(
-        f"No ScubaGear output found at {input_path}. "
-        "Expected ScubaResults.json or MS.*.json files."
+        f"No ScubaGear output found at {input_path}. Expected ScubaResults.json or MS.*.json files."
     )
 
 
@@ -176,6 +176,7 @@ def _load_single_file(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
 # Policy -> KSI resolution
 # ---------------------------------------------------------------------------
 
+
 def _resolve_ksi(policy_id: str, nist_control: str, control_to_ksi: Dict) -> Dict[str, Any]:
     """Resolve a NIST control ID to KSI metadata.
 
@@ -205,6 +206,7 @@ def _resolve_ksi(policy_id: str, nist_control: str, control_to_ksi: Dict) -> Dic
 # ---------------------------------------------------------------------------
 # Main normalization function
 # ---------------------------------------------------------------------------
+
 
 def normalize_scuba(
     input_path: str | Path,
@@ -278,14 +280,16 @@ def normalize_scuba(
             seen_ksi_ids[ksi_id] = []
         seen_ksi_ids[ksi_id].append(policy_id)
 
-        ksi_results.append({
-            "ksi_id": ksi_id,
-            "status": status,
-            "severity": severity,
-            "details": details,
-            "source_policy_id": policy_id,
-            "nist_control": nist_control,
-        })
+        ksi_results.append(
+            {
+                "ksi_id": ksi_id,
+                "status": status,
+                "severity": severity,
+                "details": details,
+                "source_policy_id": policy_id,
+                "nist_control": nist_control,
+            }
+        )
 
     # Aggregate: when multiple policies map to the same KSI,
     # the KSI fails if ANY constituent policy fails (conservative)
@@ -306,9 +310,7 @@ def normalize_scuba(
                 "unmapped_count": len(unmapped_policies),
                 "unmapped_policies": unmapped_policies[:20],
                 "aggregated_ksi_count": len(aggregated),
-                "multi_policy_ksis": {
-                    k: v for k, v in seen_ksi_ids.items() if len(v) > 1
-                },
+                "multi_policy_ksis": {k: v for k, v in seen_ksi_ids.items() if len(v) > 1},
             },
         },
         "tenant": {
@@ -322,7 +324,11 @@ def normalize_scuba(
     fail_count = sum(1 for r in aggregated if r["status"] == "FAIL")
     logger.info(
         "Normalization complete: %d KSIs (%d PASS, %d WARN, %d FAIL), %d unmapped policies",
-        len(aggregated), pass_count, warn_count, fail_count, len(unmapped_policies),
+        len(aggregated),
+        pass_count,
+        warn_count,
+        fail_count,
+        len(unmapped_policies),
     )
 
     return normalized
@@ -370,15 +376,17 @@ def _aggregate_by_ksi(results: List[Dict[str, str]]) -> List[Dict[str, str]]:
             details = " || ".join(detail_parts)
             source_policies = ", ".join(e.get("source_policy_id", "") for e in entries)
 
-        aggregated.append({
-            "ksi_id": ksi_id,
-            "status": agg_status,
-            "severity": max_sev.get("severity", "Medium"),
-            "details": details,
-            "source_policies": source_policies,
-            "nist_control": entries[0].get("nist_control", ""),
-            "policy_count": str(len(entries)),
-        })
+        aggregated.append(
+            {
+                "ksi_id": ksi_id,
+                "status": agg_status,
+                "severity": max_sev.get("severity", "Medium"),
+                "details": details,
+                "source_policies": source_policies,
+                "nist_control": entries[0].get("nist_control", ""),
+                "policy_count": str(len(entries)),
+            }
+        )
 
     return aggregated
 
@@ -387,12 +395,11 @@ def _aggregate_by_ksi(results: List[Dict[str, str]]) -> List[Dict[str, str]]:
 # CLI entry point
 # ---------------------------------------------------------------------------
 
+
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Normalize raw Invoke-SCuBA output for the UIAO pipeline"
-    )
+    parser = argparse.ArgumentParser(description="Normalize raw Invoke-SCuBA output for the UIAO pipeline")
     parser.add_argument("--input", "-i", required=True, help="Path to ScubaGear output (file or directory)")
     parser.add_argument("--output", "-o", help="Output path for normalized JSON (default: stdout)")
     parser.add_argument("--tenant-id", default="unknown-tenant", help="Tenant UUID")
@@ -417,4 +424,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

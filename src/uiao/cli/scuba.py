@@ -10,6 +10,7 @@ callers use::
 The module exposes ``scuba_app`` (a ``typer.Typer`` instance) which is
 mounted by ``uiao.cli.app`` via ``app.add_typer()``.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -65,10 +66,7 @@ def transform_cmd(  # noqa: B008
     """
     from uiao.adapters.scuba.transform import transform_scuba_to_ir
 
-    console.print(
-        f"[bold cyan]SCuBA -> IR[/bold cyan]  "
-        f"[dim]{input_path.name}[/dim] -> [dim]{output_path.name}[/dim]"
-    )
+    console.print(f"[bold cyan]SCuBA -> IR[/bold cyan]  [dim]{input_path.name}[/dim] -> [dim]{output_path.name}[/dim]")
 
     try:
         transform_scuba_to_ir(
@@ -84,4 +82,3 @@ def transform_cmd(  # noqa: B008
         raise typer.Exit(code=1) from exc
 
     console.print("[green]✓ Done.[/green]")
-

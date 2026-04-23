@@ -38,12 +38,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
-
 
 # ------------------------------------------------------------------
 # Minimal 1x1 transparent PNG — used by the stub backend so CI has a
@@ -84,6 +82,7 @@ class GenerateReport:
 # Backends
 # ------------------------------------------------------------------
 
+
 def render_stub(prompt: str, out_path: Path) -> RenderResult:
     """Stub backend — deterministic, offline, CI-friendly.
 
@@ -122,6 +121,7 @@ BACKENDS: dict[str, Callable[[str, Path], RenderResult]] = {
 # Cache I/O
 # ------------------------------------------------------------------
 
+
 def load_cache(path: Path) -> dict[str, str]:
     if not path.is_file():
         return {}
@@ -145,6 +145,7 @@ def save_cache(path: Path, cache: dict[str, str]) -> None:
 # ------------------------------------------------------------------
 # Core orchestration
 # ------------------------------------------------------------------
+
 
 def process_entry(
     entry: dict,
@@ -209,20 +210,17 @@ def main() -> int:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument("--manifest", default="data/image-manifest.json",
-                    help="Path to image manifest (from aggregate_prompts.py)")
-    ap.add_argument("--cache", default="data/image-cache.json",
-                    help="Path to persistent hash cache")
-    ap.add_argument("--docs-root", default=".",
-                    help="Root of uiao-docs repo (default: cwd)")
-    ap.add_argument("--backend", choices=sorted(BACKENDS.keys()), default="stub",
-                    help="Image generation backend (default: stub)")
-    ap.add_argument("--force", action="store_true",
-                    help="Ignore cache; regenerate every entry")
-    ap.add_argument("--dry-run", action="store_true",
-                    help="Report planned actions without writing")
-    ap.add_argument("--verbose", action="store_true",
-                    help="Per-entry status on stderr")
+    ap.add_argument(
+        "--manifest", default="data/image-manifest.json", help="Path to image manifest (from aggregate_prompts.py)"
+    )
+    ap.add_argument("--cache", default="data/image-cache.json", help="Path to persistent hash cache")
+    ap.add_argument("--docs-root", default=".", help="Root of uiao-docs repo (default: cwd)")
+    ap.add_argument(
+        "--backend", choices=sorted(BACKENDS.keys()), default="stub", help="Image generation backend (default: stub)"
+    )
+    ap.add_argument("--force", action="store_true", help="Ignore cache; regenerate every entry")
+    ap.add_argument("--dry-run", action="store_true", help="Report planned actions without writing")
+    ap.add_argument("--verbose", action="store_true", help="Per-entry status on stderr")
     args = ap.parse_args()
 
     docs_root = Path(args.docs_root).resolve()
@@ -270,8 +268,7 @@ def main() -> int:
     if not args.dry_run:
         save_cache(cache_path, cache)
 
-    print(f"generate_images.py — backend={args.backend}"
-          f"{' (dry-run)' if args.dry_run else ''}", file=sys.stderr)
+    print(f"generate_images.py — backend={args.backend}{' (dry-run)' if args.dry_run else ''}", file=sys.stderr)
     print(f"  manifest:          {args.manifest}", file=sys.stderr)
     print(f"  cache:             {args.cache}", file=sys.stderr)
     print(f"  total entries:     {report.total_entries}", file=sys.stderr)
@@ -279,7 +276,7 @@ def main() -> int:
     print(f"  rendered:          {report.rendered}", file=sys.stderr)
     print(f"  failed:            {report.failed}", file=sys.stderr)
     if report.errors:
-        print(f"  errors:", file=sys.stderr)
+        print("  errors:", file=sys.stderr)
         for e in report.errors:
             print(f"    - {e}", file=sys.stderr)
 

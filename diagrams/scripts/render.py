@@ -18,13 +18,11 @@ Boundary: GCC-Moderate
 """
 
 import argparse
-import json
-import os
 import re
 import subprocess
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 try:
     import yaml
@@ -47,12 +45,20 @@ SUPPORTED_FORMATS = ["png", "svg", "pdf"]
 LABEL_MAX_LENGTH = 15
 
 CATEGORIES = [
-    "training", "architecture", "testing", "planning",
-    "governance", "identity", "operations", "enforcement", "data"
+    "training",
+    "architecture",
+    "testing",
+    "planning",
+    "governance",
+    "identity",
+    "operations",
+    "enforcement",
+    "data",
 ]
 
 
 # ── Source Discovery ────────────────────────────────────────────────────────
+
 
 def discover_sources(category: str = None) -> list:
     """
@@ -83,6 +89,7 @@ def discover_sources(category: str = None) -> list:
 
 
 # ── Metadata Parsing ────────────────────────────────────────────────────────
+
 
 def parse_frontmatter(mmd_path: Path) -> dict:
     """Extract YAML frontmatter from Mermaid comment block."""
@@ -137,6 +144,7 @@ def extract_mermaid_body(mmd_path: Path) -> str:
 
 # ── NanoBanana Transformation ───────────────────────────────────────────────
 
+
 def abbreviate_label(label: str, max_len: int = LABEL_MAX_LENGTH) -> str:
     """Abbreviate a label for nano form factor."""
     if len(label) <= max_len:
@@ -152,10 +160,7 @@ def abbreviate_label(label: str, max_len: int = LABEL_MAX_LENGTH) -> str:
         return result
 
     # Truncate with abbreviation
-    if len(filtered) > 1:
-        result = filtered[0] + " " + filtered[1][:4] + "."
-    else:
-        result = filtered[0][:max_len - 1] + "."
+    result = filtered[0] + " " + filtered[1][:4] + "." if len(filtered) > 1 else filtered[0][: max_len - 1] + "."
 
     return result[:max_len]
 
@@ -194,12 +199,13 @@ def apply_nano_transform(mermaid_body: str, nano_config: dict) -> str:
             title = match.group(1)
             # Count internal nodes for the summary label
             block = match.group(0)
-            node_count = len(re.findall(r'\w+\["', block)) + len(re.findall(r'\w+\[', block))
+            node_count = len(re.findall(r'\w+\["', block)) + len(re.findall(r"\w+\[", block))
             summary_node = f'    {group_id}[/"{title} ({node_count})"/]'
-            transformed = transformed[:match.start()] + summary_node + transformed[match.end():]
+            transformed = transformed[: match.start()] + summary_node + transformed[match.end() :]
 
     # Abbreviate labels
     if label_mode == "abbreviated":
+
         def abbreviate_match(m):
             full_label = m.group(1)
             short = abbreviate_label(full_label)
@@ -213,6 +219,7 @@ def apply_nano_transform(mermaid_body: str, nano_config: dict) -> str:
 
 # ── Rendering ────────────────────────────────────────────────────────────────
 
+
 def render_mermaid(mermaid_content: str, output_path: Path, output_format: str = "png") -> bool:
     """Render Mermaid content to specified format using mermaid-cli."""
     # Ensure output directory exists
@@ -225,10 +232,14 @@ def render_mermaid(mermaid_content: str, output_path: Path, output_format: str =
 
         cmd = [
             MERMAID_CLI,
-            "-i", str(temp_input),
-            "-o", str(output_path),
-            "-f", output_format,
-            "--backgroundColor", "transparent",
+            "-i",
+            str(temp_input),
+            "-o",
+            str(output_path),
+            "-f",
+            output_format,
+            "--backgroundColor",
+            "transparent",
         ]
 
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -296,20 +307,25 @@ def render_diagram(source_path: Path, output_format: str = "png", form_factor: s
 
 # ── CLI ──────────────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="UIAO Diagram Rendering Pipeline — Dual-form-factor Mermaid renderer (v2.0)"
     )
     parser.add_argument("--source", type=str, help="Specific .mmd source file to render")
     parser.add_argument("--all", action="store_true", help="Render all .mmd sources across all categories")
-    parser.add_argument("--category", type=str, choices=CATEGORIES,
-                        help="Render only diagrams in a specific category")
-    parser.add_argument("--format", type=str, default="png", choices=SUPPORTED_FORMATS,
-                        help="Output format (default: png)")
-    parser.add_argument("--form-factor", type=str, default="both", choices=["full", "nano", "both"],
-                        help="Form factor to render (default: both)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Parse and validate without rendering")
+    parser.add_argument("--category", type=str, choices=CATEGORIES, help="Render only diagrams in a specific category")
+    parser.add_argument(
+        "--format", type=str, default="png", choices=SUPPORTED_FORMATS, help="Output format (default: png)"
+    )
+    parser.add_argument(
+        "--form-factor",
+        type=str,
+        default="both",
+        choices=["full", "nano", "both"],
+        help="Form factor to render (default: both)",
+    )
+    parser.add_argument("--dry-run", action="store_true", help="Parse and validate without rendering")
 
     args = parser.parse_args()
 
@@ -359,7 +375,7 @@ def main():
             metadata = parse_frontmatter(source)
 
             if not metadata:
-                print(f"    ✗ No valid frontmatter")
+                print("    ✗ No valid frontmatter")
                 error_count += 1
                 continue
 

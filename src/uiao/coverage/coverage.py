@@ -60,4 +60,3 @@ def format_ssp_section(links: List[CoverageLink]) -> str:
             )
         lines.append("")
     return "\n".join(lines)
-

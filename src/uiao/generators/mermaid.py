@@ -100,4 +100,3 @@ def render_all_mermaid(*args: object, **kwargs: object) -> list[Path]:
     raise RuntimeError(
         "render_all_mermaid() has been removed. Use render_all_plantuml() from uiao.generators.plantuml."
     )
-

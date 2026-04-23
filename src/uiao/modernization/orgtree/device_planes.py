@@ -21,7 +21,7 @@ The loader enforces three integrity checks beyond JSON Schema:
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
@@ -30,7 +30,6 @@ from typing import Dict, Mapping, Optional, Set, Tuple
 import yaml
 
 from .codebook import Codebook, default_codebook
-
 
 _KNOWN_DISPOSITIONS: Set[str] = {
     "ENTRA-DEVICE",
@@ -114,9 +113,7 @@ def _validate_schema(document: Dict) -> None:
     try:
         import jsonschema
     except ImportError as exc:  # pragma: no cover
-        raise DevicePlaneValidationError(
-            "jsonschema is required to validate the device-plane registry"
-        ) from exc
+        raise DevicePlaneValidationError("jsonschema is required to validate the device-plane registry") from exc
     schema = _read_default_schema()
     try:
         jsonschema.validate(instance=document, schema=schema)
@@ -134,9 +131,7 @@ def _validate_integrity(document: Dict, codebook: Codebook) -> None:
 
     for plane in planes:
         if plane["name"] in plane_names:
-            raise DevicePlaneValidationError(
-                f"Duplicate plane name: {plane['name']}"
-            )
+            raise DevicePlaneValidationError(f"Duplicate plane name: {plane['name']}")
         plane_names.add(plane["name"])
         for disposition in plane["dispositions"]:
             if disposition in claimed_dispositions:
@@ -150,16 +145,13 @@ def _validate_integrity(document: Dict, codebook: Codebook) -> None:
     overlap = claimed_dispositions.keys() & skip_names
     if overlap:
         raise DevicePlaneValidationError(
-            f"Dispositions {sorted(overlap)} appear in both planes[] and "
-            "skip_dispositions[] — pick exactly one"
+            f"Dispositions {sorted(overlap)} appear in both planes[] and skip_dispositions[] — pick exactly one"
         )
 
     covered = set(claimed_dispositions.keys()) | skip_names
     missing = _KNOWN_DISPOSITIONS - covered
     if missing:
-        raise DevicePlaneValidationError(
-            f"Registry is missing coverage for dispositions: {sorted(missing)}"
-        )
+        raise DevicePlaneValidationError(f"Registry is missing coverage for dispositions: {sorted(missing)}")
 
     # ARM tag regex must agree with the canonical OrgPath regex. We compare
     # against a reference copy shipped with MOD_A so a divergence between
@@ -213,15 +205,10 @@ def load_device_plane_registry(
     codebook: Optional[Codebook] = None,
 ) -> DevicePlaneRegistry:
     """Load and validate the device-plane registry."""
-    raw_text = (
-        _read_default_registry() if path is None
-        else Path(path).read_text(encoding="utf-8")
-    )
+    raw_text = _read_default_registry() if path is None else Path(path).read_text(encoding="utf-8")
     document = yaml.safe_load(raw_text)
     if not isinstance(document, dict):
-        raise DevicePlaneValidationError(
-            "Device-plane registry must be a YAML mapping at the top level"
-        )
+        raise DevicePlaneValidationError("Device-plane registry must be a YAML mapping at the top level")
     _validate_schema(document)
     _validate_integrity(document, codebook or default_codebook())
     return _build(document)

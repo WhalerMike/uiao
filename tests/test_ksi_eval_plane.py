@@ -13,6 +13,7 @@ a tmp directory so no fixture files are required.
 All tests are deterministic, hermetic (no network), and import nothing from
 the SCuBA layer (Plane 1) or from the Evidence/POA&M layers (Planes 3/4).
 """
+
 from __future__ import annotations
 
 import json
@@ -37,6 +38,7 @@ from uiao.ksi.evaluate import (
 # ---------------------------------------------------------------------------
 # Fixtures and helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_control(cid: str) -> Dict[str, Any]:
     return {
@@ -90,6 +92,7 @@ def _make_ir_envelope(
 # 1. _load_ir
 # ---------------------------------------------------------------------------
 
+
 class TestLoadIR:
     def test_loads_valid_json(self, tmp_path: Path) -> None:
         ir = _make_ir_envelope([_make_control("c1")], [])
@@ -114,6 +117,7 @@ class TestLoadIR:
 # 2. _load_rules
 # ---------------------------------------------------------------------------
 
+
 class TestLoadRules:
     def test_returns_empty_dict_when_none(self) -> None:
         assert _load_rules(None) == {}
@@ -135,6 +139,7 @@ class TestLoadRules:
 # 3. _write_ksi
 # ---------------------------------------------------------------------------
 
+
 class TestWriteKSI:
     def test_creates_parent_dirs(self, tmp_path: Path) -> None:
         dst = tmp_path / "output" / "ksi" / "source.ksi.json"
@@ -153,6 +158,7 @@ class TestWriteKSI:
 # ---------------------------------------------------------------------------
 # 4. _build_evidence_index
 # ---------------------------------------------------------------------------
+
 
 class TestBuildEvidenceIndex:
     def test_groups_by_control_id(self) -> None:
@@ -177,6 +183,7 @@ class TestBuildEvidenceIndex:
 # ---------------------------------------------------------------------------
 # 5. _evaluate_control — default logic
 # ---------------------------------------------------------------------------
+
 
 class TestEvaluateControlDefault:
     def test_inconclusive_when_no_evidence(self) -> None:
@@ -243,6 +250,7 @@ class TestEvaluateControlDefault:
 # 6. _evaluate_control — exclusions
 # ---------------------------------------------------------------------------
 
+
 class TestEvaluateControlExclusions:
     def test_excluded_control(self) -> None:
         ctrl = _make_control("c1")
@@ -263,6 +271,7 @@ class TestEvaluateControlExclusions:
 # ---------------------------------------------------------------------------
 # 7. _evaluate_control — per-control overrides
 # ---------------------------------------------------------------------------
+
 
 class TestEvaluateControlOverrides:
     def test_override_pass_when_matching_evidence(self) -> None:
@@ -293,6 +302,7 @@ class TestEvaluateControlOverrides:
 # ---------------------------------------------------------------------------
 # 8. _build_summary
 # ---------------------------------------------------------------------------
+
 
 class TestBuildSummary:
     def _make_result(self, verdict: str) -> Dict[str, Any]:
@@ -330,14 +340,15 @@ class TestBuildSummary:
 # 9. Integration: evaluate_ksi() end-to-end
 # ---------------------------------------------------------------------------
 
+
 class TestEvaluateKSIIntegration:
     """Full round-trip test through evaluate_ksi()."""
 
     def _build_ir_file(self, tmp_path: Path) -> Path:
         controls = [_make_control("c1"), _make_control("c2"), _make_control("c3")]
         evidence = [
-            _make_evidence("e1", "c1", "pass"),   # c1 -> pass
-            _make_evidence("e2", "c2", "fail"),   # c2 -> fail
+            _make_evidence("e1", "c1", "pass"),  # c1 -> pass
+            _make_evidence("e2", "c2", "fail"),  # c2 -> fail
             # c3 has no evidence -> inconclusive
         ]
         ir = _make_ir_envelope(controls, evidence)
@@ -433,4 +444,3 @@ class TestEvaluateKSIIntegration:
                 str(tmp_path / "nonexistent.ir.json"),
                 str(tmp_path / "out.ksi.json"),
             )
-

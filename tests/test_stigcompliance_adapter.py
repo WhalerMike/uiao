@@ -4,7 +4,9 @@ from __future__ import annotations
 import pytest
 from uiao.adapters.stigcompliance_adapter import StigComplianceAdapter
 from uiao.adapters.database_base import (
-    ConnectionProvenance, EvidenceObject, SchemaMappingObject,
+    ConnectionProvenance,
+    EvidenceObject,
+    SchemaMappingObject,
 )
 
 
@@ -47,6 +49,7 @@ class TestBasics:
     def test_run_assessment(self, adapter: StigComplianceAdapter) -> None:
         import json
         from pathlib import Path
+
         data = json.loads((Path(__file__).parent / "fixtures" / "stig-results.json").read_text())
         result = adapter.run_stig_assessment(data)
         assert len(result.claims) == 4
@@ -54,6 +57,7 @@ class TestBasics:
     def test_evidence_bundle(self, adapter: StigComplianceAdapter) -> None:
         import json
         from pathlib import Path
+
         data = json.loads((Path(__file__).parent / "fixtures" / "stig-results.json").read_text())
         result = adapter.generate_stig_evidence(data)
         assert isinstance(result, EvidenceObject)

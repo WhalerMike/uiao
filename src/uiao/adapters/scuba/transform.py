@@ -15,6 +15,7 @@ Public entry-point
     writing the two output files. All I/O is funnelled through the three
     path parameters so the function is trivially testable without mocking.
 """
+
 from __future__ import annotations
 
 import json
@@ -84,11 +85,7 @@ def _load_scuba(src: Path) -> Dict[str, Any]:
         When the parsed content is not a dict.
     """
     with src.open(encoding="utf-8") as fh:
-        raw = (
-            yaml.safe_load(fh) or {}
-            if src.suffix in {".yaml", ".yml"}
-            else json.load(fh)
-        )
+        raw = yaml.safe_load(fh) or {} if src.suffix in {".yaml", ".yml"} else json.load(fh)
     if not isinstance(raw, dict):
         raise ValueError(f"SCuBA input must be a dict, got {type(raw).__name__}")
     return raw
@@ -112,10 +109,7 @@ def _apply_config_overrides(
     # Config key: drop_statuses → filter out ksi_results with these statuses
     drop = set(cfg.get("drop_statuses", []))
     if drop and "ksi_results" in result:
-        result["ksi_results"] = [
-            r for r in result["ksi_results"]
-            if r.get("status", "").upper() not in drop
-        ]
+        result["ksi_results"] = [r for r in result["ksi_results"] if r.get("status", "").upper() not in drop]
     return result
 
 
@@ -142,6 +136,7 @@ def _ir_result_to_dict(result: SCuBATransformResult) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def transform_scuba_to_ir(
     input_path: str,
@@ -226,4 +221,3 @@ def transform_scuba_to_ir(
         json.dump(ir_dict, fh, indent=2, ensure_ascii=False)
 
     logger.info("IR written to %s", dst)
-

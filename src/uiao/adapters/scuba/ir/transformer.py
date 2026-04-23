@@ -176,4 +176,3 @@ if __name__ == "__main__":
         sys.exit(1)
     result = transform_scuba_to_ir(sys.argv[1])
     print(result.summary())
-

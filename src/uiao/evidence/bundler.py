@@ -120,4 +120,3 @@ class EvidenceBundler:
             zf.writestr("oscal-back-matter.json", json.dumps(back_matter, indent=2))
 
         return out.resolve()
-

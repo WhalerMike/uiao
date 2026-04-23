@@ -69,4 +69,3 @@ def test_poam_contains_fail_only(tmp_path, scuba_file):
     rows = json.loads((tmp_path / "out" / "poam.json").read_text())
     assert len(rows) == 1
     assert rows[0]["ksi_id"] == "KSI-IAM-02"
-

@@ -124,16 +124,13 @@ def _validate_schema(document: Dict) -> None:
     try:
         import jsonschema
     except ImportError as exc:  # pragma: no cover
-        raise PolicyTargetingValidationError(
-            "jsonschema is required to validate policy-targeting canon"
-        ) from exc
+        raise PolicyTargetingValidationError("jsonschema is required to validate policy-targeting canon") from exc
     schema = _read_default_schema()
     try:
         jsonschema.validate(instance=document, schema=schema)
     except jsonschema.ValidationError as exc:
         raise PolicyTargetingValidationError(
-            f"policy-targets schema validation failed: {exc.message} at "
-            f"{'/'.join(str(p) for p in exc.absolute_path)}"
+            f"policy-targets schema validation failed: {exc.message} at {'/'.join(str(p) for p in exc.absolute_path)}"
         ) from exc
 
 
@@ -161,27 +158,22 @@ def _validate_integrity(
             assignment["intent"],
         )
         if dedup in intune_seen:
-            raise PolicyTargetingValidationError(
-                f"Duplicate intune_assignment: {dedup}"
-            )
+            raise PolicyTargetingValidationError(f"Duplicate intune_assignment: {dedup}")
         intune_seen.add(dedup)
 
     # 2. Arc orgpath_selector prefixes must be codebook-recognised, and
     # assignment_name unique.
     arc_names: Set[str] = set()
-    for i, assignment in enumerate(document.get("arc_policy_assignments", [])):
+    for _i, assignment in enumerate(document.get("arc_policy_assignments", [])):
         name = assignment["assignment_name"]
         if name in arc_names:
-            raise PolicyTargetingValidationError(
-                f"Duplicate arc_policy_assignment name: {name}"
-            )
+            raise PolicyTargetingValidationError(f"Duplicate arc_policy_assignment name: {name}")
         arc_names.add(name)
 
         prefix = assignment["orgpath_selector"]["prefix"]
         if codebook.is_deprecated(prefix):
             raise PolicyTargetingValidationError(
-                f"arc_policy_assignment '{name}' selector prefix '{prefix}' "
-                "is deprecated in MOD_A codebook"
+                f"arc_policy_assignment '{name}' selector prefix '{prefix}' is deprecated in MOD_A codebook"
             )
         # ORG (root) is not an entry in the codebook's `codes` list if the
         # codebook chooses to omit the root, so accept it explicitly.
@@ -236,15 +228,10 @@ def load_policy_targeting_canon(
     dynamic_groups: Optional[DynamicGroupLibrary] = None,
 ) -> PolicyTargetingCanon:
     """Load and validate the Phase 5 policy-targeting canon."""
-    raw_text = (
-        _read_default_canon() if path is None
-        else Path(path).read_text(encoding="utf-8")
-    )
+    raw_text = _read_default_canon() if path is None else Path(path).read_text(encoding="utf-8")
     document = yaml.safe_load(raw_text)
     if not isinstance(document, dict):
-        raise PolicyTargetingValidationError(
-            "policy-targets must be a YAML mapping at the top level"
-        )
+        raise PolicyTargetingValidationError("policy-targets must be a YAML mapping at the top level")
     _validate_schema(document)
     _validate_integrity(
         document,

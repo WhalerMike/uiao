@@ -89,4 +89,3 @@ def build_ksi_ir_mapping(
 if __name__ == "__main__":
     controls, policies = build_ksi_ir_mapping()
     print(f"Generated {len(controls)} Controls and {len(policies)} Policies")
-

@@ -24,8 +24,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # EOL OS versions — no migration path, decommission required
 # Updated per Microsoft lifecycle: https://learn.microsoft.com/lifecycle
@@ -89,11 +87,12 @@ _SERVER_OS_PATTERNS = [
 @dataclass
 class ComputerDisposition:
     """Disposition decision for one AD computer object."""
+
     computer_name: str
     distinguished_name: str
     os_version: str
-    disposition: str         # ENTRA-DEVICE | ARC-SERVER | MANAGED-IDENTITY-CANDIDATE
-                             # STAY-AD-DC | STAY-AD-DEPENDENCY | DECOMMISSION
+    disposition: str  # ENTRA-DEVICE | ARC-SERVER | MANAGED-IDENTITY-CANDIDATE
+    # STAY-AD-DC | STAY-AD-DEPENDENCY | DECOMMISSION
     migration_tracks: list[str] = field(default_factory=list)
     orgpath_plane: str = ""  # extensionAttribute1 | ARM-tag | app-tag | none
     spn_count: int = 0
@@ -123,7 +122,7 @@ def classify_computer_disposition(
     distinguished_name: str,
     os_version: str,
     spns: list[str],
-    kerberos_delegation: str,    # none | unconstrained | constrained
+    kerberos_delegation: str,  # none | unconstrained | constrained
     gmsa_linked: bool,
     installed_roles: list[str],
     last_logon_days: int,
@@ -157,16 +156,12 @@ def classify_computer_disposition(
     # ---- Step 2: Stale / disabled ----
     if not is_enabled or last_logon_days > 180:
         disp.disposition = "DECOMMISSION"
-        disp.notes = (
-            f"Disabled or stale (last logon {last_logon_days}d). "
-            "Verify before decommission."
-        )
+        disp.notes = f"Disabled or stale (last logon {last_logon_days}d). Verify before decommission."
         return disp
 
     # ---- Step 3: DC detection ----
     name_is_dc = _matches_any(computer_name, _DC_NAME_PATTERNS)
-    role_is_dc = any("Active Directory Domain Services" in r or
-                     "NTDS" in r for r in installed_roles)
+    role_is_dc = any("Active Directory Domain Services" in r or "NTDS" in r for r in installed_roles)
     if name_is_dc or role_is_dc:
         disp.disposition = "STAY-AD-DC"
         disp.is_dc = True
@@ -175,14 +170,12 @@ def classify_computer_disposition(
         return disp
 
     # ---- Step 4: AD-dependent role detection ----
-    dep_roles = [r for r in installed_roles
-                 if any(dep in r for dep in _DEPENDENCY_ROLES)]
-    dep_spns = [s for s in spns
-                if _matches_any(s.lower(), _DEPENDENCY_SPN_PATTERNS)]
+    dep_roles = [r for r in installed_roles if any(dep in r for dep in _DEPENDENCY_ROLES)]
+    dep_spns = [s for s in spns if _matches_any(s.lower(), _DEPENDENCY_SPN_PATTERNS)]
     if dep_roles or dep_spns:
         disp.disposition = "STAY-AD-DEPENDENCY"
         disp.adcs_dependent = bool(dep_spns)
-        disp.orgpath_plane = "ARM-tag"   # Arc-enrolled for visibility only
+        disp.orgpath_plane = "ARM-tag"  # Arc-enrolled for visibility only
         disp.notes = (
             f"AD-dependent roles: {dep_roles or dep_spns}. "
             "Must remain AD-joined until dependency resolved (Track 3 prerequisite)."
@@ -209,11 +202,7 @@ def classify_computer_disposition(
 
     # ---- Step 6: Server classification ----
     if _matches_any(os_version, _SERVER_OS_PATTERNS):
-        has_workload_identity_need = (
-            disp.spn_count > 0 or
-            disp.has_kcd or
-            disp.has_gmsa
-        )
+        has_workload_identity_need = disp.spn_count > 0 or disp.has_kcd or disp.has_gmsa
 
         if has_workload_identity_need:
             disp.disposition = "MANAGED-IDENTITY-CANDIDATE"
@@ -226,28 +215,19 @@ def classify_computer_disposition(
                 "AD cannot retire until Track 3 complete."
             )
             if disp.spn_count > 0:
-                disp.blockers.append(
-                    f"{disp.spn_count} SPNs require MI/SP mapping before AD retirement"
-                )
+                disp.blockers.append(f"{disp.spn_count} SPNs require MI/SP mapping before AD retirement")
                 disp.risk_factors.append("RF-C02")
             if disp.has_kcd:
-                disp.blockers.append(
-                    "Kerberos constrained delegation must be rebuilt as OAuth2 flow"
-                )
+                disp.blockers.append("Kerberos constrained delegation must be rebuilt as OAuth2 flow")
                 disp.risk_factors.append("RF-C04")
             if disp.has_gmsa:
-                disp.blockers.append(
-                    "GMSA must be replaced by Managed Identity"
-                )
+                disp.blockers.append("GMSA must be replaced by Managed Identity")
                 disp.risk_factors.append("RF-C07")
         else:
             disp.disposition = "ARC-SERVER"
             disp.migration_tracks = ["2"]
             disp.orgpath_plane = "ARM-tag"
-            disp.notes = (
-                "Server with no workload identity dependencies. "
-                "Track 2: Arc enrollment + OrgPath ARM tag."
-            )
+            disp.notes = "Server with no workload identity dependencies. Track 2: Arc enrollment + OrgPath ARM tag."
         return disp
 
     # ---- Fallback: unknown OS ----
@@ -266,6 +246,7 @@ def _matches_any(value: str, patterns: list[str]) -> bool:
 # ------------------------------------------------------------------
 # Batch classification from survey output
 # ------------------------------------------------------------------
+
 
 def classify_all_computers(
     computer_records: list[dict],
@@ -299,8 +280,7 @@ def classify_all_computers(
         counts[d.disposition] = counts.get(d.disposition, 0) + 1
 
     blockers = [d for d in dispositions if d.is_retirement_blocker]
-    unmitigated_spns = sum(d.spn_count for d in dispositions
-                           if d.disposition == "MANAGED-IDENTITY-CANDIDATE")
+    unmitigated_spns = sum(d.spn_count for d in dispositions if d.disposition == "MANAGED-IDENTITY-CANDIDATE")
 
     summary = {
         "total_computers": len(dispositions),
@@ -315,8 +295,7 @@ def classify_all_computers(
             "GAE-GATE-5": counts.get("STAY-AD-DC", 0),
         },
         "ad_retirement_ready": (
-            counts.get("MANAGED-IDENTITY-CANDIDATE", 0) == 0 and
-            counts.get("STAY-AD-DEPENDENCY", 0) == 0
+            counts.get("MANAGED-IDENTITY-CANDIDATE", 0) == 0 and counts.get("STAY-AD-DEPENDENCY", 0) == 0
         ),
     }
     return dispositions, summary

@@ -119,4 +119,3 @@ def test_to_dict_is_serializable():
     d = result.to_dict()
     serialized = json.dumps(d)
     assert len(serialized) > 0
-

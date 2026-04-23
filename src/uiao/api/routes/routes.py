@@ -16,13 +16,12 @@ import os
 import platform
 from pathlib import Path
 
-import httpx
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from ..auth.entra_token import EntraTokenProvider
 
-health_router = APIRouter()   # rename to `router` in health.py
+health_router = APIRouter()  # rename to `router` in health.py
 
 
 class HealthResponse(BaseModel):
@@ -49,11 +48,12 @@ async def health_check(request: Request) -> HealthResponse:
     ad_ok = False
     if ad_server:
         import socket
+
         try:
             socket.setdefaulttimeout(3)
             with socket.create_connection((ad_server, 389)):
                 ad_ok = True
-        except (OSError, socket.timeout):
+        except (TimeoutError, OSError):
             ad_ok = False
 
     # Try Entra token
@@ -87,32 +87,25 @@ from typing import Optional
 from fastapi import HTTPException, status
 from pydantic import BaseModel, Field
 
-from ..auth.kerberos import WindowsIdentity, require_windows_auth
 from ...adapters.modernization.active_directory.survey import (
     ADSurveyReport,
     run_discovery,
 )
+from ..auth.kerberos import WindowsIdentity, require_windows_auth
 
-survey_router = APIRouter()   # rename to `router` in survey.py
+survey_router = APIRouter()  # rename to `router` in survey.py
 
 
 class SurveyRequest(BaseModel):
     ldap_server: str = Field(..., description="DC hostname or IP")
     base_dn: str = Field(..., description="Forest root DN: DC=corp,DC=contoso,DC=com")
     codebook_path: Optional[str] = Field(
-        None,
-        description="Server-side path to OrgPath codebook JSON (Appendix A). "
-                    "If omitted, format validation only."
+        None, description="Server-side path to OrgPath codebook JSON (Appendix A). If omitted, format validation only."
     )
     hr_export_path: Optional[str] = Field(
-        None,
-        description="Server-side path to HR export CSV (employeeId,orgPath). "
-                    "If omitted, OU derivation only."
+        None, description="Server-side path to HR export CSV (employeeId,orgPath). If omitted, OU derivation only."
     )
-    include_computers: bool = Field(
-        False,
-        description="Include computer object survey (slower on large forests)."
-    )
+    include_computers: bool = Field(False, description="Include computer object survey (slower on large forests).")
 
 
 class SurveyResponse(BaseModel):
@@ -158,7 +151,7 @@ async def run_survey(
         report: ADSurveyReport = run_discovery(
             ldap_server=body.ldap_server,
             base_dn=body.base_dn,
-            username="",   # empty = use GSSAPI/Kerberos (Windows)
+            username="",  # empty = use GSSAPI/Kerberos (Windows)
             password="",
             hr_export_path=hr_path,
             codebook_path=cb_path,
@@ -168,7 +161,7 @@ async def run_survey(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Survey failed: {exc}",
-        )
+        ) from exc
 
     p1 = sum(1 for f in report.findings if f.severity == "P1")
     p2 = sum(1 for f in report.findings if f.severity == "P2")
@@ -220,7 +213,7 @@ async def get_findings(
             codebook_path=cb_path,
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return {
         "requested_by": identity.username,
@@ -234,14 +227,12 @@ async def get_findings(
 from fastapi import APIRouter as _APIRouter
 
 from ...adapters.modernization.active_directory.orgpath import (
-    OrgPathAssignmentReport,
-    build_ou_mapping,
     export_assignment_report,
     resolve_user_assignments,
     write_orgpath_to_ad,
 )
 
-orgpath_router = _APIRouter()   # rename to `router` in orgpath.py
+orgpath_router = _APIRouter()  # rename to `router` in orgpath.py
 
 
 class OrgPathAssignRequest(BaseModel):
@@ -252,12 +243,12 @@ class OrgPathAssignRequest(BaseModel):
     output_dir: Optional[str] = Field(
         None,
         description="Server-side directory to write CSV/JSON artefacts (Appendix F). "
-                    "If omitted, artefacts are returned in response body only."
+        "If omitted, artefacts are returned in response body only.",
     )
     dry_run: bool = Field(
         True,
         description="MUST be explicitly set to false to write extensionAttributes to AD. "
-                    "Default true — validates and reports without any AD changes."
+        "Default true — validates and reports without any AD changes.",
     )
 
 
@@ -284,7 +275,7 @@ async def assign_orgpaths(
     cb_path = Path(body.codebook_path) if body.codebook_path else None
     hr_path = Path(body.hr_export_path) if body.hr_export_path else None
 
-    survey = run_discovery(
+    run_discovery(
         ldap_server=body.ldap_server,
         base_dn=body.base_dn,
         username="",
@@ -297,6 +288,7 @@ async def assign_orgpaths(
     codebook: set[str] = set()
     if cb_path and cb_path.exists():
         import json
+
         raw = json.loads(cb_path.read_text())
         codebook = {e["code"] for e in raw.get("entries", []) if e.get("status") == "active"}
 
@@ -304,6 +296,7 @@ async def assign_orgpaths(
     hr_map: dict[str, str] = {}
     if hr_path and hr_path.exists():
         import csv
+
         with hr_path.open(newline="") as fh:
             for row in csv.DictReader(fh):
                 eid = row.get("employeeId", "").strip()
@@ -317,7 +310,7 @@ async def assign_orgpaths(
 
     # Resolve assignments
     assignment_report = resolve_user_assignments(
-        users=[],       # wire from survey user list
+        users=[],  # wire from survey user list
         hr_map=hr_map,
         ou_mapping=ou_mapping,
         codebook=codebook,

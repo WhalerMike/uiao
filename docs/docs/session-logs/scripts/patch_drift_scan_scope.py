@@ -10,8 +10,8 @@ Usage:
     python patch_drift_scan_scope.py
 """
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 TARGET = Path(r"C:\Users\whale\uiao\.github\workflows\drift-scan.yml")
 OLD = b"--path . \\"

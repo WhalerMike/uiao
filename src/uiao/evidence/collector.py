@@ -355,4 +355,3 @@ class EvidenceCollector:
                     exc_info=True,
                 )
         return all_artifacts
-

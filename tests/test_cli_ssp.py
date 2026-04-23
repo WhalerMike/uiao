@@ -62,4 +62,3 @@ def test_ir_ssp_report_help():
     result = runner.invoke(app, ["ir-ssp-report", "--help"])
     assert result.exit_code == 0
     assert "narrative" in result.output.lower() or "ssp" in result.output.lower()
-

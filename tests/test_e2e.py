@@ -165,4 +165,3 @@ class TestGeneratorsSmoke:
         failures = validate_oscal_artifacts(oscal_dir)
         # Even if validation notes are logged, structural validation should pass
         assert isinstance(failures, int)
-

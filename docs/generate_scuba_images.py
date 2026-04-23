@@ -40,7 +40,7 @@ def load_prompts(prompts_file: Path) -> list[dict]:
     if not prompts_file.exists():
         print(f"Error: Prompts file not found at:\n  {prompts_file}")
         sys.exit(1)
-    with open(prompts_file, "r", encoding="utf-8") as f:
+    with open(prompts_file, encoding="utf-8") as f:
         prompts = json.load(f)
     print(f"Loaded {len(prompts)} prompt(s) from:\n  {prompts_file}")
     return prompts
@@ -62,7 +62,7 @@ def generate_image(client, prompt_text: str, output_path: Path, model: str) -> b
             elif part.text is not None:
                 print(f"  Model text response: {part.text[:200]}")
 
-        print(f"  Warning: No image data returned for this prompt.")
+        print("  Warning: No image data returned for this prompt.")
         return False
 
     except Exception as e:
@@ -102,6 +102,7 @@ def main():
 
     # Initialize the Gemini client
     from google import genai
+
     client = genai.Client(api_key=api_key)
 
     print(f"\nGenerating {len(prompts)} image(s) using model: {MODEL}\n")

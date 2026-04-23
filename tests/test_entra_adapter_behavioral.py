@@ -105,9 +105,7 @@ class TestOrgPathClaimExtraction:
         assert ghost.fields["orgpath"] == "ORG-GHOST"
         assert ghost.fields["orgpath_format_valid"] is True
 
-    def test_drift_engine_classifies_fixture_value_drift(
-        self, adapter: EntraAdapter, users_groups: list
-    ) -> None:
+    def test_drift_engine_classifies_fixture_value_drift(self, adapter: EntraAdapter, users_groups: list) -> None:
         from uiao.governance.drift import classify_identity_drift, DRIFT_IDENTITY
         from uiao.ir.models.core import ProvenanceRecord
         from uiao.modernization.orgtree import load_codebook
@@ -129,9 +127,7 @@ class TestOrgPathClaimExtraction:
         assert drift.drift_class == DRIFT_IDENTITY
         assert any("not in canonical codebook" in r for r in drift.delta["identity_reasons"])
 
-    def test_drift_engine_classifies_fixture_format_drift(
-        self, adapter: EntraAdapter, users_groups: list
-    ) -> None:
+    def test_drift_engine_classifies_fixture_format_drift(self, adapter: EntraAdapter, users_groups: list) -> None:
         from uiao.governance.drift import classify_identity_drift, DRIFT_IDENTITY
         from uiao.ir.models.core import ProvenanceRecord
         from uiao.modernization.orgtree import load_codebook

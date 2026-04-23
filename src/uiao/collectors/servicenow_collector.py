@@ -114,4 +114,3 @@ class ServiceNowCollector:
             elif record.get("short_description", "") != expected_index[sys_id]:
                 drifted.append({**record, "_drift": "changed"})
         return drifted
-

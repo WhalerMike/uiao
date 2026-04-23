@@ -34,7 +34,6 @@ MOD_C §Governance:
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Optional
@@ -49,7 +48,6 @@ from uiao.modernization.orgtree.device_planes import (
     default_device_plane_registry,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -63,16 +61,20 @@ OP_ARC_TAG_UPDATE = "arc-tag-update"
 OP_ARC_PHANTOM = "arc-phantom-orgpath"
 OP_SKIP_NO_PLANE = "skip-no-plane"
 
-OPS_AUTO_APPLIED = frozenset({
-    OP_DEVICE_EXT_CREATE,
-    OP_DEVICE_EXT_UPDATE,
-    OP_ARC_TAG_CREATE,
-    OP_ARC_TAG_UPDATE,
-})
-OPS_GOVERNANCE_REVIEW = frozenset({
-    OP_DEVICE_PHANTOM,
-    OP_ARC_PHANTOM,
-})
+OPS_AUTO_APPLIED = frozenset(
+    {
+        OP_DEVICE_EXT_CREATE,
+        OP_DEVICE_EXT_UPDATE,
+        OP_ARC_TAG_CREATE,
+        OP_ARC_TAG_UPDATE,
+    }
+)
+OPS_GOVERNANCE_REVIEW = frozenset(
+    {
+        OP_DEVICE_PHANTOM,
+        OP_ARC_PHANTOM,
+    }
+)
 OPS_SKIP = frozenset({OP_SKIP_NO_PLANE})
 
 
@@ -207,14 +209,8 @@ class EntraDeviceOrgPathAdapter:
         * ``current_arc_resources[*]`` — ARM resources with ``id``,
           ``name``, and optional ``tags`` dict.
         """
-        devices_by_name = {
-            d.get("displayName", ""): d
-            for d in (current_entra_devices or [])
-        }
-        arc_by_name = {
-            r.get("name", ""): r
-            for r in (current_arc_resources or [])
-        }
+        devices_by_name = {d.get("displayName", ""): d for d in (current_entra_devices or [])}
+        arc_by_name = {r.get("name", ""): r for r in (current_arc_resources or [])}
 
         plan = DeviceOrgPathPlan(
             generated_at=datetime.now(timezone.utc).isoformat(),
@@ -226,40 +222,43 @@ class EntraDeviceOrgPathAdapter:
         for target in targets:
             disposition = target.disposition
             if self._registry.is_skip(disposition):
-                plan.operations.append(PlannedOperation(
-                    op=OP_SKIP_NO_PLANE,
-                    target=target.computer_name,
-                    reason=(
-                        f"Disposition '{disposition}': "
-                        f"{self._registry.skip_dispositions[disposition].reason}"
-                    ),
-                ))
+                plan.operations.append(
+                    PlannedOperation(
+                        op=OP_SKIP_NO_PLANE,
+                        target=target.computer_name,
+                        reason=(f"Disposition '{disposition}': {self._registry.skip_dispositions[disposition].reason}"),
+                    )
+                )
                 continue
 
             plane = self._registry.plane_for_disposition(disposition)
             if plane is None:
-                plan.operations.append(PlannedOperation(
-                    op=OP_SKIP_NO_PLANE,
-                    target=target.computer_name,
-                    reason=(
-                        f"Disposition '{disposition}' is not mapped to any "
-                        "plane in the device-plane registry — governance gap"
-                    ),
-                ))
+                plan.operations.append(
+                    PlannedOperation(
+                        op=OP_SKIP_NO_PLANE,
+                        target=target.computer_name,
+                        reason=(
+                            f"Disposition '{disposition}' is not mapped to any "
+                            "plane in the device-plane registry — governance gap"
+                        ),
+                    )
+                )
                 continue
 
             # Nothing to plan if canon says there's no OrgPath target
             if target.orgpath is None:
-                plan.operations.append(PlannedOperation(
-                    op=OP_SKIP_NO_PLANE,
-                    target=target.computer_name,
-                    reason=(
-                        f"No canonical OrgPath derived for "
-                        f"{target.distinguished_name} — "
-                        "enqueue for governance review (unresolved)"
-                    ),
-                    plane=plane.name,
-                ))
+                plan.operations.append(
+                    PlannedOperation(
+                        op=OP_SKIP_NO_PLANE,
+                        target=target.computer_name,
+                        reason=(
+                            f"No canonical OrgPath derived for "
+                            f"{target.distinguished_name} — "
+                            "enqueue for governance review (unresolved)"
+                        ),
+                        plane=plane.name,
+                    )
+                )
                 continue
 
             if plane.name == "extensionAttribute1":
@@ -280,30 +279,29 @@ class EntraDeviceOrgPathAdapter:
         assert target.orgpath is not None
         device = devices_by_name.get(target.computer_name)
         if device is None:
-            plan.operations.append(PlannedOperation(
-                op=OP_DEVICE_EXT_CREATE,
-                target=target.computer_name,
-                reason=(
-                    "Entra device present per canon but no matching "
-                    "displayName found in tenant — device may not be "
-                    "joined yet. Plan the extensionAttribute1 write for "
-                    "when it joins."
-                ),
-                plane=plane.name,
-                canonical_orgpath=target.orgpath,
-                target_object_id=target.entra_device_id,
-                body=self._render_graph_body(plane, target.orgpath),
-                endpoint=self._render_endpoint(
-                    plane.endpoint_template,
-                    object_id=target.entra_device_id or "{unresolved}",
-                ),
-            ))
+            plan.operations.append(
+                PlannedOperation(
+                    op=OP_DEVICE_EXT_CREATE,
+                    target=target.computer_name,
+                    reason=(
+                        "Entra device present per canon but no matching "
+                        "displayName found in tenant — device may not be "
+                        "joined yet. Plan the extensionAttribute1 write for "
+                        "when it joins."
+                    ),
+                    plane=plane.name,
+                    canonical_orgpath=target.orgpath,
+                    target_object_id=target.entra_device_id,
+                    body=self._render_graph_body(plane, target.orgpath),
+                    endpoint=self._render_endpoint(
+                        plane.endpoint_template,
+                        object_id=target.entra_device_id or "{unresolved}",
+                    ),
+                )
+            )
             return
 
-        current = (
-            (device.get("onPremisesExtensionAttributes") or {})
-            .get("extensionAttribute1")
-        )
+        current = (device.get("onPremisesExtensionAttributes") or {}).get("extensionAttribute1")
         if current == target.orgpath:
             return  # Aligned, no operation.
 
@@ -311,39 +309,43 @@ class EntraDeviceOrgPathAdapter:
         # write. An invalid or out-of-codebook value becomes a phantom
         # finding, never auto-remediated.
         if current is not None and not self._is_canonical_orgpath(current):
-            plan.operations.append(PlannedOperation(
-                op=OP_DEVICE_PHANTOM,
+            plan.operations.append(
+                PlannedOperation(
+                    op=OP_DEVICE_PHANTOM,
+                    target=target.computer_name,
+                    reason=(
+                        f"Entra device extensionAttribute1={current!r} fails "
+                        "format or codebook check. Governance review required; "
+                        "NOT auto-applied."
+                    ),
+                    plane=plane.name,
+                    canonical_orgpath=target.orgpath,
+                    current_value=current,
+                    target_object_id=device.get("id"),
+                )
+            )
+            return
+
+        plan.operations.append(
+            PlannedOperation(
+                op=OP_DEVICE_EXT_CREATE if current is None else OP_DEVICE_EXT_UPDATE,
                 target=target.computer_name,
                 reason=(
-                    f"Entra device extensionAttribute1={current!r} fails "
-                    "format or codebook check. Governance review required; "
-                    "NOT auto-applied."
+                    "extensionAttribute1 missing"
+                    if current is None
+                    else f"extensionAttribute1 drift: canonical='{target.orgpath}' tenant='{current}'"
                 ),
                 plane=plane.name,
                 canonical_orgpath=target.orgpath,
                 current_value=current,
                 target_object_id=device.get("id"),
-            ))
-            return
-
-        plan.operations.append(PlannedOperation(
-            op=OP_DEVICE_EXT_CREATE if current is None else OP_DEVICE_EXT_UPDATE,
-            target=target.computer_name,
-            reason=(
-                f"extensionAttribute1 missing" if current is None
-                else f"extensionAttribute1 drift: canonical='{target.orgpath}' "
-                f"tenant='{current}'"
-            ),
-            plane=plane.name,
-            canonical_orgpath=target.orgpath,
-            current_value=current,
-            target_object_id=device.get("id"),
-            body=self._render_graph_body(plane, target.orgpath),
-            endpoint=self._render_endpoint(
-                plane.endpoint_template,
-                object_id=device.get("id", "{unresolved}"),
-            ),
-        ))
+                body=self._render_graph_body(plane, target.orgpath),
+                endpoint=self._render_endpoint(
+                    plane.endpoint_template,
+                    object_id=device.get("id", "{unresolved}"),
+                ),
+            )
+        )
 
     def _plan_arc_tag(
         self,
@@ -355,64 +357,68 @@ class EntraDeviceOrgPathAdapter:
         assert target.orgpath is not None
         arc = arc_by_name.get(target.computer_name)
         if arc is None:
-            plan.operations.append(PlannedOperation(
-                op=OP_ARC_TAG_CREATE,
-                target=target.computer_name,
-                reason=(
-                    "Arc resource expected per canon but not found in "
-                    "subscription — plan the ARM tag write for when the "
-                    "server enrolls."
-                ),
-                plane=plane.name,
-                canonical_orgpath=target.orgpath,
-                target_object_id=target.arc_resource_id,
-                body=self._render_arm_tag_body(plane, target.orgpath),
-                endpoint=self._render_endpoint(
-                    plane.endpoint_template,
-                    arm_resource_id=target.arc_resource_id or "{unresolved}",
-                ),
-            ))
+            plan.operations.append(
+                PlannedOperation(
+                    op=OP_ARC_TAG_CREATE,
+                    target=target.computer_name,
+                    reason=(
+                        "Arc resource expected per canon but not found in "
+                        "subscription — plan the ARM tag write for when the "
+                        "server enrolls."
+                    ),
+                    plane=plane.name,
+                    canonical_orgpath=target.orgpath,
+                    target_object_id=target.arc_resource_id,
+                    body=self._render_arm_tag_body(plane, target.orgpath),
+                    endpoint=self._render_endpoint(
+                        plane.endpoint_template,
+                        arm_resource_id=target.arc_resource_id or "{unresolved}",
+                    ),
+                )
+            )
             return
 
-        current = (arc.get("tags") or {}).get(
-            self._registry.arm_tag.key
-        )
+        current = (arc.get("tags") or {}).get(self._registry.arm_tag.key)
         if current == target.orgpath:
             return
 
         if current is not None and not self._is_canonical_orgpath(current):
-            plan.operations.append(PlannedOperation(
-                op=OP_ARC_PHANTOM,
+            plan.operations.append(
+                PlannedOperation(
+                    op=OP_ARC_PHANTOM,
+                    target=target.computer_name,
+                    reason=(
+                        f"Arc tag OrgPath={current!r} fails format or codebook "
+                        "check. Governance review required; NOT auto-applied."
+                    ),
+                    plane=plane.name,
+                    canonical_orgpath=target.orgpath,
+                    current_value=current,
+                    target_object_id=arc.get("id"),
+                )
+            )
+            return
+
+        plan.operations.append(
+            PlannedOperation(
+                op=OP_ARC_TAG_CREATE if current is None else OP_ARC_TAG_UPDATE,
                 target=target.computer_name,
                 reason=(
-                    f"Arc tag OrgPath={current!r} fails format or codebook "
-                    "check. Governance review required; NOT auto-applied."
+                    "OrgPath tag missing"
+                    if current is None
+                    else f"OrgPath tag drift: canonical='{target.orgpath}' tenant='{current}'"
                 ),
                 plane=plane.name,
                 canonical_orgpath=target.orgpath,
                 current_value=current,
                 target_object_id=arc.get("id"),
-            ))
-            return
-
-        plan.operations.append(PlannedOperation(
-            op=OP_ARC_TAG_CREATE if current is None else OP_ARC_TAG_UPDATE,
-            target=target.computer_name,
-            reason=(
-                "OrgPath tag missing" if current is None
-                else f"OrgPath tag drift: canonical='{target.orgpath}' "
-                f"tenant='{current}'"
-            ),
-            plane=plane.name,
-            canonical_orgpath=target.orgpath,
-            current_value=current,
-            target_object_id=arc.get("id"),
-            body=self._render_arm_tag_body(plane, target.orgpath),
-            endpoint=self._render_endpoint(
-                plane.endpoint_template,
-                arm_resource_id=arc.get("id", "{unresolved}"),
-            ),
-        ))
+                body=self._render_arm_tag_body(plane, target.orgpath),
+                endpoint=self._render_endpoint(
+                    plane.endpoint_template,
+                    arm_resource_id=arc.get("id", "{unresolved}"),
+                ),
+            )
+        )
 
     # ------------------------------------------------------------------
     # Apply
@@ -428,47 +434,54 @@ class EntraDeviceOrgPathAdapter:
         )
         for op in plan.operations:
             if op.op in OPS_GOVERNANCE_REVIEW:
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="skipped-manual",
-                    detail=(
-                        "MOD_C §Phantom OrgPath: governance review "
-                        "required; never auto-applied."
-                    ),
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="skipped-manual",
+                        detail=("MOD_C §Phantom OrgPath: governance review required; never auto-applied."),
+                    )
+                )
                 continue
             if op.op in OPS_SKIP:
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="skipped-no-plane",
-                    detail=op.reason,
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="skipped-no-plane",
+                        detail=op.reason,
+                    )
+                )
                 continue
             if dry_run:
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="skipped-dry-run",
-                    detail=f"Dry run — would call {op.endpoint}.",
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="skipped-dry-run",
+                        detail=f"Dry run — would call {op.endpoint}.",
+                    )
+                )
                 continue
             try:
                 self._execute(op)
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="written",
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="written",
+                    )
+                )
             except Exception as exc:  # pragma: no cover - network path
                 logger.exception("Apply failed for %s", op.target)
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="failed",
-                    detail=str(exc),
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="failed",
+                        detail=str(exc),
+                    )
+                )
         return report
 
     def reconcile(
@@ -490,7 +503,9 @@ class EntraDeviceOrgPathAdapter:
     # Rendering helpers
     # ------------------------------------------------------------------
     def _render_graph_body(
-        self, plane: DevicePlane, orgpath: str,
+        self,
+        plane: DevicePlane,
+        orgpath: str,
     ) -> Dict[str, Any]:
         return {
             "onPremisesExtensionAttributes": {
@@ -499,7 +514,9 @@ class EntraDeviceOrgPathAdapter:
         }
 
     def _render_arm_tag_body(
-        self, plane: DevicePlane, orgpath: str,
+        self,
+        plane: DevicePlane,
+        orgpath: str,
     ) -> Dict[str, Any]:
         return {"tags": {self._registry.arm_tag.key: orgpath}}
 

@@ -123,9 +123,7 @@ class BlueCatAdapter(DatabaseAdapterBase):
             canonical_schema=canonical_schema,
             mapping_rules=mapping_rules,
             unmapped_fields=["ttl", "comments", "deploymentRoles", "udfs"],
-            version_hash=self._hash(
-                {"vendor": vendor_schema, "canonical": canonical_schema}
-            ),
+            version_hash=self._hash({"vendor": vendor_schema, "canonical": canonical_schema}),
         )
 
     # ------------------------------------------------------------------
@@ -138,8 +136,7 @@ class BlueCatAdapter(DatabaseAdapterBase):
         bam_call = _SCOPE_TO_BAM.get(scope, "getEntitiesByName?type=HostRecord")
         separator = "&" if "?" in bam_call else "?"
         vendor_query = (
-            f"GET /Services/REST/{self._api_version}/{bam_call}"
-            f"{separator}configuration={self._configuration}"
+            f"GET /Services/REST/{self._api_version}/{bam_call}{separator}configuration={self._configuration}"
         )
         return QueryProvenance(
             canonical_query=canonical_query,
@@ -353,9 +350,7 @@ class BlueCatAdapter(DatabaseAdapterBase):
                 "name": name,
                 "proposed": data,
             },
-            remediation=(
-                f"Review and commit DNS change for {record_type}/{name} via BAM."
-            ),
+            remediation=(f"Review and commit DNS change for {record_type}/{name} via BAM."),
         )
 
     def push_dhcp_change(
@@ -384,9 +379,7 @@ class BlueCatAdapter(DatabaseAdapterBase):
                 "identifier": identifier,
                 "proposed": data,
             },
-            remediation=(
-                f"Review and commit DHCP change for {scope_type}/{identifier} via BAM."
-            ),
+            remediation=(f"Review and commit DHCP change for {scope_type}/{identifier} via BAM."),
         )
 
     def emit_event_stream(

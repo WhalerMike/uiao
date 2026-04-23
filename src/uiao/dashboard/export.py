@@ -99,4 +99,3 @@ class DashboardExporter:
         path.write_text(yaml.dump(report, default_flow_style=False, allow_unicode=True))
         logger.info("KSI dashboard exported to %s", path)
         return path
-

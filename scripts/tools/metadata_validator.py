@@ -12,6 +12,7 @@ python metadata_validator.py --path articles/ --audit-format --template article-
 python metadata_validator.py --path . --audit-placeholders
 python metadata_validator.py --path . --audit-images
 """
+
 import argparse
 import json
 import os
@@ -80,61 +81,76 @@ def validate_frontmatter(filepath: Path, fm: dict, body: str, base_path: Path) -
         findings.append(entry)
 
     # Required fields
-    required = ["document_id", "title", "version", "status", "classification",
-                "owner", "created_at", "updated_at", "boundary"]
+    required = [
+        "document_id",
+        "title",
+        "version",
+        "status",
+        "classification",
+        "owner",
+        "created_at",
+        "updated_at",
+        "boundary",
+    ]
     for field in required:
         if field not in fm or fm[field] is None or str(fm[field]).strip() == "":
-            add(f"Missing required field: {field}", SEVERITY_BLOCKING,
-                f"Add {field}: <value> to frontmatter")
+            add(f"Missing required field: {field}", SEVERITY_BLOCKING, f"Add {field}: <value> to frontmatter")
     # document_id pattern
     doc_id = str(fm.get("document_id", ""))
     if doc_id and not DOCUMENT_ID_PATTERN.match(doc_id):
-        add(f"Invalid document_id format: '{doc_id}' (expected UIAO_NNN)",
-            SEVERITY_BLOCKING, "Use format UIAO_001")
+        add(f"Invalid document_id format: '{doc_id}' (expected UIAO_NNN)", SEVERITY_BLOCKING, "Use format UIAO_001")
     # version pattern
     ver = str(fm.get("version", ""))
     if ver and not VERSION_PATTERN.match(ver):
-        add(f"Invalid version format: '{ver}' (expected N.N)",
-            SEVERITY_BLOCKING, "Use format 1.0")
+        add(f"Invalid version format: '{ver}' (expected N.N)", SEVERITY_BLOCKING, "Use format 1.0")
     # status enum
     status = fm.get("status", "")
     if status and status not in VALID_STATUSES:
-        add(f"Invalid status: '{status}'", SEVERITY_BLOCKING,
-            f"Use one of: {', '.join(sorted(VALID_STATUSES))}")
+        add(f"Invalid status: '{status}'", SEVERITY_BLOCKING, f"Use one of: {', '.join(sorted(VALID_STATUSES))}")
     # classification enum
     classification = fm.get("classification", "")
     if classification and classification not in VALID_CLASSIFICATIONS:
-        add(f"Invalid classification: '{classification}'", SEVERITY_BLOCKING,
-            f"Use one of: {', '.join(sorted(VALID_CLASSIFICATIONS))}")
+        add(
+            f"Invalid classification: '{classification}'",
+            SEVERITY_BLOCKING,
+            f"Use one of: {', '.join(sorted(VALID_CLASSIFICATIONS))}",
+        )
     # boundary check
     boundary = fm.get("boundary", "")
     if boundary and boundary != "GCC-Moderate":
         if not fm.get("boundary-exception", False):
-            add(f"Boundary must be GCC-Moderate (found: '{boundary}')",
-                SEVERITY_BLOCKING, "Set boundary: GCC-Moderate or add boundary-exception: true")
+            add(
+                f"Boundary must be GCC-Moderate (found: '{boundary}')",
+                SEVERITY_BLOCKING,
+                "Set boundary: GCC-Moderate or add boundary-exception: true",
+            )
     # timestamp validation
     for ts_field in ["created_at", "updated_at"]:
         ts = str(fm.get(ts_field, ""))
         if ts and not ISO8601_PATTERN.match(ts):
-            add(f"Invalid {ts_field} format: '{ts}' (expected ISO-8601)",
-                SEVERITY_BLOCKING, "Use format 2026-04-09T07:00:00")
+            add(
+                f"Invalid {ts_field} format: '{ts}' (expected ISO-8601)",
+                SEVERITY_BLOCKING,
+                "Use format 2026-04-09T07:00:00",
+            )
     # created_at <= updated_at
     created = fm.get("created_at", "")
     updated = fm.get("updated_at", "")
     if created and updated and str(created) > str(updated):
-        add("updated_at is earlier than created_at", SEVERITY_BLOCKING,
-            "Ensure updated_at >= created_at")
+        add("updated_at is earlier than created_at", SEVERITY_BLOCKING, "Ensure updated_at >= created_at")
     # provenance for DERIVED
     if classification == "DERIVED":
         prov = fm.get("provenance", {})
         if not prov or not isinstance(prov, dict):
-            add("DERIVED artifact missing provenance block", SEVERITY_BLOCKING,
-                "Add provenance: {source, version, derived_at, derived_by}")
+            add(
+                "DERIVED artifact missing provenance block",
+                SEVERITY_BLOCKING,
+                "Add provenance: {source, version, derived_at, derived_by}",
+            )
         else:
             for pf in ["source", "version", "derived_at", "derived_by"]:
                 if pf not in prov or not prov[pf]:
-                    add(f"Provenance missing field: {pf}", SEVERITY_BLOCKING,
-                        f"Add provenance.{pf}")
+                    add(f"Provenance missing field: {pf}", SEVERITY_BLOCKING, f"Add provenance.{pf}")
             # Check source resolution
             source = prov.get("source", "")
             if source:
@@ -143,20 +159,24 @@ def validate_frontmatter(filepath: Path, fm: dict, body: str, base_path: Path) -
                     # Try relative to repo root
                     alt_path = base_path.parent / source
                     if not alt_path.exists():
-                        add(f"Provenance source not found: {source}",
-                            SEVERITY_BLOCKING, "Verify provenance.source path exists")
+                        add(
+                            f"Provenance source not found: {source}",
+                            SEVERITY_BLOCKING,
+                            "Verify provenance.source path exists",
+                        )
     # Owner field
     if not fm.get("owner"):
-        add("Missing owner field", SEVERITY_WARNING,
-            "Assign an owner to this artifact")
+        add("Missing owner field", SEVERITY_WARNING, "Assign an owner to this artifact")
     # Body content checks
     if BOUNDARY_VIOLATIONS.search(body):
         if not fm.get("boundary-exception", False):
-            add("Body contains potential boundary violation (GCC-High/DoD/Azure IaaS/PaaS reference)",
-                SEVERITY_BLOCKING, "Remove reference or add boundary-exception: true")
+            add(
+                "Body contains potential boundary violation (GCC-High/DoD/Azure IaaS/PaaS reference)",
+                SEVERITY_BLOCKING,
+                "Remove reference or add boundary-exception: true",
+            )
     if MERMAID_PATTERN.search(body):
-        add("Body contains Mermaid diagram (PlantUML required)",
-            SEVERITY_WARNING, "Convert diagram to PlantUML")
+        add("Body contains Mermaid diagram (PlantUML required)", SEVERITY_WARNING, "Convert diagram to PlantUML")
     return findings
 
 
@@ -166,12 +186,14 @@ def validate_file(filepath: Path, base_path: Path) -> list[dict]:
     rel = str(filepath.relative_to(base_path))
     fm, body = parse_frontmatter(filepath)
     if fm is None:
-        findings.append({
-            "file": rel,
-            "issue": "No valid YAML frontmatter found",
-            "severity": SEVERITY_BLOCKING,
-            "suggested_fix": "Add YAML frontmatter between --- delimiters"
-        })
+        findings.append(
+            {
+                "file": rel,
+                "issue": "No valid YAML frontmatter found",
+                "severity": SEVERITY_BLOCKING,
+                "suggested_fix": "Add YAML frontmatter between --- delimiters",
+            }
+        )
         return findings
     findings.extend(validate_frontmatter(filepath, fm, body, base_path))
     return findings
@@ -222,14 +244,10 @@ def main():
     parser.add_argument("--output", help="Output report JSON file")
     parser.add_argument("--ci", action="store_true", help="CI mode: exit 1 on BLOCKING")
     parser.add_argument("--metrics-only", action="store_true", help="Output metrics only")
-    parser.add_argument("--audit-classification", action="store_true",
-                        help="Audit file classifications")
-    parser.add_argument("--audit-format", action="store_true",
-                        help="Audit article formatting")
-    parser.add_argument("--audit-placeholders", action="store_true",
-                        help="Audit placeholder standards")
-    parser.add_argument("--audit-images", action="store_true",
-                        help="Audit image standards")
+    parser.add_argument("--audit-classification", action="store_true", help="Audit file classifications")
+    parser.add_argument("--audit-format", action="store_true", help="Audit article formatting")
+    parser.add_argument("--audit-placeholders", action="store_true", help="Audit placeholder standards")
+    parser.add_argument("--audit-images", action="store_true", help="Audit image standards")
     parser.add_argument("--template", help="Formatting template name")
     args = parser.parse_args()
     target = Path(args.path)
@@ -238,7 +256,7 @@ def main():
         sys.exit(2)
     base_path = target if target.is_dir() else target.parent
     print("UIAO Metadata Validator")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print(f"Target: {args.path}")
     print(f"Timestamp: {datetime.utcnow().isoformat()}Z")
     print()

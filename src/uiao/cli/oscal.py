@@ -18,6 +18,7 @@ Or via module invocation:
         --evidence ./output/evidence/tenant-a/ \\
         --output   ./output/artifacts/tenant-a/
 """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -42,18 +43,14 @@ def generate_command(
         ...,
         "--evidence",
         help=(
-            "Path to the evidence bundle directory produced by Plane 3 "
-            "(must contain bundle.json and evidence.jsonl)."
+            "Path to the evidence bundle directory produced by Plane 3 (must contain bundle.json and evidence.jsonl)."
         ),
         show_default=False,
     ),
     output: str = typer.Option(  # noqa: B008
         ...,
         "--output",
-        help=(
-            "Destination directory for OSCAL artifacts "
-            "(e.g. ./output/artifacts/tenant-a/).  Created automatically."
-        ),
+        help=("Destination directory for OSCAL artifacts (e.g. ./output/artifacts/tenant-a/).  Created automatically."),
         show_default=False,
     ),
     config: Optional[str] = typer.Option(  # noqa: B008
@@ -107,5 +104,3 @@ def generate_command(
     except ValueError as exc:
         _console.print(f"[red]Validation error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
-
-

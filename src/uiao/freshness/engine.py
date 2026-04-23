@@ -111,4 +111,3 @@ def generate_refresh_actions(
             )
         )
     return actions
-

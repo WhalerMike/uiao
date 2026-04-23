@@ -11,6 +11,7 @@ Usage (from the monorepo root):
     python scripts/fix_paths_after_reorg.py --dry-run
     python scripts/fix_paths_after_reorg.py
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,13 +41,13 @@ SIMPLE_TARGETS = [
 # the three definition lines as a block.
 CANON_VALIDATOR = "core/tools/validators/canon_validator.py"
 CV_OLD = (
-    'REPO_ROOT = Path(__file__).resolve().parents[2]\n'
+    "REPO_ROOT = Path(__file__).resolve().parents[2]\n"
     'SCHEMA_PATH = REPO_ROOT / "tools" / "schema" / "canon_schema.json"\n'
     'CANON_ROOT = REPO_ROOT / "canon"'
 )
 CV_NEW = (
-    'CORE_ROOT = Path(__file__).resolve().parents[2]\n'
-    'REPO_ROOT = CORE_ROOT.parent\n'
+    "CORE_ROOT = Path(__file__).resolve().parents[2]\n"
+    "REPO_ROOT = CORE_ROOT.parent\n"
     'SCHEMA_PATH = CORE_ROOT / "tools" / "schema" / "canon_schema.json"\n'
     'CANON_ROOT = REPO_ROOT / "src" / "uiao" / "canon"'
 )
@@ -80,10 +81,7 @@ def fix_canon_validator(dry_run: bool) -> bool:
         print(f"  no change (already patched): {CANON_VALIDATOR}")
         return False
     if CV_OLD not in text:
-        print(
-            f"  WARNING: expected block not found in {CANON_VALIDATOR} — "
-            f"please inspect manually."
-        )
+        print(f"  WARNING: expected block not found in {CANON_VALIDATOR} — please inspect manually.")
         return False
     print(f"  update: {CANON_VALIDATOR} (REPO_ROOT + CANON_ROOT)")
     if not dry_run:

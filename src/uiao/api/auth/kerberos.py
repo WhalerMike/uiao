@@ -35,10 +35,11 @@ from fastapi import HTTPException, Request, status
 @dataclass
 class WindowsIdentity:
     """Represents an authenticated Windows principal."""
-    username: str        # e.g. CORP\jsmith
-    domain: str          # e.g. CORP
-    account: str         # e.g. jsmith
-    is_service: bool     # True if this is a service account or machine account
+
+    username: str  # e.g. CORP\jsmith
+    domain: str  # e.g. CORP
+    account: str  # e.g. jsmith
+    is_service: bool  # True if this is a service account or machine account
 
 
 def get_windows_identity(request: Request) -> Optional[WindowsIdentity]:
@@ -55,10 +56,10 @@ def get_windows_identity(request: Request) -> Optional[WindowsIdentity]:
     """
     # Header name after IIS HttpPlatformHandler forwarding
     raw = (
-        request.headers.get("x-iis-windowsauthuser") or
-        request.headers.get("remote-user") or
-        request.headers.get("x-auth-user") or
-        os.environ.get("REMOTE_USER", "")
+        request.headers.get("x-iis-windowsauthuser")
+        or request.headers.get("remote-user")
+        or request.headers.get("x-auth-user")
+        or os.environ.get("REMOTE_USER", "")
     )
 
     if not raw:
@@ -97,8 +98,8 @@ def require_windows_auth(request: Request) -> WindowsIdentity:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Windows authentication required. "
-                   "Ensure IIS Windows Authentication is enabled "
-                   "and caller is domain-joined.",
+            "Ensure IIS Windows Authentication is enabled "
+            "and caller is domain-joined.",
             headers={"WWW-Authenticate": "Negotiate"},
         )
     # Reject pure machine accounts ($) — these shouldn't call the API directly
@@ -114,6 +115,7 @@ def require_windows_auth(request: Request) -> WindowsIdentity:
 # Outbound: LDAP connection using Kerberos SSPI (Windows only)
 # ------------------------------------------------------------------
 
+
 def get_ldap_connection(server_hostname: str):
     """
     Create an ldap3 connection using Kerberos SASL (Windows SSPI).
@@ -126,12 +128,13 @@ def get_ldap_connection(server_hostname: str):
 
     Returns an open, bound ldap3 Connection.
     """
-    from ldap3 import Server, Connection, ALL  # type: ignore
+    from ldap3 import ALL, Connection, Server  # type: ignore
 
     srv = Server(server_hostname, get_info=ALL, use_ssl=False)
 
     if platform.system() == "Windows":
-        from ldap3 import SASL, GSSAPI  # type: ignore
+        from ldap3 import GSSAPI, SASL  # type: ignore
+
         conn = Connection(
             srv,
             authentication=SASL,

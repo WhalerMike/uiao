@@ -30,6 +30,7 @@ Exit codes
 0 — canon inventory collected (or canon dirs absent).
 1 — unrecoverable error (I/O, encoding).
 """
+
 from __future__ import annotations
 
 import sys

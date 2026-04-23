@@ -179,8 +179,7 @@ class EntraAdapter(DatabaseAdapterBase):
             if orgpath is not None:
                 claim_payload["orgpath"] = orgpath
                 claim_payload["orgpath_source"] = (
-                    record.get("orgpath_source")
-                    or "entra:onPremisesExtensionAttributes.extensionAttribute1"
+                    record.get("orgpath_source") or "entra:onPremisesExtensionAttributes.extensionAttribute1"
                 )
                 claim_payload["orgpath_format_valid"] = bool(_ORGPATH_REGEX.match(orgpath))
 
@@ -234,9 +233,7 @@ class EntraAdapter(DatabaseAdapterBase):
         raw_data = evidence.raw_data if hasattr(evidence, "raw_data") else {}
 
         conn = self.connect()
-        claim_set = self.normalize(
-            raw_data.get("sign_in_events", []) or raw_data.get("value", [])
-        )
+        claim_set = self.normalize(raw_data.get("sign_in_events", []) or raw_data.get("value", []))
 
         return EvidenceObject(
             ksi_id=ksi_id,
@@ -282,4 +279,3 @@ class EntraAdapter(DatabaseAdapterBase):
                 "tenant_id": tenant_id,
             },
         }
-

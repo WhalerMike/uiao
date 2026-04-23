@@ -755,5 +755,3 @@ def build_rich_docx(
 
     logger.info("Rich DOCX exported -> %s", out_path)
     return out_path
-
-

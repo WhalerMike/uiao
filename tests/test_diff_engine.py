@@ -74,4 +74,3 @@ def test_format_json_structure(tmp_path):
     data = json.loads(format_diff_json(diff_runs(ra, rb)))
     assert data["ksi_diff"]["added"] == ["KSI-IAM-02"]
     assert data["ksi_diff"]["removed"] == ["KSI-IAM-01"]
-

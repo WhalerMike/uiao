@@ -333,4 +333,3 @@ class TestIRFreshnessScheduleCLI:
             ["ir-freshness-schedule", str(tmp_path / "nonexistent.json")],
         )
         assert result.exit_code != 0
-

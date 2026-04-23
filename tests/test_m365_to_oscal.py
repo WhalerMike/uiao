@@ -19,13 +19,13 @@ from uiao.generators.sar import build_sar
 
 @pytest.fixture
 def adapter() -> M365Adapter:
-    config = json.loads(
-        (Path(__file__).parent / "fixtures" / "m365-tenant-config.json").read_text()
+    config = json.loads((Path(__file__).parent / "fixtures" / "m365-tenant-config.json").read_text())
+    return M365Adapter(
+        {
+            "tenant_id": "contoso.onmicrosoft.com",
+            "_tenant_config": config,
+        }
     )
-    return M365Adapter({
-        "tenant_id": "contoso.onmicrosoft.com",
-        "_tenant_config": config,
-    })
 
 
 class TestM365ToOscal:
@@ -35,6 +35,7 @@ class TestM365ToOscal:
 
     def test_all_workloads_to_bundle(self, adapter: M365Adapter) -> None:
         from uiao.adapters.m365_parser import parse_tenant_config
+
         config = adapter._config.get("_tenant_config", {})
         all_entities = parse_tenant_config(config)
         claims = adapter.normalize(all_entities)
@@ -48,6 +49,7 @@ class TestM365ToOscal:
 
     def test_bundle_to_oscal_sar(self, adapter: M365Adapter) -> None:
         from uiao.adapters.m365_parser import parse_tenant_config
+
         config = adapter._config.get("_tenant_config", {})
         claims = adapter.normalize(parse_tenant_config(config))
         bundle = build_adapter_bundle(
@@ -67,6 +69,7 @@ class TestM365ToOscal:
 
     def test_sar_json_serializable(self, adapter: M365Adapter) -> None:
         from uiao.adapters.m365_parser import parse_tenant_config
+
         config = adapter._config.get("_tenant_config", {})
         claims = adapter.normalize(parse_tenant_config(config))
         bundle = build_adapter_bundle("m365", claims, control_ids=["CM-8"])
@@ -81,6 +84,7 @@ class TestM365ToOscal:
             {"Default Mailbox Policy.automaticRepliesSetting": "enabled"},
         )
         from uiao.adapters.m365_parser import parse_tenant_config
+
         config = adapter._config.get("_tenant_config", {})
         claims = adapter.normalize(parse_tenant_config(config))
         bundle = build_adapter_bundle(

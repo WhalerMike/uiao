@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 from canon_paths import CONTROL_LIBRARY_DIR
+
 SC8_PATH = CONTROL_LIBRARY_DIR / "SC-8.yml"
 IA2_PATH = CONTROL_LIBRARY_DIR / "IA-2.yml"
 

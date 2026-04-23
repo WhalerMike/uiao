@@ -718,5 +718,3 @@ def build_briefing(settings: Settings, include_history: bool = True) -> Path:
     # -----------------------------------------------------------------------
     doc.save(str(output_path))
     return output_path
-
-

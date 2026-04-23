@@ -227,4 +227,3 @@ class TestReport:
         report = format_governance_report([])
         assert "UIAO Governance Report" in report
         assert "Top actions:" in report
-

@@ -42,9 +42,7 @@ DOCUMENT_REGISTRY_BASE = "."
 # Trailing punctuation is trimmed by the finditer output via the pattern
 # boundaries.
 CANON_ROOT = "src/uiao/canon"
-CODE_REF_PATTERN = re.compile(
-    r"\b(?:src/uiao|impl)/[\w./\-]+\.(?:py|md|yaml|yml|json|toml|lua|sh|ini|cfg)\b"
-)
+CODE_REF_PATTERN = re.compile(r"\b(?:src/uiao|impl)/[\w./\-]+\.(?:py|md|yaml|yml|json|toml|lua|sh|ini|cfg)\b")
 
 
 @dataclass
@@ -112,9 +110,7 @@ def resolve_workspace_root(explicit: Optional[Path] = None) -> Path:
     if env:
         return Path(env).resolve()
     try:
-        out = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"], stderr=subprocess.DEVNULL
-        )
+        out = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], stderr=subprocess.DEVNULL)
         return Path(out.decode().strip()).resolve()
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         raise RuntimeError(
@@ -257,9 +253,6 @@ def _scan_canon_code_refs(root: Path, report: SubstrateReport) -> None:
                         drift_class="DRIFT-PROVENANCE",
                         severity="P2",
                         path=code_rel,
-                        detail=(
-                            f"canon document {canon_rel} cites code path "
-                            f"{code_rel} which does not exist"
-                        ),
+                        detail=(f"canon document {canon_rel} cites code path {code_rel} which does not exist"),
                     )
                 )

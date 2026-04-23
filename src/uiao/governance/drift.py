@@ -43,17 +43,18 @@ OrgPathCodebook = Union[Set[str], "Any"]
 # Imported here as plain strings to avoid circular imports if core.py is
 # patched later.
 # ---------------------------------------------------------------------------
-DRIFT_SCHEMA    = "DRIFT-SCHEMA"
-DRIFT_SEMANTIC  = "DRIFT-SEMANTIC"
+DRIFT_SCHEMA = "DRIFT-SCHEMA"
+DRIFT_SEMANTIC = "DRIFT-SEMANTIC"
 DRIFT_PROVENANCE = "DRIFT-PROVENANCE"
-DRIFT_AUTHZ     = "DRIFT-AUTHZ"
-DRIFT_IDENTITY  = "DRIFT-IDENTITY"
-DRIFT_BOUNDARY  = "DRIFT-BOUNDARY"
+DRIFT_AUTHZ = "DRIFT-AUTHZ"
+DRIFT_IDENTITY = "DRIFT-IDENTITY"
+DRIFT_BOUNDARY = "DRIFT-BOUNDARY"
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers (unchanged)
 # ---------------------------------------------------------------------------
+
 
 def _classify_drift(
     expected_hash: str,
@@ -62,11 +63,7 @@ def _classify_drift(
 ) -> str:
     if expected_hash == actual_hash:
         return "benign"
-    changed_fields = (
-        set(delta.get("changed", []))
-        | set(delta.get("added", []))
-        | set(delta.get("removed", []))
-    )
+    changed_fields = set(delta.get("changed", [])) | set(delta.get("added", [])) | set(delta.get("removed", []))
     if len(changed_fields) <= 3:
         return "risky"
     return "unauthorized"
@@ -90,6 +87,7 @@ def _dict_delta(
 # ---------------------------------------------------------------------------
 # Generic DriftState builder (unchanged signature, adds drift_class param)
 # ---------------------------------------------------------------------------
+
 
 def build_drift_state(
     *,
@@ -142,28 +140,30 @@ def build_drift_state(
 # ---------------------------------------------------------------------------
 
 # Fields whose change always constitutes authorization drift regardless of count
-_AUTHZ_SENTINEL_FIELDS = frozenset({
-    # AD / on-prem
-    "kerberos_delegation",          # any change to unconstrained → always DRIFT-AUTHZ
-    "trusted_for_delegation",
-    "allowed_to_delegate_to",
-    "admin_count",                  # AD adminCount attribute — shadow group membership
-    # Entra / cloud
-    "role_assignments",
-    "scope",                        # role assignment scope change
-    "privileged_role",
-    "pim_assignment",
-    "au_scope",                     # Administrative Unit scope
-    "directory_role",
-    # Service principal
-    "app_roles_assigned",
-    "oauth2_permission_grants",
-    "api_permissions",
-    "resource_access",
-    # Group membership affecting auth
-    "is_privileged_group_member",
-    "group_membership_changes",
-})
+_AUTHZ_SENTINEL_FIELDS = frozenset(
+    {
+        # AD / on-prem
+        "kerberos_delegation",  # any change to unconstrained → always DRIFT-AUTHZ
+        "trusted_for_delegation",
+        "allowed_to_delegate_to",
+        "admin_count",  # AD adminCount attribute — shadow group membership
+        # Entra / cloud
+        "role_assignments",
+        "scope",  # role assignment scope change
+        "privileged_role",
+        "pim_assignment",
+        "au_scope",  # Administrative Unit scope
+        "directory_role",
+        # Service principal
+        "app_roles_assigned",
+        "oauth2_permission_grants",
+        "api_permissions",
+        "resource_access",
+        # Group membership affecting auth
+        "is_privileged_group_member",
+        "group_membership_changes",
+    }
+)
 
 # Values that indicate privilege escalation when present in actual_state
 _AUTHZ_ESCALATION_PATTERNS = {
@@ -197,11 +197,7 @@ def classify_authz_drift(
     classification to DRIFT-AUTHZ when the conditions are met.
     """
     delta = _dict_delta(expected_state, actual_state)
-    all_changed = (
-        set(delta.get("changed", []))
-        | set(delta.get("added", []))
-        | set(delta.get("removed", []))
-    )
+    all_changed = set(delta.get("changed", [])) | set(delta.get("added", [])) | set(delta.get("removed", []))
 
     # Check 1: sentinel field changed
     sentinel_hit = bool(all_changed & _AUTHZ_SENTINEL_FIELDS)
@@ -222,11 +218,7 @@ def classify_authz_drift(
     # Check 3: role count grew
     exp_roles = expected_state.get("role_assignments", [])
     act_roles = actual_state.get("role_assignments", [])
-    role_growth = (
-        isinstance(act_roles, list)
-        and isinstance(exp_roles, list)
-        and len(act_roles) > len(exp_roles)
-    )
+    role_growth = isinstance(act_roles, list) and isinstance(exp_roles, list) and len(act_roles) > len(exp_roles)
 
     if not (sentinel_hit or escalation_hit or role_growth):
         return None  # No authorization drift
@@ -275,34 +267,38 @@ import re as _re
 _ORGPATH_REGEX = _re.compile(r"^ORG(-[A-Z]{2,6}){0,4}$")
 
 # Identity fields whose absence or change constitutes identity drift
-_IDENTITY_REQUIRED_FIELDS = frozenset({
-    "orgpath",
-    "org_path",
-    "extension_attribute_1",    # Entra extensionAttribute1
-    "employee_id",
-    "lifecycle_state",
-    "account_enabled",
-})
+_IDENTITY_REQUIRED_FIELDS = frozenset(
+    {
+        "orgpath",
+        "org_path",
+        "extension_attribute_1",  # Entra extensionAttribute1
+        "employee_id",
+        "lifecycle_state",
+        "account_enabled",
+    }
+)
 
-_IDENTITY_SENTINEL_FIELDS = frozenset({
-    "orgpath",
-    "org_path",
-    "extension_attribute_1",
-    "employee_id",
-    "upn",
-    "user_principal_name",
-    "lifecycle_state",
-    "manager",
-    "sam_account_name",
-    "entra_device_id",          # Entra device object ID
-    "arc_machine_id",           # Azure Arc resource ID
-    "disposition",              # Computer disposition from survey
-})
+_IDENTITY_SENTINEL_FIELDS = frozenset(
+    {
+        "orgpath",
+        "org_path",
+        "extension_attribute_1",
+        "employee_id",
+        "upn",
+        "user_principal_name",
+        "lifecycle_state",
+        "manager",
+        "sam_account_name",
+        "entra_device_id",  # Entra device object ID
+        "arc_machine_id",  # Azure Arc resource ID
+        "disposition",  # Computer disposition from survey
+    }
+)
 
 # Lifecycle state consistency rules
 _LIFECYCLE_ACCOUNT_RULES = {
-    "ACTIVE": True,             # ACTIVE → accountEnabled must be True
-    "SUSPENDED": False,         # SUSPENDED → accountEnabled must be False
+    "ACTIVE": True,  # ACTIVE → accountEnabled must be True
+    "SUSPENDED": False,  # SUSPENDED → accountEnabled must be False
     "OFFBOARDING": False,
     "ONBOARDING": True,
 }
@@ -361,11 +357,7 @@ def classify_identity_drift(
     """
     active_codes, deprecated_codes = _resolve_codebook(orgpath_codebook)
     delta = _dict_delta(expected_state, actual_state)
-    all_changed = (
-        set(delta.get("changed", []))
-        | set(delta.get("added", []))
-        | set(delta.get("removed", []))
-    )
+    all_changed = set(delta.get("changed", [])) | set(delta.get("added", [])) | set(delta.get("removed", []))
 
     reasons: List[str] = []
 
@@ -375,18 +367,14 @@ def classify_identity_drift(
 
     # Check 2: OrgPath validation
     orgpath_value = (
-        actual_state.get("orgpath")
-        or actual_state.get("org_path")
-        or actual_state.get("extension_attribute_1")
+        actual_state.get("orgpath") or actual_state.get("org_path") or actual_state.get("extension_attribute_1")
     )
     if orgpath_value is None:
         reasons.append("OrgPath missing from identity object")
     elif not _ORGPATH_REGEX.match(str(orgpath_value)):
         reasons.append(f"OrgPath '{orgpath_value}' fails format validation ^ORG(-[A-Z]{{2,6}}){{0,4}}$")
     elif deprecated_codes is not None and str(orgpath_value) in deprecated_codes:
-        reasons.append(
-            f"OrgPath '{orgpath_value}' is deprecated in the codebook (Phantom Drift)"
-        )
+        reasons.append(f"OrgPath '{orgpath_value}' is deprecated in the codebook (Phantom Drift)")
     elif active_codes is not None and str(orgpath_value) not in active_codes:
         reasons.append(f"OrgPath '{orgpath_value}' not in canonical codebook")
 
@@ -396,9 +384,7 @@ def classify_identity_drift(
     if lifecycle and account_enabled is not None:
         expected_enabled = _LIFECYCLE_ACCOUNT_RULES.get(str(lifecycle).upper())
         if expected_enabled is not None and bool(account_enabled) != expected_enabled:
-            reasons.append(
-                f"Lifecycle '{lifecycle}' inconsistent with accountEnabled={account_enabled}"
-            )
+            reasons.append(f"Lifecycle '{lifecycle}' inconsistent with accountEnabled={account_enabled}")
 
     # Check 4: required fields absent in actual_state
     # Only flag fields that ARE present in expected but absent in actual
@@ -438,28 +424,32 @@ def classify_identity_drift(
 # ---------------------------------------------------------------------------
 
 
-
 # ---------------------------------------------------------------------------
 # DRIFT-SEMANTIC Classifier  (ADR-012 DT-02)
 # ---------------------------------------------------------------------------
 
 _SEMANTIC_WEAKENING_FIELDS = {
-    "mfa_enabled":               (False, "MFA must be enabled"),
-    "legacy_auth_enabled":       (True,  "Legacy auth must be disabled"),
-    "modern_auth_enabled":       (False, "Modern auth must be enabled"),
-    "password_never_expires":    (True,  "Passwords must expire"),
-    "external_sharing_enabled":  (True,  "External sharing must be disabled"),
-    "anonymous_sharing_enabled": (True,  "Anonymous sharing must be disabled"),
-    "public_access_enabled":     (True,  "Public access must be disabled"),
-    "audit_log_enabled":         (False, "Audit logging must be enabled"),
+    "mfa_enabled": (False, "MFA must be enabled"),
+    "legacy_auth_enabled": (True, "Legacy auth must be disabled"),
+    "modern_auth_enabled": (False, "Modern auth must be enabled"),
+    "password_never_expires": (True, "Passwords must expire"),
+    "external_sharing_enabled": (True, "External sharing must be disabled"),
+    "anonymous_sharing_enabled": (True, "Anonymous sharing must be disabled"),
+    "public_access_enabled": (True, "Public access must be disabled"),
+    "audit_log_enabled": (False, "Audit logging must be enabled"),
     "unified_audit_log_enabled": (False, "Unified audit log must be enabled"),
-    "encryption_at_rest":        (False, "Encryption at rest must be enabled"),
-    "tls_enforcement":           (False, "TLS enforcement must be enabled"),
-    "ca_scope_tenant_wide":      (True,  "CA policy must not be tenant-wide"),
-    "safe_links_enabled":        (False, "Safe Links must be enabled"),
-    "safe_attachments_enabled":  (False, "Safe Attachments must be enabled"),
+    "encryption_at_rest": (False, "Encryption at rest must be enabled"),
+    "tls_enforcement": (False, "TLS enforcement must be enabled"),
+    "ca_scope_tenant_wide": (True, "CA policy must not be tenant-wide"),
+    "safe_links_enabled": (False, "Safe Links must be enabled"),
+    "safe_attachments_enabled": (False, "Safe Attachments must be enabled"),
 }
-_SEMANTIC_UPPER_BOUND = {"max_inactive_days": 90, "patch_sla_days": 30, "session_timeout_minutes": 480, "sign_in_frequency_hours": 24}
+_SEMANTIC_UPPER_BOUND = {
+    "max_inactive_days": 90,
+    "patch_sla_days": 30,
+    "session_timeout_minutes": 480,
+    "sign_in_frequency_hours": 24,
+}
 _SEMANTIC_LOWER_BOUND = {"audit_retention_days": 90}
 
 
@@ -495,11 +485,15 @@ def classify_semantic_drift(*, resource_id, policy_ref, expected_state, actual_s
     risk = "unauthorized" if security_critical else _classify_drift(expected_hash, actual_hash, delta)
     return DriftState(
         id=drift_id or f"drift-semantic:{resource_id}:{policy_ref}",
-        resource_id=resource_id, policy_ref=policy_ref,
-        expected_hash=expected_hash, actual_hash=actual_hash,
-        drift_detected=True, classification=risk,
+        resource_id=resource_id,
+        policy_ref=policy_ref,
+        expected_hash=expected_hash,
+        actual_hash=actual_hash,
+        drift_detected=True,
+        classification=risk,
         delta={**delta, "semantic_reasons": reasons},
-        provenance=provenance, drift_class=DRIFT_SEMANTIC,
+        provenance=provenance,
+        drift_class=DRIFT_SEMANTIC,
     )
 
 
@@ -541,9 +535,12 @@ def classify_drift(
 
     # DRIFT-SEMANTIC second
     semantic = classify_semantic_drift(
-        resource_id=resource_id, policy_ref=policy_ref,
-        expected_state=expected_state, actual_state=actual_state,
-        provenance=provenance, drift_id=drift_id,
+        resource_id=resource_id,
+        policy_ref=policy_ref,
+        expected_state=expected_state,
+        actual_state=actual_state,
+        provenance=provenance,
+        drift_id=drift_id,
     )
     if semantic is not None:
         return semantic

@@ -264,4 +264,3 @@ def build_gemini_visuals(
 
     generate_all_gemini_images(output_dir, force=force, model=model)
     return output_dir
-

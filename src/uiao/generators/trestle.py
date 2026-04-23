@@ -195,5 +195,3 @@ def validate_oscal_artifacts(
     total = len(json_files)
     logger.info("Trestle validation complete: %d file(s), %d failure(s)", total, failures)
     return failures
-
-
