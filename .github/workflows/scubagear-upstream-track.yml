@@ -1,0 +1,138 @@
+name: ScubaGear upstream tracker
+
+# Watches cisagov/ScubaGear for new releases. When upstream ships a tag
+# that is not yet reconciled against UIAO's SCUBA_TO_KSI_MAP, opens a
+# canon-change issue so a human can update the mapping table and bump
+# .github/scubagear-upstream-pin.yaml. Never auto-modifies canon.
+#
+# Pairs with the in-repo consistency gate
+# tests/test_scubagear_upstream_consistency.py, which catches fixture /
+# map drift inside a single PR. Together they implement RFC-0026
+# enhancement E2 (docs/docs/uiao-rfc-0026-roadmap.md).
+
+on:
+  schedule:
+    # Weekly, Monday 13:00 UTC. Offset from conmon-aggregate (1st of
+    # month 09:00 UTC) so the two don't contend for gh API quota.
+    - cron: '0 13 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-upstream-release:
+    name: Check cisagov/ScubaGear for new releases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Read pinned version
+        id: pin
+        run: |
+          pinned=$(awk -F': ' '/^scubagear_version:/ { gsub(/"/,"",$2); print $2; exit }' \
+            .github/scubagear-upstream-pin.yaml)
+          if [ -z "$pinned" ]; then
+            echo "::error::Could not read scubagear_version from .github/scubagear-upstream-pin.yaml"
+            exit 1
+          fi
+          echo "pinned=${pinned}" >> "$GITHUB_OUTPUT"
+          echo "UIAO pinned ScubaGear version: ${pinned}"
+
+      - name: Fetch latest upstream release
+        id: upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          release_json=$(gh api repos/cisagov/ScubaGear/releases/latest)
+          tag=$(echo "$release_json" | jq -r '.tag_name')
+          url=$(echo "$release_json" | jq -r '.html_url')
+          published=$(echo "$release_json" | jq -r '.published_at')
+          # Strip leading v/V from tag when comparing to the numeric pin
+          version="${tag#[vV]}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "url=${url}" >> "$GITHUB_OUTPUT"
+          echo "published=${published}" >> "$GITHUB_OUTPUT"
+          echo "Upstream latest tag: ${tag} (normalized: ${version})"
+
+      - name: Summarize to job output
+        run: |
+          {
+            echo "## ScubaGear upstream tracker"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| UIAO pin | \`${{ steps.pin.outputs.pinned }}\` |"
+            echo "| Upstream tag | \`${{ steps.upstream.outputs.tag }}\` |"
+            echo "| Upstream published | ${{ steps.upstream.outputs.published }} |"
+            echo "| Release page | ${{ steps.upstream.outputs.url }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open canon-change issue if pin lags upstream
+        if: steps.pin.outputs.pinned != steps.upstream.outputs.version
+        uses: actions/github-script@v7
+        env:
+          PINNED: ${{ steps.pin.outputs.pinned }}
+          UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
+          UPSTREAM_URL: ${{ steps.upstream.outputs.url }}
+          UPSTREAM_PUBLISHED: ${{ steps.upstream.outputs.published }}
+        with:
+          script: |
+            const pinned = process.env.PINNED;
+            const tag = process.env.UPSTREAM_TAG;
+            const url = process.env.UPSTREAM_URL;
+            const published = process.env.UPSTREAM_PUBLISHED;
+            const fingerprint = `scubagear-upstream:${tag}`;
+
+            // Skip if an open issue already exists for this specific tag.
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'scubagear-upstream',
+              per_page: 100,
+            });
+            if (existing.some(i => (i.body || '').includes(fingerprint))) {
+              core.info(`Issue already open for ${tag} — skipping.`);
+              return;
+            }
+
+            const title = `ScubaGear upstream: new release ${tag} — SCUBA_TO_KSI_MAP reconciliation required`;
+            const body = [
+              `cisagov/ScubaGear has shipped a new release that UIAO's \`SCUBA_TO_KSI_MAP\` has not been reconciled against.`,
+              ``,
+              `| Field | Value |`,
+              `| --- | --- |`,
+              `| Upstream tag | \`${tag}\` |`,
+              `| Release page | ${url} |`,
+              `| Published | ${published} |`,
+              `| UIAO pin | \`${pinned}\` (\`.github/scubagear-upstream-pin.yaml\`) |`,
+              ``,
+              `### Reconciliation checklist`,
+              ``,
+              `- [ ] Diff the new release's \`PowerShell/ScubaGear/Rego/**/*.rego\` policy IDs against \`SCUBA_TO_KSI_MAP\` keys in \`src/uiao/adapters/scubagear_adapter.py\``,
+              `- [ ] For each new policy ID, assign a NIST SP 800-53 control family (see Appendix C of \`src/uiao/canon/UIAO_002_SCuBA_Technical_Specification_v1.0.md\`)`,
+              `- [ ] Update \`SCUBA_TO_KSI_MAP\` with the new entries`,
+              `- [ ] Add one representative policy per new product prefix (if any) to \`tests/fixtures/scubagear_golden_sample.json\` so \`tests/test_scubagear_upstream_consistency.py\` exercises it`,
+              `- [ ] Bump \`scubagear_version\` and \`validated_at\` in \`.github/scubagear-upstream-pin.yaml\``,
+              `- [ ] If a policy introduces a new KSI category not present in \`src/uiao/canon/data/vendor-overlays/scuba.yaml\` (\`products.*.ksi_categories\`), open a canon-change issue instead of inlining the change`,
+              ``,
+              `### Downstream impact`,
+              ``,
+              `A stale pin is not an outage today, but any policies in the new release that appear in production ScubaGear runs without a \`SCUBA_TO_KSI_MAP\` entry will be flagged as \`unmapped_policies\` in the normalized envelope and silently miss KSI aggregation. Monthly ConMon packs (RFC-0026 / UIAO_132) will be incomplete until the reconciliation lands.`,
+              ``,
+              `---`,
+              `fingerprint: \`${fingerprint}\``,
+            ].join('\n');
+
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['scubagear-upstream', 'canon', 'needs-triage'],
+            });
+            core.info(`Opened canon-change issue #${issue.data.number} for ${tag}.`);

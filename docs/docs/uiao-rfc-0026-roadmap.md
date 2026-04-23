@@ -93,17 +93,17 @@ This roadmap sequences eight enhancements by enforcement-clock risk × implement
 - [x] T3.4 — Unit tests in `tests/test_normalize_scuba_provenance.py` — five status paths (ok / missing / below_pin / unparseable / skipped) plus integration tests via `normalize_scuba` *(PR 2: 21 new tests, 80/80 green)*
 - [ ] T3.6 — Post Response C on cisagov/ScubaGear #2075 citing the implementation *(after PR 2 merges)*
 
-### E2 · ScubaGear release tracking + mapping drift CI gate
+### E2 · ScubaGear release tracking + mapping drift CI gate *(PR 3)*
 **Target:** 2026-06-15 (two weeks before Qwilfish)
 **Risk:** When Qwilfish lands new SECURITYSUITE policy IDs, UIAO's current SCUBA_TO_KSI_MAP (22 SECURITYSUITE entries already present at `scubagear_adapter.py:131-154`) will either miss new IDs or carry stale ones; Risk G-1 in UIAO_002 documents this failure mode.
 **Correction from external analysis:** SECURITYSUITE is *already* populated in `SCUBA_TO_KSI_MAP` (22 entries, lines 131-154) — the "pre-populate now" sub-task is **done**. Remaining work is the release tracker and upstream diff.
 **Tasks:**
-- [ ] T2.1 — Create `.github/workflows/scubagear-upstream-track.yml` — watches cisagov/ScubaGear releases feed
-- [ ] T2.2 — On new tag, diff ScubaResults JSON schema against pinned golden fixture
-- [ ] T2.3 — Run `uiao scuba transform` against golden fixture; fail the gate on new unmapped KSI IDs
-- [ ] T2.4 — Auto-open canon-change issue listing new policies + inferred NIST control family
-- [ ] T2.5 — When Qwilfish ships, reconcile shipped SECURITYSUITE IDs against the 22 pre-populated entries; update map if vendor IDs differ
-- [ ] T2.6 — Update UIAO_002 Appendix C with any reconciliation delta
+- [x] T2.1 — Create `.github/workflows/scubagear-upstream-track.yml` — watches cisagov/ScubaGear releases feed *(PR 3: weekly schedule + workflow_dispatch; uses `actions/github-script@v7` for idempotent issue creation, fingerprinted by upstream tag)*
+- [x] T2.2 — Pin file `.github/scubagear-upstream-pin.yaml` records the validated upstream version; workflow diffs against it and normalizes leading `v`/`V` before comparison *(PR 3)*
+- [x] T2.3 — Consistency gate `tests/test_scubagear_upstream_consistency.py` + golden fixture `tests/fixtures/scubagear_golden_sample.json` (spans all 8 product prefixes); `normalize_scuba` against the fixture must report zero unmapped policies *(PR 3)*
+- [x] T2.4 — Auto-open canon-change issue listing new policies + inferred NIST control family *(PR 3: full reconciliation checklist in issue body; labels `scubagear-upstream`, `canon`, `needs-triage`)*
+- [ ] T2.5 — When Qwilfish ships, reconcile shipped SECURITYSUITE IDs against the 22 pre-populated entries; update map if vendor IDs differ *(triggered by T2.1 issue when Qwilfish publishes)*
+- [ ] T2.6 — Update UIAO_002 Appendix C with any reconciliation delta *(follows T2.5)*
 
 ---
 
