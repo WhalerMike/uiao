@@ -15,7 +15,6 @@ Document Title: UIAO Adapter Segmentation Overview
 Version: 1.0
 Date: 2026-04-13
 Author: Michael Stratton
-Classification: UIAO Canon – Public Release
 Compliance: GCC-Moderate Only
 No-Hallucination Mode: ENABLED
 [/DOCUMENT-METADATA]
