@@ -1,9 +1,23 @@
 # Pre-commit hooks for UIAO monorepo.
-# Install with: pre-commit install
-# Run against all files: pre-commit run --all-files
+#
+# Install with:   pre-commit install
+# Run all files:  pre-commit run --all-files
+#
+# Goal: every blocking CI gate on main also fires locally before push.
+#   - ruff check + ruff format  → mirrors .github/workflows/ruff.yml
+#   - mypy src/uiao              → mirrors .github/workflows/mypy.yml
+#   - check-metaschema           → fast subset of schema-validation.yml
+#   - substrate drift            → mirrors .github/workflows/substrate-drift.yml
+#   - metadata validator         → mirrors .github/workflows/metadata-validator.yml
+#
+# Post-ADR-032 paths: all Python lives under src/uiao/, tests/, scripts/,
+# deploy/, diagrams/; schemas under src/uiao/schemas/. Legacy impl/ and
+# core/ paths are retired (see ADR-032 / ADR-044).
 
 repos:
-  # Baseline hygiene
+  # --------------------------------------------------------------------
+  # Baseline hygiene — whitespace, line endings, JSON/YAML/TOML parse
+  # --------------------------------------------------------------------
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
@@ -16,36 +30,79 @@ repos:
       - id: check-merge-conflict
       - id: check-added-large-files
         args: [--maxkb=1024]
-        # Block accidentally committing multi-MB binaries into git. PNGs
-        # that exceed this after pngquant should go via LFS or be
-        # downsized before commit.
       - id: mixed-line-ending
         args: [--fix=lf]
 
-  # Python linting + formatting (matches .github/workflows/ruff.yml)
+  # --------------------------------------------------------------------
+  # Python: ruff check + format (mirrors .github/workflows/ruff.yml)
+  # --------------------------------------------------------------------
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.9
     hooks:
       - id: ruff
         args: [--fix]
-        files: ^impl/.*\.py$
+        files: ^(src/uiao|tests|scripts|deploy|diagrams)/.*\.py$
       - id: ruff-format
-        files: ^impl/.*\.py$
+        files: ^(src/uiao|tests|scripts|deploy|diagrams)/.*\.py$
 
-  # Validate JSON Schemas compile (catches syntax errors in our schemas)
+  # --------------------------------------------------------------------
+  # Python: mypy strict (mirrors .github/workflows/mypy.yml)
+  #
+  # Runs against src/uiao/ only; tests/ and scripts/ are mypy-excluded
+  # at the pyproject.toml level. Uses the project's own type stubs and
+  # config.
+  # --------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        name: mypy (src/uiao, strict)
+        files: ^src/uiao/.*\.py$
+        args: [--ignore-missing-imports, --config-file=pyproject.toml]
+        additional_dependencies:
+          - pydantic>=2.8
+          - pydantic-settings>=2.0
+          - types-PyYAML
+          - types-requests
+          - typer>=0.12
+
+  # --------------------------------------------------------------------
+  # Schema metaschema check (fast subset of schema-validation.yml)
+  # --------------------------------------------------------------------
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.29.3
     hooks:
       - id: check-metaschema
-        files: ^core/schemas/.*\.schema\.json$
+        files: ^src/uiao/schemas/.*\.schema\.json$
 
-  # Prevent commit of files that are explicitly gitignored but snuck in
-  # (e.g. docs/site/, docs/exports/**/*.pptx) — happens when someone
-  # force-adds. This hook warns; doesn't block.
+  # --------------------------------------------------------------------
+  # Local hooks — wire the uiao CLI and canon validators for pre-push
+  # enforcement of substrate integrity + canon frontmatter.
+  # --------------------------------------------------------------------
   - repo: local
     hooks:
+      # Blocks accidental commit of files that should have been
+      # gitignored (docs/_site/, docs/exports/**/*.pptx, etc.).
       - id: block-tracked-build-artifacts
         name: Block tracked build artifacts
-        entry: bash -c 'git diff --cached --name-only | grep -E "docs/site/|docs/exports/.+\.(pptx|docx)$" && { echo "ERROR: staged a file that should be gitignored"; exit 1; } || exit 0'
+        entry: scripts/check_staged_build_artifacts.sh
         language: system
         pass_filenames: false
+
+      # Substrate drift — mirrors .github/workflows/substrate-drift.yml.
+      # Runs only when canon / schemas / substrate code / docs are staged.
+      - id: substrate-drift
+        name: uiao substrate drift (matches CI — any finding blocks)
+        entry: uiao substrate drift
+        language: system
+        pass_filenames: false
+        files: ^(src/uiao/canon|src/uiao/schemas|src/uiao/substrate|docs)/
+
+      # Metadata validator — mirrors the inline body of
+      # .github/workflows/metadata-validator.yml.
+      - id: metadata-validator
+        name: Validate canon document frontmatter
+        entry: python scripts/validate_canon_frontmatter.py
+        language: system
+        pass_filenames: false
+        files: ^src/uiao/canon/.*\.md$
