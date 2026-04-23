@@ -444,19 +444,83 @@ gaps:
       determination — verify with agency ISSO.
 
 # ---------------------------------------------------------------
+# ENTRA ID AUTHORIZATION — SCuBA DETECTION GAPS
+# ---------------------------------------------------------------
+# Gaps in this section are *detection* gaps rather than feature
+# availability gaps: the Entra ID feature works as documented in
+# GCC-Moderate, but the SCuBA baseline (cisagov/ScubaGear) does not
+# raise a policy violation for a specific misconfiguration that RFC-0026
+# authorization controls (AC-2 / AC-6) treat as high-severity. UIAO
+# supplemental rules in src/uiao/governance/ compensate by detecting
+# the misconfiguration directly.
+#
+# microsoft_status is kept FUNCTIONAL because the underlying feature
+# is available; the compensating control points to the UIAO rule that
+# closes the detection gap.
+
+  - id: GAP-ENT-001
+    feature: "PIM for Groups — Password-Reset Role Escalation"
+    service: "Microsoft Entra ID"
+    portal_path: "Entra admin center > Identity governance > Privileged Identity Management > Groups"
+    boundary_class: DRIFT-AUTHZ
+    severity: P1
+    impact_category: security_control
+    microsoft_status: FUNCTIONAL
+    scuba_baseline_gap: "MS.AAD.7.4v1 (cisagov/ScubaGear#2072)"
+    root_cause: >
+      When PIM for Groups is enrolled on an Entra group that also holds
+      a password-reset-capable directory role (Password Administrator,
+      Helpdesk Administrator, User Administrator, Global Administrator),
+      any principal with eligible PIM activation can self-elevate into
+      that role at activation time. The current SCuBA baseline check
+      MS.AAD.7.4v1 reviews audit log alert rules but does not enumerate
+      this specific escalation path; cisagov/ScubaGear#2072 tracks the
+      upstream detection gap and does not have a release milestone at
+      the time of pinning. In a GCC-Moderate tenant under RFC-0026
+      continuous monitoring, this is a Tier-1 authorization risk
+      because password-reset permission over privileged accounts lets
+      an attacker bypass MFA and access controls tied to those
+      accounts.
+    nist_controls:
+      - "AC-2 (Account Management)"
+      - "AC-6 (Least Privilege)"
+      - "AU-6 (Audit Record Review)"
+    compensating_control: UIAO-AUTHZ-001
+    compensating_control_desc: >
+      UIAO supplemental classifier
+      `src/uiao/governance/entra_authz_supplements.py`
+      :func:`detect_pim_groups_password_reset_escalation` enumerates
+      Entra groups that are (a) PIM-for-Groups-enrolled and (b) hold a
+      password-reset-capable directory role assignment, emitting a
+      DriftState with drift_class=DRIFT-AUTHZ and
+      classification=unauthorized per ADR-012 DT-04. Findings roll up
+      into the monthly ConMon aggregate and are subject to the 72-hour
+      SLA for critical authz drift (UIAO_132 §2.2).
+    status: COMPENSATED
+    ksi_ids: ["KSI-AC-02", "KSI-AC-06", "KSI-AU-06"]
+    ato_note: >
+      This gap is agency-specific desired state above the SCuBA minimum
+      baseline. When cisagov/ScubaGear closes #2072 upstream, reconcile
+      the upstream check against this classifier and retire the
+      supplemental rule if the upstream version is equivalent or
+      stricter. Until then, GAP-ENT-001 stands and the compensating
+      control is authoritative for the AC-2 / AC-6 implementation
+      statement in the SSP.
+
+# ---------------------------------------------------------------
 # SUMMARY METRICS (auto-updated by probe)
 # ---------------------------------------------------------------
 summary:
-  total_gaps: 14
+  total_gaps: 15
   by_status:
-    FUNCTIONAL: 1
+    FUNCTIONAL: 2
     SILENTLY_BLOCKED: 5
     EXPLICITLY_UNAVAIL: 3
     PLANNING_PHASE: 4
-    COMPENSATED: 10
+    COMPENSATED: 11
     GAP_UNMITIGATED: 3
   by_severity:
-    P1: 3
+    P1: 4
     P2: 7
     P3: 4
   unmitigated_p1_gaps:
@@ -466,3 +530,5 @@ summary:
   ato_action_required:
     - GAP-INT-008  # AO must accept risk — no compensating control
     - GAP-ARC-004  # AO must accept risk — verify Defender endpoints
+  scuba_detection_gaps:
+    - GAP-ENT-001  # PIM for Groups / password-reset escalation (cisagov/ScubaGear#2072)
