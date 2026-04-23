@@ -3,7 +3,6 @@ document_id: MOD_B
 title: "Appendix B — Dynamic Group Library"
 version: "2.0"
 status: CANONICAL
-classification: Controlled
 owner: Michael Stratton
 author: Michal Doroszewski
 created_at: 2026-04-18

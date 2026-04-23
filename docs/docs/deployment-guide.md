@@ -4,7 +4,6 @@ UIAO-Core Deployment Guide
 
 **Version:** 1.0.0
 
-**Classification:** Controlled
 
 **Date:** 2026-04-11
 
@@ -111,11 +110,11 @@ The multi-stage Dockerfile uses a Python 3.12-slim base, installs only productio
 
   M365 tenant             FedRAMP authorized SaaS         GCC / GCC High
 
-  GitHub repository       Source code management          Controlled
+  GitHub repository       Source code management          Public (OSS)
 
   Evidence storage        Inside authorization boundary   GCC Moderate
 
-  Auditor bundle export   Crosses boundary to auditor     Controlled distribution
+  Auditor bundle export   Crosses boundary to auditor     Adopter-defined handling
   ---------------------------------------------------------------------------------
 
 5.2 Data Handling

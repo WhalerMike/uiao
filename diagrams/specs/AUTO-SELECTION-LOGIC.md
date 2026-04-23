@@ -3,7 +3,6 @@ document_id: UIAO_DG_003
 title: "Diagram Form Factor Auto-Selection Logic"
 version: "1.0"
 status: DRAFT
-classification: Controlled
 owner: Michael Stratton
 created_at: 2026-04-18
 updated_at: 2026-04-18

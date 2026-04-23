@@ -16,7 +16,7 @@ Registration in docs/_quarto.yml:
       pre-render:
         - python ../diagrams/scripts/pre-render.py
 
-Boundary: GCC-Moderate · Classification: Controlled
+Boundary: GCC-Moderate
 """
 
 import os

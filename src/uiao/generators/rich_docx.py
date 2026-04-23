@@ -15,7 +15,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from docx import Document
 from docx.enum.table import WD_TABLE_ALIGNMENT
@@ -40,21 +40,35 @@ _DEFAULT_IMAGE_WIDTH: Any = Inches(5.5)  # module-level singleton for ruff B008
 # ---------------------------------------------------------------------------
 
 
-def _add_classification_header(doc: Document, classification: str = "Public") -> None:
-    """Add header/footer with classification marking to all sections."""
-    for section in doc.sections:
-        header = section.header
-        p = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
-        p.text = classification
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.runs[0]
-        run.font.size = Pt(8)
-        run.font.color.rgb = RGBColor(0x80, 0x00, 0x00)
-        run.font.bold = True
+# Classification banner behavior:
+#   If `classification` is a string, it is stamped in both header and footer.
+#   If None (default), no banner is rendered and the footer omits the prefix.
+#
+# Production note: adopters requiring compliance markings (CUI, Controlled,
+# FOUO, etc.) pass the appropriate string and this function renders it
+# faithfully. The None default exists because the open-source UIAO repo
+# itself ships no classification - it is NOT a signal that classification
+# output is unsupported.
+def _add_classification_header(doc: Document, classification: Optional[str] = None) -> None:
+    """Add optional classification header and a provenance footer to all sections.
 
+    If classification is None (default), no header banner is rendered; adopters
+    who require a marking pass a string explicitly.
+    """
+    for section in doc.sections:
+        if classification:
+            header = section.header
+            p = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+            p.text = classification
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = p.runs[0]
+            run.font.size = Pt(8)
+            run.font.color.rgb = RGBColor(0x80, 0x00, 0x00)
+            run.font.bold = True
         footer = section.footer
         fp = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
-        fp.text = f"{classification} | UIAO Program | Generated {datetime.now():%Y-%m-%d}"
+        footer_prefix = f"{classification} | " if classification else ""
+        fp.text = f"{footer_prefix}UIAO Program | Generated {datetime.now():%Y-%m-%d}"
         fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
         fr = fp.runs[0]
         fr.font.size = Pt(7)
@@ -265,7 +279,7 @@ def _build_from_scratch(context: dict, visuals_dir: Path) -> Document:
     lb = context.get("leadership_briefing", {})
     if not isinstance(lb, dict):
         lb = {}
-    classification = context.get("classification", "Public")
+    classification = context.get("classification")
     _add_classification_header(doc, classification)
 
     # Title page
@@ -628,14 +642,14 @@ def _md_to_docx(doc: Document, md_text: str) -> None:
 def build_topic_docx(
     md_path: Path,
     exports_dir: Path,
-    classification: str = "Public",
+    classification: Optional[str] = None,
 ) -> Path:
     """Convert a single Markdown document into a styled DOCX.
 
     Args:
         md_path: Path to the source Markdown file (from docs/).
         exports_dir: Root exports directory; output goes to exports_dir/docx/.
-        classification: Header/footer marking (default: CUI).
+        classification: Optional header/footer marking (default: None - no banner rendered).
 
     Returns:
         Path to the generated DOCX file.
@@ -662,7 +676,7 @@ def build_topic_docx(
 def generate_all_topic_docs(
     docs_dir: Path | None = None,
     exports_dir: Path | None = None,
-    classification: str = "Public",
+    classification: Optional[str] = None,
 ) -> list[Path]:
     """Convert all Markdown documents in docs_dir to DOCX.
 

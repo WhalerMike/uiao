@@ -3,7 +3,6 @@ document_id: UIAO_DG_001
 title: Diagram Pipeline Governance Rules
 version: "2.0"
 status: DRAFT
-classification: Controlled
 owner: Michael Stratton
 created_at: 2026-04-18
 updated_at: 2026-04-18

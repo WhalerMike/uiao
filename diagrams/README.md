@@ -1,6 +1,6 @@
 # UIAO Diagram Pipeline
 
-**Boundary:** GCC-Moderate · **Classification:** Controlled · **Status:** DRAFT · **Version:** 2.0
+**Boundary:** GCC-Moderate · **Status:** DRAFT · **Version:** 2.0
 
 ## Overview
 

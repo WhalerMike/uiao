@@ -24,7 +24,6 @@ provenance:
 **Version:** 1.0
 **Date:** 2026-04-13
 **Author:** Michael Stratton
-**Classification:** UIAO Canon – Controlled
 **Compliance:** GCC-Moderate Only
 **No-Hallucination Mode:** ENABLED
 
