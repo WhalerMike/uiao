@@ -64,6 +64,28 @@ grace period runs through **2026-12-31**, and enforcement begins
 **2027-01-01**. Corrective action follows a five-strike ladder culminating in
 marketplace de-listing, with a 12-month reset clock after each failure.
 
+### Interlocking deadlines from FedRAMP Notice 0009
+
+RFC-0026's pathway posture (D1 below) is intentionally dual-track: UIAO runs
+Pathway 2 (traditional) at enforcement start and commits to migrate to
+Pathway 1 (modernized) when the Balance Improvement Releases publish.
+FedRAMP Notice 0009 — *Balance Improvement Release adoption schedule* —
+constrains that migration with two hard dates that fall *inside* the
+RFC-0026 enforcement window, meaning Pathway-1 migration is not indefinitely
+deferrable:
+
+| Date | Notice 0009 event | UIAO implication |
+|---|---|---|
+| 2027-04-01 | CCM BIR adoption mandatory | Pathway-1 RV5-CA07-CCM adapter (`ccm-bir`) must be active or the `conmon-aggregate.yml` readiness gate fires 90 days prior (2027-01-01) |
+| 2027-06-01 | VDR adoption mandatory | Pathway-1 RV5-CA07-VLN adapter (`vdr-bir`) must be active or the readiness gate fires 90 days prior (2027-03-02) |
+
+The adapter-registry entries for `ccm-bir` and `vdr-bir` (RESERVED as of
+this ADR) encode `notice-0009-mandatory-by` dates in their
+`fedramp-rfc-0026` advisory block; the script
+`scripts/conmon/migration_readiness.py` consumes those dates plus the
+`status` field and opens a governance issue inside the 90-day lead
+window if the pathway transition hasn't started.
+
 ### Where UIAO already stands
 
 UIAO is a FedRAMP-Moderate governance substrate whose entire operating model
@@ -275,4 +297,5 @@ Before this ADR can move from `PROPOSED` to `ACCEPTED`:
 | Version | Date | Change | Author |
 |---|---|---|---|
 | 0.1 | 2026-04-21 | Drafted during RFC-0026 comment window | Automation |
+| 0.2 | 2026-04-23 | Added interlocking FedRAMP Notice 0009 deadlines (CCM BIR 2027-04-01, VDR 2027-06-01) and the `ccm-bir` / `vdr-bir` adapter-registry slots they drive. Paired with `scripts/conmon/migration_readiness.py` and the new E8 enhancement in `docs/docs/uiao-rfc-0026-roadmap.md`. | Automation |
 
