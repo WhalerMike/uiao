@@ -6,6 +6,7 @@ pre-commit and CI run the exact same check.
 
 Exit 0 on success, 1 if any UIAO_NNN-bearing frontmatter fails validation.
 """
+
 from __future__ import annotations
 
 import json
