@@ -71,12 +71,12 @@ Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs 
 | `metadata-validator.yml` | `src/uiao/canon/**/*.md` + metadata schema | ✅ |
 | `quarto.yml` | `docs/**` PRs | ✅ render; deploy on main |
 | `adapter-conformance.yml` | `src/uiao/adapters/**` + adapter tests | ✅ |
-| `ruff.yml` | Python PRs | 🟡 soft-fail (pending lint-debt burn-down) |
+| `ruff.yml` | Python PRs | ✅ |
 | `mypy.yml` | Python PRs | 🟡 soft-fail (never enforced pre-ADR-032) |
 | `link-check.yml` | `*.md` / `*.qmd` PRs + weekly | 🟡 soft-fail |
 | `release.yml` | Tag `v*.*.*` | — |
 
-> **Lint / type debt:** when the `ruff.yml` and `mypy.yml` path filters were repaired post-ADR-032, 230 pre-existing ruff findings and an unenforced mypy baseline surfaced. Both gates are marked `continue-on-error: true` until the debt is cleared; they still publish findings on every PR. The full pytest suite was restored to blocking once the `fastapi`/`httpx`/`uvicorn` runtime dependencies of `uiao.api` were declared as an `[api]` optional extra and CI began installing them.
+> **Type debt:** `mypy.yml` remains `continue-on-error: true` pending a type-annotation burn-down — the mypy baseline was never enforced pre-ADR-032 and hundreds of undocumented signatures surface under the restored gate. `ruff.yml` was returned to blocking after the 230-finding baseline was cleared (135 via `--fix`, ~76 via `ruff format` splitting one-line dataclasses, 13 manual fixes). The full pytest suite was restored to blocking once the `fastapi`/`httpx`/`uvicorn` runtime dependencies of `uiao.api` were declared as an `[api]` optional extra.
 
 ## Commit convention
 

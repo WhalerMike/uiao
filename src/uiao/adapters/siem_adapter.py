@@ -42,18 +42,34 @@ class SiemAdapter(DatabaseAdapterBase):
             identity=f"siem:{self._platform}",
             auth_method=self._config.get("auth_method", "api-key"),
             endpoint=self._endpoint or f"https://{self._platform}.local/api",
-            tls_version="TLSv1.3", mtls_enabled=False, timestamp=self._now(),
+            tls_version="TLSv1.3",
+            mtls_enabled=False,
+            timestamp=self._now(),
         )
 
     def discover_schema(self) -> SchemaMappingObject:
-        vendor_schema = {"event_id": "string", "timestamp": "datetime", "source": "string",
-                         "severity": "string", "category": "string", "message": "string", "raw_log": "string"}
-        canonical_schema = {"identity": f"siem:{self._platform}:<event_id>",
-                            "control_id": "AU-2", "evidence.source": "siem"}
+        vendor_schema = {
+            "event_id": "string",
+            "timestamp": "datetime",
+            "source": "string",
+            "severity": "string",
+            "category": "string",
+            "message": "string",
+            "raw_log": "string",
+        }
+        canonical_schema = {
+            "identity": f"siem:{self._platform}:<event_id>",
+            "control_id": "AU-2",
+            "evidence.source": "siem",
+        }
         return SchemaMappingObject(
-            vendor_schema=vendor_schema, canonical_schema=canonical_schema,
-            mapping_rules={"event_id": "identity suffix", "category": "event classification",
-                           "severity": "maps to evidence severity model"},
+            vendor_schema=vendor_schema,
+            canonical_schema=canonical_schema,
+            mapping_rules={
+                "event_id": "identity suffix",
+                "category": "event classification",
+                "severity": "maps to evidence severity model",
+            },
             unmapped_fields=["raw_log", "host", "process_id"],
             version_hash=self._hash({"vendor": vendor_schema, "canonical": canonical_schema}),
         )
@@ -62,31 +78,46 @@ class SiemAdapter(DatabaseAdapterBase):
         category = canonical_query.get("from", "security-alerts")
         vendor_query = f"GET /api/v1/events?category={category}&limit=1000"
         return QueryProvenance(
-            canonical_query=canonical_query, vendor_query=vendor_query,
-            execution_plan_hash=self._hash(vendor_query), row_count=0, timestamp=self._now(),
+            canonical_query=canonical_query,
+            vendor_query=vendor_query,
+            execution_plan_hash=self._hash(vendor_query),
+            row_count=0,
+            timestamp=self._now(),
         )
 
     def normalize(self, raw_rows: List[Dict[str, Any]]) -> ClaimSet:
         claims = []
         for event in raw_rows:
             eid = event.get("event_id", "unknown")
-            claims.append(ClaimObject(
-                claim_id=f"siem:{self._platform}:{eid}",
-                entity=f"siem:event:{eid}",
-                fields={"identity": f"siem:{self._platform}:{eid}",
-                        "category": event.get("category", ""), "severity": event.get("severity", ""),
-                        "message": event.get("message", ""), "event_source": event.get("source", ""),
-                        "vendor_overlay_ref": f"{self._platform}.yaml"},
-                source=self.ADAPTER_ID, provenance_hash=self._hash(event),
-            ))
+            claims.append(
+                ClaimObject(
+                    claim_id=f"siem:{self._platform}:{eid}",
+                    entity=f"siem:event:{eid}",
+                    fields={
+                        "identity": f"siem:{self._platform}:{eid}",
+                        "category": event.get("category", ""),
+                        "severity": event.get("severity", ""),
+                        "message": event.get("message", ""),
+                        "event_source": event.get("source", ""),
+                        "vendor_overlay_ref": f"{self._platform}.yaml",
+                    },
+                    source=self.ADAPTER_ID,
+                    provenance_hash=self._hash(event),
+                )
+            )
         return ClaimSet(claims=claims, source_reference=self._endpoint or self._platform)
 
     def detect_drift(self) -> DriftReport:
         return DriftReport(
-            drift_type="siem-audit-coverage", severity="info",
-            first_observed=self._now(), last_observed=self._now(),
-            details={"message": "Drift scaffold — verify audit event coverage against AU-2 requirements.",
-                     "adapter": self.ADAPTER_ID, "platform": self._platform},
+            drift_type="siem-audit-coverage",
+            severity="info",
+            first_observed=self._now(),
+            last_observed=self._now(),
+            details={
+                "message": "Drift scaffold — verify audit event coverage against AU-2 requirements.",
+                "adapter": self.ADAPTER_ID,
+                "platform": self._platform,
+            },
             remediation="Compare event categories against required AU-2 audit event types.",
         )
 
@@ -106,17 +137,24 @@ class SiemAdapter(DatabaseAdapterBase):
             severity_counts[s] = severity_counts.get(s, 0) + 1
         return EvidenceObject(
             ksi_id=f"KSI-AU-02-{self._platform}",
-            source=self.ADAPTER_ID, timestamp=self._now(),
-            raw_data={"connection": conn.to_dict(), "total_events": len(events),
-                      "by_severity": severity_counts},
+            source=self.ADAPTER_ID,
+            timestamp=self._now(),
+            raw_data={"connection": conn.to_dict(), "total_events": len(events), "by_severity": severity_counts},
             normalized_data=claim_set.to_dict(),
-            provenance={"adapter_id": self.ADAPTER_ID, "platform": self._platform,
-                        "hash": self._hash(claim_set.to_dict()), "timestamp": self._now().isoformat()},
+            provenance={
+                "adapter_id": self.ADAPTER_ID,
+                "platform": self._platform,
+                "hash": self._hash(claim_set.to_dict()),
+                "timestamp": self._now().isoformat(),
+            },
             freshness_valid=True,
         )
 
     def collect_and_align(self) -> Dict[str, Any]:
         claim_set = self.normalize([])
-        return {"vendor": self._platform.title(), "adapter_id": self.ADAPTER_ID,
-                "claims": claim_set.to_dict(),
-                "metadata": {"platform": self._platform, "last_collected": self._now().isoformat()}}
+        return {
+            "vendor": self._platform.title(),
+            "adapter_id": self.ADAPTER_ID,
+            "claims": claim_set.to_dict(),
+            "metadata": {"platform": self._platform, "last_collected": self._now().isoformat()},
+        }

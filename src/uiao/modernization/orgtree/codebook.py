@@ -24,10 +24,9 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
-from typing import Dict, Iterable, Mapping, Optional, Set
+from typing import Dict, Mapping, Optional, Set
 
 import yaml
-
 
 CANONICAL_REGEX = re.compile(r"^ORG(-[A-Z0-9]{2,6}){0,4}$")
 
@@ -117,16 +116,13 @@ def _validate_schema(document: Dict) -> None:
     try:
         import jsonschema
     except ImportError as exc:  # pragma: no cover - jsonschema is a declared dep
-        raise CodebookValidationError(
-            "jsonschema is required to validate the OrgPath codebook"
-        ) from exc
+        raise CodebookValidationError("jsonschema is required to validate the OrgPath codebook") from exc
     schema = _read_default_schema()
     try:
         jsonschema.validate(instance=document, schema=schema)
     except jsonschema.ValidationError as exc:
         raise CodebookValidationError(
-            f"OrgPath codebook schema validation failed: {exc.message} at "
-            f"{'/'.join(str(p) for p in exc.absolute_path)}"
+            f"OrgPath codebook schema validation failed: {exc.message} at {'/'.join(str(p) for p in exc.absolute_path)}"
         ) from exc
 
 
@@ -138,8 +134,7 @@ def _validate_integrity(document: Dict) -> None:
         if parent is None:
             if entry["code"] != document["format"]["root"]:
                 raise CodebookValidationError(
-                    f"Code '{entry['code']}' has null parent but is not the root "
-                    f"'{document['format']['root']}'"
+                    f"Code '{entry['code']}' has null parent but is not the root '{document['format']['root']}'"
                 )
             continue
         if parent not in codes:
@@ -149,15 +144,13 @@ def _validate_integrity(document: Dict) -> None:
             )
         if not entry["code"].startswith(f"{parent}{document['format']['separator']}"):
             raise CodebookValidationError(
-                f"Code '{entry['code']}' does not descend from declared parent "
-                f"'{parent}' under the canonical separator"
+                f"Code '{entry['code']}' does not descend from declared parent '{parent}' under the canonical separator"
             )
     # Every deprecated replacement must resolve to an active code.
     for dep in document.get("deprecated", []) or []:
         if dep["replaced_by"] not in codes:
             raise CodebookValidationError(
-                f"Deprecated code '{dep['code']}' replaced_by "
-                f"'{dep['replaced_by']}' which is not an active code"
+                f"Deprecated code '{dep['code']}' replaced_by '{dep['replaced_by']}' which is not an active code"
             )
 
 
@@ -201,10 +194,7 @@ def load_codebook(path: Optional[Path] = None) -> Codebook:
         in tests). When omitted, the canonical codebook shipped inside the
         ``uiao.canon`` package is loaded via ``importlib.resources``.
     """
-    if path is None:
-        raw_text = _read_default_codebook()
-    else:
-        raw_text = Path(path).read_text(encoding="utf-8")
+    raw_text = _read_default_codebook() if path is None else Path(path).read_text(encoding="utf-8")
     document = yaml.safe_load(raw_text)
     if not isinstance(document, dict):
         raise CodebookValidationError("Codebook must be a YAML mapping at the top level")

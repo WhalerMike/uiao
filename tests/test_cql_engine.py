@@ -1,7 +1,8 @@
 """tests/test_cql_engine.py — UIAO_108 CQL engine tests."""
+
 from __future__ import annotations
 import pytest
-from uiao.cql import parse, CQLEngine, CQLParseError, CQLResult
+from uiao.cql import parse, CQLEngine, CQLParseError
 
 CONTROLS = [
     {"id": "AC-2", "status": "FAIL", "severity": "High", "last_assessed": "2026-04-20T00:00:00Z"},
@@ -9,9 +10,27 @@ CONTROLS = [
     {"id": "AC-21", "status": "FAIL", "severity": "Medium", "last_assessed": "2026-04-20T00:00:00Z"},
 ]
 EVIDENCE = [
-    {"id": "EV-001", "control_id": "AC-2", "verdict": "fail", "status": "not-satisfied", "generated_at": "2026-04-20T00:00:00Z"},
-    {"id": "EV-002", "control_id": "IA-2", "verdict": "pass", "status": "satisfied", "generated_at": "2026-04-20T00:00:00Z"},
-    {"id": "EV-003", "control_id": "AC-21", "verdict": "fail", "status": "not-satisfied", "generated_at": "2025-01-01T00:00:00Z"},
+    {
+        "id": "EV-001",
+        "control_id": "AC-2",
+        "verdict": "fail",
+        "status": "not-satisfied",
+        "generated_at": "2026-04-20T00:00:00Z",
+    },
+    {
+        "id": "EV-002",
+        "control_id": "IA-2",
+        "verdict": "pass",
+        "status": "satisfied",
+        "generated_at": "2026-04-20T00:00:00Z",
+    },
+    {
+        "id": "EV-003",
+        "control_id": "AC-21",
+        "verdict": "fail",
+        "status": "not-satisfied",
+        "generated_at": "2025-01-01T00:00:00Z",
+    },
 ]
 DRIFT = [
     {"id": "D-001", "tenant": "contoso", "control": "IA-2", "drift_class": "DRIFT-SEMANTIC"},
@@ -22,8 +41,10 @@ POAM = [
     {"id": "POAM-003", "status": "Open", "severity": "Critical", "control_id": "AC-21"},
 ]
 
+
 def engine():
     return CQLEngine(controls=CONTROLS, evidence=EVIDENCE, drift=DRIFT, poam=POAM)
+
 
 class TestParser:
     def test_parse_controls_where(self):
@@ -56,6 +77,7 @@ class TestParser:
         with pytest.raises(CQLParseError):
             parse("SELECT * FROM controls")
 
+
 class TestControlsQuery:
     def test_filter_by_status_fail(self):
         r = engine().execute("SHOW CONTROLS WHERE status = 'FAIL'")
@@ -78,6 +100,7 @@ class TestControlsQuery:
         assert "AC-21" in ids
         assert "IA-2" not in ids
 
+
 class TestEvidenceQuery:
     def test_for_control_filter(self):
         r = engine().execute("SHOW EVIDENCE FOR CONTROL 'AC-2'")
@@ -92,6 +115,7 @@ class TestEvidenceQuery:
         r = engine().execute("SHOW EVIDENCE WHERE verdict = 'fail'")
         assert r.total == 2
 
+
 class TestDriftQuery:
     def test_filter_by_tenant(self):
         r = engine().execute("SHOW DRIFT WHERE tenant = 'contoso'")
@@ -100,6 +124,7 @@ class TestDriftQuery:
     def test_filter_no_match(self):
         r = engine().execute("SHOW DRIFT WHERE tenant = 'agency'")
         assert r.total == 0
+
 
 class TestPOAMQuery:
     def test_open_poam(self):
@@ -113,6 +138,7 @@ class TestPOAMQuery:
     def test_closed_poam(self):
         r = engine().execute("SHOW POAM WHERE status = 'Closed'")
         assert r.total == 1
+
 
 class TestCQLResult:
     def test_to_dict_has_required_keys(self):

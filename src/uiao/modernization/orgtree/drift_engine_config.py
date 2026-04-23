@@ -14,7 +14,7 @@ can still run the engine against the subset it has.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
@@ -94,9 +94,7 @@ def _validate_schema(document: Dict) -> None:
     try:
         import jsonschema
     except ImportError as exc:  # pragma: no cover
-        raise DriftEngineConfigValidationError(
-            "jsonschema is required to validate the drift engine config"
-        ) from exc
+        raise DriftEngineConfigValidationError("jsonschema is required to validate the drift engine config") from exc
     schema = _read_default_schema()
     try:
         jsonschema.validate(instance=document, schema=schema)
@@ -111,17 +109,13 @@ def _validate_integrity(document: Dict) -> None:
     phase_names: Set[str] = set()
     for phase in document["phases"]:
         if phase["name"] in phase_names:
-            raise DriftEngineConfigValidationError(
-                f"Duplicate phase name: {phase['name']}"
-            )
+            raise DriftEngineConfigValidationError(f"Duplicate phase name: {phase['name']}")
         phase_names.add(phase["name"])
 
         op_names: Set[str] = set()
         for entry in phase["op_map"]:
             if entry["op"] in op_names:
-                raise DriftEngineConfigValidationError(
-                    f"Phase {phase['name']}: duplicate op '{entry['op']}'"
-                )
+                raise DriftEngineConfigValidationError(f"Phase {phase['name']}: duplicate op '{entry['op']}'")
             op_names.add(entry["op"])
 
 
@@ -165,15 +159,10 @@ def _build(document: Dict) -> DriftEngineConfig:
 
 def load_drift_engine_config(path: Optional[Path] = None) -> DriftEngineConfig:
     """Load and validate the drift engine configuration."""
-    raw_text = (
-        _read_default_config() if path is None
-        else Path(path).read_text(encoding="utf-8")
-    )
+    raw_text = _read_default_config() if path is None else Path(path).read_text(encoding="utf-8")
     document = yaml.safe_load(raw_text)
     if not isinstance(document, dict):
-        raise DriftEngineConfigValidationError(
-            "drift-engine-config must be a YAML mapping at the top level"
-        )
+        raise DriftEngineConfigValidationError("drift-engine-config must be a YAML mapping at the top level")
     _validate_schema(document)
     _validate_integrity(document)
     return _build(document)

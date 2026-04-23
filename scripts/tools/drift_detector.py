@@ -10,6 +10,7 @@ python drift_detector.py --path canon/UIAO_001.md --mode targeted
 python drift_detector.py --base main --head feature/update --mode diff
 python drift_detector.py --path . --mode full --cross-repo ../uiao
 """
+
 import argparse
 import hashlib
 import json
@@ -87,41 +88,51 @@ def detect_schema_drift(filepath: Path, fm: dict, base_path: Path) -> list[dict]
     rel = str(filepath.relative_to(base_path))
 
     def add(category, detail, remediation=""):
-        findings.append({
-            "file": rel,
-            "category": category,
-            "severity": DRIFT_CATEGORIES.get(category, SEVERITY_WARNING),
-            "detail": detail,
-            "remediation": remediation,
-        })
+        findings.append(
+            {
+                "file": rel,
+                "category": category,
+                "severity": DRIFT_CATEGORIES.get(category, SEVERITY_WARNING),
+                "detail": detail,
+                "remediation": remediation,
+            }
+        )
 
     if fm is None:
-        add("SCHEMA_DRIFT", "No YAML frontmatter found",
-            "Add YAML frontmatter between --- delimiters")
+        add("SCHEMA_DRIFT", "No YAML frontmatter found", "Add YAML frontmatter between --- delimiters")
         return findings
     # Required fields check
-    required = ["document_id", "title", "version", "status", "classification",
-                "owner", "created_at", "updated_at", "boundary"]
+    required = [
+        "document_id",
+        "title",
+        "version",
+        "status",
+        "classification",
+        "owner",
+        "created_at",
+        "updated_at",
+        "boundary",
+    ]
     for field in required:
         if field not in fm or fm[field] is None or str(fm[field]).strip() == "":
-            add("SCHEMA_DRIFT", f"Missing required field: {field}",
-                f"Add {field}: <value>")
+            add("SCHEMA_DRIFT", f"Missing required field: {field}", f"Add {field}: <value>")
     # Format checks
     doc_id = str(fm.get("document_id", ""))
     if doc_id and not DOCUMENT_ID_PATTERN.match(doc_id):
-        add("SCHEMA_DRIFT", f"Invalid document_id: '{doc_id}'",
-            "Use format UIAO_NNN")
+        add("SCHEMA_DRIFT", f"Invalid document_id: '{doc_id}'", "Use format UIAO_NNN")
     ver = str(fm.get("version", ""))
     if ver and not VERSION_PATTERN.match(ver):
         add("SCHEMA_DRIFT", f"Invalid version: '{ver}'", "Use format N.N")
     status = fm.get("status", "")
     if status and status not in VALID_STATUSES:
-        add("SCHEMA_DRIFT", f"Invalid status: '{status}'",
-            f"Use: {', '.join(sorted(VALID_STATUSES))}")
+        add("SCHEMA_DRIFT", f"Invalid status: '{status}'", f"Use: {', '.join(sorted(VALID_STATUSES))}")
     classification = fm.get("classification", "")
     if classification and classification not in VALID_CLASSIFICATIONS:
-        add("SCHEMA_DRIFT", f"Invalid classification: '{classification}'",
-            f"Use: {', '.join(sorted(VALID_CLASSIFICATIONS))}")
+        add(
+            "SCHEMA_DRIFT",
+            f"Invalid classification: '{classification}'",
+            f"Use: {', '.join(sorted(VALID_CLASSIFICATIONS))}",
+        )
     return findings
 
 
@@ -136,36 +147,42 @@ def detect_provenance_drift(filepath: Path, fm: dict, base_path: Path) -> list[d
         return findings
     prov = fm.get("provenance", {})
     if not prov or not isinstance(prov, dict):
-        findings.append({
-            "file": rel,
-            "category": "PROVENANCE_DRIFT",
-            "severity": SEVERITY_BLOCKING,
-            "detail": "DERIVED artifact missing provenance block",
-            "remediation": "Add provenance: {source, version, derived_at, derived_by}",
-        })
-        return findings
-    for pf in ["source", "version", "derived_at", "derived_by"]:
-        if pf not in prov or not prov[pf]:
-            findings.append({
+        findings.append(
+            {
                 "file": rel,
                 "category": "PROVENANCE_DRIFT",
                 "severity": SEVERITY_BLOCKING,
-                "detail": f"Provenance missing field: {pf}",
-                "remediation": f"Add provenance.{pf}",
-            })
+                "detail": "DERIVED artifact missing provenance block",
+                "remediation": "Add provenance: {source, version, derived_at, derived_by}",
+            }
+        )
+        return findings
+    for pf in ["source", "version", "derived_at", "derived_by"]:
+        if pf not in prov or not prov[pf]:
+            findings.append(
+                {
+                    "file": rel,
+                    "category": "PROVENANCE_DRIFT",
+                    "severity": SEVERITY_BLOCKING,
+                    "detail": f"Provenance missing field: {pf}",
+                    "remediation": f"Add provenance.{pf}",
+                }
+            )
     source = prov.get("source", "")
     if source:
         source_path = base_path / source
         if not source_path.exists():
             alt_path = base_path.parent / source
             if not alt_path.exists():
-                findings.append({
-                    "file": rel,
-                    "category": "PROVENANCE_DRIFT",
-                    "severity": SEVERITY_BLOCKING,
-                    "detail": f"Provenance source not found: {source}",
-                    "remediation": "Verify provenance.source path",
-                })
+                findings.append(
+                    {
+                        "file": rel,
+                        "category": "PROVENANCE_DRIFT",
+                        "severity": SEVERITY_BLOCKING,
+                        "detail": f"Provenance source not found: {source}",
+                        "remediation": "Verify provenance.source path",
+                    }
+                )
     return findings
 
 
@@ -178,22 +195,26 @@ def detect_boundary_drift(filepath: Path, fm: dict, body: str, base_path: Path) 
     boundary = fm.get("boundary", "")
     has_exception = fm.get("boundary-exception", False)
     if boundary and boundary != "GCC-Moderate" and not has_exception:
-        findings.append({
-            "file": rel,
-            "category": "BOUNDARY_DRIFT",
-            "severity": SEVERITY_BLOCKING,
-            "detail": f"Boundary is '{boundary}', expected GCC-Moderate",
-            "remediation": "Set boundary: GCC-Moderate or add boundary-exception: true",
-        })
+        findings.append(
+            {
+                "file": rel,
+                "category": "BOUNDARY_DRIFT",
+                "severity": SEVERITY_BLOCKING,
+                "detail": f"Boundary is '{boundary}', expected GCC-Moderate",
+                "remediation": "Set boundary: GCC-Moderate or add boundary-exception: true",
+            }
+        )
     if BOUNDARY_VIOLATIONS.search(body) and not has_exception:
         matches = BOUNDARY_VIOLATIONS.findall(body)
-        findings.append({
-            "file": rel,
-            "category": "BOUNDARY_DRIFT",
-            "severity": SEVERITY_BLOCKING,
-            "detail": f"Body contains boundary violations: {', '.join(set(matches))}",
-            "remediation": "Remove references or add boundary-exception: true",
-        })
+        findings.append(
+            {
+                "file": rel,
+                "category": "BOUNDARY_DRIFT",
+                "severity": SEVERITY_BLOCKING,
+                "detail": f"Body contains boundary violations: {', '.join(set(matches))}",
+                "remediation": "Remove references or add boundary-exception: true",
+            }
+        )
     return findings
 
 
@@ -201,16 +222,17 @@ def detect_version_drift(filepath: Path, body: str, base_path: Path) -> list[dic
     """Detect references to prior version epochs."""
     findings = []
     rel = str(filepath.relative_to(base_path))
-    prior_refs = re.findall(r"v0\.\d+|version\s+0\.\d+|prior\s+version|previous\s+version",
-                            body, re.IGNORECASE)
+    prior_refs = re.findall(r"v0\.\d+|version\s+0\.\d+|prior\s+version|previous\s+version", body, re.IGNORECASE)
     if prior_refs:
-        findings.append({
-            "file": rel,
-            "category": "VERSION_DRIFT",
-            "severity": SEVERITY_WARNING,
-            "detail": f"References to prior versions found: {', '.join(set(prior_refs[:5]))}",
-            "remediation": "Update to current version references",
-        })
+        findings.append(
+            {
+                "file": rel,
+                "category": "VERSION_DRIFT",
+                "severity": SEVERITY_WARNING,
+                "detail": f"References to prior versions found: {', '.join(set(prior_refs[:5]))}",
+                "remediation": "Update to current version references",
+            }
+        )
     return findings
 
 
@@ -221,13 +243,15 @@ def detect_naming_drift(filepath: Path, base_path: Path) -> list[dict]:
     # Only check files in canon/ directory
     if "canon" in filepath.parts and not filepath.name.startswith("INDEX"):
         if not NAMING_PATTERN.match(filepath.name):
-            findings.append({
-                "file": rel,
-                "category": "NAMING_DRIFT",
-                "severity": SEVERITY_WARNING,
-                "detail": f"Filename '{filepath.name}' doesn't match convention",
-                "remediation": "Use format: UIAO_NNN_Short_Title_vN.N.md",
-            })
+            findings.append(
+                {
+                    "file": rel,
+                    "category": "NAMING_DRIFT",
+                    "severity": SEVERITY_WARNING,
+                    "detail": f"Filename '{filepath.name}' doesn't match convention",
+                    "remediation": "Use format: UIAO_NNN_Short_Title_vN.N.md",
+                }
+            )
     return findings
 
 
@@ -236,13 +260,15 @@ def detect_cosmetic_drift(filepath: Path, body: str, base_path: Path) -> list[di
     findings = []
     rel = str(filepath.relative_to(base_path))
     if MERMAID_PATTERN.search(body):
-        findings.append({
-            "file": rel,
-            "category": "COSMETIC_DRIFT",
-            "severity": SEVERITY_INFO,
-            "detail": "Uses Mermaid diagrams (PlantUML preferred)",
-            "remediation": "Convert to PlantUML",
-        })
+        findings.append(
+            {
+                "file": rel,
+                "category": "COSMETIC_DRIFT",
+                "severity": SEVERITY_INFO,
+                "detail": "Uses Mermaid diagrams (PlantUML preferred)",
+                "remediation": "Convert to PlantUML",
+            }
+        )
     return findings
 
 
@@ -253,19 +279,20 @@ def detect_owner_drift(filepath: Path, fm: dict, base_path: Path) -> list[dict]:
         return findings
     rel = str(filepath.relative_to(base_path))
     if not fm.get("owner"):
-        findings.append({
-            "file": rel,
-            "category": "OWNER_DRIFT",
-            "severity": SEVERITY_WARNING,
-            "detail": "No owner assigned",
-            "remediation": "Assign an owner in frontmatter",
-        })
+        findings.append(
+            {
+                "file": rel,
+                "category": "OWNER_DRIFT",
+                "severity": SEVERITY_WARNING,
+                "detail": "No owner assigned",
+                "remediation": "Assign an owner in frontmatter",
+            }
+        )
     return findings
 
 
 # ─── Cross-Repo Drift ────────────────────────────────────────────────────────
-def detect_cross_repo_drift(filepath: Path, fm: dict, base_path: Path,
-                            core_path: Path) -> list[dict]:
+def detect_cross_repo_drift(filepath: Path, fm: dict, base_path: Path, core_path: Path) -> list[dict]:
     """Detect drift between derived doc and its uiao canonical source."""
     findings = []
     if fm is None:
@@ -281,13 +308,15 @@ def detect_cross_repo_drift(filepath: Path, fm: dict, base_path: Path,
     source_clean = source.replace("uiao/", "")
     source_path = core_path / source_clean
     if not source_path.exists():
-        findings.append({
-            "file": rel,
-            "category": "CROSS_REPO_DRIFT",
-            "severity": SEVERITY_BLOCKING,
-            "detail": f"Canonical source not found in uiao: {source_clean}",
-            "remediation": "Verify provenance.source path in uiao",
-        })
+        findings.append(
+            {
+                "file": rel,
+                "category": "CROSS_REPO_DRIFT",
+                "severity": SEVERITY_BLOCKING,
+                "detail": f"Canonical source not found in uiao: {source_clean}",
+                "remediation": "Verify provenance.source path in uiao",
+            }
+        )
         return findings
     # Compare versions
     core_fm, _ = parse_frontmatter(source_path)
@@ -295,13 +324,15 @@ def detect_cross_repo_drift(filepath: Path, fm: dict, base_path: Path,
         core_version = str(core_fm.get("version", ""))
         local_version = str(prov.get("version", ""))
         if core_version and local_version and core_version != local_version:
-            findings.append({
-                "file": rel,
-                "category": "CROSS_REPO_DRIFT",
-                "severity": SEVERITY_BLOCKING,
-                "detail": f"Version mismatch: local={local_version}, core={core_version}",
-                "remediation": f"Re-derive from uiao version {core_version}",
-            })
+            findings.append(
+                {
+                    "file": rel,
+                    "category": "CROSS_REPO_DRIFT",
+                    "severity": SEVERITY_BLOCKING,
+                    "detail": f"Version mismatch: local={local_version}, core={core_version}",
+                    "remediation": f"Re-derive from uiao version {core_version}",
+                }
+            )
     return findings
 
 
@@ -341,13 +372,14 @@ def scan_directory(target: Path, base_path: Path, core_path: Path = None) -> tup
     return file_count, all_findings
 
 
-def scan_diff(base_ref: str, head_ref: str, base_path: Path,
-              core_path: Path = None) -> tuple[int, list[dict]]:
+def scan_diff(base_ref: str, head_ref: str, base_path: Path, core_path: Path = None) -> tuple[int, list[dict]]:
     """Scan only files changed between two Git refs."""
     try:
         result = subprocess.run(
             ["git", "diff", "--name-only", base_ref, head_ref, "--", "*.md"],
-            capture_output=True, text=True, cwd=str(base_path)
+            capture_output=True,
+            text=True,
+            cwd=str(base_path),
         )
         changed_files = [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
     except Exception:
@@ -384,9 +416,7 @@ def generate_report(mode: str, file_count: int, findings: list[dict]) -> dict:
 def main():
     parser = argparse.ArgumentParser(description="UIAO Drift Detector")
     parser.add_argument("--path", default=".", help="Target directory or file")
-    parser.add_argument("--mode", default="full",
-                        choices=["full", "targeted", "diff", "format"],
-                        help="Scan mode")
+    parser.add_argument("--mode", default="full", choices=["full", "targeted", "diff", "format"], help="Scan mode")
     parser.add_argument("--base", help="Base Git ref for diff mode")
     parser.add_argument("--head", default="HEAD", help="Head Git ref for diff mode")
     parser.add_argument("--schema", help="Path to metadata schema")
@@ -400,7 +430,7 @@ def main():
     base_path = target if target.is_dir() else target.parent
     core_path = Path(args.cross_repo) if args.cross_repo else None
     print("UIAO Drift Detector")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print(f"Mode: {args.mode}")
     print(f"Target: {args.path}")
     if core_path:
@@ -422,8 +452,7 @@ def main():
         print(f"{'#':<4} {'File':<35} {'Category':<20} {'Severity':<10} {'Detail':<40}")
         print("-" * 109)
         for i, f in enumerate(findings, 1):
-            print(f"{i:<4} {f['file'][:35]:<35} {f['category']:<20} "
-                  f"{f['severity']:<10} {f['detail'][:40]}")
+            print(f"{i:<4} {f['file'][:35]:<35} {f['category']:<20} {f['severity']:<10} {f['detail'][:40]}")
     else:
         print("✅ No drift detected.")
     if args.output:

@@ -29,9 +29,7 @@ class TestTerraformDriftToPoam:
     @pytest.fixture
     def plan_drift(self) -> DriftReport:
         adapter = TerraformAdapter({"workspace": "prod"})
-        plan = json.loads(
-            (Path(__file__).parent / "fixtures" / "terraform-plan.json").read_text()
-        )
+        plan = json.loads((Path(__file__).parent / "fixtures" / "terraform-plan.json").read_text())
         return adapter.consume_terraform_plan(plan)
 
     def test_drift_produces_findings(self, plan_drift) -> None:
@@ -65,13 +63,13 @@ class TestTerraformDriftToPoam:
 class TestM365BaselineDriftToPoam:
     @pytest.fixture
     def baseline_drift(self) -> DriftReport:
-        config = json.loads(
-            (Path(__file__).parent / "fixtures" / "m365-tenant-config.json").read_text()
+        config = json.loads((Path(__file__).parent / "fixtures" / "m365-tenant-config.json").read_text())
+        adapter = M365Adapter(
+            {
+                "tenant_id": "contoso.onmicrosoft.com",
+                "_tenant_config": config,
+            }
         )
-        adapter = M365Adapter({
-            "tenant_id": "contoso.onmicrosoft.com",
-            "_tenant_config": config,
-        })
         return adapter.apply_baseline(
             "exchange-online",
             {"Default Mailbox Policy.automaticRepliesSetting": "enabled"},
@@ -94,9 +92,7 @@ class TestM365BaselineDriftToPoam:
 class TestPaloAltoChangeDriftToPoam:
     def test_config_change_to_poam(self) -> None:
         adapter = PaloAltoAdapter({"host": "fw01", "vsys": "vsys1"})
-        drift = adapter.push_config_change(
-            "security-rule", "allow-dns", {"action": "deny"}
-        )
+        drift = adapter.push_config_change("security-rule", "allow-dns", {"action": "deny"})
         # push_config_change doesn't populate resources dict, so aggregate path
         drift_to_poam_findings(drift, "palo-alto", ["SC-7"])
         # No per-resource items but the drift is non-empty
@@ -109,6 +105,7 @@ class TestEmptyDrift:
     def test_no_drift_no_findings(self) -> None:
         from uiao.adapters.database_base import DriftReport
         from datetime import datetime, timezone
+
         clean = DriftReport(
             drift_type="test-clean",
             severity="info",
@@ -122,6 +119,7 @@ class TestEmptyDrift:
     def test_empty_poam_still_valid(self) -> None:
         from uiao.adapters.database_base import DriftReport
         from datetime import datetime, timezone
+
         clean = DriftReport(
             drift_type="test-clean",
             severity="info",

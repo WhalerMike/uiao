@@ -68,10 +68,7 @@ def _validate_instance(instance: Any, schema: dict[str, Any]) -> list[str]:
 
     validator = Draft7Validator(schema)
     errors = sorted(validator.iter_errors(instance), key=lambda e: list(e.absolute_path))
-    return [
-        f"{'.'.join(str(p) for p in err.absolute_path) or '<root>'}: {err.message}"
-        for err in errors
-    ]
+    return [f"{'.'.join(str(p) for p in err.absolute_path) or '<root>'}: {err.message}" for err in errors]
 
 
 def main() -> int:
@@ -139,9 +136,7 @@ def main() -> int:
         else:
             checked += 1
 
-    print(
-        f"[canon_validator] Summary: {checked} passed, {failures} failed, {skipped} skipped (no frontmatter)."
-    )
+    print(f"[canon_validator] Summary: {checked} passed, {failures} failed, {skipped} skipped (no frontmatter).")
     return 0 if failures == 0 else 1
 
 

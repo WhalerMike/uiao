@@ -313,4 +313,3 @@ def build_pptx(
 
     logger.info("PPTX exported -> %s", out_path)
     return out_path
-

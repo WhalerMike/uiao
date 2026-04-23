@@ -27,6 +27,7 @@ Exit codes
 0 — tree is ready (or relevant dirs absent).
 1 — a canon file failed to parse.
 """
+
 from __future__ import annotations
 
 import json

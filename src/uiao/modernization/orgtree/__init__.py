@@ -30,12 +30,6 @@ from .device_planes import (
     SkipDisposition,
     load_device_plane_registry,
 )
-from .dynamic_groups import (
-    DynamicGroupLibrary,
-    DynamicGroupSpec,
-    DynamicGroupValidationError,
-    load_dynamic_group_library,
-)
 from .drift_engine_config import (
     DriftEngineConfig,
     DriftEngineConfigValidationError,
@@ -44,6 +38,12 @@ from .drift_engine_config import (
     PhaseConfig,
     SeverityPolicy,
     load_drift_engine_config,
+)
+from .dynamic_groups import (
+    DynamicGroupLibrary,
+    DynamicGroupSpec,
+    DynamicGroupValidationError,
+    load_dynamic_group_library,
 )
 from .policy_targets import (
     ArcPolicyAssignment,

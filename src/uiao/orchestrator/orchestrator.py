@@ -298,7 +298,7 @@ def _run_plane_1(
             logger.warning(f"[{plane_id}] Attempt {attempt + 1} failed: {error_msg}")
             if attempt < max_retries:
                 logger.info(f"[{plane_id}] Retrying (retry {retry_count}/{max_retries})…")
-                time.sleep(2 ** attempt)  # Exponential backoff
+                time.sleep(2**attempt)  # Exponential backoff
             else:
                 duration = time.time() - start
                 logger.error(f"[{plane_id}] Failed after {max_retries + 1} attempt(s), duration {duration:.2f}s")
@@ -354,7 +354,7 @@ def _run_plane_2(
             logger.warning(f"[{plane_id}] Attempt {attempt + 1} failed: {error_msg}")
             if attempt < max_retries:
                 logger.info(f"[{plane_id}] Retrying (retry {retry_count}/{max_retries})…")
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
             else:
                 duration = time.time() - start
                 logger.error(f"[{plane_id}] Failed after {max_retries + 1} attempt(s), duration {duration:.2f}s")
@@ -414,7 +414,7 @@ def _run_plane_3(
             logger.warning(f"[{plane_id}] Attempt {attempt + 1} failed: {error_msg}")
             if attempt < max_retries:
                 logger.info(f"[{plane_id}] Retrying (retry {retry_count}/{max_retries})…")
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
             else:
                 duration = time.time() - start
                 logger.error(f"[{plane_id}] Failed after {max_retries + 1} attempt(s), duration {duration:.2f}s")
@@ -495,7 +495,7 @@ def _run_plane_4(
             logger.warning(f"[{plane_id}] Attempt {attempt + 1} failed: {error_msg}")
             if attempt < max_retries:
                 logger.info(f"[{plane_id}] Retrying (retry {retry_count}/{max_retries})…")
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
             else:
                 duration = time.time() - start
                 logger.error(f"[{plane_id}] Failed after {max_retries + 1} attempt(s), duration {duration:.2f}s")
@@ -736,4 +736,3 @@ def main(
 
 if __name__ == "__main__":
     typer.run(main)
-

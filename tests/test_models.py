@@ -151,4 +151,3 @@ class TestCanonLoading:
         """data/ directory should contain YAML files."""
         yamls = list(data_dir.glob("*.yml")) + list(data_dir.glob("*.yaml"))
         assert len(yamls) > 0, "No YAML files found in data/"
-

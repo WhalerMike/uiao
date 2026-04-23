@@ -39,16 +39,18 @@ def parse_a_records(payload: Any) -> List[dict]:
     """
     records: List[dict] = []
     for entry in _results(payload):
-        records.append({
-            "type": "record-a",
-            "name": entry.get("name", ""),
-            "ipv4addr": entry.get("ipv4addr", ""),
-            "view": entry.get("view", "default"),
-            "zone": entry.get("zone", ""),
-            "ttl": entry.get("ttl"),
-            "ref": entry.get("_ref", ""),
-            "comment": entry.get("comment", ""),
-        })
+        records.append(
+            {
+                "type": "record-a",
+                "name": entry.get("name", ""),
+                "ipv4addr": entry.get("ipv4addr", ""),
+                "view": entry.get("view", "default"),
+                "zone": entry.get("zone", ""),
+                "ttl": entry.get("ttl"),
+                "ref": entry.get("_ref", ""),
+                "comment": entry.get("comment", ""),
+            }
+        )
     return records
 
 
@@ -56,16 +58,18 @@ def parse_cname_records(payload: Any) -> List[dict]:
     """Parse Infoblox CNAME-records from WAPI JSON."""
     records: List[dict] = []
     for entry in _results(payload):
-        records.append({
-            "type": "record-cname",
-            "name": entry.get("name", ""),
-            "canonical": entry.get("canonical", ""),
-            "view": entry.get("view", "default"),
-            "zone": entry.get("zone", ""),
-            "ttl": entry.get("ttl"),
-            "ref": entry.get("_ref", ""),
-            "comment": entry.get("comment", ""),
-        })
+        records.append(
+            {
+                "type": "record-cname",
+                "name": entry.get("name", ""),
+                "canonical": entry.get("canonical", ""),
+                "view": entry.get("view", "default"),
+                "zone": entry.get("zone", ""),
+                "ttl": entry.get("ttl"),
+                "ref": entry.get("_ref", ""),
+                "comment": entry.get("comment", ""),
+            }
+        )
     return records
 
 
@@ -73,15 +77,17 @@ def parse_networks(payload: Any) -> List[dict]:
     """Parse Infoblox network objects from WAPI JSON (network / networkcontainer)."""
     networks: List[dict] = []
     for entry in _results(payload):
-        networks.append({
-            "type": "network",
-            "cidr": entry.get("network", entry.get("address", "")),
-            "view": entry.get("network_view", entry.get("view", "default")),
-            "name": entry.get("name", ""),
-            "tags": dict(entry.get("tags", {}) or {}),
-            "ref": entry.get("_ref", ""),
-            "comment": entry.get("comment", ""),
-        })
+        networks.append(
+            {
+                "type": "network",
+                "cidr": entry.get("network", entry.get("address", "")),
+                "view": entry.get("network_view", entry.get("view", "default")),
+                "name": entry.get("name", ""),
+                "tags": dict(entry.get("tags", {}) or {}),
+                "ref": entry.get("_ref", ""),
+                "comment": entry.get("comment", ""),
+            }
+        )
     return networks
 
 
@@ -89,15 +95,17 @@ def parse_dhcp_ranges(payload: Any) -> List[dict]:
     """Parse Infoblox DHCP ranges from WAPI JSON (range)."""
     ranges: List[dict] = []
     for entry in _results(payload):
-        ranges.append({
-            "type": "dhcp-range",
-            "start": entry.get("start_addr", ""),
-            "end": entry.get("end_addr", ""),
-            "network": entry.get("network", ""),
-            "view": entry.get("network_view", "default"),
-            "ref": entry.get("_ref", ""),
-            "comment": entry.get("comment", ""),
-        })
+        ranges.append(
+            {
+                "type": "dhcp-range",
+                "start": entry.get("start_addr", ""),
+                "end": entry.get("end_addr", ""),
+                "network": entry.get("network", ""),
+                "view": entry.get("network_view", "default"),
+                "ref": entry.get("_ref", ""),
+                "comment": entry.get("comment", ""),
+            }
+        )
     return ranges
 
 
@@ -105,15 +113,17 @@ def parse_fixed_addresses(payload: Any) -> List[dict]:
     """Parse Infoblox fixed-address reservations from WAPI JSON (fixedaddress)."""
     reservations: List[dict] = []
     for entry in _results(payload):
-        reservations.append({
-            "type": "fixed-address",
-            "ipv4addr": entry.get("ipv4addr", ""),
-            "mac": entry.get("mac", ""),
-            "name": entry.get("name", ""),
-            "view": entry.get("network_view", "default"),
-            "ref": entry.get("_ref", ""),
-            "comment": entry.get("comment", ""),
-        })
+        reservations.append(
+            {
+                "type": "fixed-address",
+                "ipv4addr": entry.get("ipv4addr", ""),
+                "mac": entry.get("mac", ""),
+                "name": entry.get("name", ""),
+                "view": entry.get("network_view", "default"),
+                "ref": entry.get("_ref", ""),
+                "comment": entry.get("comment", ""),
+            }
+        )
     return reservations
 
 
@@ -129,12 +139,7 @@ def _record_key(record: dict) -> str:
         return ref
     rtype = record.get("type", "unknown")
     view = record.get("view", "default")
-    ident = (
-        record.get("name")
-        or record.get("cidr")
-        or record.get("ipv4addr")
-        or record.get("start", "")
-    )
+    ident = record.get("name") or record.get("cidr") or record.get("ipv4addr") or record.get("start", "")
     return f"{rtype}:{view}:{ident}"
 
 

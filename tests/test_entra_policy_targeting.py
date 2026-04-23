@@ -11,10 +11,8 @@ import pytest
 from uiao.adapters.entra_policy_targeting import (
     OP_ARC_POLICY_CREATE,
     OP_ARC_POLICY_DEF_MISSING,
-    OP_ARC_POLICY_PHANTOM,
     OP_ARC_POLICY_UPDATE,
     OP_INTUNE_ASSIGN_CREATE,
-    OP_INTUNE_ASSIGN_PHANTOM,
     OP_INTUNE_ASSIGN_UPDATE,
     OP_INTUNE_PROFILE_MISSING,
     EntraPolicyTargetingAdapter,
@@ -28,14 +26,7 @@ from uiao.modernization.orgtree.policy_targets import (
 )
 
 
-TENANT_FIXTURE = (
-    Path(__file__).parent
-    / "fixtures"
-    / "contract"
-    / "entra-id"
-    / "policy-targeting"
-    / "tenant-state.json"
-)
+TENANT_FIXTURE = Path(__file__).parent / "fixtures" / "contract" / "entra-id" / "policy-targeting" / "tenant-state.json"
 
 
 @pytest.fixture
@@ -59,6 +50,7 @@ class TestCanonIntegrity:
         from uiao.modernization.orgtree.dynamic_groups import (
             default_dynamic_group_library,
         )
+
         canon = default_policy_targeting_canon()
         groups = default_dynamic_group_library()
         for a in canon.intune_assignments:
@@ -66,13 +58,12 @@ class TestCanonIntegrity:
 
     def test_every_arc_selector_prefix_is_codebook_recognised(self) -> None:
         from uiao.modernization.orgtree import load_codebook
+
         canon = default_policy_targeting_canon()
         codebook = load_codebook()
         for name, a in canon.arc_policy_assignments.items():
             prefix = a.orgpath_selector.prefix
-            assert prefix == "ORG" or codebook.is_active(prefix), (
-                f"{name} prefix {prefix} not in codebook"
-            )
+            assert prefix == "ORG" or codebook.is_active(prefix), f"{name} prefix {prefix} not in codebook"
 
 
 class TestCanonValidation:
@@ -158,7 +149,8 @@ class TestCanonValidation:
 
 class TestPlan:
     def test_empty_tenant_plans_everything_as_missing(
-        self, adapter: EntraPolicyTargetingAdapter,
+        self,
+        adapter: EntraPolicyTargetingAdapter,
     ) -> None:
         plan = adapter.plan()
         # 5 Intune profiles all missing + 4 Arc definitions all unresolvable

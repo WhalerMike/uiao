@@ -195,5 +195,3 @@ def build_poam_export(
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump({"plan-of-action-and-milestones": poam}, f, indent=2)
     return json_path
-
-

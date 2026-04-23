@@ -22,6 +22,7 @@ import pytest
 # Credential helpers — skip when not available
 # ---------------------------------------------------------------------------
 
+
 def _graph_creds() -> dict | None:
     """Return Graph API credentials from env, or None if not set."""
     cid = os.environ.get("ENTRA_CLIENT_ID")
@@ -58,6 +59,7 @@ skip_no_servicenow = pytest.mark.skipif(
 # Entra ID — Live Graph API
 # ===========================================================================
 
+
 @skip_no_graph
 class TestEntraIdAcceptance:
     """Phase 4: Real Entra ID / Graph API round-trip."""
@@ -65,6 +67,7 @@ class TestEntraIdAcceptance:
     @pytest.fixture
     def adapter(self):
         from uiao.adapters.entra_adapter import EntraAdapter
+
         return EntraAdapter({"tenant_id": GRAPH_CREDS["tenant_id"]})
 
     def test_a1_connect_to_graph(self, adapter) -> None:
@@ -83,6 +86,7 @@ class TestEntraIdAcceptance:
     def test_a3_evidence_bundle(self, adapter) -> None:
         """A4: Generate evidence with real data."""
         from uiao.adapters.database_base import EvidenceObject
+
         result = adapter.collect_evidence("KSI-IA-02")
         assert isinstance(result, EvidenceObject)
         assert result.source == "entra-id"
@@ -98,9 +102,7 @@ class TestEntraIdAcceptance:
             pytest.skip("No records returned from tenant")
 
         # Re-normalize from raw
-        claims = adapter.normalize(
-            [{"id": f"test-{i}", "displayName": f"User {i}"} for i in range(3)]
-        )
+        claims = adapter.normalize([{"id": f"test-{i}", "displayName": f"User {i}"} for i in range(3)])
         bundle = build_adapter_bundle("entra-id", claims, control_ids=["IA-2", "CM-8"])
         sar = build_sar(bundle=bundle, system_name="Entra Acceptance Test")
         assert "assessment-results" in sar
@@ -110,12 +112,14 @@ class TestEntraIdAcceptance:
 # M365 — Live Graph API (same credentials as Entra)
 # ===========================================================================
 
+
 @skip_no_graph
 class TestM365Acceptance:
     """Phase 4: Real M365 tenant config retrieval."""
 
     def test_a1_connect(self) -> None:
         from uiao.adapters.m365_adapter import M365Adapter
+
         adapter = M365Adapter({"tenant_id": GRAPH_CREDS["tenant_id"]})
         conn = adapter.connect()
         assert "graph.microsoft.com" in conn.endpoint
@@ -126,10 +130,13 @@ class TestM365Acceptance:
         # from config dict, not live Graph calls. This test validates
         # the config injection pattern works.
         from uiao.adapters.m365_adapter import M365Adapter
-        adapter = M365Adapter({
-            "tenant_id": GRAPH_CREDS["tenant_id"],
-            "_tenant_config": {"workloads": {}},
-        })
+
+        adapter = M365Adapter(
+            {
+                "tenant_id": GRAPH_CREDS["tenant_id"],
+                "_tenant_config": {"workloads": {}},
+            }
+        )
         claims = adapter.get_tenant_config("exchange-online")
         assert len(claims.claims) == 0  # empty config → empty claims
 
@@ -138,6 +145,7 @@ class TestM365Acceptance:
 # ServiceNow — Live Table API
 # ===========================================================================
 
+
 @skip_no_servicenow
 class TestServiceNowAcceptance:
     """Phase 4: Real ServiceNow Table API round-trip."""
@@ -145,6 +153,7 @@ class TestServiceNowAcceptance:
     @pytest.fixture
     def adapter(self):
         from uiao.adapters.servicenow_adapter import ServiceNowAdapter
+
         return ServiceNowAdapter(SERVICENOW_CREDS)
 
     def test_a1_connect(self, adapter) -> None:
@@ -173,6 +182,7 @@ class TestServiceNowAcceptance:
 # ===========================================================================
 # Always-run: credential availability report
 # ===========================================================================
+
 
 class TestCredentialAvailability:
     """Reports which credentials are available (always runs)."""

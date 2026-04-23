@@ -292,5 +292,3 @@ def build_oscal(
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump({"component-definition": cd}, f, indent=2)
     return json_path
-
-

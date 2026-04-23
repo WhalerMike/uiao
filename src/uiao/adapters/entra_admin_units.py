@@ -44,7 +44,6 @@ from uiao.modernization.orgtree import (
 )
 from uiao.modernization.orgtree.admin_units import default_delegation_matrix
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -56,11 +55,13 @@ OP_ROLE_DELETE_UNSCOPED = "role-delete-unscoped"
 OP_ROLE_DELETE_PHANTOM = "role-delete-phantom"
 
 OPS_AUTO_APPLIED = frozenset({OP_AU_CREATE, OP_AU_UPDATE, OP_ROLE_CREATE})
-OPS_GOVERNANCE_REVIEW = frozenset({
-    OP_AU_DELETE_PHANTOM,
-    OP_ROLE_DELETE_UNSCOPED,
-    OP_ROLE_DELETE_PHANTOM,
-})
+OPS_GOVERNANCE_REVIEW = frozenset(
+    {
+        OP_AU_DELETE_PHANTOM,
+        OP_ROLE_DELETE_UNSCOPED,
+        OP_ROLE_DELETE_PHANTOM,
+    }
+)
 
 
 @dataclass
@@ -182,8 +183,7 @@ class EntraAdminUnitsAdapter:
         tenant_au_by_name: Dict[str, Dict[str, Any]] = {
             a.get("displayName", ""): a
             for a in tenant_aus
-            if isinstance(a.get("displayName"), str)
-            and a["displayName"].startswith("AU-ORG")
+            if isinstance(a.get("displayName"), str) and a["displayName"].startswith("AU-ORG")
         }
 
         plan = DelegationPlan(
@@ -198,18 +198,19 @@ class EntraAdminUnitsAdapter:
         for au in self._matrix.administrative_units.values():
             tenant_au = tenant_au_by_name.get(au.name)
             if tenant_au is None:
-                plan.operations.append(PlannedOperation(
-                    op=OP_AU_CREATE,
-                    target=au.name,
-                    reason="Missing in tenant — canonical AU exists",
-                    canonical_au=au,
-                ))
+                plan.operations.append(
+                    PlannedOperation(
+                        op=OP_AU_CREATE,
+                        target=au.name,
+                        reason="Missing in tenant — canonical AU exists",
+                        canonical_au=au,
+                    )
+                )
                 continue
             reasons: List[str] = []
             if tenant_au.get("membershipRule") != au.membership_rule:
                 reasons.append(
-                    f"Rule drift: canonical='{au.membership_rule}' "
-                    f"tenant='{tenant_au.get('membershipRule')}'"
+                    f"Rule drift: canonical='{au.membership_rule}' tenant='{tenant_au.get('membershipRule')}'"
                 )
             if not bool(tenant_au.get("isMemberManagementRestricted")):
                 reasons.append(
@@ -217,34 +218,35 @@ class EntraAdminUnitsAdapter:
                     "Restricted Management for every AU in the matrix"
                 )
             if reasons:
-                plan.operations.append(PlannedOperation(
-                    op=OP_AU_UPDATE,
-                    target=au.name,
-                    reason="; ".join(reasons),
-                    canonical_au=au,
-                    tenant_state=tenant_au,
-                ))
+                plan.operations.append(
+                    PlannedOperation(
+                        op=OP_AU_UPDATE,
+                        target=au.name,
+                        reason="; ".join(reasons),
+                        canonical_au=au,
+                        tenant_state=tenant_au,
+                    )
+                )
 
         canonical_au_names = self._matrix.au_names
         for name, tenant_au in tenant_au_by_name.items():
             if name not in canonical_au_names:
-                plan.operations.append(PlannedOperation(
-                    op=OP_AU_DELETE_PHANTOM,
-                    target=name,
-                    reason=(
-                        "Phantom AU — AU-ORG prefix but not in MOD_D matrix. "
-                        "Governance review required; NOT auto-applied."
-                    ),
-                    tenant_state=tenant_au,
-                ))
+                plan.operations.append(
+                    PlannedOperation(
+                        op=OP_AU_DELETE_PHANTOM,
+                        target=name,
+                        reason=(
+                            "Phantom AU — AU-ORG prefix but not in MOD_D matrix. "
+                            "Governance review required; NOT auto-applied."
+                        ),
+                        tenant_state=tenant_au,
+                    )
+                )
 
         # ---- Role Assignments ----
         # Build the set of (roleDefinitionId, principalId, directoryScopeId)
         # tuples both canon and tenant expose.
-        au_id_by_name = {
-            a.get("displayName"): a.get("id")
-            for a in tenant_aus
-        }
+        au_id_by_name = {a.get("displayName"): a.get("id") for a in tenant_aus}
 
         canonical_assignment_triples: Dict[Tuple[str, str, str], RoleAssignment] = {}
         unresolved_canonical: List[RoleAssignment] = []
@@ -275,51 +277,58 @@ class EntraAdminUnitsAdapter:
 
         for triple, ra in canonical_assignment_triples.items():
             if triple not in tenant_triples:
-                plan.operations.append(PlannedOperation(
-                    op=OP_ROLE_CREATE,
-                    target=f"{ra.role}@{ra.au_scope} -> {ra.principal_group}",
-                    reason="Missing in tenant — canonical assignment exists",
-                    canonical_assignment=ra,
-                ))
+                plan.operations.append(
+                    PlannedOperation(
+                        op=OP_ROLE_CREATE,
+                        target=f"{ra.role}@{ra.au_scope} -> {ra.principal_group}",
+                        reason="Missing in tenant — canonical assignment exists",
+                        canonical_assignment=ra,
+                    )
+                )
 
         # Everything in the canon that couldn't be triple-resolved still
         # plans a create — caller resolves at write time.
         for ra in unresolved_canonical:
-            plan.operations.append(PlannedOperation(
-                op=OP_ROLE_CREATE,
-                target=f"{ra.role}@{ra.au_scope} -> {ra.principal_group}",
-                reason=(
-                    "Missing in tenant — canonical assignment exists "
-                    "(principal or AU id not resolved at plan time)"
-                ),
-                canonical_assignment=ra,
-            ))
+            plan.operations.append(
+                PlannedOperation(
+                    op=OP_ROLE_CREATE,
+                    target=f"{ra.role}@{ra.au_scope} -> {ra.principal_group}",
+                    reason=(
+                        "Missing in tenant — canonical assignment exists (principal or AU id not resolved at plan time)"
+                    ),
+                    canonical_assignment=ra,
+                )
+            )
 
         for triple, tenant_ra in tenant_triples.items():
             if triple in canonical_assignment_triples:
                 continue
             scope = triple[2]
             if scope in ("/", ""):
-                plan.operations.append(PlannedOperation(
-                    op=OP_ROLE_DELETE_UNSCOPED,
-                    target=f"assignment:{tenant_ra.get('id', '<unknown>')}",
-                    reason=(
-                        "Tenant-wide role assignment (directoryScopeId=/) — "
-                        "MOD_D §Governance Rule 4 prohibits unscoped role "
-                        "assignments. Investigate; NOT auto-applied."
-                    ),
-                    tenant_state=tenant_ra,
-                ))
+                plan.operations.append(
+                    PlannedOperation(
+                        op=OP_ROLE_DELETE_UNSCOPED,
+                        target=f"assignment:{tenant_ra.get('id', '<unknown>')}",
+                        reason=(
+                            "Tenant-wide role assignment (directoryScopeId=/) — "
+                            "MOD_D §Governance Rule 4 prohibits unscoped role "
+                            "assignments. Investigate; NOT auto-applied."
+                        ),
+                        tenant_state=tenant_ra,
+                    )
+                )
             else:
-                plan.operations.append(PlannedOperation(
-                    op=OP_ROLE_DELETE_PHANTOM,
-                    target=f"assignment:{tenant_ra.get('id', '<unknown>')}",
-                    reason=(
-                        "Phantom role assignment — not in MOD_D matrix. "
-                        "Potential privilege escalation; NOT auto-applied."
-                    ),
-                    tenant_state=tenant_ra,
-                ))
+                plan.operations.append(
+                    PlannedOperation(
+                        op=OP_ROLE_DELETE_PHANTOM,
+                        target=f"assignment:{tenant_ra.get('id', '<unknown>')}",
+                        reason=(
+                            "Phantom role assignment — not in MOD_D matrix. "
+                            "Potential privilege escalation; NOT auto-applied."
+                        ),
+                        tenant_state=tenant_ra,
+                    )
+                )
 
         return plan
 
@@ -337,39 +346,44 @@ class EntraAdminUnitsAdapter:
         )
         for op in plan.operations:
             if op.op in OPS_GOVERNANCE_REVIEW:
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="skipped-manual",
-                    detail=(
-                        "MOD_D §Drift: governance review required; "
-                        "never auto-applied."
-                    ),
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="skipped-manual",
+                        detail=("MOD_D §Drift: governance review required; never auto-applied."),
+                    )
+                )
                 continue
             if dry_run:
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="skipped-dry-run",
-                    detail="Dry run — no Graph API call issued.",
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="skipped-dry-run",
+                        detail="Dry run — no Graph API call issued.",
+                    )
+                )
                 continue
             try:
                 self._execute(op)
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="written",
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="written",
+                    )
+                )
             except Exception as exc:  # pragma: no cover - network path
                 logger.exception("Apply failed for %s", op.target)
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="failed",
-                    detail=str(exc),
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="failed",
+                        detail=str(exc),
+                    )
+                )
         return report
 
     def reconcile(
@@ -398,9 +412,7 @@ class EntraAdminUnitsAdapter:
                 "Graph client not configured — provide tenant_id, client_id, "
                 "client_secret in adapter config, or override _graph_client()."
             )
-        base_url = self._config.get(
-            "api_base_url", "https://graph.microsoft.com/v1.0"
-        )
+        base_url = self._config.get("api_base_url", "https://graph.microsoft.com/v1.0")
         if op.op == OP_AU_CREATE:
             if op.canonical_au is None:
                 raise ValueError("au-create requires canonical_au")
@@ -470,9 +482,7 @@ class EntraAdminUnitsAdapter:
 
             def auth_flow(self, request):
                 if self.token is None:
-                    tok = self.cred.get_token(
-                        "https://graph.microsoft.com/.default"
-                    )
+                    tok = self.cred.get_token("https://graph.microsoft.com/.default")
                     self.token = tok.token
                 request.headers["Authorization"] = f"Bearer {self.token}"
                 yield request

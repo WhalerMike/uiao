@@ -22,18 +22,20 @@ def parse_scan_results(scan_data: dict) -> List[dict]:
     """
     findings: List[dict] = []
     for item in scan_data.get("findings", []):
-        findings.append({
-            "finding_id": item.get("finding_id", ""),
-            "cve_id": item.get("cve_id", ""),
-            "severity": item.get("severity", "unknown"),
-            "cvss_score": item.get("cvss_score", 0.0),
-            "affected_asset": item.get("affected_asset", ""),
-            "state": item.get("state", "open"),
-            "title": item.get("title", ""),
-            "plugin_id": item.get("plugin_id", ""),
-            "first_seen": item.get("first_seen", ""),
-            "last_seen": item.get("last_seen", ""),
-        })
+        findings.append(
+            {
+                "finding_id": item.get("finding_id", ""),
+                "cve_id": item.get("cve_id", ""),
+                "severity": item.get("severity", "unknown"),
+                "cvss_score": item.get("cvss_score", 0.0),
+                "affected_asset": item.get("affected_asset", ""),
+                "state": item.get("state", "open"),
+                "title": item.get("title", ""),
+                "plugin_id": item.get("plugin_id", ""),
+                "first_seen": item.get("first_seen", ""),
+                "last_seen": item.get("last_seen", ""),
+            }
+        )
     return findings
 
 

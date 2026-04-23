@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # State file parsing (v4 JSON format)
 # ---------------------------------------------------------------------------
 
+
 def parse_tfstate(state: dict) -> List[dict]:
     """Extract resources from a Terraform v4 state file.
 
@@ -37,10 +38,7 @@ def parse_tfstate(state: dict) -> List[dict]:
     """
     version = state.get("version", 0)
     if version != 4:
-        raise ValueError(
-            f"Unsupported state file version {version}; expected 4. "
-            f"Terraform >=0.12 produces v4 state."
-        )
+        raise ValueError(f"Unsupported state file version {version}; expected 4. Terraform >=0.12 produces v4 state.")
 
     resources: List[dict] = []
     for resource in state.get("resources", []):
@@ -55,14 +53,16 @@ def parse_tfstate(state: dict) -> List[dict]:
 
         for instance in resource.get("instances", []):
             attrs = instance.get("attributes", {})
-            resources.append({
-                "type": rtype,
-                "name": rname,
-                "provider": provider,
-                "mode": mode,
-                "attributes": attrs,
-                "id": attrs.get("id", ""),
-            })
+            resources.append(
+                {
+                    "type": rtype,
+                    "name": rname,
+                    "provider": provider,
+                    "mode": mode,
+                    "attributes": attrs,
+                    "id": attrs.get("id", ""),
+                }
+            )
 
     return resources
 
@@ -135,17 +135,19 @@ def parse_plan_json(plan: dict) -> List[dict]:
         provider_raw = rc.get("provider_name", "")
         provider = provider_raw.split("/")[-1] if "/" in provider_raw else provider_raw
 
-        changes.append({
-            "address": rc.get("address", ""),
-            "type": rc.get("type", ""),
-            "name": rc.get("name", ""),
-            "provider": provider,
-            "actions": actions,
-            "severity": severity,
-            "before": before,
-            "after": after,
-            "diff": diff,
-        })
+        changes.append(
+            {
+                "address": rc.get("address", ""),
+                "type": rc.get("type", ""),
+                "name": rc.get("name", ""),
+                "provider": provider,
+                "actions": actions,
+                "severity": severity,
+                "before": before,
+                "after": after,
+                "diff": diff,
+            }
+        )
 
     return changes
 
@@ -153,6 +155,7 @@ def parse_plan_json(plan: dict) -> List[dict]:
 # ---------------------------------------------------------------------------
 # HCL2 configuration parsing
 # ---------------------------------------------------------------------------
+
 
 def parse_hcl(
     hcl_content: str,
@@ -171,10 +174,7 @@ def parse_hcl(
     try:
         import hcl2
     except ImportError as exc:
-        raise ImportError(
-            "python-hcl2 is required for HCL parsing. "
-            "Install with: pip install python-hcl2"
-        ) from exc
+        raise ImportError("python-hcl2 is required for HCL parsing. Install with: pip install python-hcl2") from exc
 
     parsed = hcl2.load(StringIO(hcl_content))
     vars_dict = variables or {}
@@ -188,21 +188,21 @@ def parse_hcl(
                 rname = rname_raw.strip('"')
                 # Resolve simple variable references
                 resolved_attrs = _resolve_variables(config, vars_dict)
-                resources.append({
-                    "type": rtype,
-                    "name": rname,
-                    "provider": _infer_provider_from_type(rtype),
-                    "mode": "config",
-                    "attributes": resolved_attrs,
-                    "id": "",  # config doesn't have IDs
-                })
+                resources.append(
+                    {
+                        "type": rtype,
+                        "name": rname,
+                        "provider": _infer_provider_from_type(rtype),
+                        "mode": "config",
+                        "attributes": resolved_attrs,
+                        "id": "",  # config doesn't have IDs
+                    }
+                )
 
     return resources
 
 
-def _resolve_variables(
-    config: Any, variables: Dict[str, Any]
-) -> Any:
+def _resolve_variables(config: Any, variables: Dict[str, Any]) -> Any:
     """Recursively resolve var.X references in HCL config values."""
     if isinstance(config, str):
         # Match ${var.name} or bare var.name references
@@ -210,8 +210,8 @@ def _resolve_variables(
             var_name = m.group(1)
             return str(variables.get(var_name, m.group(0)))
 
-        result = re.sub(r'\$\{var\.(\w+)\}', replacer, config)
-        result = re.sub(r'\bvar\.(\w+)\b', replacer, result)
+        result = re.sub(r"\$\{var\.(\w+)\}", replacer, config)
+        result = re.sub(r"\bvar\.(\w+)\b", replacer, result)
         return result
     elif isinstance(config, dict):
         return {k: _resolve_variables(v, variables) for k, v in config.items()}
@@ -229,6 +229,7 @@ def _infer_provider_from_type(resource_type: str) -> str:
 # ---------------------------------------------------------------------------
 # Three-way diff
 # ---------------------------------------------------------------------------
+
 
 def three_way_diff(
     live: List[dict],
@@ -254,9 +255,8 @@ def three_way_diff(
     state_vs_config = _compare_maps(state_map, config_map, "state", "config")
 
     all_keys = set(live_map) | set(state_map) | set(config_map)
-    drift_keys = (
-        set(live_vs_state["added"] + live_vs_state["removed"] + live_vs_state["changed"])
-        | set(state_vs_config["added"] + state_vs_config["removed"] + state_vs_config["changed"])
+    drift_keys = set(live_vs_state["added"] + live_vs_state["removed"] + live_vs_state["changed"]) | set(
+        state_vs_config["added"] + state_vs_config["removed"] + state_vs_config["changed"]
     )
 
     return {

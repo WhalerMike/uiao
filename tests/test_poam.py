@@ -330,4 +330,3 @@ class TestEvaluateRules:
         assert len(entries) == 1
         assert entries[0].source == "rule_engine"
         assert entries[0].source_finding_id == "R1"
-

@@ -84,15 +84,11 @@ class TestConnect:
         result = adapter.connect()
         assert isinstance(result, ConnectionProvenance)
 
-    def test_connect_identity_includes_workspace(
-        self, adapter: TerraformAdapter
-    ) -> None:
+    def test_connect_identity_includes_workspace(self, adapter: TerraformAdapter) -> None:
         result = adapter.connect()
         assert "prod" in result.identity
 
-    def test_connect_endpoint_matches_source(
-        self, adapter: TerraformAdapter
-    ) -> None:
+    def test_connect_endpoint_matches_source(self, adapter: TerraformAdapter) -> None:
         result = adapter.connect()
         assert result.endpoint == "s3://my-bucket/terraform.tfstate"
 
@@ -100,9 +96,7 @@ class TestConnect:
         result = adapter.connect()
         assert result.auth_method == "iam-role"
 
-    def test_connect_default_endpoint(
-        self, adapter_empty: TerraformAdapter
-    ) -> None:
+    def test_connect_default_endpoint(self, adapter_empty: TerraformAdapter) -> None:
         result = adapter_empty.connect()
         assert result.endpoint == "local://terraform.tfstate"
 
@@ -117,9 +111,7 @@ class TestDiscoverSchema:
         result = adapter.discover_schema()
         assert isinstance(result, SchemaMappingObject)
 
-    def test_vendor_schema_has_resource_type(
-        self, adapter: TerraformAdapter
-    ) -> None:
+    def test_vendor_schema_has_resource_type(self, adapter: TerraformAdapter) -> None:
         result = adapter.discover_schema()
         assert "resource_type" in result.vendor_schema
 
@@ -127,9 +119,7 @@ class TestDiscoverSchema:
         result = adapter.discover_schema()
         assert len(result.unmapped_fields) > 0
 
-    def test_version_hash_deterministic(
-        self, adapter: TerraformAdapter
-    ) -> None:
+    def test_version_hash_deterministic(self, adapter: TerraformAdapter) -> None:
         h1 = adapter.discover_schema().version_hash
         h2 = adapter.discover_schema().version_hash
         assert h1 == h2
@@ -145,9 +135,7 @@ class TestExecuteQuery:
         result = adapter.execute_query({"from": "aws_instance"})
         assert isinstance(result, QueryProvenance)
 
-    def test_vendor_query_includes_state_source(
-        self, adapter: TerraformAdapter
-    ) -> None:
+    def test_vendor_query_includes_state_source(self, adapter: TerraformAdapter) -> None:
         result = adapter.execute_query({"from": "aws_instance"})
         assert "s3://my-bucket/terraform.tfstate" in result.vendor_query
 
@@ -314,9 +302,7 @@ class TestParseHclConfig:
         assert "azurerm_resource_group" in types
 
     def test_variable_substitution(self, adapter: TerraformAdapter, hcl_path: str) -> None:
-        result = adapter.parse_hcl_config(
-            hcl_path, variables={"instance_type": "t3.large"}
-        )
+        result = adapter.parse_hcl_config(hcl_path, variables={"instance_type": "t3.large"})
         web_claims = [c for c in result.claims if c.fields.get("resource_type") == "aws_instance"]
         assert len(web_claims) >= 1
         # Variable should be resolved in attributes
@@ -336,6 +322,7 @@ class TestConsumeTerraformPlan:
     @pytest.fixture
     def plan(self) -> dict:
         import json
+
         path = Path(__file__).parent / "fixtures" / "terraform-plan.json"
         return json.loads(path.read_text())
 
@@ -377,18 +364,27 @@ class TestDetectTerraformDrift:
         state = {
             "version": 4,
             "resources": [
-                {"mode": "managed", "type": "aws_instance", "name": "web",
-                 "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
-                 "instances": [{"attributes": {"id": "i-123", "instance_type": "t3.micro"}}]}
+                {
+                    "mode": "managed",
+                    "type": "aws_instance",
+                    "name": "web",
+                    "provider": 'provider["registry.terraform.io/hashicorp/aws"]',
+                    "instances": [{"attributes": {"id": "i-123", "instance_type": "t3.micro"}}],
+                }
             ],
         }
         hcl = 'resource "aws_instance" "web" {\n  instance_type = "t3.micro"\n}\n'
         live_claim = ClaimObject(
             claim_id="terraform:aws:aws_instance:web",
             entity="terraform:aws_instance:web",
-            fields={"resource_type": "aws_instance", "resource_name": "web",
-                     "provider": "aws", "attributes": {"id": "i-123", "instance_type": "t3.micro"}},
-            source="terraform", provenance_hash="abc",
+            fields={
+                "resource_type": "aws_instance",
+                "resource_name": "web",
+                "provider": "aws",
+                "attributes": {"id": "i-123", "instance_type": "t3.micro"},
+            },
+            source="terraform",
+            provenance_hash="abc",
         )
         result = adapter.detect_terraform_drift([live_claim], tf_state=state, tf_config=hcl)
         assert isinstance(result, DriftReport)
@@ -398,9 +394,13 @@ class TestDetectTerraformDrift:
         state = {
             "version": 4,
             "resources": [
-                {"mode": "managed", "type": "aws_instance", "name": "web",
-                 "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
-                 "instances": [{"attributes": {"id": "i-123", "instance_type": "t3.micro"}}]}
+                {
+                    "mode": "managed",
+                    "type": "aws_instance",
+                    "name": "web",
+                    "provider": 'provider["registry.terraform.io/hashicorp/aws"]',
+                    "instances": [{"attributes": {"id": "i-123", "instance_type": "t3.micro"}}],
+                }
             ],
         }
         # Empty live = everything in state is "removed" from live perspective
@@ -415,6 +415,7 @@ class TestGenerateTerraformEvidence:
     @pytest.fixture
     def state(self) -> dict:
         import json
+
         path = Path(__file__).parent / "fixtures" / "terraform.tfstate"
         return json.loads(path.read_text())
 

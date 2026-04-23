@@ -115,9 +115,7 @@ def main() -> int:
     # Schema summary
     lines.append("## Schema contract")
     lines.append("")
-    lines.append(
-        f"Required fields: {', '.join(f'`{r}`' for r in required) if required else '_(none declared)_'}"
-    )
+    lines.append(f"Required fields: {', '.join(f'`{r}`' for r in required) if required else '_(none declared)_'}")
     lines.append("")
     enum_fields = [(n, d["enum"]) for n, d in properties.items() if "enum" in d]
     if enum_fields:
@@ -152,9 +150,7 @@ def main() -> int:
     # Failure pattern buckets, biggest first
     lines.append("## Failure patterns (largest first)")
     lines.append("")
-    sorted_patterns = sorted(
-        pattern_to_files.items(), key=lambda kv: (-len(kv[1]), kv[0])
-    )
+    sorted_patterns = sorted(pattern_to_files.items(), key=lambda kv: (-len(kv[1]), kv[0]))
     for idx, (issues, files) in enumerate(sorted_patterns, start=1):
         lines.append(f"### Pattern {idx}: {len(files)} file(s)")
         lines.append("")
@@ -211,21 +207,16 @@ def main() -> int:
 
     lines.append("## Proposed next batches")
     lines.append("")
-    lines.append(
-        "- **5.1.6 — scope decision.** One-line: is `canon/specs/` canon? "
-        "Answer drives everything else."
-    )
+    lines.append("- **5.1.6 — scope decision.** One-line: is `canon/specs/` canon? Answer drives everything else.")
     lines.append(
         "- **5.1.7 — mechanical backfill.** Apply the agreed frontmatter stub "
         "to every file in Pattern 1, one file → verify → batch-apply the rest."
     )
     lines.append(
-        "- **5.1.8 — judgment backfill.** Walk Patterns 2..N by hand, one "
-        "commit per file so diffs review cleanly."
+        "- **5.1.8 — judgment backfill.** Walk Patterns 2..N by hand, one commit per file so diffs review cleanly."
     )
     lines.append(
-        "- **5.2 — branch protection.** Only after BLOCKING is zero, or with "
-        "explicit acceptance of a red main."
+        "- **5.2 — branch protection.** Only after BLOCKING is zero, or with explicit acceptance of a red main."
     )
     lines.append("")
 

@@ -11,6 +11,7 @@ Usage::
 
     from canon_paths import CONTROL_LIBRARY_DIR, DIAGRAMS_CANON
 """
+
 from __future__ import annotations
 
 import os

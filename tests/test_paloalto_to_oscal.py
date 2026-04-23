@@ -20,11 +20,13 @@ from uiao.generators.sar import build_sar
 @pytest.fixture
 def adapter() -> PaloAltoAdapter:
     sec_xml = (Path(__file__).parent / "fixtures" / "panos-security-rules.xml").read_text()
-    return PaloAltoAdapter({
-        "host": "fw01.agency.gov",
-        "vsys": "vsys1",
-        "_security_rules_xml": sec_xml,
-    })
+    return PaloAltoAdapter(
+        {
+            "host": "fw01.agency.gov",
+            "vsys": "vsys1",
+            "_security_rules_xml": sec_xml,
+        }
+    )
 
 
 class TestPaloAltoToOscal:
@@ -68,9 +70,7 @@ class TestPaloAltoToOscal:
 
     def test_config_change_drift(self, adapter: PaloAltoAdapter) -> None:
         claims = adapter.get_running_config()
-        drift = adapter.push_config_change(
-            "security-rule", "allow-dns-outbound", {"action": "deny"}
-        )
+        drift = adapter.push_config_change("security-rule", "allow-dns-outbound", {"action": "deny"})
         bundle = build_adapter_bundle(
             adapter_id="palo-alto",
             claim_set=claims,
@@ -87,6 +87,7 @@ class TestPaloAltoToOscal:
 
         # Feed evidence normalized data back through the pipeline
         from uiao.adapters.database_base import ClaimSet, ClaimObject
+
         claims_data = evidence.normalized_data
         # Reconstruct ClaimSet from evidence for pipeline test
         claim_objects = [

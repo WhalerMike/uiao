@@ -15,6 +15,7 @@ Usage (from the monorepo root):
     python scripts/cleanup_live_doc_links.py --dry-run
     python scripts/cleanup_live_doc_links.py
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,10 +29,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # `uiao/canon/` while still matching `core/canon/`, `/core/canon/`,
 # `main/core/canon/`, `(core/canon/`, etc.
 SUBS = [
-    (re.compile(r"(?<![\w-])core/canon/"),   "src/uiao/canon/"),
+    (re.compile(r"(?<![\w-])core/canon/"), "src/uiao/canon/"),
     (re.compile(r"(?<![\w-])core/schemas/"), "src/uiao/schemas/"),
-    (re.compile(r"(?<![\w-])core/rules/"),   "src/uiao/rules/"),
-    (re.compile(r"(?<![\w-])core/ksi/"),     "src/uiao/ksi/"),
+    (re.compile(r"(?<![\w-])core/rules/"), "src/uiao/rules/"),
+    (re.compile(r"(?<![\w-])core/ksi/"), "src/uiao/ksi/"),
 ]
 
 # Explicit allowlist — we only touch these.

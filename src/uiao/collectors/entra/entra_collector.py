@@ -66,16 +66,13 @@ class EntraCollector(BaseCollector):
         super().__init__(config=config)
         if httpx is None or ClientSecretCredential is None:
             logger.warning(
-                "azure-identity and httpx are required for EntraCollector; "
-                "install with: pip install 'uiao[graph]'"
+                "azure-identity and httpx are required for EntraCollector; install with: pip install 'uiao[graph]'"
             )
 
         self._tenant_id: Optional[str] = self._config.get("tenant_id")
         self._client_id: Optional[str] = self._config.get("client_id")
         self._client_secret: Optional[str] = self._config.get("client_secret")
-        self._authority: str = self._config.get(
-            "authority", f"https://login.microsoftonline.com/{self._tenant_id}"
-        )
+        self._authority: str = self._config.get("authority", f"https://login.microsoftonline.com/{self._tenant_id}")
         self._api_base_url: str = self._config.get("api_base_url", "https://graph.microsoft.com/v1.0")
         self._scope: str = "https://graph.microsoft.com/.default"
         self._credential: Optional[ClientSecretCredential] = None
@@ -369,20 +366,19 @@ class EntraCollector(BaseCollector):
             orgpath = ext.get("extensionAttribute1")
             if orgpath:
                 populated += 1
-            flattened.append({
-                "id": u.get("id"),
-                "userPrincipalName": u.get("userPrincipalName"),
-                "displayName": u.get("displayName"),
-                "accountEnabled": u.get("accountEnabled"),
-                "orgpath": orgpath,
-                "orgpath_source": (
-                    "entra:onPremisesExtensionAttributes.extensionAttribute1"
-                    if orgpath else None
-                ),
-                "region": ext.get("extensionAttribute2"),
-                "lifecycle_state": ext.get("extensionAttribute3"),
-                "migration_state": ext.get("extensionAttribute4"),
-            })
+            flattened.append(
+                {
+                    "id": u.get("id"),
+                    "userPrincipalName": u.get("userPrincipalName"),
+                    "displayName": u.get("displayName"),
+                    "accountEnabled": u.get("accountEnabled"),
+                    "orgpath": orgpath,
+                    "orgpath_source": ("entra:onPremisesExtensionAttributes.extensionAttribute1" if orgpath else None),
+                    "region": ext.get("extensionAttribute2"),
+                    "lifecycle_state": ext.get("extensionAttribute3"),
+                    "migration_state": ext.get("extensionAttribute4"),
+                }
+            )
 
         return {
             "user_count": len(users),
@@ -451,31 +447,24 @@ class EntraCollector(BaseCollector):
             "tenant_id": self._tenant_id,
             "collection_timestamp_utc": self._now().isoformat(),
             "conditional_access_policies": self._call_graph_api("/identity/conditionalAccess/policies"),
-            "auth_method_registration": self._call_graph_api(
-                "/reports/authenticationMethods/userRegistrationDetails"
-            ),
+            "auth_method_registration": self._call_graph_api("/reports/authenticationMethods/userRegistrationDetails"),
             "directory_roles": self._call_graph_api("/directoryRoles"),
             "auth_methods_policy": self._call_graph_api("/policies/authenticationMethodsPolicy"),
             "organization": self._call_graph_api("/organization"),
             "named_locations": self._call_graph_api("/identity/conditionalAccess/namedLocations"),
             "user_extension_attributes": self._call_graph_api(
-                "/users?$select=id,userPrincipalName,displayName,accountEnabled,"
-                "onPremisesExtensionAttributes&$top=999"
+                "/users?$select=id,userPrincipalName,displayName,accountEnabled,onPremisesExtensionAttributes&$top=999"
             ),
         }
 
         normalized_data: Dict[str, Any] = {
-            "conditional_access": self._normalize_conditional_access(
-                raw_data.get("conditional_access_policies")
-            ),
+            "conditional_access": self._normalize_conditional_access(raw_data.get("conditional_access_policies")),
             "auth_methods": self._normalize_auth_methods(raw_data.get("auth_method_registration")),
             "directory_roles": self._normalize_directory_roles(raw_data.get("directory_roles")),
             "auth_policy": self._normalize_auth_policy(raw_data.get("auth_methods_policy")),
             "organization": self._normalize_organization(raw_data.get("organization")),
             "named_locations": self._normalize_named_locations(raw_data.get("named_locations")),
-            "user_attributes": self._normalize_user_attributes(
-                raw_data.get("user_extension_attributes")
-            ),
+            "user_attributes": self._normalize_user_attributes(raw_data.get("user_extension_attributes")),
         }
 
         provenance = self._build_provenance(raw_data=raw_data)

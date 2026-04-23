@@ -59,7 +59,7 @@ except ImportError:  # pragma: no cover - yaml is a tiny dep; install on demand
 # ──────────────────────────────────────────────────────────────
 # CONFIGURATION — env-driven. Key MUST come from environment.
 # ──────────────────────────────────────────────────────────────
-SCRIPT_DIR = Path(__file__).resolve().parent                 # docs/
+SCRIPT_DIR = Path(__file__).resolve().parent  # docs/
 REPO_ROOT = Path(os.environ.get("UIAO_REPO_ROOT") or SCRIPT_DIR.parent)
 PROMPTS_FILE = SCRIPT_DIR / "prompts.json"
 LEGACY_OUTPUT_DIR = SCRIPT_DIR / "images"
@@ -75,9 +75,14 @@ SCAN_ROOTS = [
 ]
 SCAN_EXTS = (".qmd", ".md")
 EXCLUDE_PATH_PARTS = {
-    "_site", "_freeze", ".quarto", "node_modules", ".venv", "__pycache__",
-    "session-logs",     # working dev logs, not rendered site content
-    "inbox",            # raw intake drops; may contain example placeholders
+    "_site",
+    "_freeze",
+    ".quarto",
+    "node_modules",
+    ".venv",
+    "__pycache__",
+    "session-logs",  # working dev logs, not rendered site content
+    "inbox",  # raw intake drops; may contain example placeholders
 }
 # ──────────────────────────────────────────────────────────────
 
@@ -111,16 +116,18 @@ CANON_ID_RE = re.compile(r"^UIAO-FIG-\d{3}$")
 @dataclass(frozen=True)
 class DocLocalPlaceholder:
     """A [IMAGE-NN: prompt] or [IMAGE-NN: AUTO] in some .qmd/.md file."""
-    document: Path              # repo-relative-ish; resolved Path()
-    placeholder_id: str         # e.g. "IMAGE-03"
-    body: str                   # raw text between ':' and ']'
-    line_number: int            # 1-indexed
-    is_auto: bool               # True iff body == "AUTO"
+
+    document: Path  # repo-relative-ish; resolved Path()
+    placeholder_id: str  # e.g. "IMAGE-03"
+    body: str  # raw text between ':' and ']'
+    line_number: int  # 1-indexed
+    is_auto: bool  # True iff body == "AUTO"
 
 
 @dataclass(frozen=True)
 class CanonRefPlaceholder:
     """A [IMAGE-REF: UIAO-FIG-NNN] reference."""
+
     document: Path
     canon_id: str
     line_number: int
@@ -129,22 +136,24 @@ class CanonRefPlaceholder:
 @dataclass
 class RegistryEntry:
     """Mutable view of one entry from core/canon/image-registry.yaml."""
+
     id: str
     slug: str
-    status: str                 # draft | current | deprecated
-    prompt_file: Path           # absolute
-    file: Path                  # absolute
+    status: str  # draft | current | deprecated
+    prompt_file: Path  # absolute
+    file: Path  # absolute
     prompt_sha256: str
     file_sha256: str
     version: str
     generator: str
-    used_by: list[dict]         # [{document: str, placeholder_id: str}]
+    used_by: list[dict]  # [{document: str, placeholder_id: str}]
     raw: dict = field(default_factory=dict)  # full YAML dict, for roundtrip
 
 
 @dataclass
 class RunReport:
     """What happened during this pipeline run. Prints at the end."""
+
     placeholders_scanned: int = 0
     canon_refs_seen: int = 0
     canon_refs_missing: list[str] = field(default_factory=list)
@@ -152,7 +161,7 @@ class RunReport:
     doc_local_generated: int = 0
     doc_local_cached: int = 0
     doc_local_failed: int = 0
-    auto_placeholders_skipped: int = 0   # Part-3 feature; skipped in v1
+    auto_placeholders_skipped: int = 0  # Part-3 feature; skipped in v1
     sidecars_written: int = 0
     registry_used_by_updates: int = 0
 
@@ -200,8 +209,7 @@ def _now_iso_utc() -> str:
 def _require_yaml() -> None:
     if yaml is None:
         print(
-            "Error: PyYAML is required for harvest mode. Install with:\n"
-            "  pip install PyYAML",
+            "Error: PyYAML is required for harvest mode. Install with:\n  pip install PyYAML",
             file=sys.stderr,
         )
         sys.exit(2)
@@ -216,7 +224,7 @@ def load_registry() -> tuple[dict, list[RegistryEntry]]:
     _require_yaml()
     if not CANON_REGISTRY.exists():
         return ({}, [])
-    with open(CANON_REGISTRY, "r", encoding="utf-8") as f:
+    with open(CANON_REGISTRY, encoding="utf-8") as f:
         doc = yaml.safe_load(f) or {}
     raw_images = doc.get("images") or []
     entries: list[RegistryEntry] = []
@@ -266,7 +274,8 @@ def save_registry(doc: dict, entries: list[RegistryEntry]) -> None:
     doc["updated"] = _today_iso_date()
     with open(CANON_REGISTRY, "w", encoding="utf-8") as f:
         yaml.safe_dump(
-            doc, f,
+            doc,
+            f,
             sort_keys=False,
             default_flow_style=False,
             allow_unicode=True,
@@ -422,7 +431,7 @@ def scan_placeholders(
             if ch == "\n":
                 line_starts.append(idx + 1)
 
-        def line_of(offset: int) -> int:
+        def line_of(offset: int, line_starts: list[int] = line_starts) -> int:
             lo, hi = 0, len(line_starts) - 1
             while lo < hi:
                 mid = (lo + hi + 1) // 2
@@ -436,7 +445,7 @@ def scan_placeholders(
         # treated as illustrative, not harvested.
         fence_ranges = _fenced_code_ranges(text)
 
-        def in_fence(offset: int) -> bool:
+        def in_fence(offset: int, fence_ranges: list = fence_ranges) -> bool:
             for start, end in fence_ranges:
                 if start <= offset < end:
                     return True
@@ -501,9 +510,7 @@ def _slugify(text: str, maxlen: int = 40) -> str:
     return (s[:maxlen] or "image").rstrip("-")
 
 
-def doc_local_output_path(
-    document: Path, placeholder_id: str, slug: str
-) -> Path:
+def doc_local_output_path(document: Path, placeholder_id: str, slug: str) -> Path:
     """Compute the sibling images/ path for a doc-local image."""
     doc_dir = document.parent
     images_dir = doc_dir / "images"
@@ -516,9 +523,7 @@ def doc_local_output_path(
 # Image generator. Wraps the Gemini client call. Centralized so
 # error handling, retry, and rate limiting have one home.
 # ──────────────────────────────────────────────────────────────
-def generate_image(
-    client, prompt_text: str, output_path: Path, model: str = MODEL
-) -> bool:
+def generate_image(client, prompt_text: str, output_path: Path, model: str = MODEL) -> bool:
     """Generate a single image from a prompt; save to output_path.
     Returns True on success. Prints diagnostic text responses on partial
     failure (e.g., the model replied with refusal text instead of an
@@ -605,35 +610,22 @@ def process_doc_local_placeholders(
         # Cache-by-hash: if the prompt hasn't changed AND the PNG exists,
         # skip the API call. Drift-free, cost-free re-runs.
         prompt_sha = sha256_text(p.body)
-        if (
-            sidecar_path.exists()
-            and output_path.exists()
-            and not dry_run
-        ):
+        if sidecar_path.exists() and output_path.exists() and not dry_run:
             try:
-                with open(sidecar_path, "r", encoding="utf-8") as f:
+                with open(sidecar_path, encoding="utf-8") as f:
                     existing = json.load(f)
                 if existing.get("prompt_sha256") == prompt_sha:
                     report.doc_local_cached += 1
-                    print(
-                        f"  [cache] {p.document.relative_to(REPO_ROOT)}:"
-                        f"{p.placeholder_id} → {output_path.name}"
-                    )
+                    print(f"  [cache] {p.document.relative_to(REPO_ROOT)}:{p.placeholder_id} → {output_path.name}")
                     continue
             except (OSError, json.JSONDecodeError):
                 pass
 
         if dry_run:
-            print(
-                f"  [dry-run] {p.document.relative_to(REPO_ROOT)}:"
-                f"{p.placeholder_id} → {output_path.name}"
-            )
+            print(f"  [dry-run] {p.document.relative_to(REPO_ROOT)}:{p.placeholder_id} → {output_path.name}")
             continue
 
-        print(
-            f"  Generating: {p.document.relative_to(REPO_ROOT)}:"
-            f"{p.placeholder_id} → {output_path.name}"
-        )
+        print(f"  Generating: {p.document.relative_to(REPO_ROOT)}:{p.placeholder_id} → {output_path.name}")
         ok = generate_image(client, p.body, output_path)
         if not ok:
             report.doc_local_failed += 1
@@ -671,14 +663,12 @@ def process_doc_local_placeholders(
 def load_legacy_prompts(prompts_file: Path) -> list[dict]:
     if not prompts_file.exists():
         return []
-    with open(prompts_file, "r", encoding="utf-8") as f:
+    with open(prompts_file, encoding="utf-8") as f:
         data = json.load(f)
     return data if isinstance(data, list) else []
 
 
-def process_legacy_prompts(
-    prompts: list[dict], client, report: RunReport, dry_run: bool = False
-) -> None:
+def process_legacy_prompts(prompts: list[dict], client, report: RunReport, dry_run: bool = False) -> None:
     LEGACY_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     for i, item in enumerate(prompts, 1):
         prompt_id = item.get("id", f"legacy-{i}")
@@ -705,17 +695,21 @@ def main() -> int:
         description="Generate UIAO images from placeholders + prompts (Gemini Nano Banana).",
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Scan and report what would happen; make no API calls.",
     )
     parser.add_argument(
-        "--scan-only", action="store_true",
+        "--scan-only",
+        action="store_true",
         help="Scan placeholders and print the report; skip all generation.",
     )
     parser.add_argument(
-        "--mode", choices=("both", "legacy", "harvest"), default="both",
+        "--mode",
+        choices=("both", "legacy", "harvest"),
+        default="both",
         help="Input mode. 'both' (default) runs legacy prompts.json AND harvest; "
-             "'legacy' only reads prompts.json; 'harvest' only scans .qmd/.md.",
+        "'legacy' only reads prompts.json; 'harvest' only scans .qmd/.md.",
     )
     args = parser.parse_args()
 
@@ -732,10 +726,7 @@ def main() -> int:
     print(f"Scanning {len(files)} .qmd / .md files under SCAN_ROOTS...")
     locals_, refs = scan_placeholders(files)
     report.placeholders_scanned = len(locals_) + len(refs)
-    print(
-        f"Found {len(locals_)} doc-local placeholder(s) and "
-        f"{len(refs)} canon-ref placeholder(s)."
-    )
+    print(f"Found {len(locals_)} doc-local placeholder(s) and {len(refs)} canon-ref placeholder(s).")
 
     # Load registry (may be empty — that's fine for v1)
     registry_doc, entries = load_registry()
@@ -761,6 +752,7 @@ def main() -> int:
     client = None
     if not args.dry_run:
         from google import genai
+
         client = genai.Client(api_key=api_key)
 
     if args.mode in ("both", "legacy"):
@@ -773,7 +765,10 @@ def main() -> int:
         if locals_:
             print(f"\nProcessing {len(locals_)} doc-local placeholder(s)...")
             process_doc_local_placeholders(
-                locals_, client, report, dry_run=args.dry_run,
+                locals_,
+                client,
+                report,
+                dry_run=args.dry_run,
             )
         else:
             print("\nNo doc-local placeholders found. Skipping harvest generation.")

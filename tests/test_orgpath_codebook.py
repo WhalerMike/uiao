@@ -39,7 +39,8 @@ def test_codes_set_is_populated_and_regex_matches_every_entry() -> None:
 
 def test_rejects_missing_parent(tmp_path: Path) -> None:
     bad = tmp_path / "bad.yaml"
-    bad.write_text(textwrap.dedent("""\
+    bad.write_text(
+        textwrap.dedent("""\
         schema_version: "1.0.0"
         document_id: MOD_A
         parent_canon: UIAO_007
@@ -52,14 +53,16 @@ def test_rejects_missing_parent(tmp_path: Path) -> None:
         codes:
           - { code: ORG,       level: 0, description: Root,    parent: null }
           - { code: ORG-GHOST, level: 1, description: Orphan,  parent: ORG-NOPE }
-    """))
+    """)
+    )
     with pytest.raises(CodebookValidationError, match="unknown parent"):
         load_codebook(bad)
 
 
 def test_rejects_non_root_null_parent(tmp_path: Path) -> None:
     bad = tmp_path / "bad.yaml"
-    bad.write_text(textwrap.dedent("""\
+    bad.write_text(
+        textwrap.dedent("""\
         schema_version: "1.0.0"
         document_id: MOD_A
         parent_canon: UIAO_007
@@ -72,14 +75,16 @@ def test_rejects_non_root_null_parent(tmp_path: Path) -> None:
         codes:
           - { code: ORG,     level: 0, description: Root,   parent: null }
           - { code: ORG-IT,  level: 1, description: "IT",   parent: null }
-    """))
+    """)
+    )
     with pytest.raises(CodebookValidationError, match="null parent"):
         load_codebook(bad)
 
 
 def test_rejects_deprecated_pointing_to_unknown(tmp_path: Path) -> None:
     bad = tmp_path / "bad.yaml"
-    bad.write_text(textwrap.dedent("""\
+    bad.write_text(
+        textwrap.dedent("""\
         schema_version: "1.0.0"
         document_id: MOD_A
         parent_canon: UIAO_007
@@ -94,14 +99,16 @@ def test_rejects_deprecated_pointing_to_unknown(tmp_path: Path) -> None:
           - { code: ORG-IT, level: 1, description: "IT",   parent: ORG }
         deprecated:
           - { code: ORG-MKT, replaced_by: ORG-NOPE }
-    """))
+    """)
+    )
     with pytest.raises(CodebookValidationError, match="replaced_by"):
         load_codebook(bad)
 
 
 def test_phantom_drift_fires_on_deprecated_code(tmp_path: Path) -> None:
     good = tmp_path / "good.yaml"
-    good.write_text(textwrap.dedent("""\
+    good.write_text(
+        textwrap.dedent("""\
         schema_version: "1.0.0"
         document_id: MOD_A
         parent_canon: UIAO_007
@@ -116,7 +123,8 @@ def test_phantom_drift_fires_on_deprecated_code(tmp_path: Path) -> None:
           - { code: ORG-SALES, level: 1, description: Sales, parent: ORG }
         deprecated:
           - { code: ORG-MKT, replaced_by: ORG-SALES, reason: "Rename" }
-    """))
+    """)
+    )
     codebook = load_codebook(good)
     assert codebook.is_deprecated("ORG-MKT")
     assert codebook.replacement_for("ORG-MKT") == "ORG-SALES"

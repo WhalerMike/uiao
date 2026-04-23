@@ -10,6 +10,7 @@ python appendix_indexer.py --path appendices/ --mode rebuild
 python appendix_indexer.py --path appendices/ --mode sync
 python appendix_indexer.py --path appendices/ --mode cross-repo --core-path ../uiao/appendices/
 """
+
 import argparse
 import json
 import os
@@ -96,49 +97,59 @@ def audit_appendices(entries: list[dict]) -> list[dict]:
         app_id = entry.get("appendix_id", entry["file"])
         # No frontmatter
         if fm is None:
-            findings.append({
-                "appendix_id": app_id or entry["file"],
-                "file": entry["file"],
-                "issue": "No valid YAML frontmatter",
-                "severity": SEVERITY_BLOCKING,
-            })
+            findings.append(
+                {
+                    "appendix_id": app_id or entry["file"],
+                    "file": entry["file"],
+                    "issue": "No valid YAML frontmatter",
+                    "severity": SEVERITY_BLOCKING,
+                }
+            )
             continue
         # Required fields
         for field in REQUIRED_FIELDS:
             val = fm.get(field)
             if val is None or str(val).strip() == "":
-                findings.append({
-                    "appendix_id": app_id,
-                    "file": entry["file"],
-                    "issue": f"Missing required field: {field}",
-                    "severity": SEVERITY_BLOCKING,
-                })
+                findings.append(
+                    {
+                        "appendix_id": app_id,
+                        "file": entry["file"],
+                        "issue": f"Missing required field: {field}",
+                        "severity": SEVERITY_BLOCKING,
+                    }
+                )
         # Status validation
         status = fm.get("status", "")
         if status and status not in VALID_STATUSES:
-            findings.append({
-                "appendix_id": app_id,
-                "file": entry["file"],
-                "issue": f"Invalid status: '{status}'",
-                "severity": SEVERITY_WARNING,
-            })
+            findings.append(
+                {
+                    "appendix_id": app_id,
+                    "file": entry["file"],
+                    "issue": f"Invalid status: '{status}'",
+                    "severity": SEVERITY_WARNING,
+                }
+            )
         # Copy section
         if not entry["has_copy"]:
-            findings.append({
-                "appendix_id": app_id,
-                "file": entry["file"],
-                "issue": "Missing ## Copy section",
-                "severity": SEVERITY_BLOCKING,
-            })
+            findings.append(
+                {
+                    "appendix_id": app_id,
+                    "file": entry["file"],
+                    "issue": "Missing ## Copy section",
+                    "severity": SEVERITY_BLOCKING,
+                }
+            )
         # ID uniqueness
         if app_id:
             if app_id in seen_ids:
-                findings.append({
-                    "appendix_id": app_id,
-                    "file": entry["file"],
-                    "issue": f"Duplicate appendix_id (also in {seen_ids[app_id]})",
-                    "severity": SEVERITY_BLOCKING,
-                })
+                findings.append(
+                    {
+                        "appendix_id": app_id,
+                        "file": entry["file"],
+                        "issue": f"Duplicate appendix_id (also in {seen_ids[app_id]})",
+                        "severity": SEVERITY_BLOCKING,
+                    }
+                )
             else:
                 seen_ids[app_id] = entry["file"]
     return findings
@@ -224,11 +235,13 @@ def cross_repo_check(entries: list[dict], core_path: Path) -> dict:
             aligned += 1
         else:
             misaligned += 1
-            details.append({
-                "appendix_id": doc_entry.get("appendix_id", ""),
-                "parent": parent,
-                "issue": "Parent document not found in uiao",
-            })
+            details.append(
+                {
+                    "appendix_id": doc_entry.get("appendix_id", ""),
+                    "parent": parent,
+                    "issue": "Parent document not found in uiao",
+                }
+            )
     return {
         "aligned": aligned,
         "misaligned": misaligned,
@@ -237,8 +250,7 @@ def cross_repo_check(entries: list[dict], core_path: Path) -> dict:
 
 
 # ─── Report ───────────────────────────────────────────────────────────────────
-def generate_report(entries: list[dict], findings: list[dict],
-                    sync_result: dict = None) -> dict:
+def generate_report(entries: list[dict], findings: list[dict], sync_result: dict = None) -> dict:
     """Generate structured audit report."""
     with_copy = sum(1 for e in entries if e.get("has_copy", False))
     missing_copy = len(entries) - with_copy
@@ -264,9 +276,9 @@ def generate_report(entries: list[dict], findings: list[dict],
 def main():
     parser = argparse.ArgumentParser(description="UIAO Appendix Indexer")
     parser.add_argument("--path", required=True, help="Target appendix directory")
-    parser.add_argument("--mode", default="audit",
-                        choices=["audit", "rebuild", "sync", "cross-repo"],
-                        help="Operation mode")
+    parser.add_argument(
+        "--mode", default="audit", choices=["audit", "rebuild", "sync", "cross-repo"], help="Operation mode"
+    )
     parser.add_argument("--core-path", help="Path to uiao appendices (for cross-repo)")
     parser.add_argument("--output", help="Output report JSON file")
     parser.add_argument("--ci", action="store_true", help="CI mode: exit 1 on BLOCKING")
@@ -283,7 +295,7 @@ def main():
                 json.dump(report, f, indent=2)
         sys.exit(0)
     print("UIAO Appendix Indexer")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print(f"Mode: {args.mode}")
     print(f"Target: {args.path}")
     print(f"Timestamp: {datetime.utcnow().isoformat()}Z")
@@ -323,8 +335,7 @@ def main():
         print(f"{'#':<4} {'Appendix':<15} {'Issue':<45} {'Severity':<10}")
         print("-" * 74)
         for i, f in enumerate(findings, 1):
-            print(f"{i:<4} {f['appendix_id'][:15]:<15} "
-                  f"{f['issue'][:45]:<45} {f['severity']:<10}")
+            print(f"{i:<4} {f['appendix_id'][:15]:<15} {f['issue'][:45]:<45} {f['severity']:<10}")
     else:
         print("✅ All appendices passed integrity check.")
     if args.output:

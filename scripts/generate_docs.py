@@ -44,4 +44,3 @@ def load_overlays(
 
 if __name__ == "__main__":
     build_docs()
-

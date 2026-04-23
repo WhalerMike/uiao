@@ -29,7 +29,6 @@ Design notes
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -42,7 +41,6 @@ from uiao.modernization.orgtree import (
 from uiao.modernization.orgtree.dynamic_groups import (
     default_dynamic_group_library,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -83,14 +81,8 @@ class DynamicGroupPlan:
                     "op": o.op,
                     "group_name": o.group_name,
                     "reason": o.reason,
-                    "canonical_rule": (
-                        o.canonical_spec.rule if o.canonical_spec else None
-                    ),
-                    "tenant_rule": (
-                        (o.tenant_state or {}).get("membershipRule")
-                        if o.tenant_state
-                        else None
-                    ),
+                    "canonical_rule": (o.canonical_spec.rule if o.canonical_spec else None),
+                    "tenant_rule": ((o.tenant_state or {}).get("membershipRule") if o.tenant_state else None),
                 }
                 for o in self.operations
             ],
@@ -160,8 +152,7 @@ class EntraDynamicGroupsAdapter:
         tenant_by_name: Dict[str, Dict[str, Any]] = {
             g.get("displayName", ""): g
             for g in tenant
-            if isinstance(g.get("displayName"), str)
-            and g["displayName"].startswith("OrgTree-")
+            if isinstance(g.get("displayName"), str) and g["displayName"].startswith("OrgTree-")
         }
 
         plan = DynamicGroupPlan(
@@ -173,38 +164,41 @@ class EntraDynamicGroupsAdapter:
         for spec in self._library.groups.values():
             tenant_group = tenant_by_name.get(spec.name)
             if tenant_group is None:
-                plan.operations.append(PlannedOperation(
-                    op=OP_CREATE,
-                    group_name=spec.name,
-                    reason="Missing in tenant — canonical definition exists",
-                    canonical_spec=spec,
-                ))
+                plan.operations.append(
+                    PlannedOperation(
+                        op=OP_CREATE,
+                        group_name=spec.name,
+                        reason="Missing in tenant — canonical definition exists",
+                        canonical_spec=spec,
+                    )
+                )
                 continue
             tenant_rule = tenant_group.get("membershipRule", "")
             if tenant_rule != spec.rule:
-                plan.operations.append(PlannedOperation(
-                    op=OP_UPDATE,
-                    group_name=spec.name,
-                    reason=(
-                        "Rule drift: canonical != tenant. "
-                        f"canonical='{spec.rule}' tenant='{tenant_rule}'"
-                    ),
-                    canonical_spec=spec,
-                    tenant_state=tenant_group,
-                ))
+                plan.operations.append(
+                    PlannedOperation(
+                        op=OP_UPDATE,
+                        group_name=spec.name,
+                        reason=(f"Rule drift: canonical != tenant. canonical='{spec.rule}' tenant='{tenant_rule}'"),
+                        canonical_spec=spec,
+                        tenant_state=tenant_group,
+                    )
+                )
 
         canonical_names = set(self._library.groups.keys())
         for name, tenant_group in tenant_by_name.items():
             if name not in canonical_names:
-                plan.operations.append(PlannedOperation(
-                    op=OP_DELETE_PHANTOM,
-                    group_name=name,
-                    reason=(
-                        "Phantom group — OrgTree- prefix but not in canonical "
-                        "library. Governance review required; NOT auto-applied."
-                    ),
-                    tenant_state=tenant_group,
-                ))
+                plan.operations.append(
+                    PlannedOperation(
+                        op=OP_DELETE_PHANTOM,
+                        group_name=name,
+                        reason=(
+                            "Phantom group — OrgTree- prefix but not in canonical "
+                            "library. Governance review required; NOT auto-applied."
+                        ),
+                        tenant_state=tenant_group,
+                    )
+                )
         return plan
 
     # ------------------------------------------------------------------
@@ -227,37 +221,45 @@ class EntraDynamicGroupsAdapter:
         )
         for op in plan.operations:
             if op.op == OP_DELETE_PHANTOM:
-                report.results.append(OperationResult(
-                    op=op.op,
-                    group_name=op.group_name,
-                    status="skipped-manual",
-                    detail="Phantom group — governance review required (MOD_B).",
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        group_name=op.group_name,
+                        status="skipped-manual",
+                        detail="Phantom group — governance review required (MOD_B).",
+                    )
+                )
                 continue
             if dry_run:
-                report.results.append(OperationResult(
-                    op=op.op,
-                    group_name=op.group_name,
-                    status="skipped-dry-run",
-                    detail="Dry run — no Graph API call issued.",
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        group_name=op.group_name,
+                        status="skipped-dry-run",
+                        detail="Dry run — no Graph API call issued.",
+                    )
+                )
                 continue
             # dry_run=False: attempt a real write.
             try:
                 self._execute(op)
-                report.results.append(OperationResult(
-                    op=op.op,
-                    group_name=op.group_name,
-                    status="written",
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        group_name=op.group_name,
+                        status="written",
+                    )
+                )
             except Exception as exc:  # pragma: no cover - network path
                 logger.exception("Apply failed for %s", op.group_name)
-                report.results.append(OperationResult(
-                    op=op.op,
-                    group_name=op.group_name,
-                    status="failed",
-                    detail=str(exc),
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        group_name=op.group_name,
+                        status="failed",
+                        detail=str(exc),
+                    )
+                )
         return report
 
     def reconcile(
@@ -290,23 +292,17 @@ class EntraDynamicGroupsAdapter:
                 "client_secret in adapter config, or override _graph_client()."
             )
         body = spec.to_graph_body()
-        base_url = self._config.get(
-            "api_base_url", "https://graph.microsoft.com/v1.0"
-        )
+        base_url = self._config.get("api_base_url", "https://graph.microsoft.com/v1.0")
         if op.op == OP_CREATE:
             resp = client.post(f"{base_url}/groups", json=body)
             resp.raise_for_status()
         elif op.op == OP_UPDATE:
             group_id = (op.tenant_state or {}).get("id")
             if not group_id:
-                raise ValueError(
-                    f"Cannot UPDATE {op.group_name} without tenant group id"
-                )
+                raise ValueError(f"Cannot UPDATE {op.group_name} without tenant group id")
             patch_body = {
                 "membershipRule": body["membershipRule"],
-                "membershipRuleProcessingState": body[
-                    "membershipRuleProcessingState"
-                ],
+                "membershipRuleProcessingState": body["membershipRuleProcessingState"],
                 "description": body["description"],
             }
             resp = client.patch(f"{base_url}/groups/{group_id}", json=patch_body)
@@ -346,9 +342,7 @@ class EntraDynamicGroupsAdapter:
 
             def auth_flow(self, request):
                 if self.token is None:
-                    tok = self.cred.get_token(
-                        "https://graph.microsoft.com/.default"
-                    )
+                    tok = self.cred.get_token("https://graph.microsoft.com/.default")
                     self.token = tok.token
                 request.headers["Authorization"] = f"Bearer {self.token}"
                 yield request

@@ -30,29 +30,29 @@ from pathlib import Path
 
 # (relative_path_under_canon, document_id, fallback_title_if_no_H1)
 ASSIGNMENTS: list[tuple[str, str, str]] = [
-    ("UIAO-SSOT.md",                                      "UIAO_001", "UIAO Single Source of Truth"),
-    ("UIAO_003_Adapter_Segmentation_Overview_v1.0.md",    "UIAO_003", "UIAO Adapter Segmentation Overview"),
-    ("specs/Compliance-Orchestrator.md",                  "UIAO_100", "Compliance Orchestrator"),
-    ("specs/Platform-Overview.md",                        "UIAO_101", "Platform Overview"),
-    ("specs/Platform-Services-Layer.md",                  "UIAO_102", "Platform Services Layer"),
-    ("specs/UIAO-Spec-Test-Enforcement.md",               "UIAO_103", "UIAO Spec Test Enforcement"),
-    ("specs/UIAO-Test-Harness-CI-Enforcement.md",         "UIAO_104", "UIAO Test Harness CI Enforcement"),
-    ("specs/api-contract.md",                             "UIAO_105", "API Contract"),
-    ("specs/cli.md",                                      "UIAO_106", "CLI"),
-    ("specs/collector-interface.md",                      "UIAO_107", "Collector Interface"),
-    ("specs/cql.md",                                      "UIAO_108", "CQL"),
-    ("specs/data-lake.md",                                "UIAO_109", "Data Lake"),
-    ("specs/drift.md",                                    "UIAO_110", "Drift"),
-    ("specs/enforcement-runtime.md",                      "UIAO_111", "Enforcement Runtime"),
-    ("specs/governance.md",                               "UIAO_112", "Governance"),
-    ("specs/graph-schema.md",                             "UIAO_113", "Graph Schema"),
-    ("specs/ha.md",                                       "UIAO_114", "High Availability"),
-    ("specs/performance.md",                              "UIAO_115", "Performance"),
-    ("specs/policy.md",                                   "UIAO_116", "Policy"),
-    ("specs/recovery.md",                                 "UIAO_117", "Recovery"),
-    ("specs/release.md",                                  "UIAO_118", "Release"),
-    ("specs/tenancy.md",                                  "UIAO_119", "Tenancy"),
-    ("specs/zero-trust.md",                               "UIAO_120", "Zero Trust"),
+    ("UIAO-SSOT.md", "UIAO_001", "UIAO Single Source of Truth"),
+    ("UIAO_003_Adapter_Segmentation_Overview_v1.0.md", "UIAO_003", "UIAO Adapter Segmentation Overview"),
+    ("specs/Compliance-Orchestrator.md", "UIAO_100", "Compliance Orchestrator"),
+    ("specs/Platform-Overview.md", "UIAO_101", "Platform Overview"),
+    ("specs/Platform-Services-Layer.md", "UIAO_102", "Platform Services Layer"),
+    ("specs/UIAO-Spec-Test-Enforcement.md", "UIAO_103", "UIAO Spec Test Enforcement"),
+    ("specs/UIAO-Test-Harness-CI-Enforcement.md", "UIAO_104", "UIAO Test Harness CI Enforcement"),
+    ("specs/api-contract.md", "UIAO_105", "API Contract"),
+    ("specs/cli.md", "UIAO_106", "CLI"),
+    ("specs/collector-interface.md", "UIAO_107", "Collector Interface"),
+    ("specs/cql.md", "UIAO_108", "CQL"),
+    ("specs/data-lake.md", "UIAO_109", "Data Lake"),
+    ("specs/drift.md", "UIAO_110", "Drift"),
+    ("specs/enforcement-runtime.md", "UIAO_111", "Enforcement Runtime"),
+    ("specs/governance.md", "UIAO_112", "Governance"),
+    ("specs/graph-schema.md", "UIAO_113", "Graph Schema"),
+    ("specs/ha.md", "UIAO_114", "High Availability"),
+    ("specs/performance.md", "UIAO_115", "Performance"),
+    ("specs/policy.md", "UIAO_116", "Policy"),
+    ("specs/recovery.md", "UIAO_117", "Recovery"),
+    ("specs/release.md", "UIAO_118", "Release"),
+    ("specs/tenancy.md", "UIAO_119", "Tenancy"),
+    ("specs/zero-trust.md", "UIAO_120", "Zero Trust"),
 ]
 
 H1_RE = re.compile(r"^#\s+(.+?)\s*$")
@@ -199,9 +199,7 @@ def main() -> int:
             all_entries.append(("UIAO_002", u002_rel, title))
 
         args.registry_out.parent.mkdir(parents=True, exist_ok=True)
-        args.registry_out.write_text(
-            build_registry(all_entries, today), encoding="utf-8"
-        )
+        args.registry_out.write_text(build_registry(all_entries, today), encoding="utf-8")
         print(f"\nWrote registry: {args.registry_out} ({len(all_entries)} entries)")
 
     print(f"\nProcessed: {len(processed)}  Skipped: {len(skipped)}")

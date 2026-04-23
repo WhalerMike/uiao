@@ -105,7 +105,9 @@ class DriftState(IRBase):
     actual_hash: str
     drift_detected: bool
     classification: Literal["benign", "risky", "unauthorized"] = "risky"
-    drift_class: Optional[Literal["DRIFT-SCHEMA", "DRIFT-SEMANTIC", "DRIFT-PROVENANCE", "DRIFT-AUTHZ", "DRIFT-IDENTITY", "DRIFT-BOUNDARY"]] = None
+    drift_class: Optional[
+        Literal["DRIFT-SCHEMA", "DRIFT-SEMANTIC", "DRIFT-PROVENANCE", "DRIFT-AUTHZ", "DRIFT-IDENTITY", "DRIFT-BOUNDARY"]
+    ] = None
     delta: Dict[str, List[str]] = Field(default_factory=dict)
     provenance: ProvenanceRecord
 

@@ -91,4 +91,3 @@ def format_ssp_markdown(narratives: List[ControlNarrative]) -> str:
             lines.append("")
 
     return "\n".join(lines)
-

@@ -209,5 +209,3 @@ def build_charts(
         charts.append(coverage)
 
     return charts
-
-

@@ -1,8 +1,8 @@
 """tests/test_enforcement_runtime.py — UIAO_111 tests."""
+
 from __future__ import annotations
-import pytest
-from uiao.enforcement import EnforcementRuntime, EnforcementResult, RuntimeState, EPLPolicy, EnforcementAdapter
-from uiao.enforcement.runtime import AdapterResult, NoOpAdapter
+from uiao.enforcement import EnforcementRuntime, RuntimeState, EPLPolicy, EnforcementAdapter
+from uiao.enforcement.runtime import AdapterResult
 
 MFA_POLICY = EPLPolicy(
     policy_id="POL-MFA-001",
@@ -24,6 +24,7 @@ AUTO_POLICY = EPLPolicy(
     auto_enforce=True,
 )
 
+
 class TestPolicyEvaluation:
     def test_compliant_returns_compliant_state(self):
         rt = EnforcementRuntime()
@@ -42,6 +43,7 @@ class TestPolicyEvaluation:
         result = rt.run(MFA_POLICY, {"id": "user-001", "mfa_enabled": True})
         assert result.evidence is None
 
+
 class TestEnforcementExecution:
     def test_dry_run_skips_enforcement(self):
         rt = EnforcementRuntime(dry_run=True)
@@ -59,6 +61,7 @@ class TestEnforcementExecution:
         class CountingAdapter(EnforcementAdapter):
             ADAPTER_ID = "counter"
             calls = 0
+
             def enforce(self, ir, policy, dry_run=True):
                 CountingAdapter.calls += 1
                 return AdapterResult(adapter_id=self.ADAPTER_ID, success=True, output={"count": CountingAdapter.calls})
@@ -67,6 +70,7 @@ class TestEnforcementExecution:
         rt = EnforcementRuntime(adapters={"counter": CountingAdapter()}, dry_run=False)
         rt.run(policy, {"id": "obj-1"})
         assert CountingAdapter.calls == 1
+
 
 class TestEvidenceCollection:
     def test_violated_result_has_evidence(self):
@@ -80,6 +84,7 @@ class TestEvidenceCollection:
         rt = EnforcementRuntime(dry_run=True)
         r1 = rt.run(MFA_POLICY, {"id": "user-002", "mfa_enabled": False})
         assert len(r1.evidence["hash"]) == 64  # SHA-256 hex
+
 
 class TestPOAMUpdate:
     def test_violation_opens_poam(self):
@@ -102,6 +107,7 @@ class TestPOAMUpdate:
         result = rt.run(MFA_POLICY, {"id": "user-new", "mfa_enabled": True})
         assert result.poam_action == "unchanged"
 
+
 class TestSARUpdate:
     def test_violation_updates_sar(self):
         sar_store = {}
@@ -118,19 +124,18 @@ class TestSARUpdate:
         rt.run(MFA_POLICY, {"id": "user-002", "mfa_enabled": False})
         assert len(sar_store["findings"]) == 1
 
+
 class TestBatchRun:
     def test_batch_processes_all_objects(self):
         rt = EnforcementRuntime(dry_run=True)
-        objects = [
-            {"id": f"user-{i}", "mfa_enabled": i % 2 == 0}
-            for i in range(4)
-        ]
+        objects = [{"id": f"user-{i}", "mfa_enabled": i % 2 == 0} for i in range(4)]
         results = rt.run_batch(MFA_POLICY, objects)
         assert len(results) == 4
         violated = [r for r in results if r.violation_detected]
         compliant = [r for r in results if not r.violation_detected]
         assert len(violated) == 2
         assert len(compliant) == 2
+
 
 class TestResultSerialization:
     def test_to_dict_has_required_keys(self):

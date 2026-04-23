@@ -1,6 +1,7 @@
 """
 impl/src/uiao/impl/adapters/modernization/gcc-boundary-probe/__init__.py
 """
+
 from .probe import (
     BoundaryFinding,
     BoundaryProbeReport,
@@ -8,8 +9,8 @@ from .probe import (
     run_boundary_probe_sync,
 )
 from .telemetry import (
-    InBoundaryTelemetry,
     DeviceHealthRecord,
+    InBoundaryTelemetry,
     collect_local_wmi_health,
 )
 

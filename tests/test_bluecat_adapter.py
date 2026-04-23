@@ -190,24 +190,28 @@ class TestDetectDrift:
     def test_real_diff_emits_drift(self) -> None:
         baseline = [{"type": "host-record", "id": 1, "name": "a", "ipv4addr": "1.1.1.1"}]
         live = [{"type": "host-record", "id": 2, "name": "b", "ipv4addr": "2.2.2.2"}]
-        a = BlueCatAdapter({
-            "bam_host": "bam",
-            "configuration": "prod",
-            "baseline_records": baseline,
-            "live_records": live,
-        })
+        a = BlueCatAdapter(
+            {
+                "bam_host": "bam",
+                "configuration": "prod",
+                "baseline_records": baseline,
+                "live_records": live,
+            }
+        )
         result = a.detect_drift()
         assert result.severity == "high"
         assert result.details["summary"]["drift_count"] == 2
 
     def test_no_drift_when_baseline_matches(self) -> None:
         rows = [{"type": "host-record", "id": 1, "name": "a", "ipv4addr": "1.1.1.1"}]
-        a = BlueCatAdapter({
-            "bam_host": "bam",
-            "configuration": "prod",
-            "baseline_records": rows,
-            "live_records": rows,
-        })
+        a = BlueCatAdapter(
+            {
+                "bam_host": "bam",
+                "configuration": "prod",
+                "baseline_records": rows,
+                "live_records": rows,
+            }
+        )
         result = a.detect_drift()
         assert result.severity == "info"
         assert result.details["summary"]["drift_count"] == 0
@@ -254,11 +258,13 @@ class TestGetAllObjects:
         assert {c.provenance_hash for c in r1.claims} == {c.provenance_hash for c in r2.claims}
 
     def test_scope_none_iterates_all(self, dhcp_ranges: dict) -> None:
-        a = BlueCatAdapter({
-            "bam_host": "bam",
-            "configuration": "prod",
-            "_dhcp-scopes_json": dhcp_ranges,
-        })
+        a = BlueCatAdapter(
+            {
+                "bam_host": "bam",
+                "configuration": "prod",
+                "_dhcp-scopes_json": dhcp_ranges,
+            }
+        )
         result = a.get_all_objects()
         assert len(result.claims) == 3
 

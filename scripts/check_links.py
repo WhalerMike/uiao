@@ -34,6 +34,7 @@ Exit codes
 0 — no broken internal links found.
 1 — one or more broken internal links.
 """
+
 from __future__ import annotations
 
 import re
@@ -51,14 +52,13 @@ def is_external(target: str) -> bool:
 
 def iter_markdown_files() -> list[Path]:
     return sorted(
-        p for p in REPO_ROOT.rglob("*.md")
-        if not any(part.startswith(".") for part in p.relative_to(REPO_ROOT).parts)
+        p for p in REPO_ROOT.rglob("*.md") if not any(part.startswith(".") for part in p.relative_to(REPO_ROOT).parts)
     )
 
 
 def _strip_fenced_code(text: str) -> str:
     """Remove fenced code blocks so link syntax inside them is not checked."""
-    return re.sub(r'```.*?```', '', text, flags=re.DOTALL)
+    return re.sub(r"```.*?```", "", text, flags=re.DOTALL)
 
 
 def check_file(md_path: Path) -> list[tuple[Path, str]]:

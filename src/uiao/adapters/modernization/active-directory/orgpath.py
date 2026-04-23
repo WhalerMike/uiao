@@ -44,7 +44,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from .survey import ADSurveyReport, DriftFinding, derive_orgpath_from_dn
+from .survey import DriftFinding, derive_orgpath_from_dn
 
 ORGPATH_REGEX = re.compile(r"^ORG(-[A-Z]{2,6}){0,4}$")
 REGIONAL_REGEX = re.compile(r"^REG-[A-Z]{2,8}$")
@@ -53,13 +53,14 @@ REGIONAL_REGEX = re.compile(r"^REG-[A-Z]{2,8}$")
 @dataclass
 class UserOrgPathAssignment:
     """One resolved assignment ready for AD write-back."""
+
     user_dn: str
     employee_id: str
     sam_account_name: str
-    orgpath: str            # extensionAttribute1 value
-    region: str = ""        # extensionAttribute2 value (REG-EAST etc.) — optional
-    source: str = ""        # hr | ou-derived | manual
-    status: str = "pending" # pending | written | failed | skipped
+    orgpath: str  # extensionAttribute1 value
+    region: str = ""  # extensionAttribute2 value (REG-EAST etc.) — optional
+    source: str = ""  # hr | ou-derived | manual
+    status: str = "pending"  # pending | written | failed | skipped
 
 
 @dataclass
@@ -78,8 +79,7 @@ class OrgPathAssignmentReport:
     findings: list[DriftFinding] = field(default_factory=list)
 
     def as_dict(self) -> dict:
-        d = {k: v for k, v in self.__dict__.items()
-             if k not in ("assignments", "unresolved_queue", "findings")}
+        d = {k: v for k, v in self.__dict__.items() if k not in ("assignments", "unresolved_queue", "findings")}
         d["assignments"] = [a.__dict__ for a in self.assignments]
         d["unresolved_queue"] = self.unresolved_queue
         d["findings"] = [f.__dict__ for f in self.findings]
@@ -128,8 +128,8 @@ def build_ou_mapping(
 
 
 def resolve_user_assignments(
-    users: list[dict],   # raw AD user records: dn, employeeId, samAccountName
-    hr_map: dict[str, str],         # employeeId → orgPath (HR is authoritative)
+    users: list[dict],  # raw AD user records: dn, employeeId, samAccountName
+    hr_map: dict[str, str],  # employeeId → orgPath (HR is authoritative)
     ou_mapping: dict[str, Optional[str]],  # DN → OrgPath from build_ou_mapping
     region_map: Optional[dict[str, str]] = None,  # OU DN → REG-* value
     codebook: Optional[set[str]] = None,
@@ -165,26 +165,30 @@ def resolve_user_assignments(
         if emp_id and emp_id in hr_map:
             orgpath = hr_map[emp_id]
             if not ORGPATH_REGEX.match(orgpath):
-                report.findings.append(DriftFinding(
-                    drift_class="DRIFT-SCHEMA",
-                    severity="P1",
-                    path=dn,
-                    detail=f"HR export provides invalid OrgPath '{orgpath}' for user {sam}. "
-                           "HR data quality issue — correct at source before migration.",
-                    error_code="GOV-SCH-001",
-                    object_type="User",
-                ))
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-SCHEMA",
+                        severity="P1",
+                        path=dn,
+                        detail=f"HR export provides invalid OrgPath '{orgpath}' for user {sam}. "
+                        "HR data quality issue — correct at source before migration.",
+                        error_code="GOV-SCH-001",
+                        object_type="User",
+                    )
+                )
                 _add_to_unresolved(report, dn, emp_id, sam, "hr-invalid", orgpath)
                 continue
             report.assigned_from_hr += 1
-            report.assignments.append(UserOrgPathAssignment(
-                user_dn=dn,
-                employee_id=emp_id,
-                sam_account_name=sam,
-                orgpath=orgpath,
-                region=region,
-                source="hr",
-            ))
+            report.assignments.append(
+                UserOrgPathAssignment(
+                    user_dn=dn,
+                    employee_id=emp_id,
+                    sam_account_name=sam,
+                    orgpath=orgpath,
+                    region=region,
+                    source="hr",
+                )
+            )
             continue
 
         # Priority 2: OU derivation
@@ -193,55 +197,66 @@ def resolve_user_assignments(
             # Validate against codebook if available
             if codebook and derived not in codebook:
                 # Valid format but not in codebook — soft finding, still assign
-                report.findings.append(DriftFinding(
-                    drift_class="DRIFT-PROVENANCE",
-                    severity="P3",
-                    path=dn,
-                    detail=f"Derived OrgPath '{derived}' for user {sam} is not in codebook. "
-                           "Codebook may need update via Workflow 1 (OrgPath Registration).",
-                    error_code="GOV-MIG-003",
-                    object_type="User",
-                ))
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-PROVENANCE",
+                        severity="P3",
+                        path=dn,
+                        detail=f"Derived OrgPath '{derived}' for user {sam} is not in codebook. "
+                        "Codebook may need update via Workflow 1 (OrgPath Registration).",
+                        error_code="GOV-MIG-003",
+                        object_type="User",
+                    )
+                )
             report.assigned_from_ou += 1
-            report.assignments.append(UserOrgPathAssignment(
-                user_dn=dn,
-                employee_id=emp_id,
-                sam_account_name=sam,
-                orgpath=derived,
-                region=region,
-                source="ou-derived",
-            ))
+            report.assignments.append(
+                UserOrgPathAssignment(
+                    user_dn=dn,
+                    employee_id=emp_id,
+                    sam_account_name=sam,
+                    orgpath=derived,
+                    region=region,
+                    source="ou-derived",
+                )
+            )
             continue
 
         # Priority 3: Unresolved
         _add_to_unresolved(report, dn, emp_id, sam, "unresolvable", "")
         report.unresolved += 1
-        report.findings.append(DriftFinding(
-            drift_class="DRIFT-IDENTITY",
-            severity="P1",
-            path=dn,
-            detail=f"User '{sam}' ({dn}) cannot be assigned an OrgPath from HR or OU. "
-                   "Added to unresolved queue for governance review. GOV-DRF-003.",
-            error_code="GOV-DRF-003",
-            object_type="User",
-        ))
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-IDENTITY",
+                severity="P1",
+                path=dn,
+                detail=f"User '{sam}' ({dn}) cannot be assigned an OrgPath from HR or OU. "
+                "Added to unresolved queue for governance review. GOV-DRF-003.",
+                error_code="GOV-DRF-003",
+                object_type="User",
+            )
+        )
 
     return report
 
 
 def _add_to_unresolved(
     report: OrgPathAssignmentReport,
-    dn: str, emp_id: str, sam: str,
-    reason: str, partial_orgpath: str,
+    dn: str,
+    emp_id: str,
+    sam: str,
+    reason: str,
+    partial_orgpath: str,
 ) -> None:
-    report.unresolved_queue.append({
-        "distinguishedName": dn,
-        "employeeId": emp_id,
-        "samAccountName": sam,
-        "reason": reason,
-        "partialOrgPath": partial_orgpath,
-        "action": "MANUAL_REVIEW_REQUIRED",
-    })
+    report.unresolved_queue.append(
+        {
+            "distinguishedName": dn,
+            "employeeId": emp_id,
+            "samAccountName": sam,
+            "reason": reason,
+            "partialOrgPath": partial_orgpath,
+            "action": "MANUAL_REVIEW_REQUIRED",
+        }
+    )
 
 
 def write_orgpath_to_ad(
@@ -275,22 +290,25 @@ def write_orgpath_to_ad(
     )
 
     if dry_run:
-        report.findings.append(DriftFinding(
-            drift_class="DRIFT-PROVENANCE",
-            severity="P4",
-            path="orgpath.py::write_orgpath_to_ad",
-            detail=f"DRY RUN: {len(assignments)} assignments validated, no AD writes performed. "
-                   "Set dry_run=False to execute write-back.",
-            error_code="",
-            object_type="adapter",
-        ))
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-PROVENANCE",
+                severity="P4",
+                path="orgpath.py::write_orgpath_to_ad",
+                detail=f"DRY RUN: {len(assignments)} assignments validated, no AD writes performed. "
+                "Set dry_run=False to execute write-back.",
+                error_code="",
+                object_type="adapter",
+            )
+        )
         for a in assignments:
             a.status = "skipped"
             report.assignments.append(a)
         return report
 
     try:
-        from ldap3 import Server, Connection, ALL, MODIFY_REPLACE  # type: ignore
+        from ldap3 import ALL, MODIFY_REPLACE, Connection, Server  # type: ignore
+
         srv = Server(ldap_server, get_info=ALL)
         conn = Connection(srv, user=username, password=password, auto_bind=True)
 
@@ -311,26 +329,29 @@ def write_orgpath_to_ad(
                 else:
                     assignment.status = "failed"
                     report.write_failed += 1
-                    report.findings.append(DriftFinding(
-                        drift_class="DRIFT-PROVENANCE",
-                        severity="P2",
-                        path=assignment.user_dn,
-                        detail=f"AD write failed for {assignment.sam_account_name}: "
-                               f"{conn.result['description']}",
-                        error_code="GOV-MIG-002",
-                        object_type="User",
-                    ))
+                    report.findings.append(
+                        DriftFinding(
+                            drift_class="DRIFT-PROVENANCE",
+                            severity="P2",
+                            path=assignment.user_dn,
+                            detail=f"AD write failed for {assignment.sam_account_name}: {conn.result['description']}",
+                            error_code="GOV-MIG-002",
+                            object_type="User",
+                        )
+                    )
             except Exception as e:
                 assignment.status = "failed"
                 report.write_failed += 1
-                report.findings.append(DriftFinding(
-                    drift_class="DRIFT-PROVENANCE",
-                    severity="P1",
-                    path=assignment.user_dn,
-                    detail=f"Exception writing OrgPath for {assignment.sam_account_name}: {e}",
-                    error_code="GOV-MIG-002",
-                    object_type="User",
-                ))
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-PROVENANCE",
+                        severity="P1",
+                        path=assignment.user_dn,
+                        detail=f"Exception writing OrgPath for {assignment.sam_account_name}: {e}",
+                        error_code="GOV-MIG-002",
+                        object_type="User",
+                    )
+                )
             report.write_attempted += 1
             report.assignments.append(assignment)
 
@@ -382,17 +403,21 @@ def _write_via_powershell(
     try:
         result = subprocess.run(
             ["pwsh", "-NonInteractive", "-Command", ps_script],
-            capture_output=True, text=True, timeout=600,
+            capture_output=True,
+            text=True,
+            timeout=600,
         )
         if result.returncode != 0:
-            report.findings.append(DriftFinding(
-                drift_class="DRIFT-PROVENANCE",
-                severity="P1",
-                path="orgpath.py::_write_via_powershell",
-                detail=f"PowerShell write-back failed: {result.stderr[:500]}",
-                error_code="GOV-MIG-002",
-                object_type="adapter",
-            ))
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-PROVENANCE",
+                    severity="P1",
+                    path="orgpath.py::_write_via_powershell",
+                    detail=f"PowerShell write-back failed: {result.stderr[:500]}",
+                    error_code="GOV-MIG-002",
+                    object_type="adapter",
+                )
+            )
             return
         raw = json.loads(result.stdout)
         if isinstance(raw, dict):
@@ -410,19 +435,22 @@ def _write_via_powershell(
             report.write_attempted += 1
         report.assignments.extend(assignments)
     except subprocess.TimeoutExpired:
-        report.findings.append(DriftFinding(
-            drift_class="DRIFT-PROVENANCE",
-            severity="P1",
-            path="orgpath.py::_write_via_powershell",
-            detail="PowerShell write-back timed out. Split into smaller batches.",
-            error_code="GOV-MIG-002",
-            object_type="adapter",
-        ))
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-PROVENANCE",
+                severity="P1",
+                path="orgpath.py::_write_via_powershell",
+                detail="PowerShell write-back timed out. Split into smaller batches.",
+                error_code="GOV-MIG-002",
+                object_type="adapter",
+            )
+        )
 
 
 # ------------------------------------------------------------------
 # Export helpers (Appendix F artefact generation)
 # ------------------------------------------------------------------
+
 
 def export_ou_mapping(
     mapping: dict[str, Optional[str]],
@@ -433,11 +461,13 @@ def export_ou_mapping(
         writer = csv.DictWriter(fh, fieldnames=["LegacyOU", "OrgPath", "Resolvable"])
         writer.writeheader()
         for dn, orgpath in mapping.items():
-            writer.writerow({
-                "LegacyOU": dn,
-                "OrgPath": orgpath or "",
-                "Resolvable": "Y" if orgpath else "N",
-            })
+            writer.writerow(
+                {
+                    "LegacyOU": dn,
+                    "OrgPath": orgpath or "",
+                    "Resolvable": "Y" if orgpath else "N",
+                }
+            )
 
 
 def export_assignment_report(
@@ -454,10 +484,18 @@ def export_assignment_report(
 
     # Assignments CSV
     with (output_dir / "user-orgpath-assignments.csv").open("w", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=[
-            "user_dn", "employee_id", "sam_account_name",
-            "orgpath", "region", "source", "status",
-        ])
+        writer = csv.DictWriter(
+            fh,
+            fieldnames=[
+                "user_dn",
+                "employee_id",
+                "sam_account_name",
+                "orgpath",
+                "region",
+                "source",
+                "status",
+            ],
+        )
         writer.writeheader()
         for a in report.assignments:
             writer.writerow(a.__dict__)
@@ -465,15 +503,20 @@ def export_assignment_report(
     # Unresolved queue CSV
     if report.unresolved_queue:
         with (output_dir / "unresolved-queue.csv").open("w", newline="") as fh:
-            writer = csv.DictWriter(fh, fieldnames=[
-                "distinguishedName", "employeeId", "samAccountName",
-                "reason", "partialOrgPath", "action",
-            ])
+            writer = csv.DictWriter(
+                fh,
+                fieldnames=[
+                    "distinguishedName",
+                    "employeeId",
+                    "samAccountName",
+                    "reason",
+                    "partialOrgPath",
+                    "action",
+                ],
+            )
             writer.writeheader()
             for item in report.unresolved_queue:
                 writer.writerow(item)
 
     # JSON report
-    (output_dir / "orgpath-assignment-report.json").write_text(
-        json.dumps(report.as_dict(), indent=2, default=str)
-    )
+    (output_dir / "orgpath-assignment-report.json").write_text(json.dumps(report.as_dict(), indent=2, default=str))

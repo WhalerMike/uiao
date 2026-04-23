@@ -29,14 +29,16 @@ def _load(name: str) -> dict:
 
 @pytest.fixture
 def adapter() -> InfobloxAdapter:
-    return InfobloxAdapter({
-        "grid_master": "gm.agency.gov",
-        "network_view": "prod",
-        "_dns-records_json": _load("infoblox-records.json"),
-        "_dhcp-scopes_json": _load("infoblox-dhcp-ranges.json"),
-        "_ip-allocations_json": _load("infoblox-fixed-addresses.json"),
-        "_network-views_json": _load("infoblox-networks.json"),
-    })
+    return InfobloxAdapter(
+        {
+            "grid_master": "gm.agency.gov",
+            "network_view": "prod",
+            "_dns-records_json": _load("infoblox-records.json"),
+            "_dhcp-scopes_json": _load("infoblox-dhcp-ranges.json"),
+            "_ip-allocations_json": _load("infoblox-fixed-addresses.json"),
+            "_network-views_json": _load("infoblox-networks.json"),
+        }
+    )
 
 
 class TestInfobloxToOscal:
@@ -102,9 +104,7 @@ class TestInfobloxToOscal:
 
     def test_dns_change_drift_in_bundle(self, adapter: InfobloxAdapter) -> None:
         claims = adapter.get_all_objects(scope="dns-records")
-        drift = adapter.push_dns_change(
-            "record:a", "web01.contoso.gov", {"ipv4addr": "10.9.9.9"}
-        )
+        drift = adapter.push_dns_change("record:a", "web01.contoso.gov", {"ipv4addr": "10.9.9.9"})
         bundle = build_adapter_bundle(
             adapter_id="infoblox",
             claim_set=claims,

@@ -43,27 +43,43 @@ REGISTRY_PATH = REPO_ROOT / "registry" / "diagram-registry.yaml"
 SCHEMA_PATH = REPO_ROOT / "governance" / "diagram-metadata-schema.yaml"
 
 CATEGORIES = [
-    "training", "architecture", "testing", "planning",
-    "governance", "identity", "operations", "enforcement", "data"
+    "training",
+    "architecture",
+    "testing",
+    "planning",
+    "governance",
+    "identity",
+    "operations",
+    "enforcement",
+    "data",
 ]
 
 # Category-to-ID-range mapping (numeric part of DIAG_NNN)
 CATEGORY_ID_RANGES = {
-    "training":     (1, 9),
+    "training": (1, 9),
     "architecture": (10, 19),
-    "testing":      (20, 29),
-    "planning":     (30, 39),
-    "governance":   (40, 49),
-    "identity":     (50, 59),
-    "operations":   (60, 69),
-    "enforcement":  (70, 79),
-    "data":         (80, 89),
+    "testing": (20, 29),
+    "planning": (30, 39),
+    "governance": (40, 49),
+    "identity": (50, 59),
+    "operations": (60, 69),
+    "enforcement": (70, 79),
+    "data": (80, 89),
 }
 
 REQUIRED_FIELDS = [
-    "diagram_id", "title", "version", "status", "classification",
-    "owner", "document_category", "source_format", "form_factors",
-    "created_at", "updated_at", "boundary"
+    "diagram_id",
+    "title",
+    "version",
+    "status",
+    "classification",
+    "owner",
+    "document_category",
+    "source_format",
+    "form_factors",
+    "created_at",
+    "updated_at",
+    "boundary",
 ]
 
 VALID_STATUSES = ["DRAFT", "ACTIVE", "DEPRECATED"]
@@ -73,6 +89,7 @@ FOUO_PATTERN = re.compile(r"FOUO|For\s+Official\s+Use\s+Only", re.IGNORECASE)
 
 
 # ── Source Discovery ────────────────────────────────────────────────────────
+
 
 def discover_sources(category: str = None) -> list:
     """Discover all .mmd source files across category subdirectories."""
@@ -99,6 +116,7 @@ def discover_sources(category: str = None) -> list:
 
 
 # ── Frontmatter Parsing ─────────────────────────────────────────────────────
+
 
 def parse_frontmatter(mmd_path: Path) -> dict:
     """Extract YAML frontmatter from Mermaid comment block."""
@@ -127,6 +145,7 @@ def parse_frontmatter(mmd_path: Path) -> dict:
 
 
 # ── Validation Checks ────────────────────────────────────────────────────────
+
 
 class ValidationResult:
     def __init__(self):
@@ -217,8 +236,7 @@ def check_category_alignment(source: Path, metadata: dict, result: ValidationRes
     # Check directory matches declared category
     if doc_cat and source_dir in CATEGORIES:
         if doc_cat != source_dir:
-            result.error(source.name,
-                         f"document_category '{doc_cat}' does not match source directory '{source_dir}'")
+            result.error(source.name, f"document_category '{doc_cat}' does not match source directory '{source_dir}'")
 
     # Check ID falls within category range
     if did and doc_cat:
@@ -228,9 +246,11 @@ def check_category_alignment(source: Path, metadata: dict, result: ValidationRes
             if doc_cat in CATEGORY_ID_RANGES:
                 min_id, max_id = CATEGORY_ID_RANGES[doc_cat]
                 if not (min_id <= id_num <= max_id):
-                    result.error(source.name,
-                                 f"diagram_id {did} (numeric={id_num}) outside range "
-                                 f"[{min_id}-{max_id}] for category '{doc_cat}'")
+                    result.error(
+                        source.name,
+                        f"diagram_id {did} (numeric={id_num}) outside range "
+                        f"[{min_id}-{max_id}] for category '{doc_cat}'",
+                    )
 
 
 def check_fouo(source: Path, result: ValidationResult):
@@ -239,8 +259,13 @@ def check_fouo(source: Path, result: ValidationResult):
     from this scan — they mention FOUO only to prohibit it."""
     # Skip governance/spec files that define the FOUO prohibition rule
     skip_dirs = {"governance", "specs"}
-    skip_files = {"README.md", "DIAGRAM-GOVERNANCE.md", "diagram-metadata-schema.yaml",
-                  "NANOBANANA-SPEC.md", "AUTO-SELECTION-LOGIC.md"}
+    skip_files = {
+        "README.md",
+        "DIAGRAM-GOVERNANCE.md",
+        "diagram-metadata-schema.yaml",
+        "NANOBANANA-SPEC.md",
+        "AUTO-SELECTION-LOGIC.md",
+    }
     if source.parent.name in skip_dirs or source.name in skip_files:
         return
 
@@ -294,8 +319,7 @@ def check_orphaned_renders(sources: list, result: ValidationResult):
             if match:
                 render_id = match.group(1)
                 if render_id not in source_ids:
-                    result.error(rendered_file.name,
-                                 f"Orphaned render — no matching source for {render_id}")
+                    result.error(rendered_file.name, f"Orphaned render — no matching source for {render_id}")
 
 
 def check_render_completeness(sources: list, result: ValidationResult):
@@ -333,14 +357,13 @@ def check_render_completeness(sources: list, result: ValidationResult):
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
+
 def main():
-    parser = argparse.ArgumentParser(
-        description="UIAO Diagram Validation Pipeline (v2.0 — Category-Aware)"
+    parser = argparse.ArgumentParser(description="UIAO Diagram Validation Pipeline (v2.0 — Category-Aware)")
+    parser.add_argument("--strict", action="store_true", help="Treat warnings as errors")
+    parser.add_argument(
+        "--category", type=str, choices=CATEGORIES, help="Validate only diagrams in a specific category"
     )
-    parser.add_argument("--strict", action="store_true",
-                        help="Treat warnings as errors")
-    parser.add_argument("--category", type=str, choices=CATEGORIES,
-                        help="Validate only diagrams in a specific category")
     args = parser.parse_args()
 
     print("UIAO Diagram Validation Pipeline v2.0")
@@ -373,9 +396,9 @@ def main():
             metadata = check_frontmatter(source, result)
             if metadata:
                 check_category_alignment(source, metadata, result)
-                did = metadata.get('diagram_id', '?')
-                title = metadata.get('title', '?')
-                doc_cat = metadata.get('document_category', '?')
+                did = metadata.get("diagram_id", "?")
+                title = metadata.get("title", "?")
+                doc_cat = metadata.get("document_category", "?")
                 print(f"    ✓ {source.name}: {did} [{doc_cat}] — {title}")
 
     print("\n── FOUO Check ──")

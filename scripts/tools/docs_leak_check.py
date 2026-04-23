@@ -45,9 +45,7 @@ EVIDENCE_SUBTREES = (
     "poam",
     "findings",
 )
-EVIDENCE_PATTERN = re.compile(
-    r"(?<![\w/])evidence/(?:" + "|".join(EVIDENCE_SUBTREES) + r")(?:/[\w\-./]*)?"
-)
+EVIDENCE_PATTERN = re.compile(r"(?<![\w/])evidence/(?:" + "|".join(EVIDENCE_SUBTREES) + r")(?:/[\w\-./]*)?")
 
 # Backticked inline code spans AND fenced code blocks — allowed.
 # Order matters: the fenced-block alternative must be tried first so
@@ -127,8 +125,7 @@ def main() -> int:
     for hit in all_hits:
         print(f"  - {hit}", file=sys.stderr)
     print(
-        "\nSee .github/workflows/docs-leak-check.yml for the rule definitions "
-        "and the backtick-allowlist convention.",
+        "\nSee .github/workflows/docs-leak-check.yml for the rule definitions and the backtick-allowlist convention.",
         file=sys.stderr,
     )
     return 1

@@ -52,6 +52,7 @@ Each evidence record -> one implemented-requirement entry:
     "evidence-hash": "<sha256>"
   }
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -89,6 +90,7 @@ _DEFAULT_SLA: Dict[str, int] = {
 # Logging helpers
 # ---------------------------------------------------------------------------
 
+
 def _setup_logger(log_path: Path) -> logging.Logger:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger(f"uiao.oscal.generator.{uuid4().hex[:8]}")
@@ -112,6 +114,7 @@ def _derive_log_path(output_dir: Path) -> Path:
 # ---------------------------------------------------------------------------
 # I/O helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_bundle(evidence_dir: Path) -> Dict[str, Any]:
     """Load bundle.json from the evidence bundle directory."""
@@ -161,6 +164,7 @@ def _write_json(dst: Path, payload: Any) -> None:
 # Deterministic UUID generation
 # ---------------------------------------------------------------------------
 
+
 def _det_uuid(namespace: str, name: str) -> str:
     """Stable UUID v5 for deterministic artifact IDs."""
     ns = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")  # DNS namespace
@@ -170,6 +174,7 @@ def _det_uuid(namespace: str, name: str) -> str:
 # ---------------------------------------------------------------------------
 # POA&M generation
 # ---------------------------------------------------------------------------
+
 
 def _severity_for_record(rec: Dict[str, Any], cfg: Dict[str, Any]) -> str:
     """Derive severity from config overrides or default mapping."""
@@ -185,15 +190,9 @@ def _recommended_action(rec: Dict[str, Any], cfg: Dict[str, Any]) -> str:
     status = rec.get("status", "not-applicable")
     cid = rec.get("control_id", "")
     if status == "not-satisfied":
-        return templates.get(
-            "not-satisfied",
-            f"Remediate control {cid} — implementation gap identified."
-        )
+        return templates.get("not-satisfied", f"Remediate control {cid} — implementation gap identified.")
     if status == "not-applicable":
-        return templates.get(
-            "not-applicable",
-            f"Review control {cid} — verdict inconclusive or excluded."
-        )
+        return templates.get("not-applicable", f"Review control {cid} — verdict inconclusive or excluded.")
     return templates.get("satisfied", "No remediation required.")
 
 
@@ -206,9 +205,7 @@ def _build_poam_items(
     Only 'not-satisfied' records generate POA&M items.
     Items are sorted by severity then control_id.
     """
-    include_statuses: List[str] = cfg.get(
-        "poam_include_statuses", ["not-satisfied"]
-    )
+    include_statuses: List[str] = cfg.get("poam_include_statuses", ["not-satisfied"])
 
     items: List[Dict[str, Any]] = []
     for rec in records:
@@ -271,6 +268,7 @@ def _build_poam_envelope(
 # ---------------------------------------------------------------------------
 # SSP generation
 # ---------------------------------------------------------------------------
+
 
 def _impl_status_for_record(rec: Dict[str, Any]) -> str:
     return _STATUS_TO_IMPL.get(rec.get("status", "not-applicable"), "not-applicable")
@@ -338,6 +336,7 @@ def _build_ssp_envelope(
 # Artifact index
 # ---------------------------------------------------------------------------
 
+
 def _stable_hash(data: Any) -> str:
     canonical = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -384,6 +383,7 @@ def _build_artifact_index(
 # ---------------------------------------------------------------------------
 # Public entry-point
 # ---------------------------------------------------------------------------
+
 
 def generate_oscal(
     evidence_dir: str,
@@ -474,4 +474,3 @@ def generate_oscal(
         len(poam_items),
         ssp["summary"]["total_controls"],
     )
-

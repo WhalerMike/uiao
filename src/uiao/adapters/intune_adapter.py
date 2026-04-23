@@ -43,16 +43,28 @@ class IntuneAdapter(DatabaseAdapterBase):
             identity=f"intune:{self._tenant_id}",
             auth_method=self._config.get("auth_method", "client-credential"),
             endpoint=f"{self._graph_endpoint}/deviceManagement",
-            tls_version="TLSv1.3", mtls_enabled=False, timestamp=self._now(),
+            tls_version="TLSv1.3",
+            mtls_enabled=False,
+            timestamp=self._now(),
         )
 
     def discover_schema(self) -> SchemaMappingObject:
-        vendor_schema = {"deviceId": "string", "deviceName": "string", "complianceState": "string",
-                         "osVersion": "string", "lastSyncDateTime": "datetime", "managementAgent": "string"}
-        canonical_schema = {"identity": "intune:<tenant>:<device_id>",
-                            "control_id": "CM-8", "evidence.source": "intune"}
+        vendor_schema = {
+            "deviceId": "string",
+            "deviceName": "string",
+            "complianceState": "string",
+            "osVersion": "string",
+            "lastSyncDateTime": "datetime",
+            "managementAgent": "string",
+        }
+        canonical_schema = {
+            "identity": "intune:<tenant>:<device_id>",
+            "control_id": "CM-8",
+            "evidence.source": "intune",
+        }
         return SchemaMappingObject(
-            vendor_schema=vendor_schema, canonical_schema=canonical_schema,
+            vendor_schema=vendor_schema,
+            canonical_schema=canonical_schema,
             mapping_rules={"deviceId": "identity suffix", "complianceState": "compliance status"},
             unmapped_fields=["enrolledDateTime", "model", "manufacturer"],
             version_hash=self._hash({"vendor": vendor_schema, "canonical": canonical_schema}),
@@ -62,32 +74,46 @@ class IntuneAdapter(DatabaseAdapterBase):
         entity = canonical_query.get("from", "managedDevices")
         vendor_query = f"GET {self._graph_endpoint}/deviceManagement/{entity}?$top=100"
         return QueryProvenance(
-            canonical_query=canonical_query, vendor_query=vendor_query,
-            execution_plan_hash=self._hash(vendor_query), row_count=0, timestamp=self._now(),
+            canonical_query=canonical_query,
+            vendor_query=vendor_query,
+            execution_plan_hash=self._hash(vendor_query),
+            row_count=0,
+            timestamp=self._now(),
         )
 
     def normalize(self, raw_rows: List[Dict[str, Any]]) -> ClaimSet:
         claims = []
         for device in raw_rows:
             did = device.get("deviceId", device.get("id", "unknown"))
-            claims.append(ClaimObject(
-                claim_id=f"intune:{self._tenant_id}:{did}",
-                entity=f"intune:device:{did}",
-                fields={"identity": f"intune:{self._tenant_id}:{did}",
+            claims.append(
+                ClaimObject(
+                    claim_id=f"intune:{self._tenant_id}:{did}",
+                    entity=f"intune:device:{did}",
+                    fields={
+                        "identity": f"intune:{self._tenant_id}:{did}",
                         "device_name": device.get("deviceName", ""),
                         "compliance_state": device.get("complianceState", "unknown"),
                         "os_version": device.get("osVersion", ""),
-                        "vendor_overlay_ref": "intune.yaml"},
-                source=self.ADAPTER_ID, provenance_hash=self._hash(device),
-            ))
+                        "vendor_overlay_ref": "intune.yaml",
+                    },
+                    source=self.ADAPTER_ID,
+                    provenance_hash=self._hash(device),
+                )
+            )
         return ClaimSet(claims=claims, source_reference=f"{self._graph_endpoint}/deviceManagement")
 
     def detect_drift(self) -> DriftReport:
         return DriftReport(
-            drift_type="intune-endpoint-compliance", severity="info",
-            first_observed=self._now(), last_observed=self._now(),
-            details={"message": "Drift scaffold — compare endpoint compliance against baseline.",
-                     "adapter": self.ADAPTER_ID, "tenant_id": self._tenant_id, "scope": self.SCOPE},
+            drift_type="intune-endpoint-compliance",
+            severity="info",
+            first_observed=self._now(),
+            last_observed=self._now(),
+            details={
+                "message": "Drift scaffold — compare endpoint compliance against baseline.",
+                "adapter": self.ADAPTER_ID,
+                "tenant_id": self._tenant_id,
+                "scope": self.SCOPE,
+            },
             remediation="Compare normalize() output against accepted compliance baseline.",
         )
 
@@ -112,14 +138,27 @@ class IntuneAdapter(DatabaseAdapterBase):
             ksi_id="KSI-CM-08-intune",
             source=self.ADAPTER_ID,
             timestamp=self._now(),
-            raw_data={"connection": conn.to_dict(), "total_devices": len(devices), "compliant": compliant, "noncompliant": noncompliant},
+            raw_data={
+                "connection": conn.to_dict(),
+                "total_devices": len(devices),
+                "compliant": compliant,
+                "noncompliant": noncompliant,
+            },
             normalized_data=claim_set.to_dict(),
-            provenance={"adapter_id": self.ADAPTER_ID, "tenant_id": self._tenant_id, "hash": self._hash(claim_set.to_dict()), "timestamp": self._now().isoformat()},
+            provenance={
+                "adapter_id": self.ADAPTER_ID,
+                "tenant_id": self._tenant_id,
+                "hash": self._hash(claim_set.to_dict()),
+                "timestamp": self._now().isoformat(),
+            },
             freshness_valid=True,
         )
 
     def collect_and_align(self) -> Dict[str, Any]:
         claim_set = self.normalize([])
-        return {"vendor": "Microsoft Intune", "adapter_id": self.ADAPTER_ID,
-                "claims": claim_set.to_dict(),
-                "metadata": {"tenant_id": self._tenant_id, "scope": self.SCOPE, "last_collected": self._now().isoformat()}}
+        return {
+            "vendor": "Microsoft Intune",
+            "adapter_id": self.ADAPTER_ID,
+            "claims": claim_set.to_dict(),
+            "metadata": {"tenant_id": self._tenant_id, "scope": self.SCOPE, "last_collected": self._now().isoformat()},
+        }

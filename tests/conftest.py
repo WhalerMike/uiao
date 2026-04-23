@@ -1,4 +1,5 @@
 """Shared pytest fixtures for uiao tests."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -77,9 +78,7 @@ def pytest_collection_modifyitems(config, items):
     """Skip tests depending on canon files not yet migrated to uiao."""
     if _GEN_INPUTS_DIR.exists():
         return
-    skip_marker = pytest.mark.skip(
-        reason="canon generation-inputs/ not migrated to uiao yet (issue #2)"
-    )
+    skip_marker = pytest.mark.skip(reason="canon generation-inputs/ not migrated to uiao yet (issue #2)")
     for item in items:
         module_name = item.module.__name__.rsplit(".", 1)[-1]
         if module_name in _CANON_DEPENDENT_MODULES:

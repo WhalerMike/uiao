@@ -64,4 +64,3 @@ def _render_mmdc(
         return png_path if png_path.exists() else None
     except Exception:
         return None
-

@@ -43,6 +43,7 @@ from pathlib import Path
 # Logging
 # ---------------------------------------------------------------------------
 
+
 def setup_logging(output_dir: Path) -> logging.Logger:
     """Configure file + stderr logging; return the root logger."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -63,6 +64,7 @@ def setup_logging(output_dir: Path) -> logging.Logger:
 # ---------------------------------------------------------------------------
 # Input discovery
 # ---------------------------------------------------------------------------
+
 
 def find_scuba_input(input_dir: Path, logger: logging.Logger) -> Path | None:
     """Locate the normalized SCuBA JSON inside *input_dir*.
@@ -98,34 +100,46 @@ def find_scuba_input(input_dir: Path, logger: logging.Logger) -> Path | None:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="UIAO Real SCuBA Dry-Run — run the compliance pipeline safely",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--input", required=True, type=Path,
+        "--input",
+        required=True,
+        type=Path,
         help="Path to folder containing SCuBA JSON output, or a single normalized JSON file",
     )
     parser.add_argument(
-        "--output", default=Path("./dryrun-output"), type=Path,
+        "--output",
+        default=Path("./dryrun-output"),
+        type=Path,
         help="Directory for all generated artifacts (default: ./dryrun-output)",
     )
     parser.add_argument(
-        "--tenant-id", default="boundary:tenant:m365:contoso",
+        "--tenant-id",
+        default="boundary:tenant:m365:contoso",
         help="Tenant boundary identifier for provenance tags",
     )
     parser.add_argument(
-        "--planes", nargs="+", default=["plane1", "plane2", "plane3", "plane4"],
+        "--planes",
+        nargs="+",
+        default=["plane1", "plane2", "plane3", "plane4"],
         choices=["plane1", "plane2", "plane3", "plane4"],
         help="Which planes to execute (default: all four)",
     )
     parser.add_argument(
-        "--max-retries", type=int, default=1,
+        "--max-retries",
+        type=int,
+        default=1,
         help="Per-plane retry count on transient failure (default: 1)",
     )
     parser.add_argument(
-        "--execute", action="store_true", default=False,
+        "--execute",
+        action="store_true",
+        default=False,
         help="Actually execute the pipeline (default: dry-run validation only)",
     )
     args = parser.parse_args()
@@ -184,7 +198,8 @@ def main() -> int:
         except ImportError as exc:
             logger.error(
                 "Could not import orchestrator.  Make sure you run from the "
-                "uiao repo root or install the package.\n  %s", exc,
+                "uiao repo root or install the package.\n  %s",
+                exc,
             )
             return 2
 
@@ -225,8 +240,10 @@ def main() -> int:
         status = "PASS" if pr.success else "FAIL"
         logger.info(
             "  [%s] %-25s  %6.2fs  output=%s",
-            status, PLANE_NAMES.get(pr.plane_id, pr.plane_id),
-            pr.duration_secs, pr.output_path or "(none)",
+            status,
+            PLANE_NAMES.get(pr.plane_id, pr.plane_id),
+            pr.duration_secs,
+            pr.output_path or "(none)",
         )
         if pr.error:
             logger.warning("         error: %s", pr.error)
