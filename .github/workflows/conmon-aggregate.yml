@@ -69,6 +69,24 @@ jobs:
             exports/conmon/conmon-aggregate-summary.json >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Pathway-1 migration readiness check (RFC-0026 E8)
+        id: readiness
+        run: |
+          python scripts/conmon/migration_readiness.py \
+            --registry src/uiao/canon/adapter-registry.yaml \
+            --output exports/conmon/migration-readiness.json
+          breach=$(jq -r '.any_breach' exports/conmon/migration-readiness.json)
+          echo "any_breach=${breach}" >> "$GITHUB_OUTPUT"
+          {
+            echo ""
+            echo "## Pathway-1 migration readiness (RFC-0026 E8)"
+            echo ""
+            echo '```json'
+            jq '.pathways | map({adapter_id, mandatory_by, registry_status, breach, days_until_mandatory})' \
+              exports/conmon/migration-readiness.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload aggregate artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -121,4 +139,77 @@ jobs:
                 labels: p.labels,
               });
               core.info(`Opened SLA issue for ${p.fingerprint}`);
+            }
+
+      - name: Open governance issue for Pathway-1 readiness breach
+        # Fires when today is inside the 90-day lead window of a Notice
+        # 0009 deadline AND the Pathway-1 adapter is still
+        # status: reserved. Idempotent: fingerprints by adapter_id +
+        # mandatory_by so each deadline opens at most one live issue.
+        if: >-
+          github.event_name != 'pull_request' &&
+          steps.readiness.outputs.any_breach == 'true' &&
+          (github.event_name != 'workflow_dispatch' || inputs.open_sla_issues)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const payload = JSON.parse(
+              fs.readFileSync('exports/conmon/migration-readiness.json', 'utf8')
+            );
+            const breaches = payload.pathways.filter(p => p.breach);
+            if (breaches.length === 0) {
+              core.info('No Pathway-1 readiness breaches.');
+              return;
+            }
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'rfc-0026-readiness',
+              per_page: 100,
+            });
+            const existingFingerprints = new Set(
+              existing
+                .map(i => (i.body || '').match(/readiness-fingerprint:\s*`([a-z0-9:-]+)`/))
+                .filter(Boolean)
+                .map(m => m[1])
+            );
+            for (const b of breaches) {
+              const fingerprint = `rfc-0026-readiness:${b.adapter_id}:${b.mandatory_by}`;
+              if (existingFingerprints.has(fingerprint)) {
+                core.info(`Skipping existing readiness issue ${fingerprint}`);
+                continue;
+              }
+              const title = `RFC-0026 Pathway-1 readiness: ${b.adapter_id} mandatory ${b.mandatory_by}`;
+              const body = [
+                `FedRAMP Notice 0009 sets ${b.notice_0009_ref} mandatory on **${b.mandatory_by}**.`,
+                `Today is inside the ${b.lead_days}-day lead window (opened ${b.breach_window_opened_at}) `,
+                `and \`src/uiao/canon/adapter-registry.yaml\` still reports ` +
+                  `\`${b.adapter_id}.status = ${b.registry_status ?? 'absent'}\`.`,
+                ``,
+                `### Action required`,
+                ``,
+                `- [ ] Flip \`${b.adapter_id}.status\` from \`reserved\` to \`proposed\` or \`active\``,
+                `- [ ] Land the adapter implementation (retires the stub in ` +
+                  `\`src/uiao/adapters/${b.adapter_id.replace('-', '_')}_adapter.py\`)`,
+                `- [ ] Update \`docs/docs/uiao-rfc-0026-roadmap.md\` § E8 with the migration PR link`,
+                `- [ ] Update ADR-043 change log with the migration completion entry`,
+                ``,
+                `Days until mandatory: **${b.days_until_mandatory}**`,
+                ``,
+                `Ref: ADR-043, UIAO_132 §2.4 / §3.4, ` +
+                  `\`docs/docs/uiao-rfc-0026-roadmap.md\` § E8.`,
+                ``,
+                `---`,
+                `readiness-fingerprint: \`${fingerprint}\``,
+              ].join('\n');
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['rfc-0026-readiness', 'canon', 'needs-triage'],
+              });
+              core.info(`Opened readiness issue for ${fingerprint}`);
             }
