@@ -1,0 +1,76 @@
+# UIAO Redaction Profile
+# ======================
+# Canon ref:  ADR-045 (Scan Artifact Redaction Policy)
+# ATO artifact: yes — feeds the SSP RV5-CA07-VLN disclosure-control
+#               implementation statement and the Tier-2 agency
+#               distribution surface
+# Consumed by: scripts/conmon/redact.py
+# ============================================================
+# Changing this file requires an ADR amendment per ADR-045 D6.
+# The profile is the *control*, not merely a config — a silent edit
+# could re-expose exploit detail.
+# ============================================================
+
+schema-version: "1.0.0"
+profile-version: "1.0.0"
+adr-ref: ADR-045
+data-classification: moderate  # D8: future-proof hook; both Moderate
+                                # and High receive this profile today
+updated: "2026-04-23"
+
+# -------------------------------------------------------------
+# Tier-2 (agency-visible) output — fields explicitly retained.
+# Any field not in this list is stripped by default (deny-by-default).
+# -------------------------------------------------------------
+retain_fields:
+  - tracking_id          # CSP-assigned; primary ConMon correlation key
+  - risk_level           # critical | high | moderate | low
+  - finding_state        # open | closed | deferred | accepted
+  - control_family       # AC | AU | SC | …
+  - first_observed       # ISO-8601 timestamp
+  - last_observed        # ISO-8601 timestamp
+  - remediation_summary  # truncated to remediation_summary_max_chars
+  - planned_completion   # POA&M "Planned Completion Date" column
+  - finding_category     # e.g. "missing security patch"
+  - tier_1_ref           # auto-added sha256 back-reference
+
+# -------------------------------------------------------------
+# Explicit deny list — redundant with deny-by-default, but kept here
+# so a reader can see the sensitive surface at a glance without
+# cross-referencing the retain list.
+# -------------------------------------------------------------
+strip_fields:
+  - plugin_id              # maps to exploit technique
+  - cve_ids                # maps to published exploit code
+  - affected_assets        # per-host targeting surface
+  - asset_name
+  - asset_ip
+  - asset_fqdn
+  - raw_output             # contains exploit-path payload
+  - plugin_output
+  - exploit_available      # signal attackers specifically want
+  - exploit_weaponized
+
+# -------------------------------------------------------------
+# Remediation-summary truncation (ADR-045 D3)
+# -------------------------------------------------------------
+remediation_summary_max_chars: 280
+remediation_summary_truncation_suffix: "… [truncated — see tier_1_ref]"
+
+# -------------------------------------------------------------
+# Tier-1 reference linking redacted to unredacted (ADR-045 D1)
+# -------------------------------------------------------------
+tier_1_reference:
+  field_name: tier_1_ref
+  algorithm: sha256
+  # Canonicalization: the sha256 is computed over the original finding
+  # serialized as JSON with sort_keys=True + compact separators. See
+  # scripts/conmon/redact.py:_canonical_hash for the exact routine.
+
+# -------------------------------------------------------------
+# Provenance
+# -------------------------------------------------------------
+provenance:
+  source: UIAO_132 / ADR-045
+  maintained_by: UIAO governance
+  rfc_reference: https://github.com/FedRAMP/community/discussions/130

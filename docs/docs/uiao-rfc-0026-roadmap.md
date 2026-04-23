@@ -35,7 +35,7 @@ This roadmap sequences eight enhancements by enforcement-clock risk × implement
 | Pathway-1 BIR migration gates | ✅ Shipped PR [#176](https://github.com/WhalerMike/uiao/pull/176) — reserved stubs + readiness check wired into `conmon-aggregate.yml` |
 | Connect.gov POA&M submission | 🟢 **Design draft locked** [e1-connect-gov-design.md](uiao-rfc-0026-e1-connect-gov-design.md) — all 4 questions resolved; awaiting PR [#177](https://github.com/WhalerMike/uiao/pull/177) merge |
 | Multi-agency distribution layer | 🟢 **Design draft locked** [e5-multi-agency-design.md](uiao-rfc-0026-e5-multi-agency-design.md) — all 6 questions resolved; awaiting PR [#177](https://github.com/WhalerMike/uiao/pull/177) merge |
-| Scan redaction pipeline | 🟢 **Draft ADR locked** [e7-scan-redaction-adr-draft.md](uiao-rfc-0026-e7-scan-redaction-adr-draft.md) — all 4 questions resolved; ready for canon promotion to `adr-045-*.md` after PR [#177](https://github.com/WhalerMike/uiao/pull/177) merge |
+| Scan redaction pipeline | ✅ **Shipped** — ADR-045 PROPOSED at `src/uiao/canon/adr/adr-045-scan-redaction-policy.md`; `redaction-profile.yaml` canon; `redact.py` pipeline stage (21 tests) |
 
 ---
 
@@ -150,16 +150,17 @@ This roadmap sequences eight enhancements by enforcement-clock risk × implement
 
 ## Tier 5 — Needs design before code
 
-### E7 · Scan redaction pipeline *(Draft ADR pending canon promotion)*
+### E7 · Scan redaction pipeline *(ADR-045 PROPOSED; redactor + profile shipped)*
 **Target:** 2026-09-30 (draft ADR) / 2026-12-31 (implementation)
 **Risk:** RFC-0026 traditional pathway (UIAO's path per ADR-043) requires monthly distribution of OS/DB/web/container scans to all agency customers; raw unredacted scans in a GCC Moderate tenant are operationally impractical and broaden attack surface (CSP-AB / cb-axon thread).
-**Draft ADR:** [docs/docs/uiao-rfc-0026-e7-scan-redaction-adr-draft.md](uiao-rfc-0026-e7-scan-redaction-adr-draft.md) — proposed ADR-045; two-tier evidence storage (raw 3PAO-only + redacted agency-distribution), redaction-profile field allow/deny lists, pipeline-stage redactor design.
+**Shipped canon:** [ADR-045](../../src/uiao/canon/adr/adr-045-scan-redaction-policy.md); [`redaction-profile.yaml`](../../src/uiao/canon/redaction-profile.yaml); [`scripts/conmon/redact.py`](../../scripts/conmon/redact.py); [`tests/test_redact.py`](../../tests/test_redact.py) (21 tests).
 **Tasks:**
-- [ ] T7.1 — Draft new ADR: *Scan artifact redaction policy for multi-agency distribution*
-- [ ] T7.2 — Define redaction profile — preserve: risk level, control family, CSP tracking ID, finding state; remove: plugin IDs, CVE identifiers, exploit path details
-- [ ] T7.3 — `evidence/raw/` (restricted — 3PAO + FedRAMP corrective action only)
-- [ ] T7.4 — `evidence/distribution/<agency-id>/` (redacted)
-- [ ] T7.5 — Align principles with VDR-RPT-NID responsible-disclosure language
+- [x] T7.1 — ADR-045 promoted from `docs/docs/uiao-rfc-0026-e7-scan-redaction-adr-draft.md` to `src/uiao/canon/adr/adr-045-scan-redaction-policy.md`, status PROPOSED
+- [x] T7.2 — Redaction profile shipped as canon at `src/uiao/canon/redaction-profile.yaml` (10-field retain list, 10-field explicit deny list, 280-char summary cap, sha256 tier_1_ref)
+- [x] T7.3 — `evidence/raw/` path encoded in ADR-045 D5; CODEOWNERS + branch-protection is the repo-layer guard (D5 spells out the exact config)
+- [x] T7.4 — `evidence/distribution/<agency-id>/` path encoded in ADR-045 D1 (writer ships with E5's `distribute.py`)
+- [x] T7.5 — ADR-045 D7 explicitly aligns with VDR-RPT-NID as supplemental policy above VDR's floor (do not auto-retire when VDR BIR publishes)
+- [ ] T7.6 — Promote ADR-045 status from PROPOSED → Accepted once the promotion checklist in the ADR is satisfied (follows first real scan run + CODEOWNERS activation)
 
 ---
 
