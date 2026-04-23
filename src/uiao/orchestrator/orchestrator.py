@@ -234,7 +234,7 @@ def _run_plane_1(
     plane_id = "plane1"
     logger.info(f"[{plane_id}] Starting SCuBA → IR Transform…")
 
-    if not transform_scuba_to_ir:
+    if transform_scuba_to_ir is None:
         error = "transform_scuba_to_ir not available (import failed)"
         logger.error(f"[{plane_id}] {error}")
         return PlaneResult(plane_id, False, 0.0, None, error)
@@ -254,7 +254,7 @@ def _run_plane_1(
         is_dir_input = input_path.is_dir()
 
     if is_raw or is_dir_input:
-        if normalize_scuba:
+        if normalize_scuba is not None:
             logger.info(f"[{plane_id}] Detected raw ScubaGear input — normalizing first")
             normalized_data = normalize_scuba(
                 input_path,
@@ -324,7 +324,7 @@ def _run_plane_2(
     plane_id = "plane2"
     logger.info(f"[{plane_id}] Starting IR → KSI Evaluation…")
 
-    if not evaluate_ksi:
+    if evaluate_ksi is None:
         error = "evaluate_ksi not available (import failed)"
         logger.error(f"[{plane_id}] {error}")
         return PlaneResult(plane_id, False, 0.0, None, error)
@@ -380,7 +380,7 @@ def _run_plane_3(
     plane_id = "plane3"
     logger.info(f"[{plane_id}] Starting KSI → Evidence Bundle…")
 
-    if not build_evidence:
+    if build_evidence is None:
         error = "build_evidence not available (import failed)"
         logger.error(f"[{plane_id}] {error}")
         return PlaneResult(plane_id, False, 0.0, None, error)
@@ -453,29 +453,29 @@ def _run_plane_4(
 
             # Generators available: build_oscal, build_poam_export, build_ssp
             generators_available = []
-            if build_oscal:
+            if build_oscal is not None:
                 generators_available.append("OSCAL")
-            if build_poam_export:
+            if build_poam_export is not None:
                 generators_available.append("POAM")
-            if build_ssp:
+            if build_ssp is not None:
                 generators_available.append("SSP")
 
             if generators_available:
                 logger.info(f"[{plane_id}] Available generators: {', '.join(generators_available)}")
                 # Run each generator, writing output into the plane's output dir
-                if build_oscal:
+                if build_oscal is not None:
                     try:
                         oscal_out = build_oscal(data_dir=input_evidence_dir, output_dir=output_dir)
                         logger.info(f"[{plane_id}] OSCAL generated: {oscal_out}")
                     except Exception as ge:
                         logger.warning(f"[{plane_id}] OSCAL generation failed: {ge}")
-                if build_poam_export:
+                if build_poam_export is not None:
                     try:
                         poam_out = build_poam_export(data_dir=input_evidence_dir, output_dir=output_dir)
                         logger.info(f"[{plane_id}] POA&M generated: {poam_out}")
                     except Exception as ge:
                         logger.warning(f"[{plane_id}] POA&M generation failed: {ge}")
-                if build_ssp:
+                if build_ssp is not None:
                     try:
                         ssp_out = build_ssp(data_dir=input_evidence_dir, output_path=output_dir / "ssp.json")
                         logger.info(f"[{plane_id}] SSP generated: {ssp_out}")

@@ -50,7 +50,7 @@ def _get_adapter_classes() -> Dict[str, type]:
 def check_adapter(cls: type) -> List[Dict[str, Any]]:
     """Run all conformance criteria against a single adapter class."""
     results: List[Dict[str, Any]] = []
-    adapter_id = cls.ADAPTER_ID
+    adapter_id = cls.ADAPTER_ID  # type: ignore[attr-defined]  # duck-typed: every adapter class declares ADAPTER_ID
 
     def _record(criterion_id: str, description: str, passed: bool, detail: str = ""):
         results.append(
