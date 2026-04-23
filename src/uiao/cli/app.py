@@ -171,7 +171,7 @@ def generate_gemini(
 
     if name:
         console.print(f"[bold]Generating Gemini image: {name}...[/bold]")
-        result = generate_gemini_image(name, output_dir=output_dir, force=force)
+        result = generate_gemini_image(name, output_dir=Path(output_dir), force=force)
         if result:
             console.print(f"[green]Generated {result}[/green]")
         else:
