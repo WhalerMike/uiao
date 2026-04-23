@@ -62,7 +62,9 @@ class EntraTokenProvider:
         self._client_id = client_id
         self._authority = f"{AUTHORITY_BASE}/{tenant_id}"
 
-        # Build credential — certificate takes precedence over secret
+        # Build credential — certificate takes precedence over secret.
+        # MSAL accepts either a dict (cert bundle) or a str (client_secret).
+        credential: dict | str
         if cert_path:
             credential = self._load_cert_credential(cert_path, cert_password)
         elif client_secret:
@@ -171,6 +173,8 @@ class EntraTokenProvider:
         if path.lower().endswith(".pfx") or path.lower().endswith(".p12"):
             pwd = cert_password.encode() if cert_password else None
             private_key, cert, _ = pkcs12.load_key_and_certificates(data, pwd)
+            if private_key is None or cert is None:
+                raise ValueError(f"Unable to load certificate + private key from {path!r}")
             pem_key = private_key.private_bytes(
                 serialization.Encoding.PEM,
                 serialization.PrivateFormat.PKCS8,

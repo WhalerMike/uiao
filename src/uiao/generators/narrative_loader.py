@@ -304,7 +304,7 @@ def load_control_library(
         briefing = briefing["leadership_briefing"]
     org_name: str = ""
     if isinstance(briefing, dict):
-        org_name = briefing.get("organization", briefing.get("title", ""))
+        org_name = briefing.get("organization") or briefing.get("title") or ""
     if not org_name:
         org_name = context.get("organization_name", "")
 
