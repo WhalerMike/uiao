@@ -33,7 +33,7 @@ def _load_json(path: Path) -> dict:
     if not path.exists():
         raise FileNotFoundError(f"Required OSCAL file not found: {path}")
     with path.open("r", encoding="utf-8") as fh:
-        return json.load(fh)
+        return json.load(fh)  # type: ignore[no-any-return]
 
 
 def _validate_ssp(data: dict) -> bool:

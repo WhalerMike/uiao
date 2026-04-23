@@ -166,7 +166,7 @@ class EventProcessor:
             if signal in title_lower:
                 return signal
         # Fall back to sanitised title
-        return title_lower.replace(" ", "_")
+        return title_lower.replace(" ", "_")  # type: ignore[no-any-return]
 
     # ------------------------------------------------------------------
     # Evaluation

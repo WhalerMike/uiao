@@ -461,7 +461,7 @@ _SEMANTIC_UPPER_BOUND = {
 _SEMANTIC_LOWER_BOUND = {"audit_retention_days": 90}
 
 
-def classify_semantic_drift(*, resource_id, policy_ref, expected_state, actual_state, provenance, drift_id=None):
+def classify_semantic_drift(*, resource_id, policy_ref, expected_state, actual_state, provenance, drift_id=None):  # type: ignore[no-untyped-def]
     delta = _dict_delta(expected_state, actual_state)
     reasons = []
     for field, (bad_val, msg) in _SEMANTIC_WEAKENING_FIELDS.items():
@@ -551,7 +551,7 @@ def classify_drift(
         drift_id=drift_id,
     )
     if semantic is not None:
-        return semantic
+        return semantic  # type: ignore[no-any-return]
 
     # DRIFT-IDENTITY third
     identity = classify_identity_drift(

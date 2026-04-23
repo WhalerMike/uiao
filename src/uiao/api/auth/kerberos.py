@@ -116,7 +116,7 @@ def require_windows_auth(request: Request) -> WindowsIdentity:
 # ------------------------------------------------------------------
 
 
-def get_ldap_connection(server_hostname: str):
+def get_ldap_connection(server_hostname: str):  # type: ignore[no-untyped-def]
     """
     Create an ldap3 connection using Kerberos SASL (Windows SSPI).
 

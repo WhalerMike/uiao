@@ -15,7 +15,7 @@ from uiao.ir.models.core import (
 )
 
 
-def transform_scuba_to_ir(
+def transform_scuba_to_ir(  # type: ignore[no-untyped-def]
     normalized_json_path,
     tenant_boundary_id: str = "boundary:tenant:m365:contoso",
 ) -> SCuBATransformResult:

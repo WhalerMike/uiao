@@ -59,7 +59,7 @@ def walk(
         console.print("\n[green]PASS[/green] — no drift detected.")
         return
 
-    def _print_table(findings, style: str) -> None:
+    def _print_table(findings, style: str) -> None:  # type: ignore[no-untyped-def]
         table = Table(show_header=True, header_style=f"bold {style}")
         table.add_column("Class")
         table.add_column("Sev")

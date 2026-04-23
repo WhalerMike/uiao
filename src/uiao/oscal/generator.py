@@ -149,7 +149,7 @@ def _load_config(config_path: Optional[str]) -> Dict[str, Any]:
     if not cfg.exists():
         return {}
     with cfg.open(encoding="utf-8") as fh:
-        return json.load(fh)  # type: ignore[return-value]
+        return json.load(fh)  # type: ignore[no-any-return]
 
 
 def _write_json(dst: Path, payload: Any) -> None:

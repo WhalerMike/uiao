@@ -138,14 +138,10 @@ known-third-party = ["pytest", "yaml"]
 [tool.mypy]
 python_version = "3.10"
 warn_unused_configs = true
-# disallow_untyped_defs kept off until the 48-site annotation burn-down
-# lands; the mypy gate currently enforces shape-correctness only.
-disallow_untyped_defs = false
+disallow_untyped_defs = true
 check_untyped_defs = true
 ignore_missing_imports = true
-# warn_return_any flagged 34 returns of dict/list/Any from Optional helper
-# functions; kept off until interface shapes are tightened.
-warn_return_any = false
+warn_return_any = true
 exclude = [
     "^scripts/",
     "^tests/",
@@ -184,16 +180,36 @@ disable_error_code = ["attr-defined", "arg-type", "assignment", "index", "operat
 # Legacy surfaces with dense stub-gap / duck-typed patterns (importlib.metadata
 # PackageMetadata, jinja2 Undefined subclassing, dynamic adapter-class
 # reflection, etc.) where every attribute touch raises noise mypy can't
-# resolve without stubs. Runtime is covered by the pytest suite; the final
-# mypy-gate flip accepts these as the post-burndown baseline and enforces
-# zero-new-errors for everything else.
+# resolve without stubs. Runtime is covered by the pytest suite; the mypy
+# gate accepts these as the post-burndown baseline and enforces zero-new-
+# errors for everything else. `disallow_untyped_defs` / `warn_return_any`
+# are also relaxed here because the untyped callsites in these files are
+# systemic (reflection over adapter classes, Any returns from stub-less
+# upstream calls), not correctable without stubs.
 [[tool.mypy.overrides]]
 module = [
     "uiao.adapters.conformance_check",
     "uiao.adapters.entra_policy_targeting",
     "uiao.cli.adapter_oscal",
+    "uiao.evidence.graph",
     "uiao.generators.docs",
     "uiao.generators.gemini_visuals",
     "uiao.generators.sbom",
 ]
 disable_error_code = ["attr-defined", "arg-type", "assignment", "index", "operator", "call-arg", "union-attr", "valid-type", "var-annotated", "override", "str-format", "no-redef", "return-value"]
+disallow_untyped_defs = false
+warn_return_any = false
+
+# Docx/pptx/matplotlib-heavy generators: add disallow_untyped_defs /
+# warn_return_any relaxation alongside the existing shape-error
+# suppressions. Same rationale — stub-less third-party libs drive the
+# untyped pattern, not untyped code.
+[[tool.mypy.overrides]]
+module = [
+    "uiao.generators.briefing",
+    "uiao.generators.charts",
+    "uiao.generators.pptx",
+    "uiao.generators.rich_docx",
+]
+disallow_untyped_defs = false
+warn_return_any = false

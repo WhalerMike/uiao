@@ -76,7 +76,7 @@ class _TBDUndefined(Undefined):
     def __len__(self) -> int:
         return 0
 
-    def __iter__(self):
+    def __iter__(self):  # type: ignore[no-untyped-def]
         return iter([])
 
     def __bool__(self) -> bool:

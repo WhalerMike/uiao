@@ -130,7 +130,7 @@ def _apply_since(records: list, since: str, ts_field: str = "generated_at") -> l
 
 
 def _sort(records: list, order_by: str, order_dir: str) -> list:
-    def key(r):
+    def key(r):  # type: ignore[no-untyped-def]
         v = r.get(order_by, "")
         rank = _SEVERITY_RANK.get(str(v).lower(), 0)
         return rank if rank else str(v).lower()
@@ -157,7 +157,7 @@ class CQLResult:
 
 
 class CQLEngine:
-    def __init__(self, controls=None, evidence=None, drift=None, poam=None):
+    def __init__(self, controls=None, evidence=None, drift=None, poam=None):  # type: ignore[no-untyped-def]
         self._controls = controls or []
         self._evidence = evidence or []
         self._drift = drift or []

@@ -29,7 +29,7 @@ def _as_dict(obj: Any, name_key: str = "name") -> dict[str, Any]:
 def _safe_get(obj: Any, key: str, default: str = "") -> str:
     """Get a value from obj whether it is a dict or a plain string."""
     if isinstance(obj, dict):
-        return obj.get(key, default)
+        return obj.get(key, default)  # type: ignore[no-any-return]
     return default
 
 

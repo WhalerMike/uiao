@@ -130,7 +130,7 @@ class KSIValidatorEngine:
         """
         rule_path = self._rules_root / validation_logic_ref
         with rule_path.open("r", encoding="utf-8") as f:
-            return yaml.safe_load(f)
+            return yaml.safe_load(f)  # type: ignore[no-any-return]
 
     def _parse_iso8601_duration(self, duration: str) -> timedelta:
         """

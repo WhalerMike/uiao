@@ -51,7 +51,7 @@ def _find_component_uuid(ssp: dict[str, Any], ksi_id: str) -> str | None:
     try:
         components = ssp["system-implementation"]["components"]
         if components:
-            return components[0]["uuid"]
+            return components[0]["uuid"]  # type: ignore[no-any-return]
     except (KeyError, IndexError, TypeError):
         pass
     return None
