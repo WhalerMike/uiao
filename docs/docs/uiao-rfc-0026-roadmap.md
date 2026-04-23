@@ -29,13 +29,13 @@ This roadmap sequences eight enhancements by enforcement-clock risk × implement
 | RFC-0026 canon integration | ✅ Complete (UIAO_132, ADR-043, reference dir) |
 | `conmon-aggregate.yml` workflow | ✅ Exists |
 | `gcc-boundary-gap-registry.yaml` | ✅ Exists (2026-04-20) |
-| Connect.gov POA&M submission | 🟥 Manual — UIAO_132 Open Item O1, flagged before 2027-01-01 |
-| Multi-agency distribution layer | 🟥 No registry, no distribution receipts |
-| ScubaGear upstream tracking | 🟥 No automated watch; SCUBA_TO_KSI_MAP already has SECURITYSUITE stub entries (correction to prior analysis) |
-| OPA version pre-flight | 🟥 Absent — `normalize_scuba.py` hardcodes `tool_version`; `scuba.yaml` has no OPA pin |
-| PIM-for-Groups gap (ScubaGear #2072) | 🟥 Not in `gcc-boundary-gap-registry.yaml` |
-| Pathway-1 BIR migration gates | 🟥 Not in enforcement timeline |
-| Scan redaction pipeline | 🟥 No ADR, no implementation |
+| OPA version pre-flight | ✅ Shipped PR [#171](https://github.com/WhalerMike/uiao/pull/171), [#173](https://github.com/WhalerMike/uiao/pull/173) — envelope + DRIFT-PROVENANCE classifier |
+| ScubaGear upstream tracking | ✅ Shipped PR [#174](https://github.com/WhalerMike/uiao/pull/174) — weekly tracker + golden-fixture consistency gate |
+| PIM-for-Groups gap (ScubaGear #2072) | ✅ Shipped PR [#175](https://github.com/WhalerMike/uiao/pull/175) — GAP-ENT-001 + supplemental DRIFT-AUTHZ classifier |
+| Pathway-1 BIR migration gates | ✅ Shipped PR [#176](https://github.com/WhalerMike/uiao/pull/176) — reserved stubs + readiness check wired into `conmon-aggregate.yml` |
+| Connect.gov POA&M submission | 🟡 **Design draft** [e1-connect-gov-design.md](uiao-rfc-0026-e1-connect-gov-design.md) — awaiting upload-mechanics confirmation |
+| Multi-agency distribution layer | 🟡 **Design draft** [e5-multi-agency-design.md](uiao-rfc-0026-e5-multi-agency-design.md) — awaiting schema review |
+| Scan redaction pipeline | 🟡 **Draft ADR** [e7-scan-redaction-adr-draft.md](uiao-rfc-0026-e7-scan-redaction-adr-draft.md) — awaiting profile sign-off |
 
 ---
 
@@ -56,6 +56,7 @@ This roadmap sequences eight enhancements by enforcement-clock risk × implement
 ### E1 · Connect.gov POA&M submission automation · UIAO_132 Open Item O1
 **Target:** 2026-10-31 (60-day buffer before enforcement)
 **Risk:** Missing a monthly upload after 2027-01-01 triggers strike 1 even if evidence was generated.
+**Design draft:** [docs/docs/uiao-rfc-0026-e1-connect-gov-design.md](uiao-rfc-0026-e1-connect-gov-design.md) — enumerates three backend shapes (REST / SFTP / portal-only) with fall-back recommendation if upload mechanics aren't confirmed by 2026-09-01.
 **Tasks:**
 - [ ] T1.1 — Confirm Connect.gov upload API (REST vs SFTP; auth scheme; endpoint)
 - [ ] T1.2 — Build `conmon-submit-poam` workflow as post-step of `conmon-aggregate.yml`
@@ -67,6 +68,7 @@ This roadmap sequences eight enhancements by enforcement-clock risk × implement
 ### E5 · Multi-agency artifact distribution layer
 **Target:** 2026-11-30
 **Risk:** RFC-0026 requires demonstrable distribution to *all* agency customers; today there's no mechanism to enumerate agencies or record distribution events.
+**Design draft:** [docs/docs/uiao-rfc-0026-e5-multi-agency-design.md](uiao-rfc-0026-e5-multi-agency-design.md) — proposed `agency-customer-registry.yaml` schema, distribution-receipt format (HMAC-SHA256 signed, chained to evidence pack), and `conmon-aggregate.yml` integration point.
 **Tasks:**
 - [ ] T5.1 — New canon file `agency-customer-registry.yaml` (pattern: `adapter-registry.yaml`)
 - [ ] T5.2 — Schema: agency-id, ConMon contact, delivery channel (Connect.gov folder / email / OSCAL feed), ATO date, ConMon agreement date
@@ -79,7 +81,7 @@ This roadmap sequences eight enhancements by enforcement-clock risk × implement
 
 ## Tier 2 — Before Qwilfish ships (2026-06-30)
 
-### E3 · OPA version pre-flight in ScubaGear adapter *(IN PROGRESS)*
+### E3 · OPA version pre-flight in ScubaGear adapter *(SHIPPED in PR #171 + #173)*
 **Target:** 2026-05-15
 **Risk:** OPA version skew in upstream ScubaGear runs silently corrupts UIAO drift detection inputs; ScubaGear #2075 will expose the version field once Qwilfish ships, and UIAO needs to consume it on day one.
 **Tasks:**
@@ -148,9 +150,10 @@ This roadmap sequences eight enhancements by enforcement-clock risk × implement
 
 ## Tier 5 — Needs design before code
 
-### E7 · Scan redaction pipeline *(Design pending — ADR required)*
+### E7 · Scan redaction pipeline *(Draft ADR pending canon promotion)*
 **Target:** 2026-09-30 (draft ADR) / 2026-12-31 (implementation)
 **Risk:** RFC-0026 traditional pathway (UIAO's path per ADR-043) requires monthly distribution of OS/DB/web/container scans to all agency customers; raw unredacted scans in a GCC Moderate tenant are operationally impractical and broaden attack surface (CSP-AB / cb-axon thread).
+**Draft ADR:** [docs/docs/uiao-rfc-0026-e7-scan-redaction-adr-draft.md](uiao-rfc-0026-e7-scan-redaction-adr-draft.md) — proposed ADR-045; two-tier evidence storage (raw 3PAO-only + redacted agency-distribution), redaction-profile field allow/deny lists, pipeline-stage redactor design.
 **Tasks:**
 - [ ] T7.1 — Draft new ADR: *Scan artifact redaction policy for multi-agency distribution*
 - [ ] T7.2 — Define redaction profile — preserve: risk level, control family, CSP tracking ID, finding state; remove: plugin IDs, CVE identifiers, exploit path details
