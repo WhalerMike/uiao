@@ -31,12 +31,13 @@ What ADR-032 did **not** update:
    paths was retired.
 2. **UIAO_201 Workspace Contract** (`src/uiao/canon/workspace-contract.yaml`)
    had the same three modules, `build_outputs.impl_dist`, and a
-   `canon_consumer_rule` pointer to `impl/.claude/rules/canon-consumer.md`
-   (file retired with `impl/`).
+   `canon_consumer_rule` pointer to the retired `impl/.claude/rules/`
+   canon-consumer rule file (superseded by `src/uiao/rules/canon-consumer.md`).
 3. **Workspace-contract schema** (`src/uiao/schemas/workspace-contract/
    workspace-contract.schema.json`) hardcoded
-   `module_paths.required: [core, docs, impl]` and
-   `canon_consumer_rule.const: "impl/.claude/rules/canon-consumer.md"`,
+   `module_paths.required: [core, docs, impl]` and pinned
+   `canon_consumer_rule.const` to a path under the retired `impl/`
+   tree's hidden `.claude/rules/` directory,
    making any contract update fail schema validation.
 4. **Substrate walker** (`src/uiao/substrate/walker.py`) resolved the
    manifest, contract, and registry under `core/canon/*`, and the
