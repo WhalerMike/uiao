@@ -363,3 +363,199 @@ def test_search_no_query_no_filters_is_error_in_cli(search_tool, capsys, monkeyp
     monkeypatch.setattr(sys, "argv", ["image_registry_search.py"])
     rc = search_tool.main()
     assert rc == 2
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Registry audit — surfaces missing reuse metadata per entry
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_audit_entry_reports_all_missing_when_minimal(search_tool):
+    minimal = _sample_entry()  # no reuse metadata populated
+    report = search_tool.audit_entry(minimal)
+    assert report["complete"] is False
+    assert set(report["populated"]) == set()
+    assert set(report["missing"]) == set(search_tool.REUSE_METADATA_FIELDS)
+    assert report["coverage"] == "0/8"
+
+
+def test_audit_entry_reports_all_populated_when_rich(search_tool):
+    rich = _sample_entry(
+        tags=["drift"],
+        audience=["executive"],
+        document_types=["executive-brief"],
+        visual_style="schematic",
+        themes=["drift detection"],
+        keywords=["Gemini"],
+        alt_text="A diagram",
+        caption="Figure 1",
+    )
+    report = search_tool.audit_entry(rich)
+    assert report["complete"] is True
+    assert report["missing"] == []
+    assert report["coverage"] == "8/8"
+
+
+def test_audit_entry_empty_list_counts_as_missing(search_tool):
+    entry = _sample_entry(
+        tags=[],  # present but empty — not "populated"
+        audience=["executive"],
+        document_types=["whitepaper"],
+        visual_style="",
+        themes=["x"],
+        keywords=["y"],
+        alt_text="alt",
+        caption="cap",
+    )
+    report = search_tool.audit_entry(entry)
+    assert "tags" in report["missing"]
+    assert "visual_style" in report["missing"]
+    assert report["complete"] is False
+
+
+def test_audit_registry_sorts_worst_coverage_first(search_tool):
+    full = _sample_entry(
+        id="UIAO-FIG-100",
+        tags=["a"],
+        audience=["executive"],
+        document_types=["whitepaper"],
+        visual_style="schematic",
+        themes=["b"],
+        keywords=["c"],
+        alt_text="d",
+        caption="e",
+    )
+    empty = _sample_entry(id="UIAO-FIG-101")  # no reuse metadata at all
+    data = _registry_data(full, empty)
+    reports = search_tool.audit_registry(data)
+    # Worst first.
+    assert reports[0]["id"] == "UIAO-FIG-101"
+    assert reports[1]["id"] == "UIAO-FIG-100"
+
+
+def test_audit_registry_status_filter(search_tool):
+    current = _sample_entry(id="UIAO-FIG-110", status="current")
+    draft = _sample_entry(id="UIAO-FIG-111", status="draft")
+    data = _registry_data(current, draft)
+    reports = search_tool.audit_registry(data, status_filter="draft")
+    assert [r["id"] for r in reports] == ["UIAO-FIG-111"]
+
+
+def test_is_populated(search_tool):
+    assert search_tool._is_populated("text")
+    assert not search_tool._is_populated("")
+    assert not search_tool._is_populated("   ")
+    assert search_tool._is_populated(["a"])
+    assert not search_tool._is_populated([])
+    assert not search_tool._is_populated(None)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Top-level manifest aggregator
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_manifest_has_expected_top_level_keys(generator):
+    manifest = generator.build_manifest([], [])
+    assert manifest["schema_version"] == generator.MANIFEST_SCHEMA_VERSION
+    assert "generated_at" in manifest
+    assert manifest["registry"]["total_entries"] == 0
+    assert manifest["doc_local"] == []
+    assert manifest["canon_refs"] == []
+    assert manifest["stats"]["doc_local_count"] == 0
+    assert manifest["stats"]["canon_refs_count"] == 0
+
+
+def test_manifest_registry_status_breakdown(generator):
+    e1 = generator.RegistryEntry(
+        id="UIAO-FIG-200", slug="a", status="current",
+        prompt_file=Path("/x"), file=Path("/x"),
+        prompt_sha256="a" * 64, file_sha256="b" * 64,
+        version="1.0", generator="g", used_by=[],
+    )
+    e2 = generator.RegistryEntry(
+        id="UIAO-FIG-201", slug="b", status="draft",
+        prompt_file=Path("/x"), file=Path("/x"),
+        prompt_sha256="c" * 64, file_sha256="d" * 64,
+        version="1.0", generator="g", used_by=[],
+    )
+    manifest = generator.build_manifest([e1, e2], [])
+    assert manifest["registry"]["total_entries"] == 2
+    assert manifest["registry"]["by_status"] == {"current": 1, "draft": 1}
+
+
+def test_manifest_resolves_canon_refs(generator, tmp_path):
+    doc = tmp_path / "doc.qmd"
+    doc.write_text("[IMAGE-REF: UIAO-FIG-300]\n", encoding="utf-8")
+    entry = generator.RegistryEntry(
+        id="UIAO-FIG-300", slug="s", status="current",
+        prompt_file=Path("/x"), file=Path("/x/canonical.png"),
+        prompt_sha256="a" * 64, file_sha256="b" * 64,
+        version="1.0", generator="g", used_by=[],
+    )
+    ref = generator.CanonRefPlaceholder(
+        document=doc, canon_id="UIAO-FIG-300", line_number=1,
+    )
+    manifest = generator.build_manifest([entry], [ref])
+    assert manifest["stats"]["canon_refs_count"] == 1
+    assert manifest["canon_refs"][0]["canon_id"] == "UIAO-FIG-300"
+    assert manifest["canon_refs"][0]["status"] == "current"
+    assert manifest["stats"]["unique_canon_images_referenced"] == 1
+    assert manifest["stats"]["canon_refs_missing_count"] == 0
+
+
+def test_manifest_flags_missing_canon_refs(generator, tmp_path):
+    doc = tmp_path / "doc.qmd"
+    doc.write_text("[IMAGE-REF: UIAO-FIG-404]\n", encoding="utf-8")
+    ref = generator.CanonRefPlaceholder(
+        document=doc, canon_id="UIAO-FIG-404", line_number=1,
+    )
+    manifest = generator.build_manifest([], [ref])
+    assert manifest["canon_refs"][0]["status"] == "missing"
+    assert manifest["stats"]["canon_refs_missing_count"] == 1
+
+
+def test_manifest_doc_local_picks_up_sidecars(generator, tmp_path, monkeypatch):
+    """Sidecars on disk must roll into manifest.doc_local."""
+    image_dir = tmp_path / "images"
+    image_dir.mkdir()
+    sidecar = image_dir / "sample.png.json"
+    payload = {
+        "document": "docs/customer-documents/executive-briefs/x.md",
+        "placeholder_id": "IMAGE-03",
+        "canonical_id": None,
+        "slug": "sample",
+        "prompt_sha256": "a" * 64,
+        "generator": "gemini-2.5-flash-image",
+        "generated_at": "2026-04-23T10:00:00Z",
+        "sha256": "b" * 64,
+        "version": "1.0",
+        "aspect": "16:9",
+        "used_by": [],
+    }
+    sidecar.write_text(json.dumps(payload), encoding="utf-8")
+    # Also write the PNG stub so build_manifest sees a valid pair.
+    (image_dir / "sample.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+
+    monkeypatch.setattr(generator, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(generator, "CANONICAL_OUTPUT_DIR", image_dir)
+    # Point the scanner at our tmp dir.
+    monkeypatch.setattr(
+        generator, "_iter_sidecars", lambda: [sidecar],
+    )
+
+    manifest = generator.build_manifest([], [])
+    assert len(manifest["doc_local"]) == 1
+    entry = manifest["doc_local"][0]
+    assert entry["placeholder_id"] == "IMAGE-03"
+    assert entry["prompt_sha256"] == "a" * 64
+    assert entry["sha256"] == "b" * 64
+
+
+def test_write_manifest_produces_valid_json(generator, tmp_path):
+    target = tmp_path / "out" / "manifest.json"
+    manifest = generator.build_manifest([], [])
+    result_path = generator.write_manifest(manifest, target)
+    assert result_path == target
+    roundtrip = json.loads(target.read_text(encoding="utf-8"))
+    assert roundtrip["schema_version"] == generator.MANIFEST_SCHEMA_VERSION

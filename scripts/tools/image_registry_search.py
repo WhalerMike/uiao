@@ -70,6 +70,20 @@ FIELD_WEIGHTS = {
     "alt_text": 1,
 }
 
+# Reuse-metadata fields — the optional-but-recommended additions added
+# in the registry schema for maximum reuse. An entry is "reuse-complete"
+# when every one of these carries a non-empty value.
+REUSE_METADATA_FIELDS = (
+    "tags",
+    "audience",
+    "document_types",
+    "visual_style",
+    "themes",
+    "keywords",
+    "alt_text",
+    "caption",
+)
+
 
 @dataclass(frozen=True)
 class Match:
@@ -196,6 +210,61 @@ def show_entry(data: dict[str, Any], image_id: str) -> int:
     return 1
 
 
+def _is_populated(value: Any) -> bool:
+    """A field counts as populated if it is non-empty (string / list / etc)."""
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple, set, dict)):
+        return len(value) > 0
+    return True
+
+
+def audit_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    """Report which reuse-metadata fields are populated vs missing."""
+    populated = [f for f in REUSE_METADATA_FIELDS if _is_populated(entry.get(f))]
+    missing = [f for f in REUSE_METADATA_FIELDS if f not in populated]
+    return {
+        "id": entry.get("id"),
+        "title": entry.get("title"),
+        "status": entry.get("status"),
+        "populated": populated,
+        "missing": missing,
+        "complete": len(missing) == 0,
+        "coverage": f"{len(populated)}/{len(REUSE_METADATA_FIELDS)}",
+    }
+
+
+def audit_registry(data: dict[str, Any], status_filter: str | None = None) -> list[dict[str, Any]]:
+    """Audit every entry (optionally filtered by status) for reuse-metadata coverage."""
+    reports: list[dict[str, Any]] = []
+    for entry in data.get("images", []):
+        if status_filter and entry.get("status") != status_filter:
+            continue
+        reports.append(audit_entry(entry))
+    # Sort worst-coverage first so authoring attention lands where it's needed.
+    reports.sort(key=lambda r: (len(r["populated"]), r["id"] or ""))
+    return reports
+
+
+def format_audit_text(reports: list[dict[str, Any]]) -> str:
+    if not reports:
+        return "(no entries to audit)"
+    lines: list[str] = []
+    complete = sum(1 for r in reports if r["complete"])
+    lines.append(
+        f"Reuse-metadata audit — {complete}/{len(reports)} entries are reuse-complete"
+    )
+    lines.append("")
+    for r in reports:
+        flag = "OK " if r["complete"] else "GAP"
+        lines.append(f"[{flag}] {r['id']}  {r['title'] or '(untitled)'}  coverage={r['coverage']}")
+        if r["missing"]:
+            lines.append(f"      missing: {', '.join(r['missing'])}")
+    return "\n".join(lines)
+
+
 def main() -> int:
     p = argparse.ArgumentParser(
         description="Search the UIAO canonical image registry for reusable images.",
@@ -208,6 +277,11 @@ def main() -> int:
     p.add_argument("--status", default="current", help="Filter by status (default: current)")
     p.add_argument("--list", action="store_true", help="List all entries (no query required)")
     p.add_argument("--show", metavar="UIAO-FIG-NNN", help="Print full YAML for one entry")
+    p.add_argument(
+        "--audit",
+        action="store_true",
+        help="Report reuse-metadata coverage per entry (missing tags/audience/etc.)",
+    )
     p.add_argument("--json", action="store_true", help="Machine-readable JSON output")
     p.add_argument("-v", "--verbose", action="store_true", help="Include descriptions, tags, refs")
     p.add_argument(
@@ -223,9 +297,20 @@ def main() -> int:
     if args.show:
         return show_entry(data, args.show)
 
+    if args.audit:
+        status_filter = None if args.status == "any" else args.status
+        reports = audit_registry(data, status_filter=status_filter)
+        if args.json:
+            print(json.dumps(reports, indent=2))
+        else:
+            print(format_audit_text(reports))
+        # Exit 0 if everything passes; 1 if any entry has gaps (so CI can gate).
+        any_gap = any(not r["complete"] for r in reports)
+        return 1 if any_gap else 0
+
     if not args.list and not args.query:
         p.print_usage(sys.stderr)
-        print("\nSupply a query, or pass --list / --show.", file=sys.stderr)
+        print("\nSupply a query, or pass --list / --show / --audit.", file=sys.stderr)
         return 2
 
     # --list collapses to no-query search with default status filter.

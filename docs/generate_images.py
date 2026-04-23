@@ -66,6 +66,8 @@ LEGACY_OUTPUT_DIR = SCRIPT_DIR / "images"
 CANONICAL_OUTPUT_DIR = SCRIPT_DIR / "images" / "canonical"
 CANON_REGISTRY = REPO_ROOT / "src" / "uiao" / "canon" / "image-registry.yaml"
 CANON_PROMPTS_DIR = REPO_ROOT / "src" / "uiao" / "canon" / "image-prompts"
+MANIFEST_PATH = SCRIPT_DIR / "images" / ".image-manifest.json"
+MANIFEST_SCHEMA_VERSION = "1.0.0"
 MODEL = "gemini-2.5-flash-image"
 DELAY_SECONDS = 2.0
 SCAN_ROOTS = [
@@ -740,6 +742,9 @@ def main() -> int:
 
     # Short-circuit modes that don't generate
     if args.scan_only:
+        manifest = build_manifest(entries, refs)
+        write_manifest(manifest)
+        print(f"\nManifest written to {_repo_rel(MANIFEST_PATH)}")
         _print_report(report)
         return 0 if not report.canon_refs_missing else 1
 
@@ -779,8 +784,147 @@ def main() -> int:
         save_registry(registry_doc, entries)
         print(f"\nRegistry updated: {report.registry_used_by_updates} used_by addition(s).")
 
+    # Always rebuild the manifest at the end — cheap, deterministic,
+    # and gives downstream consumers (editors, LFS audit, render) one
+    # authoritative file to consult.
+    manifest = build_manifest(entries, refs)
+    write_manifest(manifest)
+    print(f"\nManifest written to {_repo_rel(MANIFEST_PATH)}")
+
     _print_report(report)
     return 0 if report.doc_local_failed == 0 and not report.canon_refs_missing else 1
+
+
+# ──────────────────────────────────────────────────────────────
+# Top-level manifest. Aggregates every sidecar on disk plus the
+# canon-ref resolution from this run into one discoverable JSON
+# document at docs/images/.image-manifest.json. Consumers: editor
+# integrations, LFS audits, the Quarto render pipeline.
+# ──────────────────────────────────────────────────────────────
+def _repo_rel(path: Path) -> str:
+    """Best-effort repo-relative path (POSIX separators) for stable output."""
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT)).replace("\\", "/")
+    except ValueError:
+        return str(path).replace("\\", "/")
+
+
+def _iter_sidecars() -> list[Path]:
+    """Find every *.png.json sidecar under the scanned doc trees
+    plus the canonical image directory. Stable-sorted output."""
+    roots = [REPO_ROOT / "docs", CANONICAL_OUTPUT_DIR]
+    seen: set[Path] = set()
+    for root in roots:
+        if not root.exists():
+            continue
+        for p in root.rglob("*.png.json"):
+            if _is_excluded(p):
+                continue
+            resolved = p.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+    return sorted(seen)
+
+
+def _read_sidecar(path: Path) -> dict | None:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def build_manifest(
+    registry_entries: list[RegistryEntry],
+    canon_refs: list[CanonRefPlaceholder],
+) -> dict:
+    """Assemble the top-level manifest document.
+
+    The manifest is a pure aggregation — running it repeatedly produces
+    the same output given the same on-disk state. It never calls an API.
+    """
+    # Doc-local entries come from sidecar files on disk.
+    doc_local: list[dict] = []
+    for sidecar_path in _iter_sidecars():
+        payload = _read_sidecar(sidecar_path)
+        if not payload:
+            continue
+        image_path = sidecar_path.with_suffix("")
+        if image_path.suffix != ".png":
+            continue
+        doc_local.append(
+            {
+                "document": payload.get("document"),
+                "placeholder_id": payload.get("placeholder_id"),
+                "canonical_id": payload.get("canonical_id"),
+                "image_file": _repo_rel(image_path),
+                "sidecar": _repo_rel(sidecar_path),
+                "prompt_sha256": payload.get("prompt_sha256"),
+                "sha256": payload.get("sha256"),
+                "generator": payload.get("generator"),
+                "generated_at": payload.get("generated_at"),
+                "version": payload.get("version"),
+                "aspect": payload.get("aspect"),
+            }
+        )
+
+    # Canon-ref entries come from the current scan (they're cross-document
+    # links, not disk artifacts).
+    refs_by_id: dict[str, RegistryEntry] = {e.id: e for e in registry_entries}
+    canon_entries: list[dict] = []
+    for ref in canon_refs:
+        entry = refs_by_id.get(ref.canon_id)
+        canon_entries.append(
+            {
+                "document": _repo_rel(ref.document),
+                "placeholder_id": f"IMAGE-REF:{ref.canon_id}",
+                "canon_id": ref.canon_id,
+                "file": _repo_rel(entry.file) if entry else None,
+                "status": entry.status if entry else "missing",
+                "line_number": ref.line_number,
+            }
+        )
+
+    # Registry snapshot — small, cheap, and lets consumers verify canon
+    # state without re-parsing the YAML.
+    status_counts: dict[str, int] = {}
+    for e in registry_entries:
+        status_counts[e.status] = status_counts.get(e.status, 0) + 1
+
+    unique_canon = sorted({c["canon_id"] for c in canon_entries if c["canon_id"]})
+    return {
+        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "generated_at": _now_iso_utc(),
+        "registry": {
+            "path": _repo_rel(CANON_REGISTRY),
+            "total_entries": len(registry_entries),
+            "by_status": dict(sorted(status_counts.items())),
+        },
+        "doc_local": sorted(
+            doc_local,
+            key=lambda d: (d.get("document") or "", d.get("placeholder_id") or ""),
+        ),
+        "canon_refs": sorted(
+            canon_entries,
+            key=lambda d: (d.get("document") or "", d.get("line_number") or 0),
+        ),
+        "stats": {
+            "doc_local_count": len(doc_local),
+            "canon_refs_count": len(canon_entries),
+            "unique_canon_images_referenced": len(unique_canon),
+            "canon_refs_missing_count": sum(
+                1 for c in canon_entries if c["status"] == "missing"
+            ),
+        },
+    }
+
+
+def write_manifest(manifest: dict, path: Path = MANIFEST_PATH) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2, sort_keys=False)
+        f.write("\n")
+    return path
 
 
 def _print_report(report: RunReport) -> None:
