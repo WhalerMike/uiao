@@ -64,14 +64,14 @@ REPO_ROOT = Path(os.environ.get("UIAO_REPO_ROOT") or SCRIPT_DIR.parent)
 PROMPTS_FILE = SCRIPT_DIR / "prompts.json"
 LEGACY_OUTPUT_DIR = SCRIPT_DIR / "images"
 CANONICAL_OUTPUT_DIR = SCRIPT_DIR / "images" / "canonical"
-CANON_REGISTRY = REPO_ROOT / "core" / "canon" / "image-registry.yaml"
-CANON_PROMPTS_DIR = REPO_ROOT / "core" / "canon" / "image-prompts"
+CANON_REGISTRY = REPO_ROOT / "src" / "uiao" / "canon" / "image-registry.yaml"
+CANON_PROMPTS_DIR = REPO_ROOT / "src" / "uiao" / "canon" / "image-prompts"
 MODEL = "gemini-2.5-flash-image"
 DELAY_SECONDS = 2.0
 SCAN_ROOTS = [
     REPO_ROOT / "docs",
-    REPO_ROOT / "core" / "canon" / "specs",
-    REPO_ROOT / "core" / "canon" / "adr",
+    REPO_ROOT / "src" / "uiao" / "canon" / "specs",
+    REPO_ROOT / "src" / "uiao" / "canon" / "adr",
 ]
 SCAN_EXTS = (".qmd", ".md")
 EXCLUDE_PATH_PARTS = {
@@ -135,7 +135,7 @@ class CanonRefPlaceholder:
 
 @dataclass
 class RegistryEntry:
-    """Mutable view of one entry from core/canon/image-registry.yaml."""
+    """Mutable view of one entry from src/uiao/canon/image-registry.yaml."""
 
     id: str
     slug: str
@@ -202,7 +202,7 @@ def _now_iso_utc() -> str:
 
 
 # ──────────────────────────────────────────────────────────────
-# Registry loader / writer. Operates on core/canon/image-registry.yaml.
+# Registry loader / writer. Operates on src/uiao/canon/image-registry.yaml.
 # The `raw` dict on each RegistryEntry preserves original field
 # ordering so re-emit doesn't shuffle the file.
 # ──────────────────────────────────────────────────────────────
@@ -216,7 +216,7 @@ def _require_yaml() -> None:
 
 
 def load_registry() -> tuple[dict, list[RegistryEntry]]:
-    """Read core/canon/image-registry.yaml.
+    """Read src/uiao/canon/image-registry.yaml.
 
     Returns ({}, []) if the registry is absent or has an empty `images:`
     list. That's the normal initial state after X1a merged.
