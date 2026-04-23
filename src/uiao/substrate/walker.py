@@ -5,9 +5,8 @@ canon document registry to detect structural and provenance drift.
 Drift classes reported (per docs/docs/16_DriftDetectionStandard.qmd):
   DRIFT-SCHEMA      — declared module path or registry path does not exist
   DRIFT-PROVENANCE  — canon document referenced by the registry is missing,
-                      OR a canon document cites an impl/ path that does not
-                      exist (e.g., UIAO_106 claims `impl/src/.../cli/app.py`
-                      ships but the file is absent).
+                      OR a canon document cites a code path under src/uiao/
+                      (or the retired impl/ prefix) that does not resolve.
 
 Resolution order for the workspace root:
   1. Explicit `workspace_root` argument
@@ -26,20 +25,25 @@ from typing import Optional
 
 import yaml
 
-SUBSTRATE_MANIFEST = "core/canon/substrate-manifest.yaml"
-WORKSPACE_CONTRACT = "core/canon/workspace-contract.yaml"
-DOCUMENT_REGISTRY = "core/canon/document-registry.yaml"
+SUBSTRATE_MANIFEST = "src/uiao/canon/substrate-manifest.yaml"
+WORKSPACE_CONTRACT = "src/uiao/canon/workspace-contract.yaml"
+DOCUMENT_REGISTRY = "src/uiao/canon/document-registry.yaml"
 
-# document-registry paths are core-relative by convention; resolve under core/
-DOCUMENT_REGISTRY_BASE = "core"
+# Paths inside document-registry.yaml are workspace-relative (e.g.
+# `src/uiao/canon/UIAO-SSOT.md`), so the resolve base is the workspace root.
+DOCUMENT_REGISTRY_BASE = "."
 
-# Canon-to-impl provenance scan: match references in canon prose to paths
-# under impl/ with a recognized file extension. Matches bare paths in code
-# blocks, inline code, markdown links, and plain prose. Trailing punctuation
-# (comma, period, closing brace/paren/bracket) is trimmed on resolve.
-CANON_ROOT = "core/canon"
-IMPL_REF_PATTERN = re.compile(
-    r"\bimpl/[\w./\-]+\.(?:py|md|yaml|yml|json|toml|lua|sh|ini|cfg)\b"
+# Canon-to-code provenance scan: match references in canon prose to code
+# paths with a recognized file extension. Two prefixes are tracked:
+#   - `src/uiao/`     — current canonical package layout (post-ADR-032)
+#   - `impl/`         — retired pre-ADR-032 prefix; any surviving citation
+#                       is by definition dangling and should be flagged
+#                       until the narrative is cleaned up.
+# Trailing punctuation is trimmed by the finditer output via the pattern
+# boundaries.
+CANON_ROOT = "src/uiao/canon"
+CODE_REF_PATTERN = re.compile(
+    r"\b(?:src/uiao|impl)/[\w./\-]+\.(?:py|md|yaml|yml|json|toml|lua|sh|ini|cfg)\b"
 )
 
 
@@ -58,7 +62,7 @@ class SubstrateReport:
     contract_present: bool
     modules_checked: int = 0
     documents_checked: int = 0
-    impl_refs_checked: int = 0
+    code_refs_checked: int = 0
     findings: list[DriftFinding] = field(default_factory=list)
 
     @property
@@ -86,7 +90,7 @@ class SubstrateReport:
             "contract_present": self.contract_present,
             "modules_checked": self.modules_checked,
             "documents_checked": self.documents_checked,
-            "impl_refs_checked": self.impl_refs_checked,
+            "code_refs_checked": self.code_refs_checked,
             "ok": self.ok,
             "blocking": self.blocking,
             "findings": [
@@ -203,31 +207,32 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
                     DriftFinding(
                         drift_class="DRIFT-PROVENANCE",
                         severity="P1",
-                        path=f"{DOCUMENT_REGISTRY_BASE}/{doc_path}",
+                        path=doc_path,
                         detail=f"canon document {doc['id']} referenced by document-registry is missing",
                     )
                 )
 
-    _scan_canon_impl_refs(root, report)
+    _scan_canon_code_refs(root, report)
 
     return report
 
 
-def _scan_canon_impl_refs(root: Path, report: SubstrateReport) -> None:
-    """Scan canon .md files for references to impl/ paths; emit
-    DRIFT-PROVENANCE for any cited path that does not resolve.
+def _scan_canon_code_refs(root: Path, report: SubstrateReport) -> None:
+    """Scan canon .md files for references to code paths under `src/uiao/`
+    (current) or the retired `impl/` prefix; emit DRIFT-PROVENANCE for any
+    cited path that does not resolve.
 
-    Severity P2. A missing impl path is a spec/impl drift warning — the
+    Severity P2. A missing code path is a spec/impl drift warning — the
     substrate still loads and serves, but a canon document claims an
     implementation exists where it does not. This is the inverse of a
     DRIFT-PROVENANCE on the document registry: there the registry points
-    at a missing canon doc; here a canon doc points at missing impl.
+    at a missing canon doc; here a canon doc points at missing code.
     """
     canon_dir = root / CANON_ROOT
     if not canon_dir.is_dir():
         return
 
-    # Track unique (canon_file, impl_path) pairs so the same dangling
+    # Track unique (canon_file, code_path) pairs so the same dangling
     # reference inside the same file is reported once, but distinct files
     # citing the same dangling path each report.
     seen: set[tuple[str, str]] = set()
@@ -238,23 +243,23 @@ def _scan_canon_impl_refs(root: Path, report: SubstrateReport) -> None:
         except (OSError, UnicodeDecodeError):
             continue
 
-        for match in IMPL_REF_PATTERN.finditer(text):
-            impl_rel = match.group(0)
-            report.impl_refs_checked += 1
+        for match in CODE_REF_PATTERN.finditer(text):
+            code_rel = match.group(0)
+            report.code_refs_checked += 1
             canon_rel = md_file.relative_to(root).as_posix()
-            key = (canon_rel, impl_rel)
+            key = (canon_rel, code_rel)
             if key in seen:
                 continue
             seen.add(key)
-            if not (root / impl_rel).exists():
+            if not (root / code_rel).exists():
                 report.findings.append(
                     DriftFinding(
                         drift_class="DRIFT-PROVENANCE",
                         severity="P2",
-                        path=impl_rel,
+                        path=code_rel,
                         detail=(
-                            f"canon document {canon_rel} cites impl path "
-                            f"{impl_rel} which does not exist"
+                            f"canon document {canon_rel} cites code path "
+                            f"{code_rel} which does not exist"
                         ),
                     )
                 )
