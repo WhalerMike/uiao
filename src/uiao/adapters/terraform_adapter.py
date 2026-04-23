@@ -109,9 +109,7 @@ class TerraformAdapter(DatabaseAdapterBase):
             canonical_schema=canonical_schema,
             mapping_rules=mapping_rules,
             unmapped_fields=["dependencies", "meta", "terraform_version"],
-            version_hash=self._hash(
-                {"vendor": vendor_schema, "canonical": canonical_schema}
-            ),
+            version_hash=self._hash({"vendor": vendor_schema, "canonical": canonical_schema}),
         )
 
     # ------------------------------------------------------------------
@@ -184,8 +182,7 @@ class TerraformAdapter(DatabaseAdapterBase):
                 "workspace": self._workspace,
             },
             remediation=(
-                "Run detect_terraform_drift() with live_claims, tf_state, "
-                "and tf_config for full three-way analysis."
+                "Run detect_terraform_drift() with live_claims, tf_state, and tf_config for full three-way analysis."
             ),
         )
 
@@ -414,6 +411,7 @@ class TerraformAdapter(DatabaseAdapterBase):
         normalized = None
         if state_snapshot:
             from .terraform_parser import parse_tfstate
+
             try:
                 resources = parse_tfstate(state_snapshot)
                 managed = [r for r in resources if r.get("mode") == "managed"]

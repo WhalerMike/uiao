@@ -220,4 +220,3 @@ class TestOverlayIntegration:
         assert planes["network"]["subtitle"] == "SD-WAN Platform"
         # Without infoblox overlay, addressing subtitle should be generic
         assert planes["addressing"]["subtitle"] == "IPAM Platform"
-

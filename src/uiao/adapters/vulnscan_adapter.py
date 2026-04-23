@@ -105,9 +105,7 @@ class VulnScanAdapter(DatabaseAdapterBase):
             canonical_schema=canonical_schema,
             mapping_rules=mapping_rules,
             unmapped_fields=["plugin_id", "plugin_family", "solution"],
-            version_hash=self._hash(
-                {"vendor": vendor_schema, "canonical": canonical_schema}
-            ),
+            version_hash=self._hash({"vendor": vendor_schema, "canonical": canonical_schema}),
         )
 
     # ------------------------------------------------------------------
@@ -119,8 +117,7 @@ class VulnScanAdapter(DatabaseAdapterBase):
         severity_filter = canonical_query.get("severity", "critical,high")
         asset_filter = canonical_query.get("from", "*")
         vendor_query = (
-            f"GET /api/v1/findings?severity={severity_filter}"
-            f"&asset={asset_filter}&policy={self._scan_policy}"
+            f"GET /api/v1/findings?severity={severity_filter}&asset={asset_filter}&policy={self._scan_policy}"
         )
         return QueryProvenance(
             canonical_query=canonical_query,

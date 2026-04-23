@@ -29,13 +29,15 @@ def _load(name: str) -> dict:
 
 @pytest.fixture
 def adapter() -> BlueCatAdapter:
-    return BlueCatAdapter({
-        "bam_host": "bam01.agency.com",
-        "configuration": "prod",
-        "_dns-records_json": _load("bluecat-host-records.json"),
-        "_dhcp-scopes_json": _load("bluecat-dhcp-ranges.json"),
-        "_ip-allocations_json": _load("bluecat-ip-addresses.json"),
-    })
+    return BlueCatAdapter(
+        {
+            "bam_host": "bam01.agency.com",
+            "configuration": "prod",
+            "_dns-records_json": _load("bluecat-host-records.json"),
+            "_dhcp-scopes_json": _load("bluecat-dhcp-ranges.json"),
+            "_ip-allocations_json": _load("bluecat-ip-addresses.json"),
+        }
+    )
 
 
 class TestBlueCatToOscal:
@@ -96,9 +98,7 @@ class TestBlueCatToOscal:
 
     def test_dns_change_drift_in_bundle(self, adapter: BlueCatAdapter) -> None:
         claims = adapter.get_all_objects(scope="dns-records")
-        drift = adapter.push_dns_change(
-            "HostRecord", "web01.contoso.gov", {"addresses": "10.9.9.9"}
-        )
+        drift = adapter.push_dns_change("HostRecord", "web01.contoso.gov", {"addresses": "10.9.9.9"})
         bundle = build_adapter_bundle(
             adapter_id="bluecat-address-manager",
             claim_set=claims,

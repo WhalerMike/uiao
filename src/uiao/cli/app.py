@@ -944,8 +944,8 @@ def ir_evidence_bundle(
     out: str = typer.Option("", "--out", "-o", help="Write canonical bundle JSON to file."),
 ) -> None:
     """Build a canonical EvidenceBundle from a SCuBA transform and print summary."""
-    from uiao.evidence.bundle import build_bundle_from_transform_result
     from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
+    from uiao.evidence.bundle import build_bundle_from_transform_result
 
     console.print(f"[bold]Building EvidenceBundle from: {normalized_json}...[/bold]")
     result = transform_scuba_to_ir(normalized_json)
@@ -965,9 +965,9 @@ def ir_poam_export(
     out: str = typer.Option("", "--out", "-o", help="Write POA&M JSON to file."),
 ) -> None:
     """Export POA&M rows (FAIL + WARN only) from a SCuBA run and print summary."""
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.evidence.bundle import build_bundle_from_transform_result
     from uiao.evidence.poam import build_poam, poam_summary, poam_to_json
-    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     console.print(f"[bold]Generating POA&M from: {normalized_json}...[/bold]")
     result = transform_scuba_to_ir(normalized_json)
@@ -1037,10 +1037,10 @@ def ir_governance_report(
     import json as _json
     from pathlib import Path as _Path
 
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.evidence.bundle import build_bundle_from_transform_result
     from uiao.governance.actions import build_governance_actions
     from uiao.governance.report import format_governance_report
-    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     console.print(f"[bold]Running governance pipeline for: {normalized_json}...[/bold]")
     result = transform_scuba_to_ir(normalized_json)
@@ -1080,10 +1080,10 @@ def ir_ssp_report(
     import json as _json
     from pathlib import Path as _Path
 
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.coverage.coverage import build_coverage_links
     from uiao.evidence.bundle import build_bundle_from_transform_result
     from uiao.governance.actions import build_governance_actions
-    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.ssp.lineage import build_lineage_index
     from uiao.ssp.narrative import build_control_narratives, format_ssp_markdown
 
@@ -1131,8 +1131,8 @@ def ir_diff(
     """Diff two SCuBA runs: KSI changes, evidence hash deltas, status changes."""
     from pathlib import Path as _Path
 
-    from uiao.diff.engine import diff_runs, format_diff_json, format_diff_markdown
     from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
+    from uiao.diff.engine import diff_runs, format_diff_json, format_diff_markdown
 
     result_a = transform_scuba_to_ir(run_a)
     result_b = transform_scuba_to_ir(run_b)
@@ -1177,10 +1177,10 @@ def ir_freshness(
     import json as _json
     from pathlib import Path as _Path
 
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.evidence.bundle import build_bundle_from_transform_result
     from uiao.freshness.engine import build_freshness_records, generate_refresh_actions
     from uiao.governance.actions import build_governance_actions
-    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     result = transform_scuba_to_ir(normalized_json)
     bundle = build_bundle_from_transform_result(result)
@@ -1229,10 +1229,10 @@ def ir_dashboard(
     threshold_days: int = typer.Option(30, "--threshold-days", "-t", help="Default freshness threshold in days."),
 ) -> None:
     """Build IR governance dashboard: evidence freshness + governance action summary."""
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.dashboard.ir_dashboard import export_ir_dashboard
     from uiao.evidence.bundle import build_bundle_from_transform_result
     from uiao.governance.actions import build_governance_actions
-    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     result = transform_scuba_to_ir(normalized_json)
     bundle = build_bundle_from_transform_result(result)
@@ -1266,11 +1266,11 @@ def ir_freshness_schedule(
     import json as _json
     from pathlib import Path as _Path
 
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.evidence.bundle import build_bundle_from_transform_result
     from uiao.freshness.engine import build_freshness_records, generate_refresh_actions
     from uiao.freshness.scheduler import build_refresh_schedule, schedule_summary
     from uiao.governance.actions import build_governance_actions
-    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     result = transform_scuba_to_ir(normalized_json)
     bundle = build_bundle_from_transform_result(result)
@@ -1297,9 +1297,9 @@ def ir_generate_sar(
     ap_href: str = typer.Option("", "--ap-href", help="Optional href to Assessment Plan document."),
 ) -> None:
     """Generate an OSCAL Assessment Results (SAR) document from a SCuBA run."""
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.evidence.bundle import build_bundle_from_transform_result
     from uiao.generators.sar import build_sar, build_sar_summary, export_sar
-    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     result = transform_scuba_to_ir(normalized_json)
     bundle = build_bundle_from_transform_result(result)
@@ -1330,9 +1330,9 @@ def ir_ssp_inject(
     import json as _json
     from pathlib import Path as _Path
 
+    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.evidence.bundle import build_bundle_from_transform_result
     from uiao.generators.ssp_inject import build_live_ssp, live_ssp_summary
-    from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 
     kw = {}
     if canon_path:
@@ -1346,7 +1346,6 @@ def ir_ssp_inject(
     bundle = build_bundle_from_transform_result(ir_result)
     console.print(live_ssp_summary(ssp_doc, bundle))
     console.print(f"[green]Live SSP written to {path}[/green]")
-
 
 
 # ---------------------------------------------------------------------------
@@ -1369,8 +1368,5 @@ from uiao.cli.substrate import substrate_app  # noqa: E402
 app.add_typer(substrate_app, name="substrate")
 
 
-
-
 if __name__ == "__main__":
     app()
-

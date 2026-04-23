@@ -232,17 +232,19 @@ def drift_to_poam_findings(
             action_str = "/".join(actions) if actions else "drift"
             changed_fields = list(diff.keys()) if diff else []
 
-            findings.append({
-                "title": f"[{adapter_id}] {action_str}: {addr}",
-                "description": (
-                    f"Adapter {adapter_id} detected {action_str} on resource "
-                    f"{addr}. "
-                    + (f"Changed fields: {', '.join(changed_fields)}. " if changed_fields else "")
-                    + f"Severity: {severity}."
-                ),
-                "risk_level": risk,
-                "related_controls": ctrl_ids,
-            })
+            findings.append(
+                {
+                    "title": f"[{adapter_id}] {action_str}: {addr}",
+                    "description": (
+                        f"Adapter {adapter_id} detected {action_str} on resource "
+                        f"{addr}. "
+                        + (f"Changed fields: {', '.join(changed_fields)}. " if changed_fields else "")
+                        + f"Severity: {severity}."
+                    ),
+                    "risk_level": risk,
+                    "related_controls": ctrl_ids,
+                }
+            )
     else:
         # Aggregate drift (e.g., from baseline comparison)
         comparison = drift.details.get("comparison", {})
@@ -252,29 +254,30 @@ def drift_to_poam_findings(
 
         if nc_count > 0 or missing_count > 0:
             risk = _SEVERITY_TO_RISK.get(drift.severity, "moderate")
-            findings.append({
-                "title": f"[{adapter_id}] Baseline drift: {drift.drift_type}",
-                "description": (
-                    f"Adapter {adapter_id} baseline comparison found "
-                    f"{nc_count} non-compliant setting(s) and "
-                    f"{missing_count} missing setting(s). "
-                    f"Drift type: {drift.drift_type}."
-                ),
-                "risk_level": risk,
-                "related_controls": ctrl_ids,
-            })
+            findings.append(
+                {
+                    "title": f"[{adapter_id}] Baseline drift: {drift.drift_type}",
+                    "description": (
+                        f"Adapter {adapter_id} baseline comparison found "
+                        f"{nc_count} non-compliant setting(s) and "
+                        f"{missing_count} missing setting(s). "
+                        f"Drift type: {drift.drift_type}."
+                    ),
+                    "risk_level": risk,
+                    "related_controls": ctrl_ids,
+                }
+            )
 
         # Non-compliant items as individual findings
         for nc in comparison.get("non_compliant", []):
-            findings.append({
-                "title": f"[{adapter_id}] Non-compliant: {nc.get('key', 'unknown')}",
-                "description": (
-                    f"Expected: {nc.get('expected')}, "
-                    f"Actual: {nc.get('actual')}."
-                ),
-                "risk_level": _SEVERITY_TO_RISK.get(drift.severity, "moderate"),
-                "related_controls": ctrl_ids,
-            })
+            findings.append(
+                {
+                    "title": f"[{adapter_id}] Non-compliant: {nc.get('key', 'unknown')}",
+                    "description": (f"Expected: {nc.get('expected')}, Actual: {nc.get('actual')}."),
+                    "risk_level": _SEVERITY_TO_RISK.get(drift.severity, "moderate"),
+                    "related_controls": ctrl_ids,
+                }
+            )
 
     return findings
 
@@ -334,10 +337,12 @@ def _minimal_ssp_skeleton(
             "system-id": system_id or str(uuid.uuid4()),
             "security-sensitivity-level": "moderate",
             "system-information": {
-                "information-types": [{
-                    "title": "Adapter-assessed infrastructure",
-                    "description": "System components assessed via UIAO adapters.",
-                }],
+                "information-types": [
+                    {
+                        "title": "Adapter-assessed infrastructure",
+                        "description": "System components assessed via UIAO adapters.",
+                    }
+                ],
             },
             "security-impact-level": {
                 "security-objective-confidentiality": "moderate",
@@ -350,12 +355,14 @@ def _minimal_ssp_skeleton(
             },
         },
         "system-implementation": {
-            "components": [{
-                "uuid": str(uuid.uuid4()),
-                "type": "this-system",
-                "title": system_name,
-                "status": {"state": "operational"},
-            }],
+            "components": [
+                {
+                    "uuid": str(uuid.uuid4()),
+                    "type": "this-system",
+                    "title": system_name,
+                    "status": {"state": "operational"},
+                }
+            ],
         },
         "control-implementation": {
             "description": "Controls implemented via UIAO adapter evidence.",
@@ -383,6 +390,7 @@ def inject_adapter_evidence_into_ssp(
         The mutated SSP dict with injected evidence.
     """
     from ..generators.ssp_inject import inject_scuba_evidence
+
     return inject_scuba_evidence(ssp, bundle)
 
 

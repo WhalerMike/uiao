@@ -18,9 +18,7 @@ from uiao.adapters.terraform_adapter import TerraformAdapter
 @pytest.fixture
 def terraform_drift_findings() -> list:
     adapter = TerraformAdapter({"workspace": "prod"})
-    plan = json.loads(
-        (Path(__file__).parent / "fixtures" / "terraform-plan.json").read_text()
-    )
+    plan = json.loads((Path(__file__).parent / "fixtures" / "terraform-plan.json").read_text())
     drift = adapter.consume_terraform_plan(plan)
     return drift_to_poam_findings(drift, "terraform", ["CM-2", "CM-3"])
 
@@ -47,9 +45,7 @@ class TestPoamToChangeRequests:
         assert high_crs[0]["priority"] == "1"
 
     def test_custom_assignee(self, terraform_drift_findings: list) -> None:
-        crs = poam_findings_to_change_requests(
-            terraform_drift_findings, assignee="infra-team"
-        )
+        crs = poam_findings_to_change_requests(terraform_drift_findings, assignee="infra-team")
         for cr in crs:
             assert cr["assigned_to"] == "infra-team"
 
@@ -84,9 +80,7 @@ class TestEndToEndRemediationPipeline:
     def test_full_pipeline(self) -> None:
         # Step 1: Parse plan
         adapter = TerraformAdapter({"workspace": "prod"})
-        plan = json.loads(
-            (Path(__file__).parent / "fixtures" / "terraform-plan.json").read_text()
-        )
+        plan = json.loads((Path(__file__).parent / "fixtures" / "terraform-plan.json").read_text())
         drift = adapter.consume_terraform_plan(plan)
 
         # Step 2: Convert to POA&M findings
@@ -104,6 +98,7 @@ class TestEndToEndRemediationPipeline:
 
         # Step 5: Feed CRs back through ServiceNow adapter (round-trip)
         from uiao.adapters.servicenow_adapter import ServiceNowAdapter
+
         sn = ServiceNowAdapter({"instance": "contoso-gov", "token": "test"})
         claims = sn.normalize(crs)
         assert len(claims.claims) == 3

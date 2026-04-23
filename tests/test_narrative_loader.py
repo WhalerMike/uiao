@@ -164,5 +164,3 @@ def test_both_implemented_by_schemas(tmp_path: Path) -> None:
 
     assert "TYPED-1" in result
     assert result["TYPED-1"]["implemented_by"][1]["type"] == "FirewallCluster"
-
-

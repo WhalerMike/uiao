@@ -24,14 +24,7 @@ from uiao.modernization.orgtree import (
 from uiao.modernization.orgtree.admin_units import default_delegation_matrix
 
 
-TENANT_FIXTURE = (
-    Path(__file__).parent
-    / "fixtures"
-    / "contract"
-    / "entra-id"
-    / "admin-units"
-    / "tenant-state.json"
-)
+TENANT_FIXTURE = Path(__file__).parent / "fixtures" / "contract" / "entra-id" / "admin-units" / "tenant-state.json"
 
 
 @pytest.fixture
@@ -41,9 +34,7 @@ def tenant_state() -> dict:
 
 @pytest.fixture
 def adapter() -> EntraAdminUnitsAdapter:
-    return EntraAdminUnitsAdapter(
-        config={"tenant_id": "contoso.onmicrosoft.com"}
-    )
+    return EntraAdminUnitsAdapter(config={"tenant_id": "contoso.onmicrosoft.com"})
 
 
 class TestMatrixIntegrity:
@@ -76,13 +67,13 @@ class TestMatrixIntegrity:
         from uiao.modernization.orgtree.dynamic_groups import (
             default_dynamic_group_library,
         )
+
         m = default_delegation_matrix()
         dg = default_dynamic_group_library()
         for ra in m.role_assignments:
             principal = ra.principal_group
             assert principal in dg.names or principal in m.admin_group_names, (
-                f"assignment {ra.key()} principal_group {principal} "
-                "not in MOD_B dynamic groups OR MOD_D admin_groups"
+                f"assignment {ra.key()} principal_group {principal} not in MOD_B dynamic groups OR MOD_D admin_groups"
             )
 
     def test_every_role_assignment_au_exists(self) -> None:
@@ -134,10 +125,10 @@ class TestMatrixValidation:
         assert "AU-ORG-IT" in m.au_names
 
     def test_rejects_unknown_orgpath_ref(self, tmp_path: Path) -> None:
-        bad = self._good_yaml().replace(
-            "orgpath_refs: [ORG-IT]", "orgpath_refs: [ORG-GHOST]"
-        ).replace(
-            '-startsWith "ORG-IT"', '-startsWith "ORG-GHOST"'
+        bad = (
+            self._good_yaml()
+            .replace("orgpath_refs: [ORG-IT]", "orgpath_refs: [ORG-GHOST]")
+            .replace('-startsWith "ORG-IT"', '-startsWith "ORG-GHOST"')
         )
         p = tmp_path / "bad.yaml"
         p.write_text(bad)
@@ -155,9 +146,7 @@ class TestMatrixValidation:
             load_delegation_matrix(p)
 
     def test_rejects_assignment_to_unknown_au(self, tmp_path: Path) -> None:
-        bad = self._good_yaml().replace(
-            "au_scope: AU-ORG-IT", "au_scope: AU-ORG-NOWHERE", 1
-        )
+        bad = self._good_yaml().replace("au_scope: AU-ORG-IT", "au_scope: AU-ORG-NOWHERE", 1)
         # Keep the AU definition itself untouched so only the assignment
         # points at a non-existent AU.
         p = tmp_path / "bad.yaml"
@@ -177,9 +166,7 @@ class TestMatrixValidation:
 
 
 class TestPlan:
-    def test_empty_tenant_plans_full_create(
-        self, adapter: EntraAdminUnitsAdapter
-    ) -> None:
+    def test_empty_tenant_plans_full_create(self, adapter: EntraAdminUnitsAdapter) -> None:
         plan = adapter.plan(
             current_tenant_aus=[],
             current_tenant_role_assignments=[],
@@ -207,8 +194,8 @@ class TestPlan:
         creates = plan.by_op(OP_AU_CREATE)
         create_names = {o.target for o in creates}
         assert "AU-ORG-FIN" not in create_names  # already aligned
-        assert "AU-ORG-IT" not in create_names   # exists, needs update
-        assert "AU-ORG-HR" not in create_names   # exists, needs restriction fix
+        assert "AU-ORG-IT" not in create_names  # exists, needs update
+        assert "AU-ORG-HR" not in create_names  # exists, needs restriction fix
         # 14 canonical - 3 already present = 11 creates
         assert len(creates) == 11
 
@@ -217,9 +204,7 @@ class TestPlan:
         assert len(unscoped) == 1
         assert len(phantoms) == 1
 
-    def test_non_aurg_tenant_aus_are_ignored(
-        self, adapter: EntraAdminUnitsAdapter
-    ) -> None:
+    def test_non_aurg_tenant_aus_are_ignored(self, adapter: EntraAdminUnitsAdapter) -> None:
         plan = adapter.plan(
             current_tenant_aus=[
                 {"id": "x", "displayName": "LegalOps-AU", "membershipRule": ""},
@@ -257,9 +242,7 @@ class TestApply:
             current_tenant_role_assignments=tenant_state["roleAssignments"],
         )
         executed: list[str] = []
-        monkeypatch.setattr(
-            adapter, "_execute", lambda op: executed.append(op.op)
-        )
+        monkeypatch.setattr(adapter, "_execute", lambda op: executed.append(op.op))
         report = adapter.apply(plan, dry_run=False)
         # None of the governance-review ops were dispatched.
         assert OP_AU_DELETE_PHANTOM not in executed

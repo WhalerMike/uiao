@@ -241,4 +241,3 @@ def evaluate_rules(
         # Unknown / custom condition types produce no entries by default.
 
     return entries
-

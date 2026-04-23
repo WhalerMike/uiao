@@ -187,5 +187,3 @@ def test_concrete_scanner_to_oscal_component():
     props = {p["name"]: p["value"] for p in comp["props"]}
     assert props["vendor"] == "Tenable Nessus"
     assert "authenticated-scan" in props["capabilities"]
-
-

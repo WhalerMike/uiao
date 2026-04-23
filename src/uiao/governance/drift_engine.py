@@ -35,13 +35,11 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 from uiao.modernization.orgtree import (
     DriftEngineConfig,
-    OpEntry,
     PhaseConfig,
 )
 from uiao.modernization.orgtree.drift_engine_config import (
     default_drift_engine_config,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -152,9 +150,7 @@ class OrgTreeDriftEngine:
     def __init__(
         self,
         config: Optional[DriftEngineConfig] = None,
-        adapter_factory: Optional[
-            Callable[[PhaseConfig], Any]
-        ] = None,
+        adapter_factory: Optional[Callable[[PhaseConfig], Any]] = None,
     ) -> None:
         self._config = config or default_drift_engine_config()
         self._adapter_factory = adapter_factory or _default_adapter_factory
@@ -168,10 +164,7 @@ class OrgTreeDriftEngine:
     def build_snapshot(by_phase: Mapping[str, Mapping[str, Any]]) -> Snapshot:
         return Snapshot(
             generated_at=datetime.now(timezone.utc).isoformat(),
-            by_phase={
-                name: PhaseSnapshot(kwargs=dict(kwargs or {}))
-                for name, kwargs in by_phase.items()
-            },
+            by_phase={name: PhaseSnapshot(kwargs=dict(kwargs or {})) for name, kwargs in by_phase.items()},
         )
 
     # ------------------------------------------------------------------
@@ -183,9 +176,7 @@ class OrgTreeDriftEngine:
         dry_run: Optional[bool] = None,
     ) -> DriftScanReport:
         """Run Compare + Classify + Alert + (optional) Remediate passes."""
-        effective_dry_run = (
-            self._config.defaults.dry_run if dry_run is None else dry_run
-        )
+        effective_dry_run = self._config.defaults.dry_run if dry_run is None else dry_run
         report = DriftScanReport(
             generated_at=datetime.now(timezone.utc).isoformat(),
             dry_run=effective_dry_run,
@@ -201,26 +192,20 @@ class OrgTreeDriftEngine:
         plans_by_phase: Dict[str, Tuple[PhaseConfig, Any, Any]] = {}
         for phase in self._config.phases:
             if phase.name not in snapshot.by_phase:
-                logger.info(
-                    "Phase %s has no snapshot entry; skipping", phase.name
-                )
+                logger.info("Phase %s has no snapshot entry; skipping", phase.name)
                 continue
             adapter = self._adapter_factory(phase)
             phase_snap = snapshot.for_phase(phase.name)
             try:
                 plan = adapter.plan(**phase_snap.kwargs)
             except TypeError as exc:
-                raise DriftEngineError(
-                    f"Phase '{phase.name}' adapter refused the snapshot "
-                    f"kwargs: {exc}"
-                ) from exc
+                raise DriftEngineError(f"Phase '{phase.name}' adapter refused the snapshot kwargs: {exc}") from exc
             plans_by_phase[phase.name] = (phase, adapter, plan)
             for op in getattr(plan, "operations", []):
                 entry = phase.entry_for(op.op)
                 if entry is None:
                     raise DriftEngineError(
-                        f"Phase '{phase.name}' produced unmapped op "
-                        f"'{op.op}' — update drift-engine-config.yaml"
+                        f"Phase '{phase.name}' produced unmapped op '{op.op}' — update drift-engine-config.yaml"
                     )
                 if not _at_or_above(
                     entry.severity,
@@ -237,15 +222,17 @@ class OrgTreeDriftEngine:
                     or getattr(op, "assignment_name", None)
                     or ""
                 )
-                report.findings.append(DriftFinding(
-                    phase=phase.name,
-                    op=op.op,
-                    target=str(target),
-                    reason=getattr(op, "reason", ""),
-                    drift_class=entry.drift_class,
-                    severity=entry.severity,
-                    auto_remediate=entry.auto_remediate,
-                ))
+                report.findings.append(
+                    DriftFinding(
+                        phase=phase.name,
+                        op=op.op,
+                        target=str(target),
+                        reason=getattr(op, "reason", ""),
+                        drift_class=entry.drift_class,
+                        severity=entry.severity,
+                        auto_remediate=entry.auto_remediate,
+                    )
+                )
 
         # Phase 4 — Alert. The findings list IS the alert payload; real
         # wiring (Teams/email) lives outside this module. Consumers
@@ -254,14 +241,10 @@ class OrgTreeDriftEngine:
         # Phase 5 — Remediate. Honours halt_on_critical, the
         # per-op auto_remediate flag, and the dry_run toggle.
         halt_at = self._config.severity_policy.halt_at
-        if (
-            self._config.defaults.halt_on_critical
-            and any(_at_or_above(f.severity, halt_at) for f in report.findings)
-        ):
+        if self._config.defaults.halt_on_critical and any(_at_or_above(f.severity, halt_at) for f in report.findings):
             report.halted = True
             report.halt_reason = (
-                f"Severity >= {halt_at} detected — MOD_M §Governance "
-                "halt_on_critical=true; remediation pass skipped."
+                f"Severity >= {halt_at} detected — MOD_M §Governance halt_on_critical=true; remediation pass skipped."
             )
             return report
 
@@ -273,16 +256,15 @@ class OrgTreeDriftEngine:
             if not getattr(filtered, "operations", []):
                 continue
             apply_report = adapter.apply(filtered, dry_run=effective_dry_run)
-            report.remediation_results.append({
-                "phase": phase_name,
-                "dry_run": effective_dry_run,
-                "succeeded": getattr(apply_report, "succeeded", 0),
-                "failed": getattr(apply_report, "failed", 0),
-                "results": [
-                    getattr(r, "__dict__", r)
-                    for r in getattr(apply_report, "results", [])
-                ],
-            })
+            report.remediation_results.append(
+                {
+                    "phase": phase_name,
+                    "dry_run": effective_dry_run,
+                    "succeeded": getattr(apply_report, "succeeded", 0),
+                    "failed": getattr(apply_report, "failed", 0),
+                    "results": [getattr(r, "__dict__", r) for r in getattr(apply_report, "results", [])],
+                }
+            )
 
         # Phase 6 — Verify. Re-snapshot + re-compare is left to the
         # operator (out of scope for v1 orchestrator; test-expensive and

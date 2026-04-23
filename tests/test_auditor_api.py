@@ -1,17 +1,21 @@
 """tests/test_auditor_api.py — UIAO_105 Auditor API tests."""
+
 from __future__ import annotations
-import pytest
 from fastapi.testclient import TestClient
+
 
 def _make_client():
     from uiao.api.routes.auditor import router
     from fastapi import FastAPI
+
     app = FastAPI()
     app.include_router(router, prefix="/api/auditor")
     return TestClient(app)
 
+
 CLIENT = _make_client()
 HEADERS = {"Authorization": "Bearer test-token"}
+
 
 class TestEvidenceEndpoints:
     def test_list_evidence_no_auth_returns_401(self):
@@ -36,6 +40,7 @@ class TestEvidenceEndpoints:
         r = CLIENT.get("/api/auditor/evidence/EV-NONEXISTENT", headers=HEADERS)
         assert r.status_code == 404
 
+
 class TestFindingsEndpoints:
     def test_list_findings_requires_auth(self):
         r = CLIENT.get("/api/auditor/findings")
@@ -52,6 +57,7 @@ class TestFindingsEndpoints:
         r = CLIENT.get("/api/auditor/findings?severity=P1", headers=HEADERS)
         assert r.status_code == 200
 
+
 class TestPOAMEndpoints:
     def test_poam_requires_auth(self):
         r = CLIENT.get("/api/auditor/poam")
@@ -62,6 +68,7 @@ class TestPOAMEndpoints:
         assert r.status_code == 200
         data = r.json()
         assert "poam_entries" in data
+
 
 class TestOSCALEndpoints:
     def test_sar_requires_auth(self):
@@ -83,6 +90,7 @@ class TestOSCALEndpoints:
     def test_sap_returns_200(self):
         r = CLIENT.get("/api/auditor/oscal/sap", headers=HEADERS)
         assert r.status_code == 200
+
 
 class TestGraphEndpoint:
     def test_graph_requires_auth(self):

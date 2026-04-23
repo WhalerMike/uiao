@@ -5,12 +5,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
+from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 from uiao.coverage.coverage import build_coverage_links
 from uiao.evidence.bundle import build_bundle_from_transform_result
 from uiao.evidence.poam import build_poam, poam_to_json
 from uiao.governance.actions import build_governance_actions
 from uiao.governance.report import format_governance_report
-from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 from uiao.ir.models.core import canonical_hash
 from uiao.ssp.lineage import build_lineage_index
 from uiao.ssp.narrative import build_control_narratives, format_ssp_markdown
@@ -72,4 +72,3 @@ def build_auditor_bundle(
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
     return manifest
-

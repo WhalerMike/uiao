@@ -14,16 +14,16 @@ Adapter registration
   canon_ref:     Appendix F (Migration Runbook), Appendix C (Attribute Mapping)
 """
 
-from .survey import ADSurveyReport, DriftFinding, run_discovery
 from .orgpath import (
     OrgPathAssignmentReport,
     UserOrgPathAssignment,
     build_ou_mapping,
+    export_assignment_report,
+    export_ou_mapping,
     resolve_user_assignments,
     write_orgpath_to_ad,
-    export_ou_mapping,
-    export_assignment_report,
 )
+from .survey import ADSurveyReport, DriftFinding, run_discovery
 
 __all__ = [
     "ADSurveyReport",

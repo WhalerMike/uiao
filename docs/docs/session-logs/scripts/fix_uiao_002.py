@@ -83,11 +83,11 @@ def rewrite_frontmatter(data: bytes, today: str) -> bytes:
                 provenance_lines.append(line)
                 continue
         if stripped.startswith("author:"):
-            preserved_author = stripped[len("author:"):].strip()
+            preserved_author = stripped[len("author:") :].strip()
         elif stripped.startswith("no_hallucination_mode:"):
-            preserved_nhm = stripped[len("no_hallucination_mode:"):].strip()
+            preserved_nhm = stripped[len("no_hallucination_mode:") :].strip()
         elif stripped.startswith("nhp:"):
-            preserved_nhp = stripped[len("nhp:"):].strip()
+            preserved_nhp = stripped[len("nhp:") :].strip()
         elif stripped == "provenance:":
             in_prov = True
             provenance_lines.append(line)
@@ -148,9 +148,7 @@ def rewrite_body(data: bytes) -> bytes:
                 continue
             raise RuntimeError(f"expected match not found: {old[:60]!r}...")
         if count > 1:
-            raise RuntimeError(
-                f"expected exactly one match, found {count}: {old[:60]!r}..."
-            )
+            raise RuntimeError(f"expected exactly one match, found {count}: {old[:60]!r}...")
         out = out.replace(old, new, 1)
         print(f"  [ok] replaced: {old[:60]!r}...")
     return out

@@ -22,4 +22,3 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 if __name__ == "__main__":
     failures = validate_oscal_artifacts()
     sys.exit(1 if failures else 0)
-

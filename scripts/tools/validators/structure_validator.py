@@ -68,10 +68,7 @@ def _validate_payload(payload: Any, schema: dict[str, Any]) -> list[str]:
 
     validator = Draft7Validator(schema)
     errors = sorted(validator.iter_errors(payload), key=lambda e: list(e.absolute_path))
-    return [
-        f"{'.'.join(str(p) for p in err.absolute_path) or '<root>'}: {err.message}"
-        for err in errors
-    ]
+    return [f"{'.'.join(str(p) for p in err.absolute_path) or '<root>'}: {err.message}" for err in errors]
 
 
 def _check_required_directories(required: list[str]) -> list[str]:

@@ -204,12 +204,14 @@ class TestDetectDrift:
     def test_real_diff_emits_drift(self) -> None:
         baseline = [{"type": "record-a", "name": "a", "ipv4addr": "1.1.1.1", "view": "prod", "ref": "r1"}]
         live = [{"type": "record-a", "name": "b", "ipv4addr": "2.2.2.2", "view": "prod", "ref": "r2"}]
-        a = InfobloxAdapter({
-            "grid_master": "gm",
-            "network_view": "prod",
-            "baseline_records": baseline,
-            "live_records": live,
-        })
+        a = InfobloxAdapter(
+            {
+                "grid_master": "gm",
+                "network_view": "prod",
+                "baseline_records": baseline,
+                "live_records": live,
+            }
+        )
         result = a.detect_drift()
         assert result.severity == "high"
         assert result.details["summary"]["drift_count"] == 2
@@ -218,12 +220,14 @@ class TestDetectDrift:
 
     def test_no_drift_when_baseline_matches(self) -> None:
         rows = [{"type": "record-a", "name": "a", "ipv4addr": "1.1.1.1", "view": "prod", "ref": "r1"}]
-        a = InfobloxAdapter({
-            "grid_master": "gm",
-            "network_view": "prod",
-            "baseline_records": rows,
-            "live_records": rows,
-        })
+        a = InfobloxAdapter(
+            {
+                "grid_master": "gm",
+                "network_view": "prod",
+                "baseline_records": rows,
+                "live_records": rows,
+            }
+        )
         result = a.detect_drift()
         assert result.severity == "info"
         assert result.details["summary"]["drift_count"] == 0
@@ -266,11 +270,13 @@ class TestGetAllObjects:
         assert {c.provenance_hash for c in r1.claims} == {c.provenance_hash for c in r2.claims}
 
     def test_scope_none_iterates_all(self, dhcp_ranges: dict) -> None:
-        a = InfobloxAdapter({
-            "grid_master": "gm",
-            "network_view": "prod",
-            "_dhcp-scopes_json": dhcp_ranges,
-        })
+        a = InfobloxAdapter(
+            {
+                "grid_master": "gm",
+                "network_view": "prod",
+                "_dhcp-scopes_json": dhcp_ranges,
+            }
+        )
         result = a.get_all_objects()
         assert len(result.claims) == 3
 

@@ -18,6 +18,7 @@ Or via module invocation:
         --ir  ./output/ir/tenant-a.ir.json \\
         --out ./output/ksi/tenant-a.ksi.json
 """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -91,5 +92,3 @@ def evaluate_command(
     except ValueError as exc:
         _console.print(f"[red]Validation error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
-
-

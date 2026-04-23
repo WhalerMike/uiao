@@ -10,6 +10,7 @@ Coverage targets (TST-002):
   collect_changelog        — missing file fallback; entry regex; n limit
   build_briefing           — end-to-end: DOCX created, path exists, non-empty
 """
+
 from __future__ import annotations
 
 import json
@@ -53,9 +54,7 @@ class TestCollectCiStatus:
     def test_drift_row_pass_when_no_issues(self, tmp_path):
         report_dir = tmp_path / "reports"
         report_dir.mkdir()
-        (report_dir / "drift-report.json").write_text(
-            json.dumps({"issues": []}), encoding="utf-8"
-        )
+        (report_dir / "drift-report.json").write_text(json.dumps({"issues": []}), encoding="utf-8")
         rows = collect_ci_status(tmp_path)
         drift_row = next(r for r in rows if "Drift" in r["component"])
         assert drift_row["status"] == "🟢"
@@ -94,10 +93,7 @@ class TestCollectMemoryEntries:
         assert entries[0]["outcome"] == "Success"
 
     def test_respects_n_limit(self, tmp_path):
-        lines = "\n".join(
-            f"| 2025-01-{i:02d} | Task {i} | Done | — | Fix {i} |"
-            for i in range(1, 8)
-        )
+        lines = "\n".join(f"| 2025-01-{i:02d} | Task {i} | Done | — | Fix {i} |" for i in range(1, 8))
         (tmp_path / "UIAO-MEMORY.md").write_text(lines, encoding="utf-8")
         entries = collect_memory_entries(tmp_path, n=3)
         assert len(entries) == 3
@@ -230,9 +226,7 @@ class TestCollectOscalStatus:
         oscal_dir = tmp_path / "exports" / "oscal"
         oscal_dir.mkdir(parents=True)
         ssp = {"system-security-plan": {"uuid": "abc-123"}}
-        (oscal_dir / "uiao-ssp-skeleton.json").write_text(
-            json.dumps(ssp), encoding="utf-8"
-        )
+        (oscal_dir / "uiao-ssp-skeleton.json").write_text(json.dumps(ssp), encoding="utf-8")
         status = collect_oscal_status(tmp_path)
         assert status["SSP"]["present"] is True
         assert status["SSP"]["valid_structure"] is True
@@ -240,9 +234,7 @@ class TestCollectOscalStatus:
     def test_present_but_malformed_json_marks_invalid(self, tmp_path):
         oscal_dir = tmp_path / "exports" / "oscal"
         oscal_dir.mkdir(parents=True)
-        (oscal_dir / "uiao-ssp-skeleton.json").write_text(
-            "{ not valid json }", encoding="utf-8"
-        )
+        (oscal_dir / "uiao-ssp-skeleton.json").write_text("{ not valid json }", encoding="utf-8")
         status = collect_oscal_status(tmp_path)
         assert status["SSP"]["present"] is True
         assert status["SSP"]["valid_structure"] is False
@@ -250,9 +242,7 @@ class TestCollectOscalStatus:
     def test_present_json_missing_oscal_key_marks_invalid(self, tmp_path):
         oscal_dir = tmp_path / "exports" / "oscal"
         oscal_dir.mkdir(parents=True)
-        (oscal_dir / "uiao-ssp-skeleton.json").write_text(
-            json.dumps({"metadata": {"title": "oops"}}), encoding="utf-8"
-        )
+        (oscal_dir / "uiao-ssp-skeleton.json").write_text(json.dumps({"metadata": {"title": "oops"}}), encoding="utf-8")
         status = collect_oscal_status(tmp_path)
         assert status["SSP"]["valid_structure"] is False
 
@@ -288,9 +278,7 @@ class TestCollectPriorities:
         assert decisions[0].startswith("2025-03-01:")
 
     def test_decisions_capped_at_five(self, tmp_path):
-        lines = "\n".join(
-            f"* 2025-01-{i:02d}: Decision {i}" for i in range(1, 10)
-        )
+        lines = "\n".join(f"* 2025-01-{i:02d}: Decision {i}" for i in range(1, 10))
         (tmp_path / "PROJECT-CONTEXT.md").write_text(lines, encoding="utf-8")
         _, decisions = collect_priorities(tmp_path)
         assert len(decisions) == 5
@@ -315,9 +303,7 @@ class TestCollectChangelog:
         assert entries[0] == "Add Infoblox Tier 4 adapter"
 
     def test_respects_n_limit(self, tmp_path):
-        lines = "\n".join(
-            f"* Entry {i} ([#{i}](https://example.com))" for i in range(1, 20)
-        )
+        lines = "\n".join(f"* Entry {i} ([#{i}](https://example.com))" for i in range(1, 20))
         (tmp_path / "CHANGELOG.md").write_text(lines, encoding="utf-8")
         entries = collect_changelog(tmp_path, n=5)
         assert len(entries) == 5
@@ -352,6 +338,7 @@ class TestBuildBriefing:
     def test_output_path_contains_date(self, tmp_path):
         """Output filename must embed a YYYY-MM-DD datestamp."""
         import re
+
         settings = _settings(tmp_path)
         result = build_briefing(settings)
         assert re.search(r"\d{4}-\d{2}-\d{2}", result.name)

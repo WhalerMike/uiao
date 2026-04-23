@@ -206,4 +206,3 @@ class ServiceNowAdapter(DatabaseAdapterBase):
                 "instance": self.collector.instance,
             },
         }
-

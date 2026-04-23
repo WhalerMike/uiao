@@ -122,9 +122,7 @@ class InfobloxAdapter(DatabaseAdapterBase):
             canonical_schema=canonical_schema,
             mapping_rules=mapping_rules,
             unmapped_fields=["ttl", "comment", "extattrs", "disable"],
-            version_hash=self._hash(
-                {"vendor": vendor_schema, "canonical": canonical_schema}
-            ),
+            version_hash=self._hash({"vendor": vendor_schema, "canonical": canonical_schema}),
         )
 
     # ------------------------------------------------------------------
@@ -135,10 +133,7 @@ class InfobloxAdapter(DatabaseAdapterBase):
         """Translate canonical query to a WAPI GET request."""
         scope = canonical_query.get("from", "dns-records")
         wapi_object = _SCOPE_TO_WAPI.get(scope, "record:a")
-        vendor_query = (
-            f"GET /wapi/{self._wapi_version}/{wapi_object}"
-            f"?network_view={self._network_view}"
-        )
+        vendor_query = f"GET /wapi/{self._wapi_version}/{wapi_object}?network_view={self._network_view}"
         return QueryProvenance(
             canonical_query=canonical_query,
             vendor_query=vendor_query,
@@ -358,9 +353,7 @@ class InfobloxAdapter(DatabaseAdapterBase):
                 "name": name,
                 "proposed": data,
             },
-            remediation=(
-                f"Review and commit DNS change for {record_type}/{name} via WAPI."
-            ),
+            remediation=(f"Review and commit DNS change for {record_type}/{name} via WAPI."),
         )
 
     def push_dhcp_change(
@@ -389,9 +382,7 @@ class InfobloxAdapter(DatabaseAdapterBase):
                 "identifier": identifier,
                 "proposed": data,
             },
-            remediation=(
-                f"Review and commit DHCP change for {scope_type}/{identifier} via WAPI."
-            ),
+            remediation=(f"Review and commit DHCP change for {scope_type}/{identifier} via WAPI."),
         )
 
     def emit_event_stream(

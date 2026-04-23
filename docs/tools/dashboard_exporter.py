@@ -10,6 +10,7 @@ python dashboard_exporter.py --schema schemas/dashboard-schema.json --validate
 python dashboard_exporter.py --schema schemas/dashboard-schema.json --export json --output dashboard/exports/
 python dashboard_exporter.py --schema schemas/dashboard-schema.json --export json --trends 30
 """
+
 import argparse
 import json
 import os
@@ -53,12 +54,15 @@ def collect_validation_metrics(metrics_dir: Path) -> dict:
             continue
     total = metrics["files_scanned"]
     if total > 0:
-        files_with_blocking = len({
-            f.get("file", "") for rf in report_files
-            if rf.exists()
-            for f in json.loads(rf.read_text()).get("findings", [])
-            if f.get("severity") == "BLOCKING"
-        })
+        files_with_blocking = len(
+            {
+                f.get("file", "")
+                for rf in report_files
+                if rf.exists()
+                for f in json.loads(rf.read_text()).get("findings", [])
+                if f.get("severity") == "BLOCKING"
+            }
+        )
         metrics["non_compliant"] = files_with_blocking
         metrics["compliant"] = total - files_with_blocking
         metrics["compliance_rate"] = round((metrics["compliant"] / total) * 100, 1)
@@ -93,11 +97,14 @@ def collect_drift_metrics(metrics_dir: Path) -> dict:
             continue
     total = metrics["files_scanned"]
     if total > 0:
-        drifted_files = len({
-            f.get("file", "") for rf in report_files
-            if rf.exists()
-            for f in json.loads(rf.read_text()).get("findings", [])
-        })
+        drifted_files = len(
+            {
+                f.get("file", "")
+                for rf in report_files
+                if rf.exists()
+                for f in json.loads(rf.read_text()).get("findings", [])
+            }
+        )
         metrics["drift_free"] = total - drifted_files
         metrics["drift_free_rate"] = round((metrics["drift_free"] / total) * 100, 1)
     return metrics
@@ -162,8 +169,7 @@ def collect_owner_metrics(metrics_dir: Path) -> list[dict]:
     for owner_data in owners.values():
         total = owner_data["owned_artifacts"]
         if total > 0:
-            penalty = (owner_data["blocking_findings"] * 10 +
-                       owner_data["warning_findings"] * 3)
+            penalty = owner_data["blocking_findings"] * 10 + owner_data["warning_findings"] * 3
             owner_data["reliability_score"] = max(0, 100 - penalty)
     return list(owners.values())
 
@@ -213,20 +219,20 @@ def compute_trends(output_dir: Path, days: int) -> dict:
     if len(history) >= 2:
         first = history[0]
         last = history[-1]
-        trends["health_trend"] = round(
-            last.get("health_score", 0) - first.get("health_score", 0), 1)
+        trends["health_trend"] = round(last.get("health_score", 0) - first.get("health_score", 0), 1)
         trends["compliance_trend"] = round(
-            last.get("metrics", {}).get("validation", {}).get("compliance_rate", 0) -
-            first.get("metrics", {}).get("validation", {}).get("compliance_rate", 0), 1)
-        trends["drift_trend"] = (
-            last.get("metrics", {}).get("drift", {}).get("drift_count", 0) -
-            first.get("metrics", {}).get("drift", {}).get("drift_count", 0))
+            last.get("metrics", {}).get("validation", {}).get("compliance_rate", 0)
+            - first.get("metrics", {}).get("validation", {}).get("compliance_rate", 0),
+            1,
+        )
+        trends["drift_trend"] = last.get("metrics", {}).get("drift", {}).get("drift_count", 0) - first.get(
+            "metrics", {}
+        ).get("drift", {}).get("drift_count", 0)
     return trends
 
 
 # ─── Export ───────────────────────────────────────────────────────────────────
-def build_export(validation: dict, drift: dict, appendix: dict,
-                 owners: list, trends: dict, repository: str) -> dict:
+def build_export(validation: dict, drift: dict, appendix: dict, owners: list, trends: dict, repository: str) -> dict:
     """Build the complete dashboard export payload."""
     health_score = compute_health_score(validation, drift, appendix)
     return {
@@ -242,9 +248,12 @@ def build_export(validation: dict, drift: dict, appendix: dict,
         "trend_indicators": trends,
         "boundary_exception_count": 0,  # Populated from validation findings
         "open_remediation_count": (
-            validation.get("blocking", 0) + validation.get("warning", 0) +
-            drift.get("blocking", 0) + drift.get("warning", 0) +
-            appendix.get("missing_copy", 0) + appendix.get("invalid_frontmatter", 0)
+            validation.get("blocking", 0)
+            + validation.get("warning", 0)
+            + drift.get("blocking", 0)
+            + drift.get("warning", 0)
+            + appendix.get("missing_copy", 0)
+            + appendix.get("invalid_frontmatter", 0)
         ),
     }
 
@@ -308,25 +317,19 @@ def write_export(export_data: dict, output_dir: Path, fmt: str):
 def main():
     parser = argparse.ArgumentParser(description="UIAO Dashboard Exporter")
     parser.add_argument("--schema", required=True, help="Path to dashboard schema")
-    parser.add_argument("--export", choices=["json", "csv", "markdown"],
-                        help="Export format")
-    parser.add_argument("--validate", action="store_true",
-                        help="Validate existing exports against schema")
-    parser.add_argument("--output", default="dashboard/exports/",
-                        help="Output directory")
-    parser.add_argument("--trends", type=int, default=0,
-                        help="Days for rolling trend computation")
-    parser.add_argument("--metrics-dir", default="reports/",
-                        help="Directory containing metric report files")
+    parser.add_argument("--export", choices=["json", "csv", "markdown"], help="Export format")
+    parser.add_argument("--validate", action="store_true", help="Validate existing exports against schema")
+    parser.add_argument("--output", default="dashboard/exports/", help="Output directory")
+    parser.add_argument("--trends", type=int, default=0, help="Days for rolling trend computation")
+    parser.add_argument("--metrics-dir", default="reports/", help="Directory containing metric report files")
     parser.add_argument("--input", help="Input directory for validation mode")
-    parser.add_argument("--repository", default="uiao",
-                        help="Repository name for export")
+    parser.add_argument("--repository", default="uiao", help="Repository name for export")
     args = parser.parse_args()
     schema_path = Path(args.schema)
     metrics_dir = Path(args.metrics_dir)
     output_dir = Path(args.output)
     print("UIAO Dashboard Exporter")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print(f"Timestamp: {datetime.utcnow().isoformat()}Z")
     print()
     if args.validate and args.input:
@@ -349,12 +352,9 @@ def main():
     drift = collect_drift_metrics(metrics_dir)
     appendix = collect_appendix_metrics(metrics_dir)
     owners = collect_owner_metrics(metrics_dir)
-    print(f"  Validation: {validation['files_scanned']} files, "
-          f"{validation['compliance_rate']}% compliance")
-    print(f"  Drift: {drift['files_scanned']} files, "
-          f"{drift['drift_free_rate']}% drift-free")
-    print(f"  Appendix: {appendix['total_appendices']} appendices, "
-          f"{appendix['integrity_rate']}% integrity")
+    print(f"  Validation: {validation['files_scanned']} files, {validation['compliance_rate']}% compliance")
+    print(f"  Drift: {drift['files_scanned']} files, {drift['drift_free_rate']}% drift-free")
+    print(f"  Appendix: {appendix['total_appendices']} appendices, {appendix['integrity_rate']}% integrity")
     print()
     # Compute trends
     trends = {}
@@ -367,8 +367,7 @@ def main():
         print(f"  Drift trend: {trends['drift_trend']:+d}")
         print()
     # Build export
-    export_data = build_export(validation, drift, appendix, owners,
-                               trends, args.repository)
+    export_data = build_export(validation, drift, appendix, owners, trends, args.repository)
     health = export_data["health_score"]
     print(f"Canon Health Score: {health}/100")
     print(f"Open Remediation Items: {export_data['open_remediation_count']}")

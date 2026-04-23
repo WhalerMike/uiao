@@ -120,4 +120,3 @@ def format_diff_json(diff: RunDiff) -> str:
         },
         indent=2,
     )
-

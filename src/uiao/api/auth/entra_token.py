@@ -36,7 +36,7 @@ AUTHORITY_BASE = "https://login.microsoftonline.com"
 @dataclass
 class TokenResult:
     access_token: str
-    expires_in: int    # seconds
+    expires_in: int  # seconds
     token_type: str = "Bearer"
 
 
@@ -68,10 +68,7 @@ class EntraTokenProvider:
         elif client_secret:
             credential = client_secret
         else:
-            raise ValueError(
-                "Either UIAO_ENTRA_CLIENT_SECRET or UIAO_ENTRA_CERT_PATH "
-                "must be set."
-            )
+            raise ValueError("Either UIAO_ENTRA_CLIENT_SECRET or UIAO_ENTRA_CERT_PATH must be set.")
 
         self._msal_app = msal.ConfidentialClientApplication(
             client_id=client_id,
@@ -80,7 +77,7 @@ class EntraTokenProvider:
         )
 
     @classmethod
-    def from_environment(cls) -> "EntraTokenProvider":
+    def from_environment(cls) -> EntraTokenProvider:
         """
         Construct from machine-level environment variables.
         Raises clear RuntimeError if any required variable is missing.
@@ -142,9 +139,8 @@ class EntraTokenProvider:
             await self.get_token_async()
         except RuntimeError as e:
             import logging
-            logging.getLogger(__name__).warning(
-                f"MSAL cache warm-up failed (non-fatal): {e}"
-            )
+
+            logging.getLogger(__name__).warning(f"MSAL cache warm-up failed (non-fatal): {e}")
 
     def get_auth_headers(self) -> dict[str, str]:
         """Return Authorization header dict ready for httpx/requests."""

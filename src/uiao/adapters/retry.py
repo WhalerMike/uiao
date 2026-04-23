@@ -32,6 +32,7 @@ class RateLimitError(Exception):
 
 class TransientError(Exception):
     """Raised on transient failures (network timeout, 500, connection reset)."""
+
     pass
 
 
@@ -70,7 +71,8 @@ def with_retry(
             if attempt == max_retries:
                 logger.warning(
                     "Retry exhausted after %d attempts: %s",
-                    max_retries + 1, exc,
+                    max_retries + 1,
+                    exc,
                 )
                 raise
 
@@ -82,7 +84,10 @@ def with_retry(
 
             logger.info(
                 "Attempt %d/%d failed (%s), retrying in %.1fs",
-                attempt + 1, max_retries + 1, type(exc).__name__, actual_delay,
+                attempt + 1,
+                max_retries + 1,
+                type(exc).__name__,
+                actual_delay,
             )
             time.sleep(actual_delay)
             delay *= backoff_factor

@@ -403,10 +403,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: failed to write outputs: {exc}", file=sys.stderr)
         return 2
 
-    print(
-        f"conmon-aggregate: adapters={len(cards)} "
-        f"poam_rows={len(poam_rows)} sla_breaches={len(sla_issues)}"
-    )
+    print(f"conmon-aggregate: adapters={len(cards)} poam_rows={len(poam_rows)} sla_breaches={len(sla_issues)}")
     return 0
 
 

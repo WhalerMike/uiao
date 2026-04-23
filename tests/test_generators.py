@@ -510,4 +510,3 @@ class TestDetectInventoryGaps:
         # Missing pillar means no component link attempted; should not be a gap
         gaps = detect_inventory_gaps(context)
         assert gaps == []
-

@@ -56,13 +56,12 @@ class TestTerraformToSsp:
 class TestM365ToSsp:
     @pytest.fixture
     def adapter(self) -> M365Adapter:
-        config = json.loads(
-            (Path(__file__).parent / "fixtures" / "m365-tenant-config.json").read_text()
-        )
+        config = json.loads((Path(__file__).parent / "fixtures" / "m365-tenant-config.json").read_text())
         return M365Adapter({"tenant_id": "contoso", "_tenant_config": config})
 
     def test_produces_valid_ssp(self, adapter: M365Adapter) -> None:
         from uiao.adapters.m365_parser import parse_tenant_config
+
         config = adapter._config.get("_tenant_config", {})
         claims = adapter.normalize(parse_tenant_config(config))
         ssp = build_adapter_ssp("m365", claims, ["CM-2", "CM-3", "CM-8"])
@@ -112,9 +111,7 @@ class TestMultiAdapterSsp:
 
         # Terraform claims
         tf = TerraformAdapter({"workspace": "prod"})
-        tf_claims = tf.extract_terraform_state(
-            str(Path(__file__).parent / "fixtures" / "terraform.tfstate")
-        )
+        tf_claims = tf.extract_terraform_state(str(Path(__file__).parent / "fixtures" / "terraform.tfstate"))
         tf_bundle = build_adapter_bundle("terraform", tf_claims, control_ids=["CM-2", "CM-8"])
 
         # Palo Alto claims

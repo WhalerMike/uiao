@@ -136,4 +136,3 @@ class EvidenceLinker:
                 back_matter["resources"].append(resource)
                 existing_uuids.add(resource["uuid"])
         return ssp
-

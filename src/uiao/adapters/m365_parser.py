@@ -16,6 +16,7 @@ from typing import Any, Dict, List
 # Graph entity parsing
 # ---------------------------------------------------------------------------
 
+
 def parse_graph_entities(
     response: dict,
     workload: str = "unknown",
@@ -72,24 +73,27 @@ def parse_security_policies(response: dict) -> List[dict]:
     policies: List[dict] = []
     for item in response.get("value", []):
         state = item.get("state", "unknown")
-        policies.append({
-            "id": item.get("id", ""),
-            "displayName": item.get("displayName", ""),
-            "state": state,
-            "severity": _POLICY_STATE_SEVERITY.get(state, "info"),
-            "conditions": item.get("conditions", {}),
-            "grantControls": item.get("grantControls", {}),
-            "createdDateTime": item.get("createdDateTime", ""),
-            "modifiedDateTime": item.get("modifiedDateTime", ""),
-            "_workload": item.get("_workload", "defender-o365"),
-            "@odata.type": item.get("@odata.type", "#microsoft.graph.conditionalAccessPolicy"),
-        })
+        policies.append(
+            {
+                "id": item.get("id", ""),
+                "displayName": item.get("displayName", ""),
+                "state": state,
+                "severity": _POLICY_STATE_SEVERITY.get(state, "info"),
+                "conditions": item.get("conditions", {}),
+                "grantControls": item.get("grantControls", {}),
+                "createdDateTime": item.get("createdDateTime", ""),
+                "modifiedDateTime": item.get("modifiedDateTime", ""),
+                "_workload": item.get("_workload", "defender-o365"),
+                "@odata.type": item.get("@odata.type", "#microsoft.graph.conditionalAccessPolicy"),
+            }
+        )
     return policies
 
 
 # ---------------------------------------------------------------------------
 # Multi-workload tenant config parsing
 # ---------------------------------------------------------------------------
+
 
 def parse_tenant_config(config: dict) -> List[dict]:
     """Parse a multi-workload tenant configuration bundle.
@@ -124,6 +128,7 @@ def parse_tenant_config(config: dict) -> List[dict]:
 # ---------------------------------------------------------------------------
 # Baseline comparison
 # ---------------------------------------------------------------------------
+
 
 def compare_against_baseline(
     current: List[dict],
@@ -162,11 +167,13 @@ def compare_against_baseline(
             if current_flat[key] == expected:
                 compliant.append(key)
             else:
-                non_compliant.append({
-                    "key": key,
-                    "expected": expected,
-                    "actual": current_flat[key],
-                })
+                non_compliant.append(
+                    {
+                        "key": key,
+                        "expected": expected,
+                        "actual": current_flat[key],
+                    }
+                )
         else:
             missing.append(key)
 

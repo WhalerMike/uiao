@@ -15,13 +15,14 @@ Endpoints:
   GET /api/auditor/oscal/ssp         - OSCAL SSP JSON
   GET /api/auditor/graph/{control_id}- evidence graph trace for a control
 """
+
 from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 router = APIRouter()
@@ -31,6 +32,7 @@ _bearer = HTTPBearer(auto_error=False)
 # ---------------------------------------------------------------------------
 # Auth dependency — Bearer token with role check
 # ---------------------------------------------------------------------------
+
 
 def _require_auditor(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
@@ -50,7 +52,9 @@ def _require_auditor(
     # Production: validate JWT with python-jose or msal
     # For now: extract sub from token if it is a real JWT, else use token as subject
     try:
-        import base64, json as _json
+        import base64
+        import json as _json
+
         parts = token.split(".")
         if len(parts) == 3:
             padded = parts[1] + "=" * (4 - len(parts[1]) % 4)
@@ -68,11 +72,14 @@ def _require_auditor(
 # most recent evidence bundle on disk or return empty sets.
 # ---------------------------------------------------------------------------
 
+
 def _load_evidence_bundle() -> Optional[Any]:
     """Load the most recent EvidenceBundle from the workspace."""
     workspace = os.environ.get("UIAO_WORKSPACE_ROOT", ".")
     try:
-        import json, pathlib
+        import json
+        import pathlib
+
         bundle_dir = pathlib.Path(workspace) / "output" / "evidence"
         if not bundle_dir.exists():
             return None
@@ -89,7 +96,9 @@ def _load_evidence_records() -> list[dict]:
     """Load evidence records from most recent bundle."""
     workspace = os.environ.get("UIAO_WORKSPACE_ROOT", ".")
     try:
-        import json, pathlib
+        import json
+        import pathlib
+
         bundle_dir = pathlib.Path(workspace) / "output" / "evidence"
         if not bundle_dir.exists():
             return []
@@ -110,11 +119,14 @@ def _load_evidence_records() -> list[dict]:
 # Evidence endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("/evidence", summary="List evidence objects")
 async def list_evidence(
     control_id: Optional[str] = Query(None, description="Filter by NIST control ID (e.g. IA-2)"),
     collector: Optional[str] = Query(None, description="Filter by collector (e.g. scuba)"),
-    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status: satisfied | not-satisfied | not-applicable"),
+    status_filter: Optional[str] = Query(
+        None, alias="status", description="Filter by status: satisfied | not-satisfied | not-applicable"
+    ),
     subject: str = Depends(_require_auditor),
 ) -> dict:
     """
@@ -162,6 +174,7 @@ async def get_evidence(
 # Findings endpoint — sourced from drift state
 # ---------------------------------------------------------------------------
 
+
 @router.get("/findings", summary="List compliance findings")
 async def list_findings(
     severity: Optional[str] = Query(None, description="Filter by severity: P1 | P2 | P3 | P4"),
@@ -177,7 +190,9 @@ async def list_findings(
     findings: list[dict] = []
 
     try:
-        import json, pathlib
+        import json
+        import pathlib
+
         scan_dir = pathlib.Path(workspace) / "output" / "drift"
         if scan_dir.exists():
             reports = sorted(scan_dir.rglob("manifest.json"), key=lambda p: p.stat().st_mtime, reverse=True)
@@ -207,6 +222,7 @@ async def list_findings(
 # POA&M endpoint
 # ---------------------------------------------------------------------------
 
+
 @router.get("/poam", summary="List POA&M entries")
 async def list_poam(
     poam_status: Optional[str] = Query(None, alias="status", description="Open | In Progress | Closed"),
@@ -220,7 +236,9 @@ async def list_poam(
     entries: list[dict] = []
 
     try:
-        import json, pathlib
+        import json
+        import pathlib
+
         poam_file = pathlib.Path(workspace) / "output" / "poam" / "poam.json"
         if poam_file.exists():
             entries = json.loads(poam_file.read_text(encoding="utf-8"))
@@ -243,11 +261,14 @@ async def list_poam(
 # OSCAL document endpoints
 # ---------------------------------------------------------------------------
 
+
 def _load_oscal(doc_type: str) -> dict:
     """Load an OSCAL document from the workspace output directory."""
     workspace = os.environ.get("UIAO_WORKSPACE_ROOT", ".")
     try:
-        import json, pathlib
+        import json
+        import pathlib
+
         oscal_dir = pathlib.Path(workspace) / "output" / "oscal"
         candidates = list(oscal_dir.glob(f"*{doc_type}*.json"))
         if not candidates:
@@ -298,6 +319,7 @@ async def get_oscal_sap(subject: str = Depends(_require_auditor)) -> dict:
 # Evidence Graph traversal endpoint
 # ---------------------------------------------------------------------------
 
+
 @router.get("/graph/{control_id}", summary="Evidence graph trace for a control")
 async def get_graph_trace(
     control_id: str,
@@ -311,7 +333,8 @@ async def get_graph_trace(
     Uses the UIAO_113 Evidence Graph model.
     """
     try:
-        from uiao.evidence.graph import EvidenceGraph, ControlNode, EvidenceNode, FindingNode
+        from uiao.evidence.graph import ControlNode, EvidenceGraph, EvidenceNode
+
         records = _load_evidence_records()
         g = EvidenceGraph()
         for r in records:
@@ -319,13 +342,15 @@ async def get_graph_trace(
             if cid:
                 if cid not in g._nodes:
                     g.add_control(ControlNode(id=cid))
-                g.add_evidence(EvidenceNode(
-                    id=r.get("id", ""),
-                    control_id=cid,
-                    verdict=r.get("verdict", ""),
-                    status=r.get("status", ""),
-                    source=r.get("provenance", {}).get("collector_id", ""),
-                ))
+                g.add_evidence(
+                    EvidenceNode(
+                        id=r.get("id", ""),
+                        control_id=cid,
+                        verdict=r.get("verdict", ""),
+                        status=r.get("status", ""),
+                        source=r.get("provenance", {}).get("collector_id", ""),
+                    )
+                )
         trace = g.trace_control(control_id)
         evidence = g.evidence_for_control(control_id)
         findings = g.findings_for_control(control_id)
@@ -338,4 +363,4 @@ async def get_graph_trace(
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Graph traversal failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"Graph traversal failed: {exc}") from exc

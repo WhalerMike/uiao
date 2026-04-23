@@ -173,4 +173,3 @@ def test_cli_root_help() -> None:
     assert "ir-evidence-bundle" in result.output
     assert "ir-poam-export" in result.output
     assert "ir-drift-detect" in result.output
-

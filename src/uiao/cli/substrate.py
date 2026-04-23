@@ -49,12 +49,8 @@ def walk(
         return
 
     console.print(f"[bold]Workspace:[/bold] {report.workspace_root}")
-    console.print(
-        f"  substrate-manifest: {'found' if report.manifest_present else '[red]MISSING[/red]'}"
-    )
-    console.print(
-        f"  workspace-contract: {'found' if report.contract_present else 'absent (optional)'}"
-    )
+    console.print(f"  substrate-manifest: {'found' if report.manifest_present else '[red]MISSING[/red]'}")
+    console.print(f"  workspace-contract: {'found' if report.contract_present else 'absent (optional)'}")
     console.print(f"  modules checked:    {report.modules_checked}")
     console.print(f"  documents checked:  {report.documents_checked}")
     console.print(f"  code refs checked:  {report.code_refs_checked}")
@@ -77,9 +73,7 @@ def walk(
         console.print(f"\n[red]FAIL[/red] — {len(report.blockers)} P1 blocking finding(s):")
         _print_table(report.blockers, "red")
     if report.warnings:
-        console.print(
-            f"\n[yellow]WARN[/yellow] — {len(report.warnings)} P2 non-blocking finding(s):"
-        )
+        console.print(f"\n[yellow]WARN[/yellow] — {len(report.warnings)} P2 non-blocking finding(s):")
         _print_table(report.warnings, "yellow")
 
     if report.blocking:
@@ -107,8 +101,7 @@ def drift(
         return
     if not report.blocking:
         console.print(
-            f"[green]PASS[/green] with {len(report.warnings)} P2 warning(s). "
-            "Run `uiao substrate walk` for detail."
+            f"[green]PASS[/green] with {len(report.warnings)} P2 warning(s). Run `uiao substrate walk` for detail."
         )
         return
     console.print(

@@ -14,6 +14,7 @@ in a tmp directory so no fixture files are required.
 All tests are deterministic, hermetic (no network), and import nothing from
 the SCuBA layer (Plane 1), IR layer (Plane 2), or KSI layer (Plane 3 input).
 """
+
 from __future__ import annotations
 
 import json
@@ -93,9 +94,7 @@ def _write_evidence_bundle(tmp_path: Path, records: List[Dict[str, Any]]) -> Pat
     bundle_dir = tmp_path / "output" / "evidence" / "tenant-a"
     bundle_dir.mkdir(parents=True, exist_ok=True)
     bundle = _make_bundle(len(records))
-    (bundle_dir / "bundle.json").write_text(
-        json.dumps(bundle, indent=2), encoding="utf-8"
-    )
+    (bundle_dir / "bundle.json").write_text(json.dumps(bundle, indent=2), encoding="utf-8")
     with (bundle_dir / "evidence.jsonl").open("w", encoding="utf-8") as fh:
         for rec in records:
             fh.write(json.dumps(rec, sort_keys=True) + "\n")
@@ -114,6 +113,7 @@ def _default_records() -> List[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # 1. I/O helpers
 # ---------------------------------------------------------------------------
+
 
 class TestLoadBundle:
     def test_loads_valid_bundle(self, tmp_path: Path) -> None:
@@ -173,6 +173,7 @@ class TestLoadConfig:
 # ---------------------------------------------------------------------------
 # 2. _build_poam_items
 # ---------------------------------------------------------------------------
+
 
 class TestBuildPOAMItems:
     def test_only_not_satisfied_generates_items(self) -> None:
@@ -240,6 +241,7 @@ class TestBuildPOAMItems:
 # 3. _build_implemented_requirements
 # ---------------------------------------------------------------------------
 
+
 class TestBuildImplementedRequirements:
     def test_all_records_produce_requirements(self) -> None:
         records = _default_records()
@@ -279,6 +281,7 @@ class TestBuildImplementedRequirements:
 # 4. Hashing utilities
 # ---------------------------------------------------------------------------
 
+
 class TestHashing:
     def test_stable_hash_identical_input(self) -> None:
         d = {"b": 2, "a": 1}
@@ -296,6 +299,7 @@ class TestHashing:
 # ---------------------------------------------------------------------------
 # 5. Integration: generate_oscal() end-to-end
 # ---------------------------------------------------------------------------
+
 
 class TestGenerateOSCALIntegration:
     def _setup(self, tmp_path: Path) -> tuple[Path, Path]:
@@ -406,4 +410,3 @@ class TestGenerateOSCALIntegration:
         generate_oscal(str(bundle_dir), str(out_dir), config_path=str(cfg_path))
         ssp = json.loads((out_dir / "ssp.json").read_text(encoding="utf-8"))
         assert ssp["system_name"] == "MyGovSystem"
-

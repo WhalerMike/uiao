@@ -187,5 +187,3 @@ _CATEGORY_CONTROL_MAP: dict[str, str] = {
     "risk-management": "ra-3",
     "supply-chain": "sr-3",
 }
-
-

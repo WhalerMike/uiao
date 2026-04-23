@@ -70,4 +70,3 @@ def poam_summary(rows: List[Dict[str, Any]]) -> str:
         if count:
             lines.append(f"  {sev:10s}: {count}")
     return "\n".join(lines)
-

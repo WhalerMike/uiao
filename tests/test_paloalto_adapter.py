@@ -54,6 +54,7 @@ class TestInstantiation:
 
     def test_is_database_adapter_base(self, adapter: PaloAltoAdapter) -> None:
         from uiao.adapters.database_base import DatabaseAdapterBase
+
         assert isinstance(adapter, DatabaseAdapterBase)
 
 
@@ -168,11 +169,13 @@ class TestGetRunningConfig:
     @pytest.fixture
     def sec_xml(self) -> str:
         from pathlib import Path
+
         return (Path(__file__).parent / "fixtures" / "panos-security-rules.xml").read_text()
 
     @pytest.fixture
     def nat_xml(self) -> str:
         from pathlib import Path
+
         return (Path(__file__).parent / "fixtures" / "panos-nat-rules.xml").read_text()
 
     def test_parses_security_rules(self, adapter: PaloAltoAdapter, sec_xml: str) -> None:
@@ -219,12 +222,15 @@ class TestGenerateFirewallEvidence:
     @pytest.fixture
     def adapter_with_xml(self) -> PaloAltoAdapter:
         from pathlib import Path
+
         sec_xml = (Path(__file__).parent / "fixtures" / "panos-security-rules.xml").read_text()
-        return PaloAltoAdapter({
-            "host": "fw01.agency.gov",
-            "vsys": "vsys1",
-            "_security_rules_xml": sec_xml,
-        })
+        return PaloAltoAdapter(
+            {
+                "host": "fw01.agency.gov",
+                "vsys": "vsys1",
+                "_security_rules_xml": sec_xml,
+            }
+        )
 
     def test_returns_evidence(self, adapter_with_xml: PaloAltoAdapter) -> None:
         result = adapter_with_xml.generate_firewall_evidence()

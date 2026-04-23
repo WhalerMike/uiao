@@ -58,9 +58,7 @@ class M365Adapter(DatabaseAdapterBase):
     def __init__(self, config: Dict[str, Any] | None = None) -> None:
         super().__init__(config or {})
         self._tenant_id: str = self._config.get("tenant_id", "")
-        self._graph_endpoint: str = self._config.get(
-            "graph_endpoint", "https://graph.microsoft.com/v1.0"
-        )
+        self._graph_endpoint: str = self._config.get("graph_endpoint", "https://graph.microsoft.com/v1.0")
 
     # ------------------------------------------------------------------
     # 2.1 Connection & Identity
@@ -108,9 +106,7 @@ class M365Adapter(DatabaseAdapterBase):
             canonical_schema=canonical_schema,
             mapping_rules=mapping_rules,
             unmapped_fields=["@odata.context", "@odata.nextLink", "createdDateTime"],
-            version_hash=self._hash(
-                {"vendor": vendor_schema, "canonical": canonical_schema}
-            ),
+            version_hash=self._hash({"vendor": vendor_schema, "canonical": canonical_schema}),
         )
 
     # ------------------------------------------------------------------
@@ -121,10 +117,7 @@ class M365Adapter(DatabaseAdapterBase):
         """Translate canonical query to Graph API request."""
         entity = canonical_query.get("from", "organization")
         fields = canonical_query.get("select", ["id", "displayName"])
-        vendor_query = (
-            f"GET {self._graph_endpoint}/{entity}"
-            f"?$select={','.join(fields)}"
-        )
+        vendor_query = f"GET {self._graph_endpoint}/{entity}?$select={','.join(fields)}"
         return QueryProvenance(
             canonical_query=canonical_query,
             vendor_query=vendor_query,

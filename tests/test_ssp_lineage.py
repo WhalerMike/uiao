@@ -68,4 +68,3 @@ def test_lineage_ksis_deduplicated():
     idx = build_lineage_index(links, [])
     assert idx["IA-2"]["ksis"] == ["KSI-IA-01"]
     assert len(idx["IA-2"]["evidence"]) == 2
-

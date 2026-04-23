@@ -47,9 +47,11 @@ BaseAdapter = DatabaseAdapterBase.__bases__[0] if DatabaseAdapterBase.__bases__ 
 def test_registry_not_empty():
     assert len(ADAPTER_REGISTRY) > 0
 
+
 def test_all_registered_are_base_adapter_subclasses():
     for name, cls in ADAPTER_REGISTRY.items():
         assert issubclass(cls, BaseAdapter), f"{name} is not a BaseAdapter subclass"
+
 
 @pytest.mark.parametrize("adapter_id", list(ADAPTER_REGISTRY.keys()))
 def test_adapter_metadata(adapter_id):
@@ -57,9 +59,11 @@ def test_adapter_metadata(adapter_id):
     assert hasattr(cls, "ADAPTER_ID")
     assert cls.ADAPTER_ID
 
+
 @pytest.mark.parametrize("adapter_id", list(ADAPTER_REGISTRY.keys()))
 def test_adapter_connect(adapter_id):
     import inspect
+
     cls = ADAPTER_REGISTRY[adapter_id]
     if inspect.isabstract(cls):
         pytest.skip(f"{adapter_id} is abstract")

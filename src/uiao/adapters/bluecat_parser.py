@@ -66,16 +66,18 @@ def parse_host_records(payload: Any) -> List[dict]:
     records: List[dict] = []
     for entry in _results(payload):
         props = _entity_properties(entry)
-        records.append({
-            "type": "host-record",
-            "id": entry.get("id"),
-            "name": props.get("absoluteName") or entry.get("name", ""),
-            "ipv4addr": props.get("addresses", ""),
-            "view": props.get("view", ""),
-            "zone": props.get("parentZoneName", ""),
-            "ttl": props.get("ttl"),
-            "comment": props.get("comments", ""),
-        })
+        records.append(
+            {
+                "type": "host-record",
+                "id": entry.get("id"),
+                "name": props.get("absoluteName") or entry.get("name", ""),
+                "ipv4addr": props.get("addresses", ""),
+                "view": props.get("view", ""),
+                "zone": props.get("parentZoneName", ""),
+                "ttl": props.get("ttl"),
+                "comment": props.get("comments", ""),
+            }
+        )
     return records
 
 
@@ -84,16 +86,18 @@ def parse_alias_records(payload: Any) -> List[dict]:
     records: List[dict] = []
     for entry in _results(payload):
         props = _entity_properties(entry)
-        records.append({
-            "type": "alias-record",
-            "id": entry.get("id"),
-            "name": props.get("absoluteName") or entry.get("name", ""),
-            "canonical": props.get("linkedRecordName", ""),
-            "view": props.get("view", ""),
-            "zone": props.get("parentZoneName", ""),
-            "ttl": props.get("ttl"),
-            "comment": props.get("comments", ""),
-        })
+        records.append(
+            {
+                "type": "alias-record",
+                "id": entry.get("id"),
+                "name": props.get("absoluteName") or entry.get("name", ""),
+                "canonical": props.get("linkedRecordName", ""),
+                "view": props.get("view", ""),
+                "zone": props.get("parentZoneName", ""),
+                "ttl": props.get("ttl"),
+                "comment": props.get("comments", ""),
+            }
+        )
     return records
 
 
@@ -102,15 +106,17 @@ def parse_dhcp_ranges(payload: Any) -> List[dict]:
     ranges: List[dict] = []
     for entry in _results(payload):
         props = _entity_properties(entry)
-        ranges.append({
-            "type": "dhcp-range",
-            "id": entry.get("id"),
-            "start": props.get("start", ""),
-            "end": props.get("end", ""),
-            "network": props.get("network", ""),
-            "view": props.get("configuration", ""),
-            "comment": props.get("comments", ""),
-        })
+        ranges.append(
+            {
+                "type": "dhcp-range",
+                "id": entry.get("id"),
+                "start": props.get("start", ""),
+                "end": props.get("end", ""),
+                "network": props.get("network", ""),
+                "view": props.get("configuration", ""),
+                "comment": props.get("comments", ""),
+            }
+        )
     return ranges
 
 
@@ -119,16 +125,18 @@ def parse_ip_addresses(payload: Any) -> List[dict]:
     addresses: List[dict] = []
     for entry in _results(payload):
         props = _entity_properties(entry)
-        addresses.append({
-            "type": "ip-address",
-            "id": entry.get("id"),
-            "ipv4addr": props.get("address", ""),
-            "mac": props.get("macAddress", ""),
-            "name": entry.get("name", "") or props.get("name", ""),
-            "state": props.get("state", ""),
-            "view": props.get("configuration", ""),
-            "comment": props.get("comments", ""),
-        })
+        addresses.append(
+            {
+                "type": "ip-address",
+                "id": entry.get("id"),
+                "ipv4addr": props.get("address", ""),
+                "mac": props.get("macAddress", ""),
+                "name": entry.get("name", "") or props.get("name", ""),
+                "state": props.get("state", ""),
+                "view": props.get("configuration", ""),
+                "comment": props.get("comments", ""),
+            }
+        )
     return addresses
 
 
@@ -144,11 +152,7 @@ def _record_key(record: dict) -> str:
         return f"bam:{ident}"
     rtype = record.get("type", "unknown")
     view = record.get("view", "default")
-    fallback = (
-        record.get("name")
-        or record.get("ipv4addr")
-        or record.get("start", "")
-    )
+    fallback = record.get("name") or record.get("ipv4addr") or record.get("start", "")
     return f"{rtype}:{view}:{fallback}"
 
 

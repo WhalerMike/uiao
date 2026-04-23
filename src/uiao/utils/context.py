@@ -159,4 +159,3 @@ def load_canon(
     canon_path = Path(canon_path)
     with canon_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
-

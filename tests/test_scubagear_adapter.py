@@ -188,4 +188,3 @@ class TestScubaKsiMapping:
     def test_get_ksi_evidence_no_match(self, adapter: ScubaGearAdapter) -> None:
         evidence = adapter.get_ksi_evidence("XX-99")
         assert evidence == []
-

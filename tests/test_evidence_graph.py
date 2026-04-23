@@ -1,10 +1,16 @@
 """tests/test_evidence_graph.py — UIAO_113 Evidence Graph tests."""
+
 from __future__ import annotations
-import pytest
 from uiao.evidence.graph import (
-    ControlNode, EvidenceNode, FindingNode, IRObjectNode,
-    POAMEntryNode, ProvenanceNode, EvidenceGraph,
+    ControlNode,
+    EvidenceNode,
+    FindingNode,
+    IRObjectNode,
+    POAMEntryNode,
+    ProvenanceNode,
+    EvidenceGraph,
 )
+
 
 def _graph() -> EvidenceGraph:
     g = EvidenceGraph()
@@ -29,6 +35,7 @@ def _graph() -> EvidenceGraph:
     g.link_remediated_by("FIND-001", "POAM-001")
     return g
 
+
 class TestNodeRegistration:
     def test_nodes_stored(self):
         g = _graph()
@@ -52,6 +59,7 @@ class TestNodeRegistration:
         assert len(controls) == 2
         evidence = g.nodes_of_type("evidence")
         assert len(evidence) == 3
+
 
 class TestEdges:
     def test_implements_edge(self):
@@ -81,6 +89,7 @@ class TestEdges:
         edges = [e for e in g._out["FIND-001"] if e.edge_type == "remediated-by"]
         assert len(edges) == 1
         assert edges[0].to_id == "POAM-001"
+
 
 class TestTraversals:
     def test_evidence_for_control_via_ir(self):
@@ -137,6 +146,7 @@ class TestTraversals:
         assert len(results) == 1
         assert results[0]["id"] == "FIND-001"
         assert len(results[0]["poam_entries"]) == 1
+
 
 class TestStats:
     def test_stats_counts(self):

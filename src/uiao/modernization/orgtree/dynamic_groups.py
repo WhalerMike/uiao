@@ -19,11 +19,11 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
-from typing import Dict, Iterable, List, Mapping, Optional, Set
+from typing import Dict, List, Mapping, Optional, Set
 
 import yaml
 
@@ -116,9 +116,7 @@ def _validate_schema(document: Dict) -> None:
     try:
         import jsonschema
     except ImportError as exc:  # pragma: no cover - jsonschema is a declared dep
-        raise DynamicGroupValidationError(
-            "jsonschema is required to validate the dynamic-group library"
-        ) from exc
+        raise DynamicGroupValidationError("jsonschema is required to validate the dynamic-group library") from exc
     schema = _read_default_schema()
     try:
         jsonschema.validate(instance=document, schema=schema)
@@ -153,8 +151,7 @@ def _validate_integrity(document: Dict, codebook: Codebook) -> None:
                 )
             if not codebook.is_active(code):
                 raise DynamicGroupValidationError(
-                    f"Group '{name}' references unknown OrgPath '{code}' "
-                    "— codebook (MOD_A) does not contain this entry"
+                    f"Group '{name}' references unknown OrgPath '{code}' — codebook (MOD_A) does not contain this entry"
                 )
 
         rule = group["rule"]
@@ -203,15 +200,10 @@ def load_dynamic_group_library(
         Optional codebook override. Defaults to the canonical codebook
         loaded by :func:`uiao.modernization.orgtree.codebook.default_codebook`.
     """
-    if path is None:
-        raw_text = _read_default_library()
-    else:
-        raw_text = Path(path).read_text(encoding="utf-8")
+    raw_text = _read_default_library() if path is None else Path(path).read_text(encoding="utf-8")
     document = yaml.safe_load(raw_text)
     if not isinstance(document, dict):
-        raise DynamicGroupValidationError(
-            "Dynamic-group library must be a YAML mapping at the top level"
-        )
+        raise DynamicGroupValidationError("Dynamic-group library must be a YAML mapping at the top level")
     _validate_schema(document)
     _validate_integrity(document, codebook or default_codebook())
     return _build(document)

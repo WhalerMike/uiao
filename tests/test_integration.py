@@ -123,4 +123,3 @@ def test_trestle_generator_import():
     sig = inspect.signature(assemble_ssp)
     assert "ssp_skeleton" in sig.parameters
     assert "output_path" in sig.parameters
-

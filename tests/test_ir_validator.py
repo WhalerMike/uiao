@@ -66,4 +66,3 @@ def test_empty_ksi_warns(tmp_path):
     p.write_text(json.dumps({**VALID, "ksi_results": []}))
     r = validate_normalized_json(str(p))
     assert r.valid and any("empty" in w for w in r.warnings)
-

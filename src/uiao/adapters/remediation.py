@@ -52,8 +52,7 @@ def poam_findings_to_change_requests(
             "number": f"CHG-AUTO-{i:04d}",
             "short_description": finding.get("title", f"Remediation Item {i}"),
             "description": (
-                finding.get("description", "")
-                + (f"\n\nRelated controls: {', '.join(controls)}" if controls else "")
+                finding.get("description", "") + (f"\n\nRelated controls: {', '.join(controls)}" if controls else "")
             ),
             "priority": pmap.get(risk, "2"),
             "state": "1",  # New

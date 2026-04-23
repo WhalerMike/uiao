@@ -473,4 +473,3 @@ class TestPlantUMLThemeConfiguration:
         assert "--configFile" in cmd_str or "--theme" in cmd_str, (
             f"mmdc command must include --configFile or --theme; got: {cmd_str}"
         )
-

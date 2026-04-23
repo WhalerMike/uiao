@@ -13,4 +13,3 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 if __name__ == "__main__":
     out = build_rich_docx()
     print(f"Rich DOCX exported -> {out}")
-

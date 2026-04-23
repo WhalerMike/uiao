@@ -89,4 +89,3 @@ class TestIRGovernanceReport:
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
         assert "ir-governance-report" in result.output
-

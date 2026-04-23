@@ -3,6 +3,7 @@ impl/src/uiao/impl/api/routes/boundary.py
 ------------------------------------------
 API routes for GCC Boundary Probe
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -11,18 +12,19 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
-from ..auth.entra_token import EntraTokenProvider
-from ..auth.kerberos import WindowsIdentity, require_windows_auth
 from ...adapters.modernization.gcc_boundary_probe.probe import (
     BoundaryProbeReport,
     run_boundary_probe,
 )
+from ..auth.entra_token import EntraTokenProvider
+from ..auth.kerberos import WindowsIdentity, require_windows_auth
 
 router = APIRouter()
 
-REGISTRY_PATH = Path(
-    __import__("os").environ.get("UIAO_WORKSPACE_ROOT", "C:/srv/uiao")
-) / "src/uiao/canon/gcc-boundary-gap-registry.yaml"
+REGISTRY_PATH = (
+    Path(__import__("os").environ.get("UIAO_WORKSPACE_ROOT", "C:/srv/uiao"))
+    / "src/uiao/canon/gcc-boundary-gap-registry.yaml"
+)
 
 
 class BoundaryProbeRequest(BaseModel):
@@ -50,7 +52,7 @@ async def run_probe(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Cannot acquire Graph token: {e}",
-        )
+        ) from e
 
     tenant_id = __import__("os").environ.get("UIAO_ENTRA_TENANT_ID", "")
 
@@ -64,7 +66,7 @@ async def run_probe(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Probe failed: {exc}",
-        )
+        ) from exc
 
     return {
         "requested_by": identity.username,
@@ -80,6 +82,7 @@ async def get_gaps(
 ) -> dict:
     """Return the current canonical gap registry."""
     import yaml
+
     if not REGISTRY_PATH.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -116,4 +116,3 @@ def build_bundle_from_transform_result(transform_result: Any) -> EvidenceBundle:
         policies=transform_result.policies,
         unmapped_ksi_ids=transform_result.unmapped_ksi_ids,
     )
-
