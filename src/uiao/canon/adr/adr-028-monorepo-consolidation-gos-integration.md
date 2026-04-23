@@ -36,8 +36,10 @@ Since that decision, two material changes occurred:
    files implementing a provider framework, drift engine, governance engine,
    evidence store, and two IPAM adapters (BlueCat, Infoblox NIOS). These
    overlap substantially with `uiao-impl`'s existing
-   `src/uiao/impl/adapters/` (Entra, M365, Infoblox, ServiceNow) and
-   `src/uiao/impl/governance/drift.py`. The two IPAM adapters slot cleanly
+   `src/uiao/adapters/` (Entra, M365, Infoblox, ServiceNow) and
+   `src/uiao/governance/drift.py` (post-ADR-032 paths; originally
+   under the retired `impl/` tree when this ADR was authored).
+   The two IPAM adapters slot cleanly
    into the existing `modernization-registry.yaml` under
    `mission-class: integration`.
 

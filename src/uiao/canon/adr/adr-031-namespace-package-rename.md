@@ -114,7 +114,7 @@ Ship `uiao_impl` unchanged, add a new `uiao.impl` namespace that re-exports.
 - [PEP 420 — Implicit Namespace Packages](https://peps.python.org/pep-0420/)
 - [ADR-028 — Monorepo Consolidation and GOS Integration](adr-028-monorepo-consolidation-gos-integration.md)
 - [ADR-030 — Pre-UIAO Terminology Reconciliation](adr-030-pre-uiao-terminology-reconciliation.md)
-- [`impl/pyproject.toml`](../../../impl/pyproject.toml)
+- The retired `impl/` tree's packaging metadata (historical; consolidated into the root `pyproject.toml` by ADR-032)
 - [`AGENTS.md`](../../../AGENTS.md) — substrate topology
 
 ## Migration plan (operational)

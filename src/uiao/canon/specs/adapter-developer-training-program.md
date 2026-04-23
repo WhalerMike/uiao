@@ -56,7 +56,7 @@ After completing this program, participants will be able to:
 | ARCHITECTURE.md §3.2 | uiao | Dual-axis taxonomy |
 | UIAO_003 §4.1–§4.7 | uiao/canon | Five adapter classes |
 | Adapter Doctrine | UIAO_003 §4.1 | SSOT + Identity + Security |
-| DatabaseAdapterBase | impl/src/uiao/impl/adapters/database_base.py | 7 canonical domains |
+| DatabaseAdapterBase | src/uiao/adapters/database_base.py | 7 canonical domains |
 
 ### 2.2 Key Concepts
 
@@ -100,7 +100,7 @@ returns, (c) how it computes the provenance hash.
 ### 3.2 Step-by-Step: Building a "Hello World" Adapter
 
 ```python
-# src/uiao/impl/adapters/hello_adapter.py
+# src/uiao/adapters/<your_adapter>.py (illustrative — not a shipped module)
 from .database_base import (
     ClaimObject, ClaimSet, ConnectionProvenance, DatabaseAdapterBase,
     DriftReport, EvidenceObject, QueryProvenance, SchemaMappingObject,
