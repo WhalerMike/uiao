@@ -72,9 +72,7 @@ def _write_yaml(path: Path, data) -> None:
     path.write_text(yaml.safe_dump(data, sort_keys=False))
 
 
-def _make_workspace(
-    tmp_path: Path, *, with_contract: bool = True, doc_exists: bool = True
-) -> Path:
+def _make_workspace(tmp_path: Path, *, with_contract: bool = True, doc_exists: bool = True) -> Path:
     """Synthesize a minimal valid substrate workspace on disk."""
     for mod in ("src/uiao", "tests", "docs"):
         (tmp_path / mod).mkdir(parents=True, exist_ok=True)
@@ -142,9 +140,7 @@ def test_walker_missing_manifest_yields_p1(tmp_path: Path) -> None:
     root = tmp_path
     report = walk_substrate(workspace_root=root)
     assert not report.manifest_present
-    assert any(
-        f.drift_class == "DRIFT-SCHEMA" and f.severity == "P1" for f in report.findings
-    )
+    assert any(f.drift_class == "DRIFT-SCHEMA" and f.severity == "P1" for f in report.findings)
 
 
 def test_walker_optional_contract(tmp_path: Path) -> None:
@@ -154,9 +150,7 @@ def test_walker_optional_contract(tmp_path: Path) -> None:
     assert report.contract_present is False
 
 
-def test_cli_substrate_walk_happy(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_cli_substrate_walk_happy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     root = _make_workspace(tmp_path)
     monkeypatch.setenv("UIAO_WORKSPACE_ROOT", str(root))
     result = runner.invoke(app, ["walk"])
@@ -209,11 +203,7 @@ def test_walker_detects_missing_code_reference(tmp_path: Path) -> None:
     )
     report = walk_substrate(workspace_root=root)
     assert not report.ok
-    prov = [
-        f
-        for f in report.findings
-        if f.drift_class == "DRIFT-PROVENANCE" and "nonexistent" in f.path
-    ]
+    prov = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "nonexistent" in f.path]
     assert prov, report.findings
     assert prov[0].severity == "P2"
     assert report.code_refs_checked >= 1
@@ -226,16 +216,10 @@ def test_walker_detects_legacy_impl_reference(tmp_path: Path) -> None:
     canon_spec = root / "src/uiao/canon/specs/legacy-spec.md"
     canon_spec.parent.mkdir(parents=True, exist_ok=True)
     canon_spec.write_text(
-        "---\ndocument_id: UIAO_999\n---\n"
-        "# Legacy spec\n\n"
-        "Historical reference: `impl/src/uiao/impl/retired.py`.\n"
+        "---\ndocument_id: UIAO_999\n---\n# Legacy spec\n\nHistorical reference: `impl/src/uiao/impl/retired.py`.\n"
     )
     report = walk_substrate(workspace_root=root)
-    prov = [
-        f
-        for f in report.findings
-        if f.drift_class == "DRIFT-PROVENANCE" and "impl/" in f.path
-    ]
+    prov = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "impl/" in f.path]
     assert prov, report.findings
     assert prov[0].severity == "P2"
 
@@ -249,16 +233,10 @@ def test_walker_accepts_valid_code_reference(tmp_path: Path) -> None:
     canon_spec = root / "src/uiao/canon/specs/real-spec.md"
     canon_spec.parent.mkdir(parents=True, exist_ok=True)
     canon_spec.write_text(
-        "---\ndocument_id: UIAO_998\n---\n"
-        "# Real spec\n\n"
-        "See `src/uiao/real_module.py` for the implementation.\n"
+        "---\ndocument_id: UIAO_998\n---\n# Real spec\n\nSee `src/uiao/real_module.py` for the implementation.\n"
     )
     report = walk_substrate(workspace_root=root)
-    prov = [
-        f
-        for f in report.findings
-        if f.drift_class == "DRIFT-PROVENANCE" and "real_module" in f.path
-    ]
+    prov = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "real_module" in f.path]
     assert not prov, f"unexpected findings for existing code ref: {report.findings}"
     assert report.code_refs_checked >= 1
 
@@ -276,11 +254,7 @@ def test_walker_dedupes_same_code_ref_within_file(tmp_path: Path) -> None:
         "Third mention: `src/uiao/dupe.py`\n"
     )
     report = walk_substrate(workspace_root=root)
-    prov = [
-        f
-        for f in report.findings
-        if f.drift_class == "DRIFT-PROVENANCE" and "dupe.py" in f.path
-    ]
+    prov = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "dupe.py" in f.path]
     assert len(prov) == 1, [f.path for f in prov]
 
 
@@ -289,16 +263,9 @@ def test_walker_scans_markdown_links_in_canon(tmp_path: Path) -> None:
     root = _make_workspace(tmp_path)
     canon_spec = root / "src/uiao/canon/specs/link-spec.md"
     canon_spec.parent.mkdir(parents=True, exist_ok=True)
-    canon_spec.write_text(
-        "---\ndocument_id: UIAO_996\n---\n"
-        "See [the module](src/uiao/missing_link.py) for details.\n"
-    )
+    canon_spec.write_text("---\ndocument_id: UIAO_996\n---\nSee [the module](src/uiao/missing_link.py) for details.\n")
     report = walk_substrate(workspace_root=root)
-    prov = [
-        f
-        for f in report.findings
-        if f.drift_class == "DRIFT-PROVENANCE" and "missing_link" in f.path
-    ]
+    prov = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "missing_link" in f.path]
     assert prov, report.findings
 
 
@@ -317,10 +284,7 @@ def test_cli_drift_passes_on_p2_only(tmp_path: Path) -> None:
     root = _make_workspace(tmp_path)
     canon_spec = root / "src/uiao/canon/specs/warn-only.md"
     canon_spec.parent.mkdir(parents=True, exist_ok=True)
-    canon_spec.write_text(
-        "---\ndocument_id: UIAO_995\n---\n"
-        "See `src/uiao/ghost.py`.\n"
-    )
+    canon_spec.write_text("---\ndocument_id: UIAO_995\n---\nSee `src/uiao/ghost.py`.\n")
     result = runner.invoke(app, ["drift", "--workspace-root", str(root)])
     assert result.exit_code == 0, result.stdout
     assert "PASS" in result.stdout
@@ -341,10 +305,7 @@ def test_cli_walk_shows_warnings_separately(tmp_path: Path) -> None:
     root = _make_workspace(tmp_path)
     canon_spec = root / "src/uiao/canon/specs/warn-display.md"
     canon_spec.parent.mkdir(parents=True, exist_ok=True)
-    canon_spec.write_text(
-        "---\ndocument_id: UIAO_994\n---\n"
-        "See `src/uiao/phantom.py`.\n"
-    )
+    canon_spec.write_text("---\ndocument_id: UIAO_994\n---\nSee `src/uiao/phantom.py`.\n")
     result = runner.invoke(app, ["walk", "--workspace-root", str(root)])
     assert result.exit_code == 0, result.stdout
     assert "WARN" in result.stdout

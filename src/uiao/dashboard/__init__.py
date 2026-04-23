@@ -10,4 +10,3 @@ from uiao.dashboard.export import DashboardExporter
 from uiao.dashboard.ksi import KSICalculator
 
 __all__ = ["KSICalculator", "DashboardExporter"]
-

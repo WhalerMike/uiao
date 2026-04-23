@@ -37,20 +37,22 @@ def parse_security_rules_xml(xml_content: str) -> List[dict]:
         action_el = entry.find("action")
         action = action_el.text if action_el is not None else "unknown"
 
-        rules.append({
-            "type": "security-rule",
-            "name": name,
-            "from_zone": _members(entry.find("from")),
-            "to_zone": _members(entry.find("to")),
-            "source": _members(entry.find("source")),
-            "destination": _members(entry.find("destination")),
-            "application": _members(entry.find("application")),
-            "service": _members(entry.find("service")),
-            "action": action,
-            "log_start": (entry.findtext("log-start", "no") == "yes"),
-            "log_end": (entry.findtext("log-end", "no") == "yes"),
-            "tags": _members(entry.find("tag")),
-        })
+        rules.append(
+            {
+                "type": "security-rule",
+                "name": name,
+                "from_zone": _members(entry.find("from")),
+                "to_zone": _members(entry.find("to")),
+                "source": _members(entry.find("source")),
+                "destination": _members(entry.find("destination")),
+                "application": _members(entry.find("application")),
+                "service": _members(entry.find("service")),
+                "action": action,
+                "log_start": (entry.findtext("log-start", "no") == "yes"),
+                "log_end": (entry.findtext("log-end", "no") == "yes"),
+                "tags": _members(entry.find("tag")),
+            }
+        )
 
     return rules
 
@@ -77,18 +79,20 @@ def parse_nat_rules_xml(xml_content: str) -> List[dict]:
             translated_addr = dst_trans.findtext("translated-address", "")
             translated_port = dst_trans.findtext("translated-port", "")
 
-        rules.append({
-            "type": "nat-rule",
-            "name": name,
-            "from_zone": _members(entry.find("from")),
-            "to_zone": _members(entry.find("to")),
-            "source": _members(entry.find("source")),
-            "destination": _members(entry.find("destination")),
-            "service": entry.findtext("service", ""),
-            "translated_address": translated_addr,
-            "translated_port": translated_port,
-            "tags": _members(entry.find("tag")),
-        })
+        rules.append(
+            {
+                "type": "nat-rule",
+                "name": name,
+                "from_zone": _members(entry.find("from")),
+                "to_zone": _members(entry.find("to")),
+                "source": _members(entry.find("source")),
+                "destination": _members(entry.find("destination")),
+                "service": entry.findtext("service", ""),
+                "translated_address": translated_addr,
+                "translated_port": translated_port,
+                "tags": _members(entry.find("tag")),
+            }
+        )
 
     return rules
 

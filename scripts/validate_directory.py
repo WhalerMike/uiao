@@ -11,6 +11,7 @@ Usage
 -----
     python scripts/validate_directory.py
 """
+
 from __future__ import annotations
 
 import runpy

@@ -118,4 +118,3 @@ def schedule_summary(jobs: List[RefreshJob]) -> str:
     owners = group_jobs_by_owner(jobs)
     lines.append("  Owners   : " + ", ".join(sorted(owners.keys())))
     return "\n".join(lines)
-

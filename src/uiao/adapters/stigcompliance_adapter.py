@@ -54,15 +54,20 @@ class StigComplianceAdapter(DatabaseAdapterBase):
 
     def discover_schema(self) -> SchemaMappingObject:
         vendor_schema: Dict[str, Any] = {
-            "rule_id": "string", "severity": "string", "title": "string",
-            "result": "string", "fix_text": "string",
+            "rule_id": "string",
+            "severity": "string",
+            "title": "string",
+            "result": "string",
+            "fix_text": "string",
         }
         canonical_schema: Dict[str, Any] = {
             "identity": f"stig-compliance:{self._engine}:<rule_id>",
-            "control_id": "CM-6", "evidence.source": "stig-compliance",
+            "control_id": "CM-6",
+            "evidence.source": "stig-compliance",
         }
         return SchemaMappingObject(
-            vendor_schema=vendor_schema, canonical_schema=canonical_schema,
+            vendor_schema=vendor_schema,
+            canonical_schema=canonical_schema,
             mapping_rules={"rule_id": "identity suffix", "result": "pass/fail/error"},
             unmapped_fields=["fix_text", "check_content"],
             version_hash=self._hash({"vendor": vendor_schema, "canonical": canonical_schema}),
@@ -72,8 +77,10 @@ class StigComplianceAdapter(DatabaseAdapterBase):
         benchmark = canonical_query.get("from", self._benchmark or "RHEL9-STIG")
         vendor_query = f"oscap xccdf eval --benchmark {benchmark} --target {self._target}"
         return QueryProvenance(
-            canonical_query=canonical_query, vendor_query=vendor_query,
-            execution_plan_hash=self._hash(vendor_query), row_count=0,
+            canonical_query=canonical_query,
+            vendor_query=vendor_query,
+            execution_plan_hash=self._hash(vendor_query),
+            row_count=0,
             timestamp=self._now(),
         )
 
@@ -81,22 +88,35 @@ class StigComplianceAdapter(DatabaseAdapterBase):
         claims: List[ClaimObject] = []
         for rule in raw_rows:
             rule_id = rule.get("rule_id", "unknown")
-            claims.append(ClaimObject(
-                claim_id=f"stig-compliance:{self._engine}:{rule_id}",
-                entity=f"stig-compliance:{rule_id}",
-                fields={"identity": f"stig-compliance:{self._engine}:{rule_id}",
-                        "result": rule.get("result", ""), "severity": rule.get("severity", ""),
-                        "title": rule.get("title", ""), "vendor_overlay_ref": "stig.yaml"},
-                source=self.ADAPTER_ID, provenance_hash=self._hash(rule),
-            ))
+            claims.append(
+                ClaimObject(
+                    claim_id=f"stig-compliance:{self._engine}:{rule_id}",
+                    entity=f"stig-compliance:{rule_id}",
+                    fields={
+                        "identity": f"stig-compliance:{self._engine}:{rule_id}",
+                        "result": rule.get("result", ""),
+                        "severity": rule.get("severity", ""),
+                        "title": rule.get("title", ""),
+                        "vendor_overlay_ref": "stig.yaml",
+                    },
+                    source=self.ADAPTER_ID,
+                    provenance_hash=self._hash(rule),
+                )
+            )
         return ClaimSet(claims=claims, source_reference=f"stig:{self._benchmark}")
 
     def detect_drift(self) -> DriftReport:
         return DriftReport(
-            drift_type="stig-compliance-posture", severity="info",
-            first_observed=self._now(), last_observed=self._now(),
-            details={"message": "Drift detection scaffold — compare STIG results against accepted baseline.",
-                     "adapter": self.ADAPTER_ID, "engine": self._engine, "benchmark": self._benchmark},
+            drift_type="stig-compliance-posture",
+            severity="info",
+            first_observed=self._now(),
+            last_observed=self._now(),
+            details={
+                "message": "Drift detection scaffold — compare STIG results against accepted baseline.",
+                "adapter": self.ADAPTER_ID,
+                "engine": self._engine,
+                "benchmark": self._benchmark,
+            },
             remediation="Evaluate XCCDF results against prior accepted-risk register.",
         )
 
@@ -123,13 +143,25 @@ class StigComplianceAdapter(DatabaseAdapterBase):
             timestamp=self._now(),
             raw_data={"connection": conn.to_dict(), "pass": pass_count, "fail": fail_count, "total": len(results)},
             normalized_data=claim_set.to_dict(),
-            provenance={"adapter_id": self.ADAPTER_ID, "engine": self._engine, "hash": self._hash(claim_set.to_dict()), "timestamp": self._now().isoformat()},
+            provenance={
+                "adapter_id": self.ADAPTER_ID,
+                "engine": self._engine,
+                "hash": self._hash(claim_set.to_dict()),
+                "timestamp": self._now().isoformat(),
+            },
             freshness_valid=True,
         )
 
     def collect_and_align(self) -> Dict[str, Any]:
         claim_set = self.normalize([])
-        return {"vendor": self._engine.title(), "adapter_id": self.ADAPTER_ID,
-                "claims": claim_set.to_dict(),
-                "metadata": {"engine": self._engine, "benchmark": self._benchmark,
-                             "target": self._target, "last_collected": self._now().isoformat()}}
+        return {
+            "vendor": self._engine.title(),
+            "adapter_id": self.ADAPTER_ID,
+            "claims": claim_set.to_dict(),
+            "metadata": {
+                "engine": self._engine,
+                "benchmark": self._benchmark,
+                "target": self._target,
+                "last_collected": self._now().isoformat(),
+            },
+        }

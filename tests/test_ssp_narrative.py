@@ -75,4 +75,3 @@ def test_format_ssp_markdown_no_drift_section_when_none():
     narratives = build_control_narratives([_link()], [])
     md = format_ssp_markdown(narratives)
     assert "governance status" not in md
-

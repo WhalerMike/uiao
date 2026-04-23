@@ -196,4 +196,3 @@ def build_diagrams(
         force=force,
     )
     return output_dir
-

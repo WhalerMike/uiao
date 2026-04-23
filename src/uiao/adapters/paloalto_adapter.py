@@ -108,9 +108,7 @@ class PaloAltoAdapter(DatabaseAdapterBase):
             canonical_schema=canonical_schema,
             mapping_rules=mapping_rules,
             unmapped_fields=["tag", "log-setting", "schedule", "qos-marking"],
-            version_hash=self._hash(
-                {"vendor": vendor_schema, "canonical": canonical_schema}
-            ),
+            version_hash=self._hash({"vendor": vendor_schema, "canonical": canonical_schema}),
         )
 
     # ------------------------------------------------------------------
@@ -121,9 +119,7 @@ class PaloAltoAdapter(DatabaseAdapterBase):
         """Translate canonical query to PAN-OS XML API request."""
         rule_type = canonical_query.get("from", "security-rule")
         xpath = f"/config/devices/entry[@name='localhost.localdomain']/vsys/entry[@name='{self._vsys}']/rulebase/{rule_type}/rules"
-        vendor_query = (
-            f"GET /api/?type=config&action=show&xpath={xpath}"
-        )
+        vendor_query = f"GET /api/?type=config&action=show&xpath={xpath}"
         return QueryProvenance(
             canonical_query=canonical_query,
             vendor_query=vendor_query,
@@ -184,8 +180,7 @@ class PaloAltoAdapter(DatabaseAdapterBase):
                 "vsys": self._vsys,
             },
             remediation=(
-                "Compare normalize() output of running config against "
-                "YAML canon SC-7/CM-7/AC-4 control mappings."
+                "Compare normalize() output of running config against YAML canon SC-7/CM-7/AC-4 control mappings."
             ),
         )
 
@@ -264,8 +259,7 @@ class PaloAltoAdapter(DatabaseAdapterBase):
                 "rule_name": rule_name,
                 "proposed_changes": config_delta,
                 "message": (
-                    f"Proposed change to {rule_type}/{rule_name}: "
-                    f"{len(config_delta)} field(s). Commit required."
+                    f"Proposed change to {rule_type}/{rule_name}: {len(config_delta)} field(s). Commit required."
                 ),
             },
             remediation=f"Review and commit change to {rule_type}/{rule_name} via PAN-OS.",

@@ -22,7 +22,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from .auth.entra_token import EntraTokenProvider
-from .routes import health, orgpath, survey, auditor
+from .routes import auditor, health, orgpath, survey
 
 
 # ------------------------------------------------------------------
@@ -54,7 +54,7 @@ app = FastAPI(
         "Canon reference: Appendix F, Appendix C."
     ),
     version="0.1.0",
-    docs_url="/api/docs",       # Swagger UI
+    docs_url="/api/docs",  # Swagger UI
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
     lifespan=lifespan,
@@ -78,8 +78,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         status_code=500,
         content={
             "error": "internal_error",
-            "message": str(exc) if os.environ.get("UIAO_DEBUG") else
-                       "An internal error occurred. Check server logs.",
+            "message": str(exc) if os.environ.get("UIAO_DEBUG") else "An internal error occurred. Check server logs.",
             "path": str(request.url.path),
         },
     )

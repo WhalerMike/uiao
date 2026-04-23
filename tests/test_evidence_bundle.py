@@ -80,4 +80,3 @@ def test_bundle_summary_contains_run_id():
 def test_bundle_summary_contains_hash():
     b = _bundle()
     assert "Bundle hash" in b.summary()
-

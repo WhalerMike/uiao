@@ -21,10 +21,12 @@ from uiao.adapters.database_base import (
 
 @pytest.fixture
 def adapter() -> ServiceNowAdapter:
-    return ServiceNowAdapter({
-        "instance": "contoso-gov",
-        "token": "test-token-placeholder",
-    })
+    return ServiceNowAdapter(
+        {
+            "instance": "contoso-gov",
+            "token": "test-token-placeholder",
+        }
+    )
 
 
 @pytest.fixture
@@ -57,9 +59,7 @@ class TestNormalizeRealData:
         assert "IA-2" in controls
         assert "SC-7" in controls
 
-    def test_implementation_statement_from_description(
-        self, adapter: ServiceNowAdapter, incidents: list
-    ) -> None:
+    def test_implementation_statement_from_description(self, adapter: ServiceNowAdapter, incidents: list) -> None:
         result = adapter.normalize(incidents)
         descriptions = {c.fields.get("implementation_statement", "") for c in result.claims}
         assert any("MFA enrollment" in d for d in descriptions)
@@ -70,9 +70,7 @@ class TestNormalizeRealData:
         for claim in result.claims:
             assert claim.source == "servicenow"
 
-    def test_provenance_hash_deterministic(
-        self, adapter: ServiceNowAdapter, incidents: list
-    ) -> None:
+    def test_provenance_hash_deterministic(self, adapter: ServiceNowAdapter, incidents: list) -> None:
         r1 = adapter.normalize(incidents)
         r2 = adapter.normalize(incidents)
         hashes1 = sorted(c.provenance_hash for c in r1.claims)
@@ -85,10 +83,14 @@ class TestNormalizeRealData:
 
     def test_missing_control_id_defaults(self, adapter: ServiceNowAdapter) -> None:
         """Records without uiao_control_id should default to AC-2."""
-        result = adapter.normalize([{
-            "sys_id": "INC-NO-CONTROL",
-            "short_description": "No control mapped",
-        }])
+        result = adapter.normalize(
+            [
+                {
+                    "sys_id": "INC-NO-CONTROL",
+                    "short_description": "No control mapped",
+                }
+            ]
+        )
         assert len(result.claims) == 1
         assert result.claims[0].fields.get("control_id") == "AC-2"
 
@@ -161,6 +163,7 @@ class TestCollectAndAlignBehavior:
     def test_returns_alignment_dict(self, adapter: ServiceNowAdapter, incidents: list) -> None:
         """Mock the collector to avoid real API call."""
         from unittest.mock import MagicMock
+
         adapter.collector = MagicMock()
         adapter.collector.fetch_relevant_records.return_value = {"result": incidents}
         adapter.collector.instance = "contoso-gov"

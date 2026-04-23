@@ -104,27 +104,27 @@ def parse_image_prompts(md_path: str | Path) -> list[dict[str, str]]:
         body = sections[i + 2]
 
         # Extract placement
-        placement_match = re.search(
-            r"\*\*Placement:\*\*\s*(.+?)(?=\n\n|\n\*\*)", body, re.DOTALL
-        )
+        placement_match = re.search(r"\*\*Placement:\*\*\s*(.+?)(?=\n\n|\n\*\*)", body, re.DOTALL)
         placement = placement_match.group(1).strip() if placement_match else ""
 
         # Extract prompt — everything after **Prompt:**
-        prompt_match = re.search(
-            r"\*\*Prompt:\*\*\s*\n(.+?)(?=\n---|\n##|\Z)", body, re.DOTALL
-        )
+        prompt_match = re.search(r"\*\*Prompt:\*\*\s*\n(.+?)(?=\n---|\n##|\Z)", body, re.DOTALL)
         prompt = prompt_match.group(1).strip() if prompt_match else ""
 
         if prompt:
-            images.append({
-                "number": number,
-                "title": title,
-                "placement": placement,
-                "prompt": prompt,
-            })
+            images.append(
+                {
+                    "number": number,
+                    "title": title,
+                    "placement": placement,
+                    "prompt": prompt,
+                }
+            )
             logger.info(
                 "Parsed Image %s: %s (%d chars)",
-                number, title, len(prompt),
+                number,
+                title,
+                len(prompt),
             )
         else:
             logger.warning("No prompt found for Image %s: %s", number, title)
@@ -177,9 +177,7 @@ def call_nanobanana(
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not api_key:
         logger.error(
-            "GEMINI_API_KEY not set.\n"
-            "  export GEMINI_API_KEY='your-key'\n"
-            "  Or set it as a GitHub Secret for CI."
+            "GEMINI_API_KEY not set.\n  export GEMINI_API_KEY='your-key'\n  Or set it as a GitHub Secret for CI."
         )
         return False
 
@@ -187,10 +185,7 @@ def call_nanobanana(
         from google import genai
         from google.genai import types
     except ImportError:
-        logger.error(
-            "google-genai not installed.\n"
-            "  pip install google-genai"
-        )
+        logger.error("google-genai not installed.\n  pip install google-genai")
         return False
 
     try:
@@ -213,9 +208,7 @@ def call_nanobanana(
                 output_path.parent.mkdir(parents=True, exist_ok=True)
                 output_path.write_bytes(image_bytes)
                 size_kb = len(image_bytes) / 1024
-                logger.info(
-                    "  Saved: %s (%.1f KB)", output_path, size_kb
-                )
+                logger.info("  Saved: %s (%.1f KB)", output_path, size_kb)
                 return True
 
         logger.warning("  No image data in Gemini response.")
@@ -332,7 +325,9 @@ def main() -> None:
     if not args.dry_run:
         logger.info(
             "=== Complete: %d generated, %d failed, %d cached ===",
-            generated, failed, cached,
+            generated,
+            failed,
+            cached,
         )
         if failed:
             sys.exit(1)

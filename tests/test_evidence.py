@@ -435,4 +435,3 @@ class TestOSCALSSPBackMatter:
             for prop in resource.get("props", []):
                 assert "uuid" in prop, f"prop missing uuid in resource {resource['uuid']}: {prop}"
                 uuid.UUID(prop["uuid"])  # validate it is a real UUID
-

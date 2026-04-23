@@ -13,6 +13,7 @@ a tmp directory so no fixture files are required.
 All tests are deterministic, hermetic (no network), and import nothing from
 the SCuBA layer (Plane 1), the IR layer, or the POA&M/SSP layer (Plane 4).
 """
+
 from __future__ import annotations
 
 import json
@@ -95,6 +96,7 @@ def _write_ksi_file(tmp_path: Path, results: List[Dict[str, Any]]) -> Path:
 # 1. _load_ksi
 # ---------------------------------------------------------------------------
 
+
 class TestLoadKSI:
     def test_loads_valid_envelope(self, tmp_path: Path) -> None:
         results = [_make_ksi_result("c1", "pass")]
@@ -124,6 +126,7 @@ class TestLoadKSI:
 # 2. _load_config
 # ---------------------------------------------------------------------------
 
+
 class TestLoadConfig:
     def test_returns_empty_on_none(self) -> None:
         assert _load_config(None) == {}
@@ -142,6 +145,7 @@ class TestLoadConfig:
 # ---------------------------------------------------------------------------
 # 3. _ksi_result_to_evidence_record — mutation rules
 # ---------------------------------------------------------------------------
+
 
 class TestKSIResultToEvidenceRecord:
     def _build(self, verdict: str, cfg: Dict[str, Any] | None = None) -> Dict[str, Any]:
@@ -194,6 +198,7 @@ class TestKSIResultToEvidenceRecord:
 # 4. _stable_hash + _canonical_json
 # ---------------------------------------------------------------------------
 
+
 class TestHashing:
     def test_identical_dicts_produce_identical_hashes(self) -> None:
         data = {"b": 2, "a": 1}
@@ -217,18 +222,13 @@ class TestHashing:
 # 5. _build_manifest
 # ---------------------------------------------------------------------------
 
+
 class TestBuildManifest:
     def _make_records(self) -> List[Dict[str, Any]]:
         return [
-            _ksi_result_to_evidence_record(
-                _make_ksi_result("c1", "pass"), _RUN_ID, _GENERATED_AT, {}
-            ),
-            _ksi_result_to_evidence_record(
-                _make_ksi_result("c2", "fail"), _RUN_ID, _GENERATED_AT, {}
-            ),
-            _ksi_result_to_evidence_record(
-                _make_ksi_result("c3", "inconclusive"), _RUN_ID, _GENERATED_AT, {}
-            ),
+            _ksi_result_to_evidence_record(_make_ksi_result("c1", "pass"), _RUN_ID, _GENERATED_AT, {}),
+            _ksi_result_to_evidence_record(_make_ksi_result("c2", "fail"), _RUN_ID, _GENERATED_AT, {}),
+            _ksi_result_to_evidence_record(_make_ksi_result("c3", "inconclusive"), _RUN_ID, _GENERATED_AT, {}),
         ]
 
     def test_total_records(self) -> None:
@@ -263,13 +263,10 @@ class TestBuildManifest:
 # 6. File I/O helpers
 # ---------------------------------------------------------------------------
 
+
 class TestFileHelpers:
     def _records(self) -> List[Dict[str, Any]]:
-        return [
-            _ksi_result_to_evidence_record(
-                _make_ksi_result("c1", "pass"), _RUN_ID, _GENERATED_AT, {}
-            )
-        ]
+        return [_ksi_result_to_evidence_record(_make_ksi_result("c1", "pass"), _RUN_ID, _GENERATED_AT, {})]
 
     def test_write_evidence_jsonl(self, tmp_path: Path) -> None:
         dst = tmp_path / "evidence.jsonl"
@@ -299,6 +296,7 @@ class TestFileHelpers:
 # ---------------------------------------------------------------------------
 # 7. Integration: build_evidence() end-to-end
 # ---------------------------------------------------------------------------
+
 
 class TestBuildEvidenceIntegration:
     def _write_ksi(self, tmp_path: Path) -> Path:
@@ -407,4 +405,3 @@ class TestBuildEvidenceIntegration:
         lines = (out_dir / "evidence.jsonl").read_text(encoding="utf-8").strip().splitlines()
         rec = json.loads(lines[0])
         assert rec["provenance"]["collector_id"] == "custom-collector"
-

@@ -61,6 +61,7 @@ class TestInstantiation:
 
     def test_is_database_adapter_base(self, adapter: M365Adapter) -> None:
         from uiao.adapters.database_base import DatabaseAdapterBase
+
         assert isinstance(adapter, DatabaseAdapterBase)
 
 
@@ -180,12 +181,15 @@ class TestGetTenantConfig:
     def adapter_with_config(self) -> M365Adapter:
         import json
         from pathlib import Path
+
         config_path = Path(__file__).parent / "fixtures" / "m365-tenant-config.json"
         tenant_config = json.loads(config_path.read_text())
-        return M365Adapter({
-            "tenant_id": "contoso.onmicrosoft.com",
-            "_tenant_config": tenant_config,
-        })
+        return M365Adapter(
+            {
+                "tenant_id": "contoso.onmicrosoft.com",
+                "_tenant_config": tenant_config,
+            }
+        )
 
     def test_exchange_claims(self, adapter_with_config: M365Adapter) -> None:
         result = adapter_with_config.get_tenant_config("exchange-online")
@@ -213,12 +217,15 @@ class TestApplyBaseline:
     def adapter_with_config(self) -> M365Adapter:
         import json
         from pathlib import Path
+
         config_path = Path(__file__).parent / "fixtures" / "m365-tenant-config.json"
         tenant_config = json.loads(config_path.read_text())
-        return M365Adapter({
-            "tenant_id": "contoso.onmicrosoft.com",
-            "_tenant_config": tenant_config,
-        })
+        return M365Adapter(
+            {
+                "tenant_id": "contoso.onmicrosoft.com",
+                "_tenant_config": tenant_config,
+            }
+        )
 
     def test_returns_drift_report(self, adapter_with_config: M365Adapter) -> None:
         result = adapter_with_config.apply_baseline("exchange-online", {})
@@ -249,12 +256,15 @@ class TestGenerateM365Evidence:
     def adapter_with_config(self) -> M365Adapter:
         import json
         from pathlib import Path
+
         config_path = Path(__file__).parent / "fixtures" / "m365-tenant-config.json"
         tenant_config = json.loads(config_path.read_text())
-        return M365Adapter({
-            "tenant_id": "contoso.onmicrosoft.com",
-            "_tenant_config": tenant_config,
-        })
+        return M365Adapter(
+            {
+                "tenant_id": "contoso.onmicrosoft.com",
+                "_tenant_config": tenant_config,
+            }
+        )
 
     def test_returns_evidence_object(self, adapter_with_config: M365Adapter) -> None:
         result = adapter_with_config.generate_m365_evidence()

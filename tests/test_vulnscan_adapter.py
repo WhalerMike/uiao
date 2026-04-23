@@ -7,17 +7,22 @@ import pytest
 from uiao.adapters.vulnscan_adapter import VulnScanAdapter
 from uiao.adapters.database_base import (
     ConnectionProvenance,
-    DriftReport, EvidenceObject, QueryProvenance, SchemaMappingObject,
+    DriftReport,
+    EvidenceObject,
+    QueryProvenance,
+    SchemaMappingObject,
 )
 
 
 @pytest.fixture
 def adapter() -> VulnScanAdapter:
-    return VulnScanAdapter({
-        "scanner": "tenable",
-        "endpoint": "https://cloud.tenable.com/api",
-        "scan_policy": "fedramp-moderate",
-    })
+    return VulnScanAdapter(
+        {
+            "scanner": "tenable",
+            "endpoint": "https://cloud.tenable.com/api",
+            "scan_policy": "fedramp-moderate",
+        }
+    )
 
 
 @pytest.fixture
@@ -37,6 +42,7 @@ class TestInstantiation:
 
     def test_is_database_adapter_base(self, adapter: VulnScanAdapter) -> None:
         from uiao.adapters.database_base import DatabaseAdapterBase
+
         assert isinstance(adapter, DatabaseAdapterBase)
 
 
@@ -74,7 +80,15 @@ class TestNormalize:
         assert len(result.claims) == 0
 
     def test_single_finding(self, adapter: VulnScanAdapter) -> None:
-        raw = [{"finding_id": "F-001", "cve_id": "CVE-2025-1234", "severity": "critical", "cvss_score": 9.8, "affected_asset": "web01"}]
+        raw = [
+            {
+                "finding_id": "F-001",
+                "cve_id": "CVE-2025-1234",
+                "severity": "critical",
+                "cvss_score": 9.8,
+                "affected_asset": "web01",
+            }
+        ]
         result = adapter.normalize(raw)
         assert len(result.claims) == 1
         assert "CVE-2025-1234" in str(result.claims[0].fields)
@@ -102,6 +116,7 @@ class TestIngestScanResults:
     def scan_data(self) -> dict:
         import json
         from pathlib import Path
+
         return json.loads((Path(__file__).parent / "fixtures" / "vulnscan-findings.json").read_text())
 
     def test_ingest_all(self, adapter: VulnScanAdapter, scan_data: dict) -> None:

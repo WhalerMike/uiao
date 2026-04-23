@@ -33,8 +33,6 @@ The probe distinguishes:
 from __future__ import annotations
 
 import asyncio
-import json
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -51,6 +49,7 @@ import yaml
 @dataclass
 class BoundaryFinding:
     """A DRIFT-BOUNDARY finding from the GCC boundary probe."""
+
     gap_id: str
     feature: str
     service: str
@@ -78,10 +77,7 @@ class BoundaryFinding:
 
     @property
     def detail(self) -> str:
-        return (
-            f"{self.feature} ({self.service}): {self.microsoft_status}. "
-            f"{self.root_cause[:200]}"
-        )
+        return f"{self.feature} ({self.service}): {self.microsoft_status}. {self.root_cause[:200]}"
 
     def as_dict(self) -> dict:
         return {
@@ -95,6 +91,7 @@ class BoundaryFinding:
 @dataclass
 class BoundaryProbeReport:
     """Aggregated output of the GCC boundary probe."""
+
     tenant_id: str
     probe_timestamp: str
     total_gaps: int = 0
@@ -108,10 +105,7 @@ class BoundaryProbeReport:
 
     @property
     def unmitigated_p1(self) -> list[BoundaryFinding]:
-        return [
-            f for f in self.findings
-            if f.severity == "P1" and f.compensating_status == "GAP_UNMITIGATED"
-        ]
+        return [f for f in self.findings if f.severity == "P1" and f.compensating_status == "GAP_UNMITIGATED"]
 
     def as_dict(self) -> dict:
         d = {k: v for k, v in self.__dict__.items() if k != "findings"}
@@ -123,6 +117,7 @@ class BoundaryProbeReport:
 # ------------------------------------------------------------------
 # Graph API probe functions
 # ------------------------------------------------------------------
+
 
 class GraphProbe:
     """
@@ -167,8 +162,7 @@ class GraphProbe:
         """
         # Check if tenant has enrolled devices first
         status, devices = await self._get(
-            "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices"
-            "?$count=true&$top=1"
+            "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$count=true&$top=1"
         )
         if status != 200:
             return "PROBE_FAILED", f"managedDevices returned HTTP {status}"
@@ -179,13 +173,11 @@ class GraphProbe:
 
         # Check Endpoint Analytics scores endpoint
         status2, scores = await self._get(
-            "https://graph.microsoft.com/beta/deviceManagement/"
-            "userExperienceAnalyticsOverview"
+            "https://graph.microsoft.com/beta/deviceManagement/userExperienceAnalyticsOverview"
         )
         if status2 == 403:
             return "EXPLICITLY_UNAVAIL", (
-                "Graph returns 403 on endpoint analytics overview — "
-                "feature not authorized for this tenant"
+                "Graph returns 403 on endpoint analytics overview — feature not authorized for this tenant"
             )
         if status2 == 404:
             return "EXPLICITLY_UNAVAIL", "Endpoint analytics endpoint not found"
@@ -212,8 +204,7 @@ class GraphProbe:
         )
         if status in (403, 404):
             return "EXPLICITLY_UNAVAIL", (
-                "Locations (network fence) feature returns "
-                f"HTTP {status} — confirmed unavailable in government tenant"
+                f"Locations (network fence) feature returns HTTP {status} — confirmed unavailable in government tenant"
             )
         if status == 200:
             return "FUNCTIONAL", "Locations feature API is accessible"
@@ -223,14 +214,10 @@ class GraphProbe:
         """
         Test: Is expedited Windows quality update management available?
         """
-        status, body = await self._get(
-            "https://graph.microsoft.com/beta/deviceManagement/"
-            "windowsQualityUpdateProfiles"
-        )
+        status, body = await self._get("https://graph.microsoft.com/beta/deviceManagement/windowsQualityUpdateProfiles")
         if status == 403:
             return "PLANNING_PHASE", (
-                "Expedited updates returns 403 — feature in planning phase "
-                "for government. Not yet available."
+                "Expedited updates returns 403 — feature in planning phase for government. Not yet available."
             )
         if status == 200:
             return "FUNCTIONAL", "Expedited update profiles accessible"
@@ -252,10 +239,7 @@ class GraphProbe:
             return "PROBE_SKIPPED", "No enrolled devices"
 
         # Check if TPM/attestation data is present
-        has_attestation = any(
-            d.get("hardwareInformation", {}).get("tpmManufacturer")
-            for d in devices
-        )
+        has_attestation = any(d.get("hardwareInformation", {}).get("tpmManufacturer") for d in devices)
         if has_attestation:
             return "FUNCTIONAL", "TPM attestation data present in device records"
         return "PLANNING_PHASE", (
@@ -268,20 +252,13 @@ class GraphProbe:
         Test: Is Azure Monitor Workbooks available via Intune?
         This requires Azure Monitor workspace connectivity — unavailable in govt.
         """
-        status, body = await self._get(
-            "https://graph.microsoft.com/beta/deviceManagement/"
-            "reports/getReportFilters"
-        )
+        status, body = await self._get("https://graph.microsoft.com/beta/deviceManagement/reports/getReportFilters")
         # Workbooks are an Azure Portal feature, not Graph-testable directly
         # Use diagnostics settings as proxy
-        status2, body2 = await self._get(
-            "https://graph.microsoft.com/beta/deviceManagement/"
-            "reports/exportJobs"
-        )
+        status2, body2 = await self._get("https://graph.microsoft.com/beta/deviceManagement/reports/exportJobs")
         if status2 == 403:
             return "EXPLICITLY_UNAVAIL", (
-                "Diagnostics/Workbooks export returns 403 — "
-                "feature explicitly unavailable for government customers"
+                "Diagnostics/Workbooks export returns 403 — feature explicitly unavailable for government customers"
             )
         if status2 == 200:
             return "FUNCTIONAL", "Report export API accessible"
@@ -291,6 +268,7 @@ class GraphProbe:
 # ------------------------------------------------------------------
 # ARC probe functions (Azure Resource Manager API)
 # ------------------------------------------------------------------
+
 
 class ARCProbe:
     """
@@ -372,6 +350,7 @@ class ARCProbe:
 # Main probe runner
 # ------------------------------------------------------------------
 
+
 async def run_boundary_probe(
     graph_token: str,
     tenant_id: str,
@@ -407,21 +386,35 @@ async def run_boundary_probe(
 
     # ---- Intune probes ----
     probes = [
-        ("GAP-INT-001", "Endpoint Analytics",
-         "Microsoft Intune", "analytics",
-         graph.probe_endpoint_analytics_available),
-        ("GAP-INT-005", "Locations (Network Fence)",
-         "Microsoft Intune", "location_compliance",
-         graph.probe_locations_available),
-        ("GAP-INT-006", "Expedited Windows Quality Updates",
-         "Microsoft Intune", "security_control",
-         graph.probe_expedited_updates),
-        ("GAP-INT-008", "Windows Device Health Attestation",
-         "Microsoft Intune", "security_control",
-         graph.probe_device_health_attestation),
-        ("GAP-INT-004", "Workbooks / Diagnostics",
-         "Microsoft Intune", "analytics",
-         graph.probe_workbooks_available),
+        (
+            "GAP-INT-001",
+            "Endpoint Analytics",
+            "Microsoft Intune",
+            "analytics",
+            graph.probe_endpoint_analytics_available,
+        ),
+        (
+            "GAP-INT-005",
+            "Locations (Network Fence)",
+            "Microsoft Intune",
+            "location_compliance",
+            graph.probe_locations_available,
+        ),
+        (
+            "GAP-INT-006",
+            "Expedited Windows Quality Updates",
+            "Microsoft Intune",
+            "security_control",
+            graph.probe_expedited_updates,
+        ),
+        (
+            "GAP-INT-008",
+            "Windows Device Health Attestation",
+            "Microsoft Intune",
+            "security_control",
+            graph.probe_device_health_attestation,
+        ),
+        ("GAP-INT-004", "Workbooks / Diagnostics", "Microsoft Intune", "analytics", graph.probe_workbooks_available),
     ]
 
     for gap_id, feature, service, impact, probe_fn in probes:
@@ -456,9 +449,13 @@ async def run_boundary_probe(
     if arm_token and subscription_id:
         arc = ARCProbe(arm_token, subscription_id)
         arc_probes = [
-            ("GAP-ARC-001", "Azure Monitor Extension Telemetry",
-             "Azure Arc / Azure Monitor", "operational_visibility",
-             arc.probe_monitor_data_collection),
+            (
+                "GAP-ARC-001",
+                "Azure Monitor Extension Telemetry",
+                "Azure Arc / Azure Monitor",
+                "operational_visibility",
+                arc.probe_monitor_data_collection,
+            ),
         ]
         for gap_id, feature, service, impact, probe_fn in arc_probes:
             try:
@@ -521,10 +518,12 @@ def run_boundary_probe_sync(
     gap_registry_path: Optional[Path] = None,
 ) -> BoundaryProbeReport:
     """Synchronous wrapper for run_boundary_probe."""
-    return asyncio.run(run_boundary_probe(
-        graph_token=graph_token,
-        tenant_id=tenant_id,
-        arm_token=arm_token,
-        subscription_id=subscription_id,
-        gap_registry_path=gap_registry_path,
-    ))
+    return asyncio.run(
+        run_boundary_probe(
+            graph_token=graph_token,
+            tenant_id=tenant_id,
+            arm_token=arm_token,
+            subscription_id=subscription_id,
+            gap_registry_path=gap_registry_path,
+        )
+    )

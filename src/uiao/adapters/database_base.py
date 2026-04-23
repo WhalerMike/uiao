@@ -320,4 +320,3 @@ class DatabaseAdapterBase(abc.ABC):
         )
 
         return evidence
-

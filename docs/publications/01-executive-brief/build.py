@@ -24,9 +24,7 @@ import sys
 import tempfile
 import time
 import zipfile
-from copy import deepcopy
 from pathlib import Path
-from lxml import etree
 
 # ──────────────────────────────────────────────────────────────
 # CONFIGURATION
@@ -67,7 +65,7 @@ def generate_images(prompts_file, images_dir, api_key, model, delay=2.0):
     """Generate images from prompts using the Gemini API."""
     from google import genai
 
-    with open(prompts_file, "r", encoding="utf-8") as f:
+    with open(prompts_file, encoding="utf-8") as f:
         prompts = json.load(f)
 
     images_dir.mkdir(parents=True, exist_ok=True)
@@ -97,7 +95,7 @@ def generate_images(prompts_file, images_dir, api_key, model, delay=2.0):
                     succeeded += 1
                     break
             else:
-                print(f"    Warning: No image data returned")
+                print("    Warning: No image data returned")
                 failed += 1
         except Exception as e:
             print(f"    Error: {e}")
@@ -112,7 +110,7 @@ def generate_images(prompts_file, images_dir, api_key, model, delay=2.0):
 
 def get_image_map(prompts_file, images_dir):
     """Build a mapping from placeholder tag to image file path."""
-    with open(prompts_file, "r", encoding="utf-8") as f:
+    with open(prompts_file, encoding="utf-8") as f:
         prompts = json.load(f)
 
     image_map = {}
@@ -166,7 +164,7 @@ def build_drawing_xml(rId, doc_pr_id, name, desc, cx, cy):
 
 def build_docx(source_docx, output_docx, image_map):
     """Replace placeholder tags in the source .docx with actual images."""
-    print(f"=== Building .docx ===")
+    print("=== Building .docx ===")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -181,25 +179,22 @@ def build_docx(source_docx, output_docx, image_map):
 
         # Read document.xml as text (to find and replace placeholders)
         doc_xml_path = tmpdir / "word" / "document.xml"
-        with open(doc_xml_path, "r", encoding="utf-8") as f:
+        with open(doc_xml_path, encoding="utf-8") as f:
             doc_xml = f.read()
 
         # Read rels file
         rels_path = tmpdir / "word" / "_rels" / "document.xml.rels"
-        with open(rels_path, "r", encoding="utf-8") as f:
+        with open(rels_path, encoding="utf-8") as f:
             rels_xml = f.read()
 
         # Read content types
         ct_path = tmpdir / "[Content_Types].xml"
-        with open(ct_path, "r", encoding="utf-8") as f:
+        with open(ct_path, encoding="utf-8") as f:
             ct_xml = f.read()
 
         # Add PNG content type if not present
         if 'Extension="png"' not in ct_xml:
-            ct_xml = ct_xml.replace(
-                "</Types>",
-                '  <Default Extension="png" ContentType="image/png"/>\n</Types>'
-            )
+            ct_xml = ct_xml.replace("</Types>", '  <Default Extension="png" ContentType="image/png"/>\n</Types>')
             with open(ct_path, "w", encoding="utf-8") as f:
                 f.write(ct_xml)
 
@@ -230,10 +225,10 @@ def build_docx(source_docx, output_docx, image_map):
 
             # Find and replace the placeholder paragraph
             # The placeholder looks like: <w:p>...<w:t>[IMAGE_XX]</w:t>...</w:p>
-            pattern = rf'<w:p>.*?\[{tag}\].*?</w:p>'
+            pattern = rf"<w:p>.*?\[{tag}\].*?</w:p>"
             match = re.search(pattern, doc_xml, re.DOTALL)
             if match:
-                doc_xml = doc_xml[:match.start()] + drawing_xml + doc_xml[match.end():]
+                doc_xml = doc_xml[: match.start()] + drawing_xml + doc_xml[match.end() :]
                 replaced += 1
                 print(f"  Replaced [{tag}] with {media_name}")
             else:
@@ -260,13 +255,13 @@ def build_docx(source_docx, output_docx, image_map):
 def build_pptx(prompts_file, images_dir, output_pptx):
     """Build a PowerPoint presentation with one image per slide."""
     from pptx import Presentation
-    from pptx.util import Inches, Pt, Emu
     from pptx.dml.color import RGBColor
     from pptx.enum.text import PP_ALIGN
+    from pptx.util import Inches, Pt
 
-    print(f"=== Building .pptx ===")
+    print("=== Building .pptx ===")
 
-    with open(prompts_file, "r", encoding="utf-8") as f:
+    with open(prompts_file, encoding="utf-8") as f:
         prompts = json.load(f)
 
     prs = Presentation()
@@ -303,13 +298,41 @@ def build_pptx(prompts_file, images_dir, output_pptx):
 
     # Section titles mapped to image IDs
     sections = [
-        {"title": "The Problem", "image_id": "image_02", "body": "Every federal agency running M365 in GCC-Moderate faces the same grind. Manual compliance is slow, expensive, and stale before the ink dries."},
-        {"title": "Continuous Monitoring", "image_id": "image_03", "body": "UIAO is designed to watch your environment continuously, check it against 323 FedRAMP Moderate Rev 5 controls, and detect drift within minutes."},
-        {"title": "The Effort Comparison", "image_id": "image_04", "body": "The single largest cost in federal compliance is labor. UIAO is designed to dramatically reduce that category of work."},
-        {"title": "Three Layers of Rules", "image_id": "image_05", "body": "FedRAMP Moderate Rev 5. CISA SCuBA & BOD 25-01. Your agency policies. Every configuration checked against all three."},
-        {"title": "Immutable Evidence", "image_id": "image_06", "body": "Every check, every result, every timestamp is stored in an immutable chain with cryptographic signatures."},
-        {"title": "What Makes This Different", "image_id": "image_07", "body": "Deterministic. Produces actual deliverables. Built specifically for federal M365."},
-        {"title": "The Ask: 90-Day Pilot", "image_id": "image_08", "body": "Zero licensing cost. Open source. Connect, validate, champion. Real-world validation in a production tenant."},
+        {
+            "title": "The Problem",
+            "image_id": "image_02",
+            "body": "Every federal agency running M365 in GCC-Moderate faces the same grind. Manual compliance is slow, expensive, and stale before the ink dries.",
+        },
+        {
+            "title": "Continuous Monitoring",
+            "image_id": "image_03",
+            "body": "UIAO is designed to watch your environment continuously, check it against 323 FedRAMP Moderate Rev 5 controls, and detect drift within minutes.",
+        },
+        {
+            "title": "The Effort Comparison",
+            "image_id": "image_04",
+            "body": "The single largest cost in federal compliance is labor. UIAO is designed to dramatically reduce that category of work.",
+        },
+        {
+            "title": "Three Layers of Rules",
+            "image_id": "image_05",
+            "body": "FedRAMP Moderate Rev 5. CISA SCuBA & BOD 25-01. Your agency policies. Every configuration checked against all three.",
+        },
+        {
+            "title": "Immutable Evidence",
+            "image_id": "image_06",
+            "body": "Every check, every result, every timestamp is stored in an immutable chain with cryptographic signatures.",
+        },
+        {
+            "title": "What Makes This Different",
+            "image_id": "image_07",
+            "body": "Deterministic. Produces actual deliverables. Built specifically for federal M365.",
+        },
+        {
+            "title": "The Ask: 90-Day Pilot",
+            "image_id": "image_08",
+            "body": "Zero licensing cost. Open source. Connect, validate, champion. Real-world validation in a production tenant.",
+        },
     ]
 
     for section in sections:
@@ -349,17 +372,23 @@ def build_pptx(prompts_file, images_dir, output_pptx):
 
 def build_pdf(input_docx, output_pdf):
     """Convert .docx to .pdf using LibreOffice."""
-    print(f"=== Building .pdf ===")
+    print("=== Building .pdf ===")
 
     output_dir = output_pdf.parent
 
     # Try LibreOffice
-    for soffice in ["soffice", "libreoffice", r"C:\Program Files\LibreOffice\program\soffice.exe",
-                     r"C:\Program Files (x86)\LibreOffice\program\soffice.exe"]:
+    for soffice in [
+        "soffice",
+        "libreoffice",
+        r"C:\Program Files\LibreOffice\program\soffice.exe",
+        r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+    ]:
         try:
             result = subprocess.run(
                 [soffice, "--headless", "--convert-to", "pdf", "--outdir", str(output_dir), str(input_docx)],
-                capture_output=True, text=True, timeout=120
+                capture_output=True,
+                text=True,
+                timeout=120,
             )
             if result.returncode == 0:
                 # LibreOffice names the output based on input filename
@@ -380,10 +409,10 @@ def build_epub(prompts_file, images_dir, source_docx, output_epub):
     """Build an EPUB from the document content and images."""
     from ebooklib import epub
 
-    print(f"=== Building .epub ===")
+    print("=== Building .epub ===")
 
     # Extract text from source docx for content
-    with open(prompts_file, "r", encoding="utf-8") as f:
+    with open(prompts_file, encoding="utf-8") as f:
         prompts = json.load(f)
 
     book = epub.EpubBook()
@@ -409,6 +438,7 @@ def build_epub(prompts_file, images_dir, source_docx, output_epub):
     # Extract text content from the docx
     try:
         import zipfile
+
         from lxml import etree as ET
 
         with zipfile.ZipFile(source_docx, "r") as zf:
@@ -453,7 +483,7 @@ def build_epub(prompts_file, images_dir, source_docx, output_epub):
             current_section = {
                 "title": para["text"],
                 "content": [],
-                "image_id": section_image_map.get(para["text"], None),
+                "image_id": section_image_map.get(para["text"]),
             }
         elif para["text"].startswith("[IMAGE_"):
             continue  # Skip placeholders
@@ -506,8 +536,13 @@ def build_epub(prompts_file, images_dir, source_docx, output_epub):
 def main():
     parser = argparse.ArgumentParser(description="UIAO Executive Brief — Document Build Pipeline")
     parser.add_argument("--skip-images", action="store_true", help="Skip image generation, use existing")
-    parser.add_argument("--formats", nargs="+", default=["docx", "pptx", "pdf", "epub"],
-                        choices=["docx", "pptx", "pdf", "epub"], help="Output formats to generate")
+    parser.add_argument(
+        "--formats",
+        nargs="+",
+        default=["docx", "pptx", "pdf", "epub"],
+        choices=["docx", "pptx", "pdf", "epub"],
+        help="Output formats to generate",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Show plan without executing")
     parser.add_argument("--force-regen", action="store_true", help="Force regenerate all images")
     args = parser.parse_args()
@@ -543,7 +578,7 @@ def main():
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             print("Error: GEMINI_API_KEY environment variable not set.")
-            print("       export GEMINI_API_KEY=\"<your-key>\" and re-run, or use --skip-images.")
+            print('       export GEMINI_API_KEY="<your-key>" and re-run, or use --skip-images.')
             sys.exit(1)
         generate_images(PROMPTS_FILE, IMAGES_DIR, api_key, MODEL)
 

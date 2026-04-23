@@ -22,14 +22,7 @@ from uiao.modernization.orgtree import (
 from uiao.modernization.orgtree.dynamic_groups import default_dynamic_group_library
 
 
-TENANT_FIXTURE = (
-    Path(__file__).parent
-    / "fixtures"
-    / "contract"
-    / "entra-id"
-    / "dynamic-groups"
-    / "tenant-state.json"
-)
+TENANT_FIXTURE = Path(__file__).parent / "fixtures" / "contract" / "entra-id" / "dynamic-groups" / "tenant-state.json"
 
 
 @pytest.fixture
@@ -66,9 +59,7 @@ class TestLibraryIntegrity:
         lib = default_dynamic_group_library()
         for spec in lib.groups.values():
             for code in spec.orgpath_refs:
-                assert f'"{code}"' in spec.rule, (
-                    f"{spec.name} references {code} but rule does not quote it"
-                )
+                assert f'"{code}"' in spec.rule, f"{spec.name} references {code} but rule does not quote it"
 
     def test_every_spec_renders_valid_graph_body(self) -> None:
         lib = default_dynamic_group_library()
@@ -85,7 +76,8 @@ class TestLibraryIntegrity:
 class TestLibraryValidation:
     def test_rejects_unknown_orgpath_reference(self, tmp_path: Path) -> None:
         bad = tmp_path / "bad.yaml"
-        bad.write_text(textwrap.dedent("""\
+        bad.write_text(
+            textwrap.dedent("""\
             schema_version: "1.0.0"
             document_id: MOD_B
             parent_canon: UIAO_007
@@ -99,13 +91,15 @@ class TestLibraryValidation:
                 rule: '(user.extensionAttribute1 -startsWith "ORG-GHOST")'
                 orgpath_refs: [ORG-GHOST]
                 description: Ghost group
-        """))
+        """)
+        )
         with pytest.raises(DynamicGroupValidationError, match="unknown OrgPath"):
             load_dynamic_group_library(bad)
 
     def test_rejects_rule_that_does_not_quote_ref(self, tmp_path: Path) -> None:
         bad = tmp_path / "bad.yaml"
-        bad.write_text(textwrap.dedent("""\
+        bad.write_text(
+            textwrap.dedent("""\
             schema_version: "1.0.0"
             document_id: MOD_B
             parent_canon: UIAO_007
@@ -119,13 +113,15 @@ class TestLibraryValidation:
                 rule: '(user.extensionAttribute1 -startsWith "ORG-FIN")'
                 orgpath_refs: [ORG-IT]
                 description: IT users (but rule points at Finance)
-        """))
+        """)
+        )
         with pytest.raises(DynamicGroupValidationError, match="does not quote"):
             load_dynamic_group_library(bad)
 
     def test_rejects_duplicate_group_name(self, tmp_path: Path) -> None:
         bad = tmp_path / "bad.yaml"
-        bad.write_text(textwrap.dedent("""\
+        bad.write_text(
+            textwrap.dedent("""\
             schema_version: "1.0.0"
             document_id: MOD_B
             parent_canon: UIAO_007
@@ -144,7 +140,8 @@ class TestLibraryValidation:
                 rule: '(user.extensionAttribute1 -startsWith "ORG-IT")'
                 orgpath_refs: [ORG-IT]
                 description: duplicate
-        """))
+        """)
+        )
         # Schema uniqueItems catches structural dup; loader's _validate_integrity
         # catches semantic dup (same name, different body). Either raises.
         with pytest.raises(DynamicGroupValidationError):
@@ -152,9 +149,7 @@ class TestLibraryValidation:
 
 
 class TestPlan:
-    def test_empty_tenant_plans_full_create(
-        self, adapter: EntraDynamicGroupsAdapter
-    ) -> None:
+    def test_empty_tenant_plans_full_create(self, adapter: EntraDynamicGroupsAdapter) -> None:
         plan = adapter.plan(current_tenant_state=[])
         assert plan.total_canonical == 32
         assert plan.total_tenant == 0
@@ -181,9 +176,7 @@ class TestPlan:
         assert len(phantoms) == 1
         assert phantoms[0].group_name == "OrgTree-LegacyContractors-Users"
 
-    def test_non_orgtree_groups_are_ignored(
-        self, adapter: EntraDynamicGroupsAdapter
-    ) -> None:
+    def test_non_orgtree_groups_are_ignored(self, adapter: EntraDynamicGroupsAdapter) -> None:
         tenant = [
             {"id": "x", "displayName": "Some-Other-Group", "membershipRule": "..."},
         ]
@@ -218,9 +211,7 @@ class TestApply:
         # Replace _execute with a sentinel so we can assert it is never
         # called for phantom operations.
         called_ops: list[str] = []
-        monkeypatch.setattr(
-            adapter, "_execute", lambda op: called_ops.append(op.op)
-        )
+        monkeypatch.setattr(adapter, "_execute", lambda op: called_ops.append(op.op))
         report = adapter.apply(plan, dry_run=False)
         assert OP_DELETE_PHANTOM not in called_ops
         # Every create + update was dispatched to _execute.
@@ -237,9 +228,7 @@ class TestReconcile:
         adapter: EntraDynamicGroupsAdapter,
         tenant_state: list[dict],
     ) -> None:
-        artefact = adapter.reconcile(
-            current_tenant_state=tenant_state, dry_run=True
-        )
+        artefact = adapter.reconcile(current_tenant_state=tenant_state, dry_run=True)
         assert "plan" in artefact and "report" in artefact
         assert artefact["report"]["dry_run"] is True
         assert artefact["plan"]["total_tenant"] == 4

@@ -43,6 +43,7 @@ INJECT_SCRIPT = SCRIPT_DIR / "inject.py"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def run(cmd: list[str], label: str) -> int:
     """Run a subprocess and return exit code."""
     print(f"\n── {label} ──")
@@ -84,6 +85,7 @@ def find_sources() -> list[Path]:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     print("=" * 60)
     print("UIAO Diagram Pre-Render Pipeline")
@@ -93,10 +95,7 @@ def main():
 
     # Step 1: Validate
     if VALIDATE_SCRIPT.exists():
-        rc = run(
-            [sys.executable, str(VALIDATE_SCRIPT)],
-            "Step 1/3: Validate diagram sources"
-        )
+        rc = run([sys.executable, str(VALIDATE_SCRIPT)], "Step 1/3: Validate diagram sources")
         if rc != 0:
             print("\n  ⛔ Validation failed — halting pre-render.")
             sys.exit(1)
@@ -104,7 +103,7 @@ def main():
         print(f"\n  WARNING: validate.py not found at {VALIDATE_SCRIPT}")
 
     # Step 2: Render stale diagrams
-    print(f"\n── Step 2/3: Render stale diagrams ──")
+    print("\n── Step 2/3: Render stale diagrams ──")
     sources = find_sources()
     stale = [s for s in sources if needs_render(s)]
 
@@ -116,10 +115,7 @@ def main():
             print(f"    → {s.name}")
 
         if RENDER_SCRIPT.exists():
-            rc = run(
-                [sys.executable, str(RENDER_SCRIPT)],
-                "Rendering diagrams"
-            )
+            rc = run([sys.executable, str(RENDER_SCRIPT)], "Rendering diagrams")
             if rc != 0:
                 print("\n  WARNING: render.py exited with errors.")
                 print("  Continuing with available SVGs...")
@@ -131,8 +127,7 @@ def main():
     # Step 3: Inject into docs
     if INJECT_SCRIPT.exists():
         rc = run(
-            [sys.executable, str(INJECT_SCRIPT), "--scope", "docs/"],
-            "Step 3/3: Inject diagram references into docs"
+            [sys.executable, str(INJECT_SCRIPT), "--scope", "docs/"], "Step 3/3: Inject diagram references into docs"
         )
         if rc != 0:
             print("\n  WARNING: inject.py reported errors.")

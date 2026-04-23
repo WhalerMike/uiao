@@ -382,4 +382,3 @@ class TestDashboardExporter:
         assert report["oscal_version"] == "1.0.4"
         assert report["fedramp_impact_level"] == "moderate"
         assert "readiness_percentage" in report["ksi_summary"]
-

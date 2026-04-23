@@ -133,4 +133,3 @@ class TestFormatSSPSection:
     def test_empty_links_still_has_header(self) -> None:
         ssp = format_ssp_section([])
         assert "System Security Plan" in ssp
-

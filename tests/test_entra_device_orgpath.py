@@ -11,7 +11,6 @@ import pytest
 from uiao.adapters.entra_device_orgpath import (
     OP_ARC_PHANTOM,
     OP_ARC_TAG_CREATE,
-    OP_ARC_TAG_UPDATE,
     OP_DEVICE_EXT_CREATE,
     OP_DEVICE_EXT_UPDATE,
     OP_DEVICE_PHANTOM,
@@ -26,14 +25,7 @@ from uiao.modernization.orgtree import (
 from uiao.modernization.orgtree.device_planes import default_device_plane_registry
 
 
-TENANT_FIXTURE = (
-    Path(__file__).parent
-    / "fixtures"
-    / "contract"
-    / "entra-id"
-    / "device-orgpath"
-    / "tenant-state.json"
-)
+TENANT_FIXTURE = Path(__file__).parent / "fixtures" / "contract" / "entra-id" / "device-orgpath" / "tenant-state.json"
 
 
 @pytest.fixture
@@ -65,9 +57,7 @@ class TestRegistryIntegrity:
 
     def test_every_known_disposition_is_covered(self) -> None:
         reg = default_device_plane_registry()
-        covered = set(reg.skip_dispositions.keys()) | {
-            d for p in reg.planes.values() for d in p.dispositions
-        }
+        covered = set(reg.skip_dispositions.keys()) | {d for p in reg.planes.values() for d in p.dispositions}
         assert {
             "ENTRA-DEVICE",
             "ARC-SERVER",
@@ -79,6 +69,7 @@ class TestRegistryIntegrity:
 
     def test_arm_tag_regex_tracks_codebook(self) -> None:
         from uiao.modernization.orgtree import load_codebook
+
         reg = default_device_plane_registry()
         cb = load_codebook()
         assert reg.arm_tag.value_regex == cb.regex
@@ -213,11 +204,13 @@ class TestPlan:
         adapter: EntraDeviceOrgPathAdapter,
     ) -> None:
         targets = [_target("WKST-IT-01", "ENTRA-DEVICE", "ORG-IT-SEC")]
-        tenant_devices = [{
-            "id": "dev-1",
-            "displayName": "WKST-IT-01",
-            "onPremisesExtensionAttributes": {"extensionAttribute1": "ORG-IT-SEC"},
-        }]
+        tenant_devices = [
+            {
+                "id": "dev-1",
+                "displayName": "WKST-IT-01",
+                "onPremisesExtensionAttributes": {"extensionAttribute1": "ORG-IT-SEC"},
+            }
+        ]
         plan = adapter.plan(targets, current_entra_devices=tenant_devices)
         assert plan.operations == []
 
@@ -226,11 +219,13 @@ class TestPlan:
         adapter: EntraDeviceOrgPathAdapter,
     ) -> None:
         targets = [_target("WKST-IT-01", "ENTRA-DEVICE", "ORG-IT-SEC")]
-        tenant_devices = [{
-            "id": "dev-1",
-            "displayName": "WKST-IT-01",
-            "onPremisesExtensionAttributes": {"extensionAttribute1": "ORG-FIN"},
-        }]
+        tenant_devices = [
+            {
+                "id": "dev-1",
+                "displayName": "WKST-IT-01",
+                "onPremisesExtensionAttributes": {"extensionAttribute1": "ORG-FIN"},
+            }
+        ]
         plan = adapter.plan(targets, current_entra_devices=tenant_devices)
         updates = plan.by_op(OP_DEVICE_EXT_UPDATE)
         assert len(updates) == 1
@@ -242,11 +237,13 @@ class TestPlan:
         adapter: EntraDeviceOrgPathAdapter,
     ) -> None:
         targets = [_target("WKST-BROKEN-01", "ENTRA-DEVICE", "ORG-FIN-AP")]
-        tenant_devices = [{
-            "id": "dev-broken",
-            "displayName": "WKST-BROKEN-01",
-            "onPremisesExtensionAttributes": {"extensionAttribute1": "org-fin-ap"},
-        }]
+        tenant_devices = [
+            {
+                "id": "dev-broken",
+                "displayName": "WKST-BROKEN-01",
+                "onPremisesExtensionAttributes": {"extensionAttribute1": "org-fin-ap"},
+            }
+        ]
         plan = adapter.plan(targets, current_entra_devices=tenant_devices)
         phantoms = plan.by_op(OP_DEVICE_PHANTOM)
         assert len(phantoms) == 1
@@ -275,10 +272,10 @@ class TestPlan:
         # SRV-IT-01 aligned; SRV-FIN-01 empty tag; SRV-GHOST-01 phantom.
         # DC-01 skipped.
         assert len(plan.by_op(OP_DEVICE_EXT_CREATE)) == 1  # WKST-FIN-01
-        assert len(plan.by_op(OP_DEVICE_PHANTOM)) == 1     # WKST-BROKEN-01
-        assert len(plan.by_op(OP_ARC_TAG_CREATE)) == 1     # SRV-FIN-01
-        assert len(plan.by_op(OP_ARC_PHANTOM)) == 1        # SRV-GHOST-01
-        assert len(plan.by_op(OP_SKIP_NO_PLANE)) == 1      # DC-01
+        assert len(plan.by_op(OP_DEVICE_PHANTOM)) == 1  # WKST-BROKEN-01
+        assert len(plan.by_op(OP_ARC_TAG_CREATE)) == 1  # SRV-FIN-01
+        assert len(plan.by_op(OP_ARC_PHANTOM)) == 1  # SRV-GHOST-01
+        assert len(plan.by_op(OP_SKIP_NO_PLANE)) == 1  # DC-01
 
 
 class TestApply:

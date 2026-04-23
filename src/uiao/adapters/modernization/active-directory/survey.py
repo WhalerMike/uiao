@@ -43,25 +43,28 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+
 # ------------------------------------------------------------------
 # Shared DriftFinding — mirrors impl/src/uiao/impl/substrate/walker.py
 # so findings can be merged into a single substrate report.
 # ------------------------------------------------------------------
 @dataclass
 class DriftFinding:
-    drift_class: str   # DRIFT-SCHEMA | DRIFT-SEMANTIC | DRIFT-PROVENANCE | DRIFT-IDENTITY
-    severity: str      # P1 | P2 | P3 | P4
-    path: str          # canonical path or object DN
-    detail: str        # human-readable description
-    error_code: str = ""       # GOV-MIG-NNN or GOV-DRF-NNN
-    object_type: str = ""      # User | Computer | OU | GPO | ServiceAccount | Site
-    source_forest: str = ""    # forest FQDN for multi-forest disambiguation
+    drift_class: str  # DRIFT-SCHEMA | DRIFT-SEMANTIC | DRIFT-PROVENANCE | DRIFT-IDENTITY
+    severity: str  # P1 | P2 | P3 | P4
+    path: str  # canonical path or object DN
+    detail: str  # human-readable description
+    error_code: str = ""  # GOV-MIG-NNN or GOV-DRF-NNN
+    object_type: str = ""  # User | Computer | OU | GPO | ServiceAccount | Site
+    source_forest: str = ""  # forest FQDN for multi-forest disambiguation
     suggested_orgpath: str = ""  # best-effort OrgPath candidate; empty = unresolvable
 
     def to_drift_state(self, provenance=None):
         """Bridge to DriftState for governance engine consumption."""
         import datetime
+
         from uiao.ir.models.core import DriftState, ProvenanceRecord, canonical_hash
+
         prov = provenance or ProvenanceRecord(
             source="ad-survey-adapter",
             timestamp=datetime.datetime.utcnow().isoformat() + "Z",
@@ -74,7 +77,8 @@ class DriftFinding:
             id=f"{self.drift_class.lower()}:{self.path}",
             resource_id=self.path,
             policy_ref=self.error_code or "ad-survey",
-            expected_hash=h, actual_hash=h,
+            expected_hash=h,
+            actual_hash=h,
             drift_detected=True,
             classification=risk,
             delta={"detail": [self.detail]},
@@ -86,6 +90,7 @@ class DriftFinding:
 @dataclass
 class ADSurveyReport:
     """Aggregated output of the full forest archaeological survey."""
+
     forest_root: str
     domain_count: int = 0
     # OU classification
@@ -140,23 +145,78 @@ class ADSurveyReport:
 
 # Geographic keywords that signal a 2003-era topology OU
 _GEO_TOKENS = {
-    "east", "west", "north", "south", "central",
-    "northeast", "northwest", "southeast", "southwest",
-    "emea", "apac", "latam", "amer", "us", "uk", "ca", "au",
+    "east",
+    "west",
+    "north",
+    "south",
+    "central",
+    "northeast",
+    "northwest",
+    "southeast",
+    "southwest",
+    "emea",
+    "apac",
+    "latam",
+    "amer",
+    "us",
+    "uk",
+    "ca",
+    "au",
     # Common US city/state abbreviations seen in legacy forests
-    "dc", "va", "md", "ny", "nj", "ca", "tx", "il", "fl", "ga",
-    "baltimore", "chicago", "dallas", "boston", "atlanta",
-    "seattle", "denver", "phoenix", "miami", "detroit",
-    "region", "regional", "site", "office", "branch", "location",
+    "dc",
+    "va",
+    "md",
+    "ny",
+    "nj",
+    "tx",
+    "il",
+    "fl",
+    "ga",
+    "baltimore",
+    "chicago",
+    "dallas",
+    "boston",
+    "atlanta",
+    "seattle",
+    "denver",
+    "phoenix",
+    "miami",
+    "detroit",
+    "region",
+    "regional",
+    "site",
+    "office",
+    "branch",
+    "location",
 }
 
 # Functional keywords that signal an org-structure OU
 _FUNC_TOKENS = {
-    "finance", "hr", "humanresources", "it", "infosec", "security",
-    "operations", "ops", "legal", "compliance", "engineering", "dev",
-    "development", "infrastructure", "networking", "helpdesk",
-    "marketing", "sales", "procurement", "facilities", "audit",
-    "payroll", "benefits", "recruiting", "training",
+    "finance",
+    "hr",
+    "humanresources",
+    "it",
+    "infosec",
+    "security",
+    "operations",
+    "ops",
+    "legal",
+    "compliance",
+    "engineering",
+    "dev",
+    "development",
+    "infrastructure",
+    "networking",
+    "helpdesk",
+    "marketing",
+    "sales",
+    "procurement",
+    "facilities",
+    "audit",
+    "payroll",
+    "benefits",
+    "recruiting",
+    "training",
 }
 
 
@@ -310,6 +370,7 @@ def derive_orgpath_from_dn(distinguished_name: str, codebook: set[str]) -> Optio
 # Service Account Risk Classification
 # ------------------------------------------------------------------
 
+
 @dataclass
 class ServiceAccountRisk:
     sam_account_name: str
@@ -318,7 +379,7 @@ class ServiceAccountRisk:
     last_password_change_days: int
     last_logon_days: int
     kerberos_delegation: str  # none | unconstrained | constrained | resource-based
-    adcs_dependent: bool      # has SPN matching HTTP/LDAP/certsrv pattern
+    adcs_dependent: bool  # has SPN matching HTTP/LDAP/certsrv pattern
     risk_level: str = "unknown"  # low | medium | high | critical
     notes: str = ""
 
@@ -389,6 +450,7 @@ def classify_sa_adcs_dependency(spns: list[str]) -> bool:
 # Forest Survey Entry Point
 # ------------------------------------------------------------------
 
+
 def run_discovery(
     ldap_server: str,
     base_dn: str,
@@ -437,6 +499,7 @@ def run_discovery(
     hr_map: dict[str, str] = {}
     if hr_export_path and hr_export_path.exists():
         import csv
+
         with hr_export_path.open(newline="") as fh:
             for row in csv.DictReader(fh):
                 eid = row.get("employeeId", "").strip()
@@ -444,27 +507,24 @@ def run_discovery(
                 if eid and op:
                     hr_map[eid] = op
 
-    # Attempt ldap3 import; fall back to PowerShell
+    # Attempt ldap3 survey; fall back to PowerShell. The actual ldap3
+    # imports live inside _run_ldap_survey; a missing module surfaces
+    # as ImportError from that call.
     try:
-        from ldap3 import Server, Connection, ALL, SUBTREE  # type: ignore
-        _run_ldap_survey(
-            report, ldap_server, base_dn, username, password,
-            codebook, hr_map
-        )
+        _run_ldap_survey(report, ldap_server, base_dn, username, password, codebook, hr_map)
     except ImportError:
-        report.findings.append(DriftFinding(
-            drift_class="DRIFT-PROVENANCE",
-            severity="P2",
-            path="impl/adapters/active-directory/survey.py",
-            detail="ldap3 not installed; falling back to PowerShell subprocess. "
-                   "Install ldap3 for faster, cross-platform survey.",
-            error_code="",
-            object_type="adapter",
-        ))
-        _run_powershell_survey(
-            report, ldap_server, base_dn, username, password,
-            codebook, hr_map
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-PROVENANCE",
+                severity="P2",
+                path="impl/adapters/active-directory/survey.py",
+                detail="ldap3 not installed; falling back to PowerShell subprocess. "
+                "Install ldap3 for faster, cross-platform survey.",
+                error_code="",
+                object_type="adapter",
+            )
         )
+        _run_powershell_survey(report, ldap_server, base_dn, username, password, codebook, hr_map)
 
     return report
 
@@ -477,34 +537,38 @@ def _emit_ou_finding(
 ) -> None:
     """Emit a DriftFinding for an OU that cannot yield a clean OrgPath."""
     if intent == "geographic-orphan":
-        report.findings.append(DriftFinding(
-            drift_class="DRIFT-SEMANTIC",
-            severity="P2",
-            path=ou_dn,
-            detail=(
-                f"OU '{ou_dn}' classified as geographic-orphan: "
-                "encodes 2003 datacenter topology, not organizational structure. "
-                "Users here require HR-sourced OrgPath assignment. "
-                "Canonical code: GOV-MIG-003."
-            ),
-            error_code="GOV-MIG-003",
-            object_type="OU",
-            source_forest=source_forest,
-        ))
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-SEMANTIC",
+                severity="P2",
+                path=ou_dn,
+                detail=(
+                    f"OU '{ou_dn}' classified as geographic-orphan: "
+                    "encodes 2003 datacenter topology, not organizational structure. "
+                    "Users here require HR-sourced OrgPath assignment. "
+                    "Canonical code: GOV-MIG-003."
+                ),
+                error_code="GOV-MIG-003",
+                object_type="OU",
+                source_forest=source_forest,
+            )
+        )
     elif intent == "delegation-artifact":
-        report.findings.append(DriftFinding(
-            drift_class="DRIFT-PROVENANCE",
-            severity="P3",
-            path=ou_dn,
-            detail=(
-                f"OU '{ou_dn}' classified as delegation-artifact: "
-                "created to scope an admin role, no active GPOs, delegation owner may be gone. "
-                "Candidate for retirement rather than migration."
-            ),
-            error_code="GOV-MIG-003",
-            object_type="OU",
-            source_forest=source_forest,
-        ))
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-PROVENANCE",
+                severity="P3",
+                path=ou_dn,
+                detail=(
+                    f"OU '{ou_dn}' classified as delegation-artifact: "
+                    "created to scope an admin role, no active GPOs, delegation owner may be gone. "
+                    "Candidate for retirement rather than migration."
+                ),
+                error_code="GOV-MIG-003",
+                object_type="OU",
+                source_forest=source_forest,
+            )
+        )
 
 
 def _emit_user_finding(
@@ -519,52 +583,58 @@ def _emit_user_finding(
     """Emit a DriftFinding for a user that cannot be cleanly OrgPath-assigned."""
     if not in_hr and ou_intent in ("geographic-orphan", "delegation-artifact"):
         report.user_unresolvable += 1
-        report.findings.append(DriftFinding(
-            drift_class="DRIFT-IDENTITY",
-            severity="P1",
-            path=user_dn,
-            detail=(
-                f"User '{user_dn}' (employeeId={employee_id or 'MISSING'}) "
-                "is not in HR export AND resides in a geographic-orphan OU. "
-                "OrgPath cannot be deterministically assigned. "
-                "Manual governance review required before migration can proceed. "
-                "Canonical code: GOV-DRF-003."
-            ),
-            error_code="GOV-DRF-003",
-            object_type="User",
-            source_forest=source_forest,
-            suggested_orgpath=derived_orgpath or "",
-        ))
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-IDENTITY",
+                severity="P1",
+                path=user_dn,
+                detail=(
+                    f"User '{user_dn}' (employeeId={employee_id or 'MISSING'}) "
+                    "is not in HR export AND resides in a geographic-orphan OU. "
+                    "OrgPath cannot be deterministically assigned. "
+                    "Manual governance review required before migration can proceed. "
+                    "Canonical code: GOV-DRF-003."
+                ),
+                error_code="GOV-DRF-003",
+                object_type="User",
+                source_forest=source_forest,
+                suggested_orgpath=derived_orgpath or "",
+            )
+        )
     elif not in_hr and derived_orgpath:
         report.user_orgpath_derived += 1
         # Soft finding — OrgPath was derived from OU but HR didn't confirm
-        report.findings.append(DriftFinding(
-            drift_class="DRIFT-PROVENANCE",
-            severity="P2",
-            path=user_dn,
-            detail=(
-                f"User '{user_dn}' OrgPath derived from OU (candidate: {derived_orgpath}) "
-                "but not confirmed by HR export. Treat as provisional until HR sync validates."
-            ),
-            error_code="GOV-MIG-002",
-            object_type="User",
-            source_forest=source_forest,
-            suggested_orgpath=derived_orgpath,
-        ))
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-PROVENANCE",
+                severity="P2",
+                path=user_dn,
+                detail=(
+                    f"User '{user_dn}' OrgPath derived from OU (candidate: {derived_orgpath}) "
+                    "but not confirmed by HR export. Treat as provisional until HR sync validates."
+                ),
+                error_code="GOV-MIG-002",
+                object_type="User",
+                source_forest=source_forest,
+                suggested_orgpath=derived_orgpath,
+            )
+        )
     elif not derived_orgpath and not in_hr:
         report.user_unresolvable += 1
-        report.findings.append(DriftFinding(
-            drift_class="DRIFT-IDENTITY",
-            severity="P1",
-            path=user_dn,
-            detail=(
-                f"User '{user_dn}' has no OrgPath derivable from OU path and no HR record. "
-                "Cannot migrate without manual classification. GOV-MIG-003."
-            ),
-            error_code="GOV-MIG-003",
-            object_type="User",
-            source_forest=source_forest,
-        ))
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-IDENTITY",
+                severity="P1",
+                path=user_dn,
+                detail=(
+                    f"User '{user_dn}' has no OrgPath derivable from OU path and no HR record. "
+                    "Cannot migrate without manual classification. GOV-MIG-003."
+                ),
+                error_code="GOV-MIG-003",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
 
 
 def _run_ldap_survey(
@@ -580,7 +650,7 @@ def _run_ldap_survey(
     Live LDAP survey using ldap3.
     Populates report in-place.
     """
-    from ldap3 import Server, Connection, ALL, SUBTREE  # type: ignore
+    from ldap3 import ALL, SUBTREE, Connection, Server  # type: ignore
 
     srv = Server(server_addr, get_info=ALL)
     conn = Connection(srv, user=username, password=password, auto_bind=True)
@@ -624,9 +694,14 @@ def _run_ldap_survey(
         "(&(objectClass=user)(objectCategory=person))",
         search_scope=SUBTREE,
         attributes=[
-            "distinguishedName", "sAMAccountName", "employeeID",
-            "department", "manager", "userAccountControl",
-            "lastLogonTimestamp", "extensionAttribute1",
+            "distinguishedName",
+            "sAMAccountName",
+            "employeeID",
+            "department",
+            "manager",
+            "userAccountControl",
+            "lastLogonTimestamp",
+            "extensionAttribute1",
         ],
     )
     report.user_total = len(conn.entries)
@@ -645,9 +720,7 @@ def _run_ldap_survey(
             report.user_hr_resolvable += 1
         else:
             derived = derive_orgpath_from_dn(dn, codebook)
-            _emit_user_finding(
-                report, dn, emp_id, ou_intent, derived, in_hr, base_dn
-            )
+            _emit_user_finding(report, dn, emp_id, ou_intent, derived, in_hr, base_dn)
 
     # --- Service account enumeration ---
     # Service accounts: enabled accounts in technical OUs or with SPNs
@@ -656,9 +729,12 @@ def _run_ldap_survey(
         "(&(objectClass=user)(servicePrincipalName=*))",
         search_scope=SUBTREE,
         attributes=[
-            "distinguishedName", "sAMAccountName",
-            "servicePrincipalName", "pwdLastSet",
-            "lastLogonTimestamp", "userAccountControl",
+            "distinguishedName",
+            "sAMAccountName",
+            "servicePrincipalName",
+            "pwdLastSet",
+            "lastLogonTimestamp",
+            "userAccountControl",
             "msDS-AllowedToDelegateTo",
         ],
     )
@@ -671,19 +747,21 @@ def _run_ldap_survey(
         adcs = classify_sa_adcs_dependency(spns)
         if adcs:
             report.sa_adcs_dependent += 1
-            report.findings.append(DriftFinding(
-                drift_class="DRIFT-AUTHZ",
-                severity="P1",
-                path=dn,
-                detail=(
-                    f"Service account '{sa.sAMAccountName}' has ADCS-dependent SPN pattern. "
-                    "Will break silently when AD retires. "
-                    "Must be resolved before migration. See pki-adapter for certificate chain analysis."
-                ),
-                error_code="GOV-MIG-005",
-                object_type="ServiceAccount",
-                source_forest=base_dn,
-            ))
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-AUTHZ",
+                    severity="P1",
+                    path=dn,
+                    detail=(
+                        f"Service account '{sa.sAMAccountName}' has ADCS-dependent SPN pattern. "
+                        "Will break silently when AD retires. "
+                        "Must be resolved before migration. See pki-adapter for certificate chain analysis."
+                    ),
+                    error_code="GOV-MIG-005",
+                    object_type="ServiceAccount",
+                    source_forest=base_dn,
+                )
+            )
 
     # --- Sites and Services ---
     sites_dn = f"CN=Sites,CN=Configuration,{base_dn}"
@@ -698,19 +776,21 @@ def _run_ldap_survey(
         # Sites with no subnet associations are almost certainly stale
         if not site.siteObjectBL:
             report.site_stale += 1
-            report.findings.append(DriftFinding(
-                drift_class="DRIFT-SCHEMA",
-                severity="P2",
-                path=f"CN={site.name},{sites_dn}",
-                detail=(
-                    f"Site '{site.name}' has no subnet associations. "
-                    "Created circa 2003 topology; likely stale. "
-                    "Validate against current DC placement before cleanup."
-                ),
-                error_code="",
-                object_type="Site",
-                source_forest=base_dn,
-            ))
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-SCHEMA",
+                    severity="P2",
+                    path=f"CN={site.name},{sites_dn}",
+                    detail=(
+                        f"Site '{site.name}' has no subnet associations. "
+                        "Created circa 2003 topology; likely stale. "
+                        "Validate against current DC placement before cleanup."
+                    ),
+                    error_code="",
+                    object_type="Site",
+                    source_forest=base_dn,
+                )
+            )
 
     conn.unbind()
 
@@ -730,53 +810,65 @@ def _run_powershell_survey(
 
     Delegates to Invoke-ADSurvey.ps1 and parses JSON output.
     """
-    ps_script = Path(__file__).parent.parent.parent.parent.parent.parent / \
-                "scripts" / "ad-survey" / "Invoke-ADSurvey.ps1"
+    ps_script = (
+        Path(__file__).parent.parent.parent.parent.parent.parent / "scripts" / "ad-survey" / "Invoke-ADSurvey.ps1"
+    )
 
     if not ps_script.exists():
-        report.findings.append(DriftFinding(
-            drift_class="DRIFT-PROVENANCE",
-            severity="P1",
-            path=str(ps_script),
-            detail=(
-                "PowerShell survey script not found and ldap3 is not installed. "
-                "Cannot complete AD survey. Install ldap3 or ensure "
-                "scripts/ad-survey/Invoke-ADSurvey.ps1 exists."
-            ),
-            error_code="GOV-MIG-001",
-            object_type="adapter",
-        ))
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-PROVENANCE",
+                severity="P1",
+                path=str(ps_script),
+                detail=(
+                    "PowerShell survey script not found and ldap3 is not installed. "
+                    "Cannot complete AD survey. Install ldap3 or ensure "
+                    "scripts/ad-survey/Invoke-ADSurvey.ps1 exists."
+                ),
+                error_code="GOV-MIG-001",
+                object_type="adapter",
+            )
+        )
         return
 
     cmd = [
-        "pwsh", "-NonInteractive", "-File", str(ps_script),
-        "-Server", server_addr,
-        "-BaseDN", base_dn,
+        "pwsh",
+        "-NonInteractive",
+        "-File",
+        str(ps_script),
+        "-Server",
+        server_addr,
+        "-BaseDN",
+        base_dn,
         "-OutputJson",
     ]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         if result.returncode != 0:
-            report.findings.append(DriftFinding(
-                drift_class="DRIFT-PROVENANCE",
-                severity="P1",
-                path=str(ps_script),
-                detail=f"PowerShell survey failed: {result.stderr[:500]}",
-                error_code="GOV-MIG-001",
-                object_type="adapter",
-            ))
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-PROVENANCE",
+                    severity="P1",
+                    path=str(ps_script),
+                    detail=f"PowerShell survey failed: {result.stderr[:500]}",
+                    error_code="GOV-MIG-001",
+                    object_type="adapter",
+                )
+            )
             return
         raw = json.loads(result.stdout)
         _merge_ps_output(report, raw, codebook, hr_map, base_dn)
     except subprocess.TimeoutExpired:
-        report.findings.append(DriftFinding(
-            drift_class="DRIFT-PROVENANCE",
-            severity="P1",
-            path=str(ps_script),
-            detail="PowerShell survey timed out after 300 seconds. Forest may be too large; use ldap3 with pagination.",
-            error_code="GOV-MIG-001",
-            object_type="adapter",
-        ))
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-PROVENANCE",
+                severity="P1",
+                path=str(ps_script),
+                detail="PowerShell survey timed out after 300 seconds. Forest may be too large; use ldap3 with pagination.",
+                error_code="GOV-MIG-001",
+                object_type="adapter",
+            )
+        )
 
 
 def _merge_ps_output(
@@ -802,10 +894,7 @@ def _merge_ps_output(
         emp_id = user.get("employeeId", "")
         in_hr = emp_id in hr_map
         ou_dn = ",".join(dn.split(",")[1:])
-        ou_intent = classify_ou_intent(
-            ou_dn.split(",")[0].replace("OU=", ""),
-            False, False
-        )
+        ou_intent = classify_ou_intent(ou_dn.split(",")[0].replace("OU=", ""), False, False)
         derived = derive_orgpath_from_dn(dn, codebook)
         report.user_total += 1
         if in_hr:

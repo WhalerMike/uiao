@@ -4,7 +4,9 @@ from __future__ import annotations
 import pytest
 from uiao.adapters.patchstate_adapter import PatchStateAdapter
 from uiao.adapters.database_base import (
-    ConnectionProvenance, EvidenceObject, SchemaMappingObject,
+    ConnectionProvenance,
+    EvidenceObject,
+    SchemaMappingObject,
 )
 
 
@@ -48,6 +50,7 @@ class TestBasics:
     def test_get_patch_status(self, adapter: PatchStateAdapter) -> None:
         import json
         from pathlib import Path
+
         data = json.loads((Path(__file__).parent / "fixtures" / "patch-status.json").read_text())
         result = adapter.get_patch_status(data)
         assert len(result.claims) == 3
@@ -55,6 +58,7 @@ class TestBasics:
     def test_evidence_bundle(self, adapter: PatchStateAdapter) -> None:
         import json
         from pathlib import Path
+
         data = json.loads((Path(__file__).parent / "fixtures" / "patch-status.json").read_text())
         result = adapter.generate_patch_evidence(data)
         assert isinstance(result, EvidenceObject)

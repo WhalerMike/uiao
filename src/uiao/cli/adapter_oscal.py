@@ -16,6 +16,7 @@ from typing import Optional
 try:
     import typer
     from rich.console import Console
+
     HAS_TYPER = True
 except ImportError:
     HAS_TYPER = False
@@ -51,7 +52,9 @@ def _create_app():
         sar_doc = build_sar(bundle=bundle, system_name=system_name)
 
         _write_output(sar_doc, output, console)
-        console.print(f"[green]SAR generated: {len(bundle.evidence)} observations, controls: {ctrl_ids}[/green]", file=sys.stderr)
+        console.print(
+            f"[green]SAR generated: {len(bundle.evidence)} observations, controls: {ctrl_ids}[/green]", file=sys.stderr
+        )
 
     @app.command()
     def poam(
@@ -87,7 +90,11 @@ def _create_app():
 
         ssp_doc = build_adapter_ssp(adapter, claims, ctrl_ids, system_name)
         _write_output(ssp_doc, output, console)
-        reqs = len(ssp_doc.get("system-security-plan", {}).get("control-implementation", {}).get("implemented-requirements", []))
+        reqs = len(
+            ssp_doc.get("system-security-plan", {})
+            .get("control-implementation", {})
+            .get("implemented-requirements", [])
+        )
         console.print(f"[green]SSP generated: {reqs} implemented requirement(s)[/green]", file=sys.stderr)
 
     return app
@@ -106,13 +113,16 @@ def _load_adapter_claims(adapter_id: str, state_file: Path):
         config = json.loads(state_file.read_text())
         a = M365Adapter({"_tenant_config": config})
         from uiao.adapters.m365_parser import parse_tenant_config
+
         return a.normalize(parse_tenant_config(config))
     elif adapter_id == "palo-alto":
         xml = state_file.read_text()
         a = PaloAltoAdapter({"_security_rules_xml": xml})
         return a.get_running_config()
     else:
-        raise NotImplementedError(f"Generic adapter loading for '{adapter_id}' not yet implemented. Use terraform, m365, or palo-alto.")
+        raise NotImplementedError(
+            f"Generic adapter loading for '{adapter_id}' not yet implemented. Use terraform, m365, or palo-alto."
+        )
 
 
 def _load_adapter_drift(adapter_id: str, plan_file: Path):

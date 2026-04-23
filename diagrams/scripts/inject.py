@@ -27,8 +27,9 @@ import argparse
 import os
 import re
 import sys
-import yaml
 from pathlib import Path
+
+import yaml
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -41,19 +42,18 @@ SOURCES_DIR = REPO_ROOT / "diagrams" / "sources"
 
 # Regex for the directive comment
 DIRECTIVE_RE = re.compile(
-    r'^(\s*)<!--\s*UIAO-DIAGRAM:\s*(DIAG_\d{3})'
-    r'(?:\s+form_factor\s*=\s*(full|nano|auto))?'
+    r"^(\s*)<!--\s*UIAO-DIAGRAM:\s*(DIAG_\d{3})"
+    r"(?:\s+form_factor\s*=\s*(full|nano|auto))?"
     r'(?:\s+caption\s*=\s*"([^"]*)")?'
-    r'\s*-->',
-    re.IGNORECASE
+    r"\s*-->",
+    re.IGNORECASE,
 )
 
 # Sentinel wrapping injected image lines — allows update-in-place
 SENTINEL_START = "<!-- UIAO-INJECT-START -->"
 SENTINEL_END = "<!-- UIAO-INJECT-END -->"
 SENTINEL_BLOCK_RE = re.compile(
-    r'^(\s*)<!-- UIAO-INJECT-START -->.*?<!-- UIAO-INJECT-END -->\s*$',
-    re.MULTILINE | re.DOTALL
+    r"^(\s*)<!-- UIAO-INJECT-START -->.*?<!-- UIAO-INJECT-END -->\s*$", re.MULTILINE | re.DOTALL
 )
 
 # File extensions to scan
@@ -61,7 +61,11 @@ SCANNABLE_EXTENSIONS = {".md", ".qmd"}
 
 # Directories to skip
 SKIP_DIRS = {
-    ".git", "node_modules", "__pycache__", "_site", ".quarto",
+    ".git",
+    "node_modules",
+    "__pycache__",
+    "_site",
+    ".quarto",
     "rendered",  # Don't scan rendered output dir
 }
 
@@ -69,6 +73,7 @@ SKIP_DIRS = {
 # ---------------------------------------------------------------------------
 # Registry loader
 # ---------------------------------------------------------------------------
+
 
 def load_registry():
     """Load the diagram registry and return a dict keyed by diagram_id."""
@@ -87,6 +92,7 @@ def load_registry():
 # ---------------------------------------------------------------------------
 # SVG path resolver
 # ---------------------------------------------------------------------------
+
 
 def resolve_svg_path(diagram_id: str, form_factor: str, file_path: Path) -> str | None:
     """
@@ -114,8 +120,9 @@ def resolve_svg_path(diagram_id: str, form_factor: str, file_path: Path) -> str 
         return str(svg_file).replace("\\", "/")
 
 
-def resolve_svg_path_or_placeholder(diagram_id: str, form_factor: str,
-                                      file_path: Path, registry: dict) -> tuple[str, str]:
+def resolve_svg_path_or_placeholder(
+    diagram_id: str, form_factor: str, file_path: Path, registry: dict
+) -> tuple[str, str]:
     """
     Returns (image_path, alt_text). If the SVG doesn't exist yet,
     returns a placeholder path with a note.
@@ -130,9 +137,7 @@ def resolve_svg_path_or_placeholder(diagram_id: str, form_factor: str,
 
     # SVG not yet rendered — provide placeholder path so the reference
     # is structurally correct and will resolve after CI renders
-    placeholder_dir = os.path.relpath(
-        RENDERED_DIR / form_factor, file_path.parent
-    ).replace("\\", "/")
+    placeholder_dir = os.path.relpath(RENDERED_DIR / form_factor, file_path.parent).replace("\\", "/")
     return f"{placeholder_dir}/{diagram_id}.svg", alt_text
 
 
@@ -140,26 +145,24 @@ def resolve_svg_path_or_placeholder(diagram_id: str, form_factor: str,
 # Injection engine
 # ---------------------------------------------------------------------------
 
-def build_inject_block(image_path: str, alt_text: str, caption: str | None,
-                       indent: str) -> str:
+
+def build_inject_block(image_path: str, alt_text: str, caption: str | None, indent: str) -> str:
     """Build the sentinel-wrapped image block."""
     cap = caption or alt_text
     lines = [
         f"{indent}{SENTINEL_START}",
-        f"{indent}![{alt_text}]({image_path} \"{cap}\")",
+        f'{indent}![{alt_text}]({image_path} "{cap}")',
         f"{indent}{SENTINEL_END}",
     ]
     return "\n".join(lines)
 
 
-def process_file(file_path: Path, registry: dict, default_form: str,
-                 dry_run: bool) -> dict:
+def process_file(file_path: Path, registry: dict, default_form: str, dry_run: bool) -> dict:
     """
     Process a single file: find directives, inject/update image references.
     Returns a stats dict: {directives_found, injected, updated, skipped, errors}.
     """
-    stats = {"directives_found": 0, "injected": 0, "updated": 0,
-             "skipped": 0, "errors": []}
+    stats = {"directives_found": 0, "injected": 0, "updated": 0, "skipped": 0, "errors": []}
 
     try:
         content = file_path.read_text(encoding="utf-8")
@@ -206,9 +209,7 @@ def process_file(file_path: Path, registry: dict, default_form: str,
             stats["injected"] += 1
 
         # Build and insert the new block
-        image_path, alt_text = resolve_svg_path_or_placeholder(
-            diagram_id, form_factor, file_path, registry
-        )
+        image_path, alt_text = resolve_svg_path_or_placeholder(diagram_id, form_factor, file_path, registry)
         block = build_inject_block(image_path, alt_text, caption, indent)
         new_lines.append(block)
 
@@ -242,22 +243,19 @@ def find_files(scope: Path) -> list[Path]:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
-    parser = argparse.ArgumentParser(
-        description="UIAO Diagram Injection — insert rendered SVGs into documents"
+    parser = argparse.ArgumentParser(description="UIAO Diagram Injection — insert rendered SVGs into documents")
+    parser.add_argument(
+        "--scope", type=str, default=".", help="Directory to scan (relative to repo root). Default: entire repo."
     )
     parser.add_argument(
-        "--scope", type=str, default=".",
-        help="Directory to scan (relative to repo root). Default: entire repo."
+        "--default-form",
+        choices=["full", "nano"],
+        default="full",
+        help="Default form factor when directive omits form_factor. Default: full.",
     )
-    parser.add_argument(
-        "--default-form", choices=["full", "nano"], default="full",
-        help="Default form factor when directive omits form_factor. Default: full."
-    )
-    parser.add_argument(
-        "--dry-run", action="store_true",
-        help="Preview changes without writing files."
-    )
+    parser.add_argument("--dry-run", action="store_true", help="Preview changes without writing files.")
     args = parser.parse_args()
 
     scope = REPO_ROOT / args.scope
@@ -278,8 +276,7 @@ def main():
     files = find_files(scope)
     print(f"  Scanning {len(files)} files...\n")
 
-    totals = {"directives_found": 0, "injected": 0, "updated": 0,
-              "skipped": 0, "errors": []}
+    totals = {"directives_found": 0, "injected": 0, "updated": 0, "skipped": 0, "errors": []}
 
     for fp in files:
         stats = process_file(fp, registry, args.default_form, args.dry_run)

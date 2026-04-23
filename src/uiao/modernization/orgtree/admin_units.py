@@ -19,7 +19,7 @@ The loader enforces three layers of validation:
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
@@ -155,9 +155,7 @@ def _validate_schema(document: Dict) -> None:
     try:
         import jsonschema
     except ImportError as exc:  # pragma: no cover
-        raise DelegationMatrixValidationError(
-            "jsonschema is required to validate the delegation matrix"
-        ) from exc
+        raise DelegationMatrixValidationError("jsonschema is required to validate the delegation matrix") from exc
     schema = _read_default_schema()
     try:
         jsonschema.validate(instance=document, schema=schema)
@@ -177,9 +175,7 @@ def _validate_integrity(
     au_names: Set[str] = set()
     for au in document["administrative_units"]:
         if au["name"] in au_names:
-            raise DelegationMatrixValidationError(
-                f"Duplicate administrative_unit: {au['name']}"
-            )
+            raise DelegationMatrixValidationError(f"Duplicate administrative_unit: {au['name']}")
         au_names.add(au["name"])
         for code in au["orgpath_refs"]:
             if codebook.is_deprecated(code):
@@ -189,13 +185,11 @@ def _validate_integrity(
                 )
             if not codebook.is_active(code):
                 raise DelegationMatrixValidationError(
-                    f"AU '{au['name']}' references unknown OrgPath '{code}' "
-                    "— not in MOD_A codebook"
+                    f"AU '{au['name']}' references unknown OrgPath '{code}' — not in MOD_A codebook"
                 )
             if f'"{code}"' not in au["membership_rule"]:
                 raise DelegationMatrixValidationError(
-                    f"AU '{au['name']}' orgpath_refs declares '{code}' but "
-                    "its membership_rule does not quote it"
+                    f"AU '{au['name']}' orgpath_refs declares '{code}' but its membership_rule does not quote it"
                 )
 
     # 2. Role display_name unique; template_id unique.
@@ -203,13 +197,9 @@ def _validate_integrity(
     role_ids: Set[str] = set()
     for role in document["roles"]:
         if role["display_name"] in role_names:
-            raise DelegationMatrixValidationError(
-                f"Duplicate role display_name: {role['display_name']}"
-            )
+            raise DelegationMatrixValidationError(f"Duplicate role display_name: {role['display_name']}")
         if role["template_id"] in role_ids:
-            raise DelegationMatrixValidationError(
-                f"Duplicate role template_id: {role['template_id']}"
-            )
+            raise DelegationMatrixValidationError(f"Duplicate role template_id: {role['template_id']}")
         role_names.add(role["display_name"])
         role_ids.add(role["template_id"])
 
@@ -217,9 +207,7 @@ def _validate_integrity(
     ag_names: Set[str] = set()
     for ag in document.get("admin_groups", []):
         if ag["name"] in ag_names:
-            raise DelegationMatrixValidationError(
-                f"Duplicate admin_group: {ag['name']}"
-            )
+            raise DelegationMatrixValidationError(f"Duplicate admin_group: {ag['name']}")
         if ag["name"] in dynamic_groups.names:
             raise DelegationMatrixValidationError(
                 f"admin_group '{ag['name']}' collides with MOD_B dynamic "
@@ -234,19 +222,15 @@ def _validate_integrity(
     for ra in document["role_assignments"]:
         key = (ra["role"], ra["principal_group"], ra["au_scope"])
         if key in seen_assignments:
-            raise DelegationMatrixValidationError(
-                f"Duplicate role_assignment: {key}"
-            )
+            raise DelegationMatrixValidationError(f"Duplicate role_assignment: {key}")
         seen_assignments.add(key)
         if ra["role"] not in role_names:
             raise DelegationMatrixValidationError(
-                f"role_assignment '{key}' references unknown role "
-                f"'{ra['role']}' — add to roles[]"
+                f"role_assignment '{key}' references unknown role '{ra['role']}' — add to roles[]"
             )
         if ra["au_scope"] not in au_names:
             raise DelegationMatrixValidationError(
-                f"role_assignment '{key}' references unknown AU "
-                f"'{ra['au_scope']}' — add to administrative_units[]"
+                f"role_assignment '{key}' references unknown AU '{ra['au_scope']}' — add to administrative_units[]"
             )
         if ra["principal_group"] not in valid_principals:
             raise DelegationMatrixValidationError(
@@ -269,9 +253,7 @@ def _build(document: Dict) -> DelegationMatrix:
         for au in document["administrative_units"]
     }
     roles = {
-        r["display_name"]: RoleTemplate(
-            display_name=r["display_name"], template_id=r["template_id"]
-        )
+        r["display_name"]: RoleTemplate(display_name=r["display_name"], template_id=r["template_id"])
         for r in document["roles"]
     }
     admin_groups = {
@@ -311,15 +293,10 @@ def load_delegation_matrix(
     dynamic_groups: Optional[DynamicGroupLibrary] = None,
 ) -> DelegationMatrix:
     """Load and validate the delegation matrix (AUs + scoped roles)."""
-    raw_text = (
-        _read_default_matrix() if path is None
-        else Path(path).read_text(encoding="utf-8")
-    )
+    raw_text = _read_default_matrix() if path is None else Path(path).read_text(encoding="utf-8")
     document = yaml.safe_load(raw_text)
     if not isinstance(document, dict):
-        raise DelegationMatrixValidationError(
-            "Delegation matrix must be a YAML mapping at the top level"
-        )
+        raise DelegationMatrixValidationError("Delegation matrix must be a YAML mapping at the top level")
     _validate_schema(document)
     _validate_integrity(
         document,

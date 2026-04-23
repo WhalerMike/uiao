@@ -33,10 +33,12 @@ def plan_path() -> Path:
 
 @pytest.fixture
 def adapter() -> TerraformAdapter:
-    return TerraformAdapter({
-        "state_source": "tests/fixtures/terraform.tfstate",
-        "workspace": "production",
-    })
+    return TerraformAdapter(
+        {
+            "state_source": "tests/fixtures/terraform.tfstate",
+            "workspace": "production",
+        }
+    )
 
 
 class TestTerraformToOscalPipeline:

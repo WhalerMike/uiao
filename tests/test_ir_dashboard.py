@@ -86,4 +86,3 @@ class TestBuildIrDashboard:
         assert Path(path).exists()
         data = json.loads(Path(path).read_text())
         assert data["evidence_total"] == 1
-

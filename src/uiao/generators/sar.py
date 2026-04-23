@@ -335,4 +335,3 @@ def export_sar(
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(sar_doc, indent=2, ensure_ascii=False), encoding="utf-8")
     return str(out)
-

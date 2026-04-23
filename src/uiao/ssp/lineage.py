@@ -59,4 +59,3 @@ def build_lineage_index(
         }
 
     return normalized
-

@@ -1,5 +1,7 @@
 """UIAO Compliance Query Language (CQL) engine — UIAO_108."""
+
 from __future__ import annotations
+
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -59,28 +61,46 @@ def parse(cql: str) -> CQLQuery:
                 filters.append((fm.group(1).lower(), fm.group(2), fm.group(3)))
             else:
                 raise CQLParseError(f"Cannot parse filter: {clause!r}")
-    return CQLQuery(query_type=query_type, filters=filters, for_control=for_control,
-                    since=since, order_by=order_by.lower() if order_by else None,
-                    order_dir=order_dir, raw=cql)
+    return CQLQuery(
+        query_type=query_type,
+        filters=filters,
+        for_control=for_control,
+        since=since,
+        order_by=order_by.lower() if order_by else None,
+        order_dir=order_dir,
+        raw=cql,
+    )
 
 
 def _compare(actual: Any, op: str, expected: str) -> bool:
     if actual is None:
         return False
     a, e = str(actual).lower(), expected.lower()
-    if op == "=": return a == e
-    if op == "!=": return a != e
-    if op == "LIKE": return e.replace("%", "") in a
-    ar = _SEVERITY_RANK.get(a, 0); er = _SEVERITY_RANK.get(e, 0)
+    if op == "=":
+        return a == e
+    if op == "!=":
+        return a != e
+    if op == "LIKE":
+        return e.replace("%", "") in a
+    ar = _SEVERITY_RANK.get(a, 0)
+    er = _SEVERITY_RANK.get(e, 0)
     if ar and er:
-        if op == ">=": return ar >= er
-        if op == "<=": return ar <= er
-        if op == ">": return ar > er
-        if op == "<": return ar < er
-    if op == ">=": return a >= e
-    if op == "<=": return a <= e
-    if op == ">": return a > e
-    if op == "<": return a < e
+        if op == ">=":
+            return ar >= er
+        if op == "<=":
+            return ar <= er
+        if op == ">":
+            return ar > er
+        if op == "<":
+            return ar < er
+    if op == ">=":
+        return a >= e
+    if op == "<=":
+        return a <= e
+    if op == ">":
+        return a > e
+    if op == "<":
+        return a < e
     return False
 
 
@@ -94,7 +114,8 @@ def _matches(record: dict, filters: list) -> bool:
 
 def _apply_since(records: list, since: str, ts_field: str = "generated_at") -> list:
     try:
-        cutoff = datetime.fromisoformat(since.replace("Z", "+00:00")); cutoff = cutoff.replace(tzinfo=timezone.utc) if cutoff.tzinfo is None else cutoff
+        cutoff = datetime.fromisoformat(since.replace("Z", "+00:00"))
+        cutoff = cutoff.replace(tzinfo=timezone.utc) if cutoff.tzinfo is None else cutoff
         result = []
         for r in records:
             ts = r.get(ts_field, "")
@@ -113,6 +134,7 @@ def _sort(records: list, order_by: str, order_dir: str) -> list:
         v = r.get(order_by, "")
         rank = _SEVERITY_RANK.get(str(v).lower(), 0)
         return rank if rank else str(v).lower()
+
     return sorted(records, key=key, reverse=(order_dir == "DESC"))
 
 
@@ -125,8 +147,13 @@ class CQLResult:
     executed_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> dict:
-        return {"query_type": self.query_type, "total": self.total,
-                "records": self.records, "cql": self.cql, "executed_at": self.executed_at}
+        return {
+            "query_type": self.query_type,
+            "total": self.total,
+            "records": self.records,
+            "cql": self.cql,
+            "executed_at": self.executed_at,
+        }
 
 
 class CQLEngine:
@@ -140,19 +167,23 @@ class CQLEngine:
         q = parse(cql)
         if q.query_type == "CONTROLS":
             records = [r for r in self._controls if _matches(r, q.filters)]
-            if q.since: records = _apply_since(records, q.since, "last_assessed")
+            if q.since:
+                records = _apply_since(records, q.since, "last_assessed")
         elif q.query_type == "EVIDENCE":
             records = self._evidence
             if q.for_control:
-                records = [r for r in records if r.get("control_id","").upper() == q.for_control.upper()]
+                records = [r for r in records if r.get("control_id", "").upper() == q.for_control.upper()]
             records = [r for r in records if _matches(r, q.filters)]
-            if q.since: records = _apply_since(records, q.since, "generated_at")
+            if q.since:
+                records = _apply_since(records, q.since, "generated_at")
         elif q.query_type == "DRIFT":
             records = [r for r in self._drift if _matches(r, q.filters)]
-            if q.since: records = _apply_since(records, q.since)
+            if q.since:
+                records = _apply_since(records, q.since)
         elif q.query_type == "POAM":
             records = [r for r in self._poam if _matches(r, q.filters)]
-            if q.since: records = _apply_since(records, q.since, "detected_at")
+            if q.since:
+                records = _apply_since(records, q.since, "detected_at")
         else:
             raise CQLExecutionError(f"Unknown query type: {q.query_type}")
         if q.order_by:

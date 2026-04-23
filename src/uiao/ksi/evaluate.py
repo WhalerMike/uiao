@@ -26,6 +26,7 @@ control id, whether it passed, the verdict, the matched rule key (if
 any), and a short rationale string so downstream planes can trace
 decisions back to their inputs without needing to re-run the evaluator.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -40,6 +41,7 @@ from uuid import uuid4
 # ---------------------------------------------------------------------------
 # Logging helpers (mirrors the pattern in scuba/transform.py)
 # ---------------------------------------------------------------------------
+
 
 def _setup_logger(log_path: Path) -> logging.Logger:
     """Emit to both stderr and a timestamped log file."""
@@ -70,14 +72,13 @@ def _derive_log_path(output_path: Path) -> Path:
 # I/O helpers
 # ---------------------------------------------------------------------------
 
+
 def _load_ir(ir_path: Path) -> Dict[str, Any]:
     """Load a canonical IR JSON envelope and return the raw dict."""
     with ir_path.open(encoding="utf-8") as fh:
         data = json.load(fh)
     if not isinstance(data, dict):
-        raise ValueError(
-            f"IR file must deserialize to a dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"IR file must deserialize to a dict, got {type(data).__name__}")
     return data  # type: ignore[return-value]
 
 
@@ -189,8 +190,7 @@ def _evaluate_control(
         override = override_rules[cid]
         expected = override.get("expected_result", _VERDICT_PASS)
         matched = any(
-            _evidence_passes(ev) if expected == _VERDICT_PASS
-            else ev.get("evaluation", {}).get("result") == expected
+            _evidence_passes(ev) if expected == _VERDICT_PASS else ev.get("evaluation", {}).get("result") == expected
             for ev in evidence_items
         )
         verdict = _VERDICT_PASS if matched else _VERDICT_FAIL
@@ -229,15 +229,10 @@ def _evaluate_control(
 
     if require_all:
         verdict = _VERDICT_PASS if len(passing) == len(evidence_items) else _VERDICT_FAIL
-        rationale = (
-            f"require_all_evidence_pass=true: "
-            f"{len(passing)}/{len(evidence_items)} evidence items passed"
-        )
+        rationale = f"require_all_evidence_pass=true: {len(passing)}/{len(evidence_items)} evidence items passed"
     else:
         verdict = _VERDICT_PASS if passing else _VERDICT_FAIL
-        rationale = (
-            f"{len(passing)}/{len(evidence_items)} evidence items passed"
-        )
+        rationale = f"{len(passing)}/{len(evidence_items)} evidence items passed"
 
     return {
         "control_id": cid,
@@ -264,6 +259,7 @@ def _build_evidence_index(
 # ---------------------------------------------------------------------------
 # Summary helpers
 # ---------------------------------------------------------------------------
+
 
 def _build_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Compute aggregate counts for the KSI envelope."""
@@ -292,6 +288,7 @@ def _envelope_hash(results: List[Dict[str, Any]]) -> str:
 # ---------------------------------------------------------------------------
 # Public entry-point
 # ---------------------------------------------------------------------------
+
 
 def evaluate_ksi(
     ir_path: str,
@@ -366,8 +363,7 @@ def evaluate_ksi(
     # 5. Build summary
     summary = _build_summary(results)
     logger.info(
-        "Evaluation complete: total=%d  pass=%d  fail=%d  "
-        "inconclusive=%d  excluded=%d  pass_rate=%.2f%%",
+        "Evaluation complete: total=%d  pass=%d  fail=%d  inconclusive=%d  excluded=%d  pass_rate=%.2f%%",
         summary["total_controls"],
         summary["passing"],
         summary["failing"],
@@ -391,4 +387,3 @@ def evaluate_ksi(
     _write_ksi(dst, payload)
     logger.info("KSI output written to %s", dst)
     logger.info("evaluate_ksi complete — run_id=%s", run_id)
-

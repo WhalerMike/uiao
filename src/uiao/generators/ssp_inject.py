@@ -22,9 +22,9 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 from uiao.evidence.bundle import EvidenceBundle, build_bundle_from_transform_result
 from uiao.generators.ssp import build_ssp_skeleton
-from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
 from uiao.utils.context import load_context
 
 
@@ -256,4 +256,3 @@ def live_ssp_summary(ssp_doc: dict[str, Any], bundle: EvidenceBundle) -> str:
         f"  Implemented      : {implemented} / {partial} / {not_impl}",
     ]
     return "\n".join(lines)
-

@@ -85,4 +85,3 @@ def test_poam_summary_output():
     summary = poam_summary(rows)
     assert "POA&M Summary" in summary
     assert "3 items" in summary
-

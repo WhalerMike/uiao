@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 import platform
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -35,13 +35,14 @@ import httpx
 @dataclass
 class DeviceHealthRecord:
     """In-boundary device health record replacing Endpoint Analytics."""
+
     device_id: str
     device_name: str
     os_version: str
     last_sync_time: str
-    compliance_state: str          # compliant | noncompliant | unknown
-    update_compliance: str         # upToDate | notUpToDate | unknown
-    disk_health: str               # healthy | warning | critical | unknown
+    compliance_state: str  # compliant | noncompliant | unknown
+    update_compliance: str  # upToDate | notUpToDate | unknown
+    disk_health: str  # healthy | warning | critical | unknown
     memory_gb: float = 0.0
     cpu_model: str = ""
     last_boot_time: str = ""
@@ -102,29 +103,27 @@ class InBoundaryTelemetry:
                     free_storage = d.get("freeStorageSpaceInBytes", 0) or 0
                     if total_storage > 0:
                         used_pct = (total_storage - free_storage) / total_storage
-                        disk_health = (
-                            "critical" if used_pct > 0.90 else
-                            "warning" if used_pct > 0.80 else
-                            "healthy"
-                        )
+                        disk_health = "critical" if used_pct > 0.90 else "warning" if used_pct > 0.80 else "healthy"
                     else:
                         disk_health = "unknown"
 
                     memory_bytes = d.get("physicalMemoryInBytes", 0) or 0
-                    records.append(DeviceHealthRecord(
-                        device_id=d.get("id", ""),
-                        device_name=d.get("deviceName", ""),
-                        os_version=d.get("osVersion", ""),
-                        last_sync_time=str(d.get("lastSyncDateTime", "")),
-                        compliance_state=d.get("complianceState", "unknown"),
-                        update_compliance="unknown",  # enriched below
-                        disk_health=disk_health,
-                        memory_gb=round(memory_bytes / (1024 ** 3), 1),
-                        cpu_model=d.get("model", ""),
-                        enrolled_in_intune=True,
-                        entra_joined=d.get("joinType", "") != "azureADRegistered",
-                        collected_at=ts,
-                    ))
+                    records.append(
+                        DeviceHealthRecord(
+                            device_id=d.get("id", ""),
+                            device_name=d.get("deviceName", ""),
+                            os_version=d.get("osVersion", ""),
+                            last_sync_time=str(d.get("lastSyncDateTime", "")),
+                            compliance_state=d.get("complianceState", "unknown"),
+                            update_compliance="unknown",  # enriched below
+                            disk_health=disk_health,
+                            memory_gb=round(memory_bytes / (1024**3), 1),
+                            cpu_model=d.get("model", ""),
+                            enrolled_in_intune=True,
+                            entra_joined=d.get("joinType", "") != "azureADRegistered",
+                            collected_at=ts,
+                        )
+                    )
                 url = data.get("@odata.nextLink")
 
         return records
@@ -166,6 +165,7 @@ class InBoundaryTelemetry:
 # Used for local device health collection on the survey server
 # or for ARC-enrolled servers where Azure Monitor is blocked
 # ------------------------------------------------------------------
+
 
 def collect_local_wmi_health(computer_name: Optional[str] = None) -> dict:
     """
@@ -213,8 +213,7 @@ try {{
 """
     try:
         result = subprocess.run(
-            ["powershell", "-NonInteractive", "-Command", script],
-            capture_output=True, text=True, timeout=30
+            ["powershell", "-NonInteractive", "-Command", script], capture_output=True, text=True, timeout=30
         )
         if result.returncode == 0:
             return json.loads(result.stdout)
@@ -278,8 +277,5 @@ $jobs | Wait-Job | ForEach-Object {{
 
 $results | ConvertTo-Json -Depth 2 | Out-File -FilePath '{output_file}' -Encoding UTF8
 """
-    subprocess.run(
-        ["powershell", "-NonInteractive", "-Command", script],
-        capture_output=True, text=True, timeout=600
-    )
+    subprocess.run(["powershell", "-NonInteractive", "-Command", script], capture_output=True, text=True, timeout=600)
     return output_file

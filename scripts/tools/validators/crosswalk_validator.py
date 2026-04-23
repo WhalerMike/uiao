@@ -39,10 +39,7 @@ def _validate_instance(instance: Any, schema: dict[str, Any]) -> list[str]:
 
     validator = Draft7Validator(schema)
     errors = sorted(validator.iter_errors(instance), key=lambda e: list(e.absolute_path))
-    return [
-        f"{'.'.join(str(p) for p in err.absolute_path) or '<root>'}: {err.message}"
-        for err in errors
-    ]
+    return [f"{'.'.join(str(p) for p in err.absolute_path) or '<root>'}: {err.message}" for err in errors]
 
 
 def main() -> int:

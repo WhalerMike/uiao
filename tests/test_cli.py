@@ -464,4 +464,3 @@ class TestGenerateAll:
         plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
         assert result.exit_code == 1, plain
         assert "template missing" in plain
-

@@ -31,7 +31,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional
 
 from uiao.modernization.orgtree import (
     ArcPolicyAssignment,
@@ -41,7 +41,6 @@ from uiao.modernization.orgtree import (
 from uiao.modernization.orgtree.policy_targets import (
     default_policy_targeting_canon,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -55,18 +54,22 @@ OP_ARC_POLICY_UPDATE = "arc-policy-update"
 OP_ARC_POLICY_PHANTOM = "arc-policy-phantom"
 OP_ARC_POLICY_DEF_MISSING = "arc-policy-definition-missing"
 
-OPS_AUTO_APPLIED = frozenset({
-    OP_INTUNE_ASSIGN_CREATE,
-    OP_INTUNE_ASSIGN_UPDATE,
-    OP_ARC_POLICY_CREATE,
-    OP_ARC_POLICY_UPDATE,
-})
-OPS_GOVERNANCE_REVIEW = frozenset({
-    OP_INTUNE_ASSIGN_PHANTOM,
-    OP_ARC_POLICY_PHANTOM,
-    OP_INTUNE_PROFILE_MISSING,
-    OP_ARC_POLICY_DEF_MISSING,
-})
+OPS_AUTO_APPLIED = frozenset(
+    {
+        OP_INTUNE_ASSIGN_CREATE,
+        OP_INTUNE_ASSIGN_UPDATE,
+        OP_ARC_POLICY_CREATE,
+        OP_ARC_POLICY_UPDATE,
+    }
+)
+OPS_GOVERNANCE_REVIEW = frozenset(
+    {
+        OP_INTUNE_ASSIGN_PHANTOM,
+        OP_ARC_POLICY_PHANTOM,
+        OP_INTUNE_PROFILE_MISSING,
+        OP_ARC_POLICY_DEF_MISSING,
+    }
+)
 
 
 @dataclass
@@ -100,10 +103,7 @@ class PolicyTargetingPlan:
             "total_canonical_arc": self.total_canonical_arc,
             "total_tenant_intune_profiles": self.total_tenant_intune_profiles,
             "total_tenant_arc_assignments": self.total_tenant_arc_assignments,
-            "operations": [
-                {"op": o.op, "target": o.target, "reason": o.reason}
-                for o in self.operations
-            ],
+            "operations": [{"op": o.op, "target": o.target, "reason": o.reason} for o in self.operations],
         }
 
 
@@ -189,19 +189,10 @@ class EntraPolicyTargetingAdapter:
             Map ``{definition_displayName → policyDefinitionId}`` for
             Azure Policy.
         """
-        profiles_by_name = {
-            p.get("displayName"): p
-            for p in (current_intune_profiles or [])
-        }
-        profiles_by_id = {
-            p.get("id"): p
-            for p in (current_intune_profiles or [])
-        }
+        profiles_by_name = {p.get("displayName"): p for p in (current_intune_profiles or [])}
+        profiles_by_id = {p.get("id"): p for p in (current_intune_profiles or [])}
         assignments_by_profile_id = current_intune_assignments or {}
-        arc_by_name = {
-            a.get("name"): a
-            for a in (current_arc_assignments or [])
-        }
+        arc_by_name = {a.get("name"): a for a in (current_arc_assignments or [])}
         group_resolver = group_id_resolver or {}
         arc_def_resolver = arc_definition_id_resolver or {}
 
@@ -225,7 +216,7 @@ class EntraPolicyTargetingAdapter:
             )
 
         # ---- Arc ----
-        for name, assignment in self._canon.arc_policy_assignments.items():
+        for _name, assignment in self._canon.arc_policy_assignments.items():
             self._plan_arc(
                 assignment,
                 arc_by_name,
@@ -245,35 +236,31 @@ class EntraPolicyTargetingAdapter:
         plan: PolicyTargetingPlan,
     ) -> None:
         ref = assignment.profile_ref
-        profile = (
-            profiles_by_id.get(ref.value) if ref.match_by == "id"
-            else profiles_by_name.get(ref.value)
-        )
+        profile = profiles_by_id.get(ref.value) if ref.match_by == "id" else profiles_by_name.get(ref.value)
         if profile is None:
-            plan.operations.append(PlannedOperation(
-                op=OP_INTUNE_PROFILE_MISSING,
-                target=f"{ref.value} -> {assignment.target_group}",
-                reason=(
-                    f"Canonical Intune {ref.kind} '{ref.value}' not found in "
-                    "tenant — author the profile first (out of scope for "
-                    "this adapter), then re-run reconcile."
-                ),
-                canonical=assignment,
-            ))
+            plan.operations.append(
+                PlannedOperation(
+                    op=OP_INTUNE_PROFILE_MISSING,
+                    target=f"{ref.value} -> {assignment.target_group}",
+                    reason=(
+                        f"Canonical Intune {ref.kind} '{ref.value}' not found in "
+                        "tenant — author the profile first (out of scope for "
+                        "this adapter), then re-run reconcile."
+                    ),
+                    canonical=assignment,
+                )
+            )
             return
 
         profile_id = profile.get("id")
         group_id = group_resolver.get(assignment.target_group)
         current_targets = assignments_by_profile_id.get(profile_id, [])
 
-        matching = [
-            a for a in current_targets
-            if _intune_assignment_matches(a, assignment, group_id)
-        ]
+        matching = [a for a in current_targets if _intune_assignment_matches(a, assignment, group_id)]
         non_matching_same_group = [
-            a for a in current_targets
-            if _intune_assignment_same_group(a, group_id)
-            and not _intune_assignment_matches(a, assignment, group_id)
+            a
+            for a in current_targets
+            if _intune_assignment_same_group(a, group_id) and not _intune_assignment_matches(a, assignment, group_id)
         ]
 
         if matching:
@@ -281,31 +268,29 @@ class EntraPolicyTargetingAdapter:
 
         if non_matching_same_group:
             # Same group is assigned but with wrong intent — update.
-            plan.operations.append(PlannedOperation(
-                op=OP_INTUNE_ASSIGN_UPDATE,
-                target=f"{ref.value} -> {assignment.target_group}",
-                reason=(
-                    "Intent drift: tenant assigns same group with different "
-                    "intent than canon requires."
-                ),
-                canonical=assignment,
-                current_state={"current_assignments": non_matching_same_group},
-                intune_profile_id=profile_id,
-                intune_group_id=group_id,
-            ))
+            plan.operations.append(
+                PlannedOperation(
+                    op=OP_INTUNE_ASSIGN_UPDATE,
+                    target=f"{ref.value} -> {assignment.target_group}",
+                    reason=("Intent drift: tenant assigns same group with different intent than canon requires."),
+                    canonical=assignment,
+                    current_state={"current_assignments": non_matching_same_group},
+                    intune_profile_id=profile_id,
+                    intune_group_id=group_id,
+                )
+            )
             return
 
-        plan.operations.append(PlannedOperation(
-            op=OP_INTUNE_ASSIGN_CREATE,
-            target=f"{ref.value} -> {assignment.target_group}",
-            reason=(
-                "Canonical Intune assignment missing — group is not in "
-                "the profile's assignments[] yet."
-            ),
-            canonical=assignment,
-            intune_profile_id=profile_id,
-            intune_group_id=group_id,
-        ))
+        plan.operations.append(
+            PlannedOperation(
+                op=OP_INTUNE_ASSIGN_CREATE,
+                target=f"{ref.value} -> {assignment.target_group}",
+                reason=("Canonical Intune assignment missing — group is not in the profile's assignments[] yet."),
+                canonical=assignment,
+                intune_profile_id=profile_id,
+                intune_group_id=group_id,
+            )
+        )
 
     def _plan_arc(
         self,
@@ -322,43 +307,44 @@ class EntraPolicyTargetingAdapter:
             else arc_def_resolver.get(assignment.policy_definition.value)
         )
         if canonical_def_id is None:
-            plan.operations.append(PlannedOperation(
-                op=OP_ARC_POLICY_DEF_MISSING,
-                target=name,
-                reason=(
-                    f"Azure Policy definition "
-                    f"'{assignment.policy_definition.value}' not resolvable "
-                    "— pass arc_definition_id_resolver or use match_by: "
-                    "policyDefinitionId."
-                ),
-                canonical=assignment,
-            ))
+            plan.operations.append(
+                PlannedOperation(
+                    op=OP_ARC_POLICY_DEF_MISSING,
+                    target=name,
+                    reason=(
+                        f"Azure Policy definition "
+                        f"'{assignment.policy_definition.value}' not resolvable "
+                        "— pass arc_definition_id_resolver or use match_by: "
+                        "policyDefinitionId."
+                    ),
+                    canonical=assignment,
+                )
+            )
             return
 
         if tenant is None:
-            plan.operations.append(PlannedOperation(
-                op=OP_ARC_POLICY_CREATE,
-                target=name,
-                reason=(
-                    "Canonical Arc policy assignment missing — no Azure "
-                    "Policy assignment with this name in the subscription."
-                ),
-                canonical=assignment,
-                arc_definition_id=canonical_def_id,
-            ))
+            plan.operations.append(
+                PlannedOperation(
+                    op=OP_ARC_POLICY_CREATE,
+                    target=name,
+                    reason=(
+                        "Canonical Arc policy assignment missing — no Azure "
+                        "Policy assignment with this name in the subscription."
+                    ),
+                    canonical=assignment,
+                    arc_definition_id=canonical_def_id,
+                )
+            )
             return
 
         props = tenant.get("properties", {}) or {}
         tenant_def = props.get("policyDefinitionId")
-        tenant_scope = props.get("scope")
+        props.get("scope")
         tenant_parameters = props.get("parameters", {}) or {}
 
         drift_reasons: List[str] = []
         if tenant_def and tenant_def != canonical_def_id:
-            drift_reasons.append(
-                f"policyDefinitionId drift: tenant={tenant_def!r} "
-                f"canonical={canonical_def_id!r}"
-            )
+            drift_reasons.append(f"policyDefinitionId drift: tenant={tenant_def!r} canonical={canonical_def_id!r}")
         # OrgPath selector shape is passed through the Azure Policy
         # `orgPathPrefix` + `matchMode` parameters (one canonical naming
         # convention — policy bodies that implement the filter must
@@ -375,24 +361,24 @@ class EntraPolicyTargetingAdapter:
         )
         if tenant_prefix != assignment.orgpath_selector.prefix:
             drift_reasons.append(
-                f"orgPathPrefix drift: tenant={tenant_prefix!r} "
-                f"canonical={assignment.orgpath_selector.prefix!r}"
+                f"orgPathPrefix drift: tenant={tenant_prefix!r} canonical={assignment.orgpath_selector.prefix!r}"
             )
         if tenant_mode != assignment.orgpath_selector.match_mode:
             drift_reasons.append(
-                f"matchMode drift: tenant={tenant_mode!r} "
-                f"canonical={assignment.orgpath_selector.match_mode!r}"
+                f"matchMode drift: tenant={tenant_mode!r} canonical={assignment.orgpath_selector.match_mode!r}"
             )
 
         if drift_reasons:
-            plan.operations.append(PlannedOperation(
-                op=OP_ARC_POLICY_UPDATE,
-                target=name,
-                reason="; ".join(drift_reasons),
-                canonical=assignment,
-                current_state=tenant,
-                arc_definition_id=canonical_def_id,
-            ))
+            plan.operations.append(
+                PlannedOperation(
+                    op=OP_ARC_POLICY_UPDATE,
+                    target=name,
+                    reason="; ".join(drift_reasons),
+                    canonical=assignment,
+                    current_state=tenant,
+                    arc_definition_id=canonical_def_id,
+                )
+            )
 
     # Detect assignment_name-prefixed assignments in tenant that aren't in
     # canon — "phantom" assignments. Caller passes these via
@@ -415,39 +401,44 @@ class EntraPolicyTargetingAdapter:
         )
         for op in plan.operations:
             if op.op in OPS_GOVERNANCE_REVIEW:
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="skipped-manual",
-                    detail=(
-                        "Policy-consumer drift requires governance review; "
-                        "never auto-applied."
-                    ),
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="skipped-manual",
+                        detail=("Policy-consumer drift requires governance review; never auto-applied."),
+                    )
+                )
                 continue
             if dry_run:
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="skipped-dry-run",
-                    detail="Dry run — no tenant write issued.",
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="skipped-dry-run",
+                        detail="Dry run — no tenant write issued.",
+                    )
+                )
                 continue
             try:
                 self._execute(op)
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="written",
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="written",
+                    )
+                )
             except Exception as exc:  # pragma: no cover - network path
                 logger.exception("Apply failed for %s", op.target)
-                report.results.append(OperationResult(
-                    op=op.op,
-                    target=op.target,
-                    status="failed",
-                    detail=str(exc),
-                ))
+                report.results.append(
+                    OperationResult(
+                        op=op.op,
+                        target=op.target,
+                        status="failed",
+                        detail=str(exc),
+                    )
+                )
         return report
 
     def reconcile(
@@ -489,14 +480,18 @@ class EntraPolicyTargetingAdapter:
 # Helpers for matching tenant assignments against canon
 # ---------------------------------------------------------------------------
 
-_INCLUDE_TARGET_TYPES = frozenset({
-    "#microsoft.graph.groupAssignmentTarget",
-    "microsoft.graph.groupAssignmentTarget",
-})
-_EXCLUDE_TARGET_TYPES = frozenset({
-    "#microsoft.graph.exclusionGroupAssignmentTarget",
-    "microsoft.graph.exclusionGroupAssignmentTarget",
-})
+_INCLUDE_TARGET_TYPES = frozenset(
+    {
+        "#microsoft.graph.groupAssignmentTarget",
+        "microsoft.graph.groupAssignmentTarget",
+    }
+)
+_EXCLUDE_TARGET_TYPES = frozenset(
+    {
+        "#microsoft.graph.exclusionGroupAssignmentTarget",
+        "microsoft.graph.exclusionGroupAssignmentTarget",
+    }
+)
 
 
 def _intune_target_group_id(assignment: Dict[str, Any]) -> Optional[str]:
@@ -515,12 +510,10 @@ def _intune_target_intent(assignment: Dict[str, Any]) -> Optional[str]:
 
 
 def _intune_assignment_same_group(
-    tenant: Dict[str, Any], group_id: Optional[str],
+    tenant: Dict[str, Any],
+    group_id: Optional[str],
 ) -> bool:
-    return (
-        group_id is not None
-        and _intune_target_group_id(tenant) == group_id
-    )
+    return group_id is not None and _intune_target_group_id(tenant) == group_id
 
 
 def _intune_assignment_matches(
@@ -528,7 +521,4 @@ def _intune_assignment_matches(
     canonical: IntuneAssignment,
     group_id: Optional[str],
 ) -> bool:
-    return (
-        _intune_assignment_same_group(tenant, group_id)
-        and _intune_target_intent(tenant) == canonical.intent
-    )
+    return _intune_assignment_same_group(tenant, group_id) and _intune_target_intent(tenant) == canonical.intent

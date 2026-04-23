@@ -39,7 +39,7 @@ import hashlib
 import json
 import re
 import sys
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 # ------------------------------------------------------------------
@@ -48,7 +48,7 @@ from pathlib import Path
 
 TREES = [
     ("docs/customer-documents/adapter-technical-specifications", "ats"),
-    ("docs/customer-documents/adapter-validation-suites",       "avs"),
+    ("docs/customer-documents/adapter-validation-suites", "avs"),
     # Canon-level IMAGE-PROMPTS.md files for specification-level diagrams
     # (UIAO_003 DIAGRAM-01/02/03, IMAGE-05, etc.) that aren't adapter-
     # specific but still need to flow through the image pipeline.
@@ -213,8 +213,8 @@ def build_manifest(report: AggregateReport) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--docs-root", default=".", help="Root of uiao-docs repo (default: cwd)")
-    ap.add_argument("--output",    default="data/image-manifest.json", help="Output JSON path")
-    ap.add_argument("--verbose",   action="store_true", help="Print per-entry summary to stderr")
+    ap.add_argument("--output", default="data/image-manifest.json", help="Output JSON path")
+    ap.add_argument("--verbose", action="store_true", help="Print per-entry summary to stderr")
     args = ap.parse_args()
 
     docs_root = Path(args.docs_root).resolve()
@@ -240,12 +240,15 @@ def main() -> int:
     print(f"  prompts found:     {report.prompts_found}", file=sys.stderr)
     print(f"  files failed:      {report.files_failed}", file=sys.stderr)
     if report.errors:
-        print(f"  errors:", file=sys.stderr)
+        print("  errors:", file=sys.stderr)
         for e in report.errors:
             print(f"    - {e}", file=sys.stderr)
     if args.verbose:
         for entry in manifest["entries"]:
-            print(f"  [{entry['tree_key']}] {entry['adapter_id']} {entry['tag']} → {entry['target_filename']} ({entry['content_hash']})", file=sys.stderr)
+            print(
+                f"  [{entry['tree_key']}] {entry['adapter_id']} {entry['tag']} → {entry['target_filename']} ({entry['content_hash']})",
+                file=sys.stderr,
+            )
 
     return report.exit_code()
 
