@@ -238,6 +238,190 @@ def _resolve_ksi(policy_id: str, nist_control: str, control_to_ksi: Dict) -> Dic
 
 
 # ---------------------------------------------------------------------------
+# OPA version pre-flight (DRIFT-PROVENANCE)
+#
+# ScubaGear evaluates SCuBA policy baselines via OPA/Rego. If the OPA binary
+# version that produced a given ScubaResults.json run is outdated, Rego
+# evaluations can produce silently incorrect pass/fail results. Upstream
+# cisagov/ScubaGear#2075 (Qwilfish milestone, 2026-06-30) will expose OPA
+# version in the output envelope; until then this pre-flight tolerates
+# absence and emits a DRIFT-PROVENANCE *warning* so downstream components
+# can see the gap without failing normalization.
+#
+# Drift taxonomy: src/uiao/canon/adr/adr-012-canonical-drift-taxonomy.md
+# RFC-0026 roadmap entry: docs/docs/uiao-rfc-0026-roadmap.md (E3.3)
+# ---------------------------------------------------------------------------
+
+_SCUBA_OVERLAY_CANDIDATES = (
+    ("src", "uiao", "canon", "data", "vendor-overlays", "scuba.yaml"),
+    ("canon", "data", "vendor-overlays", "scuba.yaml"),
+)
+
+_SCUBA_OVERLAY_CACHE: Optional[Dict[str, Any]] = None
+
+# Field names to try when hunting for the OPA version in ScubaGear envelope
+# metadata. Covers the expected post-#2075 name plus common lowercase/snake
+# variants we might see from per-product files or older outputs.
+_OPA_VERSION_FIELDS = ("OpaVersion", "OPAVersion", "OpaBinaryVersion", "opa_version")
+
+
+def _load_scuba_overlay(repo_root: Optional[Path] = None) -> Dict[str, Any]:
+    """Load the scuba.yaml vendor overlay from canon, cached per-process.
+
+    Returns an empty dict if the overlay cannot be located — callers treat
+    this as "no pin configured, pre-flight skipped."
+    """
+    global _SCUBA_OVERLAY_CACHE
+    if _SCUBA_OVERLAY_CACHE is not None:
+        return _SCUBA_OVERLAY_CACHE
+
+    search_roots: List[Path] = []
+    if repo_root is not None:
+        search_roots.append(Path(repo_root))
+    # Walk up from this file to find the repo root containing src/uiao/canon
+    search_roots.append(Path(__file__).resolve().parents[4])
+    search_roots.append(Path.cwd())
+
+    for root in search_roots:
+        for parts in _SCUBA_OVERLAY_CANDIDATES:
+            candidate = root.joinpath(*parts)
+            if candidate.exists():
+                try:
+                    with open(candidate, encoding="utf-8") as f:
+                        data = yaml.safe_load(f) or {}
+                    _SCUBA_OVERLAY_CACHE = data if isinstance(data, dict) else {}
+                    logger.info("Loaded scuba.yaml overlay from %s", candidate)
+                    return _SCUBA_OVERLAY_CACHE
+                except (OSError, yaml.YAMLError) as exc:
+                    logger.warning("Failed to parse scuba.yaml at %s: %s", candidate, exc)
+
+    _SCUBA_OVERLAY_CACHE = {}
+    return _SCUBA_OVERLAY_CACHE
+
+
+def _parse_version(value: Any) -> Optional[Tuple[int, ...]]:
+    """Parse a dotted version string like "0.59.0" into a tuple for comparison.
+
+    Returns None if the value can't be parsed. Leading "v" is tolerated.
+    The returned tuple always ends with a *release marker* — 0 for a plain
+    release, -1 for a pre-release/suffixed segment — so pre-release versions
+    sort strictly below their release counterpart even when both have the
+    same numeric prefix (e.g. 0.59.0-rc1 < 0.59.0).
+    """
+    if value is None:
+        return None
+    s = str(value).strip().lstrip("vV")
+    if not s:
+        return None
+    parts: List[int] = []
+    is_prerelease = False
+    for segment in s.split("."):
+        # Handle suffixes like "0-rc1": keep the numeric head only.
+        head = ""
+        for ch in segment:
+            if ch.isdigit():
+                head += ch
+            else:
+                break
+        if not head:
+            return None
+        parts.append(int(head))
+        if head != segment:
+            is_prerelease = True
+            break
+    if not parts:
+        return None
+    parts.append(-1 if is_prerelease else 0)
+    return tuple(parts)
+
+
+def _preflight_opa_provenance(
+    source_metadata: Dict[str, Any],
+    scuba_overlay: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Check the observed OPA version against the overlay's minimum pin.
+
+    Returns a dict with at minimum:
+      status         — one of: ok | missing | below_pin | unparseable | skipped
+      observed       — the raw version string from ScubaGear envelope (or None)
+      minimum        — the pin from scuba.yaml (or None)
+      drift_class    — "DRIFT-PROVENANCE" when status != "ok" / "skipped"
+      classification — None | "risky" | "unauthorized"
+      reason         — short human message
+
+    The check is advisory while upstream cisagov/ScubaGear#2075 is unshipped;
+    "missing" emits a warning-class signal rather than a hard failure.
+    """
+    pin_raw = (scuba_overlay.get("uiao_extensions") or {}).get("opa_version_minimum")
+    if not pin_raw:
+        return {
+            "status": "skipped",
+            "observed": None,
+            "minimum": None,
+            "drift_class": None,
+            "classification": None,
+            "reason": "No opa_version_minimum configured in scuba.yaml uiao_extensions",
+        }
+
+    observed_raw: Optional[str] = None
+    for field in _OPA_VERSION_FIELDS:
+        if field in source_metadata and source_metadata[field]:
+            observed_raw = str(source_metadata[field])
+            break
+
+    if observed_raw is None:
+        return {
+            "status": "missing",
+            "observed": None,
+            "minimum": pin_raw,
+            "drift_class": "DRIFT-PROVENANCE",
+            "classification": "risky",
+            "reason": (
+                "ScubaGear output does not report an OPA version "
+                "(expected post-cisagov/ScubaGear#2075, Qwilfish milestone). "
+                f"Cannot verify OPA >= {pin_raw}."
+            ),
+        }
+
+    observed_parsed = _parse_version(observed_raw)
+    minimum_parsed = _parse_version(pin_raw)
+    if observed_parsed is None or minimum_parsed is None:
+        return {
+            "status": "unparseable",
+            "observed": observed_raw,
+            "minimum": pin_raw,
+            "drift_class": "DRIFT-PROVENANCE",
+            "classification": "risky",
+            "reason": (
+                f"Cannot compare OPA versions: observed={observed_raw!r} pin={pin_raw!r}. "
+                "Verify scuba.yaml opa_version_minimum format."
+            ),
+        }
+
+    if observed_parsed < minimum_parsed:
+        return {
+            "status": "below_pin",
+            "observed": observed_raw,
+            "minimum": pin_raw,
+            "drift_class": "DRIFT-PROVENANCE",
+            "classification": "unauthorized",
+            "reason": (
+                f"OPA version {observed_raw} is below the pinned minimum {pin_raw}; "
+                "Rego evaluations in this ScubaGear run may be unreliable."
+            ),
+        }
+
+    return {
+        "status": "ok",
+        "observed": observed_raw,
+        "minimum": pin_raw,
+        "drift_class": None,
+        "classification": None,
+        "reason": f"OPA version {observed_raw} meets pinned minimum {pin_raw}",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Main normalization function
 # ---------------------------------------------------------------------------
 
@@ -261,11 +445,22 @@ def normalize_scuba(
     """
     input_path = Path(input_path)
     control_to_ksi = _load_control_to_ksi(repo_root)
+    scuba_overlay = _load_scuba_overlay(repo_root)
 
     # Discover and load raw results (plus the ScubaGear envelope metadata so
     # downstream components can see ToolVersion, OpaVersion, etc.)
     format_desc, raw_results, source_metadata = discover_scuba_input(input_path)
     logger.info("Loaded %d raw results from %s (format: %s)", len(raw_results), input_path, format_desc)
+
+    # OPA version provenance check (DRIFT-PROVENANCE). Advisory until
+    # cisagov/ScubaGear#2075 exposes OpaVersion in Qwilfish (2026-06-30).
+    provenance_preflight = _preflight_opa_provenance(source_metadata, scuba_overlay)
+    if provenance_preflight["status"] not in ("ok", "skipped"):
+        logger.warning(
+            "DRIFT-PROVENANCE (%s): %s",
+            provenance_preflight["status"],
+            provenance_preflight["reason"],
+        )
 
     # Check if already in normalized format (has ksi_id field)
     if raw_results and "ksi_id" in raw_results[0]:
@@ -344,6 +539,7 @@ def normalize_scuba(
             "collector_user": "automated",
             "run_id": f"scuba-run-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}",
             "source_envelope": source_metadata,
+            "provenance_preflight": provenance_preflight,
             "normalization": {
                 "format_detected": format_desc,
                 "raw_results_count": len(raw_results),
