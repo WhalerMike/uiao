@@ -1,8 +1,8 @@
 # AGENTS.md — UIAO Consolidated Monorepo
 
-> Repo-root control surface for IDE agent integration. Three per-module `AGENTS.md` files (`core/AGENTS.md`, `docs/AGENTS.md`, `impl/AGENTS.md`) exist for module-scoped context; this file is the substrate-level entry point.
+> Repo-root control surface for IDE agent integration. This file is the single agent entry point for the consolidated `src/uiao/` package.
 >
-> **Naming note:** the filename is `AGENTS.md` — the emerging tool-neutral convention recognized by Claude Code, OpenAI Codex, and other IDE agents. Thin `CLAUDE.md` stubs remain at every location so tools looking specifically for `CLAUDE.md` still resolve to this content.
+> **Naming note:** the filename is `AGENTS.md` — the emerging tool-neutral convention recognized by Claude Code, OpenAI Codex, and other IDE agents. A thin `CLAUDE.md` stub at the repo root still resolves to this content for tools looking specifically for `CLAUDE.md`.
 
 ## Repository identity
 
@@ -28,7 +28,7 @@ Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`
 
 ## Operating principles (substrate-wide)
 
-1. **SSOT** — every claim has exactly one canonical source in `core/`. All other representations are provenance-anchored pointers.
+1. **SSOT** — every claim has exactly one canonical source under `src/uiao/canon/`. All other representations are provenance-anchored pointers.
 2. **Canon-anchored evidence** — every artifact the substrate produces cites the canon document ID and version it derives from.
 3. **Dual-axis adapter taxonomy** — every adapter declares `class` (modernization | conformance) × `mission-class` (identity | telemetry | policy | enforcement | integration) per UIAO_003.
 4. **Schema-first governance** — five JSON Schemas under `src/uiao/schemas/` validate every registry, manifest, and frontmatter edit in CI.
@@ -66,13 +66,15 @@ Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs 
 | Workflow | Trigger | Blocking? |
 |---|---|---|
 | `schema-validation.yml` | Canon / schemas PRs | ✅ |
-| `pytest.yml` | `impl/**` PRs | ✅ (substrate + full impl) |
+| `pytest.yml` | Python / test PRs | ✅ (substrate + full suite) |
 | `substrate-drift.yml` | Substrate / registry PRs | ✅ |
 | `metadata-validator.yml` | Canon doc PRs | ✅ |
 | `quarto.yml` | `docs/**` PRs | ✅ render; deploy on main |
-| `ruff.yml` | `impl/**` PRs | ✅ |
+| `ruff.yml` | Python PRs | ✅ |
 | `link-check.yml` | `*.md` / `*.qmd` PRs + weekly | 🟡 soft-fail |
 | `release.yml` | Tag `v*.*.*` | — |
+
+> **Known drift:** several workflows (`pytest.yml`, `ruff.yml`, `mypy.yml`, `adapter-conformance.yml`, `metadata-validator.yml`, `release.yml`) still carry pre-ADR-032 path filters that reference `impl/**`, `src/uiao/impl/**`, or `core/canon/` — paths that no longer exist. Those gates therefore do not trigger on current PRs. Fixing the filters is tracked as a follow-up to ADR-032.
 
 ## Commit convention
 
@@ -106,7 +108,7 @@ On 2026-04-20 the hybrid `core/` + `impl/` + partial `src/` tree was flattened i
 ## Agent usage notes
 
 - **Always run `uiao substrate walk` first** on a fresh clone to validate the tree is intact.
-- **Canon changes belong in `core/`.** If a change would create a new canonical governance document, make the PR against `src/uiao/canon/` with a UIAO_NNN allocation.
+- **Canon changes belong under `src/uiao/canon/`.** If a change would create a new canonical governance document, make the PR against `src/uiao/canon/` with a UIAO_NNN allocation in `document-registry.yaml`.
 - **Read the relevant ADR before touching doctrinal canon.** ADR-028 retires the firewall; ADR-025 §D7 is superseded; ADR-027 defines adapter retirement.
 - **CI is comprehensive.** 6 blocking workflows will catch schema violations, drift, and test regressions before merge.
 
@@ -116,11 +118,9 @@ These rules define how the monorepo is organized and why. Violating any of them 
 
 ### Directory intent
 
-`src/uiao/` is the **Core Canon + CLI bridge**. Canon is the governance authority — SSOT, ADRs, schemas, rules, KSI, specs, registries, image registry. Once canon is production-frozen, it is protected: changes require a canon-change ADR and governance-board review. Runtime code consumes canon as resources, never by reaching outside its package.
+`src/uiao/` is the **single installable Python package** — runtime code, canon, schemas, rules, KSI, adapters, CLI. Post-ADR-032 there is no sibling `core/` or `impl/` tree: every concern previously split across those directories now lives under `src/uiao/<subpackage>/`. Canon (under `src/uiao/canon/`) is the governance authority — SSOT, ADRs, schemas, rules, KSI, specs, registries. Once canon is production-frozen it is protected: changes require a canon-change ADR and governance-board review. Runtime code consumes canon via `importlib.resources`, never by reaching outside its package.
 
-`impl/` is the **Python implementation layer** — adapters, collectors, governance engine, OSCAL generation, IR transforms, tests. Everything that executes at runtime lives here. Canon is a read target; impl is a change surface.
-
-`core/` is **non-Python reference material** — architecture docs, runtime config JSON, script tooling, compliance reference PDFs. No Python packages live here.
+`tests/` is the **single test suite** — unit, integration, adapter conformance, substrate drift. Authoritative; previously split between `impl/tests/` and `core/tests/`, now consolidated.
 
 `docs/` is **human-readable documentation source only**. Source extensions: `.qmd`, `.md`, `.yml`, `.yaml`, `.puml`. Binary build output (`.docx`, `.pdf`, `.png`, `.epub`, `.pptx`) is **generated**, not authored, and should live in build output directories (`docs/_site/`, `docs/publications/`) that are either gitignored or release-pinned. Never commit binary output into the source tree alongside source files.
 
@@ -128,21 +128,18 @@ These rules define how the monorepo is organized and why. Violating any of them 
 
 `inbox/` is **draft staging** — content that isn't canonized yet. Promote to `src/uiao/canon/` or `docs/` when ready.
 
+`deploy/windows-server/` holds the **Windows IIS deployment artifacts** (uvicorn `run.py`, `web.config`, `requirements-windows.txt`) for the FastAPI service in `src/uiao/api/`. Referenced from `src/uiao/api/app.py`.
+
 ### Technical invariants
 
-**I1. `src/uiao/` is a PEP 420 namespace package.**
-No `__init__.py` at `src/uiao/` level. This lets `src/uiao/*` and `impl/src/uiao/impl/*` coexist under the `uiao` namespace at import time. Adding a `src/uiao/__init__.py` — even an empty one — captures the namespace and causes `ModuleNotFoundError: No module named 'uiao.impl'`.
+**I1. `src/uiao/` is a single regular package.**
+One `__init__.py` at `src/uiao/` level; one distribution named `uiao`; one import root. The pre-ADR-032 PEP 420 namespace split between `src/uiao/*` and `impl/src/uiao/impl/*` is retired — there is no `uiao.impl` subpackage anymore. Imports are always `from uiao.<subpackage> import …`.
 
-**I2. `src/uiao/cli.py` is a lazy-import bridge.**
-The import `from uiao.impl.cli.app import app` lives inside `main()`, not at module top level. This defers resolution until after sys.path is fully populated. Do not rewrite it to eager-import at module level, and do not add `sys.path` manipulation — if `uiao.impl` is not resolving, the fix is elsewhere (I1 or I3), not in `cli.py`.
+**I2. Single CLI entry point: `uiao.cli.app:app`.**
+The `uiao` console script registered by `pyproject.toml` resolves directly to `src/uiao/cli/app.py`. No bridge module, no lazy-import indirection, no `sys.path` manipulation. If a CLI subcommand fails on import, debug the subcommand's own imports — not the entry point.
 
-**I3. Install order: impl first, root last.**
-Both `pyproject.toml` (root) and `impl/pyproject.toml` register a `uiao` console script. Last install wins the entry-point collision; the root bridge must win. Canonical install sequence:
-
-    pip install -e impl/
-    pip install -e .
-
-Installing in the other order makes `impl`'s direct `uiao.impl.cli.app:app` entry point win, which eagerly imports and fails the moment I1 is ever violated.
+**I3. One `pyproject.toml`, one editable install.**
+`pip install -e .` from the repo root installs everything: runtime code, canon, schemas, rules, KSI, adapters (shipped as package-data per the root `pyproject.toml`). There is no sibling `impl/pyproject.toml` and no install-order dance. Dev tooling: `pip install -e ".[dev]"`.
 
 **I4. Canon is a read-only dependency of code.**
 Code reads canon via `importlib.resources.files("uiao.canon")` and similar. Code must not write to canon, and must not assume canon is at a particular filesystem path — it may be packaged as resources inside an installed wheel.
