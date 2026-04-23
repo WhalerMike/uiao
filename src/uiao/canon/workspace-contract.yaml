@@ -5,31 +5,30 @@
 # Binds the local developer workspace to the canonical GitHub monorepo.
 # Declares module paths, drift-scan roots, and build-output locations so
 # that local tool invocations are deterministic regardless of operator
-# host. Registered as UIAO_201 in core/canon/document-registry.yaml.
+# host. Registered as UIAO_201 in src/uiao/canon/document-registry.yaml.
 #
-# Frontmatter conforms to core/schemas/metadata-schema.json.
-# Body conforms to core/schemas/workspace-contract/workspace-contract.schema.json.
+# Frontmatter conforms to src/uiao/schemas/metadata-schema.json.
+# Body conforms to src/uiao/schemas/workspace-contract/workspace-contract.schema.json.
 #
-# Canon-consumer rule: impl/.claude/rules/canon-consumer.md
-#   Tools MUST resolve canon paths via $UIAO_WORKSPACE_ROOT + module_paths,
-#   never via hardcoded absolute paths. Violations are CI-blockable once
-#   the repo-walker lands (follow-up).
+# Canon-consumer rule: src/uiao/rules/canon-consumer.md
+#   Tools MUST resolve canon paths via importlib.resources against the
+#   installed `uiao` package, never via hardcoded absolute paths.
 
 metadata:
   document_id: UIAO_201
   title: "UIAO Workspace Contract"
-  version: "1.0"
+  version: "2.0"
   status: Current
   classification: OPERATIONAL
   owner: WhalerMike
   created_at: "2026-04-17"
-  updated_at: "2026-04-17"
+  updated_at: "2026-04-23"
   boundary: GCC-Moderate
   provenance:
-    source: "canon/substrate-manifest.yaml (UIAO_200)"
-    version: "1.0"
-    derived_at: "2026-04-17"
-    derived_by: "workspace-contract initialization"
+    source: "src/uiao/canon/substrate-manifest.yaml (UIAO_200 v2.0)"
+    version: "2.0"
+    derived_at: "2026-04-23"
+    derived_by: "ADR-044 follow-through on ADR-032 single-package consolidation"
 
 local:
   root_env: UIAO_WORKSPACE_ROOT
@@ -44,22 +43,34 @@ remote:
   protected_branches:
     - main
 
+# Repo-relative paths to each module declared in substrate-manifest.yaml.
+# Keys must match `modules[].name` in UIAO_200 v2.0.
 module_paths:
-  core: core
+  uiao: src/uiao
+  tests: tests
   docs: docs
-  impl: impl
+  scripts: scripts
+  inbox: inbox
+  deploy: deploy
 
+# Subset of module_paths the drift detector walks. Excludes `inbox/`
+# (draft staging, not canon) and `deploy/` (deployment artifacts).
 drift_scan_roots:
-  - core
+  - src/uiao
+  - tests
   - docs
-  - impl
+  - scripts
 
+# Repo-relative build/rendered-output paths. All are gitignored; tools
+# emit here and never commit. Replaces the pre-ADR-032 `impl_dist` +
+# pre-consolidation `docs/site` paths.
 build_outputs:
-  docs_site: docs/site
+  docs_site: docs/_site
   docs_exports:
     - docs/exports/docx
     - docs/exports/pptx
     - docs/exports/html
-  impl_dist: impl/dist
+    - docs/publications
+  package_dist: dist
 
-canon_consumer_rule: impl/.claude/rules/canon-consumer.md
+canon_consumer_rule: src/uiao/rules/canon-consumer.md

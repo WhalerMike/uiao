@@ -4,10 +4,10 @@
 # =======================
 # Top-level declaration of the UIAO monorepo substrate: modules, roles,
 # canon authority relationships, and drift-scan scope. Registered as
-# UIAO_200 in core/canon/document-registry.yaml.
+# UIAO_200 in src/uiao/canon/document-registry.yaml.
 #
-# Frontmatter conforms to core/schemas/metadata-schema.json.
-# Body conforms to core/schemas/substrate-manifest/substrate-manifest.schema.json.
+# Frontmatter conforms to src/uiao/schemas/metadata-schema.json.
+# Body conforms to src/uiao/schemas/substrate-manifest/substrate-manifest.schema.json.
 #
 # Vocabulary: see docs/docs/00_CorePrinciples.qmd (SSOT, Canon, Substrate,
 # Overlay, Control Plane, Adapter, Pillar).
@@ -16,18 +16,18 @@
 metadata:
   document_id: UIAO_200
   title: "UIAO Substrate Manifest"
-  version: "1.0"
+  version: "2.0"
   status: Current
   classification: OPERATIONAL
   owner: WhalerMike
   created_at: "2026-04-17"
-  updated_at: "2026-04-17"
+  updated_at: "2026-04-23"
   boundary: GCC-Moderate
   provenance:
-    source: "canon/UIAO-SSOT.md + canon/document-registry.yaml"
-    version: "1.0"
-    derived_at: "2026-04-17"
-    derived_by: "substrate initialization (PR after gos-integration)"
+    source: "src/uiao/canon/adr/adr-044-substrate-governance-realignment.md"
+    version: "2.0"
+    derived_at: "2026-04-23"
+    derived_by: "ADR-044 follow-through on ADR-032 single-package consolidation"
 
 workspace:
   root_env: UIAO_WORKSPACE_ROOT
@@ -40,72 +40,109 @@ github:
   root: "https://github.com/WhalerMike/uiao"
   default_branch: main
 
+# Post-ADR-032 topology. The pre-consolidation 3-module tree
+# (`core` + `docs` + `impl`) was flattened into a single installable
+# Python package at `src/uiao/`. Canon ships inside the package via
+# importlib.resources; schemas, rules, and the KSI library are package
+# data. The modules below are the actual top-level directories of the
+# repository as of v2.0.
 modules:
-  - name: core
-    path: core
-    role: authority
+  - name: uiao
+    path: src/uiao
+    role: package
     canon_consumer: false
     summary: >-
-      Canon authority. Defines schemas, canonical governance documents,
-      the control library, and enforcement tooling. Source of truth for
-      all UIAO governance artifacts.
+      The installable `uiao` Python distribution. Contains canon
+      (src/uiao/canon/), schemas (src/uiao/schemas/), rules, KSI library,
+      adapters, CLI, governance engine, OSCAL/SSP generators, evidence
+      pipeline, substrate walker, orchestrator. Canon authority and
+      runtime code coexist in one package; canon is read via
+      importlib.resources, never mutated at runtime (invariant I4).
     registry_refs:
-      - canon/document-registry.yaml
-      - canon/adapter-registry.yaml
-      - canon/modernization-registry.yaml
+      - src/uiao/canon/document-registry.yaml
+      - src/uiao/canon/adapter-registry.yaml
+      - src/uiao/canon/modernization-registry.yaml
+
+  - name: tests
+    path: tests
+    role: consumer
+    canon_consumer: true
+    summary: >-
+      Test suite. Unit, integration, adapter conformance, substrate
+      drift. Imports canon via the installed `uiao` package.
 
   - name: docs
     path: docs
     role: consumer
     canon_consumer: true
     summary: >-
-      Derived documentation. Articles, guides, playbooks, and published
-      materials. Every document traces provenance to core/ canon.
+      Derived documentation. Quarto source (`.qmd`/`.md`), articles,
+      guides, playbooks, narratives. Every published doc traces
+      provenance to canon under `src/uiao/canon/`.
 
-  - name: impl
-    path: impl
-    role: consumer
+  - name: scripts
+    path: scripts
+    role: tooling
     canon_consumer: true
     summary: >-
-      Python implementation. Consumes canon via the --canon-path contract
-      (see impl/.claude/rules/canon-consumer.md). Provides the drift
-      detector, conformance runner, OSCAL/SSP generators, evidence
-      collectors, and the directory_migration subsystem.
+      Workspace tooling — schema validators, canon sync, doc
+      generators, one-shot migration helpers. Short-lived; not
+      imported at runtime.
 
+  - name: inbox
+    path: inbox
+    role: staging
+    canon_consumer: false
+    summary: >-
+      Draft-staging surface. Agent-authored content that is not yet
+      canon. Promoted to `src/uiao/canon/` or `docs/` when ready.
+
+  - name: deploy
+    path: deploy
+    role: deploy
+    canon_consumer: false
+    summary: >-
+      Deployment artifacts for the uiao API service. Windows-Server
+      IIS entrypoint (`deploy/windows-server/run.py`, uvicorn) and
+      related config. Referenced by `src/uiao/api/app.py`.
+
+# Sub-boundaries inside the `uiao` package that individual CI gates
+# or canon-change processes care about.
 sub_boundaries:
-  core:
-    - name: schemas
-      path: core/schemas
-      role: schema-authority
+  uiao:
     - name: canon
-      path: core/canon
+      path: src/uiao/canon
       role: canon-authority
-    - name: tools
-      path: core/tools
-      role: enforcement-tooling
-    - name: data
-      path: core/data
-      role: control-library
-    - name: dashboard
-      path: core/dashboard
-      role: export-surface
-    - name: compliance
-      path: core/compliance
-      role: reference-implementation
+    - name: schemas
+      path: src/uiao/schemas
+      role: schema-authority
+    - name: rules
+      path: src/uiao/rules
+      role: rules-library
+    - name: ksi
+      path: src/uiao/ksi
+      role: ksi-library
+    - name: adapters
+      path: src/uiao/adapters
+      role: connectors
+    - name: cli
+      path: src/uiao/cli
+      role: entrypoint
 
 drift_scan:
   classes:
     - DRIFT-SCHEMA
     - DRIFT-PROVENANCE
   roots:
-    - core
+    - src/uiao
+    - tests
     - docs
-    - impl
+    - scripts
   severity_model: P1
 
 registry_refs:
-  document_registry: core/canon/document-registry.yaml
-  adapter_registry: core/canon/adapter-registry.yaml
-  modernization_registry: core/canon/modernization-registry.yaml
-  metadata_schema: core/schemas/metadata-schema.json
-  adapter_registry_schema: core/schemas/adapter-registry/adapter-registry.schema.json
+  document_registry: src/uiao/canon/document-registry.yaml
+  adapter_registry: src/uiao/canon/adapter-registry.yaml
+  modernization_registry: src/uiao/canon/modernization-registry.yaml
+  metadata_schema: src/uiao/schemas/metadata-schema.json
+  adapter_registry_schema: src/uiao/schemas/adapter-registry/adapter-registry.schema.json
