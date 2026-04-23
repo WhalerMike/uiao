@@ -235,16 +235,55 @@ Deferred to §1.4 or Phase 2:
 
 Referenced doc: UIAO_100 (`src/uiao/canon/specs/Compliance-Orchestrator.md`).
 
-### 1.4 — UIAO_113 Evidence Graph (schema-only → working)
+### 1.4 — UIAO_113 Evidence Graph (schema-only → **working** ✅)
 
 The evidence graph model has a schema but no implementation. The graph is what makes OSCAL evidence navigable: each finding traces back to a control, which traces back to an adapter run, which traces back to a canon document.
 
-Work required:
-- Implement `EvidenceGraph` in `src/uiao/evidence/` that builds the graph from adapter output and canon provenance fields.
-- Wire to the OSCAL generator so produced SARs include graph-derived evidence links.
-- Add pytest coverage.
+**Status (2026-04-23):** `working` — graph ingests scheduler runs and
+augments OSCAL SAR output.
 
-Referenced doc: UIAO_113.
+Shipped:
+- `EvidenceGraph.from_scheduler_run(run_dir)` — walks a
+  `schedrun-*/adapters/<id>/{evidence,drift}.json` tree (the UIAO_100
+  scheduler's output) and builds Control / IR-object / Evidence /
+  Provenance / Finding nodes with the canonical edge set
+  (`implements`, `validated-by`, `provenance-of`, `violated-by`).
+- Severity normalization bridge: scheduler drift reports use
+  free-form severity strings (P1/P3/critical/info); the graph
+  normalizes to Finding's High/Medium/Low vocabulary so downstream
+  consumers stay consistent.
+- Best-effort control inference from `ksi_id`: NIST-style references
+  like `ksi:AC-2` hop through a ControlNode; free-form KSIs attach
+  directly to the Evidence node without a control hop.
+- `EvidenceGraph.sar_props_for_evidence(control_id)` —
+  compact dict of graph-derived OSCAL props keyed to a control.
+- `build_sar(bundle, *, graph=None)` / `export_sar(..., graph=None)` —
+  optional graph kwarg. When provided, each observation subject gains
+  graph-derived props under `https://uiao.gov/ns/oscal/graph`:
+  `graph-evidence-id`, `graph-evidence-hash`, `graph-evidence-source`,
+  `graph-scheduler-run-id`, `graph-adapter-id`,
+  `graph-open-findings`, `graph-top-severity`. Back-compat preserved:
+  `graph=None` yields byte-identical legacy output.
+- 27 new tests in `tests/test_evidence_graph_scheduler.py` covering
+  severity normalization, scheduler-run ingestion (missing dir,
+  empty adapters root, single/multi adapter, drift present/absent,
+  no-companion files, no manifest, non-NIST KSI), SAR props helper,
+  build_sar legacy shape preservation, and an end-to-end
+  scheduler-run → graph → SAR augmentation loop.
+
+Deferred to Phase 2:
+- Wiring the graph into the remaining OSCAL emitters
+  (`build_oscal`, `build_ssp`, `build_poam`) — SAR ships this PR;
+  the others follow the same pattern.
+- Rich provenance metadata: currently graph ingestion captures the
+  adapter hash + timestamp; extended provenance fields (tenant IDs,
+  policy versions, certificate anchors) land when UIAO_015
+  Provenance Profile grows.
+- Graph-to-OSCAL link resources in back-matter (the `graph-*` props
+  give auditors the tracing data; adding them as first-class OSCAL
+  resources enables tooling like `trestle` to follow the links).
+
+Referenced doc: UIAO_113 (`src/uiao/canon/specs/graph-schema.md`).
 
 ### 1.5 — Terraform adapter: stubs → real
 

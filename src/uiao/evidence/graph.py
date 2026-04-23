@@ -2,8 +2,36 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+# Severity normalization for scheduler-originated drift reports.
+# Drift reports carry free-form severity strings (P1/P3/High/critical/info).
+# We normalize to FindingNode's High/Medium/Low vocabulary so SAR props stay
+# consistent with the SCuBA-derived path.
+_SEVERITY_MAP = {
+    "p1": "High",
+    "p2": "High",
+    "critical": "High",
+    "high": "High",
+    "p3": "Medium",
+    "medium": "Medium",
+    "warn": "Medium",
+    "warning": "Medium",
+    "p4": "Low",
+    "p5": "Low",
+    "low": "Low",
+    "info": "Low",
+    "informational": "Low",
+}
+
+
+def _normalize_severity(value: Optional[str]) -> str:
+    if not value:
+        return "Medium"
+    return _SEVERITY_MAP.get(str(value).strip().lower(), "Medium")
 
 
 @dataclass
@@ -222,6 +250,229 @@ class EvidenceGraph:
             "nodes_by_type": tc,
             "edges_by_type": ec,
         }
+
+    # ------------------------------------------------------------------
+    # Scheduler-run ingestion (UIAO_100 ↔ UIAO_113 bridge)
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def from_scheduler_run(cls, run_dir: Path | str) -> EvidenceGraph:
+        """Build a graph from a UIAO_100 scheduler run directory.
+
+        Consumes the on-disk layout produced by
+        ``uiao.orchestrator.scheduler.OrchestratorScheduler.dispatch_all()``::
+
+            <run_dir>/
+              manifest.json           # optional — provides scheduler run_id
+              adapters/<adapter_id>/
+                evidence.json         # EvidenceObject.to_dict()
+                drift.json            # DriftReport.to_dict()
+
+        Each adapter contributes:
+            - one EvidenceNode  (``ev:<run_id>:<adapter_id>``)
+            - one ProvenanceNode (``prov:<run_id>:<adapter_id>``)
+            - a ControlNode for the evidence's ``ksi_id`` (if it looks like
+              a NIST-style control reference) plus an IRObjectNode/edge
+              trio mirroring ``from_evidence_bundle``
+            - one FindingNode if ``drift.json`` indicates detected drift
+
+        Missing drift.json is treated as "no drift" (not an error). Missing
+        evidence.json skips the adapter entry with no contribution. The
+        scheduler's manifest.json is read for the run_id when available; if
+        absent, the directory name is used as a stable fallback.
+        """
+        run_dir_path = Path(run_dir)
+        if not run_dir_path.is_dir():
+            raise FileNotFoundError(f"Scheduler run directory not found: {run_dir_path}")
+
+        run_id = cls._read_run_id(run_dir_path)
+        adapters_root = run_dir_path / "adapters"
+        if not adapters_root.is_dir():
+            # Nothing to ingest; still return a valid empty graph.
+            return cls()
+
+        g = cls()
+        for adapter_dir in sorted(adapters_root.iterdir()):
+            if not adapter_dir.is_dir():
+                continue
+            adapter_id = adapter_dir.name
+            evidence_json = adapter_dir / "evidence.json"
+            drift_json = adapter_dir / "drift.json"
+            if not evidence_json.is_file():
+                continue
+            cls._ingest_adapter(
+                g,
+                run_id=run_id,
+                adapter_id=adapter_id,
+                evidence_path=evidence_json,
+                drift_path=drift_json if drift_json.is_file() else None,
+            )
+        return g
+
+    @staticmethod
+    def _read_run_id(run_dir: Path) -> str:
+        manifest = run_dir / "manifest.json"
+        if manifest.is_file():
+            try:
+                data = json.loads(manifest.read_text(encoding="utf-8"))
+                rid = data.get("run_id")
+                if isinstance(rid, str) and rid:
+                    return rid
+            except (OSError, json.JSONDecodeError):
+                pass
+        return run_dir.name
+
+    @staticmethod
+    def _infer_control_id(ksi_id: str) -> str:
+        """Best-effort control-ID derivation from a KSI reference.
+
+        Matches NIST 800-53 shapes like ``ksi:AC-2`` or ``AC-2:identity``.
+        Returns an empty string when nothing resembling a control family
+        prefix is found — callers attach the evidence without a control hop.
+        """
+        if not ksi_id:
+            return ""
+        import re
+
+        m = re.search(r"([A-Z]{2}-\d+(?:\(\d+\))?)", ksi_id)
+        return m.group(1) if m else ""
+
+    @classmethod
+    def _ingest_adapter(
+        cls,
+        g: EvidenceGraph,
+        *,
+        run_id: str,
+        adapter_id: str,
+        evidence_path: Path,
+        drift_path: Optional[Path],
+    ) -> None:
+        try:
+            evidence_payload = json.loads(evidence_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+
+        ksi_id = str(evidence_payload.get("ksi_id") or "")
+        control_id = cls._infer_control_id(ksi_id)
+        evidence_node_id = f"ev:{run_id}:{adapter_id}"
+        provenance_node_id = f"prov:{run_id}:{adapter_id}"
+
+        evidence_hash = ""
+        provenance_field = evidence_payload.get("provenance") or {}
+        if isinstance(provenance_field, dict):
+            evidence_hash = str(provenance_field.get("hash") or "")
+
+        g.add_evidence(
+            EvidenceNode(
+                id=evidence_node_id,
+                source=str(evidence_payload.get("source") or adapter_id),
+                field_name="scheduler-run",
+                value=None,
+                hash=evidence_hash,
+                timestamp=str(evidence_payload.get("timestamp") or ""),
+                status="collected",
+                verdict="inconclusive",
+                control_id=control_id,
+                extra={
+                    "run_id": run_id,
+                    "adapter_id": adapter_id,
+                    "ksi_id": ksi_id,
+                    "freshness_valid": bool(evidence_payload.get("freshness_valid", False)),
+                },
+            )
+        )
+        g.add_provenance(
+            ProvenanceNode(
+                id=provenance_node_id,
+                hash=evidence_hash,
+                timestamp=str(evidence_payload.get("timestamp") or ""),
+                source=str(evidence_payload.get("source") or adapter_id),
+                version=str(provenance_field.get("version") or "") if isinstance(provenance_field, dict) else "",
+                extra={"run_id": run_id, "adapter_id": adapter_id},
+            )
+        )
+        g.link_provenance_of(evidence_node_id, provenance_node_id)
+
+        if control_id:
+            if control_id not in g._nodes:
+                g.add_control(ControlNode(id=control_id))
+            ir_id = f"ir:{control_id}"
+            if ir_id not in g._nodes:
+                g.add_ir_object(IRObjectNode(id=ir_id, description=f"IR for {control_id} via {adapter_id}"))
+                g.link_implements(control_id, ir_id)
+            g.link_validated_by(ir_id, evidence_node_id)
+
+        if drift_path is None:
+            return
+        try:
+            drift_payload = json.loads(drift_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+
+        severity_raw = drift_payload.get("severity")
+        drift_type = str(drift_payload.get("drift_type") or "")
+        # Only materialize a Finding when the adapter actually reported drift:
+        # empty/null severity AND empty details → nothing to record.
+        details = drift_payload.get("details") or {}
+        if not severity_raw and not details:
+            return
+
+        finding_id = f"find:{run_id}:{adapter_id}"
+        g.add_finding(
+            FindingNode(
+                id=finding_id,
+                severity=_normalize_severity(severity_raw),
+                description=f"Drift in {adapter_id} ({drift_type or 'unspecified'})",
+                control_id=control_id,
+                drift_class=drift_type,
+                status="Open",
+                extra={
+                    "run_id": run_id,
+                    "adapter_id": adapter_id,
+                    "severity_raw": severity_raw,
+                    "first_observed": drift_payload.get("first_observed"),
+                    "last_observed": drift_payload.get("last_observed"),
+                },
+            )
+        )
+        if control_id and control_id in g._nodes:
+            g.link_violated_by(control_id, finding_id)
+
+    # ------------------------------------------------------------------
+    # SAR integration helpers (UIAO_113 ↔ SAR generator)
+    # ------------------------------------------------------------------
+
+    def sar_props_for_evidence(self, control_id: str) -> Dict[str, Any]:
+        """Return a flat props dict an OSCAL emitter can attach to an
+        observation keyed on ``control_id``.
+
+        Empty dict when the graph has no coverage for the control — SAR
+        code can treat that as "no graph-derived augmentation available".
+        """
+        evs = self.evidence_for_control(control_id)
+        if not evs:
+            return {}
+        # Scheduler-originated evidence carries run metadata in ``extra``.
+        scheduler_evs = [e for e in evs if getattr(e, "extra", None)]
+        target = scheduler_evs[0] if scheduler_evs else evs[0]
+        extra = getattr(target, "extra", {}) or {}
+        findings = self.findings_for_control(control_id)
+        props: Dict[str, Any] = {
+            "graph-evidence-id": target.id,
+            "graph-evidence-hash": target.hash,
+            "graph-evidence-source": target.source,
+        }
+        if extra.get("run_id"):
+            props["graph-scheduler-run-id"] = extra["run_id"]
+        if extra.get("adapter_id"):
+            props["graph-adapter-id"] = extra["adapter_id"]
+        if findings:
+            props["graph-open-findings"] = str(len([f for f in findings if f.status == "Open"]))
+            props["graph-top-severity"] = max(
+                (f.severity for f in findings),
+                key=lambda s: {"High": 3, "Medium": 2, "Low": 1}.get(s, 0),
+            )
+        return props
 
     @classmethod
     def from_evidence_bundle(cls, bundle):
