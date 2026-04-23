@@ -102,11 +102,23 @@ def _interpret_status(requirement_met: Any) -> str:
 # ---------------------------------------------------------------------------
 
 
-def discover_scuba_input(input_path: Path) -> Tuple[str, List[Dict[str, Any]]]:
+# Top-level ScubaGear JSON keys that are *not* the results array. Anything
+# in this set (plus any sibling scalar/object field) is preserved as
+# source_metadata so the normalizer can pass ToolVersion, OpaVersion,
+# ReportMetaData, etc. through into the assessment provenance envelope.
+_SCUBA_RESULTS_KEYS = frozenset({"TestResults", "Results", "ksi_results"})
+
+
+def discover_scuba_input(input_path: Path) -> Tuple[str, List[Dict[str, Any]], Dict[str, Any]]:
     """Discover and load ScubaGear output from a path.
 
     Returns:
-        (format_description, list_of_test_result_dicts)
+        (format_description, list_of_test_result_dicts, source_metadata)
+
+    ``source_metadata`` is the ScubaGear top-level JSON envelope with the
+    results array stripped — ToolVersion, OpaVersion, ReportMetaData, and
+    whatever else upstream surfaces. Empty dict when input is a bare list
+    or per-product fan-out.
     """
     input_path = Path(input_path)
 
@@ -124,10 +136,16 @@ def discover_scuba_input(input_path: Path) -> Tuple[str, List[Dict[str, Any]]]:
         product_files = sorted(input_path.glob("MS.*.json"))
         if product_files:
             all_results = []
+            merged_metadata: Dict[str, Any] = {}
             for pf in product_files:
-                _, results = _load_single_file(pf)
+                _, results, md = _load_single_file(pf)
                 all_results.extend(results)
-            return f"per-product ({len(product_files)} files)", all_results
+                # First non-empty metadata wins for envelope fields; per-product
+                # files that carry their own ToolVersion/OpaVersion override
+                # only when the running merge does not yet have them.
+                for k, v in md.items():
+                    merged_metadata.setdefault(k, v)
+            return f"per-product ({len(product_files)} files)", all_results, merged_metadata
 
         # Check nested directories (ScubaGear sometimes creates date-stamped subdirs)
         for subdir in sorted(input_path.iterdir()):
@@ -138,38 +156,54 @@ def discover_scuba_input(input_path: Path) -> Tuple[str, List[Dict[str, Any]]]:
                 sub_products = sorted(subdir.glob("MS.*.json"))
                 if sub_products:
                     all_results = []
+                    merged_metadata = {}
                     for pf in sub_products:
-                        _, results = _load_single_file(pf)
+                        _, results, md = _load_single_file(pf)
                         all_results.extend(results)
-                    return f"nested per-product ({len(sub_products)} files in {subdir.name})", all_results
+                        for k, v in md.items():
+                            merged_metadata.setdefault(k, v)
+                    return (
+                        f"nested per-product ({len(sub_products)} files in {subdir.name})",
+                        all_results,
+                        merged_metadata,
+                    )
 
     raise FileNotFoundError(
         f"No ScubaGear output found at {input_path}. Expected ScubaResults.json or MS.*.json files."
     )
 
 
-def _load_single_file(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
-    """Load a single ScubaGear JSON file and extract TestResults."""
+def _load_single_file(path: Path) -> Tuple[str, List[Dict[str, Any]], Dict[str, Any]]:
+    """Load a single ScubaGear JSON file and extract TestResults + envelope.
+
+    Returns a tuple of (format_description, results_list, source_metadata),
+    where source_metadata contains the top-level JSON keys *other than* the
+    results array — so downstream callers can read ToolVersion, OpaVersion,
+    and anything else upstream adds in future schema revisions.
+    """
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
 
     if isinstance(data, list):
-        return f"direct-list ({path.name})", data
+        return f"direct-list ({path.name})", data, {}
+
+    # Everything except the results key counts as envelope metadata.
+    envelope = {k: v for k, v in data.items() if k not in _SCUBA_RESULTS_KEYS}
 
     # ScubaGear combined report: {"TestResults": [...]}
     if "TestResults" in data:
-        return f"combined ({path.name})", data["TestResults"]
+        return f"combined ({path.name})", data["TestResults"], envelope
 
     # ScubaGear per-product: {"Results": [...]}
     if "Results" in data:
-        return f"per-product ({path.name})", data["Results"]
+        return f"per-product ({path.name})", data["Results"], envelope
 
     # Our existing normalized format (passthrough)
     if "ksi_results" in data:
-        return f"already-normalized ({path.name})", data["ksi_results"]
+        return f"already-normalized ({path.name})", data["ksi_results"], envelope
 
     logger.warning("Unrecognized format in %s; attempting flat extraction", path)
-    return f"unknown ({path.name})", []
+    return f"unknown ({path.name})", [], envelope
 
 
 # ---------------------------------------------------------------------------
@@ -228,8 +262,9 @@ def normalize_scuba(
     input_path = Path(input_path)
     control_to_ksi = _load_control_to_ksi(repo_root)
 
-    # Discover and load raw results
-    format_desc, raw_results = discover_scuba_input(input_path)
+    # Discover and load raw results (plus the ScubaGear envelope metadata so
+    # downstream components can see ToolVersion, OpaVersion, etc.)
+    format_desc, raw_results, source_metadata = discover_scuba_input(input_path)
     logger.info("Loaded %d raw results from %s (format: %s)", len(raw_results), input_path, format_desc)
 
     # Check if already in normalized format (has ksi_id field)
@@ -295,14 +330,22 @@ def normalize_scuba(
     # the KSI fails if ANY constituent policy fails (conservative)
     aggregated = _aggregate_by_ksi(ksi_results)
 
-    # Build envelope
+    # Build envelope. tool_version now comes from ScubaGear's own ToolVersion
+    # field when present (closes the provenance gap raised by cisagov/ScubaGear
+    # #2075 — see docs/docs/uiao-rfc-0026-roadmap.md, enhancement E3). The
+    # "ScubaGear-normalized" fallback preserves pre-existing behavior for
+    # inputs that don't carry a ToolVersion field.
+    tool_version = (
+        source_metadata.get("ToolVersion") or source_metadata.get("tool_version") or "ScubaGear-normalized"
+    )
     normalized = {
         "assessment_metadata": {
             "assessment_date": now,
-            "tool_version": "ScubaGear-normalized",
+            "tool_version": tool_version,
             "collector_host": "uiao-normalizer",
             "collector_user": "automated",
             "run_id": f"scuba-run-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}",
+            "source_envelope": source_metadata,
             "normalization": {
                 "format_detected": format_desc,
                 "raw_results_count": len(raw_results),
