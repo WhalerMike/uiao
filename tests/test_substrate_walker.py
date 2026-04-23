@@ -269,6 +269,45 @@ def test_walker_scans_markdown_links_in_canon(tmp_path: Path) -> None:
     assert prov, report.findings
 
 
+def test_walker_scans_docs_directory_for_dangling_refs(tmp_path: Path) -> None:
+    """docs/*.md and docs/*.qmd are scanned the same way canon .md is —
+    catches narrative drift outside the canon namespace.
+    """
+    root = _make_workspace(tmp_path)
+    docs_dir = root / "docs" / "narrative"
+    docs_dir.mkdir(parents=True, exist_ok=True)
+
+    # A .qmd file citing a nonexistent code path
+    (docs_dir / "guide.qmd").write_text("---\ntitle: Guide\n---\n\nSee `src/uiao/nonexistent/helper.py`.\n")
+    # A .md file citing another nonexistent path
+    (docs_dir / "notes.md").write_text("Legacy code was at `impl/retired/thing.py`.\n")
+
+    report = walk_substrate(workspace_root=root)
+
+    docs_findings = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "docs document" in f.detail]
+    assert any("nonexistent/helper" in f.path for f in docs_findings), report.findings
+    assert any("retired/thing" in f.path for f in docs_findings), report.findings
+
+    # Docs findings are P2, never P1 — cleanup is editorial, not blocking
+    assert all(f.severity == "P2" for f in docs_findings)
+
+
+def test_walker_docs_existing_ref_resolves_clean(tmp_path: Path) -> None:
+    """A docs file citing an existing code path produces no finding."""
+    root = _make_workspace(tmp_path)
+    docs_dir = root / "docs"
+    docs_dir.mkdir(parents=True, exist_ok=True)
+
+    real = root / "src/uiao/docs_real.py"
+    real.parent.mkdir(parents=True, exist_ok=True)
+    real.write_text("# real module\n")
+
+    (docs_dir / "guide.md").write_text("See `src/uiao/docs_real.py`.\n")
+
+    report = walk_substrate(workspace_root=root)
+    assert not [f for f in report.findings if "docs_real" in f.path], report.findings
+
+
 def test_walker_report_includes_code_refs_counter(tmp_path: Path) -> None:
     """Report exposes code_refs_checked counter for operators."""
     root = _make_workspace(tmp_path)

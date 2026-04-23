@@ -42,6 +42,7 @@ DOCUMENT_REGISTRY_BASE = "."
 # Trailing punctuation is trimmed by the finditer output via the pattern
 # boundaries.
 CANON_ROOT = "src/uiao/canon"
+DOCS_ROOT = "docs"
 CODE_REF_PATTERN = re.compile(r"\b(?:src/uiao|impl)/[\w./\-]+\.(?:py|md|yaml|yml|json|toml|lua|sh|ini|cfg)\b")
 
 
@@ -209,31 +210,53 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
                 )
 
     _scan_canon_code_refs(root, report)
+    _scan_docs_code_refs(root, report)
 
     return report
 
 
-def _scan_canon_code_refs(root: Path, report: SubstrateReport) -> None:
-    """Scan canon .md files for references to code paths under `src/uiao/`
-    (current) or the retired `impl/` prefix; emit DRIFT-PROVENANCE for any
-    cited path that does not resolve.
+def _scan_prose_for_code_refs(
+    root: Path,
+    scan_dir: Path,
+    file_patterns: tuple[str, ...],
+    source_label: str,
+    report: SubstrateReport,
+) -> None:
+    """Scan a prose directory for code-path citations that don't resolve.
 
     Severity P2. A missing code path is a spec/impl drift warning — the
-    substrate still loads and serves, but a canon document claims an
-    implementation exists where it does not. This is the inverse of a
-    DRIFT-PROVENANCE on the document registry: there the registry points
-    at a missing canon doc; here a canon doc points at missing code.
+    substrate still loads and serves, but a narrative document (canon or
+    derived docs) claims an implementation exists where it does not.
+
+    Parameters
+    ----------
+    root
+        Workspace root.
+    scan_dir
+        Directory to walk (`src/uiao/canon/` or `docs/`).
+    file_patterns
+        Glob patterns for files to scan (e.g. `("*.md",)` for canon or
+        `("*.md", "*.qmd")` for docs).
+    source_label
+        Human-readable label for the finding detail ("canon document" or
+        "docs document").
+    report
+        Mutated in place: `code_refs_checked` is incremented per hit and
+        DRIFT-PROVENANCE P2 findings are appended for dangling refs.
     """
-    canon_dir = root / CANON_ROOT
-    if not canon_dir.is_dir():
+    if not scan_dir.is_dir():
         return
 
-    # Track unique (canon_file, code_path) pairs so the same dangling
-    # reference inside the same file is reported once, but distinct files
-    # citing the same dangling path each report.
+    # Track unique (file, code_path) pairs so the same dangling reference
+    # inside the same file is reported once; distinct files citing the same
+    # dangling path each report.
     seen: set[tuple[str, str]] = set()
 
-    for md_file in sorted(canon_dir.rglob("*.md")):
+    files: list[Path] = []
+    for pattern in file_patterns:
+        files.extend(scan_dir.rglob(pattern))
+
+    for md_file in sorted(set(files)):
         try:
             text = md_file.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
@@ -242,8 +265,8 @@ def _scan_canon_code_refs(root: Path, report: SubstrateReport) -> None:
         for match in CODE_REF_PATTERN.finditer(text):
             code_rel = match.group(0)
             report.code_refs_checked += 1
-            canon_rel = md_file.relative_to(root).as_posix()
-            key = (canon_rel, code_rel)
+            file_rel = md_file.relative_to(root).as_posix()
+            key = (file_rel, code_rel)
             if key in seen:
                 continue
             seen.add(key)
@@ -253,6 +276,37 @@ def _scan_canon_code_refs(root: Path, report: SubstrateReport) -> None:
                         drift_class="DRIFT-PROVENANCE",
                         severity="P2",
                         path=code_rel,
-                        detail=(f"canon document {canon_rel} cites code path {code_rel} which does not exist"),
+                        detail=f"{source_label} {file_rel} cites code path {code_rel} which does not exist",
                     )
                 )
+
+
+def _scan_canon_code_refs(root: Path, report: SubstrateReport) -> None:
+    """Scan canon `.md` files for references to code paths under
+    `src/uiao/` (current) or the retired `impl/` prefix.
+    """
+    _scan_prose_for_code_refs(
+        root=root,
+        scan_dir=root / CANON_ROOT,
+        file_patterns=("*.md",),
+        source_label="canon document",
+        report=report,
+    )
+
+
+def _scan_docs_code_refs(root: Path, report: SubstrateReport) -> None:
+    """Scan `docs/` `.md` and `.qmd` files for code-path citations.
+
+    Catches narrative drift in derived documentation (guides, narratives,
+    Quarto articles) that still cites retired `impl/` or stale
+    `src/uiao/` paths. Same DRIFT-PROVENANCE P2 semantics as the canon
+    scan; extending coverage lets the substrate-drift gate fire on
+    docs-only PRs when they introduce dangling code citations.
+    """
+    _scan_prose_for_code_refs(
+        root=root,
+        scan_dir=root / DOCS_ROOT,
+        file_patterns=("*.md", "*.qmd"),
+        source_label="docs document",
+        report=report,
+    )
