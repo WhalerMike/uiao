@@ -123,7 +123,7 @@ These are the architectural invariants that every component in UIAO must respect
 
 The full UIAO architecture is specified across a 20-document modernization canon
 maintained in [uiao-docs](https://github.com/WhalerMike/uiao-docs) and rendered
-at [whalermike.github.io/uiao-docs](https://whalermike.github.io/uiao-docs).
+at [whalermike.github.io/uiao](https://whalermike.github.io/uiao/).
 
 `uiao` is the execution engine for everything described in this document.
 
