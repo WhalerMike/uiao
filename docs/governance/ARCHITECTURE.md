@@ -184,17 +184,20 @@ CI check `drift-scan` runs on every PR to `uiao-docs`. Executes `sync_canon.py -
 ### 5.1 Top-level layout
 
 ```
-uiao-docs/docs/customer-documents/
+docs/customer-documents/
 ├── index.qmd                         # Master Document (landing page)
+├── TREE.md                           # authoritative directory tree
+├── ROADMAP.qmd                       # authoring backlog
 ├── MASTER-IMAGE-PROMPTS.md           # generated aggregator
 ├── MASTER-IMAGE-INDEX.md             # generated catalog with thumbnails
 ├── .image-manifest.json              # machine-readable prompt→file map
 ├── _tools/                           # generation scripts
 ├── _assets/                          # shared styles + theme overrides
-├── adapter-technical-specifications/
-├── adapter-validation-suites/
-├── modernization-technical-specifications/
-├── modernization-validation-suites/
+├── adapter-specs/                    # per-adapter technical specifications
+├── validation-suites/
+│   ├── adapters/                     # per-adapter validation suites
+│   └── domains/                      # per-domain validation suites
+├── modernization-specs/              # cross-adapter specs by domain
 ├── executive-governance-series/
 ├── executive-briefs/
 ├── architecture-series/

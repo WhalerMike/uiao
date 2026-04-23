@@ -87,6 +87,61 @@ label. Navy blue, teal accents, no people, no baked text.]
 - If the entry's status is `draft` or the ID is missing, the build fails with a clear error (no silent 404s).
 - Updates the registry entry's `used_by` list to include this document.
 
+::: {.callout-tip title="Find reusable images before writing a new prompt"}
+Before drafting a fresh `[IMAGE-NN: ...]` prompt, query the registry to see
+if a canonical image already covers the subject. Reuse via
+`[IMAGE-REF: UIAO-FIG-NNN]` is always preferred — it's cheaper to render,
+visually consistent across docs, and drift-tracked.
+
+```bash
+# Free-text query across title, tags, themes, keywords, description
+python scripts/tools/image_registry_search.py "boundary impact"
+
+# Narrow to exec-brief-appropriate material
+python scripts/tools/image_registry_search.py --audience executive \
+                                              --doc-type executive-brief \
+                                              "drift"
+
+# Filter by visual style
+python scripts/tools/image_registry_search.py --style pipeline-flow
+
+# Show full YAML for one entry
+python scripts/tools/image_registry_search.py --show UIAO-FIG-007
+
+# List every current entry (no query)
+python scripts/tools/image_registry_search.py --list -v
+```
+
+Hits are ranked by weighted field match (tags > document_types > themes >
+keywords > title > description), with ties broken by `reuse_score` — so
+the most-reused canonical image for a subject surfaces first. Pipe the
+`--json` output into your editor integration for autocomplete-style
+reuse suggestions.
+:::
+
+#### Registry metadata that powers reuse
+
+Every canon entry carries rich discovery metadata so the search CLI
+(and future automation) can surface it for new authoring work. These
+fields are set by the pipeline on registration and refined by the
+reviewer at `draft → current` promotion:
+
+| Field | Purpose | Example |
+|---|---|---|
+| `tags` | Kebab-case thematic tags | `["drift", "evidence-chain", "zero-trust"]` |
+| `audience` | Intended readers | `["executive", "technical"]` |
+| `document_types` | Customer-documents families where this image fits | `["executive-brief", "architecture-series"]` |
+| `visual_style` | Dominant style | `"pipeline-flow"` |
+| `themes` | Free-form subject themes | `["drift detection", "certificate anchoring"]` |
+| `keywords` | Search keywords incl. product names | `["Gemini", "SHA-256", "OSCAL"]` |
+| `alt_text` | Canonical accessibility alt text | used in HTML + DOCX |
+| `caption` | Canonical under-image caption | |
+| `related` | Sibling `UIAO-FIG-NNN` IDs | suggested alongside |
+| `reuse_score` | Machine-maintained — count of `used_by` | auto |
+
+See the full schema in
+[`src/uiao/schemas/image-registry/image-registry.schema.json`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/schemas/image-registry/image-registry.schema.json).
+
 ### Type C: Pipeline-drafted (no prompt written yet)
 
 ```

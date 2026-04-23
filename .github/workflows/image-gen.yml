@@ -1,19 +1,26 @@
-name: Generate images (on-demand)
+name: Image generation pipeline
 
-# Human-triggered workflow that runs docs/generate_images.py against
-# docs/prompts.json, calls Google Gemini Nano Banana, and uploads the
-# resulting PNGs as a downloadable artifact.
+# Image pipeline workflow with three trigger modes:
+#
+#   1. Manual generation  (workflow_dispatch) — run docs/generate_images.py
+#      for real. Optional opt-in commit-back of new PNGs + sidecars +
+#      registry updates via Git LFS.
+#
+#   2. Auto dry-run       (push)              — on any push that touches
+#      an IMAGE-PROMPTS.md, prompts.json, or the canonical image registry,
+#      re-scan and rebuild the manifest. Never calls Gemini. Never costs
+#      quota. Surfaces drift + missing canon refs as CI signal.
+#
+#   3. PR dry-run         (pull_request)      — same as #2 for PR review
+#      visibility: reviewers see what placeholders the PR introduces
+#      without paying for generation.
 #
 # Pipeline context and operator runbook:
 #   https://whalermike.github.io/uiao/academy/document-generation-guide.html
+#   https://whalermike.github.io/uiao/academy/image-pipeline-guide.html
 #
-# Run this workflow from the GitHub Actions UI:
+# Run the manual dispatch from the GitHub Actions UI:
 #   https://github.com/WhalerMike/uiao/actions/workflows/image-gen.yml
-# Click "Run workflow" on the right side of the page.
-#
-# Not triggered automatically. Images are ephemeral artifacts by default;
-# opt-in commit-back is a future enhancement (documented in the User's
-# Guide "Future automation" section).
 
 on:
   workflow_dispatch:
@@ -23,31 +30,115 @@ on:
         required: false
         default: false
         type: boolean
+      commit_back:
+        description: "Commit generated PNGs + sidecars + registry updates back to this ref (LFS)"
+        required: false
+        default: false
+        type: boolean
+
+  push:
+    paths:
+      - "**/IMAGE-PROMPTS.md"
+      - "docs/prompts.json"
+      - "src/uiao/canon/image-registry.yaml"
+      - "docs/generate_images.py"
+      - ".github/workflows/image-gen.yml"
+
+  pull_request:
+    paths:
+      - "**/IMAGE-PROMPTS.md"
+      - "docs/prompts.json"
+      - "src/uiao/canon/image-registry.yaml"
+      - "docs/generate_images.py"
+      - ".github/workflows/image-gen.yml"
+
+# Serialize real generation runs so two concurrent commit-back dispatches
+# cannot step on each other (LFS push race). Dry-run triggers fall into
+# the same group but are cheap, so cancellation is safe.
+concurrency:
+  group: image-gen-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  generate:
-    name: Generate images via Gemini Nano Banana
+  dry-run:
+    # Auto triggers never call Gemini. Pure scan + manifest rebuild.
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    name: Scan placeholders + rebuild manifest (no API calls)
     runs-on: ubuntu-latest
-    # The workflow needs no special permissions — it only reads secrets
-    # and writes to the ephemeral runner filesystem. No git write-back
-    # on this version; see "Future enhancements" in the User's Guide.
     permissions:
       contents: read
+      pull-requests: write  # so we can post a PR summary comment
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
+      - name: Scan + rebuild manifest
+        run: python docs/generate_images.py --dry-run --scan-only
+
+      - name: Upload manifest as PR artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: image-manifest-pr-${{ github.event.pull_request.number }}
+          path: docs/images/.image-manifest.json
+          retention-days: 14
+
+      - name: Summary
+        run: |
+          echo "### Image pipeline dry-run" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No Gemini calls made. Manifest rebuilt from on-disk state.' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f docs/images/.image-manifest.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            python -c "import json,sys; m=json.load(open('docs/images/.image-manifest.json')); print(json.dumps(m.get('stats', {}), indent=2))" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  generate:
+    # Manual dispatch path — the only path that calls the Gemini API.
+    if: github.event_name == 'workflow_dispatch'
+    name: Generate images via Gemini Nano Banana
+    runs-on: ubuntu-latest
+    # Writeable by default so commit-back can push. Manual dispatch is
+    # gated by repo permissions; non-maintainers can't trigger this.
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # LFS fetch + write requires the token be carried on git operations.
+          # actions/checkout wires this via its persisted credential.
+          lfs: true
+          fetch-depth: 0
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
-          pip install google-genai Pillow
+          pip install google-genai Pillow pyyaml
+
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
+          git lfs install
 
       - name: Verify GEMINI_API_KEY is set
+        if: ${{ ! inputs.dry_run }}
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
@@ -78,15 +169,53 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
+      - name: Commit-back (LFS push)
+        # Only runs when the operator opted in AND we actually generated
+        # something. Commits PNG + .png.json + .image-manifest.json +
+        # any used_by updates in image-registry.yaml.
+        if: ${{ ! inputs.dry_run && inputs.commit_back }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eux
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Stage LFS-scoped binaries, sidecars, and registry.
+          # The manifest is gitignored (rebuilt on every run; not source).
+          git add \
+            "docs/customer-documents/**/images/*.png" \
+            "docs/customer-documents/**/images/*.png.json" \
+            "docs/images/**/*.png" \
+            "docs/images/**/*.png.json" \
+            "src/uiao/canon/image-registry.yaml" \
+            || true
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit. Pipeline produced no new or modified image artifacts."
+            exit 0
+          fi
+
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          git commit \
+            -m "chore(images): automated commit-back from image-gen run ${{ github.run_number }}" \
+            -m "Regenerated images, sidecars, and manifest by docs/generate_images.py. Registry used_by updates (if any) reflect canon-ref placeholders that appeared since the last run. No API keys or secrets in this commit." \
+            -m "$RUN_URL"
+
+          # Push via LFS so binaries land in LFS storage.
+          git push origin "HEAD:${{ github.ref }}"
+
       - name: Summary
         if: ${{ ! inputs.dry_run }}
         run: |
-          echo "### Image generation complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Generated images are attached as the artifact **generated-images-run-${{ github.run_number }}**." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Download them by scrolling to the bottom of this run's summary page and clicking the artifact link, OR by visiting:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          ls -la docs/images/ || true
+          echo "### Image generation complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact: **generated-images-run-${{ github.run_number }}**" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ inputs.commit_back }}" = "true" ]; then
+            echo "Commit-back: **enabled** — binaries pushed to \`${{ github.ref_name }}\` via LFS." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Commit-back: **disabled** (artifact retention 30d)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Run URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"

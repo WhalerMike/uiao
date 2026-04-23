@@ -27,13 +27,21 @@ jobs:
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: Render (HTML site only — PDF/DOCX outputs skipped in CI)
+      - name: Render HTML site
         working-directory: docs
-        # Many .qmd files declare format: { html, docx, pdf }. Full multi-format
-        # render needs TinyTeX (pdf) plus pandoc docx runtime, which inflates CI
-        # time significantly and is unnecessary for the published site. Restrict
-        # to HTML here; ad-hoc PDF/DOCX can be generated locally.
+        # Site-wide HTML render. PDF outputs are skipped (TinyTeX would inflate
+        # CI runtime without current demand — see docs/customer-documents/
+        # export pipeline notes). DOCX for the Customer Documents tree is
+        # handled as a scoped second pass below.
         run: quarto render --to html
+
+      - name: Render Customer Documents DOCX exports
+        working-directory: docs
+        # Scoped DOCX render: only pages under customer-documents/ opt into
+        # DOCX via docs/customer-documents/_metadata.yml. Outputs land in
+        # _site/customer-documents/<...>.docx alongside the HTML.
+        # Uses pandoc (bundled with Quarto), no LaTeX dependency.
+        run: quarto render customer-documents --to docx
 
       - name: Upload site artifact
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'

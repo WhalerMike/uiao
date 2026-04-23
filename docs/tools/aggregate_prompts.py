@@ -47,8 +47,8 @@ from pathlib import Path
 # ------------------------------------------------------------------
 
 TREES = [
-    ("docs/customer-documents/adapter-technical-specifications", "ats"),
-    ("docs/customer-documents/adapter-validation-suites", "avs"),
+    ("docs/customer-documents/adapter-specs", "ats"),
+    ("docs/customer-documents/validation-suites/adapters", "avs"),
     # Canon-level IMAGE-PROMPTS.md files for specification-level diagrams
     # (UIAO_003 DIAGRAM-01/02/03, IMAGE-05, etc.) that aren't adapter-
     # specific but still need to flow through the image pipeline.

@@ -34,15 +34,21 @@ UIAO-<Publication>.docx + .pptx + .pdf + .epub
 
 Each stage is **idempotent**, **inspectable**, and **replayable**. Images persist across runs so a second build doesn't re-spend API calls unless you force regeneration.
 
-## The three scripts
+## The two scripts
 
 | Script | Purpose | When you run it |
 |---|---|---|
-| [`docs/generate_images.py`](https://github.com/WhalerMike/uiao/blob/main/docs/generate_images.py) | General-purpose image generation from a `prompts.json` | You've added new prompts; want new PNGs |
-| [`docs/generate_scuba_images.py`](https://github.com/WhalerMike/uiao/blob/main/docs/generate_scuba_images.py) | Same pattern, scoped to the SCuBA Technical Specification series (reads `scuba_prompts.json`) | SCuBA publication-specific image runs |
+| [`docs/generate_images.py`](https://github.com/WhalerMike/uiao/blob/main/docs/generate_images.py) | Unified image pipeline: harvests `[IMAGE-NN:]` / `[IMAGE-REF:]` placeholders across the repo, calls Gemini Nano Banana, writes PNGs + prompt-hash sidecars, resolves canonical `[IMAGE-REF:]` lookups against `src/uiao/canon/image-registry.yaml`. Also supports the legacy `docs/prompts.json` flat-list input. | You've added or edited prompts and want the PNGs regenerated. Cache-gated by `prompt_sha256`; unchanged prompts are skipped. |
 | [`docs/publications/01-executive-brief/build.py`](https://github.com/WhalerMike/uiao/blob/main/docs/publications/01-executive-brief/build.py) | Full publication assembler: generates images (optional), inserts into DOCX, produces all output formats | You're cutting a publication release |
 
-All three are **env-variable-driven** and **path-self-locating** — they work from any clone, any OS, any user. No hardcoded paths.
+::: {.callout-note title="Legacy scripts retired"}
+The older `docs/generate_scuba_images.py` and `scripts/generate_scuba_images.py`
+generators were retired once `docs/generate_images.py` absorbed per-doc
+IMAGE-PROMPTS.md walking and canonical registry resolution. If you see
+references to them in old session logs or ADRs, treat those as historical.
+:::
+
+Both scripts are **env-variable-driven** and **path-self-locating** — they work from any clone, any OS, any user. No hardcoded paths.
 
 ## Prerequisites
 
@@ -116,8 +122,8 @@ Workflows reference it as `${{ secrets.GEMINI_API_KEY }}`. No workflow currently
 
 Each publication (or series) maintains a JSON file naming the images it needs and the prompts that generate them. Default locations:
 
-- `docs/prompts.json` — general site prompts consumed by `generate_images.py`
-- `docs/scuba_prompts.json` — SCuBA series prompts consumed by `generate_scuba_images.py`
+- `docs/prompts.json` — legacy flat-list prompts consumed by `generate_images.py` (still supported for drop-in bulk runs)
+- `<doc-folder>/IMAGE-PROMPTS.md` — per-document prompts, one file per owning `.qmd`/`.md`. The modern authoring pattern — placeholders in the prose (`[IMAGE-NN: ...]`) drive everything.
 - `docs/publications/<publication>/prompts.json` — publication-scoped prompts consumed by that publication's `build.py`
 
 ### Schema
@@ -168,14 +174,15 @@ From the repo root:
 # Set the key (once per shell session, if not persisted)
 export GEMINI_API_KEY="<your-key>"
 
-# General site images
+# Walk every IMAGE-PROMPTS.md + prompts.json in the repo, regenerate only
+# what changed (cache-gated on prompt_sha256).
 python docs/generate_images.py
-
-# SCuBA series images
-python docs/generate_scuba_images.py
 
 # Dry-run (prints prompts, no API calls, no cost)
 python docs/generate_images.py --dry-run
+
+# Scan only (report placeholders; no generation)
+python docs/generate_images.py --scan-only
 ```
 
 Output:
@@ -271,7 +278,6 @@ CI runs this automatically on every PR via `.github/workflows/quarto.yml`. The s
 | `Quota exceeded` | Free tier hit; you're on Postpay but haven't enabled billing | Enable billing at `https://aistudio.google.com/billing` |
 | `PDF conversion failed` | LibreOffice not installed or not on PATH | Install LibreOffice; verify `soffice --version` on PATH |
 | Image inserted at wrong position in DOCX | Filename in `prompts.json` doesn't match the placeholder in `SOURCE.docx` | Either rename the PNG or edit the placeholder in the source DOCX |
-| `generate_images_from_prompts.py` is empty | It's a placeholder file | Either ignore, delete, or fill it with a variant implementation |
 
 ## Security checklist (before pushing new content)
 
