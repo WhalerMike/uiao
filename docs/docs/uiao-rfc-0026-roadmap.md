@@ -113,11 +113,11 @@ This roadmap sequences eight enhancements by enforcement-clock risk × implement
 **Target:** 2027-02-15 (45-day buffer before CCM BIR deadline)
 **Risk:** Notice 0009 mandates Pathway-1 by 2027-06-01 regardless of whether RFC-0026 ever formally compels migration; ADR-043 currently places UIAO on Pathway 2.
 **Tasks:**
-- [ ] T8.1 — Add Notice 0009 deadlines to ADR-043 enforcement timeline
-- [ ] T8.2 — Create `vdr_adapter.py` skeleton in `src/uiao/adapters/` (stub, registered in `adapter-registry.yaml` with `status: reserved`)
-- [ ] T8.3 — Create `ccm_bir_adapter.py` skeleton (same pattern)
-- [ ] T8.4 — Add 90-day pre-deadline readiness check to `conmon-aggregate.yml` that opens a governance issue if migration hasn't started
-- [ ] T8.5 — Update UIAO_132 §2.4 / §3.4 with migration milestone dates
+- [x] T8.1 — Add Notice 0009 deadlines to ADR-043 enforcement timeline *(PR 5: new "Interlocking deadlines from FedRAMP Notice 0009" section + change-log entry 0.2)*
+- [x] T8.2 — Create `vdr_adapter.py` skeleton in `src/uiao/adapters/` (stub, registered in `adapter-registry.yaml` with `status: reserved`) *(PR 5: `VdrAdapter` raises `VdrAdapterNotYetAvailable` on instantiation; exports `MANDATORY_ADOPTION_DATE = "2027-06-01"` as the readiness-script anchor)*
+- [x] T8.3 — Create `ccm_bir_adapter.py` skeleton *(PR 5: same pattern; `MANDATORY_ADOPTION_DATE = "2027-04-01"` — earlier of the two Notice 0009 dates)*
+- [x] T8.4 — 90-day pre-deadline readiness check wired into `conmon-aggregate.yml` *(PR 5: `scripts/conmon/migration_readiness.py` consumes stub-module constants + registry status, emits `exports/conmon/migration-readiness.json`; new workflow step opens `rfc-0026-readiness` issues fingerprinted by `adapter_id + mandatory_by` to stay idempotent)*
+- [ ] T8.5 — Update UIAO_132 §2.4 / §3.4 with migration milestone dates *(deferred to canon-scoped follow-up PR, same rationale as T4.5)*
 
 ---
 
