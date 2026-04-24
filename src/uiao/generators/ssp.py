@@ -582,6 +582,7 @@ def build_ssp_skeleton(
     # Done after both the matrix path and the enhanced-narrative path so that
     # every requirement (regardless of which path produced it) gets the same
     # treatment when a graph is supplied.
+    graph_resources: dict[str, dict[str, Any]] = {}
     if graph is not None:
         for req in ssp["control-implementation"]["implemented-requirements"]:
             ctrl_id = req.get("control-id", "")
@@ -596,9 +597,24 @@ def build_ssp_skeleton(
                 if name in existing_names:
                     continue
                 req["props"].append({"name": name, "value": str(value), "ns": _UIAO_GRAPH_NS})
+            if ctrl_id not in graph_resources:
+                res = graph.back_matter_resource_for_control(ctrl_id)
+                if res is not None:
+                    graph_resources[ctrl_id] = res
+            if ctrl_id in graph_resources:
+                req.setdefault("links", []).append(
+                    {
+                        "rel": "graph-evidence",
+                        "href": f"#{graph_resources[ctrl_id]['uuid']}",
+                        "media-type": "application/json",
+                    }
+                )
 
     # Section 12: back-matter with laws and regulations
     back_matter = _build_back_matter(template)
+    if graph_resources:
+        back_matter = back_matter or {"resources": []}
+        back_matter.setdefault("resources", []).extend(graph_resources.values())
     if back_matter:
         ssp["back-matter"] = back_matter
 
