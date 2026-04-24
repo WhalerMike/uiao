@@ -1369,6 +1369,9 @@ app.add_typer(substrate_app, name="substrate")
 from uiao.cli.orchestrator import orchestrator_app  # noqa: E402
 
 app.add_typer(orchestrator_app, name="orchestrator")
+from uiao.cli.cql import cql_app  # noqa: E402
+
+app.add_typer(cql_app, name="cql")
 
 
 if __name__ == "__main__":
