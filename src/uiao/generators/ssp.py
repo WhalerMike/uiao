@@ -15,7 +15,10 @@ from typing import Any
 
 import yaml
 
+from uiao.evidence.graph import EvidenceGraph
 from uiao.utils.context import get_settings, load_context
+
+_UIAO_GRAPH_NS = "https://uiao.gov/ns/oscal/graph"
 
 
 def _load_ssp_template(data_dir: Path) -> dict[str, Any]:
@@ -231,6 +234,7 @@ def build_ssp_skeleton(
     context: dict[str, Any],
     data_dir: Path | None = None,
     enhanced: bool = False,
+    graph: EvidenceGraph | None = None,
 ) -> dict[str, Any]:
     """Build the OSCAL SSP skeleton dict from context, aligned with FedRAMP Rev 5 Sections 1-12.
 
@@ -241,6 +245,12 @@ def build_ssp_skeleton(
             ``data/control-library/*.yml`` and inject them as OSCAL
             ``statements`` and ``by-components`` entries.  When *False*
             (default) the existing behaviour is preserved.
+        graph: Optional UIAO_113 EvidenceGraph. When present, each
+            ``implemented-requirement`` is augmented with graph-derived props
+            (witness evidence id/source, scheduler run id, adapter id, top
+            finding severity) under the ``_UIAO_GRAPH_NS`` namespace, so
+            assessors can trace each control implementation back to the
+            adapter dispatch that produced the evidence.
     """
     if data_dir is None:
         settings = get_settings()
@@ -568,6 +578,25 @@ def build_ssp_skeleton(
                 }
                 ssp["control-implementation"]["implemented-requirements"].append(new_req)
 
+    # UIAO_113: augment implemented-requirements with graph-derived provenance.
+    # Done after both the matrix path and the enhanced-narrative path so that
+    # every requirement (regardless of which path produced it) gets the same
+    # treatment when a graph is supplied.
+    if graph is not None:
+        for req in ssp["control-implementation"]["implemented-requirements"]:
+            ctrl_id = req.get("control-id", "")
+            if not ctrl_id:
+                continue
+            graph_props = graph.sar_props_for_evidence(ctrl_id)
+            if not graph_props:
+                continue
+            req.setdefault("props", [])
+            existing_names = {p.get("name") for p in req["props"]}
+            for name, value in graph_props.items():
+                if name in existing_names:
+                    continue
+                req["props"].append({"name": name, "value": str(value), "ns": _UIAO_GRAPH_NS})
+
     # Section 12: back-matter with laws and regulations
     back_matter = _build_back_matter(template)
     if back_matter:
@@ -582,6 +611,7 @@ def build_ssp(
     output: str | Path | None = None,
     output_path: str | Path | None = None,
     enhanced: bool = False,
+    graph: EvidenceGraph | None = None,
 ) -> Path:
     """Generate an OSCAL SSP JSON file from canon and data sources.
 
@@ -594,6 +624,9 @@ def build_ssp(
             instead.
         enhanced: When *True*, inject control-library narratives into the
             ``implemented-requirements`` entries.
+        graph: Optional UIAO_113 EvidenceGraph. When provided, each
+            ``implemented-requirement`` is augmented with graph-derived
+            provenance props (see :func:`build_ssp_skeleton`).
 
     Returns:
         Path to the generated SSP JSON file.
@@ -609,7 +642,7 @@ def build_ssp(
         resolved_output = settings.exports_dir / "oscal" / "uiao-ssp-skeleton.json"
 
     context = load_context(canon_path=canon_path, data_dir=data_dir)
-    ssp_data = build_ssp_skeleton(context, data_dir=Path(data_dir), enhanced=enhanced)
+    ssp_data = build_ssp_skeleton(context, data_dir=Path(data_dir), enhanced=enhanced, graph=graph)
 
     out = Path(resolved_output)
     out.parent.mkdir(parents=True, exist_ok=True)
