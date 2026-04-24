@@ -36,7 +36,12 @@ def ir_scuba_transform(
     normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
     out: str = typer.Option("", "--out", "-o", help="Write full evidence JSON to file."),
 ) -> None:
-    """Transform normalized SCuBA JSON -> IR Evidence objects and print summary."""
+    """Transform normalized SCuBA JSON -> IR Evidence objects and print summary.
+
+    Example::
+
+        uiao ir scuba-transform examples/quickstart/scuba-normalized.json
+    """
     import json as _json
 
     from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
@@ -57,7 +62,12 @@ def ir_evidence_bundle(
     normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
     out: str = typer.Option("", "--out", "-o", help="Write canonical bundle JSON to file."),
 ) -> None:
-    """Build a canonical EvidenceBundle from a SCuBA transform and print summary."""
+    """Build a canonical EvidenceBundle from a SCuBA transform and print summary.
+
+    Example::
+
+        uiao ir evidence-bundle examples/quickstart/scuba-normalized.json --out /tmp/bundle.json
+    """
     from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.evidence.bundle import build_bundle_from_transform_result
 
@@ -78,7 +88,12 @@ def ir_poam_export(
     normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
     out: str = typer.Option("", "--out", "-o", help="Write POA&M JSON to file."),
 ) -> None:
-    """Export POA&M rows (FAIL + WARN only) from a SCuBA run and print summary."""
+    """Export POA&M rows (FAIL + WARN only) from a SCuBA run and print summary.
+
+    Example::
+
+        uiao ir poam-export examples/quickstart/scuba-normalized.json --out /tmp/poam.json
+    """
     from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.evidence.bundle import build_bundle_from_transform_result
     from uiao.evidence.poam import build_poam, poam_summary, poam_to_json
@@ -104,7 +119,12 @@ def ir_drift_detect(
     policy_ref: str = typer.Option("policy", "--policy-ref", "-p", help="Policy reference."),
     out: str = typer.Option("", "--out", "-o", help="Write DriftState JSON to file."),
 ) -> None:
-    """Detect drift between two IR state JSON files and print classification."""
+    """Detect drift between two IR state JSON files and print classification.
+
+    Example::
+
+        uiao ir drift-detect expected.json actual.json
+    """
     import json as _json
     from datetime import datetime, timezone
     from pathlib import Path as _Path
@@ -147,7 +167,12 @@ def ir_governance_report(
     normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
     out: str = typer.Option("", "--out", "-o", help="Write governance actions JSON to file."),
 ) -> None:
-    """Run full governance pipeline: SCuBA -> IR -> Evidence -> Actions -> Report."""
+    """Run full governance pipeline: SCuBA -> IR -> Evidence -> Actions -> Report.
+
+    Example::
+
+        uiao ir governance-report examples/quickstart/scuba-normalized.json
+    """
     import json as _json
     from pathlib import Path as _Path
 
@@ -190,7 +215,12 @@ def ir_ssp_report(
     fmt: str = typer.Option("markdown", "--format", "-f", help="Output format: markdown | json"),
     out: str = typer.Option("", "--out", "-o", help="Write output to file."),
 ) -> None:
-    """Generate SSP narrative + lineage from SCuBA -> IR -> Evidence -> Governance."""
+    """Generate SSP narrative + lineage from SCuBA -> IR -> Evidence -> Governance.
+
+    Example::
+
+        uiao ir ssp-report examples/quickstart/scuba-normalized.json --format markdown
+    """
     import json as _json
     from pathlib import Path as _Path
 
@@ -223,7 +253,12 @@ def ir_auditor_bundle(
     normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
     out_dir: str = typer.Option("exports/auditor-bundle", "--out-dir", "-o", help="Output directory for artifacts."),
 ) -> None:
-    """Run full pipeline and write all auditor artifacts to a directory."""
+    """Run full pipeline and write all auditor artifacts to a directory.
+
+    Example::
+
+        uiao ir auditor-bundle examples/quickstart/scuba-normalized.json --out-dir /tmp/uiao-quickstart
+    """
     from uiao.auditor.bundle import build_auditor_bundle
 
     _console.print(f"[bold]Building auditor bundle from: {normalized_json}...[/bold]")
@@ -242,7 +277,12 @@ def ir_diff(
     fmt: str = typer.Option("markdown", "--format", "-f", help="Output format: markdown | json"),
     out: str = typer.Option("", "--out", "-o", help="Write output to file."),
 ) -> None:
-    """Diff two SCuBA runs: KSI changes, evidence hash deltas, status changes."""
+    """Diff two SCuBA runs: KSI changes, evidence hash deltas, status changes.
+
+    Example::
+
+        uiao ir diff run-a.json run-b.json
+    """
     from pathlib import Path as _Path
 
     from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
@@ -264,7 +304,12 @@ def ir_validate(
     normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file to validate."),
     strict: bool = typer.Option(False, "--strict", help="Exit non-zero on warnings."),
 ) -> None:
-    """Validate a normalized SCuBA JSON file for IR pipeline conformance."""
+    """Validate a normalized SCuBA JSON file for IR pipeline conformance.
+
+    Example::
+
+        uiao ir validate examples/quickstart/scuba-normalized.json --strict
+    """
     from uiao.validators.ir_validator import validate_normalized_json
 
     result = validate_normalized_json(normalized_json)
@@ -287,7 +332,12 @@ def ir_freshness(
     out: str = typer.Option("", "--out", "-o", help="Write freshness JSON to file."),
     threshold_days: int = typer.Option(30, "--threshold-days", "-t", help="Default freshness threshold in days."),
 ) -> None:
-    """Compute evidence freshness and generate refresh actions for stale evidence."""
+    """Compute evidence freshness and generate refresh actions for stale evidence.
+
+    Example::
+
+        uiao ir freshness examples/quickstart/scuba-normalized.json --threshold-days 30
+    """
     import json as _json
     from pathlib import Path as _Path
 
@@ -342,7 +392,12 @@ def ir_dashboard(
     out: str = typer.Option("", "--out", "-o", help="Write dashboard JSON to file."),
     threshold_days: int = typer.Option(30, "--threshold-days", "-t", help="Default freshness threshold in days."),
 ) -> None:
-    """Build IR governance dashboard: evidence freshness + governance action summary."""
+    """Build IR governance dashboard: evidence freshness + governance action summary.
+
+    Example::
+
+        uiao ir dashboard examples/quickstart/scuba-normalized.json --out /tmp/dashboard.json
+    """
     from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.dashboard.ir_dashboard import export_ir_dashboard
     from uiao.evidence.bundle import build_bundle_from_transform_result
@@ -375,7 +430,12 @@ def ir_freshness_schedule(
     out: str = typer.Option("", "--out", "-o", help="Write schedule JSON to file."),
     threshold_days: int = typer.Option(30, "--threshold-days", "-t", help="Default freshness threshold in days."),
 ) -> None:
-    """Build a refresh job schedule from stale evidence and print the schedule summary."""
+    """Build a refresh job schedule from stale evidence and print the schedule summary.
+
+    Example::
+
+        uiao ir freshness-schedule examples/quickstart/scuba-normalized.json
+    """
     import dataclasses as _dc
     import json as _json
     from pathlib import Path as _Path
@@ -410,7 +470,12 @@ def ir_generate_sar(
     ),
     ap_href: str = typer.Option("", "--ap-href", help="Optional href to Assessment Plan document."),
 ) -> None:
-    """Generate an OSCAL Assessment Results (SAR) document from a SCuBA run."""
+    """Generate an OSCAL Assessment Results (SAR) document from a SCuBA run.
+
+    Example::
+
+        uiao ir generate-sar examples/quickstart/scuba-normalized.json --out /tmp/sar.json
+    """
     from uiao.adapters.scuba.ir.transformer import transform_scuba_to_ir
     from uiao.evidence.bundle import build_bundle_from_transform_result
     from uiao.generators.sar import build_sar, build_sar_summary, export_sar
@@ -440,6 +505,10 @@ def ir_ssp_inject(
     Combines the canon SSP baseline with real SCuBA assessment evidence,
     producing an OSCAL SSP whose implemented-requirements carry live
     implementation-status props and evidence-hash annotations.
+
+    Example::
+
+        uiao ir ssp-inject examples/quickstart/scuba-normalized.json --out /tmp/uiao-ssp-live.json
     """
     import json as _json
     from pathlib import Path as _Path

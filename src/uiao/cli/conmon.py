@@ -61,6 +61,10 @@ def conmon_process(
     Reads a Sentinel alert webhook payload from ALERT_JSON, maps it to
     NIST 800-53 controls via monitoring-sources.yml, and creates or
     updates a POA&M entry in POAM_PATH.  Use --no-upsert for a dry-run.
+
+    Example::
+
+        uiao conmon process --alert-json alert.json --poam-path data/poam-findings.yml
     """
     import json as _json
     from pathlib import Path as _Path
@@ -117,6 +121,10 @@ def conmon_export_oa(
     Generates machine-readable control evidence linking every monitored
     NIST 800-53 control to its telemetry source, satisfying the FedRAMP
     20x Phase 2 ConMon requirement for ongoing authorization evidence.
+
+    Example::
+
+        uiao conmon export-oa --output /tmp/ongoing-auth.json
     """
     from uiao.monitoring.ongoing_auth import OngoingAuthGenerator
 
@@ -155,6 +163,10 @@ def conmon_dashboard(
     Computes Key Security Indicator scores from ksi-mappings.yml and
     writes a FedRAMP 20x Phase 2 ConMon dashboard artifact in JSON or
     YAML format.
+
+    Example::
+
+        uiao conmon dashboard --output /tmp/ksi-dashboard.json --format json
     """
     from uiao.dashboard.export import DashboardExporter
 

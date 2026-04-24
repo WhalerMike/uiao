@@ -32,6 +32,11 @@ _console = Console()
 def canon_check(
     canon_dir: str = typer.Option("canon", "--dir", "-d", help="Canon directory."),
 ) -> None:
-    """Check canon YAML files for consistency."""
+    """Check canon YAML files for consistency.
+
+    Example::
+
+        uiao canon check --dir src/uiao/canon
+    """
     _console.print(f"[bold]Checking canon at {canon_dir}...[/bold]")
     _console.print("[yellow]Canon check not yet implemented (Week 3).[/yellow]")
