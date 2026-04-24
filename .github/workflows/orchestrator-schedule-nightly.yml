@@ -1,0 +1,209 @@
+name: Orchestrator nightly schedule
+
+# Runs the UIAO_100 Compliance Orchestrator scheduler against both canon
+# adapter registries, evaluates DRIFT-SEMANTIC freshness against the
+# resulting evidence, and uploads the run tree (manifest + per-adapter
+# evidence/drift + drift-semantic.json) as an artifact.
+#
+# Two trigger modes:
+#
+#   1. schedule  — cron 0 3 * * * (03:00 UTC nightly). Artifact only,
+#      no commit-back, no side effects on main.
+#
+#   2. workflow_dispatch — manual. Optional `commit_back` input
+#      pushes the run tree back to `main` via Git LFS. Intended for
+#      operator-driven evidence captures (ATO package prep, incident
+#      response, scheduled attestation windows).
+#
+# Required secret: none — the scheduler calls adapter `collect_evidence`
+# + `detect_drift` methods; per-adapter credentials are the adapter's
+# concern. (Wire real adapter config through env vars in a follow-up
+# PR once Phase 2 adapter integrations land.)
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      commit_back:
+        description: "Commit evidence + findings back to main (Git LFS)"
+        required: false
+        default: false
+        type: boolean
+      registries:
+        description: "Which registries to run"
+        required: false
+        default: "both"
+        type: choice
+        options: ["both", "modernization", "conformance"]
+
+concurrency:
+  group: nightly-orchestrator-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  schedule:
+    name: Schedule + freshness eval
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      EVIDENCE_ROOT: evidence/orchestrator-runs
+      MOD_REGISTRY: src/uiao/canon/modernization-registry.yaml
+      CONF_REGISTRY: src/uiao/canon/adapter-registry.yaml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install uiao package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
+          git lfs install
+
+      - name: Run scheduler — modernization registry
+        id: mod
+        if: inputs.registries == 'both' || inputs.registries == 'modernization' || github.event_name == 'schedule'
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVIDENCE_ROOT/modernization"
+          uiao orchestrator schedule \
+            --registry "$MOD_REGISTRY" \
+            --output-root "$EVIDENCE_ROOT/modernization" \
+            --status active \
+            --json > /tmp/mod-manifest.json
+          echo "run_dir=$(python -c 'import json; print(json.load(open("/tmp/mod-manifest.json"))["run_dir"])')" >> "$GITHUB_OUTPUT"
+
+      - name: Run scheduler — conformance registry
+        id: conf
+        if: inputs.registries == 'both' || inputs.registries == 'conformance' || github.event_name == 'schedule'
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVIDENCE_ROOT/conformance"
+          uiao orchestrator schedule \
+            --registry "$CONF_REGISTRY" \
+            --output-root "$EVIDENCE_ROOT/conformance" \
+            --status active \
+            --json > /tmp/conf-manifest.json
+          echo "run_dir=$(python -c 'import json; print(json.load(open("/tmp/conf-manifest.json"))["run_dir"])')" >> "$GITHUB_OUTPUT"
+
+      - name: Evaluate DRIFT-SEMANTIC freshness per run
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from uiao.freshness import (
+              drift_semantic_findings,
+              evaluate_scheduler_run,
+              summarize,
+              write_findings,
+          )
+
+          registries = [
+              "src/uiao/canon/modernization-registry.yaml",
+              "src/uiao/canon/adapter-registry.yaml",
+          ]
+
+          total_findings = 0
+          total_routed = 0
+          for manifest_path in ("/tmp/mod-manifest.json", "/tmp/conf-manifest.json"):
+              p = Path(manifest_path)
+              if not p.is_file():
+                  continue
+              manifest = json.loads(p.read_text(encoding="utf-8"))
+              run_dir = Path(manifest["run_dir"])
+              if not run_dir.is_dir():
+                  print(f"::warning::run_dir {run_dir} missing; skipping")
+                  continue
+              findings = evaluate_scheduler_run(run_dir, registries=registries)
+              routed = drift_semantic_findings(findings)
+              target = run_dir / "drift-semantic.json"
+              write_findings(findings, target)
+              s = summarize(findings)
+              total_findings += s["total"]
+              total_routed += len(routed)
+              print(f"::notice::{run_dir.name}: {s['total']} findings "
+                    f"({len(routed)} route-worthy) — by_severity={s['by_severity']}")
+          print(f"::notice::TOTAL across runs: {total_findings} findings, "
+                f"{total_routed} route-worthy (fresh excluded)")
+          PY
+
+      - name: Upload run tree artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: orchestrator-run-${{ github.run_number }}
+          path: ${{ env.EVIDENCE_ROOT }}/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Commit-back to main (LFS) — manual dispatch only
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_back }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eux
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Stage new run artifacts. Registry used_by updates (if any)
+          # also come along. No prior-run deletion — each run is its own
+          # directory under evidence/orchestrator-runs/.
+          git add "$EVIDENCE_ROOT/**/*.json" || true
+          git add "src/uiao/canon/adapter-registry.yaml" \
+                  "src/uiao/canon/modernization-registry.yaml" || true
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit. Pipeline produced no new artifacts."
+            exit 0
+          fi
+
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          git commit \
+            -m "chore(conmon): automated orchestrator nightly run ${{ github.run_number }}" \
+            -m "Evidence + drift + DRIFT-SEMANTIC findings from uiao orchestrator schedule across both canon registries." \
+            -m "$RUN_URL"
+          git push origin "HEAD:${{ github.ref }}"
+
+      - name: Step summary
+        if: always()
+        run: |
+          {
+            echo "### Orchestrator nightly schedule"
+            echo ""
+            echo "Trigger: \`${{ github.event_name }}\`  "
+            echo "Run: [${{ github.run_number }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            echo ""
+            if [ -f /tmp/mod-manifest.json ]; then
+              echo "#### Modernization registry"
+              echo '```json'
+              python -c "import json,sys; m=json.load(open('/tmp/mod-manifest.json')); print(json.dumps({k:v for k,v in m.items() if k in ('run_id','adapters_total','adapters_successful','adapters_failed','adapters_not_wired','drift_findings_total','drift_by_severity','run_dir')}, indent=2))"
+              echo '```'
+            fi
+            if [ -f /tmp/conf-manifest.json ]; then
+              echo "#### Conformance registry"
+              echo '```json'
+              python -c "import json,sys; m=json.load(open('/tmp/conf-manifest.json')); print(json.dumps({k:v for k,v in m.items() if k in ('run_id','adapters_total','adapters_successful','adapters_failed','adapters_not_wired','drift_findings_total','drift_by_severity','run_dir')}, indent=2))"
+              echo '```'
+            fi
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.commit_back }}" = "true" ]; then
+              echo "**Commit-back**: enabled — artifacts pushed to \`${{ github.ref_name }}\` via LFS."
+            else
+              echo "**Commit-back**: disabled (artifact retention 30d)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
