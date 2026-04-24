@@ -1,0 +1,232 @@
+---
+title: "Chapter 01 — The UIAO Platform Server"
+subtitle: "Windows Server 2025 + IIS + Gitea + Kerberos + enterprise PKI — the host that runs the transformation"
+doc-type: series-chapter
+series-id: client-server-to-hybrid-cloud
+chapter: 1
+audience: "Platform engineers · infrastructure architects · federal CIOs"
+canon-source: "docs/customer-documents/platform/platform-server-build.qmd + ADR-001"
+date: 2026-04-24
+aspirational: true
+---
+
+# Chapter 01 — The UIAO Platform Server {.unnumbered}
+
+*Windows Server 2025 + IIS + Gitea + Kerberos + enterprise PKI*
+
+![Figure 1.1 — UIAO Platform Server: five roles on one Windows Server 2025 host](images/01-platform-server-five-roles.png){fig-alt="Architectural diagram of a single Windows Server 2025 host showing five labeled roles: canonical source of truth (Gitea), HTTPS reverse proxy (IIS), legacy-to-modern auth bridge (Kerberos + PKI), transformation engine host (PowerShell + Python + APIs), and adapter dispatcher (DM_* + MOD_I)" width="720"}
+
+::: {.callout-important title="The architectural claim"}
+Everything UIAO does — every analysis, every plan, every delivery, every
+evidence artifact — runs on one Windows Server 2025 host. Not a cluster,
+not a microservice mesh, not a cloud-native control plane. One host.
+
+This is a deliberate, governed choice, not a simplification. This chapter
+explains why.
+:::
+
+## Why one host
+
+The UIAO platform server is a governance substrate, not an application.
+Governance substrates have properties that application servers don't:
+
+- **Single source of truth.** There is exactly one Gitea repo that holds
+  the canon. Two hosts can't both be authoritative; they'd diverge.
+  Replication is for disaster recovery, not active-active load-sharing.
+- **Deterministic provenance.** Every plan, every delivery, every drift
+  report must be traceable to a commit on the canonical repo. A
+  distributed-by-default architecture dilutes provenance; a single-host
+  architecture concentrates it.
+- **Bounded attack surface.** Zero-trust federal environments score a
+  single hardened Tier-0 host lower-risk than a fleet of loosely-coupled
+  services. The CIS baseline + AppLocker + WDAC story is cleaner on one
+  host.
+- **Operational simplicity.** One host means one patch cadence, one
+  backup policy, one DR playbook, one set of Intune compliance rules,
+  one Arc enrollment, one OrgPath tag. Complexity scales badly in
+  governance systems because every extra moving part is an extra source
+  of drift.
+
+Horizontal scale, when it becomes necessary, is handled at the target
+surface layer — Entra, Intune, Arc, and vendor APIs scale natively — not
+by fanning out the governance substrate.
+
+## The five roles
+
+A single host plays five distinct roles. Each maps to a specific
+capability the transformation engine needs.
+
+### 1. Canonical source of truth
+
+**Gitea.** Every governance artifact — OrgPath codebook entries, dynamic
+group rules, delegation matrices, transformation plans, policy
+libraries, adapter manifests, drift reports — lives as a versioned file
+in the Gitea repo. Nothing is an admin-portal click. Nothing is a
+verbal assurance. Every change is a commit; every commit is signed;
+every commit is attributable.
+
+Gitea is behind IIS (never exposed directly), anchored to enterprise
+PKI for client-cert + HTTPS, and replicated via nightly backup to
+Azure Blob. Active-passive replica failover is manual-triggered with an
+explicit RPO/RTO target.
+
+### 2. HTTPS reverse proxy and client-cert terminator
+
+**IIS + URL Rewrite + ARR.** Every inbound request lands at IIS. IIS
+does TLS termination, client-certificate mTLS (for admin access),
+HSTS, HTTP/2, and forwards to Gitea on loopback port 3000. IIS is
+also the AD LDAPS-aware auth landing point for Gitea's
+`source-config` lookups.
+
+This is the architecture endorsed by [ADR-001](../../../../modernization/orgtree.qmd) —
+Gitea behind IIS reverse proxy. Option A (IIS + `git-http-backend`
+alone) was evaluated and rejected on auth integration + operational
+complexity grounds.
+
+### 3. Legacy-to-modern auth bridge
+
+**Kerberos + enterprise PKI.** The platform server holds simultaneous
+memberships:
+
+- It's **domain-joined** to the legacy AD forest (for Kerberos-anchored
+  reads of the forest, GPOs, DNS zones, and ADCS).
+- It's **Entra-registered** (for OAuth2/OIDC inbound auth and Graph
+  API outbound calls).
+- It holds an **enterprise-CA-issued server certificate** for IIS TLS
+  and a **client certificate** for Arc + Intune enrollment.
+
+The bridges are not redundant. The AD side is read-only by policy (the
+`UIAOADAssessment` PowerShell module runs with a least-privilege
+account that has only the forest-reader rights it needs). The Entra
+side is read-write (the transformation engine's plans land there).
+
+### 4. Transformation engine host
+
+**PowerShell + Python + API integrator layer.** This is where
+assessment, planning, and delivery actually happen.
+
+- **PowerShell** (7.4+) handles AD-side reads (ActiveDirectory,
+  GroupPolicy, DnsServer, DhcpServer modules), Gitea API calls,
+  local-file provenance writes, and the Pester test harness.
+- **Python** (3.12+) handles graph analysis (networkx for OU trees,
+  dependency graphs), OSCAL authoring, schema validation (MOD_H
+  JSON schema), and anything that benefits from a richer type
+  system or library ecosystem than PowerShell provides.
+- **API integrators** wrap vendor APIs — Graph, ARM, Intune
+  management APIs, Infoblox WAPI, ServiceNow REST, CyberArk REST,
+  SCuBA/ScubaGear output ingestion — behind uniform contracts
+  defined in the DM_* adapter specs.
+
+Both engines are governed: every script is in Gitea; every run
+produces a signed, provenanced log entry; every API call is logged
+with correlation IDs that tie back to a plan + commit.
+
+### 5. Adapter dispatcher
+
+**DM_* and MOD_I glue.** When the transformation engine needs to touch
+a specific AD-dependency category (PKI, RADIUS, LDAP, DHCP, etc.), it
+dispatches through the DM_* adapter interface. Each adapter
+implementation (Infoblox, ADCS, Entrust, Cisco ISE, etc.) plugs in
+behind the adapter interface; the engine never hard-codes vendor
+specifics.
+
+The adapter dispatcher is also how UIAO stays vendor-pluggable. A new
+IPAM vendor slots into DM_010 by implementing the adapter contract —
+no transformation-engine changes required.
+
+## The Two-Brain split
+
+A critical architectural principle: **governance and execution never
+co-mingle on the platform server**.
+
+- **Copilot (governance brain)** — the review + authorization layer.
+  Canon validates plans, signs commits, enforces boundary rules,
+  writes audit entries. It does **not** touch the target surface
+  directly.
+- **Execution Substrate (execution brain)** — the delivery layer. It
+  takes an authorized plan, calls the adapter APIs, and writes back a
+  structured result. It does **not** decide what to do; it executes
+  what the governance brain has already decided.
+
+This split is documented canonically as **ADR-002 — Two-Brain
+Execution** (to be authored). On the platform server, it manifests as
+two separate service accounts, two separate credential stores, two
+separate log streams. Deleting either brain's access stops the system
+in a safe state; it doesn't leave the other brain able to make
+decisions it shouldn't.
+
+The reason: a brain that both decides and acts is a brain that can
+cover its tracks. Separating them is how we make every change
+auditable, reversible, and governed.
+
+## Integration surface map
+
+The platform server has clearly-bounded integration points. Each is
+governed by an adapter spec and a validation suite.
+
+| Integration | Direction | Adapter | Purpose |
+|---|---|---|---|
+| AD Forest (legacy) | Read-only | MOD_I + UIAOADAssessment | Forest/domain/OU discovery, GPO inventory, DNS/DHCP read, Kerberos SPN audit |
+| ADCS (legacy PKI) | Read-only | DM_020 | Template analysis, ESC1-8 vulnerability check, certificate inventory |
+| Entra ID | Read-write | adapter-specs/entra-id | User/group/device/AU/policy provisioning |
+| Intune | Read-write | adapter-specs/intune | Compliance policies, configuration profiles, Autopilot |
+| Azure Arc | Read-write | (DM_060 scope) | Hybrid server enrollment, tag management, policy assignment |
+| Infoblox / BlueCat | Read-write | DM_010 | IPAM records, DHCP scope governance |
+| Cisco ISE / NPS | Read-write | DM_030 | RADIUS policy, 802.1X, device-posture |
+| ServiceNow | Read-write | adapter-specs/service-now | Change/incident integration |
+| CyberArk | Read-write | adapter-specs/cyberark | PAM vault / safe integration |
+| GitHub | Read-write | (upstream canon) | Canon merge source (GitHub → Gitea mirror) |
+
+Every integration is bidirectional-or-less; nothing is "trust me." The
+drift engine re-validates every integration on a schedule.
+
+## Operational properties
+
+By the end of Chapter 06 (the Platform Server Build Guide), the host
+has the following operational properties:
+
+- **Tier-0 classification** — CIS Level 2 baseline, AppLocker
+  whitelisting, WDAC code integrity, Defender for Servers Plan 2,
+  SIEM forwarding.
+- **Provenance-bound** — every config file change is a Git commit; no
+  admin-portal clicks permitted; Intune baseline policy enforces this.
+- **OrgTree-governed** — server carries its own OrgPath
+  (`ORG-IT-INF-PLATFORM`), lives in an Administrative Unit
+  (`AU-ORG-IT-INF-PLATFORM`), and is targeted by an OrgPath-scoped
+  Intune compliance policy.
+- **Drift-monitored** — MOD_M reports the server's state on a schedule
+  (OrgPath, AU membership, Gitea team mapping, Arc heartbeat). Any
+  drift opens an SLA ticket per MOD_Q.
+- **DR-ready** — nightly backup to Azure Blob, manual failover to a
+  passive replica with documented RPO/RTO targets.
+
+## What the platform server is not
+
+Boundaries matter as much as capabilities:
+
+- **Not a domain controller.** The platform server is domain-*joined*,
+  not domain-hosting. When the legacy AD forest is eventually retired,
+  the platform server stays; the DCs go away.
+- **Not a target-surface component.** The platform server governs Entra,
+  Intune, Arc — it does not live inside them. It is deliberately on-prem
+  (or Arc-projected IaaS) so it survives tenant-level events.
+- **Not a product**. The platform server is a governed deployment of
+  well-known components (WS2025, IIS, Gitea) configured together in a
+  specific, canonical way. There's no proprietary UIAO binary to ship.
+- **Not a Copilot replacement.** Copilot is the governance brain. The
+  platform server hosts the execution substrate + canon. Copilot still
+  reviews and authorizes.
+
+## Cross-references
+
+- **Full build runbook:** [Platform Server Build Guide](../../platform/platform-server-build.qmd) —
+  14 phases, 1,864 lines of PowerShell-first procedure.
+- **ADR-001 Git Infrastructure** — documents the Gitea-behind-IIS
+  decision and why Option A was rejected.
+- **Modernization canon** — [MOD_A..Z](../../../modernization/orgtree.qmd)
+  for governance, [DM_010..080](../../../modernization/directory-migration.qmd)
+  for adapters.
+
+---
+
+**Next:** [Chapter 02 — Analyzing the Client/Server Estate](02-legacy-ingestion.qmd)

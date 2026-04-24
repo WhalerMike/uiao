@@ -1,0 +1,373 @@
+---
+title: "Chapter 05 — Policy: GPO → Intune + Conditional Access"
+subtitle: "How twenty-five years of Group Policy becomes Intune configuration profiles, compliance policies, and Conditional Access"
+doc-type: series-chapter
+series-id: client-server-to-hybrid-cloud
+chapter: 5
+audience: "Policy authors · security engineers · endpoint admins"
+canon-source: "Posted Conditional Access Policy Library + Intune Policy Templates + Azure Arc Policy Library"
+date: 2026-04-24
+aspirational: true
+---
+
+# Chapter 05 — Policy: GPO → Intune + Conditional Access {.unnumbered}
+
+*How twenty-five years of Group Policy becomes modern policy*
+
+![Figure 5.1 — GPO categories mapped to their modern target surfaces](images/05-gpo-retirement-map.png){fig-alt="Mapping diagram: legacy GPO categories on the left (device configuration, security baselines, software deployment, access control, server configuration, browser/mailbox config) with arrows to six modern targets on the right (Intune Configuration Profiles, Intune Security Baselines + Entra Auth Methods, Intune Win32 Apps + Autopilot, Conditional Access + Session Controls, Azure Arc Guest Configuration + Azure Policy, Intune Settings Catalog + Office 365 policies)" width="720"}
+
+::: {.callout-important title="The policy claim"}
+Group Policy was AD's most ambitious delivery system — configuration,
+security, software deployment, scripts, drive mappings, and more,
+inheriting down an OU tree and filtered by security groups. Microsoft's
+replacement surface is not one product; it is four: **Intune**
+(device configuration + compliance), **Conditional Access** (access
+control), **Azure Arc / Guest Configuration** (server configuration),
+and **Entra ID settings catalog** (tenant policy).
+
+UIAO maps every GPO category to the correct modern target, keeps the
+mapping canonical in Gitea, and delivers policies through the same
+plan-and-deliver pipeline used for identity.
+:::
+
+## The four target surfaces
+
+Every GPO falls into one of four categories. Each category has a clear
+modern home.
+
+| GPO category | Modern target | OrgPath-scoped? |
+|---|---|---|
+| **Device configuration** (lockscreen, power, printers, drive maps) | Intune Configuration Profiles | Yes |
+| **Security baselines** (password, lockout, audit, UAC) | Intune Security Baselines + Entra ID Authentication Methods | Yes |
+| **Software deployment** (.msi, scripts) | Intune Win32 Apps + Autopilot | Yes |
+| **Access control** (computer startup, logon scripts, drive-letter mapping) | Conditional Access + Entra ID Session Controls | Yes |
+| **Server configuration** (roles, features, registry hardening) | Azure Arc Guest Configuration + Azure Policy | Yes |
+| **Browser / mailbox config** (IE modes, Outlook templates) | Intune Settings Catalog + Office 365 policies | Yes |
+
+Categorization is not free-form. Every GPO in the assessment
+(`assessments/<run-id>/gpos/`) gets classified into exactly one target
+category by the Python analyzer, and the Plan stage proposes a
+one-for-one Intune/CA/Arc/M365 equivalent.
+
+## Why the 1:1 mapping fails (and what we do instead)
+
+If a GPO has fifty settings, naïve mapping produces fifty Intune
+settings and calls the job done. That's wrong for three reasons.
+
+1. **Signal-to-noise.** A twenty-five-year-old GPO almost always
+   contains settings nobody can attribute to a current requirement.
+   Migrating them preserves dead weight.
+2. **Conflict surface.** Entra ID's settings catalog has clearer
+   precedence rules than GPO's "merge vs replace" semantics. A
+   faithful 1:1 port reproduces ancient conflicts that Intune would
+   make worse.
+3. **Targeting mismatch.** GPOs target by OU + security-group filter.
+   Intune targets by group. Copying a GPO's filter verbatim into
+   Intune misses the OrgTree opportunity (Chapter 04) — instead of
+   OrgPath-scoped dynamic groups, you get manually-curated legacy
+   groups that drift.
+
+The correct pattern is **regenerate, not copy**. For each GPO category
+UIAO proposes a canonical modern policy keyed to OrgPath branches, then
+layers per-branch overrides only where the assessment data justifies
+them. The result is dramatically simpler and substantially more
+governed.
+
+## Intune Configuration Profiles — the workhorse
+
+Roughly 70% of GPO settings map to Intune Configuration Profiles.
+Configuration profiles are opinionated policy bundles (MDM CSP under
+the covers) targeting user or device dynamic groups.
+
+### Policy authoring
+
+Every UIAO Configuration Profile is a YAML manifest in Gitea under
+`policies/intune/config/`:
+
+```yaml
+policy_id: CONF-ENDPOINT-BASELINE-v1
+display_name: UIAO Endpoint Baseline (v1)
+platform: windows-11
+profile_type: settings-catalog
+scope:
+  include_groups:
+    - OrgTree-Enterprise-Devices
+  exclude_groups:
+    - OrgTree-Enterprise-BreakGlass-Devices
+settings:
+  - path: Security/Account/MaximumPasswordAge
+    value: 60
+  - path: Security/Lockout/LockoutDuration
+    value: 15
+  - path: Device/Experience/LockScreenMessage
+    value: "Federal-operated device. Authorized use only."
+  - path: Browser/Edge/SmartScreen/Enable
+    value: true
+provenance:
+  derives_from_gpos:
+    - { guid: "{8d1a7fc9-...}", gpo_name: "Enterprise Endpoint Baseline" }
+    - { guid: "{2f6e4c7a-...}", gpo_name: "Global Browser Hardening" }
+  canon_source: docs/customer-documents/compliance/policy-libraries/intune-templates.qmd
+```
+
+The manifest is versioned. A new version supersedes the old; both
+versions remain in Gitea; the delivery pipeline carries over only the
+newest `enabled: true` manifest. Legacy versions are auditable but
+not assigned.
+
+### Targeting
+
+Every Intune Configuration Profile targets OrgTree dynamic groups:
+
+- **Enterprise-wide:** `OrgTree-Enterprise-Devices` (all governed
+  devices).
+- **Division-wide:** `OrgTree-IT-Devices`, `OrgTree-FIN-Devices`.
+- **Department-scoped:** `OrgTree-IT-INF-Devices`.
+- **Role-scoped:** `OrgTree-HighRisk-Devices` (functional query on
+  device risk score).
+
+No profile targets "All devices" tenant-wide unless it is the
+Enterprise baseline. Narrower scoping keeps blast radius small.
+
+### Compliance policies
+
+Distinct from configuration profiles, Intune compliance policies
+evaluate device state and report compliant/noncompliant to Entra ID.
+Conditional Access then uses that signal.
+
+UIAO's compliance catalog (`policies/intune/compliance/`) includes:
+
+- Minimum OS version
+- Disk encryption required (BitLocker)
+- Firewall on
+- Defender real-time protection on
+- Device health attestation passed
+- Specific required apps installed
+- Specific prohibited apps absent
+
+Each policy is OrgPath-scoped and evaluates on a schedule. Noncompliant
+devices are evicted from the `OrgTree-Compliant-Devices` dynamic group,
+which is the CA signal for downstream enforcement.
+
+## Conditional Access — the access gate
+
+Conditional Access is how UIAO replaces the perimeter-based authority
+that GPOs inherited from network segmentation. CA policies target
+OrgTree groups, evaluate signals (device compliance, risk score,
+location, session age), and enforce controls (MFA, block, session
+limits).
+
+### The UIAO CA policy library
+
+The Posted Conditional Access Policy Library (9,650 words) enumerates
+~40 baseline policies, which UIAO canonicalises in
+`policies/conditional-access/` under manifests like:
+
+```yaml
+policy_id: CA-100-Enterprise-MFA
+display_name: "CA-100 · Enterprise · Require MFA for all users"
+state: enabled
+conditions:
+  users:
+    include_groups: [OrgTree-Enterprise-Users]
+    exclude_groups: [OrgTree-BreakGlass-Users]
+  applications:
+    include: all-cloud-apps
+    exclude: [scuba-assessment-apps]
+  client_app_types: [browser, mobileAppsAndDesktopClients]
+  sign_in_risk_levels: []
+grant:
+  controls: [require_mfa]
+  operator: AND
+session:
+  sign_in_frequency: 12h
+provenance:
+  canon_source: docs/customer-documents/compliance/policy-libraries/conditional-access.qmd
+  derived_from_baseline: Microsoft-CA-Baseline-v2024-Q2
+```
+
+### Canonical policy numbering
+
+The library follows a numbering convention that maps intent to scope:
+
+| Range | Meaning |
+|---|---|
+| CA-000–099 | Foundational / break-glass / emergency |
+| CA-100–199 | Enterprise baseline (all users) |
+| CA-200–299 | Division-scoped |
+| CA-300–399 | Department-scoped |
+| CA-400–499 | Role-scoped (executive, admin, high-risk) |
+| CA-500–599 | Workload-specific (M365, SharePoint, custom apps) |
+| CA-900–999 | Reserved — experimental / pilot |
+
+Adding a new policy picks the next open number in the right range;
+every policy has a short, human-readable display name that begins
+with its number.
+
+### Block vs require — the policy discipline
+
+UIAO policies lean heavily on "require" controls rather than "block"
+controls. The governance rationale: a block policy with a bad rule
+locks users out; a require policy with a bad rule requires a step
+that can be fixed. Block policies exist only for clear-cut deny cases
+(legacy auth, high-risk sign-ins, impossible-travel). Everything else
+is a require (MFA, compliant device, session lifetime).
+
+## Azure Arc + Guest Configuration — the server equivalent
+
+Windows Server policy — AD-managed registry settings, service states,
+installed features — migrates to **Azure Arc Guest Configuration**.
+Arc projects on-prem servers into Azure; Guest Configuration applies
+policy via DSC; Azure Policy governs assignment.
+
+### UIAO Arc Policy Library
+
+Policies live in `policies/azure-arc/` and look like:
+
+```yaml
+policy_id: ARC-SEC-TLS-v1
+display_name: "ARC-SEC-TLS · Disable TLS 1.0/1.1 on Arc-projected servers"
+mode: GuestConfiguration
+parameters:
+  audit_if_not_exists: true
+  enforce: true
+scope:
+  include_tags: [DeviceRole=AppServer, DeviceRole=GitServer]
+  exclude_tags: [Lifecycle=Decommissioning]
+configuration:
+  - setting: HKLM:/System/CurrentControlSet/Control/SecurityProviders/SCHANNEL/Protocols/TLS 1.0/Server/Enabled
+    value: 0
+  - setting: HKLM:/System/CurrentControlSet/Control/SecurityProviders/SCHANNEL/Protocols/TLS 1.1/Server/Enabled
+    value: 0
+provenance:
+  derives_from_gpos:
+    - { guid: "{a7d2-...}", gpo_name: "Server TLS Hardening" }
+  canon_source: docs/customer-documents/compliance/policy-libraries/azure-arc.qmd
+```
+
+### Targeting via Azure tags
+
+Arc policy targeting uses Azure resource tags, which UIAO keeps in
+sync with OrgPath. A server tagged `OrgPath=ORG-IT-INF-PLATFORM` +
+`DeviceRole=GitServer` picks up every policy whose `include_tags`
+match. The tag sync is a MOD_M-monitored job; if an Arc-projected
+server's tag drifts from the Entra device's OrgPath, drift opens a
+ticket.
+
+## The policy-delivery pipeline
+
+Policies flow through the same three-stage pipeline as identity
+changes (Chapter 03):
+
+1. **Analyze.** Plan stage reads the Gitea `policies/` tree, compares
+   to the live Intune/CA/Arc state via Graph/ARM, produces a diff.
+2. **Plan.** Propose creations, updates, and retirements. Each action
+   targets a single policy. Canonical action types include
+   `create-intune-configuration-profile`, `update-ca-policy`,
+   `assign-arc-guest-configuration`, `retire-policy`.
+3. **Deliver.** Execution Substrate invokes Graph + ARM; verifies
+   each policy's actual-after state; records result.
+
+A typical policy-run plan has tens-to-hundreds of actions. The
+evidence packet contains the full Graph snapshot of every policy
+after delivery.
+
+## Conflict resolution
+
+When two Intune profiles target the same device with conflicting
+settings, Intune applies a documented precedence. UIAO enforces a
+**canonical precedence order** to keep conflicts predictable:
+
+1. Enterprise baseline profiles (`OrgTree-Enterprise-*`)
+2. Division profiles
+3. Department profiles
+4. Role-scoped profiles
+5. Device-specific profiles (emergency patches)
+
+Conflicts that would violate this order are flagged at plan-validation
+time — the plan fails until the conflict is resolved in canon.
+
+For CA, UIAO enforces a similar order and prohibits policies that
+`require` at a broader scope while `blocking` at a narrower scope (a
+pattern that produces user-lockouts that are hard to debug).
+
+## Break-glass carve-outs
+
+Every CA policy library includes a standard carve-out pattern:
+`OrgTree-BreakGlass-Users`. The break-glass dynamic group contains two
+to five emergency admin accounts that are explicitly excluded from
+block-class CA policies. The accounts are stored in a PAM vault
+(CyberArk adapter), used only in documented emergencies, and audited
+weekly against MOD_M.
+
+Break-glass carve-outs are not "backdoors." They are documented,
+monitored, reviewed, and revoked on a schedule. Every use opens an
+incident ticket.
+
+## Testing
+
+Policy changes are tested in four places before reaching production:
+
+1. **Canon validation** — MOD_J runs schema + boundary + conflict
+   checks at plan validation.
+2. **Mock tenant** — MOD_O's enforcement test harness applies the
+   proposed policy to a simulated tenant; Pester tests assert the
+   expected effects.
+3. **Pilot group** — a `OrgTree-Pilot-Users` / `OrgTree-Pilot-Devices`
+   group gets the policy first for N days; drift engine watches.
+4. **Production rollout** — general availability follows a clean
+   pilot with zero drift findings.
+
+No policy reaches production without all four. The pipeline enforces
+this; policies that skip stages are rejected.
+
+## Retiring legacy GPOs
+
+The endgame: every user account is Intune-managed, every server is
+Arc-projected, every CA policy is OrgPath-scoped. Legacy GPOs can
+then be retired.
+
+The retirement is done in phases matching the migration (Chapter 04):
+
+- **Phase 1.** Every GPO flagged as "migrated" in the canon has its
+  link removed from the legacy OU (the settings are now delivered by
+  Intune/CA/Arc).
+- **Phase 2.** Unlinked GPOs are marked `deprecated: true` and kept
+  for 90 days as a rollback window.
+- **Phase 3.** After 90 days of zero drift findings in the modern
+  surface, GPOs are deleted via a governed deprecation PR.
+
+The last GPO to go is typically a password-policy GPO that legacy
+Kerberos-bound apps depend on. That GPO retires only when Chapter 06
++ Chapter 07 complete the compute migration.
+
+## Verification
+
+Policy migration passes when:
+
+- [ ] Every Intune Configuration Profile, Compliance Policy, CA
+      policy, and Arc Guest Configuration derives from a canonical
+      manifest in `policies/` in Gitea.
+- [ ] Every manifest targets OrgTree-scoped dynamic groups (no
+      manually-curated groups).
+- [ ] The legacy forest has zero linked GPOs other than deprecated
+      ones within the 90-day window.
+- [ ] MOD_M reports zero drift for every policy.
+- [ ] The nightly assessment → plan run produces a zero-action plan
+      for the `policies/` tree.
+
+## Cross-references
+
+- **Posted:** UIAO Conditional Access Policy Library (9,650 words) ·
+  UIAO Intune Policy Templates (11,190 words) · UIAO Azure Arc Policy
+  Library (6,244 words).
+- **Customer Documents:**
+  [compliance/policy-libraries](../../compliance/policy-libraries/index.qmd);
+  [adapter-specs/intune](../../adapter-specs/intune/intune.qmd);
+  [adapter-specs/entra-id](../../adapter-specs/entra-id/entra-id.qmd).
+- **Canon:** MOD_K Enforcement Decision Trees (policy conflict rules);
+  MOD_O Mock Tenant Test Harness.
+
+---
+
+**Next:** [Chapter 06 — Services: DNS, DHCP, IPAM in Hybrid Cloud](06-network-services.qmd)

@@ -1,0 +1,301 @@
+---
+title: "Platform Server Build Guide — Windows Server 2025 with Gitea, IIS, Intune, Azure Arc, and OrgTree"
+subtitle: "Canonical 14-phase runbook for the UIAO on-premises governance substrate"
+doc-type: runbook
+doc-id: UIAO_SBG_001
+version: "1.1"
+status: DRAFT
+audience: "Platform engineers · sysadmins"
+canon-source: "inbox/Posted/UIAO Platform Server Build Guide — Windows Server 2025 with Gitea and IIS.docx"
+derived-from: "UIAO_SBG_001 v1.0 (Posted) + OrgTree canon (MOD_A..MOD_Z)"
+boundary: "gcc-moderate (M365 SaaS); IaaS per ADR-001"
+aspirational: true
+---
+
+# Platform Server Build Guide {.unnumbered}
+
+::: {.callout-note title="Canon derivation"}
+This page consolidates two canonical sources:
+
+1. **UIAO Platform Server Build Guide** (`UIAO_SBG_001 v1.0`) — the 13-phase
+   PowerShell-first runbook for Windows Server 2025, IIS, Gitea, Intune, and
+   Azure Arc. Operational PowerShell procedures are authoritative there; this
+   page summarizes and cites them.
+2. **OrgTree Modernization Canon** (`MOD_A..MOD_Z`) — the governance model
+   for OrgPath encoding, dynamic groups, Administrative Units, and drift
+   detection. Phase 14 below instantiates this canon for the platform server.
+
+The Posted `.docx` remains the operational source-of-truth for per-command
+detail. This page adds **Phase 14 — OrgTree Integration** and provides the
+navigational/canonical home inside the customer-documents portal.
+:::
+
+::: {.callout-warning}
+## Aspirational — canonically declared, partially adopted
+
+Phases 1–13 are field-tested (Posted v1.0). Phase 14 OrgTree Integration is
+canonically declared but operationally new; MOD_M drift detection hooks and
+AU-scoped Gitea authorization are under development.
+:::
+
+## Architecture in one page
+
+A single Windows Server 2025 host runs Gitea on port 3000, fronted by IIS as
+an HTTPS reverse proxy on 443. Authentication chains AD DS (LDAPS) for local
+accounts and Entra ID (OAuth2/OIDC) for federated users. The host enrolls in
+Intune for compliance telemetry and Azure Arc for hybrid management. As of
+this revision, the host is also a first-class OrgTree object: it carries an
+OrgPath, lives inside an Administrative Unit, and emits drift state to the
+MOD_M engine.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ Windows Server 2025 (UIAO-GIT01)                                 │
+│   OrgPath: ORG-IT-INF-PLATFORM  (extensionAttribute1)            │
+│   AU:      AU-ORG-IT-INF-PLATFORM                                │
+│                                                                  │
+│   IIS :443 (HTTPS) ──reverse proxy──▶ Gitea :3000               │
+│     │                                   │                        │
+│     ├─ AD DS LDAPS (primary auth)       ├─ Repos on D:\GitRepos  │
+│     ├─ Entra OIDC (federated SSO)       ├─ Hooks (governance)    │
+│     └─ Client cert (mTLS optional)      └─ Intune compliance tag │
+│                                                                  │
+│   Azure Arc agent → drift reporting → MOD_M engine               │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+## Phase summaries
+
+Detailed PowerShell and configuration content for each phase lives in the
+Posted guide. Summary + cross-reference:
+
+| # | Phase | Purpose | Posted §  |
+|---|---|---|---|
+| 1 | Windows Server 2025 base | Core role install, patch baseline, firewall profile, WinRM lockdown | §4 |
+| 2 | IIS install + configuration | URL Rewrite, Application Request Routing, health probes, logging targets | §5 |
+| 3 | TLS certificates | ACME or enterprise CA issuance, private key ACL, binding to IIS site | §6 |
+| 4 | Gitea install | Service account, D: data volume, `app.ini` canonical values, service registration | §7 |
+| 5 | IIS reverse proxy | Rewrite rules for 443→3000, HSTS, request size limits, X-Forwarded-For hand-off | §8 |
+| 6 | AD LDAPS authentication | `source-config` in Gitea, LDAPS bind account, search base scoped to OrgPath-governed OUs | §9 |
+| 7 | Entra OAuth2/OIDC | App registration, redirect URIs, group claim configuration, auto-provisioning | §10 |
+| 8 | Clone UIAO repo | Initial `git clone` from GitHub origin, Gitea mirror configuration, LFS enablement | §11 |
+| 9 | Gitea governance hooks | Pre-receive / post-receive hooks for canon validation, signed-commit enforcement, Quarto render triggers | §12 |
+| 10 | Intune compliance | Autopilot or manual enrollment, compliance policy scoping, attestation reporting to Graph | §13 |
+| 11 | Azure Arc enrollment | Service principal auth, azcmagent connect, policy assignment, Monitor Agent extension | §14 |
+| 12 | Backup, replication, DR | `Backup-UIAOGitea` function, Azure Blob upload, active-passive replica, RPO/RTO targets | §15 |
+| 13 | Security hardening | CIS baseline, AppLocker, Defender for Servers Plan 2, audit policy, WDAC | §16 |
+| **14** | **OrgTree integration** | **OrgPath tagging · AU delegation · dynamic-group Gitea auth · MOD_M drift hooks · OrgPath-scoped Intune compliance** | *new — this page* |
+
+## Phase 14 — OrgTree Integration
+
+Phase 14 registers the platform server inside the Modernization canon. Five
+sub-phases, each citing a MOD_* appendix rather than duplicating it.
+
+### 14.1 OrgPath tagging
+
+Every governed object — users, groups, devices, servers — carries an
+OrgPath in `extensionAttribute1`. The platform server sits in the IT
+Infrastructure Platform branch.
+
+```
+OrgPath:  ORG-IT-INF-PLATFORM
+Codebook: MOD_A (OrgPath Codebook) — validation regex ^ORG(-[A-Z]{2,6}){0,4}$
+```
+
+Set the OrgPath on the Entra device object and mirror it to Azure tags on
+the Arc-projected resource:
+
+```powershell
+# Entra device object — set extensionAttribute1
+Update-MgDevice -DeviceId $serverDeviceId `
+  -ExtensionAttributes @{ extensionAttribute1 = "ORG-IT-INF-PLATFORM" }
+
+# Azure Arc resource — mirror to tags (extends Posted §14.6)
+az connectedmachine update `
+  --name "UIAO-GIT01" `
+  --resource-group "rg-uiao-governance" `
+  --tags OrgPath=ORG-IT-INF-PLATFORM `
+         OrgPathBranch=ORG-IT-INF `
+         OrgPathDivision=ORG-IT `
+         DeviceRole=GitServer `
+         DeviceTier=Tier0
+```
+
+The codebook entry `ORG-IT-INF-PLATFORM` must exist in MOD_A before this
+runs; missing entries are rejected by MOD_H (OrgPath JSON Schema) and flagged
+as **Format Drift** by MOD_M.
+
+**Canonical references:** MOD_A (codebook), MOD_C (attribute mapping),
+MOD_H (JSON schema).
+
+### 14.2 Administrative Unit for server-admin delegation
+
+Server administration is delegated via an AU scoped to the Platform team's
+OrgPath. The AU is a Tier-3 Department-level unit per MOD_D's three-tier
+delegation model.
+
+| Field | Value |
+|---|---|
+| AU name | `AU-ORG-IT-INF-PLATFORM` |
+| Tier | 3 (Department) |
+| Membership rule | `(user.extensionAttribute1 -startsWith "ORG-IT-INF-PLATFORM")` |
+| Restricted | Yes |
+| Scoped roles | Authentication Administrator · User Administrator · Helpdesk Administrator |
+
+Create and populate via MS Graph:
+
+```powershell
+# Create the AU (idempotent — pattern per MOD_D)
+$au = New-MgDirectoryAdministrativeUnit -BodyParameter @{
+  displayName          = "AU-ORG-IT-INF-PLATFORM"
+  description          = "Platform infrastructure team — scoped delegation"
+  visibility           = "HiddenMembership"
+  isMemberManagementRestricted = $true
+}
+
+# Assign scoped role (pattern from MOD_D Role Assignment Matrix)
+New-MgRoleManagementDirectoryRoleAssignment -BodyParameter @{
+  roleDefinitionId = "<Authentication Administrator roleTemplateId>"
+  principalId      = "<OrgTree-IT-INF-PLATFORM-Admins group objectId>"
+  directoryScopeId = "/administrativeUnits/$($au.Id)"
+}
+```
+
+Global roles (Global Administrator, Privileged Role Administrator) are
+explicitly **not** granted here; platform administrators have no tenant-wide
+scope.
+
+**Canonical references:** MOD_D (Delegation Matrix — §Tier 3 Department AUs),
+MOD_Q (SLA Escalation Playbooks — for permission-review cadence).
+
+### 14.3 Gitea authorization via dynamic groups
+
+Gitea's team model maps to OrgTree dynamic groups rather than hand-maintained
+membership. Three groups govern the UIAO canon repo:
+
+| Gitea role | Dynamic group | Membership rule (MOD_B §Pattern 1) |
+|---|---|---|
+| Owner | `OrgTree-IT-INF-PLATFORM-CanonStewards` | `(user.extensionAttribute1 -eq "ORG-IT-INF-PLATFORM-STW")` |
+| Write | `OrgTree-IT-INF-PLATFORM-Contributors` | `(user.extensionAttribute1 -startsWith "ORG-IT-INF-PLATFORM")` |
+| Read | `OrgTree-IT-INF-Users` | `(user.extensionAttribute1 -startsWith "ORG-IT-INF")` |
+
+Because the Entra OIDC provider (Posted §10) emits group claims, Gitea sees
+dynamic-group membership as native team membership — no manual Gitea user
+admin is required. A user's move in the HR feed propagates through the
+dynamic-group rules and arrives as a Gitea permission change within the
+Entra group-recalculation window (typically < 15 minutes).
+
+Group names must conform to `OrgTree-[SCOPE]-[PURPOSE]` per MOD_B §Naming
+Convention. Non-conforming groups are Phantom Drift.
+
+**Canonical references:** MOD_B (Dynamic Group Library — §Naming, §Pattern 1
+Branch Query), MOD_E (Governance Workflow Catalog — joiner/mover/leaver
+recalculation).
+
+### 14.4 MOD_M drift detection hook
+
+The platform server emits its canonical state to MOD_M on a schedule. Five
+drift signals are reported; any non-zero count opens an SLA ticket per MOD_Q.
+
+| Signal | Detection | Drift category |
+|---|---|---|
+| OrgPath mismatch (Entra vs. Azure tag) | Compare `extensionAttribute1` to Arc `OrgPath` tag | Value Drift |
+| OrgPath not in codebook | Regex + MOD_A lookup | Format Drift / Orphan |
+| AU membership lost | `Get-MgDirectoryAdministrativeUnitMember` returns empty | Hierarchy Drift |
+| Dynamic group missing from Gitea team | Graph group claim vs. Gitea team list | Phantom Drift |
+| Arc agent heartbeat stale > 24h | `azcmagent show` lastHeartbeat | Operational (non-drift alert) |
+
+Reporter script runs as a scheduled task under the service principal used
+for Arc (no interactive credentials on the box):
+
+```powershell
+# Phase 14.4 — MOD_M drift reporter (skeleton)
+$state = [ordered]@{
+  deviceId      = $env:ComputerName
+  orgPath       = (Get-ArcTag -Key OrgPath)
+  expectedPath  = (Get-EntraDeviceAttr -DeviceId $deviceId -Name extensionAttribute1)
+  auId          = (Get-MgDirectoryAdministrativeUnit -Filter "displayName eq 'AU-ORG-IT-INF-PLATFORM'").Id
+  gitEAuthTeams = (Invoke-GiteaApi -Endpoint "/orgs/uiao/teams" | Select-Object -ExpandProperty name)
+  timestamp     = (Get-Date -Format o)
+}
+Submit-DriftReport -Engine MOD_M -Payload $state
+```
+
+Full reporter and schema are canonical in MOD_M; the Posted §17 Validation
+and Smoke Testing section becomes a consumer of this payload.
+
+**Canonical references:** MOD_M (Drift Detection Engine Specification — §Five
+Drift Categories), MOD_Q (SLA Escalation Playbooks), MOD_X (Telemetry Model).
+
+### 14.5 OrgPath-scoped Intune compliance targeting
+
+Phase 10 in the Posted guide applies a flat compliance policy. Phase 14.5
+scopes that policy to devices whose `OrgPath` device-attribute starts with
+the Platform branch.
+
+```
+Device dynamic group:  OrgTree-IT-INF-PLATFORM-Devices
+Membership rule:       (device.extensionAttribute1 -startsWith "ORG-IT-INF-PLATFORM")
+Intune policy:         "UIAO-GIT-ServerCompliance-v2"
+Assignment scope:      OrgTree-IT-INF-PLATFORM-Devices (include)
+Exclusion:             none
+```
+
+Benefits: policy edits for the Platform branch don't touch other IT
+subgroups; joiner-replacement hardware inherits compliance targeting the
+moment its OrgPath is set; the drift engine flags any platform device
+whose OrgPath does not resolve to this group.
+
+**Canonical references:** MOD_B (dynamic group patterns for device objects),
+MOD_D (scoping), MOD_U (Multi-Cloud Boundary Model — confirms Intune falls
+inside GCC-Moderate).
+
+## Validation
+
+Phase 14 passes when:
+
+- [ ] `ORG-IT-INF-PLATFORM` is present in MOD_A codebook YAML.
+- [ ] The Entra device object for `UIAO-GIT01` has `extensionAttribute1 =
+      ORG-IT-INF-PLATFORM`.
+- [ ] Azure Arc tags on `UIAO-GIT01` include `OrgPath=ORG-IT-INF-PLATFORM`.
+- [ ] `AU-ORG-IT-INF-PLATFORM` exists, is restricted, and contains the
+      Platform Stewards and Contributors groups as members.
+- [ ] The three Gitea teams map 1:1 to the dynamic groups in §14.3.
+- [ ] A manual `Submit-DriftReport` returns zero drift findings.
+- [ ] Intune compliance policy `UIAO-GIT-ServerCompliance-v2` is assigned
+      only to `OrgTree-IT-INF-PLATFORM-Devices`.
+
+## Canonical references
+
+Every appendix is listed in [the OrgTree canon page](../../modernization/orgtree.qmd).
+Source markdown lives at `src/uiao/modernization/orgtree/` in the monorepo.
+
+| Appendix | Title | In-site anchor | Used by phase |
+|---|---|---|---|
+| MOD_A | OrgPath Codebook | [codebook](../../modernization/codebook.qmd) | 14.1 |
+| MOD_B | Dynamic Group Library | [dynamic-groups](../../modernization/dynamic-groups.qmd) | 14.3, 14.5 |
+| MOD_C | Attribute Mapping Table | [orgtree](../../modernization/orgtree.qmd) | 14.1 |
+| MOD_D | Delegation Matrix (AUs + Roles) | [delegation](../../modernization/delegation.qmd) | 14.2, 14.5 |
+| MOD_E | Governance Workflow Catalog | [orgtree](../../modernization/orgtree.qmd) | 14.3 |
+| MOD_F | Migration Runbook (OU → Entra) | [orgtree](../../modernization/orgtree.qmd) | context |
+| MOD_H | OrgPath JSON Schema | [orgtree](../../modernization/orgtree.qmd) | 14.1 |
+| MOD_M | Drift Detection Engine | [orgtree](../../modernization/orgtree.qmd) | 14.4 |
+| MOD_Q | SLA Escalation Playbooks | [orgtree](../../modernization/orgtree.qmd) | 14.2, 14.4 |
+| MOD_U | Multi-Cloud Boundary Model | [orgtree](../../modernization/orgtree.qmd) | 14.5 |
+| MOD_X | Governance Telemetry Model | [orgtree](../../modernization/orgtree.qmd) | 14.4 |
+
+## Supersession and provenance
+
+This page supersedes the OrgTree-related fragments of the Posted v1.0 guide
+(specifically the 5-line §14.6 "Apply Azure Tags for OrgPath Alignment").
+Phases 1–13 continue to reference the Posted runbook as the operational
+source; Phase 14 is authored here and inherits from the MOD canon.
+
+- **Posted source:** `UIAO_SBG_001 v1.0` — `UIAO Platform Server Build
+  Guide — Windows Server 2025 with Gitea and IIS.docx` (1,864 lines).
+- **Canon anchors:** `src/uiao/modernization/orgtree/document-registry.yaml`
+  entries MOD_A, MOD_B, MOD_C, MOD_D, MOD_E, MOD_F, MOD_H, MOD_M, MOD_Q,
+  MOD_U, MOD_X.
+- **ADR dependency:** ADR-001 (Git Infrastructure — Gitea behind IIS).
+- **Boundary:** GCC-Moderate for M365 SaaS interactions; IaaS (Arc, Azure
+  tags, Log Analytics) per ADR-001's commercial-FedRAMP exception.
