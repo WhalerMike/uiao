@@ -1,0 +1,313 @@
+---
+title: "Chapter 07 — Compute: Domain-Joined → Entra + Intune + Azure Arc"
+subtitle: "Device object transformation · PCs to Entra + Intune · servers to Azure Arc · SPN + Kerberos retirement"
+doc-type: series-chapter
+series-id: client-server-to-hybrid-cloud
+chapter: 7
+audience: "Endpoint admins · server engineers · modernization program managers"
+canon-source: "Posted AD Computer Object Conversion Guide + DM_060 Device Management Adapter"
+date: 2026-04-24
+aspirational: true
+---
+
+# Chapter 07 — Compute: Domain-Joined → Entra + Intune + Azure Arc {.unnumbered}
+
+*The largest remaining AD dependency, and the one most often underestimated*
+
+::: {.callout-important title="The compute claim"}
+Compute objects — domain-joined PCs and servers — are the single
+largest remaining AD dependency once identity (Chapter 04), policy
+(Chapter 05), and services (Chapter 06) have moved. PCs retire
+into **Entra Joined + Intune**. Servers retire into **Azure Arc +
+Guest Configuration**. Kerberos-bound applications lose their
+domain-join anchor and migrate to modern auth or are retired.
+
+This chapter ends at "no device authenticates to AD." That is the
+final precondition for AD DS retirement.
+:::
+
+## The four device states
+
+Microsoft's device-join model has four states. Understanding them is
+the precondition for planning any compute migration.
+
+| State | Primary auth | Managed by | When to use |
+|---|---|---|---|
+| **Domain-Joined** (legacy) | AD Kerberos | GPO | Legacy — migration origin |
+| **Azure AD Registered** | Personal Microsoft / work account overlay | Intune (optional) | BYOD; rarely used in federal |
+| **Entra Hybrid Joined** | Both AD + Entra (simultaneous) | GPO + Intune | Transition state — not a target |
+| **Entra Joined** | Entra only | Intune | Target for user PCs |
+| **Arc-connected server** | Entra managed identity | Azure Arc + Guest Config | Target for servers |
+
+Two architectural rules apply:
+
+1. **Hybrid Joined is a transition, not a destination.** Every
+   Hybrid Joined device is a device whose modernization has begun
+   but not finished. A modernization that leaves devices Hybrid
+   Joined permanently has not completed.
+2. **The target depends on the device class.** User PCs go to Entra
+   Joined + Intune. Servers (Windows + Linux) go to Azure Arc +
+   Guest Configuration. These are distinct target states; they
+   share Intune-compliance telemetry but not the management model.
+
+## The device migration problem
+
+Every domain-joined device has three AD dependencies that must be
+resolved before domain-unjoin:
+
+- **Identity.** The device object authenticates to AD via Kerberos.
+  Its computer account is in an OU; GPOs apply through that OU.
+- **Policy.** Device configuration — local admins, registry settings,
+  software deployment, startup scripts — arrives via GPO.
+- **Trust.** The device's certificate store trusts AD-issued CAs;
+  its smart-card logon chain relies on ADCS; its RADIUS / 802.1X
+  supplicant may use AD credentials.
+
+For each of those dependencies, a modernization must land a
+replacement *before* the domain-unjoin. Otherwise the device ships
+with a policy gap, a trust gap, or both.
+
+## The DM_060 adapter
+
+Device management has a canonical adapter in the registry (DM_060 —
+source present), with two primary implementations:
+
+- **SCCM → Intune co-management.** Transition pattern for existing
+  SCCM-managed fleets. Workloads shift from SCCM to Intune one at a
+  time (compliance policies first, then device configuration, then
+  app deployment, then Windows Update).
+- **Intune-native.** Direct enrollment for new / greenfield devices
+  via Autopilot. No SCCM step.
+
+DM_060's interface:
+
+- **Discovery.** Every device object (AD + Entra + Intune),
+  cross-correlated. Device age, OS version, last-logon, compliance
+  state, owning OU or Entra AU, BitLocker state, TPM state.
+- **Risk assessment.** Devices with stale passwords, unconstrained
+  delegation, missing TPM, unpatched OS, BitLocker suspended.
+- **Target architecture proposal.** Per-device or per-fleet
+  recommendation (Entra Joined vs Hybrid Joined transitional vs
+  retire vs Arc-project).
+- **Migration path.** Per-device sequence (enroll → co-manage → cut
+  workloads → unjoin).
+- **Validation.** Compliance policy evaluation post-migration;
+  BitLocker recovery key escrow; Autopilot hash on record.
+
+## Three migration patterns for user PCs
+
+### Pattern 1 — Greenfield (Autopilot)
+
+The lowest-risk pattern. New hardware is shipped directly from the
+OEM with Autopilot pre-registration. The first boot is an
+Entra-Joined enrollment; no domain-join happens. No AD dependency
+is created.
+
+This is the pattern UIAO pushes toward for any hardware refresh:
+new PCs are greenfield regardless of whether the fleet modernization
+is in progress.
+
+### Pattern 2 — Reset-and-re-enroll
+
+For existing domain-joined devices, the cleanest path is to back up
+user state, reset the device (Wipe / Reset this PC), and re-enroll
+via Autopilot. Post-reset the device is Entra-Joined from the start.
+
+This is operationally heavy for the user (loss of local customisation
+unless sync is working), but technically clean. Most federal agencies
+run this pattern for high-privilege user devices (admins, developers)
+where leaving any legacy AD trust is unacceptable.
+
+### Pattern 3 — Hybrid-then-cloud
+
+For fleets where reset-and-re-enroll is not operationally feasible,
+devices are first Hybrid Joined (both AD and Entra) via Entra
+Connect device writeback + GPO. Over a planned period (typically
+3–12 months), workloads migrate from GPO to Intune; then the device
+is converted to Entra Joined only; the AD side is dropped.
+
+This is the pattern UIAO documents as the common transition. It is
+the slowest of the three but causes the least operational
+disruption. The drift-engine monitors every step so a device
+doesn't get stuck Hybrid Joined forever.
+
+## Servers — the Azure Arc path
+
+Windows and Linux servers don't go through Intune in the same way
+user PCs do. They go through **Azure Arc**.
+
+### What Arc does
+
+Arc projects an on-prem (or other-cloud) server into Azure as a
+resource. The server appears in an Azure subscription; it gets a
+managed identity; it can receive Azure Policy + Guest Configuration
+assignments; it appears in Defender for Cloud + Monitor; it is
+governed the same way a native Azure VM is governed.
+
+Critically, Arc does **not** require the server to be in Azure. The
+server stays where it lives physically. Arc is the governance
+projection; the physical host is unchanged.
+
+### OrgPath-scoped Arc governance
+
+Every Arc-projected server gets tagged with its OrgPath:
+
+```
+OrgPath:         ORG-IT-INF-PLATFORM
+OrgPathBranch:   ORG-IT-INF
+OrgPathDivision: ORG-IT
+DeviceRole:      GitServer
+DeviceTier:      Tier0
+Environment:     Production
+```
+
+Azure Policy and Guest Configuration assignments target those tags.
+This is the same pattern as Intune for user devices — policy follows
+OrgPath.
+
+### Server migration sequence
+
+For each domain-joined server:
+
+1. **Enroll in Intune compliance tracking.** Server agent reports
+   compliance to Intune (via Graph API); CA uses the signal for
+   server-to-server auth policies.
+2. **Arc-connect.** Install azcmagent; register with Arc; apply
+   OrgPath tags.
+3. **Assign Azure Policy / Guest Configuration.** Settings that
+   previously came from GPO now come from Arc.
+4. **Validate.** Guest Configuration reports compliant; expected
+   settings present; drift engine reports zero.
+5. **Domain-unjoin.** Only once all legacy AD dependencies are
+   resolved (all Kerberos-bound clients migrated, no AD-anchored
+   local admins).
+6. **Post-unjoin validation.** Server reboots clean; Arc heartbeat
+   continues; Guest Config re-applies without AD.
+
+Most federal server fleets complete this sequence over 6–18 months
+depending on Kerberos-app inventory.
+
+## Kerberos and SPN retirement
+
+Every AD-joined server has an entry in the Kerberos SPN map
+(Chapter 02, Stream 5 + Stream 11). Each SPN represents an
+application or service that expects to be reached via Kerberos
+authentication. For each SPN, the modernization needs a decision:
+
+- **Migrate the application to modern auth.** OAuth2 / OIDC via
+  Entra App Registration. This is the preferred path.
+- **Retire the application.** If the app is legacy and due for
+  end-of-life, this may be the cheapest option.
+- **Keep the application on a Kerberos island.** Last-resort —
+  retain a minimal AD island hosting only the Kerberos-bound
+  application, with a documented end-of-life date.
+
+The SPN → app mapping determines the sequence: no server can
+domain-unjoin until every SPN on that server has been resolved
+(migrated, retired, or islanded).
+
+## OrgPath on devices — the AU scoping story
+
+User devices carry OrgPath in `extensionAttribute1` just like users.
+This drives:
+
+- **Device dynamic groups.**
+  `(device.extensionAttribute1 -startsWith "ORG-FIN")` captures all
+  Finance devices.
+- **Intune compliance scoping.**
+  `OrgTree-FIN-Devices` is the target group for Finance-specific
+  compliance policies.
+- **CA device-state targeting.** CA policies that require
+  "compliant device" can be scoped per OrgPath branch.
+
+The drift-engine monitors device OrgPath the same way it monitors
+user OrgPath — if the device's OrgPath disagrees with its owning
+user's OrgPath (e.g., a Finance PC assigned to an HR user), that's
+**Value Drift**.
+
+## Certificate-based authentication
+
+When domain-joined PCs go away, smart-card logon anchored in ADCS
+goes with them. The replacement is **Entra Certificate-Based
+Authentication (CBA)**.
+
+Entra CBA accepts certificates issued by a trusted CA (enterprise
+ADCS, cloud-hosted CA, or hybrid) and authenticates the user to
+Entra. Smart-card logon keeps working; the chain just ends in Entra
+instead of AD. This is a Chapter 08 topic in detail; the
+device-side prerequisite is that every user PC has the Entra CBA
+client + a valid user certificate.
+
+## Lifecycle — Autopilot and the device-reset pattern
+
+Once the compute fleet is Entra Joined, device lifecycle becomes
+drastically simpler:
+
+- **Joiner.** Autopilot deploys directly from OEM shipping; user
+  signs in with their Entra UPN; device is compliance-enrolled; CA
+  policies kick in; apps install from Intune; BitLocker key is
+  escrowed in Entra.
+- **Mover.** The user's OrgPath changes; device dynamic groups
+  recompute; Intune policy re-applies; BitLocker key re-encrypts
+  to the new OrgTree-IT-PLATFORM key if the OrgPath change warrants.
+- **Leaver.** The device is retired or repurposed via Intune. If
+  retired, the Entra object is deleted; if repurposed, the device
+  is Autopilot-reset and picks up a new user's policies on next
+  sign-in.
+
+No OU move, no domain-unjoin, no manual GPO re-link, no AD cleanup.
+Device lifecycle is policy, not infrastructure.
+
+## Validation
+
+Compute migration passes when:
+
+- [ ] Every user PC is Entra Joined (not Hybrid Joined, not
+      Domain-Joined).
+- [ ] Every server is Arc-connected (or documented as exempt with
+      retirement schedule).
+- [ ] Every device has a valid OrgPath in
+      `extensionAttribute1`.
+- [ ] Every Intune compliance policy targets OrgTree-scoped groups.
+- [ ] Every Azure Policy / Guest Configuration targets OrgPath
+      tags.
+- [ ] Every SPN in the legacy AD SPN map has been resolved
+      (migrated, retired, or islanded with documented end-of-life).
+- [ ] MOD_M reports zero device drift for N days.
+- [ ] The nightly assessment → plan run produces a zero-action plan
+      for the `compute/` tree.
+
+The last box is the precondition for AD DS retirement. Until every
+compute object passes, AD cannot go away.
+
+## The last thing AD did
+
+When every device has moved, every app has migrated, every DNS zone
+is out, every DHCP scope is re-homed, every Kerberos SPN is
+resolved, and every GPO is retired — AD DS has no active consumers.
+
+This is the moment to shut it down.
+
+The actual retirement is mechanical: dcpromo-demote every DC,
+decommission the supporting VMs, delete the forest objects. The
+**hard part is the governance transformation that precedes it** —
+every chapter from 04 through 07 of this series.
+
+Chapter 08 wraps the remaining access-plane details (SASE, Zero
+Trust, MFA, CBA). Chapter 09 presents the phased program plan that
+sequences everything. Chapter 10 frames the executive takeaway.
+
+## Cross-references
+
+- **Posted:** UIAO AD Computer Object Conversion Guide — Entra ID,
+  Intune, and Azure Arc Governance (8,483 words).
+- **Canon:** DM_060 Device Management Adapter Interface (source
+  present) · MOD_D Delegation Matrix (device AU scoping) · MOD_M
+  (device drift categories).
+- **Customer Documents:**
+  [adapter-specs/intune](../../adapter-specs/intune/intune.qmd);
+  [modernization/access-plane](../access-plane/index.qmd).
+
+---
+
+**Next:** [Chapter 08 — Access Plane: SASE, Zero Trust, MFA, Certificate-Based Auth](08-access-plane.qmd)

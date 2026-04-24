@@ -1,0 +1,192 @@
+---
+title: "Chapter 00 — The Problem Nobody Talks About"
+subtitle: "Active Directory was never just an identity store. It was the implicit governance model."
+doc-type: series-chapter
+series-id: client-server-to-hybrid-cloud
+chapter: 0
+audience: "Federal CIOs · CISOs · modernization program managers"
+canon-source: "docs/modernization/directory-migration.qmd + MOD_001 Executive Summary"
+date: 2026-04-24
+aspirational: true
+---
+
+# Chapter 00 — The Problem Nobody Talks About {.unnumbered}
+
+*AD's Hidden Governance Surface*
+
+::: {.callout-important title="The thesis"}
+Active Directory was never just an identity store. It was the **implicit
+governance model** for every network service a federal agency ran. When
+agencies migrate "AD to Entra ID" and think the project is about users and
+groups, they retire the directory and silently break the governance. Most
+of the failures don't show up for months.
+
+This series is about not doing that.
+:::
+
+## What Microsoft sold you in 1999
+
+When Microsoft shipped Active Directory with Windows 2000, they sold it as
+an identity directory — a modern, replicated, Kerberos-anchored
+replacement for NT domains. That framing was true but incomplete.
+
+Over the next twenty-five years, every Windows-era infrastructure service
+quietly wired itself into AD. Not because Microsoft planned it that way in
+one grand design, but because AD was *the only enterprise-wide,
+governed, authenticated, replicated namespace* that the Windows ecosystem
+had. If you needed to know what a server was called, where it lived in
+the org, who was allowed to manage it, which certificates it should trust,
+which DHCP scope applied to it, which GPOs configured it, and which
+accounts had which service principal names bound to it — AD held every
+one of those answers.
+
+By the time an agency's AD forest was ten years old, it had become the
+single most load-bearing piece of governance infrastructure the agency
+owned. It was just never written down anywhere as "our governance model."
+
+## What breaks when AD goes away
+
+Microsoft is now deprecating the entire Client/Server stack. Entra ID
+replaces AD DS. Intune replaces Group Policy. Conditional Access replaces
+the network perimeter. Azure Arc extends cloud management to on-premises
+hosts. Entra Certificate-Based Authentication replaces ADCS-anchored
+smart-card logon. Azure Private Resolver + Private DNS replace
+AD-integrated DNS zones.
+
+Every one of those substitutions is a valid target. But Microsoft handed
+agencies the *tools* without the *framework*. The result is that when
+agencies migrate user objects into Entra ID's flat directory and declare
+victory, they leave behind eleven categories of infrastructure object
+that AD was silently governing:
+
+| # | Object Type | What AD Was Doing | What Breaks Without Governance |
+|---|------------|-------------------|-------------------------------|
+| 1 | **Users** | Identity lifecycle, OU placement, attribute authority | Orphaned accounts, privilege drift, compliance gaps |
+| 2 | **Computers** | Domain join, GPO targeting, machine certificates | Unmanaged endpoints, missing patches, security exposure |
+| 3 | **Service Accounts** | SPNs, Kerberos delegation, password management | Application authentication failures, silent service outages |
+| 4 | **Security Groups** | Access control, policy scoping, resource permissions | Permission sprawl, ungoverned access, audit failures |
+| 5 | **Group Policy Objects** | Device configuration, security baselines, software deployment | Configuration drift, inconsistent baselines, compliance gaps |
+| 6 | **DNS / DHCP** | Name resolution, IP allocation, AD-integrated zones | Name resolution failures, IP conflicts, split-brain DNS |
+| 7 | **PKI / Certificate Services** | Certificate issuance, auto-enrollment, CRL distribution | Silent certificate expiration, authentication failures, mTLS breaks |
+| 8 | **RADIUS / NPS** | 802.1X network access, VPN authentication, Wi-Fi auth | Network access failures, VPN outages, unauthorized access |
+| 9 | **LDAP** | Application authentication, directory queries, legacy integrations | Application login failures, directory query errors, broken integrations |
+| 10 | **SPNs / App Registrations** | Kerberos service principal names, application identity | Application SSO breaks, delegation failures, service identity loss |
+| 11 | **Trust Relationships** | Cross-domain authentication, forest trusts, selective authentication | Cross-domain access failures, authentication breaks between orgs |
+
+::: {.callout-warning title="Silent failure is the real enemy"}
+Look at the "What Breaks" column. Most of these failures don't throw
+errors. A certificate doesn't renew because the AD enrollment policy was
+never re-pointed. A RADIUS policy doesn't authorize a new device because
+the AD-group lookup returns empty. An LDAP-bound application silently
+stops querying because the bind account was decommissioned with AD DS.
+
+There is no log line that says "governance has failed." There is only
+a six-month tail of weird, untraceable outages and a compliance audit
+that finds the agency can't prove what it should have been doing.
+:::
+
+## The OU tree was the governance tree
+
+The other thing agencies underestimate is that AD's Organizational Unit
+tree was not a folder system. It was a **delegation graph, a policy
+inheritance engine, an operational boundary, and a security scope — all
+in one hierarchical structure**.
+
+When an administrator placed a user in `OU=IT,OU=Baltimore,OU=East,DC=contoso`,
+they were simultaneously:
+
+- Saying "this user is managed by the Baltimore IT delegated admins."
+- Inheriting every GPO that applied at East → Baltimore → IT.
+- Scoping the user to security groups that used OU-based rules.
+- Binding the user's identity to the delegation authority of that branch.
+- Stating an operational responsibility boundary for audit purposes.
+
+Entra ID has none of this. It's a flat directory. Dynamic groups,
+Administrative Units, and Conditional Access are powerful tools — but
+Microsoft did not provide a framework for how to use them together to
+replace what the OU tree was doing.
+
+That framework is the **OrgTree canon** ([Chapter 04](04-identity-transformation.qmd)).
+It encodes the OU hierarchy into a single user attribute (`OrgPath`), uses
+dynamic groups to materialise every subtree, uses Administrative Units to
+scope delegation, and uses Conditional Access to enforce policy. The result
+is governance that is equivalent to — and in several ways cleaner than —
+what AD was providing.
+
+## Why naïve migrations fail
+
+Almost every "AD to Entra ID" modernization project the industry has run
+has been scoped around users, groups, and mailboxes. That's the visible
+ten percent. The invisible ninety percent is the eleven categories above.
+
+A successful modernization has to:
+
+1. **Enumerate the hidden dependencies** before anything is retired.
+2. **Map each dependency to a modern target** — not always 1:1.
+3. **Preserve governance continuity** during the transition (no gaps
+   where nobody owns the delegation).
+4. **Deliver the transformed data** into the target surface via a
+   deterministic, governed pipeline — not a series of one-off admin
+   actions.
+5. **Detect drift** between what the plan said should exist and what
+   actually exists, continuously.
+
+Agencies don't fail at step 1 because they can't enumerate. They fail
+because no one tells them steps 1–5 exist as a discipline. They fail at
+the conceptual level: the idea that the project is just users and
+groups.
+
+## What UIAO is
+
+UIAO — the Unified Identity and Access Orchestrator — is the framework
+that handles all eleven categories as a single governed surface, with
+one transformation engine, one canon, one evidentiary pipeline, and one
+drift detector. Nothing in UIAO is a Microsoft tool substitute. Every
+UIAO component sits *above* Microsoft's (and third-party) tools and
+orchestrates them into a coherent governance model.
+
+A single Windows Server 2025 host (documented in
+[Chapter 01](01-platform-foundation.qmd)) runs:
+
+- **Gitea** as the canonical source of governance truth (every plan, every
+  policy, every codebook entry lives there as a versioned artifact).
+- **IIS** as the HTTPS reverse proxy and client-certificate terminator.
+- **Kerberos + enterprise PKI** bridges that let the server talk to
+  the legacy AD forest it's migrating away from.
+- **PowerShell, Python, and API-integrator scripts** that read the
+  Client/Server estate, compute transformation plans, validate them
+  against the canon, and deliver them into the Hybrid-Cloud target surface.
+
+The target surface is everything on the right side of the transformation
+arc: Entra ID, Administrative Units, Intune, Azure Arc, IPAM, DNS, DHCP,
+SASE, Zero Trust, MFA, Certificate-Based Authentication, and every
+governed adapter underneath.
+
+## What this series covers
+
+The chapters that follow walk the full arc:
+
+| Chapter | Covers |
+|---|---|
+| 01 | **The Platform.** One WS2025 host. What runs on it and why. |
+| 02 | **Analyzing the legacy.** Forest discovery. GPO inventory. DNS/DHCP scraping. Kerberos SPN audit. ADCS analysis. |
+| 03 | **The engine.** How UIAO turns analysis into a plan and a plan into delivered state. |
+| 04 | **Identity.** OrgTree, OrgPath, dynamic groups, AUs. The OU-tree replacement. |
+| 05 | **Policy.** GPO retirement. Intune compliance. Conditional Access. |
+| 06 | **Services.** DNS + DHCP + IPAM in the Hybrid-Cloud model. |
+| 07 | **Compute.** Device transformation. Domain-joined → Entra + Intune + Arc. |
+| 08 | **Access plane.** MFA. Zero Trust. SASE. CBA. |
+| 09 | **Roadmap.** Phased plan. Gates. Rollback. Cutover. |
+| 10 | **Leadership takeaway.** The "instruments vs. orchestra" framing. |
+
+## The bottom line
+
+AD retirement is not a migration project. It is a **governance
+transformation**. The hard part isn't the Graph API calls; it's the
+framework that decides what the target state looks like, how to prove
+it's right, and how to keep it right. UIAO is that framework, and this
+series is how it works.
+
+---
+
+**Next:** [Chapter 01 — The UIAO Platform Server](01-platform-foundation.qmd)

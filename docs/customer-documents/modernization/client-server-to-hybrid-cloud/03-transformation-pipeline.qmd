@@ -1,0 +1,313 @@
+---
+title: "Chapter 03 — Analysis → Plan → Delivery"
+subtitle: "The transformation engine — how UIAO turns an assessment into governed change on the target surface"
+doc-type: series-chapter
+series-id: client-server-to-hybrid-cloud
+chapter: 3
+audience: "Platform engineers · automation leads · canon stewards"
+canon-source: "MOD_N Execution Substrate Integration + MOD_K Decision Trees + Posted UIAO-Core CLI Reference"
+date: 2026-04-24
+aspirational: true
+---
+
+# Chapter 03 — Analysis → Plan → Delivery {.unnumbered}
+
+*The transformation engine*
+
+::: {.callout-important title="The pipeline contract"}
+UIAO turns an AD assessment into a delivered Hybrid-Cloud change through
+three sequential stages: **Analyze**, **Plan**, **Deliver**. Each stage
+produces a signed, versioned artifact in Gitea. Each stage has a distinct
+brain (Copilot or Execution Substrate) and a distinct authorization
+gate. Nothing skips a stage. Nothing touches the target surface without a
+plan. No plan touches the target surface without authorization.
+:::
+
+## Why three stages (not one)
+
+The obvious alternative — "scan the forest, apply the changes" — is how
+most modernization tools work. It fails for three reasons:
+
+1. **Changes aren't reviewable.** A tool that reads and writes in one
+   pass gives an operator no chance to inspect what is about to happen.
+2. **Provenance is thin.** If the scan drifts between read and write,
+   the resulting change is attributed to a phantom input.
+3. **Rollback is impossible.** Without a materialised plan, there is
+   no diff to invert.
+
+Separating Analyze, Plan, and Deliver gives UIAO three review gates,
+three audit trails, and three named artifacts per run. This is what
+"governed modernization" means in practice.
+
+## Stage 1 — Analyze
+
+**Input:** the raw assessment artifact set from Chapter 02.
+**Output:** a normalized analysis report + a proposed change set.
+**Brain:** Copilot (governance).
+
+The Analyze stage reads the eleven ingestion streams and produces four
+derivative artifacts, each stored in Gitea under
+`plans/<plan-id>/analysis/`:
+
+- **Current-state graph.** A normalized representation of the forest
+  — OUs, users, computers, groups, GPO links, trust edges, SPN map —
+  in a single graph (Python `networkx` or equivalent). This is the
+  input to every downstream decision.
+- **Target-state graph.** The proposed Hybrid-Cloud equivalent —
+  OrgPath hierarchy, dynamic group rule set, Administrative Unit map,
+  Conditional Access targeting, Intune compliance groupings, Azure Arc
+  tag set, IPAM record set. This is what the finished state looks like.
+- **Diff.** The machine-readable delta between current and target. A
+  list of proposed additions, modifications, retirements, and
+  no-change-needed items, each typed and each linked to a source
+  record in the assessment.
+- **Risk score.** The blast-radius model for the change set — which
+  users are affected, which downstream systems get touched, which
+  boundaries are crossed, which compliance controls are in scope.
+
+Analysis is deterministic: given the same assessment input, it produces
+the same four artifacts. This is the property the review gate depends
+on. An analysis whose output varies run-to-run is broken and rejected.
+
+## Stage 2 — Plan
+
+**Input:** the Analyze output + canon (MOD_A codebook, MOD_B group
+library, MOD_D delegation matrix, MOD_K decision trees).
+**Output:** a signed, executable Plan.
+**Brain:** Copilot (governance).
+
+The Plan stage takes the Diff and expands it into a structured,
+deterministic action sequence. Each action is:
+
+- **Typed** — one of ~30 canonical action types (e.g.
+  `create-user`, `set-extension-attribute`, `create-dynamic-group`,
+  `assign-admin-unit`, `set-ca-policy-target`,
+  `create-intune-compliance-policy`, `update-infoblox-record`,
+  `enroll-arc-server`, `rotate-kerberos-spn`).
+- **Scoped** — bounded to a single target object. No action type
+  permits "update all users whose …"; the scope is pre-materialised.
+- **Dependency-ordered** — actions that depend on others are ordered
+  behind them (create the AU before scoping the role to it).
+- **Rollback-paired** — every action has a generated inverse, so the
+  same plan can be run in reverse.
+- **Provenance-linked** — pointer back to the source assessment
+  record, the canon rule, and the analysis step that produced it.
+
+A plan is a YAML document that looks, in abbreviated form, like this:
+
+```yaml
+plan_id: 2026-04-24-1200-orgtree-phase2
+assessment_id: 2026-04-24-1030-UIAO-GIT01-tierB
+authorized_by: ~          # filled at authorization step
+boundary: gcc-moderate
+actions:
+  - id: A0001
+    type: create-administrative-unit
+    target:
+      display_name: AU-ORG-FIN
+      membership_rule: "(user.extensionAttribute1 -startsWith \"ORG-FIN\")"
+      restricted: true
+    provenance:
+      source: assessments/2026-04-24-1030/ou-hierarchy.json#ou/FIN
+      canon: MOD_D/tier2-au
+    rollback:
+      type: delete-administrative-unit
+      target: AU-ORG-FIN
+    depends_on: []
+  - id: A0002
+    type: assign-role-scoped
+    target:
+      role: User Administrator
+      principal: OrgTree-FIN-Admins
+      scope: /administrativeUnits/AU-ORG-FIN
+    provenance: …
+    depends_on: [A0001]
+```
+
+### Plan validation
+
+Before a plan is eligible for authorization, it passes through
+MOD_J (Governance Enforcement Test Suite):
+
+- **Schema validation** — conforms to the plan JSON schema.
+- **Canon validation** — every OrgPath used exists in MOD_A; every
+  dynamic-group name fits MOD_B's pattern; every AU matches MOD_D's
+  tier-structure; every role assignment is valid.
+- **Boundary validation** — no action targets an out-of-scope service;
+  no Commercial-Cloud call except Amazon Connect; classification
+  tags correctly set.
+- **Safety checks** — no action deletes more than N items at once
+  without explicit `require_confirmation`; no rotation of credentials
+  for roles marked `permanence: high`; no change to the governance
+  substrate itself outside a Canon Change Protocol PR.
+- **Idempotency check** — the plan is equivalent to re-planning from
+  the current state (so a re-run of a partially-completed plan is
+  safe).
+
+A plan that fails any validation is rejected and the diff returned to
+the steward for correction. Plans never partially-ship.
+
+### Authorization gate
+
+A validated plan is not yet executable. Authorization requires:
+
+- Canon Steward review in the Gitea PR interface.
+- A Copilot-generated summary of the plan's blast radius, attached to
+  the PR.
+- At least one approver of record (separation-of-duties).
+- Explicit sign-off on any actions marked `require_confirmation`.
+- A signed commit merging the plan into `plans/<plan-id>/authorized/`.
+
+Only after these gates complete does the plan graduate from
+`plans/<plan-id>/proposed/` to `plans/<plan-id>/authorized/`. Only an
+authorized plan can cross the handoff line to the Execution Substrate.
+
+## Stage 3 — Deliver
+
+**Input:** the authorized plan.
+**Output:** a result log, an evidence packet, and updated state in the
+target surface.
+**Brain:** Execution Substrate (execution).
+
+The Execution Substrate is deliberately a different process, running
+under a different service principal, with a different credential store
+and a different log stream than the governance brain. This is the
+Two-Brain split made concrete (ADR-002, chapter 01).
+
+Delivery proceeds as a linear walk through the plan's action list.
+For each action:
+
+1. **Fetch** the action spec from the authorized plan.
+2. **Resolve** the target object (Graph API lookup, Infoblox WAPI
+   fetch, Intune policy lookup, etc.).
+3. **Compare** current live state to the action's expected-before
+   state. If the world already matches expected-after, the action is
+   a no-op — mark as `skipped: already-matches` and continue.
+4. **Invoke** the adapter's write method with the action payload.
+5. **Verify** by re-reading the object and comparing to expected-after.
+6. **Record** the result — correlation ID, API response, timing,
+   actual-after state — to `plans/<plan-id>/results/<action-id>.json`.
+
+### Correlation IDs
+
+Every invocation carries a correlation ID that includes the plan ID,
+the action ID, and a unique run ID. That ID appears in:
+
+- The Graph/ARM/vendor-API call headers (so vendor-side logs can be
+  cross-referenced).
+- The local-machine Windows Event Log + Gitea commit message.
+- The evidence packet's provenance chain.
+- The MOD_X telemetry emission.
+
+A support case opened on a specific action can be traced end-to-end
+through every log stream. This is a requirement for federal audit,
+not a nice-to-have.
+
+### Failure modes and rollback
+
+An action can fail for three reasons:
+
+- **Transient** — network blip, throttling. Retried with backoff,
+  capped at N attempts.
+- **Adapter error** — vendor API returned 4xx/5xx. Action marked
+  `failed`; plan execution stops; no dependent actions run.
+- **Verification mismatch** — action invoked cleanly but re-read does
+  not match expected-after. Action marked `drift`; plan paused; MOD_M
+  opens an SLA ticket.
+
+On any non-transient failure, the plan has a choice:
+
+- **Halt** — stop at the failure; leave completed actions in place;
+  return to steward for remediation.
+- **Roll back** — invoke the rollback inverse for every completed
+  action in reverse order. Each rollback is itself a verified
+  operation with its own result log.
+
+The choice is action-typed (some actions are `rollback: never` —
+e.g. once you've deprovisioned a user, you rehire them, you do not
+"undelete" them). The default is halt; rollback is explicit.
+
+## Evidence packet
+
+At the end of delivery, the engine produces an evidence packet —
+a single immutable artifact that summarises the run for compliance
+and audit purposes. The packet contains:
+
+- The authorized plan (with Steward signature).
+- Every action result (with verification state + correlation IDs).
+- The actual-after state of every affected object (Graph snapshot).
+- The full run log (structured JSON).
+- An MOD_X telemetry export (compliance-facing).
+- A signed attestation from the Execution Substrate that "the
+  authorized plan was executed to completion with the results
+  recorded herein."
+
+The evidence packet is committed to Gitea at
+`plans/<plan-id>/evidence.json` and mirrored to the SIEM feed. Federal
+ATO packages consume it directly; FedRAMP ConMon consumes it on its
+continuous-monitoring cadence.
+
+## Concrete example — the end-to-end shape
+
+To make it concrete: an assessment discovers a Finance OU with 312
+users. The Analyze stage proposes an OrgPath scheme
+(`ORG-FIN`, `ORG-FIN-AP`, `ORG-FIN-BUD`), three dynamic groups
+(`OrgTree-FIN-Users`, `OrgTree-FIN-AP-Users`, `OrgTree-FIN-BUD-Users`),
+one Tier-2 AU (`AU-ORG-FIN`), and a role scoping (`User
+Administrator` → `OrgTree-FIN-Admins` → `AU-ORG-FIN`).
+
+The Plan stage expands that into ~320 actions: 312 user attribute
+sets, 3 dynamic-group creates, 1 AU create, 1 role assignment, plus
+validation actions. The plan is ~40 KB of YAML.
+
+Canon validation runs in ~90 seconds. The Steward reviews the plan's
+summary in the Gitea PR (blast radius: 312 users affected,
+boundary: GCC-Moderate, no out-of-scope calls, all actions
+rollback-paired). The Steward approves; the plan merges to
+`authorized/`.
+
+The Execution Substrate picks up the authorized plan, dispatches the
+actions in dependency order — AU first, dynamic groups second, user
+attributes third, role assignment last. Total wall-clock: ~12 minutes.
+Each action produces a result file; the final evidence packet is
+~180 KB; the MOD_X telemetry emission is forwarded to SIEM.
+
+The next assessment run (say, 24 hours later) reads the new state,
+produces a new analysis, and — since the world now matches the
+target — produces a **zero-action plan**. This is the "steady state"
+contract: when nothing has drifted, nothing needs to happen.
+
+## What governed modernization feels like
+
+The contrast with the old way is stark. A twenty-five-year-old agency
+forest has historically been modernized by:
+
+- Running vendor tools manually, project by project.
+- Writing change tickets after the change.
+- Reconciling outcomes in spreadsheets.
+- Discovering drift during audit.
+
+UIAO modernizes by:
+
+- Reading the forest once, structurally, into a versioned artifact.
+- Proposing the full target state as a reviewable diff.
+- Executing the diff under governance, with evidence per action.
+- Detecting drift continuously, before the audit finds it.
+
+Every stage produces a file in Gitea. Every file has a signature.
+Every signature points to an operator. The question *"who changed
+what, when, and why?"* has a literal answer in the commit history.
+
+## Cross-references
+
+- **Posted: UIAO-Core CLI Reference** — invocation surface for the
+  engine.
+- **Canon:** MOD_N Execution Substrate Integration Layer; MOD_K
+  Enforcement Decision Trees; MOD_S Governance OS State Machine;
+  MOD_J Governance Enforcement Test Suite.
+- **ADR-002 Two-Brain Execution** *(to author)* — the architectural
+  principle behind the Plan/Deliver split.
+
+---
+
+**Next:** [Chapter 04 — Identity: x.500 Hierarchy → Flat Entra ID + OrgPath](04-identity-transformation.qmd)
