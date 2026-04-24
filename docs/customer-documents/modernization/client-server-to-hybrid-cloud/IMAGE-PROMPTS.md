@@ -5,6 +5,14 @@
 > with the exact filename referenced by the chapter (e.g.
 > `04-orgpath-fanout.png`).
 >
+> **One-shot generation:** the sibling script `generate-series-images.py`
+> carries the same prompts plus a shared style header and produces all
+> 11 PNGs via Google Gemini's Nano Banana model. Run once with
+> `GEMINI_API_KEY` set; see the script's module docstring for usage.
+> The script is idempotent — existing PNGs are skipped unless `--force`
+> is passed. This catalog remains the source-of-truth reference; the
+> script embeds identical prompts so regenerations stay consistent.
+>
 > **Visual language for the series.** All figures should share a
 > consistent UIAO aesthetic:
 >
