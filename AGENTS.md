@@ -182,3 +182,14 @@ Adding, modifying, retiring, or superseding anything under `src/uiao/canon/` req
 - Governance review
 
 Direct commits that touch canon without an ADR reference are a governance drift signal.
+
+**I6. CLI commands live under sub-apps; new flat top-level commands are disallowed (see ADR-046).**
+Every command in `src/uiao/cli/` must be registered under a domain sub-app
+(`adapter`, `canon`, `conmon`, `evidence`, `generate`, `ir`, `ksi`,
+`orchestrator`, `oscal`, `scuba`, `substrate`, …). The only exception is the
+root `--version` / `--help` callback in `cli/app.py`. A PR that adds a flat
+top-level `@app.command(...)` is rejected at review unless it also introduces
+the sub-app that hosts it. The smoke test in
+`tests/test_cli_help_smoke.py` walks the Typer tree and asserts `--help`
+returns exit 0 for every command, catching import regressions across the
+whole surface.
