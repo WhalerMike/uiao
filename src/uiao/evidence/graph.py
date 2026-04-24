@@ -439,6 +439,87 @@ class EvidenceGraph:
             g.link_violated_by(control_id, finding_id)
 
     # ------------------------------------------------------------------
+    # DRIFT-SEMANTIC ingestion (UIAO_016 ↔ UIAO_113 bridge)
+    # ------------------------------------------------------------------
+
+    def ingest_drift_semantic(self, findings) -> int:
+        """Fold DRIFT-SEMANTIC findings from the freshness evaluator into the graph.
+
+        Accepts any iterable of objects exposing the
+        :class:`uiao.freshness.drift_semantic.FreshnessFinding` attribute
+        surface (``status``, ``severity``, ``adapter_id``, ``run_id``,
+        ``ksi_id``, ``age_hours``, ``window_hours``, ``evaluated_at``,
+        ``policy_source``, ``evidence_timestamp``, ``details``). Duck-typing
+        keeps the graph module free of a runtime dependency on the
+        ``uiao.freshness`` package.
+
+        Behavior per finding:
+            * ``status == "fresh"`` → skipped (nothing to record).
+            * otherwise → a new :class:`FindingNode` with
+              ``drift_class="DRIFT-SEMANTIC"`` and Finding-vocabulary severity.
+              If a NIST-style control can be inferred from ``ksi_id`` and a
+              matching :class:`ControlNode` exists in the graph, a
+              ``violated-by`` edge is added.
+
+        Returns the number of Finding nodes added. Idempotent under repeat
+        ingestion: finding IDs are deterministic from ``run_id + adapter_id``,
+        so re-ingesting the same evaluator output does not duplicate nodes.
+        """
+        severity_map = {
+            "P1": "High",
+            "P2": "High",
+            "P3": "Medium",
+            "P4": "Low",
+            "P5": "Low",
+        }
+        added = 0
+        for f in findings:
+            status = getattr(f, "status", None)
+            if not status or status == "fresh":
+                continue
+            adapter_id = getattr(f, "adapter_id", "") or "unknown"
+            run_id = getattr(f, "run_id", "") or "unknown"
+            finding_id = f"drift-semantic:{run_id}:{adapter_id}"
+            if finding_id in self._nodes:
+                continue  # idempotent re-ingest
+
+            control_id = self._infer_control_id(getattr(f, "ksi_id", None) or "")
+            raw_severity = getattr(f, "severity", "")
+            severity = severity_map.get(str(raw_severity).upper(), "Medium")
+
+            self.add_finding(
+                FindingNode(
+                    id=finding_id,
+                    severity=severity,
+                    description=(
+                        f"DRIFT-SEMANTIC for {adapter_id}: status={status}, "
+                        f"age={getattr(f, 'age_hours', 'unknown')}h, "
+                        f"window={getattr(f, 'window_hours', 'unknown')}h"
+                    ),
+                    control_id=control_id,
+                    drift_class="DRIFT-SEMANTIC",
+                    status="Open",
+                    extra={
+                        "run_id": run_id,
+                        "adapter_id": adapter_id,
+                        "semantic_status": status,
+                        "severity_raw": raw_severity,
+                        "age_hours": getattr(f, "age_hours", None),
+                        "window_hours": getattr(f, "window_hours", None),
+                        "evidence_timestamp": getattr(f, "evidence_timestamp", None),
+                        "evaluated_at": getattr(f, "evaluated_at", None),
+                        "policy_source": getattr(f, "policy_source", None),
+                        "ksi_id": getattr(f, "ksi_id", None),
+                        "details": getattr(f, "details", None) or {},
+                    },
+                )
+            )
+            added += 1
+            if control_id and control_id in self._nodes:
+                self.link_violated_by(control_id, finding_id)
+        return added
+
+    # ------------------------------------------------------------------
     # SAR integration helpers (UIAO_113 ↔ SAR generator)
     # ------------------------------------------------------------------
 
