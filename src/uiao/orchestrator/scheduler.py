@@ -73,6 +73,7 @@ DEFAULT_RETRY_BASE_SECONDS = 0.5  # tests override to 0 for speed
 _BUILTIN_ADAPTER_CLASSES: dict[str, tuple[str, str]] = {
     "scubagear": ("uiao.adapters.scubagear_adapter", "ScubaGearAdapter"),
     "entra-id": ("uiao.adapters.entra_adapter", "EntraAdapter"),
+    "terraform": ("uiao.adapters.terraform_adapter", "TerraformAdapter"),
 }
 
 

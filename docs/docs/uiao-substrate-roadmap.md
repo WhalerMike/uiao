@@ -330,17 +330,59 @@ Deferred to Phase 2:
 
 Referenced doc: UIAO_113 (`src/uiao/canon/specs/graph-schema.md`).
 
-### 1.5 — Terraform adapter: stubs → real
+### 1.5 — Terraform adapter: stubs → real (→ **wired to scheduler** ✅)
 
-The Terraform adapter (`terraform_adapter.py`) exists but all five extension methods are stubs. The `python-hcl2` dependency is not yet added.
+The Terraform adapter exists and — as of #183 — is the first **real
+adapter wired into UIAO_100's scheduler factory map**. Prior to this
+pass the roadmap noted the five extension methods as stubs; audit
+confirmed they had already landed (55 tests green in
+`tests/test_terraform_adapter.py`). What remained was the scheduler
+wire-up, a freshness window declaration, and an integration guard.
 
-Work required:
-- Add `python-hcl2` to `pyproject.toml (repo root)`.
-- Implement `extract_terraform_state`, `parse_hcl_config`, `consume_terraform_plan`.
-- Implement `detect_terraform_drift` (three-way: live ↔ state ↔ HCL).
-- Implement `generate_terraform_evidence`.
-- Create tier-2 fixtures: a canonical `terraform.tfstate` and `.tf` file pair.
-- Add test coverage in `test_adapters.py`.
+**Status (2026-04-23):** shipped end to end — scheduler can dispatch
+`terraform` against a real `TerraformAdapter`, evidence + drift
+artifacts land in the run directory with shapes consumed by both the
+EvidenceGraph (§1.4) and DRIFT-SEMANTIC evaluator (§1.1).
+
+Shipped previously:
+- `src/uiao/adapters/terraform_adapter.py` — full implementation of
+  `connect`, `discover_schema`, `execute_query`, `normalize`,
+  `detect_drift`, plus the five Terraform-specific extensions:
+  `extract_terraform_state`, `parse_hcl_config`,
+  `consume_terraform_plan`, `detect_terraform_drift`,
+  `generate_terraform_evidence`.
+- `src/uiao/adapters/terraform_parser.py` — HCL2 parser, state-file
+  v4 JSON parser, plan-JSON parser, three-way diff engine.
+- `python-hcl2>=4.0` declared in `pyproject.toml`.
+- Tier-2 fixtures: `tests/fixtures/terraform.tfstate`,
+  `tests/fixtures/terraform-plan.json`, contract fixtures under
+  `tests/fixtures/contract/terraform/`.
+- 55 tests in `tests/test_terraform_adapter.py` covering HCL/state/plan
+  parse, three-way drift, evidence generation, claim alignment.
+
+Shipped in this PR:
+- `_BUILTIN_ADAPTER_CLASSES` in `src/uiao/orchestrator/scheduler.py`
+  now includes `terraform` — the scheduler instantiates a real
+  `TerraformAdapter` and calls `collect_evidence()` + `detect_drift()`
+  end to end without injected mocks.
+- `freshness-window-hours: 24` seeded on the `terraform` entry in
+  `src/uiao/canon/modernization-registry.yaml`, matching Phase 1 cadence
+  expectations for config-management adapters.
+- `tests/test_terraform_scheduler_integration.py` — 7 tests covering
+  factory resolution, full `dispatch_one("terraform")`, evidence.json
+  shape consumed by EvidenceGraph + DRIFT-SEMANTIC, drift.json shape,
+  mixed `dispatch_all` run with a not-wired sibling adapter, and a
+  canon-smoke guard against removal of the freshness window.
+
+Deferred to Phase 2:
+- Real three-way drift dispatch (the scheduler currently calls
+  `detect_drift()` which returns an info-severity scaffold; the real
+  `detect_terraform_drift(live_claims, tf_state, tf_config)` requires
+  runtime configuration per dispatch and is a separate wiring change).
+- Production state-backend connection (S3, Terraform Cloud, etc.) — the
+  current scheduler path uses empty config; real runs will need
+  `state_source` + auth config surfaced from the registry or
+  environment.
 
 ---
 
