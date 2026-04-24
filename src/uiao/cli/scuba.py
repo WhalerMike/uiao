@@ -63,6 +63,10 @@ def transform_cmd(  # noqa: B008
 
     A timestamped log file is written automatically to
     ``<out_parent>/../logs/<timestamp>-scuba-transform.log``.
+
+    Example::
+
+        uiao scuba transform --input examples/quickstart/scuba-normalized.json --out /tmp/scuba-ir.json
     """
     from uiao.adapters.scuba.transform import transform_scuba_to_ir
 
