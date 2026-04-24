@@ -52,23 +52,23 @@ def scuba_json(tmp_path: Path) -> Path:
 
 class TestIRGovernanceReport:
     def test_report_printed(self, scuba_json: Path) -> None:
-        result = runner.invoke(app, ["ir-governance-report", str(scuba_json)])
+        result = runner.invoke(app, ["ir", "governance-report", str(scuba_json)])
         assert result.exit_code == 0, result.output
         assert "UIAO Governance Report" in result.output
 
     def test_report_contains_action_types(self, scuba_json: Path) -> None:
-        result = runner.invoke(app, ["ir-governance-report", str(scuba_json)])
+        result = runner.invoke(app, ["ir", "governance-report", str(scuba_json)])
         assert result.exit_code == 0, result.output
         assert "remediate" in result.output or "escalate" in result.output
 
     def test_report_contains_total_actions(self, scuba_json: Path) -> None:
-        result = runner.invoke(app, ["ir-governance-report", str(scuba_json)])
+        result = runner.invoke(app, ["ir", "governance-report", str(scuba_json)])
         assert result.exit_code == 0, result.output
         assert "Total actions" in result.output
 
     def test_out_writes_json(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "governance.json"
-        result = runner.invoke(app, ["ir-governance-report", str(scuba_json), "--out", str(out)])
+        result = runner.invoke(app, ["ir", "governance-report", str(scuba_json), "--out", str(out)])
         assert result.exit_code == 0, result.output
         assert out.exists()
         rows = json.loads(out.read_text())
@@ -79,7 +79,7 @@ class TestIRGovernanceReport:
 
     def test_out_json_has_required_fields(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "governance.json"
-        runner.invoke(app, ["ir-governance-report", str(scuba_json), "--out", str(out)])
+        runner.invoke(app, ["ir", "governance-report", str(scuba_json), "--out", str(out)])
         rows = json.loads(out.read_text())
         required = {"ksi_id", "severity", "owner", "sla_days", "action_type", "description", "evidence_id"}
         for row in rows:
@@ -88,4 +88,4 @@ class TestIRGovernanceReport:
     def test_cli_help_lists_command(self) -> None:
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "ir-governance-report" in result.output
+        assert "ir" in result.output

@@ -237,8 +237,7 @@ def build_client(api_key: str):
         from google import genai  # type: ignore
     except ImportError:
         print(
-            "ERROR: package 'google-genai' is not installed.\n"
-            "  Run:  pip install google-genai",
+            "ERROR: package 'google-genai' is not installed.\n  Run:  pip install google-genai",
             file=sys.stderr,
         )
         sys.exit(2)

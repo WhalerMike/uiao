@@ -42,7 +42,7 @@ To prevent Agent formatting conflicts, follow this order of precedence for **for
 
    * Always read this file + FORMAT-CANON.md + AGENTS.md + UIAO-MEMORY.md before starting any work
    * **Claude Code session zero**: read [`docs/BRIEFING-SPEC.qmd`](https://github.com/WhalerMike/uiao-docs/blob/main/docs/BRIEFING-SPEC.qmd) and implement the `generate-briefing` command
-   * Run `uiao generate-briefing` at the start of every Claude Code session to establish current system state before taking any action
+   * Run `uiao generate briefing` at the start of every Claude Code session to establish current system state before taking any action
    * After any significant change or mistake, update the relevant memory file and this PROJECT-CONTEXT.md if architecture decisions change
    * Never assume context from previous sessions — explicitly reference files
    * **Role separation**: UIAO-MEMORY.md is the live append-only correction log; PROJECT-CONTEXT.md is the static governance doc. Do not mix their roles.
@@ -58,7 +58,7 @@ To prevent Agent formatting conflicts, follow this order of precedence for **for
 
 4. **Current Priorities (April 2026)**
 
-   * **[SESSION ZERO]** Claude Code: read [`docs/BRIEFING-SPEC.qmd`](https://github.com/WhalerMike/uiao-docs/blob/main/docs/BRIEFING-SPEC.qmd) and implement `uiao generate-briefing` command
+   * **[SESSION ZERO]** Claude Code: read [`docs/BRIEFING-SPEC.qmd`](https://github.com/WhalerMike/uiao-docs/blob/main/docs/BRIEFING-SPEC.qmd) and implement `uiao generate briefing` command
    * Claude Code established as Canon Steward and lead GitHub agent (Grok retired)
    * Tight integration between uiao and uiao-validation-targets (CLI commands to test against live target)
    * Full SSP control narrative templating with organization-defined parameters
@@ -80,12 +80,12 @@ generation-inputs/diagrams.yaml
                                             └─ embedded in DOCX / PPTX
 ```
 
-* **CLI**: `uiao generate-diagrams` — writes `.puml` files and renders all PNGs.
-* **Auto-integration**: `uiao generate-docs` calls diagram generation automatically (pass `--skip-diagrams` to opt out).
+* **CLI**: `uiao generate diagrams` — writes `.puml` files and renders all PNGs.
+* **Auto-integration**: `uiao generate docs` calls diagram generation automatically (pass `--skip-diagrams` to opt out).
 * **Post-processing**: `replace_plantuml_blocks_with_images()` in `docs.py` replaces fenced `plantuml` blocks with `<img>` tags so DOCX/PPTX/PDF renderers can embed the PNGs.
 * **Live site**: `mkdocs.yml` loads PlantUML (plantweb) for real-time browser rendering on GitHub Pages.
 * **PlantUML diagrams rendered to `assets/images/plantuml/`.
-* **Gemini Imagen** generates high-resolution architectural PNGs on demand via `uiao generate-gemini`.
+* **Gemini Imagen** generates high-resolution architectural PNGs on demand via `uiao generate gemini`.
 * Target: FedRAMP Moderate Rev 5 baseline
 * Focus: 20x Phase 2 (machine-readable evidence over narrative bloat, continuous monitoring, KSI mapping)
 * POA&M statuses allowed: open, closed, risk-accepted, false-positive, operational-requirement, vendor-dependency, not-applicable
@@ -108,7 +108,7 @@ generation-inputs/diagrams.yaml
 
 ## Decision Log (Add new entries at top)
 
-* 2026-04-03: BRIEFING-SPEC.md created at BRIEFING-SPEC.qmd (in uiao-docs). Defines `uiao generate-briefing` CLI command — owner's daily dashboard document. Pulls from live repo sources: MEMORY.md, vendor-overlays/, control-library/, OSCAL exports, PROJECT-CONTEXT.md, CHANGELOG.md, drift-report.json. Quality target: matches 01_Canon/uiao-reference.docx visual standard.
+* 2026-04-03: BRIEFING-SPEC.md created at BRIEFING-SPEC.qmd (in uiao-docs). Defines `uiao generate briefing` CLI command — owner's daily dashboard document. Pulls from live repo sources: MEMORY.md, vendor-overlays/, control-library/, OSCAL exports, PROJECT-CONTEXT.md, CHANGELOG.md, drift-report.json. Quality target: matches 01_Canon/uiao-reference.docx visual standard.
 * 2026-04-03: Key file locations table added to PROJECT-CONTEXT.md. vendor-overlays/ (NOT overlays/) confirmed as Big 7 source. 131 control YAMLs and 15 PlantUML PNGs confirmed from directory tree.
 * 2026-04-02: AI hierarchy restructured. Grok retired. Claude Code promoted to Canon Steward and Lead Architect with direct GitHub integration. Comet-Perplexity (running Claude Sonnet) retained as orchestrator and browser/evidence agent. Gemini role locked to image generation only. Copilot retained for fast implementation. Stack simplified from four-model hierarchy to two-model core (Claude Code + Comet-Perplexity).
 * 2026-03-26: FORMAT-CANON.md created as primary format authority. PROJECT-CONTEXT.md updated to establish format authority hierarchy before all other project context. All agents must read FORMAT-CANON.md before making any format decisions.

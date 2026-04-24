@@ -293,7 +293,7 @@ def run_wizard(output_dir: Path = Path("generation-inputs")) -> Path:
             "Next steps:\n"
             f"  1. Review and edit [bold]{output_path}[/bold]\n"
             "  2. Run [bold]uiao validate-canon[/bold] to check for issues\n"
-            "  3. Run [bold]uiao generate-ssp[/bold] to generate OSCAL artifacts",
+            "  3. Run [bold]uiao generate ssp[/bold] to generate OSCAL artifacts",
             title="Done",
         )
     )

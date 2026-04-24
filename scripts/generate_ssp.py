@@ -3,7 +3,7 @@
 This script is kept for backward compatibility. New code should
 import ``build_ssp`` from ``uiao.generators.ssp``.
 
-Deprecated: Use `uiao generate-ssp` CLI command instead.
+Deprecated: Use `uiao generate ssp` CLI command instead.
 """
 
 import logging
@@ -12,7 +12,7 @@ import warnings
 from uiao.generators.ssp import build_ssp
 
 warnings.warn(
-    "scripts/generate_ssp.py is deprecated. Use `uiao generate-ssp` instead.",
+    "scripts/generate_ssp.py is deprecated. Use `uiao generate ssp` instead.",
     DeprecationWarning,
     stacklevel=1,
 )
