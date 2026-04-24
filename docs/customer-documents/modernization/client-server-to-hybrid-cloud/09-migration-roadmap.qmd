@@ -1,0 +1,364 @@
+---
+title: "Chapter 09 — Migration Roadmap: Phased Plan, Gates, Rollback"
+subtitle: "Seven phases, five parallel workstreams, named gates, deterministic rollback"
+doc-type: series-chapter
+series-id: client-server-to-hybrid-cloud
+chapter: 9
+audience: "Program managers · executive sponsors · modernization steering committees"
+canon-source: "Posted Master Project Plan + MOD_F Migration Runbook + MOD_Q SLA Escalation"
+date: 2026-04-24
+aspirational: true
+---
+
+# Chapter 09 — Migration Roadmap: Phased Plan, Gates, Rollback {.unnumbered}
+
+*Seven phases, five parallel workstreams, named gates, deterministic rollback*
+
+::: {.callout-important title="The program claim"}
+Every modernization this series describes is achievable in a **52-week
+program** with five parallel workstreams (identity, policy, services,
+compute, access) and seven named gates. The roadmap is not a
+consulting slideware pattern; it is a PR-reviewable document in Gitea,
+updated weekly, with gate criteria that are mechanical to evaluate.
+
+This chapter is how you sequence the chapters 01-08 work into a
+governed program that actually ships.
+:::
+
+## The program shape
+
+A full Client-Server-to-Hybrid-Cloud modernization has two defining
+properties:
+
+1. **Parallel, not sequential.** Identity, policy, services, compute,
+   and access work in parallel streams. Waiting for one to finish
+   before starting the next doubles the program duration and produces
+   worse outcomes.
+2. **Gated, not open-ended.** Each phase has explicit entry and exit
+   criteria. A phase cannot start until the prior phase's exit gate
+   clears. A phase cannot exit until its own criteria are green.
+
+Total realistic duration for a mid-size federal agency (5,000–50,000
+users, 500–5,000 servers): **~52 weeks**, matching the Posted Master
+Project Plan. Larger agencies extend; smaller agencies compress. The
+phase structure doesn't change with scale — only the per-phase
+duration does.
+
+## The seven phases
+
+### Phase 0 — Pre-flight (weeks 1-4)
+
+**Goal.** Produce the canonical planning artifacts and stand up the
+platform server.
+
+Entry criteria (to start Phase 0):
+- Executive sponsor named.
+- Canon Steward appointed.
+- Platform-server hardware or VM provisioned.
+- AD read-only service account delegated.
+
+Work in Phase 0:
+- Build the platform server (Chapter 01). Wall-clock: 1-2 weeks.
+- Run the Tier-B AD assessment (Chapter 02). Wall-clock: 1 week.
+- Author the initial OrgPath codebook (MOD_A). Wall-clock: 1 week.
+- Stand up Gitea canonical repository with baseline canon files.
+- Confirm Entra + Intune + Arc tenant access with least-privilege
+  service principals.
+
+Exit gate (Gate G0 — Ready to Plan):
+- [ ] Platform server operational (Chapter 01 validation passed).
+- [ ] Assessment run committed to Gitea.
+- [ ] Draft OrgPath codebook in Gitea, steward-approved.
+- [ ] Canon registry (MOD_A..Z index) in place.
+- [ ] No open P1 findings from assessment.
+
+### Phase 1 — Foundation (weeks 5-8)
+
+**Goal.** Put identity-substrate primitives in place before anything
+else moves.
+
+Workstream outputs:
+- **Identity.** Dynamic groups for Enterprise-level branches
+  (`OrgTree-Enterprise-Users`, `OrgTree-IT-Users`, etc.).
+  Administrative Units for Tier-1 and selected Tier-2 scopes.
+- **Policy.** Enterprise CA baseline (CA-100 series): MFA required
+  for all users, legacy auth blocked, break-glass carve-outs.
+- **Services.** IPAM (DM_010) stood up with partial coverage —
+  enough to tag the platform server and Tier-0 infrastructure.
+- **Compute.** Platform server Entra-registered; select server
+  pilots Arc-connected.
+- **Access.** Platform-SSO configured; FIDO2 registration available
+  for Tier-0 admins.
+
+Exit gate (Gate G1 — Foundation Complete):
+- [ ] Enterprise dynamic groups + AUs created and drift-clean.
+- [ ] CA-100 enterprise baseline enforced; no MFA-exempt users.
+- [ ] IPAM covers at least Tier-0 infrastructure.
+- [ ] Drift engine reports zero findings across foundation scope.
+- [ ] Break-glass accounts vaulted in CyberArk.
+
+### Phase 2 — Pilot Division (weeks 9-16)
+
+**Goal.** Run one division through the full transformation as a
+learning exercise, proving the pattern before general rollout.
+
+Typical pilot division: IT (highest tolerance for disruption, most
+engaged with modernization).
+
+Workstream outputs for pilot:
+- **Identity.** Pilot division OrgPath fully populated; dynamic
+  groups live; AUs scoped; role assignments delegated.
+- **Policy.** Division-scoped CA (CA-200 series) + Intune
+  configuration + compliance policies applied. 3-4 GPOs retired.
+- **Services.** Pilot division DNS zones migrated. DHCP scopes
+  re-homed. IPAM populated for division address space.
+- **Compute.** Pilot PCs transition (greenfield via Autopilot for
+  new hardware; reset-and-re-enroll for refreshable legacy; hybrid
+  for the rest). Pilot servers Arc-connected.
+- **Access.** Division users configured for CBA (where CAC holders
+  exist); SASE ZTNA in place for division apps.
+
+Exit gate (Gate G2 — Pilot Clean):
+- [ ] Pilot division MOD_M drift zero for 14 consecutive days.
+- [ ] Pilot division has zero AD-only users, zero Hybrid Joined PCs
+      that aren't scheduled for full cut.
+- [ ] Pilot ATO boundary re-evaluated; no new findings.
+- [ ] Retrospective complete; lessons-learned doc committed.
+- [ ] Per-phase runbook updates committed based on pilot experience.
+
+### Phase 3 — General Rollout (weeks 17-36)
+
+**Goal.** Scale the pattern to every remaining division.
+
+This is the longest phase. Duration scales with division count:
+budget ~2-3 weeks per division, running 2-3 divisions in parallel.
+Large agencies may overlap divisions heavily; small agencies may
+run strictly sequentially.
+
+Workstream cadence:
+- **Weekly** — a steering-committee review of active divisions.
+  Each division reports green/yellow/red against its rollout plan.
+- **Per division** — 4-phase sub-pattern: plan, pilot within
+  division, general-availability to the full division, drift-clean
+  hold.
+- **Parallel** — Chapters 04-08 content flows for each division
+  concurrently; canon is shared.
+
+Exit gate (Gate G3 — Rollout Complete):
+- [ ] Every in-scope division has passed its division-level
+      exit gate.
+- [ ] Every HR-listed employee has a valid OrgPath.
+- [ ] Every user PC is Entra Joined or in a documented exception.
+- [ ] Every server is Arc-connected or in a documented exception.
+- [ ] Drift engine reports zero cross-division drift.
+
+### Phase 4 — Legacy Retirement (weeks 37-44)
+
+**Goal.** Systematically retire legacy infrastructure: GPOs, OU
+security groups, AD-integrated DNS, AD-joined DHCP, ADCS smart-card
+logon configuration, SPN-bound legacy apps.
+
+Retirement is governed: each artifact has a retirement plan with
+its own entry/exit criteria, and the retirement action is a
+Plan-stage action with explicit steward approval.
+
+Retirement sequence (typical):
+1. Retire redundant GPOs (GPOs migrated to Intune).
+2. Retire OU-based security groups (membership superseded by
+   dynamic groups).
+3. Retire AD-integrated DNS zones one at a time.
+4. Retire AD-joined DHCP authority.
+5. Retire ADCS smart-card logon GPO configuration.
+6. Retire remaining AD-bound SPNs (application-by-application).
+
+Exit gate (Gate G4 — Legacy Quiet):
+- [ ] No active GPOs other than the minimum Kerberos-island set.
+- [ ] No AD-based dynamic / static-membership security groups in
+      active use.
+- [ ] Zero AD-integrated DNS zones.
+- [ ] ADCS retained only for issuance, not for smart-card logon.
+- [ ] SPN map shows all migrated/retired/islanded — no
+      unresolved SPNs.
+- [ ] AD authentication rate < 5% of peak-migration rate (most
+      auth has moved to Entra).
+
+### Phase 5 — AD DS Retirement (weeks 45-48)
+
+**Goal.** Shut down Active Directory Domain Services.
+
+This is the shortest phase of the program because the work was done
+in Phases 0-4. Phase 5 is the mechanical teardown.
+
+Sequence:
+1. Freeze AD changes (canon change protocol enforcement).
+2. Final forest assessment + evidence packet.
+3. Demote non-FSMO DCs.
+4. Transfer FSMO roles to the designated survivor (if any — some
+   agencies retain a Kerberos island).
+5. Demote remaining DCs (or isolate if Kerberos island retained).
+6. Decommission VMs + retire forest objects in backup.
+7. Final provenance commit: "forest X retired on date Y per
+   evidence packet Z."
+
+Exit gate (Gate G5 — AD Retired):
+- [ ] DCs decommissioned or explicitly retained as documented
+      Kerberos island.
+- [ ] Evidence packet committed to Gitea + SIEM.
+- [ ] No live production dependency on AD authentication.
+
+### Phase 6 — Steady State (week 49+)
+
+**Goal.** Operate the modernized environment under canon governance.
+
+Steady state is the permanent post-modernization state. It has
+properties:
+
+- **Assessments run nightly** (Chapter 02).
+- **Plans generated and authorized** on change-driven and scheduled
+  cadences (Chapter 03).
+- **Drift detected + resolved** within MOD_Q SLAs.
+- **Evidence packets emitted** per delivery.
+- **Continuous monitoring feeds** FedRAMP ConMon + SCuBA pipelines.
+- **Canon changes flow via PR** per MOD_V.
+
+Exit criteria: none. Phase 6 continues indefinitely. Periodic
+retrospectives (quarterly) confirm the canon matches agency intent.
+
+## The five parallel workstreams
+
+During Phases 2-4, five workstreams run in parallel with explicit
+coordination points:
+
+| Workstream | Lead | Chapter | Key artifacts |
+|---|---|---|---|
+| **Identity** | Identity Architect | 04 | OrgPath codebook, dynamic groups, AUs |
+| **Policy** | Security Engineer | 05 | Intune configs, CA policies, Arc Guest Config |
+| **Services** | Network Engineer | 06 | DNS, DHCP, IPAM adapters |
+| **Compute** | Endpoint Admin + Server Eng | 07 | Device enrollments, Arc projections |
+| **Access** | Identity + Security jointly | 08 | SASE, CBA, PAM, MFA |
+
+Workstreams are not independent. Every week, a **cross-workstream
+sync** identifies the per-division blockers and resequences work
+where dependencies exist (e.g., compute migration can't proceed in a
+division until its CA policies are in place).
+
+## Gate criteria — mechanical, not subjective
+
+Every gate criterion in this chapter is mechanically evaluable from
+Gitea canon + drift-engine reports. Examples:
+
+- *"Zero drift for 14 consecutive days"* → MOD_M report filtered
+  by scope + date range.
+- *"Every HR-listed employee has a valid OrgPath"* → SQL-like query
+  against the canonical user table.
+- *"Every user PC is Entra Joined"* → device inventory query.
+
+Gates are never passed on executive signature alone. The engine
+reports green; the steward concurs; the PR merges. A gate that the
+engine cannot evaluate is a gate that needs a better criterion.
+
+## Rollback triggers
+
+Every phase has defined rollback triggers — conditions that halt
+progress and revert to the prior phase's state. Triggers are
+not subjective; they are thresholded.
+
+| Trigger | Scope | Action |
+|---|---|---|
+| MOD_M drift > threshold X for > 24 hours | phase-wide | Halt phase; investigate; no new deliveries until clean |
+| CA policy blocks > Y% of legitimate sign-ins | enterprise | Revert CA policy; investigate; authorize replacement |
+| Drift engine itself fails to report | platform | Escalate per MOD_Q; halt all phase work |
+| Evidence packet fails signature validation | any delivery | Halt; forensic investigation; restore from last known-good |
+| SLA-breach on P1 finding | any scope | Escalate per MOD_Q Tier 1; steward + sponsor notified |
+
+Rollback is operationally expensive, so the gate design is meant to
+prevent the need for it. Pilot phases catch what would otherwise
+become rollback events later.
+
+## Decision authority at each gate
+
+Not every gate is a Canon Steward decision. The program defines
+decision authority per gate:
+
+| Gate | Authority | Backup |
+|---|---|---|
+| G0 — Ready to Plan | Canon Steward | Executive Sponsor |
+| G1 — Foundation Complete | Canon Steward | — |
+| G2 — Pilot Clean | Canon Steward + Executive Sponsor | — |
+| G3 — Rollout Complete | Executive Sponsor + Steering Committee | — |
+| G4 — Legacy Quiet | Canon Steward | Executive Sponsor |
+| G5 — AD Retired | Executive Sponsor + CIO | — |
+| Division-level exit (G3 sub-gate) | Division Lead + Canon Steward | — |
+
+Gate authority is recorded in the Gitea PR that merges the gate
+decision. Disputed gates escalate per MOD_Q.
+
+## Common failure modes
+
+Across federal agencies that have run variants of this program, five
+failure modes recur. UIAO's structure is designed to pre-empt each:
+
+1. **Half-finished identity.** Pattern: rollout begins, 30% of users
+   have OrgPath, HR connector breaks, project stalls. Mitigation:
+   Gate G1 requires HR connector operational before rollout.
+2. **Unscoped CA policy.** Pattern: broad "require MFA" policy
+   deployed; edge cases block operationally critical sign-ins.
+   Mitigation: Chapter 05's OrgPath-scoped + pilot-group-first
+   pattern.
+3. **DNS left for "phase 2."** Pattern: identity moves, DNS stays
+   AD-integrated, AD can't actually retire. Mitigation: Chapter 06's
+   insistence that DNS+DHCP+IPAM migrate together.
+4. **Hybrid Joined permanence.** Pattern: devices become Hybrid
+   Joined and stay that way indefinitely. Mitigation: Chapter 07's
+   rule that Hybrid Join is a transition state, with drift-engine
+   monitoring of time-in-state.
+5. **Evidence-less migration.** Pattern: changes happen via ad-hoc
+   admin actions; FedRAMP audit can't produce provenance. Mitigation:
+   Chapter 03's plan-based delivery — every change has provenance by
+   construction.
+
+## The week-by-week cadence
+
+For the steering committee, the cadence is:
+
+- **Monday** — workstream leads update status (green/yellow/red).
+- **Tuesday** — cross-workstream dependency sync.
+- **Wednesday** — canon changes + plan reviews merge to Gitea.
+- **Thursday** — plan deliveries scheduled (typically off-peak).
+- **Friday** — evidence packet + drift-engine review; retrospective
+  on the week.
+
+Monthly: gate-criterion reviews against the phase schedule. Red
+status across two consecutive weeks escalates to the executive
+sponsor.
+
+## What finishing looks like
+
+In week 49 (Phase 6 steady state), the program meeting looks like
+this:
+
+- Drift-engine report: zero findings.
+- Nightly plan run: zero actions.
+- Evidence packets: fully signed, shipped to SIEM + ConMon.
+- ServiceNow tickets: routine operational only; no P1 findings.
+- Audit posture: ATO package refreshed; continuous-monitoring feed
+  live; 3PAO relationship quarterly.
+- Canon: one PR merged this week for a Policy library refinement;
+  otherwise stable.
+
+The program is not "done" — steady state is the operational mode —
+but the modernization is complete. The agency runs governed; AD is
+gone; the canon is the operational truth.
+
+## Cross-references
+
+- **Posted:** UIAO Master Project Plan — Assessment Phase Through
+  Full Modernization (14,051 words) — 7-phase, 48-milestone,
+  52-week capstone plan.
+- **Canon:** MOD_F Migration Runbook · MOD_Q SLA Escalation
+  Playbooks · MOD_V Canonical Contributor Workflow.
+- **Customer Documents:** [program management](../program-management/index.qmd).
+
+---
+
+**Next:** [Chapter 10 — Leadership Takeaway: Instruments vs. Orchestra](10-executive-summary.qmd)
