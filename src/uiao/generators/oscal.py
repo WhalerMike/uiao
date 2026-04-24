@@ -13,7 +13,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from uiao.evidence.graph import EvidenceGraph
 from uiao.utils.context import get_settings, load_context
+
+_UIAO_GRAPH_NS = "https://uiao.gov/ns/oscal/graph"
 
 
 # ---------------------------------------------------------------------------
@@ -51,8 +54,19 @@ def _nonempty(val: Any, fallback: str = "N/A") -> str:
 # ---------------------------------------------------------------------------
 def build_component_definition(
     context: dict[str, Any],
+    graph: EvidenceGraph | None = None,
 ) -> dict[str, Any]:
-    """Build OSCAL Component Definition from UIAO canon data."""
+    """Build OSCAL Component Definition from UIAO canon data.
+
+    When ``graph`` is provided, every ``implemented-requirement`` whose
+    ``control-id`` has UIAO_113 graph coverage is augmented with
+    ``graph-*`` provenance props under ``_UIAO_GRAPH_NS`` (witness
+    evidence id/source, scheduler run id, adapter id, top finding
+    severity), plus a ``links`` entry pointing to a back-matter resource
+    that aggregates the same provenance for `trestle`-style tooling to
+    follow. Back-compat preserved: ``graph=None`` yields byte-identical
+    legacy output.
+    """
     cfg = context.get("fedramp_20x_config", {})
     if not isinstance(cfg, dict):
         cfg = {}
@@ -77,6 +91,8 @@ def build_component_definition(
         briefing = {}
 
     now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    graph_resources: dict[str, dict[str, Any]] = {}
 
     cd: dict[str, Any] = {
         "uuid": str(uuid.uuid4()),
@@ -169,27 +185,42 @@ def build_component_definition(
                         if ev and str(ev).strip():
                             evidence = str(ev).strip()
                         break
-                imp_reqs.append(
-                    {
-                        "uuid": str(uuid.uuid4()),
-                        "control-id": ctrl_id,
-                        "description": _nonempty(
-                            entry.get("impact_statement", ""),
-                            f"Control {ctrl_id} implementation",
-                        ),
-                        "props": [
-                            {"name": "ksi-category", "value": _nonempty(ksi_cat)},
+                imp_req: dict[str, Any] = {
+                    "uuid": str(uuid.uuid4()),
+                    "control-id": ctrl_id,
+                    "description": _nonempty(
+                        entry.get("impact_statement", ""),
+                        f"Control {ctrl_id} implementation",
+                    ),
+                    "props": [
+                        {"name": "ksi-category", "value": _nonempty(ksi_cat)},
+                        {
+                            "name": "cisa-maturity",
+                            "value": _nonempty(
+                                entry.get("cisa_maturity", "Advanced"),
+                            ),
+                        },
+                        {"name": "evidence-source", "value": _nonempty(evidence)},
+                    ],
+                    "remarks": f"Implemented by {plane.get('name', plane_id)}",
+                }
+                if graph is not None:
+                    graph_props = graph.sar_props_for_evidence(ctrl_id)
+                    for name, value in graph_props.items():
+                        imp_req["props"].append({"name": name, "value": str(value), "ns": _UIAO_GRAPH_NS})
+                    if ctrl_id not in graph_resources:
+                        res = graph.back_matter_resource_for_control(ctrl_id)
+                        if res is not None:
+                            graph_resources[ctrl_id] = res
+                    if ctrl_id in graph_resources:
+                        imp_req["links"] = [
                             {
-                                "name": "cisa-maturity",
-                                "value": _nonempty(
-                                    entry.get("cisa_maturity", "Advanced"),
-                                ),
-                            },
-                            {"name": "evidence-source", "value": _nonempty(evidence)},
-                        ],
-                        "remarks": f"Implemented by {plane.get('name', plane_id)}",
-                    }
-                )
+                                "rel": "graph-evidence",
+                                "href": f"#{graph_resources[ctrl_id]['uuid']}",
+                                "media-type": "application/json",
+                            }
+                        ]
+                imp_reqs.append(imp_req)
             if imp_reqs:
                 control_imps.append(
                     {
@@ -243,6 +274,9 @@ def build_component_definition(
             }
         )
 
+    if graph_resources:
+        cd["back-matter"] = {"resources": list(graph_resources.values())}
+
     return cd
 
 
@@ -273,10 +307,12 @@ def build_oscal(
     canon_path: str | Path | None = None,
     data_dir: str | Path | None = None,
     output_dir: str | Path | None = None,
+    graph: EvidenceGraph | None = None,
 ) -> Path:
     """Build and export OSCAL Component Definition JSON.
 
-    Returns path to the generated JSON file.
+    Returns path to the generated JSON file. Threads the optional
+    UIAO_113 ``graph`` kwarg through to :func:`build_component_definition`.
     """
     settings = get_settings()
     if output_dir is None:
@@ -284,7 +320,7 @@ def build_oscal(
     output_dir = Path(output_dir)
 
     context = load_context(canon_path, data_dir)
-    cd = build_component_definition(context)
+    cd = build_component_definition(context, graph=graph)
     validate_inventory_component_refs(context, cd)
 
     output_dir.mkdir(parents=True, exist_ok=True)

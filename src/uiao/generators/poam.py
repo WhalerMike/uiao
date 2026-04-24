@@ -163,6 +163,7 @@ def build_poam(
         gaps.extend(manual_findings)
 
     poam_items: list[dict[str, Any]] = []
+    graph_resources: dict[str, dict[str, Any]] = {}
     for i, gap in enumerate(gaps, start=1):
         related = gap.get("related_controls", [])
         props: list[dict[str, Any]] = [
@@ -170,6 +171,12 @@ def build_poam(
             {"name": "finding-id", "value": f"POAM-{i:04d}"},
             *[{"name": "related-control", "value": c} for c in related],
         ]
+        item: dict[str, Any] = {
+            "uuid": str(uuid.uuid4()),
+            "title": gap.get("title", f"Finding {i}"),
+            "description": gap.get("description", "No description"),
+            "props": props,
+        }
         if graph is not None:
             existing_names: set[str] = set()
             for ctrl_id in related:
@@ -181,14 +188,19 @@ def build_poam(
                         continue
                     existing_names.add(name)
                     props.append({"name": name, "value": str(value), "ns": _UIAO_GRAPH_NS})
-        poam_items.append(
-            {
-                "uuid": str(uuid.uuid4()),
-                "title": gap.get("title", f"Finding {i}"),
-                "description": gap.get("description", "No description"),
-                "props": props,
-            }
-        )
+                if ctrl_id not in graph_resources:
+                    res = graph.back_matter_resource_for_control(ctrl_id)
+                    if res is not None:
+                        graph_resources[ctrl_id] = res
+                if ctrl_id in graph_resources:
+                    item.setdefault("links", []).append(
+                        {
+                            "rel": "graph-evidence",
+                            "href": f"#{graph_resources[ctrl_id]['uuid']}",
+                            "media-type": "application/json",
+                        }
+                    )
+        poam_items.append(item)
 
     poam: dict[str, Any] = {
         "uuid": str(uuid.uuid4()),
@@ -201,6 +213,8 @@ def build_poam(
         },
         "poam-items": poam_items,
     }
+    if graph_resources:
+        poam["back-matter"] = {"resources": list(graph_resources.values())}
     return poam
 
 

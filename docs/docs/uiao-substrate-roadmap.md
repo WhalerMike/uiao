@@ -390,17 +390,37 @@ Shipped:
   provenance source — the graph — closing the deferred Phase 2
   follow-up that this row originally tracked.
 
-Deferred to Phase 2 / future:
+**Update (2026-04-24, second pass):** OSCAL graph surface complete.
+
+- `build_component_definition(..., graph=None)` and
+  `build_oscal(..., graph=None)` — the fourth and last OSCAL emitter
+  now augments per-control implemented-requirements with the same
+  `graph-*` props the other three carry.
+- `EvidenceGraph.resource_uuid_for_control(control_id)` and
+  `back_matter_resource_for_control(control_id)` /
+  `back_matter_resources_for_controls(control_ids)` — graph-derived
+  back-matter resources with **deterministic UUIDs** (UUID v5 keyed
+  on a fixed namespace). Same control → same resource UUID across
+  all four OSCAL artifacts.
+- All four emitters (SAR, SSP, POA&M, component-definition) now emit
+  matching `back-matter.resources[]` entries and per-item
+  `links: [{rel: "graph-evidence", href: "#<uuid>"}]` so OSCAL
+  consumers can follow the link by UUID resolution. Where the
+  underlying evidence carries scheduler metadata, each resource also
+  carries an `rlinks[].href = schedrun://<run-id>/adapters/<adapter>/evidence.json`
+  pointer to the on-disk evidence path.
+- 16 new tests in `tests/test_oscal_graph_back_matter.py` covering
+  resource UUID determinism, single + batch resource construction,
+  rlinks presence, component-definition graph augmentation, and a
+  cross-emitter guarantee that one graph + one control yields the
+  same resource UUID and matching `links` in all four OSCAL
+  artifacts.
+
+Deferred to future (no longer Phase 2 blockers):
 - Rich provenance metadata: currently graph ingestion captures the
   adapter hash + timestamp; extended provenance fields (tenant IDs,
   policy versions, certificate anchors) land when UIAO_015
   Provenance Profile grows.
-- Graph-to-OSCAL link resources in back-matter (the `graph-*` props
-  give auditors the tracing data; adding them as first-class OSCAL
-  resources enables tooling like `trestle` to follow the links).
-- Component-definition emitter (`build_component_definition`) graph
-  pass — only the three OSCAL artifacts above carry per-control
-  evidence today.
 
 Referenced doc: UIAO_113 (`src/uiao/canon/specs/graph-schema.md`).
 
