@@ -197,7 +197,159 @@ The IR pipeline is the analytical and governance core of UIAO. It transforms nor
 
 ---
 
-## 4. Pipeline Architecture
+### 3.8 CQL (Compliance Query Language) Engine
+
+The CQL engine (UIAO_108) is an SQL-like query layer over compliance data. It lets operators interrogate evidence bundles, controls, drift records, and POA&M entries without writing Python. CQL supports filtering, ordering, date windowing, and control-scoped evidence queries — all from the command line.
+
+| Command | Description | Pipeline Role |
+|---------|-------------|---------------|
+| cql query | Execute a CQL query against an evidence bundle JSON file. | Ad-hoc compliance data analysis; operator interrogation surface. |
+
+#### Details
+
+**cql query** — The primary interface to the CQL engine. Takes a CQL query string and an evidence bundle JSON (produced by `ir-evidence-bundle --out`) and returns matching records as a Rich table or JSON. Supports all four CQL data domains: CONTROLS, EVIDENCE, DRIFT, POAM.
+
+**CQL syntax reference:**
+
+```
+SHOW CONTROLS  [WHERE field OP 'value' [AND ...]] [SINCE 'ISO-date'] [ORDER BY field [ASC|DESC]]
+SHOW EVIDENCE  [FOR CONTROL 'control-id'] [WHERE ...] [SINCE '...'] [ORDER BY ...]
+SHOW DRIFT     [WHERE ...] [SINCE '...'] [ORDER BY ...]
+SHOW POAM      [WHERE ...] [SINCE '...'] [ORDER BY ...]
+```
+
+**Supported operators:** `=`, `!=`, `>=`, `<=`, `>`, `<`, `LIKE` (substring match).
+
+**Examples:**
+
+```bash
+# List all failing controls
+uiao cql query "SHOW CONTROLS WHERE status = 'FAIL'" --bundle bundle.json
+
+# Show evidence for a specific control
+uiao cql query "SHOW EVIDENCE FOR CONTROL 'AC-2'" --bundle bundle.json --format json
+
+# Find semantic drift events
+uiao cql query "SHOW DRIFT WHERE drift_class = 'DRIFT-SEMANTIC'" --bundle bundle.json
+
+# List high-severity open POA&M items, most critical first
+uiao cql query "SHOW POAM WHERE severity >= 'High' ORDER BY severity DESC" \
+    --bundle bundle.json --output poam-high.json
+```
+
+---
+
+### 3.9 Evidence Graph (UIAO_113)
+
+The Evidence Graph is a directed property graph that links controls, IR objects, evidence nodes, provenance records, findings, and POA&M entries. Every edge carries typed metadata so you can trace any compliance claim back to its raw assessment output. The graph sub-command is part of the `evidence` command group.
+
+| Command | Description | Pipeline Role |
+|---------|-------------|---------------|
+| evidence graph | Build and inspect an Evidence Graph from a SCuBA run. | Provenance tracing; compliance claim lineage. |
+
+#### Details
+
+**evidence graph** — Builds an `EvidenceGraph` from a normalized SCuBA JSON file and outputs node/edge statistics. With `--trace <control-id>` it follows all edges from that control through IR objects to evidence nodes, findings, and POA&M entries — producing a full provenance chain for any compliance claim.
+
+**Examples:**
+
+```bash
+# Print graph statistics
+uiao evidence graph --input normalized.json
+
+# Trace a specific control's evidence chain
+uiao evidence graph --input normalized.json --trace KSI-IA-02
+
+# Export graph stats as JSON
+uiao evidence graph --input normalized.json --format json --output graph.json
+
+# Trace a control and export the full chain as JSON
+uiao evidence graph --input normalized.json --trace AC-2 --format json --output trace.json
+```
+
+---
+
+## 4. Library-Only Features
+
+The following modules are part of the `uiao` package but are intentionally **not** exposed through the CLI. They are stable Python APIs for advanced integration scenarios.
+
+### 4.1 Enforcement Runtime (UIAO_111)
+
+**Module:** `uiao.enforcement`
+
+The Enforcement Runtime (`EnforcementRuntime`) is a policy evaluation and enforcement engine. Policies are expressed as Python callables (`EPLPolicy.condition: Callable[[dict], bool]`) and cannot be represented as simple CLI arguments. The runtime is designed to be embedded in Python automation scripts, GitHub Actions workflows, or orchestration pipelines.
+
+**Import surface:**
+
+```python
+from uiao.enforcement import EnforcementRuntime, EPLPolicy, EnforcementResult, RuntimeState
+
+policy = EPLPolicy(
+    policy_id="POL-IA-01",
+    control_id="IA-2",
+    description="MFA must be enforced",
+    adapter_id="noop",
+    condition=lambda ir_obj: not ir_obj.get("mfa_enabled", True),
+    severity="High",
+    auto_enforce=False,
+)
+
+runtime = EnforcementRuntime(dry_run=True)
+result = runtime.run(policy, ir_object={"id": "user-001", "mfa_enabled": False})
+print(result.state)  # "VIOLATED"
+```
+
+**Key classes:**
+
+| Class | Role |
+|-------|------|
+| `EnforcementRuntime` | Orchestrates evaluation, enforcement, evidence collection, POAM/SAR update. |
+| `EPLPolicy` | Policy definition: control reference, condition callable, severity, adapter ID. |
+| `EnforcementResult` | Per-run result: state, violation flag, evidence hash, POAM action taken. |
+| `RuntimeState` | State constants: `EVALUATING`, `COMPLIANT`, `VIOLATED`, `ENFORCING`, `REMEDIATED`, `FAILED`. |
+| `EnforcementAdapter` | Base class for enforcement adapters; extend to add real remediation logic. |
+
+---
+
+## 5. API Server (`[api]` Extra)
+
+The `uiao.api` module provides a FastAPI REST service for the UIAO governance layer. It is gated behind the `[api]` optional extra because it requires `fastapi`, `httpx`, `uvicorn`, and `msal` — dependencies that most CLI users do not need.
+
+**Installation:**
+
+```bash
+pip install "uiao[api]"
+```
+
+**Running the server:**
+
+```bash
+# Development (via uvicorn directly)
+uvicorn uiao.api.app:app --host 0.0.0.0 --port 8080
+
+# Production (IIS/Windows — see deploy/windows-server/)
+python deploy/windows-server/run.py
+```
+
+**REST endpoints:**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/auditor/evidence` | GET | List evidence records with optional control/status filters. |
+| `/api/auditor/evidence/{id}` | GET | Get a single evidence record by ID. |
+| `/api/auditor/findings` | GET | List findings with optional severity filter. |
+| `/api/auditor/summary` | GET | Aggregate evidence and finding statistics. |
+| `/api/health` | GET | Service health check. |
+
+**Authentication:** Bearer token required on all `/api/auditor/*` routes. The API uses Windows Authentication (Kerberos via IIS Negotiate) for inbound requests and MSAL client credentials for outbound Microsoft Graph calls.
+
+**Swagger UI:** Available at `/api/docs` when the server is running.
+
+> **Note:** The REST API is for server-side deployment in GCC-Moderate environments. For local analysis, use the CLI commands in sections 3.7–3.9 instead.
+
+---
+
+## 6. Pipeline Architecture
 
 The UIAO-Core CLI implements a deterministic pipeline architecture. Every artifact produced by any command is traceable back to its canon YAML source-of-truth. The pipeline flows through the following stages:
 
@@ -219,15 +371,16 @@ The IR pipeline specifically enforces **provenance** by hashing evidence objects
 
 ---
 
-## 5. Environment & Prerequisites
+## 7. Environment & Prerequisites
 
 | Prerequisite | Details |
 |--------------|---------|
-| **Python** | Python 3.14+. The Pydantic V1 compatibility warning emitted by compliance-trestle is expected and non-blocking. |
+| **Python** | Python 3.10+. |
 | **compliance-trestle** | NIST compliance-trestle library for OSCAL Pydantic model validation. Required by validate-ssp. |
 | **PlantUML** | Java runtime required for diagram rendering. Used by generate-visuals and generate-diagrams. |
 | **GEMINI_API_KEY** | Environment variable required for AI-generated visuals via generate-gemini. |
 | **Canon YAML** | Canon YAML files must be present and pass canon-check before any generation command is run. |
+| **`[api]` extra** | `pip install "uiao[api]"` required to run the FastAPI REST server. |
 
 > **Environment Boundaries**
 > - UIAO operates in Commercial Cloud as governed by FedRAMP unless specifically noted.
@@ -236,7 +389,7 @@ The IR pipeline specifically enforces **provenance** by hashing evidence objects
 
 ---
 
-## 6. Canonical Rules
+## 8. Canonical Rules
 
 The following governance rules are authoritative and apply to all UIAO operations, artifacts, and communications:
 

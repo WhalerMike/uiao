@@ -49,7 +49,35 @@ Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`
 | Substrate schema | `src/uiao/schemas/substrate-manifest/substrate-manifest.schema.json` | Constrains UIAO_200 |
 | Workspace schema | `src/uiao/schemas/workspace-contract/workspace-contract.schema.json` | Constrains UIAO_201 |
 
-## Substrate walker (the tool agents run first)
+## Public surface inventory (M5 — as of v0.5.0)
+
+Authoritative record of what is CLI-reachable, what is library-only, and what is gated behind an optional extra. Update this table whenever a feature moves between tiers.
+
+| Feature | Module | CLI surface | Tier | Notes |
+|---|---|---|---|---|
+| OSCAL generation | `uiao.generators.*` | `generate-ssp`, `generate-all`, `validate-ssp`, `generate-sbom` | CLI | Core pipeline |
+| Visual rendering | `uiao.generators.mermaid`, `gemini_visuals` | `generate-visuals`, `generate-diagrams`, `generate-gemini` | CLI | Requires PlantUML / `GEMINI_API_KEY` |
+| Document generation | `uiao.generators.docs`, `rich_docx`, `pptx` | `generate-docs`, `generate-docx`, `generate-pptx`, `generate-briefing` | CLI | — |
+| ConMon / Sentinel | `uiao.monitoring` | `conmon-process`, `conmon-export-oa`, `conmon-dashboard` | CLI | — |
+| Adapter runner | `uiao.adapters.*` | `adapter-run`, `adapter-run-scuba` | CLI | `servicenow`, `entra`, `scuba` |
+| IR pipeline | `uiao.adapters.scuba.ir`, `uiao.evidence.*` | `ir-scuba-transform` … `ir-ssp-inject` | CLI | 11 commands |
+| Auditor bundle | `uiao.auditor.bundle` | `ir-auditor-bundle` | CLI | REST API: `[api]` extra |
+| CQL Engine | `uiao.cql` | `cql query` | CLI | UIAO_108; SQL-like queries over bundles |
+| Evidence Graph | `uiao.evidence.graph` | `evidence graph` | CLI | UIAO_113; provenance tracing |
+| Substrate walker | `uiao.substrate.walker` | `substrate walk`, `substrate drift` | CLI | — |
+| KSI evaluation | `uiao.ksi` | `ksi evaluate`, `ksi report` | CLI | — |
+| OSCAL export | `uiao.oscal` | `oscal generate`, `oscal export` | CLI | — |
+| Orchestrator | `uiao.orchestrator` | `orchestrator run`, `orchestrator status` | CLI | — |
+| **Enforcement Runtime** | `uiao.enforcement` | ❌ None | **Library-only** | UIAO_111; policies are Python callables — see `docs/docs/cli-reference.md §4.1` |
+| **FastAPI REST API** | `uiao.api` | ❌ None (server) | **`[api]` extra** | `pip install "uiao[api]"`; see `docs/docs/cli-reference.md §5` |
+
+### Rules for moving a feature between tiers
+
+- **Library-only → CLI**: write a Typer command, add happy-path + failure-mode tests, update this table and `docs/docs/cli-reference.md`.
+- **CLI → library-only**: add a deprecation note to the command's docstring for one release cycle, then remove the command and update this table.
+- **Any tier → `[api]` extra**: requires a `[api]` optional-dependency declaration in `pyproject.toml` and a documentation note in `cli-reference.md`.
+
+
 
 ```bash
 uiao substrate walk              # structured report
