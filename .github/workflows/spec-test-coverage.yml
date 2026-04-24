@@ -1,0 +1,102 @@
+name: Spec-test coverage gate (UIAO_103)
+
+# Enforces that the per-spec count of normative invariants never shrinks
+# between PRs. Re-runs the audit at scripts/tools/spec_test_audit.py and
+# diffs against the committed table at
+# docs/docs/governance/spec-test-coverage.md.
+#
+# Failure modes:
+#   - Spec previously tracked has fewer invariants now → fail.
+#   - Spec previously tracked is missing entirely → fail.
+#   - New invariants → pass (the bar moved up; future PRs add tests).
+#
+# Pipeline context:
+#   - UIAO_103 spec: src/uiao/canon/specs/UIAO-Spec-Test-Enforcement.md
+#   - Roadmap §1.2 (closed by this gate's introduction)
+#
+# To accept a legitimate count drop (spec retired, etc.):
+#   python scripts/tools/spec_test_coverage_check.py --update
+#   git commit -am "docs: spec-test-coverage update — <reason>"
+
+on:
+  pull_request:
+    paths:
+      - "src/uiao/canon/specs/**/*.md"
+      - "src/uiao/canon/UIAO_*.md"
+      - "docs/docs/governance/spec-test-coverage.md"
+      - "scripts/tools/spec_test_audit.py"
+      - "scripts/tools/spec_test_coverage_check.py"
+      - ".github/workflows/spec-test-coverage.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/uiao/canon/specs/**/*.md"
+      - "src/uiao/canon/UIAO_*.md"
+      - "docs/docs/governance/spec-test-coverage.md"
+      - "scripts/tools/spec_test_audit.py"
+      - "scripts/tools/spec_test_coverage_check.py"
+  workflow_dispatch:
+
+concurrency:
+  group: spec-test-coverage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage-gate:
+    name: Verify spec-test coverage didn't shrink
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Run audit (informational)
+        run: python scripts/tools/spec_test_audit.py
+
+      - name: Check baseline preserved
+        id: gate
+        run: |
+          set +e
+          python scripts/tools/spec_test_coverage_check.py
+          rc=$?
+          set -e
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit $rc
+
+      - name: PR comment on failure
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { execSync } = require('node:child_process');
+            const out = execSync(
+              'python scripts/tools/spec_test_coverage_check.py --json',
+              { encoding: 'utf8' }
+            ).toString();
+            const data = JSON.parse(out);
+            const body = [
+              '### UIAO_103 spec-test coverage gate failed',
+              '',
+              `${data.failures.length} spec(s) lost invariants relative to the committed baseline.`,
+              '',
+              ...data.failures.map((f) => `- ${f}`),
+              '',
+              'If this is intentional (spec retired, merged, or rewritten), run:',
+              '```',
+              'python scripts/tools/spec_test_coverage_check.py --update',
+              '```',
+              'and commit the resulting `docs/docs/governance/spec-test-coverage.md`.',
+            ].join('\n');
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
