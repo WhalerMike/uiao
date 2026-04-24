@@ -60,12 +60,17 @@ Canon authority lives in [`src/uiao/canon/`](src/uiao/canon/) and is **protected
 
 ## Quick start
 
+**New to UIAO?** Walk the [10-minute quickstart](docs/docs/quickstart.md) — it runs a full auditor bundle (evidence, POA&M, SSP narrative) against a synthetic ScubaGear fixture. No Azure tenant, no API keys, no live data.
+
 ```bash
 # Install the package + CLI in editable mode
 pip install -e .
 
 # (Optional) dev tooling
 pip install -e ".[dev]"
+
+# Run the 10-minute quickstart end-to-end
+uiao ir auditor-bundle examples/quickstart/scuba-normalized.json --out-dir /tmp/uiao-quickstart
 
 # Validate substrate integrity
 uiao substrate walk
