@@ -384,6 +384,39 @@ Deferred to Phase 2:
   `state_source` + auth config surfaced from the registry or
   environment.
 
+### 1.x — Continuous Compliance Evidence composition ✅
+
+With §1.1, §1.3, §1.4, §1.5 each individually shipped, the remaining
+piece to promote Continuous Compliance Evidence out of DESIGN-ONLY is
+**operational composition**: a recurring run that exercises the full
+pipeline against real canon.
+
+**Shipped:**
+
+- `EvidenceGraph.ingest_drift_semantic(findings)` in
+  `src/uiao/evidence/graph.py` — composes §1.1 (DRIFT-SEMANTIC eval)
+  into §1.4 (Evidence Graph) so stale-evidence findings appear as
+  first-class `FindingNode`s alongside adapter drift. Surfaces through
+  the existing `build_sar(..., graph=...)` path to OSCAL SAR.
+- `.github/workflows/orchestrator-schedule-nightly.yml` — nightly
+  (cron `0 3 * * *`) and on-demand `workflow_dispatch` runs of
+  `uiao orchestrator schedule` against both canon registries,
+  evaluates DRIFT-SEMANTIC freshness, uploads the run tree as a 30-day
+  artifact, and offers opt-in LFS commit-back for ATO-grade evidence
+  captures.
+- Concurrency group `nightly-orchestrator-<ref>` prevents overlapping
+  runs. Schedule runs are artifact-only by default; operators opt into
+  commit-back explicitly via workflow dispatch input.
+
+**Exit to TARGET (now reachable):** one complete evidence → drift →
+DRIFT-SEMANTIC → graph → SAR loop runs nightly against the canon
+registries without manual intervention. ✅
+
+**Exit to SHIPPED (still requires):** real-adapter coverage across the
+registry (Phase 2 wiring), production reference deployment with tenant
+config surfaced via secrets, measured freshness SLA compliance across
+≥4 weeks of nightly runs.
+
 ---
 
 ## Phase 2 — Adapter conformance gates (v0.5 → v0.8)
