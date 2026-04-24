@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import json
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
+
+# Stable namespace UUID used to derive deterministic resource UUIDs from
+# control ids when emitting OSCAL back-matter graph link resources.
+_OSCAL_GRAPH_RESOURCE_NS = uuid.UUID("a4b2bb99-1c5b-5e07-b4a9-58e4f7deb113")
 
 # Severity normalization for scheduler-originated drift reports.
 # Drift reports carry free-form severity strings (P1/P3/High/critical/info).
@@ -609,6 +614,86 @@ class EvidenceGraph:
                 props["graph-adapter-id"] = extra["adapter_id"]
 
         return props
+
+    @staticmethod
+    def resource_uuid_for_control(control_id: str) -> str:
+        """Deterministic UUID for the OSCAL back-matter resource that
+        aggregates graph provenance for ``control_id``.
+
+        Using UUID v5 keyed on ``_OSCAL_GRAPH_RESOURCE_NS`` means every
+        emitter (SAR, SSP, POA&M, component-definition) produces the same
+        resource UUID for the same control, so cross-artifact `links`
+        always resolve to the same back-matter entry.
+        """
+        return str(uuid.uuid5(_OSCAL_GRAPH_RESOURCE_NS, control_id))
+
+    def back_matter_resource_for_control(self, control_id: str) -> Optional[Dict[str, Any]]:
+        """Build a single OSCAL back-matter resource for ``control_id``.
+
+        Returns ``None`` when the graph has no coverage for the control —
+        callers can drop the entry rather than emitting an empty resource.
+        Otherwise, the resource carries graph-derived props and (when the
+        graph was built from a scheduler run) an ``rlinks`` entry pointing
+        to the on-disk evidence path.
+        """
+        sar = self.sar_props_for_evidence(control_id)
+        poam = self.poam_props_for_control(control_id)
+        if not sar and not poam:
+            return None
+
+        merged: Dict[str, Any] = {}
+        for src in (sar, poam):
+            for k, v in src.items():
+                merged.setdefault(k, str(v))
+
+        props = [
+            {"name": "control-id", "value": control_id, "ns": "https://uiao.gov/ns/oscal/graph"},
+        ]
+        for name, value in sorted(merged.items()):
+            props.append({"name": name, "value": value, "ns": "https://uiao.gov/ns/oscal/graph"})
+
+        resource: Dict[str, Any] = {
+            "uuid": self.resource_uuid_for_control(control_id),
+            "title": f"UIAO_113 Evidence Graph trace: {control_id}",
+            "description": (
+                f"Aggregated evidence-graph provenance for control {control_id}. "
+                "Surfaces witness evidence, scheduler dispatch, and the top "
+                "open finding so OSCAL consumers can navigate from a control "
+                "implementation back to the adapter run that produced its evidence."
+            ),
+            "props": props,
+        }
+
+        run_id = merged.get("graph-scheduler-run-id")
+        adapter_id = merged.get("graph-adapter-id")
+        if run_id and adapter_id:
+            resource["rlinks"] = [
+                {
+                    "href": f"schedrun://{run_id}/adapters/{adapter_id}/evidence.json",
+                    "media-type": "application/json",
+                }
+            ]
+        return resource
+
+    def back_matter_resources_for_controls(
+        self,
+        control_ids: Iterable[str],
+    ) -> Dict[str, Dict[str, Any]]:
+        """Build back-matter resources for many controls.
+
+        Returns ``{control_id: resource_dict}`` for controls with graph
+        coverage; controls without coverage are silently dropped.
+        Iteration order is the input order so OSCAL output stays
+        deterministic.
+        """
+        out: Dict[str, Dict[str, Any]] = {}
+        for cid in control_ids:
+            if cid in out:
+                continue
+            res = self.back_matter_resource_for_control(cid)
+            if res is not None:
+                out[cid] = res
+        return out
 
     @classmethod
     def from_evidence_bundle(cls, bundle):
