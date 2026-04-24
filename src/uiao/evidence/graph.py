@@ -555,6 +555,61 @@ class EvidenceGraph:
             )
         return props
 
+    def poam_props_for_control(self, control_id: str) -> Dict[str, Any]:
+        """Return graph-derived props for a POA&M item keyed on ``control_id``.
+
+        Empty dict when the graph has no findings or evidence for the control —
+        callers can treat that as "no graph-derived augmentation available".
+
+        Surfaces:
+            graph-finding-id        — id of the highest-severity finding
+            graph-finding-severity  — that finding's severity (High/Medium/Low)
+            graph-finding-status    — Open / Closed
+            graph-finding-drift-class — e.g. DRIFT-SEMANTIC / scheduler-drift
+            graph-poam-entry-id     — linked POAMEntryNode id, when present
+            graph-poam-status       — POAMEntryNode status, when present
+            graph-evidence-id       — witness Evidence id, when graph carries
+                                      evidence for the control
+            graph-scheduler-run-id  — scheduler run id from witness evidence
+            graph-adapter-id        — adapter id from witness evidence
+        """
+        findings = self.findings_for_control(control_id)
+        evs = self.evidence_for_control(control_id)
+        if not findings and not evs:
+            return {}
+
+        props: Dict[str, Any] = {}
+
+        if findings:
+            top = max(
+                findings,
+                key=lambda f: {"High": 3, "Medium": 2, "Low": 1}.get(f.severity, 0),
+            )
+            props["graph-finding-id"] = top.id
+            props["graph-finding-severity"] = top.severity
+            props["graph-finding-status"] = top.status
+            if top.drift_class:
+                props["graph-finding-drift-class"] = top.drift_class
+            for edge in self._out.get(top.id, []):
+                if edge.edge_type == "remediated-by":
+                    poam_node = self._nodes.get(edge.to_id)
+                    if isinstance(poam_node, POAMEntryNode):
+                        props["graph-poam-entry-id"] = poam_node.id
+                        props["graph-poam-status"] = poam_node.status
+                        break
+
+        if evs:
+            scheduler_evs = [e for e in evs if getattr(e, "extra", None)]
+            target = scheduler_evs[0] if scheduler_evs else evs[0]
+            props["graph-evidence-id"] = target.id
+            extra = getattr(target, "extra", {}) or {}
+            if extra.get("run_id"):
+                props["graph-scheduler-run-id"] = extra["run_id"]
+            if extra.get("adapter_id"):
+                props["graph-adapter-id"] = extra["adapter_id"]
+
+        return props
+
     @classmethod
     def from_evidence_bundle(cls, bundle):
         g = cls()

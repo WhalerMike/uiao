@@ -13,7 +13,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from uiao.evidence.graph import EvidenceGraph
 from uiao.utils.context import get_settings, load_context
+
+_UIAO_GRAPH_NS = "https://uiao.gov/ns/oscal/graph"
 
 
 # ---------------------------------------------------------------------------
@@ -137,8 +140,22 @@ def detect_gaps(context: dict[str, Any]) -> list[dict[str, Any]]:
 def build_poam(
     context: dict[str, Any],
     manual_findings: list[dict[str, Any]] | None = None,
+    graph: EvidenceGraph | None = None,
 ) -> dict[str, Any]:
-    """Build OSCAL POA&M from detected gaps and optional manual findings."""
+    """Build OSCAL POA&M from detected gaps and optional manual findings.
+
+    Args:
+        context: Merged UIAO context dict (from :func:`load_context`).
+        manual_findings: Extra gap dicts to fold in alongside auto-detected
+            gaps.
+        graph: Optional UIAO_113 EvidenceGraph. When provided, each
+            ``poam-item`` is augmented with graph-derived props (top
+            finding id/severity/status, linked POAM entry id, witness
+            evidence id, scheduler run id, adapter id) under the
+            ``_UIAO_GRAPH_NS`` namespace, so reviewers can trace each
+            POA&M item back to the finding and adapter dispatch that
+            surfaced it.
+    """
     now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     gaps = detect_gaps(context)
@@ -148,16 +165,28 @@ def build_poam(
     poam_items: list[dict[str, Any]] = []
     for i, gap in enumerate(gaps, start=1):
         related = gap.get("related_controls", [])
+        props: list[dict[str, Any]] = [
+            {"name": "risk-level", "value": gap.get("risk_level", "moderate")},
+            {"name": "finding-id", "value": f"POAM-{i:04d}"},
+            *[{"name": "related-control", "value": c} for c in related],
+        ]
+        if graph is not None:
+            existing_names: set[str] = set()
+            for ctrl_id in related:
+                if not ctrl_id:
+                    continue
+                graph_props = graph.poam_props_for_control(ctrl_id)
+                for name, value in graph_props.items():
+                    if name in existing_names:
+                        continue
+                    existing_names.add(name)
+                    props.append({"name": name, "value": str(value), "ns": _UIAO_GRAPH_NS})
         poam_items.append(
             {
                 "uuid": str(uuid.uuid4()),
                 "title": gap.get("title", f"Finding {i}"),
                 "description": gap.get("description", "No description"),
-                "props": [
-                    {"name": "risk-level", "value": gap.get("risk_level", "moderate")},
-                    {"name": "finding-id", "value": f"POAM-{i:04d}"},
-                    *[{"name": "related-control", "value": c} for c in related],
-                ],
+                "props": props,
             }
         )
 
@@ -180,15 +209,25 @@ def build_poam_export(
     data_dir: str | Path | None = None,
     output_dir: str | Path | None = None,
     manual_findings: list[dict[str, Any]] | None = None,
+    graph: EvidenceGraph | None = None,
 ) -> Path:
-    """Build and export POA&M JSON. Returns path to generated file."""
+    """Build and export POA&M JSON. Returns path to generated file.
+
+    Args:
+        canon_path: Path to the canon YAML file.
+        data_dir: Path to the data directory.
+        output_dir: Output directory for ``uiao-poam.json``.
+        manual_findings: Extra gap dicts.
+        graph: Optional UIAO_113 EvidenceGraph; threaded through to
+            :func:`build_poam` for graph-derived props.
+    """
     settings = get_settings()
     if output_dir is None:
         output_dir = settings.project_root / "exports" / "oscal"
     output_dir = Path(output_dir)
 
     context = load_context(canon_path, data_dir)
-    poam = build_poam(context, manual_findings)
+    poam = build_poam(context, manual_findings, graph=graph)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "uiao-poam.json"
