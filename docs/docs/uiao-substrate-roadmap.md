@@ -182,15 +182,60 @@ Work required:
 
 **Exit condition:** UIAO_100 (Compliance Orchestrator) has a working scheduler and evidence pipeline. DRIFT-SEMANTIC is complete. UIAO_103 and UIAO_113 are fully green.
 
-### 1.1 — DRIFT-SEMANTIC completion
+### 1.1 — DRIFT-SEMANTIC completion (partial → **complete** ✅)
 
 The freshness engine is partial. The remaining work is defining and enforcing staleness windows per adapter: when evidence collected by `entra-id` is more than N hours old, DRIFT-SEMANTIC fires at P2.
 
-Work required:
-- Define per-adapter `freshness-window-hours` in `modernization-registry.yaml` (new field, schema update required).
-- Implement freshness evaluator in `src/uiao/freshness/` that compares evidence timestamps against declared windows.
-- Emit `DRIFT-SEMANTIC` findings.
-- Add pytest coverage.
+**Status (2026-04-23):** shipped end to end — scheduler run → per-adapter
+window lookup → DRIFT-SEMANTIC findings with appropriate severity.
+
+Shipped:
+- New `freshness-window-hours` field in the adapter-registry JSON
+  schema (`src/uiao/schemas/adapter-registry/adapter-registry.schema.json`)
+  with documentation of the evaluator fallback chain.
+- Seeded two representative canon entries:
+  - `modernization-registry.yaml::entra-id` → 24h (tight window for
+    identity modernization).
+  - `adapter-registry.yaml::scubagear` → 168h (7d) (matches weekly
+    SCuBA baseline cadence).
+  Additional adapters pick up values incrementally as operators declare
+  real cadences.
+- New module `src/uiao/freshness/drift_semantic.py`:
+  - `load_adapter_windows(registries)` — merges declared windows across
+    canon registries (later registries override earlier).
+  - `resolve_policy(adapter_id, windows, ksi_id)` — registry →
+    family-default → global-default fallback chain.
+  - `evaluate_evidence_payload()` — classifies a scheduler-produced
+    evidence payload into fresh / stale-soon / stale /
+    missing-timestamp with severities P5 / P3 / P2 / P1 respectively.
+  - `evaluate_scheduler_run(run_dir, registries)` — closes the
+    UIAO_100 → UIAO_016 loop by walking
+    `schedrun-*/adapters/<id>/evidence.json` and emitting
+    `FreshnessFinding` records carrying `drift_type="DRIFT-SEMANTIC"`.
+  - `drift_semantic_findings()` — filter helper that drops `fresh`
+    records so only route-worthy findings travel to the drift engine.
+  - `summarize()` + `write_findings()` — JSON persistence matching the
+    scheduler's on-disk manifest pattern.
+- 25 new tests in `tests/test_drift_semantic_freshness.py`: registry
+  loader (5), policy resolution (4), classification (6 including
+  future-dated + missing-timestamp edge cases), `evaluate_scheduler_run`
+  (6 including missing dir, empty adapters root, malformed JSON), and
+  end-to-end scheduler-run-to-DRIFT-SEMANTIC.
+
+Deferred to Phase 2:
+- Seeding `freshness-window-hours` for the remaining ~16 registry
+  entries — each requires operator input on real cadence expectations.
+  The fallback chain keeps the evaluator working in the interim.
+- Wiring DRIFT-SEMANTIC findings into the evidence graph's Finding
+  nodes (§1.4 already accepts `drift.json` shaped findings; Phase 2
+  adds the cross-walk so drift-semantic findings appear alongside
+  adapter-detected drift in the graph and SAR).
+- CLI surface (`uiao orchestrator evaluate-freshness`) — deferred
+  because the module already has a clean Python API suitable for CI
+  scripting.
+
+Referenced doc: UIAO_016 Drift Detection Standard (drift semantics),
+UIAO_100 (scheduler producer), UIAO_113 (future graph consumer).
 
 ### 1.2 — UIAO_103 Spec-Test Enforcement (partial → complete)
 
