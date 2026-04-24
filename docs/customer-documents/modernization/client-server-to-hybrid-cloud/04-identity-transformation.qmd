@@ -1,0 +1,368 @@
+---
+title: "Chapter 04 — Identity: x.500 Hierarchy → Flat Entra ID + OrgPath"
+subtitle: "How the OU tree becomes OrgPath, dynamic groups, Administrative Units, and Conditional Access"
+doc-type: series-chapter
+series-id: client-server-to-hybrid-cloud
+chapter: 4
+audience: "Identity architects · canon stewards · delegated admins"
+canon-source: "docs/modernization/orgtree.qmd + MOD_A/B/C/D/F + Posted Identity Modernization Guide"
+date: 2026-04-24
+aspirational: true
+---
+
+# Chapter 04 — Identity: x.500 Hierarchy → Flat Entra ID + OrgPath {.unnumbered}
+
+*The OU-tree replacement*
+
+![Figure 4.1 — A single OrgPath attribute drives five downstream governance outcomes](images/04-orgpath-fanout.png){fig-alt="Fanout diagram with a user object in the center showing extensionAttribute1 = ORG-FIN-AP-EAST, radiating arrows to five outcomes: dynamic group membership (OrgTree-FIN-AP-Users), Administrative Unit scope (AU-ORG-FIN-AP), Conditional Access targeting, group-based license assignment, and MOD_M drift validation" width="720"}
+
+::: {.callout-important title="The identity claim"}
+The AD OU tree was never just a folder structure. It encoded delegation,
+policy inheritance, operational accountability, and security scope in a
+single hierarchical graph. Entra ID is flat and has none of that.
+
+The **OrgTree canon** reconstructs AD's governance properties inside
+Entra ID's flat directory using four governed mechanisms — **OrgPath**,
+**dynamic groups**, **Administrative Units**, and **Conditional Access
+targeting** — stitched together into one deterministic model.
+
+This chapter is how it works.
+:::
+
+## The four mechanisms
+
+Entra ID provides individually powerful tools. OrgTree is the framework
+that uses them *together* to replace what the OU tree was doing.
+
+| Mechanism | What it replaces | Canon |
+|---|---|---|
+| **OrgPath attribute** | OU placement | MOD_A (codebook) |
+| **Dynamic groups** | OU-derived security groups | MOD_B (library) |
+| **Administrative Units** | OU-level delegation | MOD_D (matrix) |
+| **Conditional Access targeting** | GPO-based policy inheritance | *(per policy library)* |
+
+Each mechanism is individually documented in Microsoft's reference; the
+innovation is **the contract that binds them together** so that a single
+act (setting a user's OrgPath) produces consistent downstream effects
+(group membership, AU scope, policy targeting, license assignment,
+drift-detector visibility).
+
+## OrgPath — the single source of hierarchy
+
+OrgPath is a deterministic, attribute-encoded organizational hierarchy
+stored in `extensionAttribute1` on every governed user (and, where
+applicable, device and group) object.
+
+### The form
+
+```
+ORG-<DIV>[-<DEPT>[-<SUB>[-<LOC>]]]
+```
+
+Every segment is an enumerated short code from MOD_A's codebook. Depth
+is capped at five segments. The regex that validates any OrgPath is:
+
+```
+^ORG(-[A-Z]{2,6}){0,4}$
+```
+
+### Examples
+
+- `ORG-FIN-AP-EAST` — Finance / Accounts Payable / East region
+- `ORG-IT-INF-PLATFORM` — IT / Infrastructure / Platform team
+- `ORG-HR-BEN` — HR / Benefits (two-segment, department-level)
+- `ORG-EXEC` — Executive (single-segment, division-level)
+
+### What OrgPath drives
+
+A single attribute drives five downstream outcomes:
+
+1. **Dynamic group membership** — every user with
+   `extensionAttribute1 -startsWith "ORG-FIN"` is in `OrgTree-FIN-Users`.
+2. **Administrative Unit scoping** — the AU `AU-ORG-FIN` has the same
+   membership rule; delegated admins of that AU manage only those users.
+3. **Conditional Access targeting** — CA policies include or exclude
+   groups keyed to OrgPath segments.
+4. **License assignment** — group-based licensing flows from
+   OrgPath-scoped dynamic groups.
+5. **Drift detection** — MOD_M validates that every user's OrgPath
+   exists in the codebook and matches the HR-system source of truth.
+
+One attribute. Five governance outcomes. Zero admin-portal clicks to
+assign any of them.
+
+### The codebook (MOD_A)
+
+MOD_A is a YAML file in Gitea that enumerates every valid OrgPath code.
+Every code has a description, a parent path, allowed children patterns,
+and a max depth. An OrgPath that is not in the codebook is invalid by
+definition; the JSON schema (MOD_H) rejects it at validation time.
+
+The codebook is not freely edited. Changes go through the Canon Change
+Protocol (MOD_V) — PR → review → merge. This preserves OrgPath stability
+across time; an OrgPath issued to a user in 2026 means the same thing in
+2030.
+
+## Dynamic groups — materializing every subtree
+
+AD computed "who is in the Finance branch?" by walking the OU tree.
+Entra ID computes it by evaluating a dynamic-group rule against
+`extensionAttribute1`.
+
+### The three query patterns (MOD_B)
+
+Every OrgPath-governed dynamic group uses one of three patterns.
+
+**Pattern 1 — Branch Query (subtree).** Captures all users at and below
+a hierarchy level. Use `-startsWith`.
+
+```
+(user.extensionAttribute1 -startsWith "ORG-FIN")
+```
+
+Produces: every Finance user, including AP, Budget, Tax, and every
+sub-subgroup.
+
+**Pattern 2 — Node Query (exact).** Captures only users at a specific
+level. Use `-eq`.
+
+```
+(user.extensionAttribute1 -eq "ORG-FIN-AP")
+```
+
+Produces: users whose OrgPath is *exactly* `ORG-FIN-AP` — not their
+children.
+
+**Pattern 3 — Functional Query (role or attribute).** Combines
+OrgPath with a role-bearing attribute (job title, cost center,
+department), for cross-cutting concerns.
+
+```
+(user.extensionAttribute1 -startsWith "ORG-IT") and (user.jobTitle -contains "Security")
+```
+
+Produces: every IT-organization user whose title includes "Security."
+
+### Naming convention
+
+Every OrgTree-governed dynamic group follows `OrgTree-[SCOPE]-[PURPOSE]`:
+
+- `OrgTree-FIN-Users` — branch query, Finance subtree
+- `OrgTree-IT-SEC-SOC-Users` — SOC analysts
+- `OrgTree-HR-Licensed` — HR users targeted for specific SKUs
+- `OrgTree-EXEC-CA` — Executive users targeted by specific CA policies
+
+Groups that don't match the pattern are **Phantom Drift** per MOD_M.
+The drift engine finds them; MOD_Q escalates the cleanup.
+
+## Administrative Units — the delegation replacement
+
+AD delegated OU-level administrative rights via ACLs on the OU object.
+Entra ID delegates via Administrative Units — named scopes that contain
+users, and against which roles can be assigned.
+
+### The three-tier model (MOD_D)
+
+MOD_D enumerates every AU in a three-tier structure mirroring OrgPath
+depth:
+
+| Tier | Scope | AU Pattern | Typical Roles |
+|---|---|---|---|
+| **Tier 1 — Enterprise** | All governed users | `AU-ORG-Enterprise` | Global Reader, Security Reader |
+| **Tier 2 — Division** | All users in one division | `AU-ORG-[DIV]` | User Administrator, Groups Administrator |
+| **Tier 3 — Department** | Users in one department | `AU-ORG-[DIV]-[DEPT]` | Helpdesk Administrator, Password Administrator |
+
+The membership rule of each AU is an exact mirror of the corresponding
+OrgPath dynamic-group rule. `AU-ORG-FIN` contains exactly the same users
+as `OrgTree-FIN-Users`.
+
+### Restricted management
+
+Every OrgTree AU is created with `isMemberManagementRestricted: true`.
+That means the only way to manage members is via the governed workflow —
+by changing a user's OrgPath. A Global Admin cannot hand-add a user to
+an AU to bypass delegation. This is AD's "OU ACL" property, preserved.
+
+### Role assignments
+
+Roles are scoped to AUs, never granted tenant-wide except for break-glass
+accounts. The assignment pattern:
+
+```
+role:        User Administrator
+principal:   OrgTree-FIN-Admins            ← a dynamic group
+scope:       /administrativeUnits/AU-ORG-FIN
+```
+
+A member of `OrgTree-FIN-Admins` can reset passwords, create groups,
+and manage users — but only for users in `AU-ORG-FIN`. Outside that
+scope, the role has no effect.
+
+The full role matrix (MOD_D §Role Assignment Matrix) is stored in
+Gitea. Changes require a PR; Copilot validates that new assignments
+respect least-privilege and tier-boundary rules.
+
+## Conditional Access — policy inheritance replacement
+
+GPOs inherited down the OU tree. Conditional Access policies target
+groups. The bridge: OrgPath-scoped dynamic groups that match the
+OU-inheritance pattern.
+
+Example: a GPO that applied at `OU=East,DC=contoso` configured
+lockout policies for all East-region users. The CA equivalent is a CA
+policy targeting `OrgTree-EAST-Users` (branch query on `ORG-EAST`).
+Users whose OrgPath starts with `ORG-EAST` get the policy; everyone
+else doesn't.
+
+More precisely: inheritance is simulated by **group targeting at the
+branch level**. CA doesn't inherit through AUs the way GPOs inherited
+through OUs; the governance model makes up the difference by having
+the branch group include everyone the ancestor GPO would have
+targeted.
+
+## HR-driven lifecycle (joiner / mover / leaver)
+
+OrgPath is not a thing admins maintain. It is driven by the HR system.
+The lifecycle is:
+
+### Joiner
+
+1. HR system creates the employee record with `orgUnit` + `department`
+   + `location` + `manager`.
+2. HR → Entra provisioning populates the standard attributes.
+3. A governed workflow — `assign-orgpath` — computes the OrgPath from
+   HR attributes per MOD_A's mapping rules and writes it to
+   `extensionAttribute1`.
+4. Dynamic groups recompute membership within the Entra cadence
+   (typically <15 minutes).
+5. The user is now an AU member, CA-scoped, group-licensed, and
+   visible to the drift engine — all automatically.
+
+### Mover
+
+The employee's HR record changes `department` from `AP` to `BUD`. The
+same `assign-orgpath` workflow runs; the OrgPath updates from
+`ORG-FIN-AP` to `ORG-FIN-BUD`; every downstream group, AU, CA scope,
+and license assignment recomputes automatically. No hand edits; no
+ticket; no drift window.
+
+### Leaver
+
+Termination writes a `leaver` attribute that the workflow catches;
+the user's OrgPath is set to `ORG-TERMINATED` (or removed); dynamic
+groups evict; AU membership drops; CA policy scope drops; license
+drops. Provenance points to the HR event that triggered it.
+
+### Workflow catalog (MOD_E)
+
+Every lifecycle workflow (joiner, mover, leaver, re-hire, contractor
+onboard, executive provision, emergency deprovision, name change,
+reorg) is enumerated in MOD_E with its triggers, inputs, outputs, and
+exception paths. There are no undocumented identity workflows.
+
+## Five drift categories (MOD_M)
+
+The drift detection engine classifies every identity finding into one
+of five categories:
+
+| Category | Example |
+|---|---|
+| **Schema Drift** | A dynamic-group rule references an attribute not in MOD_A |
+| **Value Drift** | HR says `ORG-FIN-AP`; user's `extensionAttribute1` says `ORG-FIN-BUD` |
+| **Hierarchy Drift** | An AU references an OrgPath segment no longer in the codebook |
+| **Orphan Drift** | A security group exists that isn't in MOD_B |
+| **Phantom Drift** | MOD_A defines `ORG-FIN-TAX-WEST` but zero users match |
+
+Every drift finding opens an SLA ticket per MOD_Q. Standard response
+times: Schema (4 hours), Value (24 hours), Hierarchy (4 hours),
+Orphan (48 hours), Phantom (7 days).
+
+## Migration (MOD_F)
+
+Moving an existing AD forest into the OrgTree model is a phased
+runbook, not a flag-day cutover.
+
+### Phase 0 — Assessment
+
+Chapter 02's Tier B assessment run, plus the Python OrgPath proposal
+generator. Output: a draft codebook based on actual OU structure.
+
+### Phase 1 — Canon authoring
+
+Steward reviews the draft codebook; edits; commits. MOD_A is now
+authoritative. MOD_B rules and MOD_D AUs are authored in parallel.
+
+### Phase 2 — Pilot division
+
+Pick one division (usually IT or Operations), compute its OrgPath
+mappings, stage the transformation plan, authorize, deliver. Validate
+with Pester tests (MOD_J). Any drift is fixed before moving on.
+
+### Phase 3 — Division-by-division rollout
+
+Each division gets its own plan, its own review, its own delivery. No
+division is rolled out until the previous one's drift findings are
+zero.
+
+### Phase 4 — Legacy retirement
+
+Once every user has an OrgPath and every OU has a dynamic-group
+equivalent, the OU-based security groups and legacy GPOs are retired
+in a governed deprecation pass. This is the only destructive phase;
+it requires explicit Steward approval per item.
+
+### Phase 5 — Steady state
+
+The daily assessment produces zero-action plans. The drift engine
+reports green. The canon is the operational truth. The forest itself
+remains (for DNS, DHCP, Kerberos-bound legacy apps) but is no longer
+the governance model.
+
+## Verification
+
+OrgTree migration passes when:
+
+- [ ] Every HR-listed employee has a valid OrgPath in
+      `extensionAttribute1`.
+- [ ] Every OrgPath in use exists in MOD_A.
+- [ ] Every dynamic group matches one of MOD_B's three patterns.
+- [ ] Every AU's membership rule mirrors its dynamic group's rule.
+- [ ] Every CA policy targets only OrgTree-governed groups.
+- [ ] MOD_M reports zero drift across all five categories.
+- [ ] The nightly assessment → plan run produces a zero-action plan.
+
+Only when every box is ticked is the tenant "in OrgTree steady state."
+
+## What this buys the agency
+
+The tangible outcomes, once OrgTree is in place:
+
+- **Delegation is provable.** Audit questions like "who can manage
+  Finance users?" have a literal answer in MOD_D.
+- **Reorganizations are cheap.** A division name change propagates
+  through codebook + dynamic groups + AUs in one PR.
+- **Access reviews have structure.** Rather than reviewing "all
+  Finance security groups," reviewers see OrgTree-governed groups
+  with clear scope semantics.
+- **Compliance queries are cacheable.** "Who has access to
+  CUI-tagged resources?" is a dynamic-group query, not a
+  spreadsheet reconciliation.
+- **Drift is visible before audit.** MOD_M's findings hit an SLA
+  ticket long before they reach a 3PAO's hands.
+
+## Cross-references
+
+- **Canon:** MOD_A codebook · MOD_B dynamic group library · MOD_C
+  attribute mapping · MOD_D delegation matrix · MOD_E workflow
+  catalog · MOD_F migration runbook · MOD_H JSON schema ·
+  MOD_M drift engine · MOD_Y identity graph normalization.
+- **Customer Documents:** [modernization/orgtree.qmd](../../../modernization/orgtree.qmd)
+  · [modernization/codebook.qmd](../../../modernization/codebook.qmd)
+  · [modernization/dynamic-groups.qmd](../../../modernization/dynamic-groups.qmd)
+  · [modernization/delegation.qmd](../../../modernization/delegation.qmd).
+- **Posted:** UIAO Identity Modernization Guide (16,014 words) — the
+  v1.0 reference implementation, superseded by MOD canon.
+
+---
+
+**Next:** [Chapter 05 — Policy: GPO → Intune + Conditional Access](05-policy-transformation.qmd)

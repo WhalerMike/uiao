@@ -23,6 +23,7 @@ def _strip_ansi(text: str) -> str:
     """Remove ANSI escape codes from text."""
     return re.sub(r"\x1b\[[0-9;]*[mK]", "", text)
 
+
 # ---------------------------------------------------------------------------
 # Shared minimal SCuBA fixture
 # ---------------------------------------------------------------------------
@@ -75,6 +76,7 @@ def bundle_json(tmp_path: Path, scuba_json: Path) -> Path:
 # uiao cql --help / uiao cql query --help
 # ===========================================================================
 
+
 class TestCQLHelp:
     def test_cql_group_help(self) -> None:
         """``uiao cql --help`` exits 0 and shows the query sub-command."""
@@ -98,6 +100,7 @@ class TestCQLHelp:
 # ===========================================================================
 # uiao cql query
 # ===========================================================================
+
 
 class TestCQLQuery:
     def test_show_controls_fail(self, bundle_json: Path) -> None:
@@ -215,6 +218,7 @@ class TestCQLQuery:
 # ===========================================================================
 # uiao evidence graph --help / uiao evidence graph
 # ===========================================================================
+
 
 class TestEvidenceGraphHelp:
     def test_evidence_graph_help(self) -> None:

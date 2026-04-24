@@ -128,7 +128,11 @@ def graph_command(
         None,
         "--trace",
         "-t",
-        help="Trace a specific control ID through the graph (e.g. AC-2).",
+        help=(
+            "Trace a specific control ID through the graph. "
+            "SCuBA → IR bundles use KSI IDs (e.g. KSI-IA-02); "
+            "use the same IDs shown in ``uiao ir-scuba-transform`` output."
+        ),
     ),
     output: Optional[str] = typer.Option(  # noqa: B008
         None,
@@ -159,7 +163,7 @@ def graph_command(
 
     Trace a specific control through the graph:
 
-        uiao evidence graph --input normalized.json --trace AC-2
+        uiao evidence graph --input normalized.json --trace KSI-IA-02
 
     Export graph statistics as JSON:
 
@@ -175,9 +179,16 @@ def graph_command(
         _console.print(f"[red]Input file not found: {input_path}[/red]")
         raise typer.Exit(code=1)
 
-    result = transform_scuba_to_ir(str(input_path))
-    bundle = build_bundle_from_transform_result(result)
-    graph = EvidenceGraph.from_evidence_bundle(bundle)
+    try:
+        result = transform_scuba_to_ir(str(input_path))
+        bundle = build_bundle_from_transform_result(result)
+        graph = EvidenceGraph.from_evidence_bundle(bundle)
+    except json.JSONDecodeError as exc:
+        _console.print(f"[red]Invalid JSON in input file: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    except (ValueError, KeyError) as exc:
+        _console.print(f"[red]Failed to build evidence graph: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
     stats = graph.stats()
 
     # ── Trace or stats ────────────────────────────────────────────────────────
@@ -203,6 +214,7 @@ def graph_command(
             _console.print(f"  POA\\&M entries : {len(poam_entries)}")
             if all_evidence:
                 from rich.table import Table
+
                 table = Table(show_header=True, header_style="bold blue")
                 table.add_column("evidence_id")
                 table.add_column("verdict")

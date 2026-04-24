@@ -226,16 +226,20 @@ SHOW POAM      [WHERE ...] [SINCE '...'] [ORDER BY ...]
 # List all failing controls
 uiao cql query "SHOW CONTROLS WHERE status = 'FAIL'" --bundle bundle.json
 
-# Show evidence for a specific control
-uiao cql query "SHOW EVIDENCE FOR CONTROL 'AC-2'" --bundle bundle.json --format json
+# Show evidence for a specific KSI control (SCuBA bundles use KSI IDs)
+uiao cql query "SHOW EVIDENCE FOR CONTROL 'KSI-IA-02'" --bundle bundle.json --format json
 
-# Find semantic drift events
+# Find semantic drift events (requires bundle with non-empty drift_states)
 uiao cql query "SHOW DRIFT WHERE drift_class = 'DRIFT-SEMANTIC'" --bundle bundle.json
 
 # List high-severity open POA&M items, most critical first
 uiao cql query "SHOW POAM WHERE severity >= 'High' ORDER BY severity DESC" \
     --bundle bundle.json --output poam-high.json
 ```
+
+> **Note on control IDs:** SCuBA → IR bundles use KSI IDs (e.g. `KSI-IA-01`, `KSI-IA-02`) as the `control_id` field, not NIST-style IDs (e.g. `AC-2`). Use `uiao ir-scuba-transform` to inspect the IDs in your bundle before querying.
+
+> **Note on DRIFT queries:** `SHOW DRIFT` returns rows only when the bundle contains drift states (`drift_states` is non-empty). Bundles from SCuBA runs without detected drift will return 0 rows.
 
 ---
 
@@ -257,15 +261,17 @@ The Evidence Graph is a directed property graph that links controls, IR objects,
 # Print graph statistics
 uiao evidence graph --input normalized.json
 
-# Trace a specific control's evidence chain
+# Trace a specific KSI control's evidence chain (SCuBA bundles use KSI IDs)
 uiao evidence graph --input normalized.json --trace KSI-IA-02
 
 # Export graph stats as JSON
 uiao evidence graph --input normalized.json --format json --output graph.json
 
 # Trace a control and export the full chain as JSON
-uiao evidence graph --input normalized.json --trace AC-2 --format json --output trace.json
+uiao evidence graph --input normalized.json --trace KSI-IA-02 --format json --output trace.json
 ```
+
+> **Note on control IDs:** SCuBA → IR transforms assign KSI IDs (e.g. `KSI-IA-02`) as control node IDs in the graph. Use the IDs shown in `uiao ir-scuba-transform` output. NIST-style IDs (e.g. `AC-2`) are available only in NIST-mapped adapter bundles.
 
 ---
 
