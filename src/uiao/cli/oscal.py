@@ -112,7 +112,12 @@ def generate_command(
 def validate(
     path: str = typer.Argument(..., help="Path to OSCAL JSON file."),
 ) -> None:
-    """Validate an OSCAL document against its schema."""
+    """Validate an OSCAL document against its schema.
+
+    Example::
+
+        uiao oscal validate exports/oscal/uiao-ssp.json
+    """
     _console.print(f"[bold]Validating {path}...[/bold]")
     _console.print("[yellow]Validation not yet implemented (Week 3).[/yellow]")
 
@@ -126,7 +131,12 @@ def validate_ssp(
         help="Directory containing OSCAL JSON artifacts.",
     ),
 ) -> None:
-    """Validate OSCAL artifacts with compliance-trestle Pydantic models."""
+    """Validate OSCAL artifacts with compliance-trestle Pydantic models.
+
+    Example::
+
+        uiao oscal validate-ssp --oscal-dir exports/oscal
+    """
     _console.print(f"[bold]Validating OSCAL artifacts in {oscal_dir}...[/bold]")
     failures = validate_oscal_artifacts(Path(oscal_dir))
     if failures:

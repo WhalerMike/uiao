@@ -41,7 +41,12 @@ def adapter_run(
         help="Optional JSON output path for alignment results.",
     ),
 ) -> None:
-    """Run a vendor adapter and align claims (DNS-style, no heavy OSCAL conversion)."""
+    """Run a vendor adapter and align claims (DNS-style, no heavy OSCAL conversion).
+
+    Example::
+
+        uiao adapter run servicenow --output /tmp/scuba-aligned.json
+    """
 
     import json as _json
 

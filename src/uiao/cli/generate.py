@@ -59,7 +59,12 @@ def generate_ssp(
         help="Inject control-library narratives into implemented-requirements.",
     ),
 ) -> None:
-    """Generate an OSCAL SSP from canon YAML and data files."""
+    """Generate an OSCAL SSP from canon YAML and data files.
+
+    Example::
+
+        uiao generate ssp --output /tmp/uiao-ssp.json
+    """
     from uiao.generators.ssp import build_ssp
 
     _console.print(f"[bold]Generating SSP from {canon_path}...[/bold]")
@@ -87,7 +92,12 @@ def generate_visuals(
         help="Force regeneration of all visuals (ignore cache).",
     ),
 ) -> None:
-    """Render PlantUML diagrams to PNG for DOCX/PPTX embedding."""
+    """Render PlantUML diagrams to PNG for DOCX/PPTX embedding.
+
+    Example::
+
+        uiao generate visuals --output-dir /tmp/visuals
+    """
     from uiao.generators.mermaid import render_all_plantuml
 
     _console.print(f"[bold]Rendering PlantUML visuals from {visuals_dir}...[/bold]")
@@ -115,7 +125,12 @@ def generate_gemini(
         help="Generate a single named image (default: all).",
     ),
 ) -> None:
-    """Generate images via Gemini API (requires GEMINI_API_KEY)."""
+    """Generate images via Gemini API (requires GEMINI_API_KEY).
+
+    Example::
+
+        uiao generate gemini --name some-diagram
+    """
     from uiao.generators.gemini_visuals import (
         generate_all_gemini_images,
         generate_gemini_image,
@@ -156,7 +171,12 @@ def generate_pptx(
         help="Output exports directory.",
     ),
 ) -> None:
-    """Generate a leadership briefing PPTX deck."""
+    """Generate a leadership briefing PPTX deck.
+
+    Example::
+
+        uiao generate pptx --exports-dir /tmp/exports
+    """
     from uiao.generators.pptx import build_pptx
 
     _console.print("[bold]Generating leadership briefing PPTX...[/bold]")
@@ -189,7 +209,12 @@ def generate_docx(
         help="Output exports directory.",
     ),
 ) -> None:
-    """Generate a rich DOCX leadership briefing with embedded visuals."""
+    """Generate a rich DOCX leadership briefing with embedded visuals.
+
+    Example::
+
+        uiao generate docx --exports-dir /tmp/exports
+    """
     from uiao.generators.rich_docx import build_rich_docx
 
     _console.print("[bold]Generating leadership briefing DOCX...[/bold]")
@@ -227,7 +252,12 @@ def generate_diagrams(
         help="Force regeneration of all visuals (ignore cache).",
     ),
 ) -> None:
-    """Generate PlantUML .puml files and render them to PNG from canon YAML."""
+    """Generate PlantUML .puml files and render them to PNG from canon YAML.
+
+    Example::
+
+        uiao generate diagrams --output-dir /tmp/diagrams
+    """
     from uiao.generators.diagrams import generate_diagrams_from_canon
     from uiao.generators.mermaid import render_all_plantuml
 
@@ -286,6 +316,10 @@ def generate_docs(
 
     Automatically generates diagrams from generation-inputs/diagrams.yaml before rendering
     templates (unless --skip-diagrams is set).
+
+    Example::
+
+        uiao generate docs --output-dir /tmp/docs
     """
     from uiao.generators.docs import build_docs
 
@@ -330,7 +364,12 @@ def generate_artifacts(
         help="Force regeneration of all visuals (ignore cache).",
     ),
 ) -> None:
-    """Generate DOCX + PPTX with embedded PlantUML and Gemini visuals."""
+    """Generate DOCX + PPTX with embedded PlantUML and Gemini visuals.
+
+    Example::
+
+        uiao generate artifacts --exports-dir /tmp/exports
+    """
     from uiao.generators.mermaid import render_all_plantuml
     from uiao.generators.pptx import build_pptx
     from uiao.generators.rich_docx import build_rich_docx
@@ -375,7 +414,12 @@ def generate_sbom(
         help="Output path for the CycloneDX JSON SBOM.",
     ),
 ) -> None:
-    """Generate a CycloneDX 1.4 Software Bill of Materials (SBOM)."""
+    """Generate a CycloneDX 1.4 Software Bill of Materials (SBOM).
+
+    Example::
+
+        uiao generate sbom --output /tmp/sbom.json
+    """
     from uiao.generators.sbom import build_sbom
 
     _console.print("[bold]Generating CycloneDX SBOM...[/bold]")
@@ -441,6 +485,10 @@ def generate_all(
     Note: The legacy lowercase 'leadership_briefing_v1.0.docx' in exports/docx/
     is no longer regenerated. The authoritative file is
     'UIAO_Leadership_Briefing_v1.0.docx' produced by step 6.
+
+    Example::
+
+        uiao generate all
     """
     import time
 
@@ -610,6 +658,10 @@ def generate_briefing(
     Produces a 6-page DOCX covering system health, vendor stack,
     control coverage, pipeline, priorities, and agent activity.
     Quality target: matches 01_Canon/uiao-reference.docx visual standard.
+
+    Example::
+
+        uiao generate briefing
     """
     from uiao.config import Settings
     from uiao.generators.briefing import build_briefing
