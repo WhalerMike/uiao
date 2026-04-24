@@ -62,6 +62,8 @@ Canon authority lives in [`src/uiao/canon/`](src/uiao/canon/) and is **protected
 
 **New to UIAO?** Walk the [10-minute quickstart](docs/docs/quickstart.md) — it runs a full auditor bundle (evidence, POA&M, SSP narrative) against a synthetic ScubaGear fixture. No Azure tenant, no API keys, no live data.
 
+**Writing an adapter?** Follow the [30-minute adapter authoring tutorial](docs/docs/adapter-authoring-tutorial.md) — walks from zero to a merged PR using the shipped ScubaGear adapter as the worked example.
+
 ```bash
 # Install the package + CLI in editable mode
 pip install -e .
