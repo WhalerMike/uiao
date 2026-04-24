@@ -1,0 +1,303 @@
+---
+title: "Chapter 08 — Access Plane: SASE, Zero Trust, MFA, Certificate-Based Auth"
+subtitle: "The identity-bound access plane that replaces the AD network perimeter"
+doc-type: series-chapter
+series-id: client-server-to-hybrid-cloud
+chapter: 8
+audience: "Security architects · identity architects · CISOs"
+canon-source: "modernization-specs/zero-trust + modernization-specs/sase + CyberArk adapter + Entra CBA"
+date: 2026-04-24
+aspirational: true
+---
+
+# Chapter 08 — Access Plane: SASE, Zero Trust, MFA, Certificate-Based Auth {.unnumbered}
+
+*The identity-bound access plane that replaces the AD network perimeter*
+
+::: {.callout-important title="The access claim"}
+AD retirement removes the network perimeter as an authorization boundary.
+The Microsoft replacement is an **identity-bound access plane** built on
+four coordinated surfaces — **Zero Trust** (architectural model),
+**Conditional Access** (policy enforcement, covered in Chapter 05),
+**SASE** (edge delivery), and **phishing-resistant MFA + CBA** (proof of
+identity). UIAO integrates all four into one governed surface targeted
+by OrgPath.
+
+The outcome: every access decision is a per-request evaluation of
+identity + device + signal, made at the cloud edge, logged to Entra,
+and visible to the drift engine.
+:::
+
+## The model — Zero Trust
+
+Zero Trust is not a product. It is a set of architectural principles
+that UIAO enforces consistently across every access surface.
+
+### The three Zero Trust principles
+
+1. **Verify explicitly.** Every access request is authenticated and
+   authorized at the moment of use. There is no "inside the
+   network = trusted" concept. Identity, device posture, risk score,
+   and session state are evaluated per request.
+2. **Use least-privilege access.** Access is time-bound (PIM),
+   resource-scoped (AU + group targeting), and purpose-scoped
+   (Access Packages). No standing privileged access.
+3. **Assume breach.** Every session is treated as potentially
+   compromised. Continuous Access Evaluation (CAE) can revoke a
+   session mid-flight. Break-glass carve-outs are minimal,
+   monitored, and audited.
+
+UIAO's Zero Trust model is enforced by the combined effect of
+Conditional Access (policy), Intune compliance (device signal),
+Entra PIM (privilege elevation), and CBA (identity proof). No single
+control is Zero Trust by itself; the pattern is the four together.
+
+### What retires
+
+When Zero Trust is in place, three AD-era patterns retire:
+
+- **Network-segment-as-authority.** IP-range-based allowlists stop
+  being authoritative. Policy is per-identity, per-device, per-session.
+- **Pass-through AD Kerberos.** Services no longer accept Kerberos
+  tickets issued by a domain controller. Tokens are Entra-issued,
+  short-lived, and CAE-monitored.
+- **Persistent admin rights.** Domain Admins / local admin groups /
+  service accounts with never-expiring passwords all migrate to PIM,
+  gMSA (where Kerberos islands persist), or Workload Identity
+  Federation (where cloud services auth to Entra).
+
+## SASE — the edge delivery surface
+
+Secure Access Service Edge (SASE) is the cloud-delivered security
+surface that replaces the on-prem firewall + VPN + proxy + CASB
+stack. UIAO doesn't mandate a specific SASE vendor; it governs the
+integration contract.
+
+### The SASE component set
+
+| Component | Function | Integration to UIAO |
+|---|---|---|
+| **ZTNA** (Zero Trust Network Access) | Per-application reverse-proxy access, replaces VPN | Targets OrgTree app groups; CA policy enforces device compliance + MFA |
+| **SWG** (Secure Web Gateway) | Outbound web filtering + DLP | Targets OrgTree user groups; logs to SIEM (Compliance pillar C.7) |
+| **CASB** (Cloud Access Security Broker) | Sanctioned-cloud inline enforcement | Reads Entra app catalog; OrgPath-scoped policies |
+| **FWaaS** (Firewall as a Service) | Distributed firewall plane | Arc-projected policy targeting |
+| **DLP** (Data Loss Prevention) | Content-aware filtering | Targets OrgTree CUI-scoped groups |
+
+### SASE integration pattern
+
+UIAO's contract with the SASE vendor:
+
+1. **Identity federation.** SASE authenticates users via Entra OIDC.
+   No local SASE user database.
+2. **Group targeting.** SASE policies reference OrgTree dynamic
+   groups via SCIM or group claim, not local groups.
+3. **Device posture.** SASE accepts the Intune compliance signal
+   (via MS Graph or equivalent API) as an input to policy.
+4. **Logging.** SASE ships access logs to the UIAO SIEM adapter; the
+   drift engine correlates against Entra sign-in logs.
+5. **Provenance.** SASE policy changes flow through the
+   `policies/sase/` tree in Gitea — no direct vendor-portal edits.
+
+Common vendors meeting this contract: Zscaler, Palo Alto Prisma
+Access, Cisco Umbrella + Secure Access, Microsoft Global Secure
+Access. Vendor choice is an agency decision; the integration
+contract is canonical.
+
+## MFA — phishing-resistant methods
+
+Not all MFA is equal. UIAO's access-plane canon requires
+**phishing-resistant** MFA methods for every privileged user and for
+all users on high-risk resources.
+
+### The method hierarchy
+
+| Method | Phishing-resistant | Typical use |
+|---|---|---|
+| **FIDO2 security keys** (YubiKey, Feitian) | Yes | Tier-0 admins, high-privilege users |
+| **Entra Platform SSO passkeys** (Windows Hello for Business) | Yes | User PCs, default daily auth |
+| **Certificate-Based Auth** (Entra CBA + PIV/CAC) | Yes | Federal users with CAC/PIV cards |
+| **Authenticator App** with number-matching | Partial (resists push bombing) | Standard users, secondary method |
+| **Authenticator App** without number-matching | No | **Retired** — not permitted in UIAO canon |
+| **SMS / Voice** | No | **Retired** — not permitted in UIAO canon |
+
+### UIAO's method policy
+
+The Conditional Access library (Chapter 05) enforces:
+
+- **CA-400 series** (role-scoped) — FIDO2 / CBA required for Tier-0
+  admins, Privileged Identity roles, and break-glass test accounts.
+- **CA-100 series** (enterprise baseline) — Platform SSO / FIDO2 /
+  Authenticator with number-matching required for all users. SMS +
+  Voice explicitly blocked.
+- **CA-500 series** (workload) — elevated methods for specific
+  sensitive applications (financial systems, case-management tools).
+
+Every agency with CAC / PIV holders uses CBA as the user default.
+CAC+PIN reaches the same Entra session that a non-CAC user reaches
+via Platform SSO — both are phishing-resistant; both are the
+preferred method.
+
+## Entra Certificate-Based Authentication — the ADCS retirement path
+
+### The problem Entra CBA solves
+
+Federal agencies using CAC / PIV smart cards have historically
+anchored smart-card logon in ADCS. When AD DS retires, the ADCS
+trust chain for smart-card logon loses its validation path — unless
+the chain is re-anchored in Entra.
+
+### How Entra CBA works
+
+Entra CBA accepts X.509 certificates from a trusted CA (uploaded
+into the Entra tenant). When a user presents a certificate:
+
+1. Entra validates the certificate chain against the uploaded CA
+   list.
+2. Entra maps the certificate's subject name (or UPN, or
+   PrincipalName SAN) to an Entra user via configured mapping
+   rules.
+3. The user is authenticated to Entra; a token is issued; CA
+   policies evaluate the sign-in.
+
+The user experience is: insert CAC → enter PIN → get a token. No
+difference from AD-anchored smart-card logon. The governance
+difference: the validation chain ends in Entra, not in AD.
+
+### The ADCS retirement sequence
+
+1. **Upload enterprise CA certificates to Entra.** Root + Issuing
+   CA cert chains imported into the Entra CBA configuration.
+2. **Configure certificate-to-user mapping.** Typically
+   `UserPrincipalName` SAN → Entra UPN; sometimes
+   `PrincipalName` SAN → `userPrincipalName`.
+3. **Enable CBA as an authentication method.** Under
+   Entra → Authentication methods → Certificate-based
+   authentication.
+4. **Enforce via CA.** CA policies require CBA for designated user
+   groups (OrgTree-scoped).
+5. **Validate.** Users sign in with CAC / PIV without issue; Entra
+   sign-in log shows CBA method; CA evaluation passes.
+6. **Retire ADCS smart-card logon configuration.** AD-side smart-
+   card logon chain is no longer needed; the GPO that configured it
+   retires per Chapter 05.
+
+UIAO also governs the certificate issuance pipeline itself (DM_020
+PKI adapter) so new user certificates are issued against the same
+CA that Entra trusts. A certificate issued today still works 10 years
+from now because the governance chain is canonical.
+
+## Privileged Access Management — CyberArk integration
+
+Every privileged account — domain admin equivalent, cloud admin,
+emergency break-glass — passes through a PAM vault. UIAO integrates
+with CyberArk (adapter at `customer-documents/adapter-specs/cyberark`)
+but the pattern applies to any PAM vendor.
+
+### The PAM pattern
+
+- **No standing privileged access.** A privileged account exists in
+  Entra PIM but requires explicit elevation for each use (MFA-gated,
+  time-bound, purpose-documented).
+- **Break-glass accounts** live in a CyberArk safe. Checkout requires
+  dual approval; session is recorded; auto-rotation on release.
+- **Service accounts** with elevated rights use managed identities +
+  Workload Identity Federation where possible; gMSA on the
+  remaining Kerberos islands; vaulted accounts only as last resort.
+- **Session recording** for every privileged session — desktop
+  session video, keystroke log, command-line capture — shipped to
+  SIEM.
+
+### CyberArk via the adapter
+
+The CyberArk adapter (`adapter-specs/cyberark`) canonicalises the
+integration:
+
+- Safe + account CRUD via the governed plan pipeline.
+- Session events streamed to the UIAO SIEM adapter.
+- Break-glass checkout events routed to ServiceNow incident.
+- Drift monitoring: CyberArk-vaulted accounts that don't appear in
+  Entra are **Orphan Drift**; Entra privileged accounts that aren't
+  vaulted are **Phantom Drift**.
+
+## Continuous Access Evaluation — the session-level Zero Trust
+
+A Zero Trust session isn't "good for 12 hours, then re-auth." It's
+continuously evaluated. **Continuous Access Evaluation (CAE)** lets
+Entra and participating services revoke a live session mid-flight
+when risk changes:
+
+- User password changes → session revoked.
+- User is deleted or disabled → session revoked.
+- Network location changes to a blocked region → session revoked.
+- Risk score rises (impossible travel, leaked credentials) → session
+  revoked.
+
+UIAO's CA policies are authored with CAE-aware semantics. Every policy
+that requires compliance or location constraints is re-evaluated
+continuously, not just at sign-in.
+
+## Putting it together — the access plane in one flow
+
+A user opens their laptop in the morning:
+
+1. **Device boot.** Laptop boots; Intune compliance checks run;
+   BitLocker unlocks with Entra-escrowed key; device is compliant.
+2. **Sign-in.** User inserts CAC, enters PIN. Entra CBA validates the
+   certificate chain against the enterprise CA; the user is
+   authenticated; a CAE-aware session token is issued.
+3. **CA evaluation.** CA-100 (enterprise baseline) evaluates:
+   compliant device ✓, CBA satisfies phishing-resistant-MFA ✓,
+   location in expected range ✓, risk score low ✓. Session allowed.
+4. **Application access.** User opens M365 apps. Platform SSO
+   satisfies subsequent auths; CAE is live; if risk rises, session
+   can be revoked.
+5. **VPN-replacement.** User needs to reach an internal
+   (on-prem) app. SASE ZTNA reverse-proxy accepts the Entra token;
+   validates compliance + MFA + OrgPath scope; proxies the
+   connection; logs the access.
+6. **Privileged elevation.** User needs to make a change to a
+   Tier-0 resource. They request elevation through PIM; MFA
+   re-challenged (FIDO2 required at this tier); approval granted
+   for 60 minutes; session recorded by CyberArk; MOD_X emits the
+   event.
+7. **End of day.** Laptop sleeps. Token expires; CAE revokes on next
+   reconnect; re-auth starts the cycle.
+
+Every step above is OrgPath-scoped, provenance-bound, and drift-
+monitored. A failure anywhere generates an SLA ticket within the
+response time documented in MOD_Q.
+
+## Validation
+
+Access-plane migration passes when:
+
+- [ ] Every user has FIDO2, Platform SSO passkey, or CBA as their
+      primary MFA method. No SMS / Voice as primary.
+- [ ] Every smart-card user signs in via Entra CBA (not AD-anchored
+      smart-card logon).
+- [ ] Every user-facing policy targets OrgTree dynamic groups.
+- [ ] SASE (ZTNA + SWG + CASB, minimum) is in place and
+      Entra-federated.
+- [ ] Every privileged account passes through PAM (CyberArk or
+      equivalent) with session recording.
+- [ ] Every CA policy is CAE-aware.
+- [ ] Break-glass account use is monitored and audited weekly.
+- [ ] The VPN (L2TP / IKEv2 / SSL-VPN) is retired except for
+      explicit legacy-app-access cases with documented end-of-life.
+- [ ] MOD_M reports zero access-plane drift for N days.
+
+## Cross-references
+
+- **Customer Documents:**
+  [modernization-specs/zero-trust](../../modernization-specs/zero-trust/zero-trust.qmd)
+  · [modernization-specs/sase](../../modernization-specs/sase/sase.md)
+  · [adapter-specs/cyberark](../../adapter-specs/cyberark/cyberark.qmd)
+  · [compliance/policy-libraries/conditional-access](../../compliance/policy-libraries/index.qmd).
+- **Canon:** MOD_D Delegation Matrix (PIM role scoping) · MOD_T
+  Identity Risk Scoring · MOD_X Governance Telemetry (CAE events).
+- **Posted:** UIAO Conditional Access Policy Library (9,650 words) —
+  CA-000 through CA-999 baseline.
+
+---
+
+**Next:** [Chapter 09 — Migration Roadmap: Phased Plan, Gates, Rollback](09-migration-roadmap.qmd)

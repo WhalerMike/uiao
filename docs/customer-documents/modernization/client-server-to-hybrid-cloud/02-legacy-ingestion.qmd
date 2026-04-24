@@ -1,0 +1,398 @@
+---
+title: "Chapter 02 — Analyzing the Client/Server Estate"
+subtitle: "Forest discovery, GPO inventory, DNS/DHCP scraping, Kerberos SPN audit, ADCS analysis — read-only, least-privilege, provenance-bound"
+doc-type: series-chapter
+series-id: client-server-to-hybrid-cloud
+chapter: 2
+audience: "Assessment engineers · identity architects · forest admins"
+canon-source: "Posted AD Interaction Guide + Read-Only AD Assessment Guide + MOD_I PowerShell Validation Module + UIAOADAssessment"
+date: 2026-04-24
+aspirational: true
+---
+
+# Chapter 02 — Analyzing the Client/Server Estate {.unnumbered}
+
+*Forest discovery, GPO inventory, DNS/DHCP scraping, Kerberos SPN audit,
+ADCS analysis*
+
+::: {.callout-important title="The assessment discipline"}
+You cannot modernize what you have not enumerated. Every UIAO
+modernization begins with a **read-only, least-privilege, provenance-bound
+analysis** of the existing Client/Server estate. The output of this phase
+is a structured, versioned artifact set — one per AD-dependency category —
+committed to Gitea and consumed by every downstream chapter.
+
+No writes. No guesses. No "we'll handle that later."
+:::
+
+## The assessment problem
+
+When an agency asks "what's in our AD forest?" the honest answer is
+usually *"more than anyone currently on the team knows."* Twenty-five
+years of organic growth have produced:
+
+- Forests with trust relationships no one can fully map.
+- OU trees with orphan branches created for long-dismissed projects.
+- GPOs whose authors left a decade ago and whose effects are unknown.
+- Service accounts with SPNs pointed at applications no one operates.
+- Certificate templates with permissions that silently enable ESC1-8
+  privilege-escalation paths.
+- DNS zones with stale records that still resolve and still route.
+- DHCP scopes whose reservations reference MAC addresses of machines
+  that have been landfill for years.
+
+A successful modernization starts by producing the complete, structured,
+current-state picture. Not a best-effort inventory. Not a sample. The
+full, structured, attestation-grade record.
+
+## Three design principles
+
+The UIAO assessment layer enforces three principles that distinguish it
+from a general-purpose AD scan.
+
+### 1. Read-only by policy
+
+Every assessment operation is constrained to read-only Active Directory
+rights. The service account running `UIAOADAssessment` has exactly the
+permissions it needs to read — and zero beyond that. No group
+memberships are changed, no GPOs edited, no password resets issued.
+This is enforced at the account level (least-privilege delegation),
+at the code level (no write cmdlets imported), and at the audit level
+(every Graph + AD call logged with operation class).
+
+The practical benefit: an assessment can run against the production
+forest without any change-control gate. Read-only is not an honor
+system; it is a provable property.
+
+### 2. Least-privilege delegation
+
+The assessment account needs forest-wide read rights to discover the
+full surface, but it does *not* need Domain Admin or Enterprise Admin.
+A properly-delegated account achieves ~87% coverage with the
+**Read-Only AD Assessment Guide** profile and 100% coverage with the
+**AD Interaction Guide** profile (which adds GPO-read and
+configuration-container-read rights).
+
+Two tiers map to two separate Posted reference documents:
+
+- **Tier A (read-only, 87% coverage)** — default. No GPOs, no ADCS
+  templates, no DNS/DHCP without explicit added rights.
+- **Tier B (read + enumerate, 100% coverage)** — adds GPO read,
+  ADCS template read, DNS/DHCP read, Kerberos SPN enumerate.
+
+The tier is a governance decision — most agencies run Tier B for the
+initial full assessment and Tier A for the continuous re-assessment
+cadence.
+
+### 3. Provenance-bound output
+
+Every assessment run produces a structured artifact set with required
+metadata:
+
+- Who ran it (service principal or account UPN)
+- When (UTC timestamp)
+- Against what (forest DNS name, domain FQDNs, DC that served the read)
+- With what profile (Tier A / Tier B / custom)
+- Producing what (hash of each output file)
+- Committed where (Gitea branch, commit SHA)
+
+A run without provenance is non-canonical and rejected by the engine.
+
+## The eleven ingestion streams
+
+The assessment layer produces one artifact stream per AD-dependency
+category, mirroring the eleven types from Chapter 00. Each stream has
+its own normalized schema and its own committed-to-Gitea location.
+
+### Stream 1 — Forest + Domain topology
+
+**What it captures.** Forest functional level, domain trust
+relationships, site topology, DC role assignments, replication
+intervals, FSMO holders, DNS integration mode, Exchange schema level.
+
+**Cmdlet skeleton.**
+```powershell
+Get-ADForest | ConvertTo-UiaoForestRecord
+Get-ADDomain  -Identity each | ConvertTo-UiaoDomainRecord
+Get-ADReplicationSiteLink -Filter * | ConvertTo-UiaoSiteLinkRecord
+Get-ADTrust -Filter * | ConvertTo-UiaoTrustRecord
+```
+
+**Output.** `assessments/<run-id>/forest-topology.json` — normalised
+to MOD_H schema.
+
+**Feeds.** Chapter 04 (identity strategy); DM_090 (Trust Relationships);
+Chapter 09 (migration roadmap — trust relationships define cutover
+gates).
+
+### Stream 2 — OU hierarchy
+
+**What it captures.** Every OU, full distinguished name, parent-child
+relationships, linked GPOs, delegation ACLs (if Tier B), and user +
+computer counts.
+
+**Cmdlet skeleton.**
+```powershell
+Get-ADOrganizationalUnit -Filter * -Properties * | ConvertTo-UiaoOuRecord
+```
+
+**Output.** `assessments/<run-id>/ou-hierarchy.json` — a graph
+structure consumed by the Python OrgPath-proposal generator (Chapter 03).
+
+**Feeds.** Chapter 04 (OrgPath codebook authoring); Chapter 05 (GPO
+linkage map).
+
+### Stream 3 — Users
+
+**What it captures.** Every user object — UPN, samAccountName, DN,
+enabled state, password last-set, last-logon, manager DN, member-of
+groups, extensionAttribute1–15, mail, employeeID, department, office
+location, and (if populated) HR-system-sourced attributes.
+
+**Cmdlet skeleton.**
+```powershell
+Get-ADUser -Filter * -Properties * | ConvertTo-UiaoUserRecord
+```
+
+**Output.** `assessments/<run-id>/users.jsonl` — one record per line,
+pseudonymized on a configurable schedule (production exports may
+redact samAccountName per CUI rules).
+
+**Feeds.** Chapter 04 (user migration); Chapter 03 (attribute-mapping
+plan).
+
+### Stream 4 — Computers
+
+**What it captures.** Every computer object — DN, DNS hostname,
+operating system, OS version, last password-set, service principal
+names, last-logon timestamp, trustedForDelegation state,
+msDS-SupportedEncryptionTypes.
+
+**Cmdlet skeleton.**
+```powershell
+Get-ADComputer -Filter * -Properties * | ConvertTo-UiaoComputerRecord
+```
+
+**Output.** `assessments/<run-id>/computers.jsonl`.
+
+**Feeds.** Chapter 07 (compute migration); DM_060 (Device Management
+adapter); risk-scoring for stale or unconstrained-delegation hosts.
+
+### Stream 5 — Service Accounts + SPNs
+
+**What it captures.** All accounts with populated servicePrincipalName
+values, grouped by likely application boundary; msDS-AllowedToDelegateTo
+targets; gMSA / sMSA status; password-last-set gaps that indicate
+stale credentials.
+
+**Cmdlet skeleton.**
+```powershell
+Get-ADUser -Filter { servicePrincipalName -like "*" } -Properties servicePrincipalName
+Get-ADComputer -Filter { servicePrincipalName -like "*" } -Properties servicePrincipalName
+Get-ADServiceAccount -Filter * -Properties *
+```
+
+**Output.** `assessments/<run-id>/spn-inventory.json`.
+
+**Feeds.** DM_085 (SPN adapter — gap); Chapter 05 (policy migration
+— Kerberos-bound apps need Entra App Registration equivalents).
+
+### Stream 6 — Security + Distribution Groups
+
+**What it captures.** Every group — DN, samAccountName, group scope
+(Universal/Global/DomainLocal), type (Security/Distribution), members,
+member-of, and (critically) whether membership is static or rule-based.
+
+**Cmdlet skeleton.**
+```powershell
+Get-ADGroup -Filter * -Properties *
+Get-ADGroupMember -Identity each -Recursive
+```
+
+**Output.** `assessments/<run-id>/groups.jsonl`.
+
+**Feeds.** Chapter 04 (dynamic-group authoring from OrgPath rules);
+MOD_B (Dynamic Group Library target).
+
+### Stream 7 — Group Policy Objects
+
+**Tier B only.**
+
+**What it captures.** Every GPO — display name, GUID, link targets,
+security filtering, WMI filters, enabled state, Computer and User
+configuration settings (full XML export), and date-of-last-modification
+per section.
+
+**Cmdlet skeleton.**
+```powershell
+Get-GPO -All
+Get-GPOReport -All -ReportType Xml | ConvertTo-UiaoGpoRecord
+```
+
+**Output.** `assessments/<run-id>/gpos/*.xml` + normalised
+`gpo-index.json`.
+
+**Feeds.** Chapter 05 (GPO → Intune mapping); single highest-complexity
+stream by word count.
+
+### Stream 8 — DNS Zones + Records
+
+**Tier B only.**
+
+**What it captures.** All AD-integrated DNS zones, non-AD zones
+hosted on DCs, conditional forwarders, recursion settings, per-record
+TTL + last-update, and (critically) stale records whose owning
+computer object has aged out.
+
+**Cmdlet skeleton.**
+```powershell
+Get-DnsServerZone -ComputerName each-DC
+Get-DnsServerResourceRecord -ZoneName each -ComputerName DC
+```
+
+**Output.** `assessments/<run-id>/dns-zones.json` +
+`dns-records.jsonl`.
+
+**Feeds.** DM_015 (DNS adapter — gap); Chapter 06 (services
+transformation).
+
+### Stream 9 — DHCP Scopes + Reservations
+
+**Tier B only.**
+
+**What it captures.** All DHCP servers (Microsoft-AD-integrated),
+scopes, reservations, option sets, and failover relationships.
+
+**Cmdlet skeleton.**
+```powershell
+Get-DhcpServerInDC
+Get-DhcpServerv4Scope -ComputerName each
+Get-DhcpServerv4Reservation -ComputerName each -ScopeId each
+```
+
+**Output.** `assessments/<run-id>/dhcp-scopes.json`.
+
+**Feeds.** DM_016 (DHCP adapter — gap); Chapter 06.
+
+### Stream 10 — ADCS / PKI
+
+**Tier B only; highest-sensitivity stream.**
+
+**What it captures.** All CAs in the forest (root + issuing),
+published certificate templates, template permissions (including the
+ESC1–8 escalation patterns), issued certificates matching
+high-value EKUs, CRL distribution health.
+
+**Cmdlet skeleton.**
+```powershell
+Get-CertificationAuthority
+Get-CertificateTemplate | Analyze-ADCSTemplatePermission
+Get-IssuedCertificate -Template each
+```
+
+**Output.** `assessments/<run-id>/adcs/` — per-CA directories with
+template dumps, permission analysis, ESC1–8 findings.
+
+**Feeds.** DM_020 (PKI adapter); Chapter 08 (CBA migration);
+compliance findings (ESC1–8 are usually FISMA AC-6 findings).
+
+### Stream 11 — LDAP Bindings + Kerberos SPN Map
+
+**What it captures.** Every application that binds to AD via LDAP/LDAPS
+or uses Kerberos SPN-based auth. Discovered via Graph analysis of
+computer accounts, servicePrincipalName patterns, and (where
+available) IIS / app-server config scraping.
+
+**Output.** `assessments/<run-id>/ldap-bindings.jsonl` +
+`kerberos-spn-map.json`.
+
+**Feeds.** DM_040 (LDAP Proxy adapter); Chapter 05 (policy migration
+— LDAP-bound apps need App Registration equivalents); the single
+biggest source of modernization blockers in most forests.
+
+## Python augmentation
+
+PowerShell is excellent at AD reads; it is less excellent at graph
+analysis. Every stream that produces relational data (OU hierarchy,
+GPO link graph, SPN-to-app map, trust-relationship graph) is
+post-processed by a Python analyzer (`uiao.assess.graph`) that
+produces:
+
+- **Dependency graphs** — which OUs inherit which GPOs; which apps
+  depend on which SPNs.
+- **Risk scores** — stale accounts, over-privileged delegation,
+  ESC1–8 exposures.
+- **OrgPath proposals** — a first-pass mapping from OU DN to proposed
+  OrgPath code. The steward reviews and edits; the engine does not
+  auto-publish.
+- **Gap analysis reports** — OUs with no linked GPOs, GPOs with no
+  enabled settings, groups with zero members, computers that haven't
+  logged on in 90+ days.
+
+Python output lands in `assessments/<run-id>/analysis/` as JSON +
+Markdown reports consumable by both the engine and a human reviewer.
+
+## Output format: one artifact set per run
+
+Every assessment run produces the same folder layout, committed to
+Gitea under `assessments/<run-id>/`. The run-id is
+`YYYY-MM-DD-HHmm-<host>-<tier>` (UTC).
+
+```
+assessments/
+└── 2026-04-24-1030-UIAO-GIT01-tierB/
+    ├── provenance.yaml              ← who/what/when/hash
+    ├── forest-topology.json
+    ├── ou-hierarchy.json
+    ├── users.jsonl
+    ├── computers.jsonl
+    ├── spn-inventory.json
+    ├── groups.jsonl
+    ├── gpos/
+    │   ├── gpo-index.json
+    │   └── {guid}.xml
+    ├── dns-zones.json
+    ├── dns-records.jsonl
+    ├── dhcp-scopes.json
+    ├── adcs/
+    │   └── {ca-name}/
+    ├── ldap-bindings.jsonl
+    ├── kerberos-spn-map.json
+    └── analysis/
+        ├── orgpath-proposal.md
+        ├── risk-scorecard.md
+        ├── dependency-graph.json
+        └── gap-findings.md
+```
+
+Every commit of this folder is a single `feat(assess): run-id …`
+commit, signed, attributable. No assessment artifact lives outside
+Gitea; no assessment run executes twice with the same run-id.
+
+## What happens next
+
+The output of Chapter 02 is the input to Chapter 03. The transformation
+engine takes the `assessments/<run-id>/` folder, runs it through the
+plan generator, and produces a matched `plans/<plan-id>/` folder of
+deterministic transformation actions. The plan is reviewed (by the
+Canon Steward + Copilot), authorized, and then dispatched to the
+Execution Substrate for delivery.
+
+Assessment and planning are deliberately separate steps. An assessment
+without a plan is a report; a plan without an assessment is a guess.
+Only together do they produce governed modernization.
+
+## Reference material
+
+- **Posted: UIAO Active Directory Interaction Guide** (11,677 words) —
+  the Tier B reference implementation.
+- **Posted: UIAO Read-Only AD Assessment Guide** (10,858 words) — the
+  Tier A reference implementation (least-privilege, ~87% coverage).
+- **Posted: UIAO PowerShell Module Reference** (9,248 words) — the
+  `UIAOADAssessment` module surface.
+- **Canon:** MOD_I PowerShell Validation Module; MOD_H OrgPath JSON
+  Schema.
+
+---
+
+**Next:** [Chapter 03 — Analysis → Plan → Delivery](03-transformation-pipeline.qmd)

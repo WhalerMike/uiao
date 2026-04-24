@@ -1,0 +1,327 @@
+---
+title: "Chapter 06 — Services: DNS, DHCP, IPAM in the Hybrid-Cloud Model"
+subtitle: "AD-integrated DNS → Azure Private Resolver · AD DHCP → governed hybrid DHCP · ad-hoc IPAM → Infoblox/BlueCat adapters"
+doc-type: series-chapter
+series-id: client-server-to-hybrid-cloud
+chapter: 6
+audience: "Network + infrastructure engineers · modernization architects"
+canon-source: "Posted DNS Modernization Guide + DM_010 IPAM + DM_015 DNS (gap) + DM_016 DHCP (gap)"
+date: 2026-04-24
+aspirational: true
+---
+
+# Chapter 06 — Services: DNS, DHCP, IPAM in the Hybrid-Cloud Model {.unnumbered}
+
+*The silent infrastructure layer that AD was governing without anyone noticing*
+
+::: {.callout-important title="The services claim"}
+DNS, DHCP, and IPAM are the three network services that federal
+agencies almost always defer when they "modernize AD." The assumption
+is that because these services still work, they don't need to move.
+
+That assumption is wrong. AD-integrated DNS, AD-joined DHCP servers,
+and informal IPAM are the three most common sources of post-migration
+governance regression. They look fine from the outside and are
+silently broken on the inside. This chapter fixes that.
+:::
+
+## Why these three, why together
+
+DNS, DHCP, and IPAM form a single addressing + resolution governance
+surface. Treating them separately is one of the most common
+migration mistakes:
+
+- **DNS** translates names to addresses. Federated agencies rely on
+  AD-integrated zones that replicate as part of AD and inherit AD's
+  access model.
+- **DHCP** assigns addresses. AD-joined Microsoft DHCP servers
+  authenticate against AD and are authorized in the forest.
+- **IPAM** tracks what address ranges exist, who owns them, and which
+  records point where. Without IPAM, DNS and DHCP silently drift.
+
+A migration that moves DNS but leaves AD-joined DHCP in place produces
+a hybrid in which addresses are assigned by one authority and resolved
+by another. A migration that moves DNS + DHCP but leaves IPAM
+informal (spreadsheet, wiki, nobody-owns-it) produces silent conflicts
+and ghost records.
+
+UIAO treats all three as one governance domain, with three matched
+adapters (DM_015 DNS, DM_016 DHCP, DM_010 IPAM) and one canonical
+policy — addressing governance is owned by IPAM; DNS + DHCP derive
+from it.
+
+## DNS — AD-integrated → Azure Private Resolver
+
+### The current-state problem
+
+AD-integrated DNS zones live inside the AD replication graph. Every
+DC is a DNS server; every zone update propagates via AD replication;
+zone ACLs use AD security groups. This means:
+
+- Every DC is in the name-resolution trust path.
+- Retiring AD requires moving DNS *first* or accepting a multi-week
+  name-resolution outage window.
+- Zones that have accumulated stale records (from decommissioned
+  computer objects) cannot be cleaned up without AD-side coordination.
+- External apps that depend on DNS-over-LDAPS enumeration (some
+  monitoring tools, some PKI clients) will stop working at AD
+  retirement.
+
+### The target architecture
+
+UIAO migrates DNS in a three-layer pattern documented in the Posted
+DNS Modernization Guide (11,245 words):
+
+| Layer | Target | Purpose |
+|---|---|---|
+| **Authoritative on-prem** | Azure Private DNS Zone (linked to on-prem resolver) | Canonical records for on-prem namespace |
+| **Hybrid resolution** | Azure DNS Private Resolver (inbound + outbound endpoints) | Bi-directional name resolution between VNet and on-prem |
+| **Authoritative SaaS** | Azure Private DNS Zone (private link), Route 53 where needed | Records for M365, Azure services, and SaaS endpoints |
+
+Conditional forwarders on remaining on-prem DNS servers point to the
+Private Resolver's inbound endpoint. VNet resolution (for Arc-projected
+servers, for example) points to the Private Resolver's outbound
+endpoint, which forwards to the on-prem authoritative layer.
+
+### The DNS adapter (DM_015 — to author)
+
+Because the DM_015 DNS adapter is a registry gap (Chapter 00
+identified it), its interface has to be authored as part of
+modernization. The Posted DNS Modernization Guide is the operational
+reference implementation the adapter will govern.
+
+DM_015's interface contract:
+
+- **Discovery.** Enumerate zones (AD-integrated and file-backed),
+  records (with age + staleness flag), conditional forwarders,
+  recursion settings.
+- **Risk assessment.** Stale records, zones with no identifiable
+  owner, CNAMEs pointing to decommissioned resources.
+- **Target architecture proposal.** For each zone, propose
+  authoritative target (Private DNS vs keep-on-prem vs retire) and
+  produce a migration plan.
+- **Migration path.** Phased cutover of zones, one zone at a time,
+  with rollback per zone.
+- **Validation.** Record-by-record comparison after cutover; TTL
+  normalization; CRL-distribution-point health.
+- **Rollback.** Re-enable AD-integrated zone; restore conditional
+  forwarders to prior state.
+
+### OrgPath-scoping of DNS records
+
+UIAO tags DNS records with the OrgPath of the owning object. A record
+for `git.iaio.internal` that points to the platform server carries
+an `OrgPath=ORG-IT-INF-PLATFORM` metadata tag in Private DNS. The
+drift engine uses this to flag records whose owner has been
+decommissioned — if the Entra device object for `UIAO-GIT01` is
+removed, but the DNS record still exists, that's **Orphan Drift**.
+
+### Migration phases
+
+Following MOD_F's phased pattern:
+
+1. **Assessment.** Chapter 02's Stream 8 (Tier B) produces the full
+   zone + record inventory.
+2. **Target proposal.** Python analyzer classifies every zone into
+   one of three targets. Steward reviews and adjusts.
+3. **Pilot zone.** Pick one low-risk zone (often a test or dev
+   zone); migrate; validate for N days.
+4. **Zone-by-zone cutover.** Phased migration with conditional
+   forwarder updates per zone. Validation gate per zone.
+5. **AD-integrated zone retirement.** Once all zones are migrated
+   and validated, the AD-integrated zone is deleted.
+6. **Steady state.** Private Resolver handles all resolution; MOD_M
+   reports zero DNS drift.
+
+## DHCP — AD-joined → governed hybrid DHCP
+
+### The current-state problem
+
+Microsoft DHCP running on AD-joined servers is authenticated by AD.
+DHCP server authorization lives in the forest. DHCP scopes have
+reservations keyed to MAC addresses; option sets inherit from server
+defaults. The usual findings from Stream 9:
+
+- Reservations pointing at MAC addresses that haven't been seen in
+  years.
+- Option sets that push AD-integrated DNS servers whose IPs will
+  change.
+- Scopes sized for growth that never happened.
+- Failover relationships that were configured once and never
+  tested.
+
+### The target architecture
+
+DHCP modernization is less dramatic than DNS but no less important.
+Three variants by environment:
+
+- **On-prem-heavy environments.** Keep DHCP on-prem; decouple from
+  AD (forest authorization removed); re-home to dedicated DHCP hosts
+  governed by UIAO.
+- **Cloud-forward environments.** Move DHCP to Azure-native services
+  (Azure VNet DHCP, or third-party virtual appliances like Infoblox
+  IB-Flex running as Arc-projected VMs).
+- **Hybrid environments.** Split — on-prem scopes stay on-prem;
+  cloud VNets use Azure-native; all governed via IPAM as single
+  source of truth.
+
+### The DHCP adapter (DM_016 — to author)
+
+Another registry gap. DM_016's interface mirrors DM_015's pattern.
+Key discovery points:
+
+- Every DHCP server (regardless of AD-join state).
+- Every scope — range, subnet mask, exclusion list, lease duration.
+- Every reservation — MAC, IP, client name, option set.
+- Every failover relationship — peer, mode, load balancer split,
+  MCLT.
+- Option sets — especially scope-level DNS server overrides.
+
+Write methods: add / update / retire scopes + reservations, governed
+via the plan pipeline.
+
+### OrgPath-scoping of DHCP
+
+DHCP scopes are tagged with the OrgPath of the site they serve. A
+scope for the East Baltimore office carries
+`OrgPath=ORG-LOC-EAST-BALTIMORE` in its metadata (stored in the
+UIAO canon, mirrored to DHCP server extension data where supported).
+This enables drift detection on scope ownership and blast-radius
+analysis for address-pool changes.
+
+## IPAM — informal → governed
+
+### The current-state problem
+
+Agencies routinely discover, as part of modernization, that they do
+not have an IPAM at all. The state is:
+
+- A shared spreadsheet maintained by one person.
+- A wiki page whose last edit was 2019.
+- Several Infoblox/BlueCat installations that cover some subnets but
+  not others.
+- Reserved / not-reserved ranges that conflict with actual usage.
+
+The migration goal is **one governed IPAM** with full coverage of the
+address surface.
+
+### The IPAM adapter (DM_010 — source present)
+
+DM_010 is the one adapter in this trio that exists in source. It
+supports three implementations:
+
+| Implementation | Vendor | FedRAMP | Notes |
+|---|---|---|---|
+| **Infoblox NIOS 8.x** | Infoblox | Authorized | Federally-preferred |
+| **BlueCat Address Manager** | BlueCat | Not authorized | Needs boundary exception per deployment |
+| **Generic IPAM** | Any | N/A | Fallback; CSV-driven import |
+
+The adapter contract standardises:
+
+- Network range discovery.
+- Host record sync with DNS.
+- Reservation sync with DHCP.
+- Change-window tracking (every addition / modification carries a
+  correlation ID).
+- Provenance emission (every change produces a Gitea commit).
+
+### One IPAM, three services
+
+The operating model: IPAM is the single source of truth for
+addressing. DNS and DHCP adapters read from IPAM and produce matched
+records. Drift between IPAM and DNS/DHCP is **Hierarchy Drift** —
+the tree exists but the leaves don't agree.
+
+This pattern is why all three services migrate together, not
+separately.
+
+## Hybrid resolution architecture in one diagram
+
+```
+On-prem namespace                            Hybrid path                        Cloud namespace
+┌────────────────────┐                ┌──────────────────────────┐         ┌──────────────────────┐
+│ UIAO-GIT01.corp    │                │  Azure DNS Private       │         │  privatelink.        │
+│ fileserver.corp    │ ─── conditional │  Resolver                 │ ← → │  blob.core.windows   │
+│ printer.corp       │     forwarder  │  inbound endpoint         │         │  .net                │
+└────────────────────┘                │  ↕                        │         └──────────────────────┘
+                                      │  outbound endpoint        │
+                                      └──────────────────────────┘
+                                                     │
+                                                     ↓
+                                      ┌──────────────────────────┐
+                                      │  Azure Private DNS Zone  │
+                                      │  uiao.internal           │
+                                      │  (authoritative)         │
+                                      └──────────────────────────┘
+                                                     │
+                                                     ↓
+                                             IPAM (DM_010)
+                                             single source of truth
+```
+
+Reads go in either direction: an on-prem host resolves
+`fileserver.corp` through the Resolver inbound endpoint; an
+Arc-projected VM in the platform VNet resolves
+`uiao.internal` through the outbound endpoint to Private DNS.
+
+## The three-adapter plan
+
+Every network-services modernization run produces a plan with all
+three adapters coordinating:
+
+1. **DM_010 plan actions.** Populate IPAM authoritative records.
+2. **DM_015 plan actions.** Create Private DNS zone entries keyed to
+   IPAM records.
+3. **DM_016 plan actions.** Create DHCP scope reservations keyed to
+   IPAM records (where DHCP is used).
+
+If any of the three would produce drift between itself and the other
+two, the plan fails validation. There is no "DNS-only" migration
+run; it is always DNS + DHCP + IPAM together.
+
+## Validation
+
+Services migration passes when:
+
+- [ ] IPAM covers 100% of the address surface (no unclaimed
+      subnets).
+- [ ] Every Private DNS record has a matching IPAM entry.
+- [ ] Every DHCP reservation has a matching IPAM entry.
+- [ ] Every on-prem conditional forwarder points to the Private
+      Resolver inbound endpoint.
+- [ ] Every VNet points to the Private Resolver outbound endpoint.
+- [ ] The legacy AD-integrated DNS zone is retired (or explicitly
+      excluded with documented rationale).
+- [ ] MOD_M reports zero drift across IPAM ↔ DNS ↔ DHCP for N
+      days.
+- [ ] The nightly assessment → plan run produces zero actions for
+      the `services/` tree.
+
+## Why agencies postpone — and why they shouldn't
+
+The common pattern: modernize identity + policy, leave DNS/DHCP/IPAM
+for "Phase 2." Phase 2 rarely happens. The agency is left with:
+
+- AD retired for user authentication.
+- AD retained "because DNS still lives there."
+- Silent coupling between the two.
+
+A forest that retains AD-integrated DNS is not actually retired. Do
+not pretend otherwise. The services migration is part of the core
+modernization, not a follow-on.
+
+## Cross-references
+
+- **Posted:** UIAO DNS Modernization Guide — AD-Integrated DNS to
+  Azure Hybrid Resolution (11,245 words). Operational reference
+  implementation for DM_015.
+- **Canon:** DM_010 IPAM Adapter Interface (source present) · DM_015
+  DNS Adapter (gap — author as part of modernization) · DM_016 DHCP
+  Adapter (gap).
+- **Customer Documents:**
+  [adapter-specs/infoblox](../../adapter-specs/infoblox/infoblox.qmd);
+  [modernization/directory-migration.qmd](../../../modernization/directory-migration.qmd).
+
+---
+
+**Next:** [Chapter 07 — Compute: Domain-Joined → Entra + Intune + Azure Arc](07-compute-objects.qmd)
