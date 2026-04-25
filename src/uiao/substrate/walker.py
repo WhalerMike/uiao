@@ -214,8 +214,68 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
     _scan_canon_code_refs(root, report)
     _scan_docs_code_refs(root, report)
     _scan_consent_envelope(root, report)
+    _scan_issuer_chain(root, report)
 
     return report
+
+
+def _scan_issuer_chain(root: Path, report: SubstrateReport) -> None:
+    """UIAO_110 DRIFT-IDENTITY registry-hygiene scan.
+
+    Every active adapter that declares ``certificate-anchored: true``
+    MUST also declare a ``trust-anchor:`` (subject DN, fingerprint, or
+    both). Without an anchor, the runtime issuer-chain validator has
+    nothing to compare against, so the substrate's certificate-anchoring
+    contract is unenforceable for that adapter.
+
+    Severity policy:
+        - active adapter, ``certificate-anchored: true``, no
+          ``trust-anchor:`` key → P2 (registry hygiene; promotable to
+          P1 once all adapters have anchors declared)
+        - active adapter, ``certificate-anchored: false`` → skipped
+          (declared not anchored)
+        - reserved/inactive adapters → skipped
+    """
+    mod_path = root / MODERNIZATION_REGISTRY
+    adapter_path = root / ADAPTER_REGISTRY
+    for path in (mod_path, adapter_path):
+        if not path.is_file():
+            continue
+        try:
+            doc = _load_yaml(path)
+        except yaml.YAMLError:
+            continue
+        if not doc:
+            continue
+        adapters = doc.get("adapters") or doc.get("modernization_adapters") or []
+        if not isinstance(adapters, list):
+            continue
+        rel = str(path.relative_to(root))
+        for entry in adapters:
+            if not isinstance(entry, dict):
+                continue
+            adapter_id = str(entry.get("id", "")).strip()
+            if not adapter_id:
+                continue
+            status = str(entry.get("status", "")).strip().lower()
+            if status != "active":
+                continue
+            cert_anchored = entry.get("certificate-anchored")
+            if cert_anchored is not True:
+                continue
+            if "trust-anchor" not in entry:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-IDENTITY",
+                        severity="P2",
+                        path=f"{rel}#{adapter_id}",
+                        detail=(
+                            f"active adapter '{adapter_id}' declares "
+                            "certificate-anchored: true but has no trust-anchor: "
+                            "declaration; issuer-chain validation cannot be enforced"
+                        ),
+                    )
+                )
 
 
 def _scan_consent_envelope(root: Path, report: SubstrateReport) -> None:

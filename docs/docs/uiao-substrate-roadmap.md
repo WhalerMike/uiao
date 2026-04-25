@@ -50,9 +50,9 @@ This roadmap is organized around closing that gap in order of risk and dependenc
 | DRIFT-PROVENANCE | P1 | ✅ Implemented |
 | DRIFT-SEMANTIC | P2 | 🟡 Partial (freshness engine partial) |
 | DRIFT-AUTHZ | P1 | ✅ Implemented (state-diff + consent-envelope) |
-| DRIFT-IDENTITY | P1 | 🟡 Partial (state-diff classifier; runtime issuer chain validation pending) |
+| DRIFT-IDENTITY | P1 | ✅ Implemented (state-diff + runtime issuer-chain) |
 
-DRIFT-AUTHZ now ships both the state-diff and consent-envelope detectors. DRIFT-IDENTITY has the state-diff classifier; runtime issuer-chain validation remains pending.
+DRIFT-AUTHZ ships both the state-diff and consent-envelope detectors. DRIFT-IDENTITY now ships both the state-diff classifier and the runtime issuer-chain validator. All five drift classes are implemented.
 
 ### CI gate health
 
@@ -74,7 +74,7 @@ These are the conditions that could block progress or invalidate existing canon 
 
 **R1 — Test-tier vacuum (Critical).** All nine active adapters are registered as `active` but have zero test evidence. Per UIAO_131, `active` status implies conformance-gate passage. It does not. This is documented drift in the registry itself. If the registry is presented to an agency evaluator before tier-1 fixtures exist, the gap becomes a credibility issue.
 
-**R2 — P1 drift classes unimplemented (High).** DRIFT-AUTHZ and DRIFT-IDENTITY are both P1 severity per the drift taxonomy but have no runtime implementation. The substrate claims to detect these classes but cannot. Any engagement that relies on drift detection for authorization or identity signals is silently wrong.
+**R2 — P1 drift classes unimplemented (resolved).** As of §0.4 + §0.5, DRIFT-AUTHZ and DRIFT-IDENTITY both ship state-diff and runtime detectors. All five drift classes (DRIFT-SCHEMA, DRIFT-PROVENANCE, DRIFT-SEMANTIC, DRIFT-AUTHZ, DRIFT-IDENTITY) are implemented; substrate walker registry-hygiene gates flag adapters missing the canon declarations (`scope:`, `trust-anchor:`) needed for runtime validation.
 
 **R3 — Spec-implementation chasm (Medium).** 24 aspirational specs create a growing maintenance burden: every time the spec evolves, there is nothing in `impl/` that breaks if the change is inconsistent. The longer this gap exists, the harder it is to close, because the spec will drift from what an implementation would actually require.
 
@@ -181,17 +181,69 @@ Shipped:
 
 Referenced docs: UIAO_110 §3 (drift class taxonomy), ADR-012 §DT-04.
 
-### 0.5 — DRIFT-IDENTITY implementation
+### 0.5 — DRIFT-IDENTITY implementation (pending → **complete** ✅)
 
-DRIFT-IDENTITY detects issuer-resolution failures: when a certificate or identity claim cannot be traced to the expected trust anchor. P1 severity.
+DRIFT-IDENTITY detects issuer-resolution failures: when a certificate or
+identity claim cannot be traced to the expected trust anchor. P1 severity.
 
-Work required:
-- Implement `IssuerResolver` in `src/uiao/governance/` that validates the `certificate-anchored: true` invariant at runtime by checking the issuer chain on adapter-produced artifacts.
-- Emit `DRIFT-IDENTITY` findings when the chain breaks.
-- Add pytest coverage.
-- Wire to the substrate walker.
+**Status (2026-04-25):** shipped end to end. Two complementary detectors
+now produce `drift_class="DRIFT-IDENTITY"` findings:
 
-Referenced docs: UIAO_110 §3.
+1. **State-diff detector** (`uiao.governance.drift.classify_identity_drift`,
+   shipped previously): catches OrgPath / lifecycle / required-field
+   inconsistencies between expected and actual snapshots.
+
+2. **Runtime issuer-chain detector**
+   (`uiao.governance.issuer_resolution`, new this PR): catches
+   adapter-surfaced certificate chains whose terminal issuer doesn't
+   match the declared trust anchor (subject DN or SHA-256 fingerprint),
+   plus chains that don't link cleanly leaf-to-root.
+
+Shipped:
+- `src/uiao/governance/issuer_resolution.py` — `IssuerResolver` with
+  `load_trust_anchors(registries)` (merges declared anchors across
+  modernization-registry + adapter-registry; later overrides earlier),
+  `validate(adapter_id, observed_chain)` → `IssuerChainReport`, and
+  `report.as_drift_state(provenance=...)` →
+  `DriftState(drift_class="DRIFT-IDENTITY", classification="unauthorized")`
+  with a delta listing the offending chain link or anchor mismatch.
+- `TrustAnchor` dataclass — accepts subject DN, SHA-256 fingerprint,
+  or both; fingerprint preferred under cross-signing.
+- `CertificateLink` dataclass — one chain link with subject / issuer /
+  optional fingerprint. Resolver coerces input dicts.
+- `observed_chain_for_run(run_dir)` — extracts per-adapter chains from
+  scheduler-run `evidence.json::normalized_data.certificate_chain`
+  (with `issuer_chain` and `raw_data` fallbacks).
+- `src/uiao/substrate/walker.py::_scan_issuer_chain` — registry-hygiene
+  gate. Every active adapter declaring `certificate-anchored: true`
+  MUST also declare a `trust-anchor:`; missing → P2 finding (registry
+  hygiene; promotable to P1 once all adapters have anchors). Reserved
+  and `certificate-anchored: false` adapters skipped.
+- 31 new tests in `tests/test_issuer_resolution.py`: registry loader
+  (7), resolver semantics (12 — clean chain to subject anchor / clean
+  to fingerprint anchor / unanchored chain / broken chain / missing
+  declaration / empty chain / batch / DriftState emission for each
+  violation kind), scheduler-run extraction (4 including end-to-end
+  scheduler-run → resolver → DriftState), CertificateLink coercion (2),
+  substrate-walker scan (5 — P2 missing anchor, clean active adapter,
+  certificate-anchored=false skipped, reserved skipped, plus a smoke
+  test against live canon asserting zero P1 findings).
+
+Trust-anchor declaration shape (canon convention introduced by this
+implementation):
+
+```yaml
+- id: entra-id
+  certificate-anchored: true
+  trust-anchor:
+    subject: "CN=Microsoft Identity Verification Root Certificate Authority 2020"
+    fingerprint_sha256: "8a4ca3...b9"
+```
+
+Adapters without a declared anchor today land as P2 walker findings;
+follow-up PRs declare anchors per adapter and promote the gate to P1.
+
+Referenced docs: UIAO_110 §3 (drift class taxonomy), ADR-012 §DT-05.
 
 ### 0.6 — link-check baseline burn-down
 
