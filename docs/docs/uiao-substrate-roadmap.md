@@ -285,13 +285,31 @@ Maintenance contract going forward:
 - Weekly cron run still detects upstream link rot independent of
   repo changes.
 
-### 0.7 — UIAO_129/130 Application Identity Model
+### 0.7 — UIAO_129/130 Application Identity Model (metadata contradiction → **resolved** ✅)
 
-Both specs are `draft` status but registered as `Current` in the document registry. This is a metadata contradiction.
+Reconciliation at canon: as of the 2026-04-25 sweep, both specs declare
+`status: Current` in their frontmatter (`src/uiao/canon/specs/
+application-identity-model.md` line 5 + `application-identity-onboarding-
+runbook.md` line 5) **and** in `src/uiao/canon/document-registry.yaml`
+(UIAO_129 line 189, UIAO_130 line 194). The metadata contradiction the
+roadmap originally tracked no longer exists; both files agree the specs
+are Current canon.
 
-Work required:
-- Either promote to `Current` by completing the draft (preferred), or change the registry `status` to `Draft` and apply the aspirational banner.
-- If promoting: define the canonical object-identity format for application service principals and the onboarding flow for new applications against the CyberArk and Entra adapters.
+What was stale in the derived view: `docs/docs/substrate-status.qmd`
+rendered the document-registry table with "draft" / "⚠️ draft only"
+on the UIAO_129/130 rows. That row has been updated to "🟡 spec, no
+impl" — accurate reality: the specs are Current canon but no
+implementation exists yet for the application-identity onboarding
+flow against CyberArk and Entra adapters.
+
+Deferred follow-ups (not blocking §0.7 closure):
+- Implement the canonical object-identity format for application
+  service principals (UIAO_129 §canonical-id-format) — gated on
+  Phase 0.1/0.2 entra-id tier-1 evidence.
+- Wire the onboarding runbook (UIAO_130) into a `uiao app onboard`
+  CLI command — gated on §3.1 Auditor API.
+- Tighten spec prose to RFC 2119 keywords so §1.2 spec-test enforcement
+  picks up coverage as the implementation lands.
 
 ---
 
