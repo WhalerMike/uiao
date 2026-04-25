@@ -760,14 +760,61 @@ Work required:
 - Implement tenant audit trails.
 - Add test coverage.
 
-### 3.5 — UIAO_116 Enforcement Policy Language (EPL)
+### 3.5 — UIAO_116 Enforcement Policy Language (EPL) (aspirational → **🟡 working** ✅)
 
-EPL is the policy language that describes when the enforcement runtime should act and what action to take.
+EPL is the policy language the substrate's Enforcement Runtime
+(UIAO_111, §3.3) consumes to decide what to do when a DriftState or
+finding lands. v1.0 of the language + parser + evaluator + reference
+policies + OSCAL surfacing ships in this pass; the Enforcement Runtime
+itself remains separate and gated on §3.3.
 
-Work required:
-- Define the EPL schema (likely YAML-based, anchored to NIST control IDs and adapter scope declarations).
-- Implement EPL parser.
-- Write reference policies for the MFA, conditional access, and drift-remediation scenarios.
+Shipped:
+- `src/uiao/governance/epl.py` — `EPLAction` (log/alert/remediate/block/
+  escalate), `EPLTrigger` (drift_class / controls / adapter_ids / pillars
+  / severity_min), `EPLPolicy` dataclass, `EPLContext` builder helpers
+  (`from_drift_state` / `from_finding`), `EPLEvaluator.evaluate(ctx)`
+  returning id-sorted `EPLMatch` list. Severity comparisons span both
+  the Finding vocabulary (Low/Medium/High) and the drift-engine
+  vocabulary (P5..P1) plus the state-diff classification vocabulary
+  (benign/risky/unauthorized) on a single ordinal scale.
+- `load_policies(paths)` + `load_canonical_policies()` — YAML loader
+  accepting both flat-per-file and `policies:` list shapes; later
+  registries override earlier by id.
+- `back_matter_resources_for_policies(policies)` — emits OSCAL
+  back-matter resources with deterministic UUID v5 keyed on policy id,
+  props under `https://uiao.gov/ns/oscal/epl`. Same pattern as the
+  §1.4 / §3.6 back-matter resources; OSCAL consumers can navigate from
+  a finding to a policy by UUID.
+- 5 reference policies in `src/uiao/canon/policies/`:
+  - `epl:enforce-mfa` — DRIFT-SEMANTIC, IA-2 family, ≥Medium →
+    remediate (compliance-orchestrator), 24h SLA.
+  - `epl:block-out-of-scope` — DRIFT-AUTHZ → block (substrate-walker),
+    immediate.
+  - `epl:escalate-stale-evidence` — DRIFT-SEMANTIC, ≥High →
+    escalate (security-operations-center), 4h.
+  - `epl:fix-broken-issuer-chain` — DRIFT-IDENTITY, ≥High →
+    remediate (compliance-orchestrator), 8h.
+  - `epl:audit-schema-drift` — DRIFT-SCHEMA, ≥Medium → alert
+    (substrate-walker), 24h.
+- `src/uiao/canon/policies/README.md` — policy authoring guide
+  documenting the schema and the `epl:<verb>-<subject>` id convention.
+- 29 new tests in `tests/test_epl.py`: vocabulary parsing, loader
+  (single + list + dedupe + invalid YAML + missing id + unknown action
+  fallback), evaluator (wildcard / drift_class / controls intersection
+  / severity_min / adapter / pillar / multi-match id-sort), context
+  builders, OSCAL projection, and a canonical-policies smoke that
+  asserts every reference policy parses, fires under realistic
+  finding contexts, and carries actor + sla_hours.
+
+Deferred (gated on §3.3 Enforcement Runtime):
+- The runtime itself — the consumer of `EPLEvaluator.evaluate()` that
+  actually dispatches actions to adapters. That's where `remediate` →
+  call adapter remediation API, `block` → freeze the scheduler dispatch,
+  `escalate` → page the SOC.
+- Auditor API endpoint (`POST /v1/epl/evaluate`) — gated on §3.1.
+- Quarto dashboard policy tile — derived view of the reference set.
+
+Referenced doc: UIAO_116 EPL spec.
 
 ### 3.6 — UIAO_120 Zero-Trust Integration (aspirational → **🟡 working** ✅)
 
