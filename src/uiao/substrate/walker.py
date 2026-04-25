@@ -230,8 +230,8 @@ def _scan_issuer_chain(root: Path, report: SubstrateReport) -> None:
 
     Severity policy:
         - active adapter, ``certificate-anchored: true``, no
-          ``trust-anchor:`` key → P2 (registry hygiene; promotable to
-          P1 once all adapters have anchors declared)
+          ``trust-anchor:`` key → P1 (substrate trust contract; runtime
+          issuer-chain cannot be enforced)
         - active adapter, ``certificate-anchored: false`` → skipped
           (declared not anchored)
         - reserved/inactive adapters → skipped
@@ -267,7 +267,7 @@ def _scan_issuer_chain(root: Path, report: SubstrateReport) -> None:
                 report.findings.append(
                     DriftFinding(
                         drift_class="DRIFT-IDENTITY",
-                        severity="P2",
+                        severity="P1",
                         path=f"{rel}#{adapter_id}",
                         detail=(
                             f"active adapter '{adapter_id}' declares "

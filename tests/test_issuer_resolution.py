@@ -331,7 +331,7 @@ class TestCertificateLink:
 
 
 class TestSubstrateWalkerIssuerChain:
-    def test_active_adapter_anchored_no_trust_anchor_is_p2(self, tmp_path):
+    def test_active_adapter_anchored_no_trust_anchor_is_p1(self, tmp_path):
         canon = tmp_path / "src" / "uiao" / "canon"
         canon.mkdir(parents=True)
         (canon / "substrate-manifest.yaml").write_text(yaml.safe_dump({"modules": []}), encoding="utf-8")
@@ -356,7 +356,7 @@ class TestSubstrateWalkerIssuerChain:
         report = walk_substrate(workspace_root=tmp_path)
         ident = [f for f in report.findings if f.drift_class == "DRIFT-IDENTITY"]
         assert len(ident) == 1
-        assert ident[0].severity == "P2"
+        assert ident[0].severity == "P1"
         assert "anchored-no-anchor" in ident[0].path
         assert "trust-anchor" in ident[0].detail.lower()
 
@@ -438,13 +438,14 @@ class TestSubstrateWalkerIssuerChain:
         ident = [f for f in report.findings if f.drift_class == "DRIFT-IDENTITY"]
         assert ident == []
 
-    def test_real_canon_no_p1_drift_identity(self):
-        """Live canon smoke: every certificate-anchored adapter MAY
-        currently lack a trust-anchor (P2 expected); zero P1 issuer-chain
-        findings means the substrate walker isn't fabricating blocking
-        signals against working canon."""
+    def test_real_canon_no_drift_identity_findings(self):
+        """Live canon smoke: every active certificate-anchored adapter
+        declares a trust-anchor:, so the now-blocking P1 gate stays
+        clean. Regressing this test means an adapter lost its anchor
+        declaration and the substrate's runtime issuer-chain validator
+        can no longer be enforced against it."""
         from uiao.substrate.walker import walk_substrate
 
         report = walk_substrate()
-        p1 = [f for f in report.findings if f.drift_class == "DRIFT-IDENTITY" and f.severity == "P1"]
-        assert p1 == [], f"Live canon has DRIFT-IDENTITY P1 findings: {p1}"
+        ident = [f for f in report.findings if f.drift_class == "DRIFT-IDENTITY"]
+        assert ident == [], f"Live canon has DRIFT-IDENTITY findings: {ident}"
