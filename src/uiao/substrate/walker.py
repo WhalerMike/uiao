@@ -215,8 +215,67 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
     _scan_docs_code_refs(root, report)
     _scan_consent_envelope(root, report)
     _scan_issuer_chain(root, report)
+    _scan_ztmm_pillars(root, report)
 
     return report
+
+
+def _scan_ztmm_pillars(root: Path, report: SubstrateReport) -> None:
+    """UIAO_120 / §3.6 ZTMM pillar declaration scan.
+
+    Every active adapter SHOULD declare ``ztmm-pillars:`` so the
+    ZTMMScoreCalculator can attribute the adapter's evidence to the
+    right CISA ZTMM v2.0 pillar(s). Missing declarations don't break
+    anything at runtime — the calculator simply scores any undeclared
+    pillar at TRADITIONAL maturity — but the substrate-status dashboard
+    understates coverage.
+
+    Tagged ``DRIFT-SCHEMA`` because the gap is structural canon
+    metadata: the registry entry is missing a declared field, not an
+    identity-trust-chain failure.
+
+    Severity policy:
+        - active adapter, no ``ztmm-pillars:`` key → P3 (advisory)
+        - active adapter, ``ztmm-pillars: []`` → skipped (informational
+          adapter; explicit empty list is a valid declaration)
+        - reserved/inactive adapters → skipped
+    """
+    mod_path = root / MODERNIZATION_REGISTRY
+    adapter_path = root / ADAPTER_REGISTRY
+    for path in (mod_path, adapter_path):
+        if not path.is_file():
+            continue
+        try:
+            doc = _load_yaml(path)
+        except yaml.YAMLError:
+            continue
+        if not doc:
+            continue
+        adapters = doc.get("adapters") or doc.get("modernization_adapters") or []
+        if not isinstance(adapters, list):
+            continue
+        rel = str(path.relative_to(root))
+        for entry in adapters:
+            if not isinstance(entry, dict):
+                continue
+            adapter_id = str(entry.get("id", "")).strip()
+            if not adapter_id:
+                continue
+            status = str(entry.get("status", "")).strip().lower()
+            if status != "active":
+                continue
+            if "ztmm-pillars" not in entry:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-SCHEMA",
+                        severity="P3",
+                        path=f"{rel}#{adapter_id}",
+                        detail=(
+                            f"active adapter '{adapter_id}' has no ztmm-pillars: "
+                            "declaration; ZTMM pillar attribution unavailable"
+                        ),
+                    )
+                )
 
 
 def _scan_issuer_chain(root: Path, report: SubstrateReport) -> None:

@@ -732,14 +732,67 @@ Work required:
 - Implement EPL parser.
 - Write reference policies for the MFA, conditional access, and drift-remediation scenarios.
 
-### 3.6 — UIAO_120 Zero-Trust Integration
+### 3.6 — UIAO_120 Zero-Trust Integration (aspirational → **🟡 working** ✅)
 
-Zero-trust integration formalizes the relationship between the substrate's adapter outputs and the CISA Zero Trust Maturity Model (ZTMM) pillars.
+Zero-trust integration formalizes the relationship between the substrate's
+adapter outputs and the CISA Zero Trust Maturity Model (ZTMM) v2.0 pillars.
 
-Work required:
-- Map each adapter's evidence outputs to ZTMM pillars.
-- Implement ZTMM score calculation from evidence graph.
-- Surface score in the Auditor API and Quarto dashboard.
+**Status (2026-04-25):** core scoring ships. Substrate-status dashboard
+surface deferred to a follow-up doc PR.
+
+Shipped:
+- `src/uiao/governance/ztmm.py` — `ZTMMPillar` (5 pillars: Identity,
+  Devices, Networks, Applications-and-Workloads, Data) + `ZTMMMaturity`
+  (4 stages: Traditional, Initial, Advanced, Optimal).
+- `AdapterZTMMDeclaration` dataclass; `load_ztmm_declarations(registries)`
+  reads `ztmm-pillars: [...]` from canon (later overrides earlier; bare
+  list accepted; synonyms like `apps` / `endpoints` normalize cleanly).
+- `ZTMMScoreCalculator.score(graph=None)` — projects declarations
+  + EvidenceGraph state into a `ZTMMReport` with per-pillar
+  `ZTMMPillarScore` (declared / evidenced / fresh adapter lists +
+  computed maturity). Rubric: TRADITIONAL with no declarations,
+  INITIAL with ≥1, ADVANCED with ≥2 declared + ≥1 evidenced,
+  OPTIMAL with ≥3 declared + all fresh.
+- `back_matter_resources_for_report(report)` — emits 5 OSCAL back-matter
+  resources (one per pillar, deterministic UUID v5 keyed on pillar id)
+  with props under `https://uiao.gov/ns/oscal/ztmm` namespace. Same
+  pattern as the §1.4 evidence-graph back-matter resources; OSCAL
+  consumers can navigate from a control implementation to a pillar
+  score by UUID.
+- `ztmm-pillars:` declared on every active adapter (16 across both
+  registries):
+  - **Identity** — entra-id, m365, active-directory, entra-dynamic-groups,
+    entra-admin-units, entra-device-orgpath, entra-policy-targeting,
+    orgtree-drift-engine, scuba, scubagear, cyberark
+  - **Devices** — entra-id, active-directory, entra-device-orgpath
+  - **Networks** — palo-alto, infoblox, bluecat-address-manager, terraform
+  - **Applications & Workloads** — entra-id, m365, scuba, scubagear,
+    service-now, palo-alto, cyberark, entra-policy-targeting, terraform
+  - **Data** — m365, scuba, scubagear
+- Schema: `ztmm-pillars` field added to
+  `src/uiao/schemas/adapter-registry/adapter-registry.schema.json` with
+  enum-restricted items (the 5 canonical pillars) and `uniqueItems: true`.
+- Substrate-walker hygiene scan
+  (`src/uiao/substrate/walker.py::_scan_ztmm_pillars`) — active adapter
+  with no `ztmm-pillars:` key → P3 (advisory) finding tagged
+  `DRIFT-SCHEMA`. Explicit empty list (`ztmm-pillars: []`) is a valid
+  declaration and skipped. Live canon currently clean.
+- 30 new tests in `tests/test_ztmm.py`: vocabulary parsing (5),
+  registry loader (8 — empty-list / unknown / synonyms / override /
+  mod_top_level), score calculator (8 — TRADITIONAL/INITIAL/ADVANCED/
+  OPTIMAL transitions, evidence-driven demotion via Open finding,
+  per-pillar attribution, overall-rank average), OSCAL back-matter
+  projection (4), substrate-walker scan (4), plus a live-canon
+  end-to-end smoke that verifies every pillar lands at INITIAL or
+  better today.
+
+Deferred (follow-ups):
+- Auditor API endpoint (`GET /v1/ztmm`) — gated on §3.1 Auditor API.
+- Quarto dashboard pillar tile.
+- Promote pillar walker findings from P3 advisory to P2 once the
+  substrate-status site widget exists.
+
+Referenced doc: UIAO_120 Zero-Trust Integration spec.
 
 ### 3.7 — UIAO_109 Data Lake Model
 
