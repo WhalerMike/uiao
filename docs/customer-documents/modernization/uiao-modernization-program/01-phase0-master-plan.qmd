@@ -1,0 +1,938 @@
+---
+title: "Phase 0 — Modernization Master Plan"
+subtitle: "Strategic framework for cloud governance modernization"
+doc-type: series-chapter
+series-id: uiao-modernization-program
+chapter: 1
+audience: "CIO · CISO · ISSO · AO · 3PAO"
+canon-source: "inbox/Modernization/Consolidated/UIAO_020_Phase0_Master_Plan_v1.0.docx"
+date: 2026-04-25
+aspirational: true
+---
+
+1\. Executive Summary
+
+The Unified Identity-Addressing-Overlay (UIAO) Modernization Master Plan
+establishes the strategic framework for transforming the organization\'s
+cloud governance posture through a single, integrated overlay
+architecture. UIAO unifies the identity, device, network, security,
+evidence, and compliance planes into a cohesive modernization framework
+that replaces fragmented, incrementally adopted cloud services with an
+architecturally coherent governance model. This Phase 0 Planning
+Document defines the scope, problem space, objectives, deliverables,
+risks, and next steps required to initiate Phase 1 execution.
+
+The modernization program pursues five primary goals. First, the program
+will stabilize identity services by unifying identity governance across
+Microsoft Entra ID (formerly Azure Active Directory) and on-premises
+Active Directory (AD), ensuring consistent Conditional Access evaluation
+and full Multi-Factor Authentication (MFA) enforcement across all access
+scenarios. Second, the program will restore network and telemetry
+visibility by eliminating signal gaps that result from authorization
+boundary constraints, enabling end-to-end correlation of identity,
+device, network, and application-layer events. Third, the program will
+enable Zero Trust Architecture (ZTA) alignment as defined by Office of
+Management and Budget (OMB) Memorandum M-22-09, establishing continuous
+verification of identity, device health, and session context at every
+policy enforcement point. Fourth, the program will achieve Secure Cloud
+Business Applications (SCuBA) baseline compliance for all Microsoft 365
+services, with UIAO SCuBA providing a governance orchestration layer
+that consumes Cybersecurity and Infrastructure Security Agency (CISA)
+ScubaGear outputs and delivers continuous drift detection, canonical
+desired-state management, remediation orchestration with Service Level
+Agreement (SLA) enforcement, and machine-trackable governance
+provenance. Fifth, the program will establish continuous Authorization
+to Operate (ATO) capability, transitioning from the traditional periodic
+reauthorization cycle to an ongoing authorization posture supported by
+automated evidence streams and real-time risk assessment.
+
+A structural dependency underlies the entire modernization effort: the
+FedRAMP Boundary Gap. The current Federal Risk and Authorization
+Management Program (FedRAMP) authorization boundary was established to
+encompass legacy infrastructure and does not fully capture the
+cloud-native signal sources required for modern governance. Identity
+correlation, session telemetry, location awareness, and policy
+enforcement all depend on signals that originate from sources spanning
+multiple trust zones, some of which fall outside the defined boundary.
+This gap is not an operational deficiency; it is an architectural
+condition that reflects the natural progression from legacy to
+cloud-native service delivery. Until the boundary is modernized to
+encompass all required signal sources, the program cannot achieve its
+full objectives.
+
+The UIAO Modernization Program operates within the FedRAMP Moderate
+boundary in Commercial Cloud. Government Community Cloud -- Moderate
+(GCC-Moderate) applies exclusively to Microsoft 365 Software as a
+Service (SaaS) services and does not encompass Azure services. Amazon
+Connect Contact Center operates as an explicit exception within
+Commercial Cloud. The program is aligned with federal mandates including
+Executive Order (EO) 14028 (Improving the Nation\'s Cybersecurity), CISA
+SCuBA, FedRAMP Revision 5 (Rev5), and OMB M-22-09. This document serves
+as the authoritative planning artifact for all stakeholders, including
+the Chief Information Officer (CIO), Chief Information Security Officer
+(CISO), Information System Security Officer (ISSO), Authorizing Official
+(AO), and Third-Party Assessment Organization (3PAO).
+
+2\. Modernization Scope
+
+The UIAO Modernization Program organizes its scope across ten distinct
+planes and capability areas. Each plane represents a functional domain
+within the overlay architecture, and each carries its own current-state
+challenges and modernization objectives. The following subsections
+define the role, present condition, and target state for every component
+within the UIAO scope.
+
+> 2.1 Identity Plane
+
+The Identity Plane encompasses Microsoft Entra ID, Conditional Access
+policies, MFA enforcement, and the full identity lifecycle management
+framework, including provisioning, de-provisioning, role assignment, and
+access reviews. This plane serves as the foundational trust anchor for
+the entire UIAO architecture; every access decision, compliance
+evaluation, and security signal ultimately traces back to an
+authenticated identity. In the current state, identity signals are
+fragmented across on-premises Active Directory and the cloud directory.
+This fragmentation means that Conditional Access policies cannot
+evaluate signals that originate outside the authorization boundary,
+resulting in incomplete policy evaluation for users and devices that
+traverse trust zone boundaries. Federation metadata, token issuance
+events, and Conditional Access evaluation data are generated across
+multiple infrastructure components, and the lack of a unified identity
+governance model prevents consistent policy enforcement. The
+modernization objective for the Identity Plane is to establish unified
+identity governance with full signal fidelity, ensuring that every
+identity event, regardless of its origin, is captured, correlated, and
+available for policy evaluation in real time.
+
+> 2.2 Device Plane
+
+The Device Plane covers Microsoft Intune Mobile Device Management (MDM)
+and Mobile Application Management (MAM), device compliance policy
+enforcement, and endpoint health attestation. Device compliance is a
+critical input to Conditional Access evaluation: a device that cannot
+demonstrate compliance should not be granted access to protected
+resources. In the current state, devices operating outside the managed
+boundary lack the compliance telemetry required for real-time health
+evaluation. Endpoint health signals, including operating system patch
+level, antivirus status, disk encryption state, and firmware integrity,
+are not consistently collected for all device populations. This creates
+a condition where Conditional Access policies must either permit access
+with incomplete device context or block access broadly, degrading user
+experience without proportionate security benefit. The modernization
+objective is to establish continuous device compliance with real-time
+health signals feeding directly into Conditional Access evaluation,
+ensuring that every device presenting for access can be assessed against
+a current, comprehensive compliance baseline.
+
+> 2.3 Server Plane
+
+The Server Plane addresses on-premises server infrastructure, hybrid
+connectivity architecture, and domain controller operations. Domain
+controllers remain a critical dependency for authentication services,
+Group Policy processing, and legacy application support. In the current
+state, legacy server infrastructure creates dependencies that constrain
+cloud migration velocity. Applications that rely on on-premises domain
+controllers for authentication cannot be migrated to cloud-native
+hosting without first establishing a hybrid identity bridge that
+maintains authentication continuity. Server operating system versions,
+patch compliance, and configuration baselines vary across the server
+fleet, creating an inconsistent security posture that complicates
+governance. The modernization objective is to rationalize the server
+footprint, establish a hybrid identity bridge between on-premises Active
+Directory and Entra ID, and enable phased decommissioning of legacy
+server infrastructure as application dependencies are resolved. This
+rationalization will reduce the attack surface, simplify governance, and
+remove architectural constraints that impede cloud adoption.
+
+> 2.4 Routing Plane
+
+The Routing Plane encompasses network topology, Wide Area Network (WAN)
+optimization, Domain Name System (DNS) resolution, and traffic routing
+policies that govern how user traffic reaches cloud services. In the
+current state, legacy WAN routing forces traffic through centralized
+inspection points, a design pattern inherited from perimeter-based
+security architectures. This centralized routing degrades cloud service
+performance for users at headquarters and field offices by introducing
+unnecessary latency and creating single points of congestion.
+Additionally, centralized inspection obscures session-level telemetry
+because traffic metadata is aggregated at inspection points rather than
+captured at the point of origin. Split-tunnel Virtual Private Network
+(VPN) configurations further complicate visibility by creating traffic
+paths that bypass some inspection and logging infrastructure. The
+modernization objective is to modernize routing to support direct cloud
+connectivity with preserved security inspection, enabling users to reach
+cloud services through optimized network paths while maintaining the
+visibility and inspection capabilities required for security operations
+and compliance evidence collection.
+
+> 2.5 Security Plane
+
+The Security Plane integrates Microsoft Defender for Endpoint, Microsoft
+Defender for Office 365, Microsoft Defender for Identity, and Microsoft
+Sentinel as the Security Information and Event Management (SIEM) and
+Security Orchestration, Automation, and Response (SOAR) platform.
+Together, these components provide threat detection, investigation, and
+response capabilities across the endpoint, email, identity, and cloud
+application layers. In the current state, these security tools generate
+rich signal streams that cannot be fully correlated when boundary
+constraints limit the scope of telemetry collection. Defender for
+Identity may detect suspicious authentication patterns, but if the
+corresponding network session telemetry or device compliance state is
+unavailable due to boundary constraints, the investigation context is
+incomplete. Sentinel correlation rules that depend on cross-layer signal
+joins produce partial results, reducing detection efficacy and
+increasing analyst workload. The modernization objective is to achieve
+unified security operations with full signal correlation across
+identity, device, network, and application layers, ensuring that every
+detection, alert, and investigation has access to the complete signal
+context required for accurate threat assessment and response.
+
+> 2.6 Evidence Plane
+
+The Evidence Plane governs audit logging, compliance evidence
+collection, and the generation of continuous monitoring artifacts
+required for FedRAMP authorization and ongoing oversight. Evidence is
+the bridge between operational reality and compliance documentation;
+without reliable, automated evidence streams, compliance artifacts
+cannot accurately reflect the system\'s security posture. In the current
+state, evidence collection is manual, periodic, and disconnected from
+operational telemetry. Compliance evidence is gathered during assessment
+preparation cycles, often through manual screenshots, configuration
+exports, and narrative documentation that capture a point-in-time
+snapshot rather than a continuous record. This approach introduces
+latency between operational changes and evidence capture, creating
+windows during which the documented compliance posture may not reflect
+actual system configuration. The modernization objective is to establish
+automated, continuous evidence generation mapped to FedRAMP Rev5 control
+families. Evidence streams will be produced as a byproduct of normal
+system operations, ensuring that compliance artifacts are always
+current, machine-readable, and traceable to their source telemetry.
+
+> 2.7 Compliance Plane
+
+The Compliance Plane manages FedRAMP authorization artifacts, including
+the System Security Plan (SSP), Plan of Action and Milestones (POA&M),
+and continuous monitoring deliverables. This plane is responsible for
+maintaining the documentation and evidence chains that demonstrate the
+system\'s compliance with applicable federal security requirements. In
+the current state, compliance artifacts are static documents that drift
+from operational reality between assessment cycles. The SSP is updated
+periodically rather than continuously, meaning that configuration
+changes, new service deployments, and architectural modifications may
+not be reflected in the compliance documentation until the next
+assessment preparation cycle. POA&M items are tracked in spreadsheets or
+document repositories that are disconnected from the operational systems
+they reference, making it difficult to verify remediation status in real
+time. The modernization objective is to establish machine-trackable
+compliance artifacts with drift detection and automated remediation
+orchestration, ensuring that the SSP, POA&M, and continuous monitoring
+deliverables remain synchronized with the operational environment at all
+times.
+
+> 2.8 Drift Detection
+
+Drift Detection within the UIAO framework is delivered through UIAO
+SCuBA, the governance orchestration layer that operates above and
+complements CISA ScubaGear. UIAO SCuBA is not a replacement for
+ScubaGear; it is the governance orchestration layer that consumes
+ScubaGear\'s JavaScript Object Notation (JSON) and Comma-Separated
+Values (CSV) outputs and extends their utility into continuous
+operational governance. UIAO SCuBA provides continuous drift detection
+against canonical desired-state baselines, remediation orchestration
+with SLA enforcement, owner accountability tracking, and
+machine-trackable governance provenance that creates an auditable chain
+from detection through remediation. In the current state, configuration
+drift is detected retroactively during periodic assessments rather than
+continuously. ScubaGear assessments produce point-in-time snapshots of
+Microsoft 365 configuration compliance, but without a governance
+orchestration layer, those snapshots are consumed manually and
+remediation is tracked through ad hoc processes. The modernization
+objective is to establish real-time drift detection with SLA-enforced
+remediation workflows and owner accountability, ensuring that
+configuration deviations from the canonical desired state are identified
+immediately, assigned to responsible owners, and remediated within
+defined SLA windows with full provenance tracking.
+
+> 2.9 Continuous ATO
+
+Continuous ATO represents the transition from the traditional periodic
+reauthorization model to a continuous authorization posture in which the
+Authorizing Official maintains ongoing visibility into the system\'s
+security state and can make authorization decisions based on current,
+real-time risk data rather than periodic assessment snapshots. In the
+current state, the traditional three-year ATO cycle creates compliance
+gaps between assessment events. During the interval between assessments,
+the system may undergo significant changes, including new service
+deployments, configuration modifications, personnel changes, and threat
+landscape evolution, that are not reflected in the authorization
+decision until the next assessment cycle. This creates a condition where
+the authorization decision is based on historical data that may no
+longer accurately represent the system\'s risk posture. The
+modernization objective is to establish continuous ATO capability with
+automated evidence streams, real-time control monitoring, and ongoing
+risk assessment. This capability will enable the AO to maintain
+continuous situational awareness of the system\'s security posture and
+make informed, timely authorization decisions supported by current
+evidence rather than periodic snapshots.
+
+> 2.10 Boundary Modernization
+
+Boundary Modernization addresses the structural evolution of the FedRAMP
+authorization boundary itself. The authorization boundary defines the
+scope of the system that is subject to FedRAMP assessment and continuous
+monitoring. All components, data flows, and interconnections within the
+boundary must be documented, assessed, and continuously monitored;
+components outside the boundary are excluded from this governance
+framework. In the current state, the authorization boundary was drawn
+around legacy infrastructure and does not encompass the cloud-native
+signal sources that modern governance requires. As cloud services were
+adopted incrementally, new signal sources, including identity federation
+endpoints, device compliance streams, session telemetry collectors, and
+policy decision points, were deployed in locations that fall outside the
+defined boundary. This creates a structural condition where the boundary
+no longer fully represents the system\'s operational footprint. The
+modernization objective is to propose boundary modifications that
+capture all signal sources required for modern cloud governance,
+including identity, location, session, telemetry, media, and policy
+signals. This boundary evolution will enable the UIAO Modernization
+Program to achieve its full scope of objectives within a coherent,
+assessable, and continuously monitored authorization perimeter.
+
+3\. Problem Statement
+
+The organization operates a hybrid identity and infrastructure
+environment in which cloud services have been adopted incrementally over
+multiple years without a corresponding modernization of the
+authorization boundary, network architecture, or governance framework.
+This incremental adoption has produced an environment where cloud-native
+services coexist with legacy infrastructure, each operating under
+governance models that were designed independently and at different
+points in the organization\'s technology evolution. The result is an
+architectural condition in which the governance framework, the
+authorization boundary, and the operational environment are no longer
+fully aligned.
+
+**Signal Loss.** The most consequential manifestation of this
+misalignment is signal loss. Modern cloud governance depends on the
+ability to correlate signals across multiple domains: identity signals
+(who is requesting access), device signals (what is the health and
+compliance state of the requesting device), session signals (what is the
+behavioral context of the session), location signals (where is the
+request originating), and application signals (what resource is being
+accessed and what actions are being performed). In the current
+environment, these signals originate from sources that span multiple
+trust zones, some of which fall outside the current FedRAMP
+authorization boundary. When signals originate outside the boundary,
+they cannot be formally incorporated into governance decisions,
+compliance evidence, or security operations workflows. This signal loss
+is not a failure of any individual system or tool; it is a structural
+consequence of an authorization boundary that was defined before
+cloud-native signal sources existed.
+
+**Visibility Gaps.** Security operations require unified visibility
+across all layers of the technology stack to detect, investigate, and
+respond to threats effectively. In the current state, telemetry
+collection is constrained by boundary definitions that predate cloud
+adoption. Microsoft Sentinel, serving as the SIEM and SOAR platform, can
+only correlate signals that are available within its collection scope.
+When device compliance telemetry, network session metadata, geolocation
+data, or identity federation events fall outside the boundary, Sentinel
+correlation rules operate with incomplete data. Detection rules that
+depend on cross-layer signal joins, such as correlating an anomalous
+sign-in event with an endpoint health degradation and a network location
+change, produce partial or absent results. This reduces detection
+efficacy, increases false negative rates, and forces security analysts
+to perform manual cross-referencing that automated correlation should
+handle.
+
+**Architectural Constraints.** Legacy WAN routing architecture forces
+user traffic through centralized inspection points, a pattern designed
+for perimeter-based security models where all traffic traversed a
+defined network edge. In a cloud-first environment, this routing pattern
+introduces latency for cloud service access, degrades user experience at
+headquarters and field offices, and creates congestion at centralized
+inspection infrastructure. Split-tunnel VPN configurations, adopted to
+mitigate some of these performance impacts, create traffic paths that
+bypass inspection and logging infrastructure, further reducing
+visibility. DNS resolution policies that direct traffic to centralized
+resolvers rather than cloud-optimized endpoints add additional latency
+and reduce the effectiveness of cloud service geo-optimization features.
+
+These conditions, taken together, represent structural challenges that
+require architectural remediation. They are not the result of
+operational failures, misconfigurations, or resource constraints. They
+are the predictable consequences of an environment that has evolved from
+legacy to hybrid to cloud without a corresponding evolution of the
+governance and boundary architecture that governs it. The UIAO
+Modernization Program is designed to address these structural conditions
+through a unified architectural framework that aligns the authorization
+boundary, governance model, and operational environment into a coherent,
+assessable, and continuously monitored system.
+
+4\. FedRAMP Boundary Gap --- Architectural Dependency
+
++---------------+
+| **Critical    |
+| Architectural |
+| Dependency**  |
+|               |
+| The FedRAMP   |
+| Boundary Gap  |
+| is a          |
+| prerequisite  |
+| condition     |
+| that must be  |
+| addressed for |
+| the UIAO      |
+| Modernization |
+| Program to    |
+| achieve its   |
+| objectives.   |
+| This section  |
+| provides the  |
+| neutral       |
+| architectural |
+| analysis      |
+| required for  |
+| AO and 3PAO   |
+| review.       |
++---------------+
+
+The current FedRAMP authorization boundary was established to encompass
+legacy infrastructure at a time when the organization\'s technology
+footprint was predominantly on-premises. The boundary definition
+captured the servers, network devices, databases, and application
+platforms that constituted the system, along with the interconnections
+and data flows between them. As cloud services were adopted, certain
+signal sources were deployed in environments that fall outside the
+originally defined boundary. These signal sources include identity
+federation endpoints, device compliance telemetry streams, session
+telemetry collectors, media relay infrastructure, geolocation services,
+and policy decision points. The deployment of these signal sources
+outside the boundary was not an error; it reflected the standard
+deployment architecture for cloud-native services that did not exist
+when the boundary was originally defined.
+
+> 4.1 Categories of Missing Signals
+
+The Boundary Gap can be characterized by six categories of signals that
+are generated outside the current authorization boundary but are
+required for modern cloud governance:
+
+  --------------------------------
+  **Signal     **Description**
+  Category**
+  ------------ -------------------
+  **1.         Federation
+  Identity     metadata, token
+  Signals**    issuance events,
+               Conditional Access
+               evaluation data,
+               and identity risk
+               scores generated by
+               Entra ID during
+               authentication and
+               authorization
+               workflows.
+
+  **2.         Geolocation data,
+  Location     Internet Protocol
+  Signals**    (IP) reputation
+               scores, named
+               location
+               evaluations, and
+               network location
+               awareness data used
+               to assess the
+               geographic and
+               network context of
+               access requests.
+
+  **3. Session Session duration
+  Signals**    metrics,
+               re-authentication
+               events, token
+               refresh patterns,
+               and session risk
+               evaluations that
+               provide behavioral
+               context for ongoing
+               access sessions.
+
+  **4.         Endpoint health
+  Telemetry    attestation data,
+  Signals**    application
+               performance
+               metrics, service
+               availability
+               indicators, and
+               infrastructure
+               health signals from
+               cloud-hosted
+               management planes.
+
+  **5. Media   Microsoft Teams and
+  Signals**    communication media
+               relay paths, call
+               quality metrics,
+               media transport
+               telemetry, and
+               real-time
+               communication
+               session data
+               traversing cloud
+               relay
+               infrastructure.
+
+  **6. Policy  Conditional Access
+  Signals**    policy evaluation
+               results, compliance
+               gate decisions,
+               risk-based policy
+               application
+               outcomes, and
+               governance policy
+               enforcement
+               telemetry.
+  --------------------------------
+
+> 4.2 Impact on Cloud Behavior
+
+Without these six signal categories within the authorization boundary,
+the organization\'s cloud governance capabilities operate with
+structural limitations. Conditional Access policies, which serve as the
+primary policy enforcement mechanism for cloud service access, evaluate
+access requests using the signals available to them. When identity risk
+scores, device compliance state, network location context, or session
+behavioral data are unavailable or incomplete, Conditional Access
+policies must make enforcement decisions with partial information. This
+results in one of two suboptimal outcomes: policies are configured
+conservatively, blocking legitimate access and degrading user
+experience; or policies are configured permissively, allowing access
+that would be denied if full signal context were available.
+
+Zero Trust evaluations, as defined by OMB M-22-09, require continuous
+verification of identity, device, and context at every access decision
+point. When the signals required for this continuous verification
+originate outside the boundary, the verification is inherently
+incomplete. Security operations teams, operating through Microsoft
+Sentinel, cannot achieve the signal correlation density required for
+modern threat detection when correlation rules span signal domains that
+cross the boundary. The result is an environment where the technical
+capabilities of the security tooling exceed the governance framework\'s
+ability to consume and act on the signals those tools produce.
+
+> 4.3 Compliance Implications
+
+FedRAMP Rev5 control families impose requirements that depend on
+comprehensive signal availability. The Access Control (AC) family
+requires evidence of access enforcement at all system entry points. The
+Audit and Accountability (AU) family requires comprehensive audit
+logging of security-relevant events. The Identification and
+Authentication (IA) family requires evidence of identity verification
+and credential management. The System and Communications Protection (SC)
+family requires evidence of communication channel protection and session
+management. The System and Information Integrity (SI) family requires
+evidence of continuous monitoring and flaw remediation. When signal
+sources for any of these control families fall outside the authorization
+boundary, the evidence chain is incomplete. Assessment findings that
+result from this incompleteness are structural rather than operational:
+they reflect the boundary definition rather than a failure to implement
+or operate controls correctly.
+
+> 4.4 Boundary Gap as Modernization Prerequisite
+
+The UIAO Modernization Program cannot achieve its stated objectives ---
+unified identity governance, continuous ATO, Zero Trust alignment, or
+SCuBA baseline compliance --- until the authorization boundary is
+modernized to encompass all required signal sources. Each program
+objective depends on the availability of signals from multiple
+categories outlined above. Unified identity governance requires identity
+signals and policy signals. Continuous ATO requires evidence signals
+from all control families, which in turn depend on telemetry, session,
+and identity signals. Zero Trust alignment requires continuous
+verification using identity, device, location, and session signals.
+SCuBA baseline compliance requires policy signals, telemetry signals,
+and drift detection data. The Boundary Gap is therefore not a peripheral
+concern or a parallel workstream; it is the foundational architectural
+dependency upon which all other modernization objectives rest. Resolving
+it is not a deficiency remediation; it is an architectural evolution
+that reflects the natural and expected progression from legacy
+infrastructure governance to cloud-native governance.
+
+5\. Objectives and Outcomes
+
+The UIAO Modernization Program defines six primary objectives, each with
+a measurable outcome statement that establishes the target state for
+that capability area. These objectives are interdependent; achieving any
+single objective in isolation provides limited value, while achieving
+them collectively produces a governance posture that meets all
+applicable federal requirements and enables sustained operational
+excellence.
+
+> 5a. Stabilize Identity
+
+**Outcome:** Unified identity governance across Entra ID and on-premises
+Active Directory with consistent Conditional Access evaluation and full
+MFA enforcement for all user populations, including privileged,
+standard, and external identities. Identity lifecycle events, including
+provisioning, role changes, and de-provisioning, will be managed through
+automated workflows with audit trails that satisfy FedRAMP Rev5 IA and
+AC control family requirements.
+
+> 5b. Restore Visibility
+
+**Outcome:** End-to-end telemetry correlation across identity, device,
+network, and application layers with no signal gaps attributable to
+authorization boundary constraints. Microsoft Sentinel will ingest and
+correlate signals from all six signal categories defined in Section 4,
+enabling detection rules, investigation workflows, and automated
+response playbooks to operate with complete contextual data.
+
+> 5c. Enable Zero Trust Architecture
+
+**Outcome:** Policy enforcement at every access decision point with
+continuous verification of identity, device health, and session context
+as defined by OMB M-22-09. Conditional Access policies will evaluate the
+full signal context, including identity risk, device compliance, network
+location, and session behavior, for every access request without
+exception. No access decision will be made with incomplete signal
+context due to boundary constraints.
+
+> 5d. Enable SCuBA Alignment
+
+**Outcome:** All Microsoft 365 services assessed against CISA SCuBA
+baselines with UIAO SCuBA providing continuous drift detection,
+remediation orchestration, and governance provenance. GCC-Moderate
+applies exclusively to Microsoft 365 SaaS services. UIAO SCuBA will
+consume CISA ScubaGear JSON and CSV outputs on a continuous basis,
+compare results against canonical desired-state configurations, identify
+deviations, assign remediation ownership, enforce SLA-based remediation
+timelines, and maintain machine-trackable provenance records that
+document the full lifecycle of every drift event from detection through
+resolution.
+
+> 5e. Enable Continuous ATO
+
+**Outcome:** Transition from the traditional periodic three-year
+reauthorization cycle to continuous authorization with automated
+evidence streams, real-time control monitoring, and ongoing risk
+assessment. The AO will have access to a continuously updated risk
+dashboard that reflects the current security posture of the system,
+enabling authorization decisions to be informed by real-time data rather
+than periodic assessment snapshots. The 3PAO will have access to
+continuous evidence streams that support ongoing assessment activities.
+
+> 5f. Improve User Experience
+
+**Outcome:** Reduced latency for cloud services at headquarters and
+field offices through routing modernization, elimination of unnecessary
+traffic backhauling through centralized inspection points, and a
+consistent authentication experience regardless of user location. Users
+will experience seamless access to Microsoft 365 and other cloud
+services with authentication flows that are predictable, performant, and
+secure. Routing modernization will ensure that users connect to cloud
+services through optimized network paths while security inspection and
+logging requirements are maintained through modern, distributed
+inspection architectures.
+
+6\. Deliverables
+
+The UIAO Modernization Program Phase 0 produces the following
+deliverables, each of which serves as an input to Phase 1 execution
+planning and stakeholder decision-making. These deliverables are
+designed to provide the CIO, CISO, ISSO, AO, and 3PAO with the
+documentation required to authorize Phase 1 initiation.
+
+> 6a. UIAO Architecture Document
+
+A complete technical architecture document defining all UIAO planes
+(Identity, Device, Server, Routing, Security, Evidence, and Compliance),
+their integration points, data flows between planes, and governance
+touch points where policy decisions are made and evidence is collected.
+The architecture document will include logical architecture diagrams,
+data flow descriptions, component inventories, and interface
+specifications for each plane. This document serves as the authoritative
+technical reference for the UIAO overlay architecture.
+
+> 6b. Boundary Modernization Plan
+
+A detailed proposal for authorization boundary modification, including a
+complete signal source inventory identifying every signal source that
+requires boundary inclusion, a risk assessment evaluating the impact of
+boundary modification on the system\'s security posture, and a
+stakeholder approval pathway defining the review and approval process
+for boundary changes. This plan will address each of the six signal
+categories identified in Section 4 and provide a phased approach to
+boundary expansion that maintains authorization continuity throughout
+the transition.
+
+> 6c. Compliance and ATO Plan
+
+A roadmap for transitioning from periodic reauthorization to continuous
+ATO, including the evidence automation strategy that defines how
+continuous evidence streams will be generated for each FedRAMP Rev5
+control family, a control mapping that aligns UIAO components to
+applicable controls, and a 3PAO engagement plan that defines how the
+assessment organization will participate in the continuous monitoring
+and ongoing authorization process.
+
+> 6d. Signal Restoration Framework
+
+A technical framework defining how each of the six missing signal
+categories (identity, location, session, telemetry, media, and policy)
+will be captured at their point of origin, routed through secure
+collection infrastructure, and integrated into the governance boundary.
+The framework will specify collection mechanisms, transport protocols,
+storage requirements, retention policies, and integration points with
+Microsoft Sentinel, Conditional Access, and the UIAO SCuBA governance
+orchestration layer.
+
+> 6e. 90-Day Execution Timeline
+
+A phased execution plan covering the first 90 days of Phase 1
+implementation, organized into 30-day increments with defined
+milestones, dependencies, and decision gates at each phase boundary. The
+timeline will identify critical-path activities, resource requirements,
+stakeholder review points, and go/no-go decision criteria that must be
+satisfied before advancing to the next phase increment.
+
+7\. Risks and Dependencies
+
+The following risk register identifies the primary risks and
+dependencies associated with the UIAO Modernization Program. Each risk
+is assessed for likelihood and impact, and paired with a mitigation
+strategy. These risks are structural in nature and reflect the
+complexity inherent in modernizing a hybrid environment while
+maintaining operational continuity and compliance posture.
+
+  -------------------------------------------------------------------------------------------
+  **ID**   **Risk**        **Likelihood**   **Impact**   **Description**    **Mitigation**
+  -------- --------------- ---------------- ------------ ------------------ -----------------
+  R-01     **Boundary      High             High         The boundary       Parallel-path
+           Signal                                        modification       planning with
+           Constraints**                                 timeline may       interim
+                                                         exceed the         compensating
+                                                         modernization      controls that
+                                                         schedule, delaying provide partial
+                                                         signal restoration signal coverage
+                                                         and blocking       while boundary
+                                                         dependent          modification
+                                                         objectives.        proceeds through
+                                                                            the approval
+                                                                            process.
+
+  R-02     **Legacy WAN    Medium           High         Legacy routing     Phased routing
+           Routing**                                     architecture may   changes with
+                                                         not be modifiable  documented
+                                                         without service    rollback
+                                                         disruption to      capability at
+                                                         users at           each stage.
+                                                         headquarters and   Changes will be
+                                                         field offices      implemented
+                                                         during transition. during
+                                                                            maintenance
+                                                                            windows with
+                                                                            pre-validated
+                                                                            rollback
+                                                                            procedures tested
+                                                                            in a
+                                                                            non-production
+                                                                            environment.
+
+  R-03     **Telemetry     Medium           Medium       Existing telemetry Instrumentation
+           Limitations**                                 infrastructure may gap analysis
+                                                         not support the    conducted during
+                                                         continuous         Phase 1 to
+                                                         monitoring         identify
+                                                         requirements of    collection gaps,
+                                                         the UIAO framework followed by
+                                                         without additional phased deployment
+                                                         instrumentation.   of collection
+                                                                            agents and log
+                                                                            forwarding
+                                                                            infrastructure to
+                                                                            address
+                                                                            identified gaps.
+
+  R-04     **Region        High             Medium       Cloud service      UIAO SCuBA
+           Drift**                                       configurations may continuous drift
+                                                         drift from the     detection
+                                                         canonical desired  consuming CISA
+                                                         state between      ScubaGear outputs
+                                                         governance cycles, with SLA-enforced
+                                                         creating           remediation
+                                                         compliance gaps    workflows, owner
+                                                         that are not       accountability
+                                                         detected until the tracking, and
+                                                         next assessment.   governance
+                                                                            provenance to
+                                                                            ensure deviations
+                                                                            are identified
+                                                                            and resolved
+                                                                            within defined
+                                                                            timeframes.
+
+  R-05     **Identity      Medium           High         Identity migration Staged migration
+           Continuity**                                  from fragmented    with parallel
+                                                         on-premises and    identity
+                                                         cloud directories  infrastructure
+                                                         to unified         maintained
+                                                         governance may     throughout the
+                                                         create             transition
+                                                         authentication     period. Automated
+                                                         disruptions for    rollback
+                                                         users during       capability will
+                                                         transition.        be pre-configured
+                                                                            at each migration
+                                                                            stage, and user
+                                                                            authentication
+                                                                            continuity will
+                                                                            be validated
+                                                                            before
+                                                                            decommissioning
+                                                                            parallel
+                                                                            infrastructure.
+
+  R-06     **Compliance    Medium           Medium       Evidence           Prioritized
+           Evidence Gaps**                               automation may not control mapping
+                                                         cover all FedRAMP  that automates
+                                                         Rev5 control       evidence
+                                                         families at        generation for
+                                                         initial launch,    the
+                                                         creating gaps in   highest-impact
+                                                         the continuous     control families
+                                                         monitoring         first, with
+                                                         evidence chain.    manual evidence
+                                                                            collection
+                                                                            procedures
+                                                                            documented and
+                                                                            staffed for
+                                                                            uncovered
+                                                                            controls during
+                                                                            the transition to
+                                                                            full automation.
+  -------------------------------------------------------------------------------------------
+
+> 7.1 Risk Narrative
+
+The risks identified above are interdependent. The Boundary Signal
+Constraints risk (R-01) is the highest-impact item because it affects
+the timeline for nearly every other modernization objective. If the
+boundary modification process requires longer than anticipated, the
+program must operate with compensating controls that provide partial
+signal coverage, which in turn limits the effectiveness of the Restore
+Visibility (5b) and Enable Zero Trust Architecture (5c) objectives. The
+Legacy WAN Routing risk (R-02) has a direct relationship with the
+Improve User Experience (5f) objective and an indirect relationship with
+signal restoration, as routing modernization is required to enable
+direct telemetry collection from cloud service access paths.
+
+The Region Drift risk (R-04) is specifically addressed by the UIAO SCuBA
+governance orchestration layer. By consuming CISA ScubaGear outputs on a
+continuous basis and comparing them against canonical desired-state
+configurations, UIAO SCuBA converts what would otherwise be a periodic,
+manual review process into a continuous, automated governance workflow.
+The Identity Continuity risk (R-05) requires careful staging because
+authentication disruptions have an immediate and visible impact on user
+productivity and organizational trust in the modernization program. The
+mitigation strategy of parallel identity infrastructure ensures that the
+existing authentication path remains available until the new path is
+fully validated.
+
+The Compliance Evidence Gaps risk (R-06) is expected to diminish over
+time as evidence automation matures. The mitigation strategy
+acknowledges that full automation of evidence generation across all
+FedRAMP Rev5 control families is a progressive capability that will be
+achieved through iterative development rather than a single deployment
+event. During the transition period, manual evidence collection will
+ensure that compliance obligations are met while automation is extended
+to additional control families.
+
+8\. Next Steps
+
+Upon acceptance of this Phase 0 Planning Document by the CIO, CISO,
+ISSO, and AO, the UIAO Modernization Program Office will initiate the
+following sequenced actions to prepare for Phase 1 execution. These
+actions are ordered to respect dependencies: architecture must be
+defined before boundary modifications can be proposed, and compliance
+mapping must be completed before the execution timeline can be
+finalized.
+
+1.  **Prepare Phase 1 Architecture Document.** Expand the UIAO
+    architecture from the conceptual framework described in this
+    document to a detailed technical design. The architecture document
+    will include integration specifications for each plane, deployment
+    patterns for cloud and hybrid components, data flow diagrams showing
+    signal paths across all six signal categories, and interface
+    contracts defining how each plane communicates with adjacent planes.
+    This deliverable is the prerequisite for all subsequent planning
+    activities.
+
+2.  **Prepare Boundary Modernization Appendix.** Document all signal
+    sources that require inclusion within the FedRAMP authorization
+    boundary, organized by the six signal categories defined in
+    Section 4. Each signal source will include a risk assessment
+    evaluating the security implications of boundary inclusion, a
+    technical description of the signal\'s origin and transport path,
+    and a recommended approval pathway for AO review. This appendix will
+    be submitted to the AO as a formal boundary modification request.
+
+3.  **Prepare Compliance and ATO Alignment.** Map all UIAO components to
+    applicable FedRAMP Rev5 control families, identifying which controls
+    are satisfied by each component and which controls require
+    additional implementation. Develop the continuous monitoring
+    strategy that defines how evidence will be generated, collected,
+    validated, and presented to the AO and 3PAO on an ongoing basis.
+    This mapping will inform the evidence automation development
+    priorities for Phase 1.
+
+4.  **Prepare 90-Day Execution Plan.** Define execution milestones for
+    the first 90 days of Phase 1, organized into three 30-day
+    increments. Each increment will include specific deliverables,
+    resource requirements, stakeholder review points, and go/no-go
+    decision gates that must be satisfied before the program advances to
+    the next increment. The execution plan will identify critical-path
+    activities and dependencies to ensure that schedule risks are
+    visible and manageable.
+
++---------------+
+| **Document    |
+| Status**      |
+|               |
+| This Phase 0  |
+| Planning      |
+| Document is   |
+| Version 0.1   |
+| (Draft),      |
+| dated April   |
+| 2026. It is   |
+| subject to    |
+| review and    |
+| revision by   |
+| the CIO,      |
+| CISO, ISSO,   |
+| AO, and 3PAO. |
+| Upon          |
+| approval, it  |
+| will serve as |
+| the           |
+| authoritative |
+| planning      |
+| baseline for  |
+| Phase 1 of    |
+| the UIAO      |
+| Modernization |
+| Program.      |
++---------------+
+
+  --------------------------------------
+  UIAO            Controlled   Version
+  Modernization                0.1
+  Master Plan ---              (Draft)
+  Phase 0                      --- April
+  Planning                     2026
+  Document
+  --------------- ------------ ---------
+
+  --------------------------------------
