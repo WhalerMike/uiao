@@ -64,7 +64,7 @@ DRIFT-AUTHZ ships both the state-diff and consent-envelope detectors. DRIFT-IDEN
 | metadata-validator.yml | ✅ Blocking |
 | quarto.yml | ✅ Blocking |
 | ruff.yml | ✅ Blocking |
-| link-check.yml | 🟡 Soft-fail (baseline not burned down) |
+| link-check.yml | ✅ Blocking |
 
 ---
 
@@ -255,16 +255,35 @@ follow-up PRs declare anchors per adapter and promote the gate to P1.
 
 Referenced docs: UIAO_110 §3 (drift class taxonomy), ADR-012 §DT-05.
 
-### 0.6 — link-check baseline burn-down
+### 0.6 — link-check baseline burn-down (soft-fail → **blocking** ✅)
 
-The link-check workflow is currently soft-fail. It needs to be flipped to blocking, which requires reducing the false-positive baseline to a manageable level.
+The link-check workflow has been flipped from soft-fail to blocking.
+Baseline confirmed clean: lychee 0.24.1 against every `.md` and `.qmd`
+in the repo with the existing `.lycheeignore` returns 0 errors / 287
+OK / 14 redirects / 661 excluded across 572 unique URLs (as of
+2026-04-25). The exclude list (Microsoft Learn, FedRAMP PMO,
+archive.org, Cisco, retired pre-split monorepo URLs, etc.) is the
+result of prior author work distinguishing real link rot from
+CI-side false positives — geo-gated cloud responses, dynamic GH
+issue/PR paths, vendor URL restructurings without redirects.
 
-Work required:
-- Run `make check-links` against the live Pages site.
-- Audit the lychee output; distinguish broken links from lychee false-positives.
-- Add false-positive patterns to `.lycheeignore`.
-- Fix genuine broken links.
-- Flip `link-check.yml` `continue-on-error: true` to `false`.
+Shipped:
+- `.github/workflows/link-check.yml`: removed
+  `continue-on-error: true`. Workflow now blocks the PR on any
+  lychee error. The `--exclude-file .lycheeignore` flag was also
+  removed (deprecated in lychee 0.20+; the file is read automatically
+  from the repo root).
+- Roadmap CI gate-health table updated: `link-check.yml` flips from
+  🟡 soft-fail to ✅ blocking.
+- Substrate-status CI table updated with the same flip.
+
+Maintenance contract going forward:
+- A new genuinely broken link → fix the URL in the same PR.
+- A new CI-side false positive (cloud-IP geo-gate, intermittent
+  upstream rate-limit, etc.) → add an explanatory entry to
+  `.lycheeignore` in the same PR.
+- Weekly cron run still detects upstream link rot independent of
+  repo changes.
 
 ### 0.7 — UIAO_129/130 Application Identity Model
 
