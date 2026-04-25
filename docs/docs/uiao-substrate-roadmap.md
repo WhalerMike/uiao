@@ -216,9 +216,19 @@ Shipped:
   (with `issuer_chain` and `raw_data` fallbacks).
 - `src/uiao/substrate/walker.py::_scan_issuer_chain` — registry-hygiene
   gate. Every active adapter declaring `certificate-anchored: true`
-  MUST also declare a `trust-anchor:`; missing → P2 finding (registry
-  hygiene; promotable to P1 once all adapters have anchors). Reserved
-  and `certificate-anchored: false` adapters skipped.
+  MUST also declare a `trust-anchor:`; missing → **P1** finding
+  (substrate trust contract; runtime issuer-chain cannot be enforced).
+  Reserved and `certificate-anchored: false` adapters skipped.
+
+  **Update (post-§0.5 follow-through):** All 16 active certificate-
+  anchored adapters across both registries now carry a `trust-anchor:`
+  declaration with the expected vendor root (Microsoft RSA Root CA
+  2017 for the Entra/M365 family, DigiCert Global Root CA/G2 for
+  CISA / SaaS vendors, ISRG Root X1 for Terraform). Operators replace
+  the subject form with a SHA-256 fingerprint when wiring to a real
+  tenant. The walker gate was promoted **P2 → P1** in the same pass,
+  so the substrate now blocks any future PR that lands an active
+  certificate-anchored adapter without an anchor.
 - 31 new tests in `tests/test_issuer_resolution.py`: registry loader
   (7), resolver semantics (12 — clean chain to subject anchor / clean
   to fingerprint anchor / unanchored chain / broken chain / missing
