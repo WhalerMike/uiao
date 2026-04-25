@@ -59,3 +59,44 @@ these constraints at the packaging layer:
 
 Violating this rule is a governance drift signal and should be caught
 in code review or by the substrate-drift CI gate.
+
+## Sub-app surface map: `evidence` vs `ir`
+
+Two CLI sub-apps appear to overlap on first read of `uiao --help`:
+`uiao evidence` (2 commands: `build`, `graph`) and `uiao ir` (14
+commands, several of which produce or consume evidence). The split is
+principled — adopters and contributors should know which to use.
+
+**`uiao evidence`** is the **canonical bundle surface**. Two commands:
+
+- `evidence build` — assemble an `EvidenceBundle` (content-hashed,
+  provenance-anchored) from a KSI result JSON. The bundle is the
+  authoritative artifact-of-record consumed by auditors.
+- `evidence graph` — build and inspect the Evidence Graph (UIAO_113)
+  spanning controls → evidence → policies → drift findings. Read API
+  surface for the OSCAL back-matter graph.
+
+Use `uiao evidence` when the goal is **the bundle / graph itself**.
+
+**`uiao ir`** is the **pipeline-stage surface**. 14 commands operating
+on the IR (Intermediate Representation) of a SCuBA assessment:
+transform, validate, freshness, drift-detect, governance-report,
+poam-export, ssp-report, ssp-inject, generate-sar, auditor-bundle,
+diff, dashboard, and (singular) `evidence-bundle` — which is a thin
+convenience wrapper that runs `transform` then calls
+`evidence.bundle.build_bundle_from_transform_result`.
+
+Use `uiao ir` when the goal is **a pipeline stage** (transform, drift,
+report) operating on a SCuBA → IR → evidence flow.
+
+**Decision rule for new commands:**
+
+- If the operation produces or inspects the canonical evidence bundle
+  shape itself, it belongs under `evidence`.
+- If the operation runs a stage of the SCuBA → IR → evidence → OSCAL
+  pipeline, it belongs under `ir`.
+
+This division was ratified by the [M5 public-surface audit](../../../docs/reports/public-surface-audit-v0.5.0.md)
+F4/D4a; rejected alternatives were flattening (drop `evidence`,
+everything routes through `ir`) and expansion (move `linker`,
+`collector`, `poam` builders to `evidence`).
