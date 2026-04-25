@@ -45,13 +45,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Optional
+from typing import Any, Iterable, Literal, Mapping, Optional
 
 import yaml
 
 from uiao.ir.models.core import DriftState, ProvenanceRecord, canonical_hash
 
-DRIFT_AUTHZ = "DRIFT-AUTHZ"
+DRIFT_AUTHZ: Literal["DRIFT-AUTHZ"] = "DRIFT-AUTHZ"
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +183,7 @@ class ConsentEnvelopeReport:
             actual_hash=canonical_hash(actual_state),
             drift_detected=True,
             classification="unauthorized",
-            delta=delta,  # type: ignore[arg-type]
+            delta=delta,
             provenance=provenance,
             drift_class=DRIFT_AUTHZ,
         )
