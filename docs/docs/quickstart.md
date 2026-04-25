@@ -134,6 +134,41 @@ assessment report from your tenant — the `M365BaselineConformance.json`
 it produces — steps 2 through 5 run identically; only the input
 changes.
 
+## Want a REST API instead of the CLI?
+
+Everything you ran through `uiao …` is also reachable as HTTP routes
+behind FastAPI, gated under the `[api]` install extra so the heavy
+dependencies (`fastapi`, `uvicorn`, `httpx`, `msal`) only land when
+you ask for them:
+
+```bash
+pip install -e ".[api]"
+uvicorn uiao.api.app:app --host 127.0.0.1 --port 8000
+```
+
+The available route surfaces (per [M5 public-surface audit](../reports/public-surface-audit-v0.5.0.md)):
+
+| Module | Routes | Purpose |
+|---|---|---|
+| `/health` | `GET /health` | Liveness probe |
+| `/auditor/…` | 9 routes | Evidence, findings, POA&M, OSCAL (SAR/SSP/POA&M/SAP), evidence-graph trace |
+| `/survey/…` | `POST /run`, `POST /findings` | AD survey runner |
+| `/orgpath/…` | `POST /assign` | OrgPath assignment |
+| `/boundary/…` | `POST /run`, `GET /gaps` | GCC boundary feature probe |
+
+Once running, browse the auto-generated OpenAPI surface at
+`http://127.0.0.1:8000/docs`. The auth model is documented in
+[`src/uiao/api/auth/`](../../src/uiao/api/auth/) — Windows Authentication
+inbound (Kerberos via IIS Negotiate when deployed via the Windows IIS
+runbook), MSAL client-credentials outbound for Microsoft Graph.
+
+For a development-only smoke test that proves the API surface is
+wired without launching a server:
+
+```bash
+python -m pytest tests/test_api_smoke.py -v
+```
+
 ## Next steps
 
 - **Explore the full command surface:** `uiao --help`. Every sub-app
