@@ -28,6 +28,8 @@ import yaml
 SUBSTRATE_MANIFEST = "src/uiao/canon/substrate-manifest.yaml"
 WORKSPACE_CONTRACT = "src/uiao/canon/workspace-contract.yaml"
 DOCUMENT_REGISTRY = "src/uiao/canon/document-registry.yaml"
+MODERNIZATION_REGISTRY = "src/uiao/canon/modernization-registry.yaml"
+ADAPTER_REGISTRY = "src/uiao/canon/adapter-registry.yaml"
 
 # Paths inside document-registry.yaml are workspace-relative (e.g.
 # `src/uiao/canon/UIAO-SSOT.md`), so the resolve base is the workspace root.
@@ -211,8 +213,75 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
 
     _scan_canon_code_refs(root, report)
     _scan_docs_code_refs(root, report)
+    _scan_consent_envelope(root, report)
 
     return report
+
+
+def _scan_consent_envelope(root: Path, report: SubstrateReport) -> None:
+    """UIAO_110 DRIFT-AUTHZ registry-hygiene scan.
+
+    Every active modernization adapter MUST declare a non-empty ``scope:``
+    in canon. An adapter with no scope key — or an empty list — cannot be
+    validated by the consent-envelope detector at runtime, which is itself
+    a DRIFT-AUTHZ violation against the substrate trust contract.
+
+    Severity policy:
+        - missing ``scope:`` key on an active adapter → P1 (cannot validate)
+        - explicit ``scope: []`` on an active adapter → P2 (validates, but
+          no consent envelope means no audited surface)
+        - reserved/inactive adapters → skipped
+    """
+    mod_path = root / MODERNIZATION_REGISTRY
+    adapter_path = root / ADAPTER_REGISTRY
+    for path in (mod_path, adapter_path):
+        if not path.is_file():
+            continue
+        try:
+            doc = _load_yaml(path)
+        except yaml.YAMLError:
+            continue
+        if not doc:
+            continue
+        adapters = doc.get("adapters") or doc.get("modernization_adapters") or []
+        if not isinstance(adapters, list):
+            continue
+        rel = str(path.relative_to(root))
+        for entry in adapters:
+            if not isinstance(entry, dict):
+                continue
+            adapter_id = str(entry.get("id", "")).strip()
+            if not adapter_id:
+                continue
+            status = str(entry.get("status", "")).strip().lower()
+            if status not in ("active",):
+                continue
+            if "scope" not in entry:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-AUTHZ",
+                        severity="P1",
+                        path=f"{rel}#{adapter_id}",
+                        detail=(
+                            f"active adapter '{adapter_id}' has no scope: declaration; "
+                            "consent envelope cannot be enforced"
+                        ),
+                    )
+                )
+                continue
+            raw = entry.get("scope") or []
+            if isinstance(raw, list) and len(raw) == 0:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-AUTHZ",
+                        severity="P2",
+                        path=f"{rel}#{adapter_id}",
+                        detail=(
+                            f"active adapter '{adapter_id}' declares an empty scope: list; "
+                            "no objects fall under the consent envelope"
+                        ),
+                    )
+                )
 
 
 def _scan_prose_for_code_refs(

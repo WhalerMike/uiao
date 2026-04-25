@@ -49,10 +49,10 @@ This roadmap is organized around closing that gap in order of risk and dependenc
 | DRIFT-SCHEMA | P1 | ✅ Implemented |
 | DRIFT-PROVENANCE | P1 | ✅ Implemented |
 | DRIFT-SEMANTIC | P2 | 🟡 Partial (freshness engine partial) |
-| DRIFT-AUTHZ | P1 | ⏳ Pending |
-| DRIFT-IDENTITY | P1 | ⏳ Pending |
+| DRIFT-AUTHZ | P1 | ✅ Implemented (state-diff + consent-envelope) |
+| DRIFT-IDENTITY | P1 | 🟡 Partial (state-diff classifier; runtime issuer chain validation pending) |
 
-Two of three P1 drift classes have no implementation.
+DRIFT-AUTHZ now ships both the state-diff and consent-envelope detectors. DRIFT-IDENTITY has the state-diff classifier; runtime issuer-chain validation remains pending.
 
 ### CI gate health
 
@@ -131,17 +131,55 @@ Work required:
 - Store in `tests/fixtures/scubagear/`.
 - Wire `test_adapters.py` to assert the conformance adapter normalizes ScubaGear output correctly.
 
-### 0.4 — DRIFT-AUTHZ implementation
+### 0.4 — DRIFT-AUTHZ implementation (pending → **complete** ✅)
 
-DRIFT-AUTHZ detects consent-envelope violations: when an adapter asserts authority over an object it was not granted access to. This is P1 severity and has no runtime implementation.
+DRIFT-AUTHZ detects consent-envelope violations: when an adapter asserts
+authority over an object it was not granted access to. P1 severity.
 
-Work required:
-- Implement `ConsentEnvelopeValidator` in `src/uiao/governance/` that reads the adapter's declared `scope:` fields from the registry and validates observed API calls against that scope.
-- Emit `DRIFT-AUTHZ` findings when out-of-scope access is detected.
-- Add pytest coverage in `test_drift_detection.py`.
-- Wire to the substrate walker so `uiao substrate walk` reports DRIFT-AUTHZ findings.
+**Status (2026-04-24):** shipped end to end. Two complementary detectors
+now produce `drift_class="DRIFT-AUTHZ"` findings:
 
-Referenced docs: UIAO_110 §3 (drift class taxonomy).
+1. **State-diff detector** (`uiao.governance.drift.classify_authz_drift`,
+   shipped previously): catches role/delegation/scope changes between
+   expected and actual snapshots — sentinel-field changes, escalation
+   patterns (e.g. `kerberos_delegation: unconstrained`), role count
+   growth.
+
+2. **Consent-envelope detector** (`uiao.governance.consent_envelope`,
+   new this PR): catches adapter API calls that hit object types
+   *outside* the adapter's declared canon `scope:`. Answers the
+   distinct question "did the adapter touch something it was never
+   granted access to?".
+
+Shipped:
+- `src/uiao/governance/consent_envelope.py` — `ConsentEnvelopeValidator`
+  with `load_adapter_envelopes(registries)` (merges declared envelopes
+  across modernization-registry + adapter-registry; later overrides
+  earlier), `validate(adapter_id, observed_scope)` →
+  `ConsentEnvelopeReport`, and `report.as_drift_state(provenance=...)`
+  → `DriftState(drift_class="DRIFT-AUTHZ", classification="unauthorized")`.
+- `observed_scope_for_run(run_dir)` — extracts per-adapter observed
+  scope from a UIAO_100 scheduler-run tree by reading
+  `adapters/<id>/evidence.json::normalized_data.accessed_scope` (with
+  `observed_scope` / `scope` and `raw_data` fallbacks). Adapters that
+  emit no scope hint contribute an empty list — in-scope by definition,
+  no false positives.
+- `src/uiao/substrate/walker.py::_scan_consent_envelope` — registry
+  hygiene gate. Every active modernization adapter MUST declare a
+  non-empty `scope:`; missing key → P1 finding, empty list → P2.
+  Reserved/inactive adapters are skipped. `uiao substrate walk` now
+  reports DRIFT-AUTHZ findings against canon registries directly.
+- 27 new tests in `tests/test_consent_envelope.py`: registry loader (6),
+  validator (10 — in-scope / out-of-scope / missing-declaration /
+  empty-envelope / whitespace normalization / batch / DriftState
+  emission), scheduler-run extraction (5 including end-to-end
+  scheduler-run → validator → DriftState), substrate-walker scan
+  (4 — P1 missing scope, P2 empty scope, reserved adapter skipped,
+  clean active adapter), plus a smoke test against the live canon
+  registries that asserts zero DRIFT-AUTHZ P1 findings (registry
+  hygiene currently green: every active adapter declares a scope).
+
+Referenced docs: UIAO_110 §3 (drift class taxonomy), ADR-012 §DT-04.
 
 ### 0.5 — DRIFT-IDENTITY implementation
 
