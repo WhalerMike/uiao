@@ -727,7 +727,7 @@ Work required:
 The Auditor API is the external interface through which an ATO package
 is assembled and the four governance modules shipped in Phase 3 are
 exercised. Pre-existing routers (`src/uiao/api/routes/auditor.py`)
-already covered evidence/findings/POA&M/OSCAL/graph; this pass adds
+already covered `evidence` / `findings` / `POA&M` / OSCAL / graph endpoints; this pass adds
 the four §3.x governance surfaces plus Bearer-auth wiring.
 
 Shipped (this PR):
