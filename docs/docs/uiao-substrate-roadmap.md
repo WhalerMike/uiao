@@ -885,15 +885,57 @@ Deferred (gated on real adapter remediation surfaces):
 
 Referenced doc: UIAO_111 Enforcement Runtime spec.
 
-### 3.4 — UIAO_112 Multi-Tenant Isolation
+### 3.4 — UIAO_112 Multi-Tenant Isolation (aspirational → **🟡 working** ✅)
 
-Multi-tenant isolation is required before any agency can operate the substrate alongside another agency in a shared environment.
+Multi-tenant isolation is required before any agency can operate the
+substrate alongside another agency in a shared environment. v1 ships
+the data model + namespace primitives + walker hygiene gate; per-tenant
+credential delegation against a real backend (Vault / Key Vault /
+SecretsManager) is a follow-up gated on the deployment target.
 
-Work required:
-- Implement tenant namespace isolation in the evidence store.
-- Implement per-tenant credential scoping.
-- Implement tenant audit trails.
-- Add test coverage.
+Shipped:
+- `src/uiao/governance/tenancy.py` — `Tenant` (id / name /
+  credential_scope / parent_org / retention_years / boundary / status)
+  + `TenantContext` (runtime context; `tenant_id` + `actor`) +
+  `TenantRegistry` (loader + `require()` + `active()`).
+- `load_tenants(paths)` reads `tenants:` from one or more YAMLs (later
+  override earlier; missing files silently skipped — single-tenant
+  deployments don't require a canon file).
+- `TenantContext.default()` synthesizes the default tenant for
+  single-tenant deployments. `TenantRegistry.require(DEFAULT_TENANT_ID)`
+  produces a synthetic active tenant when no canon declaration exists,
+  so the runtime never falls into "no tenant".
+- `tenant_scoped_path(base, ctx)` returns `base/<tenant_id>/...` so
+  the EnforcementJournal, Data Lake archive, and scheduler-run output
+  land under per-tenant subtrees. Single-tenant deployments use
+  `base/default/` so adding a second tenant later requires no path
+  migration.
+- `assert_tenant_match(expected, actual)` raises `PermissionError` on
+  cross-tenant access; called by per-resource read paths to enforce
+  the substrate isolation contract.
+- `src/uiao/substrate/walker.py::_scan_tenants` — registry-hygiene
+  scan on `src/uiao/canon/tenants.yaml`. Active tenants must declare
+  a non-empty `credential_scope:` (P2 finding tagged `DRIFT-SCHEMA`
+  if missing or empty). The file is optional — single-tenant
+  deployments without a tenants.yaml produce zero findings.
+- 24 new tests in `tests/test_tenancy.py`: model (3), context (2),
+  registry loader (6 incl. invalid YAML, missing id, retention
+  fallback), registry semantics (3), path helpers (3), tenant-match
+  assertion (3), substrate-walker scan (4 incl. live-canon tolerant
+  no-file behavior).
+
+Deferred:
+- Per-tenant credential backend binding — `credential_scope` field
+  ships today; the actual Vault / Key Vault / SecretsManager dispatch
+  layer lands in a deployment-target-specific PR.
+- Wiring `tenant_scoped_path` into the existing journal / archive /
+  scheduler call sites — they currently default to single-tenant
+  (the default tenant subdirectory). Migration to explicit per-tenant
+  paths happens once a real second tenant lands.
+- Auditor API tenant-aware request handlers — depends on the
+  authentication backend producing a tenant claim in the JWT.
+
+Referenced doc: UIAO_112 Multi-Tenant Isolation spec.
 
 ### 3.5 — UIAO_116 Enforcement Policy Language (EPL) (aspirational → **🟡 working** ✅)
 
