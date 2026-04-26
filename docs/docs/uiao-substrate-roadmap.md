@@ -1190,24 +1190,24 @@ Listed in implementation-priority order (not UIAO_NNN order).
 | Priority | Doc | Title | Current | Target |
 |---|---|---|---|---|
 | P0 | UIAO_131 (gate) | Adapter Test Strategy | ⚠️ aspirational (0 evidence) | tier-1+2 for 5 adapters by v0.8 |
-| P1 | UIAO_110 §DRIFT-AUTHZ | Drift Engine — Auth class | ⏳ pending | ✅ by v0.3 |
-| P1 | UIAO_110 §DRIFT-IDENTITY | Drift Engine — Identity class | ⏳ pending | ✅ by v0.3 |
-| P2 | UIAO_110 §DRIFT-SEMANTIC | Drift Engine — Semantic class | 🟡 partial | ✅ by v0.5 |
-| P2 | UIAO_100 | Compliance Orchestrator | ⚠️ aspirational | 🟡 by v0.5 |
-| P2 | UIAO_103 | Spec-Test Enforcement | 🟡 partial | ✅ by v0.5 |
-| P2 | UIAO_113 | Evidence Graph | 🟡 partial | 🟡→✅ by v0.5 |
-| P3 | UIAO_105 | Auditor API | ⚠️ aspirational | 🟡 by v1.0 |
-| P3 | UIAO_111 | Enforcement Runtime | ⚠️ aspirational | 🟡 by v1.0 |
-| P3 | UIAO_108 | CQL | ⚠️ aspirational | 🟡 by v1.0 |
-| P3 | UIAO_116 | EPL | ⚠️ aspirational | 🟡 by v1.0 |
-| P3 | UIAO_112 | Multi-Tenant Isolation | ⚠️ aspirational | 🟡 by v1.0 |
-| P3 | UIAO_120 | Zero-Trust Integration | ⚠️ aspirational | 🟡 by v1.0 |
-| P4 | UIAO_109 | Data Lake | ⚠️ aspirational | 🟡 by v1.1 |
+| P1 | UIAO_110 §DRIFT-AUTHZ | Drift Engine — Auth class | ✅ complete | ✅ by v0.3 |
+| P1 | UIAO_110 §DRIFT-IDENTITY | Drift Engine — Identity class | ✅ complete | ✅ by v0.3 |
+| P2 | UIAO_110 §DRIFT-SEMANTIC | Drift Engine — Semantic class | ✅ complete | ✅ by v0.5 |
+| P2 | UIAO_100 | Compliance Orchestrator | 🟡 partial | 🟡 by v0.5 |
+| P2 | UIAO_103 | Spec-Test Enforcement | ✅ complete | ✅ by v0.5 |
+| P2 | UIAO_113 | Evidence Graph | ✅ working | 🟡→✅ by v0.5 |
+| P3 | UIAO_105 | Auditor API | 🟡 working | 🟡 by v1.0 |
+| P3 | UIAO_111 | Enforcement Runtime | 🟡 working | 🟡 by v1.0 |
+| P3 | UIAO_108 | CQL | 🟡 working | 🟡 by v1.0 |
+| P3 | UIAO_116 | EPL | 🟡 working | 🟡 by v1.0 |
+| P3 | UIAO_112 | Multi-Tenant Isolation | 🟡 working | 🟡 by v1.0 |
+| P3 | UIAO_120 | Zero-Trust Integration | 🟡 working | 🟡 by v1.0 |
+| P4 | UIAO_109 | Data Lake | 🟡 working | 🟡 by v1.1 |
 | P4 | UIAO_114 | HA / Fault Tolerance | ⚠️ aspirational | assessed by v1.0 |
 | P4 | UIAO_115 | Performance Engineering | ⚠️ aspirational | assessed by v1.0 |
 | P4 | UIAO_117 | Recovery Layer | ⚠️ aspirational | assessed by v1.0 |
 | P4 | UIAO_119 | Tenancy Strategy | ⚠️ aspirational | 🟡 by v1.0 |
-| P4 | UIAO_125–128 | Programs (Training, Test Plans, Project Plans, Education) | ⚠️ aspirational | first delivery by v1.0 |
+| P4 | UIAO_125–128 | Programs (Training, Test Plans, Project Plans, Education) | 🟡 first delivery shipped | first delivery by v1.0 |
 | P5 | UIAO_129/130 | Application Identity Model / Runbook | ⚠️ draft | status reconciled by v0.3 |
 | P5 | Mainframe adapter | z/OS Connect / MQ bridge | reserved | unblocked or deferred by v1.1 |
 
