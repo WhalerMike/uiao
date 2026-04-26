@@ -741,14 +741,58 @@ Work required:
 - Wire to the Auditor API (`/query` endpoint).
 - Document in UIAO_108.
 
-### 3.3 — UIAO_111 Enforcement Runtime
+### 3.3 — UIAO_111 Enforcement Runtime (aspirational → **🟡 working** ✅)
 
-The enforcement runtime is what converts drift findings into remediation actions. Without it, findings are informational only.
+The enforcement runtime converts EPL matches into dispatched actions
+with structured side-effects + an append-only audit trail. It's the
+moving part between the drift detectors / OSCAL emitters (which produce
+findings) and the EPL (which says what to do). v1.0 of the runtime +
+five default handlers + persistent journal ships in this pass; live
+adapter remediation wiring stays separate (a per-adapter dispatcher
+landing in the same PR that wires each adapter's actual remediation
+API).
 
-Work required:
-- Define the enforcement policy language interface (consuming UIAO_116 EPL).
-- Implement `EnforcementRuntime` that evaluates EPL policies against findings and triggers adapter remediation actions.
-- Wire to the orchestrator.
+Mirrors the §3.5 / §3.6 / §3.7 governance modules: pluggable
+abstraction (`EnforcementHandler`), concrete defaults, structured
+records, on-disk journaling.
+
+Shipped:
+- `src/uiao/governance/enforcement.py` — `EnforcementAction`
+  dataclass (one record per dispatched action), abstract
+  `EnforcementHandler`, five default handlers (`LoggingHandler`,
+  `AlertHandler`, `EscalateHandler`, `BlockHandler`, `RemediateHandler`),
+  `EnforcementJournal` (append-only JSONL on disk; read-back included),
+  `EnforcementRuntime` (composes EPLEvaluator + handlers + journal,
+  exposes `dispatch_context` / `dispatch_finding` / `dispatch_drift_state`
+  / `dispatch_matches`).
+- Default handlers stay testable: log/alert/escalate produce
+  structured intent records; block appends to an in-memory deny-list
+  (production swaps in the UIAO_100 scheduler's "skip these adapters"
+  set); remediate calls a registered per-adapter callable and records
+  success/failure/exception. Production deployments swap real
+  backends in.
+- Target resolution: defaults to `ctx.adapter_id` when set, else first
+  control id, else `"unknown"`. Surfaced in the journal so reviewers
+  can correlate.
+- 25 new tests in `tests/test_enforcement.py`: each handler (8 —
+  log/alert/escalate/block dedupe + remediate skipped/dispatched/
+  failure/exception), journal in-memory + disk persistence + read
+  round-trip + corrupt-line skip (4), runtime context dispatch /
+  finding round-trip / drift-state round-trip / journal recording /
+  unknown-handler skip / target fallbacks (10), plus integration
+  tests against the canonical EPL policies (3 — DRIFT-AUTHZ →
+  block, DRIFT-SEMANTIC High → enforce-mfa + escalate-stale-evidence,
+  journal persists across runtime recreation).
+
+Deferred (gated on real adapter remediation surfaces):
+- Per-adapter `RemediateHandler` wiring — each adapter author
+  registers a callable in their PR that lands the adapter remediation
+  API.
+- Auditor API endpoint (`POST /v1/enforcement/dispatch` /
+  `GET /v1/enforcement/journal`) — gated on §3.1.
+- Quarto dashboard "actions taken in last 24h" tile.
+
+Referenced doc: UIAO_111 Enforcement Runtime spec.
 
 ### 3.4 — UIAO_112 Multi-Tenant Isolation
 
