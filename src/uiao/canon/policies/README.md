@@ -1,8 +1,13 @@
 ---
 document_id: UIAO_116_policies_index
 title: "EPL Reference Policies (UIAO_116)"
+version: "1.0"
 status: Current
 classification: CANONICAL
+owner: "Michael Stratton"
+created_at: "2026-04-26"
+updated_at: "2026-04-26"
+boundary: "GCC-Moderate"
 ---
 
 # EPL Reference Policies
