@@ -776,15 +776,61 @@ Deferred:
 
 Referenced doc: UIAO_105 Auditor API spec.
 
-### 3.2 — UIAO_108 Compliance Query Language (CQL)
+### 3.2 — UIAO_108 Compliance Query Language (CQL) (aspirational → **🟡 working** ✅)
 
-CQL is the query interface for interrogating the evidence graph. Without it, evidence navigation requires direct Python API access.
+CQL is the substrate's read-only query surface over its evidence
+sources: the EvidenceGraph (UIAO_113), the EnforcementJournal
+(UIAO_111), the Data Lake archive (UIAO_109), and the canon adapter
+registries (UIAO_003 / UIAO_131). Sized as a subset of a structured
+query language — not full SQL — so the implementation stays small,
+deterministic, and dependency-free.
 
-Work required:
-- Define the CQL grammar (subset of a structured query language, not a general-purpose one).
-- Implement parser and evaluator in `src/uiao/`.
-- Wire to the Auditor API (`/query` endpoint).
-- Document in UIAO_108.
+Shipped:
+- `src/uiao/governance/cql.py` — `CQLPredicate` + `CQLQuery` data
+  model, `parse_query(body)` accepts dicts or YAML strings, eight
+  operators (`eq` / `ne` / `in` / `not_in` / `contains` / `gte` /
+  `lte` / `exists`), four sources (`findings` / `enforcement` /
+  `archive` / `adapters`), `order_by` + `order` + `limit` support.
+- `CQLEvaluator(resolver)` runs a parsed query against a
+  source-resolution callable. Resolver helpers ship for each source:
+  `graph_findings_resolver(graph)` projects `FindingNode`s,
+  `journal_records_resolver(records)` and `archive_entries_resolver`
+  flatten dataclass records via `as_dict`, `adapters_resolver(...)`
+  flattens canon adapter dicts.
+- 5 reference queries in `src/uiao/canon/queries/`:
+  - `open-drift-authz-findings` — DRIFT-AUTHZ + status=Open, sorted
+    by severity desc, top 25
+  - `recent-blocks` — enforcement journal, action=block, top 50
+  - `high-severity-findings` — severity ∈ {High,P1,P2,Critical}
+  - `archive-recent` — most-recently-archived runs
+  - `active-modernization-adapters` — active phase-1 adapters
+- `src/uiao/api/routes/cql.py` — Auditor API endpoints
+  (UIAO_105 §3.1 plug-in): `GET /api/v1/cql/queries` lists canonicals,
+  `GET /api/v1/cql/queries/{name}` fetches one,
+  `POST /api/v1/cql/evaluate` runs an ad-hoc query body, and
+  `POST /api/v1/cql/evaluate/{name}` runs a canonical query against
+  the live substrate state (enforcement journal + archive backend +
+  canon adapter registries).
+- 42 new tests in `tests/test_cql.py`: parser (12 — minimal /
+  YAML-string / select / operators / unknown source / unknown op /
+  invalid order / negative limit / invalid YAML / non-mapping),
+  predicate matchers (6), evaluator (8), source resolvers (5), the
+  canonical-queries smoke (4), and FastAPI router (8 — list / get /
+  unknown / ad-hoc evaluate / named evaluate / invalid body 400 /
+  unknown name 404 / no-auth 401).
+
+Deferred:
+- EvidenceGraph snapshot persistence (today the graph is request-
+  scoped; a future PR drops a snapshot to disk per scheduler run so
+  CQL `findings` queries hit live graph state from the API).
+- Time-window filters (e.g. "blocks in the last 24h") — current
+  implementation supports `gte`/`lte` on string fields, so callers
+  can filter by ISO timestamps; a sugar layer for relative time
+  expressions is a follow-up.
+- CLI surface (`uiao cql evaluate ...`) — gated on §3.1 CLI parity
+  follow-up.
+
+Referenced doc: UIAO_108 CQL spec.
 
 ### 3.3 — UIAO_111 Enforcement Runtime (aspirational → **🟡 working** ✅)
 

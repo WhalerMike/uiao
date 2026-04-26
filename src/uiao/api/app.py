@@ -25,6 +25,7 @@ from .auth.entra_token import EntraTokenProvider
 from .routes import (
     archive,
     auditor,
+    cql,
     enforcement,
     epl,
     health,
@@ -109,3 +110,4 @@ app.include_router(
     tags=["Enforcement (UIAO_111)"],
 )
 app.include_router(archive.router, prefix="/api/v1/archive", tags=["Data Lake (UIAO_109)"])
+app.include_router(cql.router, prefix="/api/v1/cql", tags=["CQL (UIAO_108)"])
