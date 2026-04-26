@@ -79,3 +79,29 @@ UIAO-INJECT
 # as a reference in multiple canon + modernization docs — it does not need to
 # resolve at check time.
 ^https://json-schema\.org/draft/2020-12/schema
+
+# Internal example hostnames embedded in customer-facing docs (Gitea
+# servers, doc portals, webhook receivers, CRL distribution points). They
+# appear inside code blocks alongside fictional organizations like contoso
+# and are never intended to resolve from CI runners. Without these the
+# customer-document corpus floods the link checker with hundreds of
+# unreachable .local / .contoso.* URLs.
+^https?://[^/]+\.local(/|:|$)
+^https?://[^/]+\.contoso\.(com|local)(/|:|$)
+^https?://crl\.yourdomain\.com
+
+# Customer-doc code-block URLs that contain a literal PowerShell or shell
+# variable expansion the reader is expected to substitute (e.g.
+# $quartoVersion, $gitVersion, $(/$pr.number)). The unsubstituted template
+# is not a valid fetch target. Generalises the narrower `\$UIAO_*` rule
+# above, which is retained for documentation value.
+\$[A-Za-z(]
+
+# Microsoft Group Policy XML namespace URI — a literal xmlns declaration
+# in policy export samples, not a fetchable resource. www.microsoft.com
+# returns 404 for this path by design.
+^http://www\.microsoft\.com/GroupPolicy/Settings/
+
+# GitHub repository_dispatch endpoint — POST-only URL referenced in CI
+# automation runbooks. GET returns 404, which is correct API behavior.
+^https://api\.github\.com/repos/[^/]+/[^/]+/dispatches
