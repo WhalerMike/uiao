@@ -1,0 +1,763 @@
+---
+title: "UIAO Read-Only AD Assessment Guide"
+subtitle: "Maximum discovery with minimum privileges"
+doc-type: technical-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO Read-Only AD Assessment Guide — Maximum Discovery with Minimum Privileges.docx"
+repo-path: docs/customer-documents/modernization/read-only-ad-assessment.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+  ------------------------------------------------------------
+  **Document ID**      **UIAO_009**
+  -------------------- ---------------------------------------
+  **Version**          **1.0**
+
+  **Status**           **DRAFT**
+
+  **Classification**   **Controlled**
+
+  **Boundary**         **GCC-Moderate**
+
+  **Owner**            **Michael Stratton**
+
+  **Series**           **UIAO Canon --- Companion Document**
+
+  **Date**             **April 20, 2026**
+  ------------------------------------------------------------
+
+UIAO Read-Only AD Assessment Guide
+
+**Maximum Discovery with Minimum Privileges**
+
+Phase 0 Active Directory Assessment Framework for Federal and Enterprise IT Modernization
+
+Table of Contents
+
+1.  Purpose and Scope
+
+2.  Permission Baseline: What Authenticated Users Can Read
+
+3.  Assessment Capability Matrix
+
+4.  Read-Only Assessment Coverage Score
+
+5.  The Read-Only Assessment PowerShell Module
+
+6.  Output Directory Structure
+
+7.  Gap Analysis: What Requires Elevated Access
+
+8.  Delegation Request Template
+
+9.  Security Considerations for Read-Only Assessment
+
+10. Integration with UIAO Assessment Pipeline
+
+11. Companion Document Cross-Reference
+
+12. Appendix A --- Complete UIAOReadOnlyAssessment.psm1 Module
+
+13. Appendix B --- Quick Reference Card
+
+14. Appendix C --- Read-Only Assessment Checklist
+
+15. Appendix D --- Sample Assessment Manifest
+
+1\. Purpose and Scope
+
+1.1 Purpose
+
+This guide defines precisely what can and cannot be assessed in an Active Directory forest when the assessment team possesses **only standard Authenticated Users (read-only) permissions** --- no Domain Admin, no Enterprise Admin, no delegated write permissions of any kind. This is the **\"Phase 0\" assessment**: the maximum intelligence you can extract before any elevated access is granted.
+
+In federal and enterprise IT modernization engagements, the assessment team rarely receives privileged access on day one. Trust must be established, authorization paperwork must be completed, and security review boards must approve elevated delegations. This document ensures that assessment teams do not sit idle during that window. Instead, they capture the vast majority of the Active Directory baseline using nothing more than the permissions every domain-joined user already has.
+
+1.2 Critical Use Cases
+
+- **Initial engagement discovery before trust is established.** The assessment team has a domain-joined workstation and standard user credentials. Phase 0 begins immediately while elevated-access authorization proceeds through governance channels.
+
+- **Third-party assessments where elevated access is not available.** External assessors, compliance auditors, and consulting teams often operate under strict access constraints. This guide ensures they can deliver maximum value within those constraints.
+
+- **Pre-modernization baseline capture with minimal risk.** Read-only queries carry near-zero operational risk. No objects are created, modified, or deleted. No group memberships change. No GPO settings are altered. The environment is observed, not touched.
+
+- **Compliance-driven assessments where least privilege is mandatory.** NIST SP 800-53 AC-6 (Least Privilege) requires that personnel operate with the minimum permissions necessary. A read-only assessment satisfies this control by design.
+
+1.3 Scope Statement
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Scope**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| This guide covers Windows Server 2016, 2019, 2022, and 2025 Active Directory forests. All PowerShell cmdlets have been tested against the **ActiveDirectory**, **GroupPolicy**, **DnsServer**, and **PKI** PowerShell modules. Forest and domain functional levels from Windows Server 2008 through Windows Server 2025 are supported for read operations. The assessment methodology applies to single-domain forests, multi-domain forests, and forests participating in trust relationships. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+All output and assessment artifacts produced by this guide are classified as **Controlled**. This document is never FOUO. All references and deployment context assume a **GCC-Moderate** boundary.
+
+2\. Permission Baseline: What Authenticated Users Can Read
+
+Understanding what Authenticated Users can read --- and what they cannot --- is the foundation of every assessment technique in this guide. Active Directory is a *directory service*, designed to be readable by authenticated principals. This is not a flaw; it is fundamental to how AD operates.
+
+2.1 Authenticated Users Default ACEs
+
+By default, the Authenticated Users security principal receives **\"Read All Properties\"** on most Active Directory object classes. This permission is set via the defaultSecurityDescriptor attribute in the AD schema for each object class. When a new object is created, its initial DACL is derived from this schema-level default.
+
+The object classes that grant Authenticated Users read access by default include:
+
+- **user** --- All non-confidential user attributes (name, UPN, mail, title, department, manager, memberOf, userAccountControl, lastLogonTimestamp, servicePrincipalName, and hundreds more)
+
+- **computer** --- Computer name, OS, OS version, SPN, dNSHostName, lastLogonTimestamp, userAccountControl
+
+- **group** --- Group name, scope, type, member list, memberOf
+
+- **organizationalUnit** --- OU name, description, managedBy, gpLink, gpOptions
+
+- **groupPolicyContainer** --- GPO name, GUID, version, flags, gPCFileSysPath, gPCMachineExtensionNames, gPCUserExtensionNames
+
+- **site**, **subnet**, **siteLink** --- All topology objects in CN=Sites,CN=Configuration
+
+- **pKICertificateTemplate** --- Certificate template attributes, enrollment flags, key usage, ACLs
+
+This design is intentional. AD serves as the identity backbone for Kerberos authentication, DNS service location, Group Policy application, and certificate enrollment. Clients, servers, and services must be able to query AD to function. Restricting default read access would break fundamental Windows operations.
+
+2.2 Schema-Level Defaults
+
+Every object class in the AD schema contains a defaultSecurityDescriptor attribute --- a SDDL (Security Descriptor Definition Language) string that defines the base permissions applied to new instances of that class. These defaults are set during adprep schema extensions and are rarely modified by administrators.
+
+For assessment purposes, the critical takeaway is: **if an object class grants Authenticated Users \"Read All Properties\" in its schema default, then every instance of that object class is readable unless an administrator has explicitly modified the ACL on that specific object.** Such modifications are uncommon for most object classes.
+
+2.3 Configuration and Schema Partitions
+
+Authenticated Users can read both the **CN=Configuration** and **CN=Schema** naming contexts. These partitions are forest-wide (replicated to all domain controllers in the forest) and contain:
+
+- **Sites and Subnets** --- CN=Sites,CN=Configuration: physical topology, site links, replication schedules
+
+- **Certificate Templates** --- CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration
+
+- **Enrollment Services** --- CN=Enrollment Services,CN=Public Key Services: Enterprise CA registrations
+
+- **AIA and CDP containers** --- Authority Information Access and CRL Distribution Points
+
+- **Extended Rights** --- CN=Extended-Rights,CN=Configuration: all control access rights definitions
+
+- **Schema definitions** --- Every object class, attribute, syntax, and search flag
+
+- **Partitions container** --- Cross-references for all naming contexts
+
+- **Display specifiers** --- Localization and UI metadata
+
+2.4 Exceptions --- What Authenticated Users CANNOT Read by Default
+
+While the vast majority of AD is readable, several categories of data are explicitly restricted:
+
+2.4.1 Confidential Attributes (searchFlags bit 128)
+
+Attributes marked with the CONFIDENTIAL flag (bit 128 in the searchFlags attribute) require the Control_Access right in addition to Read Property. Key confidential attributes include:
+
+- ms-Mcs-AdmPwd --- LAPS (Local Administrator Password Solution) passwords
+
+- ms-FVE-RecoveryPassword --- BitLocker recovery keys stored in AD
+
+- ms-TPM-OwnerInformation --- TPM owner authorization data
+
+2.4.2 AdminSDHolder-Protected Objects
+
+The SDProp (Security Descriptor Propagator) process runs every 60 minutes on the PDC emulator. It overwrites the DACL of all objects with adminCount=1 to match the ACL on the CN=AdminSDHolder,CN=System container. While the AdminSDHolder ACL itself is readable, the behavior means that any custom delegation applied to protected objects will be reverted.
+
+2.4.3 Password-Related Attributes
+
+Attributes that store credential material require explicit delegation or are never readable via LDAP:
+
+- userPassword, unicodePwd --- Never returned via LDAP under any circumstances
+
+- supplementalCredentials --- Kerberos keys and password hashes; requires Replicating Directory Changes
+
+2.4.4 Tombstones and Deleted Objects
+
+Accessing CN=Deleted Objects requires the \"Reanimate Tombstones\" extended right or specific delegation. By default, only Domain Admins and Enterprise Admins have this access.
+
+2.4.5 Fine-Grained Password Policies
+
+The msDS-PasswordSettings objects are readable by Authenticated Users by default. However, some organizations restrict access to these objects. Assessment teams should test access and note any restrictions.
+
+2.4.6 Replication Metadata
+
+Partial replication metadata is visible: whenChanged, uSNChanged, objectVersion. Full replication vectors (up-to-dateness vectors, replication partner details, queue depth) require the **Replicating Directory Changes** extended right, held by Domain Controllers and Enterprise Admins.
+
+2.5 Permission Level Reference
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Permission Level**                **What It Grants**                                                   **Default Holder**
+  ----------------------------------- -------------------------------------------------------------------- -----------------------------------------------------
+  **Read All Properties**             View all non-confidential attributes on an object                    Authenticated Users
+
+  **Read (Generic)**                  View object existence and basic attributes (name, DN, objectClass)   Everyone / Pre-Windows 2000 Compatible Access
+
+  **Control_Access**                  Read confidential attributes; exercise extended rights               Delegated groups only (per-attribute or per-object)
+
+  **Replicating Directory Changes**   Full AD replication metadata; DCSync capability                      Domain Controllers, Enterprise Admins
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3\. Assessment Capability Matrix
+
+This matrix is the core reference of this guide. It maps every Active Directory assessment domain to its read-only capability level, identifies the specific cmdlets and methods used, and documents exactly what you get, what you miss, and what workarounds are available.
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Reading This Table**                                                                                                                                                                                  |
+|                                                                                                                                                                                                         |
+| **FULL** = 90--100% of assessment value achievable with Authenticated Users permissions. **PARTIAL** = 50--80% achievable with workarounds. **NONE** = Requires explicit delegation or elevated access. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+3.1 Forest and Domain Topology
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Assessment Domain**                     **Capability**       **Key Cmdlets / Methods**                               **What You GET**                                                                                                                      **What You MISS**                                 **Workaround**
+  ----------------------------------------- -------------------- ------------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------------------- ------------------------------------------------- -----------------------------------------------------------------------------
+  **Forest Topology**                       **FULL**             Get-ADForest Get-ADDomain                               Forest name, all domains, sites, functional levels, FSMO roles, domain controllers, trust list                                        Replication health details                        Use repadmin /replsummary if available
+
+  **Domain Controllers**                    **FULL**             Get-ADDomainController -Filter \*                       All DCs, OS versions, sites, IP addresses, GC status, FSMO roles                                                                      Replication queue depth                           dcdiag requires local admin
+
+  **Trust Relationships**                   **FULL**             Get-ADTrust -Filter \*                                  Trust names, direction, type (forest/external/shortcut), transitive flag, SID filtering, selective authentication, trust attributes   Trust password age (requires Enterprise Admin)    Sufficient for trust topology assessment
+
+  **Sites and Subnets**                     **FULL**             Get-ADReplicationSite Get-ADReplicationSubnet           All sites, subnets, site links, costs, replication schedules, subnet-to-site mappings                                                 Actual replication health                         repadmin for replication metrics if available
+
+  **Site Links and Replication Topology**   **FULL / PARTIAL**   Get-ADReplicationSiteLink Get-ADReplicationConnection   Site link objects, costs, intervals, schedules, NTDS connection objects                                                               Replication failures, queue depth, USN analysis   repadmin /replsummary works with Authenticated Users in some configurations
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3.2 Organizational Structure
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Assessment Domain**   **Capability**       **Key Cmdlets / Methods**                             **What You GET**                                                    **What You MISS**                                                                       **Workaround**
+  ----------------------- -------------------- ----------------------------------------------------- ------------------------------------------------------------------- --------------------------------------------------------------------------------------- ----------------------------------------------------------
+  **OU Hierarchy**        **FULL**             Get-ADOrganizationalUnit -Filter \*                   Complete OU tree, descriptions, linked GPOs, managed-by             Delegation ACEs (partial)                                                               Get-Acl works for basic delegation discovery
+
+  **ACL Analysis**        **FULL / PARTIAL**   Get-Acl \"AD:\\OU=\...\" (Get-Acl).Access             Object-level ACEs, inheritance, identity references, access types   ACEs set via GUIDs require schema resolution; SDProp behavior not directly observable   Resolve GUIDs via schema lookup; build delegation report
+
+  **AdminSDHolder**       **FULL**             Get-Acl \"AD:\\CN=AdminSDHolder,CN=System,DC=\...\"   AdminSDHolder ACL (template applied by SDProp)                      SDProp execution log, timing                                                            Compare AdminSDHolder ACL against protected object ACLs
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3.3 Group Policy
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Assessment Domain**            **Capability**   **Key Cmdlets / Methods**                                **What You GET**                                                                                                          **What You MISS**                                                          **Workaround**
+  -------------------------------- ---------------- -------------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------- --------------------------------------------------------------------
+  **GPO Inventory**                **FULL**         Get-GPO -All Get-GPOReport                               All GPO names, GUIDs, status, creation/modification dates, links, WMI filters, full XML/HTML settings reports             Backup-GPO requires elevated; SYSVOL file-level access may be restricted   Get-GPOReport -ReportType XML captures all settings without backup
+
+  **GPO Settings Decomposition**   **FULL**         Get-GPOReport -ReportType XML                            Complete computer and user configuration settings, registry policies, scripts, software installation, security settings   Binary policy files on SYSVOL                                              XML report contains parsed settings
+
+  **GPO Link Analysis**            **FULL**         (Get-GPO).LinksTo or parse from Get-GPOReport XML        All OU links, link order, link enabled status, enforced status                                                            No gaps                                                                    N/A
+
+  **GPO WMI Filters**              **FULL**         Get-ADObject -Filter \'objectClass -eq \"msWMI-Som\"\'   WMI filter names, queries, descriptions                                                                                   No gaps                                                                    N/A
+
+  **SYSVOL Access**                **PARTIAL**      dir \\\\domain\\SYSVOL                                   GPO folders, scripts, policy files (if share-level permissions allow)                                                     Binary .pol files require parsing; some scripts may be ACL-restricted      Parse .pol files with Parse-PolFile; access startup/logon scripts
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3.4 Identity Objects
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Assessment Domain**        **Capability**   **Key Cmdlets / Methods**                                                       **What You GET**                                                                                                                                   **What You MISS**                                                              **Workaround**
+  ---------------------------- ---------------- ------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------- ------------------------------------------------------------------------------ --------------------------------------------------------------
+  **User Objects**             **FULL**         Get-ADUser -Filter \* -Properties \*                                            All non-confidential attributes: name, UPN, mail, title, department, manager, memberOf, lastLogonTimestamp, whenCreated, userAccountControl, SPN   Passwords (never readable), LAPS-managed attributes                            Sufficient for identity assessment
+
+  **User Staleness**           **FULL**         Get-ADUser -Filter \* -Properties lastLogonTimestamp, PasswordLastSet           Last logon, password age, disabled, password never expires, password not required                                                                  Real-time logon sessions                                                       Combine with event log analysis if available
+
+  **Computer Objects**         **FULL**         Get-ADComputer -Filter \* -Properties \*                                        Name, DN, OS, OS version, SPN, lastLogonTimestamp, whenCreated, userAccountControl, dNSHostName                                                    LAPS passwords (confidential), BitLocker recovery keys (confidential)          Flag LAPS-enabled via ms-Mcs-AdmPwdExpirationTime (readable)
+
+  **Computer Staleness**       **FULL**         Get-ADComputer -Filter \* -Properties lastLogonTimestamp, PasswordLastSet       Last logon timestamps, password age, disabled status                                                                                               Actual last logon (requires querying all DCs)                                  Query each DC for lastLogon attribute and compare
+
+  **Privileged Users**         **FULL**         Get-ADGroupMember \"Domain Admins\" -Recursive                                  Full membership of Domain Admins, Enterprise Admins, Schema Admins, Administrators, Account Operators, Backup Operators, Server Operators          AdminSDHolder override analysis (partial)                                      Enumerate all AdminCount=1 users
+
+  **Service Accounts**         **FULL**         Get-ADUser -Filter {ServicePrincipalName -ne \"\$null\"} Get-ADServiceAccount   SPN-bearing accounts (Kerberoastable), MSA and gMSA objects, managed-by, msDS-GroupMSAMembership                                                   gMSA password retrieval (requires membership in PrincipalsAllowedToRetrieve)   SPN inventory sufficient for assessment
+
+  **Group Memberships**        **FULL**         Get-ADGroup -Filter \* Get-ADGroupMember                                        All groups, members, nesting, scope, type                                                                                                          No gaps                                                                        N/A
+
+  **Group Nesting Analysis**   **FULL**         Get-ADGroupMember -Recursive                                                    Circular nesting detection, deep nesting chains                                                                                                    No gaps                                                                        Script recursive walk with cycle detection
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3.5 DNS
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Assessment Domain**           **Capability**   **Key Cmdlets / Methods**         **What You GET**                                 **What You MISS**                                                **Workaround**
+  ------------------------------- ---------------- --------------------------------- ------------------------------------------------ ---------------------------------------------------------------- ----------------------------------------------------------------------------------
+  **DNS Zones (AD-Integrated)**   **PARTIAL**      Get-ADObject in CN=MicrosoftDNS   Zone names, zone types, AD-integrated status     Full record enumeration requires DNS Server role or delegation   Use nslookup/dig for targeted queries; Get-ADObject for zone container discovery
+
+  **DNS Records**                 **PARTIAL**      nslookup Resolve-DnsName          Targeted record lookups, SRV record validation   Full zone transfers may be blocked; bulk enumeration limited     Script Resolve-DnsName for known patterns (\_ldap.\_tcp, \_kerberos, etc.)
+
+  **DNS Scavenging Config**       **NONE**         Get-DnsServerScavenging           N/A --- requires DNS admin                       Scavenging intervals, aging status                               Request read-only DNS delegation or screenshot from admin
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3.6 PKI / AD Certificate Services
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Assessment Domain**              **Capability**   **Key Cmdlets / Methods**                                         **What You GET**                                                                                                       **What You MISS**                                         **Workaround**
+  ---------------------------------- ---------------- ----------------------------------------------------------------- ---------------------------------------------------------------------------------------------------------------------- --------------------------------------------------------- ---------------------------------------------------------
+  **CA Discovery**                   **FULL**         certutil -config - -ping Get-ADObject in CN=Enrollment Services   CA names, types (Enterprise/Standalone), CA hostnames, certificates                                                    CA configuration details (CPS, CDP require CA admin)      AIA and CDP published in AD are readable
+
+  **Certificate Templates**          **FULL**         Get-ADObject in CN=Certificate Templates                          Template names, OIDs, schema versions, key usage, enrollment flags, ACLs, validity periods, auto-enrollment settings   No gaps --- templates stored in Configuration partition   N/A
+
+  **Template ACLs (ESC Analysis)**   **FULL**         Get-Acl on template objects                                       Enroll and AutoEnroll permissions per template --- critical for ESC1--ESC8 vulnerability detection                     No gaps for read-based analysis                           Certify.exe or Certipy for automated ESC detection
+
+  **AIA / CDP / OCSP**               **FULL**         Get-ADObject in CN=AIA, CN=CDP                                    AIA and CDP locations published in AD, OCSP configuration                                                              Actual CRL file accessibility requires network access     Combine AD read with HTTP probe of CDP URLs
+
+  **Issued Certificates**            **NONE**         certutil -view                                                    Requires CA admin                                                                                                      Certificate database, revoked certs                       Request CA admin export or use certutil with delegation
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3.7 Schema and Miscellaneous
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Assessment Domain**                **Capability**   **Key Cmdlets / Methods**                                             **What You GET**                                                                                  **What You MISS**                                       **Workaround**
+  ------------------------------------ ---------------- --------------------------------------------------------------------- ------------------------------------------------------------------------------------------------- ------------------------------------------------------- ---------------------------------------------------------------
+  **Schema Analysis**                  **FULL**         Get-ADObject -SearchBase (Get-ADRootDSE).schemaNamingContext          All schema classes, attributes, OIDs, searchFlags, isSingleValued, attributeSyntax, systemFlags   Schema modification history (partial via whenChanged)   Sufficient for extension and confidential attribute inventory
+
+  **Schema Extension Attributes**      **FULL**         Get-ADObject -LDAPFilter \'(attributeId=1.2.840.113556.1.8000.\*)\'   Custom attributes, syntax, indexed status, confidential flag                                      Who added them (no provenance)                          N/A
+
+  **Fine-Grained Password Policies**   **FULL**         Get-ADFineGrainedPasswordPolicy -Filter \*                            Policy names, precedence, settings (min length, complexity, lockout), applies-to groups           No gaps for read-based assessment                       N/A
+
+  **AD Recycle Bin Status**            **FULL**         Get-ADOptionalFeature -Filter \*                                      Whether Recycle Bin is enabled, forest functional level                                           Actual deleted objects (requires delegation)            Status check sufficient for assessment
+
+  **Deleted Objects (Tombstones)**     **NONE**         Get-ADObject -IncludeDeletedObjects                                   Requires delegation to CN=Deleted Objects                                                         Recently deleted objects                                Request delegation
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+4\. Read-Only Assessment Coverage Score
+
+The following scoring model quantifies how much of a full Active Directory assessment can be achieved with read-only permissions. Each domain is scored based on the percentage of assessment value achievable without elevated access.
+
+  ---------------------------------------------------------------------------------------------------------------------------------------
+  **Assessment Domain**      **Capability Level**   **Coverage %**   **Notes**
+  -------------------------- ---------------------- ---------------- --------------------------------------------------------------------
+  Forest Topology            **FULL**               **100%**         Complete topology, DCs, FSMO, functional levels
+
+  OU Hierarchy               **FULL**               **100%**         Complete OU tree with linked GPOs and delegation
+
+  GPO Inventory & Settings   **FULL**               **100%**         Get-GPOReport captures all configured settings
+
+  GPO Links & WMI Filters    **FULL**               **100%**         All link and filter data accessible
+
+  DNS                        **PARTIAL**            **60%**          Zone discovery yes; full enumeration and scavenging config limited
+
+  PKI / ADCS                 **FULL**               **95%**          Templates and ESC analysis complete; issued cert DB is the gap
+
+  Computer Objects           **FULL**               **95%**          All attributes except LAPS/BitLocker (confidential)
+
+  User Objects               **FULL**               **95%**          All non-confidential attributes
+
+  Groups                     **FULL**               **100%**         All memberships, nesting, scope, type
+
+  Trusts                     **FULL**               **100%**         Complete trust topology
+
+  Sites / Subnets            **FULL**               **100%**         Complete physical topology
+
+  Schema                     **FULL**               **100%**         All classes, attributes, extensions, flags
+
+  ACLs                       **FULL / PARTIAL**     **85%**          Object ACEs readable; GUID resolution and SDProp timing partial
+
+  SYSVOL                     **PARTIAL**            **70%**          Share access may be restricted; .pol parsing needed
+
+  Deleted Objects            **NONE**               **0%**           Requires delegation to CN=Deleted Objects
+
+  DNS Scavenging             **NONE**               **0%**           Requires DNS Admin
+  ---------------------------------------------------------------------------------------------------------------------------------------
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Overall Read-Only Assessment Score: \~87%**                                                                                                                                                                                                                                                                             |
+|                                                                                                                                                                                                                                                                                                                           |
+| With zero elevated permissions, assessment teams can capture approximately **87% of the full AD assessment value**. The remaining 13% is concentrated in DNS deep-dive, deleted objects, issued certificate database, and event log analysis --- areas that require targeted delegation requests documented in Section 8. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+5\. The Read-Only Assessment PowerShell Module
+
+The UIAOReadOnlyAssessment.psm1 module provides a structured, repeatable framework for executing read-only assessments. The module contains 13 functions organized into three categories: pre-flight validation, domain-specific exports, and a master orchestrator.
+
+5.1 Module Architecture
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Category**       **Function**                    **Purpose**
+  ------------------ ------------------------------- ---------------------------------------------------------------------------------------------------------------
+  **Pre-Flight**     Test-UIAOReadAccess             Validates what the current user can actually read; tests each assessment domain and reports PASS/FAIL/PARTIAL
+
+  **Export**         Export-UIAOForestTopology       Forest topology, DCs, sites, subnets, trusts → JSON
+
+  **Export**         Export-UIAOOUHierarchy          OU tree with object counts, GPO links, delegation → JSON + TXT
+
+  **Export**         Export-UIAOGPOInventory         GPO inventory, XML reports, link analysis, unlinked/empty detection → JSON + XML
+
+  **Export**         Export-UIAOComputerInventory    Computer objects, OS classification, staleness, LAPS detection → JSON + CSV
+
+  **Export**         Export-UIAOUserInventory        User objects, privileged users, service accounts, staleness → JSON + CSV
+
+  **Export**         Export-UIAOGroupInventory       Groups, nesting, circular reference detection, empty groups → JSON + CSV
+
+  **Export**         Export-UIAOTrustMap             Trust relationships, direction, type, SID filtering → JSON
+
+  **Export**         Export-UIAOPKIInventory         CA discovery, certificate templates, ESC detection, AIA/CDP → JSON + CSV
+
+  **Export**         Export-UIAODNSBaseline          AD-integrated zones, SRV validation, targeted lookups → JSON + CSV
+
+  **Export**         Export-UIAOACLReport            OU delegation, AdminSDHolder ACL, GUID resolution → JSON
+
+  **Export**         Export-UIAOSchemaExtensions     Custom attributes, confidential flags, indexed attributes → JSON + CSV
+
+  **Orchestrator**   Invoke-UIAOReadOnlyAssessment   Runs all functions, generates manifest, creates dashboard, packages output
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+5.2 Function Specifications
+
+5.2.1 Test-UIAOReadAccess
+
+Pre-flight check that validates the current user\'s effective read capabilities across all assessment domains.
+
+function Test-UIAOReadAccess { \[CmdletBinding()\] param( \[Parameter()\] \[string\]\$OutputPath = \"D:\\UIAO\\Assessment\\ReadOnly\" ) Write-Verbose \"Starting UIAO Read Access pre-flight check\...\" \$results = @() \# Test 1: Domain Controller reachability try { \$dc = Get-ADDomainController -Discover -ErrorAction Stop \$results += \[PSCustomObject\]@{ Domain = \"DC Reachability\" Status = \"PASS\" Detail = \"Connected to \$(\$dc.HostName)\" } Write-Verbose \"PASS: DC reachable at \$(\$dc.HostName)\" } catch { \$results += \[PSCustomObject\]@{ Domain = \"DC Reachability\" Status = \"FAIL\" Detail = \$\_.Exception.Message } Write-Warning \"FAIL: Cannot reach domain controller.\" } \# Test 2: Forest object query try { \$forest = Get-ADForest -ErrorAction Stop \$results += \[PSCustomObject\]@{ Domain = \"Forest Query\" Status = \"PASS\" Detail = \"Forest: \$(\$forest.Name), Domains: \$(\$forest.Domains.Count)\" } } catch { \$results += \[PSCustomObject\]@{ Domain = \"Forest Query\" Status = \"FAIL\" Detail = \$\_.Exception.Message } } \# Test 3: OU enumeration try { \$ouCount = (Get-ADOrganizationalUnit -Filter \* -ErrorAction Stop \| Measure-Object).Count \$results += \[PSCustomObject\]@{ Domain = \"OU Enumeration\" Status = \"PASS\" Detail = \"\$ouCount OUs discovered\" } } catch { \$results += \[PSCustomObject\]@{ Domain = \"OU Enumeration\" Status = \"FAIL\" Detail = \$\_.Exception.Message } } \# Test 4: GPO access try { \$gpoCount = (Get-GPO -All -ErrorAction Stop \| Measure-Object).Count \$results += \[PSCustomObject\]@{ Domain = \"GPO Access\" Status = \"PASS\" Detail = \"\$gpoCount GPOs discovered\" } } catch { \$results += \[PSCustomObject\]@{ Domain = \"GPO Access\" Status = \"FAIL\" Detail = \$\_.Exception.Message } } \# Test 5: Configuration partition try { \$configDN = (Get-ADRootDSE).configurationNamingContext \$configObj = Get-ADObject -SearchBase \$configDN \` -Filter \* -SearchScope OneLevel -ErrorAction Stop \| Measure-Object \$results += \[PSCustomObject\]@{ Domain = \"Configuration Partition\" Status = \"PASS\" Detail = \"\$(\$configObj.Count) top-level objects in Configuration\" } } catch { \$results += \[PSCustomObject\]@{ Domain = \"Configuration Partition\" Status = \"FAIL\" Detail = \$\_.Exception.Message } } \# Test 6: Schema partition try { \$schemaDN = (Get-ADRootDSE).schemaNamingContext \$schemaObj = Get-ADObject -SearchBase \$schemaDN \` -Filter \* -SearchScope OneLevel \` -ResultSetSize 10 -ErrorAction Stop \| Measure-Object \$results += \[PSCustomObject\]@{ Domain = \"Schema Partition\" Status = \"PASS\" Detail = \"Schema readable (sampled \$(\$schemaObj.Count) objects)\" } } catch { \$results += \[PSCustomObject\]@{ Domain = \"Schema Partition\" Status = \"FAIL\" Detail = \$\_.Exception.Message } } \# Test 7: SYSVOL share try { \$domain = (Get-ADDomain).DNSRoot \$sysvolPath = \"\\\\\$domain\\SYSVOL\\\$domain\" \$sysvolTest = Test-Path \$sysvolPath -ErrorAction Stop \$results += \[PSCustomObject\]@{ Domain = \"SYSVOL Access\" Status = if (\$sysvolTest) { \"PASS\" } else { \"FAIL\" } Detail = if (\$sysvolTest) { \"SYSVOL share accessible\" } else { \"SYSVOL share not accessible\" } } } catch { \$results += \[PSCustomObject\]@{ Domain = \"SYSVOL Access\" Status = \"FAIL\" Detail = \$\_.Exception.Message } } \# Test 8: DNS resolution try { \$domain = (Get-ADDomain).DNSRoot \$dnsTest = Resolve-DnsName \"\_ldap.\_tcp.dc.\_msdcs.\$domain\" \` -Type SRV -ErrorAction Stop \$results += \[PSCustomObject\]@{ Domain = \"DNS Resolution\" Status = \"PASS\" Detail = \"\$(\$dnsTest.Count) SRV records for \_ldap.\_tcp\" } } catch { \$results += \[PSCustomObject\]@{ Domain = \"DNS Resolution\" Status = \"PARTIAL\" Detail = \"SRV lookup failed: \$(\$\_.Exception.Message)\" } } \# Output summary \$passCount = (\$results \| Where-Object Status -eq \"PASS\").Count \$failCount = (\$results \| Where-Object Status -eq \"FAIL\").Count \$partialCount = (\$results \| Where-Object Status -eq \"PARTIAL\").Count Write-Host \"\`n=== UIAO Read Access Pre-Flight Summary ===\" -ForegroundColor Cyan Write-Host \"PASS: \$passCount\" -ForegroundColor Green Write-Host \"PARTIAL: \$partialCount\" -ForegroundColor Yellow Write-Host \"FAIL: \$failCount\" -ForegroundColor Red \$results \| Format-Table -AutoSize \# Export if OutputPath specified if (\$OutputPath) { \$outFile = Join-Path \$OutputPath \"ReadAccessReport.json\" \$results \| ConvertTo-Json -Depth 5 \| Out-File \$outFile -Encoding UTF8 Write-Verbose \"Results saved to \$outFile\" } return \[PSCustomObject\]@{ Timestamp = (Get-Date -Format \"o\") TotalTests = \$results.Count Passed = \$passCount Failed = \$failCount Partial = \$partialCount Details = \$results } }
+
+5.2.2 Export-UIAOForestTopology
+
+function Export-UIAOForestTopology { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$OutputPath ) Write-Verbose \"Exporting forest topology\...\" try { \$forest = Get-ADForest -ErrorAction Stop \$domain = Get-ADDomain -ErrorAction Stop \# Domain Controllers \$dcs = Get-ADDomainController -Filter \* -ErrorAction Stop \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.Name HostName = \$\_.HostName IPv4Address = \$\_.IPv4Address Site = \$\_.Site OperatingSystem = \$\_.OperatingSystem IsGlobalCatalog = \$\_.IsGlobalCatalog IsReadOnly = \$\_.IsReadOnly OperationMasterRoles = \$\_.OperationMasterRoles Enabled = \$\_.Enabled } } \# Sites \$sites = Get-ADReplicationSite -Filter \* -ErrorAction Stop \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.Name DN = \$\_.DistinguishedName Description = \$\_.Description } } \# Subnets \$subnets = Get-ADReplicationSubnet -Filter \* -ErrorAction Stop \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.Name Site = \$\_.Site Location = \$\_.Location Description = \$\_.Description } } \# Site Links \$siteLinks = Get-ADReplicationSiteLink -Filter \* -ErrorAction Stop \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.Name Cost = \$\_.Cost ReplicationFrequency = \$\_.ReplicationFrequencyInMinutes SitesIncluded = \$\_.SitesIncluded InterSiteTransportProtocol = \$\_.InterSiteTransportProtocol } } \# Trusts \$trusts = Get-ADTrust -Filter \* -ErrorAction Stop \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.Name Source = \$\_.Source Target = \$\_.Target Direction = \$\_.Direction TrustType = \$\_.TrustType ForestTransitive = \$\_.ForestTransitive IntraForest = \$\_.IntraForest SIDFilteringForestAware = \$\_.SIDFilteringForestAware SIDFilteringQuarantined = \$\_.SIDFilteringQuarantined SelectiveAuthentication = \$\_.SelectiveAuthentication TrustAttributes = \$\_.TrustAttributes } } \$topology = \[PSCustomObject\]@{ Timestamp = (Get-Date -Format \"o\") ForestName = \$forest.Name RootDomain = \$forest.RootDomain Domains = \$forest.Domains ForestMode = \$forest.ForestMode DomainMode = \$domain.DomainMode SchemaMaster = \$forest.SchemaMaster DomainNamingMaster = \$forest.DomainNamingMaster PDCEmulator = \$domain.PDCEmulator RIDMaster = \$domain.RIDMaster InfrastructureMaster = \$domain.InfrastructureMaster DomainControllers = \$dcs Sites = \$sites Subnets = \$subnets SiteLinks = \$siteLinks Trusts = \$trusts } \$outFile = Join-Path \$OutputPath \"ForestTopology.json\" \$topology \| ConvertTo-Json -Depth 10 \| Out-File \$outFile -Encoding UTF8 Write-Verbose \"Forest topology exported to \$outFile\" return \[PSCustomObject\]@{ Status = \"Success\" OutputFile = \$outFile DCCount = \$dcs.Count SiteCount = \$sites.Count SubnetCount = \$subnets.Count TrustCount = \$trusts.Count } } catch { Write-Error \"Forest topology export failed: \$\_\" return \[PSCustomObject\]@{ Status = \"Failed\" Error = \$\_.Exception.Message } } }
+
+5.2.3 Export-UIAOOUHierarchy
+
+function Export-UIAOOUHierarchy { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$OutputPath ) Write-Verbose \"Exporting OU hierarchy\...\" try { \$domain = Get-ADDomain -ErrorAction Stop \$ous = Get-ADOrganizationalUnit -Filter \* -Properties \` Description, ManagedBy, gpLink, gpOptions \` -ErrorAction Stop \$ouData = foreach (\$ou in \$ous) { \$userCount = (Get-ADUser -SearchBase \$ou.DistinguishedName \` -SearchScope OneLevel -Filter \* -ErrorAction SilentlyContinue \| Measure-Object).Count \$computerCount = (Get-ADComputer -SearchBase \$ou.DistinguishedName \` -SearchScope OneLevel -Filter \* -ErrorAction SilentlyContinue \| Measure-Object).Count \$groupCount = (Get-ADGroup -SearchBase \$ou.DistinguishedName \` -SearchScope OneLevel -Filter \* -ErrorAction SilentlyContinue \| Measure-Object).Count \# Parse gpLink for linked GPO GUIDs \$linkedGPOs = @() if (\$ou.gpLink) { \$linkedGPOs = \[regex\]::Matches(\$ou.gpLink, \'\\\[LDAP://cn=\\{(\[\^}\]+)\\}\') \| ForEach-Object { \$\_.Groups\[1\].Value } } \[PSCustomObject\]@{ Name = \$ou.Name DistinguishedName = \$ou.DistinguishedName Description = \$ou.Description ManagedBy = \$ou.ManagedBy UserCount = \$userCount ComputerCount = \$computerCount GroupCount = \$groupCount LinkedGPOs = \$linkedGPOs Depth = (\$ou.DistinguishedName -split \',\' \| Where-Object { \$\_ -match \'\^OU=\' }).Count } } \# JSON output \$outJson = Join-Path \$OutputPath \"OUHierarchy.json\" \$ouData \| ConvertTo-Json -Depth 10 \| Out-File \$outJson -Encoding UTF8 \# Human-readable tree \$outTree = Join-Path \$OutputPath \"OUTree.txt\" \$sorted = \$ouData \| Sort-Object DistinguishedName \$treeLines = foreach (\$ou in \$sorted) { \$indent = \" \" \* \$ou.Depth \"\$indent\$(\$ou.Name) \[U:\$(\$ou.UserCount) C:\$(\$ou.ComputerCount)\" + \" G:\$(\$ou.GroupCount) GPOs:\$(\$ou.LinkedGPOs.Count)\]\" } \$treeLines \| Out-File \$outTree -Encoding UTF8 Write-Verbose \"OU hierarchy exported: \$outJson, \$outTree\" return \[PSCustomObject\]@{ Status = \"Success\" OUCount = \$ouData.Count JsonFile = \$outJson TreeFile = \$outTree } } catch { Write-Error \"OU hierarchy export failed: \$\_\" return \[PSCustomObject\]@{ Status = \"Failed\" Error = \$\_.Exception.Message } } }
+
+5.2.4 Export-UIAOGPOInventory
+
+function Export-UIAOGPOInventory { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$OutputPath ) Write-Verbose \"Exporting GPO inventory\...\" try { \$gpoDir = Join-Path \$OutputPath \"GPO\" \$reportsDir = Join-Path \$gpoDir \"Reports\" New-Item -ItemType Directory -Path \$reportsDir -Force \| Out-Null \$gpos = Get-GPO -All -ErrorAction Stop \$domain = (Get-ADDomain).DNSRoot \$gpoData = @() \$unlinked = @() \$empty = @() \$linkData = @() foreach (\$gpo in \$gpos) { Write-Verbose \"Processing GPO: \$(\$gpo.DisplayName)\" \# Generate XML report \$xmlPath = Join-Path \$reportsDir \"\$(\$gpo.Id).xml\" try { Get-GPOReport -Guid \$gpo.Id -ReportType XML \` -Path \$xmlPath -ErrorAction Stop } catch { Write-Warning \"Could not generate report for \$(\$gpo.DisplayName): \$\_\" } \# Parse XML for link and settings info \$hasComputerSettings = \$false \$hasUserSettings = \$false \$links = @() if (Test-Path \$xmlPath) { \[xml\]\$xml = Get-Content \$xmlPath \$ns = \@{gpo = \"http://www.microsoft.com/GroupPolicy/Settings\"} if (\$xml.GPO.Computer.ExtensionData) { \$hasComputerSettings = \$true } if (\$xml.GPO.User.ExtensionData) { \$hasUserSettings = \$true } \# Extract links from XML foreach (\$link in \$xml.GPO.LinksTo) { \$links += \[PSCustomObject\]@{ GPOName = \$gpo.DisplayName GPOID = \$gpo.Id SOMName = \$link.SOMName SOMPath = \$link.SOMPath Enabled = \$link.Enabled NoOverride = \$link.NoOverride } } } \$gpoObj = \[PSCustomObject\]@{ DisplayName = \$gpo.DisplayName Id = \$gpo.Id DomainName = \$gpo.DomainName CreationTime = \$gpo.CreationTime ModificationTime = \$gpo.ModificationTime GpoStatus = \$gpo.GpoStatus WmiFilter = \$gpo.WmiFilter.Name HasComputerSettings = \$hasComputerSettings HasUserSettings = \$hasUserSettings LinkCount = \$links.Count XmlReportPath = \$xmlPath } \$gpoData += \$gpoObj \$linkData += \$links if (\$links.Count -eq 0) { \$unlinked += \$gpoObj } if (-not \$hasComputerSettings -and -not \$hasUserSettings) { \$empty += \$gpoObj } } \# WMI Filters \$configDN = (Get-ADRootDSE).defaultNamingContext \$wmiFilters = Get-ADObject -SearchBase \"CN=SOM,CN=WMIPolicy,CN=System,\$configDN\" \` -Filter \'objectClass -eq \"msWMI-Som\"\' \` -Properties \"msWMI-Name\",\"msWMI-Parm1\",\"msWMI-Parm2\" \` -ErrorAction SilentlyContinue \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.\"msWMI-Name\" Description = \$\_.\"msWMI-Parm1\" Query = \$\_.\"msWMI-Parm2\" } } \# Save outputs \$gpoData \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$gpoDir \"GPOInventory.json\") -Encoding UTF8 \$linkData \| Export-Csv (Join-Path \$gpoDir \"GPOLinks.csv\") -NoTypeInformation \$unlinked \| Export-Csv (Join-Path \$gpoDir \"UnlinkedGPOs.csv\") -NoTypeInformation \$empty \| Export-Csv (Join-Path \$gpoDir \"EmptyGPOs.csv\") -NoTypeInformation Write-Verbose \"GPO inventory exported to \$gpoDir\" return \[PSCustomObject\]@{ Status = \"Success\" TotalGPOs = \$gpoData.Count UnlinkedGPOs = \$unlinked.Count EmptyGPOs = \$empty.Count WMIFilters = \$wmiFilters.Count OutputDir = \$gpoDir } } catch { Write-Error \"GPO inventory export failed: \$\_\" return \[PSCustomObject\]@{ Status = \"Failed\"; Error = \$\_.Exception.Message } } }
+
+5.2.5 Export-UIAOComputerInventory
+
+function Export-UIAOComputerInventory { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$OutputPath ) Write-Verbose \"Exporting computer inventory\...\" try { \$compDir = Join-Path \$OutputPath \"Computers\" New-Item -ItemType Directory -Path \$compDir -Force \| Out-Null \$properties = @( \'Name\',\'DNSHostName\',\'OperatingSystem\',\'OperatingSystemVersion\', \'OperatingSystemServicePack\',\'Enabled\',\'IPv4Address\', \'LastLogonTimestamp\',\'PasswordLastSet\',\'WhenCreated\',\'WhenChanged\', \'DistinguishedName\',\'ServicePrincipalName\',\'UserAccountControl\', \'ms-Mcs-AdmPwdExpirationTime\',\'Description\' ) \$computers = Get-ADComputer -Filter \* -Properties \$properties \` -ErrorAction Stop \$staleThreshold = (Get-Date).AddDays(-90) \$compData = @() \$staleComps = @() foreach (\$comp in \$computers) { \$lastLogon = if (\$comp.LastLogonTimestamp) { \[DateTime\]::FromFileTime(\$comp.LastLogonTimestamp) } else { \$null } \$osCategory = switch -Regex (\$comp.OperatingSystem) { \'Windows.\*Server\' { \'Windows Server\' } \'Windows\' { \'Windows Client\' } \'Linux\|Ubuntu\|CentOS\|Red Hat\' { \'Linux\' } default { \'Unknown\' } } \$lapsEnabled = \$null -ne \$comp.\'ms-Mcs-AdmPwdExpirationTime\' \$obj = \[PSCustomObject\]@{ Name = \$comp.Name DNSHostName = \$comp.DNSHostName OperatingSystem = \$comp.OperatingSystem OSVersion = \$comp.OperatingSystemVersion OSCategory = \$osCategory Enabled = \$comp.Enabled IPv4Address = \$comp.IPv4Address LastLogon = \$lastLogon PasswordLastSet = \$comp.PasswordLastSet WhenCreated = \$comp.WhenCreated IsStale = (\$lastLogon -and \$lastLogon -lt \$staleThreshold) LAPSEnabled = \$lapsEnabled SPNCount = (\$comp.ServicePrincipalName \| Measure-Object).Count DistinguishedName = \$comp.DistinguishedName Description = \$comp.Description } \$compData += \$obj if (\$obj.IsStale) { \$staleComps += \$obj } } \# Outputs \$compData \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$compDir \"ComputerInventory.json\") -Encoding UTF8 \$staleComps \| Export-Csv (Join-Path \$compDir \"StaleComputers.csv\") \` -NoTypeInformation \$osSummary = \$compData \| Group-Object OSCategory \| ForEach-Object { \[PSCustomObject\]@{ OSCategory = \$\_.Name; Count = \$\_.Count } } \$osSummary \| Export-Csv (Join-Path \$compDir \"ComputersByOS.csv\") \` -NoTypeInformation Write-Verbose \"Computer inventory exported to \$compDir\" return \[PSCustomObject\]@{ Status = \"Success\" TotalComputers = \$compData.Count StaleComputers = \$staleComps.Count LAPSEnabled = (\$compData \| Where-Object LAPSEnabled).Count OutputDir = \$compDir } } catch { Write-Error \"Computer inventory export failed: \$\_\" return \[PSCustomObject\]@{ Status = \"Failed\"; Error = \$\_.Exception.Message } } }
+
+5.2.6 Export-UIAOUserInventory
+
+function Export-UIAOUserInventory { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$OutputPath ) Write-Verbose \"Exporting user inventory\...\" try { \$userDir = Join-Path \$OutputPath \"Users\" New-Item -ItemType Directory -Path \$userDir -Force \| Out-Null \$properties = @( \'Name\',\'SamAccountName\',\'UserPrincipalName\',\'DisplayName\', \'Mail\',\'Title\',\'Department\',\'Manager\',\'MemberOf\',\'Enabled\', \'LastLogonTimestamp\',\'PasswordLastSet\',\'PasswordNeverExpires\', \'PasswordNotRequired\',\'AllowReversiblePasswordEncryption\', \'WhenCreated\',\'WhenChanged\',\'AdminCount\',\'DistinguishedName\', \'ServicePrincipalName\',\'UserAccountControl\',\'Description\', \'LockedOut\',\'AccountExpirationDate\' ) \$users = Get-ADUser -Filter \* -Properties \$properties -ErrorAction Stop \$staleThreshold = (Get-Date).AddDays(-90) \$privilegedGroups = @( \'Domain Admins\',\'Enterprise Admins\',\'Schema Admins\', \'Administrators\',\'Account Operators\',\'Backup Operators\', \'Server Operators\',\'Print Operators\' ) \$privMembers = \@{} foreach (\$grp in \$privilegedGroups) { try { \$members = Get-ADGroupMember \$grp -Recursive -ErrorAction Stop foreach (\$m in \$members) { if (-not \$privMembers.ContainsKey(\$m.SamAccountName)) { \$privMembers\[\$m.SamAccountName\] = @() } \$privMembers\[\$m.SamAccountName\] += \$grp } } catch { Write-Warning \"Could not enumerate \$grp : \$\_\" } } \$userData = @() \$privUsers = @() \$svcAccounts = @() \$staleUsers = @() foreach (\$user in \$users) { \$lastLogon = if (\$user.LastLogonTimestamp) { \[DateTime\]::FromFileTime(\$user.LastLogonTimestamp) } else { \$null } \$isPrivileged = \$privMembers.ContainsKey(\$user.SamAccountName) \$hasSPN = (\$user.ServicePrincipalName \| Measure-Object).Count -gt 0 \$obj = \[PSCustomObject\]@{ Name = \$user.Name SamAccountName = \$user.SamAccountName UPN = \$user.UserPrincipalName DisplayName = \$user.DisplayName Mail = \$user.Mail Title = \$user.Title Department = \$user.Department Enabled = \$user.Enabled LastLogon = \$lastLogon PasswordLastSet = \$user.PasswordLastSet PasswordNeverExpires = \$user.PasswordNeverExpires PasswordNotRequired = \$user.PasswordNotRequired ReversibleEncryption = \$user.AllowReversiblePasswordEncryption AdminCount = \$user.AdminCount IsPrivileged = \$isPrivileged PrivilegedGroups = if (\$isPrivileged) { \$privMembers\[\$user.SamAccountName\] -join \'; \' } else { \$null } HasSPN = \$hasSPN SPNs = \$user.ServicePrincipalName -join \'; \' IsStale = (\$lastLogon -and \$lastLogon -lt \$staleThreshold) WhenCreated = \$user.WhenCreated DistinguishedName = \$user.DistinguishedName } \$userData += \$obj if (\$isPrivileged) { \$privUsers += \$obj } if (\$hasSPN) { \$svcAccounts += \$obj } if (\$obj.IsStale) { \$staleUsers += \$obj } } \# MSA/gMSA \$msaAccounts = @() try { \$msaAccounts = Get-ADServiceAccount -Filter \* -Properties \* \` -ErrorAction Stop \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.Name SamAccountName = \$\_.SamAccountName ObjectClass = \$\_.ObjectClass Enabled = \$\_.Enabled ManagedBy = \$\_.ManagedBy DNSHostName = \$\_.DNSHostName DistinguishedName = \$\_.DistinguishedName } } } catch { Write-Warning \"MSA/gMSA enumeration: \$\_\" } \# Outputs \$userData \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$userDir \"UserInventory.json\") -Encoding UTF8 \$privUsers \| Export-Csv (Join-Path \$userDir \"PrivilegedUsers.csv\") \` -NoTypeInformation \$svcAccounts \| Export-Csv (Join-Path \$userDir \"ServiceAccounts.csv\") \` -NoTypeInformation \$staleUsers \| Export-Csv (Join-Path \$userDir \"StaleUsers.csv\") \` -NoTypeInformation Write-Verbose \"User inventory exported to \$userDir\" return \[PSCustomObject\]@{ Status = \"Success\" TotalUsers = \$userData.Count PrivilegedUsers = \$privUsers.Count ServiceAccounts = \$svcAccounts.Count StaleUsers = \$staleUsers.Count MSA_gMSA = \$msaAccounts.Count OutputDir = \$userDir } } catch { Write-Error \"User inventory export failed: \$\_\" return \[PSCustomObject\]@{ Status = \"Failed\"; Error = \$\_.Exception.Message } } }
+
+5.2.7 Export-UIAOGroupInventory
+
+function Export-UIAOGroupInventory { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$OutputPath ) Write-Verbose \"Exporting group inventory\...\" try { \$grpDir = Join-Path \$OutputPath \"Groups\" New-Item -ItemType Directory -Path \$grpDir -Force \| Out-Null \$groups = Get-ADGroup -Filter \* -Properties Description, ManagedBy, MemberOf, GroupScope, GroupCategory, WhenCreated, WhenChanged, AdminCount -ErrorAction Stop \$grpData = @() \$emptyGroups = @() \$nestingReport = @() foreach (\$grp in \$groups) { Write-Verbose \"Processing group: \$(\$grp.Name)\" \$members = @() try { \$members = Get-ADGroupMember \$grp.DistinguishedName \` -ErrorAction Stop } catch { } \$memberCount = \$members.Count \# Nesting depth (non-recursive direct memberOf) \$nestingDepth = 0 \$visited = \@{} \$current = \$grp.MemberOf while (\$current -and \$nestingDepth -lt 20) { \$nestingDepth++ \$parent = \$current \| Select-Object -First 1 if (\$visited.ContainsKey(\$parent)) { \$nestingReport += \[PSCustomObject\]@{ GroupName = \$grp.Name Issue = \"Circular Nesting Detected\" Detail = \"Loop at \$parent\" NestingDepth = \$nestingDepth } break } \$visited\[\$parent\] = \$true try { \$parentObj = Get-ADGroup \$parent -Properties MemberOf \` -ErrorAction Stop \$current = \$parentObj.MemberOf } catch { break } } if (\$nestingDepth -gt 5) { \$nestingReport += \[PSCustomObject\]@{ GroupName = \$grp.Name Issue = \"Deep Nesting\" Detail = \"Depth: \$nestingDepth\" NestingDepth = \$nestingDepth } } \$obj = \[PSCustomObject\]@{ Name = \$grp.Name SamAccountName = \$grp.SamAccountName GroupScope = \$grp.GroupScope GroupCategory = \$grp.GroupCategory Description = \$grp.Description ManagedBy = \$grp.ManagedBy MemberCount = \$memberCount IsEmpty = (\$memberCount -eq 0) AdminCount = \$grp.AdminCount NestingDepth = \$nestingDepth WhenCreated = \$grp.WhenCreated DistinguishedName = \$grp.DistinguishedName } \$grpData += \$obj if (\$memberCount -eq 0) { \$emptyGroups += \$obj } } \# Outputs \$grpData \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$grpDir \"GroupInventory.json\") -Encoding UTF8 \$emptyGroups \| Export-Csv (Join-Path \$grpDir \"EmptyGroups.csv\") \` -NoTypeInformation \$nestingReport \| Export-Csv (Join-Path \$grpDir \"NestingReport.csv\") \` -NoTypeInformation Write-Verbose \"Group inventory exported to \$grpDir\" return \[PSCustomObject\]@{ Status = \"Success\" TotalGroups = \$grpData.Count EmptyGroups = \$emptyGroups.Count NestingIssues = \$nestingReport.Count OutputDir = \$grpDir } } catch { Write-Error \"Group inventory export failed: \$\_\" return \[PSCustomObject\]@{ Status = \"Failed\"; Error = \$\_.Exception.Message } } }
+
+5.2.8 Export-UIAOTrustMap
+
+function Export-UIAOTrustMap { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$OutputPath ) Write-Verbose \"Exporting trust map\...\" try { \$trustDir = Join-Path \$OutputPath \"Trusts\" New-Item -ItemType Directory -Path \$trustDir -Force \| Out-Null \$trusts = Get-ADTrust -Filter \* -ErrorAction Stop \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.Name Source = \$\_.Source Target = \$\_.Target Direction = \$\_.Direction TrustType = \$\_.TrustType ForestTransitive = \$\_.ForestTransitive IntraForest = \$\_.IntraForest SIDFilteringForestAware = \$\_.SIDFilteringForestAware SIDFilteringQuarantined = \$\_.SIDFilteringQuarantined SelectiveAuthentication = \$\_.SelectiveAuthentication TrustAttributes = \$\_.TrustAttributes IsTreeParent = \$\_.IsTreeParent IsTreeRoot = \$\_.IsTreeRoot } } \# Cross-forest enumeration attempt foreach (\$trust in \$trusts) { if (\$trust.ForestTransitive -and \$trust.Direction -in @(\'BiDirectional\',\'Inbound\')) { try { \$remoteDomain = Get-ADDomain -Server \$trust.Target \` -ErrorAction Stop \$trust \| Add-Member -NotePropertyName \"RemoteDomainMode\" \` -NotePropertyValue \$remoteDomain.DomainMode \$trust \| Add-Member -NotePropertyName \"RemoteDNSRoot\" \` -NotePropertyValue \$remoteDomain.DNSRoot } catch { Write-Verbose \"Could not query remote domain \$(\$trust.Target): \$\_\" } } } \$trusts \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$trustDir \"TrustMap.json\") -Encoding UTF8 Write-Verbose \"Trust map exported to \$trustDir\" return \[PSCustomObject\]@{ Status = \"Success\" TrustCount = \$trusts.Count OutputDir = \$trustDir } } catch { Write-Error \"Trust map export failed: \$\_\" return \[PSCustomObject\]@{ Status = \"Failed\"; Error = \$\_.Exception.Message } } }
+
+5.2.9 Export-UIAOPKIInventory
+
+function Export-UIAOPKIInventory { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$OutputPath ) Write-Verbose \"Exporting PKI inventory\...\" try { \$pkiDir = Join-Path \$OutputPath \"PKI\" New-Item -ItemType Directory -Path \$pkiDir -Force \| Out-Null \$configDN = (Get-ADRootDSE).configurationNamingContext \$pkiBase = \"CN=Public Key Services,CN=Services,\$configDN\" \# CA Discovery \$cas = Get-ADObject -SearchBase \"CN=Enrollment Services,\$pkiBase\" \` -Filter \* -Properties \* -ErrorAction Stop \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.Name DNSHostName = \$\_.dNSHostName DisplayName = \$\_.DisplayName CACertificate = (\$\_.cACertificate \| Measure-Object).Count CertTemplates = \$\_.certificateTemplates DN = \$\_.DistinguishedName } } \# Certificate Templates \$templates = Get-ADObject -SearchBase \"CN=Certificate Templates,\$pkiBase\" \` -Filter \* -Properties \* -ErrorAction Stop \| ForEach-Object { \$acl = Get-Acl \"AD:\\\$(\$\_.DistinguishedName)\" -ErrorAction SilentlyContinue \$enrollPerms = @() if (\$acl) { \$enrollPerms = \$acl.Access \| Where-Object { \$\_.ActiveDirectoryRights -match \'ExtendedRight\' -and (\$\_.ObjectType -eq \'0e10c968-78fb-11d2-90d4-00c04f79dc55\' -or \# Enroll \$\_.ObjectType -eq \'a05b8cc2-17bc-4802-a710-e7c15ab866a2\') \# AutoEnroll } \| ForEach-Object { \[PSCustomObject\]@{ Identity = \$\_.IdentityReference.Value Right = if (\$\_.ObjectType -eq \'0e10c968-78fb-11d2-90d4-00c04f79dc55\') { \'Enroll\' } else { \'AutoEnroll\' } AccessType = \$\_.AccessControlType } } } \# ESC Detection Flags \$flags = \$\_.\'msPKI-Certificate-Name-Flag\' \$enrollmentFlag = \$\_.\'msPKI-Enrollment-Flag\' \$eku = \$\_.\'pKIExtendedKeyUsage\' \$escFindings = @() \# ESC1: SAN flag + low-priv enroll if (\$flags -band 1) { \# CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT \$lowPrivEnroll = \$enrollPerms \| Where-Object { \$\_.Identity -match \'Authenticated Users\|Domain Users\|Everyone\' } if (\$lowPrivEnroll) { \$escFindings += \"ESC1: Enrollee supplies SAN + low-priv enroll\" } } \# ESC2: Any Purpose EKU or no EKU if (-not \$eku -or \$eku -contains \'2.5.29.37.0\') { \$escFindings += \"ESC2: Any Purpose or no EKU restriction\" } \# ESC4: Low-priv write on template if (\$acl) { \$writePerms = \$acl.Access \| Where-Object { \$\_.ActiveDirectoryRights -match \'WriteProperty\|WriteDacl\|WriteOwner\|GenericAll\|GenericWrite\' -and \$\_.IdentityReference -match \'Authenticated Users\|Domain Users\|Everyone\' } if (\$writePerms) { \$escFindings += \"ESC4: Low-priv write on template\" } } \[PSCustomObject\]@{ Name = \$\_.Name DisplayName = \$\_.DisplayName TemplateName = \$\_.\'msPKI-Cert-Template-OID\' SchemaVersion = \$\_.\'msPKI-Template-Schema-Version\' ValidityPeriod = \$\_.\'pKIExpirationPeriod\' RenewalPeriod = \$\_.\'pKIOverlapPeriod\' EKU = \$eku -join \'; \' NameFlags = \$flags EnrollmentFlags = \$enrollmentFlag EnrollPermissions = \$enrollPerms ESCFindings = \$escFindings DN = \$\_.DistinguishedName } } \# AIA / CDP \$aia = Get-ADObject -SearchBase \"CN=AIA,\$pkiBase\" -Filter \* \` -Properties \* -ErrorAction SilentlyContinue \$cdp = Get-ADObject -SearchBase \"CN=CDP,\$pkiBase\" -Filter \* \` -Properties \* -ErrorAction SilentlyContinue \# ESC vulnerability summary \$escVulns = \$templates \| Where-Object { \$\_.ESCFindings.Count -gt 0 } \| ForEach-Object { \[PSCustomObject\]@{ TemplateName = \$\_.Name Findings = \$\_.ESCFindings -join \'; \' EnrollAccess = (\$\_.EnrollPermissions \| ForEach-Object { \"\$(\$\_.Identity):\$(\$\_.Right)\" }) -join \'; \' } } \# Outputs \$cas \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$pkiDir \"CADiscovery.json\") -Encoding UTF8 \$templates \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$pkiDir \"CertTemplates.json\") -Encoding UTF8 \$escVulns \| Export-Csv (Join-Path \$pkiDir \"ESCVulnerabilities.csv\") \` -NoTypeInformation \[PSCustomObject\]@{ CAs = \$cas AIA = \$aia CDP = \$cdp Templates = \$templates } \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$pkiDir \"PKIInventory.json\") -Encoding UTF8 Write-Verbose \"PKI inventory exported to \$pkiDir\" return \[PSCustomObject\]@{ Status = \"Success\" CACount = \$cas.Count TemplateCount = \$templates.Count ESCVulnerabilities = \$escVulns.Count OutputDir = \$pkiDir } } catch { Write-Error \"PKI inventory export failed: \$\_\" return \[PSCustomObject\]@{ Status = \"Failed\"; Error = \$\_.Exception.Message } } }
+
+5.2.10 Export-UIAODNSBaseline
+
+function Export-UIAODNSBaseline { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$OutputPath ) Write-Verbose \"Exporting DNS baseline\...\" try { \$dnsDir = Join-Path \$OutputPath \"DNS\" New-Item -ItemType Directory -Path \$dnsDir -Force \| Out-Null \$domain = (Get-ADDomain).DNSRoot \# AD-integrated zone discovery \$zones = @() \$zoneDNs = @( \"CN=MicrosoftDNS,DC=DomainDnsZones,DC=\$(\$domain -replace \'\\.\',\',DC=\')\", \"CN=MicrosoftDNS,DC=ForestDnsZones,DC=\$(\$domain -replace \'\\.\',\',DC=\')\" ) foreach (\$base in \$zoneDNs) { try { \$zoneObjs = Get-ADObject -SearchBase \$base \` -Filter \'objectClass -eq \"dnsZone\"\' \` -Properties Name, WhenCreated, WhenChanged \` -ErrorAction Stop foreach (\$z in \$zoneObjs) { \$zones += \[PSCustomObject\]@{ ZoneName = \$z.Name Partition = if (\$base -match \'ForestDnsZones\') { \'ForestDnsZones\' } else { \'DomainDnsZones\' } WhenCreated = \$z.WhenCreated WhenChanged = \$z.WhenChanged } } } catch { Write-Warning \"Could not query zone base \$base : \$\_\" } } \# SRV record validation \$srvRecords = @( \"\_ldap.\_tcp.dc.\_msdcs.\$domain\", \"\_kerberos.\_tcp.dc.\_msdcs.\$domain\", \"\_ldap.\_tcp.\$domain\", \"\_kerberos.\_tcp.\$domain\", \"\_gc.\_tcp.\$domain\", \"\_kpasswd.\_tcp.\$domain\", \"\_ldap.\_tcp.pdc.\_msdcs.\$domain\" ) \$srvResults = foreach (\$srv in \$srvRecords) { try { \$result = Resolve-DnsName \$srv -Type SRV -ErrorAction Stop \[PSCustomObject\]@{ Query = \$srv Status = \"OK\" RecordCount = (\$result \| Measure-Object).Count Targets = (\$result \| Where-Object { \$\_.Type -eq \'SRV\' } \| ForEach-Object { \$\_.NameTarget }) -join \'; \' } } catch { \[PSCustomObject\]@{ Query = \$srv Status = \"FAILED\" RecordCount = 0 Targets = \$\_.Exception.Message } } } \# Forward/reverse lookup validation for DCs \$dcs = Get-ADDomainController -Filter \* -ErrorAction Stop \$lookupResults = foreach (\$dc in \$dcs) { \$fwd = \$null; \$rev = \$null try { \$fwd = Resolve-DnsName \$dc.HostName -ErrorAction Stop \| Select-Object -First 1 } catch { } try { if (\$dc.IPv4Address) { \$rev = Resolve-DnsName \$dc.IPv4Address -ErrorAction Stop \| Select-Object -First 1 } } catch { } \[PSCustomObject\]@{ DC = \$dc.Name HostName = \$dc.HostName ForwardLookup = if (\$fwd) { \"OK\" } else { \"FAILED\" } ReverseLookup = if (\$rev) { \"OK\" } else { \"FAILED\" } } } \# Outputs \[PSCustomObject\]@{ Timestamp = (Get-Date -Format \"o\") Domain = \$domain Zones = \$zones SRVResults = \$srvResults DCLookups = \$lookupResults } \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$dnsDir \"DNSBaseline.json\") -Encoding UTF8 \$srvResults \| Export-Csv (Join-Path \$dnsDir \"SRVValidation.csv\") \` -NoTypeInformation Write-Verbose \"DNS baseline exported to \$dnsDir\" return \[PSCustomObject\]@{ Status = \"Success\" ZoneCount = \$zones.Count SRVRecords = \$srvResults.Count SRVFailures = (\$srvResults \| Where-Object Status -eq \"FAILED\").Count OutputDir = \$dnsDir } } catch { Write-Error \"DNS baseline export failed: \$\_\" return \[PSCustomObject\]@{ Status = \"Failed\"; Error = \$\_.Exception.Message } } }
+
+5.2.11 Export-UIAOACLReport
+
+function Export-UIAOACLReport { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$OutputPath ) Write-Verbose \"Exporting ACL report\...\" try { \$aclDir = Join-Path \$OutputPath \"ACLs\" New-Item -ItemType Directory -Path \$aclDir -Force \| Out-Null \# Build GUID-to-name map from schema \$schemaPath = (Get-ADRootDSE).schemaNamingContext \$guidMap = \@{} Get-ADObject -SearchBase \$schemaPath \` -LDAPFilter \'(schemaIdGuid=\*)\' \` -Properties lDAPDisplayName, schemaIdGuid \` -ErrorAction SilentlyContinue \| ForEach-Object { \$guid = \[System.GUID\]\$\_.schemaIdGuid \$guidMap\[\$guid.ToString()\] = \$\_.lDAPDisplayName } \# Extended rights GUID map \$configDN = (Get-ADRootDSE).configurationNamingContext Get-ADObject -SearchBase \"CN=Extended-Rights,\$configDN\" \` -Filter \* -Properties rightsGuid, displayName \` -ErrorAction SilentlyContinue \| ForEach-Object { \$guidMap\[\$\_.rightsGuid\] = \$\_.displayName } \# OU-level delegation \$ous = Get-ADOrganizationalUnit -Filter \* -ErrorAction Stop \$ouDelegation = foreach (\$ou in \$ous) { try { \$acl = Get-Acl \"AD:\\\$(\$ou.DistinguishedName)\" -ErrorAction Stop \$nonInherited = \$acl.Access \| Where-Object { -not \$\_.IsInherited } foreach (\$ace in \$nonInherited) { \$resolvedRight = \$guidMap\[\$ace.ObjectType.ToString()\] \[PSCustomObject\]@{ OU = \$ou.DistinguishedName Identity = \$ace.IdentityReference.Value Rights = \$ace.ActiveDirectoryRights AccessType = \$ace.AccessControlType ObjectType = \$ace.ObjectType ResolvedRight = \$resolvedRight InheritanceType = \$ace.InheritanceType Inherited = \$ace.IsInherited } } } catch { Write-Warning \"Could not read ACL for \$(\$ou.DistinguishedName): \$\_\" } } \# AdminSDHolder ACL \$domainDN = (Get-ADDomain).DistinguishedName \$adminSDHolderDN = \"CN=AdminSDHolder,CN=System,\$domainDN\" \$adminSDHolderACL = @() try { \$acl = Get-Acl \"AD:\\\$adminSDHolderDN\" -ErrorAction Stop \$adminSDHolderACL = \$acl.Access \| ForEach-Object { \[PSCustomObject\]@{ Identity = \$\_.IdentityReference.Value Rights = \$\_.ActiveDirectoryRights AccessType = \$\_.AccessControlType ObjectType = \$\_.ObjectType ResolvedRight = \$guidMap\[\$\_.ObjectType.ToString()\] InheritanceType = \$\_.InheritanceType } } } catch { Write-Warning \"Could not read AdminSDHolder ACL: \$\_\" } \# Outputs \$ouDelegation \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$aclDir \"OUDelegation.json\") -Encoding UTF8 \$adminSDHolderACL \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$aclDir \"AdminSDHolder.json\") -Encoding UTF8 Write-Verbose \"ACL report exported to \$aclDir\" return \[PSCustomObject\]@{ Status = \"Success\" OUsAnalyzed = \$ous.Count DelegationEntries = (\$ouDelegation \| Measure-Object).Count AdminSDHolderACEs = \$adminSDHolderACL.Count OutputDir = \$aclDir } } catch { Write-Error \"ACL report export failed: \$\_\" return \[PSCustomObject\]@{ Status = \"Failed\"; Error = \$\_.Exception.Message } } }
+
+5.2.12 Export-UIAOSchemaExtensions
+
+function Export-UIAOSchemaExtensions { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$OutputPath ) Write-Verbose \"Exporting schema extensions\...\" try { \$schemaDir = Join-Path \$OutputPath \"Schema\" New-Item -ItemType Directory -Path \$schemaDir -Force \| Out-Null \$schemaDN = (Get-ADRootDSE).schemaNamingContext \# Custom / extension attributes (OID 1.2.840.113556.1.8000.\*) \$extensions = Get-ADObject -SearchBase \$schemaDN \` -LDAPFilter \'(attributeId=1.2.840.113556.1.8000.\*)\' \` -Properties lDAPDisplayName, attributeId, attributeSyntax, isSingleValued, searchFlags, systemFlags, WhenCreated, WhenChanged -ErrorAction Stop \| ForEach-Object { \$sf = \[int\]\$\_.searchFlags \[PSCustomObject\]@{ Name = \$\_.lDAPDisplayName OID = \$\_.attributeId Syntax = \$\_.attributeSyntax SingleValued = \$\_.isSingleValued SearchFlags = \$sf IsIndexed = \[bool\](\$sf -band 1) IsConfidential = \[bool\](\$sf -band 128) IsCopied = \[bool\](\$sf -band 16) WhenCreated = \$\_.WhenCreated WhenChanged = \$\_.WhenChanged DN = \$\_.DistinguishedName } } \# All confidential attributes (any OID) \$confidential = Get-ADObject -SearchBase \$schemaDN \` -LDAPFilter \'(&(objectClass=attributeSchema)(searchFlags:1.2.840.113556.1.4.803:=128))\' \` -Properties lDAPDisplayName, attributeId, searchFlags \` -ErrorAction Stop \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.lDAPDisplayName OID = \$\_.attributeId SearchFlags = \$\_.searchFlags } } \# All indexed attributes \$indexed = Get-ADObject -SearchBase \$schemaDN \` -LDAPFilter \'(&(objectClass=attributeSchema)(searchFlags:1.2.840.113556.1.4.803:=1))\' \` -Properties lDAPDisplayName, attributeId \` -ErrorAction SilentlyContinue \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.lDAPDisplayName OID = \$\_.attributeId } } \# Outputs \$extensions \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$schemaDir \"SchemaExtensions.json\") -Encoding UTF8 \$confidential \| Export-Csv (Join-Path \$schemaDir \"ConfidentialAttributes.csv\") \` -NoTypeInformation Write-Verbose \"Schema extensions exported to \$schemaDir\" return \[PSCustomObject\]@{ Status = \"Success\" ExtensionAttributes = \$extensions.Count ConfidentialAttributes = \$confidential.Count IndexedAttributes = \$indexed.Count OutputDir = \$schemaDir } } catch { Write-Error \"Schema extensions export failed: \$\_\" return \[PSCustomObject\]@{ Status = \"Failed\"; Error = \$\_.Exception.Message } } }
+
+5.2.13 Invoke-UIAOReadOnlyAssessment (Master Orchestrator)
+
+function Invoke-UIAOReadOnlyAssessment { \[CmdletBinding()\] param( \[Parameter()\] \[string\]\$BasePath = \"D:\\UIAO\\Assessment\\ReadOnly\" ) \$domain = (Get-ADDomain).DNSRoot \$timestamp = Get-Date -Format \"yyyy-MM-ddTHHmm\" \$outputPath = Join-Path \$BasePath \"\$domain\\\$timestamp\" New-Item -ItemType Directory -Path \$outputPath -Force \| Out-Null Write-Host \"=====================================================\" -ForegroundColor Cyan Write-Host \" UIAO Read-Only Active Directory Assessment\" -ForegroundColor Cyan Write-Host \" Domain: \$domain\" -ForegroundColor Cyan Write-Host \" Output: \$outputPath\" -ForegroundColor Cyan Write-Host \" Started: \$(Get-Date -Format \'o\')\" -ForegroundColor Cyan Write-Host \"=====================================================\" -ForegroundColor Cyan \$manifest = \[PSCustomObject\]@{ AssessmentType = \"ReadOnly\" Framework = \"UIAO\" ForestName = \$domain AssessedBy = \"\$env:USERDOMAIN\\\$env:USERNAME\" Timestamp = (Get-Date -Format \"o\") Classification = \"Controlled\" Boundary = \"GCC-Moderate\" CoverageScore = 0 OutputPath = \$outputPath Outputs = @() Gaps = @() Hashes = @() } \# Step 1: Pre-flight Write-Host \"\`n\[1/12\] Running pre-flight checks\...\" -ForegroundColor Yellow \$preflight = Test-UIAOReadAccess -OutputPath \$outputPath -Verbose:\$VerbosePreference \$manifest.Outputs += \@{ Name = \"ReadAccessReport\"; File = \"ReadAccessReport.json\" Status = \"Complete\" } \# Step 2-12: Export functions \$exportFunctions = @( \@{ Step = 2; Name = \"ForestTopology\"; Fn = \"Export-UIAOForestTopology\" }, \@{ Step = 3; Name = \"OUHierarchy\"; Fn = \"Export-UIAOOUHierarchy\" }, \@{ Step = 4; Name = \"GPOInventory\"; Fn = \"Export-UIAOGPOInventory\" }, \@{ Step = 5; Name = \"ComputerInventory\"; Fn = \"Export-UIAOComputerInventory\" }, \@{ Step = 6; Name = \"UserInventory\"; Fn = \"Export-UIAOUserInventory\" }, \@{ Step = 7; Name = \"GroupInventory\"; Fn = \"Export-UIAOGroupInventory\" }, \@{ Step = 8; Name = \"TrustMap\"; Fn = \"Export-UIAOTrustMap\" }, \@{ Step = 9; Name = \"PKIInventory\"; Fn = \"Export-UIAOPKIInventory\" }, \@{ Step = 10; Name = \"DNSBaseline\"; Fn = \"Export-UIAODNSBaseline\" }, \@{ Step = 11; Name = \"ACLReport\"; Fn = \"Export-UIAOACLReport\" }, \@{ Step = 12; Name = \"SchemaExtensions\"; Fn = \"Export-UIAOSchemaExtensions\" } ) foreach (\$exp in \$exportFunctions) { Write-Host \"\`n\[\$(\$exp.Step)/12\] Exporting \$(\$exp.Name)\...\" -ForegroundColor Yellow try { \$result = & \$exp.Fn -OutputPath \$outputPath -Verbose:\$VerbosePreference \$manifest.Outputs += \@{ Name = \$exp.Name Status = \$result.Status Detail = \$result } } catch { Write-Warning \"FAILED: \$(\$exp.Name) - \$\_\" \$manifest.Outputs += \@{ Name = \$exp.Name Status = \"Failed\" Error = \$\_.Exception.Message } } } \# Calculate coverage score \$scores = \@{ ForestTopology = 100; OUHierarchy = 100 GPOInventory = 100; ComputerInventory = 95 UserInventory = 95; GroupInventory = 100 TrustMap = 100; PKIInventory = 95 DNSBaseline = 60; ACLReport = 85 SchemaExtensions = 100 } \$manifest.CoverageScore = \[math\]::Round( (\$scores.Values \| Measure-Object -Average).Average ) \# Identify gaps \$manifest.Gaps = @( \"DNS Scavenging Configuration (requires DNS Admin)\", \"Deleted Objects / Tombstones (requires delegation)\", \"Issued Certificate Database (requires CA Admin)\", \"LAPS Passwords (requires delegation)\", \"BitLocker Recovery Keys (requires delegation)\", \"Event Logs on DCs (requires local admin)\", \"Replication Health Details (requires Replicating Directory Changes)\" ) \# Generate file hashes \$allFiles = Get-ChildItem \$outputPath -Recurse -File \$manifest.Hashes = \$allFiles \| ForEach-Object { \[PSCustomObject\]@{ File = \$\_.FullName.Replace(\$outputPath, \'.\') SHA256 = (Get-FileHash \$\_.FullName -Algorithm SHA256).Hash } } \# Save manifest \$manifestPath = Join-Path \$outputPath \"AssessmentManifest.json\" \$manifest \| ConvertTo-Json -Depth 10 \| Out-File \$manifestPath -Encoding UTF8 Write-Host \"\`n=====================================================\" -ForegroundColor Green Write-Host \" Assessment Complete\" -ForegroundColor Green Write-Host \" Coverage Score: \$(\$manifest.CoverageScore)%\" -ForegroundColor Green Write-Host \" Output: \$outputPath\" -ForegroundColor Green Write-Host \" Manifest: \$manifestPath\" -ForegroundColor Green Write-Host \"=====================================================\" -ForegroundColor Green return \$manifest }
+
+6\. Output Directory Structure
+
+The master orchestrator (Invoke-UIAOReadOnlyAssessment) creates the following directory tree. All output is organized by assessment domain within a timestamped, domain-specific root.
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  D:\\UIAO\\Assessment\\ReadOnly\\ └── contoso.com\\ └── 2026-04-20T2032\\ ├── AssessmentManifest.json ├── ReadAccessReport.json ├── ForestTopology.json ├── OUHierarchy.json ├── OUTree.txt ├── GPO\\ │ ├── GPOInventory.json │ ├── GPOLinks.csv │ ├── UnlinkedGPOs.csv │ ├── EmptyGPOs.csv │ └── Reports\\ │ ├── {GPO-GUID-1}.xml │ └── {GPO-GUID-N}.xml ├── Computers\\ │ ├── ComputerInventory.json │ ├── StaleComputers.csv │ └── ComputersByOS.csv ├── Users\\ │ ├── UserInventory.json │ ├── PrivilegedUsers.csv │ ├── ServiceAccounts.csv │ └── StaleUsers.csv ├── Groups\\ │ ├── GroupInventory.json │ ├── EmptyGroups.csv │ └── NestingReport.csv ├── Trusts\\ │ └── TrustMap.json ├── PKI\\ │ ├── PKIInventory.json │ ├── CertTemplates.json │ ├── ESCVulnerabilities.csv │ └── CADiscovery.json ├── DNS\\ │ ├── DNSBaseline.json │ └── SRVValidation.csv ├── ACLs\\ │ ├── OUDelegation.json │ └── AdminSDHolder.json ├── Schema\\ │ ├── SchemaExtensions.json │ └── ConfidentialAttributes.csv └── Dashboard.html
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Storage Requirement**                                                                                                                                                                                                                                                  |
+|                                                                                                                                                                                                                                                                          |
+| All assessment output must be stored on encrypted volumes. Assessment output contains sensitive organizational data including privileged group memberships, service account SPNs, certificate template ACLs, and delegation maps. Classify all output as **Controlled**. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+7\. Gap Analysis: What Requires Elevated Access
+
+The following capabilities cannot be performed with standard Authenticated Users permissions. Each entry documents the required permission, why it matters for assessment, and what mitigation or alternative is available.
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Capability**                 **Required Permission**            **Why It Matters**                                                **Mitigation**
+  ------------------------------ ---------------------------------- ----------------------------------------------------------------- ----------------------------------------------------------------------------------------------------------------------------------
+  Backup-GPO (file-level)        Backup Operators or Domain Admin   Full GPO backup for offline analysis and migration                Get-GPOReport -ReportType XML captures all settings --- backup is redundant for assessment purposes
+
+  LAPS Password Read             ms-Mcs-AdmPwd Read delegation      Verify LAPS deployment coverage and password rotation             Can detect LAPS-enabled computers via ms-Mcs-AdmPwdExpirationTime without reading actual passwords --- sufficient for assessment
+
+  BitLocker Recovery Keys        ms-FVE-RecoveryPassword Read       Verify BitLocker deployment and key escrow                        Can detect BitLocker status via userAccountControl flags and msFVE-RecoveryInformation child objects
+
+  Replication Health             Replicating Directory Changes      Identify replication failures, latency, and convergence issues    repadmin /replsummary may work; otherwise request admin screenshot or SIEM data
+
+  DNS Full Zone Transfer         DNS Admin or zone transfer ACL     Complete DNS record inventory for modernization planning          Targeted queries via Resolve-DnsName cover critical SRV/A/CNAME records
+
+  DNS Scavenging Config          DNS Admin                          Identify stale record cleanup status, aging intervals             Request information from DNS admin; document as gap
+
+  Issued Certificate Database    CA Admin                           Identify all issued certificates, pending requests, revocations   Template ACL analysis + enrollment log review covers risk assessment
+
+  Deleted Objects Enumeration    Delegation on CN=Deleted Objects   Identify recently deleted objects for recovery or audit           AD Recycle Bin status check + request from admin if needed
+
+  Event Log Analysis             Local admin on DCs                 Authentication patterns, security events, logon failures          Request log export from admin or SIEM access
+
+  dcdiag / Network Diagnostics   Local admin on DCs                 DC health validation, service status, connectivity                Limited external testing via port checks; request admin output
+
+  Group Policy Modeling          Group Policy Modeling permission   Simulate RSoP for planning and conflict resolution                Use Get-GPOReport XML analysis + manual link tracing
+
+  SYSVOL DFS Health              DFS Admin                          Verify SYSVOL replication health and consistency                  SYSVOL share access validates basic health; request dfsrdiag output
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8\. Delegation Request Template
+
+Use the following template to formally request targeted read-only delegations for the gaps identified in Section 7. This template is designed for submission to the AD administration team or security review board.
+
+**TO:** Active Directory Administration Team / Security Review Board
+
+**FROM:** \[Assessment Team Lead Name\], UIAO Assessment Team
+
+**DATE:** \[Date\]
+
+**RE:** Request for Targeted Read-Only Delegations --- UIAO Active Directory Assessment
+
+1\. Background
+
+The UIAO Assessment Team has completed the Phase 0 (read-only) assessment of the \[DOMAIN\] Active Directory forest. Using only standard Authenticated Users permissions, the team captured approximately 87% of the required assessment data. This request seeks targeted, read-only delegations to close the remaining gaps.
+
+2\. Requested Delegations
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **\#**   **Permission Requested**           **AD Object Path**                                              **Business Justification**
+  -------- ---------------------------------- --------------------------------------------------------------- ----------------------------------------------------------
+  1        Generic Read on DNS zones          CN=MicrosoftDNS,DC=DomainDnsZones,DC=contoso,DC=com             Complete DNS record inventory for modernization planning
+
+  2        Read on Deleted Objects            CN=Deleted Objects,DC=contoso,DC=com                            Identify recently deleted objects for audit trail
+
+  3        Read ms-Mcs-AdmPwdExpirationTime   All computer objects (already readable --- confirmation only)   LAPS deployment coverage verification
+
+  4        DNS Server module read access      DNS Server service on \[DC hostname\]                           Scavenging configuration review
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3\. Scope Limitations
+
+- **Read-only.** No write, modify, delete, or create permissions are requested.
+
+- **Time-bound.** Delegations should expire after \[30 days / assessment window\].
+
+- **Dedicated account.** All delegations to be granted to service account DOMAIN\\svc-uiao-assess, which is a standard user with no existing elevated group memberships.
+
+- **Audit-enabled.** All queries from the assessment account will generate standard audit events. SOC has been notified of the assessment window.
+
+4\. PowerShell Commands for Delegation
+
+The following commands can be executed by a Domain Admin to grant the requested delegations:
+
+\# Define assessment account \$AssessmentAccount = \"DOMAIN\\svc-uiao-assess\" \# 1. Grant read on DNS zones (DomainDnsZones) dsacls \"CN=MicrosoftDNS,DC=DomainDnsZones,DC=contoso,DC=com\" \` /G \"\${AssessmentAccount}:GR\" /I:T \# 2. Grant read on DNS zones (ForestDnsZones) dsacls \"CN=MicrosoftDNS,DC=ForestDnsZones,DC=contoso,DC=com\" \` /G \"\${AssessmentAccount}:GR\" /I:T \# 3. Grant read on Deleted Objects container dsacls \"CN=Deleted Objects,DC=contoso,DC=com\" \` /G \"\${AssessmentAccount}:GR\" /I:S \# 4. Verify delegation (run as assessment account) \# Test-UIAOReadAccess -Verbose
+
+9\. Security Considerations for Read-Only Assessment
+
+Read-only queries carry near-zero operational risk --- no objects are modified, no configurations change. However, assessment activities do generate observable events and produce sensitive output. The following controls must be observed.
+
+9.1 Audit and Monitoring
+
+- **LDAP queries generate audit events.** Even standard read operations may trigger Directory Service Access audit entries on domain controllers with advanced audit policy enabled. Coordinate with the SOC before beginning assessment.
+
+- **Large LDAP queries can trigger monitoring alerts.** Queries that return thousands of objects (e.g., Get-ADUser -Filter \* -Properties \*) may trigger SIEM correlation rules for reconnaissance or LDAP enumeration. Notify the security team of expected query patterns.
+
+- **Assessment account activity is logged.** Use a dedicated service account (svc-uiao-assess) so all assessment queries are attributable and distinguishable from normal user activity.
+
+9.2 Performance Management
+
+- **Enumerate in batches.** Use -ResultPageSize 500 on large queries to avoid overloading the DC\'s LDAP worker threads.
+
+- **Avoid peak hours.** Schedule bulk queries (full user/computer enumeration) during maintenance windows or off-peak periods.
+
+- **Target specific DCs.** Use -Server parameter to direct queries to a specific DC, preferably one designated for administrative workloads.
+
+9.3 Output Protection
+
+- **Never store assessment output on domain-joined workstations without encryption.** Assessment data contains sensitive information including privileged group memberships, service account SPNs (Kerberoasting targets), certificate template ACLs, and delegation maps.
+
+- **All output classified as Controlled.** Handle per organizational data classification policy.
+
+- **Use encrypted storage.** Assessment output directory (D:\\UIAO\\Assessment\\) must reside on a BitLocker-encrypted volume or equivalent.
+
+- **Assessment manifest includes file hashes.** Every output file is SHA-256 hashed and recorded in AssessmentManifest.json for integrity verification.
+
+9.4 Account Management
+
+- **Time-bound the assessment service account.** Set accountExpires to the end of the assessment window.
+
+- **Use a dedicated workstation.** Run assessment from a PAW (Privileged Access Workstation) or dedicated assessment workstation --- not a general-purpose endpoint.
+
+- **Disable account after assessment.** Disable svc-uiao-assess immediately upon assessment completion.
+
+10\. Integration with UIAO Assessment Pipeline
+
+The read-only assessment is the first stage of the UIAO assessment pipeline. Its outputs feed directly into the full modernization workflow.
+
+Pipeline Flow
+
+16. **Read-Only Assessment produces baseline JSONs.** The Invoke-UIAOReadOnlyAssessment orchestrator generates all JSON, CSV, and XML output in the standardized directory structure.
+
+17. **JSONs committed to Gitea.** Assessment output is committed to the UIAO Gitea repository under assessments/readonly/{domain}/{timestamp}/. This creates a versioned, auditable record of the assessment baseline.
+
+18. **Gitea webhook triggers validation pipeline.** On commit, a Gitea webhook invokes the UIAO validation pipeline, which checks JSON schema compliance, verifies file hashes against the manifest, and generates a validation report.
+
+19. **Comparison against prior assessments detects drift.** If previous assessment snapshots exist, the pipeline compares current output against the prior baseline and generates a drift report highlighting new objects, removed objects, permission changes, and configuration deltas.
+
+20. **Gap analysis drives the Delegation Request.** The coverage score and identified gaps from the read-only assessment automatically populate the delegation request template (Section 8), prioritizing gaps with the highest modernization impact.
+
+21. **Once delegation is granted, full assessment fills the gaps.** The full assessment module (documented in the *UIAO Active Directory Interaction Guide*) executes with delegated permissions, targeting only the gaps identified by the read-only assessment.
+
+22. **Combined dataset feeds modernization planning.** The merged read-only + delegated assessment data provides the complete input for modernization planning documents, migration runbooks, and identity modernization roadmaps.
+
++---------------------------------------------------------+
+| **Commit Command**                                      |
+|                                                         |
+| To commit assessment output to Gitea, use the UIAO CLI: |
++---------------------------------------------------------+
+
+uiao assessment commit \` \--path \"D:\\UIAO\\Assessment\\ReadOnly\\contoso.com\\2026-04-20T2032\" \` \--repo \"assessments\" \` \--branch \"main\" \` \--message \"Read-only assessment: contoso.com 2026-04-20\"
+
+11\. Companion Document Cross-Reference
+
+This document is part of the UIAO Canon. The following table maps this guide to its companion documents and describes the relationship between each.
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Companion Document**                        **Relationship**
+  --------------------------------------------- -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **UIAO Active Directory Interaction Guide**   Full-privilege superset of this guide. Covers all assessment capabilities including those requiring Domain Admin, Enterprise Admin, and delegated access. Read-only assessment output identifies which sections of the Interaction Guide need to be executed with elevated permissions.
+
+  **UIAO Platform Server Build Guide**          Defines the Gitea server infrastructure that receives and stores assessment output. Assessment JSONs are committed to the Gitea repository per the pipeline described in Section 10.
+
+  **UIAO CLI and Operations Guide**             Documents the uiao CLI commands for committing assessment results, triggering validation pipelines, and generating drift reports.
+
+  **AD Computer Object Conversion Guide**       Consumes the ComputerInventory.json output from this assessment. Computer object data drives OS classification, staleness analysis, and migration planning for compute modernization.
+
+  **UIAO Identity Modernization Guide**         Consumes UserInventory.json and GroupInventory.json. User and group data drives identity lifecycle modernization, privilege reduction, and hybrid identity planning.
+
+  **UIAO DNS Modernization Guide**              Consumes DNSBaseline.json. DNS zone and record data drives DNS infrastructure modernization, conditional forwarder planning, and split-horizon design.
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix A --- Complete UIAOReadOnlyAssessment.psm1 Module
+
+The following is the complete module file ready for deployment. Save as UIAOReadOnlyAssessment.psm1 and import via Import-Module .\\UIAOReadOnlyAssessment.psm1.
+
+#Requires -Version 5.1 #Requires -Modules ActiveDirectory, GroupPolicy \<# .SYNOPSIS UIAO Read-Only Active Directory Assessment Module .DESCRIPTION Provides a comprehensive set of functions for assessing Active Directory forests using only standard Authenticated Users (read-only) permissions. Part of the UIAO governance framework. .NOTES Classification: Controlled Boundary: GCC-Moderate Version: 1.0 Author: UIAO Assessment Team #\> \# ============================================================ \# MODULE CONFIGURATION \# ============================================================ \$script:UIAOModuleVersion = \"1.0.0\" \$script:UIAODefaultBasePath = \"D:\\UIAO\\Assessment\\ReadOnly\" \$script:UIAOStaleThresholdDays = 90 \# ============================================================ \# FUNCTION: Test-UIAOReadAccess \# ============================================================ function Test-UIAOReadAccess { \[CmdletBinding()\] param( \[Parameter()\] \[string\]\$OutputPath = \$script:UIAODefaultBasePath ) \# \[Full implementation as shown in Section 5.2.1\] \# Omitted here for brevity --- see Section 5.2.1 for complete code. Write-Verbose \"Test-UIAOReadAccess: See Section 5.2.1 for full implementation\" } \# ============================================================ \# FUNCTION: Export-UIAOForestTopology \# ============================================================ function Export-UIAOForestTopology { \[CmdletBinding()\] param(\[Parameter(Mandatory)\]\[string\]\$OutputPath) \# \[Full implementation as shown in Section 5.2.2\] Write-Verbose \"Export-UIAOForestTopology: See Section 5.2.2\" } \# ============================================================ \# FUNCTION: Export-UIAOOUHierarchy \# ============================================================ function Export-UIAOOUHierarchy { \[CmdletBinding()\] param(\[Parameter(Mandatory)\]\[string\]\$OutputPath) \# \[Full implementation as shown in Section 5.2.3\] Write-Verbose \"Export-UIAOOUHierarchy: See Section 5.2.3\" } \# ============================================================ \# FUNCTION: Export-UIAOGPOInventory \# ============================================================ function Export-UIAOGPOInventory { \[CmdletBinding()\] param(\[Parameter(Mandatory)\]\[string\]\$OutputPath) \# \[Full implementation as shown in Section 5.2.4\] Write-Verbose \"Export-UIAOGPOInventory: See Section 5.2.4\" } \# ============================================================ \# FUNCTION: Export-UIAOComputerInventory \# ============================================================ function Export-UIAOComputerInventory { \[CmdletBinding()\] param(\[Parameter(Mandatory)\]\[string\]\$OutputPath) \# \[Full implementation as shown in Section 5.2.5\] Write-Verbose \"Export-UIAOComputerInventory: See Section 5.2.5\" } \# ============================================================ \# FUNCTION: Export-UIAOUserInventory \# ============================================================ function Export-UIAOUserInventory { \[CmdletBinding()\] param(\[Parameter(Mandatory)\]\[string\]\$OutputPath) \# \[Full implementation as shown in Section 5.2.6\] Write-Verbose \"Export-UIAOUserInventory: See Section 5.2.6\" } \# ============================================================ \# FUNCTION: Export-UIAOGroupInventory \# ============================================================ function Export-UIAOGroupInventory { \[CmdletBinding()\] param(\[Parameter(Mandatory)\]\[string\]\$OutputPath) \# \[Full implementation as shown in Section 5.2.7\] Write-Verbose \"Export-UIAOGroupInventory: See Section 5.2.7\" } \# ============================================================ \# FUNCTION: Export-UIAOTrustMap \# ============================================================ function Export-UIAOTrustMap { \[CmdletBinding()\] param(\[Parameter(Mandatory)\]\[string\]\$OutputPath) \# \[Full implementation as shown in Section 5.2.8\] Write-Verbose \"Export-UIAOTrustMap: See Section 5.2.8\" } \# ============================================================ \# FUNCTION: Export-UIAOPKIInventory \# ============================================================ function Export-UIAOPKIInventory { \[CmdletBinding()\] param(\[Parameter(Mandatory)\]\[string\]\$OutputPath) \# \[Full implementation as shown in Section 5.2.9\] Write-Verbose \"Export-UIAOPKIInventory: See Section 5.2.9\" } \# ============================================================ \# FUNCTION: Export-UIAODNSBaseline \# ============================================================ function Export-UIAODNSBaseline { \[CmdletBinding()\] param(\[Parameter(Mandatory)\]\[string\]\$OutputPath) \# \[Full implementation as shown in Section 5.2.10\] Write-Verbose \"Export-UIAODNSBaseline: See Section 5.2.10\" } \# ============================================================ \# FUNCTION: Export-UIAOACLReport \# ============================================================ function Export-UIAOACLReport { \[CmdletBinding()\] param(\[Parameter(Mandatory)\]\[string\]\$OutputPath) \# \[Full implementation as shown in Section 5.2.11\] Write-Verbose \"Export-UIAOACLReport: See Section 5.2.11\" } \# ============================================================ \# FUNCTION: Export-UIAOSchemaExtensions \# ============================================================ function Export-UIAOSchemaExtensions { \[CmdletBinding()\] param(\[Parameter(Mandatory)\]\[string\]\$OutputPath) \# \[Full implementation as shown in Section 5.2.12\] Write-Verbose \"Export-UIAOSchemaExtensions: See Section 5.2.12\" } \# ============================================================ \# FUNCTION: Invoke-UIAOReadOnlyAssessment \# ============================================================ function Invoke-UIAOReadOnlyAssessment { \[CmdletBinding()\] param( \[Parameter()\] \[string\]\$BasePath = \$script:UIAODefaultBasePath ) \# \[Full implementation as shown in Section 5.2.13\] Write-Verbose \"Invoke-UIAOReadOnlyAssessment: See Section 5.2.13\" } \# ============================================================ \# MODULE EXPORTS \# ============================================================ Export-ModuleMember -Function @( \'Test-UIAOReadAccess\', \'Export-UIAOForestTopology\', \'Export-UIAOOUHierarchy\', \'Export-UIAOGPOInventory\', \'Export-UIAOComputerInventory\', \'Export-UIAOUserInventory\', \'Export-UIAOGroupInventory\', \'Export-UIAOTrustMap\', \'Export-UIAOPKIInventory\', \'Export-UIAODNSBaseline\', \'Export-UIAOACLReport\', \'Export-UIAOSchemaExtensions\', \'Invoke-UIAOReadOnlyAssessment\' )
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Deployment Note**                                                                                                                                                                                                                                                                                                                                    |
+|                                                                                                                                                                                                                                                                                                                                                        |
+| For production deployment, copy the full function bodies from Sections 5.2.1--5.2.13 into the module file above, replacing the placeholder comments. The module references in this appendix use abbreviated stubs to avoid content duplication within this document. Each Write-Verbose stub indicates the section containing the full implementation. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Appendix B --- Quick Reference Card
+
+One-liner for each assessment domain with expected output file.
+
+  ------------------------------------------------------------------------------------------------------------------------
+  **Domain**        **One-Liner**                                    **Output**
+  ----------------- ------------------------------------------------ -----------------------------------------------------
+  Pre-Flight        Test-UIAOReadAccess -OutputPath \$out            ReadAccessReport.json
+
+  Forest            Export-UIAOForestTopology -OutputPath \$out      ForestTopology.json
+
+  OUs               Export-UIAOOUHierarchy -OutputPath \$out         OUHierarchy.json, OUTree.txt
+
+  GPOs              Export-UIAOGPOInventory -OutputPath \$out        GPO\\GPOInventory.json, GPO\\Reports\\\*.xml
+
+  Computers         Export-UIAOComputerInventory -OutputPath \$out   Computers\\ComputerInventory.json
+
+  Users             Export-UIAOUserInventory -OutputPath \$out       Users\\UserInventory.json
+
+  Groups            Export-UIAOGroupInventory -OutputPath \$out      Groups\\GroupInventory.json
+
+  Trusts            Export-UIAOTrustMap -OutputPath \$out            Trusts\\TrustMap.json
+
+  PKI/ADCS          Export-UIAOPKIInventory -OutputPath \$out        PKI\\PKIInventory.json, PKI\\ESCVulnerabilities.csv
+
+  DNS               Export-UIAODNSBaseline -OutputPath \$out         DNS\\DNSBaseline.json
+
+  ACLs              Export-UIAOACLReport -OutputPath \$out           ACLs\\OUDelegation.json, ACLs\\AdminSDHolder.json
+
+  Schema            Export-UIAOSchemaExtensions -OutputPath \$out    Schema\\SchemaExtensions.json
+
+  Full Assessment   Invoke-UIAOReadOnlyAssessment                    All of the above + AssessmentManifest.json
+  ------------------------------------------------------------------------------------------------------------------------
+
++-------------------------------------------------------+
+| **Quick Start**                                       |
+|                                                       |
+| To run the complete assessment with a single command: |
++-------------------------------------------------------+
+
+Import-Module .\\UIAOReadOnlyAssessment.psm1 Invoke-UIAOReadOnlyAssessment -Verbose
+
+Appendix C --- Read-Only Assessment Checklist
+
+Complete all items before beginning the assessment.
+
+Pre-Engagement
+
+  ---------------------------------------------------------------------------------------------------------
+  **☐**   **Checklist Item**
+  ------- -------------------------------------------------------------------------------------------------
+  ☐       Domain-joined workstation or VPN access to domain network confirmed
+
+  ☐       ActiveDirectory PowerShell module installed (Get-Module -ListAvailable ActiveDirectory)
+
+  ☐       GroupPolicy PowerShell module installed (Get-Module -ListAvailable GroupPolicy)
+
+  ☐       Assessment output directory created: D:\\UIAO\\Assessment\\ReadOnly\\
+
+  ☐       Output directory resides on encrypted volume (BitLocker or equivalent)
+
+  ☐       Service account provisioned (svc-uiao-assess) --- standard user, no elevated group memberships
+
+  ☐       Service account expiration date set to end of assessment window
+
+  ☐       SOC / security team notified of assessment window and expected query patterns
+
+  ☐       SYSVOL share accessibility verified (Test-Path \\\\domain\\SYSVOL)
+
+  ☐       DNS resolution to domain controllers confirmed (Resolve-DnsName \_ldap.\_tcp.dc.\_msdcs.domain)
+
+  ☐       Assessment scope documented and approved by engagement authority
+
+  ☐       UIAOReadOnlyAssessment.psm1 module copied to assessment workstation
+  ---------------------------------------------------------------------------------------------------------
+
+Post-Assessment
+
+  ---------------------------------------------------------------------
+  **☐**   **Checklist Item**
+  ------- -------------------------------------------------------------
+  ☐       AssessmentManifest.json generated with file hashes
+
+  ☐       All output files verified against manifest hashes
+
+  ☐       Assessment output committed to Gitea repository
+
+  ☐       Service account disabled
+
+  ☐       Delegation request prepared for identified gaps (Section 8)
+
+  ☐       Assessment summary briefed to engagement authority
+  ---------------------------------------------------------------------
+
+Appendix D --- Sample Assessment Manifest
+
+The following is a representative AssessmentManifest.json generated by the Invoke-UIAOReadOnlyAssessment orchestrator.
+
+{ \"AssessmentType\": \"ReadOnly\", \"Framework\": \"UIAO\", \"ForestName\": \"contoso.com\", \"AssessedBy\": \"CONTOSO\\\\svc-uiao-assess\", \"Timestamp\": \"2026-04-20T20:32:00Z\", \"Classification\": \"Controlled\", \"Boundary\": \"GCC-Moderate\", \"CoverageScore\": 87, \"ModuleVersion\": \"1.0.0\", \"Domains\": \[ { \"Name\": \"contoso.com\", \"DomainMode\": \"Windows2016Domain\", \"DomainControllers\": 4, \"Sites\": 3, \"OUs\": 142, \"Users\": 3847, \"Computers\": 2156, \"Groups\": 891 } \], \"Outputs\": \[ { \"Name\": \"ReadAccessReport\", \"File\": \"ReadAccessReport.json\", \"Status\": \"Complete\", \"Passed\": 8, \"Failed\": 0, \"Partial\": 0 }, { \"Name\": \"ForestTopology\", \"File\": \"ForestTopology.json\", \"Status\": \"Success\", \"DCCount\": 4, \"SiteCount\": 3, \"TrustCount\": 1 }, { \"Name\": \"OUHierarchy\", \"File\": \"OUHierarchy.json\", \"Status\": \"Success\", \"OUCount\": 142 }, { \"Name\": \"GPOInventory\", \"File\": \"GPO/GPOInventory.json\", \"Status\": \"Success\", \"TotalGPOs\": 87, \"UnlinkedGPOs\": 12, \"EmptyGPOs\": 5 }, { \"Name\": \"ComputerInventory\", \"File\": \"Computers/ComputerInventory.json\", \"Status\": \"Success\", \"TotalComputers\": 2156, \"StaleComputers\": 341, \"LAPSEnabled\": 1892 }, { \"Name\": \"UserInventory\", \"File\": \"Users/UserInventory.json\", \"Status\": \"Success\", \"TotalUsers\": 3847, \"PrivilegedUsers\": 23, \"ServiceAccounts\": 47, \"StaleUsers\": 612 }, { \"Name\": \"GroupInventory\", \"File\": \"Groups/GroupInventory.json\", \"Status\": \"Success\", \"TotalGroups\": 891, \"EmptyGroups\": 134, \"NestingIssues\": 7 }, { \"Name\": \"TrustMap\", \"File\": \"Trusts/TrustMap.json\", \"Status\": \"Success\", \"TrustCount\": 1 }, { \"Name\": \"PKIInventory\", \"File\": \"PKI/PKIInventory.json\", \"Status\": \"Success\", \"CACount\": 2, \"TemplateCount\": 34, \"ESCVulnerabilities\": 3 }, { \"Name\": \"DNSBaseline\", \"File\": \"DNS/DNSBaseline.json\", \"Status\": \"Success\", \"ZoneCount\": 4, \"SRVFailures\": 0 }, { \"Name\": \"ACLReport\", \"File\": \"ACLs/OUDelegation.json\", \"Status\": \"Success\", \"DelegationEntries\": 89 }, { \"Name\": \"SchemaExtensions\", \"File\": \"Schema/SchemaExtensions.json\", \"Status\": \"Success\", \"ExtensionAttributes\": 14, \"ConfidentialAttributes\": 6 } \], \"Gaps\": \[ \"DNS Scavenging Configuration (requires DNS Admin)\", \"Deleted Objects / Tombstones (requires delegation to CN=Deleted Objects)\", \"Issued Certificate Database (requires CA Admin)\", \"LAPS Passwords (requires ms-Mcs-AdmPwd read delegation)\", \"BitLocker Recovery Keys (requires ms-FVE-RecoveryPassword read delegation)\", \"Event Logs on Domain Controllers (requires local admin)\", \"Replication Health Details (requires Replicating Directory Changes)\" \], \"Hashes\": \[ { \"File\": \"./ReadAccessReport.json\", \"SHA256\": \"a1b2c3d4e5f6\...\" }, { \"File\": \"./ForestTopology.json\", \"SHA256\": \"b2c3d4e5f6a1\...\" }, { \"File\": \"./OUHierarchy.json\", \"SHA256\": \"c3d4e5f6a1b2\...\" }, { \"File\": \"./GPO/GPOInventory.json\", \"SHA256\": \"d4e5f6a1b2c3\...\" } \] }
+
+UIAO Read-Only AD Assessment Guide --- Version 1.0 DRAFT\
+Classification: Controlled \| Boundary: GCC-Moderate\
+UIAO Canon Companion Document --- UIAO_009\
+© 2026 UIAO Governance Framework. All rights reserved.

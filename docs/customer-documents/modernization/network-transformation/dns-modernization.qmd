@@ -1,0 +1,1129 @@
+---
+title: "UIAO DNS Modernization Guide"
+subtitle: "AD-Integrated DNS to Azure hybrid resolution"
+doc-type: technical-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO DNS Modernization Guide — AD-Integrated DNS to Azure Hybrid Resolution.docx"
+repo-path: docs/customer-documents/modernization/network-transformation/dns-modernization.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+**CONTROLLED --- GCC-MODERATE BOUNDARY --- UIAO CANON COMPANION DOCUMENT**
+
+UIAO DNS Modernization Guide
+
+**AD-Integrated DNS to Azure Hybrid Resolution**
+
+UIAO Canon --- Companion Document
+
+Classification: Controlled \| Boundary: GCC-Moderate
+
+Version 1.0 \| April 20, 2026
+
+  ---------------------------------------------------
+  **Property**         **Value**
+  -------------------- ------------------------------
+  **Document ID**      UIAO-DNS-MOD-001
+
+  **Classification**   Controlled
+
+  **Boundary**         GCC-Moderate
+
+  **Canon Series**     Infrastructure Modernization
+
+  **Version**          1.0
+
+  **Effective Date**   April 20, 2026
+
+  **Review Cycle**     Quarterly
+
+  **Owner**            UIAO Platform Engineering
+  ---------------------------------------------------
+
+Table of Contents
+
+1.  Purpose and Scope
+
+2.  AD-Integrated DNS Landscape Decomposition
+
+3.  Target State Architecture
+
+4.  DNS Assessment Pipeline
+
+5.  Zone Migration Strategy
+
+6.  Azure DNS Private Resolver Deployment
+
+7.  SRV Record Governance
+
+8.  DNSSEC Modernization
+
+9.  Split-Brain and Hybrid Resolution Patterns
+
+10. Private Endpoint DNS Integration
+
+11. DHCP and Dynamic DNS Modernization
+
+12. Monitoring and Drift Detection
+
+13. Migration Execution Playbook
+
+14. Troubleshooting Reference
+
+15. Appendix A --- DNS Record Type Migration Reference
+
+16. Appendix B --- Azure DNS Private Resolver Cost Calculator
+
+17. Appendix C --- PowerShell Module: UIAODNSAssessment
+
+18. Appendix D --- Companion Document Cross-Reference
+
+1\. Purpose and Scope
+
+1.1 Purpose
+
+This guide provides the authoritative, deterministic methodology for modernizing Domain Name System (DNS) infrastructure from Active Directory-Integrated DNS to a hybrid resolution architecture leveraging Azure DNS Private Zones and Azure DNS Private Resolver. It is a companion document within the UIAO Canon and is designed for platform engineers, identity architects, and infrastructure operators executing DNS modernization within GCC-Moderate boundaries.
+
+1.2 Scope
+
+This document covers the complete lifecycle of DNS modernization across the following domains:
+
+- **Forward Lookup Zones** --- migration from AD-integrated and file-backed zones to Azure DNS Private Zones and Public Zones
+
+- **Reverse Lookup Zones** --- PTR record management and delegation in hybrid environments
+
+- **Conditional Forwarders** --- replacement with Azure DNS Forwarding Rulesets
+
+- **SRV Records** --- governance of Active Directory locator records during and after migration
+
+- **DNSSEC** --- trust anchor management, key rollover, and security trade-offs during transition
+
+- **Split-Brain DNS** --- patterns for same-namespace resolution across internal and external boundaries
+
+- **Hybrid Resolution Architecture** --- bidirectional DNS resolution between on-premises and Azure via DNS Private Resolver
+
+- **Private Endpoint DNS** --- privatelink zone management for Azure PaaS services
+
+- **Dynamic DNS and DHCP** --- modernization of dynamic update and address management
+
+1.3 Companion Document Cross-References
+
+  ---------------------------------------------------------------------------------------------------------------------------------
+  **Document**                   **Relationship**                                **Key Dependency**
+  ------------------------------ ----------------------------------------------- --------------------------------------------------
+  AD Interaction Guide           Upstream --- provides DNS Assessment output     Invoke-UIAOADAssessment DNS module output
+
+  Identity Modernization Guide   Parallel --- DNS supports identity resolution   SRV record availability for Entra ID hybrid join
+
+  PKI Modernization Guide        Parallel --- CRL/OCSP DNS records               Certificate revocation endpoint resolution
+
+  Platform Server Build Guide    Downstream --- servers consume DNS              VNet DNS settings, resolver endpoint IPs
+  ---------------------------------------------------------------------------------------------------------------------------------
+
+1.4 Classification and Handling
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **❗ Important**                                                                                                                                                                                                                                                                    |
+|                                                                                                                                                                                                                                                                                     |
+| This document is classified **Controlled** (not FOUO). It may be shared within the organization and with authorized partners operating within the GCC-Moderate boundary. Do not distribute outside the boundary without written authorization from the UIAO Document Control Board. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+2\. AD-Integrated DNS Landscape Decomposition
+
+Before migration can proceed, the existing AD DNS landscape must be decomposed into discrete governance facets. Each facet has distinct migration characteristics, risk profiles, and target-state equivalents.
+
+2.1 AD-Integrated Zones
+
+AD-Integrated Zones are primary DNS zones stored within Active Directory partitions. Zone data replicates alongside AD replication, providing fault tolerance without requiring zone transfers. Two primary partitions exist:
+
+- **ForestDnsZones** --- replicates to all DNS servers in the forest
+
+- **DomainDnsZones** --- replicates to all DNS servers in the domain
+
+Replication scope governs which domain controllers hold zone data. Custom application partitions may also host zone data for granular replication control.
+
+2.2 Standard Primary/Secondary Zones
+
+File-backed zones stored in %systemroot%\\system32\\dns on the primary server. Secondary zones receive read-only copies via zone transfers (AXFR for full transfer, IXFR for incremental). These zones are not tied to AD replication and can be migrated independently.
+
+2.3 Stub Zones
+
+Stub zones contain only the SOA record, NS records, and glue A records for delegated subdomains. They function as delegation pointers, keeping the parent zone aware of authoritative servers for child zones without maintaining full zone copies.
+
+2.4 Conditional Forwarders
+
+Conditional forwarders direct queries for specific DNS namespaces to designated DNS servers. Common use cases include cross-forest resolution (e.g., queries for partner.local forwarded to partner domain controllers) and external service resolution.
+
+2.5 GlobalNames Zone
+
+The GlobalNames Zone (GNZ) provides single-label name resolution as a WINS replacement. It is an AD-integrated zone named GlobalNames containing CNAME records that map single-label names to fully qualified domain names.
+
+2.6 SRV Records
+
+Active Directory relies on SRV (Service Locator) records for domain controller discovery. These records are dynamically registered by the Netlogon service and are critical for domain join, authentication, Group Policy processing, and replication. Key SRV record families include:
+
+- \_ldap.\_tcp.dc.\_msdcs.{domain} --- LDAP service on domain controllers
+
+- \_kerberos.\_tcp.dc.\_msdcs.{domain} --- Kerberos authentication service
+
+- \_gc.\_tcp.{forest} --- Global Catalog service
+
+- \_ldap.\_tcp.{site}.\_sites.dc.\_msdcs.{domain} --- Site-specific DC locator
+
+- \_kpasswd.\_tcp.{domain} --- Kerberos password change service
+
+2.7 Dynamic DNS Updates
+
+AD-Integrated zones support secure dynamic updates, where only authenticated machines can register or modify records. DHCP servers can perform dynamic updates on behalf of clients. Scavenging removes stale records based on no-refresh and refresh intervals.
+
+2.8 Reverse Lookup Zones
+
+Reverse lookup zones map IP addresses to hostnames via PTR records. In enterprise environments, zones are typically segmented by subnet (e.g., 10.in-addr.arpa, 168.192.in-addr.arpa). ISP delegation may be required for public IP reverse DNS.
+
+2.9 DNSSEC
+
+DNS Security Extensions (DNSSEC) provide authentication of DNS responses through digital signatures. AD-integrated DNSSEC uses a Key Master domain controller role for key generation and management. Trust anchors are distributed via AD, and key rollover follows defined schedules for Zone Signing Keys (ZSK) and Key Signing Keys (KSK).
+
+2.10 Governance Facet Migration Matrix
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **AD DNS Component**            **Azure/Hybrid Equivalent**                                         **Migration Approach**                                                  **Risk Level**
+  ------------------------------- ------------------------------------------------------------------- ----------------------------------------------------------------------- ----------------
+  AD-Integrated Zone (Internal)   Azure DNS Private Zone                                              Export records, create Private Zone, import, link to VNets              **Medium**
+
+  AD-Integrated Zone (External)   Azure DNS Public Zone                                               Export records, create Public Zone, import, update NS delegation        **High**
+
+  Standard Primary/Secondary      Azure DNS Public/Private Zone                                       Export zone file, transform records, import via Az module               **Low**
+
+  Stub Zones                      DNS Forwarding Ruleset Rule                                         Create forwarding rule for target namespace                             **Low**
+
+  Conditional Forwarders          DNS Forwarding Ruleset Rule                                         Create forwarding rule with target DNS IPs                              **Low**
+
+  GlobalNames Zone                Azure DNS Private Zone + VNet Link                                  Create Private Zone with CNAME records, link to all VNets               **Medium**
+
+  SRV Records (AD Locator)        Remain on AD DNS during hybrid period                               No migration --- monitored, forwarded via DNS Private Resolver          **High**
+
+  Dynamic DNS (Secure Updates)    Azure DNS Auto-Registration / Manual                                Enable auto-registration on Private Zones for Azure VMs                 **Medium**
+
+  Reverse Lookup Zones            Azure DNS Private Zone (\*.in-addr.arpa)                            Create Private Zone per subnet, import PTR records                      **Medium**
+
+  DNSSEC                          Azure DNS Public Zones (limited); Not available for Private Zones   Maintain on-prem for signed zones; accept trade-off for Private Zones   **High**
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3\. Target State Architecture
+
+3.1 Azure DNS Public Zones
+
+Azure DNS Public Zones host internet-facing DNS records. They are globally distributed across Azure\'s anycast network, providing high availability and low-latency resolution for external clients. Public Zones replace externally-facing AD DNS zones and standard primary zones serving public namespaces.
+
+3.2 Azure DNS Private Zones
+
+Azure DNS Private Zones provide name resolution within Azure Virtual Networks without exposing records to the public internet. Private Zones support:
+
+- **VNet Linking** --- associating the zone with one or more VNets for resolution
+
+- **Auto-Registration** --- automatic DNS record creation/deletion for VMs in linked VNets
+
+- **Cross-VNet Resolution** --- resources in peered VNets can resolve records from linked Private Zones
+
+3.3 Azure DNS Private Resolver
+
+The Azure DNS Private Resolver is the critical hybrid component enabling bidirectional DNS resolution between on-premises networks and Azure Virtual Networks. It consists of:
+
+- **Inbound Endpoints** --- receive DNS queries from on-premises networks (via ExpressRoute or VPN) and resolve them against Azure DNS Private Zones. On-premises DNS servers use these endpoints as conditional forwarders.
+
+- **Outbound Endpoints** --- forward DNS queries from Azure to on-premises DNS servers. Used for resolving on-premises namespaces from within Azure.
+
+- **DNS Forwarding Rulesets** --- define granular forwarding rules per namespace, specifying which queries are forwarded to which target DNS servers. Rulesets are linked to VNets for enforcement.
+
+3.4 Architecture Overview
+
++:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:+
+| **\[Placeholder --- Diagram 1: Hybrid DNS Resolution Architecture --- 900x600px\]**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Shows on-premises AD DNS servers connected via ExpressRoute/VPN to Azure. Azure DNS Private Resolver with inbound endpoints (receiving on-prem queries) and outbound endpoints (forwarding to on-prem). Azure DNS Private Zones linked to hub and spoke VNets. Client resolution flow depicted with numbered arrows: (1) On-prem client queries on-prem DNS, (2) on-prem DNS conditionally forwards to inbound endpoint, (3) resolver queries Azure DNS Private Zone, (4) response returned. Reverse flow for Azure-to-on-prem resolution via outbound endpoint and forwarding rulesets. |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+3.5 Split-Brain DNS
+
+Split-brain DNS enables the same namespace (e.g., contoso.com) to resolve differently depending on the query origin. Internal clients resolving via Azure DNS Private Zones receive private IP addresses, while external clients resolving via Azure DNS Public Zones (or external DNS) receive public IP addresses. This is achieved by maintaining separate zone instances --- a Private Zone and a Public Zone --- with different record sets for the same domain name.
+
+3.6 VNet DNS Settings
+
+Each Azure VNet can be configured with custom DNS server settings. During hybrid operation, VNets should be configured to use:
+
+- The DNS Private Resolver inbound endpoint IP as the primary DNS server
+
+- Azure-provided DNS (168.63.129.16) as the fallback for Azure service resolution
+
+Post-migration, VNets transition to Azure-provided DNS with Private Zone links handling internal resolution.
+
+3.7 Hub-Spoke DNS Topology
+
+In hub-spoke network architectures, the DNS Private Resolver is deployed in the hub VNet. Spoke VNets link to DNS Forwarding Rulesets for outbound resolution and use VNet peering to reach the resolver. Private DNS Zones are linked to both hub and spoke VNets. This centralized model provides:
+
+- Single point of management for forwarding rules
+
+- Consistent resolution behavior across all spokes
+
+- Reduced resolver instance count and cost
+
+- Simplified monitoring and logging
+
+4\. DNS Assessment Pipeline
+
+The DNS assessment pipeline provides automated discovery and validation of the existing AD DNS infrastructure. All functions are part of the UIAODNSAssessment PowerShell module and produce JSON output committed to the Gitea assessments branch.
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Note**                                                                                                                                                                              |
+|                                                                                                                                                                                       |
+| This pipeline cross-references the Invoke-UIAOADAssessment DNS module from the AD Interaction Guide. The functions below extend that module with DNS-specific deep-dive capabilities. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+4.1 Get-UIAODNSZoneInventory
+
+Discovers all DNS zones across all DNS servers in the domain, capturing zone type, replication scope, dynamic update configuration, and record counts.
+
+function Get-UIAODNSZoneInventory { \[CmdletBinding()\] param( \[Parameter(Mandatory = \$false)\] \[string\[\]\]\$DnsServerName = ( Get-DnsServer -ComputerName ( Get-ADDomainController -Filter \* ).HostName \| Select-Object -ExpandProperty HostName ), \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = \".\\assessments\\dns\" ) \$results = @() foreach (\$server in \$DnsServerName) { try { \$zones = Get-DnsServerZone -ComputerName \$server -ErrorAction Stop foreach (\$zone in \$zones) { \$recordCount = ( Get-DnsServerResourceRecord -ZoneName \$zone.ZoneName \` -ComputerName \$server -ErrorAction SilentlyContinue ).Count \$results += \[PSCustomObject\]@{ ServerName = \$server ZoneName = \$zone.ZoneName ZoneType = \$zone.ZoneType IsADIntegrated = \$zone.IsDsIntegrated ReplicationScope = \$zone.DirectoryPartitionName DynamicUpdate = \$zone.DynamicUpdate IsReverseLookup = \$zone.IsReverseLookupZone IsSigned = \$zone.IsSigned RecordCount = \$recordCount ZoneFile = \$zone.ZoneFile NotifyServers = (\$zone.NotifyServers -join \"; \") SecondaryServers = (\$zone.SecondaryServers -join \"; \") AssessmentTimestamp = (Get-Date -Format \"o\") } } } catch { Write-Warning \"Failed to query DNS server \$server : \$\_\" } } if (-not (Test-Path \$OutputPath)) { New-Item -ItemType Directory -Path \$OutputPath -Force \| Out-Null } \$outputFile = Join-Path \$OutputPath \"dns-zone-inventory.json\" \$results \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$outputFile -Encoding UTF8 Write-Host \"Zone inventory exported: \$outputFile (\$(\$results.Count) zones)\" return \$results }
+
+4.2 Get-UIAODNSRecordExport
+
+Performs a full record dump per zone, exporting all record types (A, AAAA, CNAME, MX, SRV, TXT, PTR, NS, SOA) with full record data.
+
+function Get-UIAODNSRecordExport { \[CmdletBinding()\] param( \[Parameter(Mandatory = \$true)\] \[string\]\$ZoneName, \[Parameter(Mandatory = \$false)\] \[string\]\$DnsServerName = (Get-ADDomainController -Discover).HostName, \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = \".\\assessments\\dns\\records\" ) \$records = Get-DnsServerResourceRecord -ZoneName \$ZoneName \` -ComputerName \$DnsServerName -ErrorAction Stop \$export = foreach (\$record in \$records) { \$recordData = switch (\$record.RecordType) { \'A\' { \$record.RecordData.IPv4Address.IPAddressToString } \'AAAA\' { \$record.RecordData.IPv6Address.IPAddressToString } \'CNAME\' { \$record.RecordData.HostNameAlias } \'MX\' { \"\$(\$record.RecordData.Preference) \$(\$record.RecordData.MailExchange)\" } \'SRV\' { \"\$(\$record.RecordData.Priority) \$(\$record.RecordData.Weight) \$(\$record.RecordData.Port) \$(\$record.RecordData.DomainName)\" } \'TXT\' { \$record.RecordData.DescriptiveText -join \"; \" } \'PTR\' { \$record.RecordData.PtrDomainName } \'NS\' { \$record.RecordData.NameServer } \'SOA\' { \"\$(\$record.RecordData.PrimaryServer) \$(\$record.RecordData.ResponsiblePerson)\" } default { \$record.RecordData \| ConvertTo-Json -Compress } } \[PSCustomObject\]@{ HostName = \$record.HostName RecordType = \$record.RecordType TTL = \$record.TimeToLive.ToString() Timestamp = \$record.Timestamp RecordData = \$recordData IsStale = if (\$record.Timestamp -and \$record.Timestamp -lt (Get-Date).AddDays(-14)) { \$true } else { \$false } } } if (-not (Test-Path \$OutputPath)) { New-Item -ItemType Directory -Path \$OutputPath -Force \| Out-Null } \$safeZoneName = \$ZoneName -replace \'\[\\\\/:\*?\"\< data-id=\"274\"\>\|\]\', \'\_\' \$outputFile = Join-Path \$OutputPath \"\$safeZoneName-records.json\" \$export \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$outputFile -Encoding UTF8 Write-Host \"Record export for \'\$ZoneName\': \$outputFile (\$(\$export.Count) records)\" return \$export }
+
+4.3 Get-UIAODNSHealthCheck
+
+Evaluates zone health including scavenging status, stale record counts, duplicate records, and orphaned PTR records.
+
+function Get-UIAODNSHealthCheck { \[CmdletBinding()\] param( \[Parameter(Mandatory = \$false)\] \[string\]\$DnsServerName = (Get-ADDomainController -Discover).HostName, \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = \".\\assessments\\dns\" ) \$zones = Get-DnsServerZone -ComputerName \$DnsServerName \| Where-Object { -not \$\_.IsAutoCreated -and \$\_.ZoneName -ne \'TrustAnchors\' } \$healthReport = foreach (\$zone in \$zones) { \$records = Get-DnsServerResourceRecord -ZoneName \$zone.ZoneName \` -ComputerName \$DnsServerName -ErrorAction SilentlyContinue \# Scavenging status \$scavenging = Get-DnsServerScavenging -ComputerName \$DnsServerName \# Stale records (timestamp older than 14 days) \$staleRecords = \$records \| Where-Object { \$\_.Timestamp -and \$\_.Timestamp -lt (Get-Date).AddDays(-14) } \# Duplicate A records (same hostname, same IP) \$aRecords = \$records \| Where-Object { \$\_.RecordType -eq \'A\' } \$duplicates = \$aRecords \| Group-Object HostName \| Where-Object { \$\_.Count -gt 1 } \# Orphaned PTR records (PTR with no matching A record) \$orphanedPTR = @() if (\$zone.IsReverseLookupZone) { foreach (\$ptr in (\$records \| Where-Object { \$\_.RecordType -eq \'PTR\' })) { \$fqdn = \$ptr.RecordData.PtrDomainName \$resolved = Resolve-DnsName -Name \$fqdn -ErrorAction SilentlyContinue if (-not \$resolved) { \$orphanedPTR += \$ptr.HostName } } } \[PSCustomObject\]@{ ZoneName = \$zone.ZoneName ZoneType = \$zone.ZoneType TotalRecords = \$records.Count StaleRecordCount = \$staleRecords.Count DuplicateHostnames = \$duplicates.Count OrphanedPTRCount = \$orphanedPTR.Count ScavengingEnabled = \$scavenging.ScavengingState ScavengingInterval = \$scavenging.ScavengingInterval.ToString() NoRefreshInterval = \$zone.NoRefreshInterval.ToString() RefreshInterval = \$zone.RefreshInterval.ToString() HealthStatus = if (\$staleRecords.Count -gt 50 -or \$orphanedPTR.Count -gt 20) { \"WARNING\" } else { \"HEALTHY\" } } } \$outputFile = Join-Path \$OutputPath \"dns-health-check.json\" \$healthReport \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$outputFile -Encoding UTF8 Write-Host \"Health check exported: \$outputFile\" return \$healthReport }
+
+4.4 Get-UIAODNSSRVValidation
+
+Validates that all critical Active Directory SRV records resolve correctly from each DNS server.
+
+function Get-UIAODNSSRVValidation { \[CmdletBinding()\] param( \[Parameter(Mandatory = \$false)\] \[string\]\$DomainName = (Get-ADDomain).DNSRoot, \[Parameter(Mandatory = \$false)\] \[string\]\$ForestName = (Get-ADForest).Name, \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = \".\\assessments\\dns\" ) \$srvRecords = @( \"\_ldap.\_tcp.dc.\_msdcs.\$DomainName\" \"\_kerberos.\_tcp.dc.\_msdcs.\$DomainName\" \"\_gc.\_tcp.\$ForestName\" \"\_kpasswd.\_tcp.\$DomainName\" \"\_ldap.\_tcp.\$DomainName\" \"\_kerberos.\_tcp.\$DomainName\" ) \# Add site-specific SRV records \$sites = Get-ADReplicationSite -Filter \* foreach (\$site in \$sites) { \$srvRecords += \"\_ldap.\_tcp.\$(\$site.Name).\_sites.dc.\_msdcs.\$DomainName\" \$srvRecords += \"\_kerberos.\_tcp.\$(\$site.Name).\_sites.dc.\_msdcs.\$DomainName\" } \$results = foreach (\$srv in \$srvRecords) { try { \$resolved = Resolve-DnsName -Name \$srv -Type SRV -ErrorAction Stop \[PSCustomObject\]@{ SRVRecord = \$srv Status = \"RESOLVED\" TargetCount = \$resolved.Count Targets = (\$resolved \| ForEach-Object { \"\$(\$\_.NameTarget):\$(\$\_.Port)\" }) -join \"; \" TTL = (\$resolved \| Select-Object -First 1).TTL ErrorMessage = \$null } } catch { \[PSCustomObject\]@{ SRVRecord = \$srv Status = \"FAILED\" TargetCount = 0 Targets = \$null TTL = \$null ErrorMessage = \$\_.Exception.Message } } } \$outputFile = Join-Path \$OutputPath \"dns-srv-validation.json\" \$results \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$outputFile -Encoding UTF8 \$failedCount = (\$results \| Where-Object { \$\_.Status -eq \'FAILED\' }).Count if (\$failedCount -gt 0) { Write-Warning \"\$failedCount SRV record(s) failed validation!\" } Write-Host \"SRV validation exported: \$outputFile (\$(\$results.Count) records tested)\" return \$results }
+
+4.5 Get-UIAODNSForwarderAudit
+
+Audits all conditional forwarder configurations and tests reachability of target DNS servers.
+
+function Get-UIAODNSForwarderAudit { \[CmdletBinding()\] param( \[Parameter(Mandatory = \$false)\] \[string\]\$DnsServerName = (Get-ADDomainController -Discover).HostName, \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = \".\\assessments\\dns\" ) \$forwarders = Get-DnsServerZone -ComputerName \$DnsServerName \| Where-Object { \$\_.ZoneType -eq \'Forwarder\' } \$serverForwarders = (Get-DnsServerForwarder -ComputerName \$DnsServerName).IPAddress \$results = @() \# Conditional forwarders foreach (\$fwd in \$forwarders) { foreach (\$ip in \$fwd.MasterServers) { \$reachable = Test-Connection -ComputerName \$ip.IPAddressToString \` -Count 1 -Quiet -ErrorAction SilentlyContinue \$dnsReachable = \$false try { \$testResolve = Resolve-DnsName -Name \$fwd.ZoneName \` -Server \$ip.IPAddressToString -ErrorAction Stop \$dnsReachable = \$true } catch { } \$results += \[PSCustomObject\]@{ ForwarderType = \"Conditional\" Namespace = \$fwd.ZoneName TargetIP = \$ip.IPAddressToString ICMPReachable = \$reachable DNSReachable = \$dnsReachable IsADIntegrated = \$fwd.IsDsIntegrated ReplicationScope = \$fwd.DirectoryPartitionName } } } \# Server-level forwarders foreach (\$ip in \$serverForwarders) { \$reachable = Test-Connection -ComputerName \$ip.IPAddressToString \` -Count 1 -Quiet -ErrorAction SilentlyContinue \$results += \[PSCustomObject\]@{ ForwarderType = \"ServerLevel\" Namespace = \"\*\" TargetIP = \$ip.IPAddressToString ICMPReachable = \$reachable DNSReachable = \$null IsADIntegrated = \$false ReplicationScope = \"N/A\" } } \$outputFile = Join-Path \$OutputPath \"dns-forwarder-audit.json\" \$results \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$outputFile -Encoding UTF8 Write-Host \"Forwarder audit exported: \$outputFile (\$(\$results.Count) entries)\" return \$results }
+
+4.6 Get-UIAODNSSECStatus
+
+Assesses DNSSEC signing status, trust anchor inventory, and signing algorithm review across all zones.
+
+function Get-UIAODNSSECStatus { \[CmdletBinding()\] param( \[Parameter(Mandatory = \$false)\] \[string\]\$DnsServerName = (Get-ADDomainController -Discover).HostName, \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = \".\\assessments\\dns\" ) \$zones = Get-DnsServerZone -ComputerName \$DnsServerName \| Where-Object { -not \$\_.IsAutoCreated } \$results = foreach (\$zone in \$zones) { \$signingInfo = \$null \$keyInfo = @() if (\$zone.IsSigned) { try { \$signingInfo = Get-DnsServerDnssecZoneSetting \` -ZoneName \$zone.ZoneName -ComputerName \$DnsServerName \$keyInfo = Get-DnsServerSigningKey \` -ZoneName \$zone.ZoneName -ComputerName \$DnsServerName } catch { Write-Warning \"Could not retrieve DNSSEC info for \$(\$zone.ZoneName): \$\_\" } } \[PSCustomObject\]@{ ZoneName = \$zone.ZoneName IsSigned = \$zone.IsSigned DenialOfExistence = if (\$signingInfo) { \$signingInfo.DenialOfExistence } else { \"N/A\" } IsKeyMasterServer = if (\$signingInfo) { \$signingInfo.IsKeyMasterServer } else { \$false } KeyMasterServer = if (\$signingInfo) { \$signingInfo.KeyMasterServer } else { \"N/A\" } SigningKeyCount = \$keyInfo.Count SigningKeys = (\$keyInfo \| ForEach-Object { \[PSCustomObject\]@{ KeyType = \$\_.KeyType CryptoAlgorithm = \$\_.CryptoAlgorithm KeyLength = \$\_.KeyLength ActiveDate = \$\_.ActiveDate RolloverPeriod = \$\_.RolloverPeriod.ToString() NextRolloverAction = \$\_.NextRolloverAction } }) } } \# Trust Anchors \$trustAnchors = @() try { \$taZone = Get-DnsServerZone -Name \"TrustAnchors\" \` -ComputerName \$DnsServerName -ErrorAction Stop \$taRecords = Get-DnsServerResourceRecord -ZoneName \"TrustAnchors\" \` -ComputerName \$DnsServerName -ErrorAction SilentlyContinue \$trustAnchors = \$taRecords \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.HostName RecordType = \$\_.RecordType Data = \$\_.RecordData \| ConvertTo-Json -Compress } } } catch { Write-Warning \"No TrustAnchors zone found.\" } \$report = \[PSCustomObject\]@{ AssessmentTimestamp = (Get-Date -Format \"o\") Server = \$DnsServerName Zones = \$results TrustAnchors = \$trustAnchors } \$outputFile = Join-Path \$OutputPath \"dns-dnssec-status.json\" \$report \| ConvertTo-Json -Depth 10 \| Out-File -FilePath \$outputFile -Encoding UTF8 Write-Host \"DNSSEC status exported: \$outputFile\" return \$report }
+
+4.7 Output Format
+
+All assessment functions produce JSON files following the UIAO Canon output convention:
+
+  --------------------------------------------------------------------------------
+  **Function**                **Output File**            **Gitea Branch**
+  --------------------------- -------------------------- -------------------------
+  Get-UIAODNSZoneInventory    dns-zone-inventory.json    assessments/dns
+
+  Get-UIAODNSRecordExport     {zonename}-records.json    assessments/dns/records
+
+  Get-UIAODNSHealthCheck      dns-health-check.json      assessments/dns
+
+  Get-UIAODNSSRVValidation    dns-srv-validation.json    assessments/dns
+
+  Get-UIAODNSForwarderAudit   dns-forwarder-audit.json   assessments/dns
+
+  Get-UIAODNSSECStatus        dns-dnssec-status.json     assessments/dns
+  --------------------------------------------------------------------------------
+
+5\. Zone Migration Strategy
+
+5.1 Zone Type Decision Matrix
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Zone Type**                      **Target**                                 **Method**                                                        **Considerations**
+  ---------------------------------- ------------------------------------------ ----------------------------------------------------------------- --------------------------------------------------------------------------------------------
+  AD-Integrated Primary (Internal)   Azure DNS Private Zone                     Export via PowerShell, import via Az.Dns                          SRV records must remain on AD DNS until full decommission; auto-registration for Azure VMs
+
+  AD-Integrated Primary (External)   Azure DNS Public Zone                      Export records, create Public Zone, update registrar NS records   NS record propagation delay (24-48 hours); validate SPF/DKIM/DMARC records
+
+  Standard Primary                   Azure DNS Public/Private Zone              Export zone file, transform records, import                       No AD dependency --- straightforward migration; verify secondary zone consumers
+
+  Standard Secondary                 Decommission (primary migrated to Azure)   Remove after primary is migrated                                  Verify no clients use secondary directly as DNS server
+
+  Stub Zones                         DNS Forwarding Ruleset Rule                Create forwarding rule for stub zone namespace                    Simpler than zone transfer --- rule-based forwarding
+
+  Conditional Forwarders             DNS Forwarding Ruleset Rule                Create forwarding rule with target IPs                            Test reachability of target IPs from Azure; ensure ExpressRoute/VPN routing
+
+  GlobalNames Zone                   Azure DNS Private Zone + VNet Link         Create Private Zone, import CNAME records, link to all VNets      Single-label resolution requires DNS suffix search list on clients
+
+  Reverse Lookup Zones               Azure DNS Private Zone (\*.in-addr.arpa)   Create Private Zone per reverse zone, import PTR records          Ensure subnet boundaries align; coordinate with IPAM
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+5.2 Record Migration Methodology
+
+19. **Export all records via PowerShell** --- Use Get-DnsServerResourceRecord to extract all records from each zone into structured JSON
+
+20. **Transform to Azure DNS record format** --- Map AD DNS record properties to Az.Dns parameter sets; handle record-type-specific transformations
+
+21. **Import via Az.Dns PowerShell module or Azure CLI** --- Create record sets in target Azure DNS zones using New-AzDnsRecordSet or New-AzPrivateDnsRecordSet
+
+22. **Validate resolution from both on-premises and Azure** --- Test forward and reverse resolution from multiple vantage points
+
+23. **Update zone delegation/forwarders** --- Point conditional forwarders, NS delegations, and client DNS settings to Azure endpoints
+
+24. **Monitor for 30 days before decommission** --- Run parallel resolution, log query volumes, and validate no resolution failures
+
+5.3 Export-UIAODNSToAzure Function
+
+function Export-UIAODNSToAzure { \[CmdletBinding()\] param( \[Parameter(Mandatory = \$true)\] \[string\]\$ZoneName, \[Parameter(Mandatory = \$true)\] \[string\]\$ResourceGroupName, \[Parameter(Mandatory = \$false)\] \[string\]\$DnsServerName = (Get-ADDomainController -Discover).HostName, \[Parameter(Mandatory = \$false)\] \[ValidateSet(\"Private\", \"Public\")\] \[string\]\$TargetZoneType = \"Private\", \[Parameter(Mandatory = \$false)\] \[string\[\]\]\$ExcludeRecordTypes = @(\"SOA\", \"NS\"), \[Parameter(Mandatory = \$false)\] \[switch\]\$WhatIf ) Write-Host \"=== UIAO DNS Zone Export to Azure ===\" -ForegroundColor Cyan Write-Host \"Source Zone: \$ZoneName (Server: \$DnsServerName)\" Write-Host \"Target: Azure DNS \$TargetZoneType Zone in RG: \$ResourceGroupName\" \# Step 1: Export records from AD DNS Write-Host \"\`n\[Step 1\] Exporting records from AD DNS\...\" \$records = Get-DnsServerResourceRecord -ZoneName \$ZoneName \` -ComputerName \$DnsServerName -ErrorAction Stop \| Where-Object { \$\_.RecordType -notin \$ExcludeRecordTypes } Write-Host \" Found \$(\$records.Count) records (excluding \$(\$ExcludeRecordTypes -join \', \'))\" \# Step 2: Create Azure DNS Zone (if not exists) Write-Host \"\`n\[Step 2\] Creating Azure DNS \$TargetZoneType Zone\...\" if (-not \$WhatIf) { if (\$TargetZoneType -eq \"Private\") { \$azZone = Get-AzPrivateDnsZone -ResourceGroupName \$ResourceGroupName \` -Name \$ZoneName -ErrorAction SilentlyContinue if (-not \$azZone) { \$azZone = New-AzPrivateDnsZone -ResourceGroupName \$ResourceGroupName \` -Name \$ZoneName Write-Host \" Created Private DNS Zone: \$ZoneName\" } else { Write-Host \" Private DNS Zone already exists: \$ZoneName\" } } else { \$azZone = Get-AzDnsZone -ResourceGroupName \$ResourceGroupName \` -Name \$ZoneName -ErrorAction SilentlyContinue if (-not \$azZone) { \$azZone = New-AzDnsZone -ResourceGroupName \$ResourceGroupName \` -Name \$ZoneName Write-Host \" Created Public DNS Zone: \$ZoneName\" } else { Write-Host \" Public DNS Zone already exists: \$ZoneName\" } } } \# Step 3: Transform and import records Write-Host \"\`n\[Step 3\] Importing records to Azure DNS\...\" \$successCount = 0 \$failCount = 0 \$groupedRecords = \$records \| Group-Object -Property HostName, RecordType foreach (\$group in \$groupedRecords) { \$hostName = \$group.Group\[0\].HostName \$recordType = \$group.Group\[0\].RecordType \$ttl = \$group.Group\[0\].TimeToLive.TotalSeconds if (\$ttl -lt 1) { \$ttl = 3600 } try { if (-not \$WhatIf) { if (\$TargetZoneType -eq \"Private\") { \$recordSet = New-AzPrivateDnsRecordSet \` -ResourceGroupName \$ResourceGroupName \` -ZoneName \$ZoneName \` -Name \$hostName \` -RecordType \$recordType \` -Ttl \$ttl \` -ErrorAction Stop foreach (\$rec in \$group.Group) { switch (\$recordType) { \'A\' { Add-AzPrivateDnsRecordConfig -RecordSet \$recordSet \` -Ipv4Address \$rec.RecordData.IPv4Address.IPAddressToString } \'AAAA\' { Add-AzPrivateDnsRecordConfig -RecordSet \$recordSet \` -Ipv6Address \$rec.RecordData.IPv6Address.IPAddressToString } \'CNAME\' { Add-AzPrivateDnsRecordConfig -RecordSet \$recordSet \` -Cname \$rec.RecordData.HostNameAlias } \'MX\' { Add-AzPrivateDnsRecordConfig -RecordSet \$recordSet \` -Exchange \$rec.RecordData.MailExchange \` -Preference \$rec.RecordData.Preference } \'PTR\' { Add-AzPrivateDnsRecordConfig -RecordSet \$recordSet \` -Ptrdname \$rec.RecordData.PtrDomainName } \'SRV\' { Add-AzPrivateDnsRecordConfig -RecordSet \$recordSet \` -Priority \$rec.RecordData.Priority \` -Weight \$rec.RecordData.Weight \` -Port \$rec.RecordData.Port \` -Target \$rec.RecordData.DomainName } \'TXT\' { Add-AzPrivateDnsRecordConfig -RecordSet \$recordSet \` -Value (\$rec.RecordData.DescriptiveText -join \"\") } } } Set-AzPrivateDnsRecordSet -RecordSet \$recordSet \| Out-Null } } \$successCount++ Write-Host \" \[OK\] \$hostName (\$recordType)\" -ForegroundColor Green } catch { \$failCount++ Write-Warning \" \[FAIL\] \$hostName (\$recordType): \$\_\" } } \# Step 4: Summary Write-Host \"\`n=== Migration Summary ===\" -ForegroundColor Cyan Write-Host \" Total record sets processed: \$(\$groupedRecords.Count)\" Write-Host \" Successful: \$successCount\" Write-Host \" Failed: \$failCount\" if (\$WhatIf) { Write-Host \"\`n \[WhatIf mode\] No changes were made.\" -ForegroundColor Yellow } return \[PSCustomObject\]@{ ZoneName = \$ZoneName TargetType = \$TargetZoneType TotalRecordSets = \$groupedRecords.Count Successful = \$successCount Failed = \$failCount Timestamp = (Get-Date -Format \"o\") } }
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **⚠ Warning**                                                                                                                                                                      |
+|                                                                                                                                                                                    |
+| Always run Export-UIAODNSToAzure with the -WhatIf switch first in production environments. Validate the transformation output before committing record imports to Azure DNS zones. |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+6\. Azure DNS Private Resolver Deployment
+
+6.1 Step-by-Step Deployment
+
+**Step 1: Create the DNS Private Resolver resource in the hub VNet.**
+
+\# Azure PowerShell --- Create DNS Private Resolver \$hubVNet = Get-AzVirtualNetwork -ResourceGroupName \"rg-hub-networking\" \` -Name \"vnet-hub-eastus\" New-AzDnsResolver -ResourceGroupName \"rg-hub-networking\" \` -Name \"dnspr-hub-eastus-001\" \` -Location \"eastus\" \` -VirtualNetworkId \$hubVNet.Id \` -Tag \@{ Environment = \"Production\"; ManagedBy = \"UIAO\" }
+
+\# Azure CLI equivalent az dns-resolver create \\ \--resource-group rg-hub-networking \\ \--name dnspr-hub-eastus-001 \\ \--location eastus \\ \--id /subscriptions/{sub-id}/resourceGroups/rg-hub-networking/providers/Microsoft.Network/virtualNetworks/vnet-hub-eastus \\ \--tags Environment=Production ManagedBy=UIAO
+
+**Step 2: Create dedicated subnets (/28 minimum) for inbound and outbound endpoints.**
+
+\# Create inbound endpoint subnet Add-AzVirtualNetworkSubnetConfig -VirtualNetwork \$hubVNet \` -Name \"snet-dnspr-inbound\" \` -AddressPrefix \"10.0.4.0/28\" \` -Delegation @( New-AzDelegation -Name \"dns-resolver-delegation\" \` -ServiceName \"Microsoft.Network/dnsResolvers\" ) \# Create outbound endpoint subnet Add-AzVirtualNetworkSubnetConfig -VirtualNetwork \$hubVNet \` -Name \"snet-dnspr-outbound\" \` -AddressPrefix \"10.0.4.16/28\" \` -Delegation @( New-AzDelegation -Name \"dns-resolver-delegation\" \` -ServiceName \"Microsoft.Network/dnsResolvers\" ) \$hubVNet \| Set-AzVirtualNetwork
+
+**Step 3: Deploy the inbound endpoint and record the assigned IP address.**
+
+\$inboundSubnet = Get-AzVirtualNetworkSubnetConfig \` -VirtualNetwork \$hubVNet -Name \"snet-dnspr-inbound\" \$inboundEP = New-AzDnsResolverInboundEndpoint \` -ResourceGroupName \"rg-hub-networking\" \` -DnsResolverName \"dnspr-hub-eastus-001\" \` -Name \"ep-inbound-001\" \` -Location \"eastus\" \` -IPConfiguration @( \@{ PrivateIPAllocationMethod = \"Dynamic\"; SubnetId = \$inboundSubnet.Id } ) \# Record the assigned IP for on-premises conditional forwarder configuration \$inboundIP = \$inboundEP.IPConfiguration\[0\].PrivateIPAddress Write-Host \"Inbound Endpoint IP: \$inboundIP\" -ForegroundColor Green
+
+**Step 4: Deploy the outbound endpoint.**
+
+\$outboundSubnet = Get-AzVirtualNetworkSubnetConfig \` -VirtualNetwork \$hubVNet -Name \"snet-dnspr-outbound\" New-AzDnsResolverOutboundEndpoint \` -ResourceGroupName \"rg-hub-networking\" \` -DnsResolverName \"dnspr-hub-eastus-001\" \` -Name \"ep-outbound-001\" \` -Location \"eastus\" \` -SubnetId \$outboundSubnet.Id
+
+**Step 5: Create a DNS Forwarding Ruleset.**
+
+\$outboundEP = Get-AzDnsResolverOutboundEndpoint \` -ResourceGroupName \"rg-hub-networking\" \` -DnsResolverName \"dnspr-hub-eastus-001\" \` -Name \"ep-outbound-001\" \$ruleset = New-AzDnsForwardingRuleset \` -ResourceGroupName \"rg-hub-networking\" \` -Name \"fwdrs-hub-eastus-001\" \` -Location \"eastus\" \` -DnsResolverOutboundEndpoint @(@{ Id = \$outboundEP.Id })
+
+**Step 6: Link the ruleset to spoke VNets.**
+
+\# Link to each spoke VNet \$spokeVNets = @(\"vnet-spoke-workload-001\", \"vnet-spoke-workload-002\") foreach (\$spokeName in \$spokeVNets) { \$spoke = Get-AzVirtualNetwork -ResourceGroupName \"rg-spoke-networking\" \` -Name \$spokeName New-AzDnsForwardingRulesetVirtualNetworkLink \` -ResourceGroupName \"rg-hub-networking\" \` -DnsForwardingRulesetName \"fwdrs-hub-eastus-001\" \` -Name \"link-\$spokeName\" \` -VirtualNetworkId \$spoke.Id }
+
+**Step 7: Add forwarding rules for on-premises domains.**
+
+\# Forward corp.contoso.com to on-premises DNS servers New-AzDnsForwardingRulesetForwardingRule \` -ResourceGroupName \"rg-hub-networking\" \` -DnsForwardingRulesetName \"fwdrs-hub-eastus-001\" \` -Name \"rule-corp-contoso-com\" \` -DomainName \"corp.contoso.com.\" \` -ForwardingRuleState \"Enabled\" \` -TargetDnsServer @( \@{ IPAddress = \"10.1.0.10\"; Port = 53 }, \@{ IPAddress = \"10.1.0.11\"; Port = 53 } ) \# Forward additional on-premises namespaces as needed New-AzDnsForwardingRulesetForwardingRule \` -ResourceGroupName \"rg-hub-networking\" \` -DnsForwardingRulesetName \"fwdrs-hub-eastus-001\" \` -Name \"rule-legacy-internal\" \` -DomainName \"legacy.internal.\" \` -ForwardingRuleState \"Enabled\" \` -TargetDnsServer @( \@{ IPAddress = \"10.1.0.10\"; Port = 53 } )
+
+**Step 8: Configure on-premises conditional forwarders pointing to inbound endpoint IP.**
+
+\# Run on each on-premises DNS server \# \$inboundIP is the IP recorded in Step 3 Add-DnsServerConditionalForwarderZone \` -Name \"privatelink.blob.core.windows.net\" \` -MasterServers \$inboundIP \` -ReplicationScope \"Forest\" Add-DnsServerConditionalForwarderZone \` -Name \"azure.contoso.com\" \` -MasterServers \$inboundIP \` -ReplicationScope \"Forest\"
+
+**Step 9: Update VNet DNS settings.**
+
+\# Point VNet DNS to resolver inbound endpoint \$hubVNet = Get-AzVirtualNetwork -ResourceGroupName \"rg-hub-networking\" \` -Name \"vnet-hub-eastus\" \$hubVNet.DhcpOptions = \@{ DnsServers = @(\$inboundIP) } \$hubVNet \| Set-AzVirtualNetwork
+
+**Step 10: Validate bidirectional resolution.**
+
+\# From Azure VM --- resolve on-premises name Resolve-DnsName -Name \"dc01.corp.contoso.com\" -Type A \# From Azure VM --- resolve Azure Private DNS name Resolve-DnsName -Name \"webapp01.azure.contoso.com\" -Type A \# From on-premises --- resolve Azure Private DNS name Resolve-DnsName -Name \"storageacct.privatelink.blob.core.windows.net\" -Type A \# From on-premises --- resolve Azure VM auto-registered name Resolve-DnsName -Name \"azvm01.azure.contoso.com\" -Type A
+
+6.2 High Availability
+
+- **Zone-redundant deployment** --- DNS Private Resolver is zone-redundant by default within a region. Endpoints are distributed across availability zones.
+
+- **Multi-region considerations** --- For disaster recovery, deploy a second resolver in a paired region with identical forwarding rulesets. Use Azure Traffic Manager or DNS-level failover for cross-region resolution.
+
+- **Endpoint scaling** --- Each resolver supports up to 5 inbound and 5 outbound endpoints. Size subnets accordingly (/28 per endpoint minimum).
+
+6.3 Cost Estimation Guidance
+
+Refer to Appendix B for detailed cost calculations. Key cost drivers are: resolver instance hours, endpoint hours, and DNS queries processed per month.
+
+7\. SRV Record Governance
+
+7.1 Critical AD SRV Records
+
+The following SRV records are critical to Active Directory operations and must remain resolvable throughout the hybrid migration period. Loss of any of these records causes immediate operational impact.
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **SRV Record**                                    **Service**                      **Failure Impact**
+  ------------------------------------------------- -------------------------------- ------------------------------------------------------------------------------------------------------------------
+  \_ldap.\_tcp.dc.\_msdcs.{domain}                  LDAP domain controller locator   Domain join failure, authentication failure, GPO processing stops
+
+  \_kerberos.\_tcp.dc.\_msdcs.{domain}              Kerberos KDC locator             Kerberos authentication failure, NTLM fallback (if allowed), service ticket acquisition failure
+
+  \_gc.\_tcp.{forest}                               Global Catalog locator           Universal group membership resolution failure, Exchange address book failure, cross-domain authentication issues
+
+  \_ldap.\_tcp.{site}.\_sites.dc.\_msdcs.{domain}   Site-specific DC locator         Clients contact remote DCs instead of local --- increased latency, WAN saturation
+
+  \_kpasswd.\_tcp.{domain}                          Kerberos password change         Password change/reset failure for Kerberos clients
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+7.2 SRV Record Monitoring
+
+Deploy the Test-UIAOSRVRecords function as a scheduled task running every 15 minutes on a monitoring server. The function validates resolution of all critical SRV records and reports failures to Gitea via API.
+
+function Test-UIAOSRVRecords { \[CmdletBinding()\] param( \[Parameter(Mandatory = \$false)\] \[string\]\$DomainName = (Get-ADDomain).DNSRoot, \[Parameter(Mandatory = \$false)\] \[string\]\$ForestName = (Get-ADForest).Name, \[Parameter(Mandatory = \$false)\] \[string\]\$GiteaBaseUrl = \"https://gitea.internal.contoso.com\", \[Parameter(Mandatory = \$false)\] \[string\]\$GiteaRepo = \"uiao/dns-monitoring\", \[Parameter(Mandatory = \$false)\] \[string\]\$GiteaToken ) \$srvRecords = @( \@{ Name = \"\_ldap.\_tcp.dc.\_msdcs.\$DomainName\"; Service = \"LDAP DC Locator\" } \@{ Name = \"\_kerberos.\_tcp.dc.\_msdcs.\$DomainName\"; Service = \"Kerberos KDC\" } \@{ Name = \"\_gc.\_tcp.\$ForestName\"; Service = \"Global Catalog\" } \@{ Name = \"\_kpasswd.\_tcp.\$DomainName\"; Service = \"Kerberos Password Change\" } \@{ Name = \"\_ldap.\_tcp.\$DomainName\"; Service = \"LDAP (non-MSDCS)\" } \@{ Name = \"\_kerberos.\_tcp.\$DomainName\"; Service = \"Kerberos (non-MSDCS)\" } ) \$results = @() \$failures = @() foreach (\$srv in \$srvRecords) { try { \$resolved = Resolve-DnsName -Name \$srv.Name -Type SRV -ErrorAction Stop \$results += \[PSCustomObject\]@{ SRVRecord = \$srv.Name Service = \$srv.Service Status = \"OK\" TargetCount = \$resolved.Count Timestamp = (Get-Date -Format \"o\") } } catch { \$results += \[PSCustomObject\]@{ SRVRecord = \$srv.Name Service = \$srv.Service Status = \"FAILED\" TargetCount = 0 Timestamp = (Get-Date -Format \"o\") } \$failures += \$srv } } \# Alert on failures via Gitea Issue API if (\$failures.Count -gt 0 -and \$GiteaToken) { \$issueTitle = \"DNS SRV Alert: \$(\$failures.Count) record(s) unresolvable --- \$(Get-Date -Format \'yyyy-MM-dd HH:mm\')\" \$issueBody = \"## SRV Record Resolution Failure\`n\`n\" \$issueBody += \"\| SRV Record \| Service \|\`n\|\-\--\|\-\--\|\`n\" foreach (\$f in \$failures) { \$issueBody += \"\| \`\`\$(\$f.Name)\`\` \| \$(\$f.Service) \|\`n\" } \$issueBody += \"\`n\*\*Immediate investigation required.\*\* SRV record loss causes AD authentication and domain join failures.\" \$headers = \@{ \"Authorization\" = \"token \$GiteaToken\" \"Content-Type\" = \"application/json\" } \$body = \@{ title = \$issueTitle body = \$issueBody labels = @(1, 2) \# Adjust label IDs for \"critical\", \"dns\" } \| ConvertTo-Json try { Invoke-RestMethod -Uri \"\$GiteaBaseUrl/api/v1/repos/\$GiteaRepo/issues\" \` -Method POST -Headers \$headers -Body \$body Write-Host \"Gitea issue created for SRV failures.\" -ForegroundColor Red } catch { Write-Warning \"Failed to create Gitea issue: \$\_\" } } Write-Host \"SRV Validation: \$(\$results.Count) tested, \$(\$failures.Count) failed.\" return \$results }
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **❗ Important**                                                                                                                                                                                                                                          |
+|                                                                                                                                                                                                                                                           |
+| Schedule Test-UIAOSRVRecords as a Windows Scheduled Task running every 15 minutes under a service account with DNS read access and Gitea API write permissions. Use Register-ScheduledTask with a -RepetitionInterval (New-TimeSpan -Minutes 15) trigger. |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+8\. DNSSEC Modernization
+
+8.1 Current State Assessment
+
+AD-Integrated DNSSEC uses a Key Master domain controller role responsible for key generation, signing, and rollover. The assessment pipeline (Section 4.6) captures the current DNSSEC posture including signed zones, key algorithms, rollover periods, and trust anchor distribution.
+
+8.2 Azure DNS DNSSEC Support
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Zone Type**             **DNSSEC Support**   **Notes**
+  ------------------------- -------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------
+  Azure DNS Public Zones    Supported (GA)       Azure manages key generation and signing; supports DS record registration with registrar
+
+  Azure DNS Private Zones   Not Supported        Private Zones rely on network-level security (VNet isolation, Private Link); DNSSEC is not applicable for internal resolution within trusted networks
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8.3 Security Trade-Off Documentation
+
+The absence of DNSSEC for Azure DNS Private Zones is mitigated by the following controls:
+
+- **Network isolation** --- Private Zones resolve only within linked VNets; no external query path exists
+
+- **Azure Private Link** --- PaaS service endpoints are accessed via private IP addresses within the VNet, eliminating DNS spoofing attack vectors from the public internet
+
+- **VNet encryption** --- VNet traffic is encrypted at the infrastructure layer
+
+- **NSG and firewall controls** --- DNS traffic is restricted to authorized resolver endpoints
+
+8.4 Transition Plan
+
+25. Maintain DNSSEC signing on all remaining on-premises zones until decommission
+
+26. Enable DNSSEC on Azure DNS Public Zones after record migration and validation
+
+27. Register DS records with the domain registrar for public zones
+
+28. Accept the security trade-off for Private Zones with documented compensating controls
+
+29. Remove trust anchors for decommissioned zones from AD after 90-day validation period
+
+8.5 Key Rollover During Migration
+
+- Complete any in-progress ZSK or KSK rollovers before beginning zone migration
+
+- Do not initiate new key rollovers during active migration phases
+
+- After migrating a signed zone to Azure DNS Public Zone, verify the new DNSSEC chain of trust before removing on-premises signing
+
+- Monitor DNSSEC validation failures via DNS Analytics during the transition
+
+9\. Split-Brain and Hybrid Resolution Patterns
+
+9.1 Pattern 1: Same Namespace, Different Answers
+
+**Scenario:** app.contoso.com resolves to an internal IP (10.0.1.50) when queried from within the VNet, and to a public IP (203.0.113.50) when queried from the internet.
+
+**Configuration Steps:**
+
+30. Create Azure DNS Public Zone for contoso.com with A record app → 203.0.113.50
+
+31. Create Azure DNS Private Zone for contoso.com with A record app → 10.0.1.50
+
+32. Link Private Zone to all VNets requiring internal resolution
+
+33. Ensure VNet DNS settings use Azure-provided DNS or the Private Resolver inbound endpoint
+
+**Validation:**
+
+- From Azure VM in linked VNet: Resolve-DnsName app.contoso.com should return 10.0.1.50
+
+- From external client: nslookup app.contoso.com 8.8.8.8 should return 203.0.113.50
+
+**Rollback:** Remove Private Zone VNet link; internal clients fall through to public resolution.
+
++:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:+
+| **\[Placeholder --- Diagram 2: Split-Brain DNS --- Same Namespace Pattern --- 800x500px\]**                                                                                                                                                                   |
+|                                                                                                                                                                                                                                                               |
+| Shows Azure DNS Public Zone and Private Zone for the same domain. Internal clients (within VNet) resolve via Private Zone returning private IP. External clients resolve via Public Zone returning public IP. Resolution paths depicted with separate arrows. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+9.2 Pattern 2: Subdomain Delegation
+
+**Scenario:** azure.contoso.com is delegated to Azure DNS, while contoso.com and other subdomains remain on-premises.
+
+**Configuration Steps:**
+
+34. Create Azure DNS Public Zone for azure.contoso.com
+
+35. Note the Azure DNS nameservers assigned to the zone
+
+36. On the on-premises contoso.com zone, create NS records for azure pointing to Azure DNS nameservers
+
+37. Create corresponding glue A records if required by the parent zone
+
+38. For internal resolution, create an Azure DNS Private Zone for azure.contoso.com and link to VNets
+
+**Validation:**
+
+- Resolve test.azure.contoso.com from on-premises --- should follow delegation to Azure DNS
+
+- Resolve dc01.contoso.com from Azure --- should follow forwarding rule to on-premises DNS
+
+**Rollback:** Remove NS delegation records from on-premises zone; remove Azure DNS zone.
+
++:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:+
+| **\[Placeholder --- Diagram 3: Subdomain Delegation Pattern --- 800x500px\]**                                                                                                                                                                         |
+|                                                                                                                                                                                                                                                       |
+| Shows on-premises DNS hosting contoso.com with NS records delegating azure.contoso.com to Azure DNS nameservers. Resolution flow: query for test.azure.contoso.com hits on-prem DNS, follows NS delegation to Azure DNS, returns Azure-hosted answer. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+9.3 Pattern 3: Full Migration with Conditional Forwarding
+
+**Scenario:** All DNS zones are progressively migrated to Azure DNS. During transition, conditional forwarders provide bidirectional resolution.
+
+**Configuration Steps:**
+
+39. Deploy Azure DNS Private Resolver (Section 6)
+
+40. Create forwarding rulesets for all on-premises namespaces
+
+41. Configure on-premises conditional forwarders for Azure-hosted namespaces pointing to the resolver inbound endpoint
+
+42. Migrate zones one at a time --- export, import, validate, update forwarders
+
+43. As each zone moves to Azure, remove the corresponding on-premises conditional forwarder from Azure (it now resolves natively)
+
+44. After all zones are migrated, remove on-premises conditional forwarders and decommission legacy DNS servers
+
+**Validation:** At each step, validate resolution from both on-premises and Azure vantage points for all migrated and non-migrated zones.
+
+**Rollback:** Re-create on-premises zone from backup, update conditional forwarders to point back to on-premises DNS.
+
++:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:+
+| **\[Placeholder --- Diagram 4: Full Migration with Conditional Forwarding --- 800x500px\]**                                                                                                                                                            |
+|                                                                                                                                                                                                                                                        |
+| Shows phased migration: Phase A with most zones on-premises and few on Azure (bidirectional forwarding), Phase B with zones split evenly, Phase C with all zones on Azure and on-premises DNS decommissioned. Forwarding rules depicted at each phase. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+10\. Private Endpoint DNS Integration
+
+10.1 Overview
+
+Azure Private Endpoints assign private IP addresses to Azure PaaS services within a VNet. When a Private Endpoint is created, a DNS record is automatically generated in the corresponding privatelink.\* DNS zone. For this resolution to work, Private DNS Zones for the privatelink.\* namespace must exist and be linked to the VNets where clients reside.
+
+10.2 Required Private DNS Zones
+
+  --------------------------------------------------------------------------------------
+  **Azure Service**          **Private DNS Zone**                      **Record Type**
+  -------------------------- ----------------------------------------- -----------------
+  Azure Blob Storage         privatelink.blob.core.windows.net         A
+
+  Azure File Storage         privatelink.file.core.windows.net         A
+
+  Azure Table Storage        privatelink.table.core.windows.net        A
+
+  Azure Queue Storage        privatelink.queue.core.windows.net        A
+
+  Azure SQL Database         privatelink.database.windows.net          A
+
+  Azure Cosmos DB            privatelink.documents.azure.com           A
+
+  Azure Key Vault            privatelink.vaultcore.azure.net           A
+
+  Azure Container Registry   privatelink.azurecr.io                    A
+
+  Azure Event Hubs           privatelink.servicebus.windows.net        A
+
+  Azure Service Bus          privatelink.servicebus.windows.net        A
+
+  Azure App Service          privatelink.azurewebsites.net             A
+
+  Azure Monitor              privatelink.monitor.azure.com             A
+
+  Azure Automation           privatelink.azure-automation.net          A
+
+  Azure Cognitive Services   privatelink.cognitiveservices.azure.com   A
+
+  Azure Data Factory         privatelink.datafactory.azure.net         A
+
+  Azure SignalR              privatelink.service.signalr.net           A
+
+  Azure Machine Learning     privatelink.api.azureml.ms                A
+  --------------------------------------------------------------------------------------
+
+10.3 Auto-Registration vs. Manual Management
+
+- **Auto-Registration:** When a Private Endpoint is created with DNS integration enabled (default), Azure automatically creates and deletes A records in the linked Private DNS Zone. This is the recommended approach for most scenarios.
+
+- **Manual Management:** Required when custom DNS record names are needed, when the Private DNS Zone is in a different subscription, or when organizational policy requires explicit record management. Use New-AzPrivateDnsRecordSet to create records manually.
+
+10.4 VNet Link Configuration
+
+\# Link a privatelink zone to a VNet \$zone = Get-AzPrivateDnsZone -ResourceGroupName \"rg-dns\" \` -Name \"privatelink.blob.core.windows.net\" \$vnet = Get-AzVirtualNetwork -ResourceGroupName \"rg-spoke-networking\" \` -Name \"vnet-spoke-workload-001\" New-AzPrivateDnsVirtualNetworkLink -ResourceGroupName \"rg-dns\" \` -ZoneName \"privatelink.blob.core.windows.net\" \` -Name \"link-spoke-workload-001\" \` -VirtualNetworkId \$vnet.Id \` -EnableRegistration \$false \# Registration not needed for privatelink zones
+
+10.5 On-Premises Resolution of Private Endpoints
+
+For on-premises clients to resolve Private Endpoint DNS records, configure conditional forwarders on the on-premises DNS servers for each privatelink.\* namespace, pointing to the DNS Private Resolver inbound endpoint IP (recorded in Section 6.1, Step 3).
+
+\# On-premises DNS server --- forward privatelink zones to resolver \$privateLinkZones = @( \"privatelink.blob.core.windows.net\", \"privatelink.file.core.windows.net\", \"privatelink.database.windows.net\", \"privatelink.vaultcore.azure.net\", \"privatelink.azurewebsites.net\", \"privatelink.servicebus.windows.net\" ) foreach (\$zone in \$privateLinkZones) { Add-DnsServerConditionalForwarderZone \` -Name \$zone \` -MasterServers \$inboundIP \` -ReplicationScope \"Forest\" }
+
+11\. DHCP and Dynamic DNS Modernization
+
+11.1 Current State
+
+In the AD-integrated model, DHCP servers perform secure dynamic DNS updates on behalf of clients. The DHCP server registers both A (forward) and PTR (reverse) records using the credentials of the DHCP service account. Scavenging is configured on DNS zones to remove stale records when leases expire or devices are decommissioned.
+
+11.2 Hybrid State
+
+During the hybrid period, DHCP remains on-premises while DNS is split between AD and Azure:
+
+- On-premises DHCP continues to perform dynamic DNS updates to on-premises AD DNS zones
+
+- Azure VMs receive IP addresses from Azure VNet DHCP (168.63.129.16) and register DNS records via Private Zone auto-registration
+
+- DNS Forwarding Rulesets ensure cross-environment resolution
+
+11.3 Target State Options
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Option**                                        **Description**                                                                                                                           **Best For**
+  ------------------------------------------------- ----------------------------------------------------------------------------------------------------------------------------------------- ------------------------------------------------------------
+  Azure VNet-native DHCP + Auto-Registration        Azure VNet provides DHCP for Azure-hosted VMs; Private Zone auto-registration creates/removes DNS records automatically                   Cloud-native workloads, new deployments
+
+  On-premises DHCP + DNS Forwarding                 On-premises DHCP continues for physical/legacy devices; DNS forwarding rules ensure Azure clients can resolve on-premises registrations   Hybrid environments with significant on-premises footprint
+
+  Third-party IPAM/DHCP (e.g., Infoblox, BlueCat)   Centralized IPAM with API-driven DNS record management across both environments                                                           Large enterprises with existing IPAM investment
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+11.4 Scavenging Equivalent in Azure DNS
+
+Azure DNS does not have a native scavenging mechanism equivalent to AD DNS scavenging. The alternatives are:
+
+- **Auto-Registration lifecycle:** When auto-registration is enabled, Azure automatically removes DNS records when VMs are deallocated or deleted
+
+- **TTL management:** Set appropriate TTL values on manually created records; implement automated cleanup scripts for stale records
+
+- **Azure Automation runbooks:** Schedule runbooks to audit and remove records for resources that no longer exist
+
+11.5 IPAM Integration
+
+Azure IPAM provides hybrid address space management, tracking IP allocations across both on-premises and Azure environments. Integrate IPAM with DNS management to ensure IP-to-hostname mappings remain consistent across environments.
+
+12\. Monitoring and Drift Detection
+
+12.1 Azure DNS Metrics
+
+  ----------------------------------------------------------------------------------------------------------------------
+  **Metric**                        **Source**               **Alert Threshold**
+  --------------------------------- ------------------------ -----------------------------------------------------------
+  Query Volume                      Azure DNS Zone metrics   Alert on sudden drop \>50% (indicates resolution failure)
+
+  Record Set Count                  Azure DNS Zone metrics   Alert on unexpected decrease (record deletion)
+
+  Record Set Capacity Utilization   Azure DNS Zone metrics   Alert at 80% of zone limits
+  ----------------------------------------------------------------------------------------------------------------------
+
+12.2 DNS Private Resolver Metrics
+
+  -----------------------------------------------------------------------------------------------------------------------
+  **Metric**                   **Source**                     **Alert Threshold**
+  ---------------------------- ------------------------------ -----------------------------------------------------------
+  Inbound Queries Processed    DNS Private Resolver metrics   Alert on drop to zero (resolver failure)
+
+  Outbound Queries Forwarded   DNS Private Resolver metrics   Alert on spike \>200% (possible loop or misconfiguration)
+
+  Forwarding Failures          DNS Private Resolver metrics   Alert on any non-zero value
+  -----------------------------------------------------------------------------------------------------------------------
+
+12.3 Log Analytics Integration
+
+Enable diagnostic settings on Azure DNS zones and DNS Private Resolver to stream logs to a Log Analytics workspace. Use the DNS Analytics solution for query-level visibility, top talkers, failed queries, and NXDOMAIN analysis.
+
+12.4 Drift Detection
+
+DNS drift occurs when records in on-premises AD DNS and Azure DNS diverge unexpectedly. The Invoke-UIAODNSDriftDetection function performs scheduled comparisons.
+
+function Invoke-UIAODNSDriftDetection { \[CmdletBinding()\] param( \[Parameter(Mandatory = \$true)\] \[string\]\$ZoneName, \[Parameter(Mandatory = \$true)\] \[string\]\$ResourceGroupName, \[Parameter(Mandatory = \$false)\] \[string\]\$DnsServerName = (Get-ADDomainController -Discover).HostName, \[Parameter(Mandatory = \$false)\] \[ValidateSet(\"Private\", \"Public\")\] \[string\]\$ZoneType = \"Private\", \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = \".\\assessments\\dns\\drift\", \[Parameter(Mandatory = \$false)\] \[string\]\$GiteaBaseUrl, \[Parameter(Mandatory = \$false)\] \[string\]\$GiteaRepo, \[Parameter(Mandatory = \$false)\] \[string\]\$GiteaToken ) Write-Host \"=== UIAO DNS Drift Detection ===\" -ForegroundColor Cyan Write-Host \"Zone: \$ZoneName \| Comparing AD DNS vs. Azure DNS \$ZoneType Zone\" \# Export on-premises records \$onPremRecords = Get-DnsServerResourceRecord -ZoneName \$ZoneName \` -ComputerName \$DnsServerName -ErrorAction Stop \| Where-Object { \$\_.RecordType -notin @(\"SOA\", \"NS\") } \| ForEach-Object { \$data = switch (\$\_.RecordType) { \'A\' { \$\_.RecordData.IPv4Address.IPAddressToString } \'AAAA\' { \$\_.RecordData.IPv6Address.IPAddressToString } \'CNAME\' { \$\_.RecordData.HostNameAlias } \'MX\' { \"\$(\$\_.RecordData.Preference) \$(\$\_.RecordData.MailExchange)\" } \'SRV\' { \"\$(\$\_.RecordData.Priority) \$(\$\_.RecordData.Weight) \$(\$\_.RecordData.Port) \$(\$\_.RecordData.DomainName)\" } \'TXT\' { \$\_.RecordData.DescriptiveText -join \"; \" } \'PTR\' { \$\_.RecordData.PtrDomainName } default { \"UNKNOWN\" } } \"\$(\$\_.HostName)\|\$(\$\_.RecordType)\|\$data\" } \| Sort-Object \# Export Azure records if (\$ZoneType -eq \"Private\") { \$azRecordSets = Get-AzPrivateDnsRecordSet -ResourceGroupName \$ResourceGroupName \` -ZoneName \$ZoneName -ErrorAction Stop \| Where-Object { \$\_.RecordType -notin @(\"SOA\", \"NS\") } } else { \$azRecordSets = Get-AzDnsRecordSet -ResourceGroupName \$ResourceGroupName \` -ZoneName \$ZoneName -ErrorAction Stop \| Where-Object { \$\_.RecordType -notin @(\"SOA\", \"NS\") } } \$azRecords = foreach (\$rs in \$azRecordSets) { foreach (\$rec in \$rs.Records) { \$data = switch (\$rs.RecordType) { \'A\' { \$rec.Ipv4Address } \'AAAA\' { \$rec.Ipv6Address } \'CNAME\' { \$rec.Cname } \'MX\' { \"\$(\$rec.Preference) \$(\$rec.Exchange)\" } \'SRV\' { \"\$(\$rec.Priority) \$(\$rec.Weight) \$(\$rec.Port) \$(\$rec.Target)\" } \'TXT\' { \$rec.Value -join \"; \" } \'PTR\' { \$rec.Ptrdname } default { \"UNKNOWN\" } } \"\$(\$rs.Name)\|\$(\$rs.RecordType)\|\$data\" } } \| Sort-Object \# Compare \$onlyOnPrem = \$onPremRecords \| Where-Object { \$\_ -notin \$azRecords } \$onlyAzure = \$azRecords \| Where-Object { \$\_ -notin \$onPremRecords } \$driftReport = \[PSCustomObject\]@{ ZoneName = \$ZoneName Timestamp = (Get-Date -Format \"o\") OnPremRecordCount = \$onPremRecords.Count AzureRecordCount = \$azRecords.Count OnlyInOnPrem = \$onlyOnPrem OnlyInAzure = \$onlyAzure DriftDetected = (\$onlyOnPrem.Count -gt 0 -or \$onlyAzure.Count -gt 0) OnlyOnPremCount = \$onlyOnPrem.Count OnlyAzureCount = \$onlyAzure.Count } \# Output report if (-not (Test-Path \$OutputPath)) { New-Item -ItemType Directory -Path \$OutputPath -Force \| Out-Null } \$outputFile = Join-Path \$OutputPath \"drift-\$(\$ZoneName -replace \'\[\\.\\s\]\',\'-\')-\$(Get-Date -Format \'yyyyMMdd-HHmmss\').json\" \$driftReport \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$outputFile -Encoding UTF8 \# Gitea integration --- commit drift report and create issue if drift detected if (\$driftReport.DriftDetected -and \$GiteaToken) { \$issueTitle = \"DNS Drift Detected: \$ZoneName --- \$(Get-Date -Format \'yyyy-MM-dd HH:mm\')\" \$issueBody = \"## DNS Drift Report\`n\`n\" \$issueBody += \"- \*\*Zone:\*\* \$ZoneName\`n\" \$issueBody += \"- \*\*On-Prem Record Count:\*\* \$(\$driftReport.OnPremRecordCount)\`n\" \$issueBody += \"- \*\*Azure Record Count:\*\* \$(\$driftReport.AzureRecordCount)\`n\" \$issueBody += \"- \*\*Records only in On-Prem:\*\* \$(\$driftReport.OnlyOnPremCount)\`n\" \$issueBody += \"- \*\*Records only in Azure:\*\* \$(\$driftReport.OnlyAzureCount)\`n\" \$headers = \@{ \"Authorization\" = \"token \$GiteaToken\" \"Content-Type\" = \"application/json\" } \$body = \@{ title = \$issueTitle; body = \$issueBody } \| ConvertTo-Json try { Invoke-RestMethod -Uri \"\$GiteaBaseUrl/api/v1/repos/\$GiteaRepo/issues\" \` -Method POST -Headers \$headers -Body \$body Write-Host \"Gitea issue created for DNS drift.\" -ForegroundColor Yellow } catch { Write-Warning \"Failed to create Gitea issue: \$\_\" } } Write-Host \"Drift detection complete. Report: \$outputFile\" if (\$driftReport.DriftDetected) { Write-Warning \"DRIFT DETECTED: \$(\$driftReport.OnlyOnPremCount) on-prem only, \$(\$driftReport.OnlyAzureCount) Azure only\" } else { Write-Host \"No drift detected.\" -ForegroundColor Green } return \$driftReport }
+
+13\. Migration Execution Playbook
+
+The migration is executed in ten sequential phases. Each phase includes prerequisites, steps, validation criteria, rollback procedures, and duration estimates.
+
+Phase 0: Assessment
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Property**              **Detail**
+  ------------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         AD Interaction Guide deployed; PowerShell remoting to all DNS servers; Gitea repository configured
+
+  **Steps**                 Run Invoke-UIAODNSAssessment (master orchestrator) which calls all Get-UIAODNS\* functions; review JSON outputs; identify zones, record counts, forwarders, DNSSEC status, and health issues
+
+  **Validation Criteria**   All DNS servers queried without error; complete zone inventory; SRV validation 100% pass; health check reports reviewed
+
+  **Rollback Procedure**    Assessment is read-only --- no rollback required
+
+  **Duration Estimate**     1-2 days
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Phase 1: Deploy Azure DNS Private Resolver
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------
+  **Property**              **Detail**
+  ------------------------- --------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Hub VNet deployed with available /28 subnets; Azure subscription with Microsoft.Network provider registered
+
+  **Steps**                 Execute Section 6.1 Steps 1-5 (create resolver, subnets, inbound endpoint, outbound endpoint, forwarding ruleset)
+
+  **Validation Criteria**   Resolver resource in Succeeded state; inbound endpoint IP assigned; outbound endpoint operational; ruleset created
+
+  **Rollback Procedure**    Delete resolver resource and subnets; no impact to existing DNS
+
+  **Duration Estimate**     1 day
+  ----------------------------------------------------------------------------------------------------------------------------------------------
+
+Phase 2: Create Private DNS Zones and Import Non-AD-Integrated Zones
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Property**              **Detail**
+  ------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 1 complete; zone inventory reviewed; file-backed zones identified
+
+  **Steps**                 Create Azure DNS Private Zones for each internal zone; run Export-UIAODNSToAzure with -WhatIf first; execute import for non-AD-integrated zones; link zones to hub VNet
+
+  **Validation Criteria**   Record counts match between source and target; resolution from Azure VMs returns correct answers
+
+  **Rollback Procedure**    Delete Azure DNS Private Zones; on-premises zones remain authoritative
+
+  **Duration Estimate**     2-3 days
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Phase 3: Configure DNS Forwarding Rulesets
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Property**              **Detail**
+  ------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 1 complete; on-premises DNS server IPs documented; ExpressRoute/VPN connectivity validated on port 53
+
+  **Steps**                 Add forwarding rules for all on-premises namespaces (Section 6.1 Step 7); link ruleset to spoke VNets (Step 6); configure on-premises conditional forwarders for Azure namespaces (Step 8)
+
+  **Validation Criteria**   Bidirectional resolution works: Azure→on-prem and on-prem→Azure
+
+  **Rollback Procedure**    Remove forwarding rules; remove on-premises conditional forwarders
+
+  **Duration Estimate**     1-2 days
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Phase 4: Migrate Conditional Forwarders
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Property**              **Detail**
+  ------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 3 complete; forwarder audit reviewed; all target DNS IPs reachable from Azure
+
+  **Steps**                 For each conditional forwarder identified in the audit, create a corresponding DNS Forwarding Ruleset rule; validate resolution for each forwarded namespace from Azure
+
+  **Validation Criteria**   All previously forwarded namespaces resolve correctly from Azure VMs
+
+  **Rollback Procedure**    Remove forwarding rules; on-premises conditional forwarders still active
+
+  **Duration Estimate**     1 day
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Phase 5: Migrate GlobalNames Zone
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Property**              **Detail**
+  ------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 2 complete; GlobalNames zone records exported
+
+  **Steps**                 Create Azure DNS Private Zone for GlobalNames; import CNAME records; link to all VNets; configure DNS suffix search list on clients (via GPO or Intune) to include the Private Zone name
+
+  **Validation Criteria**   Single-label name resolution works from Azure VMs using DNS suffix search
+
+  **Rollback Procedure**    Revert DNS suffix search list; remove Private Zone
+
+  **Duration Estimate**     1 day
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Phase 6: Configure Private Endpoint DNS Zones
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Property**              **Detail**
+  ------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 3 complete; Private Endpoints deployed or planned; list of required privatelink zones from Section 10.2
+
+  **Steps**                 Create Private DNS Zones for each required privatelink namespace; link to hub and spoke VNets; configure on-premises conditional forwarders for each privatelink namespace (Section 10.5)
+
+  **Validation Criteria**   Private Endpoint FQDNs resolve to private IPs from both Azure and on-premises
+
+  **Rollback Procedure**    Remove VNet links and conditional forwarders; Private Endpoints fall back to public resolution
+
+  **Duration Estimate**     2 days
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Phase 7: Migrate Reverse Lookup Zones
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Property**              **Detail**
+  ------------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 2 complete; reverse zone inventory reviewed; IPAM aligned
+
+  **Steps**                 Create Azure DNS Private Zones for each reverse lookup zone (e.g., 0.10.in-addr.arpa); import PTR records via Export-UIAODNSToAzure; link to VNets
+
+  **Validation Criteria**   Reverse lookups return correct hostnames from Azure VMs
+
+  **Rollback Procedure**    Remove reverse Private Zones; on-premises reverse zones remain authoritative
+
+  **Duration Estimate**     1-2 days
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Phase 8: Gradual Client DNS Server Migration
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Property**              **Detail**
+  ------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phases 1-7 complete; resolution validated from multiple vantage points
+
+  **Steps**                 Update VNet DNS settings to use resolver inbound endpoint (Section 6.1 Step 9); update on-premises DHCP options to include resolver IP as secondary DNS; migrate client groups in waves (pilot → department → org-wide)
+
+  **Validation Criteria**   Clients resolve all namespaces correctly; no authentication or application failures
+
+  **Rollback Procedure**    Revert VNet DNS settings; revert DHCP options
+
+  **Duration Estimate**     1-2 weeks (phased rollout)
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Phase 9: AD SRV Record Validation and Monitoring
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Property**              **Detail**
+  ------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 8 complete; Test-UIAOSRVRecords scheduled task deployed
+
+  **Steps**                 Validate all critical SRV records from every VNet and on-premises location; confirm forwarding rules correctly route SRV queries to AD DNS; enable 15-minute monitoring; review Gitea for any SRV failure alerts
+
+  **Validation Criteria**   100% SRV resolution success for 30 consecutive days; zero Gitea SRV alerts
+
+  **Rollback Procedure**    SRV records remain on AD DNS --- rollback is to revert client DNS settings to point directly to AD DNS servers
+
+  **Duration Estimate**     30 days (monitoring period)
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Phase 10: Decommission Legacy DNS Servers
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Property**              **Detail**
+  ------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 9 complete (30-day validation passed); 90-day parallel operation completed; zero unresolved drift or SRV alerts
+
+  **Steps**                 Final DNS query log review --- confirm zero direct queries to legacy DNS; remove DNS Server role from domain controllers (if dedicated DNS servers); update DHCP/GPO to remove legacy DNS IPs; remove on-premises conditional forwarders for migrated zones; archive final zone exports to Gitea
+
+  **Validation Criteria**   No client impact after 7-day burn-in; all resolution handled by Azure DNS and DNS Private Resolver
+
+  **Rollback Procedure**    Re-install DNS Server role from archived zone exports; re-add DNS IPs to DHCP/GPO
+
+  **Duration Estimate**     1-2 weeks (including burn-in)
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **⚠ Warning**                                                                                                                                                                                                                                                       |
+|                                                                                                                                                                                                                                                                     |
+| Do not decommission legacy DNS servers until the 90-day parallel operation period has elapsed with zero critical alerts. SRV record loss during premature decommission can cause forest-wide authentication failures that are difficult to diagnose under pressure. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+14\. Troubleshooting Reference
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Symptom**                                                                     **Root Cause**                                                                                **Resolution**                                                                                                                                                               **Prevention**
+  ------------------------------------------------------------------------------- --------------------------------------------------------------------------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------
+  Azure VM cannot resolve on-premises hostname                                    Missing or misconfigured forwarding rule in DNS Forwarding Ruleset                            Verify forwarding rule exists for the on-prem namespace; confirm target DNS IPs are reachable on port 53 from outbound endpoint subnet; check NSG rules on outbound subnet   Test forwarding rules immediately after creation; include port 53 connectivity check in deployment validation
+
+  On-premises client cannot resolve Azure Private DNS name                        Conditional forwarder to inbound endpoint not configured or unreachable                       Verify conditional forwarder exists on on-prem DNS; confirm inbound endpoint IP is reachable via ExpressRoute/VPN; verify Private Zone is linked to hub VNet                 Include inbound endpoint connectivity in network monitoring; automate conditional forwarder deployment
+
+  DNS resolution returns public IP instead of private IP for Azure PaaS service   Private DNS Zone for privatelink.\* namespace not linked to the querying VNet                 Create VNet link from the privatelink.\* Private DNS Zone to the VNet; verify auto-registration created the A record                                                         Use Azure Policy to enforce Private DNS Zone links for all VNets; deploy privatelink zones before Private Endpoints
+
+  Domain join fails from Azure VM                                                 SRV records for \_ldap.\_tcp or \_kerberos.\_tcp unresolvable from Azure                      Verify forwarding rule for the AD domain namespace routes to on-premises DNS; test SRV resolution: Resolve-DnsName \_ldap.\_tcp.dc.\_msdcs.{domain} -Type SRV                Deploy and validate SRV forwarding rules in Phase 3 before any Azure VM domain joins
+
+  DNS forwarding loop detected (queries never resolve)                            Circular forwarding: Azure forwards to on-prem, which forwards back to Azure                  Audit forwarding rules and conditional forwarders for the failing namespace; ensure each namespace has exactly one authoritative path                                        Document all forwarding paths; review for loops during each migration phase
+
+  NXDOMAIN for recently migrated records                                          Stale DNS cache on client or intermediate resolver; TTL from old zone not expired             Flush DNS cache (ipconfig /flushdns); verify record exists in Azure DNS zone; wait for TTL expiration                                                                        Lower TTL on records to 300 seconds before migration; raise after validation
+
+  Intermittent resolution failures from Azure VMs                                 VNet DNS settings pointing to decommissioned or unreachable DNS server                        Verify VNet DNS settings; ensure listed DNS servers are operational; update to resolver inbound endpoint IP                                                                  Audit VNet DNS settings in each phase; use Azure Policy to enforce correct DNS configuration
+
+  Private Endpoint DNS record not created automatically                           Private DNS Zone integration not enabled during Private Endpoint creation                     Manually create A record in the privatelink.\* zone; or delete and recreate Private Endpoint with DNS integration enabled                                                    Use Azure Policy to enforce Private DNS Zone integration on Private Endpoint creation
+
+  Stale DNS records accumulating in Azure DNS Private Zone                        VMs deleted but auto-registration did not clean up records; or manual records never removed   Run cleanup script to identify records for non-existent VMs; remove stale records manually or via automation                                                                 Schedule regular Invoke-UIAODNSDriftDetection; implement Azure Automation runbook for stale record cleanup
+
+  Split-brain DNS returning wrong IP to internal clients                          Private DNS Zone not linked to the client\'s VNet; client resolves via Public Zone            Link Private DNS Zone to the client\'s VNet; verify VNet DNS settings                                                                                                        Maintain VNet link inventory; validate split-brain from each VNet after configuration changes
+
+  Kerberos authentication failure after DNS migration                             \_kerberos.\_tcp SRV records not resolvable or pointing to wrong DCs                          Validate SRV records; verify forwarding rule for AD domain; check Kerberos ticket acquisition: klist                                                                         Run Test-UIAOSRVRecords before and after each migration phase; never migrate SRV records away from AD DNS prematurely
+
+  Cross-forest resolution failure                                                 Forwarding rule for partner forest namespace missing or target IPs changed                    Verify forwarding rule for partner forest FQDN; confirm target DNS IPs are current and reachable                                                                             Include cross-forest DNS in forwarder audit; maintain partner DNS IP registry
+
+  DNS Private Resolver endpoint not responding                                    Resolver service degradation; subnet exhaustion; NSG blocking DNS traffic                     Check resolver health in Azure Portal; verify subnet has available IPs; verify NSG allows UDP/TCP 53 inbound/outbound                                                        Use /28 subnets (minimum); monitor resolver metrics; alert on query drop to zero
+
+  TTL-related caching issues causing stale resolution                             High TTL values on records that change during migration                                       Lower TTL to 300s before migration; flush caches; wait for old TTL to expire                                                                                                 Pre-migration TTL reduction 48 hours before cutover; document original TTL for post-migration restoration
+
+  DNSSEC validation failure after zone migration                                  Trust anchor chain broken; DS record not updated at registrar; key material mismatch          Verify DNSSEC chain: Resolve-DnsName -DnssecOk; update DS record at registrar; wait for propagation                                                                          Complete all key rollovers before migration; validate DNSSEC chain immediately after migration; maintain old signing until new chain validated
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix A --- DNS Record Type Migration Reference
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Record Type**   **AD DNS Behavior**                                                   **Azure DNS Behavior**                                                                      **Migration Notes**
+  ----------------- --------------------------------------------------------------------- ------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------
+  **A**             IPv4 address mapping; supports secure dynamic update and scavenging   Static records in Public/Private Zones; auto-registration for VMs in Private Zones          Direct mapping; verify dynamic records are still needed vs. static
+
+  **AAAA**          IPv6 address mapping; same dynamic update behavior as A               Supported in both Public and Private Zones                                                  Direct mapping; ensure IPv6 is enabled in target Azure VNets if applicable
+
+  **CNAME**         Alias to another FQDN; cannot coexist at zone apex                    Supported; same apex restriction. Use ALIAS record at apex for Public Zones                 Direct mapping; verify CNAME chains do not break with zone migration
+
+  **MX**            Mail exchange; priority + mail server FQDN                            Supported in both zone types                                                                Verify mail flow after migration; coordinate with messaging team
+
+  **NS**            Nameserver delegation; auto-created at zone apex                      Auto-managed by Azure at zone apex; custom NS for subdomain delegation                      Do not migrate apex NS records; Azure assigns its own nameservers
+
+  **PTR**           Reverse lookup; often dynamically registered via DHCP                 Supported in Private Zones for \*.in-addr.arpa zones                                        Import static PTR records; dynamic PTRs managed by auto-registration or automation
+
+  **SOA**           Zone authority; controls refresh, retry, expire, TTL                  Auto-managed by Azure; limited SOA customization                                            Do not migrate SOA records; Azure creates its own SOA
+
+  **SRV**           Service locator; dynamically registered by Netlogon for AD services   Supported as static records in both zone types                                              AD SRV records must remain on AD DNS during hybrid period; do not migrate until AD decommission
+
+  **TXT**           Arbitrary text; used for SPF, DKIM, DMARC, domain verification        Supported; 1024-character limit per string (multiple strings per record set)                Verify SPF/DKIM/DMARC records are intact; test email authentication after migration
+
+  **DNAME**         Delegation name; redirects entire subtree                             Not natively supported in Azure DNS                                                         Replace with individual CNAME records or DNS Forwarding Ruleset rules; document workaround
+
+  **ALIAS**         Not a standard AD DNS record type                                     Azure DNS Public Zones support ALIAS records at zone apex (resolves to Azure resource IP)   Use ALIAS for zone-apex scenarios that previously required CNAME workarounds
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix B --- Azure DNS Private Resolver Cost Calculator
+
+B.1 Pricing Components
+
+  --------------------------------------------------------------------------------------------------------------------------
+  **Component**                   **Unit**              **Approximate Price (USD)**
+  ------------------------------- --------------------- --------------------------------------------------------------------
+  DNS Private Resolver Instance   Per hour              \~\$0.18/hour (\~\$131/month)
+
+  Inbound Endpoint                Per hour              \~\$0.009/hour (\~\$6.50/month)
+
+  Outbound Endpoint               Per hour              \~\$0.009/hour (\~\$6.50/month)
+
+  DNS Queries Processed           Per million queries   Included in resolver instance cost
+
+  DNS Forwarding Ruleset          Per ruleset           No additional charge
+
+  VNet Links to Ruleset           Per link              No additional charge (first 2); \~\$0.50/month per additional link
+  --------------------------------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Note**                                                                                                                                                                 |
+|                                                                                                                                                                          |
+| Prices are approximate and subject to change. Always verify current pricing at the Azure Pricing Calculator. Prices shown are for US East region at time of publication. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+B.2 Estimation Formulas
+
+Monthly Cost = (Resolver Hours × \$0.18) + (Inbound Endpoints × Hours × \$0.009) + (Outbound Endpoints × Hours × \$0.009) + (Additional VNet Links beyond 2 × \$0.50) For a continuously running resolver: Hours/Month = 730 (approximate)
+
+B.3 Example Calculations
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Environment**                                          **Configuration**                                                              **Monthly Estimate**
+  -------------------------------------------------------- ------------------------------------------------------------------------------ -------------------------------------------------------------------------------
+  **Small** (1 VNet, basic hybrid)                         1 resolver, 1 inbound EP, 1 outbound EP, 0 extra VNet links                    \$131 + \$6.50 + \$6.50 = **\~\$144/month**
+
+  **Medium** (hub + 5 spokes)                              1 resolver, 2 inbound EPs, 2 outbound EPs, 3 extra VNet links                  \$131 + \$13 + \$13 + \$1.50 = **\~\$159/month**
+
+  **Large** (multi-region, 2 resolvers, hub + 15 spokes)   2 resolvers, 4 inbound EPs, 4 outbound EPs, 13 extra VNet links per resolver   (\$131 × 2) + (\$6.50 × 4) + (\$6.50 × 4) + (\$0.50 × 26) = **\~\$327/month**
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix C --- PowerShell Module: UIAODNSAssessment
+
+The following module consolidates all functions defined in this document into a single deployable module. Save as UIAODNSAssessment.psm1.
+
+C.1 Module Manifest
+
+\# UIAODNSAssessment.psd1 \@{ RootModule = \'UIAODNSAssessment.psm1\' ModuleVersion = \'1.0.0\' GUID = \'a1b2c3d4-e5f6-7890-abcd-ef1234567890\' Author = \'UIAO Platform Engineering\' Description = \'DNS assessment, migration, and monitoring tools for UIAO DNS Modernization\' PowerShellVersion = \'5.1\' RequiredModules = @(\'ActiveDirectory\', \'DnsServer\', \'Az.Dns\', \'Az.PrivateDns\', \'Az.DnsResolver\', \'Az.Network\') FunctionsToExport = @( \'Get-UIAODNSZoneInventory\', \'Get-UIAODNSRecordExport\', \'Get-UIAODNSHealthCheck\', \'Get-UIAODNSSRVValidation\', \'Get-UIAODNSForwarderAudit\', \'Get-UIAODNSSECStatus\', \'Export-UIAODNSToAzure\', \'Test-UIAOSRVRecords\', \'Invoke-UIAODNSDriftDetection\', \'Invoke-UIAODNSAssessment\' ) PrivateData = \@{ PSData = \@{ Tags = @(\'DNS\', \'Azure\', \'ActiveDirectory\', \'Migration\', \'UIAO\') ProjectUri = \'https://gitea.internal.contoso.com/uiao/dns-modernization\' } } }
+
+C.2 Master Orchestrator: Invoke-UIAODNSAssessment
+
+function Invoke-UIAODNSAssessment { \[CmdletBinding()\] param( \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = \".\\assessments\\dns\", \[Parameter(Mandatory = \$false)\] \[string\]\$DnsServerName, \[Parameter(Mandatory = \$false)\] \[switch\]\$IncludeDNSSEC, \[Parameter(Mandatory = \$false)\] \[switch\]\$IncludeRecordExport, \[Parameter(Mandatory = \$false)\] \[string\]\$GiteaBaseUrl, \[Parameter(Mandatory = \$false)\] \[string\]\$GiteaRepo, \[Parameter(Mandatory = \$false)\] \[string\]\$GiteaToken ) \$startTime = Get-Date Write-Host \"=============================================\" -ForegroundColor Cyan Write-Host \" UIAO DNS Assessment --- Master Orchestrator\" -ForegroundColor Cyan Write-Host \" Started: \$(\$startTime.ToString(\'o\'))\" -ForegroundColor Cyan Write-Host \"=============================================\" -ForegroundColor Cyan \$params = \@{ OutputPath = \$OutputPath } if (\$DnsServerName) { \$params.DnsServerName = \$DnsServerName } \# Step 1: Zone Inventory Write-Host \"\`n\[1/6\] Running Zone Inventory\...\" -ForegroundColor Yellow \$zoneInventory = Get-UIAODNSZoneInventory \@params \# Step 2: Health Check Write-Host \"\`n\[2/6\] Running Health Check\...\" -ForegroundColor Yellow \$healthCheck = Get-UIAODNSHealthCheck \@params \# Step 3: SRV Validation Write-Host \"\`n\[3/6\] Running SRV Validation\...\" -ForegroundColor Yellow \$srvValidation = Get-UIAODNSSRVValidation -OutputPath \$OutputPath \# Step 4: Forwarder Audit Write-Host \"\`n\[4/6\] Running Forwarder Audit\...\" -ForegroundColor Yellow \$forwarderAudit = Get-UIAODNSForwarderAudit \@params \# Step 5: DNSSEC Status (optional) \$dnssecStatus = \$null if (\$IncludeDNSSEC) { Write-Host \"\`n\[5/6\] Running DNSSEC Status\...\" -ForegroundColor Yellow \$dnssecStatus = Get-UIAODNSSECStatus \@params } else { Write-Host \"\`n\[5/6\] DNSSEC Status skipped (use -IncludeDNSSEC)\" -ForegroundColor DarkGray } \# Step 6: Full Record Export (optional --- can be large) if (\$IncludeRecordExport) { Write-Host \"\`n\[6/6\] Running Full Record Export\...\" -ForegroundColor Yellow \$recordPath = Join-Path \$OutputPath \"records\" foreach (\$zone in \$zoneInventory) { try { Get-UIAODNSRecordExport -ZoneName \$zone.ZoneName \` -DnsServerName \$zone.ServerName -OutputPath \$recordPath } catch { Write-Warning \"Record export failed for \$(\$zone.ZoneName): \$\_\" } } } else { Write-Host \"\`n\[6/6\] Full Record Export skipped (use -IncludeRecordExport)\" -ForegroundColor DarkGray } \# Summary \$endTime = Get-Date \$duration = \$endTime - \$startTime \$summary = \[PSCustomObject\]@{ AssessmentTimestamp = \$startTime.ToString(\"o\") Duration = \$duration.ToString() TotalZones = \$zoneInventory.Count HealthWarnings = (\$healthCheck \| Where-Object { \$\_.HealthStatus -eq \'WARNING\' }).Count SRVFailures = (\$srvValidation \| Where-Object { \$\_.Status -eq \'FAILED\' }).Count ForwardersAudited = \$forwarderAudit.Count DNSSECAssessed = if (\$dnssecStatus) { \$true } else { \$false } OutputPath = (Resolve-Path \$OutputPath).Path } \$summaryFile = Join-Path \$OutputPath \"assessment-summary.json\" \$summary \| ConvertTo-Json -Depth 3 \| Out-File -FilePath \$summaryFile -Encoding UTF8 Write-Host \"\`n=============================================\" -ForegroundColor Cyan Write-Host \" Assessment Complete\" -ForegroundColor Cyan Write-Host \" Duration: \$(\$duration.ToString())\" -ForegroundColor Cyan Write-Host \" Zones Discovered: \$(\$summary.TotalZones)\" -ForegroundColor Cyan Write-Host \" Health Warnings: \$(\$summary.HealthWarnings)\" -ForegroundColor Cyan Write-Host \" SRV Failures: \$(\$summary.SRVFailures)\" -ForegroundColor Cyan Write-Host \" Output: \$(\$summary.OutputPath)\" -ForegroundColor Cyan Write-Host \"=============================================\" -ForegroundColor Cyan return \$summary }
+
+C.3 Function Index
+
+  -----------------------------------------------------------------------------------------------------------------
+  **Function**                   **Purpose**                                                       **Defined In**
+  ------------------------------ ----------------------------------------------------------------- ----------------
+  Get-UIAODNSZoneInventory       Discover all DNS zones, types, replication scope, record counts   Section 4.1
+
+  Get-UIAODNSRecordExport        Full record dump per zone                                         Section 4.2
+
+  Get-UIAODNSHealthCheck         Scavenging, stale records, duplicates, orphaned PTR               Section 4.3
+
+  Get-UIAODNSSRVValidation       Validate AD SRV record resolution                                 Section 4.4
+
+  Get-UIAODNSForwarderAudit      Conditional forwarder inventory and reachability                  Section 4.5
+
+  Get-UIAODNSSECStatus           DNSSEC signing status and key inventory                           Section 4.6
+
+  Export-UIAODNSToAzure          Export AD DNS zone and import to Azure DNS                        Section 5.3
+
+  Test-UIAOSRVRecords            Continuous SRV monitoring with Gitea alerting                     Section 7.2
+
+  Invoke-UIAODNSDriftDetection   Compare on-prem vs. Azure DNS for drift                           Section 12.4
+
+  Invoke-UIAODNSAssessment       Master orchestrator --- runs all assessment functions             Appendix C.2
+  -----------------------------------------------------------------------------------------------------------------
+
+Appendix D --- Companion Document Cross-Reference
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **UIAO Canon Document**                  **Relationship to DNS Modernization**                **Key Dependencies**                                                                                             **Integration Points**
+  ---------------------------------------- ---------------------------------------------------- ---------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------
+  **AD Interaction Guide**                 Upstream --- provides DNS discovery data             Invoke-UIAOADAssessment DNS module generates input for this guide                                                Zone inventory, SRV record baseline, AD replication health
+
+  **Identity Modernization Guide**         Parallel --- DNS enables identity services           SRV records must remain resolvable for Entra ID Hybrid Join, ADFS, and Kerberos                                  SRV governance (Section 7), forwarding rules for AD namespaces
+
+  **PKI Modernization Guide**              Parallel --- PKI endpoints require DNS               CRL distribution points and OCSP responder FQDNs must resolve correctly                                          Certificate revocation endpoint DNS records, split-brain for CRL endpoints
+
+  **Platform Server Build Guide**          Downstream --- servers consume DNS configuration     VNet DNS settings, resolver endpoint IPs, DNS suffix search list                                                 Section 6.1 Step 9 (VNet DNS), Phase 8 (client migration)
+
+  **Network Modernization Guide**          Parallel --- network provides DNS transport          ExpressRoute/VPN connectivity for DNS traffic; NSG rules for port 53; subnet sizing for resolver endpoints       Hub-spoke topology (Section 3.7), resolver subnet requirements (Section 6.1 Step 2)
+
+  **Security Baseline Guide**              Parallel --- DNS is a security-critical service      DNSSEC policy decisions; DNS query logging for threat detection; Private Link for data exfiltration prevention   DNSSEC Modernization (Section 8), Private Endpoint DNS (Section 10)
+
+  **Monitoring and Observability Guide**   Downstream --- DNS generates monitoring data         DNS metrics, resolver logs, drift detection reports flow into centralized monitoring                             Section 12 (Monitoring), Log Analytics integration, Gitea issue creation
+
+  **Disaster Recovery Guide**              Parallel --- DNS must survive regional failure       Multi-region resolver deployment; DNS zone backup and restore; failover forwarding rules                         Section 6.2 (High Availability), Phase 10 (zone archival to Gitea)
+
+  **Governance and Compliance Guide**      Upstream --- governance policy governs DNS changes   Change control for DNS zone migration; Azure Policy for Private DNS Zone enforcement                             All migration phases require change control approval per governance policy
+
+  **Cost Management Guide**                Downstream --- DNS incurs Azure costs                Resolver instance costs, Private DNS Zone costs, query volume costs                                              Appendix B (Cost Calculator)
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**UIAO DNS Modernization Guide** --- Version 1.0
+
+Classification: Controlled \| Boundary: GCC-Moderate
+
+UIAO Canon --- Infrastructure Modernization Series
+
+**CONTROLLED --- GCC-MODERATE BOUNDARY --- END OF DOCUMENT**

@@ -1,0 +1,1866 @@
+---
+title: "UIAO Conditional Access Policy Library"
+subtitle: "Microsoft Entra ID governance reference for identity modernization"
+doc-type: policy-library
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO Conditional Access Policy Library.docx"
+repo-path: docs/customer-documents/modernization/access-plane/conditional-access-library.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
++--------------------------+
+| CONTROLLED               |
+|                          |
+| \|                       |
+|                          |
+| GCC-MODERATE BOUNDARY    |
+|                          |
+| \|                       |
+|                          |
+| UIAO IDENTITY GOVERNANCE |
++--------------------------+
+
+UIAO Conditional Access Policy Library
+
+**Microsoft Entra ID --- Governance Reference for Identity Modernization**
+
+**Classification:** Controlled \| **Boundary:** GCC-Moderate\
+**Version:** 2.0 \| **Effective Date:** April 21, 2026\
+**Owner:** UIAO Identity Modernization Program Office\
+**Audience:** Identity Architects, Security Engineers, IT Governance, Cloud Operations\
+**Review Cycle:** Quarterly \| **Next Review:** July 2026
+
+Table of Contents
+
+**Section 1** --- Executive Summary
+
+**Section 2** --- Policy Architecture
+
+**Section 3** --- Baseline Policies (CA-001 through CA-005)
+
+**Section 4** --- Device Tier Policies (CA-010 through CA-015)
+
+**Section 5** --- Environment Policies (CA-020 through CA-025)
+
+**Section 6** --- Region and Site Policies (CA-030 through CA-035)
+
+**Section 7** --- Application-Specific Policies (CA-040 through CA-050)
+
+**Section 8** --- Governance Policies (CA-060 through CA-065)
+
+**Section 9** --- Policy Deployment Methodology
+
+**Section 10** --- GPO-to-CA Migration Matrix
+
+**Section 11** --- Break-Glass Account Procedures
+
+**Section 12** --- Monitoring and Compliance
+
+**Appendix A** --- JSON Export Templates
+
+**Appendix B** --- Named Location Definitions
+
+**Appendix C** --- Authentication Strength Definitions
+
+**Appendix D** --- Compliance Mapping
+
+Section 1: Executive Summary
+
+1.1 Purpose
+
+The UIAO Conditional Access Policy Library serves as the authoritative governance reference for organizations transitioning from legacy Active Directory Group Policy Object (GPO)-based access control to Microsoft Entra ID Conditional Access (CA). This document defines a comprehensive, tiered policy framework that enforces Zero Trust principles across identity, device, application, and network signals.
+
+This library provides:
+
+- A standardized catalog of 40+ Conditional Access policies organized by function and tier
+
+- Direct mapping from legacy GPO constructs to modern cloud-native equivalents
+
+- Phased deployment methodology with report-only validation at each stage
+
+- Integration with the UIAO OrgPath extension attribute schema for dynamic policy targeting
+
+- Compliance alignment to NIST 800-53 and FedRAMP Moderate requirements
+
+1.2 GPO-to-Conditional Access Transformation
+
+Traditional Active Directory environments enforce access control through GPOs linked to Organizational Units (OUs). These GPOs govern logon restrictions, security filtering, drive mappings, password policies, software restrictions, and audit configurations. In cloud-first and hybrid architectures, Conditional Access policies replace these controls with signal-based, real-time policy evaluation.
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------
+  **Legacy GPO Mechanism**                        **Conditional Access Equivalent**                 **Advantage**
+  ----------------------------------------------- ------------------------------------------------- ------------------------------------------------
+  Logon restrictions (Allow log on locally)       CA device-based grant controls + device filters   Enforced at authentication, not session
+
+  Security filtering by group membership          CA user/group assignments + dynamic groups        Real-time group evaluation, no replication lag
+
+  Account lockout policy                          CA risk-based policies + Entra ID Protection      Risk intelligence, not static thresholds
+
+  Drive mapping / printer deployment              Intune configuration profiles + SharePoint        Cloud-native, location-independent
+
+  Software restriction policies (SRP/AppLocker)   Intune app protection + CA app controls           Per-app conditional enforcement
+
+  Password policy (fine-grained)                  Authentication methods policy + CA MFA            Passwordless capable, phishing-resistant
+  --------------------------------------------------------------------------------------------------------------------------------------------------
+
+1.3 Relationship to UIAO Modules
+
+This Policy Library is a component of the broader UIAO Identity Modernization framework and interfaces with:
+
+- **AD Assessment Module:** Discovers existing GPOs, maps them to CA equivalents, and identifies gaps requiring new cloud-native policies
+
+- **OrgPath Module:** Defines the extension attribute schema used for dynamic group construction and device filter expressions within CA policies
+
+- **Drift Detection Module:** Continuously monitors CA policy state against this library baseline and alerts on unauthorized changes
+
+- **Lifecycle Management Module:** Automates user provisioning into the correct dynamic groups that CA policies target
+
+1.4 OrgPath Extension Attribute Schema
+
+All Conditional Access policies in this library leverage the UIAO OrgPath extension attribute schema to enable dynamic, attribute-driven policy targeting. These attributes are synchronized to both user and device objects in Microsoft Entra ID.
+
+  ----------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **OrgPath Field**   **Example Values**                **CA Policy Usage**
+  ------------------------- ------------------- --------------------------------- --------------------------------------------------------
+  **extensionAttribute1**   Region              EAST, WEST, CENTRAL, EMEA         Geographic access restrictions, named location mapping
+
+  **extensionAttribute2**   Site                HQ-DC, BRANCH-NY, REMOTE          Site-based network trust, session controls
+
+  **extensionAttribute3**   Department          IT, HR, Finance, Engineering      Department-scoped app access, LOB app controls
+
+  **extensionAttribute4**   DeviceTier          Tier0, Tier1, Tier2, Kiosk        Device tier policies (CA-010 through CA-015)
+
+  **extensionAttribute5**   Environment         Production, Staging, Dev          Environment isolation policies (CA-020 through CA-023)
+
+  **extensionAttribute6**   DeviceRole          Workstation, Server, Kiosk, PAW   Device role-specific session and grant controls
+  ----------------------------------------------------------------------------------------------------------------------------------------
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Important**                                                                                                                                                                                                                                 |
+|                                                                                                                                                                                                                                               |
+| Extension attributes must be populated                                                                                                                                                                                                        |
+|                                                                                                                                                                                                                                               |
+| before                                                                                                                                                                                                                                        |
+|                                                                                                                                                                                                                                               |
+| deploying CA policies that reference them. Unpopulated attributes will cause devices and users to fall outside dynamic group membership, resulting in policy bypass. Validate attribute completeness using the UIAO OrgPath Readiness report. |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Section 2: Policy Architecture
+
+2.1 Policy Evaluation Order and Conflict Resolution
+
+Microsoft Entra ID evaluates Conditional Access policies using an **additive model**. All policies that match a given sign-in are evaluated simultaneously, and the most restrictive combination of grant controls applies. There is no policy priority number or ordering mechanism.
+
+**Key evaluation principles:**
+
+1.  **All matching policies apply.** Unlike GPOs, which have precedence rules (LSDOU), every CA policy whose conditions match the sign-in contributes to the final access decision.
+
+2.  **Block overrides grant.** If any matching policy issues a Block grant control, access is denied regardless of other policies.
+
+3.  **Multiple grant controls combine as AND by default.** When multiple policies require different grant controls (e.g., one requires MFA, another requires compliant device), the user must satisfy all controls unless policies are explicitly configured with OR logic.
+
+4.  **Session controls are additive.** The most restrictive session control from all matching policies is enforced (e.g., shortest sign-in frequency wins).
+
+5.  **Exclusions are absolute.** If a user or group is in the exclusion list, that policy does not apply to them, regardless of inclusion conditions.
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Design Principle**                                                                                                                                                                                                                |
+|                                                                                                                                                                                                                                     |
+| The UIAO policy numbering convention (CA-0XX) is organizational only and does not imply evaluation order. Policies are designed so that their combined effect produces the intended security posture without relying on precedence. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+2.2 Named Locations Strategy
+
+Named locations define trusted and untrusted network boundaries that CA policies reference as conditions. The UIAO framework defines three categories of named locations:
+
+  --------------------------------------------------------------------------------------------------------------------------------------------
+  **Location Category**       **Type**        **Description**                                                       **Policies Referencing**
+  --------------------------- --------------- --------------------------------------------------------------------- --------------------------
+  **Corporate Networks**      IP-based        Headquarters, branch office, and VPN egress IP ranges                 CA-015, CA-031, CA-032
+
+  **Allowed Countries**       Country-based   Countries where the organization operates or allows access            CA-030
+
+  **Compliance Boundaries**   IP-based        GCC-Moderate compliant network segments, Azure Government endpoints   CA-020, CA-043
+  --------------------------------------------------------------------------------------------------------------------------------------------
+
+2.3 Authentication Strength Definitions
+
+Authentication strengths define which MFA methods satisfy a policy\'s grant control. The UIAO framework uses both built-in and custom authentication strengths:
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Strength Name**            **Type**   **Allowed Methods**                                                                                    **Used In**
+  ---------------------------- ---------- ------------------------------------------------------------------------------------------------------ -------------------------
+  **MFA**                      Built-in   Any two-factor combination (phone, authenticator app, OATH token, FIDO2, Windows Hello, certificate)   CA-001, CA-015, CA-022
+
+  **Passwordless MFA**         Built-in   FIDO2, Windows Hello for Business, certificate-based auth                                              CA-004, CA-011
+
+  **Phishing-resistant MFA**   Built-in   FIDO2, Windows Hello for Business, certificate-based auth (no phone/SMS)                               CA-010
+
+  **UIAO Privileged Access**   Custom     FIDO2 security key only                                                                                CA-010, CA-043 (Tier 0)
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.4 Grant Controls vs. Session Controls
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Control Type**   **Function**                                                     **Available Controls**
+  ------------------ ---------------------------------------------------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Grant**          Determine whether access is allowed or blocked at sign-in time   Block access, Require MFA, Require compliant device, Require Hybrid Azure AD joined device, Require approved client app, Require app protection policy, Require password change, Require terms of use, Require authentication strength
+
+  **Session**        Restrict behavior within an authenticated session                Sign-in frequency, Persistent browser session, App-enforced restrictions, Conditional Access App Control (Defender for Cloud Apps), Customize continuous access evaluation, Disable resilience defaults
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.5 Report-Only Mode Testing Methodology
+
+Every policy in this library must be deployed in **report-only mode** before enforcement. The testing methodology follows a structured validation cycle:
+
+6.  **Deploy in report-only mode** --- Policy evaluates against all sign-ins but does not enforce controls
+
+7.  **Monitor for 7 calendar days minimum** --- Collect sign-in log data showing which users/devices would be affected
+
+8.  **Analyze impact report** --- Identify users who would be blocked, prompted for MFA, or require device compliance
+
+9.  **Remediate gaps** --- Enroll devices, register MFA methods, update group membership, or adjust policy scope
+
+10. **Stakeholder review** --- Present impact analysis to security and business stakeholders for approval
+
+11. **Enable enforcement** --- Switch policy from report-only to on
+
+12. **Monitor post-enforcement for 48 hours** --- Watch for unexpected blocks or service degradation
+
+2.6 Emergency Break-Glass Account Exclusions
+
+Every CA policy in this library **must** exclude the break-glass accounts defined in Section 11. The exclusion is implemented via a dedicated security group:
+
+- **Group Name:** SG-BreakGlass-Exclusion
+
+- **Group Type:** Assigned (not dynamic)
+
+- **Members:** BreakGlass-Admin01@tenant.onmicrosoft.com, BreakGlass-Admin02@tenant.onmicrosoft.com
+
+- **Placement:** Added to the \"Exclude users and groups\" section of every CA policy
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Warning**                                                                                                                                                                                               |
+|                                                                                                                                                                                                           |
+| Failure to exclude break-glass accounts from all CA policies may result in a complete administrative lockout of the tenant. This exclusion must be verified as part of every policy deployment checklist. |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Section 3: Baseline Policies (CA-001 through CA-005)
+
+Baseline policies establish the minimum security posture for all users and all cloud applications. These policies are deployed first and form the foundation upon which tiered and application-specific policies build.
+
+CA-001: Require MFA for All Users
+
++---------------------------+
+| CA-001                    |
+|                           |
+| \|                        |
+|                           |
+| Require MFA for All Users |
+|                           |
+| \|                        |
+|                           |
+| **Phase 2**               |
++---------------------------+
+
+**Description:** Enforces multi-factor authentication for all user sign-ins across all cloud applications. This is the foundational identity verification policy that ensures no single-factor authentication is permitted in the tenant.
+
+  ----------------------------------------------------------------------------------
+  **Configuration**       **Value**
+  ----------------------- ----------------------------------------------------------
+  **Users --- Include**   All users
+
+  **Users --- Exclude**   SG-BreakGlass-Exclusion, Guest users (handled by CA-005)
+
+  **Cloud Apps**          All cloud apps
+
+  **Conditions**          None (applies to all conditions)
+
+  **Grant Controls**      Require authentication strength --- MFA
+
+  **Session Controls**    None
+
+  **State**               Report-only → On
+  ----------------------------------------------------------------------------------
+
+**GPO Equivalent:** Computer Configuration → Windows Settings → Security Settings → Local Policies → Security Options → \"Interactive logon: Require smart card\" combined with Account Policies → Account Lockout Policy.
+
+**Dependencies:** All users must have at least one MFA method registered. Run MFA Registration Campaign via Authentication Methods policy prior to enforcement.
+
+**Deployment Phase:** Phase 2 --- Baseline (report-only for 1 week, then enforce).
+
+CA-002: Block Legacy Authentication
+
++-----------------------------+
+| CA-002                      |
+|                             |
+| \|                          |
+|                             |
+| Block Legacy Authentication |
+|                             |
+| \|                          |
+|                             |
+| **Phase 2**                 |
++-----------------------------+
+
+**Description:** Blocks all legacy authentication protocols that cannot perform modern authentication or MFA. This eliminates attack vectors such as password spray against IMAP, POP3, SMTP AUTH, and legacy Exchange ActiveSync clients.
+
+  -----------------------------------------------------------------------------
+  **Configuration**                **Value**
+  -------------------------------- --------------------------------------------
+  **Users --- Include**            All users
+
+  **Users --- Exclude**            SG-BreakGlass-Exclusion
+
+  **Cloud Apps**                   All cloud apps
+
+  **Conditions --- Client Apps**   Exchange ActiveSync clients, Other clients
+
+  **Grant Controls**               Block access
+
+  **Session Controls**             None
+
+  **State**                        Report-only → On
+  -----------------------------------------------------------------------------
+
+**GPO Equivalent:** Computer Configuration → Windows Settings → Security Settings → Local Policies → Security Options → \"Network security: LAN Manager authentication level\" set to \"Send NTLMv2 response only. Refuse LM & NTLM.\"
+
+**Dependencies:** Audit legacy auth sign-in logs for 2 weeks prior to enforcement. Migrate any service accounts or applications using legacy protocols to modern authentication.
+
+**Deployment Phase:** Phase 2 --- Baseline.
+
+CA-003: Require Compliant Device for Corporate Apps
+
++---------------------------------------------+
+| CA-003                                      |
+|                                             |
+| \|                                          |
+|                                             |
+| Require Compliant Device for Corporate Apps |
+|                                             |
+| \|                                          |
+|                                             |
+| **Phase 2**                                 |
++---------------------------------------------+
+
+**Description:** Requires devices accessing Microsoft 365 productivity applications to be enrolled in Intune and marked as compliant. This ensures that only managed devices with up-to-date security configurations can access corporate data.
+
+  ----------------------------------------------------------------------------------------------------------------------------
+  **Configuration**            **Value**
+  ---------------------------- -----------------------------------------------------------------------------------------------
+  **Users --- Include**        All users
+
+  **Users --- Exclude**        SG-BreakGlass-Exclusion, Guest users
+
+  **Cloud Apps --- Include**   Office 365 Exchange Online, Office 365 SharePoint Online (includes OneDrive), Microsoft Teams
+
+  **Conditions**               None
+
+  **Grant Controls**           Require device to be marked as compliant
+
+  **Session Controls**         None
+
+  **State**                    Report-only → On
+  ----------------------------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** Domain membership requirement + security filtering by computer group + GPO-applied security baselines. In legacy AD, devices had to be domain-joined and receive GPO security settings to access network resources.
+
+**Dependencies:** Intune device compliance policies must be configured and devices enrolled. Compliance policies should include OS version, encryption, antivirus, and firewall requirements.
+
+**Deployment Phase:** Phase 2 --- Baseline.
+
+CA-004: Require Managed Device for Admin Portals
+
++------------------------------------------+
+| CA-004                                   |
+|                                          |
+| \|                                       |
+|                                          |
+| Require Managed Device for Admin Portals |
+|                                          |
+| \|                                       |
+|                                          |
+| **Phase 2**                              |
++------------------------------------------+
+
+**Description:** Enforces both device compliance and multi-factor authentication for users with administrative directory roles when accessing management portals. Includes a 4-hour sign-in frequency to limit session persistence for privileged operations.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Configuration**               **Value**
+  ------------------------------- ----------------------------------------------------------------------------------------------------------------------
+  **Users --- Include (Roles)**   Global Administrator, Security Administrator, Exchange Administrator, SharePoint Administrator, Intune Administrator
+
+  **Users --- Exclude**           SG-BreakGlass-Exclusion
+
+  **Cloud Apps --- Include**      Microsoft Azure Management, Microsoft 365 admin center, Exchange admin center, Microsoft Entra admin center
+
+  **Conditions**                  None
+
+  **Grant Controls**              Require device to be marked as compliant **AND** Require authentication strength --- Passwordless MFA
+
+  **Session Controls**            Sign-in frequency: 4 hours
+
+  **State**                       Report-only → On
+  ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** Tier 0 administrative workstation restrictions via \"Allow log on locally\" and \"Deny log on through Remote Desktop Services\" GPOs linked to Admin Tier OUs. Admin logon restrictions prevented Tier 0 credentials from being used on lower-tier workstations.
+
+**Dependencies:** Admin users must have passwordless MFA methods registered (FIDO2 or Windows Hello for Business). Admin workstations must be enrolled and compliant in Intune.
+
+**Deployment Phase:** Phase 2 --- Baseline.
+
+CA-005: Terms of Use for External Collaboration
+
++-----------------------------------------+
+| CA-005                                  |
+|                                         |
+| \|                                      |
+|                                         |
+| Terms of Use for External Collaboration |
+|                                         |
+| \|                                      |
+|                                         |
+| **Phase 2**                             |
++-----------------------------------------+
+
+**Description:** Requires external guest users to accept organizational terms of use and complete MFA before accessing Microsoft 365 applications. Ensures legal acknowledgment and identity verification for B2B collaboration scenarios.
+
+  --------------------------------------------------------------------------------------------------------------
+  **Configuration**            **Value**
+  ---------------------------- ---------------------------------------------------------------------------------
+  **Users --- Include**        Guest or external users --- B2B collaboration guest users
+
+  **Users --- Exclude**        SG-BreakGlass-Exclusion
+
+  **Cloud Apps --- Include**   Office 365 (all apps)
+
+  **Conditions**               None
+
+  **Grant Controls**           Require terms of use acceptance **AND** Require authentication strength --- MFA
+
+  **Session Controls**         None
+
+  **State**                    Report-only → On
+  --------------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** No direct equivalent. Legacy AD had no native mechanism for guest terms of use at logon. This represents a new capability enabled by cloud identity.
+
+**Dependencies:** Terms of Use document must be configured in Microsoft Entra ID → Identity Governance → Terms of Use. Document must be reviewed by Legal.
+
+**Deployment Phase:** Phase 2 --- Baseline.
+
+Section 4: Device Tier Policies (CA-010 through CA-015)
+
+Device tier policies enforce the principle of tiered administration by applying progressively stricter controls based on the device\'s tier classification stored in **extensionAttribute4 (DeviceTier)**. These policies align with the traditional AD tiered administration model (Tier 0/1/2) adapted for cloud-native enforcement.
+
+CA-010: Tier 0 --- Privileged Access Workstation Enforcement
+
++-------------------------------------------+
+| CA-010                                    |
+|                                           |
+| \|                                        |
+|                                           |
+| Tier 0                                    |
+|                                           |
+| ---                                       |
+|                                           |
+| Privileged Access Workstation Enforcement |
+|                                           |
+| \|                                        |
+|                                           |
+| **Phase 3**                               |
++-------------------------------------------+
+
+**Description:** Applies maximum security controls to Tier 0 Privileged Access Workstations (PAWs). Requires phishing-resistant MFA, enforces 1-hour sign-in frequency, and disables persistent browser sessions to minimize credential exposure on the highest-value assets.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------
+  **Configuration**                  **Value**
+  ---------------------------------- -------------------------------------------------------------------------------------------------------------
+  **Users --- Include**              Dynamic group: DG-Devices-Tier0 (device.extensionAttribute4 -eq \"Tier0\")
+
+  **Users --- Exclude**              SG-BreakGlass-Exclusion
+
+  **Cloud Apps**                     All cloud apps
+
+  **Conditions --- Device Filter**   Include filtered devices: device.extensionAttribute4 -eq \"Tier0\"
+
+  **Grant Controls**                 Require device to be marked as compliant **AND** Require authentication strength --- Phishing-resistant MFA
+
+  **Session Controls**               Sign-in frequency: 1 hour; Persistent browser session: Never persistent
+
+  **State**                          Report-only → On
+  ------------------------------------------------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** Tier 0 OU GPOs including \"Allow log on locally\" restricted to Domain Admins, \"Deny log on through network\" for non-admin users, AppLocker whitelisting, credential guard enforcement, and restricted admin RDP settings.
+
+**Dependencies:** Tier 0 devices must have extensionAttribute4 set to \"Tier0\". FIDO2 keys must be provisioned for all Tier 0 operators.
+
+**Deployment Phase:** Phase 3 --- Device Tier.
+
+CA-011: Tier 1 --- Server Access Controls
+
++------------------------+
+| CA-011                 |
+|                        |
+| \|                     |
+|                        |
+| Tier 1                 |
+|                        |
+| ---                    |
+|                        |
+| Server Access Controls |
+|                        |
+| \|                     |
+|                        |
+| **Phase 3**            |
++------------------------+
+
+**Description:** Controls access from Tier 1 server administrator identities to Azure management and server administration tools. Requires compliant devices and MFA to prevent lateral movement between tiers.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------
+  **Configuration**                  **Value**
+  ---------------------------------- -------------------------------------------------------------------------------------------------------
+  **Users --- Include**              Dynamic group: DG-Devices-Tier1 (device.extensionAttribute4 -eq \"Tier1\")
+
+  **Users --- Exclude**              SG-BreakGlass-Exclusion
+
+  **Cloud Apps --- Include**         Microsoft Azure Management, Windows Virtual Desktop, Azure Arc-enabled servers
+
+  **Conditions --- Device Filter**   Include filtered devices: device.extensionAttribute4 -eq \"Tier1\"
+
+  **Grant Controls**                 Require device to be marked as compliant **AND** Require authentication strength --- Passwordless MFA
+
+  **Session Controls**               Sign-in frequency: 4 hours
+
+  **State**                          Report-only → On
+  ------------------------------------------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** Tier 1 OU GPOs restricting server logon to Server Admins group, denying interactive logon for Tier 0 and Tier 2 accounts on servers.
+
+**Dependencies:** Server identities must have extensionAttribute4 set to \"Tier1\". Server admin accounts must be registered with passwordless MFA.
+
+**Deployment Phase:** Phase 3 --- Device Tier.
+
+CA-012: Tier 2 --- Standard Workstation Policy
+
++-----------------------------+
+| CA-012                      |
+|                             |
+| \|                          |
+|                             |
+| Tier 2                      |
+|                             |
+| ---                         |
+|                             |
+| Standard Workstation Policy |
+|                             |
+| \|                          |
+|                             |
+| **Phase 3**                 |
++-----------------------------+
+
+**Description:** Applies standard security controls to Tier 2 end-user workstations. Allows access from either Intune-compliant or Hybrid Azure AD joined devices, providing flexibility during the hybrid transition period.
+
+  --------------------------------------------------------------------------------------------------------------------------
+  **Configuration**                  **Value**
+  ---------------------------------- ---------------------------------------------------------------------------------------
+  **Users --- Include**              Dynamic group: DG-Devices-Tier2 (device.extensionAttribute4 -eq \"Tier2\")
+
+  **Users --- Exclude**              SG-BreakGlass-Exclusion
+
+  **Cloud Apps --- Include**         Office 365 (all apps)
+
+  **Conditions --- Device Filter**   Include filtered devices: device.extensionAttribute4 -eq \"Tier2\"
+
+  **Grant Controls**                 Require device to be marked as compliant **OR** Require Hybrid Azure AD joined device
+
+  **Session Controls**               None
+
+  **State**                          Report-only → On
+  --------------------------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** Domain join requirement + security baseline GPOs applied to Workstation OU. Standard users received baseline security settings via GPO inheritance.
+
+**Dependencies:** Devices must be either Intune-enrolled or Hybrid Azure AD joined. extensionAttribute4 must be set to \"Tier2\".
+
+**Deployment Phase:** Phase 3 --- Device Tier.
+
+CA-013: Kiosk Device Restrictions
+
++---------------------------+
+| CA-013                    |
+|                           |
+| \|                        |
+|                           |
+| Kiosk Device Restrictions |
+|                           |
+| \|                        |
+|                           |
+| **Phase 3**               |
++---------------------------+
+
+**Description:** Restricts kiosk devices to a limited set of applications with extended sign-in frequency and app-enforced restrictions. Kiosk devices are identified by extensionAttribute6 = \"Kiosk\" and are intended for shared-use scenarios.
+
+  ---------------------------------------------------------------------------------------------------------------
+  **Configuration**                  **Value**
+  ---------------------------------- ----------------------------------------------------------------------------
+  **Users --- Include**              Dynamic group: DG-Devices-Kiosk (device.extensionAttribute6 -eq \"Kiosk\")
+
+  **Users --- Exclude**              SG-BreakGlass-Exclusion
+
+  **Cloud Apps --- Include**         Select apps (limited kiosk app set defined per site)
+
+  **Conditions --- Device Filter**   Include filtered devices: device.extensionAttribute6 -eq \"Kiosk\"
+
+  **Grant Controls**                 Require device to be marked as compliant
+
+  **Session Controls**               Sign-in frequency: 8 hours; App enforced restrictions: Enabled
+
+  **State**                          Report-only → On
+  ---------------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** Kiosk OU GPOs with assigned access (shell launcher), software restriction policies, and restricted desktop configurations.
+
+**Deployment Phase:** Phase 3 --- Device Tier.
+
+CA-014: Unmanaged Device --- Browser Only
+
++------------------+
+| CA-014           |
+|                  |
+| \|               |
+|                  |
+| Unmanaged Device |
+|                  |
+| ---              |
+|                  |
+| Browser Only     |
+|                  |
+| \|               |
+|                  |
+| **Phase 3**      |
++------------------+
+
+**Description:** Allows limited browser-only access from unmanaged (personal) devices with session restrictions that prevent data download and disable persistent sessions. Integrates with Defender for Cloud Apps for download blocking.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Configuration**                  **Value**
+  ---------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Users --- Include**              All users
+
+  **Users --- Exclude**              SG-BreakGlass-Exclusion
+
+  **Cloud Apps --- Include**         Office 365 Exchange Online, Office 365 SharePoint Online
+
+  **Conditions --- Device Filter**   Exclude filtered devices where device.isCompliant -eq True OR device.trustType -eq \"ServerAD\"
+
+  **Grant Controls**                 Require authentication strength --- MFA
+
+  **Session Controls**               App enforced restrictions: Enabled; Persistent browser session: Never persistent; Conditional Access App Control: Use custom policy (block downloads)
+
+  **State**                          Report-only → On
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** No direct equivalent. In legacy AD, unmanaged devices simply could not join the domain and were denied network access via 802.1X/NAP. CA provides a more nuanced approach allowing limited access.
+
+**Dependencies:** Microsoft Defender for Cloud Apps must be configured and Conditional Access App Control must be enabled for the target apps.
+
+**Deployment Phase:** Phase 3 --- Device Tier.
+
+CA-015: Non-Corporate Network Restrictions
+
++------------------------------------+
+| CA-015                             |
+|                                    |
+| \|                                 |
+|                                    |
+| Non-Corporate Network Restrictions |
+|                                    |
+| \|                                 |
+|                                    |
+| **Phase 3**                        |
++------------------------------------+
+
+**Description:** Applies additional MFA requirements and reduced sign-in frequency for access attempts originating from outside defined corporate network locations.
+
+  ------------------------------------------------------------------------------------------------------
+  **Configuration**              **Value**
+  ------------------------------ -----------------------------------------------------------------------
+  **Users --- Include**          All users
+
+  **Users --- Exclude**          SG-BreakGlass-Exclusion
+
+  **Cloud Apps**                 All cloud apps
+
+  **Conditions --- Locations**   Include: Any location; Exclude: Named location \"Corporate Networks\"
+
+  **Grant Controls**             Require authentication strength --- MFA
+
+  **Session Controls**           Sign-in frequency: 4 hours
+
+  **State**                      Report-only → On
+  ------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** Network-based access control via 802.1X, VPN-only access requirements, and IPsec connection security rules configured through GPO.
+
+**Dependencies:** Named location \"Corporate Networks\" must be created with all corporate IP ranges (see Appendix B).
+
+**Deployment Phase:** Phase 3 --- Device Tier.
+
+Section 5: Environment Policies (CA-020 through CA-025)
+
+Environment policies enforce isolation between production, staging, and development environments. These policies reference **extensionAttribute5 (Environment)** and prevent credential and resource crossover between environments --- a critical control for change management and data protection.
+
+CA-020: Production Environment --- Maximum Protection
+
++------------------------+
+| CA-020                 |
+|                        |
+| \|                     |
+|                        |
+| Production Environment |
+|                        |
+| ---                    |
+|                        |
+| Maximum Protection     |
+|                        |
+| \|                     |
+|                        |
+| **Phase 4**            |
++------------------------+
+
+**Description:** Applies the highest level of protection to production environment access. Requires compliant devices, MFA, and approved client applications. Blocks access from unapproved client apps to prevent data leakage through unauthorized tools.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Configuration**       **Value**
+  ----------------------- ------------------------------------------------------------------------------------------------------------------------------
+  **Users --- Include**   Dynamic group: DG-Env-Production (user.extensionAttribute5 -eq \"Production\")
+
+  **Users --- Exclude**   SG-BreakGlass-Exclusion
+
+  **Cloud Apps**          All cloud apps
+
+  **Conditions**          None
+
+  **Grant Controls**      Require device to be marked as compliant **AND** Require authentication strength --- MFA **AND** Require approved client app
+
+  **Session Controls**    None
+
+  **State**               Report-only → On
+  ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Dependencies:** Users in production groups must have extensionAttribute5 set to \"Production\". Approved client app list must be defined in Intune app protection policies.
+
+**Deployment Phase:** Phase 4 --- Environment.
+
+CA-021: Staging Environment --- Controlled Access
+
++---------------------+
+| CA-021              |
+|                     |
+| \|                  |
+|                     |
+| Staging Environment |
+|                     |
+| ---                 |
+|                     |
+| Controlled Access   |
+|                     |
+| \|                  |
+|                     |
+| **Phase 4**         |
++---------------------+
+
+**Description:** Restricts staging environment access to internal networks only and requires MFA. Staging environments contain near-production configurations and must be protected from external access.
+
+  ------------------------------------------------------------------------------------------------------------------
+  **Configuration**              **Value**
+  ------------------------------ -----------------------------------------------------------------------------------
+  **Users --- Include**          Dynamic group: DG-Env-Staging (user.extensionAttribute5 -eq \"Staging\")
+
+  **Users --- Exclude**          SG-BreakGlass-Exclusion
+
+  **Cloud Apps --- Include**     Staging app registrations (tagged with Environment:Staging)
+
+  **Conditions --- Locations**   Include: Any location; Exclude: Named location \"Corporate Networks\"
+
+  **Grant Controls**             Block access (from non-corporate networks); Require MFA (from corporate networks)
+
+  **Session Controls**           Sign-in frequency: 8 hours
+
+  **State**                      Report-only → On
+  ------------------------------------------------------------------------------------------------------------------
+
+**Dependencies:** Staging app registrations must be tagged. Named location \"Corporate Networks\" must be configured.
+
+**Deployment Phase:** Phase 4 --- Environment.
+
+CA-022: Development Environment --- Flexible with Guardrails
+
++--------------------------+
+| CA-022                   |
+|                          |
+| \|                       |
+|                          |
+| Development Environment  |
+|                          |
+| ---                      |
+|                          |
+| Flexible with Guardrails |
+|                          |
+| \|                       |
+|                          |
+| **Phase 4**              |
++--------------------------+
+
+**Description:** Provides developers with more flexible access while maintaining baseline MFA requirements. Extended sign-in frequency reduces friction during development workflows while preserving identity assurance.
+
+  -----------------------------------------------------------------------------------------------
+  **Configuration**            **Value**
+  ---------------------------- ------------------------------------------------------------------
+  **Users --- Include**        Dynamic group: DG-Env-Dev (user.extensionAttribute5 -eq \"Dev\")
+
+  **Users --- Exclude**        SG-BreakGlass-Exclusion
+
+  **Cloud Apps --- Include**   Dev/test app registrations (tagged with Environment:Dev)
+
+  **Conditions**               None
+
+  **Grant Controls**           Require authentication strength --- MFA (any method)
+
+  **Session Controls**         Sign-in frequency: 12 hours
+
+  **State**                    Report-only → On
+  -----------------------------------------------------------------------------------------------
+
+**Dependencies:** Dev app registrations must be tagged. Developer accounts must have extensionAttribute5 set to \"Dev\".
+
+**Deployment Phase:** Phase 4 --- Environment.
+
+CA-023: Cross-Environment Access Block
+
++--------------------------------+
+| CA-023                         |
+|                                |
+| \|                             |
+|                                |
+| Cross-Environment Access Block |
+|                                |
+| \|                             |
+|                                |
+| **Phase 4**                    |
++--------------------------------+
+
+**Description:** Prevents environment crossover by blocking production-designated users from accessing development/staging resources and vice versa. This enforces the principle of environment isolation to prevent accidental or intentional cross-contamination.
+
+This policy is implemented as **two separate CA policies** in Entra ID:
+
+**CA-023a --- Block Production Users from Dev/Staging:**
+
+  --------------------------------------------------------------------------
+  **Configuration**       **Value**
+  ----------------------- --------------------------------------------------
+  **Users --- Include**   DG-Env-Production
+
+  **Cloud Apps**          Apps tagged Environment:Dev, Environment:Staging
+
+  **Grant Controls**      Block access
+  --------------------------------------------------------------------------
+
+**CA-023b --- Block Dev Users from Production:**
+
+  ------------------------------------------------------------
+  **Configuration**       **Value**
+  ----------------------- ------------------------------------
+  **Users --- Include**   DG-Env-Dev
+
+  **Cloud Apps**          Apps tagged Environment:Production
+
+  **Grant Controls**      Block access
+  ------------------------------------------------------------
+
+**Dependencies:** All app registrations must be correctly tagged with their environment designation. Users needing cross-environment access (e.g., release engineers) must be managed through Privileged Identity Management (PIM) with time-limited role activation.
+
+**Deployment Phase:** Phase 4 --- Environment.
+
+Section 6: Region and Site Policies (CA-030 through CA-035)
+
+Region and site policies enforce geographic access controls and network trust boundaries. These policies reference **extensionAttribute1 (Region)** and **extensionAttribute2 (Site)** to apply location-appropriate security controls.
+
+CA-030: Geographic Access Restrictions
+
++--------------------------------+
+| CA-030                         |
+|                                |
+| \|                             |
+|                                |
+| Geographic Access Restrictions |
+|                                |
+| \|                             |
+|                                |
+| **Phase 4**                    |
++--------------------------------+
+
+**Description:** Blocks access from countries where the organization does not operate. Provides an exception mechanism for approved business travel through a temporary exclusion group managed via PIM.
+
+  -----------------------------------------------------------------------------------------------------
+  **Configuration**              **Value**
+  ------------------------------ ----------------------------------------------------------------------
+  **Users --- Include**          All users
+
+  **Users --- Exclude**          SG-BreakGlass-Exclusion, SG-ApprovedTravel
+
+  **Cloud Apps**                 All cloud apps
+
+  **Conditions --- Locations**   Include: Any location; Exclude: Named location \"Allowed Countries\"
+
+  **Grant Controls**             Block access
+
+  **Session Controls**           None
+
+  **State**                      Report-only → On
+  -----------------------------------------------------------------------------------------------------
+
+**Travel Exception Process:** Users traveling to non-approved countries submit a travel request through the IT service portal. Upon approval, they are added to SG-ApprovedTravel with a time-limited PIM activation (maximum 14 days). They must still satisfy CA-001 MFA requirements.
+
+**Deployment Phase:** Phase 4 --- Region/Site.
+
+CA-031: Site-Based Network Trust
+
++--------------------------+
+| CA-031                   |
+|                          |
+| \|                       |
+|                          |
+| Site-Based Network Trust |
+|                          |
+| \|                       |
+|                          |
+| **Phase 4**              |
++--------------------------+
+
+**Description:** Reduces MFA prompting frequency when users are on trusted site networks. Each physical site\'s IP range is mapped to a named location, and users connecting from those ranges receive extended session durations as a usability benefit.
+
+  ----------------------------------------------------------------------------------------------------------
+  **Configuration**              **Value**
+  ------------------------------ ---------------------------------------------------------------------------
+  **Users --- Include**          All users
+
+  **Users --- Exclude**          SG-BreakGlass-Exclusion
+
+  **Cloud Apps**                 All cloud apps
+
+  **Conditions --- Locations**   Include: Named locations for each site (Site-HQ-DC, Site-BRANCH-NY, etc.)
+
+  **Grant Controls**             Require authentication strength --- MFA
+
+  **Session Controls**           Sign-in frequency: 12 hours (extended for trusted sites)
+
+  **State**                      Report-only → On
+  ----------------------------------------------------------------------------------------------------------
+
+**Dependencies:** Named locations must be created for each physical site. IP ranges must be validated and kept current. See Appendix B for named location templates.
+
+**Deployment Phase:** Phase 4 --- Region/Site.
+
+CA-032: Remote Work Policy
+
++--------------------+
+| CA-032             |
+|                    |
+| \|                 |
+|                    |
+| Remote Work Policy |
+|                    |
+| \|                 |
+|                    |
+| **Phase 4**        |
++--------------------+
+
+**Description:** Applies stricter controls for users accessing resources from locations not defined in any named location (home networks, public Wi-Fi, mobile data). Requires both MFA and device compliance with shortened session duration.
+
+  -----------------------------------------------------------------------------------------------------------------------------
+  **Configuration**              **Value**
+  ------------------------------ ----------------------------------------------------------------------------------------------
+  **Users --- Include**          All users
+
+  **Users --- Exclude**          SG-BreakGlass-Exclusion
+
+  **Cloud Apps**                 All cloud apps
+
+  **Conditions --- Locations**   Include: Any location; Exclude: All named locations (Corporate Networks, all site locations)
+
+  **Grant Controls**             Require authentication strength --- MFA **AND** Require device to be marked as compliant
+
+  **Session Controls**           Sign-in frequency: 4 hours; Persistent browser session: Never persistent
+
+  **State**                      Report-only → On
+  -----------------------------------------------------------------------------------------------------------------------------
+
+**Deployment Phase:** Phase 4 --- Region/Site.
+
+Section 7: Application-Specific Policies (CA-040 through CA-050)
+
+Application-specific policies apply tailored controls to individual cloud applications based on their data sensitivity, user population, and access patterns. These policies layer on top of baseline and tier policies to provide granular application-level governance.
+
+CA-040: Exchange Online --- Full Protection
+
++-----------------+
+| CA-040          |
+|                 |
+| \|              |
+|                 |
+| Exchange Online |
+|                 |
+| ---             |
+|                 |
+| Full Protection |
+|                 |
+| \|              |
+|                 |
+| **Phase 5**     |
++-----------------+
+
+  -------------------------------------------------------------------------------------------------------------------------------------------
+  **Configuration**       **Value**
+  ----------------------- -------------------------------------------------------------------------------------------------------------------
+  **Users --- Include**   All users
+
+  **Users --- Exclude**   SG-BreakGlass-Exclusion
+
+  **Cloud Apps**          Office 365 Exchange Online
+
+  **Grant Controls**      Require device to be marked as compliant **AND** Require approved client app **OR** Require app protection policy
+
+  **Session Controls**    None
+  -------------------------------------------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** Exchange server CAS policies restricting OWA/ActiveSync by device type, combined with AD security group-based mailbox access.
+
+CA-041: SharePoint Online --- Download Restrictions
+
++----------------------------------------------+
+| CA-041                                       |
+|                                              |
+| \|                                           |
+|                                              |
+| SharePoint Online                            |
+|                                              |
+| ---                                          |
+|                                              |
+| Download Restrictions from Unmanaged Devices |
+|                                              |
+| \|                                           |
+|                                              |
+| **Phase 5**                                  |
++----------------------------------------------+
+
+  --------------------------------------------------------------------------------------------------------------------
+  **Configuration**       **Value**
+  ----------------------- --------------------------------------------------------------------------------------------
+  **Users --- Include**   All users
+
+  **Users --- Exclude**   SG-BreakGlass-Exclusion
+
+  **Cloud Apps**          Office 365 SharePoint Online
+
+  **Conditions**          Device filter: Exclude compliant and Hybrid AADJ devices
+
+  **Grant Controls**      Require MFA
+
+  **Session Controls**    App enforced restrictions (enables SharePoint "limited access" --- view only, no download)
+  --------------------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** File server NTFS permissions + DFS namespace restrictions preventing copy to non-domain devices.
+
+CA-042: Teams --- Require Managed Device for Desktop
+
++----------------------------------------+
+| CA-042                                 |
+|                                        |
+| \|                                     |
+|                                        |
+| Teams                                  |
+|                                        |
+| ---                                    |
+|                                        |
+| Require Managed Device for Desktop App |
+|                                        |
+| \|                                     |
+|                                        |
+| **Phase 5**                            |
++----------------------------------------+
+
+  ----------------------------------------------------------------------------------------------------------------
+  **Configuration**                **Value**
+  -------------------------------- -------------------------------------------------------------------------------
+  **Users --- Include**            All users
+
+  **Users --- Exclude**            SG-BreakGlass-Exclusion
+
+  **Cloud Apps**                   Microsoft Teams
+
+  **Conditions --- Client Apps**   Mobile apps and desktop clients
+
+  **Grant Controls**               Require device to be marked as compliant **OR** Require app protection policy
+
+  **Session Controls**             None
+  ----------------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** Software restriction policy / AppLocker controlling Teams desktop client installation to domain-joined machines only.
+
+CA-043: Azure Portal --- Privileged Access Only
+
++------------------------+
+| CA-043                 |
+|                        |
+| \|                     |
+|                        |
+| Azure Portal           |
+|                        |
+| ---                    |
+|                        |
+| Privileged Access Only |
+|                        |
+| \|                     |
+|                        |
+| **Phase 5**            |
++------------------------+
+
+  ------------------------------------------------------------------
+  **Configuration**       **Value**
+  ----------------------- ------------------------------------------
+  **Users --- Include**   All users
+
+  **Users --- Exclude**   SG-BreakGlass-Exclusion, SG-Azure-Admins
+
+  **Cloud Apps**          Microsoft Azure Management
+
+  **Grant Controls**      Block access (for non-admin users)
+
+  **Session Controls**    None
+  ------------------------------------------------------------------
+
+A companion policy grants SG-Azure-Admins access with Require compliant device + Phishing-resistant MFA and 1-hour sign-in frequency.
+
+**GPO Equivalent:** Server Manager access restrictions via "Deny log on through Remote Desktop Services" for non-admin users on management servers.
+
+CA-044: Power Platform --- Restrict to Approved Users
+
++----------------------------+
+| CA-044                     |
+|                            |
+| \|                         |
+|                            |
+| Power Platform             |
+|                            |
+| ---                        |
+|                            |
+| Restrict to Approved Users |
+|                            |
+| \|                         |
+|                            |
+| **Phase 5**                |
++----------------------------+
+
+  --------------------------------------------------------------------------------------------
+  **Configuration**       **Value**
+  ----------------------- --------------------------------------------------------------------
+  **Users --- Include**   All users
+
+  **Users --- Exclude**   SG-BreakGlass-Exclusion, SG-PowerPlatform-Approved
+
+  **Cloud Apps**          Microsoft Power Apps, Microsoft Power Automate, Microsoft Power BI
+
+  **Grant Controls**      Block access (non-approved users are blocked)
+  --------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** No direct equivalent. Software restriction policies could block Power Platform desktop apps, but not cloud access.
+
+CA-045: GitHub Enterprise --- Developer Group + MFA
+
++-----------------------+
+| CA-045                |
+|                       |
+| \|                    |
+|                       |
+| GitHub Enterprise     |
+|                       |
+| ---                   |
+|                       |
+| Developer Group + MFA |
+|                       |
+| \|                    |
+|                       |
+| **Phase 5**           |
++-----------------------+
+
+  ------------------------------------------------------------------------------------------------------------------
+  **Configuration**       **Value**
+  ----------------------- ------------------------------------------------------------------------------------------
+  **Users --- Include**   SG-GitHub-Developers (assigned group)
+
+  **Users --- Exclude**   SG-BreakGlass-Exclusion
+
+  **Cloud Apps**          GitHub Enterprise (SAML SSO app registration)
+
+  **Grant Controls**      Require authentication strength --- MFA **AND** Require device to be marked as compliant
+
+  **Session Controls**    Sign-in frequency: 8 hours
+  ------------------------------------------------------------------------------------------------------------------
+
+A companion block policy denies all users not in SG-GitHub-Developers from accessing the GitHub Enterprise app registration.
+
+CA-046: Custom Line-of-Business Apps --- Department-Based Access
+
++-------------------------+
+| CA-046                  |
+|                         |
+| \|                      |
+|                         |
+| Custom LOB Apps         |
+|                         |
+| ---                     |
+|                         |
+| Department-Based Access |
+|                         |
+| \|                      |
+|                         |
+| **Phase 5**             |
++-------------------------+
+
+**Description:** Template policy for department-restricted line-of-business applications. Uses extensionAttribute3 (Department) via dynamic groups to scope access to the appropriate department.
+
+  -------------------------------------------------------------------------------------------------------------
+  **Configuration**       **Value**
+  ----------------------- -------------------------------------------------------------------------------------
+  **Users --- Include**   Dynamic group: DG-Dept-{Department} (user.extensionAttribute3 -eq \"{Department}\")
+
+  **Users --- Exclude**   SG-BreakGlass-Exclusion
+
+  **Cloud Apps**          Specific LOB app registration
+
+  **Grant Controls**      Require MFA **AND** Require device to be marked as compliant
+
+  **Session Controls**    Sign-in frequency: 8 hours
+  -------------------------------------------------------------------------------------------------------------
+
+**GPO Equivalent:** Security group-based access to file shares and application servers, combined with software restriction policies limiting LOB app installation to specific OUs.
+
+**Example instantiations:**
+
+- CA-046-FIN: Finance ERP --- DG-Dept-Finance, Finance ERP app registration
+
+- CA-046-HR: HRIS System --- DG-Dept-HR, HRIS app registration
+
+- CA-046-ENG: Engineering Portal --- DG-Dept-Engineering, Engineering Portal app registration
+
+Section 8: Governance Policies (CA-060 through CA-065)
+
+Governance policies provide risk-based controls, audit capabilities, and integration with Microsoft Entra ID Protection and Insider Risk Management. These policies adapt enforcement dynamically based on real-time risk signals rather than static conditions.
+
+CA-060: Audit Mode --- Monitor All Sign-ins
+
++----------------------+
+| CA-060               |
+|                      |
+| \|                   |
+|                      |
+| Audit Mode           |
+|                      |
+| ---                  |
+|                      |
+| Monitor All Sign-ins |
+|                      |
+| \|                   |
+|                      |
+| **Phase 1**          |
++----------------------+
+
+**Description:** Deployed as the first policy in the library in permanent report-only mode. Captures evaluation results for all sign-ins against all cloud apps to establish a behavioral baseline and identify access patterns before enforcement policies are enabled.
+
+  ---------------------------------------------------------------------
+  **Configuration**       **Value**
+  ----------------------- ---------------------------------------------
+  **Users --- Include**   All users
+
+  **Users --- Exclude**   None (including break-glass for visibility)
+
+  **Cloud Apps**          All cloud apps
+
+  **Conditions**          None
+
+  **Grant Controls**      Require MFA (report-only --- not enforced)
+
+  **Session Controls**    None
+
+  **State**               Report-only (permanent)
+  ---------------------------------------------------------------------
+
+**Purpose:** This policy never moves to enforcement. It serves as a permanent audit instrument that shows what percentage of sign-ins would satisfy MFA requirements, identifying gaps in MFA registration and devices that would be blocked by compliance requirements.
+
+CA-061: Risk-Based --- High Risk Sign-in Block
+
++-------------------------+
+| CA-061                  |
+|                         |
+| \|                      |
+|                         |
+| High Risk Sign-in Block |
+|                         |
+| \|                      |
+|                         |
+| **Phase 6**             |
++-------------------------+
+
+  -----------------------------------------------------------
+  **Configuration**                 **Value**
+  --------------------------------- -------------------------
+  **Users --- Include**             All users
+
+  **Users --- Exclude**             SG-BreakGlass-Exclusion
+
+  **Cloud Apps**                    All cloud apps
+
+  **Conditions --- Sign-in Risk**   High
+
+  **Grant Controls**                Block access
+  -----------------------------------------------------------
+
+**Dependencies:** Microsoft Entra ID Protection P2 license. Sign-in risk detection must be enabled and calibrated for at least 14 days.
+
+CA-062: Risk-Based --- Medium Risk Require MFA
+
++-------------------------+
+| CA-062                  |
+|                         |
+| \|                      |
+|                         |
+| Medium Risk Require MFA |
+|                         |
+| \|                      |
+|                         |
+| **Phase 6**             |
++-------------------------+
+
+  -----------------------------------------------------------------------------------------------------------
+  **Configuration**                 **Value**
+  --------------------------------- -------------------------------------------------------------------------
+  **Users --- Include**             All users
+
+  **Users --- Exclude**             SG-BreakGlass-Exclusion
+
+  **Cloud Apps**                    All cloud apps
+
+  **Conditions --- Sign-in Risk**   Medium
+
+  **Grant Controls**                Require authentication strength --- MFA **AND** Require password change
+  -----------------------------------------------------------------------------------------------------------
+
+CA-063: User Risk --- Require Password Change
+
++-------------------------+
+| CA-063                  |
+|                         |
+| \|                      |
+|                         |
+| User Risk               |
+|                         |
+| ---                     |
+|                         |
+| Require Password Change |
+|                         |
+| \|                      |
+|                         |
+| **Phase 6**             |
++-------------------------+
+
+  --------------------------------------------------------------------------------------------------------
+  **Configuration**              **Value**
+  ------------------------------ -------------------------------------------------------------------------
+  **Users --- Include**          All users
+
+  **Users --- Exclude**          SG-BreakGlass-Exclusion
+
+  **Cloud Apps**                 All cloud apps
+
+  **Conditions --- User Risk**   High
+
+  **Grant Controls**             Require password change **AND** Require authentication strength --- MFA
+  --------------------------------------------------------------------------------------------------------
+
+**Dependencies:** Self-service password reset (SSPR) must be enabled and configured for all users. Password writeback must be configured for hybrid users.
+
+CA-064: Insider Risk --- Elevated Session Controls
+
++---------------------------+
+| CA-064                    |
+|                           |
+| \|                        |
+|                           |
+| Insider Risk              |
+|                           |
+| ---                       |
+|                           |
+| Elevated Session Controls |
+|                           |
+| \|                        |
+|                           |
+| **Phase 6**               |
++---------------------------+
+
+**Description:** Integrates with Microsoft Purview Insider Risk Management Adaptive Protection to apply dynamic session controls based on insider risk levels. Users flagged with elevated insider risk receive stricter session controls automatically.
+
+  -----------------------------------------------------------------------------------------------------------------------
+  **Configuration**                 **Value**
+  --------------------------------- -------------------------------------------------------------------------------------
+  **Users --- Include**             All users
+
+  **Users --- Exclude**             SG-BreakGlass-Exclusion
+
+  **Cloud Apps**                    All cloud apps
+
+  **Conditions --- Insider Risk**   Elevated level (via Adaptive Protection integration)
+
+  **Grant Controls**                Require MFA
+
+  **Session Controls**              Conditional Access App Control: Monitor + Block download; Sign-in frequency: 1 hour
+  -----------------------------------------------------------------------------------------------------------------------
+
+**Dependencies:** Microsoft Purview Insider Risk Management must be configured with Adaptive Protection enabled. E5 or E5 Compliance license required.
+
+Section 9: Policy Deployment Methodology
+
+The UIAO CA Policy Library is deployed in six sequential phases. Each phase follows a consistent validation cycle: deploy in report-only mode, analyze impact, remediate gaps, obtain stakeholder approval, enforce, and monitor. No phase should begin until the previous phase has been in enforcement for at least one week without incidents.
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Phase**     **Name**               **Policies**            **Duration**                               **Prerequisites**
+  ------------- ---------------------- ----------------------- ------------------------------------------ -----------------------------------------------------------------
+  **Phase 1**   Assessment             CA-060                  2 weeks (report-only only)                 Entra ID P2 license, sign-in log retention configured
+
+  **Phase 2**   Baseline               CA-001 through CA-005   1 week report-only + 1 week enforcement    MFA registration \>95%, legacy auth audit complete
+
+  **Phase 3**   Device Tier            CA-010 through CA-015   1 week report-only + 1 week enforcement    Intune enrollment \>90%, extensionAttribute4 populated
+
+  **Phase 4**   Environment & Region   CA-020 through CA-032   1 week report-only + 1 week enforcement    extensionAttribute1,2,5 populated, named locations created
+
+  **Phase 5**   Application            CA-040 through CA-046   1 week report-only + enforcement per app   App registrations tagged, department groups created
+
+  **Phase 6**   Risk-Based             CA-061 through CA-064   2 weeks report-only + enforcement          ID Protection calibrated, SSPR enabled, Insider Risk configured
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+9.1 Phase Validation Cycle
+
+Each phase follows this standardized cycle:
+
+13. **Pre-deployment checklist:** Verify all dependencies are met (MFA registration rates, device enrollment, attribute population, named locations)
+
+14. **Deploy report-only:** Create policies in report-only state and assign to target scope
+
+15. **Monitor (7 days minimum):** Collect report-only results from sign-in logs and Conditional Access insights workbook
+
+16. **Impact analysis:** Generate report showing affected users, blocked sign-ins, and required remediations
+
+17. **Remediation:** Enroll devices, register MFA, update attributes, adjust policy scope for legitimate exceptions
+
+18. **Stakeholder review:** Present impact analysis to security team and business unit leads for formal approval
+
+19. **Enforcement:** Switch policy state from report-only to On
+
+20. **Post-enforcement monitoring (48 hours):** Active monitoring for unexpected blocks, service desk ticket surge, or application failures
+
+9.2 Rollback Procedures
+
+Each phase includes a defined rollback procedure in case of critical issues during enforcement:
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Rollback Action**         **When to Use**                                           **Procedure**
+  --------------------------- --------------------------------------------------------- ----------------------------------------------------------------------------------------
+  **Policy Disable**          Single policy causing widespread blocks                   Set policy state to Off; monitor sign-in logs for resolution; investigate root cause
+
+  **Scope Reduction**         Policy blocks specific user population                    Add affected group to policy exclusion; remediate root cause; re-include group
+
+  **Revert to Report-Only**   Need continued data while investigating                   Set policy state to Report-only; continue monitoring without enforcement
+
+  **Full Phase Rollback**     Multiple policies in a phase causing cascading failures   Set all phase policies to Off; activate incident response; schedule remediation sprint
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Warning**                                                                                                                                                                                        |
+|                                                                                                                                                                                                    |
+| Never delete a CA policy during a rollback. Set the policy to Off or Report-only. Deletion removes audit history and makes it impossible to restore the policy configuration without redeployment. |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Section 10: GPO-to-CA Migration Matrix
+
+The following matrix maps common Active Directory Group Policy settings to their Conditional Access and Intune equivalents. This serves as a reference during the AD Assessment phase to identify which GPOs can be retired after CA policy deployment.
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **GPO Setting / Path**                                                                   **CA Policy ID**         **Intune Policy (if applicable)**                                      **Notes**
+  ---------------------------------------------------------------------------------------- ------------------------ ---------------------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------
+  Account Policies → Account Lockout Policy                                                CA-061, CA-062           Entra ID Smart Lockout                                                 Cloud-based smart lockout replaces static lockout thresholds. Risk-based policies provide dynamic response.
+
+  Account Policies → Password Policy (complexity, length, age)                             CA-001                   Authentication Methods Policy + Entra ID Password Protection           MFA reduces reliance on password complexity. Entra ID Password Protection adds banned password lists. Target: passwordless.
+
+  Local Policies → Security Options → Interactive logon: Require smart card                CA-001, CA-010           Authentication Methods Policy                                          CA authentication strength replaces smart card requirement with phishing-resistant MFA (FIDO2, WHfB).
+
+  Local Policies → Security Options → Network security: LAN Manager authentication level   CA-002                   N/A                                                                    Blocking legacy auth in CA eliminates NTLM/LM negotiation for cloud resources entirely.
+
+  Local Policies → User Rights Assignment → Allow log on locally                           CA-010, CA-011, CA-012   Intune Endpoint Security → Account Protection                          Device tier policies replace OU-based logon restrictions with dynamic device-filter-based controls.
+
+  Local Policies → User Rights Assignment → Deny log on through RDP                        CA-004, CA-043           Intune Configuration Profile → Device Restrictions                     CA blocks admin portal access from non-admin users; Intune restricts RDP on managed endpoints.
+
+  Software Restriction Policies / AppLocker                                                CA-040 through CA-046    Intune App Protection Policies + WDAC                                  CA controls which apps users can authenticate to; Intune/WDAC controls what runs on the device.
+
+  Drive Mapping (User Configuration → Preferences → Drive Maps)                            N/A                      Intune Configuration Profile + SharePoint/OneDrive Known Folder Move   No CA equivalent. Migrate mapped drives to SharePoint document libraries with OneDrive sync.
+
+  Printer Deployment (User/Computer Configuration → Preferences → Printers)                N/A                      Universal Print + Intune Printer Provisioning                          No CA equivalent. Migrate to Universal Print for cloud-managed printing.
+
+  Security Options → Audit Policy (Success/Failure)                                        CA-060                   Intune Endpoint Security → Audit Configuration                         CA report-only mode + sign-in logs replace GPO audit policies for identity events. Local audit remains for device events via Intune.
+
+  Security Filtering (GPO applied by security group)                                       All CA policies          Intune Assignment Filters                                              CA user/group assignments + dynamic groups replace GPO security filtering. More granular and real-time.
+
+  WMI Filtering (GPO applied by WMI query)                                                 Device-tier policies     Intune Assignment Filters                                              CA device filters (extensionAttribute-based) replace WMI queries for targeting policies by device property.
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Note**                                                                                                                                                                  |
+|                                                                                                                                                                           |
+| GPOs governing local device security settings (firewall, BitLocker, Windows Update, antivirus) do not have Conditional Access equivalents. These settings are migrated to |
+|                                                                                                                                                                           |
+| Intune device configuration profiles                                                                                                                                      |
+|                                                                                                                                                                           |
+| and                                                                                                                                                                       |
+|                                                                                                                                                                           |
+| endpoint security policies                                                                                                                                                |
+|                                                                                                                                                                           |
+| , which are validated by Intune compliance policies that CA policies then reference via \"Require compliant device.\"                                                     |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Section 11: Break-Glass Account Procedures
+
+Break-glass accounts provide emergency administrative access to the tenant when normal administrative accounts are locked out by Conditional Access policies, MFA service outages, or federation failures. These accounts are excluded from all CA policies and must be rigorously protected.
+
+11.1 Account Configuration
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------
+  **Property**              **Account 1**                                                 **Account 2**
+  ------------------------- ------------------------------------------------------------- -------------------------------------------------------------
+  **UPN**                   BreakGlass-Admin01@tenant.onmicrosoft.com                     BreakGlass-Admin02@tenant.onmicrosoft.com
+
+  **Account Type**          Cloud-only (no federation, no sync)                           Cloud-only (no federation, no sync)
+
+  **Directory Role**        Global Administrator (permanent)                              Global Administrator (permanent)
+
+  **MFA Method**            FIDO2 security key (YubiKey 5 NFC)                            FIDO2 security key (YubiKey 5 NFC)
+
+  **Password**              64+ character randomly generated, stored in sealed envelope   64+ character randomly generated, stored in sealed envelope
+
+  **CA Policy Exclusion**   Member of SG-BreakGlass-Exclusion                             Member of SG-BreakGlass-Exclusion
+
+  **Password Expiry**       Never expires                                                 Never expires
+  -----------------------------------------------------------------------------------------------------------------------------------------------------
+
+11.2 Physical Security
+
+- FIDO2 security keys are stored in a physical safe at the primary data center with tamper-evident seals
+
+- Password envelopes are stored in a separate physical safe at a secondary location
+
+- Safe access requires two-person authorization (dual control)
+
+- Access to safes is logged in a physical access register
+
+11.3 Monthly Validation Procedure
+
+21. Verify both accounts exist and are enabled in Microsoft Entra ID
+
+22. Confirm Global Administrator role is permanently assigned (not PIM-eligible)
+
+23. Verify membership in SG-BreakGlass-Exclusion group
+
+24. Review CA policies to confirm exclusion group is present in all policy exclusion lists
+
+25. Test sign-in with Account 1 from a clean browser session (do not complete --- cancel after verifying sign-in page loads and accepts credentials)
+
+26. Verify tamper-evident seals on FIDO2 key safe and password envelope safe are intact
+
+27. Record validation date, validator name, and results in the Break-Glass Validation Log
+
+11.4 Monitoring Alerts
+
+The following alerts must be configured to detect any usage of break-glass accounts:
+
+- **Azure Monitor Alert:** Trigger on any sign-in event where UserPrincipalName contains \"BreakGlass\"
+
+- **Severity:** Critical (P1 incident)
+
+- **Notification:** Email and SMS to Security Operations team lead, CISO, and Identity team lead
+
+- **Response:** Immediately investigate the sign-in, confirm it was authorized, and document the incident
+
++-------------------------------------------------------------------------------------------------------------------------------+
+| **Important**                                                                                                                 |
+|                                                                                                                               |
+| Any break-glass account usage outside of planned validation constitutes a security incident and must trigger the organization |
+|                                                                                                                               |
+| '                                                                                                                             |
+|                                                                                                                               |
+| s incident response process. All actions taken with break-glass credentials must be documented and reviewed within 24 hours.  |
++-------------------------------------------------------------------------------------------------------------------------------+
+
+Section 12: Monitoring and Compliance
+
+12.1 Sign-in Log Analysis Queries (KQL)
+
+The following KQL queries can be executed in Azure Monitor Log Analytics to analyze Conditional Access policy effectiveness.
+
+**Query 1: CA Policy Hit Rate by Policy Name**
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  SigninLogs \| where TimeGenerated \> ago(7d) \| mv-expand ConditionalAccessPolicies \| extend PolicyName = tostring(ConditionalAccessPolicies.displayName) \| extend PolicyResult = tostring(ConditionalAccessPolicies.result) \| summarize TotalEvaluations = count(), Success = countif(PolicyResult == \"success\"), Failure = countif(PolicyResult == \"failure\"), NotApplied = countif(PolicyResult == \"notApplied\"), ReportOnly = countif(PolicyResult == \"reportOnlySuccess\" or PolicyResult == \"reportOnlyFailure\") by PolicyName \| sort by TotalEvaluations desc
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Query 2: Failed Sign-ins Due to CA Block**
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  SigninLogs \| where TimeGenerated \> ago(24h) \| where ResultType == \"53003\" // Blocked by Conditional Access \| project TimeGenerated, UserPrincipalName, AppDisplayName, IPAddress, Location = strcat(LocationDetails.city, \", \", LocationDetails.state, \", \", LocationDetails.countryOrRegion), DeviceDetail.operatingSystem, ConditionalAccessStatus \| sort by TimeGenerated desc
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Query 3: Users Without MFA Registration**
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  SigninLogs \| where TimeGenerated \> ago(7d) \| mv-expand ConditionalAccessPolicies \| where ConditionalAccessPolicies.displayName == \"CA-001: Require MFA for All Users\" \| where ConditionalAccessPolicies.result == \"reportOnlyFailure\" or ConditionalAccessPolicies.result == \"failure\" \| distinct UserPrincipalName \| sort by UserPrincipalName asc
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Query 4: Legacy Authentication Attempts**
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  SigninLogs \| where TimeGenerated \> ago(7d) \| where ClientAppUsed in (\"Exchange ActiveSync\", \"IMAP4\", \"MAPI Over HTTP\", \"Offline Address Book\", \"Other clients\", \"Outlook Anywhere (RPC over HTTP)\", \"POP3\", \"Reporting Web Services\", \"SMTP\", \"Authenticated SMTP\") \| summarize AttemptCount = count() by UserPrincipalName, ClientAppUsed, AppDisplayName \| sort by AttemptCount desc
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+12.2 Policy Coverage Gap Detection
+
+Use the following query to identify sign-ins where no Conditional Access policy was applied, indicating a potential coverage gap:
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  SigninLogs \| where TimeGenerated \> ago(7d) \| where ConditionalAccessStatus == \"notApplied\" \| where ResultType == 0 // Successful sign-ins only \| summarize SignInCount = count(), UniqueUsers = dcount(UserPrincipalName) by AppDisplayName \| where SignInCount \> 10 \| sort by SignInCount desc
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+12.3 Workbook Templates
+
+Deploy the following Azure Monitor Workbooks for ongoing CA policy monitoring:
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Workbook**                   **Purpose**                                                     **Key Metrics**
+  ------------------------------ --------------------------------------------------------------- -----------------------------------------------------------------------------------------
+  **CA Policy Overview**         High-level dashboard of all policy states and hit rates         Policies in report-only vs. enforced, top triggered policies, policy failure rate
+
+  **MFA Registration & Usage**   Track MFA registration completeness and method distribution     \% registered, method breakdown (FIDO2, WHfB, Authenticator, Phone), registration trend
+
+  **Device Compliance**          Monitor Intune device compliance rates by tier                  Compliant vs. non-compliant by extensionAttribute4, compliance failure reasons
+
+  **Risk Event Analysis**        Visualize Entra ID Protection risk detections and CA response   Risk events by type, sign-in risk vs. user risk trends, CA-061/062/063 trigger rates
+
+  **Break-Glass Monitoring**     Alert on and audit any break-glass account activity             Sign-in count (should be near zero), sign-in details, source IP/location
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+12.4 Integration with UIAO Drift Detection
+
+The UIAO Drift Detection module continuously compares the live CA policy configuration in the tenant against the baseline definitions in this library. Drift detection monitors:
+
+- **Policy state changes:** Alerts when a policy is switched from On to Off or Report-only without change management approval
+
+- **Exclusion group modifications:** Alerts when users are added to or removed from SG-BreakGlass-Exclusion or other policy exclusion groups
+
+- **Condition changes:** Detects modifications to named locations, app assignments, or grant/session controls
+
+- **New or deleted policies:** Alerts when policies are created or deleted outside of the approved change management process
+
+- **Extension attribute drift:** Monitors for users or devices with missing or incorrect OrgPath extension attributes that would cause them to fall outside policy scope
+
+Appendix A: JSON Export Templates
+
+The following JSON structures represent the Microsoft Graph API export format for three representative policies. These can be used as templates for automated deployment via the Graph API or PowerShell.
+
+A.1 Graph API Endpoints
+
+  -----------------------------------------------------------------------------------
+  **Operation**         **HTTP Method**   **Endpoint**
+  --------------------- ----------------- -------------------------------------------
+  List all policies     GET               /identity/conditionalAccess/policies
+
+  Get specific policy   GET               /identity/conditionalAccess/policies/{id}
+
+  Create policy         POST              /identity/conditionalAccess/policies
+
+  Update policy         PATCH             /identity/conditionalAccess/policies/{id}
+
+  Delete policy         DELETE            /identity/conditionalAccess/policies/{id}
+  -----------------------------------------------------------------------------------
+
+A.2 PowerShell Cmdlets
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \# Install Microsoft Graph PowerShell SDK Install-Module Microsoft.Graph -Scope CurrentUser \# Connect with required permissions Connect-MgGraph -Scopes \"Policy.ReadWrite.ConditionalAccess\", \"Policy.Read.All\", \"Directory.Read.All\" \# List all Conditional Access policies Get-MgIdentityConditionalAccessPolicy \| Select-Object DisplayName, State \# Export a specific policy to JSON \$policy = Get-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId \"{id}\" \$policy \| ConvertTo-Json -Depth 10 \| Out-File \"CA-001-export.json\" \# Create a new policy from JSON template \$policyBody = Get-Content \"CA-001-template.json\" \| ConvertFrom-Json New-MgIdentityConditionalAccessPolicy -BodyParameter \$policyBody
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+A.3 CA-001 --- JSON Template
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  { \"displayName\": \"CA-001: Require MFA for All Users\", \"state\": \"enabledForReportingButNotEnforced\", \"conditions\": { \"users\": { \"includeUsers\": \[\"All\"\], \"excludeGroups\": \[\"{SG-BreakGlass-Exclusion-ObjectId}\"\] }, \"applications\": { \"includeApplications\": \[\"All\"\] }, \"clientAppTypes\": \[\"all\"\] }, \"grantControls\": { \"operator\": \"OR\", \"authenticationStrength\": { \"id\": \"00000000-0000-0000-0000-000000000002\", \"displayName\": \"Multifactor authentication\" } }, \"sessionControls\": null }
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+A.4 CA-010 --- JSON Template
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  { \"displayName\": \"CA-010: Tier 0 - Privileged Access Workstation Enforcement\", \"state\": \"enabledForReportingButNotEnforced\", \"conditions\": { \"users\": { \"includeGroups\": \[\"{DG-Devices-Tier0-ObjectId}\"\], \"excludeGroups\": \[\"{SG-BreakGlass-Exclusion-ObjectId}\"\] }, \"applications\": { \"includeApplications\": \[\"All\"\] }, \"devices\": { \"deviceFilter\": { \"mode\": \"include\", \"rule\": \"device.extensionAttribute4 -eq \\\"Tier0\\\"\" } } }, \"grantControls\": { \"operator\": \"AND\", \"builtInControls\": \[\"compliantDevice\"\], \"authenticationStrength\": { \"id\": \"00000000-0000-0000-0000-000000000004\", \"displayName\": \"Phishing-resistant MFA\" } }, \"sessionControls\": { \"signInFrequency\": { \"value\": 1, \"type\": \"hours\", \"isEnabled\": true }, \"persistentBrowser\": { \"mode\": \"never\", \"isEnabled\": true } } }
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+A.5 CA-020 --- JSON Template
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  { \"displayName\": \"CA-020: Production Environment - Maximum Protection\", \"state\": \"enabledForReportingButNotEnforced\", \"conditions\": { \"users\": { \"includeGroups\": \[\"{DG-Env-Production-ObjectId}\"\], \"excludeGroups\": \[\"{SG-BreakGlass-Exclusion-ObjectId}\"\] }, \"applications\": { \"includeApplications\": \[\"All\"\] }, \"clientAppTypes\": \[\"all\"\] }, \"grantControls\": { \"operator\": \"AND\", \"builtInControls\": \[ \"compliantDevice\", \"approvedApplication\" \], \"authenticationStrength\": { \"id\": \"00000000-0000-0000-0000-000000000002\", \"displayName\": \"Multifactor authentication\" } }, \"sessionControls\": null }
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix B: Named Location Definitions
+
+B.1 IP-Based Named Location Template
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  { \"@odata.type\": \"#microsoft.graph.ipNamedLocation\", \"displayName\": \"Corporate Networks - Headquarters\", \"isTrusted\": true, \"ipRanges\": \[ { \"@odata.type\": \"#microsoft.graph.iPv4CidrRange\", \"cidrAddress\": \"203.0.113.0/24\" }, { \"@odata.type\": \"#microsoft.graph.iPv4CidrRange\", \"cidrAddress\": \"198.51.100.0/24\" } \] }
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+B.2 Country-Based Named Location Template
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  { \"@odata.type\": \"#microsoft.graph.countryNamedLocation\", \"displayName\": \"Allowed Countries\", \"countriesAndRegions\": \[\"US\", \"CA\", \"GB\", \"DE\", \"FR\", \"AU\"\], \"includeUnknownCountriesAndRegions\": false }
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+B.3 PowerShell --- Create Named Location via Graph API
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \# Create an IP-based named location \$params = \@{ \"@odata.type\" = \"#microsoft.graph.ipNamedLocation\" DisplayName = \"Corporate Networks - Headquarters\" IsTrusted = \$true IpRanges = @( \@{ \"@odata.type\" = \"#microsoft.graph.iPv4CidrRange\" CidrAddress = \"203.0.113.0/24\" } ) } New-MgIdentityConditionalAccessNamedLocation -BodyParameter \$params \# Create a country-based named location \$params = \@{ \"@odata.type\" = \"#microsoft.graph.countryNamedLocation\" DisplayName = \"Allowed Countries\" CountriesAndRegions = @(\"US\", \"CA\", \"GB\", \"DE\", \"FR\", \"AU\") IncludeUnknownCountriesAndRegions = \$false } New-MgIdentityConditionalAccessNamedLocation -BodyParameter \$params
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix C: Authentication Strength Definitions
+
+C.1 Built-in Authentication Strengths
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Strength Name**            **ID**                                 **Allowed Combinations**
+  ---------------------------- -------------------------------------- -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **MFA**                      00000000-0000-0000-0000-000000000002   Password + Microsoft Authenticator (push notification) Password + Software OATH token Password + Hardware OATH token Password + SMS Password + Voice Password + FIDO2 security key Password + Windows Hello for Business Password + Certificate (multi-factor) Federated multi-factor FIDO2 security key (standalone) Windows Hello for Business (standalone) Certificate-based auth (multi-factor, standalone)
+
+  **Passwordless MFA**         00000000-0000-0000-0000-000000000003   FIDO2 security key Windows Hello for Business Certificate-based auth (multi-factor)
+
+  **Phishing-resistant MFA**   00000000-0000-0000-0000-000000000004   FIDO2 security key Windows Hello for Business Certificate-based auth (multi-factor)
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+C.2 Custom Strength: UIAO Privileged Access
+
+This custom authentication strength restricts authentication to FIDO2 security keys only, used for Tier 0 privileged access workstations and critical admin portal access.
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  { \"displayName\": \"UIAO Privileged Access\", \"description\": \"FIDO2 security key only - for Tier 0 PAW access\", \"allowedCombinations\": \[ \"fido2\" \], \"requirementsSatisfied\": \"mfa\" } \# PowerShell to create custom authentication strength \$params = \@{ DisplayName = \"UIAO Privileged Access\" Description = \"FIDO2 security key only - for Tier 0 PAW access\" AllowedCombinations = @(\"fido2\") RequirementsSatisfied = \"mfa\" } New-MgPolicyAuthenticationStrengthPolicy -BodyParameter \$params
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix D: Compliance Mapping
+
+D.1 NIST 800-53 Control Mapping
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Control ID**   **Control Name**                                    **Description**                                                                                                                                           **CA Policies**
+  ---------------- --------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------
+  **AC-2**         Account Management                                  Manage information system accounts including establishing, activating, modifying, reviewing, disabling, and removing accounts                             CA-005 (guest management), CA-060 (audit), Break-glass procedures (Section 11)
+
+  **AC-3**         Access Enforcement                                  Enforce approved authorizations for logical access to information and system resources                                                                    CA-003, CA-010 through CA-015 (device tier), CA-020 through CA-023 (environment), CA-040 through CA-046 (app-specific)
+
+  **AC-7**         Unsuccessful Logon Attempts                         Enforce a limit of consecutive invalid logon attempts and automatically lock the account                                                                  CA-061 (high risk block), CA-062 (medium risk MFA), Entra ID Smart Lockout
+
+  **AC-11**        Device Lock                                         Prevent further access to the system by initiating a device lock after a period of inactivity                                                             CA-010 (1-hour frequency), CA-004 (4-hour frequency), CA-032 (4-hour remote), Intune device lock policies
+
+  **AC-17**        Remote Access                                       Establish and document usage restrictions, configuration/connection requirements, and implementation guidance for each type of remote access allowed      CA-015 (non-corporate network), CA-032 (remote work), CA-014 (unmanaged device), CA-030 (geographic)
+
+  **IA-2**         Identification and Authentication (Org Users)       Uniquely identify and authenticate organizational users                                                                                                   CA-001 (MFA all users), CA-010 (phishing-resistant MFA), CA-004 (admin MFA)
+
+  **IA-5**         Authenticator Management                            Manage information system authenticators by verifying identity, initial authenticator content, administrative procedures, and protecting authenticators   CA-063 (password change on risk), Authentication Strength policies (Appendix C), Break-glass key management (Section 11)
+
+  **IA-8**         Identification and Authentication (Non-Org Users)   Uniquely identify and authenticate non-organizational users                                                                                               CA-005 (guest terms of use + MFA)
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+D.2 FedRAMP Moderate Mapping
+
+All NIST 800-53 controls listed above are included in the FedRAMP Moderate baseline. The following additional FedRAMP considerations apply to this policy library within the GCC-Moderate boundary:
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **FedRAMP Requirement**                                  **Implementation**                                                                                                   **CA Policy Reference**
+  -------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------- --------------------------------------
+  Data residency within US boundaries                      GCC-Moderate tenant enforces US data residency; CA-030 blocks access from non-approved countries                     CA-030, Named locations (Appendix B)
+
+  Multi-factor authentication for all users                CA-001 enforces MFA for all users across all cloud apps                                                              CA-001
+
+  Phishing-resistant authentication for privileged users   CA-010 and CA-004 require phishing-resistant or passwordless MFA for admin roles and Tier 0 devices                  CA-004, CA-010
+
+  Continuous monitoring                                    CA-060 permanent report-only mode, sign-in log analysis (Section 12), drift detection integration                    CA-060, Section 12
+
+  Incident response capability                             Break-glass accounts provide emergency access; risk-based policies automate response to detected threats             Section 11, CA-061 through CA-064
+
+  Separation of duties                                     Environment isolation (CA-023), device tier separation (CA-010 through CA-012), admin portal restrictions (CA-043)   CA-023, CA-010, CA-043
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+D.3 GCC-Moderate Boundary Considerations
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **GCC-Moderate Compliance Notes**                                                                                                                                                                                                                            |
+|                                                                                                                                                                                                                                                              |
+| > • All Conditional Access policies must be configured in the GCC-Moderate tenant instance, not commercial Azure AD                                                                                                                                          |
+| >                                                                                                                                                                                                                                                            |
+| > • Graph API endpoints for GCC use **graph.microsoft.us** instead of graph.microsoft.com                                                                                                                                                                    |
+| >                                                                                                                                                                                                                                                            |
+| > • Some features may have delayed availability in GCC; verify feature availability in the Microsoft 365 Government service description before deploying policies that reference advanced features (e.g., Adaptive Protection, Continuous Access Evaluation) |
+| >                                                                                                                                                                                                                                                            |
+| > • Named locations must reflect GCC-Moderate Azure Government region IP ranges for compliance boundary enforcement                                                                                                                                          |
+| >                                                                                                                                                                                                                                                            |
+| > • Third-party FIDO2 security keys must be FIPS 140-2 Level 2 validated or higher for use within the GCC-Moderate boundary                                                                                                                                  |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+**UIAO Conditional Access Policy Library** \| Version 2.0 \| April 21, 2026\
+Classification: Controlled \| Boundary: GCC-Moderate \| UIAO Identity Modernization Program Office\
+This document is subject to quarterly review. Unauthorized modification or distribution outside the defined audience is prohibited.
+
++--------------------------+
+| CONTROLLED               |
+|                          |
+| \|                       |
+|                          |
+| GCC-MODERATE BOUNDARY    |
+|                          |
+| \|                       |
+|                          |
+| UIAO IDENTITY GOVERNANCE |
++--------------------------+

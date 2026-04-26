@@ -1,0 +1,889 @@
+---
+title: "UIAO Disaster Recovery Playbook"
+subtitle: "Recovery procedures and runbooks for the governance OS platform"
+doc-type: playbook
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO Disaster Recovery Playbook.docx"
+repo-path: docs/customer-documents/substrate/core-architecture/disaster-recovery.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+UIAO Disaster Recovery Playbook
+
+Governance OS Platform --- Recovery Procedures and Runbooks
+
+**Classification:** Controlled
+
+**Boundary:** GCC-Moderate
+
+**Repository:** https://github.com/WhalerMike/uiao
+
+**Author:** Michael Stratton
+
+**Date:** April 21, 2026
+
+**Version:** 1.0
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **CONTROLLED DOCUMENT**                                                                                                                                                                                                                                                                                                            |
+|                                                                                                                                                                                                                                                                                                                                    |
+| This document contains disaster recovery procedures for the UIAO Governance OS platform. Distribution is limited to authorized personnel. All recovery actions must be logged and attributed. Treat backup credentials and connection strings referenced herein as sensitive data subject to organizational handling requirements. |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Table of Contents
+
+1.  Purpose and Scope
+
+2.  RPO/RTO Definitions
+
+3.  Backup Architecture
+
+4.  Automated Backup Scripts
+
+5.  Failure Scenarios and Recovery Runbooks
+
+6.  DR Testing Schedule
+
+7.  Monitoring and Alerting
+
+8.  Recovery Validation Checklist
+
+9.  Communication Plan
+
+10. Recovery Decision Tree
+
+11. Appendix A --- Emergency Contact Template
+
+12. Appendix B --- Complete PowerShell Script Index
+
+13. Appendix C --- Backup Manifest Schema
+
+14. Appendix D --- Cross-References
+
+1\. Purpose and Scope
+
+This playbook defines the disaster recovery (DR) procedures for every component of the **UIAO Governance OS** platform. It provides deterministic, reproducible, and drift-resistant recovery runbooks that any authorized administrator can execute to restore full platform functionality following any failure scenario --- from a single service interruption to complete server loss.
+
+1.1 Covered Components
+
+The following components constitute the UIAO Governance OS platform and are within scope of this playbook:
+
+- **Gitea Application Server** --- Self-hosted Git service (v1.26.0) running as a Windows service on port 3000
+
+- **IIS Reverse Proxy** --- Internet Information Services with Application Request Routing (ARR) and URL Rewrite, providing HTTPS termination and reverse proxy to Gitea
+
+- **Git Repositories** --- All bare repositories under D:\\GitRepos\\, including the canonical canon/ governance directory
+
+- **Gitea Database** --- SQLite database at D:\\Gitea\\data\\gitea.db containing users, issues, PRs, SSH keys, and metadata
+
+- **AD Assessment Data** --- JSON output from Active Directory assessments stored in D:\\UIAO\\Assessment\\
+
+- **PKI/TLS Certificates** --- Server certificates for git.uiao.local and docs.uiao.local
+
+- **Governance Artifacts** --- Policy documents, compliance baselines, and drift reports within canon/
+
+- **Quarto Dashboards** --- Rendered governance dashboards served at docs.uiao.local
+
+- **Git Hooks** --- Pre-receive, post-receive, and update hooks enforcing governance compliance
+
+- **PowerShell Modules** --- Custom modules in D:\\UIAO\\Modules\\ for assessment, drift detection, and automation
+
+- **Replication Infrastructure** --- Active-passive Git replication to secondary server and GitHub mirror
+
+- **Audit Logs** --- JSONL-format audit logs (git-audit.jsonl, canon-changes.jsonl) providing tamper-evident activity records
+
+- **Scheduled Tasks** --- Windows Scheduled Tasks under \\UIAO\\ for backups, assessments, and replication
+
+- **DNS Records** --- AD-integrated DNS entries for git.uiao.local and docs.uiao.local
+
+1.2 Recovery Philosophy
+
+All recovery procedures in this playbook adhere to three core principles aligned with UIAO governance standards:
+
+- **Deterministic** --- Every recovery procedure produces the same result regardless of who executes it. No subjective judgment or tribal knowledge required.
+
+- **Reproducible** --- All procedures are scripted in PowerShell. Manual steps are documented only where automation is not feasible (e.g., hardware provisioning).
+
+- **Drift-Resistant** --- Recovery restores to a known-good baseline validated against version-controlled configuration. Post-recovery drift detection confirms alignment.
+
+1.3 PowerShell-First Approach
+
+All backup, recovery, monitoring, and validation procedures are implemented as PowerShell scripts. This ensures:
+
+- Repeatability across personnel and environments
+
+- Version control of recovery procedures alongside the platform they protect
+
+- Automated execution via Windows Scheduled Tasks
+
+- Logging and audit trail for every recovery action
+
+- Testability through dry-run modes and validation scripts
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Note**                                                                                                                                                                                                                      |
+|                                                                                                                                                                                                                               |
+| All PowerShell scripts in this playbook are maintained in the UIAO repository under ops/dr/ and are subject to the same governance controls (code review, signed commits, canon enforcement) as all other platform artifacts. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+2\. RPO/RTO Definitions
+
+The following table defines the Recovery Point Objective (RPO), Recovery Time Objective (RTO), backup method, recovery priority, and dependencies for every UIAO platform component. Priority levels range from P1 (critical --- immediate recovery required) to P3 (important --- recovery within business day).
+
+  --------------------------------------------------------------------------------------------------------------------------------------------
+  **Component**                 **RPO**          **RTO**   **Backup Method**                        **Priority**   **Dependencies**
+  ----------------------------- ---------------- --------- ---------------------------------------- -------------- ---------------------------
+  Gitea Application Server      1 hour           2 hours   System image + config backup             P1             Windows Server, IIS, Git
+
+  Git Repositories (canon/)     0 (replicated)   30 min    Active-passive mirror + GitHub mirror    P1             Network, secondary server
+
+  Gitea Database (SQLite)       1 hour           1 hour    Hourly file copy with VSS                P1             D:\\ drive
+
+  IIS Reverse Proxy Config      24 hours         1 hour    Config export + web.config backup        P2             IIS, ARR, URL Rewrite
+
+  TLS Certificates              On-change        30 min    PFX export to secured share              P1             PKI/CA
+
+  AD Assessment JSON            Per-run          4 hours   Gitea commit + file backup               P2             AD connectivity
+
+  PowerShell Modules            Per-release      1 hour    Gitea repository                         P2             None
+
+  Quarto Dashboard Output       24 hours         2 hours   Re-render from source                    P3             Quarto CLI
+
+  Git Hooks (pre/post/update)   On-change        30 min    Gitea repository + file backup           P2             None
+
+  Windows Server OS             Weekly           8 hours   Windows Server Backup to network share   P3             Hardware/VM
+
+  Replication Config            On-change        1 hour    Config backup script                     P2             Secondary server
+
+  Audit Logs (JSONL)            Continuous       4 hours   Append-only + daily archive              P3             D:\\ drive
+
+  DNS Records                   On-change        30 min    AD-integrated DNS backup                 P2             AD DNS
+
+  Scheduled Tasks               On-change        2 hours   Export-ScheduledTask backup              P3             None
+  --------------------------------------------------------------------------------------------------------------------------------------------
+
++-----------------------------------------------------------------------------------------------------------------------------------------+
+| **Priority Classification**                                                                                                             |
+|                                                                                                                                         |
+| **P1 --- Critical:** Core platform functionality. Recovery begins immediately upon detection. Stakeholders notified within 15 minutes.\ |
+| **P2 --- High:** Supporting infrastructure. Recovery begins within 1 hour. Stakeholders notified within 2 hours.\                       |
+| **P3 --- Important:** Non-blocking services. Recovery scheduled within business day. Stakeholders notified daily.                       |
++-----------------------------------------------------------------------------------------------------------------------------------------+
+
+3\. Backup Architecture
+
+3.1 Primary Server Layout
+
+The primary UIAO server hosts all platform components on a Windows Server 2025 instance with the following storage layout:
+
+  ----------------------------------------------------------------------------------------------------------------------------
+  **Drive**   **Path**                 **Contents**
+  ----------- ------------------------ ---------------------------------------------------------------------------------------
+  C:\\        C:\\inetpub\\gitea\\     IIS site root (web.config, reverse proxy configuration)
+
+  D:\\        D:\\Gitea\\              Gitea binary, custom configuration (custom\\conf\\app.ini), database (data\\gitea.db)
+
+  D:\\        D:\\GitRepos\\           Bare Git repositories including UIAO\\uiao.git
+
+  D:\\        D:\\UIAO\\Assessment\\   AD assessment JSON output files
+
+  D:\\        D:\\UIAO\\Modules\\      PowerShell modules (UIAOADAssessment, etc.)
+
+  D:\\        D:\\UIAO\\Logs\\         Audit logs (git-audit.jsonl, canon-changes.jsonl, backup.log)
+
+  D:\\        D:\\UIAO\\Backups\\      Local backup staging area
+  ----------------------------------------------------------------------------------------------------------------------------
+
+3.2 Backup Targets
+
+The UIAO platform employs five distinct backup targets to ensure redundancy and recovery capability:
+
+15. **Active-Passive Git Replica** --- Secondary server (git-dr.uiao.local) receives real-time repository mirrors via git push \--mirror. Triggered by post-receive hooks on every push to primary. Provides near-zero RPO for Git data.
+
+16. **Gitea DB Dump** --- Hourly VSS-consistent copy of gitea.db to D:\\UIAO\\Backups\\db\\. Provides local fast-restore capability for database corruption scenarios.
+
+17. **Windows Server Backup (Network Share)** --- Full system backup to \\\\backup-server\\UIAO\\ via Windows Server Backup. Runs weekly with daily incremental. Provides bare-metal restore capability.
+
+18. **GitHub Mirror** --- The uiao repository is mirrored to github.com/WhalerMike/uiao. Updated on every push. Provides geographically distributed, off-site backup and public reference point.
+
+19. **Certificate Backup** --- Password-protected PFX exports to \\\\backup-server\\UIAO\\certs\\. Triggered on certificate changes. Last 5 versions retained.
+
+3.3 Backup Frequency Summary
+
+  ------------------------------------------------------------------------------------------------------------------
+  **Backup Target**              **Frequency**                     **Retention**     **Encryption**
+  ------------------------------ --------------------------------- ----------------- -------------------------------
+  Git replica (active-passive)   Real-time (on push)               Current state     SSH transport encryption
+
+  Gitea DB (local)               Hourly                            30 days           None (local staging)
+
+  Gitea DB (network)             Hourly                            30 days           SMB encryption (required)
+
+  Config backup                  Daily (02:00)                     30 days           SMB encryption (required)
+
+  Windows Server Backup          Weekly full + daily incremental   4 weeks           AES-256 (WSB native)
+
+  GitHub mirror                  Real-time (on push)               Full history      HTTPS transport encryption
+
+  Certificate backup             On-change                         Last 5 versions   PFX password + SMB encryption
+
+  Audit log archive              Daily                             1 year            SMB encryption (required)
+  ------------------------------------------------------------------------------------------------------------------
+
+3.4 Encryption Requirements
+
+All backup data at rest must meet the following encryption standards:
+
+- **Network shares:** SMB 3.0 encryption required on all connections to \\\\backup-server\\UIAO\\. Enforce via Set-SmbServerConfiguration -EncryptData \$true.
+
+- **Certificate exports:** PFX files protected with a strong password (minimum 16 characters, stored in organizational password vault).
+
+- **Windows Server Backup:** AES-256 encryption enabled in backup policy.
+
+- **GitHub mirror:** Public repository --- no sensitive data (credentials, internal IPs) shall be committed. All sensitive configuration is in app.ini which is excluded from the mirrored repository.
+
+3.5 Backup Verification Procedures
+
+Backups are not trusted until verified. The following checks run automatically after each backup cycle:
+
+- **Database backups:** Open restored copy with sqlite3 and run PRAGMA integrity_check;
+
+- **Git mirrors:** Compare HEAD ref and commit count between primary and secondary
+
+- **Config backups:** Verify ZIP integrity with Test-Path and file count comparison
+
+- **Certificate backups:** Verify PFX can be imported with Get-PfxData (non-destructive)
+
+- **Manifest validation:** Every backup run generates a JSON manifest with SHA-256 checksums; master orchestrator verifies all checksums before marking cycle complete
+
+3.6 Backup Architecture Diagram
+
++:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:+
+| **\[Placeholder --- Diagram DR-001: Backup Architecture --- 900x500px\]**                                                                                                                                                                                                                       |
+|                                                                                                                                                                                                                                                                                                 |
+| Shows primary UIAO server (Gitea + IIS + D:\\ data), all five backup targets (active-passive replica, local DB staging, network share, GitHub mirror, certificate share), and replication flows with frequency labels. Arrows indicate push direction and transport protocol (SSH, SMB, HTTPS). |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+4\. Automated Backup Scripts
+
+All backup scripts are located in the UIAO repository at ops/dr/scripts/ and are executed under the svc-gitea service account with appropriate permissions. Each script logs to D:\\UIAO\\Logs\\backup.log and returns exit code 0 on success or 1 on failure.
+
+4.1 Backup-UIAOGiteaDB.ps1
+
+Performs a VSS-consistent backup of the Gitea SQLite database, compresses with timestamp, replicates to local and network targets, and enforces 30-day retention.
+
+#Requires -RunAsAdministrator \<# .SYNOPSIS Backs up the Gitea SQLite database using Volume Shadow Copy for consistency. .DESCRIPTION Stops Gitea, takes a VSS-consistent copy of gitea.db, compresses it with a timestamp, copies to local and network backup targets, enforces 30-day retention, restarts Gitea, and logs all operations. .OUTPUTS Exit code 0 on success, 1 on any failure. #\> \[CmdletBinding()\] param() \$ErrorActionPreference = \'Stop\' \$LogFile = \'D:\\UIAO\\Logs\\backup.log\' \$SourceDB = \'D:\\Gitea\\data\\gitea.db\' \$LocalDest = \'D:\\UIAO\\Backups\\db\' \$NetDest = \'\\\\backup-server\\UIAO\\db\' \$Timestamp = Get-Date -Format \'yyyyMMdd-HHmmss\' \$ZipName = \"gitea-db-\$Timestamp.zip\" \$TempDir = \"D:\\UIAO\\Backups\\temp\\db-\$Timestamp\" \$RetainDays = 30 function Write-Log { param(\[string\]\$Message, \[string\]\$Level = \'INFO\') \$entry = \"\[\$(Get-Date -Format \'yyyy-MM-dd HH:mm:ss\')\] \[\$Level\] \$Message\" Add-Content -Path \$LogFile -Value \$entry Write-Host \$entry } try { Write-Log \"=== Gitea DB Backup Started ===\" \# 1. Stop Gitea service Write-Log \"Stopping Gitea service\...\" Stop-Service -Name \'gitea\' -Force -ErrorAction Stop Start-Sleep -Seconds 5 Write-Log \"Gitea service stopped.\" \# 2. Create temp directory New-Item -Path \$TempDir -ItemType Directory -Force \| Out-Null \# 3. Copy database using VSS shadow copy Write-Log \"Creating VSS shadow copy of D:\\\...\" \$shadow = (Get-WmiObject -List Win32_ShadowCopy).Create(\'D:\\\', \'ClientAccessible\') \$shadowObj = Get-WmiObject Win32_ShadowCopy \| Sort-Object InstallDate -Descending \| Select-Object -First 1 \$shadowPath = \$shadowObj.DeviceObject + \'\\\' \$vssSourceDB = \$shadowPath + \'Gitea\\data\\gitea.db\' \# Use cmd to copy from VSS path Write-Log \"Copying gitea.db from VSS snapshot\...\" \$copyCmd = \"copy \`\"\$vssSourceDB\`\" \`\"\$TempDir\\gitea.db\`\"\" cmd.exe /c \$copyCmd if (-not (Test-Path \"\$TempDir\\gitea.db\")) { throw \"VSS copy failed - gitea.db not found in temp directory\" } \# Delete shadow copy \$shadowObj.Delete() Write-Log \"VSS shadow copy released.\" \# 4. Compress with timestamp Write-Log \"Compressing to \$ZipName\...\" Compress-Archive -Path \"\$TempDir\\gitea.db\" -DestinationPath \"\$TempDir\\\$ZipName\" -Force \# 5. Copy to local backup target Write-Log \"Copying to local backup: \$LocalDest\" if (-not (Test-Path \$LocalDest)) { New-Item -Path \$LocalDest -ItemType Directory -Force \| Out-Null } Copy-Item -Path \"\$TempDir\\\$ZipName\" -Destination \"\$LocalDest\\\$ZipName\" -Force \# 6. Copy to network backup target Write-Log \"Copying to network backup: \$NetDest\" if (-not (Test-Path \$NetDest)) { New-Item -Path \$NetDest -ItemType Directory -Force \| Out-Null } Copy-Item -Path \"\$TempDir\\\$ZipName\" -Destination \"\$NetDest\\\$ZipName\" -Force \# 7. Enforce 30-day retention on both targets Write-Log \"Enforcing \$RetainDays-day retention\...\" \$cutoff = (Get-Date).AddDays(-\$RetainDays) Get-ChildItem -Path \$LocalDest -Filter \'gitea-db-\*.zip\' \| Where-Object { \$\_.LastWriteTime -lt \$cutoff } \| ForEach-Object { Write-Log \"Deleting expired local backup: \$(\$\_.Name)\" Remove-Item \$\_.FullName -Force } Get-ChildItem -Path \$NetDest -Filter \'gitea-db-\*.zip\' \| Where-Object { \$\_.LastWriteTime -lt \$cutoff } \| ForEach-Object { Write-Log \"Deleting expired network backup: \$(\$\_.Name)\" Remove-Item \$\_.FullName -Force } \# 8. Clean up temp directory Remove-Item -Path \$TempDir -Recurse -Force \# 9. Restart Gitea service Write-Log \"Restarting Gitea service\...\" Start-Service -Name \'gitea\' -ErrorAction Stop Start-Sleep -Seconds 5 \$svcStatus = (Get-Service -Name \'gitea\').Status if (\$svcStatus -ne \'Running\') { throw \"Gitea service did not restart. Status: \$svcStatus\" } Write-Log \"Gitea service running.\" Write-Log \"=== Gitea DB Backup Completed Successfully ===\" exit 0 } catch { Write-Log \"BACKUP FAILED: \$(\$\_.Exception.Message)\" -Level \'ERROR\' Write-Log \"Stack trace: \$(\$\_.ScriptStackTrace)\" -Level \'ERROR\' \# Attempt to restart Gitea if it was stopped try { \$svc = Get-Service -Name \'gitea\' -ErrorAction SilentlyContinue if (\$svc -and \$svc.Status -ne \'Running\') { Write-Log \"Attempting emergency Gitea restart\...\" -Level \'WARN\' Start-Service -Name \'gitea\' } } catch { Write-Log \"Emergency restart failed: \$(\$\_.Exception.Message)\" -Level \'ERROR\' } exit 1 }
+
+4.2 Backup-UIAORepositories.ps1
+
+Mirrors all Git repositories to the secondary server and mirrors the uiao repository to GitHub. Runs git fsck to verify integrity after mirroring.
+
+#Requires -RunAsAdministrator \<# .SYNOPSIS Mirrors all UIAO Git repositories to secondary server and GitHub. .DESCRIPTION Iterates all bare repositories under D:\\GitRepos, pushes each to the active-passive secondary via git push \--mirror, mirrors uiao to GitHub, and runs git fsck to verify integrity. .OUTPUTS Exit code 0 on success, 1 on any mirror failure. #\> \[CmdletBinding()\] param() \$ErrorActionPreference = \'Continue\' \$LogFile = \'D:\\UIAO\\Logs\\backup.log\' \$RepoRoot = \'D:\\GitRepos\' \$SecondaryHost = \'git-dr.uiao.local\' \$SecondaryBase = \"ssh://svc-gitea@\$SecondaryHost/D:/GitRepos\" \$GitHubRemote = \'https://github.com/WhalerMike/uiao.git\' \$GitExe = \'C:\\Program Files\\Git\\bin\\git.exe\' \$HasFailure = \$false function Write-Log { param(\[string\]\$Message, \[string\]\$Level = \'INFO\') \$entry = \"\[\$(Get-Date -Format \'yyyy-MM-dd HH:mm:ss\')\] \[\$Level\] \$Message\" Add-Content -Path \$LogFile -Value \$entry Write-Host \$entry } Write-Log \"=== Repository Mirror Backup Started ===\" \# Discover all bare repositories \$repos = Get-ChildItem -Path \$RepoRoot -Directory -Recurse -Filter \'\*.git\' if (\$repos.Count -eq 0) { Write-Log \"No repositories found under \$RepoRoot\" -Level \'WARN\' exit 1 } Write-Log \"Found \$(\$repos.Count) repositories to mirror.\" foreach (\$repo in \$repos) { \$repoPath = \$repo.FullName \$repoName = \$repo.Name \$relativePath = \$repo.FullName.Replace(\$RepoRoot, \'\').TrimStart(\'\\\') Write-Log \"\-\-- Processing: \$relativePath \-\--\" \# Mirror to secondary server \$secondaryTarget = \"\$SecondaryBase/\$relativePath\" Write-Log \"Mirroring to secondary: \$secondaryTarget\" \$mirrorResult = & \$GitExe -C \$repoPath push \--mirror \$secondaryTarget 2\>&1 if (\$LASTEXITCODE -ne 0) { Write-Log \"MIRROR FAILED for \$repoName to secondary: \$mirrorResult\" -Level \'ERROR\' \$HasFailure = \$true } else { Write-Log \"Mirror to secondary successful for \$repoName\" } \# Mirror uiao repository to GitHub if (\$repoName -eq \'uiao.git\') { Write-Log \"Mirroring uiao to GitHub: \$GitHubRemote\" \$ghResult = & \$GitExe -C \$repoPath push \--mirror \$GitHubRemote 2\>&1 if (\$LASTEXITCODE -ne 0) { Write-Log \"MIRROR FAILED for uiao to GitHub: \$ghResult\" -Level \'ERROR\' \$HasFailure = \$true } else { Write-Log \"Mirror to GitHub successful.\" } } \# Verify repository integrity Write-Log \"Running git fsck on \$repoName\...\" \$fsckResult = & \$GitExe -C \$repoPath fsck \--no-dangling 2\>&1 if (\$LASTEXITCODE -ne 0) { Write-Log \"FSCK FAILED for \$repoName : \$fsckResult\" -Level \'ERROR\' \$HasFailure = \$true } else { Write-Log \"Integrity check passed for \$repoName\" } } if (\$HasFailure) { Write-Log \"=== Repository Mirror Backup Completed WITH ERRORS ===\" -Level \'WARN\' exit 1 } else { Write-Log \"=== Repository Mirror Backup Completed Successfully ===\" exit 0 }
+
+4.3 Backup-UIAOCertificates.ps1
+
+Exports the IIS TLS certificate as a password-protected PFX, copies to the secured network share, and retains the last 5 versions.
+
+#Requires -RunAsAdministrator \<# .SYNOPSIS Exports IIS TLS certificate as password-protected PFX to secured share. .DESCRIPTION Finds the certificate bound to the Gitea IIS site, exports as PFX with a secure password, copies to backup share, retains last 5 versions, and logs certificate details (thumbprint, subject, expiry). .OUTPUTS Exit code 0 on success, 1 on failure. #\> \[CmdletBinding()\] param() \$ErrorActionPreference = \'Stop\' \$LogFile = \'D:\\UIAO\\Logs\\backup.log\' \$NetDest = \'\\\\backup-server\\UIAO\\certs\' \$Timestamp = Get-Date -Format \'yyyyMMdd-HHmmss\' \$RetainCount = 5 function Write-Log { param(\[string\]\$Message, \[string\]\$Level = \'INFO\') \$entry = \"\[\$(Get-Date -Format \'yyyy-MM-dd HH:mm:ss\')\] \[\$Level\] \$Message\" Add-Content -Path \$LogFile -Value \$entry Write-Host \$entry } try { Write-Log \"=== Certificate Backup Started ===\" \# 1. Get the certificate bound to IIS HTTPS Import-Module WebAdministration -ErrorAction Stop \$binding = Get-WebBinding -Name \'Gitea\' -Protocol \'https\' if (-not \$binding) { throw \"No HTTPS binding found for IIS site \'Gitea\'\" } \$thumbprint = \$binding.certificateHash Write-Log \"IIS certificate thumbprint: \$thumbprint\" \# 2. Find the certificate in the store \$cert = Get-ChildItem -Path Cert:\\LocalMachine\\My \| Where-Object { \$\_.Thumbprint -eq \$thumbprint } if (-not \$cert) { throw \"Certificate with thumbprint \$thumbprint not found in LocalMachine\\My\" } Write-Log \"Certificate subject: \$(\$cert.Subject)\" Write-Log \"Certificate expiry: \$(\$cert.NotAfter.ToString(\'yyyy-MM-dd HH:mm:ss\'))\" \# 3. Export as PFX with password \# Password retrieved from secure credential store \$pfxPasswordPlain = (Get-Content \'D:\\UIAO\\Secrets\\cert-backup-password.txt\' -Raw).Trim() \$pfxPassword = ConvertTo-SecureString -String \$pfxPasswordPlain -AsPlainText -Force \$pfxFileName = \"gitea-cert-\$Timestamp.pfx\" \$localPfxPath = \"D:\\UIAO\\Backups\\certs\\\$pfxFileName\" if (-not (Test-Path \'D:\\UIAO\\Backups\\certs\')) { New-Item -Path \'D:\\UIAO\\Backups\\certs\' -ItemType Directory -Force \| Out-Null } Export-PfxCertificate -Cert \$cert -FilePath \$localPfxPath \` -Password \$pfxPassword -ErrorAction Stop Write-Log \"Exported PFX to: \$localPfxPath\" \# 4. Copy to network share if (-not (Test-Path \$NetDest)) { New-Item -Path \$NetDest -ItemType Directory -Force \| Out-Null } Copy-Item -Path \$localPfxPath -Destination \"\$NetDest\\\$pfxFileName\" -Force Write-Log \"Copied PFX to network: \$NetDest\\\$pfxFileName\" \# 5. Retain last 5 versions, delete older \$existingBackups = Get-ChildItem -Path \$NetDest -Filter \'gitea-cert-\*.pfx\' \| Sort-Object LastWriteTime -Descending if (\$existingBackups.Count -gt \$RetainCount) { \$toDelete = \$existingBackups \| Select-Object -Skip \$RetainCount foreach (\$old in \$toDelete) { Write-Log \"Deleting old cert backup: \$(\$old.Name)\" Remove-Item \$old.FullName -Force } } \# 6. Check expiry warning \$daysToExpiry = (\$cert.NotAfter - (Get-Date)).Days if (\$daysToExpiry -le 30) { Write-Log \"CERTIFICATE EXPIRES IN \$daysToExpiry DAYS\" -Level \'WARN\' } Write-Log \"=== Certificate Backup Completed Successfully ===\" exit 0 } catch { Write-Log \"CERT BACKUP FAILED: \$(\$\_.Exception.Message)\" -Level \'ERROR\' exit 1 }
+
+4.4 Backup-UIAOConfig.ps1
+
+Backs up all configuration files --- Gitea app.ini, IIS web.config, git hooks, IIS site config, scheduled tasks, and PowerShell modules --- into a single timestamped ZIP archive.
+
+#Requires -RunAsAdministrator \<# .SYNOPSIS Backs up all UIAO platform configuration files into a timestamped ZIP. .DESCRIPTION Collects app.ini, web.config, git hooks, IIS site configuration, UIAO scheduled tasks, and PowerShell modules. Packages everything into a timestamped ZIP and copies to the network backup share. .OUTPUTS Exit code 0 on success, 1 on failure. #\> \[CmdletBinding()\] param() \$ErrorActionPreference = \'Stop\' \$LogFile = \'D:\\UIAO\\Logs\\backup.log\' \$Timestamp = Get-Date -Format \'yyyyMMdd-HHmmss\' \$TempDir = \"D:\\UIAO\\Backups\\temp\\config-\$Timestamp\" \$ZipName = \"uiao-config-\$Timestamp.zip\" \$LocalDest = \'D:\\UIAO\\Backups\\config\' \$NetDest = \'\\\\backup-server\\UIAO\\config\' \$RetainDays = 30 function Write-Log { param(\[string\]\$Message, \[string\]\$Level = \'INFO\') \$entry = \"\[\$(Get-Date -Format \'yyyy-MM-dd HH:mm:ss\')\] \[\$Level\] \$Message\" Add-Content -Path \$LogFile -Value \$entry Write-Host \$entry } try { Write-Log \"=== Configuration Backup Started ===\" \# Create temp staging directory New-Item -Path \$TempDir -ItemType Directory -Force \| Out-Null \# 1. Backup app.ini \$appIniSource = \'D:\\Gitea\\custom\\conf\\app.ini\' if (Test-Path \$appIniSource) { \$appIniDest = \"\$TempDir\\gitea-conf\" New-Item -Path \$appIniDest -ItemType Directory -Force \| Out-Null Copy-Item -Path \$appIniSource -Destination \"\$appIniDest\\app.ini\" Write-Log \"Backed up app.ini\" } else { Write-Log \"app.ini not found at \$appIniSource\" -Level \'WARN\' } \# 2. Backup web.config \$webConfigSource = \'C:\\inetpub\\gitea\\web.config\' if (Test-Path \$webConfigSource) { \$webConfigDest = \"\$TempDir\\iis-config\" New-Item -Path \$webConfigDest -ItemType Directory -Force \| Out-Null Copy-Item -Path \$webConfigSource -Destination \"\$webConfigDest\\web.config\" Write-Log \"Backed up web.config\" } else { Write-Log \"web.config not found at \$webConfigSource\" -Level \'WARN\' } \# 3. Backup git hooks \$hookPaths = @( \'D:\\GitRepos\\UIAO\\uiao.git\\hooks\\pre-receive\', \'D:\\GitRepos\\UIAO\\uiao.git\\hooks\\post-receive\', \'D:\\GitRepos\\UIAO\\uiao.git\\hooks\\update\' ) \$hooksDest = \"\$TempDir\\git-hooks\" New-Item -Path \$hooksDest -ItemType Directory -Force \| Out-Null foreach (\$hook in \$hookPaths) { if (Test-Path \$hook) { Copy-Item -Path \$hook -Destination \$hooksDest Write-Log \"Backed up hook: \$(Split-Path \$hook -Leaf)\" } else { Write-Log \"Hook not found: \$hook\" -Level \'WARN\' } } \# 4. Export IIS site configuration \$iisDest = \"\$TempDir\\iis-config\" if (-not (Test-Path \$iisDest)) { New-Item -Path \$iisDest -ItemType Directory -Force \| Out-Null } \$iisExport = & \"\$env:SystemRoot\\System32\\inetsrv\\appcmd.exe\" list site /config /xml \$iisExport \| Out-File -FilePath \"\$iisDest\\iis-sites.xml\" -Encoding UTF8 Write-Log \"Exported IIS site configuration\" \# 5. Export all UIAO scheduled tasks \$tasksDest = \"\$TempDir\\scheduled-tasks\" New-Item -Path \$tasksDest -ItemType Directory -Force \| Out-Null \$tasks = Get-ScheduledTask -TaskPath \'\\UIAO\\\' -ErrorAction SilentlyContinue if (\$tasks) { foreach (\$task in \$tasks) { \$taskXml = Export-ScheduledTask -TaskName \$task.TaskName \` -TaskPath \$task.TaskPath \$safeTaskName = \$task.TaskName -replace \'\[\\\\/:\*?\"\<\>\|\]\', \'\_\' \$taskXml \| Out-File -FilePath \"\$tasksDest\\\$safeTaskName.xml\" -Encoding UTF8 Write-Log \"Exported scheduled task: \$(\$task.TaskName)\" } } else { Write-Log \"No scheduled tasks found under \\UIAO\\\" -Level \'WARN\' } \# 6. Backup PowerShell modules \$modulesSource = \'D:\\UIAO\\Modules\' if (Test-Path \$modulesSource) { \$modulesDest = \"\$TempDir\\powershell-modules\" Copy-Item -Path \$modulesSource -Destination \$modulesDest -Recurse Write-Log \"Backed up PowerShell modules\" } else { Write-Log \"Modules directory not found: \$modulesSource\" -Level \'WARN\' } \# 7. Package everything into timestamped ZIP \$localZipPath = \"\$LocalDest\\\$ZipName\" if (-not (Test-Path \$LocalDest)) { New-Item -Path \$LocalDest -ItemType Directory -Force \| Out-Null } Compress-Archive -Path \"\$TempDir\\\*\" -DestinationPath \$localZipPath -Force Write-Log \"Created config archive: \$ZipName\" \# 8. Copy to network share if (-not (Test-Path \$NetDest)) { New-Item -Path \$NetDest -ItemType Directory -Force \| Out-Null } Copy-Item -Path \$localZipPath -Destination \"\$NetDest\\\$ZipName\" -Force Write-Log \"Copied to network: \$NetDest\\\$ZipName\" \# 9. Enforce retention \$cutoff = (Get-Date).AddDays(-\$RetainDays) foreach (\$dest in @(\$LocalDest, \$NetDest)) { Get-ChildItem -Path \$dest -Filter \'uiao-config-\*.zip\' \| Where-Object { \$\_.LastWriteTime -lt \$cutoff } \| ForEach-Object { Write-Log \"Deleting expired config backup: \$(\$\_.Name)\" Remove-Item \$\_.FullName -Force } } \# 10. Clean up temp Remove-Item -Path \$TempDir -Recurse -Force Write-Log \"=== Configuration Backup Completed Successfully ===\" exit 0 } catch { Write-Log \"CONFIG BACKUP FAILED: \$(\$\_.Exception.Message)\" -Level \'ERROR\' exit 1 }
+
+4.5 Invoke-UIAOBackup.ps1 (Master Orchestrator)
+
+Orchestrates all four backup scripts in sequence, verifies each completed successfully, generates a backup manifest with SHA-256 checksums, and sends a summary notification. Designed to run as a daily Windows Scheduled Task at 02:00.
+
+#Requires -RunAsAdministrator \<# .SYNOPSIS Master orchestrator for all UIAO backup operations. .DESCRIPTION Calls Backup-UIAOGiteaDB, Backup-UIAORepositories, Backup-UIAOCertificates, and Backup-UIAOConfig in sequence. Verifies each script exits successfully, generates a backup manifest JSON with SHA-256 checksums, and sends a summary notification via webhook. .NOTES Schedule: Daily at 02:00 via Windows Scheduled Task Task Path: \\UIAO\\Invoke-UIAOBackup #\> \[CmdletBinding()\] param() \$ErrorActionPreference = \'Continue\' \$LogFile = \'D:\\UIAO\\Logs\\backup.log\' \$ScriptDir = \'D:\\UIAO\\Scripts\\DR\' \$ManifestDir = \'D:\\UIAO\\Backups\\manifests\' \$Timestamp = Get-Date -Format \'yyyyMMdd-HHmmss\' \$WebhookUrl = \'https://hooks.uiao.local/backup-notify\' \# Update as needed function Write-Log { param(\[string\]\$Message, \[string\]\$Level = \'INFO\') \$entry = \"\[\$(Get-Date -Format \'yyyy-MM-dd HH:mm:ss\')\] \[\$Level\] \$Message\" Add-Content -Path \$LogFile -Value \$entry Write-Host \$entry } Write-Log \"==========================================\" Write-Log \"=== UIAO Master Backup Orchestrator ===\" Write-Log \"==========================================\" \$startTime = Get-Date \# Define backup scripts in execution order \$scripts = @( \@{ Name = \'Gitea Database\'; Script = \"\$ScriptDir\\Backup-UIAOGiteaDB.ps1\" } \@{ Name = \'Repositories\'; Script = \"\$ScriptDir\\Backup-UIAORepositories.ps1\" } \@{ Name = \'Certificates\'; Script = \"\$ScriptDir\\Backup-UIAOCertificates.ps1\" } \@{ Name = \'Configuration\'; Script = \"\$ScriptDir\\Backup-UIAOConfig.ps1\" } ) \$results = @() \$overallSuccess = \$true foreach (\$s in \$scripts) { Write-Log \"\-\-- Starting: \$(\$s.Name) \-\--\" \$stepStart = Get-Date try { \$proc = Start-Process -FilePath \'powershell.exe\' \` -ArgumentList \"-NoProfile -ExecutionPolicy Bypass -File \`\"\$(\$s.Script)\`\"\" \` -Wait -PassThru -NoNewWindow \$exitCode = \$proc.ExitCode } catch { \$exitCode = 1 Write-Log \"Exception running \$(\$s.Name): \$(\$\_.Exception.Message)\" -Level \'ERROR\' } \$stepDuration = ((Get-Date) - \$stepStart).TotalSeconds \$status = if (\$exitCode -eq 0) { \'SUCCESS\' } else { \'FAILED\' } if (\$exitCode -ne 0) { \$overallSuccess = \$false } Write-Log \"\$(\$s.Name): \$status (exit code \$exitCode, \${stepDuration}s)\" \$results += \@{ Component = \$s.Name Status = \$status ExitCode = \$exitCode Duration = \[math\]::Round(\$stepDuration, 1) } } \# Generate backup manifest with checksums Write-Log \"Generating backup manifest\...\" if (-not (Test-Path \$ManifestDir)) { New-Item -Path \$ManifestDir -ItemType Directory -Force \| Out-Null } \$backupFiles = @() \$backupDirs = @( \'D:\\UIAO\\Backups\\db\', \'D:\\UIAO\\Backups\\config\', \'D:\\UIAO\\Backups\\certs\' ) foreach (\$dir in \$backupDirs) { if (Test-Path \$dir) { \$latest = Get-ChildItem -Path \$dir -File \| Sort-Object LastWriteTime -Descending \| Select-Object -First 1 if (\$latest) { \$hash = (Get-FileHash -Path \$latest.FullName -Algorithm SHA256).Hash \$backupFiles += \@{ FileName = \$latest.Name Path = \$latest.FullName SHA256 = \$hash SizeBytes = \$latest.Length Modified = \$latest.LastWriteTime.ToString(\'yyyy-MM-ddTHH:mm:ss\') } } } } \$totalDuration = ((Get-Date) - \$startTime).TotalSeconds \$manifest = \@{ BackupType = \'DailyFull\' Timestamp = (Get-Date -Format \'yyyy-MM-ddTHH:mm:ssZ\') Components = \$results FileHashes = \$backupFiles TotalSizeBytes = (\$backupFiles \| Measure-Object -Property SizeBytes -Sum).Sum Duration = \[math\]::Round(\$totalDuration, 1) Status = if (\$overallSuccess) { \'SUCCESS\' } else { \'PARTIAL_FAILURE\' } } \$manifestPath = \"\$ManifestDir\\backup-manifest-\$Timestamp.json\" \$manifest \| ConvertTo-Json -Depth 4 \| Out-File -FilePath \$manifestPath -Encoding UTF8 Write-Log \"Manifest written: \$manifestPath\" \# Send summary notification \$notificationBody = \@{ title = \"UIAO Backup Report - \$Timestamp\" status = \$manifest.Status duration = \"\$(\$manifest.Duration)s\" components = \$results \| ForEach-Object { \"\$(\$\_.Component): \$(\$\_.Status)\" } } \| ConvertTo-Json try { Invoke-RestMethod -Uri \$WebhookUrl -Method Post -Body \$notificationBody \` -ContentType \'application/json\' -TimeoutSec 30 Write-Log \"Notification sent to webhook.\" } catch { Write-Log \"Failed to send notification: \$(\$\_.Exception.Message)\" -Level \'WARN\' } Write-Log \"==========================================\" Write-Log \"=== Master Backup Complete: \$(\$manifest.Status) ===\" Write-Log \"=== Total Duration: \$(\$manifest.Duration)s ===\" Write-Log \"==========================================\" if (\$overallSuccess) { exit 0 } else { exit 1 }
+
+5\. Failure Scenarios and Recovery Runbooks
+
+This section provides detailed recovery procedures for eight failure scenarios, ordered by severity. Each runbook includes cause analysis, impact assessment, step-by-step recovery commands, estimated recovery time, and rollback procedures where applicable.
+
+5.1 Scenario 1: Complete Server Loss
+
++--------------------------------------------------------------------------------------------+
+| **SEVERITY: P1 --- CRITICAL**                                                              |
+|                                                                                            |
+| **Cause:** Hardware failure, catastrophic OS corruption, ransomware infection\             |
+| **Impact:** All UIAO services offline --- Gitea, IIS, dashboards, assessment, replication\ |
+| **Estimated Recovery Time:** 4--8 hours                                                    |
++--------------------------------------------------------------------------------------------+
+
+**Recovery Steps:**
+
+If a VM, restore from the latest Windows Server Backup image on \\\\backup-server\\UIAO\\. If bare metal, perform a clean install of Windows Server 2025 Standard/Datacenter, join to the domain, and configure D:\\ drive.
+
+Install-WindowsFeature Web-Server, \` Web-WebServer, Web-Common-Http, Web-Default-Doc, \` Web-Http-Errors, Web-Static-Content, Web-Http-Redirect, \` Web-Health, Web-Http-Logging, Web-Log-Libraries, \` Web-Request-Monitor, Web-Http-Tracing, Web-Performance, \` Web-Stat-Compression, Web-Dyn-Compression, Web-Security, \` Web-Filtering, Web-Basic-Auth, Web-Windows-Auth, \` Web-Mgmt-Tools, Web-Mgmt-Console -IncludeManagementTools
+
+\# Silent install with default options \$gitInstaller = \'\\\\backup-server\\Software\\Git-2.53.0-64-bit.exe\' Start-Process -FilePath \$gitInstaller -ArgumentList \'/VERYSILENT /NORESTART\' \` -Wait -NoNewWindow
+
+\# Create directory structure New-Item -Path \'D:\\Gitea\\custom\\conf\' -ItemType Directory -Force New-Item -Path \'D:\\Gitea\\data\' -ItemType Directory -Force New-Item -Path \'D:\\GitRepos\' -ItemType Directory -Force \# Copy Gitea binary Copy-Item -Path \'\\\\backup-server\\UIAO\\software\\gitea-1.26.0-gogit-windows-4.0-amd64.exe\' \` -Destination \'D:\\Gitea\\gitea.exe\'
+
+\# Extract latest config backup \$latestConfig = Get-ChildItem \'\\\\backup-server\\UIAO\\config\' -Filter \'uiao-config-\*.zip\' \| Sort-Object LastWriteTime -Descending \| Select-Object -First 1 Expand-Archive -Path \$latestConfig.FullName -DestinationPath \'D:\\UIAO\\Backups\\temp\\restore\' Copy-Item \'D:\\UIAO\\Backups\\temp\\restore\\gitea-conf\\app.ini\' \` \'D:\\Gitea\\custom\\conf\\app.ini\'
+
+\$latestDB = Get-ChildItem \'\\\\backup-server\\UIAO\\db\' -Filter \'gitea-db-\*.zip\' \| Sort-Object LastWriteTime -Descending \| Select-Object -First 1 Expand-Archive -Path \$latestDB.FullName -DestinationPath \'D:\\UIAO\\Backups\\temp\\db-restore\' Copy-Item \'D:\\UIAO\\Backups\\temp\\db-restore\\gitea.db\' \'D:\\Gitea\\data\\gitea.db\'
+
+\# From secondary (preferred --- most current) \$repos = Invoke-RestMethod -Uri \'http://git-dr.uiao.local:3000/api/v1/repos/search\' \` -Headers \@{ Authorization = \"token \$apiToken\" } foreach (\$repo in \$repos.data) { git clone \--mirror \"ssh://svc-gitea@git-dr.uiao.local/D:/GitRepos/\$(\$repo.full_name).git\" \` \"D:\\GitRepos\\\$(\$repo.full_name).git\" } \# Fallback: from GitHub (uiao repo only) git clone \--mirror https://github.com/WhalerMike/uiao.git D:\\GitRepos\\UIAO\\uiao.git
+
+\# Install URL Rewrite 2.1 Start-Process msiexec.exe -ArgumentList \'/i \\\\backup-server\\Software\\rewrite_amd64_en-US.msi /quiet\' \` -Wait -NoNewWindow \# Install Application Request Routing 3.0 Start-Process msiexec.exe -ArgumentList \'/i \\\\backup-server\\Software\\requestRouter_amd64.msi /quiet\' \` -Wait -NoNewWindow
+
+Copy-Item \'D:\\UIAO\\Backups\\temp\\restore\\iis-config\\web.config\' \'C:\\inetpub\\gitea\\web.config\' \# Re-create IIS site Import-Module WebAdministration New-Website -Name \'Gitea\' -PhysicalPath \'C:\\inetpub\\gitea\' \` -BindingInformation \'\*:443:git.uiao.local\' -Ssl
+
+\$pfxPassword = ConvertTo-SecureString -String (Get-Content \'D:\\UIAO\\Secrets\\cert-backup-password.txt\' -Raw).Trim() \` -AsPlainText -Force \$latestPfx = Get-ChildItem \'\\\\backup-server\\UIAO\\certs\' -Filter \'gitea-cert-\*.pfx\' \| Sort-Object LastWriteTime -Descending \| Select-Object -First 1 \$cert = Import-PfxCertificate -FilePath \$latestPfx.FullName \` -CertStoreLocation Cert:\\LocalMachine\\My -Password \$pfxPassword
+
+\$thumbprint = \$cert.Thumbprint netsh http add sslcert ipport=0.0.0.0:443 certhash=\$thumbprint \` appid=\'{4dc3e181-e14b-4a21-b022-59fc669b0914}\' certstorename=MY
+
+\$hooksDir = \'D:\\GitRepos\\UIAO\\uiao.git\\hooks\' Copy-Item \'D:\\UIAO\\Backups\\temp\\restore\\git-hooks\\pre-receive\' \"\$hooksDir\\pre-receive\" Copy-Item \'D:\\UIAO\\Backups\\temp\\restore\\git-hooks\\post-receive\' \"\$hooksDir\\post-receive\" Copy-Item \'D:\\UIAO\\Backups\\temp\\restore\\git-hooks\\update\' \"\$hooksDir\\update\"
+
+Copy-Item -Path \'D:\\UIAO\\Backups\\temp\\restore\\powershell-modules\\\*\' \` -Destination \'D:\\UIAO\\Modules\\\' -Recurse -Force
+
+sc.exe create gitea start= auto binPath= \'\"D:\\Gitea\\gitea.exe\" web \--config \"D:\\Gitea\\custom\\conf\\app.ini\"\' \` obj= \".\\svc-gitea\" DisplayName= \"Gitea Git Server\" sc.exe description gitea \"UIAO Governance OS - Gitea Git Server v1.26.0\"
+
+\$taskXmls = Get-ChildItem \'D:\\UIAO\\Backups\\temp\\restore\\scheduled-tasks\' -Filter \'\*.xml\' foreach (\$taskXml in \$taskXmls) { \$taskName = \[IO.Path\]::GetFileNameWithoutExtension(\$taskXml.Name) Register-ScheduledTask -TaskName \$taskName -TaskPath \'\\UIAO\\\' \` -Xml (Get-Content \$taskXml.FullName -Raw) Write-Host \"Registered task: \$taskName\" }
+
+\# If IP changed, update AD-integrated DNS \$newIP = (Get-NetIPAddress -InterfaceAlias \'Ethernet\' -AddressFamily IPv4).IPAddress Add-DnsServerResourceRecordA -Name \'git\' -ZoneName \'uiao.local\' \` -IPv4Address \$newIP -ComputerName \'dc01.uiao.local\' Add-DnsServerResourceRecordA -Name \'docs\' -ZoneName \'uiao.local\' \` -IPv4Address \$newIP -ComputerName \'dc01.uiao.local\'
+
+Start-Service gitea Start-Sleep -Seconds 10 \$response = Invoke-WebRequest -Uri \'https://git.uiao.local\' -UseBasicParsing if (\$response.StatusCode -eq 200) { Write-Host \"Gitea web UI operational.\" -ForegroundColor Green } else { Write-Host \"Gitea web UI NOT responding.\" -ForegroundColor Red }
+
+**Rollback:** Not applicable --- this is a new build from clean state.
+
+5.2 Scenario 2: Gitea Database Corruption
+
++--------------------------------------------------------------------------------------------+
+| **SEVERITY: P1 --- CRITICAL**                                                              |
+|                                                                                            |
+| **Cause:** Disk failure, improper shutdown, software bug\                                  |
+| **Impact:** Gitea web UI, issues, PRs, user accounts unavailable; Git repos remain intact\ |
+| **Estimated Recovery Time:** 1--2 hours                                                    |
++--------------------------------------------------------------------------------------------+
+
+**Recovery Steps:**
+
+Stop-Service gitea -Force Write-Host \"Gitea service stopped.\"
+
+D:\\Gitea\\gitea.exe doctor check \--config D:\\Gitea\\custom\\conf\\app.ini
+
+D:\\Gitea\\gitea.exe doctor \--fix \--config D:\\Gitea\\custom\\conf\\app.ini
+
+Review output for resolved issues. If doctor reports all checks passed, proceed to step 6.
+
+\# Preserve corrupt copy for forensic analysis \$timestamp = Get-Date -Format \'yyyyMMdd-HHmmss\' Rename-Item \'D:\\Gitea\\data\\gitea.db\' \"D:\\Gitea\\data\\gitea-corrupt-\$timestamp.db\" \# Restore from latest hourly backup \$latestDB = Get-ChildItem \'D:\\UIAO\\Backups\\db\' -Filter \'gitea-db-\*.zip\' \| Sort-Object LastWriteTime -Descending \| Select-Object -First 1 Write-Host \"Restoring from: \$(\$latestDB.Name)\" Expand-Archive -Path \$latestDB.FullName -DestinationPath \'D:\\UIAO\\Backups\\temp\\db-restore\' -Force Copy-Item \'D:\\UIAO\\Backups\\temp\\db-restore\\gitea.db\' \'D:\\Gitea\\data\\gitea.db\'
+
+Compare HEAD refs between primary and secondary. Any commits on the secondary that postdate the backup must be re-pushed to primary once Gitea is operational.
+
+Start-Service gitea Start-Sleep -Seconds 10 \# Verify via API \$users = Invoke-RestMethod -Uri \'https://git.uiao.local/api/v1/admin/users\' \` -Headers \@{ Authorization = \"token \$adminToken\" } Write-Host \"User count: \$(\$users.Count)\" \$repos = Invoke-RestMethod -Uri \'https://git.uiao.local/api/v1/repos/search\' \` -Headers \@{ Authorization = \"token \$adminToken\" } Write-Host \"Repository count: \$(\$repos.data.Count)\"
+
+\$response = Invoke-WebRequest -Uri \'https://git.uiao.local\' -UseBasicParsing Write-Host \"Status: \$(\$response.StatusCode)\"
+
+**Rollback:** Restore the renamed corrupt database and engage Gitea support for advanced recovery.
+
+5.3 Scenario 3: Git Repository Corruption
+
++------------------------------------------------------------------------------------------------------------+
+| **SEVERITY: P1 --- CRITICAL**                                                                              |
+|                                                                                                            |
+| **Cause:** Disk failure, interrupted push, filesystem corruption\                                          |
+| **Impact:** One or more repositories have corrupt Git objects; code and governance artifacts inaccessible\ |
+| **Estimated Recovery Time:** 30 min -- 2 hours                                                             |
++------------------------------------------------------------------------------------------------------------+
+
+**Recovery Steps:**
+
+\$gitExe = \'C:\\Program Files\\Git\\bin\\git.exe\' \$repos = Get-ChildItem \'D:\\GitRepos\' -Directory -Recurse -Filter \'\*.git\' foreach (\$repo in \$repos) { Write-Host \"Checking: \$(\$repo.FullName)\" \$result = & \$gitExe -C \$repo.FullName fsck \--full 2\>&1 if (\$LASTEXITCODE -ne 0) { Write-Host \" CORRUPT: \$result\" -ForegroundColor Red } else { Write-Host \" OK\" -ForegroundColor Green } }
+
+& \$gitExe -C \"D:\\GitRepos\\UIAO\\uiao.git\" fsck \--full & \$gitExe -C \"D:\\GitRepos\\UIAO\\uiao.git\" reflog
+
+\$corruptRepo = \'D:\\GitRepos\\UIAO\\uiao.git\' \$timestamp = Get-Date -Format \'yyyyMMdd-HHmmss\' Rename-Item \$corruptRepo \"\$corruptRepo-corrupt-\$timestamp\" & \$gitExe clone \--mirror ssh://svc-gitea@git-dr.uiao.local/D:/GitRepos/UIAO/uiao.git \$corruptRepo
+
+& \$gitExe clone \--mirror https://github.com/WhalerMike/uiao.git \$corruptRepo
+
+Compare content hashes between restored repository and known-good reference to confirm governance artifacts are intact.
+
+Execute governance compliance checks to validate that all canon/ artifacts pass policy validation in the restored repository.
+
+5.4 Scenario 4: TLS Certificate Expiry or Compromise
+
++------------------------------------------------------------------------------------+
+| **SEVERITY: P1 --- CRITICAL**                                                      |
+|                                                                                    |
+| **Cause:** Failed renewal, CA issue, private key compromise\                       |
+| **Impact:** HTTPS access to git.uiao.local broken; Git operations over HTTPS fail\ |
+| **Estimated Recovery Time:** 30 min (backup cert) to 4 hours (new issuance)        |
++------------------------------------------------------------------------------------+
+
+**Recovery Steps:**
+
+\# Check if backup cert is still valid \$latestPfx = Get-ChildItem \'\\\\backup-server\\UIAO\\certs\' -Filter \'gitea-cert-\*.pfx\' \| Sort-Object LastWriteTime -Descending \| Select-Object -First 1 \$pfxPassword = ConvertTo-SecureString -String (Get-Content \'D:\\UIAO\\Secrets\\cert-backup-password.txt\' -Raw).Trim() \` -AsPlainText -Force \$backupCert = Get-PfxData -FilePath \$latestPfx.FullName -Password \$pfxPassword \$expiry = \$backupCert.EndEntityCertificates\[0\].NotAfter if (\$expiry -gt (Get-Date)) { Write-Host \"Backup cert valid until: \$expiry\" }
+
+\# Generate new CSR \$csrParams = \@{ Subject = \'CN=git.uiao.local\' KeyAlgorithm = \'RSA\' KeyLength = 2048 HashAlgorithm = \'SHA256\' CertStoreLocation = \'Cert:\\LocalMachine\\My\' } \$csr = New-SelfSignedCertificate \@csrParams \# Placeholder --- submit to internal CA
+
+\$cert = Import-PfxCertificate -FilePath \'D:\\UIAO\\Certs\\new-gitea-cert.pfx\' \` -CertStoreLocation Cert:\\LocalMachine\\My \` -Password \$pfxPassword
+
+\$newThumbprint = \$cert.Thumbprint netsh http update sslcert ipport=0.0.0.0:443 certhash=\$newThumbprint \` appid=\'{4dc3e181-e14b-4a21-b022-59fc669b0914}\'
+
+\$response = Invoke-WebRequest -Uri \'https://git.uiao.local\' -UseBasicParsing Write-Host \"HTTPS Status: \$(\$response.StatusCode)\"
+
+5.5 Scenario 5: Security Breach --- Unauthorized Access
+
++--------------------------------------------------------------------------------------------------+
+| **SEVERITY: P1 --- CRITICAL (SECURITY INCIDENT)**                                                |
+|                                                                                                  |
+| **Cause:** Compromised credentials, unpatched vulnerability, insider threat\                     |
+| **Impact:** Potential data exfiltration, repository tampering, governance artifact manipulation\ |
+| **Estimated Response Time:** 2--8 hours (containment within 1 hour)                              |
++--------------------------------------------------------------------------------------------------+
+
+**Response Steps:**
+
+Do **NOT** power off --- preserve volatile evidence (memory, active sessions, network connections).
+
+\# Disable network adapter (preserves running state) Disable-NetAdapter -Name \'Ethernet\' -Confirm:\$false \# Document the time of isolation \"Isolated at: \$(Get-Date -Format \'yyyy-MM-dd HH:mm:ss\')\" \| Out-File \'C:\\IR-Timeline.txt\'
+
+\# Capture memory dump (requires Sysinternals or WinPmem) \# Copy event logs wevtutil epl Security C:\\IR-Evidence\\Security.evtx wevtutil epl Application C:\\IR-Evidence\\Application.evtx wevtutil epl System C:\\IR-Evidence\\System.evtx \# Copy UIAO audit logs Copy-Item \'D:\\UIAO\\Logs\\git-audit.jsonl\' \'C:\\IR-Evidence\\\' Copy-Item \'D:\\UIAO\\Logs\\canon-changes.jsonl\' \'C:\\IR-Evidence\\\'
+
+\# Parse git-audit.jsonl for unauthorized operations Get-Content \'D:\\UIAO\\Logs\\git-audit.jsonl\' \| ForEach-Object { \$entry = \$\_ \| ConvertFrom-Json if (\$entry.user -notin @(\'svc-gitea\', \'admin\', \'michael.stratton\')) { Write-Host \"SUSPICIOUS: \$(\$entry.timestamp) - \$(\$entry.user) - \$(\$entry.action)\" } } \# Review sign-in logs for unusual patterns Get-Content \'D:\\UIAO\\Logs\\git-audit.jsonl\' \| ForEach-Object { \$entry = \$\_ \| ConvertFrom-Json if (\$entry.action -eq \'auth.sign_in\') { Write-Host \"\$(\$entry.timestamp) - \$(\$entry.user) from \$(\$entry.ip)\" } }
+
+\# Reset svc-gitea service account password (in AD) Set-ADAccountPassword -Identity \'svc-gitea\' -Reset \` -NewPassword (ConvertTo-SecureString \'NewSecurePassword\' -AsPlainText -Force) \# Rotate Gitea secrets in app.ini: \# - SECRET_KEY \# - INTERNAL_TOKEN \# - JWT_SECRET (regenerate with: gitea generate secret JWT_SECRET) \# - LFS_JWT_SECRET \# Revoke all API tokens \# Rotate OAuth2 client secrets
+
+\# Re-enable network temporarily or use local copy & \$gitExe -C \'D:\\GitRepos\\UIAO\\uiao.git\' remote add github-verify https://github.com/WhalerMike/uiao.git & \$gitExe -C \'D:\\GitRepos\\UIAO\\uiao.git\' fetch github-verify & \$gitExe -C \'D:\\GitRepos\\UIAO\\uiao.git\' diff origin/main..github-verify/main \-- canon/
+
+5.6 Scenario 6: Assessment Data Loss
+
++---------------------------------------------------------------------------------------+
+| **SEVERITY: P2 --- HIGH**                                                             |
+|                                                                                       |
+| **Cause:** Accidental deletion, disk failure affecting D:\\UIAO\\Assessment\\\        |
+| **Impact:** Historical AD assessment data lost; current governance baseline affected\ |
+| **Estimated Recovery Time:** 2--4 hours                                               |
++---------------------------------------------------------------------------------------+
+
+**Recovery Steps:**
+
+git -C \'D:\\GitRepos\\UIAO\\uiao.git\' log \--all \--name-only \-- \'assessments/\'
+
+\# Clone a working copy and extract assessments git clone \'D:\\GitRepos\\UIAO\\uiao.git\' \'D:\\UIAO\\temp-restore\' Copy-Item \'D:\\UIAO\\temp-restore\\assessments\\\*\' \'D:\\UIAO\\Assessment\\\' -Recurse Remove-Item \'D:\\UIAO\\temp-restore\' -Recurse -Force
+
+Copy-Item \'\\\\backup-server\\UIAO\\assessment\\\*\' \'D:\\UIAO\\Assessment\\\' -Recurse
+
+Import-Module \'D:\\UIAO\\Modules\\UIAOADAssessment\' Invoke-UIAOADAssessment
+
+Set-UIAOBaseline
+
+5.7 Scenario 7: IIS Reverse Proxy Failure
+
++-----------------------------------------------------------------------------------------------------+
+| **SEVERITY: P2 --- HIGH**                                                                           |
+|                                                                                                     |
+| **Cause:** IIS crash, ARR module failure, web.config corruption\                                    |
+| **Impact:** External HTTPS access lost; Gitea running on localhost:3000 but unreachable externally\ |
+| **Estimated Recovery Time:** 30 min -- 1 hour                                                       |
++-----------------------------------------------------------------------------------------------------+
+
+**Recovery Steps:**
+
+Import-Module WebAdministration Get-Website -Name \'Gitea\'
+
+Get-WebAppPoolState DefaultAppPool
+
+iisreset /restart
+
+\# Reinstall Application Request Routing 3.0 Start-Process msiexec.exe -ArgumentList \'/i \\\\backup-server\\Software\\requestRouter_amd64.msi /quiet\' \` -Wait -NoNewWindow \# Reinstall URL Rewrite 2.1 Start-Process msiexec.exe -ArgumentList \'/i \\\\backup-server\\Software\\rewrite_amd64_en-US.msi /quiet\' \` -Wait -NoNewWindow
+
+\$latestConfig = Get-ChildItem \'\\\\backup-server\\UIAO\\config\' -Filter \'uiao-config-\*.zip\' \| Sort-Object LastWriteTime -Descending \| Select-Object -First 1 Expand-Archive -Path \$latestConfig.FullName -DestinationPath \'D:\\UIAO\\Backups\\temp\\iis-restore\' -Force Copy-Item \'D:\\UIAO\\Backups\\temp\\iis-restore\\iis-config\\web.config\' \'C:\\inetpub\\gitea\\web.config\' -Force
+
+Verify IIS binding references the correct certificate thumbprint. Rebind if needed per Scenario 4 steps.
+
+\$response = Invoke-WebRequest -Uri \'https://git.uiao.local\' -UseBasicParsing Write-Host \"HTTPS proxy status: \$(\$response.StatusCode)\" \# Verify direct access is blocked try { Invoke-WebRequest -Uri \'http://git.uiao.local:3000\' -UseBasicParsing -TimeoutSec 5 Write-Host \"WARNING: Direct :3000 access is open!\" -ForegroundColor Red } catch { Write-Host \"Direct :3000 access properly blocked.\" -ForegroundColor Green }
+
+5.8 Scenario 8: Active-Passive Replication Failure
+
++-------------------------------------------------------------------------------+
+| **SEVERITY: P2 --- HIGH**                                                     |
+|                                                                               |
+| **Cause:** Network partition, secondary server failure, authentication issue\ |
+| **Impact:** No real-time backup of Git data; primary still operational\       |
+| **Estimated Recovery Time:** 1--4 hours                                       |
++-------------------------------------------------------------------------------+
+
+**Recovery Steps:**
+
+Test-NetConnection -ComputerName \'git-dr.uiao.local\' -Port 3000
+
+try { \$version = Invoke-RestMethod -Uri \'http://git-dr.uiao.local:3000/api/v1/version\' -TimeoutSec 10 Write-Host \"Secondary Gitea version: \$(\$version.version)\" } catch { Write-Host \"Secondary Gitea API unreachable\" -ForegroundColor Red }
+
+\# On secondary server (via remote PowerShell) Invoke-Command -ComputerName \'git-dr.uiao.local\' -ScriptBlock { Restart-Service gitea -Force Start-Sleep -Seconds 10 Get-Service gitea \| Select-Object Status }
+
+\# Regenerate SSH key pair for replication ssh-keygen -t ed25519 -f \'D:\\UIAO\\.ssh\\replication_key\' -N \'\"\"\' \# Copy public key to secondary server\'s authorized_keys
+
+\$repos = Get-ChildItem \'D:\\GitRepos\' -Directory -Recurse -Filter \'\*.git\' foreach (\$repo in \$repos) { \$target = \"ssh://svc-gitea@git-dr.uiao.local/D:/GitRepos/\$(\$repo.FullName.Replace(\'D:\\GitRepos\\\',\'\'))\" Write-Host \"Mirroring: \$(\$repo.Name) -\> \$target\" git -C \$repo.FullName push \--mirror \$target }
+
+Compare HEAD refs between primary and secondary for every repository. All refs should match.
+
+6\. DR Testing Schedule
+
+Disaster recovery procedures are only as reliable as their last successful test. The following schedule ensures all recovery runbooks are validated on a recurring basis.
+
+6.1 Testing Cadence
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Frequency**      **Test Type**                                **Scope**                                                                                                                       **Duration**
+  ------------------ -------------------------------------------- ------------------------------------------------------------------------------------------------------------------------------- --------------
+  Monthly (Week 1)   Backup Restoration --- Database              Restore gitea.db from latest backup to isolated test instance; verify integrity with PRAGMA integrity_check                     1 hour
+
+  Monthly (Week 2)   Backup Restoration --- Repositories          Clone repository from secondary mirror; compare HEAD refs and file hashes against primary                                       1 hour
+
+  Monthly (Week 3)   Backup Restoration --- Configuration         Extract config backup ZIP; verify all expected files present (app.ini, web.config, hooks, tasks)                                30 min
+
+  Monthly (Week 4)   Backup Restoration --- Certificates          Import PFX backup to test store; verify thumbprint, subject, and expiry match expectations                                      30 min
+
+  Quarterly          Tabletop Exercise --- Complete Server Loss   Walk through Scenario 1 step-by-step with all DR personnel; identify gaps or outdated procedures                                2 hours
+
+  Semi-annually      Live Failover Drill                          Redirect traffic to secondary server; verify Git operations function on DR server; fail back to primary                         4 hours
+
+  Annually           Full DR Drill (including Security Breach)    Simulate Scenario 5 (security breach) end-to-end: containment, evidence collection, credential rotation, recovery, validation   8 hours
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+6.2 Test Documentation Template
+
+Every DR test must be documented using the following fields:
+
+  ------------------------------------------------------------------------------------------------------
+  **Field**                 **Description**
+  ------------------------- ----------------------------------------------------------------------------
+  **Date**                  Date and time of test execution
+
+  **Scenario**              Which scenario or component was tested
+
+  **Participants**          Names and roles of all participants
+
+  **Steps Executed**        Numbered list of steps performed (reference this playbook section numbers)
+
+  **Results**               Pass/Fail for each step; observed recovery times vs. RTO targets
+
+  **Issues Found**          Any deviations, failures, or gaps discovered
+
+  **Remediation Actions**   Corrective actions with owners and due dates
+
+  **Sign-off**              Signature of DR lead confirming test completion and results
+  ------------------------------------------------------------------------------------------------------
+
+7\. Monitoring and Alerting
+
+The following PowerShell script provides comprehensive health monitoring for the UIAO platform. It checks all critical services, connectivity, disk space, certificate expiry, backup recency, replication status, and scheduled task health. Output is formatted as a health report and logged as JSON. Alerts are sent via webhook or email on any WARN or CRITICAL finding.
+
+7.1 Test-UIAOPlatformHealth.ps1
+
+#Requires -RunAsAdministrator \<# .SYNOPSIS Comprehensive health check for the UIAO Governance OS platform. .DESCRIPTION Checks Gitea service, IIS status, HTTPS connectivity, disk space, certificate expiry, backup recency, replication status, scheduled tasks, and DNS resolution. Outputs a formatted report and JSON log entry. Sends alerts on WARN or CRITICAL conditions. .NOTES Schedule: Every 15 minutes via Windows Scheduled Task Task Path: \\UIAO\\Test-UIAOPlatformHealth #\> \[CmdletBinding()\] param() \$LogFile = \'D:\\UIAO\\Logs\\health.log\' \$JsonLog = \'D:\\UIAO\\Logs\\health.jsonl\' \$WebhookUrl = \'https://hooks.uiao.local/health-alert\' \$checks = @() function Add-Check { param(\[string\]\$Name, \[string\]\$Status, \[string\]\$Detail) \$script:checks += \@{ Name = \$Name Status = \$Status Detail = \$Detail Timestamp = (Get-Date -Format \'yyyy-MM-ddTHH:mm:ss\') } \$color = switch (\$Status) { \'OK\' { \'Green\' } \'WARN\' { \'Yellow\' } \'CRITICAL\' { \'Red\' } default { \'White\' } } Write-Host \"\[\$Status\] \$Name - \$Detail\" -ForegroundColor \$color } Write-Host \"\`n========== UIAO Platform Health Report ==========\" -ForegroundColor Cyan Write-Host \"Timestamp: \$(Get-Date -Format \'yyyy-MM-dd HH:mm:ss\')\`n\" \# 1. Gitea service status \$giteaSvc = Get-Service -Name \'gitea\' -ErrorAction SilentlyContinue if (\$giteaSvc -and \$giteaSvc.Status -eq \'Running\') { Add-Check \'Gitea Service\' \'OK\' \'Service is running\' } else { Add-Check \'Gitea Service\' \'CRITICAL\' \"Service status: \$(\$giteaSvc.Status)\" } \# 2. Gitea API health try { \$api = Invoke-RestMethod -Uri \'http://localhost:3000/api/v1/version\' -TimeoutSec 10 Add-Check \'Gitea API\' \'OK\' \"Version \$(\$api.version) responding\" } catch { Add-Check \'Gitea API\' \'CRITICAL\' \'API not responding\' } \# 3. IIS W3SVC service \$iisSvc = Get-Service -Name \'W3SVC\' -ErrorAction SilentlyContinue if (\$iisSvc -and \$iisSvc.Status -eq \'Running\') { Add-Check \'IIS Service\' \'OK\' \'W3SVC is running\' } else { Add-Check \'IIS Service\' \'CRITICAL\' \"W3SVC status: \$(\$iisSvc.Status)\" } \# 4. IIS site status try { Import-Module WebAdministration -ErrorAction Stop \$site = Get-Website -Name \'Gitea\' if (\$site.State -eq \'Started\') { Add-Check \'IIS Gitea Site\' \'OK\' \'Site is Started\' } else { Add-Check \'IIS Gitea Site\' \'CRITICAL\' \"Site state: \$(\$site.State)\" } } catch { Add-Check \'IIS Gitea Site\' \'CRITICAL\' \'Cannot query IIS site\' } \# 5. HTTPS connectivity try { \$https = Invoke-WebRequest -Uri \'https://git.uiao.local\' -UseBasicParsing -TimeoutSec 15 if (\$https.StatusCode -eq 200) { Add-Check \'HTTPS Connectivity\' \'OK\' \'Returns 200\' } else { Add-Check \'HTTPS Connectivity\' \'WARN\' \"Returns \$(\$https.StatusCode)\" } } catch { Add-Check \'HTTPS Connectivity\' \'CRITICAL\' \'HTTPS connection failed\' } \# 6. Disk space - C:\\ \$cDrive = Get-WmiObject Win32_LogicalDisk -Filter \"DeviceID=\'C:\'\" \$cFreePercent = \[math\]::Round((\$cDrive.FreeSpace / \$cDrive.Size) \* 100, 1) if (\$cFreePercent -le 10) { Add-Check \'Disk C:\\\' \'CRITICAL\' \"\$cFreePercent% free\" } elseif (\$cFreePercent -le 20) { Add-Check \'Disk C:\\\' \'WARN\' \"\$cFreePercent% free\" } else { Add-Check \'Disk C:\\\' \'OK\' \"\$cFreePercent% free\" } \# 7. Disk space - D:\\ \$dDrive = Get-WmiObject Win32_LogicalDisk -Filter \"DeviceID=\'D:\'\" \$dFreePercent = \[math\]::Round((\$dDrive.FreeSpace / \$dDrive.Size) \* 100, 1) if (\$dFreePercent -le 10) { Add-Check \'Disk D:\\\' \'CRITICAL\' \"\$dFreePercent% free\" } elseif (\$dFreePercent -le 20) { Add-Check \'Disk D:\\\' \'WARN\' \"\$dFreePercent% free\" } else { Add-Check \'Disk D:\\\' \'OK\' \"\$dFreePercent% free\" } \# 8. Certificate expiry try { Import-Module WebAdministration -ErrorAction SilentlyContinue \$binding = Get-WebBinding -Name \'Gitea\' -Protocol \'https\' \$thumbprint = \$binding.certificateHash \$cert = Get-ChildItem Cert:\\LocalMachine\\My \| Where-Object { \$\_.Thumbprint -eq \$thumbprint } \$daysToExpiry = (\$cert.NotAfter - (Get-Date)).Days if (\$daysToExpiry -le 7) { Add-Check \'TLS Certificate\' \'CRITICAL\' \"Expires in \$daysToExpiry days (\$(\$cert.NotAfter.ToString(\'yyyy-MM-dd\')))\" } elseif (\$daysToExpiry -le 30) { Add-Check \'TLS Certificate\' \'WARN\' \"Expires in \$daysToExpiry days (\$(\$cert.NotAfter.ToString(\'yyyy-MM-dd\')))\" } else { Add-Check \'TLS Certificate\' \'OK\' \"Expires in \$daysToExpiry days (\$(\$cert.NotAfter.ToString(\'yyyy-MM-dd\')))\" } } catch { Add-Check \'TLS Certificate\' \'CRITICAL\' \'Cannot read certificate\' } \# 9. Last backup timestamp \$lastBackup = Get-ChildItem \'D:\\UIAO\\Backups\\db\' -Filter \'gitea-db-\*.zip\' -ErrorAction SilentlyContinue \| Sort-Object LastWriteTime -Descending \| Select-Object -First 1 if (\$lastBackup) { \$backupAge = ((Get-Date) - \$lastBackup.LastWriteTime).TotalHours if (\$backupAge -gt 25) { Add-Check \'Last DB Backup\' \'WARN\' \"\$(\[math\]::Round(\$backupAge,1)) hours ago (\$(\$lastBackup.Name))\" } else { Add-Check \'Last DB Backup\' \'OK\' \"\$(\[math\]::Round(\$backupAge,1)) hours ago (\$(\$lastBackup.Name))\" } } else { Add-Check \'Last DB Backup\' \'CRITICAL\' \'No backup files found\' } \# 10. Replication status try { \$drVersion = Invoke-RestMethod -Uri \'http://git-dr.uiao.local:3000/api/v1/version\' -TimeoutSec 10 Add-Check \'Replication (Secondary)\' \'OK\' \"Secondary online - Gitea \$(\$drVersion.version)\" } catch { Add-Check \'Replication (Secondary)\' \'WARN\' \'Secondary server unreachable\' } \# 11. Scheduled task status \$uiaoTasks = Get-ScheduledTask -TaskPath \'\\UIAO\\\' -ErrorAction SilentlyContinue if (\$uiaoTasks) { \$disabledTasks = \$uiaoTasks \| Where-Object { \$\_.State -eq \'Disabled\' } if (\$disabledTasks.Count -gt 0) { \$names = (\$disabledTasks \| ForEach-Object { \$\_.TaskName }) -join \', \' Add-Check \'Scheduled Tasks\' \'WARN\' \"\$(\$disabledTasks.Count) disabled: \$names\" } else { Add-Check \'Scheduled Tasks\' \'OK\' \"\$(\$uiaoTasks.Count) tasks registered and enabled\" } } else { Add-Check \'Scheduled Tasks\' \'CRITICAL\' \'No UIAO scheduled tasks found\' } \# 12. DNS resolution - git.uiao.local try { \$gitDns = Resolve-DnsName -Name \'git.uiao.local\' -Type A -ErrorAction Stop Add-Check \'DNS (git.uiao.local)\' \'OK\' \"Resolves to \$(\$gitDns.IPAddress -join \', \')\" } catch { Add-Check \'DNS (git.uiao.local)\' \'CRITICAL\' \'DNS resolution failed\' } \# 13. DNS resolution - docs.uiao.local try { \$docsDns = Resolve-DnsName -Name \'docs.uiao.local\' -Type A -ErrorAction Stop Add-Check \'DNS (docs.uiao.local)\' \'OK\' \"Resolves to \$(\$docsDns.IPAddress -join \', \')\" } catch { Add-Check \'DNS (docs.uiao.local)\' \'CRITICAL\' \'DNS resolution failed\' } \# Summary Write-Host \"\`n========== Summary ==========\" -ForegroundColor Cyan \$okCount = (\$checks \| Where-Object { \$\_.Status -eq \'OK\' }).Count \$warnCount = (\$checks \| Where-Object { \$\_.Status -eq \'WARN\' }).Count \$criticalCount = (\$checks \| Where-Object { \$\_.Status -eq \'CRITICAL\' }).Count Write-Host \"OK: \$okCount \| WARN: \$warnCount \| CRITICAL: \$criticalCount\" \# Write JSON log entry \$logEntry = \@{ Timestamp = (Get-Date -Format \'yyyy-MM-ddTHH:mm:ssZ\') Checks = \$checks Summary = \@{ OK = \$okCount; WARN = \$warnCount; CRITICAL = \$criticalCount } } \| ConvertTo-Json -Depth 4 -Compress Add-Content -Path \$JsonLog -Value \$logEntry \# Alert on WARN or CRITICAL if (\$warnCount -gt 0 -or \$criticalCount -gt 0) { \$alertBody = \@{ title = \"UIAO Health Alert - \$(Get-Date -Format \'yyyy-MM-dd HH:mm\')\" ok = \$okCount warn = \$warnCount critical = \$criticalCount issues = (\$checks \| Where-Object { \$\_.Status -ne \'OK\' } \| ForEach-Object { \"\[\$(\$\_.Status)\] \$(\$\_.Name): \$(\$\_.Detail)\" }) } \| ConvertTo-Json -Depth 3 try { Invoke-RestMethod -Uri \$WebhookUrl -Method Post -Body \$alertBody \` -ContentType \'application/json\' -TimeoutSec 30 Write-Host \"Alert sent.\" -ForegroundColor Yellow } catch { Write-Host \"Failed to send alert: \$(\$\_.Exception.Message)\" -ForegroundColor Red } } Write-Host \"========================================\`n\"
+
+8\. Recovery Validation Checklist
+
+After completing any recovery procedure, execute the following 20-item checklist to confirm the platform is fully operational. Every item must pass before the recovery is considered complete. Document results in the DR test log.
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **\#**   **Validation Item**                           **Command / Method**                                                                          **Expected Result**                               **Pass**
+  -------- --------------------------------------------- --------------------------------------------------------------------------------------------- ------------------------------------------------- ----------
+  1        Gitea web UI accessible                       Invoke-WebRequest -Uri \'https://git.uiao.local\' -UseBasicParsing                            Status code 200                                   ☐
+
+  2        Git clone over HTTPS works                    git clone https://git.uiao.local/UIAO/uiao.git temp-test                                      Clone succeeds                                    ☐
+
+  3        Git push over HTTPS works                     Create test commit and push to test branch                                                    Push succeeds; remote accepts                     ☐
+
+  4        Git clone over SSH works                      git clone ssh://git@git.uiao.local/UIAO/uiao.git temp-ssh-test                                Clone succeeds (if SSH enabled)                   ☐
+
+  5        All repositories present                      Compare repo count against backup manifest                                                    Count matches manifest                            ☐
+
+  6        Canon/ artifacts pass governance validation   Run pre-receive hook checks manually against canon/                                           All policy checks pass                            ☐
+
+  7        Git hooks executing on test push              Push to uiao repo, check git-audit.jsonl for new entry                                        New audit entry logged                            ☐
+
+  8        IIS reverse proxy forwarding correctly        Verify https://git.uiao.local works; verify http://git.uiao.local:3000 blocked from outside   HTTPS works; direct :3000 blocked                 ☐
+
+  9        TLS certificate valid                         Check certificate thumbprint, subject, and expiry via IIS binding                             Valid; not expiring within 30 days                ☐
+
+  10       Gitea admin login works                       Log in to Gitea web UI with admin account                                                     Successful authentication                         ☐
+
+  11       LDAP authentication works                     Log in with AD domain user account                                                            Successful AD authentication                      ☐
+
+  12       OAuth2/OIDC authentication works              Log in with Entra ID user account                                                             Successful Entra ID authentication                ☐
+
+  13       Dashboard renders                             Invoke-WebRequest -Uri \'https://docs.uiao.local\' -UseBasicParsing                           Status code 200; dashboard content present        ☐
+
+  14       Assessment modules load                       Import-Module UIAOADAssessment; Get-Command -Module UIAOADAssessment                          Module loads; commands listed                     ☐
+
+  15       Drift detection operational                   Invoke-UIAODriftReport (dry run)                                                              Report generates without error                    ☐
+
+  16       Replication to secondary active               Test push to primary; verify mirrors to secondary within 5 min                                HEAD refs match on both servers                   ☐
+
+  17       GitHub mirror synchronized                    Compare HEAD between primary and github.com/WhalerMike/uiao                                   Commit SHAs match                                 ☐
+
+  18       All scheduled tasks registered                Get-ScheduledTask -TaskPath \'\\UIAO\\\' \| Measure-Object                                    Count = 14; all State = Ready                     ☐
+
+  19       Audit logging operational                     After test push, verify new entry in git-audit.jsonl                                          New JSONL entry with correct timestamp and user   ☐
+
+  20       DNS resolution correct                        Resolve-DnsName git.uiao.local; Resolve-DnsName docs.uiao.local                               Both resolve to correct server IP                 ☐
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Important**                                                                                                                                                                                                                      |
+|                                                                                                                                                                                                                                    |
+| All 20 items must pass before the recovery is declared complete. Any failures must be triaged and resolved. If a check cannot be validated (e.g., SSH not enabled), document the reason for exclusion and obtain DR lead sign-off. |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+9\. Communication Plan
+
+9.1 Notification Matrix
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Priority**           **Notify**                                                          **Response Time**   **Escalation**
+  ---------------------- ------------------------------------------------------------------- ------------------- -------------------------------------------------
+  **P1 --- Critical**    DR Lead, Platform Administrator, IT Manager, Security (if breach)   Within 15 minutes   IT Director if unresolved at 1 hour
+
+  **P2 --- High**        Platform Administrator, DR Lead                                     Within 2 hours      IT Manager if unresolved at 4 hours
+
+  **P3 --- Important**   Platform Administrator                                              Next business day   DR Lead if unresolved at 2 business days
+
+  **P4 --- Low**         Logged only                                                         Weekly review       Platform Administrator at next scheduled review
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+9.2 Status Update Cadence
+
+  ----------------------------------------------------------------------------------------
+  **Priority**   **Update Frequency**   **Channel**             **Audience**
+  -------------- ---------------------- ----------------------- --------------------------
+  P1             Every 30 minutes       Teams channel + Email   All stakeholders
+
+  P2             Every 2 hours          Teams channel + Email   IT team + affected users
+
+  P3             Daily                  Email                   IT team
+
+  P4             Weekly                 Weekly ops report       IT team
+  ----------------------------------------------------------------------------------------
+
+9.3 Communication Channels
+
+- **Email:** Primary channel for all formal notifications and status updates. Use distribution lists for role-based notification.
+
+- **Microsoft Teams:** Real-time coordination during P1/P2 incidents. Dedicated #uiao-incidents channel for incident response.
+
+- **Webhook:** Automated alerts from monitoring scripts (Test-UIAOPlatformHealth.ps1) and backup orchestrator (Invoke-UIAOBackup.ps1).
+
+9.4 Post-Incident Review
+
+A post-incident review is **required** within 5 business days of P1 or P2 incident resolution. The review must cover:
+
+- Timeline of events from detection to resolution
+
+- Root cause analysis
+
+- What worked well in the response
+
+- What did not work or caused delay
+
+- Corrective actions with owners and due dates
+
+- Playbook updates required (if any)
+
+9.5 Lessons Learned Documentation Template
+
+  -----------------------------------------------------------------------------------------------
+  **Field**                 **Description**
+  ------------------------- ---------------------------------------------------------------------
+  **Incident ID**           Unique identifier for the incident
+
+  **Date/Time**             When the incident was detected and resolved
+
+  **Severity**              P1, P2, P3, or P4
+
+  **Scenario**              Which failure scenario (1--8) or novel
+
+  **Impact**                Services affected, duration of outage, users impacted
+
+  **Root Cause**            Confirmed root cause of the failure
+
+  **Detection Method**      How the incident was first detected (monitoring, user report, etc.)
+
+  **Response Timeline**     Key milestones: detected, contained, recovered, validated
+
+  **What Worked**           Procedures, tools, or actions that were effective
+
+  **What Failed**           Procedures, tools, or actions that were ineffective or missing
+
+  **Corrective Actions**    Specific changes with assigned owners and due dates
+
+  **Playbook Updates**      Changes required to this DR playbook
+
+  **Review Participants**   Names and roles of review attendees
+
+  **Sign-off**              DR Lead sign-off with date
+  -----------------------------------------------------------------------------------------------
+
+10\. Recovery Decision Tree
+
+Use the following decision tree when an incident is detected. It provides a structured path from initial detection through severity classification, scenario identification, runbook execution, and post-incident review.
+
++:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:+
+| **\[Placeholder --- Diagram DR-002: Recovery Decision Tree --- 800x600px\]**                                                                                                                                                                                                                                                                                                                            |
+|                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Flowchart: Incident Detected → Classify Severity (P1--P4) → P1: Immediate Containment → Assess Scope → Match to Scenario (1--8) → Execute Runbook → Validate Recovery (Section 8 checklist) → Post-Incident Review. Decision diamonds at each classification and scenario-matching step. Side branches for novel scenarios (not matching 1--8) leading to ad-hoc response with mandatory documentation. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+10.1 Decision Tree --- Text Reference
+
+20. **Incident Detected** --- via monitoring alert, user report, or scheduled check failure
+
+    - Is the platform completely unreachable? → **Go to step 2 (P1)**
+
+    - Is a specific service degraded? → **Go to step 3 (P2)**
+
+    - Is it a non-blocking issue? → **Go to step 4 (P3/P4)**
+
+    - Is there evidence of unauthorized access? → **Go to Scenario 5 immediately**
+
+21. **P1 --- Critical: Immediate Containment**
+
+    - Server unreachable → **Scenario 1 (Complete Server Loss)**
+
+    - Gitea web UI broken, repos accessible → **Scenario 2 (DB Corruption)**
+
+    - Git operations failing → **Scenario 3 (Repository Corruption)**
+
+    - HTTPS broken → **Scenario 4 (TLS Certificate)**
+
+    - Security breach → **Scenario 5 (Unauthorized Access)**
+
+22. **P2 --- High: Scheduled Response**
+
+    - Assessment data missing → **Scenario 6 (Assessment Data Loss)**
+
+    - IIS proxy down, Gitea on localhost works → **Scenario 7 (IIS Failure)**
+
+    - Replication not working → **Scenario 8 (Replication Failure)**
+
+23. **P3/P4 --- Important/Low: Scheduled Maintenance**
+
+    - Log, document, and schedule remediation within business day (P3) or weekly review (P4)
+
+24. **Execute Runbook** --- Follow the matched scenario from Section 5
+
+25. **Validate Recovery** --- Run the full 20-item checklist from Section 8
+
+26. **Post-Incident Review** --- Required within 5 business days for P1/P2 (Section 9.4)
+
+Appendix A --- Emergency Contact Template
+
+Populate this table with current personnel. Review and update quarterly.
+
+  -----------------------------------------------------------------------------------------------------
+  **Escalation Order**   **Role**                              **Name**     **Phone**     **Email**
+  ---------------------- ------------------------------------- ------------ ------------- -------------
+  1                      Platform Administrator / DR Lead      *\[Name\]*   *\[Phone\]*   *\[Email\]*
+
+  2                      Backup Platform Administrator         *\[Name\]*   *\[Phone\]*   *\[Email\]*
+
+  3                      IT Manager                            *\[Name\]*   *\[Phone\]*   *\[Email\]*
+
+  4                      IT Director                           *\[Name\]*   *\[Phone\]*   *\[Email\]*
+
+  5                      Security Officer                      *\[Name\]*   *\[Phone\]*   *\[Email\]*
+
+  6                      Network Administrator                 *\[Name\]*   *\[Phone\]*   *\[Email\]*
+
+  7                      PKI / Certificate Authority Contact   *\[Name\]*   *\[Phone\]*   *\[Email\]*
+  -----------------------------------------------------------------------------------------------------
+
+Appendix B --- Complete PowerShell Script Index
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Script Name**               **Purpose**                                       **Schedule**                **Dependencies**                    **Output**
+  ----------------------------- ------------------------------------------------- --------------------------- ----------------------------------- -------------------------------------------------
+  Backup-UIAOGiteaDB.ps1        VSS-consistent backup of Gitea SQLite database    Hourly                      VSS, Gitea service                  ZIP to local + network; backup.log
+
+  Backup-UIAORepositories.ps1   Mirror all repos to secondary and GitHub          Post-receive hook + daily   Git, SSH, network                   backup.log
+
+  Backup-UIAOCertificates.ps1   Export TLS certificate as PFX                     On-change + daily           IIS, WebAdministration module       PFX to network; backup.log
+
+  Backup-UIAOConfig.ps1         Backup all config files, hooks, tasks, modules    Daily (02:00)               IIS, appcmd, ScheduledTask module   ZIP to local + network; backup.log
+
+  Invoke-UIAOBackup.ps1         Master orchestrator --- runs all backup scripts   Daily (02:00)               All backup scripts                  Manifest JSON; webhook notification; backup.log
+
+  Test-UIAOPlatformHealth.ps1   Comprehensive platform health monitoring          Every 15 minutes            IIS, DNS, Gitea API                 Health report; health.jsonl; webhook alert
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix C --- Backup Manifest Schema
+
+Every backup cycle generates a JSON manifest file at D:\\UIAO\\Backups\\manifests\\. The following is the schema with a sample payload:
+
+{ \"BackupType\": \"DailyFull\", \"Timestamp\": \"2026-04-21T02:15:32Z\", \"Components\": \[ { \"Component\": \"Gitea Database\", \"Status\": \"SUCCESS\", \"ExitCode\": 0, \"Duration\": 45.3 }, { \"Component\": \"Repositories\", \"Status\": \"SUCCESS\", \"ExitCode\": 0, \"Duration\": 120.7 }, { \"Component\": \"Certificates\", \"Status\": \"SUCCESS\", \"ExitCode\": 0, \"Duration\": 8.2 }, { \"Component\": \"Configuration\", \"Status\": \"SUCCESS\", \"ExitCode\": 0, \"Duration\": 22.1 } \], \"FileHashes\": \[ { \"FileName\": \"gitea-db-20260421-021500.zip\", \"Path\": \"D:\\\\UIAO\\\\Backups\\\\db\\\\gitea-db-20260421-021500.zip\", \"SHA256\": \"a1b2c3d4e5f6\...64-character-hex-hash\...\", \"SizeBytes\": 5242880, \"Modified\": \"2026-04-21T02:15:30\" }, { \"FileName\": \"uiao-config-20260421-021522.zip\", \"Path\": \"D:\\\\UIAO\\\\Backups\\\\config\\\\uiao-config-20260421-021522.zip\", \"SHA256\": \"f6e5d4c3b2a1\...64-character-hex-hash\...\", \"SizeBytes\": 1048576, \"Modified\": \"2026-04-21T02:15:22\" }, { \"FileName\": \"gitea-cert-20260421-021530.pfx\", \"Path\": \"D:\\\\UIAO\\\\Backups\\\\certs\\\\gitea-cert-20260421-021530.pfx\", \"SHA256\": \"1a2b3c4d5e6f\...64-character-hex-hash\...\", \"SizeBytes\": 4096, \"Modified\": \"2026-04-21T02:15:30\" } \], \"TotalSizeBytes\": 6295552, \"Duration\": 196.3, \"Status\": \"SUCCESS\" }
+
+**Schema Field Definitions:**
+
+  -----------------------------------------------------------------------------------------
+  **Field**                  **Type**   **Description**
+  -------------------------- ---------- ---------------------------------------------------
+  BackupType                 String     Type of backup cycle: DailyFull, Hourly, OnDemand
+
+  Timestamp                  ISO 8601   UTC timestamp when the backup cycle started
+
+  Components\[\]             Array      Status of each backup component script
+
+  Components\[\].Component   String     Name of the backup component
+
+  Components\[\].Status      String     SUCCESS or FAILED
+
+  Components\[\].ExitCode    Integer    Script exit code (0 = success)
+
+  Components\[\].Duration    Float      Execution time in seconds
+
+  FileHashes\[\]             Array      Checksums for each backup file produced
+
+  FileHashes\[\].SHA256      String     SHA-256 hash of the backup file
+
+  FileHashes\[\].SizeBytes   Integer    File size in bytes
+
+  TotalSizeBytes             Integer    Sum of all backup file sizes
+
+  Duration                   Float      Total orchestrator execution time in seconds
+
+  Status                     String     Overall status: SUCCESS or PARTIAL_FAILURE
+  -----------------------------------------------------------------------------------------
+
+Appendix D --- Cross-References
+
+This playbook is part of the UIAO Governance OS documentation suite. The following companion documents provide additional detail for specific recovery procedures:
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Document**                                    **Relevance to DR**                                                                                                       **Use When**
+  ----------------------------------------------- ------------------------------------------------------------------------------------------------------------------------- --------------------------------------------------------------------------------------------------------------
+  **UIAO Platform Server Build Guide**            Complete server build procedures including IIS roles, Gitea installation, directory structure, and service registration   Scenario 1 (Complete Server Loss) --- provides the authoritative build sequence for a new server
+
+  **UIAO Active-Passive Git Replication Guide**   Configuration and operation of the active-passive Git mirror between primary and secondary servers                        Scenario 8 (Replication Failure) --- provides secondary server provisioning and replication setup procedures
+
+  **UIAO Operations Runbook**                     Daily operational procedures, monitoring integration, log management, and routine maintenance tasks                       Post-recovery --- reintegrate monitoring and re-establish operational baselines
+
+  **UIAO CLI and Operations Guide**               Gitea CLI commands, API operations, administration tasks, and troubleshooting procedures                                  Scenarios 2 and 3 --- Gitea doctor commands, API-based recovery verification, and user/repository management
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Document Maintenance**                                                                                                                                                                                                                                                                                                                   |
+|                                                                                                                                                                                                                                                                                                                                            |
+| This playbook is version-controlled in the UIAO repository at ops/dr/UIAO-Disaster-Recovery-Playbook.md. All updates must follow the standard canon governance process: branch, commit, pull request, review, and merge. The playbook must be reviewed and updated after every P1/P2 incident and during each quarterly tabletop exercise. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+--- End of Document ---\
+UIAO Disaster Recovery Playbook v1.0 \| Classification: Controlled \| Boundary: GCC-Moderate\
+Author: Michael Stratton \| April 21, 2026

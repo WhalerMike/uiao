@@ -1,0 +1,1403 @@
+---
+title: "UIAO CLI and Operations Guide"
+subtitle: "Git, Gitea API, PowerShell, and platform integration"
+doc-type: technical-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO CLI and Operations Guide — Git, Gitea API, PowerShell, and Platform Integration.docx"
+repo-path: docs/customer-documents/substrate/execution-patterns/cli-operations-guide.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+UIAO CLI and Operations Guide
+
+Git, Gitea API, PowerShell, and Platform Integration
+
+The Definitive Reference for the UIAO Governance OS Platform
+
+**Classification:** Controlled \| **Boundary:** GCC-Moderate
+
+**Primary Repository:** https://git.uiao.local/UIAO/uiao \| **Secondary:** https://github.com/WhalerMike/uiao
+
+**Local Workspace:** C:\\Users\\whale\\git\\uiao
+
+**Author:** Michael Stratton \| **Date:** April 20, 2026
+
+**Platform:** Gitea on Windows Server 2025 behind IIS \| Integrated with AD, Entra ID, Intune, Azure Arc
+
+Table of Contents
+
+**Part I --- Git CLI Operations for UIAO**
+
+Chapter 1 --- Environment Setup
+
+Chapter 2 --- Daily Git Workflow
+
+Chapter 3 --- Branch Management
+
+Chapter 4 --- Canon Steward Operations
+
+Chapter 5 --- Advanced Git Operations
+
+**Part II --- Gitea REST API Reference**
+
+Chapter 6 --- API Authentication
+
+Chapter 7 --- Repository API Operations
+
+Chapter 8 --- Pull Request API
+
+Chapter 9 --- Organization and Team API
+
+Chapter 10 --- Webhook API
+
+Chapter 11 --- API Automation Patterns
+
+**Part III --- Active Directory Integration CLI**
+
+Chapter 12 --- Connecting to Active Directory
+
+Chapter 13 --- AD Forest Discovery for UIAO Assessment
+
+Chapter 14 --- DNS Assessment
+
+Chapter 15 --- Certificate Assessment
+
+Chapter 16 --- GPO Assessment
+
+Chapter 17 --- Master Assessment Orchestrator
+
+**Part IV --- Entra ID Integration CLI**
+
+Chapter 18 --- Connecting to Entra ID
+
+Chapter 19 --- Entra ID Device and Group Operations
+
+Chapter 20 --- Entra ID Conditional Access
+
+**Part V --- Intune Integration CLI**
+
+Chapter 21 --- Connecting to Intune
+
+Chapter 22 --- Intune Configuration Profiles
+
+**Part VI --- Azure Arc Integration CLI**
+
+Chapter 23 --- Connecting to Azure Arc
+
+Chapter 24 --- Azure Policy via Arc
+
+Chapter 25 --- Azure Monitor via Arc
+
+**Part VII --- Appendices**
+
+Appendix A --- Complete PowerShell Module: UIAO.Tools
+
+Appendix B --- API Endpoint Quick Reference
+
+Appendix C --- Error Code Reference
+
+Appendix D --- Environment Variables Reference
+
+Appendix E --- Security Considerations
+
+**Part I --- Git CLI Operations for UIAO**
+
+Chapter 1 --- Environment Setup
+
+This chapter provides a step-by-step guide to configuring a workstation for UIAO development and governance operations. Every operator, Canon Steward, and contributor must complete these steps before interacting with UIAO repositories.
+
+1.1 --- Install Git for Windows
+
+Install Git for Windows using the Windows Package Manager:
+
+winget install Git.Git
+
+After installation, close and reopen any terminal sessions. Verify the installation:
+
+git \--version
+
+Expected output (version may vary):
+
+git version 2.47.0.windows.1
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Tip**                                                                                                                                                                                                            |
+|                                                                                                                                                                                                                    |
+| During the Git for Windows installer, accept default settings. Ensure \"Git Credential Manager\" is selected as the credential helper, and \"Checkout Windows-style, commit Unix-style line endings\" is selected. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+1.2 --- Configure Global Git Settings for UIAO
+
+Run each of the following commands in a terminal to set the standard UIAO identity and behavior:
+
+git config \--global user.name \"Michael Stratton\" git config \--global user.email \"whalermike@hotmail.com\" git config \--global init.defaultBranch main git config \--global core.autocrlf true git config \--global credential.helper manager git config \--global http.sslVerify true
+
+Verify the configuration:
+
+git config \--global \--list
+
+  ---------------------------------------------------------------------------------------------------------------
+  **Setting**          **Value**                **Purpose**
+  -------------------- ------------------------ -----------------------------------------------------------------
+  user.name            Michael Stratton         Author name on all commits
+
+  user.email           whalermike@hotmail.com   Author email for commit attribution
+
+  init.defaultBranch   main                     Default branch for new repos (not master)
+
+  core.autocrlf        true                     Normalize line endings: CRLF on checkout, LF on commit
+
+  credential.helper    manager                  Use Git Credential Manager for secure token storage
+
+  http.sslVerify       true                     Enforce TLS certificate verification (GCC-Moderate requirement)
+  ---------------------------------------------------------------------------------------------------------------
+
+1.3 --- Clone the UIAO Repository
+
+Navigate to the standard workspace directory and clone from Gitea (the primary canonical source):
+
+cd C:\\Users\\whale\\git git clone https://git.uiao.local/UIAO/uiao.git cd uiao
+
+After cloning, verify the remote:
+
+git remote -v
+
+Expected output:
+
+origin https://git.uiao.local/UIAO/uiao.git (fetch) origin https://git.uiao.local/UIAO/uiao.git (push)
+
+1.4 --- Configure Dual Remotes
+
+UIAO uses a dual-remote strategy. Gitea (origin) is the canonical primary. GitHub (github) is the secondary mirror. Add the GitHub remote:
+
+git remote add github https://github.com/WhalerMike/uiao.git git remote -v
+
+Expected output showing both remotes:
+
+github https://github.com/WhalerMike/uiao.git (fetch) github https://github.com/WhalerMike/uiao.git (push) origin https://git.uiao.local/UIAO/uiao.git (fetch) origin https://git.uiao.local/UIAO/uiao.git (push)
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Diagram 1 --- DIAG-001**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **UIAO Dual-Remote Repository Architecture**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| A flow diagram showing the relationship between the three repository locations: (1) Local Workspace at C:\\Users\\whale\\git\\uiao shown as a workstation icon on the left; (2) Gitea Primary at git.uiao.local/UIAO/uiao shown as a server icon in the center, labeled \"origin\" with a bidirectional arrow to the local workspace; (3) GitHub Secondary at github.com/WhalerMike/uiao shown as a cloud icon on the right, labeled \"github\" with a unidirectional push arrow from the local workspace. Below the diagram, a note states: \"All feature work pushes to origin (Gitea). Only main branch syncs to github (GitHub).\" Color scheme: Gitea server in blue (#4472C4), GitHub cloud in dark gray (#333333), local workstation in green (#548235). |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Dimensions: 700 × 280 pixels                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+1.5 --- Configure Git Credential Manager for Both Remotes
+
+Git Credential Manager (GCM) stores credentials securely in the Windows Credential Store. Each remote will prompt for credentials on first use.
+
+**For Gitea (origin):** When first pushing or pulling, GCM prompts for your Gitea personal access token. Enter your username and the token as the password.
+
+git fetch origin
+
+**For GitHub (github):** When first pushing, GCM opens a browser window for GitHub authentication (OAuth). Complete the flow to authorize.
+
+git fetch github
+
+To verify stored credentials:
+
+\# List stored credentials (via Windows Credential Manager) cmdkey /list:git:\*
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Security**                                                                                                                                                                                                                |
+|                                                                                                                                                                                                                             |
+| Never store credentials in plaintext configuration files. Always use Git Credential Manager. Personal access tokens should be scoped to the minimum permissions required and rotated every 90 days per GCC-Moderate policy. |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+1.6 --- Verify the Setup
+
+Run the following to confirm everything is working:
+
+git log \--oneline -5
+
+You should see the five most recent commits from the UIAO repository. If you see output, your environment is fully configured and ready for UIAO operations.
+
+Chapter 2 --- Daily Git Workflow
+
+This chapter describes the standard UIAO contribution workflow. Every change --- whether a governance artifact update, code fix, or documentation improvement --- follows this process.
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Diagram 2 --- DIAG-002**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **UIAO Standard Contribution Workflow**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| A linear flowchart with eight numbered steps arranged left-to-right in two rows (four steps per row, wrapping): Step 1: \"Sync\" --- pull icon with arrow from origin/main; Step 2: \"Branch\" --- branch icon showing checkout from main; Step 3: \"Develop\" --- pencil icon, edit/stage files; Step 4: \"Commit\" --- checkmark icon with conventional commit message; Step 5: \"Push\" --- upload arrow to Gitea feature branch; Step 6: \"PR\" --- merge request icon showing pull request creation; Step 7: \"Cleanup\" --- broom icon, delete local branch after merge; Step 8: \"Mirror\" --- sync arrow pushing main to GitHub. Each step box is 140 × 80 pixels, colored with light blue (#D6E4F0) fill and blue (#4472C4) border. Arrows between steps are dark gray (#333333). |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Dimensions: 700 × 340 pixels                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+2.1 --- Step 1: Sync with Upstream
+
+Always start by ensuring your local main branch is up to date with Gitea:
+
+git fetch origin git pull origin main
+
+2.2 --- Step 2: Create a Feature Branch
+
+Create a descriptive branch following the UIAO naming convention:
+
+git checkout -b feature/UIAO-NNN-short-description
+
+Replace NNN with the artifact or issue number and short-description with a brief lowercase-hyphenated summary. Example:
+
+git checkout -b feature/UIAO-042-drift-detection-policy
+
+2.3 --- Step 3: Make Changes and Stage
+
+Edit files as needed. When ready, stage all changes:
+
+git add -A
+
+To stage specific files only:
+
+git add canon/UIAO_042.md git add docs/drift-detection-guide.md
+
+Review staged changes:
+
+git status git diff \--cached
+
+2.4 --- Step 4: Commit with Conventional Commit Format
+
+UIAO uses conventional commit messages for automated changelog generation and traceability:
+
+git commit -m \"feat(canon): UIAO_042 add drift detection governance artifact\"
+
+The commit message format is: \<type\>(\<scope\>): \<description\>
+
+  --------------------------------------------------------------------------------------------------------------------------------
+  **Prefix**   **Scope**            **Usage**                                    **Example**
+  ------------ -------------------- -------------------------------------------- -------------------------------------------------
+  feat         Feature              New capability or artifact                   feat(canon): UIAO_042 add governance artifact
+
+  fix          Fix                  Bug fix or correction                        fix(api): correct webhook payload parsing
+
+  docs         Documentation        Documentation changes only                   docs(readme): update installation steps
+
+  refactor     Refactor             Code restructuring without behavior change   refactor(tools): simplify validation logic
+
+  test         Testing              Add or update tests                          test(canon): add frontmatter validation tests
+
+  chore        Maintenance          Build, CI, tooling changes                   chore(ci): update pipeline to v3
+
+  canon        Canonical Artifact   UIAO-specific: canonical artifact changes    canon(UIAO_001): update to v2.1 with new policy
+  --------------------------------------------------------------------------------------------------------------------------------
+
++-----------------------------------------------------------------------------------------------------------------+
+| **Important --- UIAO Convention**                                                                               |
+|                                                                                                                 |
+| The                                                                                                             |
+|                                                                                                                 |
+| canon                                                                                                           |
+|                                                                                                                 |
+| prefix is UIAO-specific and reserved exclusively for changes to files in the                                    |
+|                                                                                                                 |
+| canon/                                                                                                          |
+|                                                                                                                 |
+| directory. All canon commits must reference the UIAO artifact ID (e.g., UIAO_001, UIAO_042) in the description. |
++-----------------------------------------------------------------------------------------------------------------+
+
+2.5 --- Step 5: Push to Gitea
+
+Push your feature branch to Gitea:
+
+git push origin feature/UIAO-042-drift-detection-policy
+
+2.6 --- Step 6: Create a Pull Request
+
+Pull requests can be created via the Gitea web UI or the Gitea API.
+
+Method A: Gitea Web UI
+
+1.  Navigate to https://git.uiao.local/UIAO/uiao in a browser.
+
+2.  Click the \"New Pull Request\" button or the prompt banner that appears after a push.
+
+3.  Set **base** to main and **compare** to your feature branch.
+
+4.  Add a title following the conventional commit format.
+
+5.  Add a description with context, link to the UIAO artifact ID, and any review notes.
+
+6.  Assign reviewers, labels, and milestone as appropriate.
+
+7.  Click \"Create Pull Request.\"
+
+Method B: Gitea API
+
+\# PowerShell --- Create Pull Request via API \$token = \"your-gitea-personal-access-token\" \$headers = \@{ Authorization = \"token \$token\" } \$prBody = \@{ title = \"feat(canon): UIAO_042 --- Drift Detection Governance Artifact\" body = \"Adds the new canonical artifact for drift detection policy.\`n\`nArtifact ID: UIAO_042\`nStatus: DRAFT\" head = \"feature/UIAO-042-drift-detection-policy\" base = \"main\" } \| ConvertTo-Json Invoke-RestMethod -Uri \"https://git.uiao.local/api/v1/repos/UIAO/uiao/pulls\" \` -Method POST -Headers \$headers \` -ContentType \"application/json\" -Body \$prBody
+
+2.7 --- Step 7: After Merge --- Clean Up
+
+Once the pull request is merged, switch back to main, pull the merged changes, and delete the feature branch:
+
+git checkout main git pull origin main git branch -d feature/UIAO-042-drift-detection-policy
+
+2.8 --- Step 8: Sync to GitHub
+
+Push the updated main branch to the GitHub mirror:
+
+git push github main
+
++-----------------------------------------------------------------------------------------------------------------------+
+| **Note**                                                                                                              |
+|                                                                                                                       |
+| Only the                                                                                                              |
+|                                                                                                                       |
+| main                                                                                                                  |
+|                                                                                                                       |
+| branch is synced to GitHub. Feature branches remain on Gitea only. Tags and releases should also be pushed to GitHub: |
+|                                                                                                                       |
+| git push github \--tags                                                                                               |
+|                                                                                                                       |
+| .                                                                                                                     |
++-----------------------------------------------------------------------------------------------------------------------+
+
+Chapter 3 --- Branch Management
+
+UIAO follows a structured branching strategy. This chapter provides the full branch naming conventions, lifecycle operations, and CLI commands for each scenario.
+
+3.1 --- Branch Naming Convention
+
+  --------------------------------------------------------------------------------------------------------------------
+  **Pattern**   **Purpose**                        **Created From**   **Merges Into**   **Lifetime**
+  ------------- ---------------------------------- ------------------ ----------------- ------------------------------
+  main          Canonical production branch        ---                ---               Permanent
+
+  feature/\*    New features or artifacts          main               main              Short (days to weeks)
+
+  bugfix/\*     Non-critical bug fixes             main               main              Short
+
+  hotfix/\*     Critical production fixes          main               main              Very short (hours)
+
+  release/\*    Release stabilization              main               main              Short (stabilization period)
+
+  canon/\*      Canonical artifact batch updates   main               main              Short to medium
+  --------------------------------------------------------------------------------------------------------------------
+
+3.2 --- List All Branches
+
+\# List local branches git branch \# List all branches including remote-tracking git branch -a \# List remote branches only git branch -r
+
+3.3 --- Create a Release Branch
+
+git checkout main git pull origin main git checkout -b release/v2.0 main git push origin release/v2.0
+
+3.4 --- Tag a Release
+
+\# Create annotated tag git tag -a v2.0 -m \"UIAO Governance OS v2.0\" \# Push tag to Gitea git push origin v2.0 \# Push tag to GitHub git push github v2.0 \# List all tags git tag -l \# Show tag details git show v2.0
+
+3.5 --- Cherry-Pick a Hotfix
+
+Apply a specific commit from one branch to another:
+
+\# Identify the commit to cherry-pick git log \--oneline main \# Apply it to your current branch git cherry-pick \<commit-hash\> \# If conflicts occur, resolve them, then: git cherry-pick \--continue \# To abort the cherry-pick: git cherry-pick \--abort
+
+3.6 --- Rebase a Feature Branch
+
+\# From your feature branch git checkout feature/UIAO-042-drift-policy git rebase main
+
++--------------------------------------------------------------------------------------------------------------------------------------------+
+| **Warning**                                                                                                                                |
+|                                                                                                                                            |
+| Never rebase branches that have been pushed and shared with other contributors. Rebasing rewrites commit history. For shared branches, use |
+|                                                                                                                                            |
+| git merge main                                                                                                                             |
+|                                                                                                                                            |
+| instead.                                                                                                                                   |
++--------------------------------------------------------------------------------------------------------------------------------------------+
+
+3.7 --- Delete Remote Branch
+
+\# Delete a remote branch on Gitea git push origin \--delete feature/old-branch \# Delete the local branch git branch -d feature/old-branch \# Force-delete unmerged local branch (use with caution) git branch -D feature/old-branch
+
+3.8 --- View Branch Graph
+
+git log \--graph \--oneline \--all \--decorate
+
+For a more detailed view with dates and authors:
+
+git log \--graph \--pretty=format:\"%C(auto)%h %d %s %C(dim)(%cr by %an)\" \--all
+
+Chapter 4 --- Canon Steward Operations
+
+Canon Stewards are responsible for the integrity of all canonical artifacts in the canon/ directory. This chapter provides specialized commands and validation scripts for steward duties.
+
+4.1 --- Canonical Artifact Validation Script
+
+Use this PowerShell function to validate that a canonical artifact meets all UIAO governance requirements before committing:
+
+function Test-UIAOCanonArtifact { param(\[string\]\$FilePath) \$content = Get-Content \$FilePath -Raw \$errors = @() \# Check YAML frontmatter exists if (\$content -notmatch \'(?s)\^\-\--\\s\*\\n(.+?)\\n\-\--\') { \$errors += \"Missing YAML frontmatter\" } else { \$frontmatter = \$Matches\[1\] \# Required fields \$requiredFields = @( \'document_id\', \'title\', \'version\', \'status\', \'classification\', \'owner\', \'boundary\' ) foreach (\$field in \$requiredFields) { if (\$frontmatter -notmatch \"\$field\\s\*:\") { \$errors += \"Missing required field: \$field\" } } \# Boundary must be GCC-Moderate if (\$frontmatter -notmatch \'boundary\\s\*:\\s\*GCC-Moderate\') { \$errors += \"Boundary must be \'GCC-Moderate\'\" } } \# FOUO check --- must use \"Controlled\" instead if (\$content -match \'FOUO\|For Official Use Only\') { \$errors += \"FOUO marking detected --- use \'Controlled\' instead\" } \# Report results if (\$errors.Count -gt 0) { Write-Host \"FAIL: \$FilePath\" -ForegroundColor Red foreach (\$err in \$errors) { Write-Host \" - \$err\" -ForegroundColor Yellow } return \$false } Write-Host \"PASS: \$FilePath\" -ForegroundColor Green return \$true }
+
+4.2 --- Batch Validate All Canon Files
+
+\# Validate every .md file in canon/ recursively \$results = Get-ChildItem -Path canon/ -Recurse -Filter \*.md \| ForEach-Object { \[PSCustomObject\]@{ File = \$\_.FullName Valid = Test-UIAOCanonArtifact \$\_.FullName } } \# Summary \$passed = (\$results \| Where-Object Valid -eq \$true).Count \$failed = (\$results \| Where-Object Valid -eq \$false).Count Write-Host \"\`nResults: \$passed passed, \$failed failed out of \$(\$results.Count) total\" -ForegroundColor Cyan
+
+4.3 --- Deprecate an Artifact
+
+Canonical artifacts are **never deleted**. To deprecate, update the YAML frontmatter:
+
+\-\-- document_id: UIAO_003 title: Legacy Access Control Framework version: 1.4 status: DEPRECATED classification: Controlled owner: Michael Stratton boundary: GCC-Moderate superseded_by: UIAO_042 deprecated_date: 2026-04-20 \-\--
+
+Then commit and push:
+
+git add canon/UIAO_003.md git commit -m \"canon(UIAO_003): deprecate in favor of UIAO_042\" git push origin main
+
+4.4 --- Generate Canon Status Report
+
+function Export-UIAOCanonStatusReport { param(\[string\]\$CanonPath = \"canon/\") \$artifacts = Get-ChildItem -Path \$CanonPath -Filter \*.md -Recurse \| ForEach-Object { \$content = Get-Content \$\_.FullName -Raw if (\$content -match \'(?s)\^\-\--\\s\*\\n(.+?)\\n\-\--\') { \$fm = \$Matches\[1\] \[PSCustomObject\]@{ File = \$\_.Name DocumentID = if (\$fm -match \'document_id\\s\*:\\s\*(.+)\') { \$Matches\[1\].Trim() } else { \"MISSING\" } Title = if (\$fm -match \'title\\s\*:\\s\*(.+)\') { \$Matches\[1\].Trim() } else { \"MISSING\" } Version = if (\$fm -match \'version\\s\*:\\s\*(.+)\') { \$Matches\[1\].Trim() } else { \"MISSING\" } Status = if (\$fm -match \'status\\s\*:\\s\*(.+)\') { \$Matches\[1\].Trim() } else { \"MISSING\" } Classification = if (\$fm -match \'classification\\s\*:\\s\*(.+)\') { \$Matches\[1\].Trim() } else { \"MISSING\" } Boundary = if (\$fm -match \'boundary\\s\*:\\s\*(.+)\') { \$Matches\[1\].Trim() } else { \"MISSING\" } } } } \$artifacts \| Format-Table -AutoSize \$artifacts \| Export-Csv \"canon-status-report.csv\" -NoTypeInformation Write-Host \"Report exported to canon-status-report.csv\" -ForegroundColor Green }
+
+4.5 --- Orphan Detection: Compare canon/ Against INDEX.md
+
+function Find-UIAOOrphanArtifacts { \# Get all files in canon/ \$canonFiles = Get-ChildItem -Path canon/ -Filter \*.md -Recurse \| Select-Object -ExpandProperty Name \# Get all references in INDEX.md \$indexContent = Get-Content \"INDEX.md\" -Raw \$referencedFiles = \[regex\]::Matches(\$indexContent, \'UIAO\_\\d{3}\\.md\') \| ForEach-Object { \$\_.Value } \| Sort-Object -Unique \# Find orphans (in canon/ but not in INDEX.md) \$orphans = \$canonFiles \| Where-Object { \$\_ -notin \$referencedFiles } \# Find dangling references (in INDEX.md but not in canon/) \$dangling = \$referencedFiles \| Where-Object { \$\_ -notin \$canonFiles } if (\$orphans) { Write-Host \"Orphaned files (in canon/ but not in INDEX.md):\" -ForegroundColor Yellow \$orphans \| ForEach-Object { Write-Host \" - \$\_\" -ForegroundColor Yellow } } if (\$dangling) { Write-Host \"Dangling references (in INDEX.md but not in canon/):\" -ForegroundColor Red \$dangling \| ForEach-Object { Write-Host \" - \$\_\" -ForegroundColor Red } } if (-not \$orphans -and -not \$dangling) { Write-Host \"No orphans or dangling references found.\" -ForegroundColor Green } }
+
+Chapter 5 --- Advanced Git Operations
+
+This chapter covers advanced Git commands for debugging, history manipulation, and recovery scenarios relevant to UIAO operations.
+
+5.1 --- Bisect to Find a Regression
+
+\# Start bisect session git bisect start \# Mark current commit as bad git bisect bad \# Mark a known good commit git bisect good \<commit-hash\> \# Git checks out a commit halfway between. Test it, then: git bisect good \# if this commit is fine git bisect bad \# if this commit has the bug \# Repeat until Git identifies the offending commit \# When done: git bisect reset
+
+5.2 --- Stash Work in Progress
+
+\# Stash with descriptive message git stash push -m \"WIP: governance hook update\" \# List all stashes git stash list \# Apply most recent stash (keep in stash list) git stash apply \# Apply and remove from stash list git stash pop \# Apply a specific stash git stash apply stash@{2} \# Drop a specific stash git stash drop stash@{0} \# Clear all stashes git stash clear
+
+5.3 --- Interactive Rebase to Squash Commits
+
+\# Squash the last 3 commits into one git rebase -i HEAD\~3
+
+In the editor that opens, change pick to squash (or s) for the commits you want to combine:
+
+pick a1b2c3d feat(canon): UIAO_042 initial draft squash e4f5g6h feat(canon): UIAO_042 add review notes squash i7j8k9l feat(canon): UIAO_042 fix typo
+
+Save and close. Edit the combined commit message when prompted.
+
+5.4 --- View File History
+
+\# Full history of a specific file, including renames git log \--follow -p \-- canon/UIAO_001.md \# Summary only (no diffs) git log \--follow \--oneline \-- canon/UIAO_001.md
+
+5.5 --- Blame a Specific Line
+
+\# Show who last modified each line git blame canon/UIAO_001.md \# Blame a specific line range (lines 10-20) git blame -L 10,20 canon/UIAO_001.md
+
+5.6 --- Show Diff Between Branches
+
+\# Diff between main and a feature branch git diff main..feature/UIAO-042-new-artifact \# Show only file names that changed git diff \--name-only main..feature/UIAO-042-new-artifact \# Show stats (insertions/deletions per file) git diff \--stat main..feature/UIAO-042-new-artifact
+
+5.7 --- Recover a Deleted Branch
+
+\# Find the last commit of the deleted branch via reflog git reflog \# Look for the branch tip commit, then recreate the branch git checkout -b recovered-branch \<commit-hash\>
+
+5.8 --- Large File Handling with Git LFS
+
+\# Install Git LFS git lfs install \# Track PDF files git lfs track \"\*.pdf\" \# Track other large binary formats git lfs track \"\*.pptx\" git lfs track \"\*.docx\" \# Verify tracking rules cat .gitattributes \# Stage and commit the .gitattributes file git add .gitattributes git commit -m \"chore: configure Git LFS for binary files\"
+
+**Part II --- Gitea REST API Reference**
+
+Chapter 6 --- API Authentication
+
+Gitea exposes a comprehensive REST API at https://git.uiao.local/api/v1/. This chapter covers three authentication methods with full PowerShell examples.
+
+6.1 --- Method 1: Personal Access Token
+
+Generate a token via the Gitea web UI: **Settings \> Applications \> Generate New Token**. Select the minimum required scopes.
+
+\# Store token in variable (do NOT hardcode in scripts) \$token = Read-Host -Prompt \"Enter Gitea Personal Access Token\" -AsSecureString \$plainToken = \[Runtime.InteropServices.Marshal\]::PtrToStringAuto( \[Runtime.InteropServices.Marshal\]::SecureStringToBSTR(\$token) ) \$headers = \@{ Authorization = \"token \$plainToken\" } \# Test authentication \$user = Invoke-RestMethod -Uri \"https://git.uiao.local/api/v1/user\" -Headers \$headers Write-Host \"Authenticated as: \$(\$user.login) (\$(\$user.full_name))\"
+
+6.2 --- Method 2: Basic Authentication
+
+\$cred = Get-Credential -Message \"Enter Gitea credentials\" \$pair = \"\$(\$cred.UserName):\$(\$cred.GetNetworkCredential().Password)\" \$bytes = \[System.Text.Encoding\]::ASCII.GetBytes(\$pair) \$base64 = \[System.Convert\]::ToBase64String(\$bytes) \$headers = \@{ Authorization = \"Basic \$base64\" } \# Test authentication Invoke-RestMethod -Uri \"https://git.uiao.local/api/v1/user\" -Headers \$headers
+
+6.3 --- Method 3: OAuth2 Token (Entra ID SSO)
+
+When Gitea is configured with Entra ID as an OAuth2 provider, use the access token from the SSO session:
+
+\# After OAuth2 flow completes, use the access token \$headers = \@{ Authorization = \"Bearer \$oauthToken\" } \# Test authentication Invoke-RestMethod -Uri \"https://git.uiao.local/api/v1/user\" -Headers \$headers
+
+6.4 --- Token Management Best Practices
+
+  -------------------------------------------------------------------------------------------------------------
+  **Practice**   **Details**
+  -------------- ----------------------------------------------------------------------------------------------
+  Expiry         Set tokens to expire after 90 days maximum per GCC-Moderate policy
+
+  Rotation       Rotate tokens on a scheduled cadence; revoke old tokens immediately upon rotation
+
+  Scope          Use the minimum permission set required: repo for read/write, read:org for org info
+
+  Storage        Use Windows Credential Manager or Azure Key Vault; never store in plaintext files or scripts
+
+  Audit          Review active tokens monthly via Gitea admin panel
+  -------------------------------------------------------------------------------------------------------------
+
+6.5 --- Rate Limiting
+
+Gitea enforces API rate limits. Check your remaining quota in the response headers:
+
+\$response = Invoke-WebRequest -Uri \"https://git.uiao.local/api/v1/user\" -Headers \$headers \$response.Headers\[\'X-RateLimit-Limit\'\] \# Total allowed requests \$response.Headers\[\'X-RateLimit-Remaining\'\] \# Remaining requests \$response.Headers\[\'X-RateLimit-Reset\'\] \# Unix timestamp when limit resets
+
+Chapter 7 --- Repository API Operations
+
+Full CRUD operations against the UIAO repository via the Gitea REST API. All examples use PowerShell with the \$headers variable configured as shown in Chapter 6.
+
+7.1 --- Repository Endpoints
+
+  -----------------------------------------------------------------------------------------
+  **Operation**            **Method**   **Endpoint**
+  ------------------------ ------------ ---------------------------------------------------
+  List repos in UIAO org   GET          /api/v1/orgs/UIAO/repos
+
+  Get repo details         GET          /api/v1/repos/UIAO/uiao
+
+  List branches            GET          /api/v1/repos/UIAO/uiao/branches
+
+  Get specific branch      GET          /api/v1/repos/UIAO/uiao/branches/{branch}
+
+  List commits             GET          /api/v1/repos/UIAO/uiao/commits?sha=main&limit=20
+
+  Get file contents        GET          /api/v1/repos/UIAO/uiao/contents/{path}?ref=main
+
+  Create/update file       PUT          /api/v1/repos/UIAO/uiao/contents/{path}
+
+  Delete file              DELETE       /api/v1/repos/UIAO/uiao/contents/{path}
+
+  List tags                GET          /api/v1/repos/UIAO/uiao/tags
+
+  Create release           POST         /api/v1/repos/UIAO/uiao/releases
+
+  Search code              GET          /api/v1/repos/search?q={keyword}&topic=true
+
+  Get raw file             GET          /api/v1/repos/UIAO/uiao/raw/{path}?ref=main
+  -----------------------------------------------------------------------------------------
+
+7.2 --- List All Repositories in UIAO Organization
+
+\$repos = Invoke-RestMethod -Uri \"https://git.uiao.local/api/v1/orgs/UIAO/repos\" \` -Headers \$headers \$repos \| Select-Object name, full_name, default_branch, stars_count, updated_at \| Format-Table -AutoSize
+
+7.3 --- Get File Contents
+
+\# Get a canon artifact via API \$file = Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/repos/UIAO/uiao/contents/canon/UIAO_001.md?ref=main\" \` -Headers \$headers \# Decode Base64 content \$decoded = \[System.Text.Encoding\]::UTF8.GetString( \[System.Convert\]::FromBase64String(\$file.content) ) Write-Host \$decoded
+
+7.4 --- Create or Update a File
+
+\# Prepare content \$markdownContent = @\" \-\-- document_id: UIAO_042 title: Drift Detection Governance Policy version: 1.0 status: DRAFT classification: Controlled owner: Michael Stratton boundary: GCC-Moderate \-\-- \# Drift Detection Governance Policy This artifact defines the policy for detecting configuration drift\... \"@ \$fileContent = \[System.Convert\]::ToBase64String( \[System.Text.Encoding\]::UTF8.GetBytes(\$markdownContent) ) \$body = \@{ content = \$fileContent message = \"canon: add UIAO_042 drift detection policy\" branch = \"feature/UIAO-042-drift-policy\" new_branch = \"feature/UIAO-042-drift-policy\" } \| ConvertTo-Json Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/repos/UIAO/uiao/contents/canon/UIAO_042.md\" \` -Method PUT -Headers \$headers \` -ContentType \"application/json\" -Body \$body
+
+7.5 --- Create a Release
+
+\$releaseBody = \@{ tag_name = \"v2.0\" target_commitish = \"main\" name = \"UIAO Governance OS v2.0\" body = \"Release notes for v2.0\...\" draft = \$false prerelease = \$false } \| ConvertTo-Json Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/repos/UIAO/uiao/releases\" \` -Method POST -Headers \$headers \` -ContentType \"application/json\" -Body \$releaseBody
+
+Chapter 8 --- Pull Request API
+
+Manage the full pull request lifecycle via the Gitea API.
+
+8.1 --- Pull Request Endpoints
+
+  ----------------------------------------------------------------------------
+  **Operation**   **Method**   **Endpoint**
+  --------------- ------------ -----------------------------------------------
+  List PRs        GET          /api/v1/repos/UIAO/uiao/pulls?state=open
+
+  Get single PR   GET          /api/v1/repos/UIAO/uiao/pulls/{index}
+
+  Create PR       POST         /api/v1/repos/UIAO/uiao/pulls
+
+  Update PR       PATCH        /api/v1/repos/UIAO/uiao/pulls/{index}
+
+  List PR files   GET          /api/v1/repos/UIAO/uiao/pulls/{index}/files
+
+  Review PR       POST         /api/v1/repos/UIAO/uiao/pulls/{index}/reviews
+
+  Merge PR        POST         /api/v1/repos/UIAO/uiao/pulls/{index}/merge
+  ----------------------------------------------------------------------------
+
+8.2 --- Create a Pull Request
+
+\$prBody = \@{ title = \"feat(canon): UIAO_042 --- New Governance Artifact\" body = \"Adds the new canonical artifact for drift detection policy.\" head = \"feature/UIAO-042-drift-policy\" base = \"main\" assignees = @(\"uiao-admin\") labels = @(1) \# Canon label ID } \| ConvertTo-Json \$pr = Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/repos/UIAO/uiao/pulls\" \` -Method POST -Headers \$headers \` -ContentType \"application/json\" -Body \$prBody Write-Host \"Created PR #\$(\$pr.number): \$(\$pr.title)\"
+
+8.3 --- Review a Pull Request
+
+\$reviewBody = \@{ body = \"Reviewed. Canon artifact frontmatter is valid. Approved.\" event = \"APPROVED\" \# APPROVED, REQUEST_CHANGES, or COMMENT } \| ConvertTo-Json Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/repos/UIAO/uiao/pulls/\$(\$pr.number)/reviews\" \` -Method POST -Headers \$headers \` -ContentType \"application/json\" -Body \$reviewBody
+
+8.4 --- Merge a Pull Request
+
+\# Merge types: merge, rebase, squash \$mergeBody = \@{ Do = \"squash\" merge_message_field = \"feat(canon): UIAO_042 drift detection policy (#\$(\$pr.number))\" delete_branch_after_merge = \$true } \| ConvertTo-Json Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/repos/UIAO/uiao/pulls/\$(\$pr.number)/merge\" \` -Method POST -Headers \$headers \` -ContentType \"application/json\" -Body \$mergeBody
+
+8.5 --- List PR Files Changed
+
+\$files = Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/repos/UIAO/uiao/pulls/\$(\$pr.number)/files\" \` -Headers \$headers \$files \| Select-Object filename, status, additions, deletions \| Format-Table -AutoSize
+
+Chapter 9 --- Organization and Team API
+
+Manage the UIAO organization, teams, and membership through the API.
+
+9.1 --- Organization Endpoints
+
+  -------------------------------------------------------------------------
+  **Operation**        **Method**   **Endpoint**
+  -------------------- ------------ ---------------------------------------
+  List organizations   GET          /api/v1/orgs
+
+  Get UIAO org         GET          /api/v1/orgs/UIAO
+
+  List teams           GET          /api/v1/orgs/UIAO/teams
+
+  Create team          POST         /api/v1/orgs/UIAO/teams
+
+  Add team member      PUT          /api/v1/teams/{id}/members/{username}
+
+  Remove team member   DELETE       /api/v1/teams/{id}/members/{username}
+
+  List team repos      GET          /api/v1/teams/{id}/repos
+  -------------------------------------------------------------------------
+
+9.2 --- Create a Team
+
+\$teamBody = \@{ name = \"CanonStewards\" description = \"UIAO Canon Steward team --- write access to canon/\" permission = \"write\" units = @(\"repo.code\", \"repo.issues\", \"repo.pulls\") can_create_org_repo = \$false } \| ConvertTo-Json \$team = Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/orgs/UIAO/teams\" \` -Method POST -Headers \$headers \` -ContentType \"application/json\" -Body \$teamBody Write-Host \"Created team: \$(\$team.name) (ID: \$(\$team.id))\"
+
+9.3 --- Add and Remove Team Members
+
+\# Add a member Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/teams/\$(\$team.id)/members/michael.stratton\" \` -Method PUT -Headers \$headers \# Remove a member Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/teams/\$(\$team.id)/members/former.contributor\" \` -Method DELETE -Headers \$headers \# List team members \$members = Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/teams/\$(\$team.id)/members\" \` -Headers \$headers \$members \| Select-Object login, full_name, email \| Format-Table -AutoSize
+
+Chapter 10 --- Webhook API
+
+Webhooks enable event-driven integration between Gitea and external systems such as the UIAO governance dashboard, CI/CD pipelines, and notification services.
+
+10.1 --- Webhook Endpoints
+
+  ------------------------------------------------------------------------
+  **Operation**    **Method**   **Endpoint**
+  ---------------- ------------ ------------------------------------------
+  List webhooks    GET          /api/v1/repos/UIAO/uiao/hooks
+
+  Create webhook   POST         /api/v1/repos/UIAO/uiao/hooks
+
+  Update webhook   PATCH        /api/v1/repos/UIAO/uiao/hooks/{id}
+
+  Delete webhook   DELETE       /api/v1/repos/UIAO/uiao/hooks/{id}
+
+  Test webhook     POST         /api/v1/repos/UIAO/uiao/hooks/{id}/tests
+  ------------------------------------------------------------------------
+
+10.2 --- Create a Webhook for Governance Dashboard
+
+\$hookBody = \@{ type = \"gitea\" config = \@{ url = \"https://governance-dashboard.uiao.local/api/webhook\" content_type = \"json\" secret = \"webhook-shared-secret\" \# Replace with actual secret } events = @(\"push\", \"pull_request\", \"release\") active = \$true } \| ConvertTo-Json -Depth 3 \$hook = Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/repos/UIAO/uiao/hooks\" \` -Method POST -Headers \$headers \` -ContentType \"application/json\" -Body \$hookBody Write-Host \"Created webhook ID: \$(\$hook.id)\"
+
+10.3 --- Test a Webhook
+
+Invoke-RestMethod \` -Uri \"https://git.uiao.local/api/v1/repos/UIAO/uiao/hooks/\$(\$hook.id)/tests\" \` -Method POST -Headers \$headers
+
+10.4 --- Webhook Payload Structure
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Event**      **Key Fields**                                                                        **Description**
+  -------------- ------------------------------------------------------------------------------------- --------------------------------------------------------------------------------------------------------
+  push           ref, before, after, commits\[\], pusher, repository                                   Fired on every push to any branch. commits\[\] contains message, author, timestamp, and changed files.
+
+  pull_request   action, number, pull_request (title, body, head, base, user, mergeable), repository   Fired on PR open, close, reopen, merge, label, assign. action indicates the event type.
+
+  release        action, release (tag_name, name, body, author, created_at, assets\[\]), repository    Fired on release creation, update, or deletion.
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------+
+| **Tip**                                                                              |
+|                                                                                      |
+| Validate the webhook signature using the shared secret. The signature is sent in the |
+|                                                                                      |
+| X-Gitea-Signature                                                                    |
+|                                                                                      |
+| header as an HMAC-SHA256 hash of the request body.                                   |
++--------------------------------------------------------------------------------------+
+
+Chapter 11 --- API Automation Patterns
+
+This chapter presents the UIAOGiteaApi PowerShell module --- a reusable library encapsulating all Gitea API operations with governance validation built in.
+
+11.1 --- Connect-UIAOGitea
+
+function Connect-UIAOGitea { \<# .SYNOPSIS Authenticates to the Gitea API and stores the session token. .PARAMETER ServerUrl The Gitea server URL. Default: https://git.uiao.local .PARAMETER Token Personal access token. If omitted, prompts securely. .EXAMPLE Connect-UIAOGitea Connect-UIAOGitea -Token \$env:GITEA_TOKEN #\> param( \[string\]\$ServerUrl = \"https://git.uiao.local\", \[string\]\$Token ) if (-not \$Token) { \$secToken = Read-Host -Prompt \"Gitea Personal Access Token\" -AsSecureString \$Token = \[Runtime.InteropServices.Marshal\]::PtrToStringAuto( \[Runtime.InteropServices.Marshal\]::SecureStringToBSTR(\$secToken) ) } \$script:GiteaUrl = \$ServerUrl.TrimEnd(\'/\') \$script:GiteaHeaders = \@{ Authorization = \"token \$Token\" } try { \$user = Invoke-RestMethod -Uri \"\$script:GiteaUrl/api/v1/user\" -Headers \$script:GiteaHeaders Write-Host \"Connected to \$script:GiteaUrl as \$(\$user.login)\" -ForegroundColor Green return \$user } catch { Write-Error \"Authentication failed: \$(\$\_.Exception.Message)\" \$script:GiteaHeaders = \$null } }
+
+11.2 --- Get-UIAORepository
+
+function Get-UIAORepository { \<# .SYNOPSIS Retrieves UIAO repository details. .PARAMETER Owner Organization or user. Default: UIAO .PARAMETER Repo Repository name. Default: uiao .EXAMPLE Get-UIAORepository #\> param( \[string\]\$Owner = \"UIAO\", \[string\]\$Repo = \"uiao\" ) Invoke-RestMethod -Uri \"\$script:GiteaUrl/api/v1/repos/\$Owner/\$Repo\" \` -Headers \$script:GiteaHeaders }
+
+11.3 --- Get-UIAOCanonFile
+
+function Get-UIAOCanonFile { \<# .SYNOPSIS Retrieves a canonical artifact by its UIAO ID. .PARAMETER ArtifactId UIAO artifact ID (e.g., \"UIAO_001\", \"UIAO_042\"). .PARAMETER Ref Branch or tag reference. Default: main .EXAMPLE Get-UIAOCanonFile -ArtifactId \"UIAO_001\" #\> param( \[Parameter(Mandatory)\]\[string\]\$ArtifactId, \[string\]\$Ref = \"main\" ) \$path = \"canon/\$ArtifactId.md\" \$file = Invoke-RestMethod \` -Uri \"\$script:GiteaUrl/api/v1/repos/UIAO/uiao/contents/\$path\`?ref=\$Ref\" \` -Headers \$script:GiteaHeaders \$decoded = \[System.Text.Encoding\]::UTF8.GetString( \[System.Convert\]::FromBase64String(\$file.content) ) \[PSCustomObject\]@{ ArtifactId = \$ArtifactId Path = \$path SHA = \$file.sha Content = \$decoded Size = \$file.size } }
+
+11.4 --- Set-UIAOCanonFile
+
+function Set-UIAOCanonFile { \<# .SYNOPSIS Updates a canonical artifact with governance validation. .PARAMETER ArtifactId UIAO artifact ID. .PARAMETER Content Full markdown content including YAML frontmatter. .PARAMETER CommitMessage Commit message. Auto-prefixed with \"canon:\" if not already. .PARAMETER Branch Target branch. Default: main .EXAMPLE Set-UIAOCanonFile -ArtifactId \"UIAO_001\" -Content \$md -CommitMessage \"update to v2.1\" #\> param( \[Parameter(Mandatory)\]\[string\]\$ArtifactId, \[Parameter(Mandatory)\]\[string\]\$Content, \[string\]\$CommitMessage = \"update \$ArtifactId\", \[string\]\$Branch = \"main\" ) \# Governance validation if (\$Content -match \'FOUO\|For Official Use Only\') { Write-Error \"Content contains prohibited FOUO marking. Use \'Controlled\' instead.\" return } if (\$Content -notmatch \'(?s)\^\-\--\\s\*\\n(.+?)\\n\-\--\') { Write-Error \"Content missing required YAML frontmatter.\" return } if (\$Content -notmatch \'boundary\\s\*:\\s\*GCC-Moderate\') { Write-Error \"Boundary field must be \'GCC-Moderate\'.\" return } \# Prefix commit message if (\$CommitMessage -notmatch \'\^canon\') { \$CommitMessage = \"canon(\$ArtifactId): \$CommitMessage\" } \# Get current SHA for update \$path = \"canon/\$ArtifactId.md\" try { \$existing = Invoke-RestMethod \` -Uri \"\$script:GiteaUrl/api/v1/repos/UIAO/uiao/contents/\$path\`?ref=\$Branch\" \` -Headers \$script:GiteaHeaders \$sha = \$existing.sha } catch { \$sha = \$null } \$encoded = \[System.Convert\]::ToBase64String( \[System.Text.Encoding\]::UTF8.GetBytes(\$Content) ) \$body = \@{ content = \$encoded message = \$CommitMessage branch = \$Branch } if (\$sha) { \$body.sha = \$sha } \$jsonBody = \$body \| ConvertTo-Json \$result = Invoke-RestMethod \` -Uri \"\$script:GiteaUrl/api/v1/repos/UIAO/uiao/contents/\$path\" \` -Method PUT -Headers \$script:GiteaHeaders \` -ContentType \"application/json\" -Body \$jsonBody Write-Host \"Updated \$ArtifactId on branch \$Branch\" -ForegroundColor Green return \$result }
+
+11.5 --- New-UIAOPullRequest
+
+function New-UIAOPullRequest { \<# .SYNOPSIS Creates a pull request with automatic canon labeling. .PARAMETER Title PR title in conventional commit format. .PARAMETER Body PR description. .PARAMETER Head Source branch. .PARAMETER Base Target branch. Default: main .EXAMPLE New-UIAOPullRequest -Title \"feat(canon): UIAO_042\" -Head \"feature/UIAO-042\" -Body \"New artifact\" #\> param( \[Parameter(Mandatory)\]\[string\]\$Title, \[string\]\$Body = \"\", \[Parameter(Mandatory)\]\[string\]\$Head, \[string\]\$Base = \"main\" ) \$prData = \@{ title = \$Title body = \$Body head = \$Head base = \$Base } \# Auto-add canon label if title contains \"canon\" if (\$Title -match \'canon\') { \$prData.labels = @(1) \# Canon label ID --- adjust as needed } \$jsonBody = \$prData \| ConvertTo-Json Invoke-RestMethod \` -Uri \"\$script:GiteaUrl/api/v1/repos/UIAO/uiao/pulls\" \` -Method POST -Headers \$script:GiteaHeaders \` -ContentType \"application/json\" -Body \$jsonBody }
+
+11.6 --- Merge-UIAOPullRequest
+
+function Merge-UIAOPullRequest { \<# .SYNOPSIS Merges a pull request with governance checks. .PARAMETER PRNumber Pull request number. .PARAMETER MergeType Merge strategy: merge, rebase, or squash. Default: squash .PARAMETER DeleteBranch Delete source branch after merge. Default: \$true .EXAMPLE Merge-UIAOPullRequest -PRNumber 15 -MergeType \"squash\" #\> param( \[Parameter(Mandatory)\]\[int\]\$PRNumber, \[ValidateSet(\"merge\",\"rebase\",\"squash\")\]\[string\]\$MergeType = \"squash\", \[bool\]\$DeleteBranch = \$true ) \$mergeData = \@{ Do = \$MergeType delete_branch_after_merge = \$DeleteBranch } \| ConvertTo-Json Invoke-RestMethod \` -Uri \"\$script:GiteaUrl/api/v1/repos/UIAO/uiao/pulls/\$PRNumber/merge\" \` -Method POST -Headers \$script:GiteaHeaders \` -ContentType \"application/json\" -Body \$mergeData Write-Host \"Merged PR #\$PRNumber via \$MergeType\" -ForegroundColor Green }
+
+11.7 --- Sync-UIAOFromGitHub
+
+function Sync-UIAOFromGitHub { \<# .SYNOPSIS Pulls latest from GitHub secondary and pushes to Gitea primary. .PARAMETER LocalPath Local workspace path. Default: C:\\Users\\whale\\git\\uiao .EXAMPLE Sync-UIAOFromGitHub #\> param(\[string\]\$LocalPath = \"C:\\Users\\whale\\git\\uiao\") Push-Location \$LocalPath try { git fetch github main git checkout main git merge github/main \--no-edit git push origin main Write-Host \"Synced GitHub -\> Gitea (main)\" -ForegroundColor Green } catch { Write-Error \"Sync failed: \$(\$\_.Exception.Message)\" } finally { Pop-Location } }
+
+11.8 --- Export-UIAOCanonInventory
+
+function Export-UIAOCanonInventory { \<# .SYNOPSIS Generates a CSV inventory of all canonical artifacts with metadata. .PARAMETER OutputPath CSV output file path. .EXAMPLE Export-UIAOCanonInventory -OutputPath \"C:\\reports\\canon-inventory.csv\" #\> param(\[string\]\$OutputPath = \"canon-inventory.csv\") \$tree = Invoke-RestMethod \` -Uri \"\$script:GiteaUrl/api/v1/repos/UIAO/uiao/git/trees/main?recursive=true\" \` -Headers \$script:GiteaHeaders \$canonFiles = \$tree.tree \| Where-Object { \$\_.path -match \'\^canon/.\*\\.md\$\' } \$inventory = foreach (\$file in \$canonFiles) { \$content = Get-UIAOCanonFile -ArtifactId (\$file.path -replace \'canon/\|\\.md\',\'\') \$fm = \"\" if (\$content.Content -match \'(?s)\^\-\--\\s\*\\n(.+?)\\n\-\--\') { \$fm = \$Matches\[1\] } \[PSCustomObject\]@{ Path = \$file.path DocumentID = if (\$fm -match \'document_id\\s\*:\\s\*(.+)\') { \$Matches\[1\].Trim() } else { \"\" } Title = if (\$fm -match \'title\\s\*:\\s\*(.+)\') { \$Matches\[1\].Trim() } else { \"\" } Version = if (\$fm -match \'version\\s\*:\\s\*(.+)\') { \$Matches\[1\].Trim() } else { \"\" } Status = if (\$fm -match \'status\\s\*:\\s\*(.+)\') { \$Matches\[1\].Trim() } else { \"\" } Classification = if (\$fm -match \'classification\\s\*:\\s\*(.+)\') { \$Matches\[1\].Trim() } else { \"\" } Boundary = if (\$fm -match \'boundary\\s\*:\\s\*(.+)\') { \$Matches\[1\].Trim() } else { \"\" } SHA = \$content.SHA SizeBytes = \$content.Size } } \$inventory \| Export-Csv \$OutputPath -NoTypeInformation Write-Host \"Exported \$(\$inventory.Count) artifacts to \$OutputPath\" -ForegroundColor Green return \$inventory }
+
+11.9 --- Test-UIAOCanonIntegrity
+
+function Test-UIAOCanonIntegrity { \<# .SYNOPSIS Validates all canon/ files against UIAO governance rules via the API. .EXAMPLE Test-UIAOCanonIntegrity #\> \$inventory = Export-UIAOCanonInventory -OutputPath \"NUL\" \$issues = @() foreach (\$item in \$inventory) { \$file = Get-UIAOCanonFile -ArtifactId (\$item.Path -replace \'canon/\|\\.md\',\'\') if (-not \$item.DocumentID) { \$issues += \"\$(\$item.Path): Missing document_id\" } if (-not \$item.Title) { \$issues += \"\$(\$item.Path): Missing title\" } if (\$item.Boundary -ne \"GCC-Moderate\") { \$issues += \"\$(\$item.Path): Boundary is not GCC-Moderate\" } if (\$file.Content -match \'FOUO\|For Official Use Only\') { \$issues += \"\$(\$item.Path): Contains prohibited FOUO marking\" } } if (\$issues.Count -eq 0) { Write-Host \"All canon artifacts passed integrity checks.\" -ForegroundColor Green } else { Write-Host \"Found \$(\$issues.Count) issue(s):\" -ForegroundColor Red \$issues \| ForEach-Object { Write-Host \" - \$\_\" -ForegroundColor Yellow } } return \$issues }
+
+**Part III --- Active Directory Integration CLI**
+
+Chapter 12 --- Step-by-Step: Connecting to Active Directory
+
+This chapter provides the prerequisite setup for interacting with Active Directory from a UIAO workstation.
+
+12.1 --- Install RSAT Tools
+
+**On Windows Server:**
+
+Install-WindowsFeature -Name RSAT-AD-Tools, RSAT-DNS-Server-Tools, GPMC
+
+**On Windows 10/11 Workstation:**
+
+Add-WindowsCapability -Online -Name Rsat.ActiveDirectory.DS-LDS.Tools\~\~\~\~0.0.1.0 Add-WindowsCapability -Online -Name Rsat.Dns.Tools\~\~\~\~0.0.1.0 Add-WindowsCapability -Online -Name Rsat.GroupPolicy.Management.Tools\~\~\~\~0.0.1.0
+
+12.2 --- Import the Active Directory Module
+
+Import-Module ActiveDirectory
+
+12.3 --- Verify Connection
+
+\# Get current domain information Get-ADDomain \# Get forest information Get-ADForest
+
+12.4 --- Credential Management for Non-Domain-Joined Machines
+
+If the workstation is not domain-joined (e.g., an Azure-only machine or a workgroup computer), supply credentials explicitly:
+
+\$cred = Get-Credential -Message \"Enter domain admin credentials\" Get-ADForest -Server \"dc01.domain.local\" -Credential \$cred Get-ADDomain -Server \"dc01.domain.local\" -Credential \$cred
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Security**                                                                                                                                                                                                                 |
+|                                                                                                                                                                                                                              |
+| Use a least-privilege account for read-only assessment operations. Domain Admin credentials should only be used when write operations are required, and only on secured workstations with appropriate audit logging enabled. |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Diagram 3 --- DIAG-003**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **UIAO AD Integration Architecture**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| A network architecture diagram showing: (1) UIAO Workstation (C:\\Users\\whale\\git\\uiao) on the left, connecting via LDAP/Kerberos to (2) Domain Controller (dc01.domain.local) in the center, which holds the AD forest. (3) Gitea Server (git.uiao.local) on the upper-right, integrated with AD via LDAP authentication. (4) Entra ID (cloud) on the lower-right, connected to the DC via Azure AD Connect (hybrid sync). Arrows: Workstation → DC labeled \"RSAT / PowerShell AD Module\", Gitea → DC labeled \"LDAP Bind\", DC → Entra ID labeled \"Azure AD Connect Sync\". Color scheme: On-premises components in blue (#4472C4), cloud components in teal (#00B0F0), connections as dashed gray (#888888) lines. |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Dimensions: 700 × 400 pixels                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Chapter 13 --- AD Forest Discovery for UIAO Assessment
+
+This chapter contains complete PowerShell scripts to read and export the full Active Directory environment for UIAO governance assessment. All output is saved as CSV/JSON files for analysis and canonical documentation.
+
+13.1 --- Forest and Domain Discovery
+
+function Export-UIAOForestAssessment { param(\[string\]\$OutputPath = \"C:\\UIAOAssessment\") New-Item -Path \$OutputPath -ItemType Directory -Force \| Out-Null \# Forest information \$forest = Get-ADForest \$forest \| Select-Object Name, ForestMode, RootDomain, Domains, Sites, GlobalCatalogs \| Export-Csv \"\$OutputPath\\Forest-Info.csv\" -NoTypeInformation \# All domains in the forest foreach (\$domain in \$forest.Domains) { \$domInfo = Get-ADDomain -Server \$domain \$domInfo \| Export-Csv \"\$OutputPath\\Domain-\$(\$domain.Replace(\'.\',\'\_\')).csv\" -NoTypeInformation } \# Trust relationships Get-ADTrust -Filter \* \| Export-Csv \"\$OutputPath\\Trusts.csv\" -NoTypeInformation \# AD sites and subnets Get-ADReplicationSite -Filter \* \| Export-Csv \"\$OutputPath\\Sites.csv\" -NoTypeInformation Get-ADReplicationSubnet -Filter \* \| Export-Csv \"\$OutputPath\\Subnets.csv\" -NoTypeInformation \# Domain controllers Get-ADDomainController -Filter \* \| Select-Object Name, Domain, Site, IPv4Address, OperatingSystem, IsGlobalCatalog, OperationMasterRoles \| Export-Csv \"\$OutputPath\\DomainControllers.csv\" -NoTypeInformation \# FSMO roles \$fsmo = \@{ SchemaMaster = \$forest.SchemaMaster DomainNamingMaster = \$forest.DomainNamingMaster PDCEmulator = (Get-ADDomain).PDCEmulator RIDMaster = (Get-ADDomain).RIDMaster InfrastructureMaster = (Get-ADDomain).InfrastructureMaster } \$fsmo \| ConvertTo-Json \| Out-File \"\$OutputPath\\FSMO-Roles.json\" Write-Host \"Forest assessment complete: \$OutputPath\" -ForegroundColor Green }
+
+13.2 --- OU Structure Discovery
+
+function Export-UIAOOUStructure { param(\[string\]\$OutputPath = \"C:\\UIAOAssessment\") Get-ADOrganizationalUnit -Filter \* -Properties Description, ManagedBy \| Select-Object Name, DistinguishedName, Description, ManagedBy \| Export-Csv \"\$OutputPath\\OU-Structure.csv\" -NoTypeInformation \# OU tree visualization \$ous = Get-ADOrganizationalUnit -Filter \* \| Sort-Object DistinguishedName \$tree = foreach (\$ou in \$ous) { \$depth = (\$ou.DistinguishedName -split \'OU=\').Count - 1 \$indent = \' \' \* \$depth \"\$indent\$(\$ou.Name) \[\$(\$ou.DistinguishedName)\]\" } \$tree \| Out-File \"\$OutputPath\\OU-Tree.txt\" Write-Host \"OU structure exported: \$OutputPath\\OU-Structure.csv\" -ForegroundColor Green }
+
+13.3 --- Computer Object Discovery
+
+function Export-UIAOComputerObjects { param(\[string\]\$OutputPath = \"C:\\UIAOAssessment\") Get-ADComputer -Filter \* -Properties OperatingSystem, OperatingSystemVersion, LastLogonDate, Created, Enabled, MemberOf, DistinguishedName, Description, IPv4Address \| Select-Object Name, DNSHostName, OperatingSystem, OperatingSystemVersion, LastLogonDate, Created, Enabled, \@{N=\'OU\'; E={(\$\_.DistinguishedName -split \',\',2)\[1\]}}, \@{N=\'GroupCount\'; E={\$\_.MemberOf.Count}}, IPv4Address, Description \| Export-Csv \"\$OutputPath\\Computer-Objects.csv\" -NoTypeInformation \# Stale computers (90+ days since last logon) \$staleDate = (Get-Date).AddDays(-90) Get-ADComputer -Filter {LastLogonDate -lt \$staleDate} \` -Properties LastLogonDate, OperatingSystem \| Export-Csv \"\$OutputPath\\Stale-Computers.csv\" -NoTypeInformation Write-Host \"Computer objects exported: \$OutputPath\" -ForegroundColor Green }
+
+13.4 --- User Object Discovery
+
+function Export-UIAOUserObjects { param(\[string\]\$OutputPath = \"C:\\UIAOAssessment\") Get-ADUser -Filter \* -Properties DisplayName, EmailAddress, Department, Title, Manager, LastLogonDate, Created, Enabled, PasswordLastSet, PasswordNeverExpires, MemberOf \| Select-Object SamAccountName, DisplayName, EmailAddress, Department, Title, Enabled, LastLogonDate, Created, PasswordLastSet, PasswordNeverExpires, \@{N=\'GroupCount\'; E={\$\_.MemberOf.Count}} \| Export-Csv \"\$OutputPath\\User-Objects.csv\" -NoTypeInformation Write-Host \"User objects exported: \$OutputPath\" -ForegroundColor Green }
+
+13.5 --- Group Discovery
+
+function Export-UIAOGroupObjects { param(\[string\]\$OutputPath = \"C:\\UIAOAssessment\") Get-ADGroup -Filter \* -Properties Description, ManagedBy, GroupScope, GroupCategory, Members \| Select-Object Name, SamAccountName, GroupScope, GroupCategory, Description, ManagedBy, \@{N=\'MemberCount\'; E={\$\_.Members.Count}} \| Export-Csv \"\$OutputPath\\Groups.csv\" -NoTypeInformation Write-Host \"Group objects exported: \$OutputPath\" -ForegroundColor Green }
+
+Chapter 14 --- DNS Assessment
+
+Complete DNS zone and record discovery for the UIAO environment.
+
+function Export-UIAODNSAssessment { param( \[string\]\$DnsServer = \"dc01.domain.local\", \[string\]\$OutputPath = \"C:\\UIAOAssessment\" ) \# All DNS zones Get-DnsServerZone -ComputerName \$DnsServer \| Export-Csv \"\$OutputPath\\DNS-Zones.csv\" -NoTypeInformation \# Forward lookup zones and records \$zones = Get-DnsServerZone -ComputerName \$DnsServer \| Where-Object { \$\_.IsReverseLookupZone -eq \$false -and \$\_.ZoneType -ne \'Forwarder\' } foreach (\$zone in \$zones) { Get-DnsServerResourceRecord -ZoneName \$zone.ZoneName -ComputerName \$DnsServer \| Select-Object HostName, RecordType, \@{N=\'RecordData\'; E={\$\_.RecordData.IPv4Address.IPAddressToString}} \| Export-Csv \"\$OutputPath\\DNS-Records-\$(\$zone.ZoneName.Replace(\'.\',\'\_\')).csv\" \` -NoTypeInformation } \# Reverse lookup zones \$reverseZones = Get-DnsServerZone -ComputerName \$DnsServer \| Where-Object { \$\_.IsReverseLookupZone -eq \$true } foreach (\$zone in \$reverseZones) { Get-DnsServerResourceRecord -ZoneName \$zone.ZoneName -ComputerName \$DnsServer \| Export-Csv \"\$OutputPath\\DNS-Reverse-\$(\$zone.ZoneName.Replace(\'.\',\'\_\')).csv\" \` -NoTypeInformation } \# DNS forwarders Get-DnsServerForwarder -ComputerName \$DnsServer \| Export-Csv \"\$OutputPath\\DNS-Forwarders.csv\" -NoTypeInformation \# Conditional forwarders Get-DnsServerZone -ComputerName \$DnsServer \| Where-Object { \$\_.ZoneType -eq \'Forwarder\' } \| Export-Csv \"\$OutputPath\\DNS-ConditionalForwarders.csv\" -NoTypeInformation Write-Host \"DNS assessment complete: \$OutputPath\" -ForegroundColor Green }
+
+Chapter 15 --- Certificate Assessment
+
+PKI and certificate discovery for the UIAO governance environment. This script discovers Enterprise CAs, certificate templates, and local machine certificates.
+
+function Export-UIAOCertAssessment { param(\[string\]\$OutputPath = \"C:\\UIAOAssessment\") \# Enterprise CA discovery via AD \$configContext = (\[ADSI\]\"LDAP://RootDSE\").configurationNamingContext \$caContainer = \[ADSI\]\"LDAP://CN=Enrollment Services,CN=Public Key Services,CN=Services,\$configContext\" \$cas = \$caContainer.Children \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.cn DNSName = \$\_.dNSHostName CACertDN = \$\_.cACertificateDN } } \$cas \| Export-Csv \"\$OutputPath\\Enterprise-CAs.csv\" -NoTypeInformation \# Certificate templates \$templateContainer = \[ADSI\]\"LDAP://CN=Certificate Templates,CN=Public Key Services,CN=Services,\$configContext\" \$templates = \$templateContainer.Children \| ForEach-Object { \[PSCustomObject\]@{ Name = \$\_.cn DisplayName = \$\_.displayName OID = \$\_.\'msPKI-Cert-Template-OID\' } } \$templates \| Export-Csv \"\$OutputPath\\Cert-Templates.csv\" -NoTypeInformation \# Certificates on local machine Get-ChildItem Cert:\\LocalMachine\\My \| Select-Object Subject, Issuer, NotBefore, NotAfter, Thumbprint, \@{N=\'DaysUntilExpiry\'; E={(\$\_.NotAfter - (Get-Date)).Days}} \| Export-Csv \"\$OutputPath\\Local-Certificates.csv\" -NoTypeInformation \# Expiring certificates (within 90 days) \$expiryDate = (Get-Date).AddDays(90) Get-ChildItem Cert:\\LocalMachine\\My \| Where-Object { \$\_.NotAfter -lt \$expiryDate } \| Select-Object Subject, NotAfter, Thumbprint \| Export-Csv \"\$OutputPath\\Expiring-Certificates.csv\" -NoTypeInformation Write-Host \"Certificate assessment complete: \$OutputPath\" -ForegroundColor Green }
+
+Chapter 16 --- GPO Assessment
+
+Complete Group Policy Object discovery, including GPO links, unlinked GPOs, WMI filters, and per-GPO HTML/XML reports.
+
+function Export-UIAOGPOAssessment { param(\[string\]\$OutputPath = \"C:\\UIAOAssessment\") Import-Module GroupPolicy \# All GPOs with status Get-GPO -All \| Select-Object DisplayName, Id, GpoStatus, CreationTime, ModificationTime, \@{N=\'ComputerEnabled\'; E={\$\_.GpoStatus -notmatch \'ComputerSettingsDisabled\'}}, \@{N=\'UserEnabled\'; E={\$\_.GpoStatus -notmatch \'UserSettingsDisabled\'}} \| Export-Csv \"\$OutputPath\\GPO-List.csv\" -NoTypeInformation \# GPO links --- which OUs link which GPOs \$ous = Get-ADOrganizationalUnit -Filter \* \$gpoLinks = foreach (\$ou in \$ous) { try { \$inheritance = Get-GPInheritance -Target \$ou.DistinguishedName foreach (\$link in \$inheritance.GpoLinks) { \[PSCustomObject\]@{ OUName = \$ou.Name OUDN = \$ou.DistinguishedName GPOName = \$link.DisplayName Enabled = \$link.Enabled Enforced = \$link.Enforced Order = \$link.Order } } } catch { } } \$gpoLinks \| Export-Csv \"\$OutputPath\\GPO-Links.csv\" -NoTypeInformation \# Export each GPO as HTML and XML reports \$gpoReportPath = \"\$OutputPath\\GPO-Reports\" New-Item -Path \$gpoReportPath -ItemType Directory -Force \| Out-Null Get-GPO -All \| ForEach-Object { \$safeName = \$\_.DisplayName -replace \'\[\\\\/:\*?\"\<\>\|\]\', \'\_\' Get-GPOReport -Guid \$\_.Id -ReportType Html \` -Path \"\$gpoReportPath\\\$safeName.html\" Get-GPOReport -Guid \$\_.Id -ReportType Xml \` -Path \"\$gpoReportPath\\\$safeName.xml\" } \# Unlinked GPOs \$allGPOs = Get-GPO -All \$linkedGPOIds = (\$gpoLinks \| Select-Object -ExpandProperty GPOName -Unique) \$unlinked = \$allGPOs \| Where-Object { \$\_.DisplayName -notin \$linkedGPOIds } \$unlinked \| Select-Object DisplayName, Id, ModificationTime \| Export-Csv \"\$OutputPath\\GPO-Unlinked.csv\" -NoTypeInformation \# WMI Filters \$wmiFilters = Get-ADObject -Filter \'objectClass -eq \"msWMI-Som\"\' \` -Properties \'msWMI-Name\', \'msWMI-Parm1\', \'msWMI-Parm2\' \$wmiFilters \| Select-Object \` \@{N=\'Name\'; E={\$\_.\'msWMI-Name\'}}, \@{N=\'Description\'; E={\$\_.\'msWMI-Parm1\'}}, \@{N=\'Query\'; E={\$\_.\'msWMI-Parm2\'}} \| Export-Csv \"\$OutputPath\\GPO-WMIFilters.csv\" -NoTypeInformation Write-Host \"GPO assessment complete: \$OutputPath\" -ForegroundColor Green }
+
+Chapter 17 --- Master Assessment Orchestrator
+
+This function calls all assessment functions in sequence and produces a consolidated summary report. Run this to perform a complete UIAO environment assessment in a single command.
+
+function Invoke-UIAOFullAssessment { param( \[string\]\$OutputPath = \"C:\\UIAOAssessment\\\$(Get-Date -Format \'yyyyMMdd-HHmm\')\", \[string\]\$DnsServer = \"dc01.domain.local\" ) \$stopwatch = \[System.Diagnostics.Stopwatch\]::StartNew() Write-Host \"=== UIAO Full Environment Assessment ===\" -ForegroundColor Cyan Write-Host \"Output: \$OutputPath\" -ForegroundColor Cyan New-Item -Path \$OutputPath -ItemType Directory -Force \| Out-Null Start-Transcript -Path \"\$OutputPath\\Assessment-Transcript.txt\" Write-Host \"\[1/7\] Forest and Domain Discovery\...\" -ForegroundColor Yellow Export-UIAOForestAssessment -OutputPath \$OutputPath Write-Host \"\[2/7\] OU Structure\...\" -ForegroundColor Yellow Export-UIAOOUStructure -OutputPath \$OutputPath Write-Host \"\[3/7\] Computer Objects\...\" -ForegroundColor Yellow Export-UIAOComputerObjects -OutputPath \$OutputPath Write-Host \"\[4/7\] User Objects\...\" -ForegroundColor Yellow Export-UIAOUserObjects -OutputPath \$OutputPath Write-Host \"\[5/7\] Group Objects\...\" -ForegroundColor Yellow Export-UIAOGroupObjects -OutputPath \$OutputPath Write-Host \"\[6/7\] DNS Assessment\...\" -ForegroundColor Yellow Export-UIAODNSAssessment -DnsServer \$DnsServer -OutputPath \$OutputPath Write-Host \"\[7/7\] GPO Assessment\...\" -ForegroundColor Yellow Export-UIAOGPOAssessment -OutputPath \$OutputPath \# Generate consolidated summary \$summary = \[PSCustomObject\]@{ AssessmentDate = Get-Date -Format \"yyyy-MM-dd HH:mm:ss\" ForestName = (Get-ADForest).Name DomainCount = (Get-ADForest).Domains.Count SiteCount = (Get-ADReplicationSite -Filter \*).Count DCCount = (Get-ADDomainController -Filter \*).Count OUCount = (Get-ADOrganizationalUnit -Filter \*).Count ComputerCount = (Get-ADComputer -Filter \*).Count UserCount = (Get-ADUser -Filter \*).Count GroupCount = (Get-ADGroup -Filter \*).Count GPOCount = (Get-GPO -All).Count ElapsedMinutes = \[math\]::Round(\$stopwatch.Elapsed.TotalMinutes, 1) } \$summary \| ConvertTo-Json \| Out-File \"\$OutputPath\\Assessment-Summary.json\" \$summary \| Format-List Stop-Transcript \$stopwatch.Stop() Write-Host \"Assessment complete in \$(\[math\]::Round(\$stopwatch.Elapsed.TotalMinutes,1)) minutes\" \` -ForegroundColor Green Write-Host \"Results saved to: \$OutputPath\" -ForegroundColor Green }
+
++----------------------------------------------------------------------------+
+| **Usage**                                                                  |
+|                                                                            |
+| Run the full assessment with a single command:                             |
+|                                                                            |
+| Invoke-UIAOFullAssessment -DnsServer \"dc01.domain.local\"                 |
+|                                                                            |
+| All output is saved to a timestamped directory under C:\\UIAOAssessment\\. |
++----------------------------------------------------------------------------+
+
+**Part IV --- Entra ID Integration CLI**
+
+Chapter 18 --- Step-by-Step: Connecting to Entra ID
+
+Microsoft Entra ID (formerly Azure AD) integration is managed through the Microsoft Graph PowerShell SDK.
+
+18.1 --- Install Microsoft Graph PowerShell SDK
+
+\# Install the main module Install-Module Microsoft.Graph -Scope CurrentUser -Force \# Install the beta module for preview features Install-Module Microsoft.Graph.Beta -Scope CurrentUser -Force \# Verify installation Get-InstalledModule Microsoft.Graph \| Select-Object Name, Version
+
+18.2 --- Connect with Required Scopes
+
+Connect-MgGraph -Scopes @( \"User.Read.All\", \"Group.ReadWrite.All\", \"Device.Read.All\", \"DeviceManagementConfiguration.ReadWrite.All\", \"Application.ReadWrite.All\", \"Directory.Read.All\" )
+
+A browser window opens for interactive authentication. Sign in with your Entra ID account and consent to the requested permissions.
+
+18.3 --- Verify Connection
+
+\# Check current context Get-MgContext \| Select-Object Account, TenantId, Scopes \# Get tenant information Get-MgOrganization \| Select-Object DisplayName, Id, VerifiedDomains
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Diagram 4 --- DIAG-004**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **UIAO Entra ID Integration Architecture**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| A three-tier diagram showing: Top tier (Cloud): Entra ID tenant containing App Registrations (UIAO-Gitea-SSO), Dynamic Security Groups, Conditional Access Policies, and Device Objects. Middle tier (Hybrid): Azure AD Connect server syncing on-premises AD objects to Entra ID with bidirectional arrows. Bottom tier (On-Premises): Active Directory forest with users, groups, and computer objects; Gitea server authenticating via OAuth2 to the UIAO-Gitea-SSO app registration in Entra ID. Key arrows: Gitea → Entra ID labeled \"OAuth2/OIDC SSO\", PowerShell Workstation → Entra ID labeled \"Microsoft Graph API\", On-Prem AD → Entra ID labeled \"Azure AD Connect Sync\". Color scheme: Cloud tier in light blue (#D6E4F0), hybrid tier in orange (#FFC000), on-premises tier in green (#C6EFCE). |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Dimensions: 700 × 450 pixels                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Chapter 19 --- Entra ID Device and Group Operations
+
+19.1 --- List All Devices
+
+\# List all Entra ID devices Get-MgDevice -All \| Select-Object DisplayName, DeviceId, OperatingSystem, OperatingSystemVersion, TrustType, IsCompliant, IsManaged \| Format-Table -AutoSize \# Get a specific device by name Get-MgDevice -Filter \"displayName eq \'UIAO-GIT01\'\" \| Select-Object DisplayName, DeviceId, OperatingSystem, TrustType
+
+19.2 --- Create a Dynamic Security Group
+
+\$groupParams = \@{ DisplayName = \"UIAO-Tier0-GCC-Servers\" Description = \"Dynamic group for Tier 0 GCC-Moderate governance servers\" MailEnabled = \$false MailNickname = \"uiao-tier0-gcc\" SecurityEnabled = \$true GroupTypes = @(\"DynamicMembership\") MembershipRule = \'(device.extensionAttribute4 -eq \"Tier0\") and (device.extensionAttribute5 -eq \"Production\")\' MembershipRuleProcessingState = \"On\" } \$group = New-MgGroup -BodyParameter \$groupParams Write-Host \"Created group: \$(\$group.DisplayName) (ID: \$(\$group.Id))\"
+
+19.3 --- List Dynamic Group Members
+
+\$members = Get-MgGroupMember -GroupId \$group.Id -All \$members \| ForEach-Object { Get-MgDevice -DeviceId \$\_.Id \| Select-Object DisplayName, OperatingSystem } \| Format-Table -AutoSize
+
+19.4 --- Set Device Extension Attributes
+
+\$deviceId = (Get-MgDevice -Filter \"displayName eq \'UIAO-GIT01\'\").Id Update-MgDevice -DeviceId \$deviceId -BodyParameter \@{ extensionAttributes = \@{ extensionAttribute1 = \"East\" extensionAttribute2 = \"HeraldHarbor\" extensionAttribute3 = \"Governance\" extensionAttribute4 = \"Tier0\" extensionAttribute5 = \"Production\" extensionAttribute6 = \"GitServer\" } } Write-Host \"Extension attributes updated for UIAO-GIT01\"
+
+19.5 --- App Registration Management
+
+\# List app registrations matching UIAO Get-MgApplication -Filter \"startswith(displayName, \'UIAO\')\" \| Select-Object DisplayName, AppId, CreatedDateTime \# Get the Gitea SSO app registration \$giteaApp = Get-MgApplication -Filter \"displayName eq \'UIAO-Gitea-SSO\'\" \# List service principals Get-MgServicePrincipal -Filter \"displayName eq \'UIAO-Gitea-SSO\'\" \| Select-Object DisplayName, AppId, ServicePrincipalType
+
+Chapter 20 --- Entra ID Conditional Access
+
+20.1 --- List Conditional Access Policies
+
+Get-MgIdentityConditionalAccessPolicy \| Select-Object DisplayName, State, CreatedDateTime, ModifiedDateTime \| Format-Table -AutoSize
+
+20.2 --- Create MFA Policy for Gitea Access
+
+\# Get required IDs \$giteaAppId = (Get-MgApplication -Filter \"displayName eq \'UIAO-Gitea-SSO\'\").AppId \$uiaoUsersGroupId = (Get-MgGroup -Filter \"displayName eq \'UIAO-AllUsers\'\").Id \$caPolicy = \@{ DisplayName = \"UIAO-Gitea-MFA-Required\" State = \"enabledForReportingButNotEnforced\" Conditions = \@{ Applications = \@{ IncludeApplications = @(\$giteaAppId) } Users = \@{ IncludeGroups = @(\$uiaoUsersGroupId) } Platforms = \@{ IncludePlatforms = @(\"all\") } } GrantControls = \@{ Operator = \"OR\" BuiltInControls = @(\"mfa\") } } \$policy = New-MgIdentityConditionalAccessPolicy -BodyParameter \$caPolicy Write-Host \"Created CA policy: \$(\$policy.DisplayName) (State: \$(\$policy.State))\"
+
++------------------------------------------------------------+
+| **Important**                                              |
+|                                                            |
+| Always create Conditional Access policies in               |
+|                                                            |
+| report-only mode                                           |
+|                                                            |
+| first (                                                    |
+|                                                            |
+| enabledForReportingButNotEnforced                          |
+|                                                            |
+| ). Monitor the sign-in logs for impact before switching to |
+|                                                            |
+| enabled                                                    |
+|                                                            |
+| . This prevents accidental lockouts.                       |
++------------------------------------------------------------+
+
+**Part V --- Intune Integration CLI**
+
+Chapter 21 --- Step-by-Step: Connecting to Intune
+
+Intune management uses the same Microsoft Graph PowerShell SDK. Ensure you are connected with the appropriate device management scopes.
+
+21.1 --- Authentication
+
+\# Connect with Intune-specific scopes (if not already connected) Connect-MgGraph -Scopes @( \"DeviceManagementConfiguration.ReadWrite.All\", \"DeviceManagementManagedDevices.ReadWrite.All\", \"DeviceManagementApps.ReadWrite.All\" )
+
+21.2 --- List Managed Devices
+
+Get-MgDeviceManagementManagedDevice -All \| Select-Object DeviceName, OperatingSystem, ComplianceState, LastSyncDateTime, EnrolledDateTime, ManagementAgent \| Format-Table -AutoSize
+
+21.3 --- Check Device Compliance
+
+\# Check compliance for a specific device Get-MgDeviceManagementManagedDevice -Filter \"deviceName eq \'UIAO-GIT01\'\" \| Select-Object DeviceName, ComplianceState, LastSyncDateTime, ComplianceGracePeriodExpirationDateTime
+
+21.4 --- Get Device Compliance Policies
+
+Get-MgDeviceManagementDeviceCompliancePolicy \| Select-Object DisplayName, Id, CreatedDateTime, LastModifiedDateTime \| Format-Table -AutoSize
+
+21.5 --- Create a Compliance Policy
+
+\$compliancePolicy = \@{ \"@odata.type\" = \"#microsoft.graph.windows10CompliancePolicy\" displayName = \"UIAO-Server-Compliance\" description = \"Compliance policy for UIAO governance servers\" bitLockerEnabled = \$true secureBootEnabled = \$true activeFirewallRequired = \$true defenderEnabled = \$true osMinimumVersion = \"10.0.26100\" } \$policy = New-MgDeviceManagementDeviceCompliancePolicy -BodyParameter \$compliancePolicy Write-Host \"Created compliance policy: \$(\$policy.DisplayName)\"
+
+21.6 --- Assign Policy to Dynamic Group
+
+\$assignment = \@{ target = \@{ \"@odata.type\" = \"#microsoft.graph.groupAssignmentTarget\" groupId = \$group.Id \# UIAO-Tier0-GCC-Servers group ID } } New-MgDeviceManagementDeviceCompliancePolicyAssignment \` -DeviceCompliancePolicyId \$policy.Id \` -BodyParameter \$assignment Write-Host \"Policy assigned to group: UIAO-Tier0-GCC-Servers\"
+
+Chapter 22 --- Intune Configuration Profiles
+
+22.1 --- Deploy PowerShell Health Check Script via Intune
+
+\# Create the script content \$scriptContent = @\' \# UIAO Gitea Health Check Script \# Deployed via Intune to governance servers \$giteaUrl = \"https://git.uiao.local\" \$logPath = \"C:\\UIAOLogs\\HealthCheck.log\" New-Item -Path (Split-Path \$logPath) -ItemType Directory -Force \| Out-Null \$timestamp = Get-Date -Format \"yyyy-MM-dd HH:mm:ss\" try { \$response = Invoke-WebRequest -Uri \"\$giteaUrl/api/v1/settings/api\" -TimeoutSec 10 \"\$timestamp \| Gitea API: OK (\$(\$response.StatusCode))\" \| Out-File \$logPath -Append } catch { \"\$timestamp \| Gitea API: FAIL (\$(\$\_.Exception.Message))\" \| Out-File \$logPath -Append } \'@ \# Upload script to Intune \$scriptBody = \@{ displayName = \"UIAO-Gitea-HealthCheck\" description = \"Periodic health check for Gitea server availability\" scriptContent = \[System.Convert\]::ToBase64String( \[System.Text.Encoding\]::UTF8.GetBytes(\$scriptContent) ) runAsAccount = \"system\" enforceSignatureCheck = \$false runAs32Bit = \$false } Invoke-MgGraphRequest -Method POST \` -Uri \"https://graph.microsoft.com/beta/deviceManagement/deviceManagementScripts\" \` -Body (\$scriptBody \| ConvertTo-Json) \` -ContentType \"application/json\"
+
+22.2 --- Configure Windows Update Ring
+
+\$updateRing = \@{ \"@odata.type\" = \"#microsoft.graph.windowsUpdateForBusinessConfiguration\" displayName = \"UIAO-Server-UpdateRing\" description = \"Update ring for UIAO governance servers\" qualityUpdatesDeferralPeriodInDays = 7 featureUpdatesDeferralPeriodInDays = 30 automaticUpdateMode = \"autoInstallAtMaintenanceTime\" qualityUpdatesPauseStartDate = \$null featureUpdatesPauseStartDate = \$null businessReadyUpdatesOnly = \"businessReadyOnly\" scheduledInstallDay = \"saturday\" scheduledInstallTime = \"03:00:00\" } Invoke-MgGraphRequest -Method POST \` -Uri \"https://graph.microsoft.com/beta/deviceManagement/deviceConfigurations\" \` -Body (\$updateRing \| ConvertTo-Json) \` -ContentType \"application/json\"
+
+22.3 --- Deploy Security Baseline
+
+\# List available security baselines Invoke-MgGraphRequest -Method GET \` -Uri \"https://graph.microsoft.com/beta/deviceManagement/templates?\`\$filter=templateType eq \'securityBaseline\'\" \| Select-Object -ExpandProperty value \| Select-Object displayName, id, publishedDateTime \| Format-Table -AutoSize
+
+**Part VI --- Azure Arc Integration CLI**
+
+Chapter 23 --- Step-by-Step: Connecting to Azure Arc
+
+Azure Arc extends Azure management to on-premises servers. This chapter covers onboarding the UIAO Gitea server to Azure Arc.
+
+23.1 --- Install Azure CLI
+
+winget install Microsoft.AzureCLI \# Verify installation az \--version
+
+23.2 --- Login and Set Subscription
+
+\# Interactive login az login \--tenant {tenant-id} \# Set the target subscription az account set \--subscription {subscription-id} \# Verify az account show \--output table
+
+23.3 --- Create Resource Group
+
+az group create \` \--name rg-uiao-governance \` \--location eastus \` \--tags \"Environment=Production\" \"Boundary=GCC-Moderate\" \"OrgUnit=Governance\"
+
+23.4 --- Install the Azure Arc Agent
+
+\# Download and run the Azure Connected Machine Agent installer \# Run this on the target server (UIAO-GIT01) az connectedmachine connect \` \--resource-group rg-uiao-governance \` \--name UIAO-GIT01 \` \--location eastus \` \--tenant-id {tenant-id} \` \--subscription-id {subscription-id} \` \--tags \"Tier=Tier0\" \"Role=GitServer\" \"Boundary=GCC-Moderate\" \"Site=HeraldHarbor\"
+
+23.5 --- Verify Enrollment
+
+az connectedmachine show \` \--name UIAO-GIT01 \` \--resource-group rg-uiao-governance \` \--output table
+
+23.6 --- Apply Tags for OrgPath
+
+az connectedmachine update \` \--name UIAO-GIT01 \` \--resource-group rg-uiao-governance \` \--tags \"Tier=Tier0\" \"Role=GitServer\" \"Boundary=GCC-Moderate\" \` \"Region=East\" \"Site=HeraldHarbor\" \"Function=Governance\" \` \"OS=WindowsServer2025\" \"ManagedBy=UIAO\"
+
+23.7 --- List Installed Extensions
+
+az connectedmachine extension list \` \--machine-name UIAO-GIT01 \` \--resource-group rg-uiao-governance \` \--output table
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Diagram 5 --- DIAG-005**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **UIAO Azure Arc Integration Topology**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| A hybrid-cloud architecture diagram showing: Left side (On-Premises): UIAO-GIT01 server running Gitea behind IIS on Windows Server 2025, with the Azure Connected Machine Agent installed. A firewall separates on-premises from cloud. Right side (Azure Cloud): Azure Arc control plane in resource group rg-uiao-governance. Connected components include: Azure Policy (compliance), Azure Monitor (Log Analytics workspace), and Microsoft Defender for Cloud. Arrows: UIAO-GIT01 → Azure Arc labeled \"HTTPS (port 443) outbound only\", Azure Arc → Azure Policy labeled \"Policy evaluation\", Azure Arc → Azure Monitor labeled \"Telemetry and logs\". Below: Az CLI workstation icon with arrows to Azure Arc for management commands. Color scheme: On-premises in blue (#4472C4), Azure cloud in light blue (#00B0F0), management arrows in green (#548235), data flow in gray (#888888). |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Dimensions: 700 × 420 pixels                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Chapter 24 --- Azure Policy via Arc
+
+24.1 --- Assign a Built-in Policy
+
+\# Assign \"Audit Windows machines that have pending reboot\" policy az policy assignment create \` \--name \"uiao-pending-reboot-audit\" \` \--display-name \"UIAO: Audit Pending Reboots\" \` \--policy \"/providers/Microsoft.Authorization/policyDefinitions/4221adbc-5c0f-474f-88b7-037f9f35042c\" \` \--scope \"/subscriptions/{subscription-id}/resourceGroups/rg-uiao-governance\" \` \--params \'{}\'
+
+24.2 --- Create Custom Policy for Gitea Compliance
+
+\# Create a custom policy definition az policy definition create \` \--name \"uiao-gitea-iis-validation\" \` \--display-name \"UIAO: Validate IIS Configuration for Gitea\" \` \--description \"Ensures IIS is configured correctly as reverse proxy for Gitea\" \` \--rules \'{ \"if\": { \"allOf\": \[ { \"field\": \"type\", \"equals\": \"Microsoft.HybridCompute/machines\" }, { \"field\": \"tags\[Role\]\", \"equals\": \"GitServer\" } \] }, \"then\": { \"effect\": \"auditIfNotExists\", \"details\": { \"type\": \"Microsoft.GuestConfiguration/guestConfigurationAssignments\", \"name\": \"UIAOGiteaIISConfig\" } } }\' \` \--mode Indexed
+
+24.3 --- View Compliance State
+
+\# List all policy states for the resource group az policy state list \` \--resource-group rg-uiao-governance \` \--query \"\[\].{Policy:policyDefinitionName, Compliance:complianceState, Resource:resourceId}\" \` \--output table \# Summarize compliance az policy state summarize \` \--resource-group rg-uiao-governance
+
+24.4 --- Create Remediation Task
+
+az policy remediation create \` \--name \"uiao-remediate-pending-reboots\" \` \--policy-assignment \"uiao-pending-reboot-audit\" \` \--resource-group rg-uiao-governance
+
+Chapter 25 --- Azure Monitor via Arc
+
+25.1 --- Install Azure Monitor Agent Extension
+
+az connectedmachine extension create \` \--machine-name UIAO-GIT01 \` \--resource-group rg-uiao-governance \` \--name AzureMonitorWindowsAgent \` \--publisher Microsoft.Azure.Monitor \` \--type AzureMonitorWindowsAgent \` \--location eastus
+
+25.2 --- Create Log Analytics Workspace
+
+az monitor log-analytics workspace create \` \--resource-group rg-uiao-governance \` \--workspace-name law-uiao-governance \` \--location eastus \` \--retention-time 90 \` \--tags \"Boundary=GCC-Moderate\" \"Purpose=GovernanceMonitoring\"
+
+25.3 --- Configure Data Collection Rule
+
+az monitor data-collection rule create \` \--resource-group rg-uiao-governance \` \--name \"dcr-uiao-gitserver\" \` \--location eastus \` \--description \"Data collection rule for UIAO Gitea server\" \` \--data-flows \'\[{ \"streams\": \[\"Microsoft-Event\", \"Microsoft-Perf\"\], \"destinations\": \[\"law-uiao-governance\"\] }\]\' \` \--log-analytics \'\[{ \"name\": \"law-uiao-governance\", \"workspace-resource-id\": \"/subscriptions/{subscription-id}/resourceGroups/rg-uiao-governance/providers/Microsoft.OperationalInsights/workspaces/law-uiao-governance\" }\]\'
+
+25.4 --- Query Gitea Logs from Azure Monitor
+
+Use Kusto Query Language (KQL) in the Log Analytics workspace to analyze Gitea server logs:
+
+// Gitea errors in the last 24 hours UIAOGitServer_CL \| where TimeGenerated \> ago(24h) \| where Level_s == \"Error\" \| project TimeGenerated, Message_s, User_s \| order by TimeGenerated desc
+
+// Authentication failures UIAOGitServer_CL \| where TimeGenerated \> ago(7d) \| where Message_s contains \"authentication failed\" \| summarize FailureCount = count() by User_s, bin(TimeGenerated, 1h) \| order by FailureCount desc
+
+// Repository activity summary UIAOGitServer_CL \| where TimeGenerated \> ago(24h) \| where Action_s in (\"push\", \"pull\", \"clone\") \| summarize ActionCount = count() by Action_s, Repository_s \| order by ActionCount desc
+
+// Server performance overview Perf \| where Computer == \"UIAO-GIT01\" \| where TimeGenerated \> ago(1h) \| where ObjectName == \"Processor\" and CounterName == \"% Processor Time\" \| summarize AvgCPU = avg(CounterValue) by bin(TimeGenerated, 5m) \| render timechart
+
+**Part VII --- Appendices**
+
+Appendix A --- Complete PowerShell Module: UIAO.Tools
+
+All functions from this guide are consolidated into a single installable PowerShell module located at:
+
+C:\\Users\\whale\\git\\uiao\\tools\\UIAO.Tools\\
+
+Module Manifest (UIAO.Tools.psd1)
+
+\@{ RootModule = \'UIAO.Tools.psm1\' ModuleVersion = \'2.0.0\' GUID = \'a1b2c3d4-e5f6-7890-abcd-ef1234567890\' Author = \'Michael Stratton\' CompanyName = \'UIAO\' Copyright = \'(c) 2026 UIAO. All rights reserved.\' Description = \'UIAO Governance OS CLI tools --- Git, Gitea API, AD, Entra ID, Intune, Arc\' PowerShellVersion = \'7.0\' RequiredModules = @(\'ActiveDirectory\', \'Microsoft.Graph\', \'GroupPolicy\') FunctionsToExport = @( \# Gitea API \'Connect-UIAOGitea\', \'Get-UIAORepository\', \'Get-UIAOCanonFile\', \'Set-UIAOCanonFile\', \'New-UIAOPullRequest\', \'Get-UIAOPullRequest\', \'Merge-UIAOPullRequest\', \'Sync-UIAOFromGitHub\', \'Export-UIAOCanonInventory\', \'Test-UIAOCanonIntegrity\', \# Canon Steward \'Test-UIAOCanonArtifact\', \'Export-UIAOCanonStatusReport\', \'Find-UIAOOrphanArtifacts\', \# AD Assessment \'Export-UIAOForestAssessment\', \'Export-UIAOOUStructure\', \'Export-UIAOComputerObjects\', \'Export-UIAOUserObjects\', \'Export-UIAOGroupObjects\', \'Export-UIAODNSAssessment\', \'Export-UIAOCertAssessment\', \'Export-UIAOGPOAssessment\', \'Invoke-UIAOFullAssessment\' ) PrivateData = \@{ PSData = \@{ Tags = @(\'UIAO\', \'Governance\', \'Gitea\', \'Git\', \'GCC\') ProjectUri = \'https://git.uiao.local/UIAO/uiao\' } } }
+
+Import the Module
+
+Import-Module C:\\Users\\whale\\git\\uiao\\tools\\UIAO.Tools\\UIAO.Tools.psd1 \# Verify loaded functions Get-Command -Module UIAO.Tools \| Format-Table Name, CommandType
+
+Appendix B --- API Endpoint Quick Reference
+
+This table consolidates all API endpoints used throughout this guide.
+
+Gitea REST API Endpoints
+
+  --------------------------------------------------------------------------------------------
+  **Operation**        **Method**   **Endpoint**                                    **Auth**
+  -------------------- ------------ ----------------------------------------------- ----------
+  Get current user     GET          /api/v1/user                                    Yes
+
+  List org repos       GET          /api/v1/orgs/UIAO/repos                         Yes
+
+  Get repo details     GET          /api/v1/repos/UIAO/uiao                         Yes
+
+  List branches        GET          /api/v1/repos/UIAO/uiao/branches                Yes
+
+  Get branch           GET          /api/v1/repos/UIAO/uiao/branches/{branch}       Yes
+
+  List commits         GET          /api/v1/repos/UIAO/uiao/commits                 Yes
+
+  Get file contents    GET          /api/v1/repos/UIAO/uiao/contents/{path}         Yes
+
+  Create/update file   PUT          /api/v1/repos/UIAO/uiao/contents/{path}         Yes
+
+  Delete file          DELETE       /api/v1/repos/UIAO/uiao/contents/{path}         Yes
+
+  Get raw file         GET          /api/v1/repos/UIAO/uiao/raw/{path}              Yes
+
+  List tags            GET          /api/v1/repos/UIAO/uiao/tags                    Yes
+
+  Create release       POST         /api/v1/repos/UIAO/uiao/releases                Yes
+
+  Search repos         GET          /api/v1/repos/search                            Yes
+
+  List PRs             GET          /api/v1/repos/UIAO/uiao/pulls                   Yes
+
+  Create PR            POST         /api/v1/repos/UIAO/uiao/pulls                   Yes
+
+  Get PR               GET          /api/v1/repos/UIAO/uiao/pulls/{index}           Yes
+
+  Review PR            POST         /api/v1/repos/UIAO/uiao/pulls/{index}/reviews   Yes
+
+  Merge PR             POST         /api/v1/repos/UIAO/uiao/pulls/{index}/merge     Yes
+
+  List PR files        GET          /api/v1/repos/UIAO/uiao/pulls/{index}/files     Yes
+
+  List orgs            GET          /api/v1/orgs                                    Yes
+
+  Get org              GET          /api/v1/orgs/UIAO                               Yes
+
+  List teams           GET          /api/v1/orgs/UIAO/teams                         Yes
+
+  Create team          POST         /api/v1/orgs/UIAO/teams                         Yes
+
+  Add team member      PUT          /api/v1/teams/{id}/members/{username}           Yes
+
+  Remove team member   DELETE       /api/v1/teams/{id}/members/{username}           Yes
+
+  List webhooks        GET          /api/v1/repos/UIAO/uiao/hooks                   Yes
+
+  Create webhook       POST         /api/v1/repos/UIAO/uiao/hooks                   Yes
+
+  Test webhook         POST         /api/v1/repos/UIAO/uiao/hooks/{id}/tests        Yes
+  --------------------------------------------------------------------------------------------
+
+Microsoft Graph API Endpoints
+
+  ---------------------------------------------------------------------------------------------------------------------------
+  **Operation**          **PowerShell Cmdlet**                          **Graph Endpoint**
+  ---------------------- ---------------------------------------------- -----------------------------------------------------
+  List devices           Get-MgDevice                                   GET /v1.0/devices
+
+  Create group           New-MgGroup                                    POST /v1.0/groups
+
+  Update device          Update-MgDevice                                PATCH /v1.0/devices/{id}
+
+  List group members     Get-MgGroupMember                              GET /v1.0/groups/{id}/members
+
+  Get app registration   Get-MgApplication                              GET /v1.0/applications
+
+  CA policies            Get-MgIdentityConditionalAccessPolicy          GET /v1.0/identity/conditionalAccess/policies
+
+  Managed devices        Get-MgDeviceManagementManagedDevice            GET /v1.0/deviceManagement/managedDevices
+
+  Compliance policies    Get-MgDeviceManagementDeviceCompliancePolicy   GET /v1.0/deviceManagement/deviceCompliancePolicies
+  ---------------------------------------------------------------------------------------------------------------------------
+
+Azure CLI (Az) Commands
+
+  ----------------------------------------------------------------------------------------
+  **Operation**           **Command**
+  ----------------------- ----------------------------------------------------------------
+  Login                   az login \--tenant {tenant-id}
+
+  Set subscription        az account set \--subscription {id}
+
+  Create resource group   az group create \--name {name} \--location {loc}
+
+  Arc connect             az connectedmachine connect
+
+  Arc show                az connectedmachine show \--name {name} \--resource-group {rg}
+
+  Arc extensions          az connectedmachine extension list
+
+  Assign policy           az policy assignment create
+
+  Policy state            az policy state list
+
+  Create remediation      az policy remediation create
+
+  Create workspace        az monitor log-analytics workspace create
+
+  Install AMA             az connectedmachine extension create
+  ----------------------------------------------------------------------------------------
+
+Appendix C --- Error Code Reference
+
+The 30 most common errors encountered across the UIAO platform, with source, meaning, and resolution.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **\#**   **Error**                                      **Source**        **Meaning**                                       **Resolution**
+  -------- ---------------------------------------------- ----------------- ------------------------------------------------- --------------------------------------------------------------------------------
+  1        HTTP 401 Unauthorized                          Gitea API         Invalid or expired token                          Regenerate personal access token; verify token scopes
+
+  2        HTTP 403 Forbidden                             Gitea API         Insufficient permissions                          Check team membership and repo permissions; request elevated access
+
+  3        HTTP 404 Not Found                             Gitea API         Endpoint or resource does not exist               Verify URL, repo name, and branch; check for typos
+
+  4        HTTP 409 Conflict                              Gitea API         File update conflict (SHA mismatch)               Re-fetch the file to get current SHA, then retry the update
+
+  5        HTTP 422 Unprocessable                         Gitea API         Invalid request body or parameters                Validate JSON body structure against Gitea API documentation
+
+  6        HTTP 429 Too Many Requests                     Gitea API         Rate limit exceeded                               Wait until X-RateLimit-Reset; implement retry with exponential backoff
+
+  7        HTTP 502 Bad Gateway                           IIS               IIS cannot reach Gitea backend                    Verify Gitea service is running; check IIS reverse proxy config
+
+  8        HTTP 503 Service Unavailable                   IIS               Gitea service is down or overloaded               Restart Gitea service; check server resources (CPU, memory, disk)
+
+  9        SSL Certificate Error                          Git / IIS         TLS cert expired or untrusted                     Renew certificate; add CA to trusted roots; check cert binding in IIS
+
+  10       fatal: repository not found                    Git CLI           Cannot find remote repository                     Verify remote URL with git remote -v; check network access
+
+  11       fatal: refusing to merge unrelated histories   Git CLI           Branches have no common ancestor                  Use \--allow-unrelated-histories flag if intentional
+
+  12       MERGE CONFLICT                                 Git CLI           Conflicting changes in same file                  Open conflicted files; resolve markers; git add and git commit
+
+  13       error: failed to push some refs                Git CLI           Remote has commits not in local                   git pull \--rebase origin main then retry push
+
+  14       The term \'Get-ADDomain\' is not recognized    PowerShell / AD   ActiveDirectory module not installed              Install RSAT tools (see Chapter 12)
+
+  15       Unable to contact the server                   AD                Cannot reach domain controller                    Check DNS resolution; verify network connectivity to DC; use -Server parameter
+
+  16       Access is denied                               AD                Insufficient AD permissions                       Use -Credential parameter with authorized account
+
+  17       A referral was returned from the server        AD                Cross-domain query requires referral              Specify target domain with -Server parameter
+
+  18       Insufficient access rights                     Entra ID          Missing Graph API permissions                     Re-connect with required scopes; grant admin consent in Entra portal
+
+  19       Authorization_RequestDenied                    Entra ID          Graph API scope not consented                     Admin must consent to requested permissions in Entra ID portal
+
+  20       Request_BadRequest                             Entra ID          Malformed Graph API request                       Validate JSON payload; check property names and data types
+
+  21       InvalidAuthenticationToken                     Entra ID          Token expired or invalid                          Run Connect-MgGraph again to refresh the token
+
+  22       The membership rule syntax is invalid          Entra ID          Dynamic group rule has syntax error               Test the rule in Entra portal under Groups \> Dynamic membership rules
+
+  23       DeviceNotManagedByIntune                       Intune            Device not enrolled in Intune                     Enroll the device via Intune Company Portal or auto-enrollment GPO
+
+  24       PolicyAssignmentNotFound                       Intune            Compliance policy not assigned to device group    Create an assignment targeting the device\'s group
+
+  25       ComplianceState: noncompliant                  Intune            Device fails compliance checks                    Review per-setting compliance in Intune portal; remediate the failing control
+
+  26       AZCM0042: Unable to connect                    Azure Arc         Arc agent cannot reach Azure                      Verify outbound HTTPS (443) connectivity; check proxy settings
+
+  27       AuthorizationFailed                            Azure Arc / CLI   Insufficient RBAC permissions                     Assign required role (e.g., Azure Connected Machine Resource Administrator)
+
+  28       ResourceGroupNotFound                          Azure CLI         Specified resource group does not exist           Create the resource group or verify the name
+
+  29       ExtensionOperationFailed                       Azure Arc         Extension installation failed on target machine   Check agent logs on the machine; verify prerequisites for the extension
+
+  30       PolicyComplianceNotFound                       Azure Policy      No compliance data for the assignment             Wait for policy evaluation cycle (up to 24h); trigger on-demand evaluation
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix D --- Environment Variables Reference
+
+All environment variables used across this guide, with descriptions and recommended default values.
+
+  ------------------------------------------------------------------------------------------------------------------------
+  **Variable**            **Description**                           **Default Value**             **Used In**
+  ----------------------- ----------------------------------------- ----------------------------- ------------------------
+  GITEA_TOKEN             Gitea personal access token               (none --- set per user)       Ch. 6, 7, 8, 9, 10, 11
+
+  GITEA_URL               Base URL for Gitea instance               https://git.uiao.local        Ch. 6--11
+
+  UIAO_WORKSPACE          Local Git workspace path                  C:\\Users\\whale\\git\\uiao   Ch. 1, 2, 11
+
+  UIAO_ASSESSMENT_PATH    Output directory for AD assessments       C:\\UIAOAssessment            Ch. 13--17
+
+  UIAO_DNS_SERVER         DNS server hostname for DNS assessment    dc01.domain.local             Ch. 14, 17
+
+  AZURE_TENANT_ID         Entra ID (Azure AD) tenant ID             (set per tenant)              Ch. 18, 23
+
+  AZURE_SUBSCRIPTION_ID   Azure subscription ID for Arc resources   (set per subscription)        Ch. 23, 24, 25
+
+  UIAO_RESOURCE_GROUP     Azure resource group for UIAO resources   rg-uiao-governance            Ch. 23--25
+
+  UIAO_LOCATION           Azure region for resources                eastus                        Ch. 23--25
+
+  UIAO_SERVER_NAME        Gitea server machine name                 UIAO-GIT01                    Ch. 19, 21, 23, 25
+
+  UIAO_LOG_PATH           Local log directory on Gitea server       C:\\UIAOLogs                  Ch. 22
+
+  WEBHOOK_SECRET          Shared secret for webhook validation      (set per webhook)             Ch. 10
+  ------------------------------------------------------------------------------------------------------------------------
+
+To set these variables persistently on a workstation:
+
+\# Set environment variable for current user (persistent) \[System.Environment\]::SetEnvironmentVariable(\"GITEA_URL\", \"https://git.uiao.local\", \"User\") \[System.Environment\]::SetEnvironmentVariable(\"UIAO_WORKSPACE\", \"C:\\Users\\whale\\git\\uiao\", \"User\") \[System.Environment\]::SetEnvironmentVariable(\"UIAO_ASSESSMENT_PATH\", \"C:\\UIAOAssessment\", \"User\") \# Verify \[System.Environment\]::GetEnvironmentVariable(\"GITEA_URL\", \"User\")
+
+Appendix E --- Security Considerations
+
+This appendix summarizes all security-relevant configurations, credential management practices, and least-privilege principles described throughout this guide.
+
+E.1 --- Classification and Boundary
+
+  -------------------------------------------------------------------------------------------
+  **Parameter**            **Value**
+  ------------------------ ------------------------------------------------------------------
+  Classification Marking   **Controlled** (never use FOUO or \"For Official Use Only\")
+
+  Compliance Boundary      **GCC-Moderate**
+
+  Data Sovereignty         All data resides within US boundaries; Azure resources in eastus
+  -------------------------------------------------------------------------------------------
+
+E.2 --- Credential Management
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------
+  **Credential Type**            **Storage**                                            **Rotation**        **Scope**
+  ------------------------------ ------------------------------------------------------ ------------------- -----------------------------------
+  Gitea Personal Access Token    Windows Credential Manager                             Every 90 days       Minimum required (repo, org:read)
+
+  GitHub Personal Access Token   Windows Credential Manager (via GCM OAuth)             Every 90 days       repo scope only
+
+  AD Service Account             Active Directory (managed service account preferred)   Per domain policy   Read-only for assessments
+
+  Entra ID App Secret            Azure Key Vault                                        Every 180 days      Application-specific scopes
+
+  Webhook Shared Secret          Server environment variable or Key Vault               Every 180 days      Per-webhook unique secret
+  ---------------------------------------------------------------------------------------------------------------------------------------------
+
+E.3 --- Least Privilege Principles
+
+- **Git Operations:** Contributors have write access to feature branches only. Only Canon Stewards have direct write to canon/. Only admins can merge to main.
+
+- **Gitea API:** Tokens scoped to the minimum permissions. Read-only tokens for monitoring and reporting scripts. Write tokens only for automation that creates/updates files.
+
+- **AD Assessment:** Use a read-only service account for all Export-UIAO\* functions. Domain Admin credentials only for remediation tasks.
+
+- **Entra ID:** Use delegated permissions where possible. Application permissions only for unattended automation, with admin consent.
+
+- **Azure Arc:** Assign the narrowest RBAC role: \"Azure Connected Machine Resource Administrator\" for onboarding, \"Reader\" for monitoring.
+
+- **Intune:** \"Intune Service Administrator\" role only for policy management. \"Help Desk Operator\" for device troubleshooting.
+
+E.4 --- TLS and Certificate Requirements
+
+- All connections to git.uiao.local must use TLS 1.2 or higher.
+
+- http.sslVerify must be true in all Git configurations --- disabling is prohibited in GCC-Moderate environments.
+
+- Certificates must be issued by the organization\'s Enterprise CA or a trusted public CA.
+
+- Monitor certificate expiry with the Export-UIAOCertAssessment function (Chapter 15) and renew at least 30 days before expiry.
+
+E.5 --- Audit and Logging
+
+- All Gitea API operations are logged in the Gitea audit log (gitea.log).
+
+- Git operations are logged via the Gitea push log and webhook events.
+
+- AD operations should be run within a Start-Transcript session for full audit trail.
+
+- Entra ID sign-in and audit logs are available via the Azure portal and Microsoft Graph API.
+
+- Azure Arc operations are logged in Azure Activity Log and the local agent log on the server.
+
+E.6 --- Prohibited Actions
+
+- Never store credentials in plaintext files, scripts, or Git repositories.
+
+- Never use git config \--global http.sslVerify false.
+
+- Never use FOUO or \"For Official Use Only\" markings --- use \"Controlled\" exclusively.
+
+- Never delete canonical artifacts --- always deprecate with status: DEPRECATED.
+
+- Never force-push to main branch.
+
+- Never share personal access tokens between users or services --- each must have its own.
+
+**UIAO CLI and Operations Guide** --- Classification: Controlled \| Boundary: GCC-Moderate\
+Author: Michael Stratton \| Published: April 20, 2026\
+Primary Repository: https://git.uiao.local/UIAO/uiao \| Secondary: https://github.com/WhalerMike/uiao

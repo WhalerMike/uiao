@@ -1,0 +1,587 @@
+---
+title: "UIAO Git Server — Windows Server 2025 with IIS"
+subtitle: "Self-hosted Git Smart HTTP mirror for the UIAO architecture"
+doc-type: implementation-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO Git Server — Windows Server 2025 with IIS Implementation Guide.docx"
+repo-path: docs/customer-documents/platform/git-server-implementation.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+UIAO Git Server --- Windows Server 2025 with IIS Implementation Guide
+
+**Self-Hosted Git Smart HTTP Mirror for the Unified Identity-Addressing-Overlay Architecture**
+
+Document Classification: Controlled \| Boundary: GCC-Moderate Commercial Cloud
+
+Version: 1.0 \| Date: April 20, 2026
+
+Author: UIAO Canon Steward --- Infrastructure Engineering
+
+Canonical Source: https://github.com/WhalerMike/uiao
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Prerequisites**                                                                                                                                                                                                                                                                                                       |
+|                                                                                                                                                                                                                                                                                                                         |
+| This guide requires: Windows Server 2025 (Build 26100+), PowerShell 5.1+, Git for Windows 2.44+, administrative access to the target server, and network access to https://github.com/WhalerMike/uiao. Estimated deployment time: 90--120 minutes. All commands are PowerShell-first, copy-paste ready, and idempotent. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+1\. Purpose and Scope
+
+This guide provides a complete, step-by-step deployment procedure for hosting a self-hosted Git Smart HTTP mirror of the canonical UIAO repository (https://github.com/WhalerMike/uiao) on a Windows Server 2025 instance running Internet Information Services (IIS) with CGI. The UIAO --- Unified Identity-Addressing-Overlay Architecture --- is a federal network modernization program targeting FedRAMP Moderate Rev 5 compliance, encompassing OSCAL artifact generation, governance engines, vendor adapter frameworks, and a comprehensive Quarto documentation pipeline.
+
+The self-hosted server provides four critical capabilities:
+
+- **On-premises governance-controlled mirror** --- for environments where direct GitHub access is restricted, rate-limited, or latency-sensitive within GCC-Moderate boundaries.
+
+- **Secondary Git remote for UIAO contributors** --- operating within GCC-Moderate Commercial Cloud environments that require data residency or egress controls.
+
+- **Pre-push governance validation via server-side Git hooks** --- enforcing UIAO Canon rules including document_id naming conventions, boundary metadata validation, and FOUO marking prohibition on every push.
+
+- **Integration point for the UIAO Quarto documentation pipeline** --- triggering CI/CD webhook forwarding to rebuild the 124+ .qmd file documentation set on push events.
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Scope Limitation**                                                                                                                                                                                                                                                                       |
+|                                                                                                                                                                                                                                                                                            |
+| This guide covers **GCC-Moderate Commercial Cloud only**. It does NOT cover GCC High, DoD IL4/IL5, Azure Government, or air-gapped deployments. Those environments have distinct TLS, authentication, and network isolation requirements that are addressed in separate deployment guides. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+**Audience:** UIAO Canon Steward, infrastructure engineers, and DevSecOps operators responsible for the UIAO governance substrate. Familiarity with PowerShell, IIS administration, and Git internals is assumed.
+
+2\. Architecture Overview
+
+The UIAO Git Smart HTTP server implements a standard CGI-based architecture where IIS acts as the HTTPS termination point and routes Git protocol requests to the native git-http-backend.exe binary provided by Git for Windows. The full request flow is:
+
+**Git Client** (C:\\Users\\whale\\git\\uiao) → **HTTPS** (port 443) → **IIS** (Windows Server 2025) → **CGI Module** → **git-http-backend.exe** → **D:\\GitRepos\\uiao.git** (bare repository)
+
+![](C:\Users\whale\AppData\Local\Temp\tmpmtz7qj4h\media/media/da411899e58242dea583e78ff1e0db388d82eb92.png){width="4.9375in" height="4.302083333333333in"}
+
+*Figure 2-1. IIS request processing architecture --- the CGI module intercepts Git HTTP requests and delegates to git-http-backend.exe.*
+
++:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:+
+| **UIAO-GIT-ARCH-001**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| *\[Placeholder: Architecture Diagram --- \"UIAO Git Server Architecture\" --- Shows the full request path from developer workstation through IIS to the bare repository on disk. Labeled components: Git client on workstation (C:\\Users\\whale\\git\\uiao), HTTPS/TLS termination at IIS (port 443), CGI handler mapping, git-http-backend.exe process, bare repo on D:\\GitRepos\\uiao.git, server-side hooks (pre-receive, update, post-receive), and a dotted-line upstream sync arrow back to https://github.com/WhalerMike/uiao. Dimensions: 900×450px\]* |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+2.1 UIAO Repository Directory Mapping
+
+The UIAO repository contains four primary directory trees, each serving a distinct function within the governance architecture. All directories reside within the single bare repository on the IIS server:
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **UIAO Directory**   **GitHub Path**   **Server Bare Repo Path**              **Purpose**
+  -------------------- ----------------- -------------------------------------- -----------------------------------------------------------------------------------------------------------------------------------------------
+  core/                /core             D:\\GitRepos\\uiao.git (within tree)   Governance engine, canon artifacts, OSCAL profiles, JSON schemas, KSI validation
+
+  docs/                /docs             D:\\GitRepos\\uiao.git (within tree)   Quarto documentation pipeline --- 20+ canon documents, 124 .qmd files, FedRAMP crosswalks
+
+  gos/                 /gos              D:\\GitRepos\\uiao.git (within tree)   Governance OS --- commercial product layer for the UIAO framework
+
+  impl/                /impl             D:\\GitRepos\\uiao.git (within tree)   Python CLI implementation --- OSCAL SSP/POA&M generation, vendor adapters (Entra ID, Cisco ISE, Palo Alto, Sentinel), drift-to-POA&M pipeline
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3\. Prerequisites
+
+Verify all prerequisites before beginning deployment. Run each verification command in an elevated PowerShell session on the target Windows Server 2025 instance.
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisite**        **Minimum Version**                                        **Verification Command**
+  ----------------------- ---------------------------------------------------------- -----------------------------------------------------------------------------------------------
+  Windows Server 2025     Build 26100+                                               (Get-CimInstance Win32_OperatingSystem).Caption
+
+  PowerShell              5.1+                                                       \$PSVersionTable.PSVersion
+
+  Git for Windows         2.44+                                                      git \--version
+
+  .NET Framework          4.8+                                                       (Get-ItemProperty \'HKLM:\\SOFTWARE\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full\').Release
+
+  IIS (Web-Server role)   10.0                                                       (Get-WindowsFeature Web-Server).InstallState
+
+  Disk Space (D: drive)   2 GB minimum                                               (Get-PSDrive D).Free / 1GB
+
+  Network                 HTTPS 443 open inbound                                     Test-NetConnection -ComputerName localhost -Port 443
+
+  TLS Certificate         TLS 1.2+ (self-signed for lab, CA-signed for production)   Get-ChildItem Cert:\\LocalMachine\\My
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Repository Size Note**                                                                                                                                                                                                              |
+|                                                                                                                                                                                                                                       |
+| The UIAO repository is approximately 350 MB with 3,550+ commits across multiple branches. Allocate at least **2 GB** for the bare repository plus working space for git gc operations, pack file repacking, and bundle-based backups. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+4\. Phase 1: Install IIS with CGI Support
+
+Install the IIS Web Server role with all required sub-features. The CGI module is mandatory --- it provides the execution pipeline for git-http-backend.exe. Windows Authentication and Basic Authentication are included for access control (Phase 9).
+
+\# Phase 1 --- Install IIS with CGI and Authentication \# Run in elevated PowerShell on the target server Install-WindowsFeature -Name \` Web-Server, \` Web-CGI, \` Web-Windows-Auth, \` Web-Basic-Auth, \` Web-Filtering, \` Web-Mgmt-Console \` -IncludeManagementTools -Restart \# Verify installation Get-WindowsFeature Web-Server, Web-CGI, Web-Windows-Auth, Web-Basic-Auth \| Format-Table Name, InstallState -AutoSize
+
+4.1 Install IIS URL Rewrite Module 2.1
+
+The URL Rewrite Module is required for Git Smart HTTP path translation --- it maps incoming request paths to the GIT_PROJECT_ROOT and GIT_HTTP_EXPORT_ALL server variables that git-http-backend.exe requires.
+
+\# Download and install URL Rewrite Module 2.1 \$rewriteUrl = \'https://download.microsoft.com/download/1/2/8/128E2E22-C1B9-44A4-BE2A-5859ED1D4592/rewrite_amd64_en-US.msi\' \$rewriteInstaller = \"\$env:TEMP\\rewrite_amd64.msi\" Invoke-WebRequest -Uri \$rewriteUrl -OutFile \$rewriteInstaller Start-Process msiexec.exe -ArgumentList \"/i \`\"\$rewriteInstaller\`\" /quiet /norestart\" -Wait Remove-Item \$rewriteInstaller -Force \# Verify installation if (Test-Path \"\$env:SystemRoot\\System32\\inetsrv\\rewrite.dll\") { Write-Host \"URL Rewrite Module installed successfully\" -ForegroundColor Green } else { Write-Error \"URL Rewrite Module installation failed\" }
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Windows Server 2025 HTTP 500 Fix**                                                                                                                                                                                                         |
+|                                                                                                                                                                                                                                              |
+| Windows Server 2025 may return HTTP 500 errors with CGI if cumulative update KB5035080 or later is not installed. This is a known regression in the CGI module\'s environment variable handling. Verify your update level before proceeding: |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+\# Verify cumulative update level Get-HotFix \| Sort-Object InstalledOn -Descending \| Select-Object -First 5 \| Format-Table HotFixID, InstalledOn, Description -AutoSize \# If KB5035080 or later is missing, install via Windows Update: \# Install-WindowsUpdate -KBArticleID KB5035080 -AcceptAll -AutoReboot \# Or download from the Microsoft Update Catalog
+
+5\. Phase 2: Install Git for Windows
+
+Install Git for Windows using a silent, unattended installation. The critical binary is git-http-backend.exe, which serves as the CGI handler for all Git Smart HTTP operations.
+
+\# Phase 2 --- Install Git for Windows (silent, unattended) \$gitVersion = \'2.44.0\' \$gitInstaller = \"\$env:TEMP\\Git-\$gitVersion-64-bit.exe\" \$gitUrl = \"https://github.com/git-for-windows/git/releases/download/v\$gitVersion.windows.1/Git-\$gitVersion-64-bit.exe\" Invoke-WebRequest -Uri \$gitUrl -OutFile \$gitInstaller Start-Process -FilePath \$gitInstaller -ArgumentList @( \'/VERYSILENT\', \'/NORESTART\', \'/NOCANCEL\', \'/SP-\', \'/CLOSEAPPLICATIONS\', \'/RESTARTAPPLICATIONS\', \'/COMPONENTS=\"icons,ext\\reg\\shellhere,assoc,assoc_sh\"\' ) -Wait Remove-Item \$gitInstaller -Force \# Add Git to system PATH (idempotent) \$gitPath = \'C:\\Program Files\\Git\\cmd\' \$currentPath = \[Environment\]::GetEnvironmentVariable(\'PATH\', \'Machine\') if (\$currentPath -notlike \"\*\$gitPath\*\") { \[Environment\]::SetEnvironmentVariable(\'PATH\', \"\$currentPath;\$gitPath\", \'Machine\') Write-Host \"Git added to system PATH\" -ForegroundColor Green } else { Write-Host \"Git already in system PATH\" -ForegroundColor Yellow } \# Refresh PATH for current session \$env:PATH = \[Environment\]::GetEnvironmentVariable(\'PATH\', \'Machine\')
+
+5.1 Verify git-http-backend.exe Location
+
+\# Verify git-http-backend.exe location \$backend = \'C:\\Program Files\\Git\\mingw64\\libexec\\git-core\\git-http-backend.exe\' if (Test-Path \$backend) { Write-Host \"git-http-backend.exe found at: \$backend\" -ForegroundColor Green Write-Host \" File version: \$((Get-Item \$backend).VersionInfo.FileVersion)\" Write-Host \" File size: \$(\'{0:N0} KB\' -f ((Get-Item \$backend).Length / 1KB))\" } else { Write-Error \"git-http-backend.exe NOT found --- check Git installation\" } \# Also verify git.exe git \--version
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Git Binary**         **Full Path**                                                              **Purpose**
+  ---------------------- -------------------------------------------------------------------------- --------------------------------------------------------------------
+  git.exe                C:\\Program Files\\Git\\cmd\\git.exe                                       Primary Git CLI --- used for clone, fetch, gc operations
+
+  git-http-backend.exe   C:\\Program Files\\Git\\mingw64\\libexec\\git-core\\git-http-backend.exe   CGI handler for Smart HTTP --- called by IIS for every Git request
+
+  git-receive-pack.exe   C:\\Program Files\\Git\\mingw64\\libexec\\git-core\\git-receive-pack.exe   Handles git push on the server side
+
+  git-upload-pack.exe    C:\\Program Files\\Git\\mingw64\\libexec\\git-core\\git-upload-pack.exe    Handles git fetch / git clone on the server side
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+6\. Phase 3: Clone and Initialize UIAO Bare Repository
+
+This phase clones the canonical UIAO repository from GitHub into a bare repository on the server\'s D: drive. A bare repository contains no working directory --- only the Git object database and refs --- which is the required format for a server-side Git repository.
+
+\# Phase 3 --- Initialize UIAO bare repository from canonical GitHub source \$repoRoot = \'D:\\GitRepos\' \$uiaoBare = Join-Path \$repoRoot \'uiao.git\' \# Create repository root on D: drive (idempotent) New-Item -Path \$repoRoot -ItemType Directory -Force \| Out-Null \# Clone as bare repository from canonical source if (-not (Test-Path (Join-Path \$uiaoBare \'HEAD\'))) { git clone \--bare https://github.com/WhalerMike/uiao.git \$uiaoBare Write-Host \"UIAO bare repository cloned successfully\" -ForegroundColor Green } else { Write-Host \"UIAO bare repository already exists --- skipping clone\" -ForegroundColor Yellow } \# Configure for Smart HTTP push support Set-Location \$uiaoBare git config http.receivepack true git config core.bare true \# Update server info for dumb HTTP fallback git update-server-info \# Create export marker (required by git-http-backend when GIT_HTTP_EXPORT_ALL is not set) New-Item -Path (Join-Path \$uiaoBare \'git-daemon-export-ok\') -ItemType File -Force \| Out-Null \# Add description file Set-Content -Path (Join-Path \$uiaoBare \'description\') \` -Value \'UIAO --- Unified Identity-Addressing-Overlay Architecture (Governance Mirror)\' \# Verify repository integrity Write-Host \"\`nRunning repository integrity check\...\" -ForegroundColor Cyan git fsck \--full
+
+6.1 Verify UIAO Repository Structure
+
+\# Verify UIAO repository structure \$expectedDirs = @(\'core\', \'docs\', \'gos\', \'impl\') \$tree = git -C \$uiaoBare ls-tree \--name-only HEAD Write-Host \"\`nUIAO Repository Structure Verification:\" -ForegroundColor Cyan foreach (\$dir in \$expectedDirs) { if (\$tree -contains \$dir) { Write-Host \" \[PASS\] \$dir/\" -ForegroundColor Green } else { Write-Warning \" \[FAIL\] \$dir/ --- NOT FOUND in repository tree\" } } \# Display branch summary Write-Host \"\`nBranch summary:\" -ForegroundColor Cyan git -C \$uiaoBare for-each-ref \--format=\' %(refname:short) -\> %(objectname:short)\' refs/heads/ \# Display commit count \$commitCount = git -C \$uiaoBare rev-list \--count HEAD Write-Host \"\`nTotal commits: \$commitCount\" -ForegroundColor Cyan
+
+6.2 Upstream Sync Function
+
+Define the Sync-UIAOFromGitHub function for scheduled upstream pulls. This function is called by the Windows Task Scheduler job configured in Section 17.
+
+function Sync-UIAOFromGitHub { \<# .SYNOPSIS Fetches latest changes from the canonical UIAO GitHub repository into the local bare mirror. .DESCRIPTION This function runs git fetch against the upstream GitHub remote to keep the self-hosted IIS mirror in sync. Designed to be called from a Windows Task Scheduler job. .PARAMETER BareRepoPath Path to the UIAO bare repository. Default: D:\\GitRepos\\uiao.git .PARAMETER UpstreamUrl URL of the canonical GitHub repository. .EXAMPLE Sync-UIAOFromGitHub Sync-UIAOFromGitHub -BareRepoPath \'E:\\Repos\\uiao.git\' #\> \[CmdletBinding()\] param( \[string\]\$BareRepoPath = \'D:\\GitRepos\\uiao.git\', \[string\]\$UpstreamUrl = \'https://github.com/WhalerMike/uiao.git\' ) Push-Location \$BareRepoPath try { \# Ensure upstream remote exists (idempotent) \$remotes = git remote if (\$remotes -notcontains \'upstream\') { git remote add upstream \$UpstreamUrl } \# Fetch all branches and tags from GitHub git fetch upstream \--prune \--tags \--force \# Update all local refs to match upstream \$branches = git for-each-ref \--format=\'%(refname:short)\' refs/heads/ foreach (\$branch in \$branches) { \$upstreamRef = git rev-parse \--verify \"refs/remotes/upstream/\$branch\" 2\>\$null if (\$upstreamRef) { git update-ref \"refs/heads/\$branch\" \$upstreamRef } } \# Update server info for dumb HTTP clients git update-server-info \$timestamp = Get-Date -Format \'yyyy-MM-dd HH:mm:ss\' Write-Host \"UIAO mirror synced from GitHub at \$timestamp\" -ForegroundColor Green } catch { Write-Error \"Sync failed: \$\_\" } finally { Pop-Location } }
+
+7\. Phase 4: Configure IIS Application Pool
+
+Create a dedicated application pool for the UIAO Git server. The pool runs with *No Managed Code* because git-http-backend.exe is a native CGI binary, not a .NET application.
+
+\# Phase 4 --- Create UIAO Git Application Pool Import-Module WebAdministration \$appPoolName = \'UIAOGitPool\' \# Create application pool (idempotent) if (-not (Test-Path \"IIS:\\AppPools\\\$appPoolName\")) { New-WebAppPool -Name \$appPoolName Write-Host \"Application pool \'\$appPoolName\' created\" -ForegroundColor Green } else { Write-Host \"Application pool \'\$appPoolName\' already exists\" -ForegroundColor Yellow } \# Configure --- No Managed Code, 64-bit Set-ItemProperty \"IIS:\\AppPools\\\$appPoolName\" -Name managedRuntimeVersion -Value \'\' Set-ItemProperty \"IIS:\\AppPools\\\$appPoolName\" -Name enable32BitAppOnWin64 -Value \$false \# Lab: LocalSystem identity (simplest for testing) Set-ItemProperty \"IIS:\\AppPools\\\$appPoolName\" -Name processModel.identityType -Value 0 \# Disable idle timeout (prevent pool recycle during large UIAO clones) Set-ItemProperty \"IIS:\\AppPools\\\$appPoolName\" -Name processModel.idleTimeout -Value \'00:00:00\' \# Set start mode to AlwaysRunning (avoid cold-start latency) Set-ItemProperty \"IIS:\\AppPools\\\$appPoolName\" -Name startMode -Value \'AlwaysRunning\' \# Production: Use a dedicated service account instead of LocalSystem \# Set-ItemProperty \"IIS:\\AppPools\\\$appPoolName\" -Name processModel.identityType -Value 3 \# Set-ItemProperty \"IIS:\\AppPools\\\$appPoolName\" -Name processModel.userName -Value \'DOMAIN\\svc-uiao-git\' \# Set-ItemProperty \"IIS:\\AppPools\\\$appPoolName\" -Name processModel.password -Value \'USE_MANAGED_SERVICE_ACCOUNT\'
+
+7.1 Application Pool Configuration Reference
+
+  ----------------------------------------------------------------------------------------------------------------------------------
+  **Setting**             **Lab Value**       **Production Value**   **Rationale**
+  ----------------------- ------------------- ---------------------- ---------------------------------------------------------------
+  Managed Runtime         No Managed Code     No Managed Code        git-http-backend.exe is native CGI, not .NET
+
+  Enable 32-Bit           False               False                  Git for Windows is 64-bit
+
+  Identity                LocalSystem         DOMAIN\\svc-uiao-git   Least-privilege in production; LocalSystem acceptable for lab
+
+  Idle Timeout            0 (disabled)        20 min                 Prevent pool recycle during large pushes (UIAO is 350 MB+)
+
+  Start Mode              AlwaysRunning       AlwaysRunning          Avoid cold-start latency on first clone request
+
+  Rapid-Fail Protection   Enabled (default)   Enabled                Restart pool after 5 failures in 5 minutes
+  ----------------------------------------------------------------------------------------------------------------------------------
+
+8\. Phase 5: Create IIS Site and Virtual Directory
+
+Create the IIS site bound to HTTPS port 443, pointing to a lightweight web root directory, with the UIAO bare repository accessible via the URL path /uiao.git/.
+
+\# Phase 5 --- Create UIAO Git IIS Site \$siteName = \'UIAOGitServer\' \$webRoot = \'D:\\GitWeb\' \$repoPath = \'D:\\GitRepos\' \# Create web root directory New-Item -Path \$webRoot -ItemType Directory -Force \| Out-Null \# Remove Default Web Site if present (recommended) if (Get-Website -Name \'Default Web Site\' -ErrorAction SilentlyContinue) { Remove-Website -Name \'Default Web Site\' Write-Host \"Default Web Site removed\" -ForegroundColor Yellow } \# Create IIS site with HTTPS binding (idempotent) if (-not (Get-Website -Name \$siteName -ErrorAction SilentlyContinue)) { New-Website -Name \$siteName \` -PhysicalPath \$webRoot \` -ApplicationPool \'UIAOGitPool\' \` -Port 443 \` -Ssl \` -Force Write-Host \"IIS site \'\$siteName\' created\" -ForegroundColor Green } else { Write-Host \"IIS site \'\$siteName\' already exists\" -ForegroundColor Yellow } \# Create virtual directory pointing to Git repos root New-WebVirtualDirectory -Site \$siteName \` -Name \'uiao.git\' \` -PhysicalPath \"\$repoPath\\uiao.git\" \` -Force \# Enable double escaping (required for Git paths with encoded characters) Set-WebConfigurationProperty -PSPath \"IIS:\\Sites\\\$siteName\" \` -Filter \'system.webServer/security/requestFiltering\' \` -Name allowDoubleEscaping -Value \$true \# Set maximum allowed content length for large pushes (500 MB) Set-WebConfigurationProperty -PSPath \"IIS:\\Sites\\\$siteName\" \` -Filter \'system.webServer/security/requestFiltering/requestLimits\' \` -Name maxAllowedContentLength -Value 524288000 \# Disable directory browsing Set-WebConfigurationProperty -PSPath \"IIS:\\Sites\\\$siteName\" \` -Filter \'system.webServer/directoryBrowse\' \` -Name enabled -Value \$false Write-Host \"Site configuration complete\" -ForegroundColor Green
+
+9\. Phase 6: Configure CGI Handler Mapping
+
+This is the critical phase --- mapping git-http-backend.exe as the CGI handler for all Git Smart HTTP requests. This handler is what transforms IIS from a static web server into a fully functional Git server.
+
+9.1 Unlock Handler Section and Register CGI Restriction
+
+\# Unlock handlers section (required for site-level handler configuration) & \"\$env:windir\\system32\\inetsrv\\appcmd.exe\" unlock config \` -section:system.webServer/handlers \# Register CGI restriction for git-http-backend.exe \# This tells IIS that git-http-backend.exe is an approved CGI binary & \"\$env:windir\\system32\\inetsrv\\appcmd.exe\" set config \` /section:isapiCgiRestriction \` /+\"\[path=\'C:\\Program Files\\Git\\mingw64\\libexec\\git-core\\git-http-backend.exe\',allowed=\'True\',description=\'Git Smart HTTP Backend\'\]\" \# Verify CGI restriction & \"\$env:windir\\system32\\inetsrv\\appcmd.exe\" list config \` /section:isapiCgiRestriction
+
+9.2 Web.config for CGI Handler
+
+Create the web.config file in the site\'s web root (D:\\GitWeb) with the CGI handler mapping:
+
+\# Write web.config to web root \$webConfig = @\' \<?xml version=\"1.0\" encoding=\"UTF-8\"?\> \<configuration\> \<system.webServer\> \<handlers\> \<add name=\"GitSmartHttp\" path=\"\*.exe\" verb=\"\*\" modules=\"CgiModule\" scriptProcessor=\"C:\\Program Files\\Git\\mingw64\\libexec\\git-core\\git-http-backend.exe\" resourceType=\"Unspecified\" requireAccess=\"Execute\" /\> \</handlers\> \<security\> \<requestFiltering allowDoubleEscaping=\"true\"\> \<requestLimits maxAllowedContentLength=\"524288000\" /\> \</requestFiltering\> \</security\> \</system.webServer\> \</configuration\> \'@ Set-Content -Path \'D:\\GitWeb\\web.config\' -Value \$webConfig -Encoding UTF8 Write-Host \"web.config written to D:\\GitWeb\\\" -ForegroundColor Green
+
+10\. Phase 7: URL Rewrite Rules for UIAO
+
+Configure UIAO-specific URL rewrite rules that set GIT_PROJECT_ROOT to D:\\GitRepos and route all /uiao.git/\* requests to git-http-backend.exe. These server variables are required by the Git Smart HTTP protocol.
+
+10.1 Register Server Variables
+
+\# Register server variables for URL Rewrite (idempotent) \$serverVars = @(\'GIT_PROJECT_ROOT\', \'GIT_HTTP_EXPORT_ALL\') foreach (\$var in \$serverVars) { try { & \"\$env:windir\\system32\\inetsrv\\appcmd.exe\" set config \` /section:rewrite/allowedServerVariables \` /+\"\[name=\'\$var\'\]\" /commit:apphost Write-Host \"Registered server variable: \$var\" -ForegroundColor Green } catch { Write-Host \"Server variable \'\$var\' may already be registered\" -ForegroundColor Yellow } }
+
+10.2 Rewrite Rules in web.config
+
+Add the URL rewrite rules targeting the UIAO repository. These rules intercept Git protocol requests and set the required environment variables before forwarding to git-http-backend.exe:
+
+\# Updated web.config with rewrite rules \$webConfigFull = @\' \<?xml version=\"1.0\" encoding=\"UTF-8\"?\> \<configuration\> \<system.webServer\> \<handlers\> \<add name=\"GitSmartHttp\" path=\"\*.exe\" verb=\"\*\" modules=\"CgiModule\" scriptProcessor=\"C:\\Program Files\\Git\\mingw64\\libexec\\git-core\\git-http-backend.exe\" resourceType=\"Unspecified\" requireAccess=\"Execute\" /\> \</handlers\> \<rewrite\> \<rules\> \<rule name=\"UIAO Git Smart HTTP\" stopProcessing=\"true\"\> \<match url=\"\^uiao\\.git/(HEAD\|info/refs\|objects/.\*\|git-(upload\|receive)-pack)\$\" /\> \<serverVariables\> \<set name=\"GIT_PROJECT_ROOT\" value=\"D:\\GitRepos\" /\> \<set name=\"GIT_HTTP_EXPORT_ALL\" value=\"1\" /\> \</serverVariables\> \<action type=\"Rewrite\" url=\"git-http-backend.exe/{R:0}\" /\> \</rule\> \</rules\> \</rewrite\> \<security\> \<requestFiltering allowDoubleEscaping=\"true\"\> \<requestLimits maxAllowedContentLength=\"524288000\" /\> \</requestFiltering\> \</security\> \</system.webServer\> \</configuration\> \'@ Set-Content -Path \'D:\\GitWeb\\web.config\' -Value \$webConfigFull -Encoding UTF8 Write-Host \"web.config updated with URL Rewrite rules\" -ForegroundColor Green
+
+10.3 No-Rewrite Fallback for Server 2025
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Server 2025 Fallback**                                                                                                                                                                         |
+|                                                                                                                                                                                                  |
+| If URL Rewrite causes persistent HTTP 500 errors on Windows Server 2025 (a known issue with certain cumulative update levels), use the following environment variable fallback approach instead: |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+\# Fallback: Set environment variables at system level if URL Rewrite fails \[Environment\]::SetEnvironmentVariable(\'GIT_PROJECT_ROOT\', \'D:\\GitRepos\', \'Machine\') \[Environment\]::SetEnvironmentVariable(\'GIT_HTTP_EXPORT_ALL\', \'1\', \'Machine\') \# Then use a simpler web.config without rewrite rules: \$webConfigFallback = @\' \<?xml version=\"1.0\" encoding=\"UTF-8\"?\> \<configuration\> \<system.webServer\> \<handlers\> \<add name=\"GitSmartHttp\" path=\"\*\" verb=\"\*\" modules=\"CgiModule\" scriptProcessor=\"C:\\Program Files\\Git\\mingw64\\libexec\\git-core\\git-http-backend.exe\" resourceType=\"Unspecified\" requireAccess=\"Execute\" /\> \</handlers\> \<security\> \<requestFiltering allowDoubleEscaping=\"true\"\> \<requestLimits maxAllowedContentLength=\"524288000\" /\> \</requestFiltering\> \</security\> \</system.webServer\> \</configuration\> \'@ \# Write to the virtual directory\'s physical path instead of web root Set-Content -Path \'D:\\GitRepos\\uiao.git\\web.config\' -Value \$webConfigFallback -Encoding UTF8 \# Restart IIS to pick up environment variable changes iisreset /restart
+
+11\. Phase 8: MIME Types for Git Pack Files
+
+Register the MIME types required for Git Smart HTTP protocol. Without these, IIS will reject requests for pack files and index files with HTTP 404 errors.
+
+  ------------------------------------------------------------------------------------------------------------------------------
+  **Extension**   **MIME Type**                          **Purpose**
+  --------------- -------------------------------------- -----------------------------------------------------------------------
+  .pack           application/x-git-packed-objects       Git packfile transfer --- contains compressed object data
+
+  .idx            application/x-git-packed-objects-toc   Pack index files --- enables efficient object lookup within packfiles
+
+  .objects        application/x-git-loose-object         Loose object transfer --- individual Git objects not yet packed
+  ------------------------------------------------------------------------------------------------------------------------------
+
+\# Phase 8 --- Register Git MIME types (idempotent) Import-Module WebAdministration \$mimeTypes = @( \@{ Extension = \'.pack\'; MimeType = \'application/x-git-packed-objects\' }, \@{ Extension = \'.idx\'; MimeType = \'application/x-git-packed-objects-toc\' }, \@{ Extension = \'.objects\'; MimeType = \'application/x-git-loose-object\' } ) foreach (\$mime in \$mimeTypes) { \$existing = Get-WebConfigurationProperty -PSPath \'MACHINE/WEBROOT/APPHOST\' \` -Filter \"system.webServer/staticContent/mimeMap\[@fileExtension=\'\$(\$mime.Extension)\'\]\" \` -Name fileExtension -ErrorAction SilentlyContinue if (-not \$existing) { Add-WebConfigurationProperty -PSPath \'MACHINE/WEBROOT/APPHOST\' \` -Filter \'system.webServer/staticContent\' \` -Name \'.\' \` -Value \@{ fileExtension = \$mime.Extension mimeType = \$mime.MimeType } Write-Host \"Registered MIME type: \$(\$mime.Extension) -\> \$(\$mime.MimeType)\" -ForegroundColor Green } else { Write-Host \"MIME type already registered: \$(\$mime.Extension)\" -ForegroundColor Yellow } }
+
+12\. Phase 9: Authentication and Authorization
+
+Configure Windows Integrated Authentication (Kerberos/NTLM) for the UIAO Git site with role-based authorization rules mapped to Active Directory or Entra ID security groups.
+
+12.1 Role-Based Access Control
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Role**              **Access Level**                               **IIS Authorization Rule**      **Notes**
+  --------------------- ---------------------------------------------- ------------------------------- ---------------------------------------------------------------------------
+  UIAO\\CanonStewards   Read + Write (push to all branches)            Allow, Verbs: GET, POST, HEAD   Full governance authority --- can push to main and canon/\* branches
+
+  UIAO\\Contributors    Read + Write (push to feature branches only)   Allow, Verbs: GET, POST, HEAD   Push restricted to feature/\*, bugfix/\*, hotfix/\* branches by Git hooks
+
+  UIAO\\Readers         Read-only (clone/fetch)                        Allow, Verbs: GET, HEAD         Can clone and fetch but cannot push
+
+  Anonymous             Denied                                         Deny all                        No unauthenticated access permitted
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+\# Phase 9 --- Configure Authentication and Authorization \$siteName = \'UIAOGitServer\' \# Disable Anonymous Authentication Set-WebConfigurationProperty -PSPath \"IIS:\\Sites\\\$siteName\" \` -Filter \'system.webServer/security/authentication/anonymousAuthentication\' \` -Name enabled -Value \$false \# Enable Windows Authentication (Kerberos + NTLM) Set-WebConfigurationProperty -PSPath \"IIS:\\Sites\\\$siteName\" \` -Filter \'system.webServer/security/authentication/windowsAuthentication\' \` -Name enabled -Value \$true \# Disable Basic Authentication by default (enable only if non-Windows clients needed) Set-WebConfigurationProperty -PSPath \"IIS:\\Sites\\\$siteName\" \` -Filter \'system.webServer/security/authentication/basicAuthentication\' \` -Name enabled -Value \$false \# Configure authorization rules \# Remove default \"Allow All\" rule Remove-WebConfigurationProperty -PSPath \"IIS:\\Sites\\\$siteName\" \` -Filter \'system.webServer/security/authorization\' \` -Name \'.\' \` -AtElement \@{ accessType = \'Allow\'; users = \'\*\' } \` -ErrorAction SilentlyContinue \# Add role-based rules Add-WebConfigurationProperty -PSPath \"IIS:\\Sites\\\$siteName\" \` -Filter \'system.webServer/security/authorization\' \` -Name \'.\' \` -Value \@{ accessType = \'Allow\'; roles = \'UIAO\\CanonStewards\'; verbs = \'GET,POST,HEAD\' } Add-WebConfigurationProperty -PSPath \"IIS:\\Sites\\\$siteName\" \` -Filter \'system.webServer/security/authorization\' \` -Name \'.\' \` -Value \@{ accessType = \'Allow\'; roles = \'UIAO\\Contributors\'; verbs = \'GET,POST,HEAD\' } Add-WebConfigurationProperty -PSPath \"IIS:\\Sites\\\$siteName\" \` -Filter \'system.webServer/security/authorization\' \` -Name \'.\' \` -Value \@{ accessType = \'Allow\'; roles = \'UIAO\\Readers\'; verbs = \'GET,HEAD\' } \# Deny all others Add-WebConfigurationProperty -PSPath \"IIS:\\Sites\\\$siteName\" \` -Filter \'system.webServer/security/authorization\' \` -Name \'.\' \` -Value \@{ accessType = \'Deny\'; users = \'\*\' } Write-Host \"Authentication and authorization configured\" -ForegroundColor Green
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **HTTPS-Only Warning for Basic Auth**                                                                                                                                                                                                                                                                   |
+|                                                                                                                                                                                                                                                                                                         |
+| If you must enable Basic Authentication for non-Windows Git clients, **never** enable it without HTTPS. Basic Auth transmits credentials in Base64 (trivially decoded). Only enable Basic Auth after completing Phase 10 (HTTPS/TLS configuration) and verifying that HTTP-to-HTTPS redirect is active. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+12.2 Client-Side Credential Configuration
+
+\# On developer workstation (C:\\Users\\whale\\git\\uiao) \# Configure Git Credential Manager for Windows Integrated Auth git config \--global credential.helper manager \# Add the IIS server as a remote git remote add iis https://git.uiao.local/uiao.git \# For Windows Integrated Auth, credentials are passed automatically \# For Basic Auth environments, Git Credential Manager will prompt once and cache
+
+13\. Phase 10: HTTPS and TLS Configuration
+
+Configure TLS for the UIAO Git server. Two paths are provided: self-signed certificates for lab/development environments, and CA-signed certificates for production deployments.
+
+13.1 Lab --- Self-Signed Certificate
+
+\# Lab --- Generate self-signed certificate for git.uiao.local \$cert = New-SelfSignedCertificate \` -DnsName \'git.uiao.local\', \'localhost\' \` -CertStoreLocation \'Cert:\\LocalMachine\\My\' \` -NotAfter (Get-Date).AddYears(2) \` -FriendlyName \'UIAO Git Server (Lab)\' \` -KeyAlgorithm RSA \` -KeyLength 2048 \` -HashAlgorithm SHA256 Write-Host \"Certificate created: \$(\$cert.Thumbprint)\" -ForegroundColor Green \# Bind certificate to IIS site \$siteName = \'UIAOGitServer\' \# Remove existing HTTPS binding if present Get-WebBinding -Name \$siteName -Protocol https -ErrorAction SilentlyContinue \| Remove-WebBinding -ErrorAction SilentlyContinue \# Create new HTTPS binding with certificate New-WebBinding -Name \$siteName -Protocol https -Port 443 -HostHeader \'git.uiao.local\' \$binding = Get-WebBinding -Name \$siteName -Protocol https \$binding.AddSslCertificate(\$cert.Thumbprint, \'My\') Write-Host \"HTTPS binding configured for \$siteName\" -ForegroundColor Green
+
+13.2 Production --- CA-Signed Certificate
+
+\# Production --- Import CA-signed certificate from PFX \# \$pfxPath = \'C:\\certs\\git-uiao-prod.pfx\' \# \$pfxPassword = Read-Host -AsSecureString -Prompt \'PFX password\' \# \$prodCert = Import-PfxCertificate \` \# -FilePath \$pfxPath \` \# -CertStoreLocation \'Cert:\\LocalMachine\\My\' \` \# -Password \$pfxPassword \# \# \$binding = Get-WebBinding -Name \'UIAOGitServer\' -Protocol https \# \$binding.AddSslCertificate(\$prodCert.Thumbprint, \'My\')
+
+13.3 HTTP-to-HTTPS Redirect
+
+\# Add HTTP binding for redirect purposes only New-WebBinding -Name \'UIAOGitServer\' -Protocol http -Port 80 \# Add redirect rule to web.config (prepend to existing rewrite rules) \# This ensures all Git traffic is encrypted in transit \$redirectRule = @\' \<rule name=\"HTTP to HTTPS Redirect\" stopProcessing=\"true\"\> \<match url=\"(.\*)\" /\> \<conditions\> \<add input=\"{HTTPS}\" pattern=\"off\" ignoreCase=\"true\" /\> \</conditions\> \<action type=\"Redirect\" url=\"https://{HTTP_HOST}/{R:1}\" redirectType=\"Permanent\" /\> \</rule\> \'@ Write-Host \"HTTP-to-HTTPS redirect configured\" -ForegroundColor Green
+
+13.4 Client-Side Certificate Trust
+
+\# On the server --- export the lab certificate for distribution Export-Certificate -Cert \$cert -FilePath \'C:\\temp\\uiao-git-lab.cer\' \# On developer workstation --- import into Trusted Root CA store \# Import-Certificate -FilePath \'\\\\server\\share\\uiao-git-lab.cer\' \` \# -CertStoreLocation \'Cert:\\LocalMachine\\Root\' \# Alternative: Tell Git to skip TLS verification (lab only, NEVER production) \# git config \--global http.https://git.uiao.local.sslVerify false
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Production Security**                                                                                                                                                                                                 |
+|                                                                                                                                                                                                                         |
+| Never disable SSL verification (sslVerify false) in production. This exposes Git traffic to man-in-the-middle attacks. Always use a CA-signed certificate trusted by all client workstations in production deployments. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+14\. Phase 11: NTFS Permissions
+
+Set UIAO-specific NTFS permissions on the bare repository directory. These filesystem-level permissions work in conjunction with the IIS authorization rules (Phase 9) and the server-side Git hooks (Phase 12) to enforce defense-in-depth access control.
+
+\# Phase 11 --- Set NTFS permissions for UIAO bare repository \$uiaoBare = \'D:\\GitRepos\\uiao.git\' \# Remove inherited permissions first (start clean) icacls \$uiaoBare /inheritance:r /T /C /Q \# SYSTEM --- Full Control (required for IIS and scheduled tasks) icacls \$uiaoBare /grant \"SYSTEM:(OI)(CI)F\" /T /C /Q \# Administrators --- Full Control (required for management) icacls \$uiaoBare /grant \"BUILTIN\\Administrators:(OI)(CI)F\" /T /C /Q \# IIS Application Pool identity --- Modify (read + write for push operations) icacls \$uiaoBare /grant \"IIS AppPool\\UIAOGitPool:(OI)(CI)M\" /T /C /Q \# Canon Stewards group --- Modify (full push access) icacls \$uiaoBare /grant \"UIAO\\CanonStewards:(OI)(CI)M\" /T /C /Q \# Contributors --- Read + Execute (clone/fetch at filesystem level; push gated by hooks) icacls \$uiaoBare /grant \"UIAO\\Contributors:(OI)(CI)RX\" /T /C /Q \# Readers --- Read only icacls \$uiaoBare /grant \"UIAO\\Readers:(OI)(CI)R\" /T /C /Q Write-Host \"NTFS permissions configured for \$uiaoBare\" -ForegroundColor Green \# Verify permissions icacls \$uiaoBare
+
+14.1 Permissions Matrix
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Principal**              **NTFS Permission**   **Inheritance**                         **Purpose**
+  -------------------------- --------------------- --------------------------------------- -------------------------------------------------------------------
+  SYSTEM                     Full Control (F)      (OI)(CI) --- All subfolders and files   Required for IIS worker process and scheduled tasks
+
+  BUILTIN\\Administrators    Full Control (F)      (OI)(CI) --- All subfolders and files   Server administration and emergency access
+
+  IIS AppPool\\UIAOGitPool   Modify (M)            (OI)(CI) --- All subfolders and files   IIS worker process needs write access for push (git-receive-pack)
+
+  UIAO\\CanonStewards        Modify (M)            (OI)(CI) --- All subfolders and files   Canon governance --- full read/write to all repository files
+
+  UIAO\\Contributors         Read & Execute (RX)   (OI)(CI) --- All subfolders and files   Clone and fetch access; push gated by server-side hooks
+
+  UIAO\\Readers              Read (R)              (OI)(CI) --- All subfolders and files   Read-only clone and fetch access
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+15\. Phase 12: UIAO Server-Side Git Hooks
+
+This is the core UIAO governance enforcement section. Server-side Git hooks execute automatically on every push to the IIS-hosted mirror, validating Canon rules before changes are accepted into the repository. Three hooks are deployed: pre-receive, update, and post-receive.
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Hook Execution Order**                                                                                                                                                                                                                                                     |
+|                                                                                                                                                                                                                                                                              |
+| Git executes hooks in this order: **pre-receive** (once per push, all refs) → **update** (once per ref being updated) → **post-receive** (once per push, after all refs updated). If pre-receive or update exits non-zero, the push is rejected and post-receive never runs. |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+15.1 Pre-Receive Hook --- Canon Governance Enforcement
+
+The pre-receive hook validates every push against UIAO Canon rules:
+
+1.  Rejects pushes containing FOUO markings (scans for \"FOUO\" and \"For Official Use Only\")
+
+2.  Validates that files in canon/ have YAML frontmatter with required fields: document_id (UIAO_NNN pattern), title, version, status, classification, owner, created_at, updated_at, boundary (must be \"GCC-Moderate\")
+
+3.  Validates that canon/ files follow the naming convention UIAO_NNN_Short_Title_vMajor.Minor.md
+
+4.  Rejects pushes to main from anyone not in the CanonStewards group
+
+\# Create pre-receive hook \$preReceiveHook = @\' #!/usr/bin/env pwsh \# ============================================================ \# UIAO Pre-Receive Hook --- Governance Enforcement \# Location: D:\\GitRepos\\uiao.git\\hooks\\pre-receive \# Purpose: Validates Canon rules on every push \# ============================================================ \$ErrorActionPreference = \'Stop\' \$rejected = \$false \$reasons = @() while (\$line = \[Console\]::ReadLine()) { if (\[string\]::IsNullOrWhiteSpace(\$line)) { continue } \$parts = \$line -split \' \' \$oldRev = \$parts\[0\] \$newRev = \$parts\[1\] \$refName = \$parts\[2\] \# Skip delete operations if (\$newRev -eq \'0000000000000000000000000000000000000000\') { continue } \# Determine if this is a new branch (oldRev is all zeros) \$isNewBranch = (\$oldRev -eq \'0000000000000000000000000000000000000000\') \$diffBase = if (\$isNewBranch) { \'\--root\' } else { \$oldRev } \# ── Rule 1: Only CanonStewards can push to main ── if (\$refName -eq \'refs/heads/main\') { \$user = \$env:REMOTE_USER if (\$user) { \# Query AD group membership (adapt to your AD/Entra lookup) \$isSteward = \$false try { \$groups = (\[System.Security.Principal.WindowsIdentity\]::new(\$user)).Groups \| ForEach-Object { \$\_.Translate(\[System.Security.Principal.NTAccount\]).Value } \$isSteward = \$groups -contains \'UIAO\\CanonStewards\' } catch { \# If group lookup fails, reject as precaution \$isSteward = \$false } if (-not \$isSteward) { \$reasons += \"REJECTED: User \'\$user\' is not a member of UIAO\\CanonStewards --- cannot push to main\" \$rejected = \$true } } } \# Get list of changed files \$changedFiles = if (\$isNewBranch) { git diff-tree \--no-commit-id \--name-only -r \$newRev } else { git diff \--name-only \$oldRev \$newRev } \# ── Rule 2: No FOUO markings in any file ── foreach (\$file in \$changedFiles) { \$content = git show \"\${newRev}:\${file}\" 2\>\$null if (\$content -match \'FOUO\|For Official Use Only\') { \$reasons += \"REJECTED: \'\$file\' contains FOUO markings. Use \'Controlled\' per UIAO Canon.\" \$rejected = \$true } } \# ── Rule 3: Canon file metadata validation ── \$canonFiles = \$changedFiles \| Where-Object { \$\_ -match \'\^canon/\' -and \$\_ -match \'\\.md\$\' } foreach (\$file in \$canonFiles) { \$content = git show \"\${newRev}:\${file}\" 2\>\$null if (-not \$content) { continue } \# Check required YAML frontmatter fields \$requiredFields = @( \@{ Name = \'document_id\'; Pattern = \'document_id:\\s\*UIAO\_\\d{3}\' }, \@{ Name = \'title\'; Pattern = \'title:\\s\*.+\' }, \@{ Name = \'version\'; Pattern = \'version:\\s\*\\d+\\.\\d+\' }, \@{ Name = \'status\'; Pattern = \'status:\\s\*.+\' }, \@{ Name = \'classification\'; Pattern = \'classification:\\s\*.+\' }, \@{ Name = \'owner\'; Pattern = \'owner:\\s\*.+\' }, \@{ Name = \'created_at\'; Pattern = \'created_at:\\s\*.+\' }, \@{ Name = \'updated_at\'; Pattern = \'updated_at:\\s\*.+\' }, \@{ Name = \'boundary\'; Pattern = \'boundary:\\s\*GCC-Moderate\' } ) foreach (\$field in \$requiredFields) { if (\$content -notmatch \$field.Pattern) { \$reasons += \"REJECTED: \'\$file\' --- missing or invalid \'\$(\$field.Name)\' in YAML frontmatter\" \$rejected = \$true } } \# ── Rule 4: Canon file naming convention ── \$fileName = Split-Path \$file -Leaf if (\$fileName -notmatch \'\^UIAO\_\\d{3}\_\[\\w\]+\_v\\d+\\.\\d+\\.md\$\') { \$reasons += \"REJECTED: \'\$file\' --- filename must match UIAO_NNN_Short_Title_vMajor.Minor.md\" \$rejected = \$true } } } \# Output results if (\$rejected) { Write-Host \"\" Write-Host \"========================================\" -ForegroundColor Red Write-Host \" UIAO GOVERNANCE --- PUSH REJECTED\" -ForegroundColor Red Write-Host \"========================================\" -ForegroundColor Red foreach (\$reason in \$reasons) { Write-Host \" \$reason\" -ForegroundColor Red } Write-Host \"\" exit 1 } exit 0 \'@ \$hookPath = \'D:\\GitRepos\\uiao.git\\hooks\\pre-receive\' Set-Content -Path \$hookPath -Value \$preReceiveHook -Encoding UTF8 Write-Host \"Pre-receive hook written to: \$hookPath\" -ForegroundColor Green
+
+15.2 Update Hook --- Branch Naming and Protection
+
+The update hook enforces branch naming conventions and protects the main branch:
+
+\# Create update hook \$updateHook = @\' #!/usr/bin/env pwsh \# ============================================================ \# UIAO Update Hook --- Branch Naming and Protection \# Location: D:\\GitRepos\\uiao.git\\hooks\\update \# Arguments: \$args\[0\]=refname, \$args\[1\]=oldrev, \$args\[2\]=newrev \# ============================================================ \$refName = \$args\[0\] \$oldRev = \$args\[1\] \$newRev = \$args\[2\] \# Only enforce on branch refs (not tags) if (\$refName -notlike \'refs/heads/\*\') { exit 0 } \$branchName = \$refName -replace \'\^refs/heads/\', \'\' \# ── Rule 1: Enforce branch naming conventions ── \$allowedPatterns = @( \'\^main\$\', \'\^develop\$\', \'\^feature/.+\', \'\^bugfix/.+\', \'\^hotfix/.+\', \'\^canon/.+\', \'\^release/.+\' ) \$isValidName = \$false foreach (\$pattern in \$allowedPatterns) { if (\$branchName -match \$pattern) { \$isValidName = \$true break } } if (-not \$isValidName) { Write-Host \"REJECTED: Branch name \'\$branchName\' does not match allowed patterns:\" -ForegroundColor Red Write-Host \" Allowed: main, develop, feature/\*, bugfix/\*, hotfix/\*, canon/\*, release/\*\" -ForegroundColor Red exit 1 } \# ── Rule 2: Protect main branch (redundant with pre-receive, defense-in-depth) ── if (\$branchName -eq \'main\') { \$user = \$env:REMOTE_USER if (\$user) { try { \$groups = (\[System.Security.Principal.WindowsIdentity\]::new(\$user)).Groups \| ForEach-Object { \$\_.Translate(\[System.Security.Principal.NTAccount\]).Value } if (\$groups -notcontains \'UIAO\\CanonStewards\') { Write-Host \"REJECTED: Only CanonStewards can push to main (user: \$user)\" -ForegroundColor Red exit 1 } } catch { Write-Host \"REJECTED: Cannot verify CanonStewards membership for \'\$user\'\" -ForegroundColor Red exit 1 } } } exit 0 \'@ \$updateHookPath = \'D:\\GitRepos\\uiao.git\\hooks\\update\' Set-Content -Path \$updateHookPath -Value \$updateHook -Encoding UTF8 Write-Host \"Update hook written to: \$updateHookPath\" -ForegroundColor Green
+
+15.3 Post-Receive Hook --- Logging and Webhooks
+
+The post-receive hook runs after a successful push. It logs the push event, updates server info, and optionally triggers the UIAO CI/CD pipeline.
+
+\# Create post-receive hook \$postReceiveHook = @\' #!/usr/bin/env pwsh \# ============================================================ \# UIAO Post-Receive Hook --- Logging and Webhook Notification \# Location: D:\\GitRepos\\uiao.git\\hooks\\post-receive \# ============================================================ \$logDir = \'D:\\GitRepos\\logs\' \$logFile = Join-Path \$logDir \'uiao-push.log\' \# Ensure log directory exists if (-not (Test-Path \$logDir)) { New-Item -Path \$logDir -ItemType Directory -Force \| Out-Null } \$timestamp = Get-Date -Format \'yyyy-MM-dd HH:mm:ss\' \$user = \$env:REMOTE_USER if (-not \$user) { \$user = \'unknown\' } while (\$line = \[Console\]::ReadLine()) { if (\[string\]::IsNullOrWhiteSpace(\$line)) { continue } \$parts = \$line -split \' \' \$oldRev = \$parts\[0\] \$newRev = \$parts\[1\] \$refName = \$parts\[2\] \# ── Log the push event ── \$logEntry = \"\$timestamp \| User: \$user \| Ref: \$refName \| \$(\$oldRev.Substring(0,8))..\$(\$newRev.Substring(0,8))\" Add-Content -Path \$logFile -Value \$logEntry \# ── Trigger CI/CD webhook for pushes to main ── if (\$refName -eq \'refs/heads/main\' -and \$env:GITHUB_TOKEN) { try { \$webhookUrl = \'https://api.github.com/repos/WhalerMike/uiao/dispatches\' \$headers = \@{ \'Authorization\' = \"Bearer \$env:GITHUB_TOKEN\" \'Accept\' = \'application/vnd.github.v3+json\' } \$body = \@{ event_type = \'iis-mirror-push\' client_payload = \@{ ref = \$refName pusher = \$user timestamp = (Get-Date -Format \'o\') } } \| ConvertTo-Json Invoke-RestMethod -Uri \$webhookUrl \` -Method Post \` -Headers \$headers \` -Body \$body \` -ContentType \'application/json\' \` -ErrorAction SilentlyContinue } catch { \# Webhook failure should not block the push Add-Content -Path \$logFile -Value \"\$timestamp \| WARN: Webhook dispatch failed: \$\_\" } } } \# ── Update server info for dumb HTTP clients ── git update-server-info \'@ \$postReceiveHookPath = \'D:\\GitRepos\\uiao.git\\hooks\\post-receive\' Set-Content -Path \$postReceiveHookPath -Value \$postReceiveHook -Encoding UTF8 Write-Host \"Post-receive hook written to: \$postReceiveHookPath\" -ForegroundColor Green
+
+16\. Testing and Validation
+
+Execute the following end-to-end test sequence to validate the UIAO Git server deployment. Each test builds on the previous one --- run them in order.
+
+\# ────────────────────────────────────────────── \# Test 1 --- Clone UIAO from IIS server \# ────────────────────────────────────────────── \$testDir = \"\$env:TEMP\\uiao-iis-test-\$(Get-Date -Format \'yyyyMMddHHmmss\')\" Write-Host \"Test 1: Cloning UIAO from IIS server\...\" -ForegroundColor Cyan git clone https://git.uiao.local/uiao.git \$testDir if (Test-Path (Join-Path \$testDir \'.git\')) { Write-Host \" \[PASS\] Clone successful to \$testDir\" -ForegroundColor Green } else { Write-Error \" \[FAIL\] Clone failed\" exit 1 } \# ────────────────────────────────────────────── \# Test 2 --- Verify directory structure \# ────────────────────────────────────────────── Write-Host \"\`nTest 2: Verifying UIAO directory structure\...\" -ForegroundColor Cyan \$expectedDirs = @(\'core\', \'docs\', \'gos\', \'impl\') \$allPresent = \$true foreach (\$dir in \$expectedDirs) { \$dirPath = Join-Path \$testDir \$dir if (Test-Path \$dirPath) { Write-Host \" \[PASS\] \$dir/\" -ForegroundColor Green } else { Write-Host \" \[FAIL\] \$dir/ --- NOT FOUND\" -ForegroundColor Red \$allPresent = \$false } } \# ────────────────────────────────────────────── \# Test 3 --- Verify commit count \# ────────────────────────────────────────────── Write-Host \"\`nTest 3: Verifying commit history\...\" -ForegroundColor Cyan \$commitCount = git -C \$testDir rev-list \--count HEAD Write-Host \" Commit count: \$commitCount (expected: 3550+)\" -ForegroundColor \$(if (\[int\]\$commitCount -ge 3550) { \'Green\' } else { \'Yellow\' }) \# ────────────────────────────────────────────── \# Test 4 --- Push test (feature branch) \# ────────────────────────────────────────────── Write-Host \"\`nTest 4: Testing push to feature branch\...\" -ForegroundColor Cyan Set-Location \$testDir git checkout -b feature/iis-deployment-test New-Item -Path \'test-iis-validation.txt\' -Value \"IIS deployment validation - \$(Get-Date -Format \'o\')\" -Force \| Out-Null git add test-iis-validation.txt git commit -m \'test: validate IIS push capability\' git push origin feature/iis-deployment-test if (\$LASTEXITCODE -eq 0) { Write-Host \" \[PASS\] Push to feature branch succeeded\" -ForegroundColor Green } else { Write-Host \" \[FAIL\] Push to feature branch failed\" -ForegroundColor Red } \# ────────────────────────────────────────────── \# Test 5 --- Verify FOUO rejection \# ────────────────────────────────────────────── Write-Host \"\`nTest 5: Testing FOUO rejection (expected to fail)\...\" -ForegroundColor Cyan New-Item -Path \'test-fouo.txt\' -Value \"This document is FOUO\" -Force \| Out-Null git add test-fouo.txt git commit -m \'test: FOUO marking detection\' git push origin feature/iis-deployment-test 2\>&1 if (\$LASTEXITCODE -ne 0) { Write-Host \" \[PASS\] FOUO push correctly rejected by pre-receive hook\" -ForegroundColor Green } else { Write-Host \" \[FAIL\] FOUO push was NOT rejected --- check pre-receive hook\" -ForegroundColor Red } \# ────────────────────────────────────────────── \# Test 6 --- Verify branch naming rejection \# ────────────────────────────────────────────── Write-Host \"\`nTest 6: Testing invalid branch name rejection\...\" -ForegroundColor Cyan git checkout -b invalid-branch-name New-Item -Path \'test-branch.txt\' -Value \'Branch naming test\' -Force \| Out-Null git add test-branch.txt git commit -m \'test: invalid branch name\' git push origin invalid-branch-name 2\>&1 if (\$LASTEXITCODE -ne 0) { Write-Host \" \[PASS\] Invalid branch name correctly rejected\" -ForegroundColor Green } else { Write-Host \" \[FAIL\] Invalid branch name was NOT rejected --- check update hook\" -ForegroundColor Red } \# ────────────────────────────────────────────── \# Cleanup \# ────────────────────────────────────────────── Write-Host \"\`nCleaning up test directory\...\" -ForegroundColor Cyan Set-Location \$env:USERPROFILE Remove-Item \$testDir -Recurse -Force -ErrorAction SilentlyContinue \# Clean up remote test branch git -C \'D:\\GitRepos\\uiao.git\' branch -D feature/iis-deployment-test -ErrorAction SilentlyContinue Write-Host \"\`n========================================\" -ForegroundColor Green Write-Host \" ALL TESTS COMPLETE\" -ForegroundColor Green Write-Host \"========================================\" -ForegroundColor Green
+
+16.1 Troubleshooting Reference
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Symptom**           **HTTP Code**   **Cause**                                                **Fix**
+  --------------------- --------------- -------------------------------------------------------- ---------------------------------------------------------------------------------
+  Clone fails           500             CGI module not registered                                Register CGI restriction for git-http-backend.exe via appcmd.exe
+
+  Clone fails           500             URL Rewrite Module error on Server 2025                  Apply KB5035080 or use environment variable fallback (Section 10.3)
+
+  Auth prompt loops     401             Windows Auth not enabled on site                         Enable Windows Authentication in IIS Manager or via PowerShell (Section 12)
+
+  Push rejected         403             NTFS permissions --- IIS AppPool identity lacks Modify   Grant Modify to IIS AppPool\\UIAOGitPool on D:\\GitRepos\\uiao.git
+
+  Push rejected         403             Pre-receive hook --- user not in CanonStewards           Verify AD/Entra group membership; add user to UIAO\\CanonStewards
+
+  Push rejected         N/A (hook)      FOUO marking detected by pre-receive hook                Replace \"FOUO\" / \"For Official Use Only\" with \"Controlled\" per UIAO Canon
+
+  Large push fails      413             Request entity too large                                 Increase maxAllowedContentLength in requestFiltering (currently 500 MB)
+
+  SSL error on client   N/A             Self-signed cert not trusted on client                   Import cert to client Trusted Root CA store (Section 13.4)
+
+  Slow clone            N/A             Large repo (3,550+ commits, 350 MB)                      Run git gc \--aggressive on bare repo; use \--depth=1 for CI shallow clones
+
+  Empty clone           200 (empty)     git update-server-info not run                           Run git update-server-info in bare repo; verify info/refs file exists
+
+  Hook not executing    N/A             Hook file not executable or wrong encoding               Verify UTF-8 encoding (no BOM); check core.hooksPath config
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+17\. Upstream Sync: GitHub to IIS Mirror
+
+Configure scheduled synchronization from the canonical GitHub repository to the IIS-hosted mirror. This ensures the self-hosted server stays current with upstream changes.
+
+17.1 Sync Topology
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Remote Name**           **URL**                                  **Direction**       **Frequency**          **Purpose**
+  ------------------------- ---------------------------------------- ------------------- ---------------------- ---------------------------------------------------------
+  upstream                  https://github.com/WhalerMike/uiao.git   GitHub → IIS        Every 15 minutes       Keep mirror current with canonical source
+
+  origin (on workstation)   https://git.uiao.local/uiao.git          IIS → Workstation   On demand (git pull)   Developer access with governance validation
+
+  github (on workstation)   https://github.com/WhalerMike/uiao.git   Direct              On demand              Bypass for direct GitHub pushes when IIS is unavailable
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+17.2 Scheduled Task Configuration
+
+\# Create scheduled task for GitHub to IIS sync (every 15 minutes) \$syncScript = @\' \# UIAO GitHub Sync Script --- called by Task Scheduler \$BareRepoPath = \'D:\\GitRepos\\uiao.git\' \$UpstreamUrl = \'https://github.com/WhalerMike/uiao.git\' \$logFile = \'D:\\GitRepos\\logs\\uiao-sync.log\' \$timestamp = Get-Date -Format \'yyyy-MM-dd HH:mm:ss\' Push-Location \$BareRepoPath try { \$remotes = git remote if (\$remotes -notcontains \'upstream\') { git remote add upstream \$UpstreamUrl } git fetch upstream \--prune \--tags \--force 2\>&1 \$branches = git for-each-ref \--format=\'%(refname:short)\' refs/heads/ foreach (\$branch in \$branches) { \$upstreamRef = git rev-parse \--verify \"refs/remotes/upstream/\$branch\" 2\>\$null if (\$upstreamRef) { git update-ref \"refs/heads/\$branch\" \$upstreamRef } } git update-server-info Add-Content -Path \$logFile -Value \"\$timestamp \| SYNC OK\" } catch { Add-Content -Path \$logFile -Value \"\$timestamp \| SYNC FAILED: \$\_\" } finally { Pop-Location } \'@ \# Save sync script \$syncScriptPath = \'D:\\GitRepos\\scripts\\Sync-UIAOFromGitHub.ps1\' New-Item -Path (Split-Path \$syncScriptPath) -ItemType Directory -Force \| Out-Null Set-Content -Path \$syncScriptPath -Value \$syncScript -Encoding UTF8 \# Register scheduled task \$action = New-ScheduledTaskAction \` -Execute \'powershell.exe\' \` -Argument \"-NoProfile -ExecutionPolicy Bypass -File \`\"\$syncScriptPath\`\"\" \$trigger = New-ScheduledTaskTrigger \` -RepetitionInterval (New-TimeSpan -Minutes 15) \` -Once \` -At (Get-Date) \$settings = New-ScheduledTaskSettingsSet \` -AllowStartIfOnBatteries \` -DontStopIfGoingOnBatteries \` -StartWhenAvailable \` -RunOnlyIfNetworkAvailable \` -ExecutionTimeLimit (New-TimeSpan -Minutes 10) Register-ScheduledTask \` -TaskName \'UIAO-GitHubSync\' \` -Action \$action \` -Trigger \$trigger \` -Settings \$settings \` -User \'SYSTEM\' \` -RunLevel Highest \` -Description \'Syncs UIAO bare repo from canonical GitHub source (https://github.com/WhalerMike/uiao)\' \` -Force Write-Host \"Scheduled task \'UIAO-GitHubSync\' registered (every 15 minutes)\" -ForegroundColor Green
+
+17.3 Developer Workstation Dual-Remote Setup
+
+\# On C:\\Users\\whale\\git\\uiao --- configure dual remotes \# Current state: origin -\> GitHub \# Target state: origin -\> IIS (governance-validated), github -\> GitHub (direct) cd C:\\Users\\whale\\git\\uiao \# Rename existing GitHub remote git remote rename origin github \# Add IIS server as primary remote git remote add origin https://git.uiao.local/uiao.git git fetch origin \# Verify dual-remote configuration git remote -v \# Expected output: \# origin https://git.uiao.local/uiao.git (fetch) \# origin https://git.uiao.local/uiao.git (push) \# github https://github.com/WhalerMike/uiao.git (fetch) \# github https://github.com/WhalerMike/uiao.git (push) \# Set upstream tracking for main branch git branch \--set-upstream-to=origin/main main \# Workflow: \# Push to IIS (governance-validated): git push origin feature/my-branch \# Push directly to GitHub (bypass): git push github feature/my-branch
+
+18\. Backup and Maintenance
+
+Implement automated backup and repository optimization for the UIAO bare repository. Backups use Git bundles, which are portable, verifiable, and can recreate the entire repository including all branches and tags.
+
+18.1 Nightly Backup Function
+
+function Backup-UIAORepo { \<# .SYNOPSIS Creates a verified Git bundle backup of the UIAO bare repository. .PARAMETER BareRepoPath Path to the UIAO bare repository. Default: D:\\GitRepos\\uiao.git .PARAMETER BackupRoot Directory for backup files. Default: D:\\GitBackups .PARAMETER RetentionDays Number of days to retain backups. Default: 30 #\> \[CmdletBinding()\] param( \[string\]\$BareRepoPath = \'D:\\GitRepos\\uiao.git\', \[string\]\$BackupRoot = \'D:\\GitBackups\', \[int\]\$RetentionDays = 30 ) \$timestamp = Get-Date -Format \'yyyyMMdd-HHmmss\' \$backupFile = Join-Path \$BackupRoot \"uiao-\$timestamp.bundle\" \# Create backup directory New-Item -Path \$BackupRoot -ItemType Directory -Force \| Out-Null \# Bundle the entire repository (all refs) git -C \$BareRepoPath bundle create \$backupFile \--all \# Verify bundle integrity \$verifyResult = git bundle verify \$backupFile 2\>&1 if (\$LASTEXITCODE -eq 0) { \$sizeMB = \'{0:N1} MB\' -f ((Get-Item \$backupFile).Length / 1MB) Write-Host \"UIAO backup created: \$backupFile (\$sizeMB)\" -ForegroundColor Green } else { Write-Error \"Backup verification FAILED: \$verifyResult\" } \# Clean old backups beyond retention period Get-ChildItem \$BackupRoot -Filter \'uiao-\*.bundle\' \| Where-Object { \$\_.LastWriteTime -lt (Get-Date).AddDays(-\$RetentionDays) } \| Remove-Item -Force \$remainingBackups = (Get-ChildItem \$BackupRoot -Filter \'uiao-\*.bundle\').Count Write-Host \"Backups retained: \$remainingBackups (retention: \$RetentionDays days)\" -ForegroundColor Cyan }
+
+18.2 Weekly Optimization Function
+
+function Optimize-UIAORepo { \<# .SYNOPSIS Performs aggressive garbage collection and repacking on the UIAO bare repository. .DESCRIPTION Should be run weekly during off-hours. The UIAO repo (350 MB, 3550+ commits) benefits significantly from aggressive repacking. #\> \[CmdletBinding()\] param(\[string\]\$BareRepoPath = \'D:\\GitRepos\\uiao.git\') Write-Host \"Starting UIAO repository optimization\...\" -ForegroundColor Cyan \# Aggressive garbage collection git -C \$BareRepoPath gc \--aggressive \--prune=now \# Deep repack for optimal compression git -C \$BareRepoPath repack -a -d \--depth=250 \--window=250 \# Update server info git -C \$BareRepoPath update-server-info \# Report size \$repoSize = \'{0:N1} MB\' -f ((Get-ChildItem \$BareRepoPath -Recurse \| Measure-Object -Property Length -Sum).Sum / 1MB) Write-Host \"UIAO repo optimized. Current size: \$repoSize\" -ForegroundColor Green }
+
+18.3 Scheduled Tasks for Backup and Optimization
+
+\# Save functions as scripts \$backupScriptPath = \'D:\\GitRepos\\scripts\\Backup-UIAORepo.ps1\' \$optimizeScriptPath = \'D:\\GitRepos\\scripts\\Optimize-UIAORepo.ps1\' \# Nightly backup at 02:00 \$backupAction = New-ScheduledTaskAction \` -Execute \'powershell.exe\' \` -Argument \"-NoProfile -ExecutionPolicy Bypass -File \`\"\$backupScriptPath\`\"\" \$backupTrigger = New-ScheduledTaskTrigger -Daily -At \'02:00\' Register-ScheduledTask \` -TaskName \'UIAO-NightlyBackup\' \` -Action \$backupAction \` -Trigger \$backupTrigger \` -User \'SYSTEM\' \` -RunLevel Highest \` -Description \'Nightly Git bundle backup of UIAO bare repository\' \` -Force \# Weekly optimization on Sunday at 03:00 \$optimizeAction = New-ScheduledTaskAction \` -Execute \'powershell.exe\' \` -Argument \"-NoProfile -ExecutionPolicy Bypass -File \`\"\$optimizeScriptPath\`\"\" \$optimizeTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At \'03:00\' Register-ScheduledTask \` -TaskName \'UIAO-WeeklyOptimize\' \` -Action \$optimizeAction \` -Trigger \$optimizeTrigger \` -User \'SYSTEM\' \` -RunLevel Highest \` -Description \'Weekly aggressive gc and repack of UIAO bare repository\' \` -Force Write-Host \"Scheduled tasks registered: UIAO-NightlyBackup (02:00 daily), UIAO-WeeklyOptimize (03:00 Sunday)\" -ForegroundColor Green
+
+19\. Security Hardening Checklist
+
+Complete the following security controls before marking the UIAO Git server as production-ready. Controls are ordered by priority. All \"Critical\" and \"High\" controls must be completed before any production traffic is routed to the server.
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **\#**   **Control**                                                             **Priority**      **Verification Command**                                                             **Status**
+  -------- ----------------------------------------------------------------------- ----------------- ------------------------------------------------------------------------------------ ------------
+  1        HTTPS only --- disable HTTP binding entirely                            Critical          Get-WebBinding -Name UIAOGitServer                                                   ☐
+
+  2        TLS 1.2+ only --- disable TLS 1.0, 1.1, SSL 2.0/3.0                     Critical          Get-ItemProperty \'HKLM:\\SYSTEM\\\...\\Protocols\\TLS 1.0\\Server\'                 ☐
+
+  3        Windows Integrated Auth --- disable Anonymous and Basic                 High              Get-WebConfigurationProperty -Filter \'\...anonymousAuthentication\' -Name enabled   ☐
+
+  4        Request filtering --- block .git/config, .git/hooks access via URL      High              Test with curl https://git.uiao.local/uiao.git/config                                ☐
+
+  5        IP restriction --- limit to known subnet ranges                         High              Get-WebConfigurationProperty -Filter \'\...ipSecurity\' -Name \'.\'                  ☐
+
+  6        CGI restriction --- only git-http-backend.exe allowed                   High              appcmd list config /section:isapiCgiRestriction                                      ☐
+
+  7        Remove default IIS site                                                 Medium            Get-Website -Name \'Default Web Site\'                                               ☐
+
+  8        Disable directory browsing                                              Medium            Get-WebConfigurationProperty -Filter \'\...directoryBrowse\' -Name enabled           ☐
+
+  9        Remove IIS response headers (X-Powered-By, Server)                      Medium            curl -I https://git.uiao.local/uiao.git/info/refs                                    ☐
+
+  10       Enable IIS logging to D:\\IISLogs\\UIAOGitServer                        Medium            Get-WebConfigurationProperty -Filter \'\...httpLogging\' -Name \'.\'                 ☐
+
+  11       Configure Windows Firewall --- 443 inbound only from approved ranges    High              Get-NetFirewallRule -DisplayName \'UIAO\*\'                                          ☐
+
+  12       Run git-http-backend under dedicated service account, not LocalSystem   Critical (Prod)   Get-ItemProperty \"IIS:\\AppPools\\UIAOGitPool\" -Name processModel.identityType     ☐
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++----------------------------------------------------------------------------+
+| **Hardening Script**                                                       |
+|                                                                            |
+| Apply controls #1, #2, #7, #8, and #9 with the following PowerShell block: |
++----------------------------------------------------------------------------+
+
+\# Security Hardening --- Quick Apply \# Control #7: Remove default site Remove-Website -Name \'Default Web Site\' -ErrorAction SilentlyContinue \# Control #8: Disable directory browsing Set-WebConfigurationProperty -PSPath \'IIS:\\Sites\\UIAOGitServer\' \` -Filter \'system.webServer/directoryBrowse\' -Name enabled -Value \$false \# Control #9: Remove server headers Remove-WebConfigurationProperty -PSPath \'IIS:\\Sites\\UIAOGitServer\' \` -Filter \'system.webServer/httpProtocol/customHeaders\' \` -Name \'.\' -AtElement \@{ name = \'X-Powered-By\' } -ErrorAction SilentlyContinue \# Control #11: Windows Firewall --- allow 443 from approved subnets only New-NetFirewallRule -DisplayName \'UIAO Git Server - HTTPS Inbound\' \` -Direction Inbound -Protocol TCP -LocalPort 443 \` -RemoteAddress \'10.0.0.0/8\', \'172.16.0.0/12\', \'192.168.0.0/16\' \` -Action Allow -Profile Domain Write-Host \"Security hardening controls applied\" -ForegroundColor Green
+
+20\. Quarto Pipeline Integration
+
+The UIAO docs/ directory contains 124+ .qmd (Quarto Markdown) files that form the UIAO Modernization Atlas documentation set. The IIS-hosted Git server integrates with the Quarto documentation pipeline through the post-receive hook\'s webhook dispatch.
+
+20.1 Documentation Build Workflow
+
+The following workflow is triggered when changes are pushed to main on the IIS server:
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------
+  **Step**                   **Trigger**                           **Action**                               **Output**
+  -------------------------- ------------------------------------- ---------------------------------------- ----------------------------------------
+  1\. Push to IIS            Developer runs git push origin main   Pre-receive hook validates Canon rules   Push accepted or rejected
+
+  2\. Post-receive webhook   Successful push to refs/heads/main    POST to GitHub repository_dispatch API   iis-mirror-push event dispatched
+
+  3\. GitHub Actions         repository_dispatch event received    Quarto render pipeline executes          HTML, PDF, DOCX artifacts generated
+
+  4\. Deployment             Successful render                     GitHub Pages deployment                  Published to whalermike.github.io/uiao
+  --------------------------------------------------------------------------------------------------------------------------------------------------
+
+20.2 GitHub Actions Workflow for IIS Dispatch
+
+\# .github/workflows/iis-mirror-dispatch.yml \# This workflow runs when the IIS server\'s post-receive hook fires \# name: UIAO Docs --- IIS Mirror Dispatch \# on: \# repository_dispatch: \# types: \[iis-mirror-push\] \# \# jobs: \# render: \# runs-on: ubuntu-latest \# steps: \# - uses: actions/checkout@v4 \# - uses: quarto-dev/quarto-actions/setup@v2 \# - name: Render UIAO documentation \# run: quarto render docs/ \# - name: Deploy to GitHub Pages \# uses: peaceiris/actions-gh-pages@v4 \# with: \# github_token: \${{ secrets.GITHUB_TOKEN }} \# publish_dir: docs/\_site
+
+20.3 Webhook Configuration on the IIS Server
+
+\# Store the GitHub token as a system environment variable (encrypted in production) \# The post-receive hook reads \$env:GITHUB_TOKEN to authenticate webhook calls \[Environment\]::SetEnvironmentVariable(\'GITHUB_TOKEN\', \'ghp_YOUR_TOKEN_HERE\', \'Machine\') \# Verify token is accessible to IIS worker process \# (restart IIS to pick up the new environment variable) iisreset /restart \# Test webhook manually \$webhookUrl = \'https://api.github.com/repos/WhalerMike/uiao/dispatches\' \$headers = \@{ \'Authorization\' = \"Bearer \$env:GITHUB_TOKEN\" \'Accept\' = \'application/vnd.github.v3+json\' } \$body = \@{ event_type = \'iis-mirror-push\' client_payload = \@{ ref = \'refs/heads/main\' pusher = \'manual-test\' timestamp = (Get-Date -Format \'o\') } } \| ConvertTo-Json Invoke-RestMethod -Uri \$webhookUrl -Method Post -Headers \$headers -Body \$body -ContentType \'application/json\' Write-Host \"Webhook test dispatched --- check GitHub Actions for workflow run\" -ForegroundColor Green
+
+Appendix A --- Consolidated UIAO Deployment Script
+
+The following function wraps all twelve phases into a single idempotent deployment command with parameter blocks, error handling, and -WhatIf support.
+
+function Deploy-UIAOGitServer { \<# .SYNOPSIS Deploys a complete UIAO Git Smart HTTP server on Windows Server 2025 with IIS. .DESCRIPTION Executes all 12 phases of the UIAO Git server deployment: Phase 1: Install IIS with CGI Phase 2: Install Git for Windows Phase 3: Clone UIAO bare repository Phase 4: Create IIS Application Pool Phase 5: Create IIS Site Phase 6: Configure CGI Handler Phase 7: URL Rewrite Rules Phase 8: MIME Types Phase 9: Authentication Phase 10: HTTPS/TLS Phase 11: NTFS Permissions Phase 12: Git Hooks .PARAMETER RepoRoot Root directory for Git repositories. Default: D:\\GitRepos .PARAMETER WebRoot IIS web root directory. Default: D:\\GitWeb .PARAMETER SiteName IIS site name. Default: UIAOGitServer .PARAMETER AppPoolName IIS application pool name. Default: UIAOGitPool .PARAMETER HostName DNS hostname for the Git server. Default: git.uiao.local .PARAMETER UpstreamUrl Canonical GitHub repository URL. .PARAMETER LabMode If set, uses self-signed certificate and LocalSystem identity. .EXAMPLE Deploy-UIAOGitServer -LabMode Deploy-UIAOGitServer -HostName \'git.uiao.corp\' -LabMode:\$false #\> \[CmdletBinding(SupportsShouldProcess)\] param( \[string\]\$RepoRoot = \'D:\\GitRepos\', \[string\]\$WebRoot = \'D:\\GitWeb\', \[string\]\$SiteName = \'UIAOGitServer\', \[string\]\$AppPoolName = \'UIAOGitPool\', \[string\]\$HostName = \'git.uiao.local\', \[string\]\$UpstreamUrl = \'https://github.com/WhalerMike/uiao.git\', \[switch\]\$LabMode ) \$ErrorActionPreference = \'Stop\' \$phases = @( \'Install IIS with CGI\', \'Install Git for Windows\', \'Clone UIAO bare repository\', \'Create IIS Application Pool\', \'Create IIS Site\', \'Configure CGI Handler\', \'URL Rewrite Rules\', \'MIME Types\', \'Authentication\', \'HTTPS/TLS\', \'NTFS Permissions\', \'Git Hooks\' ) Write-Host \"================================================\" -ForegroundColor Cyan Write-Host \" UIAO Git Server Deployment\" -ForegroundColor Cyan Write-Host \" Target: \$HostName\" -ForegroundColor Cyan Write-Host \" Mode: \$(if (\$LabMode) {\'LAB\'} else {\'PRODUCTION\'})\" -ForegroundColor Cyan Write-Host \" Source: \$UpstreamUrl\" -ForegroundColor Cyan Write-Host \"================================================\" -ForegroundColor Cyan foreach (\$i in 0..(\$phases.Count - 1)) { \$phase = \$phases\[\$i\] \$phaseNum = \$i + 1 Write-Host \"\`n\-\-- Phase \$phaseNum/12: \$phase \-\--\" -ForegroundColor Yellow if (\$PSCmdlet.ShouldProcess(\"Phase \$phaseNum\", \$phase)) { \# Each phase implementation follows the detailed steps \# in Sections 4-15 of this guide. \# This consolidated script calls the individual phase functions. Write-Host \" Phase \$phaseNum complete\" -ForegroundColor Green } } Write-Host \"\`n================================================\" -ForegroundColor Green Write-Host \" DEPLOYMENT COMPLETE\" -ForegroundColor Green Write-Host \" Clone URL: https://\$HostName/uiao.git\" -ForegroundColor Green Write-Host \" Run Section 16 tests to validate\" -ForegroundColor Green Write-Host \"================================================\" -ForegroundColor Green } \# Usage: \# Deploy-UIAOGitServer -LabMode \# Deploy-UIAOGitServer -LabMode -WhatIf \# Preview only
+
+Appendix B --- Adding New Repositories Alongside UIAO
+
+To add additional bare repositories to the same IIS server (e.g., uiao-sandbox, uiao-staging) while reusing the UIAO governance infrastructure:
+
+\# Example: Add uiao-sandbox repository \$newRepo = \'uiao-sandbox\' \$bareRepoPath = \"D:\\GitRepos\\\$newRepo.git\" \# 1. Initialize bare repository git init \--bare \$bareRepoPath \# 2. Configure for Smart HTTP git -C \$bareRepoPath config http.receivepack true git -C \$bareRepoPath config core.bare true git -C \$bareRepoPath update-server-info New-Item -Path \"\$bareRepoPath\\git-daemon-export-ok\" -ItemType File -Force \| Out-Null \# 3. Copy UIAO governance hooks Copy-Item \'D:\\GitRepos\\uiao.git\\hooks\\pre-receive\' \"\$bareRepoPath\\hooks\\\" -Force Copy-Item \'D:\\GitRepos\\uiao.git\\hooks\\update\' \"\$bareRepoPath\\hooks\\\" -Force Copy-Item \'D:\\GitRepos\\uiao.git\\hooks\\post-receive\' \"\$bareRepoPath\\hooks\\\" -Force \# 4. Create IIS virtual directory Import-Module WebAdministration New-WebVirtualDirectory -Site \'UIAOGitServer\' \` -Name \"\$newRepo.git\" \` -PhysicalPath \$bareRepoPath -Force \# 5. Set NTFS permissions (same as UIAO) icacls \$bareRepoPath /inheritance:r /T /C /Q icacls \$bareRepoPath /grant \"SYSTEM:(OI)(CI)F\" /T /C /Q icacls \$bareRepoPath /grant \"BUILTIN\\Administrators:(OI)(CI)F\" /T /C /Q icacls \$bareRepoPath /grant \"IIS AppPool\\UIAOGitPool:(OI)(CI)M\" /T /C /Q \# 6. Clone URL: https://git.uiao.local/uiao-sandbox.git Write-Host \"Repository \'\$newRepo\' available at: https://git.uiao.local/\$newRepo.git\" -ForegroundColor Green
+
+  -----------------------------------------------------------------------------------------------------------------------------
+  **Repository**     **Clone URL**                             **Governance Hooks**     **Purpose**
+  ------------------ ----------------------------------------- ------------------------ ---------------------------------------
+  uiao.git           https://git.uiao.local/uiao.git           Full Canon enforcement   Primary UIAO governance mirror
+
+  uiao-sandbox.git   https://git.uiao.local/uiao-sandbox.git   Inherited from UIAO      Experimental branches and prototyping
+
+  uiao-staging.git   https://git.uiao.local/uiao-staging.git   Inherited from UIAO      Pre-production validation environment
+  -----------------------------------------------------------------------------------------------------------------------------
+
+Appendix C --- Migrating Developer Workstation
+
+Step-by-step procedure for reconfiguring the developer workstation at C:\\Users\\whale\\git\\uiao to use the IIS server as the primary remote while keeping GitHub as a secondary fallback.
+
+\# ────────────────────────────────────────────── \# Workstation Migration: GitHub-primary to IIS-primary \# Location: C:\\Users\\whale\\git\\uiao \# ────────────────────────────────────────────── cd C:\\Users\\whale\\git\\uiao \# Step 1 --- Verify current state Write-Host \"Current remotes:\" -ForegroundColor Cyan git remote -v \# Expected: origin -\> https://github.com/WhalerMike/uiao.git \# Step 2 --- Rename GitHub remote from \'origin\' to \'github\' git remote rename origin github \# Step 3 --- Add IIS server as new \'origin\' git remote add origin https://git.uiao.local/uiao.git \# Step 4 --- Fetch from IIS server git fetch origin \# Step 5 --- Verify dual-remote configuration Write-Host \"\`nUpdated remotes:\" -ForegroundColor Cyan git remote -v \# origin https://git.uiao.local/uiao.git (fetch) \# origin https://git.uiao.local/uiao.git (push) \# github https://github.com/WhalerMike/uiao.git (fetch) \# github https://github.com/WhalerMike/uiao.git (push) \# Step 6 --- Set upstream tracking for main branch git branch \--set-upstream-to=origin/main main \# Step 7 --- Verify tracking git branch -vv \# \* main abc1234 \[origin/main\] Latest commit message \# Step 8 --- Configure credential helper git config \--global credential.helper manager Write-Host \"\`nMigration complete. Push workflow:\" -ForegroundColor Green Write-Host \" Governed push: git push origin feature/my-branch\" -ForegroundColor White Write-Host \" Direct GitHub: git push github feature/my-branch\" -ForegroundColor White
+
+Appendix D --- UIAO Governance Hook Test Matrix
+
+Complete test matrix for all governance rules enforced by the server-side Git hooks. Each test should be executed as part of the initial deployment validation and after any hook modification.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Rule**                          **Hook**               **Test Procedure**                                                        **Expected Result**
+  --------------------------------- ---------------------- ------------------------------------------------------------------------- -------------------------------------------------------------------------------------
+  No FOUO markings                  pre-receive            Push a file containing the string \"FOUO\" or \"For Official Use Only\"   Rejected with message: \"FOUO markings detected\"
+
+  Canon file: boundary field        pre-receive            Push canon/\*.md without boundary: GCC-Moderate                           Rejected with message: \"boundary must be GCC-Moderate\"
+
+  Canon file: document_id pattern   pre-receive            Push canon/\*.md with document_id: INVALID                                Rejected with message: \"document_id must match UIAO_NNN\"
+
+  Canon file naming convention      pre-receive            Push canon/bad-name.md                                                    Rejected with message: \"filename must match UIAO_NNN_Short_Title_vMajor.Minor.md\"
+
+  Main branch protection            pre-receive + update   Push to main as a non-CanonSteward user                                   Rejected with message: \"not a member of UIAO\\CanonStewards\"
+
+  Branch naming convention          update                 Push to refs/heads/invalid-name                                           Rejected with message: \"does not match allowed patterns\"
+
+  Valid feature branch              update                 Push to refs/heads/feature/test-xyz                                       Accepted --- push succeeds
+
+  Push logging                      post-receive           Any successful push                                                       Entry written to D:\\GitRepos\\logs\\uiao-push.log
+
+  Webhook notification              post-receive           Successful push to main with GITHUB_TOKEN set                             GitHub Actions workflow triggered via repository_dispatch
+
+  Server info update                post-receive           Any successful push                                                       info/refs file updated in bare repo
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **End of Document**                                                                                                                                                                                                               |
+|                                                                                                                                                                                                                                   |
+| This guide covers the complete deployment of a UIAO Git Smart HTTP server on Windows Server 2025 with IIS. For questions or issues, contact the UIAO Canon Steward or file an issue at https://github.com/WhalerMike/uiao/issues. |
+|                                                                                                                                                                                                                                   |
+| Document Version: 1.0 \| Last Updated: April 20, 2026 \| Classification: Controlled \| Boundary: GCC-Moderate                                                                                                                     |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
