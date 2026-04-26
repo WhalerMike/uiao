@@ -1,0 +1,321 @@
+---
+title: "UIAO Modernization Master Plan — Phase 1 Architecture Document"
+subtitle: "Plane model, interfaces, signal taxonomy, and control bindings"
+doc-type: master-plan
+phase: "Phase 1 — Architecture"
+audience: "CIO · CISO · ISSO · Authorizing Official (AO) · 3PAO · Enterprise Architects"
+canon-source: "src/uiao/canon/modernization-registry.yaml"
+derived-from: "phase-0-planning.qmd"
+upstream:
+  - "phase-0-planning.qmd §2 Modernization Scope"
+  - "phase-0-planning.qmd §4 FedRAMP Boundary Gap"
+  - "phase-0-planning.qmd §5 Objectives & Outcomes"
+aspirational: true
+date: 2026-04-26
+date-format: "MMMM D, YYYY"
+---
+
+# UIAO Modernization Master Plan — Phase 1 Architecture Document {.unnumbered}
+
+::: {.callout-note}
+## Document Purpose
+Phase 1 formalizes the UIAO architecture into a normative reference model.
+It defines each plane's responsibility surface, the inter-plane interface
+contracts, the canonical signal taxonomy, the control binding model, and
+the conformance criteria a deployment must satisfy. This document
+consumes the Phase 0 Planning Document (Sections 2, 4, 5) as normative
+input and produces the architecture baseline that the Boundary
+Modernization Appendix, Compliance & ATO Alignment, and 90-Day Execution
+Plan derive from.
+:::
+
+---
+
+## 1. Architectural Principles
+
+The UIAO architecture is governed by seven design principles. Every
+plane, interface, and signal in this document conforms to all seven; any
+deviation is an explicit, attributed exception recorded in an ADR.
+
+| # | Principle | Architectural Consequence |
+|---|---|---|
+| 1 | **Deterministic State** | Every governed entity has exactly one canonical state at any point in time; conflicts are resolved by canonical-source authority, not by last-writer-wins |
+| 2 | **Schema Fixity** | Schemas are immutable once canonized; values are flexible within governed enumerations |
+| 3 | **Provenance Traceability** | Every state change carries an attributed source — human, automation, or governance engine — and is reconstructable from the evidence chain |
+| 4 | **Drift Resistance** | Drift is detected, classified (schema, value, hierarchy, orphan, phantom), and remediated under governed workflow |
+| 5 | **Boundary Enforcement** | No artifact, signal, or policy crosses the authorization boundary without an attributed enforcement decision |
+| 6 | **Two-Brain Execution** | Governance logic and execution logic are physically separated; the governance brain decides, the execution brain acts |
+| 7 | **Tenant Agnosticism** | Architecture is portable across any conforming tenant; environment-specific identifiers are injected at deployment time |
+
+These principles are normative. A conforming Phase 2 design that violates
+one of them is not a UIAO deployment; it is a different architecture.
+
+---
+
+## 2. The Plane Model
+
+UIAO is composed of ten planes. Each plane is a first-class architectural
+unit with a defined responsibility, a signal surface it produces and
+consumes, an interface contract with adjacent planes, and a set of
+control bindings.
+
+### 2.1 Plane Catalog
+
+| Plane | Responsibility | Produces | Consumes |
+|---|---|---|---|
+| **Identity** | Canonical principal state, role, group, AU, lifecycle | Identity assertion, role binding, lifecycle event | Authoritative HR feed, directory state |
+| **Device** | Device posture, management state, attestation | Posture report, compliance state, attestation token | Identity binding, policy directive |
+| **Server** | Server identity, workload identity, host posture | Workload identity, host telemetry, server OrgPath | Identity binding, policy directive |
+| **Routing** | WAN, SD-WAN, SASE path selection and egress | Route state, path identity, regional tag | Policy directive, identity assertion |
+| **Security** | Access decision, Zero Trust enforcement, containment | Access decision, risk signal, response action | Identity, device, routing, policy signals |
+| **Evidence** | Provenance graph, signal capture, OSCAL artifacts | Provenance record, OSCAL component, SAR/SSP fragment | All plane signals |
+| **Compliance** | Control catalog, KSI mapping, POA&M, assessment | Control state, KSI outcome, POA&M record | Evidence records, policy state |
+| **Drift Detection** | Cross-plane drift classification and remediation | Drift record, remediation provenance | All plane signals |
+| **Continuous ATO** | Authorization posture, monitoring cadence, AO surface | Authorization state, re-assessment trigger | Compliance state, evidence freshness |
+| **Boundary Modernization** | Authorization-boundary signal continuity | Boundary crossing record, signal-continuity assertion | Identity, location, session, telemetry, media, policy signals |
+
+### 2.2 Plane Layering
+
+The planes are not peers; they form a four-tier layering that constrains
+which plane may consume which signal.
+
+| Tier | Planes | Role |
+|---|---|---|
+| **Substrate Tier** | Identity, Device, Server, Routing | Produce primary state about principals, endpoints, workloads, and paths |
+| **Enforcement Tier** | Security, Boundary Modernization | Convert substrate signals into access decisions and boundary continuity |
+| **Assurance Tier** | Evidence, Drift Detection | Capture provenance, detect divergence, generate audit-ready artifacts |
+| **Authorization Tier** | Compliance, Continuous ATO | Map assurance to control catalogs, sustain ongoing authorization posture |
+
+A plane in a higher tier may consume signals from any lower tier; a plane
+may not consume signals from a higher tier. This rule prevents
+authorization logic from leaking into substrate state and is enforced
+architecturally, not procedurally.
+
+---
+
+## 3. Inter-Plane Interfaces
+
+Every plane exposes a typed interface to adjacent planes. Interfaces are
+declarative contracts, not transport bindings; the transport (event bus,
+API, scheduled pull) is a deployment choice that does not affect
+conformance.
+
+### 3.1 Interface Contract Shape
+
+Each interface is described by five elements:
+
+| Element | Definition |
+|---|---|
+| **Producer** | The plane that asserts the signal |
+| **Consumer** | The plane that observes or acts on the signal |
+| **Schema** | Fixed schema for the signal payload (governed by Principle 2) |
+| **Provenance** | Required attribution and timestamping fields |
+| **Cadence** | Event-driven, periodic, or on-demand semantics |
+
+### 3.2 Canonical Interface Set
+
+| Interface | Producer → Consumer | Purpose |
+|---|---|---|
+| **identity-assertion** | Identity → Security, Routing, Boundary Mod | Carries authenticated principal and role context |
+| **posture-report** | Device, Server → Security | Conveys compliance and attestation state |
+| **path-state** | Routing → Security, Boundary Mod | Reports current WAN/SASE path and regional tag |
+| **access-decision** | Security → Evidence, Drift Detection | Records every enforcement decision with attribution |
+| **boundary-crossing** | Boundary Mod → Evidence, Compliance | Asserts signal continuity (or its absence) at each boundary hop |
+| **provenance-record** | Evidence → Compliance, Continuous ATO | Immutable record consumable by audit and assessment |
+| **drift-record** | Drift Detection → Compliance, Continuous ATO | Classified divergence with remediation status |
+| **control-state** | Compliance → Continuous ATO | Per-control posture used by AO decision support |
+| **authorization-state** | Continuous ATO → (operator surface) | The current ongoing authorization posture |
+
+### 3.3 Forbidden Interfaces
+
+Three interface patterns are explicitly disallowed:
+
+1. **Substrate ↔ substrate cross-binding.** Identity must not consume
+   Device state directly; the Security plane is the only authorized
+   consumer of joined substrate state. This preserves single-source
+   authority.
+2. **Authorization → substrate writeback.** Compliance and Continuous
+   ATO may not write to substrate planes; they consume only.
+3. **Evidence bypass.** No interface may carry an enforcement decision
+   that does not also produce a provenance-record. Bypassing the
+   evidence plane breaks the chain Continuous ATO depends on.
+
+---
+
+## 4. Signal Taxonomy
+
+The signal model formalizes the six classes named in Phase 0 §4.1 plus
+two derived classes that the Assurance Tier requires.
+
+### 4.1 Primary Signal Classes (from Phase 0)
+
+| Class | Definition | Producing Plane(s) |
+|---|---|---|
+| **Identity** | Authenticated principal, role, group, AU, privileged state | Identity |
+| **Location** | Originating network context, region, country, segment trust posture | Routing, Boundary Mod |
+| **Session** | Continuity of session from initial auth through downstream calls | Identity, Security |
+| **Telemetry** | Per-journey observability across planes | All Substrate-Tier planes |
+| **Media** | Voice, video, collaboration traffic classification and routing | Routing |
+| **Policy** | The set of enforcement decisions applied at each hop, with attribution | Security, Boundary Mod |
+
+### 4.2 Derived Signal Classes (introduced by Phase 1)
+
+| Class | Definition | Producing Plane |
+|---|---|---|
+| **Provenance** | Attributed record of any state change or enforcement decision | Evidence |
+| **Drift** | Classified divergence between expected and observed state | Drift Detection |
+
+### 4.3 Signal Continuity Requirement
+
+Every primary signal class must be carriable end-to-end across all
+boundary crossings without attenuation. The Boundary Modernization plane
+is the architectural mechanism that satisfies this requirement; its
+detailed redesign is the subject of the Boundary Modernization Appendix.
+
+---
+
+## 5. Control Binding Model
+
+Controls bind to planes, not to systems. A FedRAMP Rev 5 control, a
+SCuBA baseline policy, or a NIST SP 800-207 tenet attaches to one or
+more planes through a typed binding.
+
+### 5.1 Binding Shape
+
+| Field | Purpose |
+|---|---|
+| **control-id** | Reference into the canonical control library (e.g. AC-2, IA-5, SCuBA EXO-X.Y) |
+| **plane** | The plane responsible for satisfying the control |
+| **signal** | The signal class on which conformance is evidenced |
+| **evidence-pattern** | The provenance-record shape that constitutes proof |
+| **assessment-cadence** | How often the binding is re-evaluated for cATO |
+
+### 5.2 Binding Rules
+
+- Every in-scope control has at least one plane binding.
+- A control with no observable signal cannot be bound; it is recorded as
+  a Compliance-Plane gap and managed through POA&M.
+- A control bound to multiple planes requires a defined arbitration
+  rule; the Compliance plane is the sole arbiter.
+
+### 5.3 Mandate Coverage Matrix
+
+| Mandate | Primary Bound Planes |
+|---|---|
+| **EO 14028** | Identity, Device, Security, Evidence |
+| **OMB M-22-09 / NIST SP 800-207** | Identity, Device, Routing, Security |
+| **CISA SCuBA** | Identity, Security, Evidence, Drift Detection |
+| **FedRAMP Rev 5** | All ten planes |
+| **Continuous ATO** | Evidence, Compliance, Continuous ATO |
+
+The full per-control crosswalk is produced in the Compliance & ATO
+Alignment document; Phase 1 commits only to the binding shape and the
+mandate-to-plane coverage.
+
+---
+
+## 6. Reference Architecture View
+
+The reference view is a layered logical topology. It is not a deployment
+diagram; specific transports, vendors, and adapters are out of scope for
+Phase 1.
+
+```
++------------------------------------------------------------------+
+|                     Authorization Tier                           |
+|        Compliance  ─────►  Continuous ATO                        |
++------------------------------▲-----------------------------------+
+                               | provenance / drift / control-state
++------------------------------┴-----------------------------------+
+|                       Assurance Tier                             |
+|        Evidence  ◄────────────────────►  Drift Detection         |
++------------------------------▲-----------------------------------+
+                               | access-decision / boundary-crossing
++------------------------------┴-----------------------------------+
+|                      Enforcement Tier                            |
+|   Security  ◄────────────────────►  Boundary Modernization       |
++------------------------------▲-----------------------------------+
+                               | identity / posture / path / media
++------------------------------┴-----------------------------------+
+|                       Substrate Tier                             |
+|   Identity     Device     Server     Routing                     |
++------------------------------------------------------------------+
+```
+
+Read top-down, the diagram expresses the architectural rule from §2.2:
+signal flows upward, authorization decisions never flow back into the
+substrate.
+
+---
+
+## 7. Conformance Criteria
+
+A deployment is Phase 1-conforming when, and only when, all of the
+following are demonstrably true:
+
+| # | Criterion | Evidence Surface |
+|---|---|---|
+| 1 | All ten planes are present and have an attributed owner | Plane registry, owner attestation |
+| 2 | Each plane exposes its canonical interfaces with fixed schemas | Schema registry, interface contracts |
+| 3 | The four-tier layering rule is enforced — no upward consumption from authorization to substrate | Static topology check, runtime denial logs |
+| 4 | Every primary signal class is carriable end-to-end across boundary crossings | Boundary-crossing provenance records |
+| 5 | Every in-scope control has at least one plane binding or an explicit POA&M record | Control binding table |
+| 6 | Every state change produces a provenance-record consumable by Evidence | Provenance graph completeness scan |
+| 7 | Drift detection classifies divergence into the canonical taxonomy | Drift-record sample audit |
+| 8 | Continuous ATO surfaces an authorization-state derived only from canonical artifacts | Authorization-state derivation trace |
+
+A deployment that satisfies criteria 1–4 but not 5–8 is *substrate-
+conforming* but not *authorization-conforming*; this is a recognized
+intermediate state during program execution and is explicitly anticipated
+by the 90-Day Execution Plan.
+
+---
+
+## 8. Open Architecture Questions
+
+Phase 1 closes the architecture baseline but explicitly leaves four
+questions open for resolution by downstream phases. Each is recorded
+here so the open set is visible to AOs and 3PAOs from the start.
+
+| # | Question | Resolved By |
+|---|---|---|
+| 1 | The transport binding for each interface (event bus, API, pull) | Phase 2 — adapter-specific design |
+| 2 | The exact signal-continuity mechanism at each boundary class | Boundary Modernization Appendix |
+| 3 | The canonical evidence-pattern library per control family | Compliance & ATO Alignment |
+| 4 | The phased sequencing of plane stand-up vs. boundary stand-up | 90-Day Execution Plan |
+
+These questions are tracked as architectural debts, not deferrals — each
+has a named downstream owner and a phase-gate dependency.
+
+---
+
+## 9. Hand-off to Downstream Phases
+
+Phase 1 closes when this document is ratified. The downstream phases
+consume it as follows:
+
+- **Boundary Modernization Appendix** consumes §3 (Interfaces), §4
+  (Signal Taxonomy), and §7 (Conformance) to specify the authorization-
+  boundary redesign and the Signal Restoration Framework.
+- **Compliance & ATO Alignment** consumes §5 (Control Binding Model)
+  and §7 (Conformance) to produce the per-control crosswalk and the
+  cATO operating model.
+- **90-Day Execution Plan** consumes §2 (Plane Model) and §7
+  (Conformance) to sequence plane stand-up against the conformance
+  criteria.
+
+No downstream commitment is made against an unratified Phase 1
+architecture; this is the same sequencing rule established in Phase 0
+§8 and is restated here for continuity.
+
+---
+
+::: {.callout-tip appearance="minimal"}
+## Document Governance
+This Phase 1 Architecture Document is a canonical program artifact.
+Changes are governed by the canon-change protocol; substantive revisions
+require an ADR, a schema check, and a drift scan. The document derives
+from the Phase 0 Planning Document and is the upstream source for the
+Boundary Modernization Appendix, Compliance & ATO Alignment, and the
+90-Day Execution Plan.
+:::
