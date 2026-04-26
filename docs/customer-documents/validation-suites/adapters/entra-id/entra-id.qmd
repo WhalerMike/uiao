@@ -9,8 +9,7 @@ phase: phase-1
 gcc-boundary: gcc-moderate
 canon-source: canon/modernization-registry.yaml
 derived-from: uiao/canon (sync_canon.py)
-generated: '2026-04-15'
-aspirational: true
+generated: '2026-04-26'
 ---
 
 
@@ -26,10 +25,12 @@ aspirational: true
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
+::: {.callout-tip}
+## Validation suite — UIAO_121 + UIAO_123 instantiated (tier-1 pending)
 
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
+This document instantiates the [UIAO_121 Adapter Conformance Test Plan](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/adapter-conformance-test-plan-template.md) and the [UIAO_123 Adapter Integration Test Plan](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/adapter-integration-test-plan.md) for the `entra-id` adapter (roadmap §2.6, round 2).
+
+The adapter clears the conformance gate today against mocked collectors: **30 / 30 conformance criteria PASS**, **13 behavioral tests** + framework tests green, **scheduler-wired** through the UIAO_100 orchestrator. Tier-1 (live M365 tenant via the M365 Developer Program) is pending — see Phase 4 below — and is the only gap to a fully-active validation status.
 :::
 
 ## Overview
@@ -48,9 +49,16 @@ Target surfaces / subsystems: `user-objects`, `group-objects`, `service-principa
 
 ## Controls
 
-NIST SP 800-53 Rev 5 controls this adapter supports: `CM-8`, `IA-2`, `IA-4`, `AC-2`
+NIST SP 800-53 Rev 5 controls this adapter supports: `CM-8`, `IA-2`, `IA-4`, `AC-2`.
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Adapter role | Notes |
+|---|---|---|
+| **AC-2** Account Management | **primary** | The Graph `/users` + `/groups` collectors are the canonical inventory of Entra accounts. The normalized ClaimSet feeds account-lifecycle drift detection (creates / disables / role changes). |
+| **IA-2** Identification and Authentication | **primary** | Conditional-access policies governing MFA and passwordless flows are read from `/identity/conditionalAccess/policies`. Each policy is normalized into IA-2-tagged claims; the EPL `epl:enforce-mfa` policy (UIAO_116, §3.5) consumes them. |
+| **IA-4** Identifier Management | **supporting** | Service-principal IDs and user object IDs are surfaced as object-keyed identity claims; the adapter is the source of canonical Entra identifiers but does not itself govern issuance. |
+| **CM-8** System Component Inventory | **supporting** | Service principals + groups serve as the application-and-workload inventory for Entra-managed resources; not a continuous discovery loop, only refreshed per scheduler dispatch. |
+
+All four controls are CI-gated through the conformance + behavioral test set. No `NEW (Proposed)` flags. The adapter currently runs against a mocked Graph collector; tier-1 against a live tenant is pending the M365 Developer Program signup (roadmap §0.1).
 
 ## Operational profile
 
