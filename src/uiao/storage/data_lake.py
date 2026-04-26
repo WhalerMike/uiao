@@ -70,6 +70,19 @@ DEFAULT_HOT_PERIOD_DAYS = 30
 # ---------------------------------------------------------------------------
 
 
+class RawZoneViolation(RuntimeError):
+    """Raised when an immutable archive backend is asked to overwrite an
+    existing key.
+
+    The Raw Zone (UIAO_117 §recovery-invariants) is the canonical source
+    of truth for evidence. Every successful archive_run is a checkpoint;
+    rewriting a checkpoint silently destroys the determinism the recovery
+    layer relies on. The legitimate ways to remove archived data are
+    :meth:`ArchiveManager.expire` (retention-window aging) and explicit
+    operator action via :meth:`ArchiveBackend.remove`.
+    """
+
+
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -187,7 +200,15 @@ def policy_for(
 
 @dataclass(frozen=True)
 class ArchiveEntry:
-    """One archived (run_id, adapter_id) pair's metadata."""
+    """One archived (run_id, adapter_id) pair's metadata.
+
+    Every entry produced by :meth:`ArchiveManager.archive_run` is a
+    recovery checkpoint by construction (UIAO_117 §recovery-invariants):
+    the Raw Zone preserves the bytes that produced it, the index records
+    when it landed, and ``checkpoint=True`` makes the role explicit so
+    downstream tooling can enumerate restore points without having to
+    re-derive the property from the directory layout.
+    """
 
     run_id: str
     adapter_id: str
@@ -195,6 +216,7 @@ class ArchiveEntry:
     retention_until: str  # ISO-8601 UTC
     archive_path: str  # repo-relative or absolute, backend-defined
     evidence_class: str = ""  # e.g. baseline / signal / spot-check
+    checkpoint: bool = True
     extra: Mapping[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
@@ -205,6 +227,7 @@ class ArchiveEntry:
             "retention_until": self.retention_until,
             "archive_path": self.archive_path,
             "evidence_class": self.evidence_class,
+            "checkpoint": self.checkpoint,
             "extra": dict(self.extra),
         }
 
@@ -217,6 +240,30 @@ class ArchiveEntry:
         if ru is None:
             return False
         return (now or _now_utc()) >= ru
+
+
+def _entry_from_dict(data: Mapping[str, Any]) -> ArchiveEntry:
+    """Deserialize an ArchiveEntry from its JSON-roundtrip dict.
+
+    Accepts entries written before ``checkpoint`` was introduced
+    (defaults to ``True`` — every archived run was a checkpoint by
+    construction).
+    """
+    extra = data.get("extra", {})
+    if not isinstance(extra, dict):
+        extra = {}
+    checkpoint_raw = data.get("checkpoint", True)
+    checkpoint = bool(checkpoint_raw) if checkpoint_raw is not None else True
+    return ArchiveEntry(
+        run_id=str(data.get("run_id", "")),
+        adapter_id=str(data.get("adapter_id", "")),
+        archived_at=str(data.get("archived_at", "")),
+        retention_until=str(data.get("retention_until", "")),
+        archive_path=str(data.get("archive_path", "")),
+        evidence_class=str(data.get("evidence_class", "")),
+        checkpoint=checkpoint,
+        extra=extra,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -255,9 +302,17 @@ class FilesystemArchive(ArchiveBackend):
                 drift.json
                 ...
             _index/<run_id>__<adapter_id>.json     # ArchiveEntry manifest
+
+    ``immutable`` defaults to ``True`` — the Raw Zone stance from
+    UIAO_117. Once a key is written, :meth:`put` raises
+    :class:`RawZoneViolation` rather than overwriting; aging-out goes
+    through :meth:`remove` (driven by :meth:`ArchiveManager.expire`).
+    Set ``immutable=False`` only for non-canonical scratch backends
+    (e.g., synthetic test fixtures that re-archive into the same key).
     """
 
     root: Path
+    immutable: bool = True
 
     def __post_init__(self) -> None:
         self.root = Path(self.root)
@@ -267,9 +322,18 @@ class FilesystemArchive(ArchiveBackend):
     def put(self, source: Path, key: str) -> str:
         target = self.root / key
         target.parent.mkdir(parents=True, exist_ok=True)
-        if source.is_dir():
-            if target.exists():
+        if target.exists():
+            if self.immutable:
+                raise RawZoneViolation(
+                    f"Raw Zone violation: key {key!r} already exists at {target}. "
+                    "The archive is immutable; remove via ArchiveManager.expire "
+                    "or set FilesystemArchive(immutable=False) for scratch use."
+                )
+            if target.is_dir():
                 shutil.rmtree(target)
+            else:
+                target.unlink()
+        if source.is_dir():
             shutil.copytree(source, target)
         else:
             shutil.copy2(source, target)
@@ -306,15 +370,7 @@ class FilesystemArchive(ArchiveBackend):
             return None
         if not isinstance(data, dict):
             return None
-        return ArchiveEntry(
-            run_id=str(data.get("run_id", "")),
-            adapter_id=str(data.get("adapter_id", "")),
-            archived_at=str(data.get("archived_at", "")),
-            retention_until=str(data.get("retention_until", "")),
-            archive_path=str(data.get("archive_path", "")),
-            evidence_class=str(data.get("evidence_class", "")),
-            extra=data.get("extra", {}) if isinstance(data.get("extra"), dict) else {},
-        )
+        return _entry_from_dict(data)
 
     def list_index(self) -> list[ArchiveEntry]:
         out: list[ArchiveEntry] = []
@@ -328,17 +384,7 @@ class FilesystemArchive(ArchiveBackend):
                 continue
             if not isinstance(data, dict):
                 continue
-            out.append(
-                ArchiveEntry(
-                    run_id=str(data.get("run_id", "")),
-                    adapter_id=str(data.get("adapter_id", "")),
-                    archived_at=str(data.get("archived_at", "")),
-                    retention_until=str(data.get("retention_until", "")),
-                    archive_path=str(data.get("archive_path", "")),
-                    evidence_class=str(data.get("evidence_class", "")),
-                    extra=data.get("extra", {}) if isinstance(data.get("extra"), dict) else {},
-                )
-            )
+            out.append(_entry_from_dict(data))
         return out
 
 
@@ -457,6 +503,7 @@ __all__ = [
     "ArchiveEntry",
     "ArchiveManager",
     "FilesystemArchive",
+    "RawZoneViolation",
     "RetentionPolicy",
     "load_retention_policies",
     "policy_for",

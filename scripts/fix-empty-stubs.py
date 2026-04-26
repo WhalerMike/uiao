@@ -8,7 +8,8 @@ Run from repo root:
 
 Safe to re-run: skips files that already have content.
 """
-import os, sys
+
+import sys
 from pathlib import Path
 from datetime import date
 
@@ -23,9 +24,9 @@ fixed = 0
 for qmd in sorted(CD.rglob("*.qmd")):
     if qmd.stat().st_size > 0:
         continue
-    stem  = qmd.stem.replace("-", " ").replace("_", " ").title()
+    stem = qmd.stem.replace("-", " ").replace("_", " ").title()
     family = qmd.parent.name
-    rel   = qmd.relative_to(CD)
+    rel = qmd.relative_to(CD)
 
     content = f"""---
 title: "{stem}"
