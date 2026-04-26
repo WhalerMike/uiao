@@ -112,7 +112,7 @@ class TestRegistryValidation:
             arm_tag:
               key: OrgPath
               key_regex: "^OrgPath$"
-              value_regex: "^ORG(-[A-Z0-9]{2,6}){0,4}$"
+              value_regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"
         """)
 
     def test_baseline_loads(self, tmp_path: Path) -> None:
@@ -143,7 +143,7 @@ class TestRegistryValidation:
 
     def test_rejects_arm_regex_divergent_from_codebook(self, tmp_path: Path) -> None:
         bad = self._good_yaml().replace(
-            'value_regex: "^ORG(-[A-Z0-9]{2,6}){0,4}$"',
+            'value_regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"',
             'value_regex: "^ORG.*$"',
         )
         p = tmp_path / "bad.yaml"

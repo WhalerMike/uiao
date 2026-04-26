@@ -30,7 +30,7 @@ Technical Scaffolding
 
 Decision Tree 1: OrgPath Validation
 
-[INPUT: OrgPath string]          |          v [Q1] Does format match ^ORG(-[A-Z]{2,6}){0,4}$ ?     |                    |    YES                   NO --> REJECT: GOV-SCH-001 (Invalid format)     |     v [Q2] Does parent path exist in codebook?     |                    |    YES                   NO --> REJECT: GOV-HIR-001 (Orphan path)     |     v [Q3] Is hierarchy depth within maxDepth of parent?     |                    |    YES                   NO --> REJECT: GOV-HIR-002 (Depth exceeded)     |     v [Q4] Is OrgPath status = "active" in codebook?     |                    |    YES                   NO --> REJECT: GOV-SCH-002 (Deprecated/pending)     |     v ACCEPT: OrgPath is valid.
+[INPUT: OrgPath string]          |          v [Q1] Does format match ^ORG(-[A-Z]{2,6}){0,8}$ ?     |                    |    YES                   NO --> REJECT: GOV-SCH-001 (Invalid format)     |     v [Q2] Does parent path exist in codebook?     |                    |    YES                   NO --> REJECT: GOV-HIR-001 (Orphan path)     |     v [Q3] Is hierarchy depth within maxDepth of parent?     |                    |    YES                   NO --> REJECT: GOV-HIR-002 (Depth exceeded)     |     v [Q4] Is OrgPath status = "active" in codebook?     |                    |    YES                   NO --> REJECT: GOV-SCH-002 (Deprecated/pending)     |     v ACCEPT: OrgPath is valid.
 
 Decision Tree 2: Drift Classification
 

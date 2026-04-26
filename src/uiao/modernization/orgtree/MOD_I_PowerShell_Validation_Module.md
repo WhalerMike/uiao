@@ -30,7 +30,7 @@ Technical Scaffolding
 
 Function 1: Test-OrgPathFormat
 
-function Test-OrgPathFormat {     <#     .SYNOPSIS         Validates an OrgPath string against the canonical regex pattern.     .DESCRIPTION         Returns $true if the OrgPath matches ^ORG(-[A-Z]{2,6}){0,4}$, otherwise $false.     .PARAMETER OrgPath         The OrgPath string to validate.     .EXAMPLE         Test-OrgPathFormat -OrgPath "ORG-FIN-AP"     #>     [CmdletBinding()]     [OutputType([bool])]     param(         [Parameter(Mandatory = $true)]         [ValidateNotNullOrEmpty()]         [string]$OrgPath     )      try {         $Pattern = "^ORG(-[A-Z]{2,6}){0,4}$"         $IsValid = $OrgPath -match $Pattern         Write-Verbose "OrgPath '$OrgPath' format valid: $IsValid"         return $IsValid     }     catch {         Write-Error "Error validating OrgPath format: $_"         return $false     } }
+function Test-OrgPathFormat {     <#     .SYNOPSIS         Validates an OrgPath string against the canonical regex pattern.     .DESCRIPTION         Returns $true if the OrgPath matches ^ORG(-[A-Z]{2,6}){0,8}$, otherwise $false.     .PARAMETER OrgPath         The OrgPath string to validate.     .EXAMPLE         Test-OrgPathFormat -OrgPath "ORG-FIN-AP"     #>     [CmdletBinding()]     [OutputType([bool])]     param(         [Parameter(Mandatory = $true)]         [ValidateNotNullOrEmpty()]         [string]$OrgPath     )      try {         $Pattern = "^ORG(-[A-Z]{2,6}){0,8}$"         $IsValid = $OrgPath -match $Pattern         Write-Verbose "OrgPath '$OrgPath' format valid: $IsValid"         return $IsValid     }     catch {         Write-Error "Error validating OrgPath format: $_"         return $false     } }
 
 Function 2: Test-OrgPathHierarchy
 

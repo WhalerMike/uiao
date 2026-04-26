@@ -1,15 +1,18 @@
 ---
 document_id: MOD_H
 title: "Appendix H — OrgPath JSON Schema"
-version: "1.0"
+version: "2.0"
 status: DRAFT
 classification: CANONICAL
 owner: Michael Stratton
 created_at: 2026-04-18
-updated_at: 2026-04-18
+updated_at: 2026-04-26
 boundary: GCC-Moderate
 namespace: MOD
 parent_canon: UIAO_008
+binding_adrs:
+  - ADR-035
+  - ADR-045
 ---
 
 # Appendix H — OrgPath JSON Schema
@@ -30,7 +33,7 @@ Technical Scaffolding
 
 OrgPathEntry Schema
 
-{   "$schema": "https://json-schema.org/draft/2020-12/schema",   "$id": "https://uiao.gov/schemas/orgpath-entry.schema.json",   "title": "OrgPathEntry",   "description": "Schema for a single OrgPath code entry in the canonical codebook.",   "type": "object",   "properties": {     "code": {       "type": "string",       "pattern": "^ORG(-[A-Z]{2,6}){0,4}$",       "description": "The OrgPath code string."     },     "level": {       "type": "integer",       "minimum": 0,       "maximum": 4,       "description": "Hierarchy level: 0=Root, 1=Division, 2=Department, 3=Unit, 4=Team."     },     "description": {       "type": "string",       "minLength": 1,       "maxLength": 256,       "description": "Human-readable description of this OrgPath node."     },     "parentPath": {       "type": ["string", "null"],       "pattern": "^ORG(-[A-Z]{2,6}){0,3}$",       "description": "The OrgPath code of the parent node. Null for root."     },     "allowedChildrenPattern": {       "type": "string",       "description": "Regex pattern for valid child OrgPath codes."     },     "maxDepth": {       "type": "integer",       "minimum": 0,       "maximum": 4,       "description": "Maximum additional depth allowed below this node."     },     "status": {       "type": "string",       "enum": ["active", "deprecated", "pending"],       "description": "Current lifecycle status of this OrgPath code."     },     "createdDate": {       "type": "string",       "format": "date-time",       "description": "ISO 8601 datetime when this code was created."     },     "modifiedDate": {       "type": "string",       "format": "date-time",       "description": "ISO 8601 datetime when this code was last modified."     },     "owner": {       "type": "string",       "minLength": 1,       "description": "Role or group responsible for this OrgPath node."     }   },   "required": ["code", "level", "description", "parentPath", "allowedChildrenPattern",                "maxDepth", "status", "createdDate", "modifiedDate", "owner"],   "additionalProperties": false }
+{   "$schema": "https://json-schema.org/draft/2020-12/schema",   "$id": "https://uiao.gov/schemas/orgpath-entry.schema.json",   "title": "OrgPathEntry",   "description": "Schema for a single OrgPath code entry in the canonical codebook.",   "type": "object",   "properties": {     "code": {       "type": "string",       "pattern": "^ORG(-[A-Z]{2,6}){0,8}$",       "description": "The OrgPath code string."     },     "level": {       "type": "integer",       "minimum": 0,       "maximum": 8,       "description": "Hierarchy level: 0=Root, 1=Division, 2=Department, 3=Unit, 4=Team, 5=Sub-Team, 6=Cell, 7=Crew, 8=Squad."     },     "description": {       "type": "string",       "minLength": 1,       "maxLength": 256,       "description": "Human-readable description of this OrgPath node."     },     "parentPath": {       "type": ["string", "null"],       "pattern": "^ORG(-[A-Z]{2,6}){0,7}$",       "description": "The OrgPath code of the parent node. Null for root."     },     "allowedChildrenPattern": {       "type": "string",       "description": "Regex pattern for valid child OrgPath codes."     },     "maxDepth": {       "type": "integer",       "minimum": 0,       "maximum": 8,       "description": "Maximum additional depth allowed below this node."     },     "status": {       "type": "string",       "enum": ["active", "deprecated", "pending"],       "description": "Current lifecycle status of this OrgPath code."     },     "createdDate": {       "type": "string",       "format": "date-time",       "description": "ISO 8601 datetime when this code was created."     },     "modifiedDate": {       "type": "string",       "format": "date-time",       "description": "ISO 8601 datetime when this code was last modified."     },     "owner": {       "type": "string",       "minLength": 1,       "description": "Role or group responsible for this OrgPath node."     }   },   "required": ["code", "level", "description", "parentPath", "allowedChildrenPattern",                "maxDepth", "status", "createdDate", "modifiedDate", "owner"],   "additionalProperties": false }
 
 OrgPathCodebook Schema
 

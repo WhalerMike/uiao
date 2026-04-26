@@ -1,19 +1,22 @@
 ---
 document_id: MOD_A
 title: "Appendix A — OrgPath Codebook"
-version: "2.0"
+version: "3.0"
 status: CANONICAL
 owner: Michael Stratton
 author: Michal Doroszewski
 created_at: 2026-04-18
-updated_at: 2026-04-19
+updated_at: 2026-04-26
 boundary: GCC-Moderate
 namespace: MOD
 parent_canon: UIAO_008
 provenance:
-  prior_version: "1.0 (DRAFT scaffold)"
+  prior_version: "2.0 (CANONICAL with 4-segment cap)"
   promoted_by: "Copilot Tasks"
-  promotion_date: "2026-04-19"
+  promotion_date: "2026-04-26"
+binding_adrs:
+  - ADR-035
+  - ADR-045
 ---
 
 # Appendix A — OrgPath Codebook
@@ -26,21 +29,21 @@ The OrgPath is the single most foundational artifact in the OrgTree suite. Every
 
 ## Scope
 
-Covers all hierarchical levels (0 through 4) of the OrgTree. Applies to every user object, every dynamic group membership rule, and every Administrative Unit scope within the M365 GCC-Moderate boundary. The codebook is the single source of truth for organizational structure encoding.
+Covers all hierarchical levels (0 through 8) of the OrgTree. Applies to every user object, every dynamic group membership rule, and every Administrative Unit scope within the M365 GCC-Moderate boundary. The codebook is the single source of truth for organizational structure encoding.
 
 ## Canonical OrgPath Format
 
-**Format:** `ORG-[DIV]-[DEPT]-[UNIT]-[TEAM]` (or fewer segments for higher levels)
+**Format:** `ORG-[DIV]-[DEPT]-[UNIT]-[TEAM]-[SUB]-[CELL]-[CREW]-[SQUAD]` (or fewer segments at shallower levels)
 
 Design rationale:
 
 - Starts with a fixed root (`ORG`) for easy regex validation and subtree matching
 - Uses uppercase alphanumeric segments (2-6 characters) separated by hyphens — machine-friendly, sortable, and human-readable
 - Supports both exact node (`-eq`) and branch/subtree (`-startsWith`) queries in dynamic group rules
-- Maximum depth: 4 segments after root (Level 4 = Team) — prevents excessive fragmentation while allowing meaningful hierarchy
+- Maximum depth: 8 segments after root (Level 8) — accommodates federal-agency and military-command hierarchies that routinely exceed 4 levels (Department → Sub-agency → Bureau → Office → Division → Branch → Section → Team). Adoption is governed by the codebook membership check, not the regex bound (see ADR-045).
 - Stored in: `extensionAttribute1` (synced from AD or populated by HR provisioning) — this is the single source of truth
 
-**Regex Validation Pattern:** `^ORG(-[A-Z0-9]{2,6}){0,4}$`
+**Regex Validation Pattern:** `^ORG(-[A-Z0-9]{2,6}){0,8}$`
 
 ### Alternative Format (Readability-First)
 
@@ -52,13 +55,23 @@ This works equally well with `-startsWith` but is slightly less strict for valid
 
 ## Level Structure
 
-| Level | Segment Count | Example OrgPath | Description | Typical Dynamic Group Rule |
-|-------|---------------|-----------------|-------------|---------------------------|
+Levels 0–4 keep the original Root / Division / Department / Unit / Team
+naming. Levels 5–8 are *governed sub-team strata* — the canon names them
+Sub-Team, Cell, Crew, and Squad — but each deployment is free to overload
+the labels via the per-code `description` field. The bound is enforced
+schematically (`0 ≤ level ≤ 8`); the names are descriptive prose.
+
+| Level | Segment Count | Example OrgPath | Canonical Name | Typical Dynamic Group Rule |
+|-------|---------------|-----------------|----------------|---------------------------|
 | 0 | 1 | `ORG` | Enterprise Root | All users (rarely used directly) |
-| 1 | 2 | `ORG-FIN` | Top-level Division / Agency | `-eq "ORG-FIN"` or `-startsWith "ORG-FIN"` |
-| 2 | 3 | `ORG-FIN-AP` | Department within Division | `-startsWith "ORG-FIN-AP"` |
-| 3 | 4 | `ORG-FIN-AP-EAST` | Unit / Location / Sub-function | `-startsWith "ORG-FIN-AP-EAST"` |
-| 4 | 5 | `ORG-FIN-AP-EAST-T1` | Team / Specific group | `-eq "ORG-FIN-AP-EAST-T1"` |
+| 1 | 2 | `ORG-FIN` | Division / Agency | `-eq "ORG-FIN"` or `-startsWith "ORG-FIN"` |
+| 2 | 3 | `ORG-FIN-AP` | Department | `-startsWith "ORG-FIN-AP"` |
+| 3 | 4 | `ORG-FIN-AP-EAST` | Unit / Location | `-startsWith "ORG-FIN-AP-EAST"` |
+| 4 | 5 | `ORG-FIN-AP-EAST-T1` | Team | `-eq "ORG-FIN-AP-EAST-T1"` |
+| 5 | 6 | `ORG-FIN-AP-EAST-T1-AM` | Sub-Team | `-startsWith "ORG-FIN-AP-EAST-T1-AM"` |
+| 6 | 7 | `ORG-DOD-AF-ACC-1AF-77FW-77OG` | Cell / Group | `-startsWith "ORG-DOD-AF-ACC-1AF-77FW-77OG"` |
+| 7 | 8 | `ORG-DOD-AF-ACC-1AF-77FW-77OG-77FS` | Crew / Squadron | `-startsWith "ORG-DOD-AF-ACC-1AF-77FW-77OG-77FS"` |
+| 8 | 9 | `ORG-DOD-AF-ACC-1AF-77FW-77OG-77FS-AA` | Squad / Element | `-eq "ORG-DOD-AF-ACC-1AF-77FW-77OG-77FS-AA"` |
 
 ## Sample Codebook
 
@@ -148,8 +161,8 @@ Administrative Units mirror the OrgPath hierarchy for scoped delegation. Each AU
 
 ## Boundary Rules
 
-1. All OrgPath codes must match the regex `^ORG(-[A-Z0-9]{2,6}){0,4}$`
-2. Maximum hierarchy depth is 4 segments below root (Level 4)
+1. All OrgPath codes must match the regex `^ORG(-[A-Z0-9]{2,6}){0,8}$`
+2. Maximum hierarchy depth is 8 segments below root (Level 8)
 3. Each segment must be between 2 and 6 uppercase ASCII letters or digits
 4. OrgPath values are stored in `extensionAttribute1` within Entra ID, which is within the M365 GCC-Moderate boundary
 5. No OrgPath may reference external systems or identifiers outside the M365 SaaS perimeter
@@ -175,7 +188,7 @@ Basic validation script using Microsoft Graph PowerShell:
 # Prerequisites: Connect-MgGraph -Scopes "User.Read.All", "Group.Read.All"
 
 $users = Get-MgUser -All -Property Id, OnPremisesExtensionAttributes, DisplayName
-$regex = '^ORG(-[A-Z0-9]{2,6}){0,4}$'
+$regex = '^ORG(-[A-Z0-9]{2,6}){0,8}$'
 
 # Format drift — OrgPath does not match regex
 $formatDrift = $users | Where-Object {
@@ -232,3 +245,4 @@ This codebook implements Principle 2 (Schema Fixity): the codebook structure is 
 |---------|------|--------|--------|
 | 1.0 | 2026-04-18 | Initial scaffold — structure, regex, drift rules | Copilot Tasks |
 | 2.0 | 2026-04-19 | Promoted to CANONICAL — added sample entries, dynamic group rules, AU mapping, PowerShell validation, implementation steps | Copilot Tasks |
+| 3.0 | 2026-04-26 | Extended hierarchy depth from 4 to 8 segments (ADR-045) — regex `{0,8}`, level table extended through Squad, boundary rule §2 updated | Governance Steward |

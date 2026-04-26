@@ -46,7 +46,7 @@ from typing import Optional
 
 from .survey import DriftFinding, derive_orgpath_from_dn
 
-ORGPATH_REGEX = re.compile(r"^ORG(-[A-Z]{2,6}){0,4}$")
+ORGPATH_REGEX = re.compile(r"^ORG(-[A-Z]{2,6}){0,8}$")
 REGIONAL_REGEX = re.compile(r"^REG-[A-Z]{2,8}$")
 
 

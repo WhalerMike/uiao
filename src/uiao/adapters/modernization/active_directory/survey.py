@@ -360,7 +360,7 @@ def derive_orgpath_from_dn(distinguished_name: str, codebook: set[str]) -> Optio
     # Nothing in codebook — return the deepest valid-format candidate
     # for governance review queue
     candidate = "ORG-" + "-".join(segments)
-    if re.match(r"^ORG(-[A-Z]{2,6}){1,4}$", candidate):
+    if re.match(r"^ORG(-[A-Z]{2,6}){1,8}$", candidate):
         return candidate  # Valid format but not yet in codebook → queue for registration
 
     return None
