@@ -79,3 +79,28 @@ UIAO-INJECT
 # as a reference in multiple canon + modernization docs — it does not need to
 # resolve at check time.
 ^https://json-schema\.org/draft/2020-12/schema
+
+# Private-network hostnames (*.local TLD and *.internal.*) that are only
+# reachable from within the organization's on-premises network. All *.local
+# addresses (git.uiao.local, docs.uiao.local, git-dr.uiao.local,
+# hooks.uiao.local, governance-dashboard.uiao.local, gitea.contoso.local, …)
+# and the gitea.internal.contoso.com demo host appear in customer-facing docs
+# (git-server-implementation.qmd, dns-modernization.qmd, etc.) as live
+# infrastructure references. They are valid in context but unreachable from
+# GitHub-hosted runners.
+\.local(:[0-9]+)?/
+\.local$
+gitea\.internal\.
+
+# GitHub API POST-only endpoint. /repos/{owner}/{repo}/dispatches is a
+# repository_dispatch trigger; it only accepts POST requests and returns 404
+# on unauthenticated GET. Referenced in git-server-implementation.qmd as an
+# example webhook call — the URL is correct, just not GET-accessible.
+^https://api\.github\.com/repos/[^/]+/[^/]+/dispatches
+
+# Template URLs containing unsubstituted camelCase shell variables such as
+# $gitVersion and $quartoVersion. These appear in quarto-pipeline.qmd and
+# related setup docs where the reader is expected to interpolate the variable
+# before use. The existing $UIAO_[A-Z_]+ pattern only covers UIAO-prefixed
+# all-caps variables; this covers lowercase/camelCase installer URL templates.
+\$[a-z][A-Za-z0-9]+
