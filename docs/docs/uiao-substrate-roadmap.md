@@ -1137,15 +1137,22 @@ Work required:
 - Create tier-2 fixtures (COBOL record payloads mapped to canonical claims).
 - Flip status from `reserved` to `active`.
 
-### 4.3 — Aspirational banner elimination
+### 4.3 — Aspirational banner elimination (round 1 ✅ shipped 2026-04-26)
 
 Target: zero aspirational banners by v1.1.
 
-Work required:
-- Complete per-file review of the 263 files not yet assessed (`inbox/drafts/aspirational-candidates.txt`).
-- For each genuine aspirational page, either implement the feature or schedule it in UIAO_127 project plans with a target date.
-- Remove banner as each feature ships.
-- Track count in the Substrate Status page (the page itself is a derived view from canon — the count must be regenerable from `make walk`).
+Round 1 (2026-04-26) — **10 banners removed** from pages whose underlying program / adapter shipped:
+- 5 program landings (`programs/index`, `programs/uiao_125`, `uiao_126`, `uiao_127`, `uiao_128`) — once UIAO_125–128 each shipped first deliveries (§3.8).
+- 4 narrative companions (`narrative/program-training`, `program-test-plans`, `program-project-plans`, `program-education`).
+- 1 adapter validation suite (`customer-documents/validation-suites/adapters/terraform/terraform.qmd`) — once UIAO_121/123 instantiation landed (§2.6).
+
+Each un-flagged page now carries an inline pointer to its first delivery instead of the aspirational banner. Remaining flagged set is **~34 pages**; the running tally lives in the Substrate Status page §"Aspirational-content triage".
+
+Round 2+ work required (toward v1.1 zero-banner target):
+- For each remaining genuinely-aspirational page, either implement the feature or schedule it in a UIAO_127 project plan with a target date.
+- Remove banner as each feature ships (round 1 sets the pattern: drop frontmatter `aspirational: true`, replace any "Scaffold" callout with a "First delivery shipped" tip linking the live artifact).
+- Re-run the grep heuristic across the remaining 263 inbox candidates and demote false positives out of the inbox file.
+- Eventually re-derive the count from `make walk` rather than running grep manually.
 
 ### 4.4 — UIAO_114/115/117/119 HA, Performance, Recovery, Tenancy
 
