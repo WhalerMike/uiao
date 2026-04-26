@@ -1154,14 +1154,24 @@ Round 2+ work required (toward v1.1 zero-banner target):
 - Re-run the grep heuristic across the remaining 263 inbox candidates and demote false positives out of the inbox file.
 - Eventually re-derive the count from `make walk` rather than running grep manually.
 
-### 4.4 — UIAO_114/115/117/119 HA, Performance, Recovery, Tenancy
+### 4.4 — UIAO_114/115/117/119 HA, Performance, Recovery, Tenancy — assessment ✅ shipped 2026-04-26
 
-These four specs are aspirational with no implementation. They are production-readiness prerequisites for a multi-agency deployment but not required for an initial agency engagement.
+The four production-readiness specs were assessed end-to-end against the current substrate. Full assessment: [HA / Performance / Recovery / Tenancy assessment (UIAO_127 instantiation)](../programs/project-plans/2026-04-26-ha-perf-recovery-tenancy-assessment.qmd).
 
-Work required:
-- Assess whether each spec requires implementation or whether the existing orchestrator / evidence store architecture already satisfies the invariants by construction.
-- For each gap, create a UIAO_127 project plan entry.
-- Implement or formally defer per that assessment.
+Decision summary:
+
+| Spec | Recommendation | Rationale |
+|---|---|---|
+| **UIAO_114 HA** | **Defer to Phase 2** | Cross-region active-passive is operational-infra; adapter retry already covers single-region Phase 1. |
+| **UIAO_115 Performance** | **Defer pending baseline** | Latency budgets are aspirational without empirical profiling — measure first, optimize the actual hotspot. |
+| **UIAO_117 Recovery** | **Two-phase** — Raw-Zone immutability + manual SOP now (≤2 weeks); 5-stage automated reconstitution deferred to Phase 2. |
+| **UIAO_119 Tenancy** | **Implement now** (~2.5 weeks) — UIAO_112 primitives already in place; canary rollout is a v1.0 multi-tenant prerequisite. |
+
+Each decision carries action items + owners in the assessment. The substrate-status rows for UIAO_114/115/117/119 stay ⚠️ aspirational (per the spec's own framing — they are aspirational pages) but each row now points at the assessment so the rationale is readable from the public surface.
+
+Work remaining (tracked in the assessment, not in this roadmap section):
+- UIAO_117 Phase 1 implementation (Raw-Zone immutability assertion + checkpoint label + manual SOP).
+- UIAO_119 implementation per the 2.5-week breakdown (tenant_class + Environment + feature flags + migration sandbox + tagging).
 
 ---
 
