@@ -1,0 +1,86 @@
+---
+title: "UIAO_119 v1 — Tenancy strategy data layer"
+subtitle: "TenantClass + Environment enums, tagging helper, walker hygiene"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Closes action items 119.1 + 119.2 from the §4.4 assessment: ships the type system, parser, default-tenant compatibility, and walker hygiene that the feature-flag system + migration sandbox (v2) will build on."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Closes | Action items 119.1 + 119.2 from the [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+| Target spec | UIAO_119 Tenancy Strategy — v1 data layer |
+| Plan version | 1.0 (first delivery) |
+
+## What shipped
+
+`src/uiao/governance/tenancy.py` gains the v1 UIAO_119 data layer that the feature-flag system + migration sandbox (v2) will build on:
+
+- **`TenantClass(str, Enum)`** — four canonical classes per the spec: `internal`, `canary`, `standard`, `regulated`. The class drives channel + rollout decisions (Beta / Stable / LTS / FIPS) and whether a tenant is eligible for each phase of a canary rollout. `TenantClass.parse` accepts case-insensitive strings, whitespace-tolerantly, and falls back to `STANDARD` for unrecognized / missing values — the substrate walker emits the hygiene finding when canon carries an unknown class.
+- **`Environment(str, Enum)`** — three deployment environments: `dev`, `stage`, `prod`. Same `parse` semantics; `DEV` is the default for fresh-clone development.
+- **`Tenant.tenant_class`** field, defaults to `STANDARD`. Round-trips through `as_dict()` so OSCAL back-matter resources can carry it.
+- **`TenantContext.environment`** field, defaults to `Environment.DEV`. Threaded through the request / dispatch lifecycle so downstream consumers can branch on environment without re-querying canon.
+- **`TenantContext.as_tag_dict(tenant=None)`** — tagging helper for journal records, log lines, and OSCAL back-matter resources. Always carries `tenant_id`, `actor`, `environment`; adds `tenant_class` when the caller passes the resolved `Tenant`.
+- **`load_tenants`** parses the new `tenant_class:` field from `tenants.yaml`; missing values resolve to `STANDARD`, unknown values resolve to `STANDARD` (and trigger the walker finding).
+
+`src/uiao/substrate/walker.py::_scan_tenants` extends the UIAO_112 hygiene gate with a UIAO_119 hygiene gate: tenant declarations with a `tenant_class:` field that does not match one of the four canonical values produce a P3 `DRIFT-SCHEMA` finding. The check runs even on inactive tenants — a stale entry with a bad class is still a canon bug. Active tenants without `credential_scope:` continue to produce the existing P2 finding.
+
+The shipping rule is intentionally narrow: **declare the type system, ship the parser, ship the walker hygiene; defer enforcement.** The feature-flag system, migration sandbox, and journal tagging are all v2 work that builds on this foundation.
+
+## Public API delta
+
+| Symbol | Before | After |
+|---|---|---|
+| `tenancy.TenantClass` | did not exist | new `str, Enum` with 4 members + `parse` classmethod |
+| `tenancy.Environment` | did not exist | new `str, Enum` with 3 members + `parse` classmethod |
+| `tenancy.Tenant` | 7 fields | 8 fields (`tenant_class: TenantClass = STANDARD` added) |
+| `tenancy.Tenant.as_dict` | 7 keys | 8 keys |
+| `tenancy.TenantContext` | 2 fields | 3 fields (`environment: Environment = DEV` added) |
+| `tenancy.TenantContext.as_tag_dict` | did not exist | new method returning `{tenant_id, actor, environment[, tenant_class]}` |
+| `tenancy.load_tenants` | parsed 6 fields | parses 7 (`tenant_class:` added) |
+| `walker._scan_tenants` | 1 hygiene gate (credential_scope) | 2 hygiene gates (credential_scope + tenant_class) |
+
+Back-compat: every new field has a default. Existing callers see no signature changes; existing `tenants.yaml` files load with `STANDARD` filled in. The new `as_tag_dict` is additive.
+
+## Test coverage
+
+| Test class | New tests | What they assert |
+|---|---|---|
+| `TestTenantModel` | 1 | Default `tenant_class` is `STANDARD`; `as_dict` carries it |
+| `TestTenantClassEnum` | 2 | Known values parse case-insensitively; unknown / None falls back to `STANDARD` |
+| `TestEnvironmentEnum` | 2 | Known values parse case-insensitively; unknown / None falls back to `DEV` |
+| `TestTenantContext` | 4 | Default has `environment=DEV`; explicit env carries through; `as_tag_dict` without tenant; `as_tag_dict` with tenant adds `tenant_class` |
+| `TestLoadTenants` | 3 | `tenant_class` parsed across all four values; unknown falls back; missing defaults to `STANDARD` |
+| `TestWalkerTenantScan` | 3 | Unknown `tenant_class` is P3 finding; all four known values are clean; inactive tenant with bad class still flagged |
+
+24 → 37 tests; all passing. Wider regression: 207 tests pass across `tenancy`, walker, data lake, enforcement, EPL, CQL, and Auditor API v1.
+
+## Action items closed
+
+| # | From assessment | Action | Status |
+|---|---|---|---|
+| 119.1 | UIAO_119 | v1 data layer (TenantClass + Environment + tagging) | ✅ shipped this PR |
+| 119.2 | UIAO_119 | Walker hygiene for `tenant_class` | ✅ shipped this PR |
+
+## Action items still open
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 119.3 | UIAO_119 v2 — feature-flag system (decorator + toggle table; canary-by-flag) and migration sandbox (clone context, run pipeline, snapshot diff) | Substrate maintainer | Next iteration |
+| 119.4 | Wire tenant + environment tagging into EnforcementJournal records and ArchiveEntry extras | Substrate maintainer | After 119.3 |
+| 119.5 | Document the canary → standard → regulated rollout flow as a UIAO_124 Adapter Ops Runbook entry once the feature-flag system lands | Substrate maintainer | After 119.3 |
+
+## Roll-up to substrate-status
+
+| Row | From | To |
+|---|---|---|
+| UIAO_119 | ⚠️ aspirational — scheduled for next sprint per [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) | 🟡 working — **v1 data layer ✅ shipped 2026-04-26** (`TenantClass` + `Environment` + tagging helper + walker hygiene; 13 new tests); v2 feature-flag system + migration sandbox + journal tagging open per assessment |
+
+## References
+
+- UIAO_119 Tenancy spec — `src/uiao/canon/specs/tenancy.md`
+- UIAO_112 Multi-Tenant Isolation impl — `src/uiao/governance/tenancy.py` (the foundation this v1 builds on)
+- §4.4 assessment — [2026-04-26-ha-perf-recovery-tenancy-assessment.qmd](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd)
