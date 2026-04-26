@@ -722,14 +722,59 @@ Work required:
 
 **Exit condition:** All ⚠️ items in the UIAO_100–120 range are at minimum partially implemented (🟡) with implementation plans tracked in UIAO_127 project plans. At least one UIAO_125 training walkthrough has been delivered.
 
-### 3.1 — UIAO_105 Auditor API
+### 3.1 — UIAO_105 Auditor API (aspirational → **🟡 working** ✅)
 
-The Auditor API is the external interface through which an ATO package is assembled. Without it, evidence bundles must be assembled manually.
+The Auditor API is the external interface through which an ATO package
+is assembled and the four governance modules shipped in Phase 3 are
+exercised. Pre-existing routers (`src/uiao/api/routes/auditor.py`)
+already covered `evidence` / `findings` / `POA&M` / OSCAL / graph endpoints; this pass adds
+the four §3.x governance surfaces plus Bearer-auth wiring.
 
-Work required:
-- Implement FastAPI (or equivalent) service exposing: evidence query by control ID, drift finding list, OSCAL SAR export, adapter status.
-- Define OpenAPI spec in `src/uiao/canon/specs/api-contract.md` (UIAO_105 — currently aspirational).
-- Add contract tests.
+Shipped (this PR):
+- `src/uiao/api/routes/_auth.py` — shared Bearer-token dependency
+  (`require_auditor`); JWT signature validation deferred to the
+  existing `uiao.api.auth.entra_token` module in production.
+- `src/uiao/api/routes/ztmm.py` — `GET /api/v1/ztmm` returns the full
+  5-pillar `ZTMMReport`; `GET /api/v1/ztmm/{pillar}` returns one
+  pillar's score (with synonym parsing — `endpoints` → `devices`,
+  `apps` → `applications-and-workloads`, etc.).
+- `src/uiao/api/routes/epl.py` — `GET /api/v1/epl/policies` lists
+  canonical policies; `GET /api/v1/epl/policies/{id}` fetches one;
+  `POST /api/v1/epl/evaluate` runs an `EPLContext` through the
+  evaluator and returns matched policies (no dispatch).
+- `src/uiao/api/routes/enforcement.py` — `GET /api/v1/enforcement/
+  journal` lists journal entries with `policy_id` / `target` /
+  `limit` filters; `POST /api/v1/enforcement/dispatch` actually runs
+  the runtime against a context and appends to the on-disk journal
+  (path from `UIAO_ENFORCEMENT_JOURNAL_PATH`, default
+  `output/enforcement/journal.jsonl`).
+- `src/uiao/api/routes/archive.py` — `GET /api/v1/archive` lists
+  Data Lake entries with `adapter_id` / `run_id` / `evidence_class`
+  filters; `GET /api/v1/archive/{run_id}/{adapter_id}` fetches a
+  single entry. Reads from `UIAO_ARCHIVE_ROOT` (default
+  `output/archive`).
+- All four routers wired into `src/uiao/api/app.py` under their
+  v1 prefixes alongside the existing `/api/auditor`, `/api/v1/survey`,
+  `/api/v1/orgpath` surfaces. Tags surface in the auto-generated
+  OpenAPI doc at `/api/openapi.json`.
+- 21 new tests in `tests/test_auditor_api_v1.py` using FastAPI's
+  `TestClient`: auth (3 — no/empty/dev token), ZTMM (4 — full report,
+  single pillar, synonym, 404), EPL (5 — list/get/404/evaluate-match/
+  evaluate-no-match), Enforcement (4 — journal empty/with records/
+  filtered, dispatch round-trip), Archive (5 — empty/list/filter/
+  single/404). Tests run an isolated minimal app so they don't pull
+  in the larger Windows-hosted MSAL/Kerberos auth surface.
+
+Deferred:
+- Per-tenant scoping (gated on §3.4 Multi-Tenant Isolation).
+- Stricter RBAC on the dispatch / write endpoints (today reuses the
+  shared Bearer dependency; production deployments bind a stronger
+  role check via `uiao.api.auth.entra_token`).
+- OpenAPI spec freeze in `src/uiao/canon/specs/api-contract.md` —
+  v1 surface is now stable enough to author the canon doc; deferred
+  follow-up.
+
+Referenced doc: UIAO_105 Auditor API spec.
 
 ### 3.2 — UIAO_108 Compliance Query Language (CQL)
 
