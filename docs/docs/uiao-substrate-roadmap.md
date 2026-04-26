@@ -831,14 +831,45 @@ Deferred (follow-ups):
 
 Referenced doc: UIAO_120 Zero-Trust Integration spec.
 
-### 3.7 — UIAO_109 Data Lake Model
+### 3.7 — UIAO_109 Data Lake Model (aspirational → **🟡 working** ✅)
 
-The data lake model defines how evidence snapshots are retained long-term for trend analysis and audit purposes.
+Long-term retention + archival of scheduler-run evidence so compliance
+teams can serve audit requests months / years after a finding closed,
+the substrate can prove freshness + provenance for any claim still
+inside its retention window, and old evidence ages out automatically.
 
-Work required:
-- Define the evidence retention schema.
-- Implement evidence archival in the orchestrator (post-collection).
-- Define query interface (consumed by CQL and Auditor API).
+Shipped:
+- `src/uiao/storage/data_lake.py` — `RetentionPolicy` (per-adapter,
+  reads existing `retention-years:` from canon), `ArchiveEntry`
+  (run/adapter/archived_at/retention_until/evidence_class), abstract
+  `ArchiveBackend`, concrete `FilesystemArchive` (writes
+  `lake_root/<adapter>/<run_id>/` + `_index/<run>__<adapter>.json`
+  manifests), `ArchiveManager` (orchestrates archive_run / expire /
+  query against any backend).
+- `load_retention_policies(registries)` reads existing
+  `retention-years:` declarations from
+  `modernization-registry.yaml` + `adapter-registry.yaml`. Adapters
+  without an explicit value fall through to a configurable default
+  (3 years, federal ConMon baseline). `policy_for(adapter_id, …)`
+  resolves with the same fallback for ad-hoc lookups.
+- 24 new tests in `tests/test_data_lake.py`: retention loader (6),
+  policy fallback (2), ArchiveEntry round trip (4 incl.
+  past-/within-window expiry semantics), FilesystemArchive backend
+  (3), ArchiveManager orchestration (8 — multi-adapter archive,
+  evidence-class extraction, default retention for undeclared
+  adapter, expire + index cleanup, in-window kept, query filters),
+  plus a live-canon smoke verifying every active adapter resolves
+  to a positive retention.
+
+Deferred to future PRs:
+- S3 / Azure Blob / GCS backends behind the `ArchiveBackend` ABC.
+- Cron-driven `uiao archive expire` CLI command (gated on §3.1
+  Auditor API CLI surface).
+- Hot-vs-cold tiering enforcement (compression, slower-storage move
+  at the `hot_period_days` boundary).
+- Integration with §3.2 Compliance Query Language for retrieval.
+
+Referenced doc: UIAO_109 Data Lake Model spec.
 
 ### 3.8 — UIAO_125–128 Programs: first live delivery
 
