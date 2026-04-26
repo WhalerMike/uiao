@@ -3,7 +3,7 @@
 This script is kept for backward compatibility. New code should
 import ``build_docs`` from ``uiao.generators.docs``.
 
-Deprecated: Use `uiao generate-docs` CLI command instead.
+Deprecated: Use `uiao generate docs` CLI command instead.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from uiao.generators.docs import (
 )
 
 warnings.warn(
-    "scripts/generate_docs.py is deprecated. Use `uiao generate-docs` instead.",
+    "scripts/generate_docs.py is deprecated. Use `uiao generate docs` instead.",
     DeprecationWarning,
     stacklevel=1,
 )

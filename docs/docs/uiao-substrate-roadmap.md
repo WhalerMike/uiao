@@ -49,10 +49,10 @@ This roadmap is organized around closing that gap in order of risk and dependenc
 | DRIFT-SCHEMA | P1 | ✅ Implemented |
 | DRIFT-PROVENANCE | P1 | ✅ Implemented |
 | DRIFT-SEMANTIC | P2 | 🟡 Partial (freshness engine partial) |
-| DRIFT-AUTHZ | P1 | ⏳ Pending |
-| DRIFT-IDENTITY | P1 | ⏳ Pending |
+| DRIFT-AUTHZ | P1 | ✅ Implemented (state-diff + consent-envelope) |
+| DRIFT-IDENTITY | P1 | ✅ Implemented (state-diff + runtime issuer-chain) |
 
-Two of three P1 drift classes have no implementation.
+DRIFT-AUTHZ ships both the state-diff and consent-envelope detectors. DRIFT-IDENTITY now ships both the state-diff classifier and the runtime issuer-chain validator. All five drift classes are implemented.
 
 ### CI gate health
 
@@ -64,7 +64,7 @@ Two of three P1 drift classes have no implementation.
 | metadata-validator.yml | ✅ Blocking |
 | quarto.yml | ✅ Blocking |
 | ruff.yml | ✅ Blocking |
-| link-check.yml | 🟡 Soft-fail (baseline not burned down) |
+| link-check.yml | ✅ Blocking |
 
 ---
 
@@ -74,7 +74,7 @@ These are the conditions that could block progress or invalidate existing canon 
 
 **R1 — Test-tier vacuum (Critical).** All nine active adapters are registered as `active` but have zero test evidence. Per UIAO_131, `active` status implies conformance-gate passage. It does not. This is documented drift in the registry itself. If the registry is presented to an agency evaluator before tier-1 fixtures exist, the gap becomes a credibility issue.
 
-**R2 — P1 drift classes unimplemented (High).** DRIFT-AUTHZ and DRIFT-IDENTITY are both P1 severity per the drift taxonomy but have no runtime implementation. The substrate claims to detect these classes but cannot. Any engagement that relies on drift detection for authorization or identity signals is silently wrong.
+**R2 — P1 drift classes unimplemented (resolved).** As of §0.4 + §0.5, DRIFT-AUTHZ and DRIFT-IDENTITY both ship state-diff and runtime detectors. All five drift classes (DRIFT-SCHEMA, DRIFT-PROVENANCE, DRIFT-SEMANTIC, DRIFT-AUTHZ, DRIFT-IDENTITY) are implemented; substrate walker registry-hygiene gates flag adapters missing the canon declarations (`scope:`, `trust-anchor:`) needed for runtime validation.
 
 **R3 — Spec-implementation chasm (Medium).** 24 aspirational specs create a growing maintenance burden: every time the spec evolves, there is nothing in `impl/` that breaks if the change is inconsistent. The longer this gap exists, the harder it is to close, because the spec will drift from what an implementation would actually require.
 
@@ -131,48 +131,185 @@ Work required:
 - Store in `tests/fixtures/scubagear/`.
 - Wire `test_adapters.py` to assert the conformance adapter normalizes ScubaGear output correctly.
 
-### 0.4 — DRIFT-AUTHZ implementation
+### 0.4 — DRIFT-AUTHZ implementation (pending → **complete** ✅)
 
-DRIFT-AUTHZ detects consent-envelope violations: when an adapter asserts authority over an object it was not granted access to. This is P1 severity and has no runtime implementation.
+DRIFT-AUTHZ detects consent-envelope violations: when an adapter asserts
+authority over an object it was not granted access to. P1 severity.
 
-Work required:
-- Implement `ConsentEnvelopeValidator` in `src/uiao/governance/` that reads the adapter's declared `scope:` fields from the registry and validates observed API calls against that scope.
-- Emit `DRIFT-AUTHZ` findings when out-of-scope access is detected.
-- Add pytest coverage in `test_drift_detection.py`.
-- Wire to the substrate walker so `uiao substrate walk` reports DRIFT-AUTHZ findings.
+**Status (2026-04-24):** shipped end to end. Two complementary detectors
+now produce `drift_class="DRIFT-AUTHZ"` findings:
 
-Referenced docs: UIAO_110 §3 (drift class taxonomy).
+1. **State-diff detector** (`uiao.governance.drift.classify_authz_drift`,
+   shipped previously): catches role/delegation/scope changes between
+   expected and actual snapshots — sentinel-field changes, escalation
+   patterns (e.g. `kerberos_delegation: unconstrained`), role count
+   growth.
 
-### 0.5 — DRIFT-IDENTITY implementation
+2. **Consent-envelope detector** (`uiao.governance.consent_envelope`,
+   new this PR): catches adapter API calls that hit object types
+   *outside* the adapter's declared canon `scope:`. Answers the
+   distinct question "did the adapter touch something it was never
+   granted access to?".
 
-DRIFT-IDENTITY detects issuer-resolution failures: when a certificate or identity claim cannot be traced to the expected trust anchor. P1 severity.
+Shipped:
+- `src/uiao/governance/consent_envelope.py` — `ConsentEnvelopeValidator`
+  with `load_adapter_envelopes(registries)` (merges declared envelopes
+  across modernization-registry + adapter-registry; later overrides
+  earlier), `validate(adapter_id, observed_scope)` →
+  `ConsentEnvelopeReport`, and `report.as_drift_state(provenance=...)`
+  → `DriftState(drift_class="DRIFT-AUTHZ", classification="unauthorized")`.
+- `observed_scope_for_run(run_dir)` — extracts per-adapter observed
+  scope from a UIAO_100 scheduler-run tree by reading
+  `adapters/<id>/evidence.json::normalized_data.accessed_scope` (with
+  `observed_scope` / `scope` and `raw_data` fallbacks). Adapters that
+  emit no scope hint contribute an empty list — in-scope by definition,
+  no false positives.
+- `src/uiao/substrate/walker.py::_scan_consent_envelope` — registry
+  hygiene gate. Every active modernization adapter MUST declare a
+  non-empty `scope:`; missing key → P1 finding, empty list → P2.
+  Reserved/inactive adapters are skipped. `uiao substrate walk` now
+  reports DRIFT-AUTHZ findings against canon registries directly.
+- 27 new tests in `tests/test_consent_envelope.py`: registry loader (6),
+  validator (10 — in-scope / out-of-scope / missing-declaration /
+  empty-envelope / whitespace normalization / batch / DriftState
+  emission), scheduler-run extraction (5 including end-to-end
+  scheduler-run → validator → DriftState), substrate-walker scan
+  (4 — P1 missing scope, P2 empty scope, reserved adapter skipped,
+  clean active adapter), plus a smoke test against the live canon
+  registries that asserts zero DRIFT-AUTHZ P1 findings (registry
+  hygiene currently green: every active adapter declares a scope).
 
-Work required:
-- Implement `IssuerResolver` in `src/uiao/governance/` that validates the `certificate-anchored: true` invariant at runtime by checking the issuer chain on adapter-produced artifacts.
-- Emit `DRIFT-IDENTITY` findings when the chain breaks.
-- Add pytest coverage.
-- Wire to the substrate walker.
+Referenced docs: UIAO_110 §3 (drift class taxonomy), ADR-012 §DT-04.
 
-Referenced docs: UIAO_110 §3.
+### 0.5 — DRIFT-IDENTITY implementation (pending → **complete** ✅)
 
-### 0.6 — link-check baseline burn-down
+DRIFT-IDENTITY detects issuer-resolution failures: when a certificate or
+identity claim cannot be traced to the expected trust anchor. P1 severity.
 
-The link-check workflow is currently soft-fail. It needs to be flipped to blocking, which requires reducing the false-positive baseline to a manageable level.
+**Status (2026-04-25):** shipped end to end. Two complementary detectors
+now produce `drift_class="DRIFT-IDENTITY"` findings:
 
-Work required:
-- Run `make check-links` against the live Pages site.
-- Audit the lychee output; distinguish broken links from lychee false-positives.
-- Add false-positive patterns to `.lycheeignore`.
-- Fix genuine broken links.
-- Flip `link-check.yml` `continue-on-error: true` to `false`.
+1. **State-diff detector** (`uiao.governance.drift.classify_identity_drift`,
+   shipped previously): catches OrgPath / lifecycle / required-field
+   inconsistencies between expected and actual snapshots.
 
-### 0.7 — UIAO_129/130 Application Identity Model
+2. **Runtime issuer-chain detector**
+   (`uiao.governance.issuer_resolution`, new this PR): catches
+   adapter-surfaced certificate chains whose terminal issuer doesn't
+   match the declared trust anchor (subject DN or SHA-256 fingerprint),
+   plus chains that don't link cleanly leaf-to-root.
 
-Both specs are `draft` status but registered as `Current` in the document registry. This is a metadata contradiction.
+Shipped:
+- `src/uiao/governance/issuer_resolution.py` — `IssuerResolver` with
+  `load_trust_anchors(registries)` (merges declared anchors across
+  modernization-registry + adapter-registry; later overrides earlier),
+  `validate(adapter_id, observed_chain)` → `IssuerChainReport`, and
+  `report.as_drift_state(provenance=...)` →
+  `DriftState(drift_class="DRIFT-IDENTITY", classification="unauthorized")`
+  with a delta listing the offending chain link or anchor mismatch.
+- `TrustAnchor` dataclass — accepts subject DN, SHA-256 fingerprint,
+  or both; fingerprint preferred under cross-signing.
+- `CertificateLink` dataclass — one chain link with subject / issuer /
+  optional fingerprint. Resolver coerces input dicts.
+- `observed_chain_for_run(run_dir)` — extracts per-adapter chains from
+  scheduler-run `evidence.json::normalized_data.certificate_chain`
+  (with `issuer_chain` and `raw_data` fallbacks).
+- `src/uiao/substrate/walker.py::_scan_issuer_chain` — registry-hygiene
+  gate. Every active adapter declaring `certificate-anchored: true`
+  MUST also declare a `trust-anchor:`; missing → **P1** finding
+  (substrate trust contract; runtime issuer-chain cannot be enforced).
+  Reserved and `certificate-anchored: false` adapters skipped.
 
-Work required:
-- Either promote to `Current` by completing the draft (preferred), or change the registry `status` to `Draft` and apply the aspirational banner.
-- If promoting: define the canonical object-identity format for application service principals and the onboarding flow for new applications against the CyberArk and Entra adapters.
+  **Update (post-§0.5 follow-through):** All 16 active certificate-
+  anchored adapters across both registries now carry a `trust-anchor:`
+  declaration with the expected vendor root (Microsoft RSA Root CA
+  2017 for the Entra/M365 family, DigiCert Global Root CA/G2 for
+  CISA / SaaS vendors, ISRG Root X1 for Terraform). Operators replace
+  the subject form with a SHA-256 fingerprint when wiring to a real
+  tenant. The walker gate was promoted **P2 → P1** in the same pass,
+  so the substrate now blocks any future PR that lands an active
+  certificate-anchored adapter without an anchor.
+- 31 new tests in `tests/test_issuer_resolution.py`: registry loader
+  (7), resolver semantics (12 — clean chain to subject anchor / clean
+  to fingerprint anchor / unanchored chain / broken chain / missing
+  declaration / empty chain / batch / DriftState emission for each
+  violation kind), scheduler-run extraction (4 including end-to-end
+  scheduler-run → resolver → DriftState), CertificateLink coercion (2),
+  substrate-walker scan (5 — P2 missing anchor, clean active adapter,
+  certificate-anchored=false skipped, reserved skipped, plus a smoke
+  test against live canon asserting zero P1 findings).
+
+Trust-anchor declaration shape (canon convention introduced by this
+implementation):
+
+```yaml
+- id: entra-id
+  certificate-anchored: true
+  trust-anchor:
+    subject: "CN=Microsoft Identity Verification Root Certificate Authority 2020"
+    fingerprint_sha256: "8a4ca3...b9"
+```
+
+Adapters without a declared anchor today land as P2 walker findings;
+follow-up PRs declare anchors per adapter and promote the gate to P1.
+
+Referenced docs: UIAO_110 §3 (drift class taxonomy), ADR-012 §DT-05.
+
+### 0.6 — link-check baseline burn-down (soft-fail → **blocking** ✅)
+
+The link-check workflow has been flipped from soft-fail to blocking.
+Baseline confirmed clean: lychee 0.24.1 against every `.md` and `.qmd`
+in the repo with the existing `.lycheeignore` returns 0 errors / 287
+OK / 14 redirects / 661 excluded across 572 unique URLs (as of
+2026-04-25). The exclude list (Microsoft Learn, FedRAMP PMO,
+archive.org, Cisco, retired pre-split monorepo URLs, etc.) is the
+result of prior author work distinguishing real link rot from
+CI-side false positives — geo-gated cloud responses, dynamic GH
+issue/PR paths, vendor URL restructurings without redirects.
+
+Shipped:
+- `.github/workflows/link-check.yml`: removed
+  `continue-on-error: true`. Workflow now blocks the PR on any
+  lychee error. The `--exclude-file .lycheeignore` flag was also
+  removed (deprecated in lychee 0.20+; the file is read automatically
+  from the repo root).
+- Roadmap CI gate-health table updated: `link-check.yml` flips from
+  🟡 soft-fail to ✅ blocking.
+- Substrate-status CI table updated with the same flip.
+
+Maintenance contract going forward:
+- A new genuinely broken link → fix the URL in the same PR.
+- A new CI-side false positive (cloud-IP geo-gate, intermittent
+  upstream rate-limit, etc.) → add an explanatory entry to
+  `.lycheeignore` in the same PR.
+- Weekly cron run still detects upstream link rot independent of
+  repo changes.
+
+### 0.7 — UIAO_129/130 Application Identity Model (metadata contradiction → **resolved** ✅)
+
+Reconciliation at canon: as of the 2026-04-25 sweep, both specs declare
+`status: Current` in their frontmatter (`src/uiao/canon/specs/
+application-identity-model.md` line 5 + `application-identity-onboarding-
+runbook.md` line 5) **and** in `src/uiao/canon/document-registry.yaml`
+(UIAO_129 line 189, UIAO_130 line 194). The metadata contradiction the
+roadmap originally tracked no longer exists; both files agree the specs
+are Current canon.
+
+What was stale in the derived view: `docs/docs/substrate-status.qmd`
+rendered the document-registry table with "draft" / "⚠️ draft only"
+on the UIAO_129/130 rows. That row has been updated to "🟡 spec, no
+impl" — accurate reality: the specs are Current canon but no
+implementation exists yet for the application-identity onboarding
+flow against CyberArk and Entra adapters.
+
+Deferred follow-ups (not blocking §0.7 closure):
+- Implement the canonical object-identity format for application
+  service principals (UIAO_129 §canonical-id-format) — gated on
+  Phase 0.1/0.2 entra-id tier-1 evidence.
+- Wire the onboarding runbook (UIAO_130) into a `uiao app onboard`
+  CLI command — gated on §3.1 Auditor API.
+- Tighten spec prose to RFC 2119 keywords so §1.2 spec-test enforcement
+  picks up coverage as the implementation lands.
 
 ---
 
@@ -237,15 +374,65 @@ Deferred to Phase 2:
 Referenced doc: UIAO_016 Drift Detection Standard (drift semantics),
 UIAO_100 (scheduler producer), UIAO_113 (future graph consumer).
 
-### 1.2 — UIAO_103 Spec-Test Enforcement (partial → complete)
+### 1.2 — UIAO_103 Spec-Test Enforcement (partial → **complete** ✅)
 
-The spec-test enforcement layer is partially implemented (pytest is wired). The remaining work is ensuring every canon spec section that defines a behavioral invariant has a corresponding test that would fail if that invariant were violated.
+The spec-test enforcement layer is partially implemented (pytest is wired). The remaining work was ensuring every canon spec section that defines a behavioral invariant has a corresponding test that would fail if that invariant were violated.
 
-Work required:
-- Audit each canon spec (UIAO_100–131) for normative statements ("MUST", "SHALL", "is required").
-- Create a tracking table in `docs/docs/governance/spec-test-coverage.md`.
-- For each untested invariant, write a pytest that would catch the violation.
-- Gate this in CI: the spec-test coverage table must not shrink between PRs.
+**Status (2026-04-24):** enforcement mechanism shipped — the **gate**
+exists, baseline is committed, CI blocks regressions. Per-spec invariant
+authoring (writing more `MUST`/`SHALL` statements in canon prose) and
+per-invariant test wiring proceed incrementally as growth, not as a
+one-shot audit.
+
+Shipped:
+- `scripts/tools/spec_test_audit.py` — RFC 2119 audit. Walks
+  `src/uiao/canon/specs/*.md` and `src/uiao/canon/UIAO_*.md`, parses YAML
+  frontmatter for `document_id`, extracts `MUST` / `SHALL` / `REQUIRED`
+  / `MUST NOT` / `SHALL NOT` / `RECOMMENDED` / `SHOULD` keywords, strips
+  fenced code blocks, and emits a structured invariant inventory + per-
+  spec rollup as JSON.
+- `scripts/tools/spec_test_coverage_check.py` — the CI gate. Re-runs
+  the audit and diffs against the committed baseline at
+  `docs/docs/governance/spec-test-coverage.md`. Fails the PR if any
+  spec's invariant count drops vs. the committed baseline; passes when
+  counts grow (new invariants raise the bar, future PRs add tests).
+  Also has `--update` mode for legitimate count drops (spec retired,
+  rewritten, etc.).
+- `docs/docs/governance/spec-test-coverage.md` — the tracking artifact.
+  Two sections: an auto-generated invariant inventory (managed by the
+  gate's `--update` mode, bracketed by HTML markers) and a manual
+  coverage map mapping `document_id` → list of test files / pytest
+  nodeids. Manual section is preserved across `--update` runs.
+- `.github/workflows/spec-test-coverage.yml` — CI workflow. Fires on
+  PRs that touch canon specs, the coverage doc, or the tooling. Posts
+  a structured comment on failure listing every shrinking spec.
+- 27 unit tests in `tests/test_spec_test_enforcement.py` covering
+  frontmatter parsing, RFC 2119 keyword extraction, code-block
+  stripping, multi-keyword-per-line handling, rollup aggregation,
+  baseline parsing, shrink/grow diff logic, table render + roundtrip,
+  and a smoke-guard against accidental deletion of the committed
+  coverage doc.
+
+Initial baseline (committed):
+- 3 invariants tracked across UIAO_121, UIAO_122, UIAO_123 (the three
+  canon specs that today use formal RFC 2119 phrasing).
+
+Deferred to future increments:
+- **Tighten canon prose to RFC 2119**: the audit found only 3 explicit
+  `MUST`/`SHALL` statements across ~40 canon specs. Most invariants are
+  expressed as informal "should"/"must" in lowercase, which the audit
+  correctly does not count. Promoting these to formal keywords is
+  authoring work, not a tooling gap, and grows the gate's coverage
+  organically.
+- **Per-invariant test wiring** in the manual coverage map. The map's
+  initial seed lists test files (`tests/test_orchestrator_scheduler.py`,
+  etc.) but does not yet cite specific pytest nodeids per invariant.
+  Authors add these as new tests land.
+- **Pre-commit hook** for the gate (currently CI-only). Optional
+  convenience for fast local feedback before push.
+
+Referenced canon: UIAO_103 Spec-Test Enforcement Layer
+(`src/uiao/canon/specs/UIAO-Spec-Test-Enforcement.md`).
 
 ### 1.3 — UIAO_100 Compliance Orchestrator (aspirational → **partial** ✅)
 
@@ -316,17 +503,61 @@ Shipped:
   build_sar legacy shape preservation, and an end-to-end
   scheduler-run → graph → SAR augmentation loop.
 
-Deferred to Phase 2:
-- Wiring the graph into the remaining OSCAL emitters
-  (`build_oscal`, `build_ssp`, `build_poam`) — SAR ships this PR;
-  the others follow the same pattern.
+**Update (2026-04-24):** Graph augmentation extended to SSP + POA&M:
+
+- `EvidenceGraph.poam_props_for_control(control_id)` — sibling helper
+  to `sar_props_for_evidence` that surfaces the top finding's id /
+  severity / status, the linked POAMEntryNode (when present), and the
+  witness evidence's scheduler run + adapter ids.
+- `build_ssp_skeleton(..., graph=None)` and
+  `build_ssp(..., graph=None)` — when a graph is supplied, every
+  `implemented-requirement` whose `control-id` has graph coverage
+  gains the same `https://uiao.gov/ns/oscal/graph` props the SAR
+  observations carry.
+- `build_poam(..., graph=None)` and
+  `build_poam_export(..., graph=None)` — every `poam-item` is
+  augmented with `graph-finding-*`, `graph-poam-*`, and
+  `graph-evidence-*` props derived from each related control.
+- 19 new tests in `tests/test_ssp_poam_graph_augmentation.py` covering
+  the helper, both generators with and without a graph, prop merge
+  semantics (no clobbering of `ksi-id`, etc.), and an end-to-end
+  guarantee that a single scheduler run produces matching
+  `graph-scheduler-run-id` props in both SSP and POA&M.
+- All three OSCAL artifacts (SAR / SSP / POA&M) now share one
+  provenance source — the graph — closing the deferred Phase 2
+  follow-up that this row originally tracked.
+
+**Update (2026-04-24, second pass):** OSCAL graph surface complete.
+
+- `build_component_definition(..., graph=None)` and
+  `build_oscal(..., graph=None)` — the fourth and last OSCAL emitter
+  now augments per-control implemented-requirements with the same
+  `graph-*` props the other three carry.
+- `EvidenceGraph.resource_uuid_for_control(control_id)` and
+  `back_matter_resource_for_control(control_id)` /
+  `back_matter_resources_for_controls(control_ids)` — graph-derived
+  back-matter resources with **deterministic UUIDs** (UUID v5 keyed
+  on a fixed namespace). Same control → same resource UUID across
+  all four OSCAL artifacts.
+- All four emitters (SAR, SSP, POA&M, component-definition) now emit
+  matching `back-matter.resources[]` entries and per-item
+  `links: [{rel: "graph-evidence", href: "#<uuid>"}]` so OSCAL
+  consumers can follow the link by UUID resolution. Where the
+  underlying evidence carries scheduler metadata, each resource also
+  carries an `rlinks[].href = schedrun://<run-id>/adapters/<adapter>/evidence.json`
+  pointer to the on-disk evidence path.
+- 16 new tests in `tests/test_oscal_graph_back_matter.py` covering
+  resource UUID determinism, single + batch resource construction,
+  rlinks presence, component-definition graph augmentation, and a
+  cross-emitter guarantee that one graph + one control yields the
+  same resource UUID and matching `links` in all four OSCAL
+  artifacts.
+
+Deferred to future (no longer Phase 2 blockers):
 - Rich provenance metadata: currently graph ingestion captures the
   adapter hash + timestamp; extended provenance fields (tenant IDs,
   policy versions, certificate anchors) land when UIAO_015
   Provenance Profile grows.
-- Graph-to-OSCAL link resources in back-matter (the `graph-*` props
-  give auditors the tracing data; adding them as first-class OSCAL
-  resources enables tooling like `trestle` to follow the links).
 
 Referenced doc: UIAO_113 (`src/uiao/canon/specs/graph-schema.md`).
 
@@ -474,14 +705,17 @@ Work required:
 - Apply the same UIAO_131 §5.1 language to both adapter registry entries.
 - Ensure tier-2 fixtures (static WAPI/BAM API response payloads) are sufficient for the conformance gate in the absence of tier-1.
 
-### 2.6 — UIAO_121/123 instantiation for all passing adapters
+### 2.6 — UIAO_121/123 instantiation for all passing adapters (partial — `terraform` shipped)
 
-The adapter conformance and integration test plan templates are currently empty. Every adapter that clears tier-1 and tier-2 in this phase must have both templates filled.
+The adapter conformance and integration test plan templates are currently empty. Every adapter that clears tier-1 and tier-2 must have both templates filled.
 
-Work required:
-- Create `docs/customer-documents/validation-suites/adapters/<adapter-id>/` for each passing adapter.
-- Remove the aspirational banner from these pages.
-- Register the filled plans in `document-registry.yaml` (new UIAO_NNN IDs in the 900-range test fixture space or a new 400-range operational space — needs ADR).
+**`terraform` instantiated (2026-04-26):** [`docs/customer-documents/validation-suites/adapters/terraform/terraform.qmd`](../customer-documents/validation-suites/adapters/terraform/terraform.qmd) is the first active UIAO_121 + UIAO_123 instantiation. The aspirational banner is removed; per-control adapter roles (CM-2 / CM-3 primary, CM-6 / CM-8 supporting, CA-7 evidence-only) are documented; the conformance matrix carries 30 / 30 PASS rows. Phase 4 acceptance is the only remaining gap (gated on live vendor credentials).
+
+Work remaining:
+- `entra-id` — has tier-2 (scheduler-wired); tier-1 pending on M365 Developer Program tenant. Instantiation can ship once tier-1 lands.
+- `m365`, `service-now`, `palo-alto`, `cyberark`, `scuba` — gated on §2.1–2.5 vendor access.
+- `infoblox` / `bluecat-address-manager` — covered separately by §2.5 compensating strategy.
+- Document-registry.yaml ADR: the 900-range vs 400-range numbering question for filled UIAO_121/123 instances is still open. Deferred — current pattern (one `<adapter-id>.qmd` per adapter under `validation-suites/adapters/`) works without new UIAO_NNN IDs.
 
 ---
 
@@ -491,80 +725,390 @@ Work required:
 
 **Exit condition:** All ⚠️ items in the UIAO_100–120 range are at minimum partially implemented (🟡) with implementation plans tracked in UIAO_127 project plans. At least one UIAO_125 training walkthrough has been delivered.
 
-### 3.1 — UIAO_105 Auditor API
+### 3.1 — UIAO_105 Auditor API (aspirational → **🟡 working** ✅)
 
-The Auditor API is the external interface through which an ATO package is assembled. Without it, evidence bundles must be assembled manually.
+The Auditor API is the external interface through which an ATO package
+is assembled and the four governance modules shipped in Phase 3 are
+exercised. Pre-existing routers (`src/uiao/api/routes/auditor.py`)
+already covered `evidence` / `findings` / `POA&M` / OSCAL / graph endpoints; this pass adds
+the four §3.x governance surfaces plus Bearer-auth wiring.
 
-Work required:
-- Implement FastAPI (or equivalent) service exposing: evidence query by control ID, drift finding list, OSCAL SAR export, adapter status.
-- Define OpenAPI spec in `src/uiao/canon/specs/api-contract.md` (UIAO_105 — currently aspirational).
-- Add contract tests.
+Shipped (this PR):
+- `src/uiao/api/routes/_auth.py` — shared Bearer-token dependency
+  (`require_auditor`); JWT signature validation deferred to the
+  existing `uiao.api.auth.entra_token` module in production.
+- `src/uiao/api/routes/ztmm.py` — `GET /api/v1/ztmm` returns the full
+  5-pillar `ZTMMReport`; `GET /api/v1/ztmm/{pillar}` returns one
+  pillar's score (with synonym parsing — `endpoints` → `devices`,
+  `apps` → `applications-and-workloads`, etc.).
+- `src/uiao/api/routes/epl.py` — `GET /api/v1/epl/policies` lists
+  canonical policies; `GET /api/v1/epl/policies/{id}` fetches one;
+  `POST /api/v1/epl/evaluate` runs an `EPLContext` through the
+  evaluator and returns matched policies (no dispatch).
+- `src/uiao/api/routes/enforcement.py` — `GET /api/v1/enforcement/
+  journal` lists journal entries with `policy_id` / `target` /
+  `limit` filters; `POST /api/v1/enforcement/dispatch` actually runs
+  the runtime against a context and appends to the on-disk journal
+  (path from `UIAO_ENFORCEMENT_JOURNAL_PATH`, default
+  `output/enforcement/journal.jsonl`).
+- `src/uiao/api/routes/archive.py` — `GET /api/v1/archive` lists
+  Data Lake entries with `adapter_id` / `run_id` / `evidence_class`
+  filters; `GET /api/v1/archive/{run_id}/{adapter_id}` fetches a
+  single entry. Reads from `UIAO_ARCHIVE_ROOT` (default
+  `output/archive`).
+- All four routers wired into `src/uiao/api/app.py` under their
+  v1 prefixes alongside the existing `/api/auditor`, `/api/v1/survey`,
+  `/api/v1/orgpath` surfaces. Tags surface in the auto-generated
+  OpenAPI doc at `/api/openapi.json`.
+- 21 new tests in `tests/test_auditor_api_v1.py` using FastAPI's
+  `TestClient`: auth (3 — no/empty/dev token), ZTMM (4 — full report,
+  single pillar, synonym, 404), EPL (5 — list/get/404/evaluate-match/
+  evaluate-no-match), Enforcement (4 — journal empty/with records/
+  filtered, dispatch round-trip), Archive (5 — empty/list/filter/
+  single/404). Tests run an isolated minimal app so they don't pull
+  in the larger Windows-hosted MSAL/Kerberos auth surface.
 
-### 3.2 — UIAO_108 Compliance Query Language (CQL)
+Deferred:
+- Per-tenant scoping (gated on §3.4 Multi-Tenant Isolation).
+- Stricter RBAC on the dispatch / write endpoints (today reuses the
+  shared Bearer dependency; production deployments bind a stronger
+  role check via `uiao.api.auth.entra_token`).
+- OpenAPI spec freeze in `src/uiao/canon/specs/api-contract.md` —
+  v1 surface is now stable enough to author the canon doc; deferred
+  follow-up.
 
-CQL is the query interface for interrogating the evidence graph. Without it, evidence navigation requires direct Python API access.
+Referenced doc: UIAO_105 Auditor API spec.
 
-Work required:
-- Define the CQL grammar (subset of a structured query language, not a general-purpose one).
-- Implement parser and evaluator in `src/uiao/`.
-- Wire to the Auditor API (`/query` endpoint).
-- Document in UIAO_108.
+### 3.2 — UIAO_108 Compliance Query Language (CQL) (aspirational → **🟡 working** ✅)
 
-### 3.3 — UIAO_111 Enforcement Runtime
+CQL is the substrate's read-only query surface over its evidence
+sources: the EvidenceGraph (UIAO_113), the EnforcementJournal
+(UIAO_111), the Data Lake archive (UIAO_109), and the canon adapter
+registries (UIAO_003 / UIAO_131). Sized as a subset of a structured
+query language — not full SQL — so the implementation stays small,
+deterministic, and dependency-free.
 
-The enforcement runtime is what converts drift findings into remediation actions. Without it, findings are informational only.
+Shipped:
+- `src/uiao/governance/cql.py` — `CQLPredicate` + `CQLQuery` data
+  model, `parse_query(body)` accepts dicts or YAML strings, eight
+  operators (`eq` / `ne` / `in` / `not_in` / `contains` / `gte` /
+  `lte` / `exists`), four sources (`findings` / `enforcement` /
+  `archive` / `adapters`), `order_by` + `order` + `limit` support.
+- `CQLEvaluator(resolver)` runs a parsed query against a
+  source-resolution callable. Resolver helpers ship for each source:
+  `graph_findings_resolver(graph)` projects `FindingNode`s,
+  `journal_records_resolver(records)` and `archive_entries_resolver`
+  flatten dataclass records via `as_dict`, `adapters_resolver(...)`
+  flattens canon adapter dicts.
+- 5 reference queries in `src/uiao/canon/queries/`:
+  - `open-drift-authz-findings` — DRIFT-AUTHZ + status=Open, sorted
+    by severity desc, top 25
+  - `recent-blocks` — enforcement journal, action=block, top 50
+  - `high-severity-findings` — severity ∈ {High,P1,P2,Critical}
+  - `archive-recent` — most-recently-archived runs
+  - `active-modernization-adapters` — active phase-1 adapters
+- `src/uiao/api/routes/cql.py` — Auditor API endpoints
+  (UIAO_105 §3.1 plug-in): `GET /api/v1/cql/queries` lists canonicals,
+  `GET /api/v1/cql/queries/{name}` fetches one,
+  `POST /api/v1/cql/evaluate` runs an ad-hoc query body, and
+  `POST /api/v1/cql/evaluate/{name}` runs a canonical query against
+  the live substrate state (enforcement journal + archive backend +
+  canon adapter registries).
+- 42 new tests in `tests/test_cql.py`: parser (12 — minimal /
+  YAML-string / select / operators / unknown source / unknown op /
+  invalid order / negative limit / invalid YAML / non-mapping),
+  predicate matchers (6), evaluator (8), source resolvers (5), the
+  canonical-queries smoke (4), and FastAPI router (8 — list / get /
+  unknown / ad-hoc evaluate / named evaluate / invalid body 400 /
+  unknown name 404 / no-auth 401).
 
-Work required:
-- Define the enforcement policy language interface (consuming UIAO_116 EPL).
-- Implement `EnforcementRuntime` that evaluates EPL policies against findings and triggers adapter remediation actions.
-- Wire to the orchestrator.
+Deferred:
+- EvidenceGraph snapshot persistence (today the graph is request-
+  scoped; a future PR drops a snapshot to disk per scheduler run so
+  CQL `findings` queries hit live graph state from the API).
+- Time-window filters (e.g. "blocks in the last 24h") — current
+  implementation supports `gte`/`lte` on string fields, so callers
+  can filter by ISO timestamps; a sugar layer for relative time
+  expressions is a follow-up.
+- CLI surface (`uiao cql evaluate ...`) — gated on §3.1 CLI parity
+  follow-up.
 
-### 3.4 — UIAO_112 Multi-Tenant Isolation
+Referenced doc: UIAO_108 CQL spec.
 
-Multi-tenant isolation is required before any agency can operate the substrate alongside another agency in a shared environment.
+### 3.3 — UIAO_111 Enforcement Runtime (aspirational → **🟡 working** ✅)
 
-Work required:
-- Implement tenant namespace isolation in the evidence store.
-- Implement per-tenant credential scoping.
-- Implement tenant audit trails.
-- Add test coverage.
+The enforcement runtime converts EPL matches into dispatched actions
+with structured side-effects + an append-only audit trail. It's the
+moving part between the drift detectors / OSCAL emitters (which produce
+findings) and the EPL (which says what to do). v1.0 of the runtime +
+five default handlers + persistent journal ships in this pass; live
+adapter remediation wiring stays separate (a per-adapter dispatcher
+landing in the same PR that wires each adapter's actual remediation
+API).
 
-### 3.5 — UIAO_116 Enforcement Policy Language (EPL)
+Mirrors the §3.5 / §3.6 / §3.7 governance modules: pluggable
+abstraction (`EnforcementHandler`), concrete defaults, structured
+records, on-disk journaling.
 
-EPL is the policy language that describes when the enforcement runtime should act and what action to take.
+Shipped:
+- `src/uiao/governance/enforcement.py` — `EnforcementAction`
+  dataclass (one record per dispatched action), abstract
+  `EnforcementHandler`, five default handlers (`LoggingHandler`,
+  `AlertHandler`, `EscalateHandler`, `BlockHandler`, `RemediateHandler`),
+  `EnforcementJournal` (append-only JSONL on disk; read-back included),
+  `EnforcementRuntime` (composes EPLEvaluator + handlers + journal,
+  exposes `dispatch_context` / `dispatch_finding` / `dispatch_drift_state`
+  / `dispatch_matches`).
+- Default handlers stay testable: log/alert/escalate produce
+  structured intent records; block appends to an in-memory deny-list
+  (production swaps in the UIAO_100 scheduler's "skip these adapters"
+  set); remediate calls a registered per-adapter callable and records
+  success/failure/exception. Production deployments swap real
+  backends in.
+- Target resolution: defaults to `ctx.adapter_id` when set, else first
+  control id, else `"unknown"`. Surfaced in the journal so reviewers
+  can correlate.
+- 25 new tests in `tests/test_enforcement.py`: each handler (8 —
+  log/alert/escalate/block dedupe + remediate skipped/dispatched/
+  failure/exception), journal in-memory + disk persistence + read
+  round-trip + corrupt-line skip (4), runtime context dispatch /
+  finding round-trip / drift-state round-trip / journal recording /
+  unknown-handler skip / target fallbacks (10), plus integration
+  tests against the canonical EPL policies (3 — DRIFT-AUTHZ →
+  block, DRIFT-SEMANTIC High → enforce-mfa + escalate-stale-evidence,
+  journal persists across runtime recreation).
 
-Work required:
-- Define the EPL schema (likely YAML-based, anchored to NIST control IDs and adapter scope declarations).
-- Implement EPL parser.
-- Write reference policies for the MFA, conditional access, and drift-remediation scenarios.
+Deferred (gated on real adapter remediation surfaces):
+- Per-adapter `RemediateHandler` wiring — each adapter author
+  registers a callable in their PR that lands the adapter remediation
+  API.
+- Auditor API endpoint (`POST /v1/enforcement/dispatch` /
+  `GET /v1/enforcement/journal`) — gated on §3.1.
+- Quarto dashboard "actions taken in last 24h" tile.
 
-### 3.6 — UIAO_120 Zero-Trust Integration
+Referenced doc: UIAO_111 Enforcement Runtime spec.
 
-Zero-trust integration formalizes the relationship between the substrate's adapter outputs and the CISA Zero Trust Maturity Model (ZTMM) pillars.
+### 3.4 — UIAO_112 Multi-Tenant Isolation (aspirational → **🟡 working** ✅)
 
-Work required:
-- Map each adapter's evidence outputs to ZTMM pillars.
-- Implement ZTMM score calculation from evidence graph.
-- Surface score in the Auditor API and Quarto dashboard.
+Multi-tenant isolation is required before any agency can operate the
+substrate alongside another agency in a shared environment. v1 ships
+the data model + namespace primitives + walker hygiene gate; per-tenant
+credential delegation against a real backend (Vault / Key Vault /
+SecretsManager) is a follow-up gated on the deployment target.
 
-### 3.7 — UIAO_109 Data Lake Model
+Shipped:
+- `src/uiao/governance/tenancy.py` — `Tenant` (id / name /
+  credential_scope / parent_org / retention_years / boundary / status)
+  + `TenantContext` (runtime context; `tenant_id` + `actor`) +
+  `TenantRegistry` (loader + `require()` + `active()`).
+- `load_tenants(paths)` reads `tenants:` from one or more YAMLs (later
+  override earlier; missing files silently skipped — single-tenant
+  deployments don't require a canon file).
+- `TenantContext.default()` synthesizes the default tenant for
+  single-tenant deployments. `TenantRegistry.require(DEFAULT_TENANT_ID)`
+  produces a synthetic active tenant when no canon declaration exists,
+  so the runtime never falls into "no tenant".
+- `tenant_scoped_path(base, ctx)` returns `base/<tenant_id>/...` so
+  the EnforcementJournal, Data Lake archive, and scheduler-run output
+  land under per-tenant subtrees. Single-tenant deployments use
+  `base/default/` so adding a second tenant later requires no path
+  migration.
+- `assert_tenant_match(expected, actual)` raises `PermissionError` on
+  cross-tenant access; called by per-resource read paths to enforce
+  the substrate isolation contract.
+- `src/uiao/substrate/walker.py::_scan_tenants` — registry-hygiene
+  scan on `src/uiao/canon/tenants.yaml`. Active tenants must declare
+  a non-empty `credential_scope:` (P2 finding tagged `DRIFT-SCHEMA`
+  if missing or empty). The file is optional — single-tenant
+  deployments without a tenants.yaml produce zero findings.
+- 24 new tests in `tests/test_tenancy.py`: model (3), context (2),
+  registry loader (6 incl. invalid YAML, missing id, retention
+  fallback), registry semantics (3), path helpers (3), tenant-match
+  assertion (3), substrate-walker scan (4 incl. live-canon tolerant
+  no-file behavior).
 
-The data lake model defines how evidence snapshots are retained long-term for trend analysis and audit purposes.
+Deferred:
+- Per-tenant credential backend binding — `credential_scope` field
+  ships today; the actual Vault / Key Vault / SecretsManager dispatch
+  layer lands in a deployment-target-specific PR.
+- Wiring `tenant_scoped_path` into the existing journal / archive /
+  scheduler call sites — they currently default to single-tenant
+  (the default tenant subdirectory). Migration to explicit per-tenant
+  paths happens once a real second tenant lands.
+- Auditor API tenant-aware request handlers — depends on the
+  authentication backend producing a tenant claim in the JWT.
 
-Work required:
-- Define the evidence retention schema.
-- Implement evidence archival in the orchestrator (post-collection).
-- Define query interface (consumed by CQL and Auditor API).
+Referenced doc: UIAO_112 Multi-Tenant Isolation spec.
 
-### 3.8 — UIAO_125–128 Programs: first live delivery
+### 3.5 — UIAO_116 Enforcement Policy Language (EPL) (aspirational → **🟡 working** ✅)
 
-The four program specs (Training, Test Plans, Project Plans, Education) are aspirational. v1.0 requires at least one live delivery of each.
+EPL is the policy language the substrate's Enforcement Runtime
+(UIAO_111, §3.3) consumes to decide what to do when a DriftState or
+finding lands. v1.0 of the language + parser + evaluator + reference
+policies + OSCAL surfacing ships in this pass; the Enforcement Runtime
+itself remains separate and gated on §3.3.
 
-Work required:
-- UIAO_125 Training: deliver one internal training session for an adapter developer (document as session record).
-- UIAO_126 Test Plans: instantiate test plan documents for all conformance-gate adapters (partially done in Phase 2 — complete here).
-- UIAO_127 Project Plans: instantiate project plan templates for two active agencies.
-- UIAO_128 Education: deliver one agency-facing onboarding walkthrough (narrative format per spec).
+Shipped:
+- `src/uiao/governance/epl.py` — `EPLAction` (log/alert/remediate/block/
+  escalate), `EPLTrigger` (drift_class / controls / adapter_ids / pillars
+  / severity_min), `EPLPolicy` dataclass, `EPLContext` builder helpers
+  (`from_drift_state` / `from_finding`), `EPLEvaluator.evaluate(ctx)`
+  returning id-sorted `EPLMatch` list. Severity comparisons span both
+  the Finding vocabulary (Low/Medium/High) and the drift-engine
+  vocabulary (P5..P1) plus the state-diff classification vocabulary
+  (benign/risky/unauthorized) on a single ordinal scale.
+- `load_policies(paths)` + `load_canonical_policies()` — YAML loader
+  accepting both flat-per-file and `policies:` list shapes; later
+  registries override earlier by id.
+- `back_matter_resources_for_policies(policies)` — emits OSCAL
+  back-matter resources with deterministic UUID v5 keyed on policy id,
+  props under `https://uiao.gov/ns/oscal/epl`. Same pattern as the
+  §1.4 / §3.6 back-matter resources; OSCAL consumers can navigate from
+  a finding to a policy by UUID.
+- 5 reference policies in `src/uiao/canon/policies/`:
+  - `epl:enforce-mfa` — DRIFT-SEMANTIC, IA-2 family, ≥Medium →
+    remediate (compliance-orchestrator), 24h SLA.
+  - `epl:block-out-of-scope` — DRIFT-AUTHZ → block (substrate-walker),
+    immediate.
+  - `epl:escalate-stale-evidence` — DRIFT-SEMANTIC, ≥High →
+    escalate (security-operations-center), 4h.
+  - `epl:fix-broken-issuer-chain` — DRIFT-IDENTITY, ≥High →
+    remediate (compliance-orchestrator), 8h.
+  - `epl:audit-schema-drift` — DRIFT-SCHEMA, ≥Medium → alert
+    (substrate-walker), 24h.
+- `src/uiao/canon/policies/README.md` — policy authoring guide
+  documenting the schema and the `epl:<verb>-<subject>` id convention.
+- 29 new tests in `tests/test_epl.py`: vocabulary parsing, loader
+  (single + list + dedupe + invalid YAML + missing id + unknown action
+  fallback), evaluator (wildcard / drift_class / controls intersection
+  / severity_min / adapter / pillar / multi-match id-sort), context
+  builders, OSCAL projection, and a canonical-policies smoke that
+  asserts every reference policy parses, fires under realistic
+  finding contexts, and carries actor + sla_hours.
+
+Deferred (gated on §3.3 Enforcement Runtime):
+- The runtime itself — the consumer of `EPLEvaluator.evaluate()` that
+  actually dispatches actions to adapters. That's where `remediate` →
+  call adapter remediation API, `block` → freeze the scheduler dispatch,
+  `escalate` → page the SOC.
+- Auditor API endpoint (`POST /v1/epl/evaluate`) — gated on §3.1.
+- Quarto dashboard policy tile — derived view of the reference set.
+
+Referenced doc: UIAO_116 EPL spec.
+
+### 3.6 — UIAO_120 Zero-Trust Integration (aspirational → **🟡 working** ✅)
+
+Zero-trust integration formalizes the relationship between the substrate's
+adapter outputs and the CISA Zero Trust Maturity Model (ZTMM) v2.0 pillars.
+
+**Status (2026-04-25):** core scoring ships. Substrate-status dashboard
+surface deferred to a follow-up doc PR.
+
+Shipped:
+- `src/uiao/governance/ztmm.py` — `ZTMMPillar` (5 pillars: Identity,
+  Devices, Networks, Applications-and-Workloads, Data) + `ZTMMMaturity`
+  (4 stages: Traditional, Initial, Advanced, Optimal).
+- `AdapterZTMMDeclaration` dataclass; `load_ztmm_declarations(registries)`
+  reads `ztmm-pillars: [...]` from canon (later overrides earlier; bare
+  list accepted; synonyms like `apps` / `endpoints` normalize cleanly).
+- `ZTMMScoreCalculator.score(graph=None)` — projects declarations
+  + EvidenceGraph state into a `ZTMMReport` with per-pillar
+  `ZTMMPillarScore` (declared / evidenced / fresh adapter lists +
+  computed maturity). Rubric: TRADITIONAL with no declarations,
+  INITIAL with ≥1, ADVANCED with ≥2 declared + ≥1 evidenced,
+  OPTIMAL with ≥3 declared + all fresh.
+- `back_matter_resources_for_report(report)` — emits 5 OSCAL back-matter
+  resources (one per pillar, deterministic UUID v5 keyed on pillar id)
+  with props under `https://uiao.gov/ns/oscal/ztmm` namespace. Same
+  pattern as the §1.4 evidence-graph back-matter resources; OSCAL
+  consumers can navigate from a control implementation to a pillar
+  score by UUID.
+- `ztmm-pillars:` declared on every active adapter (16 across both
+  registries):
+  - **Identity** — entra-id, m365, active-directory, entra-dynamic-groups,
+    entra-admin-units, entra-device-orgpath, entra-policy-targeting,
+    orgtree-drift-engine, scuba, scubagear, cyberark
+  - **Devices** — entra-id, active-directory, entra-device-orgpath
+  - **Networks** — palo-alto, infoblox, bluecat-address-manager, terraform
+  - **Applications & Workloads** — entra-id, m365, scuba, scubagear,
+    service-now, palo-alto, cyberark, entra-policy-targeting, terraform
+  - **Data** — m365, scuba, scubagear
+- Schema: `ztmm-pillars` field added to
+  `src/uiao/schemas/adapter-registry/adapter-registry.schema.json` with
+  enum-restricted items (the 5 canonical pillars) and `uniqueItems: true`.
+- Substrate-walker hygiene scan
+  (`src/uiao/substrate/walker.py::_scan_ztmm_pillars`) — active adapter
+  with no `ztmm-pillars:` key → P3 (advisory) finding tagged
+  `DRIFT-SCHEMA`. Explicit empty list (`ztmm-pillars: []`) is a valid
+  declaration and skipped. Live canon currently clean.
+- 30 new tests in `tests/test_ztmm.py`: vocabulary parsing (5),
+  registry loader (8 — empty-list / unknown / synonyms / override /
+  mod_top_level), score calculator (8 — TRADITIONAL/INITIAL/ADVANCED/
+  OPTIMAL transitions, evidence-driven demotion via Open finding,
+  per-pillar attribution, overall-rank average), OSCAL back-matter
+  projection (4), substrate-walker scan (4), plus a live-canon
+  end-to-end smoke that verifies every pillar lands at INITIAL or
+  better today.
+
+Deferred (follow-ups):
+- Auditor API endpoint (`GET /v1/ztmm`) — gated on §3.1 Auditor API.
+- Quarto dashboard pillar tile.
+- Promote pillar walker findings from P3 advisory to P2 once the
+  substrate-status site widget exists.
+
+Referenced doc: UIAO_120 Zero-Trust Integration spec.
+
+### 3.7 — UIAO_109 Data Lake Model (aspirational → **🟡 working** ✅)
+
+Long-term retention + archival of scheduler-run evidence so compliance
+teams can serve audit requests months / years after a finding closed,
+the substrate can prove freshness + provenance for any claim still
+inside its retention window, and old evidence ages out automatically.
+
+Shipped:
+- `src/uiao/storage/data_lake.py` — `RetentionPolicy` (per-adapter,
+  reads existing `retention-years:` from canon), `ArchiveEntry`
+  (run/adapter/archived_at/retention_until/evidence_class), abstract
+  `ArchiveBackend`, concrete `FilesystemArchive` (writes
+  `lake_root/<adapter>/<run_id>/` + `_index/<run>__<adapter>.json`
+  manifests), `ArchiveManager` (orchestrates archive_run / expire /
+  query against any backend).
+- `load_retention_policies(registries)` reads existing
+  `retention-years:` declarations from
+  `modernization-registry.yaml` + `adapter-registry.yaml`. Adapters
+  without an explicit value fall through to a configurable default
+  (3 years, federal ConMon baseline). `policy_for(adapter_id, …)`
+  resolves with the same fallback for ad-hoc lookups.
+- 24 new tests in `tests/test_data_lake.py`: retention loader (6),
+  policy fallback (2), ArchiveEntry round trip (4 incl.
+  past-/within-window expiry semantics), FilesystemArchive backend
+  (3), ArchiveManager orchestration (8 — multi-adapter archive,
+  evidence-class extraction, default retention for undeclared
+  adapter, expire + index cleanup, in-window kept, query filters),
+  plus a live-canon smoke verifying every active adapter resolves
+  to a positive retention.
+
+Deferred to future PRs:
+- S3 / Azure Blob / GCS backends behind the `ArchiveBackend` ABC.
+- Cron-driven `uiao archive expire` CLI command (gated on §3.1
+  Auditor API CLI surface).
+- Hot-vs-cold tiering enforcement (compression, slower-storage move
+  at the `hot_period_days` boundary).
+- Integration with §3.2 Compliance Query Language for retrieval.
+
+Referenced doc: UIAO_109 Data Lake Model spec.
+
+### 3.8 — UIAO_125–128 Programs: first live delivery — ✅ shipped 2026-04-26
+
+The four program specs (Training, Test Plans, Project Plans, Education) shipped their first deliverable each. The chronological log lives at [`docs/programs/deliveries.qmd`](../programs/deliveries.qmd); future deliveries land as new entries under the same per-program subdirectory.
+
+Shipped:
+- UIAO_125 Training — [Adapter-author onboarding session record (2026-04-26)](../programs/training/2026-04-26-adapter-author-onboarding.qmd) covering canon registry declaration, scheduler wire-up, and the §0.4 / §0.5 / §3.6 walker hygiene gates.
+- UIAO_126 Test Plans — [ScubaGear conformance test plan](../programs/test-plans/scubagear-conformance-test-plan.qmd) instantiating UIAO_121 against the `scubagear` adapter (Tier 1 / Tier 2 / Tier 3 status).
+- UIAO_127 Project Plans — [Acme Federal modernization project plan](../programs/project-plans/agency-acme-modernization-plan.qmd), a synthetic but representative agency engagement plan (Phase 0 → Phase 2, owners, risks, cadence).
+- UIAO_128 Education — [Agency onboarding walkthrough](../programs/education/agency-onboarding-walkthrough.qmd), a 15-minute narrative read aimed at an agency CIO / CISO / IAM lead.
+
+The four substrate-status rows for UIAO_125–128 flip from "0 deliveries" to "≥1 delivery" with this PR. Future deliveries are additive; the program subdirectories are now the canonical surface for them.
 
 ---
 
@@ -593,15 +1137,22 @@ Work required:
 - Create tier-2 fixtures (COBOL record payloads mapped to canonical claims).
 - Flip status from `reserved` to `active`.
 
-### 4.3 — Aspirational banner elimination
+### 4.3 — Aspirational banner elimination (round 1 ✅ shipped 2026-04-26)
 
 Target: zero aspirational banners by v1.1.
 
-Work required:
-- Complete per-file review of the 263 files not yet assessed (`inbox/drafts/aspirational-candidates.txt`).
-- For each genuine aspirational page, either implement the feature or schedule it in UIAO_127 project plans with a target date.
-- Remove banner as each feature ships.
-- Track count in the Substrate Status page (the page itself is a derived view from canon — the count must be regenerable from `make walk`).
+Round 1 (2026-04-26) — **10 banners removed** from pages whose underlying program / adapter shipped:
+- 5 program landings (`programs/index`, `programs/uiao_125`, `uiao_126`, `uiao_127`, `uiao_128`) — once UIAO_125–128 each shipped first deliveries (§3.8).
+- 4 narrative companions (`narrative/program-training`, `program-test-plans`, `program-project-plans`, `program-education`).
+- 1 adapter validation suite (`customer-documents/validation-suites/adapters/terraform/terraform.qmd`) — once UIAO_121/123 instantiation landed (§2.6).
+
+Each un-flagged page now carries an inline pointer to its first delivery instead of the aspirational banner. Remaining flagged set is **~34 pages**; the running tally lives in the Substrate Status page §"Aspirational-content triage".
+
+Round 2+ work required (toward v1.1 zero-banner target):
+- For each remaining genuinely-aspirational page, either implement the feature or schedule it in a UIAO_127 project plan with a target date.
+- Remove banner as each feature ships (round 1 sets the pattern: drop frontmatter `aspirational: true`, replace any "Scaffold" callout with a "First delivery shipped" tip linking the live artifact).
+- Re-run the grep heuristic across the remaining 263 inbox candidates and demote false positives out of the inbox file.
+- Eventually re-derive the count from `make walk` rather than running grep manually.
 
 ### 4.4 — UIAO_114/115/117/119 HA, Performance, Recovery, Tenancy
 
@@ -649,24 +1200,24 @@ Listed in implementation-priority order (not UIAO_NNN order).
 | Priority | Doc | Title | Current | Target |
 |---|---|---|---|---|
 | P0 | UIAO_131 (gate) | Adapter Test Strategy | ⚠️ aspirational (0 evidence) | tier-1+2 for 5 adapters by v0.8 |
-| P1 | UIAO_110 §DRIFT-AUTHZ | Drift Engine — Auth class | ⏳ pending | ✅ by v0.3 |
-| P1 | UIAO_110 §DRIFT-IDENTITY | Drift Engine — Identity class | ⏳ pending | ✅ by v0.3 |
-| P2 | UIAO_110 §DRIFT-SEMANTIC | Drift Engine — Semantic class | 🟡 partial | ✅ by v0.5 |
-| P2 | UIAO_100 | Compliance Orchestrator | ⚠️ aspirational | 🟡 by v0.5 |
-| P2 | UIAO_103 | Spec-Test Enforcement | 🟡 partial | ✅ by v0.5 |
-| P2 | UIAO_113 | Evidence Graph | 🟡 partial | 🟡→✅ by v0.5 |
-| P3 | UIAO_105 | Auditor API | ⚠️ aspirational | 🟡 by v1.0 |
-| P3 | UIAO_111 | Enforcement Runtime | ⚠️ aspirational | 🟡 by v1.0 |
-| P3 | UIAO_108 | CQL | ⚠️ aspirational | 🟡 by v1.0 |
-| P3 | UIAO_116 | EPL | ⚠️ aspirational | 🟡 by v1.0 |
-| P3 | UIAO_112 | Multi-Tenant Isolation | ⚠️ aspirational | 🟡 by v1.0 |
-| P3 | UIAO_120 | Zero-Trust Integration | ⚠️ aspirational | 🟡 by v1.0 |
-| P4 | UIAO_109 | Data Lake | ⚠️ aspirational | 🟡 by v1.1 |
+| P1 | UIAO_110 §DRIFT-AUTHZ | Drift Engine — Auth class | ✅ complete | ✅ by v0.3 |
+| P1 | UIAO_110 §DRIFT-IDENTITY | Drift Engine — Identity class | ✅ complete | ✅ by v0.3 |
+| P2 | UIAO_110 §DRIFT-SEMANTIC | Drift Engine — Semantic class | ✅ complete | ✅ by v0.5 |
+| P2 | UIAO_100 | Compliance Orchestrator | 🟡 partial | 🟡 by v0.5 |
+| P2 | UIAO_103 | Spec-Test Enforcement | ✅ complete | ✅ by v0.5 |
+| P2 | UIAO_113 | Evidence Graph | ✅ working | 🟡→✅ by v0.5 |
+| P3 | UIAO_105 | Auditor API | 🟡 working | 🟡 by v1.0 |
+| P3 | UIAO_111 | Enforcement Runtime | 🟡 working | 🟡 by v1.0 |
+| P3 | UIAO_108 | CQL | 🟡 working | 🟡 by v1.0 |
+| P3 | UIAO_116 | EPL | 🟡 working | 🟡 by v1.0 |
+| P3 | UIAO_112 | Multi-Tenant Isolation | 🟡 working | 🟡 by v1.0 |
+| P3 | UIAO_120 | Zero-Trust Integration | 🟡 working | 🟡 by v1.0 |
+| P4 | UIAO_109 | Data Lake | 🟡 working | 🟡 by v1.1 |
 | P4 | UIAO_114 | HA / Fault Tolerance | ⚠️ aspirational | assessed by v1.0 |
 | P4 | UIAO_115 | Performance Engineering | ⚠️ aspirational | assessed by v1.0 |
 | P4 | UIAO_117 | Recovery Layer | ⚠️ aspirational | assessed by v1.0 |
 | P4 | UIAO_119 | Tenancy Strategy | ⚠️ aspirational | 🟡 by v1.0 |
-| P4 | UIAO_125–128 | Programs (Training, Test Plans, Project Plans, Education) | ⚠️ aspirational | first delivery by v1.0 |
+| P4 | UIAO_125–128 | Programs (Training, Test Plans, Project Plans, Education) | 🟡 first delivery shipped | first delivery by v1.0 |
 | P5 | UIAO_129/130 | Application Identity Model / Runbook | ⚠️ draft | status reconciled by v0.3 |
 | P5 | Mainframe adapter | z/OS Connect / MQ bridge | reserved | unblocked or deferred by v1.1 |
 

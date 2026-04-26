@@ -1,0 +1,69 @@
+---
+title: "Test plan — scubagear conformance (UIAO_121 instantiation)"
+subtitle: "First UIAO_126 delivery"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Instantiated UIAO_121 adapter conformance test plan for the scubagear conformance adapter (CISA SCuBA assessor)."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_126 (Test Plans) |
+| Template | UIAO_121 (Adapter Conformance Test Plan) |
+| Adapter | `scubagear` (CISA SCuBA assessor) |
+| Adapter class | conformance (read-only) |
+| Tier 1 status | ⏳ pending (M365 Developer Program tenant) |
+| Tier 2 status | ⏳ pending (ScubaGear v1.5.1 fixture) |
+| Tier 3 status | 🚫 needs partner agency |
+
+## Purpose
+
+ScubaGear is the CISA SCuBA assessor — it ingests M365 baselines and
+emits structured findings. The UIAO substrate consumes those findings
+through its `scubagear` adapter and lifts them through the evidence
+graph + OSCAL emitters. This test plan defines the conformance gate
+the adapter must clear before its registry status changes from
+"active" with a pending tier-1 to "active with evidence."
+
+## Tier 1 — live tenant
+
+| Test | Expected behavior | Pass criterion |
+|---|---|---|
+| 1.1 Auth | Adapter authenticates against the M365 dev tenant via service principal | Returns OAuth2 access token; no MFA challenges (service principal flow) |
+| 1.2 Baseline ingestion | Adapter runs ScubaGear v1.5.1 against the dev tenant | Produces a `scubagear_results.json` with at least one MS-product baseline section (AAD/Defender/EXO/SharePoint/Teams/Power Platform) |
+| 1.3 KSI mapping | Adapter maps each baseline finding to a NIST KSI | Every finding has a non-empty `ksi_id` field per `data/ksi-mappings.yml` |
+| 1.4 Provenance | Adapter writes provenance records | `evidence.json` carries `provenance.adapter_id`, `provenance.hash`, `provenance.version` |
+| 1.5 Drift detection | Adapter classifies drift between two consecutive runs | `drift.json` produced when baselines diverge between runs |
+
+## Tier 2 — contract fixtures
+
+Located under `tests/fixtures/scubagear/`. Each fixture is a frozen
+ScubaGear output captured from a known-state tenant.
+
+| Fixture | What it asserts |
+|---|---|
+| `baseline-clean.json` | All baselines pass; adapter produces zero findings |
+| `baseline-with-failures.json` | Specific known failures; adapter produces matching findings |
+| `baseline-mixed-versions.json` | ScubaGear v1.4 + v1.5 mixed output; adapter handles both |
+| `auth-failure.json` | Auth-failure ScubaGear output; adapter raises a typed exception, doesn't crash |
+
+## Tier 3 — partner agency reference deployment
+
+Blocked. Requires CRADA / partner agency engagement with a
+GCC-Moderate tenant. Documentation-only entry until the partnership
+exists; out-of-scope for this test plan instantiation.
+
+## Conformance gate signals
+
+The adapter clears the §0.4 / §0.5 / §3.6 walker gates today (already
+declares `scope:`, `trust-anchor:`, `ztmm-pillars:`). Tier 1 + Tier 2
+evidence is the remaining gap.
+
+## References
+
+- UIAO_121 Adapter Conformance Test Plan (template)
+- UIAO_131 Adapter Test Strategy (three-tier model)
+- `src/uiao/canon/adapter-registry.yaml` — `scubagear` entry
+- Roadmap §0.3 — scubagear tier-2 contract fixtures

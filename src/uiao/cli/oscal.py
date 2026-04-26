@@ -21,11 +21,13 @@ Or via module invocation:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional
 
 import typer
 from rich.console import Console
 
+from uiao.generators.trestle import validate_oscal_artifacts
 from uiao.oscal.generator import generate_oscal
 
 oscal_app = typer.Typer(
@@ -104,3 +106,40 @@ def generate_command(
     except ValueError as exc:
         _console.print(f"[red]Validation error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
+
+
+@oscal_app.command("validate")
+def validate(
+    path: str = typer.Argument(..., help="Path to OSCAL JSON file."),
+) -> None:
+    """Validate an OSCAL document against its schema.
+
+    Example::
+
+        uiao oscal validate exports/oscal/uiao-ssp.json
+    """
+    _console.print(f"[bold]Validating {path}...[/bold]")
+    _console.print("[yellow]Validation not yet implemented (Week 3).[/yellow]")
+
+
+@oscal_app.command("validate-ssp")
+def validate_ssp(
+    oscal_dir: str = typer.Option(
+        "exports/oscal",
+        "--oscal-dir",
+        "-d",
+        help="Directory containing OSCAL JSON artifacts.",
+    ),
+) -> None:
+    """Validate OSCAL artifacts with compliance-trestle Pydantic models.
+
+    Example::
+
+        uiao oscal validate-ssp --oscal-dir exports/oscal
+    """
+    _console.print(f"[bold]Validating OSCAL artifacts in {oscal_dir}...[/bold]")
+    failures = validate_oscal_artifacts(Path(oscal_dir))
+    if failures:
+        _console.print(f"[red]{failures} validation failure(s)[/red]")
+        raise typer.Exit(code=1)
+    _console.print("[green]All artifacts passed validation.[/green]")

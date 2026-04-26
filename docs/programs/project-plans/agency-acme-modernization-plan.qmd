@@ -1,0 +1,90 @@
+---
+title: "Project plan — Acme Federal modernization (UIAO_127 instantiation)"
+subtitle: "First UIAO_127 delivery"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Synthetic project plan instantiating the UIAO_127 template for a representative agency engagement (Acme Federal). Reference shape for real agency project plans that follow."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Template | UIAO_127 Project Plan |
+| Agency | Acme Federal Agency (synthetic reference) |
+| Engagement type | Modernization onboarding (Phase 0 → Phase 1) |
+| Target boundary | GCC-Moderate |
+| Plan version | 1.0 (first delivery) |
+
+> **Note.** Acme Federal is a synthetic placeholder used to demonstrate
+> the project-plan format. Real agency plans replace the agency name,
+> milestones, owners, and dates while preserving the structure below.
+
+## Engagement context
+
+Acme Federal Agency operates a hybrid environment: an on-prem Active
+Directory forest (legacy), Microsoft 365 GCC-Moderate (current), and
+several SaaS providers (ServiceNow, Palo Alto Prisma, Infoblox, etc.).
+Acme wants to:
+
+1. Establish a continuous compliance posture against FedRAMP Moderate.
+2. Modernize identity onto Entra ID with consistent OrgPath
+   attribution.
+3. Surface evidence in OSCAL format for ATO renewal.
+
+The UIAO substrate provides the runtime — adapters, drift detection,
+EPL, enforcement, OSCAL emitters. This project plan sequences Acme's
+adoption.
+
+## Phases
+
+### Phase 0 — Foundation (week 1–4)
+
+| # | Task | Owner | Exit criterion |
+|---|---|---|---|
+| 0.1 | Create `tenants.yaml` declaration for Acme | UIAO substrate maintainer | Tenant id `acme-federal` lands; walker §3.4 gate clean |
+| 0.2 | Provision M365 service-principal credentials | Acme IAM lead | Service principal id stored in Acme Key Vault under `acme/uiao` |
+| 0.3 | Run `uiao substrate walk` against Acme canon overlay | UIAO substrate maintainer | Zero P1 findings |
+| 0.4 | Bring up the Auditor API (UIAO_105) on Acme infra | Acme platform | `/api/v1/ztmm` returns the live Acme tenant ZTMM report |
+
+### Phase 1 — First adapter dispatch (week 5–8)
+
+| # | Task | Owner | Exit criterion |
+|---|---|---|---|
+| 1.1 | Wire `entra-id` adapter against Acme tenant | UIAO + Acme IAM | Nightly orchestrator run produces evidence in Acme data lake |
+| 1.2 | Run `scubagear` against Acme M365 tenant | UIAO + Acme platform | First ScubaGear baseline ingested into Acme evidence graph |
+| 1.3 | Generate first OSCAL SAR | UIAO substrate maintainer | SAR JSON references real Acme controls + evidence |
+| 1.4 | Surface Acme ZTMM score | Acme compliance officer | Score visible in Acme Auditor API |
+
+### Phase 2 — Production readiness (week 9–12)
+
+| # | Task | Owner | Exit criterion |
+|---|---|---|---|
+| 2.1 | Wire EPL `epl:enforce-mfa` against Acme tenant | Acme IAM | Policy evaluation returns expected matches in journal |
+| 2.2 | Stand up Data Lake on Acme Azure Storage | Acme platform | `ArchiveBackend` configured with S3-compatible API |
+| 2.3 | First nightly `EvidenceArchive.expire` run | UIAO substrate maintainer | Past-retention entries removed; journal records the operation |
+| 2.4 | First Auditor API external user (Acme OIG) | Acme compliance officer | OIG analyst issues `/api/v1/cql/evaluate` and gets results |
+
+## Risks
+
+| Risk | Mitigation |
+|---|---|
+| M365 dev tenant credentials slip to next quarter | Phase 0 unblocked by Acme provisioning real prod creds in Phase 0 step 0.2 |
+| ScubaGear v1.6 release changes baseline shape | Pin v1.5.1 in `adapter-registry.yaml`; bump after fixture refresh |
+| Tenant isolation regression | Walker `_scan_tenants` gate catches missing `credential_scope`; reviewed every PR |
+
+## Owners + cadence
+
+| Cadence | Forum | Output |
+|---|---|---|
+| Weekly | Acme + UIAO substrate sync | Status against this plan |
+| Monthly | Acme compliance review | OSCAL SAR delta |
+| Quarterly | Acme + UIAO roadmap | Plan v(N+1) update |
+
+## References
+
+- UIAO_127 Project Plan template
+- UIAO_001 SSOT (substrate trust contract)
+- UIAO_105 Auditor API (consumer surface)
+- UIAO_112 Multi-Tenant Isolation (Acme's scoped subtree)

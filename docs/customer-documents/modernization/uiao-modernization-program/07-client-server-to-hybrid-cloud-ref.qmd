@@ -1,0 +1,3637 @@
+---
+title: "Reference — Client-Server to Hybrid-Cloud Modernization"
+subtitle: "Cross-cutting reference for the legacy → hybrid-cloud transformation"
+doc-type: series-chapter
+series-id: uiao-modernization-program
+chapter: 7
+audience: "Architects · platform engineers · operators"
+canon-source: "inbox/Modernization/Consolidated/UIAO_030_Client_Server_to_Hybrid_Cloud_v1.0.docx"
+date: 2026-04-25
+aspirational: true
+---
+
+An eleven-chapter narrative covering the **entire** UIAO transformation
+arc --- from the Client/Server-era AD forest that federal agencies
+inherited, through the analysis + planning + delivery pipeline that runs
+on a single Windows Server 2025 platform host, to the governed
+Hybrid-Cloud estate of Entra ID, Intune, Azure Arc, IPAM, SASE, Zero
+Trust, and MFA.
+
+Every guide and every runbook in UIAO answers a narrow question. This
+series is the only document that answers the big one: *"We have an AD
+forest. Where are we going, how do we get there, and what does the
+finished state look like?"*
+
+## The arc
+
+    ┌─────────────────────┐       ┌──────────────────────────┐       ┌───────────────────────────┐
+    │ CLIENT-SERVER       │       │ UIAO PLATFORM SERVER     │       │ HYBRID-CLOUD              │
+    │ (the source)        │       │ (the transformer)        │       │ (the target)              │
+    ├─────────────────────┤       ├──────────────────────────┤       ├───────────────────────────┤
+    │ AD Forest           │──────▶│ WS2025 + IIS + Gitea     │──────▶│ Entra ID + Intune + Arc   │
+    │ GPO                 │  read │ Kerberos + Enterprise PKI│ write │ IPAM + DNS + DHCP         │
+    │ AD-Integrated DNS   │  only │ PowerShell + Python +API │       │ SASE + Zero Trust + MFA   │
+    │ AD DHCP             │       │ Analysis → Plan → Deliver│       │ Conditional Access        │
+    │ Kerberos SPNs       │       │                          │       │ Certificate-Based Auth    │
+    │ ADCS                │       │                          │       │                           │
+    │ Domain-joined PCs   │       │                          │       │                           │
+    └─────────────────────┘       └──────────────────────────┘       └───────────────────────────┘
+
+## Chapter list
+
+The series is a five-part, eleven-chapter arc. Each chapter is a
+standalone `.qmd` that renders to HTML and `.docx`. Readers can enter at
+any chapter, but reading in order is the intended path.
+
+### Part I · Platform
+
+- [**00 --- The Problem: AD's Hidden Governance
+  Surface**](../client-server-to-hybrid-cloud/00-introduction.qmd) --- Why AD modernization fails when
+  you only think "users and groups."
+- **01 --- The UIAO Platform Server** *(to author)* --- Windows Server
+  2025 with IIS, Gitea, Kerberos, and enterprise PKI as the host that
+  runs everything.
+
+### Part II · Transformation Engine
+
+- **02 --- Analyzing the Client/Server Estate** *(to author)* --- Forest
+  discovery, GPO inventory, DNS/DHCP scraping, Kerberos SPN audit, ADCS
+  analysis. PowerShell-first, Python-augmented.
+- **03 --- Analysis → Plan → Delivery** *(to author)* --- How UIAO turns
+  assessment output into a deterministic transformation plan, validates
+  it, and delivers it via API.
+
+### Part III · Target Delivery
+
+- **04 --- Identity: x.500 → Flat Entra ID + OrgPath** *(to author)* ---
+  OrgTree, dynamic groups, Administrative Units, HR-driven lifecycle.
+- **05 --- Policy: GPO → Intune + Conditional Access** *(to author)* ---
+  Device policy, compliance, configuration profiles, MFA, CA targeting.
+- **06 --- Services: DNS, DHCP, IPAM in Hybrid Cloud** *(to author)* ---
+  AD-integrated DNS → Azure Private Resolver. AD DHCP → governed IPAM.
+- **07 --- Compute: Domain-Joined → Entra + Intune + Azure Arc** *(to
+  author)* --- Device object transformation. Hybrid Join. Arc-projected
+  servers.
+
+### Part IV · Hybrid Access Plane
+
+- **08 --- SASE, Zero Trust, MFA, Certificate-Based Auth** *(to author)*
+  --- The identity-bound access plane that replaces the AD perimeter.
+
+### Part V · Program
+
+- **09 --- Migration Roadmap** *(to author)* --- Phased plan, gates,
+  rollback triggers, cutover.
+- **10 --- Leadership Takeaway: Instruments vs. Orchestra** *(to
+  author)* --- What UIAO actually is, why it matters, and how to
+  evaluate it.
+
+## How to read this series
+
+  --------------------------------------------------------------------
+  Audience                       Recommended path
+  ------------------------------ -------------------------------------
+  **CIO / CISO / program         00 → 10 → 09 (the "why" + "takeaway"
+  sponsor**                      bookends)
+
+  **Identity architect**         00 → 04 → 05 → 08
+
+  **Infrastructure architect**   00 → 01 → 06 → 07
+
+  **Modernization program        00 → 03 → 09
+  manager**
+
+  **Platform engineer (building  01 → 02 → 03
+  the server)**
+
+  **3PAO assessor**              Read in full; cross-reference to
+                                 [Compliance
+                                 pillar](../../compliance/index.qmd)
+  --------------------------------------------------------------------
+
+## Source material
+
+Each chapter pulls from existing canonical sources and Posted reference
+implementations:
+
+- [Modernization canon](../../../modernization/index.qmd) --- MOD_A..Z,
+  DM_010..080.
+- [Platform Server Build
+  Guide](../../platform/platform-server-build.qmd) --- authored
+  2026-04-23.
+- [Taxonomy working
+  doc](../../../planning/customer-documents-taxonomy.md) --- §3 Posted
+  mapping.
+- Posted reference implementations in `inbox/Posted/`: Identity
+  Modernization Guide, PKI Modernization Guide, DNS Modernization Guide,
+  AD Interaction Guide, AD Computer Object Conversion Guide, Gap
+  Analysis.
+
+# Chapter 00 --- The Problem Nobody Talks About
+
+*AD's Hidden Governance Surface*
+
+Active Directory was never just an identity store. It was the **implicit
+governance model** for every network service a federal agency ran. When
+agencies migrate "AD to Entra ID" and think the project is about users
+and groups, they retire the directory and silently break the governance.
+Most of the failures don't show up for months.
+
+This series is about not doing that.
+
+## What Microsoft sold you in 1999
+
+When Microsoft shipped Active Directory with Windows 2000, they sold it
+as an identity directory --- a modern, replicated, Kerberos-anchored
+replacement for NT domains. That framing was true but incomplete.
+
+Over the next twenty-five years, every Windows-era infrastructure
+service quietly wired itself into AD. Not because Microsoft planned it
+that way in one grand design, but because AD was *the only
+enterprise-wide, governed, authenticated, replicated namespace* that the
+Windows ecosystem had. If you needed to know what a server was called,
+where it lived in the org, who was allowed to manage it, which
+certificates it should trust, which DHCP scope applied to it, which GPOs
+configured it, and which accounts had which service principal names
+bound to it --- AD held every one of those answers.
+
+By the time an agency's AD forest was ten years old, it had become the
+single most load-bearing piece of governance infrastructure the agency
+owned. It was just never written down anywhere as "our governance
+model."
+
+## What breaks when AD goes away
+
+Microsoft is now deprecating the entire Client/Server stack. Entra ID
+replaces AD DS. Intune replaces Group Policy. Conditional Access
+replaces the network perimeter. Azure Arc extends cloud management to
+on-premises hosts. Entra Certificate-Based Authentication replaces
+ADCS-anchored smart-card logon. Azure Private Resolver + Private DNS
+replace AD-integrated DNS zones.
+
+Every one of those substitutions is a valid target. But Microsoft handed
+agencies the *tools* without the *framework*. The result is that when
+agencies migrate user objects into Entra ID's flat directory and declare
+victory, they leave behind eleven categories of infrastructure object
+that AD was silently governing:
+
+  ----------------------------------------------------------------------
+  \#   Object Type       What AD Was Doing  What Breaks Without
+                                            Governance
+  ---- ----------------- ------------------ ----------------------------
+  1    **Users**         Identity           Orphaned accounts, privilege
+                         lifecycle, OU      drift, compliance gaps
+                         placement,
+                         attribute
+                         authority
+
+  2    **Computers**     Domain join, GPO   Unmanaged endpoints, missing
+                         targeting, machine patches, security exposure
+                         certificates
+
+  3    **Service         SPNs, Kerberos     Application authentication
+       Accounts**        delegation,        failures, silent service
+                         password           outages
+                         management
+
+  4    **Security        Access control,    Permission sprawl,
+       Groups**          policy scoping,    ungoverned access, audit
+                         resource           failures
+                         permissions
+
+  5    **Group Policy    Device             Configuration drift,
+       Objects**         configuration,     inconsistent baselines,
+                         security           compliance gaps
+                         baselines,
+                         software
+                         deployment
+
+  6    **DNS / DHCP**    Name resolution,   Name resolution failures, IP
+                         IP allocation,     conflicts, split-brain DNS
+                         AD-integrated
+                         zones
+
+  7    **PKI /           Certificate        Silent certificate
+       Certificate       issuance,          expiration, authentication
+       Services**        auto-enrollment,   failures, mTLS breaks
+                         CRL distribution
+
+  8    **RADIUS / NPS**  802.1X network     Network access failures, VPN
+                         access, VPN        outages, unauthorized access
+                         authentication,
+                         Wi-Fi auth
+
+  9    **LDAP**          Application        Application login failures,
+                         authentication,    directory query errors,
+                         directory queries, broken integrations
+                         legacy
+                         integrations
+
+  10   **SPNs / App      Kerberos service   Application SSO breaks,
+       Registrations**   principal names,   delegation failures, service
+                         application        identity loss
+                         identity
+
+  11   **Trust           Cross-domain       Cross-domain access
+       Relationships**   authentication,    failures, authentication
+                         forest trusts,     breaks between orgs
+                         selective
+                         authentication
+  ----------------------------------------------------------------------
+
+Look at the "What Breaks" column. Most of these failures don't throw
+errors. A certificate doesn't renew because the AD enrollment policy was
+never re-pointed. A RADIUS policy doesn't authorize a new device because
+the AD-group lookup returns empty. An LDAP-bound application silently
+stops querying because the bind account was decommissioned with AD DS.
+
+There is no log line that says "governance has failed." There is only a
+six-month tail of weird, untraceable outages and a compliance audit that
+finds the agency can't prove what it should have been doing.
+
+## The OU tree was the governance tree
+
+The other thing agencies underestimate is that AD's Organizational Unit
+tree was not a folder system. It was a **delegation graph, a policy
+inheritance engine, an operational boundary, and a security scope ---
+all in one hierarchical structure**.
+
+When an administrator placed a user in
+`OU=IT,OU=Baltimore,OU=East,DC=contoso`, they were simultaneously:
+
+- Saying "this user is managed by the Baltimore IT delegated admins."
+- Inheriting every GPO that applied at East → Baltimore → IT.
+- Scoping the user to security groups that used OU-based rules.
+- Binding the user's identity to the delegation authority of that
+  branch.
+- Stating an operational responsibility boundary for audit purposes.
+
+Entra ID has none of this. It's a flat directory. Dynamic groups,
+Administrative Units, and Conditional Access are powerful tools --- but
+Microsoft did not provide a framework for how to use them together to
+replace what the OU tree was doing.
+
+That framework is the **OrgTree canon** ([Chapter
+04](../client-server-to-hybrid-cloud/04-identity-transformation.qmd)). It encodes the OU hierarchy into a
+single user attribute (`OrgPath`), uses dynamic groups to materialise
+every subtree, uses Administrative Units to scope delegation, and uses
+Conditional Access to enforce policy. The result is governance that is
+equivalent to --- and in several ways cleaner than --- what AD was
+providing.
+
+## Why naïve migrations fail
+
+Almost every "AD to Entra ID" modernization project the industry has run
+has been scoped around users, groups, and mailboxes. That's the visible
+ten percent. The invisible ninety percent is the eleven categories
+above.
+
+A successful modernization has to:
+
+1.  **Enumerate the hidden dependencies** before anything is retired.
+2.  **Map each dependency to a modern target** --- not always 1:1.
+3.  **Preserve governance continuity** during the transition (no gaps
+    where nobody owns the delegation).
+4.  **Deliver the transformed data** into the target surface via a
+    deterministic, governed pipeline --- not a series of one-off admin
+    actions.
+5.  **Detect drift** between what the plan said should exist and what
+    actually exists, continuously.
+
+Agencies don't fail at step 1 because they can't enumerate. They fail
+because no one tells them steps 1--5 exist as a discipline. They fail at
+the conceptual level: the idea that the project is just users and
+groups.
+
+## What UIAO is
+
+UIAO --- the Unified Identity and Access Orchestrator --- is the
+framework that handles all eleven categories as a single governed
+surface, with one transformation engine, one canon, one evidentiary
+pipeline, and one drift detector. Nothing in UIAO is a Microsoft tool
+substitute. Every UIAO component sits *above* Microsoft's (and
+third-party) tools and orchestrates them into a coherent governance
+model.
+
+A single Windows Server 2025 host (documented in [Chapter
+01](../client-server-to-hybrid-cloud/01-platform-foundation.qmd)) runs:
+
+- **Gitea** as the canonical source of governance truth (every plan,
+  every policy, every codebook entry lives there as a versioned
+  artifact).
+- **IIS** as the HTTPS reverse proxy and client-certificate terminator.
+- **Kerberos + enterprise PKI** bridges that let the server talk to the
+  legacy AD forest it's migrating away from.
+- **PowerShell, Python, and API-integrator scripts** that read the
+  Client/Server estate, compute transformation plans, validate them
+  against the canon, and deliver them into the Hybrid-Cloud target
+  surface.
+
+The target surface is everything on the right side of the transformation
+arc: Entra ID, Administrative Units, Intune, Azure Arc, IPAM, DNS, DHCP,
+SASE, Zero Trust, MFA, Certificate-Based Authentication, and every
+governed adapter underneath.
+
+## What this series covers
+
+The chapters that follow walk the full arc:
+
+  -------------------------------------------------------------
+  Chapter                        Covers
+  ------------------------------ ------------------------------
+  01                             **The Platform.** One WS2025
+                                 host. What runs on it and why.
+
+  02                             **Analyzing the legacy.**
+                                 Forest discovery. GPO
+                                 inventory. DNS/DHCP scraping.
+                                 Kerberos SPN audit. ADCS
+                                 analysis.
+
+  03                             **The engine.** How UIAO turns
+                                 analysis into a plan and a
+                                 plan into delivered state.
+
+  04                             **Identity.** OrgTree,
+                                 OrgPath, dynamic groups, AUs.
+                                 The OU-tree replacement.
+
+  05                             **Policy.** GPO retirement.
+                                 Intune compliance. Conditional
+                                 Access.
+
+  06                             **Services.** DNS + DHCP +
+                                 IPAM in the Hybrid-Cloud
+                                 model.
+
+  07                             **Compute.** Device
+                                 transformation. Domain-joined
+                                 → Entra + Intune + Arc.
+
+  08                             **Access plane.** MFA. Zero
+                                 Trust. SASE. CBA.
+
+  09                             **Roadmap.** Phased plan.
+                                 Gates. Rollback. Cutover.
+
+  10                             **Leadership takeaway.** The
+                                 "instruments vs. orchestra"
+                                 framing.
+  -------------------------------------------------------------
+
+## The bottom line
+
+AD retirement is not a migration project. It is a **governance
+transformation**. The hard part isn't the Graph API calls; it's the
+framework that decides what the target state looks like, how to prove
+it's right, and how to keep it right. UIAO is that framework, and this
+series is how it works.
+
+------------------------------------------------------------------------
+
+**Next:** [Chapter 01 --- The UIAO Platform
+Server](../client-server-to-hybrid-cloud/01-platform-foundation.qmd)
+
+# Chapter 01 --- The UIAO Platform Server
+
+*Windows Server 2025 + IIS + Gitea + Kerberos + enterprise PKI*
+
+Everything UIAO does --- every analysis, every plan, every delivery,
+every evidence artifact --- runs on one Windows Server 2025 host. Not a
+cluster, not a microservice mesh, not a cloud-native control plane. One
+host.
+
+This is a deliberate, governed choice, not a simplification. This
+chapter explains why.
+
+## Why one host
+
+The UIAO platform server is a governance substrate, not an application.
+Governance substrates have properties that application servers don't:
+
+- **Single source of truth.** There is exactly one Gitea repo that holds
+  the canon. Two hosts can't both be authoritative; they'd diverge.
+  Replication is for disaster recovery, not active-active load-sharing.
+- **Deterministic provenance.** Every plan, every delivery, every drift
+  report must be traceable to a commit on the canonical repo. A
+  distributed-by-default architecture dilutes provenance; a single-host
+  architecture concentrates it.
+- **Bounded attack surface.** Zero-trust federal environments score a
+  single hardened Tier-0 host lower-risk than a fleet of loosely-coupled
+  services. The CIS baseline + AppLocker + WDAC story is cleaner on one
+  host.
+- **Operational simplicity.** One host means one patch cadence, one
+  backup policy, one DR playbook, one set of Intune compliance rules,
+  one Arc enrollment, one OrgPath tag. Complexity scales badly in
+  governance systems because every extra moving part is an extra source
+  of drift.
+
+Horizontal scale, when it becomes necessary, is handled at the target
+surface layer --- Entra, Intune, Arc, and vendor APIs scale natively ---
+not by fanning out the governance substrate.
+
+## The five roles
+
+A single host plays five distinct roles. Each maps to a specific
+capability the transformation engine needs.
+
+### 1. Canonical source of truth
+
+**Gitea.** Every governance artifact --- OrgPath codebook entries,
+dynamic group rules, delegation matrices, transformation plans, policy
+libraries, adapter manifests, drift reports --- lives as a versioned
+file in the Gitea repo. Nothing is an admin-portal click. Nothing is a
+verbal assurance. Every change is a commit; every commit is signed;
+every commit is attributable.
+
+Gitea is behind IIS (never exposed directly), anchored to enterprise PKI
+for client-cert + HTTPS, and replicated via nightly backup to Azure
+Blob. Active-passive replica failover is manual-triggered with an
+explicit RPO/RTO target.
+
+### 2. HTTPS reverse proxy and client-cert terminator
+
+**IIS + URL Rewrite + ARR.** Every inbound request lands at IIS. IIS
+does TLS termination, client-certificate mTLS (for admin access), HSTS,
+HTTP/2, and forwards to Gitea on loopback port 3000. IIS is also the AD
+LDAPS-aware auth landing point for Gitea's `source-config` lookups.
+
+This is the architecture endorsed by
+[ADR-001](../../../../modernization/orgtree.qmd) --- Gitea behind IIS
+reverse proxy. Option A (IIS + `git-http-backend` alone) was evaluated
+and rejected on auth integration + operational complexity grounds.
+
+### 3. Legacy-to-modern auth bridge
+
+**Kerberos + enterprise PKI.** The platform server holds simultaneous
+memberships:
+
+- It's **domain-joined** to the legacy AD forest (for Kerberos-anchored
+  reads of the forest, GPOs, DNS zones, and ADCS).
+- It's **Entra-registered** (for OAuth2/OIDC inbound auth and Graph API
+  outbound calls).
+- It holds an **enterprise-CA-issued server certificate** for IIS TLS
+  and a **client certificate** for Arc + Intune enrollment.
+
+The bridges are not redundant. The AD side is read-only by policy (the
+`UIAOADAssessment` PowerShell module runs with a least-privilege account
+that has only the forest-reader rights it needs). The Entra side is
+read-write (the transformation engine's plans land there).
+
+### 4. Transformation engine host
+
+**PowerShell + Python + API integrator layer.** This is where
+assessment, planning, and delivery actually happen.
+
+- **PowerShell** (7.4+) handles AD-side reads (ActiveDirectory,
+  GroupPolicy, DnsServer, DhcpServer modules), Gitea API calls,
+  local-file provenance writes, and the Pester test harness.
+- **Python** (3.12+) handles graph analysis (networkx for OU trees,
+  dependency graphs), OSCAL authoring, schema validation (MOD_H JSON
+  schema), and anything that benefits from a richer type system or
+  library ecosystem than PowerShell provides.
+- **API integrators** wrap vendor APIs --- Graph, ARM, Intune management
+  APIs, Infoblox WAPI, ServiceNow REST, CyberArk REST, SCuBA/ScubaGear
+  output ingestion --- behind uniform contracts defined in the DM\_\*
+  adapter specs.
+
+Both engines are governed: every script is in Gitea; every run produces
+a signed, provenanced log entry; every API call is logged with
+correlation IDs that tie back to a plan + commit.
+
+### 5. Adapter dispatcher
+
+**DM\_\* and MOD_I glue.** When the transformation engine needs to touch
+a specific AD-dependency category (PKI, RADIUS, LDAP, DHCP, etc.), it
+dispatches through the DM\_\* adapter interface. Each adapter
+implementation (Infoblox, ADCS, Entrust, Cisco ISE, etc.) plugs in
+behind the adapter interface; the engine never hard-codes vendor
+specifics.
+
+The adapter dispatcher is also how UIAO stays vendor-pluggable. A new
+IPAM vendor slots into DM_010 by implementing the adapter contract ---
+no transformation-engine changes required.
+
+## The Two-Brain split
+
+A critical architectural principle: **governance and execution never
+co-mingle on the platform server**.
+
+- **Copilot (governance brain)** --- the review + authorization layer.
+  Canon validates plans, signs commits, enforces boundary rules, writes
+  audit entries. It does **not** touch the target surface directly.
+- **Execution Substrate (execution brain)** --- the delivery layer. It
+  takes an authorized plan, calls the adapter APIs, and writes back a
+  structured result. It does **not** decide what to do; it executes what
+  the governance brain has already decided.
+
+This split is documented canonically as **ADR-002 --- Two-Brain
+Execution** (to be authored). On the platform server, it manifests as
+two separate service accounts, two separate credential stores, two
+separate log streams. Deleting either brain's access stops the system in
+a safe state; it doesn't leave the other brain able to make decisions it
+shouldn't.
+
+The reason: a brain that both decides and acts is a brain that can cover
+its tracks. Separating them is how we make every change auditable,
+reversible, and governed.
+
+## Integration surface map
+
+The platform server has clearly-bounded integration points. Each is
+governed by an adapter spec and a validation suite.
+
+  -----------------------------------------------------------------------------------------
+  Integration     Direction       Adapter                     Purpose
+  --------------- --------------- --------------------------- -----------------------------
+  AD Forest       Read-only       MOD_I + UIAOADAssessment    Forest/domain/OU discovery,
+  (legacy)                                                    GPO inventory, DNS/DHCP read,
+                                                              Kerberos SPN audit
+
+  ADCS (legacy    Read-only       DM_020                      Template analysis, ESC1-8
+  PKI)                                                        vulnerability check,
+                                                              certificate inventory
+
+  Entra ID        Read-write      adapter-specs/entra-id      User/group/device/AU/policy
+                                                              provisioning
+
+  Intune          Read-write      adapter-specs/intune        Compliance policies,
+                                                              configuration profiles,
+                                                              Autopilot
+
+  Azure Arc       Read-write      (DM_060 scope)              Hybrid server enrollment, tag
+                                                              management, policy assignment
+
+  Infoblox /      Read-write      DM_010                      IPAM records, DHCP scope
+  BlueCat                                                     governance
+
+  Cisco ISE / NPS Read-write      DM_030                      RADIUS policy, 802.1X,
+                                                              device-posture
+
+  ServiceNow      Read-write      adapter-specs/service-now   Change/incident integration
+
+  CyberArk        Read-write      adapter-specs/cyberark      PAM vault / safe integration
+
+  GitHub          Read-write      (upstream canon)            Canon merge source (GitHub →
+                                                              Gitea mirror)
+  -----------------------------------------------------------------------------------------
+
+Every integration is bidirectional-or-less; nothing is "trust me." The
+drift engine re-validates every integration on a schedule.
+
+## Operational properties
+
+By the end of Chapter 06 (the Platform Server Build Guide), the host has
+the following operational properties:
+
+- **Tier-0 classification** --- CIS Level 2 baseline, AppLocker
+  whitelisting, WDAC code integrity, Defender for Servers Plan 2, SIEM
+  forwarding.
+- **Provenance-bound** --- every config file change is a Git commit; no
+  admin-portal clicks permitted; Intune baseline policy enforces this.
+- **OrgTree-governed** --- server carries its own OrgPath
+  (`ORG-IT-INF-PLATFORM`), lives in an Administrative Unit
+  (`AU-ORG-IT-INF-PLATFORM`), and is targeted by an OrgPath-scoped
+  Intune compliance policy.
+- **Drift-monitored** --- MOD_M reports the server's state on a schedule
+  (OrgPath, AU membership, Gitea team mapping, Arc heartbeat). Any drift
+  opens an SLA ticket per MOD_Q.
+- **DR-ready** --- nightly backup to Azure Blob, manual failover to a
+  passive replica with documented RPO/RTO targets.
+
+## What the platform server is not
+
+Boundaries matter as much as capabilities:
+
+- **Not a domain controller.** The platform server is domain-*joined*,
+  not domain-hosting. When the legacy AD forest is eventually retired,
+  the platform server stays; the DCs go away.
+- **Not a target-surface component.** The platform server governs Entra,
+  Intune, Arc --- it does not live inside them. It is deliberately
+  on-prem (or Arc-projected IaaS) so it survives tenant-level events.
+- **Not a product**. The platform server is a governed deployment of
+  well-known components (WS2025, IIS, Gitea) configured together in a
+  specific, canonical way. There's no proprietary UIAO binary to ship.
+- **Not a Copilot replacement.** Copilot is the governance brain. The
+  platform server hosts the execution substrate + canon. Copilot still
+  reviews and authorizes.
+
+## Cross-references
+
+- **Full build runbook:** [Platform Server Build
+  Guide](../../platform/platform-server-build.qmd) --- 14 phases, 1,864
+  lines of PowerShell-first procedure.
+- **ADR-001 Git Infrastructure** --- documents the Gitea-behind-IIS
+  decision and why Option A was rejected.
+- **Modernization canon** ---
+  [MOD_A..Z](../../../modernization/orgtree.qmd) for governance,
+  [DM_010..080](../../../modernization/directory-migration.qmd) for
+  adapters.
+
+------------------------------------------------------------------------
+
+**Next:** [Chapter 02 --- Analyzing the Client/Server
+Estate](../client-server-to-hybrid-cloud/02-legacy-ingestion.qmd)
+
+# Chapter 02 --- Analyzing the Client/Server Estate
+
+*Forest discovery, GPO inventory, DNS/DHCP scraping, Kerberos SPN audit,
+ADCS analysis*
+
+You cannot modernize what you have not enumerated. Every UIAO
+modernization begins with a **read-only, least-privilege,
+provenance-bound analysis** of the existing Client/Server estate. The
+output of this phase is a structured, versioned artifact set --- one per
+AD-dependency category --- committed to Gitea and consumed by every
+downstream chapter.
+
+No writes. No guesses. No "we'll handle that later."
+
+## The assessment problem
+
+When an agency asks "what's in our AD forest?" the honest answer is
+usually *"more than anyone currently on the team knows."* Twenty-five
+years of organic growth have produced:
+
+- Forests with trust relationships no one can fully map.
+- OU trees with orphan branches created for long-dismissed projects.
+- GPOs whose authors left a decade ago and whose effects are unknown.
+- Service accounts with SPNs pointed at applications no one operates.
+- Certificate templates with permissions that silently enable ESC1-8
+  privilege-escalation paths.
+- DNS zones with stale records that still resolve and still route.
+- DHCP scopes whose reservations reference MAC addresses of machines
+  that have been landfill for years.
+
+A successful modernization starts by producing the complete, structured,
+current-state picture. Not a best-effort inventory. Not a sample. The
+full, structured, attestation-grade record.
+
+## Three design principles
+
+The UIAO assessment layer enforces three principles that distinguish it
+from a general-purpose AD scan.
+
+### 1. Read-only by policy
+
+Every assessment operation is constrained to read-only Active Directory
+rights. The service account running `UIAOADAssessment` has exactly the
+permissions it needs to read --- and zero beyond that. No group
+memberships are changed, no GPOs edited, no password resets issued. This
+is enforced at the account level (least-privilege delegation), at the
+code level (no write cmdlets imported), and at the audit level (every
+Graph + AD call logged with operation class).
+
+The practical benefit: an assessment can run against the production
+forest without any change-control gate. Read-only is not an honor
+system; it is a provable property.
+
+### 2. Least-privilege delegation
+
+The assessment account needs forest-wide read rights to discover the
+full surface, but it does *not* need Domain Admin or Enterprise Admin. A
+properly-delegated account achieves \~87% coverage with the **Read-Only
+AD Assessment Guide** profile and 100% coverage with the **AD
+Interaction Guide** profile (which adds GPO-read and
+configuration-container-read rights).
+
+Two tiers map to two separate Posted reference documents:
+
+- **Tier A (read-only, 87% coverage)** --- default. No GPOs, no ADCS
+  templates, no DNS/DHCP without explicit added rights.
+- **Tier B (read + enumerate, 100% coverage)** --- adds GPO read, ADCS
+  template read, DNS/DHCP read, Kerberos SPN enumerate.
+
+The tier is a governance decision --- most agencies run Tier B for the
+initial full assessment and Tier A for the continuous re-assessment
+cadence.
+
+### 3. Provenance-bound output
+
+Every assessment run produces a structured artifact set with required
+metadata:
+
+- Who ran it (service principal or account UPN)
+- When (UTC timestamp)
+- Against what (forest DNS name, domain FQDNs, DC that served the read)
+- With what profile (Tier A / Tier B / custom)
+- Producing what (hash of each output file)
+- Committed where (Gitea branch, commit SHA)
+
+A run without provenance is non-canonical and rejected by the engine.
+
+## The eleven ingestion streams
+
+The assessment layer produces one artifact stream per AD-dependency
+category, mirroring the eleven types from Chapter 00. Each stream has
+its own normalized schema and its own committed-to-Gitea location.
+
+### Stream 1 --- Forest + Domain topology
+
+**What it captures.** Forest functional level, domain trust
+relationships, site topology, DC role assignments, replication
+intervals, FSMO holders, DNS integration mode, Exchange schema level.
+
+**Cmdlet skeleton.**
+
+    Get-ADForest | ConvertTo-UiaoForestRecord
+    Get-ADDomain  -Identity each | ConvertTo-UiaoDomainRecord
+    Get-ADReplicationSiteLink -Filter * | ConvertTo-UiaoSiteLinkRecord
+    Get-ADTrust -Filter * | ConvertTo-UiaoTrustRecord
+
+**Output.** `assessments/<run-id>/forest-topology.json` --- normalised
+to MOD_H schema.
+
+**Feeds.** Chapter 04 (identity strategy); DM_090 (Trust Relationships);
+Chapter 09 (migration roadmap --- trust relationships define cutover
+gates).
+
+### Stream 2 --- OU hierarchy
+
+**What it captures.** Every OU, full distinguished name, parent-child
+relationships, linked GPOs, delegation ACLs (if Tier B), and user +
+computer counts.
+
+**Cmdlet skeleton.**
+
+    Get-ADOrganizationalUnit -Filter * -Properties * | ConvertTo-UiaoOuRecord
+
+**Output.** `assessments/<run-id>/ou-hierarchy.json` --- a graph
+structure consumed by the Python OrgPath-proposal generator (Chapter
+03).
+
+**Feeds.** Chapter 04 (OrgPath codebook authoring); Chapter 05 (GPO
+linkage map).
+
+### Stream 3 --- Users
+
+**What it captures.** Every user object --- UPN, samAccountName, DN,
+enabled state, password last-set, last-logon, manager DN, member-of
+groups, extensionAttribute1--15, mail, employeeID, department, office
+location, and (if populated) HR-system-sourced attributes.
+
+**Cmdlet skeleton.**
+
+    Get-ADUser -Filter * -Properties * | ConvertTo-UiaoUserRecord
+
+**Output.** `assessments/<run-id>/users.jsonl` --- one record per line,
+pseudonymized on a configurable schedule (production exports may redact
+samAccountName per CUI rules).
+
+**Feeds.** Chapter 04 (user migration); Chapter 03 (attribute-mapping
+plan).
+
+### Stream 4 --- Computers
+
+**What it captures.** Every computer object --- DN, DNS hostname,
+operating system, OS version, last password-set, service principal
+names, last-logon timestamp, trustedForDelegation state,
+msDS-SupportedEncryptionTypes.
+
+**Cmdlet skeleton.**
+
+    Get-ADComputer -Filter * -Properties * | ConvertTo-UiaoComputerRecord
+
+**Output.** `assessments/<run-id>/computers.jsonl`.
+
+**Feeds.** Chapter 07 (compute migration); DM_060 (Device Management
+adapter); risk-scoring for stale or unconstrained-delegation hosts.
+
+### Stream 5 --- Service Accounts + SPNs
+
+**What it captures.** All accounts with populated servicePrincipalName
+values, grouped by likely application boundary; msDS-AllowedToDelegateTo
+targets; gMSA / sMSA status; password-last-set gaps that indicate stale
+credentials.
+
+**Cmdlet skeleton.**
+
+    Get-ADUser -Filter { servicePrincipalName -like "*" } -Properties servicePrincipalName
+    Get-ADComputer -Filter { servicePrincipalName -like "*" } -Properties servicePrincipalName
+    Get-ADServiceAccount -Filter * -Properties *
+
+**Output.** `assessments/<run-id>/spn-inventory.json`.
+
+**Feeds.** DM_085 (SPN adapter --- gap); Chapter 05 (policy migration
+--- Kerberos-bound apps need Entra App Registration equivalents).
+
+### Stream 6 --- Security + Distribution Groups
+
+**What it captures.** Every group --- DN, samAccountName, group scope
+(Universal/Global/DomainLocal), type (Security/Distribution), members,
+member-of, and (critically) whether membership is static or rule-based.
+
+**Cmdlet skeleton.**
+
+    Get-ADGroup -Filter * -Properties *
+    Get-ADGroupMember -Identity each -Recursive
+
+**Output.** `assessments/<run-id>/groups.jsonl`.
+
+**Feeds.** Chapter 04 (dynamic-group authoring from OrgPath rules);
+MOD_B (Dynamic Group Library target).
+
+### Stream 7 --- Group Policy Objects
+
+**Tier B only.**
+
+**What it captures.** Every GPO --- display name, GUID, link targets,
+security filtering, WMI filters, enabled state, Computer and User
+configuration settings (full XML export), and date-of-last-modification
+per section.
+
+**Cmdlet skeleton.**
+
+    Get-GPO -All
+    Get-GPOReport -All -ReportType Xml | ConvertTo-UiaoGpoRecord
+
+**Output.** `assessments/<run-id>/gpos/*.xml` + normalised
+`gpo-index.json`.
+
+**Feeds.** Chapter 05 (GPO → Intune mapping); single highest-complexity
+stream by word count.
+
+### Stream 8 --- DNS Zones + Records
+
+**Tier B only.**
+
+**What it captures.** All AD-integrated DNS zones, non-AD zones hosted
+on DCs, conditional forwarders, recursion settings, per-record TTL +
+last-update, and (critically) stale records whose owning computer object
+has aged out.
+
+**Cmdlet skeleton.**
+
+    Get-DnsServerZone -ComputerName each-DC
+    Get-DnsServerResourceRecord -ZoneName each -ComputerName DC
+
+**Output.** `assessments/<run-id>/dns-zones.json` + `dns-records.jsonl`.
+
+**Feeds.** DM_015 (DNS adapter --- gap); Chapter 06 (services
+transformation).
+
+### Stream 9 --- DHCP Scopes + Reservations
+
+**Tier B only.**
+
+**What it captures.** All DHCP servers (Microsoft-AD-integrated),
+scopes, reservations, option sets, and failover relationships.
+
+**Cmdlet skeleton.**
+
+    Get-DhcpServerInDC
+    Get-DhcpServerv4Scope -ComputerName each
+    Get-DhcpServerv4Reservation -ComputerName each -ScopeId each
+
+**Output.** `assessments/<run-id>/dhcp-scopes.json`.
+
+**Feeds.** DM_016 (DHCP adapter --- gap); Chapter 06.
+
+### Stream 10 --- ADCS / PKI
+
+**Tier B only; highest-sensitivity stream.**
+
+**What it captures.** All CAs in the forest (root + issuing), published
+certificate templates, template permissions (including the ESC1--8
+escalation patterns), issued certificates matching high-value EKUs, CRL
+distribution health.
+
+**Cmdlet skeleton.**
+
+    Get-CertificationAuthority
+    Get-CertificateTemplate | Analyze-ADCSTemplatePermission
+    Get-IssuedCertificate -Template each
+
+**Output.** `assessments/<run-id>/adcs/` --- per-CA directories with
+template dumps, permission analysis, ESC1--8 findings.
+
+**Feeds.** DM_020 (PKI adapter); Chapter 08 (CBA migration); compliance
+findings (ESC1--8 are usually FISMA AC-6 findings).
+
+### Stream 11 --- LDAP Bindings + Kerberos SPN Map
+
+**What it captures.** Every application that binds to AD via LDAP/LDAPS
+or uses Kerberos SPN-based auth. Discovered via Graph analysis of
+computer accounts, servicePrincipalName patterns, and (where available)
+IIS / app-server config scraping.
+
+**Output.** `assessments/<run-id>/ldap-bindings.jsonl` +
+`kerberos-spn-map.json`.
+
+**Feeds.** DM_040 (LDAP Proxy adapter); Chapter 05 (policy migration ---
+LDAP-bound apps need App Registration equivalents); the single biggest
+source of modernization blockers in most forests.
+
+## Python augmentation
+
+PowerShell is excellent at AD reads; it is less excellent at graph
+analysis. Every stream that produces relational data (OU hierarchy, GPO
+link graph, SPN-to-app map, trust-relationship graph) is post-processed
+by a Python analyzer (`uiao.assess.graph`) that produces:
+
+- **Dependency graphs** --- which OUs inherit which GPOs; which apps
+  depend on which SPNs.
+- **Risk scores** --- stale accounts, over-privileged delegation,
+  ESC1--8 exposures.
+- **OrgPath proposals** --- a first-pass mapping from OU DN to proposed
+  OrgPath code. The steward reviews and edits; the engine does not
+  auto-publish.
+- **Gap analysis reports** --- OUs with no linked GPOs, GPOs with no
+  enabled settings, groups with zero members, computers that haven't
+  logged on in 90+ days.
+
+Python output lands in `assessments/<run-id>/analysis/` as JSON +
+Markdown reports consumable by both the engine and a human reviewer.
+
+## Output format: one artifact set per run
+
+Every assessment run produces the same folder layout, committed to Gitea
+under `assessments/<run-id>/`. The run-id is
+`YYYY-MM-DD-HHmm-<host>-<tier>` (UTC).
+
+    assessments/
+    └── 2026-04-24-1030-UIAO-GIT01-tierB/
+        ├── provenance.yaml              ← who/what/when/hash
+        ├── forest-topology.json
+        ├── ou-hierarchy.json
+        ├── users.jsonl
+        ├── computers.jsonl
+        ├── spn-inventory.json
+        ├── groups.jsonl
+        ├── gpos/
+        │   ├── gpo-index.json
+        │   └── {guid}.xml
+        ├── dns-zones.json
+        ├── dns-records.jsonl
+        ├── dhcp-scopes.json
+        ├── adcs/
+        │   └── {ca-name}/
+        ├── ldap-bindings.jsonl
+        ├── kerberos-spn-map.json
+        └── analysis/
+            ├── orgpath-proposal.md
+            ├── risk-scorecard.md
+            ├── dependency-graph.json
+            └── gap-findings.md
+
+Every commit of this folder is a single `feat(assess): run-id …` commit,
+signed, attributable. No assessment artifact lives outside Gitea; no
+assessment run executes twice with the same run-id.
+
+## What happens next
+
+The output of Chapter 02 is the input to Chapter 03. The transformation
+engine takes the `assessments/<run-id>/` folder, runs it through the
+plan generator, and produces a matched `plans/<plan-id>/` folder of
+deterministic transformation actions. The plan is reviewed (by the Canon
+Steward + Copilot), authorized, and then dispatched to the Execution
+Substrate for delivery.
+
+Assessment and planning are deliberately separate steps. An assessment
+without a plan is a report; a plan without an assessment is a guess.
+Only together do they produce governed modernization.
+
+## Reference material
+
+- **Posted: UIAO Active Directory Interaction Guide** (11,677 words) ---
+  the Tier B reference implementation.
+- **Posted: UIAO Read-Only AD Assessment Guide** (10,858 words) --- the
+  Tier A reference implementation (least-privilege, \~87% coverage).
+- **Posted: UIAO PowerShell Module Reference** (9,248 words) --- the
+  `UIAOADAssessment` module surface.
+- **Canon:** MOD_I PowerShell Validation Module; MOD_H OrgPath JSON
+  Schema.
+
+------------------------------------------------------------------------
+
+**Next:** [Chapter 03 --- Analysis → Plan →
+Delivery](../client-server-to-hybrid-cloud/03-transformation-pipeline.qmd)
+
+# Chapter 03 --- Analysis → Plan → Delivery
+
+*The transformation engine*
+
+UIAO turns an AD assessment into a delivered Hybrid-Cloud change through
+three sequential stages: **Analyze**, **Plan**, **Deliver**. Each stage
+produces a signed, versioned artifact in Gitea. Each stage has a
+distinct brain (Copilot or Execution Substrate) and a distinct
+authorization gate. Nothing skips a stage. Nothing touches the target
+surface without a plan. No plan touches the target surface without
+authorization.
+
+## Why three stages (not one)
+
+The obvious alternative --- "scan the forest, apply the changes" --- is
+how most modernization tools work. It fails for three reasons:
+
+1.  **Changes aren't reviewable.** A tool that reads and writes in one
+    pass gives an operator no chance to inspect what is about to happen.
+2.  **Provenance is thin.** If the scan drifts between read and write,
+    the resulting change is attributed to a phantom input.
+3.  **Rollback is impossible.** Without a materialised plan, there is no
+    diff to invert.
+
+Separating Analyze, Plan, and Deliver gives UIAO three review gates,
+three audit trails, and three named artifacts per run. This is what
+"governed modernization" means in practice.
+
+## Stage 1 --- Analyze
+
+**Input:** the raw assessment artifact set from Chapter 02. **Output:**
+a normalized analysis report + a proposed change set. **Brain:** Copilot
+(governance).
+
+The Analyze stage reads the eleven ingestion streams and produces four
+derivative artifacts, each stored in Gitea under
+`plans/<plan-id>/analysis/`:
+
+- **Current-state graph.** A normalized representation of the forest ---
+  OUs, users, computers, groups, GPO links, trust edges, SPN map --- in
+  a single graph (Python `networkx` or equivalent). This is the input to
+  every downstream decision.
+- **Target-state graph.** The proposed Hybrid-Cloud equivalent ---
+  OrgPath hierarchy, dynamic group rule set, Administrative Unit map,
+  Conditional Access targeting, Intune compliance groupings, Azure Arc
+  tag set, IPAM record set. This is what the finished state looks like.
+- **Diff.** The machine-readable delta between current and target. A
+  list of proposed additions, modifications, retirements, and
+  no-change-needed items, each typed and each linked to a source record
+  in the assessment.
+- **Risk score.** The blast-radius model for the change set --- which
+  users are affected, which downstream systems get touched, which
+  boundaries are crossed, which compliance controls are in scope.
+
+Analysis is deterministic: given the same assessment input, it produces
+the same four artifacts. This is the property the review gate depends
+on. An analysis whose output varies run-to-run is broken and rejected.
+
+## Stage 2 --- Plan
+
+**Input:** the Analyze output + canon (MOD_A codebook, MOD_B group
+library, MOD_D delegation matrix, MOD_K decision trees). **Output:** a
+signed, executable Plan. **Brain:** Copilot (governance).
+
+The Plan stage takes the Diff and expands it into a structured,
+deterministic action sequence. Each action is:
+
+- **Typed** --- one of \~30 canonical action types (e.g. `create-user`,
+  `set-extension-attribute`, `create-dynamic-group`,
+  `assign-admin-unit`, `set-ca-policy-target`,
+  `create-intune-compliance-policy`, `update-infoblox-record`,
+  `enroll-arc-server`, `rotate-kerberos-spn`).
+- **Scoped** --- bounded to a single target object. No action type
+  permits "update all users whose ..."; the scope is pre-materialised.
+- **Dependency-ordered** --- actions that depend on others are ordered
+  behind them (create the AU before scoping the role to it).
+- **Rollback-paired** --- every action has a generated inverse, so the
+  same plan can be run in reverse.
+- **Provenance-linked** --- pointer back to the source assessment
+  record, the canon rule, and the analysis step that produced it.
+
+A plan is a YAML document that looks, in abbreviated form, like this:
+
+    plan_id: 2026-04-24-1200-orgtree-phase2
+    assessment_id: 2026-04-24-1030-UIAO-GIT01-tierB
+    authorized_by: ~          # filled at authorization step
+    boundary: gcc-moderate
+    actions:
+      - id: A0001
+        type: create-administrative-unit
+        target:
+          display_name: AU-ORG-FIN
+          membership_rule: "(user.extensionAttribute1 -startsWith \"ORG-FIN\")"
+          restricted: true
+        provenance:
+          source: assessments/2026-04-24-1030/ou-hierarchy.json#ou/FIN
+          canon: MOD_D/tier2-au
+        rollback:
+          type: delete-administrative-unit
+          target: AU-ORG-FIN
+        depends_on: []
+      - id: A0002
+        type: assign-role-scoped
+        target:
+          role: User Administrator
+          principal: OrgTree-FIN-Admins
+          scope: /administrativeUnits/AU-ORG-FIN
+        provenance: …
+        depends_on: [A0001]
+
+### Plan validation
+
+Before a plan is eligible for authorization, it passes through MOD_J
+(Governance Enforcement Test Suite):
+
+- **Schema validation** --- conforms to the plan JSON schema.
+- **Canon validation** --- every OrgPath used exists in MOD_A; every
+  dynamic-group name fits MOD_B's pattern; every AU matches MOD_D's
+  tier-structure; every role assignment is valid.
+- **Boundary validation** --- no action targets an out-of-scope service;
+  no Commercial-Cloud call except Amazon Connect; classification tags
+  correctly set.
+- **Safety checks** --- no action deletes more than N items at once
+  without explicit `require_confirmation`; no rotation of credentials
+  for roles marked `permanence: high`; no change to the governance
+  substrate itself outside a Canon Change Protocol PR.
+- **Idempotency check** --- the plan is equivalent to re-planning from
+  the current state (so a re-run of a partially-completed plan is safe).
+
+A plan that fails any validation is rejected and the diff returned to
+the steward for correction. Plans never partially-ship.
+
+### Authorization gate
+
+A validated plan is not yet executable. Authorization requires:
+
+- Canon Steward review in the Gitea PR interface.
+- A Copilot-generated summary of the plan's blast radius, attached to
+  the PR.
+- At least one approver of record (separation-of-duties).
+- Explicit sign-off on any actions marked `require_confirmation`.
+- A signed commit merging the plan into `plans/<plan-id>/authorized/`.
+
+Only after these gates complete does the plan graduate from
+`plans/<plan-id>/proposed/` to `plans/<plan-id>/authorized/`. Only an
+authorized plan can cross the handoff line to the Execution Substrate.
+
+## Stage 3 --- Deliver
+
+**Input:** the authorized plan. **Output:** a result log, an evidence
+packet, and updated state in the target surface. **Brain:** Execution
+Substrate (execution).
+
+The Execution Substrate is deliberately a different process, running
+under a different service principal, with a different credential store
+and a different log stream than the governance brain. This is the
+Two-Brain split made concrete (ADR-002, chapter 01).
+
+Delivery proceeds as a linear walk through the plan's action list. For
+each action:
+
+1.  **Fetch** the action spec from the authorized plan.
+2.  **Resolve** the target object (Graph API lookup, Infoblox WAPI
+    fetch, Intune policy lookup, etc.).
+3.  **Compare** current live state to the action's expected-before
+    state. If the world already matches expected-after, the action is a
+    no-op --- mark as `skipped: already-matches` and continue.
+4.  **Invoke** the adapter's write method with the action payload.
+5.  **Verify** by re-reading the object and comparing to expected-after.
+6.  **Record** the result --- correlation ID, API response, timing,
+    actual-after state --- to
+    `plans/<plan-id>/results/<action-id>.json`.
+
+### Correlation IDs
+
+Every invocation carries a correlation ID that includes the plan ID, the
+action ID, and a unique run ID. That ID appears in:
+
+- The Graph/ARM/vendor-API call headers (so vendor-side logs can be
+  cross-referenced).
+- The local-machine Windows Event Log + Gitea commit message.
+- The evidence packet's provenance chain.
+- The MOD_X telemetry emission.
+
+A support case opened on a specific action can be traced end-to-end
+through every log stream. This is a requirement for federal audit, not a
+nice-to-have.
+
+### Failure modes and rollback
+
+An action can fail for three reasons:
+
+- **Transient** --- network blip, throttling. Retried with backoff,
+  capped at N attempts.
+- **Adapter error** --- vendor API returned 4xx/5xx. Action marked
+  `failed`; plan execution stops; no dependent actions run.
+- **Verification mismatch** --- action invoked cleanly but re-read does
+  not match expected-after. Action marked `drift`; plan paused; MOD_M
+  opens an SLA ticket.
+
+On any non-transient failure, the plan has a choice:
+
+- **Halt** --- stop at the failure; leave completed actions in place;
+  return to steward for remediation.
+- **Roll back** --- invoke the rollback inverse for every completed
+  action in reverse order. Each rollback is itself a verified operation
+  with its own result log.
+
+The choice is action-typed (some actions are `rollback: never` ---
+e.g. once you've deprovisioned a user, you rehire them, you do not
+"undelete" them). The default is halt; rollback is explicit.
+
+## Evidence packet
+
+At the end of delivery, the engine produces an evidence packet --- a
+single immutable artifact that summarises the run for compliance and
+audit purposes. The packet contains:
+
+- The authorized plan (with Steward signature).
+- Every action result (with verification state + correlation IDs).
+- The actual-after state of every affected object (Graph snapshot).
+- The full run log (structured JSON).
+- An MOD_X telemetry export (compliance-facing).
+- A signed attestation from the Execution Substrate that "the authorized
+  plan was executed to completion with the results recorded herein."
+
+The evidence packet is committed to Gitea at
+`plans/<plan-id>/evidence.json` and mirrored to the SIEM feed. Federal
+ATO packages consume it directly; FedRAMP ConMon consumes it on its
+continuous-monitoring cadence.
+
+## Concrete example --- the end-to-end shape
+
+To make it concrete: an assessment discovers a Finance OU with 312
+users. The Analyze stage proposes an OrgPath scheme (`ORG-FIN`,
+`ORG-FIN-AP`, `ORG-FIN-BUD`), three dynamic groups (`OrgTree-FIN-Users`,
+`OrgTree-FIN-AP-Users`, `OrgTree-FIN-BUD-Users`), one Tier-2 AU
+(`AU-ORG-FIN`), and a role scoping (`User Administrator` →
+`OrgTree-FIN-Admins` → `AU-ORG-FIN`).
+
+The Plan stage expands that into \~320 actions: 312 user attribute sets,
+3 dynamic-group creates, 1 AU create, 1 role assignment, plus validation
+actions. The plan is \~40 KB of YAML.
+
+Canon validation runs in \~90 seconds. The Steward reviews the plan's
+summary in the Gitea PR (blast radius: 312 users affected, boundary:
+GCC-Moderate, no out-of-scope calls, all actions rollback-paired). The
+Steward approves; the plan merges to `authorized/`.
+
+The Execution Substrate picks up the authorized plan, dispatches the
+actions in dependency order --- AU first, dynamic groups second, user
+attributes third, role assignment last. Total wall-clock: \~12 minutes.
+Each action produces a result file; the final evidence packet is \~180
+KB; the MOD_X telemetry emission is forwarded to SIEM.
+
+The next assessment run (say, 24 hours later) reads the new state,
+produces a new analysis, and --- since the world now matches the target
+--- produces a **zero-action plan**. This is the "steady state"
+contract: when nothing has drifted, nothing needs to happen.
+
+## What governed modernization feels like
+
+The contrast with the old way is stark. A twenty-five-year-old agency
+forest has historically been modernized by:
+
+- Running vendor tools manually, project by project.
+- Writing change tickets after the change.
+- Reconciling outcomes in spreadsheets.
+- Discovering drift during audit.
+
+UIAO modernizes by:
+
+- Reading the forest once, structurally, into a versioned artifact.
+- Proposing the full target state as a reviewable diff.
+- Executing the diff under governance, with evidence per action.
+- Detecting drift continuously, before the audit finds it.
+
+Every stage produces a file in Gitea. Every file has a signature. Every
+signature points to an operator. The question *"who changed what, when,
+and why?"* has a literal answer in the commit history.
+
+## Cross-references
+
+- **Posted: UIAO-Core CLI Reference** --- invocation surface for the
+  engine.
+- **Canon:** MOD_N Execution Substrate Integration Layer; MOD_K
+  Enforcement Decision Trees; MOD_S Governance OS State Machine; MOD_J
+  Governance Enforcement Test Suite.
+- **ADR-002 Two-Brain Execution** *(to author)* --- the architectural
+  principle behind the Plan/Deliver split.
+
+------------------------------------------------------------------------
+
+**Next:** [Chapter 04 --- Identity: x.500 Hierarchy → Flat Entra ID +
+OrgPath](../client-server-to-hybrid-cloud/04-identity-transformation.qmd)
+
+# Chapter 04 --- Identity: x.500 Hierarchy → Flat Entra ID + OrgPath
+
+*The OU-tree replacement*
+
+The AD OU tree was never just a folder structure. It encoded delegation,
+policy inheritance, operational accountability, and security scope in a
+single hierarchical graph. Entra ID is flat and has none of that.
+
+The **OrgTree canon** reconstructs AD's governance properties inside
+Entra ID's flat directory using four governed mechanisms ---
+**OrgPath**, **dynamic groups**, **Administrative Units**, and
+**Conditional Access targeting** --- stitched together into one
+deterministic model.
+
+This chapter is how it works.
+
+## The four mechanisms
+
+Entra ID provides individually powerful tools. OrgTree is the framework
+that uses them *together* to replace what the OU tree was doing.
+
+  --------------------------------------------------------------
+  Mechanism            What it replaces     Canon
+  -------------------- -------------------- --------------------
+  **OrgPath            OU placement         MOD_A (codebook)
+  attribute**
+
+  **Dynamic groups**   OU-derived security  MOD_B (library)
+                       groups
+
+  **Administrative     OU-level delegation  MOD_D (matrix)
+  Units**
+
+  **Conditional Access GPO-based policy     *(per policy
+  targeting**          inheritance          library)*
+  --------------------------------------------------------------
+
+Each mechanism is individually documented in Microsoft's reference; the
+innovation is **the contract that binds them together** so that a single
+act (setting a user's OrgPath) produces consistent downstream effects
+(group membership, AU scope, policy targeting, license assignment,
+drift-detector visibility).
+
+## OrgPath --- the single source of hierarchy
+
+OrgPath is a deterministic, attribute-encoded organizational hierarchy
+stored in `extensionAttribute1` on every governed user (and, where
+applicable, device and group) object.
+
+### The form
+
+    ORG-<DIV>[-<DEPT>[-<SUB>[-<LOC>]]]
+
+Every segment is an enumerated short code from MOD_A's codebook. Depth
+is capped at five segments. The regex that validates any OrgPath is:
+
+    ^ORG(-[A-Z]{2,6}){0,4}$
+
+### Examples
+
+- `ORG-FIN-AP-EAST` --- Finance / Accounts Payable / East region
+- `ORG-IT-INF-PLATFORM` --- IT / Infrastructure / Platform team
+- `ORG-HR-BEN` --- HR / Benefits (two-segment, department-level)
+- `ORG-EXEC` --- Executive (single-segment, division-level)
+
+### What OrgPath drives
+
+A single attribute drives five downstream outcomes:
+
+1.  **Dynamic group membership** --- every user with
+    `extensionAttribute1 -startsWith "ORG-FIN"` is in
+    `OrgTree-FIN-Users`.
+2.  **Administrative Unit scoping** --- the AU `AU-ORG-FIN` has the same
+    membership rule; delegated admins of that AU manage only those
+    users.
+3.  **Conditional Access targeting** --- CA policies include or exclude
+    groups keyed to OrgPath segments.
+4.  **License assignment** --- group-based licensing flows from
+    OrgPath-scoped dynamic groups.
+5.  **Drift detection** --- MOD_M validates that every user's OrgPath
+    exists in the codebook and matches the HR-system source of truth.
+
+One attribute. Five governance outcomes. Zero admin-portal clicks to
+assign any of them.
+
+### The codebook (MOD_A)
+
+MOD_A is a YAML file in Gitea that enumerates every valid OrgPath code.
+Every code has a description, a parent path, allowed children patterns,
+and a max depth. An OrgPath that is not in the codebook is invalid by
+definition; the JSON schema (MOD_H) rejects it at validation time.
+
+The codebook is not freely edited. Changes go through the Canon Change
+Protocol (MOD_V) --- PR → review → merge. This preserves OrgPath
+stability across time; an OrgPath issued to a user in 2026 means the
+same thing in 2030.
+
+## Dynamic groups --- materializing every subtree
+
+AD computed "who is in the Finance branch?" by walking the OU tree.
+Entra ID computes it by evaluating a dynamic-group rule against
+`extensionAttribute1`.
+
+### The three query patterns (MOD_B)
+
+Every OrgPath-governed dynamic group uses one of three patterns.
+
+**Pattern 1 --- Branch Query (subtree).** Captures all users at and
+below a hierarchy level. Use `-startsWith`.
+
+    (user.extensionAttribute1 -startsWith "ORG-FIN")
+
+Produces: every Finance user, including AP, Budget, Tax, and every
+sub-subgroup.
+
+**Pattern 2 --- Node Query (exact).** Captures only users at a specific
+level. Use `-eq`.
+
+    (user.extensionAttribute1 -eq "ORG-FIN-AP")
+
+Produces: users whose OrgPath is *exactly* `ORG-FIN-AP` --- not their
+children.
+
+**Pattern 3 --- Functional Query (role or attribute).** Combines OrgPath
+with a role-bearing attribute (job title, cost center, department), for
+cross-cutting concerns.
+
+    (user.extensionAttribute1 -startsWith "ORG-IT") and (user.jobTitle -contains "Security")
+
+Produces: every IT-organization user whose title includes "Security."
+
+### Naming convention
+
+Every OrgTree-governed dynamic group follows
+`OrgTree-[SCOPE]-[PURPOSE]`:
+
+- `OrgTree-FIN-Users` --- branch query, Finance subtree
+- `OrgTree-IT-SEC-SOC-Users` --- SOC analysts
+- `OrgTree-HR-Licensed` --- HR users targeted for specific SKUs
+- `OrgTree-EXEC-CA` --- Executive users targeted by specific CA policies
+
+Groups that don't match the pattern are **Phantom Drift** per MOD_M. The
+drift engine finds them; MOD_Q escalates the cleanup.
+
+## Administrative Units --- the delegation replacement
+
+AD delegated OU-level administrative rights via ACLs on the OU object.
+Entra ID delegates via Administrative Units --- named scopes that
+contain users, and against which roles can be assigned.
+
+### The three-tier model (MOD_D)
+
+MOD_D enumerates every AU in a three-tier structure mirroring OrgPath
+depth:
+
+  ------------------------------------------------------------------------
+  Tier            Scope           AU Pattern              Typical Roles
+  --------------- --------------- ----------------------- ----------------
+  **Tier 1 ---    All governed    `AU-ORG-Enterprise`     Global Reader,
+  Enterprise**    users                                   Security Reader
+
+  **Tier 2 ---    All users in    `AU-ORG-[DIV]`          User
+  Division**      one division                            Administrator,
+                                                          Groups
+                                                          Administrator
+
+  **Tier 3 ---    Users in one    `AU-ORG-[DIV]-[DEPT]`   Helpdesk
+  Department**    department                              Administrator,
+                                                          Password
+                                                          Administrator
+  ------------------------------------------------------------------------
+
+The membership rule of each AU is an exact mirror of the corresponding
+OrgPath dynamic-group rule. `AU-ORG-FIN` contains exactly the same users
+as `OrgTree-FIN-Users`.
+
+### Restricted management
+
+Every OrgTree AU is created with `isMemberManagementRestricted: true`.
+That means the only way to manage members is via the governed workflow
+--- by changing a user's OrgPath. A Global Admin cannot hand-add a user
+to an AU to bypass delegation. This is AD's "OU ACL" property,
+preserved.
+
+### Role assignments
+
+Roles are scoped to AUs, never granted tenant-wide except for
+break-glass accounts. The assignment pattern:
+
+    role:        User Administrator
+    principal:   OrgTree-FIN-Admins            ← a dynamic group
+    scope:       /administrativeUnits/AU-ORG-FIN
+
+A member of `OrgTree-FIN-Admins` can reset passwords, create groups, and
+manage users --- but only for users in `AU-ORG-FIN`. Outside that scope,
+the role has no effect.
+
+The full role matrix (MOD_D §Role Assignment Matrix) is stored in Gitea.
+Changes require a PR; Copilot validates that new assignments respect
+least-privilege and tier-boundary rules.
+
+## Conditional Access --- policy inheritance replacement
+
+GPOs inherited down the OU tree. Conditional Access policies target
+groups. The bridge: OrgPath-scoped dynamic groups that match the
+OU-inheritance pattern.
+
+Example: a GPO that applied at `OU=East,DC=contoso` configured lockout
+policies for all East-region users. The CA equivalent is a CA policy
+targeting `OrgTree-EAST-Users` (branch query on `ORG-EAST`). Users whose
+OrgPath starts with `ORG-EAST` get the policy; everyone else doesn't.
+
+More precisely: inheritance is simulated by **group targeting at the
+branch level**. CA doesn't inherit through AUs the way GPOs inherited
+through OUs; the governance model makes up the difference by having the
+branch group include everyone the ancestor GPO would have targeted.
+
+## HR-driven lifecycle (joiner / mover / leaver)
+
+OrgPath is not a thing admins maintain. It is driven by the HR system.
+The lifecycle is:
+
+### Joiner
+
+1.  HR system creates the employee record with `orgUnit` + `department`
+    - `location` + `manager`.
+2.  HR → Entra provisioning populates the standard attributes.
+3.  A governed workflow --- `assign-orgpath` --- computes the OrgPath
+    from HR attributes per MOD_A's mapping rules and writes it to
+    `extensionAttribute1`.
+4.  Dynamic groups recompute membership within the Entra cadence
+    (typically \<15 minutes).
+5.  The user is now an AU member, CA-scoped, group-licensed, and visible
+    to the drift engine --- all automatically.
+
+### Mover
+
+The employee's HR record changes `department` from `AP` to `BUD`. The
+same `assign-orgpath` workflow runs; the OrgPath updates from
+`ORG-FIN-AP` to `ORG-FIN-BUD`; every downstream group, AU, CA scope, and
+license assignment recomputes automatically. No hand edits; no ticket;
+no drift window.
+
+### Leaver
+
+Termination writes a `leaver` attribute that the workflow catches; the
+user's OrgPath is set to `ORG-TERMINATED` (or removed); dynamic groups
+evict; AU membership drops; CA policy scope drops; license drops.
+Provenance points to the HR event that triggered it.
+
+### Workflow catalog (MOD_E)
+
+Every lifecycle workflow (joiner, mover, leaver, re-hire, contractor
+onboard, executive provision, emergency deprovision, name change, reorg)
+is enumerated in MOD_E with its triggers, inputs, outputs, and exception
+paths. There are no undocumented identity workflows.
+
+## Five drift categories (MOD_M)
+
+The drift detection engine classifies every identity finding into one of
+five categories:
+
+  -------------------------------------------------------------
+  Category                       Example
+  ------------------------------ ------------------------------
+  **Schema Drift**               A dynamic-group rule
+                                 references an attribute not in
+                                 MOD_A
+
+  **Value Drift**                HR says `ORG-FIN-AP`; user's
+                                 `extensionAttribute1` says
+                                 `ORG-FIN-BUD`
+
+  **Hierarchy Drift**            An AU references an OrgPath
+                                 segment no longer in the
+                                 codebook
+
+  **Orphan Drift**               A security group exists that
+                                 isn't in MOD_B
+
+  **Phantom Drift**              MOD_A defines
+                                 `ORG-FIN-TAX-WEST` but zero
+                                 users match
+  -------------------------------------------------------------
+
+Every drift finding opens an SLA ticket per MOD_Q. Standard response
+times: Schema (4 hours), Value (24 hours), Hierarchy (4 hours), Orphan
+(48 hours), Phantom (7 days).
+
+## Migration (MOD_F)
+
+Moving an existing AD forest into the OrgTree model is a phased runbook,
+not a flag-day cutover.
+
+### Phase 0 --- Assessment
+
+Chapter 02's Tier B assessment run, plus the Python OrgPath proposal
+generator. Output: a draft codebook based on actual OU structure.
+
+### Phase 1 --- Canon authoring
+
+Steward reviews the draft codebook; edits; commits. MOD_A is now
+authoritative. MOD_B rules and MOD_D AUs are authored in parallel.
+
+### Phase 2 --- Pilot division
+
+Pick one division (usually IT or Operations), compute its OrgPath
+mappings, stage the transformation plan, authorize, deliver. Validate
+with Pester tests (MOD_J). Any drift is fixed before moving on.
+
+### Phase 3 --- Division-by-division rollout
+
+Each division gets its own plan, its own review, its own delivery. No
+division is rolled out until the previous one's drift findings are zero.
+
+### Phase 4 --- Legacy retirement
+
+Once every user has an OrgPath and every OU has a dynamic-group
+equivalent, the OU-based security groups and legacy GPOs are retired in
+a governed deprecation pass. This is the only destructive phase; it
+requires explicit Steward approval per item.
+
+### Phase 5 --- Steady state
+
+The daily assessment produces zero-action plans. The drift engine
+reports green. The canon is the operational truth. The forest itself
+remains (for DNS, DHCP, Kerberos-bound legacy apps) but is no longer the
+governance model.
+
+## Verification
+
+OrgTree migration passes when:
+
+- [ ] Every HR-listed employee has a valid OrgPath in
+  `extensionAttribute1`.
+- [ ] Every OrgPath in use exists in MOD_A.
+- [ ] Every dynamic group matches one of MOD_B's three patterns.
+- [ ] Every AU's membership rule mirrors its dynamic group's rule.
+- [ ] Every CA policy targets only OrgTree-governed groups.
+- [ ] MOD_M reports zero drift across all five categories.
+- [ ] The nightly assessment → plan run produces a zero-action plan.
+
+Only when every box is ticked is the tenant "in OrgTree steady state."
+
+## What this buys the agency
+
+The tangible outcomes, once OrgTree is in place:
+
+- **Delegation is provable.** Audit questions like "who can manage
+  Finance users?" have a literal answer in MOD_D.
+- **Reorganizations are cheap.** A division name change propagates
+  through codebook + dynamic groups + AUs in one PR.
+- **Access reviews have structure.** Rather than reviewing "all Finance
+  security groups," reviewers see OrgTree-governed groups with clear
+  scope semantics.
+- **Compliance queries are cacheable.** "Who has access to CUI-tagged
+  resources?" is a dynamic-group query, not a spreadsheet
+  reconciliation.
+- **Drift is visible before audit.** MOD_M's findings hit an SLA ticket
+  long before they reach a 3PAO's hands.
+
+## Cross-references
+
+- **Canon:** MOD_A codebook · MOD_B dynamic group library · MOD_C
+  attribute mapping · MOD_D delegation matrix · MOD_E workflow catalog ·
+  MOD_F migration runbook · MOD_H JSON schema · MOD_M drift engine ·
+  MOD_Y identity graph normalization.
+- **Customer Documents:**
+  [modernization/orgtree.qmd](../../../modernization/orgtree.qmd) ·
+  [modernization/codebook.qmd](../../../modernization/codebook.qmd) ·
+  [modernization/dynamic-groups.qmd](../../../modernization/dynamic-groups.qmd)
+  ·
+  [modernization/delegation.qmd](../../../modernization/delegation.qmd).
+- **Posted:** UIAO Identity Modernization Guide (16,014 words) --- the
+  v1.0 reference implementation, superseded by MOD canon.
+
+------------------------------------------------------------------------
+
+**Next:** [Chapter 05 --- Policy: GPO → Intune + Conditional
+Access](../client-server-to-hybrid-cloud/05-policy-transformation.qmd)
+
+# Chapter 05 --- Policy: GPO → Intune + Conditional Access
+
+*How twenty-five years of Group Policy becomes modern policy*
+
+Group Policy was AD's most ambitious delivery system --- configuration,
+security, software deployment, scripts, drive mappings, and more,
+inheriting down an OU tree and filtered by security groups. Microsoft's
+replacement surface is not one product; it is four: **Intune** (device
+configuration + compliance), **Conditional Access** (access control),
+**Azure Arc / Guest Configuration** (server configuration), and **Entra
+ID settings catalog** (tenant policy).
+
+UIAO maps every GPO category to the correct modern target, keeps the
+mapping canonical in Gitea, and delivers policies through the same
+plan-and-deliver pipeline used for identity.
+
+## The four target surfaces
+
+Every GPO falls into one of four categories. Each category has a clear
+modern home.
+
+  --------------------------------------------------------------
+  GPO category         Modern target        OrgPath-scoped?
+  -------------------- -------------------- --------------------
+  **Device             Intune Configuration Yes
+  configuration**      Profiles
+  (lockscreen, power,
+  printers, drive
+  maps)
+
+  **Security           Intune Security      Yes
+  baselines**          Baselines + Entra ID
+  (password, lockout,  Authentication
+  audit, UAC)          Methods
+
+  **Software           Intune Win32 Apps +  Yes
+  deployment** (.msi,  Autopilot
+  scripts)
+
+  **Access control**   Conditional Access + Yes
+  (computer startup,   Entra ID Session
+  logon scripts,       Controls
+  drive-letter
+  mapping)
+
+  **Server             Azure Arc Guest      Yes
+  configuration**      Configuration +
+  (roles, features,    Azure Policy
+  registry hardening)
+
+  **Browser / mailbox  Intune Settings      Yes
+  config** (IE modes,  Catalog + Office 365
+  Outlook templates)   policies
+  --------------------------------------------------------------
+
+Categorization is not free-form. Every GPO in the assessment
+(`assessments/<run-id>/gpos/`) gets classified into exactly one target
+category by the Python analyzer, and the Plan stage proposes a
+one-for-one Intune/CA/Arc/M365 equivalent.
+
+## Why the 1:1 mapping fails (and what we do instead)
+
+If a GPO has fifty settings, naïve mapping produces fifty Intune
+settings and calls the job done. That's wrong for three reasons.
+
+1.  **Signal-to-noise.** A twenty-five-year-old GPO almost always
+    contains settings nobody can attribute to a current requirement.
+    Migrating them preserves dead weight.
+2.  **Conflict surface.** Entra ID's settings catalog has clearer
+    precedence rules than GPO's "merge vs replace" semantics. A faithful
+    1:1 port reproduces ancient conflicts that Intune would make worse.
+3.  **Targeting mismatch.** GPOs target by OU + security-group filter.
+    Intune targets by group. Copying a GPO's filter verbatim into Intune
+    misses the OrgTree opportunity (Chapter 04) --- instead of
+    OrgPath-scoped dynamic groups, you get manually-curated legacy
+    groups that drift.
+
+The correct pattern is **regenerate, not copy**. For each GPO category
+UIAO proposes a canonical modern policy keyed to OrgPath branches, then
+layers per-branch overrides only where the assessment data justifies
+them. The result is dramatically simpler and substantially more
+governed.
+
+## Intune Configuration Profiles --- the workhorse
+
+Roughly 70% of GPO settings map to Intune Configuration Profiles.
+Configuration profiles are opinionated policy bundles (MDM CSP under the
+covers) targeting user or device dynamic groups.
+
+### Policy authoring
+
+Every UIAO Configuration Profile is a YAML manifest in Gitea under
+`policies/intune/config/`:
+
+    policy_id: CONF-ENDPOINT-BASELINE-v1
+    display_name: UIAO Endpoint Baseline (v1)
+    platform: windows-11
+    profile_type: settings-catalog
+    scope:
+      include_groups:
+        - OrgTree-Enterprise-Devices
+      exclude_groups:
+        - OrgTree-Enterprise-BreakGlass-Devices
+    settings:
+      - path: Security/Account/MaximumPasswordAge
+        value: 60
+      - path: Security/Lockout/LockoutDuration
+        value: 15
+      - path: Device/Experience/LockScreenMessage
+        value: "Federal-operated device. Authorized use only."
+      - path: Browser/Edge/SmartScreen/Enable
+        value: true
+    provenance:
+      derives_from_gpos:
+        - { guid: "{8d1a7fc9-...}", gpo_name: "Enterprise Endpoint Baseline" }
+        - { guid: "{2f6e4c7a-...}", gpo_name: "Global Browser Hardening" }
+      canon_source: docs/customer-documents/compliance/policy-libraries/intune-templates.qmd
+
+The manifest is versioned. A new version supersedes the old; both
+versions remain in Gitea; the delivery pipeline carries over only the
+newest `enabled: true` manifest. Legacy versions are auditable but not
+assigned.
+
+### Targeting
+
+Every Intune Configuration Profile targets OrgTree dynamic groups:
+
+- **Enterprise-wide:** `OrgTree-Enterprise-Devices` (all governed
+  devices).
+- **Division-wide:** `OrgTree-IT-Devices`, `OrgTree-FIN-Devices`.
+- **Department-scoped:** `OrgTree-IT-INF-Devices`.
+- **Role-scoped:** `OrgTree-HighRisk-Devices` (functional query on
+  device risk score).
+
+No profile targets "All devices" tenant-wide unless it is the Enterprise
+baseline. Narrower scoping keeps blast radius small.
+
+### Compliance policies
+
+Distinct from configuration profiles, Intune compliance policies
+evaluate device state and report compliant/noncompliant to Entra ID.
+Conditional Access then uses that signal.
+
+UIAO's compliance catalog (`policies/intune/compliance/`) includes:
+
+- Minimum OS version
+- Disk encryption required (BitLocker)
+- Firewall on
+- Defender real-time protection on
+- Device health attestation passed
+- Specific required apps installed
+- Specific prohibited apps absent
+
+Each policy is OrgPath-scoped and evaluates on a schedule. Noncompliant
+devices are evicted from the `OrgTree-Compliant-Devices` dynamic group,
+which is the CA signal for downstream enforcement.
+
+## Conditional Access --- the access gate
+
+Conditional Access is how UIAO replaces the perimeter-based authority
+that GPOs inherited from network segmentation. CA policies target
+OrgTree groups, evaluate signals (device compliance, risk score,
+location, session age), and enforce controls (MFA, block, session
+limits).
+
+### The UIAO CA policy library
+
+The Posted Conditional Access Policy Library (9,650 words) enumerates
+\~40 baseline policies, which UIAO canonicalises in
+`policies/conditional-access/` under manifests like:
+
+    policy_id: CA-100-Enterprise-MFA
+    display_name: "CA-100 · Enterprise · Require MFA for all users"
+    state: enabled
+    conditions:
+      users:
+        include_groups: [OrgTree-Enterprise-Users]
+        exclude_groups: [OrgTree-BreakGlass-Users]
+      applications:
+        include: all-cloud-apps
+        exclude: [scuba-assessment-apps]
+      client_app_types: [browser, mobileAppsAndDesktopClients]
+      sign_in_risk_levels: []
+    grant:
+      controls: [require_mfa]
+      operator: AND
+    session:
+      sign_in_frequency: 12h
+    provenance:
+      canon_source: docs/customer-documents/compliance/policy-libraries/conditional-access.qmd
+      derived_from_baseline: Microsoft-CA-Baseline-v2024-Q2
+
+### Canonical policy numbering
+
+The library follows a numbering convention that maps intent to scope:
+
+  -------------------------------------------------------------
+  Range                          Meaning
+  ------------------------------ ------------------------------
+  CA-000--099                    Foundational / break-glass /
+                                 emergency
+
+  CA-100--199                    Enterprise baseline (all
+                                 users)
+
+  CA-200--299                    Division-scoped
+
+  CA-300--399                    Department-scoped
+
+  CA-400--499                    Role-scoped (executive, admin,
+                                 high-risk)
+
+  CA-500--599                    Workload-specific (M365,
+                                 SharePoint, custom apps)
+
+  CA-900--999                    Reserved --- experimental /
+                                 pilot
+  -------------------------------------------------------------
+
+Adding a new policy picks the next open number in the right range; every
+policy has a short, human-readable display name that begins with its
+number.
+
+### Block vs require --- the policy discipline
+
+UIAO policies lean heavily on "require" controls rather than "block"
+controls. The governance rationale: a block policy with a bad rule locks
+users out; a require policy with a bad rule requires a step that can be
+fixed. Block policies exist only for clear-cut deny cases (legacy auth,
+high-risk sign-ins, impossible-travel). Everything else is a require
+(MFA, compliant device, session lifetime).
+
+## Azure Arc + Guest Configuration --- the server equivalent
+
+Windows Server policy --- AD-managed registry settings, service states,
+installed features --- migrates to **Azure Arc Guest Configuration**.
+Arc projects on-prem servers into Azure; Guest Configuration applies
+policy via DSC; Azure Policy governs assignment.
+
+### UIAO Arc Policy Library
+
+Policies live in `policies/azure-arc/` and look like:
+
+    policy_id: ARC-SEC-TLS-v1
+    display_name: "ARC-SEC-TLS · Disable TLS 1.0/1.1 on Arc-projected servers"
+    mode: GuestConfiguration
+    parameters:
+      audit_if_not_exists: true
+      enforce: true
+    scope:
+      include_tags: [DeviceRole=AppServer, DeviceRole=GitServer]
+      exclude_tags: [Lifecycle=Decommissioning]
+    configuration:
+      - setting: HKLM:/System/CurrentControlSet/Control/SecurityProviders/SCHANNEL/Protocols/TLS 1.0/Server/Enabled
+        value: 0
+      - setting: HKLM:/System/CurrentControlSet/Control/SecurityProviders/SCHANNEL/Protocols/TLS 1.1/Server/Enabled
+        value: 0
+    provenance:
+      derives_from_gpos:
+        - { guid: "{a7d2-...}", gpo_name: "Server TLS Hardening" }
+      canon_source: docs/customer-documents/compliance/policy-libraries/azure-arc.qmd
+
+### Targeting via Azure tags
+
+Arc policy targeting uses Azure resource tags, which UIAO keeps in sync
+with OrgPath. A server tagged `OrgPath=ORG-IT-INF-PLATFORM` +
+`DeviceRole=GitServer` picks up every policy whose `include_tags` match.
+The tag sync is a MOD_M-monitored job; if an Arc-projected server's tag
+drifts from the Entra device's OrgPath, drift opens a ticket.
+
+## The policy-delivery pipeline
+
+Policies flow through the same three-stage pipeline as identity changes
+(Chapter 03):
+
+1.  **Analyze.** Plan stage reads the Gitea `policies/` tree, compares
+    to the live Intune/CA/Arc state via Graph/ARM, produces a diff.
+2.  **Plan.** Propose creations, updates, and retirements. Each action
+    targets a single policy. Canonical action types include
+    `create-intune-configuration-profile`, `update-ca-policy`,
+    `assign-arc-guest-configuration`, `retire-policy`.
+3.  **Deliver.** Execution Substrate invokes Graph + ARM; verifies each
+    policy's actual-after state; records result.
+
+A typical policy-run plan has tens-to-hundreds of actions. The evidence
+packet contains the full Graph snapshot of every policy after delivery.
+
+## Conflict resolution
+
+When two Intune profiles target the same device with conflicting
+settings, Intune applies a documented precedence. UIAO enforces a
+**canonical precedence order** to keep conflicts predictable:
+
+1.  Enterprise baseline profiles (`OrgTree-Enterprise-*`)
+2.  Division profiles
+3.  Department profiles
+4.  Role-scoped profiles
+5.  Device-specific profiles (emergency patches)
+
+Conflicts that would violate this order are flagged at plan-validation
+time --- the plan fails until the conflict is resolved in canon.
+
+For CA, UIAO enforces a similar order and prohibits policies that
+`require` at a broader scope while `blocking` at a narrower scope (a
+pattern that produces user-lockouts that are hard to debug).
+
+## Break-glass carve-outs
+
+Every CA policy library includes a standard carve-out pattern:
+`OrgTree-BreakGlass-Users`. The break-glass dynamic group contains two
+to five emergency admin accounts that are explicitly excluded from
+block-class CA policies. The accounts are stored in a PAM vault
+(CyberArk adapter), used only in documented emergencies, and audited
+weekly against MOD_M.
+
+Break-glass carve-outs are not "backdoors." They are documented,
+monitored, reviewed, and revoked on a schedule. Every use opens an
+incident ticket.
+
+## Testing
+
+Policy changes are tested in four places before reaching production:
+
+1.  **Canon validation** --- MOD_J runs schema + boundary + conflict
+    checks at plan validation.
+2.  **Mock tenant** --- MOD_O's enforcement test harness applies the
+    proposed policy to a simulated tenant; Pester tests assert the
+    expected effects.
+3.  **Pilot group** --- a `OrgTree-Pilot-Users` /
+    `OrgTree-Pilot-Devices` group gets the policy first for N days;
+    drift engine watches.
+4.  **Production rollout** --- general availability follows a clean
+    pilot with zero drift findings.
+
+No policy reaches production without all four. The pipeline enforces
+this; policies that skip stages are rejected.
+
+## Retiring legacy GPOs
+
+The endgame: every user account is Intune-managed, every server is
+Arc-projected, every CA policy is OrgPath-scoped. Legacy GPOs can then
+be retired.
+
+The retirement is done in phases matching the migration (Chapter 04):
+
+- **Phase 1.** Every GPO flagged as "migrated" in the canon has its link
+  removed from the legacy OU (the settings are now delivered by
+  Intune/CA/Arc).
+- **Phase 2.** Unlinked GPOs are marked `deprecated: true` and kept for
+  90 days as a rollback window.
+- **Phase 3.** After 90 days of zero drift findings in the modern
+  surface, GPOs are deleted via a governed deprecation PR.
+
+The last GPO to go is typically a password-policy GPO that legacy
+Kerberos-bound apps depend on. That GPO retires only when Chapter 06 +
+Chapter 07 complete the compute migration.
+
+## Verification
+
+Policy migration passes when:
+
+- [ ] Every Intune Configuration Profile, Compliance Policy, CA policy,
+  and Arc Guest Configuration derives from a canonical manifest in
+  `policies/` in Gitea.
+- [ ] Every manifest targets OrgTree-scoped dynamic groups (no
+  manually-curated groups).
+- [ ] The legacy forest has zero linked GPOs other than deprecated ones
+  within the 90-day window.
+- [ ] MOD_M reports zero drift for every policy.
+- [ ] The nightly assessment → plan run produces a zero-action plan for
+  the `policies/` tree.
+
+## Cross-references
+
+- **Posted:** UIAO Conditional Access Policy Library (9,650 words) ·
+  UIAO Intune Policy Templates (11,190 words) · UIAO Azure Arc Policy
+  Library (6,244 words).
+- **Customer Documents:**
+  [compliance/policy-libraries](../../compliance/policy-libraries/index.qmd);
+  [adapter-specs/intune](../../adapter-specs/intune/intune.qmd);
+  [adapter-specs/entra-id](../../adapter-specs/entra-id/entra-id.qmd).
+- **Canon:** MOD_K Enforcement Decision Trees (policy conflict rules);
+  MOD_O Mock Tenant Test Harness.
+
+------------------------------------------------------------------------
+
+**Next:** [Chapter 06 --- Services: DNS, DHCP, IPAM in Hybrid
+Cloud](../client-server-to-hybrid-cloud/06-network-services.qmd)
+
+# Chapter 06 --- Services: DNS, DHCP, IPAM in the Hybrid-Cloud Model
+
+*The silent infrastructure layer that AD was governing without anyone
+noticing*
+
+DNS, DHCP, and IPAM are the three network services that federal agencies
+almost always defer when they "modernize AD." The assumption is that
+because these services still work, they don't need to move.
+
+That assumption is wrong. AD-integrated DNS, AD-joined DHCP servers, and
+informal IPAM are the three most common sources of post-migration
+governance regression. They look fine from the outside and are silently
+broken on the inside. This chapter fixes that.
+
+## Why these three, why together
+
+DNS, DHCP, and IPAM form a single addressing + resolution governance
+surface. Treating them separately is one of the most common migration
+mistakes:
+
+- **DNS** translates names to addresses. Federated agencies rely on
+  AD-integrated zones that replicate as part of AD and inherit AD's
+  access model.
+- **DHCP** assigns addresses. AD-joined Microsoft DHCP servers
+  authenticate against AD and are authorized in the forest.
+- **IPAM** tracks what address ranges exist, who owns them, and which
+  records point where. Without IPAM, DNS and DHCP silently drift.
+
+A migration that moves DNS but leaves AD-joined DHCP in place produces a
+hybrid in which addresses are assigned by one authority and resolved by
+another. A migration that moves DNS + DHCP but leaves IPAM informal
+(spreadsheet, wiki, nobody-owns-it) produces silent conflicts and ghost
+records.
+
+UIAO treats all three as one governance domain, with three matched
+adapters (DM_015 DNS, DM_016 DHCP, DM_010 IPAM) and one canonical policy
+--- addressing governance is owned by IPAM; DNS + DHCP derive from it.
+
+## DNS --- AD-integrated → Azure Private Resolver
+
+### The current-state problem
+
+AD-integrated DNS zones live inside the AD replication graph. Every DC
+is a DNS server; every zone update propagates via AD replication; zone
+ACLs use AD security groups. This means:
+
+- Every DC is in the name-resolution trust path.
+- Retiring AD requires moving DNS *first* or accepting a multi-week
+  name-resolution outage window.
+- Zones that have accumulated stale records (from decommissioned
+  computer objects) cannot be cleaned up without AD-side coordination.
+- External apps that depend on DNS-over-LDAPS enumeration (some
+  monitoring tools, some PKI clients) will stop working at AD
+  retirement.
+
+### The target architecture
+
+UIAO migrates DNS in a three-layer pattern documented in the Posted DNS
+Modernization Guide (11,245 words):
+
+  --------------------------------------------------------------
+  Layer                Target               Purpose
+  -------------------- -------------------- --------------------
+  **Authoritative      Azure Private DNS    Canonical records
+  on-prem**            Zone (linked to      for on-prem
+                       on-prem resolver)    namespace
+
+  **Hybrid             Azure DNS Private    Bi-directional name
+  resolution**         Resolver (inbound +  resolution between
+                       outbound endpoints)  VNet and on-prem
+
+  **Authoritative      Azure Private DNS    Records for M365,
+  SaaS**               Zone (private link), Azure services, and
+                       Route 53 where       SaaS endpoints
+                       needed
+  --------------------------------------------------------------
+
+Conditional forwarders on remaining on-prem DNS servers point to the
+Private Resolver's inbound endpoint. VNet resolution (for Arc-projected
+servers, for example) points to the Private Resolver's outbound
+endpoint, which forwards to the on-prem authoritative layer.
+
+### The DNS adapter (DM_015 --- to author)
+
+Because the DM_015 DNS adapter is a registry gap (Chapter 00 identified
+it), its interface has to be authored as part of modernization. The
+Posted DNS Modernization Guide is the operational reference
+implementation the adapter will govern.
+
+DM_015's interface contract:
+
+- **Discovery.** Enumerate zones (AD-integrated and file-backed),
+  records (with age + staleness flag), conditional forwarders, recursion
+  settings.
+- **Risk assessment.** Stale records, zones with no identifiable owner,
+  CNAMEs pointing to decommissioned resources.
+- **Target architecture proposal.** For each zone, propose authoritative
+  target (Private DNS vs keep-on-prem vs retire) and produce a migration
+  plan.
+- **Migration path.** Phased cutover of zones, one zone at a time, with
+  rollback per zone.
+- **Validation.** Record-by-record comparison after cutover; TTL
+  normalization; CRL-distribution-point health.
+- **Rollback.** Re-enable AD-integrated zone; restore conditional
+  forwarders to prior state.
+
+### OrgPath-scoping of DNS records
+
+UIAO tags DNS records with the OrgPath of the owning object. A record
+for `git.iaio.internal` that points to the platform server carries an
+`OrgPath=ORG-IT-INF-PLATFORM` metadata tag in Private DNS. The drift
+engine uses this to flag records whose owner has been decommissioned ---
+if the Entra device object for `UIAO-GIT01` is removed, but the DNS
+record still exists, that's **Orphan Drift**.
+
+### Migration phases
+
+Following MOD_F's phased pattern:
+
+1.  **Assessment.** Chapter 02's Stream 8 (Tier B) produces the full
+    zone + record inventory.
+2.  **Target proposal.** Python analyzer classifies every zone into one
+    of three targets. Steward reviews and adjusts.
+3.  **Pilot zone.** Pick one low-risk zone (often a test or dev zone);
+    migrate; validate for N days.
+4.  **Zone-by-zone cutover.** Phased migration with conditional
+    forwarder updates per zone. Validation gate per zone.
+5.  **AD-integrated zone retirement.** Once all zones are migrated and
+    validated, the AD-integrated zone is deleted.
+6.  **Steady state.** Private Resolver handles all resolution; MOD_M
+    reports zero DNS drift.
+
+## DHCP --- AD-joined → governed hybrid DHCP
+
+### The current-state problem
+
+Microsoft DHCP running on AD-joined servers is authenticated by AD. DHCP
+server authorization lives in the forest. DHCP scopes have reservations
+keyed to MAC addresses; option sets inherit from server defaults. The
+usual findings from Stream 9:
+
+- Reservations pointing at MAC addresses that haven't been seen in
+  years.
+- Option sets that push AD-integrated DNS servers whose IPs will change.
+- Scopes sized for growth that never happened.
+- Failover relationships that were configured once and never tested.
+
+### The target architecture
+
+DHCP modernization is less dramatic than DNS but no less important.
+Three variants by environment:
+
+- **On-prem-heavy environments.** Keep DHCP on-prem; decouple from AD
+  (forest authorization removed); re-home to dedicated DHCP hosts
+  governed by UIAO.
+- **Cloud-forward environments.** Move DHCP to Azure-native services
+  (Azure VNet DHCP, or third-party virtual appliances like Infoblox
+  IB-Flex running as Arc-projected VMs).
+- **Hybrid environments.** Split --- on-prem scopes stay on-prem; cloud
+  VNets use Azure-native; all governed via IPAM as single source of
+  truth.
+
+### The DHCP adapter (DM_016 --- to author)
+
+Another registry gap. DM_016's interface mirrors DM_015's pattern. Key
+discovery points:
+
+- Every DHCP server (regardless of AD-join state).
+- Every scope --- range, subnet mask, exclusion list, lease duration.
+- Every reservation --- MAC, IP, client name, option set.
+- Every failover relationship --- peer, mode, load balancer split, MCLT.
+- Option sets --- especially scope-level DNS server overrides.
+
+Write methods: add / update / retire scopes + reservations, governed via
+the plan pipeline.
+
+### OrgPath-scoping of DHCP
+
+DHCP scopes are tagged with the OrgPath of the site they serve. A scope
+for the East Baltimore office carries `OrgPath=ORG-LOC-EAST-BALTIMORE`
+in its metadata (stored in the UIAO canon, mirrored to DHCP server
+extension data where supported). This enables drift detection on scope
+ownership and blast-radius analysis for address-pool changes.
+
+## IPAM --- informal → governed
+
+### The current-state problem
+
+Agencies routinely discover, as part of modernization, that they do not
+have an IPAM at all. The state is:
+
+- A shared spreadsheet maintained by one person.
+- A wiki page whose last edit was 2019.
+- Several Infoblox/BlueCat installations that cover some subnets but not
+  others.
+- Reserved / not-reserved ranges that conflict with actual usage.
+
+The migration goal is **one governed IPAM** with full coverage of the
+address surface.
+
+### The IPAM adapter (DM_010 --- source present)
+
+DM_010 is the one adapter in this trio that exists in source. It
+supports three implementations:
+
+  ----------------------------------------------------------------------
+  Implementation   Vendor          FedRAMP         Notes
+  ---------------- --------------- --------------- ---------------------
+  **Infoblox NIOS  Infoblox        Authorized      Federally-preferred
+  8.x**
+
+  **BlueCat        BlueCat         Not authorized  Needs boundary
+  Address                                          exception per
+  Manager**                                        deployment
+
+  **Generic IPAM** Any             N/A             Fallback; CSV-driven
+                                                   import
+  ----------------------------------------------------------------------
+
+The adapter contract standardises:
+
+- Network range discovery.
+- Host record sync with DNS.
+- Reservation sync with DHCP.
+- Change-window tracking (every addition / modification carries a
+  correlation ID).
+- Provenance emission (every change produces a Gitea commit).
+
+### One IPAM, three services
+
+The operating model: IPAM is the single source of truth for addressing.
+DNS and DHCP adapters read from IPAM and produce matched records. Drift
+between IPAM and DNS/DHCP is **Hierarchy Drift** --- the tree exists but
+the leaves don't agree.
+
+This pattern is why all three services migrate together, not separately.
+
+## Hybrid resolution architecture in one diagram
+
+    On-prem namespace                            Hybrid path                        Cloud namespace
+    ┌────────────────────┐                ┌──────────────────────────┐         ┌──────────────────────┐
+    │ UIAO-GIT01.corp    │                │  Azure DNS Private       │         │  privatelink.        │
+    │ fileserver.corp    │ ─── conditional │  Resolver                 │ ← → │  blob.core.windows   │
+    │ printer.corp       │     forwarder  │  inbound endpoint         │         │  .net                │
+    └────────────────────┘                │  ↕                        │         └──────────────────────┘
+                                          │  outbound endpoint        │
+                                          └──────────────────────────┘
+                                                         │
+                                                         ↓
+                                          ┌──────────────────────────┐
+                                          │  Azure Private DNS Zone  │
+                                          │  uiao.internal           │
+                                          │  (authoritative)         │
+                                          └──────────────────────────┘
+                                                         │
+                                                         ↓
+                                                 IPAM (DM_010)
+                                                 single source of truth
+
+Reads go in either direction: an on-prem host resolves `fileserver.corp`
+through the Resolver inbound endpoint; an Arc-projected VM in the
+platform VNet resolves `uiao.internal` through the outbound endpoint to
+Private DNS.
+
+## The three-adapter plan
+
+Every network-services modernization run produces a plan with all three
+adapters coordinating:
+
+1.  **DM_010 plan actions.** Populate IPAM authoritative records.
+2.  **DM_015 plan actions.** Create Private DNS zone entries keyed to
+    IPAM records.
+3.  **DM_016 plan actions.** Create DHCP scope reservations keyed to
+    IPAM records (where DHCP is used).
+
+If any of the three would produce drift between itself and the other
+two, the plan fails validation. There is no "DNS-only" migration run; it
+is always DNS + DHCP + IPAM together.
+
+## Validation
+
+Services migration passes when:
+
+- [ ] IPAM covers 100% of the address surface (no unclaimed subnets).
+- [ ] Every Private DNS record has a matching IPAM entry.
+- [ ] Every DHCP reservation has a matching IPAM entry.
+- [ ] Every on-prem conditional forwarder points to the Private Resolver
+  inbound endpoint.
+- [ ] Every VNet points to the Private Resolver outbound endpoint.
+- [ ] The legacy AD-integrated DNS zone is retired (or explicitly
+  excluded with documented rationale).
+- [ ] MOD_M reports zero drift across IPAM ↔ DNS ↔ DHCP for N days.
+- [ ] The nightly assessment → plan run produces zero actions for the
+  `services/` tree.
+
+## Why agencies postpone --- and why they shouldn't
+
+The common pattern: modernize identity + policy, leave DNS/DHCP/IPAM for
+"Phase 2." Phase 2 rarely happens. The agency is left with:
+
+- AD retired for user authentication.
+- AD retained "because DNS still lives there."
+- Silent coupling between the two.
+
+A forest that retains AD-integrated DNS is not actually retired. Do not
+pretend otherwise. The services migration is part of the core
+modernization, not a follow-on.
+
+## Cross-references
+
+- **Posted:** UIAO DNS Modernization Guide --- AD-Integrated DNS to
+  Azure Hybrid Resolution (11,245 words). Operational reference
+  implementation for DM_015.
+- **Canon:** DM_010 IPAM Adapter Interface (source present) · DM_015 DNS
+  Adapter (gap --- author as part of modernization) · DM_016 DHCP
+  Adapter (gap).
+- **Customer Documents:**
+  [adapter-specs/infoblox](../../adapter-specs/infoblox/infoblox.qmd);
+  [modernization/directory-migration.qmd](../../../modernization/directory-migration.qmd).
+
+------------------------------------------------------------------------
+
+**Next:** [Chapter 07 --- Compute: Domain-Joined → Entra + Intune +
+Azure Arc](../client-server-to-hybrid-cloud/07-compute-objects.qmd)
+
+# Chapter 07 --- Compute: Domain-Joined → Entra + Intune + Azure Arc
+
+*The largest remaining AD dependency, and the one most often
+underestimated*
+
+Compute objects --- domain-joined PCs and servers --- are the single
+largest remaining AD dependency once identity (Chapter 04), policy
+(Chapter 05), and services (Chapter 06) have moved. PCs retire into
+**Entra Joined + Intune**. Servers retire into **Azure Arc + Guest
+Configuration**. Kerberos-bound applications lose their domain-join
+anchor and migrate to modern auth or are retired.
+
+This chapter ends at "no device authenticates to AD." That is the final
+precondition for AD DS retirement.
+
+## The four device states
+
+Microsoft's device-join model has four states. Understanding them is the
+precondition for planning any compute migration.
+
+  --------------------------------------------------------------------
+  State               Primary auth     Managed by      When to use
+  ------------------- ---------------- --------------- ---------------
+  **Domain-Joined**   AD Kerberos      GPO             Legacy ---
+  (legacy)                                             migration
+                                                       origin
+
+  **Azure AD          Personal         Intune          BYOD; rarely
+  Registered**        Microsoft / work (optional)      used in federal
+                      account overlay
+
+  **Entra Hybrid      Both AD + Entra  GPO + Intune    Transition
+  Joined**            (simultaneous)                   state --- not a
+                                                       target
+
+  **Entra Joined**    Entra only       Intune          Target for user
+                                                       PCs
+
+  **Arc-connected     Entra managed    Azure Arc +     Target for
+  server**            identity         Guest Config    servers
+  --------------------------------------------------------------------
+
+Two architectural rules apply:
+
+1.  **Hybrid Joined is a transition, not a destination.** Every Hybrid
+    Joined device is a device whose modernization has begun but not
+    finished. A modernization that leaves devices Hybrid Joined
+    permanently has not completed.
+2.  **The target depends on the device class.** User PCs go to Entra
+    Joined + Intune. Servers (Windows + Linux) go to Azure Arc + Guest
+    Configuration. These are distinct target states; they share
+    Intune-compliance telemetry but not the management model.
+
+## The device migration problem
+
+Every domain-joined device has three AD dependencies that must be
+resolved before domain-unjoin:
+
+- **Identity.** The device object authenticates to AD via Kerberos. Its
+  computer account is in an OU; GPOs apply through that OU.
+- **Policy.** Device configuration --- local admins, registry settings,
+  software deployment, startup scripts --- arrives via GPO.
+- **Trust.** The device's certificate store trusts AD-issued CAs; its
+  smart-card logon chain relies on ADCS; its RADIUS / 802.1X supplicant
+  may use AD credentials.
+
+For each of those dependencies, a modernization must land a replacement
+*before* the domain-unjoin. Otherwise the device ships with a policy
+gap, a trust gap, or both.
+
+## The DM_060 adapter
+
+Device management has a canonical adapter in the registry (DM_060 ---
+source present), with two primary implementations:
+
+- **SCCM → Intune co-management.** Transition pattern for existing
+  SCCM-managed fleets. Workloads shift from SCCM to Intune one at a time
+  (compliance policies first, then device configuration, then app
+  deployment, then Windows Update).
+- **Intune-native.** Direct enrollment for new / greenfield devices via
+  Autopilot. No SCCM step.
+
+DM_060's interface:
+
+- **Discovery.** Every device object (AD + Entra + Intune),
+  cross-correlated. Device age, OS version, last-logon, compliance
+  state, owning OU or Entra AU, BitLocker state, TPM state.
+- **Risk assessment.** Devices with stale passwords, unconstrained
+  delegation, missing TPM, unpatched OS, BitLocker suspended.
+- **Target architecture proposal.** Per-device or per-fleet
+  recommendation (Entra Joined vs Hybrid Joined transitional vs retire
+  vs Arc-project).
+- **Migration path.** Per-device sequence (enroll → co-manage → cut
+  workloads → unjoin).
+- **Validation.** Compliance policy evaluation post-migration; BitLocker
+  recovery key escrow; Autopilot hash on record.
+
+## Three migration patterns for user PCs
+
+### Pattern 1 --- Greenfield (Autopilot)
+
+The lowest-risk pattern. New hardware is shipped directly from the OEM
+with Autopilot pre-registration. The first boot is an Entra-Joined
+enrollment; no domain-join happens. No AD dependency is created.
+
+This is the pattern UIAO pushes toward for any hardware refresh: new PCs
+are greenfield regardless of whether the fleet modernization is in
+progress.
+
+### Pattern 2 --- Reset-and-re-enroll
+
+For existing domain-joined devices, the cleanest path is to back up user
+state, reset the device (Wipe / Reset this PC), and re-enroll via
+Autopilot. Post-reset the device is Entra-Joined from the start.
+
+This is operationally heavy for the user (loss of local customisation
+unless sync is working), but technically clean. Most federal agencies
+run this pattern for high-privilege user devices (admins, developers)
+where leaving any legacy AD trust is unacceptable.
+
+### Pattern 3 --- Hybrid-then-cloud
+
+For fleets where reset-and-re-enroll is not operationally feasible,
+devices are first Hybrid Joined (both AD and Entra) via Entra Connect
+device writeback + GPO. Over a planned period (typically 3--12 months),
+workloads migrate from GPO to Intune; then the device is converted to
+Entra Joined only; the AD side is dropped.
+
+This is the pattern UIAO documents as the common transition. It is the
+slowest of the three but causes the least operational disruption. The
+drift-engine monitors every step so a device doesn't get stuck Hybrid
+Joined forever.
+
+## Servers --- the Azure Arc path
+
+Windows and Linux servers don't go through Intune in the same way user
+PCs do. They go through **Azure Arc**.
+
+### What Arc does
+
+Arc projects an on-prem (or other-cloud) server into Azure as a
+resource. The server appears in an Azure subscription; it gets a managed
+identity; it can receive Azure Policy + Guest Configuration assignments;
+it appears in Defender for Cloud + Monitor; it is governed the same way
+a native Azure VM is governed.
+
+Critically, Arc does **not** require the server to be in Azure. The
+server stays where it lives physically. Arc is the governance
+projection; the physical host is unchanged.
+
+### OrgPath-scoped Arc governance
+
+Every Arc-projected server gets tagged with its OrgPath:
+
+    OrgPath:         ORG-IT-INF-PLATFORM
+    OrgPathBranch:   ORG-IT-INF
+    OrgPathDivision: ORG-IT
+    DeviceRole:      GitServer
+    DeviceTier:      Tier0
+    Environment:     Production
+
+Azure Policy and Guest Configuration assignments target those tags. This
+is the same pattern as Intune for user devices --- policy follows
+OrgPath.
+
+### Server migration sequence
+
+For each domain-joined server:
+
+1.  **Enroll in Intune compliance tracking.** Server agent reports
+    compliance to Intune (via Graph API); CA uses the signal for
+    server-to-server auth policies.
+2.  **Arc-connect.** Install azcmagent; register with Arc; apply OrgPath
+    tags.
+3.  **Assign Azure Policy / Guest Configuration.** Settings that
+    previously came from GPO now come from Arc.
+4.  **Validate.** Guest Configuration reports compliant; expected
+    settings present; drift engine reports zero.
+5.  **Domain-unjoin.** Only once all legacy AD dependencies are resolved
+    (all Kerberos-bound clients migrated, no AD-anchored local admins).
+6.  **Post-unjoin validation.** Server reboots clean; Arc heartbeat
+    continues; Guest Config re-applies without AD.
+
+Most federal server fleets complete this sequence over 6--18 months
+depending on Kerberos-app inventory.
+
+## Kerberos and SPN retirement
+
+Every AD-joined server has an entry in the Kerberos SPN map (Chapter 02,
+Stream 5 + Stream 11). Each SPN represents an application or service
+that expects to be reached via Kerberos authentication. For each SPN,
+the modernization needs a decision:
+
+- **Migrate the application to modern auth.** OAuth2 / OIDC via Entra
+  App Registration. This is the preferred path.
+- **Retire the application.** If the app is legacy and due for
+  end-of-life, this may be the cheapest option.
+- **Keep the application on a Kerberos island.** Last-resort --- retain
+  a minimal AD island hosting only the Kerberos-bound application, with
+  a documented end-of-life date.
+
+The SPN → app mapping determines the sequence: no server can
+domain-unjoin until every SPN on that server has been resolved
+(migrated, retired, or islanded).
+
+## OrgPath on devices --- the AU scoping story
+
+User devices carry OrgPath in `extensionAttribute1` just like users.
+This drives:
+
+- **Device dynamic groups.**
+  `(device.extensionAttribute1 -startsWith "ORG-FIN")` captures all
+  Finance devices.
+- **Intune compliance scoping.** `OrgTree-FIN-Devices` is the target
+  group for Finance-specific compliance policies.
+- **CA device-state targeting.** CA policies that require "compliant
+  device" can be scoped per OrgPath branch.
+
+The drift-engine monitors device OrgPath the same way it monitors user
+OrgPath --- if the device's OrgPath disagrees with its owning user's
+OrgPath (e.g., a Finance PC assigned to an HR user), that's **Value
+Drift**.
+
+## Certificate-based authentication
+
+When domain-joined PCs go away, smart-card logon anchored in ADCS goes
+with them. The replacement is **Entra Certificate-Based Authentication
+(CBA)**.
+
+Entra CBA accepts certificates issued by a trusted CA (enterprise ADCS,
+cloud-hosted CA, or hybrid) and authenticates the user to Entra.
+Smart-card logon keeps working; the chain just ends in Entra instead of
+AD. This is a Chapter 08 topic in detail; the device-side prerequisite
+is that every user PC has the Entra CBA client + a valid user
+certificate.
+
+## Lifecycle --- Autopilot and the device-reset pattern
+
+Once the compute fleet is Entra Joined, device lifecycle becomes
+drastically simpler:
+
+- **Joiner.** Autopilot deploys directly from OEM shipping; user signs
+  in with their Entra UPN; device is compliance-enrolled; CA policies
+  kick in; apps install from Intune; BitLocker key is escrowed in Entra.
+- **Mover.** The user's OrgPath changes; device dynamic groups
+  recompute; Intune policy re-applies; BitLocker key re-encrypts to the
+  new OrgTree-IT-PLATFORM key if the OrgPath change warrants.
+- **Leaver.** The device is retired or repurposed via Intune. If
+  retired, the Entra object is deleted; if repurposed, the device is
+  Autopilot-reset and picks up a new user's policies on next sign-in.
+
+No OU move, no domain-unjoin, no manual GPO re-link, no AD cleanup.
+Device lifecycle is policy, not infrastructure.
+
+## Validation
+
+Compute migration passes when:
+
+- [ ] Every user PC is Entra Joined (not Hybrid Joined, not
+  Domain-Joined).
+- [ ] Every server is Arc-connected (or documented as exempt with
+  retirement schedule).
+- [ ] Every device has a valid OrgPath in `extensionAttribute1`.
+- [ ] Every Intune compliance policy targets OrgTree-scoped groups.
+- [ ] Every Azure Policy / Guest Configuration targets OrgPath tags.
+- [ ] Every SPN in the legacy AD SPN map has been resolved (migrated,
+  retired, or islanded with documented end-of-life).
+- [ ] MOD_M reports zero device drift for N days.
+- [ ] The nightly assessment → plan run produces a zero-action plan for
+  the `compute/` tree.
+
+The last box is the precondition for AD DS retirement. Until every
+compute object passes, AD cannot go away.
+
+## The last thing AD did
+
+When every device has moved, every app has migrated, every DNS zone is
+out, every DHCP scope is re-homed, every Kerberos SPN is resolved, and
+every GPO is retired --- AD DS has no active consumers.
+
+This is the moment to shut it down.
+
+The actual retirement is mechanical: dcpromo-demote every DC,
+decommission the supporting VMs, delete the forest objects. The **hard
+part is the governance transformation that precedes it** --- every
+chapter from 04 through 07 of this series.
+
+Chapter 08 wraps the remaining access-plane details (SASE, Zero Trust,
+MFA, CBA). Chapter 09 presents the phased program plan that sequences
+everything. Chapter 10 frames the executive takeaway.
+
+## Cross-references
+
+- **Posted:** UIAO AD Computer Object Conversion Guide --- Entra ID,
+  Intune, and Azure Arc Governance (8,483 words).
+- **Canon:** DM_060 Device Management Adapter Interface (source present)
+  · MOD_D Delegation Matrix (device AU scoping) · MOD_M (device drift
+  categories).
+- **Customer Documents:**
+  [adapter-specs/intune](../../adapter-specs/intune/intune.qmd);
+  [modernization/access-plane](../access-plane/index.qmd).
+
+------------------------------------------------------------------------
+
+**Next:** [Chapter 08 --- Access Plane: SASE, Zero Trust, MFA,
+Certificate-Based Auth](../client-server-to-hybrid-cloud/08-access-plane.qmd)
+
+# Chapter 08 --- Access Plane: SASE, Zero Trust, MFA, Certificate-Based Auth
+
+*The identity-bound access plane that replaces the AD network perimeter*
+
+AD retirement removes the network perimeter as an authorization
+boundary. The Microsoft replacement is an **identity-bound access
+plane** built on four coordinated surfaces --- **Zero Trust**
+(architectural model), **Conditional Access** (policy enforcement,
+covered in Chapter 05), **SASE** (edge delivery), and
+**phishing-resistant MFA + CBA** (proof of identity). UIAO integrates
+all four into one governed surface targeted by OrgPath.
+
+The outcome: every access decision is a per-request evaluation of
+identity + device + signal, made at the cloud edge, logged to Entra, and
+visible to the drift engine.
+
+## The model --- Zero Trust
+
+Zero Trust is not a product. It is a set of architectural principles
+that UIAO enforces consistently across every access surface.
+
+### The three Zero Trust principles
+
+1.  **Verify explicitly.** Every access request is authenticated and
+    authorized at the moment of use. There is no "inside the network =
+    trusted" concept. Identity, device posture, risk score, and session
+    state are evaluated per request.
+2.  **Use least-privilege access.** Access is time-bound (PIM),
+    resource-scoped (AU + group targeting), and purpose-scoped (Access
+    Packages). No standing privileged access.
+3.  **Assume breach.** Every session is treated as potentially
+    compromised. Continuous Access Evaluation (CAE) can revoke a session
+    mid-flight. Break-glass carve-outs are minimal, monitored, and
+    audited.
+
+UIAO's Zero Trust model is enforced by the combined effect of
+Conditional Access (policy), Intune compliance (device signal), Entra
+PIM (privilege elevation), and CBA (identity proof). No single control
+is Zero Trust by itself; the pattern is the four together.
+
+### What retires
+
+When Zero Trust is in place, three AD-era patterns retire:
+
+- **Network-segment-as-authority.** IP-range-based allowlists stop being
+  authoritative. Policy is per-identity, per-device, per-session.
+- **Pass-through AD Kerberos.** Services no longer accept Kerberos
+  tickets issued by a domain controller. Tokens are Entra-issued,
+  short-lived, and CAE-monitored.
+- **Persistent admin rights.** Domain Admins / local admin groups /
+  service accounts with never-expiring passwords all migrate to PIM,
+  gMSA (where Kerberos islands persist), or Workload Identity Federation
+  (where cloud services auth to Entra).
+
+## SASE --- the edge delivery surface
+
+Secure Access Service Edge (SASE) is the cloud-delivered security
+surface that replaces the on-prem firewall + VPN + proxy + CASB stack.
+UIAO doesn't mandate a specific SASE vendor; it governs the integration
+contract.
+
+### The SASE component set
+
+  --------------------------------------------------------------
+  Component            Function             Integration to UIAO
+  -------------------- -------------------- --------------------
+  **ZTNA** (Zero Trust Per-application      Targets OrgTree app
+  Network Access)      reverse-proxy        groups; CA policy
+                       access, replaces VPN enforces device
+                                            compliance + MFA
+
+  **SWG** (Secure Web  Outbound web         Targets OrgTree user
+  Gateway)             filtering + DLP      groups; logs to SIEM
+                                            (Compliance pillar
+                                            C.7)
+
+  **CASB** (Cloud      Sanctioned-cloud     Reads Entra app
+  Access Security      inline enforcement   catalog;
+  Broker)                                   OrgPath-scoped
+                                            policies
+
+  **FWaaS** (Firewall  Distributed firewall Arc-projected policy
+  as a Service)        plane                targeting
+
+  **DLP** (Data Loss   Content-aware        Targets OrgTree
+  Prevention)          filtering            CUI-scoped groups
+  --------------------------------------------------------------
+
+### SASE integration pattern
+
+UIAO's contract with the SASE vendor:
+
+1.  **Identity federation.** SASE authenticates users via Entra OIDC. No
+    local SASE user database.
+2.  **Group targeting.** SASE policies reference OrgTree dynamic groups
+    via SCIM or group claim, not local groups.
+3.  **Device posture.** SASE accepts the Intune compliance signal (via
+    MS Graph or equivalent API) as an input to policy.
+4.  **Logging.** SASE ships access logs to the UIAO SIEM adapter; the
+    drift engine correlates against Entra sign-in logs.
+5.  **Provenance.** SASE policy changes flow through the
+    `policies/sase/` tree in Gitea --- no direct vendor-portal edits.
+
+Common vendors meeting this contract: Zscaler, Palo Alto Prisma Access,
+Cisco Umbrella + Secure Access, Microsoft Global Secure Access. Vendor
+choice is an agency decision; the integration contract is canonical.
+
+## MFA --- phishing-resistant methods
+
+Not all MFA is equal. UIAO's access-plane canon requires
+**phishing-resistant** MFA methods for every privileged user and for all
+users on high-risk resources.
+
+### The method hierarchy
+
+  ---------------------------------------------------------------
+  Method                Phishing-resistant   Typical use
+  --------------------- -------------------- --------------------
+  **FIDO2 security      Yes                  Tier-0 admins,
+  keys** (YubiKey,                           high-privilege users
+  Feitian)
+
+  **Entra Platform SSO  Yes                  User PCs, default
+  passkeys** (Windows                        daily auth
+  Hello for Business)
+
+  **Certificate-Based   Yes                  Federal users with
+  Auth** (Entra CBA +                        CAC/PIV cards
+  PIV/CAC)
+
+  **Authenticator App** Partial (resists     Standard users,
+  with number-matching  push bombing)        secondary method
+
+  **Authenticator App** No                   **Retired** --- not
+  without                                    permitted in UIAO
+  number-matching                            canon
+
+  **SMS / Voice**       No                   **Retired** --- not
+                                             permitted in UIAO
+                                             canon
+  ---------------------------------------------------------------
+
+### UIAO's method policy
+
+The Conditional Access library (Chapter 05) enforces:
+
+- **CA-400 series** (role-scoped) --- FIDO2 / CBA required for Tier-0
+  admins, Privileged Identity roles, and break-glass test accounts.
+- **CA-100 series** (enterprise baseline) --- Platform SSO / FIDO2 /
+  Authenticator with number-matching required for all users. SMS + Voice
+  explicitly blocked.
+- **CA-500 series** (workload) --- elevated methods for specific
+  sensitive applications (financial systems, case-management tools).
+
+Every agency with CAC / PIV holders uses CBA as the user default.
+CAC+PIN reaches the same Entra session that a non-CAC user reaches via
+Platform SSO --- both are phishing-resistant; both are the preferred
+method.
+
+## Entra Certificate-Based Authentication --- the ADCS retirement path
+
+### The problem Entra CBA solves
+
+Federal agencies using CAC / PIV smart cards have historically anchored
+smart-card logon in ADCS. When AD DS retires, the ADCS trust chain for
+smart-card logon loses its validation path --- unless the chain is
+re-anchored in Entra.
+
+### How Entra CBA works
+
+Entra CBA accepts X.509 certificates from a trusted CA (uploaded into
+the Entra tenant). When a user presents a certificate:
+
+1.  Entra validates the certificate chain against the uploaded CA list.
+2.  Entra maps the certificate's subject name (or UPN, or PrincipalName
+    SAN) to an Entra user via configured mapping rules.
+3.  The user is authenticated to Entra; a token is issued; CA policies
+    evaluate the sign-in.
+
+The user experience is: insert CAC → enter PIN → get a token. No
+difference from AD-anchored smart-card logon. The governance difference:
+the validation chain ends in Entra, not in AD.
+
+### The ADCS retirement sequence
+
+1.  **Upload enterprise CA certificates to Entra.** Root + Issuing CA
+    cert chains imported into the Entra CBA configuration.
+2.  **Configure certificate-to-user mapping.** Typically
+    `UserPrincipalName` SAN → Entra UPN; sometimes `PrincipalName` SAN →
+    `userPrincipalName`.
+3.  **Enable CBA as an authentication method.** Under Entra →
+    Authentication methods → Certificate-based authentication.
+4.  **Enforce via CA.** CA policies require CBA for designated user
+    groups (OrgTree-scoped).
+5.  **Validate.** Users sign in with CAC / PIV without issue; Entra
+    sign-in log shows CBA method; CA evaluation passes.
+6.  **Retire ADCS smart-card logon configuration.** AD-side smart- card
+    logon chain is no longer needed; the GPO that configured it retires
+    per Chapter 05.
+
+UIAO also governs the certificate issuance pipeline itself (DM_020 PKI
+adapter) so new user certificates are issued against the same CA that
+Entra trusts. A certificate issued today still works 10 years from now
+because the governance chain is canonical.
+
+## Privileged Access Management --- CyberArk integration
+
+Every privileged account --- domain admin equivalent, cloud admin,
+emergency break-glass --- passes through a PAM vault. UIAO integrates
+with CyberArk (adapter at `customer-documents/adapter-specs/cyberark`)
+but the pattern applies to any PAM vendor.
+
+### The PAM pattern
+
+- **No standing privileged access.** A privileged account exists in
+  Entra PIM but requires explicit elevation for each use (MFA-gated,
+  time-bound, purpose-documented).
+- **Break-glass accounts** live in a CyberArk safe. Checkout requires
+  dual approval; session is recorded; auto-rotation on release.
+- **Service accounts** with elevated rights use managed identities +
+  Workload Identity Federation where possible; gMSA on the remaining
+  Kerberos islands; vaulted accounts only as last resort.
+- **Session recording** for every privileged session --- desktop session
+  video, keystroke log, command-line capture --- shipped to SIEM.
+
+### CyberArk via the adapter
+
+The CyberArk adapter (`adapter-specs/cyberark`) canonicalises the
+integration:
+
+- Safe + account CRUD via the governed plan pipeline.
+- Session events streamed to the UIAO SIEM adapter.
+- Break-glass checkout events routed to ServiceNow incident.
+- Drift monitoring: CyberArk-vaulted accounts that don't appear in Entra
+  are **Orphan Drift**; Entra privileged accounts that aren't vaulted
+  are **Phantom Drift**.
+
+## Continuous Access Evaluation --- the session-level Zero Trust
+
+A Zero Trust session isn't "good for 12 hours, then re-auth." It's
+continuously evaluated. **Continuous Access Evaluation (CAE)** lets
+Entra and participating services revoke a live session mid-flight when
+risk changes:
+
+- User password changes → session revoked.
+- User is deleted or disabled → session revoked.
+- Network location changes to a blocked region → session revoked.
+- Risk score rises (impossible travel, leaked credentials) → session
+  revoked.
+
+UIAO's CA policies are authored with CAE-aware semantics. Every policy
+that requires compliance or location constraints is re-evaluated
+continuously, not just at sign-in.
+
+## Putting it together --- the access plane in one flow
+
+A user opens their laptop in the morning:
+
+1.  **Device boot.** Laptop boots; Intune compliance checks run;
+    BitLocker unlocks with Entra-escrowed key; device is compliant.
+2.  **Sign-in.** User inserts CAC, enters PIN. Entra CBA validates the
+    certificate chain against the enterprise CA; the user is
+    authenticated; a CAE-aware session token is issued.
+3.  **CA evaluation.** CA-100 (enterprise baseline) evaluates: compliant
+    device ✓, CBA satisfies phishing-resistant-MFA ✓, location in
+    expected range ✓, risk score low ✓. Session allowed.
+4.  **Application access.** User opens M365 apps. Platform SSO satisfies
+    subsequent auths; CAE is live; if risk rises, session can be
+    revoked.
+5.  **VPN-replacement.** User needs to reach an internal (on-prem) app.
+    SASE ZTNA reverse-proxy accepts the Entra token; validates
+    compliance + MFA + OrgPath scope; proxies the connection; logs the
+    access.
+6.  **Privileged elevation.** User needs to make a change to a Tier-0
+    resource. They request elevation through PIM; MFA re-challenged
+    (FIDO2 required at this tier); approval granted for 60 minutes;
+    session recorded by CyberArk; MOD_X emits the event.
+7.  **End of day.** Laptop sleeps. Token expires; CAE revokes on next
+    reconnect; re-auth starts the cycle.
+
+Every step above is OrgPath-scoped, provenance-bound, and drift-
+monitored. A failure anywhere generates an SLA ticket within the
+response time documented in MOD_Q.
+
+## Validation
+
+Access-plane migration passes when:
+
+- [ ] Every user has FIDO2, Platform SSO passkey, or CBA as their
+  primary MFA method. No SMS / Voice as primary.
+- [ ] Every smart-card user signs in via Entra CBA (not AD-anchored
+  smart-card logon).
+- [ ] Every user-facing policy targets OrgTree dynamic groups.
+- [ ] SASE (ZTNA + SWG + CASB, minimum) is in place and Entra-federated.
+- [ ] Every privileged account passes through PAM (CyberArk or
+  equivalent) with session recording.
+- [ ] Every CA policy is CAE-aware.
+- [ ] Break-glass account use is monitored and audited weekly.
+- [ ] The VPN (L2TP / IKEv2 / SSL-VPN) is retired except for explicit
+  legacy-app-access cases with documented end-of-life.
+- [ ] MOD_M reports zero access-plane drift for N days.
+
+## Cross-references
+
+- **Customer Documents:**
+  [modernization-specs/zero-trust](../../modernization-specs/zero-trust/zero-trust.md)
+  · [modernization-specs/sase](../../modernization-specs/sase/sase.md) ·
+  [adapter-specs/cyberark](../../adapter-specs/cyberark/cyberark.qmd) ·
+  [compliance/policy-libraries/conditional-access](../../compliance/policy-libraries/index.qmd).
+- **Canon:** MOD_D Delegation Matrix (PIM role scoping) · MOD_T Identity
+  Risk Scoring · MOD_X Governance Telemetry (CAE events).
+- **Posted:** UIAO Conditional Access Policy Library (9,650 words) ---
+  CA-000 through CA-999 baseline.
+
+------------------------------------------------------------------------
+
+**Next:** [Chapter 09 --- Migration Roadmap: Phased Plan, Gates,
+Rollback](../client-server-to-hybrid-cloud/09-migration-roadmap.qmd)
+
+# Chapter 09 --- Migration Roadmap: Phased Plan, Gates, Rollback
+
+*Seven phases, five parallel workstreams, named gates, deterministic
+rollback*
+
+Every modernization this series describes is achievable in a **52-week
+program** with five parallel workstreams (identity, policy, services,
+compute, access) and seven named gates. The roadmap is not a consulting
+slideware pattern; it is a PR-reviewable document in Gitea, updated
+weekly, with gate criteria that are mechanical to evaluate.
+
+This chapter is how you sequence the chapters 01-08 work into a governed
+program that actually ships.
+
+## The program shape
+
+A full Client-Server-to-Hybrid-Cloud modernization has two defining
+properties:
+
+1.  **Parallel, not sequential.** Identity, policy, services, compute,
+    and access work in parallel streams. Waiting for one to finish
+    before starting the next doubles the program duration and produces
+    worse outcomes.
+2.  **Gated, not open-ended.** Each phase has explicit entry and exit
+    criteria. A phase cannot start until the prior phase's exit gate
+    clears. A phase cannot exit until its own criteria are green.
+
+Total realistic duration for a mid-size federal agency (5,000--50,000
+users, 500--5,000 servers): **\~52 weeks**, matching the Posted Master
+Project Plan. Larger agencies extend; smaller agencies compress. The
+phase structure doesn't change with scale --- only the per-phase
+duration does.
+
+## The seven phases
+
+### Phase 0 --- Pre-flight (weeks 1-4)
+
+**Goal.** Produce the canonical planning artifacts and stand up the
+platform server.
+
+Entry criteria (to start Phase 0): - Executive sponsor named. - Canon
+Steward appointed. - Platform-server hardware or VM provisioned. - AD
+read-only service account delegated.
+
+Work in Phase 0: - Build the platform server (Chapter 01). Wall-clock:
+1-2 weeks. - Run the Tier-B AD assessment (Chapter 02). Wall-clock: 1
+week. - Author the initial OrgPath codebook (MOD_A). Wall-clock: 1
+week. - Stand up Gitea canonical repository with baseline canon files. -
+Confirm Entra + Intune + Arc tenant access with least-privilege service
+principals.
+
+Exit gate (Gate G0 --- Ready to Plan): - \[ \] Platform server
+operational (Chapter 01 validation passed). - \[ \] Assessment run
+committed to Gitea. - \[ \] Draft OrgPath codebook in Gitea,
+steward-approved. - \[ \] Canon registry (MOD_A..Z index) in place. - \[
+\] No open P1 findings from assessment.
+
+### Phase 1 --- Foundation (weeks 5-8)
+
+**Goal.** Put identity-substrate primitives in place before anything
+else moves.
+
+Workstream outputs: - **Identity.** Dynamic groups for Enterprise-level
+branches (`OrgTree-Enterprise-Users`, `OrgTree-IT-Users`, etc.).
+Administrative Units for Tier-1 and selected Tier-2 scopes. -
+**Policy.** Enterprise CA baseline (CA-100 series): MFA required for all
+users, legacy auth blocked, break-glass carve-outs. - **Services.** IPAM
+(DM_010) stood up with partial coverage --- enough to tag the platform
+server and Tier-0 infrastructure. - **Compute.** Platform server
+Entra-registered; select server pilots Arc-connected. - **Access.**
+Platform-SSO configured; FIDO2 registration available for Tier-0 admins.
+
+Exit gate (Gate G1 --- Foundation Complete): - \[ \] Enterprise dynamic
+groups + AUs created and drift-clean. - \[ \] CA-100 enterprise baseline
+enforced; no MFA-exempt users. - \[ \] IPAM covers at least Tier-0
+infrastructure. - \[ \] Drift engine reports zero findings across
+foundation scope. - \[ \] Break-glass accounts vaulted in CyberArk.
+
+### Phase 2 --- Pilot Division (weeks 9-16)
+
+**Goal.** Run one division through the full transformation as a learning
+exercise, proving the pattern before general rollout.
+
+Typical pilot division: IT (highest tolerance for disruption, most
+engaged with modernization).
+
+Workstream outputs for pilot: - **Identity.** Pilot division OrgPath
+fully populated; dynamic groups live; AUs scoped; role assignments
+delegated. - **Policy.** Division-scoped CA (CA-200 series) + Intune
+configuration + compliance policies applied. 3-4 GPOs retired. -
+**Services.** Pilot division DNS zones migrated. DHCP scopes re-homed.
+IPAM populated for division address space. - **Compute.** Pilot PCs
+transition (greenfield via Autopilot for new hardware;
+reset-and-re-enroll for refreshable legacy; hybrid for the rest). Pilot
+servers Arc-connected. - **Access.** Division users configured for CBA
+(where CAC holders exist); SASE ZTNA in place for division apps.
+
+Exit gate (Gate G2 --- Pilot Clean): - \[ \] Pilot division MOD_M drift
+zero for 14 consecutive days. - \[ \] Pilot division has zero AD-only
+users, zero Hybrid Joined PCs that aren't scheduled for full cut. - \[
+\] Pilot ATO boundary re-evaluated; no new findings. - \[ \]
+Retrospective complete; lessons-learned doc committed. - \[ \] Per-phase
+runbook updates committed based on pilot experience.
+
+### Phase 3 --- General Rollout (weeks 17-36)
+
+**Goal.** Scale the pattern to every remaining division.
+
+This is the longest phase. Duration scales with division count: budget
+\~2-3 weeks per division, running 2-3 divisions in parallel. Large
+agencies may overlap divisions heavily; small agencies may run strictly
+sequentially.
+
+Workstream cadence: - **Weekly** --- a steering-committee review of
+active divisions. Each division reports green/yellow/red against its
+rollout plan. - **Per division** --- 4-phase sub-pattern: plan, pilot
+within division, general-availability to the full division, drift-clean
+hold. - **Parallel** --- Chapters 04-08 content flows for each division
+concurrently; canon is shared.
+
+Exit gate (Gate G3 --- Rollout Complete): - \[ \] Every in-scope
+division has passed its division-level exit gate. - \[ \] Every
+HR-listed employee has a valid OrgPath. - \[ \] Every user PC is Entra
+Joined or in a documented exception. - \[ \] Every server is
+Arc-connected or in a documented exception. - \[ \] Drift engine reports
+zero cross-division drift.
+
+### Phase 4 --- Legacy Retirement (weeks 37-44)
+
+**Goal.** Systematically retire legacy infrastructure: GPOs, OU security
+groups, AD-integrated DNS, AD-joined DHCP, ADCS smart-card logon
+configuration, SPN-bound legacy apps.
+
+Retirement is governed: each artifact has a retirement plan with its own
+entry/exit criteria, and the retirement action is a Plan-stage action
+with explicit steward approval.
+
+Retirement sequence (typical): 1. Retire redundant GPOs (GPOs migrated
+to Intune). 2. Retire OU-based security groups (membership superseded by
+dynamic groups). 3. Retire AD-integrated DNS zones one at a time. 4.
+Retire AD-joined DHCP authority. 5. Retire ADCS smart-card logon GPO
+configuration. 6. Retire remaining AD-bound SPNs
+(application-by-application).
+
+Exit gate (Gate G4 --- Legacy Quiet): - \[ \] No active GPOs other than
+the minimum Kerberos-island set. - \[ \] No AD-based dynamic /
+static-membership security groups in active use. - \[ \] Zero
+AD-integrated DNS zones. - \[ \] ADCS retained only for issuance, not
+for smart-card logon. - \[ \] SPN map shows all
+migrated/retired/islanded --- no unresolved SPNs. - \[ \] AD
+authentication rate \< 5% of peak-migration rate (most auth has moved to
+Entra).
+
+### Phase 5 --- AD DS Retirement (weeks 45-48)
+
+**Goal.** Shut down Active Directory Domain Services.
+
+This is the shortest phase of the program because the work was done in
+Phases 0-4. Phase 5 is the mechanical teardown.
+
+Sequence: 1. Freeze AD changes (canon change protocol enforcement). 2.
+Final forest assessment + evidence packet. 3. Demote non-FSMO DCs. 4.
+Transfer FSMO roles to the designated survivor (if any --- some agencies
+retain a Kerberos island). 5. Demote remaining DCs (or isolate if
+Kerberos island retained). 6. Decommission VMs + retire forest objects
+in backup. 7. Final provenance commit: "forest X retired on date Y per
+evidence packet Z."
+
+Exit gate (Gate G5 --- AD Retired): - \[ \] DCs decommissioned or
+explicitly retained as documented Kerberos island. - \[ \] Evidence
+packet committed to Gitea + SIEM. - \[ \] No live production dependency
+on AD authentication.
+
+### Phase 6 --- Steady State (week 49+)
+
+**Goal.** Operate the modernized environment under canon governance.
+
+Steady state is the permanent post-modernization state. It has
+properties:
+
+- **Assessments run nightly** (Chapter 02).
+- **Plans generated and authorized** on change-driven and scheduled
+  cadences (Chapter 03).
+- **Drift detected + resolved** within MOD_Q SLAs.
+- **Evidence packets emitted** per delivery.
+- **Continuous monitoring feeds** FedRAMP ConMon + SCuBA pipelines.
+- **Canon changes flow via PR** per MOD_V.
+
+Exit criteria: none. Phase 6 continues indefinitely. Periodic
+retrospectives (quarterly) confirm the canon matches agency intent.
+
+## The five parallel workstreams
+
+During Phases 2-4, five workstreams run in parallel with explicit
+coordination points:
+
+  ---------------------------------------------------------------
+  Workstream      Lead            Chapter         Key artifacts
+  --------------- --------------- --------------- ---------------
+  **Identity**    Identity        04              OrgPath
+                  Architect                       codebook,
+                                                  dynamic groups,
+                                                  AUs
+
+  **Policy**      Security        05              Intune configs,
+                  Engineer                        CA policies,
+                                                  Arc Guest
+                                                  Config
+
+  **Services**    Network         06              DNS, DHCP, IPAM
+                  Engineer                        adapters
+
+  **Compute**     Endpoint        07              Device
+                  Admin + Server                  enrollments,
+                  Eng                             Arc projections
+
+  **Access**      Identity +      08              SASE, CBA, PAM,
+                  Security                        MFA
+                  jointly
+  ---------------------------------------------------------------
+
+Workstreams are not independent. Every week, a **cross-workstream sync**
+identifies the per-division blockers and resequences work where
+dependencies exist (e.g., compute migration can't proceed in a division
+until its CA policies are in place).
+
+## Gate criteria --- mechanical, not subjective
+
+Every gate criterion in this chapter is mechanically evaluable from
+Gitea canon + drift-engine reports. Examples:
+
+- *"Zero drift for 14 consecutive days"* → MOD_M report filtered by
+  scope + date range.
+- *"Every HR-listed employee has a valid OrgPath"* → SQL-like query
+  against the canonical user table.
+- *"Every user PC is Entra Joined"* → device inventory query.
+
+Gates are never passed on executive signature alone. The engine reports
+green; the steward concurs; the PR merges. A gate that the engine cannot
+evaluate is a gate that needs a better criterion.
+
+## Rollback triggers
+
+Every phase has defined rollback triggers --- conditions that halt
+progress and revert to the prior phase's state. Triggers are not
+subjective; they are thresholded.
+
+  --------------------------------------------------------------
+  Trigger              Scope                Action
+  -------------------- -------------------- --------------------
+  MOD_M drift \>       phase-wide           Halt phase;
+  threshold X for \>                        investigate; no new
+  24 hours                                  deliveries until
+                                            clean
+
+  CA policy blocks \>  enterprise           Revert CA policy;
+  Y% of legitimate                          investigate;
+  sign-ins                                  authorize
+                                            replacement
+
+  Drift engine itself  platform             Escalate per MOD_Q;
+  fails to report                           halt all phase work
+
+  Evidence packet      any delivery         Halt; forensic
+  fails signature                           investigation;
+  validation                                restore from last
+                                            known-good
+
+  SLA-breach on P1     any scope            Escalate per MOD_Q
+  finding                                   Tier 1; steward +
+                                            sponsor notified
+  --------------------------------------------------------------
+
+Rollback is operationally expensive, so the gate design is meant to
+prevent the need for it. Pilot phases catch what would otherwise become
+rollback events later.
+
+## Decision authority at each gate
+
+Not every gate is a Canon Steward decision. The program defines decision
+authority per gate:
+
+  --------------------------------------------------------------
+  Gate                 Authority            Backup
+  -------------------- -------------------- --------------------
+  G0 --- Ready to Plan Canon Steward        Executive Sponsor
+
+  G1 --- Foundation    Canon Steward        ---
+  Complete
+
+  G2 --- Pilot Clean   Canon Steward +      ---
+                       Executive Sponsor
+
+  G3 --- Rollout       Executive Sponsor +  ---
+  Complete             Steering Committee
+
+  G4 --- Legacy Quiet  Canon Steward        Executive Sponsor
+
+  G5 --- AD Retired    Executive Sponsor +  ---
+                       CIO
+
+  Division-level exit  Division Lead +      ---
+  (G3 sub-gate)        Canon Steward
+  --------------------------------------------------------------
+
+Gate authority is recorded in the Gitea PR that merges the gate
+decision. Disputed gates escalate per MOD_Q.
+
+## Common failure modes
+
+Across federal agencies that have run variants of this program, five
+failure modes recur. UIAO's structure is designed to pre-empt each:
+
+1.  **Half-finished identity.** Pattern: rollout begins, 30% of users
+    have OrgPath, HR connector breaks, project stalls. Mitigation: Gate
+    G1 requires HR connector operational before rollout.
+2.  **Unscoped CA policy.** Pattern: broad "require MFA" policy
+    deployed; edge cases block operationally critical sign-ins.
+    Mitigation: Chapter 05's OrgPath-scoped + pilot-group-first pattern.
+3.  **DNS left for "phase 2."** Pattern: identity moves, DNS stays
+    AD-integrated, AD can't actually retire. Mitigation: Chapter 06's
+    insistence that DNS+DHCP+IPAM migrate together.
+4.  **Hybrid Joined permanence.** Pattern: devices become Hybrid Joined
+    and stay that way indefinitely. Mitigation: Chapter 07's rule that
+    Hybrid Join is a transition state, with drift-engine monitoring of
+    time-in-state.
+5.  **Evidence-less migration.** Pattern: changes happen via ad-hoc
+    admin actions; FedRAMP audit can't produce provenance. Mitigation:
+    Chapter 03's plan-based delivery --- every change has provenance by
+    construction.
+
+## The week-by-week cadence
+
+For the steering committee, the cadence is:
+
+- **Monday** --- workstream leads update status (green/yellow/red).
+- **Tuesday** --- cross-workstream dependency sync.
+- **Wednesday** --- canon changes + plan reviews merge to Gitea.
+- **Thursday** --- plan deliveries scheduled (typically off-peak).
+- **Friday** --- evidence packet + drift-engine review; retrospective on
+  the week.
+
+Monthly: gate-criterion reviews against the phase schedule. Red status
+across two consecutive weeks escalates to the executive sponsor.
+
+## What finishing looks like
+
+In week 49 (Phase 6 steady state), the program meeting looks like this:
+
+- Drift-engine report: zero findings.
+- Nightly plan run: zero actions.
+- Evidence packets: fully signed, shipped to SIEM + ConMon.
+- ServiceNow tickets: routine operational only; no P1 findings.
+- Audit posture: ATO package refreshed; continuous-monitoring feed live;
+  3PAO relationship quarterly.
+- Canon: one PR merged this week for a Policy library refinement;
+  otherwise stable.
+
+The program is not "done" --- steady state is the operational mode ---
+but the modernization is complete. The agency runs governed; AD is gone;
+the canon is the operational truth.
+
+## Cross-references
+
+- **Posted:** UIAO Master Project Plan --- Assessment Phase Through Full
+  Modernization (14,051 words) --- 7-phase, 48-milestone, 52-week
+  capstone plan.
+- **Canon:** MOD_F Migration Runbook · MOD_Q SLA Escalation Playbooks ·
+  MOD_V Canonical Contributor Workflow.
+- **Customer Documents:** [program
+  management](../program-management/index.qmd).
+
+------------------------------------------------------------------------
+
+**Next:** [Chapter 10 --- Leadership Takeaway: Instruments
+vs. Orchestra](../client-server-to-hybrid-cloud/10-executive-summary.qmd)
+
+# Chapter 10 --- Leadership Takeaway: Instruments vs. Orchestra
+
+*What this series means for an executive sponsor deciding whether to run
+it*
+
+Microsoft provides the instruments. UIAO provides the orchestra.
+
+Entra ID, Intune, Azure Arc, Conditional Access, Azure Private DNS,
+Azure PIM, ScubaGear --- each is an outstanding piece of federally-
+authorized technology. None of them, individually or collectively, tells
+an agency how to govern the transformation from the AD-centric
+Client/Server era into the Hybrid-Cloud Zero-Trust era.
+
+That is the gap UIAO fills.
+
+## The thesis, one more time
+
+Chapter 00 opened with a claim: Active Directory was never just an
+identity store; it was the implicit governance model for every network
+service a federal agency ran. Twenty-five years of accretion made it so.
+Microsoft is now deprecating the entire stack that built up around AD
+--- and is supplying replacements that are individually excellent.
+
+The problem is that *collective replacement* requires something
+Microsoft doesn't provide: a framework that decides what the target
+looks like, how to get there, how to prove it was done right, and how to
+keep it right afterward. Without that framework, agencies migrate in
+pieces, lose governance continuity, and finish with a modernized surface
+that can't answer the questions their auditors were asking six months
+earlier.
+
+UIAO is that framework. This series has described how.
+
+## What UIAO is --- and isn't
+
+### What it is
+
+UIAO is an **orchestration + governance + evidence layer** that runs
+*above* Microsoft's (and third-party) modernization tools. It is
+embodied in:
+
+- A **single Windows Server 2025 host** running Gitea + IIS + Kerberos
+  bridge + enterprise PKI (Chapter 01).
+- A **canonical monorepo** of governance artifacts --- codebooks,
+  policies, plans, evidence --- stored as versioned, signed files in
+  Git.
+- A **transformation engine** --- PowerShell + Python + API integrators
+  --- that reads the Client/Server estate, produces deterministic plans,
+  and delivers them into the Hybrid-Cloud target surface (Chapters
+  02-03).
+- A **four-pillar target surface** --- identity, policy, services,
+  compute, access --- each governed through a matching chapter of this
+  series (Chapters 04-08).
+- A **52-week program roadmap** with seven gates, five parallel
+  workstreams, and mechanically evaluable exit criteria (Chapter 09).
+
+### What it isn't
+
+- **Not a Microsoft-tool replacement.** UIAO does not replace Entra,
+  Intune, Arc, or any other native tool. It orchestrates them.
+- **Not a proprietary product.** UIAO is a governed deployment of
+  well-known components configured in a canonical way. Nothing to buy a
+  license for.
+- **Not a consultant's methodology.** UIAO is a documented canon,
+  versioned in Git, auditable line-by-line. No slideware-based
+  engagement can ship this.
+- **Not optional for federal modernization.** The "do this without a
+  framework" alternative produces the failure modes enumerated in
+  Chapter 09. Agencies that skip the orchestration step finish with
+  half-migrations, drift, and audit failures.
+
+## The instruments, revisited
+
+Federal agencies have the full set of Microsoft-native modernization
+instruments today:
+
+  ---------------------------------------------------------------
+  Instrument           What it does         What it doesn't do
+  -------------------- -------------------- ---------------------
+  **Entra ID**         Cloud identity       Decide what your OU
+                       directory            structure should
+                                            become
+
+  **Intune**           MDM + device policy  Decide which GPOs map
+                                            to which Intune
+                                            profiles
+
+  **Azure Arc**        Hybrid server        Decide which servers
+                       management           retire
+                                            vs. Arc-project
+
+  **Conditional        Access-policy        Decide which users
+  Access**             enforcement          need which policies
+
+  **Azure PIM**        Just-in-time         Decide which roles
+                       privilege            are
+                                            standing-privileged
+
+  **ScubaGear**        SCuBA baseline       Decide what to do
+                       assessment           with the findings
+
+  **Azure Private      Hybrid DNS           Decide which zones
+  Resolver**           resolution           are authoritative
+                                            where
+
+  **Entra CBA**        Certificate-based    Decide which users
+                       auth                 get CBA vs. FIDO2
+  ---------------------------------------------------------------
+
+Every row's "what it does" column is operationally mature. Every row's
+"what it doesn't do" column is what UIAO governs.
+
+## The governance properties that matter
+
+Reading this series, a CISO or CIO should retain five properties that
+distinguish governed modernization from the alternative:
+
+1.  **The canon is the operational truth.** Every OrgPath, every dynamic
+    group, every CA policy, every Intune profile, every Arc-projected
+    server's tags --- all of these are defined in Gitea before they
+    exist in the target surface. The target surface is a
+    *materialization of the canon*, not the source of truth.
+
+2.  **Every change is a plan.** Nothing reaches the target surface
+    except through an authorized plan. No admin-portal clicks. No "I'll
+    fix it in prod." Every change has provenance by construction.
+
+3.  **Drift is detected, not reported.** The drift engine runs
+    continuously. Divergence between canon and reality triggers an SLA
+    ticket within hours. Compliance teams find out about drift before
+    auditors do.
+
+4.  **Evidence is built-in, not extracted.** Every plan produces an
+    evidence packet. FedRAMP ConMon + CISA SCuBA feeds subscribe to the
+    same data stream. ATO packages regenerate from canon rather than
+    being hand-compiled from spreadsheets.
+
+5.  **Two-Brain Execution prevents covered-track changes.** Governance
+    (Copilot) and Execution (the Substrate) are architecturally
+    separate. A brain that could both decide and act could cover its
+    tracks. These can't.
+
+## How to evaluate a UIAO engagement
+
+An executive sponsor asking "should we do this?" should require answers
+to a short list:
+
+- **Is the canon in Git?** If the answer is "in the vendor's portal" or
+  "in a SharePoint," it is not a UIAO engagement.
+- **Can every production change be traced to a signed commit?** If not,
+  the provenance property is missing.
+- **Is drift detection continuous?** Once-a-quarter scans don't count.
+- **Does the target surface come from plans, not ad-hoc actions?** If
+  there's no plan artifact, there's no rollback.
+- **Is the platform server one box, hardened, Tier-0?** Distributed
+  governance substrates dilute the properties above.
+
+These five questions are a pass/fail test. Every answer should be "yes."
+
+## Questions the steering committee should ask monthly
+
+Once the program is underway, five standing questions reveal whether it
+is actually governed:
+
+1.  **What is the drift count?** Trend, not point-in-time. Rising drift
+    is the single strongest leading indicator of a failing
+    modernization.
+2.  **What percentage of production changes had a signed plan?** 100% is
+    the only acceptable answer in steady state. Anything less means
+    ad-hoc changes have re-entered the flow.
+3.  **What percentage of employees have a valid OrgPath?** Below 95% is
+    a Gate G1 regression.
+4.  **How many GPOs are active?** Should be declining every month of
+    Phase 4. Plateauing before zero is a blocker.
+5.  **How many Hybrid-Joined devices have been in that state \>180
+    days?** Zero. Any other answer is a modernization stuck at Chapter
+    07.
+
+A steering committee that asks these five questions monthly will know
+whether the program is governed or theatre.
+
+## What happens after this series
+
+Three concrete next steps:
+
+1.  **Read the full canon.** Everything this series describes exists (or
+    will) as canonical artifacts in the UIAO monorepo --- MOD_A..Z,
+    DM_010..090, the adapter specs, the policy libraries, the validation
+    suites. The series is the narrative; the canon is the authority.
+
+2.  **Run a Tier-B assessment** (Chapter 02). Not a theoretical exercise
+    --- a real, read-only, least-privilege enumeration of your forest.
+    The output is the input to every downstream decision. An assessment
+    takes about a week and produces a complete picture you probably
+    don't have today.
+
+3.  **Stand up the platform server** (Chapter 01). A governed
+    modernization begins with one Windows Server 2025 host running
+    Gitea + IIS + the canonical monorepo. From that host, everything
+    else follows.
+
+## The bottom line
+
+Microsoft retired Active Directory because the Client/Server era ended.
+They gave you the instruments to play in the new era. They did not give
+you the orchestra.
+
+UIAO is the orchestra. This series is the score.
+
+AD retirement is not a migration project. It is a governance
+transformation. Run it governed, or don't run it.
+
+------------------------------------------------------------------------
+
+## Cross-references
+
+- **Posted:** UIAO vs. Microsoft Native Tools --- AD Assessment and
+  Modernization Gap Analysis (5,392 words) --- the original "instruments
+  vs. orchestra" document.
+- **Posted:** UIAO Executive Brief --- the leadership-facing one-pager.
+- **Canon:** MOD_001 Executive Summary (for technical depth behind this
+  chapter).
+- **Customer Documents:** [modernization pillar](../index.qmd) ·
+  [compliance pillar](../../compliance/index.qmd) · [substrate
+  pillar](../../substrate/index.qmd).
+
+------------------------------------------------------------------------
+
+## End of series
+
+This concludes the Client-Server to Hybrid-Cloud Transformation series.
+For the full modernization arc, read Chapters 00 → 10 in order. For a
+specific topic, use the chapter list on the [series landing
+page](index.qmd).

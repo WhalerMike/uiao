@@ -3,7 +3,7 @@
 This script is kept for backward compatibility. New code should
 import ``validate_oscal_artifacts`` from ``uiao.generators.trestle``.
 
-Deprecated: Use `uiao validate-ssp` CLI command instead.
+Deprecated: Use `uiao oscal validate-ssp` CLI command instead.
 """
 
 import logging
@@ -13,7 +13,7 @@ import warnings
 from uiao.generators.trestle import validate_oscal_artifacts
 
 warnings.warn(
-    "scripts/validate_with_trestle.py is deprecated. Use `uiao validate-ssp` instead.",
+    "scripts/validate_with_trestle.py is deprecated. Use `uiao oscal validate-ssp` instead.",
     DeprecationWarning,
     stacklevel=1,
 )

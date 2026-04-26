@@ -319,17 +319,17 @@ class TestExportSar:
 
 class TestIRGenerateSARCLI:
     def test_runs_without_error(self, scuba_json: Path) -> None:
-        result = runner.invoke(app, ["ir-generate-sar", str(scuba_json)])
+        result = runner.invoke(app, ["ir", "generate-sar", str(scuba_json)])
         assert result.exit_code == 0, result.output
 
     def test_output_contains_sar_text(self, scuba_json: Path) -> None:
-        result = runner.invoke(app, ["ir-generate-sar", str(scuba_json)])
+        result = runner.invoke(app, ["ir", "generate-sar", str(scuba_json)])
         assert result.exit_code == 0
         assert "SAR" in result.output or "OSCAL" in result.output or "PASS" in result.output
 
     def test_out_writes_json(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "sar_output.json"
-        result = runner.invoke(app, ["ir-generate-sar", str(scuba_json), "--out", str(out)])
+        result = runner.invoke(app, ["ir", "generate-sar", str(scuba_json), "--out", str(out)])
         assert result.exit_code == 0, result.output
         assert out.exists()
         data = json.loads(out.read_text())
@@ -337,14 +337,14 @@ class TestIRGenerateSARCLI:
 
     def test_out_json_has_findings(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "sar_output.json"
-        runner.invoke(app, ["ir-generate-sar", str(scuba_json), "--out", str(out)])
+        runner.invoke(app, ["ir", "generate-sar", str(scuba_json), "--out", str(out)])
         data = json.loads(out.read_text())
         findings = data["assessment-results"]["results"][0]["findings"]
         assert len(findings) == 3
 
     def test_out_json_has_risks_for_fail(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "sar_output.json"
-        runner.invoke(app, ["ir-generate-sar", str(scuba_json), "--out", str(out)])
+        runner.invoke(app, ["ir", "generate-sar", str(scuba_json), "--out", str(out)])
         data = json.loads(out.read_text())
         risks = data["assessment-results"]["results"][0]["risks"]
         # 1 FAIL + 1 WARN = 2 risks
@@ -354,7 +354,7 @@ class TestIRGenerateSARCLI:
         out = tmp_path / "sar_named.json"
         result = runner.invoke(
             app,
-            ["ir-generate-sar", str(scuba_json), "--out", str(out), "--system-name", "Test Agency System"],
+            ["ir", "generate-sar", str(scuba_json), "--out", str(out), "--system-name", "Test Agency System"],
         )
         assert result.exit_code == 0, result.output
         data = json.loads(out.read_text())
@@ -362,10 +362,10 @@ class TestIRGenerateSARCLI:
         assert "Test Agency System" in title
 
     def test_missing_file_exits_nonzero(self, tmp_path: Path) -> None:
-        result = runner.invoke(app, ["ir-generate-sar", str(tmp_path / "nonexistent.json")])
+        result = runner.invoke(app, ["ir", "generate-sar", str(tmp_path / "nonexistent.json")])
         assert result.exit_code != 0
 
     def test_command_appears_in_help(self) -> None:
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "ir-generate-sar" in result.output
+        assert "ir" in result.output

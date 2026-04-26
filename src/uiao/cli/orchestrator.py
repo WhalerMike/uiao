@@ -116,7 +116,12 @@ def schedule(
         help="Emit the manifest as JSON on stdout (suppresses the pretty table).",
     ),
 ) -> None:
-    """Dispatch every active adapter in the registry; persist evidence + drift."""
+    """Dispatch every active adapter in the registry; persist evidence + drift.
+
+    Example::
+
+        uiao orchestrator schedule
+    """
     status_filter = tuple(s.strip() for s in status.split(",") if s.strip())
     scheduler = OrchestratorScheduler(
         registry_path=registry,
@@ -152,7 +157,12 @@ def dispatch(
     max_retries: int = typer.Option(2, "--max-retries", help="Retry ceiling."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Plan only; no adapter invocation."),
 ) -> None:
-    """Dispatch a single adapter by registry ID."""
+    """Dispatch a single adapter by registry ID.
+
+    Example::
+
+        uiao orchestrator dispatch scubagear-m365
+    """
     scheduler = OrchestratorScheduler(
         registry_path=registry,
         output_root=output_root,
@@ -186,7 +196,12 @@ def list_adapters(
         help="Comma-separated status filter, or 'all'.",
     ),
 ) -> None:
-    """List adapters the scheduler would dispatch under the given status filter."""
+    """List adapters the scheduler would dispatch under the given status filter.
+
+    Example::
+
+        uiao orchestrator list --status active
+    """
     status_filter: tuple[str, ...]
     status_filter = () if status.strip().lower() == "all" else tuple(s.strip() for s in status.split(",") if s.strip())
     scheduler = OrchestratorScheduler(registry_path=registry, status_filter=status_filter)

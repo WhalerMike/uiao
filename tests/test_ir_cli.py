@@ -51,18 +51,18 @@ def scuba_json(tmp_path: Path) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# ir-scuba-transform
+# ir scuba-transform
 # ---------------------------------------------------------------------------
 class TestIRScubaTransform:
     def test_summary_printed(self, scuba_json: Path) -> None:
-        result = runner.invoke(app, ["ir-scuba-transform", str(scuba_json)])
+        result = runner.invoke(app, ["ir", "scuba-transform", str(scuba_json)])
         assert result.exit_code == 0, result.output
         assert "SCuBA Transform" in result.output
         assert "Total KSI results" in result.output
 
     def test_out_writes_json(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "evidence.json"
-        result = runner.invoke(app, ["ir-scuba-transform", str(scuba_json), "--out", str(out)])
+        result = runner.invoke(app, ["ir", "scuba-transform", str(scuba_json), "--out", str(out)])
         assert result.exit_code == 0, result.output
         assert out.exists()
         data = json.loads(out.read_text())
@@ -70,22 +70,22 @@ class TestIRScubaTransform:
         assert "evidence" in data
 
     def test_missing_file_exits_nonzero(self, tmp_path: Path) -> None:
-        result = runner.invoke(app, ["ir-scuba-transform", str(tmp_path / "nonexistent.json")])
+        result = runner.invoke(app, ["ir", "scuba-transform", str(tmp_path / "nonexistent.json")])
         assert result.exit_code != 0
 
 
 # ---------------------------------------------------------------------------
-# ir-evidence-bundle
+# ir evidence-bundle
 # ---------------------------------------------------------------------------
 class TestIREvidenceBundle:
     def test_summary_printed(self, scuba_json: Path) -> None:
-        result = runner.invoke(app, ["ir-evidence-bundle", str(scuba_json)])
+        result = runner.invoke(app, ["ir", "evidence-bundle", str(scuba_json)])
         assert result.exit_code == 0, result.output
         assert "EvidenceBundle" in result.output
 
     def test_out_writes_canonical_json(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "bundle.json"
-        result = runner.invoke(app, ["ir-evidence-bundle", str(scuba_json), "--out", str(out)])
+        result = runner.invoke(app, ["ir", "evidence-bundle", str(scuba_json), "--out", str(out)])
         assert result.exit_code == 0, result.output
         assert out.exists()
         data = json.loads(out.read_text())
@@ -95,24 +95,24 @@ class TestIREvidenceBundle:
 
 
 # ---------------------------------------------------------------------------
-# ir-poam-export
+# ir poam-export
 # ---------------------------------------------------------------------------
 class TestIRPoamExport:
     def test_summary_printed(self, scuba_json: Path) -> None:
-        result = runner.invoke(app, ["ir-poam-export", str(scuba_json)])
+        result = runner.invoke(app, ["ir", "poam-export", str(scuba_json)])
         assert result.exit_code == 0, result.output
         assert "POA&M Summary" in result.output
 
     def test_fail_row_present(self, scuba_json: Path) -> None:
         """FAIL entries appear in POA&M; PASS entries do not."""
-        result = runner.invoke(app, ["ir-poam-export", str(scuba_json)])
+        result = runner.invoke(app, ["ir", "poam-export", str(scuba_json)])
         assert result.exit_code == 0, result.output
         # 1 FAIL entry means at least 1 item
         assert "1 item" in result.output or "items" in result.output
 
     def test_out_writes_json(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "poam.json"
-        result = runner.invoke(app, ["ir-poam-export", str(scuba_json), "--out", str(out)])
+        result = runner.invoke(app, ["ir", "poam-export", str(scuba_json), "--out", str(out)])
         assert result.exit_code == 0, result.output
         assert out.exists()
         rows = json.loads(out.read_text())
@@ -124,7 +124,7 @@ class TestIRPoamExport:
 
 
 # ---------------------------------------------------------------------------
-# ir-drift-detect
+# ir drift-detect
 # ---------------------------------------------------------------------------
 class TestIRDriftDetect:
     def test_no_drift(self, tmp_path: Path) -> None:
@@ -133,7 +133,7 @@ class TestIRDriftDetect:
         act = tmp_path / "actual.json"
         exp.write_text(json.dumps(state), encoding="utf-8")
         act.write_text(json.dumps(state), encoding="utf-8")
-        result = runner.invoke(app, ["ir-drift-detect", str(exp), str(act)])
+        result = runner.invoke(app, ["ir", "drift-detect", str(exp), str(act)])
         assert result.exit_code == 0, result.output
         assert "NO DRIFT" in result.output
 
@@ -144,7 +144,7 @@ class TestIRDriftDetect:
         act = tmp_path / "actual.json"
         exp.write_text(json.dumps(exp_state), encoding="utf-8")
         act.write_text(json.dumps(act_state), encoding="utf-8")
-        result = runner.invoke(app, ["ir-drift-detect", str(exp), str(act)])
+        result = runner.invoke(app, ["ir", "drift-detect", str(exp), str(act)])
         assert result.exit_code == 0, result.output
         assert "DRIFT DETECTED" in result.output
 
@@ -155,7 +155,7 @@ class TestIRDriftDetect:
         exp.write_text(json.dumps(state), encoding="utf-8")
         act.write_text(json.dumps({"control": "ac-2", "status": "partial"}), encoding="utf-8")
         out = tmp_path / "drift.json"
-        result = runner.invoke(app, ["ir-drift-detect", str(exp), str(act), "--out", str(out)])
+        result = runner.invoke(app, ["ir", "drift-detect", str(exp), str(act), "--out", str(out)])
         assert result.exit_code == 0, result.output
         assert out.exists()
         data = json.loads(out.read_text())
@@ -169,7 +169,4 @@ class TestIRDriftDetect:
 def test_cli_root_help() -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    assert "ir-scuba-transform" in result.output
-    assert "ir-evidence-bundle" in result.output
-    assert "ir-poam-export" in result.output
-    assert "ir-drift-detect" in result.output
+    assert "ir" in result.output

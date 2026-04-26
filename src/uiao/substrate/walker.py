@@ -28,6 +28,8 @@ import yaml
 SUBSTRATE_MANIFEST = "src/uiao/canon/substrate-manifest.yaml"
 WORKSPACE_CONTRACT = "src/uiao/canon/workspace-contract.yaml"
 DOCUMENT_REGISTRY = "src/uiao/canon/document-registry.yaml"
+MODERNIZATION_REGISTRY = "src/uiao/canon/modernization-registry.yaml"
+ADAPTER_REGISTRY = "src/uiao/canon/adapter-registry.yaml"
 
 # Paths inside document-registry.yaml are workspace-relative (e.g.
 # `src/uiao/canon/UIAO-SSOT.md`), so the resolve base is the workspace root.
@@ -211,8 +213,250 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
 
     _scan_canon_code_refs(root, report)
     _scan_docs_code_refs(root, report)
+    _scan_consent_envelope(root, report)
+    _scan_issuer_chain(root, report)
+    _scan_ztmm_pillars(root, report)
+    _scan_tenants(root, report)
 
     return report
+
+
+def _scan_tenants(root: Path, report: SubstrateReport) -> None:
+    """UIAO_112 / §3.4 multi-tenant declaration scan.
+
+    Every active tenant in ``src/uiao/canon/tenants.yaml`` MUST declare
+    a non-empty ``credential_scope:`` list. Without it the substrate
+    cannot bind the tenant to a credential backend at runtime.
+
+    The file is **optional** — single-tenant deployments don't need a
+    tenants.yaml; the runtime synthesizes a default tenant. So absence
+    of the file is not a finding; only declared tenants with missing
+    credential_scope are flagged.
+
+    Severity policy:
+        - active tenant, no ``credential_scope:`` → P2 (registry hygiene;
+          tenant cannot be bound to credentials)
+        - active tenant, ``credential_scope: []`` → P2 (same)
+        - inactive tenants → skipped
+    """
+    path = root / "src" / "uiao" / "canon" / "tenants.yaml"
+    if not path.is_file():
+        return
+    try:
+        doc = _load_yaml(path)
+    except yaml.YAMLError:
+        return
+    if not doc:
+        return
+    rel = str(path.relative_to(root))
+    tenants = doc.get("tenants") if isinstance(doc, dict) else None
+    if not isinstance(tenants, list):
+        return
+    for entry in tenants:
+        if not isinstance(entry, dict):
+            continue
+        tid = str(entry.get("id", "")).strip()
+        if not tid:
+            continue
+        status = str(entry.get("status", "active")).strip().lower()
+        if status != "active":
+            continue
+        scope = entry.get("credential_scope") or []
+        if not isinstance(scope, list) or len(scope) == 0:
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-SCHEMA",
+                    severity="P2",
+                    path=f"{rel}#{tid}",
+                    detail=(
+                        f"active tenant '{tid}' has empty credential_scope; "
+                        "tenant cannot be bound to a credential backend"
+                    ),
+                )
+            )
+
+
+def _scan_ztmm_pillars(root: Path, report: SubstrateReport) -> None:
+    """UIAO_120 / §3.6 ZTMM pillar declaration scan.
+
+    Every active adapter SHOULD declare ``ztmm-pillars:`` so the
+    ZTMMScoreCalculator can attribute the adapter's evidence to the
+    right CISA ZTMM v2.0 pillar(s). Missing declarations don't break
+    anything at runtime — the calculator simply scores any undeclared
+    pillar at TRADITIONAL maturity — but the substrate-status dashboard
+    understates coverage.
+
+    Tagged ``DRIFT-SCHEMA`` because the gap is structural canon
+    metadata: the registry entry is missing a declared field, not an
+    identity-trust-chain failure.
+
+    Severity policy:
+        - active adapter, no ``ztmm-pillars:`` key → P3 (advisory)
+        - active adapter, ``ztmm-pillars: []`` → skipped (informational
+          adapter; explicit empty list is a valid declaration)
+        - reserved/inactive adapters → skipped
+    """
+    mod_path = root / MODERNIZATION_REGISTRY
+    adapter_path = root / ADAPTER_REGISTRY
+    for path in (mod_path, adapter_path):
+        if not path.is_file():
+            continue
+        try:
+            doc = _load_yaml(path)
+        except yaml.YAMLError:
+            continue
+        if not doc:
+            continue
+        adapters = doc.get("adapters") or doc.get("modernization_adapters") or []
+        if not isinstance(adapters, list):
+            continue
+        rel = str(path.relative_to(root))
+        for entry in adapters:
+            if not isinstance(entry, dict):
+                continue
+            adapter_id = str(entry.get("id", "")).strip()
+            if not adapter_id:
+                continue
+            status = str(entry.get("status", "")).strip().lower()
+            if status != "active":
+                continue
+            if "ztmm-pillars" not in entry:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-SCHEMA",
+                        severity="P3",
+                        path=f"{rel}#{adapter_id}",
+                        detail=(
+                            f"active adapter '{adapter_id}' has no ztmm-pillars: "
+                            "declaration; ZTMM pillar attribution unavailable"
+                        ),
+                    )
+                )
+
+
+def _scan_issuer_chain(root: Path, report: SubstrateReport) -> None:
+    """UIAO_110 DRIFT-IDENTITY registry-hygiene scan.
+
+    Every active adapter that declares ``certificate-anchored: true``
+    MUST also declare a ``trust-anchor:`` (subject DN, fingerprint, or
+    both). Without an anchor, the runtime issuer-chain validator has
+    nothing to compare against, so the substrate's certificate-anchoring
+    contract is unenforceable for that adapter.
+
+    Severity policy:
+        - active adapter, ``certificate-anchored: true``, no
+          ``trust-anchor:`` key → P1 (substrate trust contract; runtime
+          issuer-chain cannot be enforced)
+        - active adapter, ``certificate-anchored: false`` → skipped
+          (declared not anchored)
+        - reserved/inactive adapters → skipped
+    """
+    mod_path = root / MODERNIZATION_REGISTRY
+    adapter_path = root / ADAPTER_REGISTRY
+    for path in (mod_path, adapter_path):
+        if not path.is_file():
+            continue
+        try:
+            doc = _load_yaml(path)
+        except yaml.YAMLError:
+            continue
+        if not doc:
+            continue
+        adapters = doc.get("adapters") or doc.get("modernization_adapters") or []
+        if not isinstance(adapters, list):
+            continue
+        rel = str(path.relative_to(root))
+        for entry in adapters:
+            if not isinstance(entry, dict):
+                continue
+            adapter_id = str(entry.get("id", "")).strip()
+            if not adapter_id:
+                continue
+            status = str(entry.get("status", "")).strip().lower()
+            if status != "active":
+                continue
+            cert_anchored = entry.get("certificate-anchored")
+            if cert_anchored is not True:
+                continue
+            if "trust-anchor" not in entry:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-IDENTITY",
+                        severity="P1",
+                        path=f"{rel}#{adapter_id}",
+                        detail=(
+                            f"active adapter '{adapter_id}' declares "
+                            "certificate-anchored: true but has no trust-anchor: "
+                            "declaration; issuer-chain validation cannot be enforced"
+                        ),
+                    )
+                )
+
+
+def _scan_consent_envelope(root: Path, report: SubstrateReport) -> None:
+    """UIAO_110 DRIFT-AUTHZ registry-hygiene scan.
+
+    Every active modernization adapter MUST declare a non-empty ``scope:``
+    in canon. An adapter with no scope key — or an empty list — cannot be
+    validated by the consent-envelope detector at runtime, which is itself
+    a DRIFT-AUTHZ violation against the substrate trust contract.
+
+    Severity policy:
+        - missing ``scope:`` key on an active adapter → P1 (cannot validate)
+        - explicit ``scope: []`` on an active adapter → P2 (validates, but
+          no consent envelope means no audited surface)
+        - reserved/inactive adapters → skipped
+    """
+    mod_path = root / MODERNIZATION_REGISTRY
+    adapter_path = root / ADAPTER_REGISTRY
+    for path in (mod_path, adapter_path):
+        if not path.is_file():
+            continue
+        try:
+            doc = _load_yaml(path)
+        except yaml.YAMLError:
+            continue
+        if not doc:
+            continue
+        adapters = doc.get("adapters") or doc.get("modernization_adapters") or []
+        if not isinstance(adapters, list):
+            continue
+        rel = str(path.relative_to(root))
+        for entry in adapters:
+            if not isinstance(entry, dict):
+                continue
+            adapter_id = str(entry.get("id", "")).strip()
+            if not adapter_id:
+                continue
+            status = str(entry.get("status", "")).strip().lower()
+            if status not in ("active",):
+                continue
+            if "scope" not in entry:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-AUTHZ",
+                        severity="P1",
+                        path=f"{rel}#{adapter_id}",
+                        detail=(
+                            f"active adapter '{adapter_id}' has no scope: declaration; "
+                            "consent envelope cannot be enforced"
+                        ),
+                    )
+                )
+                continue
+            raw = entry.get("scope") or []
+            if isinstance(raw, list) and len(raw) == 0:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-AUTHZ",
+                        severity="P2",
+                        path=f"{rel}#{adapter_id}",
+                        detail=(
+                            f"active adapter '{adapter_id}' declares an empty scope: list; "
+                            "no objects fall under the consent envelope"
+                        ),
+                    )
+                )
 
 
 def _scan_prose_for_code_refs(
