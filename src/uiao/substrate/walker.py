@@ -216,8 +216,64 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
     _scan_consent_envelope(root, report)
     _scan_issuer_chain(root, report)
     _scan_ztmm_pillars(root, report)
+    _scan_tenants(root, report)
 
     return report
+
+
+def _scan_tenants(root: Path, report: SubstrateReport) -> None:
+    """UIAO_112 / §3.4 multi-tenant declaration scan.
+
+    Every active tenant in ``src/uiao/canon/tenants.yaml`` MUST declare
+    a non-empty ``credential_scope:`` list. Without it the substrate
+    cannot bind the tenant to a credential backend at runtime.
+
+    The file is **optional** — single-tenant deployments don't need a
+    tenants.yaml; the runtime synthesizes a default tenant. So absence
+    of the file is not a finding; only declared tenants with missing
+    credential_scope are flagged.
+
+    Severity policy:
+        - active tenant, no ``credential_scope:`` → P2 (registry hygiene;
+          tenant cannot be bound to credentials)
+        - active tenant, ``credential_scope: []`` → P2 (same)
+        - inactive tenants → skipped
+    """
+    path = root / "src" / "uiao" / "canon" / "tenants.yaml"
+    if not path.is_file():
+        return
+    try:
+        doc = _load_yaml(path)
+    except yaml.YAMLError:
+        return
+    if not doc:
+        return
+    rel = str(path.relative_to(root))
+    tenants = doc.get("tenants") if isinstance(doc, dict) else None
+    if not isinstance(tenants, list):
+        return
+    for entry in tenants:
+        if not isinstance(entry, dict):
+            continue
+        tid = str(entry.get("id", "")).strip()
+        if not tid:
+            continue
+        status = str(entry.get("status", "active")).strip().lower()
+        if status != "active":
+            continue
+        scope = entry.get("credential_scope") or []
+        if not isinstance(scope, list) or len(scope) == 0:
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-SCHEMA",
+                    severity="P2",
+                    path=f"{rel}#{tid}",
+                    detail=(
+                        f"active tenant '{tid}' has empty credential_scope; "
+                        "tenant cannot be bound to a credential backend"
+                    ),
+                )
+            )
 
 
 def _scan_ztmm_pillars(root: Path, report: SubstrateReport) -> None:
