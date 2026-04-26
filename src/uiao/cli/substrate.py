@@ -39,7 +39,12 @@ def walk(
         help="Emit findings as machine-readable JSON instead of a table.",
     ),
 ) -> None:
-    """Walk the substrate: validate module paths and canon document registry."""
+    """Walk the substrate: validate module paths and canon document registry.
+
+    Example::
+
+        uiao substrate walk
+    """
     report = walk_substrate(workspace_root=workspace_root)
     if as_json:
         json.dump(report.as_dict(), sys.stdout, indent=2)
@@ -94,6 +99,10 @@ def drift(
     This is the minimum drift-scan declared by substrate-manifest.yaml.
     Full 5-class drift taxonomy (including semantic/authz/identity) is a
     runtime concern handled by uiao.governance.drift.
+
+    Example::
+
+        uiao substrate drift
     """
     report = walk_substrate(workspace_root=workspace_root)
     if report.ok:

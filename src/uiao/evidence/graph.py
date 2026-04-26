@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import json
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
+
+# Stable namespace UUID used to derive deterministic resource UUIDs from
+# control ids when emitting OSCAL back-matter graph link resources.
+_OSCAL_GRAPH_RESOURCE_NS = uuid.UUID("a4b2bb99-1c5b-5e07-b4a9-58e4f7deb113")
 
 # Severity normalization for scheduler-originated drift reports.
 # Drift reports carry free-form severity strings (P1/P3/High/critical/info).
@@ -554,6 +559,141 @@ class EvidenceGraph:
                 key=lambda s: {"High": 3, "Medium": 2, "Low": 1}.get(s, 0),
             )
         return props
+
+    def poam_props_for_control(self, control_id: str) -> Dict[str, Any]:
+        """Return graph-derived props for a POA&M item keyed on ``control_id``.
+
+        Empty dict when the graph has no findings or evidence for the control —
+        callers can treat that as "no graph-derived augmentation available".
+
+        Surfaces:
+            graph-finding-id        — id of the highest-severity finding
+            graph-finding-severity  — that finding's severity (High/Medium/Low)
+            graph-finding-status    — Open / Closed
+            graph-finding-drift-class — e.g. DRIFT-SEMANTIC / scheduler-drift
+            graph-poam-entry-id     — linked POAMEntryNode id, when present
+            graph-poam-status       — POAMEntryNode status, when present
+            graph-evidence-id       — witness Evidence id, when graph carries
+                                      evidence for the control
+            graph-scheduler-run-id  — scheduler run id from witness evidence
+            graph-adapter-id        — adapter id from witness evidence
+        """
+        findings = self.findings_for_control(control_id)
+        evs = self.evidence_for_control(control_id)
+        if not findings and not evs:
+            return {}
+
+        props: Dict[str, Any] = {}
+
+        if findings:
+            top = max(
+                findings,
+                key=lambda f: {"High": 3, "Medium": 2, "Low": 1}.get(f.severity, 0),
+            )
+            props["graph-finding-id"] = top.id
+            props["graph-finding-severity"] = top.severity
+            props["graph-finding-status"] = top.status
+            if top.drift_class:
+                props["graph-finding-drift-class"] = top.drift_class
+            for edge in self._out.get(top.id, []):
+                if edge.edge_type == "remediated-by":
+                    poam_node = self._nodes.get(edge.to_id)
+                    if isinstance(poam_node, POAMEntryNode):
+                        props["graph-poam-entry-id"] = poam_node.id
+                        props["graph-poam-status"] = poam_node.status
+                        break
+
+        if evs:
+            scheduler_evs = [e for e in evs if getattr(e, "extra", None)]
+            target = scheduler_evs[0] if scheduler_evs else evs[0]
+            props["graph-evidence-id"] = target.id
+            extra = getattr(target, "extra", {}) or {}
+            if extra.get("run_id"):
+                props["graph-scheduler-run-id"] = extra["run_id"]
+            if extra.get("adapter_id"):
+                props["graph-adapter-id"] = extra["adapter_id"]
+
+        return props
+
+    @staticmethod
+    def resource_uuid_for_control(control_id: str) -> str:
+        """Deterministic UUID for the OSCAL back-matter resource that
+        aggregates graph provenance for ``control_id``.
+
+        Using UUID v5 keyed on ``_OSCAL_GRAPH_RESOURCE_NS`` means every
+        emitter (SAR, SSP, POA&M, component-definition) produces the same
+        resource UUID for the same control, so cross-artifact `links`
+        always resolve to the same back-matter entry.
+        """
+        return str(uuid.uuid5(_OSCAL_GRAPH_RESOURCE_NS, control_id))
+
+    def back_matter_resource_for_control(self, control_id: str) -> Optional[Dict[str, Any]]:
+        """Build a single OSCAL back-matter resource for ``control_id``.
+
+        Returns ``None`` when the graph has no coverage for the control —
+        callers can drop the entry rather than emitting an empty resource.
+        Otherwise, the resource carries graph-derived props and (when the
+        graph was built from a scheduler run) an ``rlinks`` entry pointing
+        to the on-disk evidence path.
+        """
+        sar = self.sar_props_for_evidence(control_id)
+        poam = self.poam_props_for_control(control_id)
+        if not sar and not poam:
+            return None
+
+        merged: Dict[str, Any] = {}
+        for src in (sar, poam):
+            for k, v in src.items():
+                merged.setdefault(k, str(v))
+
+        props = [
+            {"name": "control-id", "value": control_id, "ns": "https://uiao.gov/ns/oscal/graph"},
+        ]
+        for name, value in sorted(merged.items()):
+            props.append({"name": name, "value": value, "ns": "https://uiao.gov/ns/oscal/graph"})
+
+        resource: Dict[str, Any] = {
+            "uuid": self.resource_uuid_for_control(control_id),
+            "title": f"UIAO_113 Evidence Graph trace: {control_id}",
+            "description": (
+                f"Aggregated evidence-graph provenance for control {control_id}. "
+                "Surfaces witness evidence, scheduler dispatch, and the top "
+                "open finding so OSCAL consumers can navigate from a control "
+                "implementation back to the adapter run that produced its evidence."
+            ),
+            "props": props,
+        }
+
+        run_id = merged.get("graph-scheduler-run-id")
+        adapter_id = merged.get("graph-adapter-id")
+        if run_id and adapter_id:
+            resource["rlinks"] = [
+                {
+                    "href": f"schedrun://{run_id}/adapters/{adapter_id}/evidence.json",
+                    "media-type": "application/json",
+                }
+            ]
+        return resource
+
+    def back_matter_resources_for_controls(
+        self,
+        control_ids: Iterable[str],
+    ) -> Dict[str, Dict[str, Any]]:
+        """Build back-matter resources for many controls.
+
+        Returns ``{control_id: resource_dict}`` for controls with graph
+        coverage; controls without coverage are silently dropped.
+        Iteration order is the input order so OSCAL output stays
+        deterministic.
+        """
+        out: Dict[str, Dict[str, Any]] = {}
+        for cid in control_ids:
+            if cid in out:
+                continue
+            res = self.back_matter_resource_for_control(cid)
+            if res is not None:
+                out[cid] = res
+        return out
 
     @classmethod
     def from_evidence_bundle(cls, bundle):

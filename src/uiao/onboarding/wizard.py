@@ -75,7 +75,7 @@ def _prompt(label: str, default: str = "", hint: str = "") -> str:
     if hint:
         console.print(f"  [dim]{hint}[/dim]")
     while True:
-        val = Prompt.ask(f"  [cyan]{label}[/cyan]", default=default).strip()
+        val: str = Prompt.ask(f"  [cyan]{label}[/cyan]", default=default).strip()
         if val:
             return val
         console.print("  [red]This field is required. Please enter a value.[/red]")
@@ -86,7 +86,7 @@ def _prompt_choice(label: str, choices: list[str], default: str = "") -> str:
     choices_str = " / ".join(f"[bold]{c}[/bold]" for c in choices)
     console.print(f"  Options: {choices_str}")
     while True:
-        val = Prompt.ask(f"  [cyan]{label}[/cyan]", default=default).strip().lower()
+        val: str = Prompt.ask(f"  [cyan]{label}[/cyan]", default=default).strip().lower()
         if val in choices:
             return val
         console.print(f"  [red]Invalid choice '[yellow]{val}[/yellow]'. Choose from: {', '.join(choices)}[/red]")
@@ -293,7 +293,7 @@ def run_wizard(output_dir: Path = Path("generation-inputs")) -> Path:
             "Next steps:\n"
             f"  1. Review and edit [bold]{output_path}[/bold]\n"
             "  2. Run [bold]uiao validate-canon[/bold] to check for issues\n"
-            "  3. Run [bold]uiao generate-ssp[/bold] to generate OSCAL artifacts",
+            "  3. Run [bold]uiao generate ssp[/bold] to generate OSCAL artifacts",
             title="Done",
         )
     )

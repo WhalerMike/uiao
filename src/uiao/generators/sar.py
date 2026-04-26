@@ -69,13 +69,22 @@ def _build_observation(
             "ns": _FEDRAMP_NS,
         },
     ]
+    obs_links: List[Dict[str, Any]] = []
     if graph is not None:
         control_id = evidence.control_id or ksi_id
         graph_props = graph.sar_props_for_evidence(control_id)
         for name, value in graph_props.items():
             subject_props.append({"name": name, "value": str(value), "ns": _UIAO_GRAPH_NS})
+        if graph_props:
+            obs_links.append(
+                {
+                    "rel": "graph-evidence",
+                    "href": "#" + graph.resource_uuid_for_control(control_id),
+                    "media-type": "application/json",
+                }
+            )
 
-    return {
+    obs: Dict[str, Any] = {
         "uuid": str(uuid.uuid4()),
         "title": "SCuBA Assessment: " + ksi_id,
         "description": details or ("Automated telemetry observation for " + ksi_id + "."),
@@ -96,6 +105,9 @@ def _build_observation(
         + " | tenant="
         + str(evidence.data.get("tenant_id", "unknown")),
     }
+    if obs_links:
+        obs["links"] = obs_links
+    return obs
 
 
 def _build_finding(
@@ -169,8 +181,17 @@ def _build_risk(evidence: Evidence, finding_uuid: str, now: str) -> Optional[Dic
     }
 
 
-def _build_back_matter(bundle: EvidenceBundle) -> Dict[str, Any]:
-    """Build OSCAL back-matter with evidence resource links."""
+def _build_back_matter(
+    bundle: EvidenceBundle,
+    *,
+    graph: Optional[EvidenceGraph] = None,
+) -> Dict[str, Any]:
+    """Build OSCAL back-matter with evidence resource links.
+
+    When a UIAO_113 graph is provided, one additional resource per
+    graph-covered control is appended so the per-observation
+    ``links[].href = #<resource-uuid>`` references resolve.
+    """
     resources = []
     for e in bundle.evidence:
         ksi_id = e.data.get("ksi_id", e.id)
@@ -197,6 +218,10 @@ def _build_back_matter(bundle: EvidenceBundle) -> Dict[str, Any]:
                 "remarks": "Canonical hash prefix: " + (e.evaluation.get("canonical_hash", "")[:16] or "n/a"),
             }
         )
+    if graph is not None:
+        control_ids = [e.control_id for e in bundle.evidence if e.control_id]
+        for res in graph.back_matter_resources_for_controls(control_ids).values():
+            resources.append(res)
     return {"resources": resources}
 
 
@@ -322,7 +347,7 @@ def build_sar(
                 "risks": risks,
             }
         ],
-        "back-matter": _build_back_matter(bundle),
+        "back-matter": _build_back_matter(bundle, graph=graph),
     }
 
     return {"assessment-results": sar}

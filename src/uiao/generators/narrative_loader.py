@@ -163,10 +163,11 @@ def _render_narrative(
 
     try:
         template = env.from_string(raw)
-        return template.render(
+        rendered: str = template.render(
             organization=_OrgProxy(org_name),
             parameters=parameters,
         )
+        return rendered
     except Exception as exc:
         logger.warning("Jinja2 render failed: %s – returning raw narrative", exc)
         return raw

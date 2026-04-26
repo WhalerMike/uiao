@@ -336,32 +336,32 @@ class TestBuildLiveSsp:
 class TestIRSspInjectCLI:
     def test_runs_without_error(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "live-ssp.json"
-        result = runner.invoke(app, ["ir-ssp-inject", str(scuba_json), "--out", str(out)])
+        result = runner.invoke(app, ["ir", "ssp-inject", str(scuba_json), "--out", str(out)])
         assert result.exit_code == 0, result.output
 
     def test_writes_ssp_file(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "live-ssp.json"
-        runner.invoke(app, ["ir-ssp-inject", str(scuba_json), "--out", str(out)])
+        runner.invoke(app, ["ir", "ssp-inject", str(scuba_json), "--out", str(out)])
         assert out.exists()
 
     def test_output_contains_live_ssp_text(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "live-ssp.json"
-        result = runner.invoke(app, ["ir-ssp-inject", str(scuba_json), "--out", str(out)])
+        result = runner.invoke(app, ["ir", "ssp-inject", str(scuba_json), "--out", str(out)])
         assert result.exit_code == 0
         assert "Live SSP" in result.output or "SSP" in result.output
 
     def test_written_file_is_oscal_ssp(self, scuba_json: Path, tmp_path: Path) -> None:
         out = tmp_path / "live-ssp.json"
-        runner.invoke(app, ["ir-ssp-inject", str(scuba_json), "--out", str(out)])
+        runner.invoke(app, ["ir", "ssp-inject", str(scuba_json), "--out", str(out)])
         data = json.loads(out.read_text())
         assert "system-security-plan" in data
 
     def test_missing_file_exits_nonzero(self, tmp_path: Path) -> None:
         out = tmp_path / "live-ssp.json"
-        result = runner.invoke(app, ["ir-ssp-inject", str(tmp_path / "nonexistent.json"), "--out", str(out)])
+        result = runner.invoke(app, ["ir", "ssp-inject", str(tmp_path / "nonexistent.json"), "--out", str(out)])
         assert result.exit_code != 0
 
     def test_command_appears_in_help(self) -> None:
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "ir-ssp-inject" in result.output
+        assert "ir" in result.output

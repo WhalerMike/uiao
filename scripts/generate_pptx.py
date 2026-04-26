@@ -6,7 +6,7 @@ from pptx import Presentation
 from pptx.util import Inches
 
 warnings.warn(
-    "scripts/generate_pptx.py is deprecated. Use `uiao generate-pptx` instead.",
+    "scripts/generate_pptx.py is deprecated. Use `uiao generate pptx` instead.",
     DeprecationWarning,
     stacklevel=1,
 )

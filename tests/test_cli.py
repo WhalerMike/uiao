@@ -33,30 +33,30 @@ class TestCLIBasics:
         assert "UIAO-Core" in result.stdout or "uiao" in result.stdout.lower()
 
     def test_generate_ssp_help(self) -> None:
-        """generate-ssp --help shows subcommand help."""
-        result = runner.invoke(app, ["generate-ssp", "--help"])
+        """generate ssp --help shows subcommand help."""
+        result = runner.invoke(app, ["generate", "ssp", "--help"])
         assert result.exit_code == 0
         assert "canon" in result.stdout.lower()
 
     def test_validate_help(self) -> None:
-        """validate --help shows subcommand help."""
-        result = runner.invoke(app, ["validate", "--help"])
+        """oscal validate --help shows subcommand help."""
+        result = runner.invoke(app, ["oscal", "validate", "--help"])
         assert result.exit_code == 0
 
     def test_canon_check_help(self) -> None:
-        """canon-check --help shows subcommand help."""
-        result = runner.invoke(app, ["canon-check", "--help"])
+        """canon check --help shows subcommand help."""
+        result = runner.invoke(app, ["canon", "check", "--help"])
         assert result.exit_code == 0
 
     def test_generate_docs_in_help(self) -> None:
-        """generate-docs appears in top-level --help."""
+        """generate appears in top-level --help."""
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "generate-docs" in result.stdout
+        assert "generate" in result.stdout
 
     def test_generate_docs_help(self) -> None:
-        """generate-docs --help shows subcommand help with expected options."""
-        result = runner.invoke(app, ["generate-docs", "--help"])
+        """generate docs --help shows subcommand help with expected options."""
+        result = runner.invoke(app, ["generate", "docs", "--help"])
         assert result.exit_code == 0
         # Strip ANSI escape codes before checking for option names
         plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout).lower()
@@ -74,7 +74,8 @@ class TestCLIBasics:
             result = runner.invoke(
                 app,
                 [
-                    "generate-docs",
+                    "generate",
+                    "docs",
                     "--canon",
                     "generation-inputs/test.yaml",
                     "--data-dir",
@@ -169,13 +170,13 @@ def ksi_mappings_yml(tmp_path: Path) -> Path:
 
 
 # ===========================================================================
-# conmon-process tests
+# conmon process tests
 # ===========================================================================
 
 
 class TestConmonProcess:
     def test_help_shows_command(self) -> None:
-        result = runner.invoke(app, ["conmon-process", "--help"])
+        result = runner.invoke(app, ["conmon", "process", "--help"])
         assert result.exit_code == 0
         plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout).lower()
         assert "alert" in plain
@@ -184,7 +185,8 @@ class TestConmonProcess:
         result = runner.invoke(
             app,
             [
-                "conmon-process",
+                "conmon",
+                "process",
                 "--alert-json",
                 str(tmp_path / "nonexistent.json"),
             ],
@@ -201,7 +203,8 @@ class TestConmonProcess:
         result = runner.invoke(
             app,
             [
-                "conmon-process",
+                "conmon",
+                "process",
                 "--alert-json",
                 str(sentinel_alert_json),
                 "--monitoring-sources",
@@ -227,7 +230,8 @@ class TestConmonProcess:
         result = runner.invoke(
             app,
             [
-                "conmon-process",
+                "conmon",
+                "process",
                 "--alert-json",
                 str(sentinel_alert_json),
                 "--monitoring-sources",
@@ -245,13 +249,13 @@ class TestConmonProcess:
 
 
 # ===========================================================================
-# conmon-export-oa tests
+# conmon export-oa tests
 # ===========================================================================
 
 
 class TestConmonExportOa:
     def test_help_shows_command(self) -> None:
-        result = runner.invoke(app, ["conmon-export-oa", "--help"])
+        result = runner.invoke(app, ["conmon", "export-oa", "--help"])
         assert result.exit_code == 0
         plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout).lower()
         assert "ongoing" in plain or "authorization" in plain or "oscal" in plain
@@ -266,7 +270,8 @@ class TestConmonExportOa:
         result = runner.invoke(
             app,
             [
-                "conmon-export-oa",
+                "conmon",
+                "export-oa",
                 "--monitoring-sources",
                 str(monitoring_sources_yml),
                 "--ksi-mappings",
@@ -291,7 +296,8 @@ class TestConmonExportOa:
         result = runner.invoke(
             app,
             [
-                "conmon-export-oa",
+                "conmon",
+                "export-oa",
                 "--monitoring-sources",
                 str(monitoring_sources_yml),
                 "--ksi-mappings",
@@ -305,13 +311,13 @@ class TestConmonExportOa:
 
 
 # ===========================================================================
-# conmon-dashboard tests
+# conmon dashboard tests
 # ===========================================================================
 
 
 class TestConmonDashboard:
     def test_help_shows_command(self) -> None:
-        result = runner.invoke(app, ["conmon-dashboard", "--help"])
+        result = runner.invoke(app, ["conmon", "dashboard", "--help"])
         assert result.exit_code == 0
         plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout).lower()
         assert "ksi" in plain or "dashboard" in plain
@@ -321,7 +327,8 @@ class TestConmonDashboard:
         result = runner.invoke(
             app,
             [
-                "conmon-dashboard",
+                "conmon",
+                "dashboard",
                 "--ksi-mappings",
                 str(ksi_mappings_yml),
                 "--output",
@@ -339,7 +346,8 @@ class TestConmonDashboard:
         result = runner.invoke(
             app,
             [
-                "conmon-dashboard",
+                "conmon",
+                "dashboard",
                 "--ksi-mappings",
                 str(ksi_mappings_yml),
                 "--output",
@@ -358,7 +366,8 @@ class TestConmonDashboard:
         result = runner.invoke(
             app,
             [
-                "conmon-dashboard",
+                "conmon",
+                "dashboard",
                 "--ksi-mappings",
                 str(ksi_mappings_yml),
                 "--output",
@@ -374,14 +383,14 @@ class TestGenerateAll:
     """Tests for the generate-all orchestration command."""
 
     def test_generate_all_in_help(self) -> None:
-        """generate-all appears in top-level --help."""
+        """generate appears in top-level --help."""
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "generate-all" in result.stdout
+        assert "generate" in result.stdout
 
     def test_generate_all_help(self) -> None:
-        """generate-all --help shows expected options."""
-        result = runner.invoke(app, ["generate-all", "--help"])
+        """generate all --help shows expected options."""
+        result = runner.invoke(app, ["generate", "all", "--help"])
         assert result.exit_code == 0
         plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout).lower()
         assert "canon" in plain
@@ -408,7 +417,8 @@ class TestGenerateAll:
             result = runner.invoke(
                 app,
                 [
-                    "generate-all",
+                    "generate",
+                    "all",
                     "--canon",
                     "generation-inputs/test.yaml",
                     "--data-dir",
@@ -437,7 +447,7 @@ class TestGenerateAll:
         with contextlib.ExitStack() as stack:
             for cm in patches:
                 stack.enter_context(cm)
-            result = runner.invoke(app, ["generate-all", "--skip-sbom"])
+            result = runner.invoke(app, ["generate", "all", "--skip-sbom"])
 
         plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
         assert result.exit_code == 0, plain
@@ -459,7 +469,7 @@ class TestGenerateAll:
         with contextlib.ExitStack() as stack:
             for cm in patches:
                 stack.enter_context(cm)
-            result = runner.invoke(app, ["generate-all"])
+            result = runner.invoke(app, ["generate", "all"])
 
         plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
         assert result.exit_code == 1, plain

@@ -300,11 +300,11 @@ class TestScheduleSummary:
 
 class TestIRFreshnessScheduleCLI:
     def test_runs_without_error(self, scuba_json: Path) -> None:
-        result = runner.invoke(app, ["ir-freshness-schedule", str(scuba_json)])
+        result = runner.invoke(app, ["ir", "freshness-schedule", str(scuba_json)])
         assert result.exit_code == 0, result.output
 
     def test_output_contains_schedule_text(self, scuba_json: Path) -> None:
-        result = runner.invoke(app, ["ir-freshness-schedule", str(scuba_json)])
+        result = runner.invoke(app, ["ir", "freshness-schedule", str(scuba_json)])
         assert result.exit_code == 0
         # Should print either "No refresh jobs" or "Refresh schedule"
         assert "refresh" in result.output.lower() or "No refresh" in result.output
@@ -313,7 +313,7 @@ class TestIRFreshnessScheduleCLI:
         out = tmp_path / "schedule.json"
         result = runner.invoke(
             app,
-            ["ir-freshness-schedule", str(scuba_json), "--out", str(out)],
+            ["ir", "freshness-schedule", str(scuba_json), "--out", str(out)],
         )
         assert result.exit_code == 0, result.output
         if out.exists():
@@ -323,13 +323,13 @@ class TestIRFreshnessScheduleCLI:
     def test_threshold_days_option(self, scuba_json: Path) -> None:
         result = runner.invoke(
             app,
-            ["ir-freshness-schedule", str(scuba_json), "--threshold-days", "1"],
+            ["ir", "freshness-schedule", str(scuba_json), "--threshold-days", "1"],
         )
         assert result.exit_code == 0, result.output
 
     def test_missing_file_exits_nonzero(self, tmp_path: Path) -> None:
         result = runner.invoke(
             app,
-            ["ir-freshness-schedule", str(tmp_path / "nonexistent.json")],
+            ["ir", "freshness-schedule", str(tmp_path / "nonexistent.json")],
         )
         assert result.exit_code != 0

@@ -4,7 +4,7 @@
 This script is kept for backward compatibility. New code should
 import ``build_docs`` from ``uiao.generators.docs``.
 
-Deprecated: Use `uiao generate-docs` CLI command instead.
+Deprecated: Use `uiao generate docs` CLI command instead.
 """
 
 import logging
@@ -13,7 +13,7 @@ import warnings
 from uiao.generators.docs import build_docs
 
 warnings.warn(
-    "scripts/generate.py is deprecated. Use `uiao generate-docs` instead.",
+    "scripts/generate.py is deprecated. Use `uiao generate docs` instead.",
     DeprecationWarning,
     stacklevel=1,
 )
