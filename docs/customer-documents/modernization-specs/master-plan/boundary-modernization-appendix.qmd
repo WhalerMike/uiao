@@ -1,0 +1,252 @@
+---
+title: "UIAO Modernization Master Plan — Boundary Modernization Appendix"
+subtitle: "Authorization-boundary redesign and the Signal Restoration Framework"
+doc-type: master-plan
+phase: "Appendix to Phase 1 — Boundary Modernization"
+audience: "CIO · CISO · ISSO · Authorizing Official (AO) · 3PAO · Network and Security Architects"
+canon-source: "src/uiao/canon/modernization-registry.yaml"
+derived-from: "phase-1-architecture.qmd"
+upstream:
+  - "phase-0-planning.qmd §4 FedRAMP Boundary Gap"
+  - "phase-1-architecture.qmd §3 Inter-Plane Interfaces"
+  - "phase-1-architecture.qmd §4 Signal Taxonomy"
+  - "phase-1-architecture.qmd §7 Conformance Criteria"
+aspirational: true
+date: 2026-04-26
+date-format: "MMMM D, YYYY"
+---
+
+# UIAO Modernization Master Plan — Boundary Modernization Appendix {.unnumbered}
+
+::: {.callout-note}
+## Document Purpose
+This appendix expands the Boundary Gap framing from Phase 0 §4 into a
+concrete redesign of the authorization boundary. It defines the boundary
+class taxonomy, the per-class signal-continuity requirements, the
+normative Signal Restoration Framework, the sequencing constraints the
+boundary redesign imposes on downstream planes, and the conformance
+criteria a boundary redesign must satisfy. It resolves Phase 1 §8 Open
+Question #2.
+:::
+
+---
+
+## 1. Scope and Position in the Program
+
+The authorization boundary is the surface across which signals,
+identities, and traffic transition between domains of differing trust,
+control, or compliance authority. In a FedRAMP Rev 5 system, the
+boundary is defined by the System Security Plan; in operational reality,
+the boundary is crossed many times per user action, by many distinct
+mechanisms, each of which can attenuate signal.
+
+This appendix treats the boundary as an *architectural object* with its
+own redesign plan, not a documentation artifact. Every boundary crossing
+must produce a `boundary-crossing` provenance record (Phase 1 §3.2) and
+must demonstrably preserve the six primary signal classes (Phase 1
+§4.1).
+
+This appendix does not select vendors, prescribe transports, or commit
+to a deployment sequence. Those decisions belong to adapter-level design
+and to the 90-Day Execution Plan respectively.
+
+---
+
+## 2. Boundary Class Taxonomy
+
+UIAO recognizes six boundary classes. Each has distinct continuity
+requirements and distinct failure modes when continuity is not preserved.
+
+| # | Boundary Class | Crossing Example | Primary Failure Mode When Attenuated |
+|---|---|---|---|
+| 1 | **Identity Boundary** | On-prem directory ↔ cloud identity provider | Identity flattening; loss of OU-encoded delegation |
+| 2 | **Network Boundary** | Field-office WAN ↔ central egress ↔ cloud SaaS | Path-dependent policy divergence; regional drift |
+| 3 | **Tenant Boundary** | Cloud-tenant ↔ cloud-tenant (commercial ↔ GCC) | Cross-tenant signal loss; orphaned principals |
+| 4 | **Plane Boundary** | Substrate plane ↔ Enforcement plane | Substrate state consumed without arbitration |
+| 5 | **Telemetry Boundary** | Per-system log surface ↔ unified evidence graph | Per-journey reconstruction becomes infeasible |
+| 6 | **Authorization Boundary** | In-scope FedRAMP system ↔ adjacent / external system | Evidence chain resets at the boundary; cATO interrupted |
+
+Boundary classes are not mutually exclusive: a single user action may
+cross all six in sequence. The Signal Restoration Framework (§4)
+specifies how each class preserves the six primary signal classes.
+
+---
+
+## 3. Continuity Requirements per Boundary Class
+
+Each boundary class is required to preserve the six primary signal
+classes from Phase 1 §4.1 (Identity, Location, Session, Telemetry,
+Media, Policy). Where preservation is not technically feasible at a
+given crossing, the appendix requires *attributed degradation*: a
+provenance record that names the lost signal class and the compensating
+control.
+
+### 3.1 Continuity Matrix
+
+The following matrix is the normative continuity requirement. Cells
+marked **R** are required end-to-end; cells marked **A** require
+attributed degradation if not preserved; cells marked **N/A** mean the
+signal class does not apply at that boundary.
+
+| Boundary ↓ / Signal → | Identity | Location | Session | Telemetry | Media | Policy |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Identity Boundary** | R | A | R | R | N/A | R |
+| **Network Boundary** | R | R | R | R | R | R |
+| **Tenant Boundary** | R | A | R | R | A | R |
+| **Plane Boundary** | R | A | R | R | N/A | R |
+| **Telemetry Boundary** | R | R | R | R | R | R |
+| **Authorization Boundary** | R | R | R | R | R | R |
+
+### 3.2 Compensating Controls for Attributed Degradation
+
+Where the matrix permits attributed degradation, the appendix mandates:
+
+1. A `boundary-crossing` provenance record naming the lost signal class.
+2. A reference to the compensating control in the Compliance plane.
+3. A re-acquisition mechanism downstream (e.g. re-authentication,
+   re-attestation, re-classification of media).
+4. A drift threshold that escalates when attributed degradation exceeds
+   the negotiated rate.
+
+Attributed degradation is not a relaxation of the conformance criteria;
+it is a governed exception with named owner, named compensating control,
+and a measurable threshold.
+
+---
+
+## 4. Signal Restoration Framework
+
+The Signal Restoration Framework (SRF) is the normative pattern by
+which the six primary signal classes are preserved across every boundary
+crossing. It is composed of five layers, each addressing a distinct
+mechanism of signal loss.
+
+### 4.1 Framework Layers
+
+| Layer | Purpose | What It Restores |
+|---|---|---|
+| **L1 — Carry** | Ensure the signal traverses the boundary in an attributed envelope | Identity, Session, Policy |
+| **L2 — Reconstruct** | Rebuild signal context lost in transit using canonical sources | Identity, Location |
+| **L3 — Re-attest** | Re-establish posture or authentication where carry is impossible | Session, Identity |
+| **L4 — Capture** | Emit a provenance record at every crossing, regardless of preservation | Telemetry, Provenance |
+| **L5 — Arbitrate** | Resolve conflicting signals from multiple sources via canonical authority | All classes |
+
+A conforming boundary redesign applies the smallest set of layers
+sufficient to satisfy §3.1 for that boundary class. L4 is mandatory for
+every crossing without exception.
+
+### 4.2 Framework Invariants
+
+Three invariants govern the framework:
+
+1. **Capture is unconditional.** L4 fires on every crossing, including
+   crossings that preserve all signals; the absence of a crossing record
+   is itself drift.
+2. **Reconstruction must cite canonical source.** L2 may not synthesize
+   signal from heuristics; it must cite a canonical source whose
+   provenance is itself reconstructable.
+3. **Arbitration is the Compliance plane's right.** When L5 must choose
+   among conflicting signals, the canonical-authority decision is
+   recorded as a Compliance-plane assertion, not a substrate-plane
+   override.
+
+### 4.3 What the Framework Is Not
+
+- It is not a transport — it does not specify message buses, APIs, or
+  protocols.
+- It is not a vendor selection — it does not commit to a CASB, IdP, SASE
+  fabric, or telemetry pipeline.
+- It is not a one-time migration — it is a continuous operating posture
+  evidenced through Continuous ATO.
+
+---
+
+## 5. Sequencing Constraints on Downstream Planes
+
+Because every downstream plane depends on signals the Boundary Gap
+attenuates, the boundary redesign imposes the following sequencing
+constraints. The 90-Day Execution Plan must respect them.
+
+| # | Constraint | Affected Plane(s) |
+|---|---|---|
+| 1 | No Zero Trust enforcement is treated as conformant until the Identity and Network boundaries satisfy §3.1 row R cells | Security |
+| 2 | No SCuBA conformance assertion is treated as evidenced until the Tenant and Telemetry boundaries satisfy §3.1 | Compliance, Drift Detection |
+| 3 | No cATO authorization-state may derive from evidence whose chain breaks at an unmodernized boundary | Continuous ATO |
+| 4 | No POA&M closure may rely on compensating controls whose attributed-degradation rate exceeds the negotiated threshold | Compliance |
+| 5 | No drift-record may be classified without an upstream `boundary-crossing` record from the implicated crossing | Drift Detection |
+
+These constraints are architectural, not procedural. They are encoded
+into the conformance check for each downstream plane.
+
+---
+
+## 6. Conformance Criteria for Boundary Modernization
+
+A boundary redesign is conforming when, and only when, all of the
+following are demonstrably true:
+
+| # | Criterion | Evidence Surface |
+|---|---|---|
+| 1 | All six boundary classes are inventoried with named owners | Boundary registry |
+| 2 | Every crossing emits a `boundary-crossing` provenance record (SRF L4) | Provenance graph completeness scan over a defined window |
+| 3 | The §3.1 continuity matrix is satisfied for every crossing instance | Per-crossing signal preservation report |
+| 4 | Attributed degradation, where used, has a named compensating control and a measurable threshold | Compensating-control registry |
+| 5 | Reconstruction (SRF L2) cites canonical sources only, with reconstructable provenance | L2 reconstruction audit |
+| 6 | Arbitration (SRF L5) decisions are recorded as Compliance-plane assertions | Arbitration ledger |
+| 7 | Sequencing constraints from §5 are enforced as conformance gates on downstream planes | Cross-plane conformance check |
+| 8 | Boundary modernization posture is sustained, not point-in-time | Continuous-ATO authorization-state derivation trace |
+
+A deployment that satisfies criteria 1–4 is *boundary-evidenced*; one
+that additionally satisfies 5–8 is *boundary-conforming*. Phase 0 §7
+treats the gap between these two states as a foundational risk; this
+appendix makes the gap measurable.
+
+---
+
+## 7. Risks Specific to Boundary Modernization
+
+The Phase 0 §7 risk register names six program-level risks. The
+following five are specific to the boundary redesign and are tracked
+inside this appendix.
+
+| # | Risk | Mitigation Posture |
+|---|---|---|
+| B1 | Boundary inventory is incomplete; unknown crossings exist | Discovery scan as a gating activity in the 90-Day Plan |
+| B2 | Attributed-degradation rate creeps upward as exceptions accumulate | Threshold and trend tracked by Drift Detection; escalation to AO |
+| B3 | Reconstruction (SRF L2) drifts toward heuristic synthesis | L2 reconstruction audit per §6 criterion 5 |
+| B4 | Arbitration (SRF L5) is exercised by substrate planes outside Compliance | Arbitration ledger reviewed at every cATO cycle |
+| B5 | Sequencing constraints are bypassed under schedule pressure | Constraints enforced as automated conformance gates, not policy |
+
+Each risk has an explicit owner in the Boundary Modernization plane and
+an escalation path through the Compliance plane to the AO.
+
+---
+
+## 8. Hand-off to Downstream Phases
+
+This appendix closes when ratified. Downstream consumption is as
+follows:
+
+- **Compliance & ATO Alignment** consumes §3 (Continuity Matrix), §4
+  (SRF Layers and Invariants), and §6 (Conformance Criteria) to bind
+  controls to boundary-evidenced and boundary-conforming states, and to
+  define the cATO authorization-state derivation rule.
+- **90-Day Execution Plan** consumes §2 (Boundary Class Taxonomy), §5
+  (Sequencing Constraints), and §7 (Risks) to schedule discovery,
+  capture, and remediation activities in a sequence that respects the
+  architectural prerequisites.
+
+No downstream commitment is made against an unratified Boundary
+Modernization Appendix; this is the same sequencing rule established in
+Phase 0 §8 and restated in Phase 1 §9.
+
+---
+
+::: {.callout-tip appearance="minimal"}
+## Document Governance
+This Boundary Modernization Appendix is a canonical program artifact.
+Changes are governed by the canon-change protocol; substantive revisions
+require an ADR, a schema check, and a drift scan. The appendix derives
+from the Phase 1 Architecture Document and is the upstream source for
+the Compliance & ATO Alignment document and the 90-Day Execution Plan.
+:::
