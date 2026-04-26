@@ -705,14 +705,15 @@ Work required:
 - Apply the same UIAO_131 §5.1 language to both adapter registry entries.
 - Ensure tier-2 fixtures (static WAPI/BAM API response payloads) are sufficient for the conformance gate in the absence of tier-1.
 
-### 2.6 — UIAO_121/123 instantiation for all passing adapters (partial — `terraform` shipped)
+### 2.6 — UIAO_121/123 instantiation for all passing adapters (partial — `terraform` + `entra-id` shipped)
 
 The adapter conformance and integration test plan templates are currently empty. Every adapter that clears tier-1 and tier-2 must have both templates filled.
 
 **`terraform` instantiated (2026-04-26):** [`docs/customer-documents/validation-suites/adapters/terraform/terraform.qmd`](../customer-documents/validation-suites/adapters/terraform/terraform.qmd) is the first active UIAO_121 + UIAO_123 instantiation. The aspirational banner is removed; per-control adapter roles (CM-2 / CM-3 primary, CM-6 / CM-8 supporting, CA-7 evidence-only) are documented; the conformance matrix carries 30 / 30 PASS rows. Phase 4 acceptance is the only remaining gap (gated on live vendor credentials).
 
+**`entra-id` instantiated (2026-04-26, tier-1 pending):** [`docs/customer-documents/validation-suites/adapters/entra-id/entra-id.qmd`](../customer-documents/validation-suites/adapters/entra-id/entra-id.qmd) — second instantiation. Conformance gate clears against mocked Graph collector (30 / 30 PASS, 13 behavioral tests, scheduler-wired); per-control roles documented (AC-2 / IA-2 primary, IA-4 / CM-8 supporting). Tier-1 against a live M365 tenant remains pending §0.1 (M365 Developer Program signup).
+
 Work remaining:
-- `entra-id` — has tier-2 (scheduler-wired); tier-1 pending on M365 Developer Program tenant. Instantiation can ship once tier-1 lands.
 - `m365`, `service-now`, `palo-alto`, `cyberark`, `scuba` — gated on §2.1–2.5 vendor access.
 - `infoblox` / `bluecat-address-manager` — covered separately by §2.5 compensating strategy.
 - Document-registry.yaml ADR: the 900-range vs 400-range numbering question for filled UIAO_121/123 instances is still open. Deferred — current pattern (one `<adapter-id>.qmd` per adapter under `validation-suites/adapters/`) works without new UIAO_NNN IDs.
