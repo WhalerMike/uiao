@@ -1,8 +1,6 @@
 ---
-document_id: UIAO_116_policies_index
 title: "EPL Reference Policies (UIAO_116)"
 status: Current
-classification: CANONICAL
 ---
 
 # EPL Reference Policies
