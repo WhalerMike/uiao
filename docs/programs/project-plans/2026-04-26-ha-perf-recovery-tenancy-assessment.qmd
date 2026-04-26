@@ -1,0 +1,227 @@
+---
+title: "Assessment — UIAO_114 / 115 / 117 / 119 (HA, Performance, Recovery, Tenancy)"
+subtitle: "UIAO_127 instantiation per roadmap §4.4"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Project-plan assessment of the four production-readiness specs that remain aspirational at v0.5. Records the implement-vs-defer decision for each and the rationale, per roadmap §4.4."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Template | UIAO_127 Project Plan (assessment shape) |
+| Subjects | UIAO_114 HA, UIAO_115 Performance, UIAO_117 Recovery, UIAO_119 Tenancy |
+| Plan version | 1.0 (first delivery) |
+| Roadmap section | §4.4 |
+
+## Purpose
+
+Roadmap §4.4 requires that each of UIAO_114, UIAO_115, UIAO_117, and UIAO_119 be **assessed** — does the existing substrate already satisfy the spec's invariants by construction, or does the spec describe genuine work that needs scheduling? This document is that assessment, scoped per spec, with an explicit implement-or-defer recommendation and the rationale.
+
+The assessment was produced by reading each canon spec end-to-end and grepping the `src/uiao/` tree for satisfying implementations. It is not an architectural redesign — the goal is to convert four ⚠️ aspirational rows into either "🟡 working" (when impl lands) or "deferred-with-rationale" (when defer is the right call), so the substrate-status page tells the truth.
+
+## Decision summary
+
+| Spec | Recommendation | One-line rationale | Blocker for v1.0? |
+|---|---|---|---|
+| **UIAO_114 HA / Fault Tolerance** | **Defer to Phase 2** | Cross-region active-passive is operational infrastructure; adapter-level retry already covers single-region Phase 1. | No (single-region) |
+| **UIAO_115 Performance Engineering** | **Defer to Phase 2** | Latency budgets are aspirational without empirical baseline; profile-then-optimize. | No (no SLO breaches today) |
+| **UIAO_117 Recovery Layer** | **Two-phase: doc Phase 1, implement Phase 2** | Manual SOP + Raw-Zone immutability scaffolding now; full 5-stage reconstitution gated on regulated tenants. | Phase 2 yes, Phase 1 no |
+| **UIAO_119 Tenancy & Environments** | **Implement now (~2.5 weeks)** | UIAO_112 primitives are in place; canary rollout is a v1.0 prerequisite for safe multi-tenant prod. | Yes |
+
+## UIAO_114 — HA / Fault Tolerance
+
+**Recommendation: defer with rationale.**
+
+### Spec contract
+
+99.9–99.95% availability via active-passive geo-replicated control plane, single-writer determinism, tiered data replication (≥11 nines for the Raw Zone), and per-plane graceful degradation. Failover/failback events are provenance-signed.
+
+### Invariants the spec sets
+
+- Availability SLOs: 99.9% commercial, 99.95% GCC-Moderate.
+- Evidence freshness: <15 min lag for M365/AAD; drift <5 min; OSCAL <10 min.
+- Active-passive topology, single writer per cohort/region.
+- Plane-level fault isolation (Plane 1–4 each degrade independently).
+- Failover events cryptographically bound to provenance.
+
+### Existing implementation
+
+`src/uiao/orchestrator/scheduler.py` ships exponential-backoff retry at the adapter level (base 0.5s, 2^attempt, max 2 retries). That is sound transient-fault mitigation but does not satisfy any of the cross-region invariants. Specifically absent:
+
+- Regional health probe / failure-detection loop.
+- Metadata-store replication (no standby-region concept).
+- Failover trigger or manual-promotion workflow.
+- Cross-region replication orchestration.
+- Plane-level error-budget tracking.
+
+The substrate walker enforces structural hygiene only — it does not test HA contracts.
+
+### Defer rationale
+
+HA at this scale is operational-infrastructure work (multi-AZ deployment, replication middleware, failover orchestration), not core governance logic. It is the natural responsibility of the platform team during Phase 2 (regulated-tenant onboarding). The right Phase 1 posture is: one region, one writer, retry on transient failure, accept short downtime windows. UIAO_114 stays ⚠️ aspirational until the platform team owns it.
+
+### Action items
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 114.1 | Hold UIAO_114 at ⚠️ aspirational; annotate substrate-status with "deferred to Phase 2" | Substrate maintainer | This PR |
+| 114.2 | Reopen during Phase 2 partner-agency engagement | Partner agency + platform team | Phase 2 kickoff |
+
+## UIAO_115 — Performance Engineering
+
+**Recommendation: defer with rationale.**
+
+### Spec contract
+
+Strict per-plane latency budgets — Plane 1 <3s, Plane 2 <1s, Plane 3 <2s, Plane 4 <2s, total <10s — backed by incremental ingestion, rule grouping/vectorization, delta-based drift, fragment caching, and a four-layer deterministic cache (IR / KSI / Evidence / OSCAL).
+
+### Existing implementation
+
+The orchestrator records wall-clock duration per plane and per adapter run (timestamps in `PlaneResult` / `AdapterRun` dataclasses). Timing measurements exist; SLO enforcement does not. Specifically absent:
+
+- Latency threshold check or alerting hook.
+- Cache layer (queries run fresh each time).
+- Incremental evidence ingestion (adapters take full snapshots).
+- Vectorized KSI rule evaluation (scalar loops).
+- Drift delta computation (full re-evaluation per run).
+- Zstandard compression (evidence persisted as JSON).
+
+`src/uiao/governance/sla.py` defines escalation SLAs by severity (7–60 days). That is enforcement-runtime SLA, not pipeline-latency SLO.
+
+### Defer rationale
+
+The spec is aspirational without testable predicates today — it lists optimization techniques (Numba/Rust kernels, Redis cache, M365 delta tokens) but does not bind them to measured baselines. Performance work without empirical baseline is premature: profile the pipeline on a realistic evidence set, identify the actual hotspot (probably KSI evaluation or OSCAL emission), then optimize. Current orchestrator runs comfortably in seconds for the synthetic fixtures; no SLO is breached because no SLO is enforced. Defer until either (a) a real tenant exposes a hot path or (b) the Phase 2 onboarding plan needs a latency SLO contract.
+
+### Action items
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 115.1 | Hold UIAO_115 at ⚠️ aspirational; annotate substrate-status with "deferred pending baseline" | Substrate maintainer | This PR |
+| 115.2 | Run the orchestrator against a representative evidence set; record per-plane wall-clock baseline as a fixture | Substrate maintainer | When first real tenant onboards |
+| 115.3 | Identify top 1 hotspot from baseline; propose targeted optimization (cache OR vectorization OR incremental ingest); implement only that one | Substrate maintainer | After 115.2 |
+
+## UIAO_117 — Recovery Layer
+
+**Recommendation: two-phase — Phase 1 doc + scaffolding now; Phase 2 full automation later.**
+
+### Spec contract
+
+UIAO survives catastrophic failure by deterministically reconstituting governance state from the Raw Zone through a five-stage pipeline (metadata → evidence → IR → KSI → OSCAL). Recovery manifests are provenance-signed; a post-recovery drift audit proves consistency against the last known-good.
+
+### Invariants the spec sets
+
+- Four failure classes: A (localized service), B (regional control-plane), C (data-zone corruption), D (total system collapse).
+- Five recovery invariants: Raw Zone is source-of-truth; provenance stays intact; determinism preserved; no silent loss; no partial state.
+- Five-stage reconstitution is byte-for-byte deterministic.
+- Recovery manifest signed and countersigned.
+- Sovereignty-aware cross-region recovery (no cross-border evidence movement).
+
+### Existing implementation
+
+Two relevant primitives exist but neither is a recovery layer:
+
+- `src/uiao/governance/enforcement.py` appends JSONL records to disk and reads them back — a live operational journal, not a replay log.
+- `src/uiao/storage/data_lake.py` implements retention + archive expiration with hot/cold tiering — but the archive is not designated immutable, and there is no recovery API.
+
+Specifically absent: Raw Zone designation, immutability enforcement, point-in-time checkpoint, journal replay, state reconstruction pipeline, recovery manifest signing, drift audit comparison, federated consensus.
+
+### Phased recommendation
+
+**Phase 1 (≤2 weeks, schedulable now):**
+
+1. Designate `src/uiao/storage/data_lake.py` archive root as the Raw Zone. Add an immutability assertion (write-once on `archive_run`; `expire` only ages out beyond retention, never overwrites).
+2. Snapshot orchestrator-run metadata on each successful run (already persisted; just label it `checkpoint:`).
+3. Document the Class A / Class B manual recovery SOP as a UIAO_124 Adapter Ops Runbook entry.
+
+**Phase 2 (deferred to roadmap §4.x for regulated tenants):**
+
+1. Automated recovery orchestrator that replays the journal and rebuilds IR / KSI / OSCAL deterministically.
+2. Recovery manifest signing.
+3. Drift audit comparing reconstructed state to last known-good.
+4. Federated consensus for cross-region disagreements.
+
+### Action items
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 117.1 | Schedule Phase 1 (Raw-Zone immutability + checkpoint label + manual SOP) as a UIAO_127 sub-plan | Substrate maintainer | Next sprint |
+| 117.2 | Hold Phase 2 until first regulated-tenant engagement | Partner agency + substrate maintainer | Phase 2 kickoff |
+
+## UIAO_119 — Tenancy & Environments
+
+**Recommendation: implement now (~2.5 weeks).**
+
+### Spec contract
+
+UIAO is safe to change via strict dev/stage/prod separation, four tenant classes (Internal / Canary / Standard / Regulated), feature flags scoped by environment & tenant, phased rollout (canary → standard → regulated), and migration sandboxes that diff outputs before promotion.
+
+### Invariants the spec sets
+
+- Three canonical environments: Dev, Stage, Prod.
+- Four tenant classes with channel rules: Internal (all channels), Canary (Beta/Stable), Standard (Stable), Regulated (LTS/FIPS).
+- Feature flags scoped by env / tenant / individual with spec reference + expiry.
+- Phased rollout: Dev → Stage canary → Prod canary → Prod standard → Prod regulated.
+- No cross-env data movement except downward (anonymized).
+- Shared infra limited to orchestrator, API gateway, plugin registry (metadata only).
+
+### Existing implementation
+
+UIAO_112 (Multi-Tenant Isolation, `src/uiao/governance/tenancy.py`) ships the v1 primitives: `Tenant` dataclass (id, credential_scope, boundary, status), `TenantRegistry` (YAML loader), `TenantContext` (runtime carrier), `tenant_scoped_path()` (path namespacing), `assert_tenant_match()` (isolation guard). This is the foundation UIAO_119 assumes.
+
+What's missing for UIAO_119 specifically:
+
+- `tenant_class` enum field on `Tenant` (Internal / Canary / Standard / Regulated).
+- `Environment` enum + `DeploymentContext` (Dev / Stage / Prod) threaded through API + CLI.
+- Feature-flag system (decorator + toggle table; canary-by-flag; scope by env / tenant / actor).
+- Migration sandbox (clone `TenantContext`, run pipeline, snapshot outputs, emit diff).
+- Tenant + environment tags on journal records and logs (`governance/report.py` exists but is untagged).
+
+### Implement-now rationale
+
+The UIAO_112 foundation is in place and used by `journal`, `archive`, and `scheduler`. UIAO_119 is the next bricks on that foundation, and it's a v1.0 prerequisite — without environment + tenant-class + feature flags, every change to the substrate ships to every tenant simultaneously. That's safe at one synthetic tenant; it is not safe at a real Acme Federal + a real second agency.
+
+This is scaffolding work, not algorithmic work. The estimated breakdown:
+
+| Work item | Hours |
+|---|---|
+| Add `tenant_class` enum field; load from canon | 3 |
+| `Environment` enum + `DeploymentContext`; thread through API / CLI | 5 |
+| Feature-flag system: decorator + toggle table; wire into orchestrator plane selection | 12 |
+| Migration sandbox: clone context, run pipeline, snapshot outputs, emit diff report | 8 |
+| Tenant + environment tagging in journals + logs | 4 |
+| Update canon declarations + tests | 6 |
+| **Total** | **~38 h (~2.5 weeks)** |
+
+### Action items
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 119.1 | Open a UIAO_119 implementation PR per the work-item breakdown above | Substrate maintainer | Next sprint |
+| 119.2 | Add `tenant_class` and `environment` to `tenants.yaml` schema + walker hygiene | Substrate maintainer | Within 119.1 |
+| 119.3 | Document the canary → standard → regulated rollout flow as a UIAO_124 Adapter Ops Runbook entry once the feature-flag system lands | Substrate maintainer | After 119.1 |
+
+## Roll-up to substrate-status
+
+Once this PR lands, the substrate-status rows update as follows:
+
+| Row | From | To |
+|---|---|---|
+| UIAO_114 | ⚠️ aspirational (no notes) | ⚠️ aspirational — **deferred to Phase 2** per [this assessment](../project-plans/2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+| UIAO_115 | ⚠️ aspirational | ⚠️ aspirational — **deferred pending baseline** per assessment |
+| UIAO_117 | ⚠️ aspirational | ⚠️ aspirational — **Phase 1 scheduled, Phase 2 deferred** per assessment |
+| UIAO_119 | ⚠️ aspirational | ⚠️ aspirational — **scheduled for next sprint** (~2.5 weeks scope) per assessment |
+
+The aspirational flag stays on each row; the substrate-status table now carries a pointer to the assessment so the rationale is readable from the public page. The roadmap §4.4 entry flips to ✅ assessed.
+
+## References
+
+- UIAO_127 Project Plan template
+- UIAO_114 HA spec — `src/uiao/canon/specs/ha.md`
+- UIAO_115 Performance spec — `src/uiao/canon/specs/performance.md`
+- UIAO_117 Recovery spec — `src/uiao/canon/specs/recovery.md`
+- UIAO_119 Tenancy spec — `src/uiao/canon/specs/tenancy.md`
+- UIAO_112 Multi-Tenant Isolation impl — `src/uiao/governance/tenancy.py` (foundation for UIAO_119)
+- Roadmap §4.4 (this assessment closes it)
