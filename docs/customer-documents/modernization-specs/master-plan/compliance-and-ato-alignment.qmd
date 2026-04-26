@@ -1,0 +1,333 @@
+---
+title: "UIAO Modernization Master Plan — Compliance & ATO Alignment"
+subtitle: "Control bindings, KSI alignment, evidence chain, and the continuous ATO operating model"
+doc-type: master-plan
+phase: "Phase 2 — Compliance & ATO Alignment"
+audience: "CIO · CISO · ISSO · Authorizing Official (AO) · 3PAO · Compliance Officers"
+canon-source: "src/uiao/canon/modernization-registry.yaml"
+derived-from: "boundary-modernization-appendix.qmd"
+upstream:
+  - "phase-0-planning.qmd §5 Objectives & Outcomes"
+  - "phase-1-architecture.qmd §5 Control Binding Model"
+  - "phase-1-architecture.qmd §7 Conformance Criteria"
+  - "boundary-modernization-appendix.qmd §3 Continuity Requirements"
+  - "boundary-modernization-appendix.qmd §6 Conformance Criteria"
+aspirational: true
+date: 2026-04-26
+date-format: "MMMM D, YYYY"
+---
+
+# UIAO Modernization Master Plan — Compliance & ATO Alignment {.unnumbered}
+
+::: {.callout-note}
+## Document Purpose
+This document binds the UIAO architecture to the federal compliance
+landscape and defines the continuous ATO operating model. It produces
+the per-mandate crosswalk approach, the KSI alignment model, the
+evidence-chain requirements that authorize the cATO posture, the POA&M
+model, and the AO decision-support surface. It consumes the Phase 1
+Control Binding Model (§5) and Conformance Criteria (§7), and the
+Boundary Modernization Appendix Continuity Requirements (§3) and
+Conformance Criteria (§6).
+:::
+
+---
+
+## 1. Mandate Landscape
+
+UIAO is bound to a defined set of federal mandates and frameworks. The
+program does not introduce net-new compliance regimes; it aligns to the
+existing landscape and makes the alignment evidentially complete.
+
+| Mandate / Framework | Authority | Scope of Alignment |
+|---|---|---|
+| **EO 14028** | Executive Order, May 2021 | Zero Trust transition, EDR, logging maturity, supply-chain integrity |
+| **OMB M-22-09** | Office of Management and Budget | Federal Zero Trust strategy, identity and device conditions of access |
+| **NIST SP 800-207** | National Institute of Standards and Technology | Zero Trust architecture reference model |
+| **NIST SP 800-53 Rev 5** | NIST | Security and privacy control catalog |
+| **FedRAMP Rev 5** | FedRAMP PMO | Cloud-service authorization baseline (Low / Moderate / High) |
+| **CISA SCuBA** | Cybersecurity and Infrastructure Security Agency | Secure configuration baselines for M365 and cloud business apps |
+| **OMB M-24-15** | OMB | Continuous monitoring and ongoing authorization expectations |
+| **NIST OSCAL** | NIST | Machine-readable representation of catalogs, profiles, components, SSP, SAR, POA&M |
+
+Alignment to each mandate is expressed as plane bindings (Phase 1 §5)
+and conformance criteria (this document §7), not as narrative claims.
+
+---
+
+## 2. Control Binding Approach
+
+Phase 1 §5 defines the binding shape. This section commits the program
+to the binding *approach*: how controls are selected, attached to
+planes, evidenced, and arbitrated.
+
+### 2.1 Binding Pipeline
+
+| Step | Activity | Output |
+|---|---|---|
+| 1 | Catalog ingestion | Canonical control library populated from NIST 800-53 Rev 5, FedRAMP Rev 5 baselines, SCuBA baselines, and KSI definitions |
+| 2 | Plane mapping | Each control bound to one or more planes per Phase 1 §5.1 |
+| 3 | Signal selection | Each binding cites the signal class on which conformance is evidenced (Phase 1 §4) |
+| 4 | Evidence pattern | Each binding declares the provenance-record shape that constitutes proof |
+| 5 | Cadence assignment | Each binding declares a re-evaluation cadence consistent with cATO §5 |
+| 6 | Arbitration rule | Where a control binds to multiple planes, the arbitration rule names the Compliance plane as sole arbiter |
+| 7 | Gap recording | Controls with no observable signal are recorded as Compliance-plane gaps and managed through POA&M |
+
+### 2.2 Binding Quality Bar
+
+A binding is acceptable when, and only when:
+
+1. The cited signal class is producible by the cited plane.
+2. The evidence pattern is verifiable from the provenance graph alone,
+   without out-of-band claims.
+3. The cadence is achievable by the deployment without continuous human
+   intervention.
+4. The arbitration rule names a single canonical authority.
+
+Bindings that fail this bar are recorded as gaps; they are not
+relaxed to fit available signal.
+
+---
+
+## 3. KSI Alignment
+
+Key Security Indicators (KSIs) are the program's compact, AO-facing
+expression of compliance posture. They are derived from control state,
+not asserted independently.
+
+### 3.1 KSI Derivation Rule
+
+Every KSI satisfies the following derivation chain:
+
+```
+provenance-record  →  control-state  →  KSI outcome  →  authorization-state
+       (Evidence)        (Compliance)     (Compliance)      (Continuous ATO)
+```
+
+A KSI that cannot be traced to a provenance-record is not a KSI; it is
+an unsupported claim and is rejected at the Compliance plane.
+
+### 3.2 KSI Tiering
+
+| Tier | Audience | Update Cadence | Example Signal Source |
+|---|---|---|---|
+| **Tier 1 — AO surface** | Authorizing Official | Daily or event-driven | Aggregate control posture, boundary-conformance posture |
+| **Tier 2 — ISSO surface** | Information System Security Officer | Hourly | Control-family rollups, drift trend |
+| **Tier 3 — Operator surface** | Engineering operators | Continuous | Per-control state, per-binding evidence freshness |
+
+Tiering is a presentation choice; the underlying provenance is the same
+across tiers.
+
+### 3.3 KSI Drift
+
+KSIs are themselves subject to Drift Detection. A KSI whose underlying
+evidence pattern has not refreshed within its declared cadence is
+flagged as *stale* — distinct from *failed* — and surfaces to the AO
+with that classification.
+
+---
+
+## 4. Evidence Chain Requirements
+
+The evidence chain is the single source of truth for compliance. The
+following requirements are normative; deviation invalidates the cATO
+posture for the affected control bindings.
+
+### 4.1 Chain Properties
+
+| Property | Requirement |
+|---|---|
+| **Attribution** | Every record names a producer (human, automation, or governance engine) |
+| **Timestamp** | Every record carries a monotonic, attributable timestamp |
+| **Immutability** | Records are append-only; corrections are new records that cite the corrected predecessor |
+| **Reconstructability** | Any control-state assertion must be reconstructable from the chain alone |
+| **Boundary-Continuity** | Every boundary crossing in the evidence path must satisfy Boundary Appendix §3.1 |
+| **Schema-Conformance** | Records validate against the canonical schema; non-conforming records are quarantined, not consumed |
+
+### 4.2 Forbidden Evidence Patterns
+
+Three patterns are explicitly disallowed:
+
+1. **Narrative-only evidence.** A control whose evidence is a written
+   description with no underlying provenance-record is a gap, not an
+   evidenced control.
+2. **Sampled evidence presented as continuous.** Point-in-time samples
+   may not be aggregated into continuous-monitoring claims unless the
+   sampling cadence is itself recorded and conformant.
+3. **Reconstruction via heuristic.** Evidence reconstructed from
+   inference (rather than from canonical source) violates SRF Invariant
+   2 (Boundary Appendix §4.2) and is rejected.
+
+### 4.3 OSCAL Surface
+
+The Compliance plane emits OSCAL artifacts as the canonical machine-
+readable representation:
+
+| Artifact | Source | Consumer |
+|---|---|---|
+| **OSCAL Component** | Per-plane control bindings | SSP assembly |
+| **OSCAL SSP** | Aggregated component bindings + boundary description | AO, 3PAO |
+| **OSCAL SAR** | Assessment results derived from provenance graph | AO, 3PAO |
+| **OSCAL POA&M** | Open gaps and scheduled remediation | AO, 3PAO, ISSO |
+| **OSCAL Profile** | Tailored baseline (FedRAMP Rev 5 Moderate or applicable variant) | Internal program governance |
+
+OSCAL output is a *projection* of the canonical evidence chain, not a
+parallel record. Projections must be regenerable from the chain at any
+time.
+
+---
+
+## 5. Continuous ATO Operating Model
+
+Continuous ATO (cATO) is the operating posture under which authorization
+is sustained, not periodically renewed. The model has four mechanisms.
+
+### 5.1 Mechanism 1 — Authorization-State Derivation
+
+The Continuous ATO plane derives a single `authorization-state` value
+from the Compliance plane's control-state, the Boundary Appendix's
+boundary-conformance posture, and the Drift Detection plane's drift
+classification. The derivation rule is canonical and reconstructable
+from the evidence chain.
+
+### 5.2 Mechanism 2 — Re-Assessment Triggers
+
+Re-assessment is event-driven, not calendar-driven. The following events
+are authoritative triggers:
+
+| Trigger Class | Example |
+|---|---|
+| **Control-state regression** | A previously satisfied binding falls below its evidence threshold |
+| **Boundary-conformance regression** | A `boundary-crossing` record indicates loss of a previously preserved signal class |
+| **Schema or profile change** | A canonical schema or applicable profile is updated under the canon-change protocol |
+| **Drift escalation** | A drift-record crosses a defined severity threshold |
+| **Mandate update** | An applicable mandate (EO, OMB memo, NIST profile, SCuBA baseline) is updated |
+
+Calendar-based assessments still occur where mandated externally; they
+are additional, not substitutive.
+
+### 5.3 Mechanism 3 — AO Decision-Support Surface
+
+The AO surface presents:
+
+1. The current `authorization-state` and its derivation trace.
+2. The Tier 1 KSI set with stale/failed/conformant classification.
+3. The set of open POA&M items with severity, owner, and target date.
+4. The set of attributed-degradation exceptions from the Boundary
+   Appendix and their threshold posture.
+5. The set of pending re-assessment triggers and their disposition.
+
+The AO is provided with the inputs that produced the
+`authorization-state`, not just the conclusion. This is a non-negotiable
+property of the cATO model.
+
+### 5.4 Mechanism 4 — 3PAO Reproducibility
+
+A 3PAO must be able to reproduce any `authorization-state` value from
+the evidence chain alone, using the canonical derivation rule. This is
+the operational expression of evidence-chain reconstructability (§4.1).
+
+---
+
+## 6. POA&M Model
+
+Plan of Action and Milestones (POA&M) records are the canonical
+representation of known gaps. UIAO treats POA&M as a first-class
+governance object, not a side document.
+
+### 6.1 POA&M Lifecycle
+
+| Stage | Producer | Consumer |
+|---|---|---|
+| **Open** | Compliance plane (from §2.1 step 7 gap recording) or Drift Detection (from drift-record escalation) | AO, ISSO |
+| **Mitigation in progress** | Plane owner | Compliance plane, AO |
+| **Compensating-control accepted** | AO via Compliance plane | 3PAO, Continuous ATO |
+| **Closed** | Compliance plane, on evidence-pattern satisfaction | AO, 3PAO, Continuous ATO |
+| **Aged** | Compliance plane, when target date passes without closure | AO (escalated) |
+
+### 6.2 POA&M Closure Rule
+
+A POA&M item closes only when:
+
+1. The triggering gap or drift is no longer present in the evidence chain.
+2. The closure event is itself a provenance-record.
+3. The closure does not depend on attributed degradation exceeding the
+   thresholds set in Boundary Appendix §3.2.
+
+Closure-by-narrative is forbidden; this is the POA&M-level expression
+of §4.2 forbidden evidence pattern 1.
+
+---
+
+## 7. Conformance Criteria
+
+A deployment is Compliance-conforming when, and only when, all of the
+following are demonstrably true:
+
+| # | Criterion | Evidence Surface |
+|---|---|---|
+| 1 | Every applicable control has a binding or an open POA&M item | Control library coverage report |
+| 2 | Every binding satisfies the §2.2 quality bar | Binding audit |
+| 3 | KSIs are derived per §3.1, with declared tiering and cadence | KSI derivation trace |
+| 4 | The evidence chain satisfies all six §4.1 properties | Chain integrity scan |
+| 5 | OSCAL artifacts are regenerable from the chain on demand | OSCAL regeneration test |
+| 6 | The cATO authorization-state is reconstructable by a 3PAO from the chain alone | Reproducibility audit |
+| 7 | POA&M items obey the §6.2 closure rule | POA&M closure audit |
+| 8 | Mandate coverage from §1 is bound to planes per Phase 1 §5.3 with no orphan mandates | Mandate-coverage matrix |
+
+A deployment that satisfies criteria 1–4 is *evidence-conforming*; one
+that additionally satisfies 5–8 is *authorization-conforming*. Phase 1
+§7 names this distinction; Boundary Appendix §6 reinforces it; this
+document operationalizes it.
+
+---
+
+## 8. Risks Specific to Compliance & ATO
+
+The following risks are tracked inside this document, in addition to the
+program-level Phase 0 §7 risk register and the boundary-specific risks
+in Boundary Appendix §7.
+
+| # | Risk | Mitigation Posture |
+|---|---|---|
+| C1 | Control catalog drift outpaces binding refresh | Catalog ingestion (§2.1 step 1) is automated and re-run on every canonical update |
+| C2 | KSIs become decorative — surface improves while underlying evidence does not | KSI derivation trace (§3.1) is auditable; Tier 1 KSI changes require provenance citation |
+| C3 | OSCAL projections diverge from canonical chain | OSCAL regeneration test (§7 criterion 5) runs on every assessment cycle |
+| C4 | POA&M items close on narrative rather than evidence | §6.2 closure rule enforced as automated check |
+| C5 | cATO authorization-state derived from a chain with hidden boundary gaps | §5.1 derivation must consume Boundary Appendix conformance posture as input |
+| C6 | Mandate updates are applied to documentation but not to bindings | Mandate-update event is an authoritative re-assessment trigger (§5.2) |
+
+Each risk has an explicit owner in the Compliance plane and an
+escalation path to the AO via the Continuous ATO surface.
+
+---
+
+## 9. Hand-off to the 90-Day Execution Plan
+
+This document closes when ratified. The 90-Day Execution Plan consumes
+it as follows:
+
+- §2 (Control Binding Approach) sequences the catalog-ingestion and
+  binding work as discrete Day-N activities.
+- §4 (Evidence Chain Requirements) defines the acceptance bar for every
+  evidence-related deliverable in the 90-day window.
+- §5 (cATO Operating Model) is the target operating posture the 90-day
+  window must establish, even if not yet sustained at full cadence.
+- §7 (Conformance Criteria) defines the conformance gates against which
+  90-day milestones are evaluated.
+
+No 90-Day milestone may declare completion against an unratified
+Compliance & ATO Alignment baseline; this is the same sequencing rule
+established in Phase 0 §8 and restated throughout the master plan.
+
+---
+
+::: {.callout-tip appearance="minimal"}
+## Document Governance
+This Compliance & ATO Alignment document is a canonical program
+artifact. Changes are governed by the canon-change protocol; substantive
+revisions require an ADR, a schema check, and a drift scan. The document
+derives from the Phase 1 Architecture Document and the Boundary
+Modernization Appendix, and is the upstream source for the 90-Day
+Execution Plan.
+:::
