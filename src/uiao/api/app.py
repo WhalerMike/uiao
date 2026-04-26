@@ -22,7 +22,16 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from .auth.entra_token import EntraTokenProvider
-from .routes import auditor, health, orgpath, survey
+from .routes import (
+    archive,
+    auditor,
+    enforcement,
+    epl,
+    health,
+    orgpath,
+    survey,
+    ztmm,
+)
 
 
 # ------------------------------------------------------------------
@@ -91,3 +100,12 @@ app.include_router(health.router, tags=["Health"])
 app.include_router(survey.router, prefix="/api/v1/survey", tags=["AD Survey"])
 app.include_router(orgpath.router, prefix="/api/v1/orgpath", tags=["OrgPath"])
 app.include_router(auditor.router, prefix="/api/auditor", tags=["Auditor API"])
+# §3.1 Auditor API surface for the Phase 3 governance modules.
+app.include_router(ztmm.router, prefix="/api/v1/ztmm", tags=["ZTMM (UIAO_120)"])
+app.include_router(epl.router, prefix="/api/v1/epl", tags=["EPL (UIAO_116)"])
+app.include_router(
+    enforcement.router,
+    prefix="/api/v1/enforcement",
+    tags=["Enforcement (UIAO_111)"],
+)
+app.include_router(archive.router, prefix="/api/v1/archive", tags=["Data Lake (UIAO_109)"])
