@@ -1,0 +1,738 @@
+---
+title: "UIAO vs Microsoft Native Tools — Gap Analysis"
+subtitle: "Why Microsoft's 12 tools don't replace a governance orchestration layer"
+doc-type: whitepaper
+audience: [Executive, Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO vs Microsoft Native Tools — AD Assessment and Modernization Gap Analysis.docx"
+repo-path: docs/customer-documents/whitepapers/uiao-vs-native-tools.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+UIAO vs. Microsoft Native Tools
+
+**Active Directory Assessment and Modernization Gap Analysis**
+
+*\"Why Microsoft\'s 12 Tools Don\'t Replace a Governance Orchestration Layer\"*
+
+Author: UIAO Governance OS --- Architecture Team
+
+Date: April 2026
+
+Classification: Controlled
+
+Version: 1.0
+
+Repository: github.com/WhalerMike/uiao
+
+Table of Contents
+
+1.  Executive Summary
+
+2.  The Microsoft Native Tool Landscape
+
+    - 2.1 Microsoft Assessment and Planning (MAP) Toolkit
+
+    - 2.2 Azure Migrate
+
+    - 2.3 Group Policy Analytics (Intune)
+
+    - 2.4 Microsoft Entra Connect / Cloud Sync
+
+    - 2.5 Microsoft Defender for Identity
+
+    - 2.6 Microsoft Security Compliance Toolkit (SCT)
+
+    - 2.7 Active Directory Migration Tool (ADMT)
+
+    - 2.8 Microsoft FastTrack
+
+    - 2.9 Entra Connect Health
+
+    - 2.10 Microsoft Entra Health Monitoring (Preview)
+
+    - 2.11 Azure Policy / Azure Arc Guest Configuration
+
+    - 2.12 PowerShell AD Module + RSAT
+
+3.  The Capability Matrix
+
+4.  The Gap Analysis Summary
+
+5.  Third-Party Tool Landscape
+
+6.  UIAO Positioning Framework
+
+7.  What UIAO Should Consume vs. Build
+
+8.  Competitive Messaging
+
+9.  Integration Architecture
+
+10. Conclusions and Recommendations
+
+11. Appendix A --- Tool-by-Tool Detailed Comparison Matrix
+
+12. Appendix B --- License and Cost Comparison
+
+13. Appendix C --- Companion Document Cross-Reference
+
+1\. Executive Summary
+
+The short answer to \"Does Microsoft already do this?\" is: **Yes, partially --- across 12 disconnected tools, none of which produce a unified governance pipeline.**
+
+Microsoft offers excellent point solutions for specific assessment and migration tasks. But no single Microsoft tool --- and no combination of them without significant custom glue --- covers the full UIAO assessment surface: forest topology → OU hierarchy → GPO inventory → DNS → PKI → computer objects → users/groups → trusts → sites → ACLs, all feeding into a Git-hosted governance pipeline with drift detection, canonical artifact management, and SLA-tracked remediation.
+
+UIAO\'s positioning is identical to UIAO SCuBA\'s relationship with CISA ScubaGear: **complementary orchestration layer, not competitive replacement.** UIAO consumes the outputs of Microsoft\'s native tools and provides the governance fabric that connects them.
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Key Finding**                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Microsoft\'s tools collectively cover approximately **65%** of what the UIAO Assessment Module captures in raw technical discovery. The remaining **35%** --- governance provenance, canonical artifact management, drift detection, cross-domain correlation, and pipeline orchestration --- is where UIAO provides unique value. When governance requirements are factored in, Microsoft\'s effective coverage drops to approximately **22%** of the total UIAO assessment surface. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+2\. The Microsoft Native Tool Landscape
+
+The following inventory catalogs every Microsoft tool that touches Active Directory assessment, migration, or modernization. For each tool, we document its current status, capabilities, limitations, licensing requirements, and output format --- with specific attention to governance pipeline compatibility.
+
+2.1 Microsoft Assessment and Planning (MAP) Toolkit
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **Detail**
+  ------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------
+  **Status**                Effectively deprecated --- Microsoft now recommends Azure Migrate
+
+  **Version**               9.9.13 (July 2024, last update)
+
+  **What It Does**          Agentless, automated multi-product planning and assessment. Hardware/software inventory, readiness reports, server virtualization planning.
+
+  **What It Doesn\'t Do**   No GPO analysis, no AD security assessment, no governance artifacts, no OU/delegation analysis, no DNS/PKI assessment.
+
+  **License**               Free
+
+  **Output Format**         Excel reports, Word proposals --- no machine-readable pipeline output.
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.2 Azure Migrate
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **Detail**
+  ------------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Status**                Active, regularly updated (March 2026 latest)
+
+  **What It Does**          Server/VM/SQL/web app discovery and assessment, dependency mapping, cost projections, readiness scoring, migration execution for VMs and databases.
+
+  **What It Doesn\'t Do**   No AD forest topology analysis, no GPO inventory, no OU structure analysis, no DNS zone assessment, no PKI/ADCS assessment, no user/group governance analysis, no trust mapping.
+
+  **License**               Free (Azure subscription required)
+
+  **Output Format**         Azure portal dashboards, downloadable reports --- no Git-compatible structured output.
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.3 Group Policy Analytics (Intune)
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **Detail**
+  ------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Status**                Active, GA
+
+  **What It Does**          Import GPO XML exports, analyze MDM support percentage, identify deprecated/unsupported settings, migrate supported settings to Settings Catalog policies.
+
+  **What It Doesn\'t Do**   Cannot export ALL GPO settings --- only analyzes Windows 10/11 device policies. No server GPO analysis. No GPO link/scope analysis. No WMI filter assessment. No cross-GPO conflict detection. No governance tracking of migration status.
+
+  **License**               Intune license required
+
+  **Output Format**         Intune portal only --- no bulk export, no machine-readable pipeline output.
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.4 Microsoft Entra Connect / Cloud Sync
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **Detail**
+  ------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Status**                Active (Cloud Sync is the recommended future direction)
+
+  **What It Does**          Synchronizes identities (users, groups, devices) from on-premises AD to Entra ID. Password hash sync, pass-through auth, federation. Health monitoring via Entra Connect Health.
+
+  **What It Doesn\'t Do**   Not an assessment tool --- it is a sync engine. No OU analysis, no GPO analysis, no DNS/PKI assessment, no security posture evaluation. Connect Health monitors sync health, not AD health.
+
+  **License**               Entra ID P1 (Connect Health requires P1 or P2)
+
+  **Output Format**         Sync logs, health alerts --- no structured assessment output.
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.5 Microsoft Defender for Identity
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **Detail**
+  ------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Status**                Active, continuously updated
+
+  **What It Does**          Security posture assessments via Microsoft Secure Score. Detects misconfigurations: unsecured SID History, weak cipher usage, dormant entities, insecure Kerberos delegation, LDAP signing, NTLM exposure, AdminSDHolder, print spooler risks. Real-time threat detection (credential theft, lateral movement, privilege escalation).
+
+  **What It Doesn\'t Do**   Not a comprehensive AD inventory tool. No forest topology export. No OU hierarchy analysis. No GPO inventory. No DNS zone assessment. No PKI/ADCS template analysis. No trust analysis. Security-focused only --- no migration readiness assessment. No structured export for governance pipelines.
+
+  **License**               E5 Security or Defender for Identity standalone license (expensive)
+
+  **Output Format**         Secure Score dashboard, alerts --- no JSON/CSV structured export for automation.
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.6 Microsoft Security Compliance Toolkit (SCT)
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **Detail**
+  ------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Status**                Active, updated February 2026 (Windows Server 2025 baseline added)
+
+  **What It Does**          Policy Analyzer compares GPOs against Microsoft security baselines. LGPO applies/exports local policy. SetObjectSecurity manages permissions. Provides Windows 10/11, Server 2022/2025, Edge, M365 Apps baselines.
+
+  **What It Doesn\'t Do**   Baseline comparison only --- not a full GPO inventory tool. No OU analysis, no DNS, no PKI, no computer inventory, no user/group analysis, no trust mapping. Manual process --- no automation pipeline. Windows GPOs only --- no cross-platform.
+
+  **License**               Free
+
+  **Output Format**         Excel comparison, GPO backup format --- no structured JSON/API output.
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.7 Active Directory Migration Tool (ADMT)
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **Detail**
+  ------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Status**                Legacy, last major update for Server 2008 R2, still functions on newer servers
+
+  **What It Does**          Migrates AD objects (users, groups, computers) between domains/forests. SID history translation, password migration (PES), group membership preservation.
+
+  **What It Doesn\'t Do**   NOT an assessment tool. No discovery, no inventory, no analysis. Requires Domain Admin in target, BUILTIN\\Administrators in source. No GPO migration. No DNS migration. No PKI migration. SQL Server dependency.
+
+  **License**               Free
+
+  **Output Format**         Migration logs --- no assessment artifacts.
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.8 Microsoft FastTrack
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **Detail**
+  ------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Status**                Active service (not a tool)
+
+  **What It Does**          Remote deployment guidance for Entra ID P1/P2, Conditional Access, MFA, PIM, Access Reviews, Lifecycle Workflows, Application Proxy, B2B, and Identity Governance. Provides architectural guidance and best practices.
+
+  **What It Doesn\'t Do**   Not an assessment tool. Does not discover or inventory AD environments. Does not produce assessment artifacts. Guidance-only --- no automation, no scripts, no structured output. Requires 150+ paid seats.
+
+  **License**               Included with qualifying M365/E5 licenses (150+ seats)
+
+  **Output Format**         Guidance documents --- no machine-readable output.
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.9 Entra Connect Health
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **Detail**
+  ------------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Status**                Active
+
+  **What It Does**          Monitors sync health (Entra Connect), AD FS health, AD DS health. Alerts on sync failures, risky IP addresses, extranet lockouts, failed authentications against DCs.
+
+  **What It Doesn\'t Do**   Health monitoring only --- not an assessment tool. No inventory, no GPO analysis, no OU analysis, no DNS, no PKI, no trust analysis. Requires agent installation on each DC being monitored.
+
+  **License**               Entra ID P1 or P2
+
+  **Output Format**         Portal dashboards, email alerts --- no structured export.
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.10 Microsoft Entra Health Monitoring (Preview)
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **Detail**
+  ------------------------- ------------------------------------------------------------------------------------------------------------------------------
+  **Status**                Preview (as of April 2026)
+
+  **What It Does**          Tenant-level health signals, SLA attainment reporting, anomaly detection for authentication patterns.
+
+  **What It Doesn\'t Do**   Cloud-side only --- no on-premises AD assessment. No forest/OU/GPO/DNS/PKI analysis. Tenant health, not migration readiness.
+
+  **License**               Included with Entra ID
+
+  **Output Format**         Portal only.
+  --------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.11 Azure Policy / Azure Arc Guest Configuration
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **Detail**
+  ------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Status**                Active, GA
+
+  **What It Does**          Compliance assessment for Azure and Arc-enrolled servers. Guest Configuration can audit OS settings, registry, files, services. Built-in policy definitions for Windows security baselines.
+
+  **What It Doesn\'t Do**   Requires Azure Arc enrollment first --- not pre-migration assessment. No AD-specific analysis (no OU, GPO, trust, forest topology). Policy compliance, not discovery/inventory.
+
+  **License**               Free (basic), Azure Arc license for servers
+
+  **Output Format**         Azure Policy compliance dashboard, Resource Graph queries --- structured but Azure-only.
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.12 PowerShell AD Module + RSAT
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**             **Detail**
+  ------------------------- -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Status**                Active, shipping with Server 2025
+
+  **What It Does**          Full programmatic access to AD --- the same cmdlets UIAO uses. Get-ADForest, Get-ADDomain, Get-GPO, Get-GPOReport, Get-ADComputer, Get-ADUser, Get-ADGroup, Get-DnsServerZone, etc.
+
+  **What It Doesn\'t Do**   Raw building blocks, not a solution. No orchestration, no structured output pipeline, no governance framework, no drift detection, no reporting, no Gitea integration. Every organization must build their own assessment from scratch.
+
+  **License**               Free (included with RSAT)
+
+  **Output Format**         PowerShell objects --- whatever you build.
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3\. The Capability Matrix
+
+The following matrix maps every UIAO assessment domain against the Microsoft tools that provide coverage, the level of that coverage, and the specific gap description.
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Assessment Domain**                                                               **UIAO Assessment Module**                                                                                                                **Microsoft Tool(s) That Cover It**                                                                                                                                              **Coverage Level**   **Gap Description**
+  ----------------------------------------------------------------------------------- ----------------------------------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- -------------------- ----------------------------------------------------------------------------------------------------------------------------------------------
+  **Forest Topology** (domains, DCs, functional levels, FSMO roles, sites, subnets)   Full JSON export via Invoke-UIAOADAssessment. Structured, versioned, Git-committed.                                                       PowerShell RSAT (raw cmdlets); Azure Migrate (server discovery, not AD topology); Defender for Identity (monitors DCs, doesn\'t export topology)                                 **Partial**          No Microsoft tool produces a structured, versioned forest topology artifact suitable for governance tracking.
+
+  **OU Hierarchy & Delegation**                                                       Full recursive tree with GPO links, object counts, delegation ACLs.                                                                       None. ADMT reads OUs for migration but doesn\'t assess them.                                                                                                                     **None**             Complete gap. Organizations must manually document OU structure.
+
+  **GPO Inventory & Settings Decomposition**                                          Full inventory via Get-GPOReport XML, link analysis, WMI filter mapping, conflict detection, unlinked/empty GPO identification, backup.   Group Policy Analytics (Intune) --- Windows 10/11 client MDM subset. SCT PolicyAnalyzer --- baseline comparison only.                                                            **Partial**          No Microsoft tool provides cross-GPO conflict detection, scope analysis, WMI filter correlation, or structured GPO inventory for governance.
+
+  **DNS Zone & Record Assessment**                                                    Full zone inventory, record enumeration, DNSSEC status, stale record detection, scavenging config, SRV validation.                        None. Azure DNS is cloud-only.                                                                                                                                                   **None**             Complete gap. DNS assessment is entirely custom.
+
+  **PKI/ADCS Assessment**                                                             CA discovery, template inventory, ESC1--ESC8 vulnerability patterns, CRL/AIA/OCSP, auto-enrollment config.                                Defender for Identity --- detects some ADCS misconfigurations (ESC patterns) via Secure Score. No comprehensive template inventory or PKI health assessment.                     **Partial**          Defender for Identity covers security findings but not operational PKI health or migration readiness.
+
+  **Computer Object Inventory**                                                       Full extraction with OS classification, stale detection, SPN inventory, delegation analysis, LAPS/BitLocker detection.                    Azure Migrate (server discovery with OS/hardware). MAP Toolkit (deprecated, similar).                                                                                            **Partial**          Server inventory exists; AD-specific computer governance attributes (delegation, SPNs, group memberships) do not.
+
+  **User & Group Inventory**                                                          Privileged user identification, AdminSDHolder analysis, service account detection (MSA/gMSA), circular nesting, Kerberoastable SPNs.      Defender for Identity (dormant entities, privileged account risks, Kerberoast exposure). Entra Connect (syncs users/groups).                                                     **Partial**          Security findings exist; comprehensive user/group governance inventory does not.
+
+  **Trust Mapping**                                                                   Direction/type analysis, SID filtering status, selective authentication, cross-forest enumeration.                                        None. Defender for Identity detects some trust-related attacks but doesn\'t inventory/analyze trusts.                                                                            **None**             Complete gap.
+
+  **ACL/Delegation Analysis**                                                         OU-level delegation audit, AdminSDHolder capture, dangerous permission patterns.                                                          Defender for Identity --- detects some dangerous delegations. No comprehensive ACL export or analysis tool.                                                                      **Partial**          Security alerting exists; comprehensive delegation audit does not.
+
+  **Cross-Domain Correlation**                                                        Correlates findings across all 9 domains above into a unified assessment manifest.                                                        None. Microsoft\'s tools are completely siloed. GPO Analytics doesn\'t know about Azure Migrate findings. Defender for Identity doesn\'t correlate with DNS assessment.          **None**             Complete gap. This is UIAO\'s primary unique value.
+
+  **Governance Pipeline Integration**                                                 Assessment → JSON artifacts → Gitea commit → drift detection → remediation tracking → SLA enforcement.                                    None. Each tool has its own portal/dashboard. No Microsoft tool produces governance artifacts for a Git pipeline.                                                                **None**             Complete gap. This is the core of UIAO Governance OS.
+
+  **Drift Detection & Continuous Monitoring**                                         Scheduled re-assessment with diff against baseline, Gitea-tracked changes, issue creation on drift.                                       Defender for Identity (continuous security monitoring). Entra Connect Health (sync monitoring). Neither provides governance drift detection against a canonical desired state.   **Partial**          Security monitoring exists; governance drift detection does not.
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+4\. The Gap Analysis Summary
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Category**                   **Microsoft Coverage**                **UIAO Coverage**   **Gap Owner**
+  ------------------------------ ------------------------------------- ------------------- ---------------------------------------------------------------------------
+  **Infrastructure Discovery**   70% (Azure Migrate + MAP)             95%                 Microsoft adequate for server inventory; UIAO adds AD-specific attributes
+
+  **GPO Analysis**               40% (Group Policy Analytics + SCT)    95%                 Microsoft covers MDM migration subset; UIAO covers full GPO governance
+
+  **Security Posture**           60% (Defender for Identity)           85%                 Microsoft strong on threat detection; UIAO adds governance correlation
+
+  **DNS Assessment**             0%                                    90%                 Complete UIAO advantage
+
+  **PKI/ADCS Assessment**        25% (Defender for Identity partial)   85%                 UIAO significantly ahead
+
+  **Trust Analysis**             0%                                    90%                 Complete UIAO advantage
+
+  **OU & Delegation**            0%                                    90%                 Complete UIAO advantage
+
+  **Cross-Domain Correlation**   0%                                    90%                 UIAO\'s core differentiator
+
+  **Governance Pipeline**        0%                                    95%                 UIAO\'s fundamental value proposition
+
+  **Drift Detection**            30% (security only)                   85%                 UIAO covers governance drift, not just security
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Overall Assessment**                                                                                                                                                                                                                                                   |
+|                                                                                                                                                                                                                                                                          |
+| Microsoft tools cover approximately **22%** of the total UIAO assessment surface when governance pipeline, cross-correlation, and drift detection requirements are factored in. For pure technical discovery without governance, Microsoft covers approximately **40%**. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+5\. Third-Party Tool Landscape
+
+Beyond Microsoft\'s native tools, several third-party solutions overlap with portions of UIAO\'s assessment capabilities. Understanding their strengths and limitations informs UIAO\'s positioning and integration strategy.
+
+5.1 ADRecon (Open Source)
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**           **Detail**
+  ----------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **What It Does**        PowerShell-based AD reconnaissance. Extracts forest, domain, trusts, sites, OUs, GPOs, DNS, users, groups, computers, SPNs, ACLs, LAPS, BitLocker. Generates Excel reports.
+
+  **Overlap with UIAO**   **HIGH** --- ADRecon\'s data collection scope is very similar to UIAO\'s assessment module.
+
+  **What UIAO Adds**      Governance pipeline (Gitea integration), machine-readable JSON output (not just Excel), drift detection, remediation tracking, SLA enforcement, canonical artifact management, OrgPath mapping, modernization planning correlation.
+
+  **Positioning**         ADRecon is the closest open-source equivalent for data collection. UIAO provides the governance layer above it.
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+5.2 PingCastle
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**           **Detail**
+  ----------------------- ------------------------------------------------------------------------------------------------------------------------------------------
+  **What It Does**        AD security health check with risk scoring. Analyzes configurations, detects insecure settings, generates HTML reports with risk levels.
+
+  **Overlap with UIAO**   **MODERATE** --- security assessment overlap but PingCastle is security-focused, not governance-focused.
+
+  **What UIAO Adds**      Governance pipeline, migration planning, non-security assessment domains (DNS, PKI templates, OU design), cross-domain correlation.
+
+  **Positioning**         Complementary --- PingCastle for security scoring, UIAO for governance.
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+5.3 BloodHound (SpecterOps)
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**           **Detail**
+  ----------------------- -----------------------------------------------------------------------------------------------------------------------
+  **What It Does**        Attack path mapping using graph theory. Identifies privilege escalation paths, dangerous ACLs, Kerberoasting targets.
+
+  **Overlap with UIAO**   **LOW** --- BloodHound is offensive security tooling, not governance.
+
+  **What UIAO Adds**      Everything except attack path visualization.
+
+  **Positioning**         Different purpose entirely. BloodHound for penetration testing, UIAO for operational governance.
+  -----------------------------------------------------------------------------------------------------------------------------------------------
+
+5.4 Purple Knight (Semperis)
+
+  -----------------------------------------------------------------------------------------------------------------------
+  **Attribute**           **Detail**
+  ----------------------- -----------------------------------------------------------------------------------------------
+  **What It Does**        AD security assessment with 150+ security indicators. Pre/post-migration security validation.
+
+  **Overlap with UIAO**   **MODERATE** --- security indicator overlap.
+
+  **What UIAO Adds**      Governance pipeline, migration planning, operational assessment domains.
+
+  **Positioning**         Complementary.
+  -----------------------------------------------------------------------------------------------------------------------
+
+6\. UIAO Positioning Framework
+
+6.1 The Orchestration Layer Pattern
+
+UIAO operates as an orchestration layer that sits above Microsoft\'s native tools, consuming their output and providing the governance fabric that connects them into a unified pipeline.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Layer**                                  **Components**                                                                                             **Role**
+  ------------------------------------------ ---------------------------------------------------------------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------
+  **Top Layer: Governance Outcomes**         Compliance Dashboard, Migration Readiness Score, Drift Reports, Remediation Status, Owner Accountability   The actionable intelligence that governance stakeholders consume. Evidence for ATO, compliance reporting, executive visibility.
+
+  **Middle Layer: UIAO Governance OS**       Assessment Module, Canonical Artifacts, Drift Detection, Remediation Pipeline, SLA Enforcement             The orchestration engine that transforms raw tool output into governance-grade artifacts with provenance, version control, and accountability.
+
+  **Bottom Layer: Microsoft Native Tools**   Azure Migrate, Group Policy Analytics, Defender for Identity, Entra Connect, SCT, ADMT                     Point solutions that produce raw technical data. Excellent at their individual domains but disconnected from each other.
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------+
+| **The Metaphor**                                                         |
+|                                                                          |
+| **\"Microsoft provides the instruments. UIAO provides the orchestra.\"** |
++--------------------------------------------------------------------------+
+
+6.2 The Consumption Model
+
+UIAO does not replace Microsoft\'s tools --- it consumes their output:
+
+  -------------------------------------------------------------------------------------------------
+  **Microsoft Tool**            **UIAO Consumption Pattern**
+  ----------------------------- -------------------------------------------------------------------
+  Azure Migrate                 Import server discovery data as computer inventory supplement
+
+  Group Policy Analytics        Export MDM readiness percentages; feed into GPO migration tracker
+
+  Defender for Identity         Import Secure Score findings as security assessment overlay
+
+  Entra Connect Health          Import sync status into governance health dashboard
+
+  Security Compliance Toolkit   Import baseline comparisons into GPO compliance scoring
+
+  Azure Policy Compliance       Import Arc-enrolled server compliance into drift detection
+  -------------------------------------------------------------------------------------------------
+
+6.3 The SCuBA Parallel
+
+The explicit parallel between UIAO\'s two complementary orchestration relationships:
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Dimension**                 **UIAO SCuBA vs. CISA ScubaGear**                                                      **UIAO AD Assessment vs. Microsoft Tools**
+  ----------------------------- -------------------------------------------------------------------------------------- --------------------------------------------------------------------------------------
+  **Relationship**              Complementary orchestration                                                            Complementary orchestration
+
+  **Microsoft Tool Provides**   Raw compliance data                                                                    Raw discovery/assessment data
+
+  **UIAO Provides**             Canonical desired state, drift detection, remediation orchestration, SLA enforcement   Canonical desired state, drift detection, remediation orchestration, SLA enforcement
+
+  **Pipeline**                  ScubaGear JSON → UIAO governance artifacts                                             PowerShell/API JSON → UIAO governance artifacts
+
+  **Unique Value**              Machine-trackable governance provenance                                                Machine-trackable governance provenance
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+7\. What UIAO Should Consume vs. Build
+
+Strategic recommendations for each assessment domain --- whether UIAO should consume existing Microsoft tool output or build its own capability:
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Assessment Domain**       **Recommendation**                           **Rationale**
+  --------------------------- -------------------------------------------- -----------------------------------------------------------------------------
+  Server Inventory            **CONSUME** Azure Migrate output             Azure Migrate is superior for hardware/VM discovery. No need to rebuild.
+
+  GPO MDM Readiness           **CONSUME** Group Policy Analytics output    Built into Intune, already does MDM mapping well.
+
+  Security Posture            **CONSUME** Defender for Identity findings   E5 customers already have this; supplement with UIAO\'s broader assessment.
+
+  Security Baselines          **CONSUME** SCT PolicyAnalyzer output        Free, well-maintained, authoritative.
+
+  Forest Topology             **BUILD** in UIAO                            No Microsoft tool covers this. Zero overlap.
+
+  OU Hierarchy & Delegation   **BUILD** in UIAO                            No Microsoft tool covers this. Zero overlap.
+
+  GPO Full Inventory          **BUILD** in UIAO                            Group Policy Analytics only covers client MDM subset.
+
+  DNS Assessment              **BUILD** in UIAO                            No Microsoft tool covers this. Zero overlap.
+
+  PKI/ADCS Assessment         **BUILD** in UIAO                            Defender for Identity covers security subset only.
+
+  Trust Analysis              **BUILD** in UIAO                            No Microsoft tool covers this. Zero overlap.
+
+  Cross-Domain Correlation    **BUILD** in UIAO                            This is UIAO\'s core differentiator.
+
+  Governance Pipeline         **BUILD** in UIAO                            This is UIAO\'s fundamental value proposition.
+
+  Drift Detection             **BUILD** in UIAO                            Security drift monitoring exists; governance drift does not.
+  ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8\. Competitive Messaging
+
+8.1 For VCs and Analysts
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \"Microsoft provides 12 assessment tools that each solve a piece of the AD modernization puzzle. But no organization can build a governance program from 12 disconnected dashboards. UIAO Governance OS is the canonical layer that ties them together --- consuming their outputs, tracking drift against desired state, enforcing SLAs, and giving every governance artifact a machine-trackable provenance chain. We\'re not competing with Microsoft\'s tools. We\'re making them useful for governance.\"
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8.2 For Federal Customers
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \"Your ATO process requires evidence that every configuration change is tracked, every deviation is detected, and every remediation is time-bound. Microsoft\'s tools produce excellent technical data. UIAO transforms that data into the compliance evidence your assessors need --- version-controlled in Git, traceable to canonical policy, and auditable end-to-end.\"
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8.3 For Legacy Engineers
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \"You know PowerShell. You know AD. You\'ve probably built your own assessment scripts. UIAO standardizes what you\'ve been doing ad hoc --- same PowerShell, same RSAT cmdlets, but with structured JSON output, automatic Gitea commits, drift detection, and a governance pipeline that makes your assessment work reusable and auditable.\"
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+9\. Integration Architecture
+
+9.1 Import Adapters (Future Development)
+
+Import adapter specifications for each Microsoft tool UIAO should consume:
+
+  --------------------------------------------------------------------------------------------------------------------------------------
+  **Adapter**                       **Source Format**                                 **UIAO Target**                     **Priority**
+  --------------------------------- ------------------------------------------------- ----------------------------------- --------------
+  Azure Migrate Adapter             Azure Resource Graph / CSV export                 ComputerInventory.json supplement   P2
+
+  Group Policy Analytics Adapter    Intune Graph API / CSV export                     GPOMigrationTracker.json            P1
+
+  Defender for Identity Adapter     Microsoft Graph Security API / Secure Score API   SecurityAssessment.json overlay     P2
+
+  SCT PolicyAnalyzer Adapter        Excel/CSV baseline comparison                     GPOComplianceScore.json             P3
+
+  Entra Connect Health Adapter      Graph API health data                             SyncHealthStatus.json               P3
+
+  Azure Policy Compliance Adapter   Azure Resource Graph                              ArcComplianceStatus.json            P2
+  --------------------------------------------------------------------------------------------------------------------------------------
+
+9.2 PowerShell Import Module Specification
+
+Conceptual module definition for **UIAOImportAdapters.psm1**:
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Function**                         **Source**                     **Target Schema**        **Description**
+  ------------------------------------ ------------------------------ ------------------------ ----------------------------------------------------------------------------------------------------------------------------------------------
+  Import-AzureMigrateDiscovery         Azure Resource Graph           UIAO ComputerInventory   Pulls discovered servers from Azure Migrate project, normalizes to UIAO ComputerInventory schema with AD-specific attribute enrichment.
+
+  Import-GPOAnalyticsReport            Intune Graph API               GPOMigrationTracker      Pulls MDM readiness analysis from Group Policy Analytics, normalizes to GPOMigrationTracker schema with per-GPO migration status tracking.
+
+  Import-DefenderForIdentityFindings   Microsoft Graph Security API   SecurityAssessment       Pulls Secure Score identity recommendations and security alerts, normalizes to SecurityAssessment schema as overlay to UIAO native findings.
+
+  Import-PolicyAnalyzerResults         SCT PolicyAnalyzer CSV         GPOComplianceScore       Parses SCT PolicyAnalyzer CSV output, maps baseline deviation counts to GPOComplianceScore schema.
+
+  Import-EntraConnectHealthStatus      Graph API health endpoints     SyncHealthStatus         Pulls sync health, connector status, and error counts from Entra Connect Health API endpoints.
+
+  Import-AzurePolicyCompliance         Azure Resource Graph           ArcComplianceStatus      Queries Azure Resource Graph for policy compliance state of Arc-enrolled servers, normalizes to ArcComplianceStatus schema.
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Each function produces UIAO-standard JSON with the following metadata headers:
+
+- **assessment_id** --- Unique identifier for the import run
+
+- **timestamp** --- ISO 8601 timestamp of import execution
+
+- **domain** --- Source domain identifier
+
+- **classification** --- \"Controlled\"
+
+- **boundary** --- \"GCC-Moderate\"
+
+- **source_tool** --- Name and version of the Microsoft tool consumed
+
+- **adapter_version** --- Version of the UIAO import adapter used
+
+10\. Conclusions and Recommendations
+
+10.1 The Bottom Line
+
+Microsoft offers powerful but fragmented tools. UIAO provides the governance fabric that connects them. The relationship is symbiotic: UIAO is more valuable when it consumes Microsoft tool output, and Microsoft\'s tools are more valuable when they feed into a governance pipeline.
+
+No single Microsoft tool --- and no feasible combination of Microsoft tools without significant custom development --- provides the unified, version-controlled, drift-detected, SLA-enforced governance pipeline that UIAO delivers. This is not a criticism of Microsoft\'s tools; it is a recognition that governance orchestration is a fundamentally different problem than point-solution assessment.
+
+10.2 Strategic Recommendations
+
+14. **Do not position UIAO as competing with Microsoft\'s tools** --- the SCuBA pattern (complementary orchestration) is the correct positioning.
+
+15. **Build import adapters for the top 3 Microsoft tools first** --- Group Policy Analytics (P1), Defender for Identity (P2), Azure Migrate (P2).
+
+16. **Maintain the PowerShell-first assessment module** --- it provides the 60% coverage that no Microsoft tool offers (OU, DNS, PKI, trusts, cross-correlation).
+
+17. **Leverage Defender for Identity as a \"good enough\" security layer** --- focus UIAO\'s unique value on governance, not security tooling.
+
+18. **Use ADRecon as a validation reference** --- UIAO\'s data collection should produce at least everything ADRecon produces, plus governance metadata.
+
+10.3 Engagement Channels
+
+The following channels should be used for communicating UIAO\'s positioning relative to Microsoft native tools:
+
+- FedRAMP CWGs (Rev5 and 20x)
+
+- FedRAMP RFCs
+
+- FSCAC/CISA direct engagement
+
+- Microsoft Partner ecosystem
+
+- GitHub Discussions on WhalerMike/uiao
+
+Appendix A --- Tool-by-Tool Detailed Comparison Matrix
+
+The following reference matrix maps each Microsoft tool against every UIAO assessment domain. Legend: **✓ Full** \| **\~ Partial** \| **✗ None**
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Microsoft Tool**                **Forest Topology**   **OU Hierarchy**   **GPO Inventory**   **DNS**   **PKI/ADCS**   **Computer Objects**   **Users & Groups**   **Trusts**   **ACLs**   **Cross-Correlation**   **Governance Pipeline**   **Drift Detection**
+  --------------------------------- --------------------- ------------------ ------------------- --------- -------------- ---------------------- -------------------- ------------ ---------- ----------------------- ------------------------- ---------------------
+  **MAP Toolkit**                   **✗**                 **✗**              **✗**               **✗**     **✗**          **\~**                 **✗**                **✗**        **✗**      **✗**                   **✗**                     **✗**
+
+  **Azure Migrate**                 **✗**                 **✗**              **✗**               **✗**     **✗**          **\~**                 **✗**                **✗**        **✗**      **✗**                   **✗**                     **✗**
+
+  **Group Policy Analytics**        **✗**                 **✗**              **\~**              **✗**     **✗**          **✗**                  **✗**                **✗**        **✗**      **✗**                   **✗**                     **✗**
+
+  **Entra Connect / Cloud Sync**    **✗**                 **✗**              **✗**               **✗**     **✗**          **✗**                  **\~**               **✗**        **✗**      **✗**                   **✗**                     **✗**
+
+  **Defender for Identity**         **\~**                **✗**              **✗**               **✗**     **\~**         **✗**                  **\~**               **✗**        **\~**     **✗**                   **✗**                     **\~**
+
+  **Security Compliance Toolkit**   **✗**                 **✗**              **\~**              **✗**     **✗**          **✗**                  **✗**                **✗**        **✗**      **✗**                   **✗**                     **✗**
+
+  **ADMT**                          **✗**                 **✗**              **✗**               **✗**     **✗**          **\~**                 **\~**               **✗**        **✗**      **✗**                   **✗**                     **✗**
+
+  **FastTrack**                     **✗**                 **✗**              **✗**               **✗**     **✗**          **✗**                  **✗**                **✗**        **✗**      **✗**                   **✗**                     **✗**
+
+  **Entra Connect Health**          **✗**                 **✗**              **✗**               **✗**     **✗**          **✗**                  **✗**                **✗**        **✗**      **✗**                   **✗**                     **\~**
+
+  **Entra Health Monitoring**       **✗**                 **✗**              **✗**               **✗**     **✗**          **✗**                  **✗**                **✗**        **✗**      **✗**                   **✗**                     **✗**
+
+  **Azure Policy / Arc**            **✗**                 **✗**              **✗**               **✗**     **✗**          **\~**                 **✗**                **✗**        **✗**      **✗**                   **✗**                     **\~**
+
+  **PowerShell AD / RSAT**          **\~**                **\~**             **\~**              **\~**    **\~**         **\~**                 **\~**               **\~**       **\~**     **✗**                   **✗**                     **✗**
+
+  **UIAO Assessment Module**        **✓**                 **✓**              **✓**               **✓**     **✓**          **✓**                  **✓**                **✓**        **✓**      **✓**                   **✓**                     **✓**
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Key observation:** Only PowerShell AD/RSAT provides partial coverage across most domains --- but it is raw building blocks, not a solution. Every other Microsoft tool covers at most 1--2 domains. UIAO is the only entry that provides full coverage across all 12 domains in a unified, governance-grade pipeline.
+
+Appendix B --- License and Cost Comparison
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Tool**                      **License Type**                     **Estimated Annual Cost (per user or per environment)**        **Notes**
+  ----------------------------- ------------------------------------ -------------------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------
+  MAP Toolkit                   Free                                 \$0                                                            Deprecated; no ongoing investment
+
+  Azure Migrate                 Free (Azure subscription required)   \$0 (compute costs for appliance)                              Assessment is free; migration execution incurs Azure consumption costs
+
+  Group Policy Analytics        Intune license required              \$8--\$16/user/month (Intune standalone or as part of M365)    Part of Microsoft Intune Suite; most orgs already have via M365 E3/E5
+
+  Entra Connect / Cloud Sync    Entra ID P1                          \$6/user/month (P1) or \$9/user/month (P2)                     Often bundled with M365 E3 (P1) or E5 (P2)
+
+  Defender for Identity         E5 Security or standalone            \$6/user/month (standalone) or part of E5 at \$57/user/month   Most expensive point solution; significant budget requirement
+
+  Security Compliance Toolkit   Free                                 \$0                                                            Download from Microsoft; no license required
+
+  ADMT                          Free                                 \$0                                                            Legacy tool; SQL Server dependency adds indirect cost
+
+  FastTrack                     Included with qualifying licenses    \$0 (requires 150+ paid seats)                                 Guidance service only; no tooling or automation
+
+  Entra Connect Health          Entra ID P1 or P2                    Included with P1/P2 license                                    No additional cost beyond Entra ID licensing
+
+  Entra Health Monitoring       Included with Entra ID               \$0 (preview)                                                  Preview; pricing may change at GA
+
+  Azure Policy / Arc            Free (basic) / Arc license           \$0 (basic) / \~\$6/server/month (Arc-enabled servers)         Arc enrollment required for on-premises servers
+
+  PowerShell AD / RSAT          Free                                 \$0                                                            Included with Windows Server; engineering time not included
+
+  **UIAO Governance OS**        **Open Source (MIT)**                **\$0**                                                        **Free. Requires PowerShell, RSAT, and Gitea (also free/open-source). All governance pipeline capabilities included.**
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Cost Analysis**                                                                                                                                                                                                                                                                                                                                                                                                |
+|                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| To achieve equivalent assessment coverage using Microsoft tools alone (without UIAO), an organization would need: Intune licensing + Entra ID P1/P2 + Defender for Identity + Azure Arc --- totaling approximately **\$25--\$57/user/month**, while still leaving governance pipeline, cross-correlation, and drift detection as custom development. UIAO provides the governance layer at **\$0 license cost**. |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Appendix C --- Companion Document Cross-Reference
+
+This document is part of the UIAO Governance OS documentation corpus. The following table maps this gap analysis to companion documents in the repository:
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Companion Document**                        **Relationship to This Document**                                                                                         **Key Cross-References**
+  --------------------------------------------- ------------------------------------------------------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------
+  **AD Computer Object Conversion Guide**       Details the computer object assessment that Section 3 summarizes as \"Computer Object Inventory\"                         Section 3, Row 6 (Computer Object Inventory); Section 7 (Server Inventory --- CONSUME vs. BUILD)
+
+  **UIAO Platform Server Build Guide**          Describes the infrastructure on which UIAO assessment modules execute, including Gitea server setup                       Section 6 (Governance Pipeline Integration); Section 9 (Integration Architecture)
+
+  **UIAO CLI and Operations Guide**             Documents the Invoke-UIAOADAssessment cmdlet and other assessment operations referenced throughout                        Section 3 (all assessment domains reference UIAO cmdlets); Section 9.2 (Import Module Specification)
+
+  **UIAO Active Directory Interaction Guide**   Details the read-only and read-write AD interaction patterns that underpin UIAO\'s assessment module                      Section 2.12 (PowerShell AD / RSAT); Section 3 (assessment domain cmdlet references)
+
+  **UIAO Identity Modernization Guide**         Covers the modernization planning that UIAO assessment data feeds into, including Entra ID migration                      Section 2.4 (Entra Connect); Section 6.3 (SCuBA Parallel); Section 7 (CONSUME vs. BUILD)
+
+  **UIAO DNS Modernization Guide**              Details the DNS assessment and modernization workflow that this document identifies as a complete Microsoft gap           Section 3, Row 4 (DNS Zone & Record Assessment); Section 4 (DNS Assessment --- 0% Microsoft coverage)
+
+  **UIAO Read-Only AD Assessment Guide**        Specifies the non-invasive assessment methodology that ensures UIAO assessment is safe for production environments        Section 3 (all assessment domains); Section 10.2 (Recommendation 3 --- PowerShell-first assessment)
+
+  **UIAO Git Infrastructure ADR**               Architecture Decision Record for Gitea-based governance pipeline --- the infrastructure that Section 3 Row 11 describes   Section 3, Row 11 (Governance Pipeline Integration); Section 6 (Orchestration Layer Pattern)
+
+  **UIAO Git Server Implementation Guide**      Implementation details for the Gitea server that stores governance artifacts and enables drift detection                  Section 3, Rows 11--12 (Governance Pipeline, Drift Detection); Section 9 (Integration Architecture)
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+UIAO vs. Microsoft Native Tools --- AD Assessment and Modernization Gap Analysis \| Version 1.0 \| April 2026\
+Classification: Controlled \| Boundary: GCC-Moderate\
+UIAO Governance OS --- Architecture Team \| github.com/WhalerMike/uiao

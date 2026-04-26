@@ -1,0 +1,1740 @@
+---
+title: "UIAO PowerShell Module Reference"
+subtitle: "Complete API reference for all UIAO PowerShell modules"
+doc-type: api-reference
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO PowerShell Module Reference.docx"
+repo-path: docs/customer-documents/substrate/platform-tooling/powershell-module-reference.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+**CONTROLLED \| GCC-MODERATE**
+
+UIAO PowerShell Module Reference
+
+Complete API Reference for All UIAO PowerShell Modules
+
+Developer & Operator Reference Manual
+
+Version 1.0 \| April 21, 2026
+
+  ------------------------------------------------------------------------------------
+  **Classification**           **Controlled**
+  ---------------------------- -------------------------------------------------------
+  **Boundary**                 GCC-Moderate
+
+  **Target Platform**          PowerShell 5.1 on Windows Server 2025 / Windows 10/11
+
+  **Module Path**              D:\\UIAO\\Modules\\
+
+  **Assessment Output Path**   D:\\UIAO\\Assessment\\
+  ------------------------------------------------------------------------------------
+
+Table of Contents
+
+1.  Overview
+
+2.  Installation and Setup
+
+3.  UIAOADAssessment Module (11 Functions)
+
+4.  UIAODNSAssessment Module (8 Functions)
+
+5.  UIAOPKIAssessment Module (5 Functions)
+
+6.  UIAOReadOnlyAssessment Module (5 Functions)
+
+7.  Planned Modules (API Preview)
+
+8.  Common Parameters and Patterns
+
+9.  Output Schema Reference
+
+10. Integration Guide
+
+11. Troubleshooting
+
+12. Appendix A: Quick Reference Card
+
+13. Appendix B: Module Manifest Templates
+
+14. Appendix C: Assessment Output Directory Structure
+
+15. Appendix D: Permissions Matrix
+
+1\. Overview
+
+The UIAO PowerShell Module suite provides a comprehensive, governance-tagged assessment framework for Active Directory, DNS, PKI, and identity environments. These modules are designed to produce structured, machine-readable JSON and CSV outputs suitable for automated ingestion into migration planning pipelines, governance dashboards, and drift detection workflows.
+
+1.1 Purpose
+
+This document serves as the combined API reference for all UIAO PowerShell modules. It provides complete function signatures, parameter details, output schemas, examples, and integration guidance for developers and operators working within the UIAO modernization framework.
+
+1.2 Modules Covered
+
+  -------------------------------------------------------------------------------------------------------------------------
+  **Module**               **Status**   **Function Count**   **Description**
+  ------------------------ ------------ -------------------- --------------------------------------------------------------
+  UIAOADAssessment         Released     11                   Active Directory forest, domain, and object-level assessment
+
+  UIAODNSAssessment        Released     8                    DNS zone, record, and health assessment
+
+  UIAOPKIAssessment        Released     5                    PKI/CA infrastructure and ESC vulnerability assessment
+
+  UIAOReadOnlyAssessment   Released     5                    Read-only assessment for least-privilege environments
+
+  UIAOIdentityAssessment   Planned      6                    Entra ID / hybrid identity assessment
+
+  UIAOImportAdapters       Planned      6                    Third-party report ingestion and correlation
+
+  UIAOPlanGenerators       Planned      6                    Migration and modernization plan generation
+
+  UIAODriftDetection       Planned      5                    Baseline comparison and drift alerting
+  -------------------------------------------------------------------------------------------------------------------------
+
+1.3 Platform Requirements
+
+- **PowerShell:** 5.1 (Windows PowerShell)
+
+- **Operating System:** Windows Server 2025, Windows 10, or Windows 11
+
+- **Module Installation Path:** D:\\UIAO\\Modules\\
+
+- **Assessment Output Path:** D:\\UIAO\\Assessment\\
+
+1.4 JSON Output Envelope
+
+All JSON output from UIAO modules includes a standard governance envelope with the following fields:
+
+{ \"AssessmentType\": \"ForestTopology\", \"Timestamp\": \"2026-04-21T07:55:00-04:00\", \"Domain\": \"contoso.local\", \"RunAs\": \"CONTOSO\\\\admin\", \"Classification\": \"Controlled\", \"Boundary\": \"GCC-Moderate\", \"Data\": { \... } }
+
+2\. Installation and Setup
+
+2.1 Prerequisites
+
+  ------------------------------------------------------------------------------------------------------------------
+  **Prerequisite**            **Required For**                           **Installation**
+  --------------------------- ------------------------------------------ -------------------------------------------
+  PowerShell 5.1              All modules                                Built into Windows 10/11 and Server 2025
+
+  RSAT AD PowerShell Module   UIAOADAssessment, UIAOReadOnlyAssessment   Install-WindowsFeature RSAT-AD-PowerShell
+
+  DNS Server Module           UIAODNSAssessment                          Install-WindowsFeature RSAT-DNS-Server
+
+  GroupPolicy Module          UIAOADAssessment (GPO functions)           Install-WindowsFeature GPMC
+
+  PSPKI or ADCS modules       UIAOPKIAssessment                          Install-Module -Name PSPKI (optional)
+  ------------------------------------------------------------------------------------------------------------------
+
+2.2 Module Installation
+
+**Step 1:** Create the module directory structure.
+
+New-Item -ItemType Directory -Path \"D:\\UIAO\\Modules\" -Force New-Item -ItemType Directory -Path \"D:\\UIAO\\Assessment\" -Force
+
+**Step 2:** Copy module folders to the installation path.
+
+Copy-Item -Path \".\\UIAOADAssessment\" -Destination \"D:\\UIAO\\Modules\\\" -Recurse Copy-Item -Path \".\\UIAODNSAssessment\" -Destination \"D:\\UIAO\\Modules\\\" -Recurse Copy-Item -Path \".\\UIAOPKIAssessment\" -Destination \"D:\\UIAO\\Modules\\\" -Recurse Copy-Item -Path \".\\UIAOReadOnlyAssessment\" -Destination \"D:\\UIAO\\Modules\\\" -Recurse
+
+**Step 3:** Add to PSModulePath.
+
+\# Session-scoped \$env:PSModulePath = \"D:\\UIAO\\Modules;\" + \$env:PSModulePath \# Persistent (Machine-level) \[Environment\]::SetEnvironmentVariable( \"PSModulePath\", \"D:\\UIAO\\Modules;\" + \[Environment\]::GetEnvironmentVariable(\"PSModulePath\", \"Machine\"), \"Machine\" )
+
+**Step 4:** Import modules.
+
+Import-Module UIAOADAssessment Import-Module UIAODNSAssessment Import-Module UIAOPKIAssessment Import-Module UIAOReadOnlyAssessment
+
+**Step 5:** Verify installation.
+
+Get-Command -Module UIAO\*
+
+2.3 Execution Policy
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **❗ Important**                                                                                                                                                             |
+|                                                                                                                                                                              |
+| UIAO modules require at minimum RemoteSigned execution policy. All module scripts must be signed with an approved code-signing certificate within the GCC-Moderate boundary. |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
+
+3\. UIAOADAssessment Module
+
+The UIAOADAssessment module provides 11 functions for comprehensive Active Directory forest and domain assessment. It discovers topology, inventories all major object types, analyzes security configurations, and produces governance-tagged output for downstream migration planning.
+
+3.1 Export-UIAOForestTopology
+
+**Synopsis:** Discovers all domains, domain controllers, FSMO roles, and functional levels in the current forest.
+
+**Description:** Enumerates the Active Directory forest to capture a complete topology snapshot. This includes all domains within the forest, each domain controller with its roles and IP addresses, the location of all five FSMO roles, and the current forest and domain functional levels. If -IncludeDCHealth is specified, basic replication and connectivity health checks are performed against each DC.
+
+**Syntax:**
+
+Export-UIAOForestTopology \[-OutputPath \<String\>\] \[-Format \<String\>\] \[-IncludeDCHealth\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ------------------------------------------------------------------------------------------------------------------------------
+  **Name**           **Type**   **Required**   **Default**              **Description**
+  ------------------ ---------- -------------- ------------------------ --------------------------------------------------------
+  -OutputPath        String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -Format            String     No             JSON                     Output format. Valid values: JSON, CSV.
+
+  -IncludeDCHealth   Switch     No             \$false                  Include DC replication and connectivity health checks.
+  ------------------------------------------------------------------------------------------------------------------------------
+
+**Output:** ForestTopology.json
+
+**Examples:**
+
+\# Example 1: Basic forest topology export Export-UIAOForestTopology \# Example 2: Export with health checks to a custom path Export-UIAOForestTopology -OutputPath \"D:\\UIAO\\Assessment\\April2026\" -IncludeDCHealth \# Example 3: Export as CSV Export-UIAOForestTopology -Format CSV -OutputPath \"D:\\UIAO\\Assessment\\CSV\"
+
+**Notes:** Requires read access to the Configuration and Schema naming contexts. Forest-level discovery uses \[System.DirectoryServices.ActiveDirectory.Forest\]::GetCurrentForest().
+
+**Related:** Invoke-UIAOADAssessment, Export-UIAOTrustMap
+
+3.2 Export-UIAOOUHierarchy
+
+**Synopsis:** Exports the complete Organizational Unit tree with depth tracking, GPO links, and child object counts.
+
+**Description:** Recursively walks the OU structure of a specified domain, capturing the full hierarchy with nesting depth, linked GPOs at each OU level, and optional object counts (users, computers, groups) per OU. Generates three output files: a structured JSON, a flat CSV, and a visual tree text file.
+
+**Syntax:**
+
+Export-UIAOOUHierarchy \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-MaxDepth \<Int32\>\] \[-IncludeObjectCounts\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ----------------------------------------------------------------------------------------------------------------------
+  **Name**               **Type**   **Required**   **Default**              **Description**
+  ---------------------- ---------- -------------- ------------------------ --------------------------------------------
+  -Domain                String     No             Current domain           Target domain FQDN.
+
+  -OutputPath            String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -MaxDepth              Int32      No             Unlimited                Maximum OU nesting depth to traverse.
+
+  -IncludeObjectCounts   Switch     No             \$false                  Count users, computers, and groups per OU.
+  ----------------------------------------------------------------------------------------------------------------------
+
+**Output Files:**
+
+- OUHierarchy.json --- Structured OU tree with metadata
+
+- OUFlatList.csv --- Flat listing of all OUs with distinguished names and depth
+
+- OUTree.txt --- Visual ASCII tree representation
+
+**Examples:**
+
+\# Example 1: Export OU hierarchy for current domain Export-UIAOOUHierarchy -IncludeObjectCounts \# Example 2: Export for a specific domain with depth limit Export-UIAOOUHierarchy -Domain \"child.contoso.local\" -MaxDepth 5 \# Example 3: Export to a custom output directory Export-UIAOOUHierarchy -OutputPath \"D:\\UIAO\\Assessment\\OUReview\" -IncludeObjectCounts
+
+**Notes:** Object counts add processing time proportional to the number of OUs. For forests with 1,000+ OUs, consider using -MaxDepth to limit scope.
+
+**Related:** Export-UIAOGPOInventory, Export-UIAOACLReport
+
+3.3 Export-UIAOGPOInventory
+
+**Synopsis:** Performs a full Group Policy Object inventory with links, WMI filters, and settings analysis.
+
+**Description:** Enumerates all GPOs in the target domain, capturing link status, WMI filter associations, modification dates, and GPO status. Optionally parses GPO settings via Get-GPOReport -ReportType XML and identifies unlinked and empty GPOs as candidates for cleanup.
+
+**Syntax:**
+
+Export-UIAOGPOInventory \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-IncludeSettings\] \[-ExportXML\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  --------------------------------------------------------------------------------------------------------------------------------
+  **Name**           **Type**   **Required**   **Default**              **Description**
+  ------------------ ---------- -------------- ------------------------ ----------------------------------------------------------
+  -Domain            String     No             Current domain           Target domain FQDN.
+
+  -OutputPath        String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -IncludeSettings   Switch     No             \$false                  Parse and include GPO settings from XML reports.
+
+  -ExportXML         Switch     No             \$false                  Export raw XML GPO reports to GPO-Reports/ subdirectory.
+  --------------------------------------------------------------------------------------------------------------------------------
+
+**Output Files:**
+
+- GPOInventory.json --- Complete GPO inventory with metadata
+
+- GPOLinks.csv --- GPO-to-OU link mapping
+
+- UnlinkedGPOs.csv --- GPOs with no links to any OU, site, or domain
+
+- EmptyGPOs.csv --- GPOs with no configured settings
+
+- GPO-Reports/\*.xml --- Individual GPO XML reports (when -ExportXML is used)
+
+**Examples:**
+
+\# Example 1: Basic GPO inventory Export-UIAOGPOInventory \# Example 2: Full inventory with settings and XML exports Export-UIAOGPOInventory -IncludeSettings -ExportXML \# Example 3: Target a child domain Export-UIAOGPOInventory -Domain \"child.contoso.local\" -IncludeSettings
+
+**Notes:** The -IncludeSettings switch significantly increases execution time as each GPO\'s XML report is parsed. Requires the GroupPolicy PowerShell module (GPMC feature).
+
+**Related:** Export-UIAOOUHierarchy, Invoke-UIAOADAssessment
+
+3.4 Export-UIAOComputerInventory
+
+**Synopsis:** Inventories all computer objects with operating system, OU location, last logon, and stale detection.
+
+**Description:** Queries Active Directory for all computer objects and captures OS name, OS version, OU membership, last logon timestamp, password last set date, and enabled/disabled status. Identifies stale computers based on the configured -StaleDays threshold and categorizes devices by OS for modernization planning.
+
+**Syntax:**
+
+Export-UIAOComputerInventory \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-StaleDays \<Int32\>\] \[-IncludeServers\] \[-IncludeWorkstations\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  -----------------------------------------------------------------------------------------------------------------------------------
+  **Name**               **Type**   **Required**   **Default**              **Description**
+  ---------------------- ---------- -------------- ------------------------ ---------------------------------------------------------
+  -Domain                String     No             Current domain           Target domain FQDN.
+
+  -OutputPath            String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -StaleDays             Int32      No             90                       Days since last logon to flag as stale.
+
+  -IncludeServers        Switch     No             \$true                   Include server operating systems in the inventory.
+
+  -IncludeWorkstations   Switch     No             \$true                   Include workstation operating systems in the inventory.
+  -----------------------------------------------------------------------------------------------------------------------------------
+
+**Output Files:**
+
+- ComputerInventory.json --- Complete computer object inventory
+
+- ComputersByOS.csv --- Summary counts grouped by OS version
+
+- StaleComputers.csv --- Computers exceeding the stale threshold
+
+**Examples:**
+
+\# Example 1: Default computer inventory Export-UIAOComputerInventory \# Example 2: Custom stale threshold of 60 days Export-UIAOComputerInventory -StaleDays 60 \# Example 3: Servers only Export-UIAOComputerInventory -IncludeServers -IncludeWorkstations:\$false
+
+**Notes:** Uses lastLogonTimestamp (replicated attribute) rather than lastLogon (per-DC) for stale detection. Replication delay of up to 14 days should be considered when setting -StaleDays.
+
+**Related:** Export-UIAOUserInventory, Invoke-UIAOADAssessment
+
+3.5 Export-UIAOUserInventory
+
+**Synopsis:** Inventories all user objects with privileged user detection and service account identification.
+
+**Description:** Enumerates all user objects in the target domain, capturing account status, last logon, password policy attributes, group memberships, and OU location. Detects privileged users by membership in protected groups (Domain Admins, Enterprise Admins, Schema Admins, etc.) and identifies potential service accounts based on naming conventions and SPN assignments.
+
+**Syntax:**
+
+Export-UIAOUserInventory \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-StaleDays \<Int32\>\] \[-IdentifyServiceAccounts\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ------------------------------------------------------------------------------------------------------------------------------------------
+  **Name**                   **Type**   **Required**   **Default**              **Description**
+  -------------------------- ---------- -------------- ------------------------ ------------------------------------------------------------
+  -Domain                    String     No             Current domain           Target domain FQDN.
+
+  -OutputPath                String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -StaleDays                 Int32      No             90                       Days since last logon to flag as stale.
+
+  -IdentifyServiceAccounts   Switch     No             \$false                  Apply heuristic detection for user-based service accounts.
+  ------------------------------------------------------------------------------------------------------------------------------------------
+
+**Output Files:**
+
+- UserInventory.json --- Complete user object inventory
+
+- PrivilegedUsers.csv --- Users in protected/privileged groups
+
+- StaleUsers.csv --- Users exceeding the stale threshold
+
+- ServiceAccounts.csv --- Detected service accounts (when -IdentifyServiceAccounts is used)
+
+**Examples:**
+
+\# Example 1: Full user inventory with service account detection Export-UIAOUserInventory -IdentifyServiceAccounts \# Example 2: Custom stale threshold Export-UIAOUserInventory -StaleDays 120 \# Example 3: Target a specific domain Export-UIAOUserInventory -Domain \"child.contoso.local\" -IdentifyServiceAccounts
+
+**Notes:** Service account detection heuristics include: accounts with SPNs, accounts matching patterns svc\_\*, sa\_\*, svc.\*, and accounts with \"Password Never Expires\" and \"User Cannot Change Password\" flags set.
+
+**Related:** Export-UIAOServiceAccountInventory, Export-UIAOGroupInventory
+
+3.6 Export-UIAOGroupInventory
+
+**Synopsis:** Inventories all groups with nesting depth analysis, member counts, and empty group detection.
+
+**Description:** Enumerates all security and distribution groups in the target domain. Calculates effective nesting depth, direct and recursive member counts, and identifies empty groups and groups with excessive nesting (potential circular membership risks).
+
+**Syntax:**
+
+Export-UIAOGroupInventory \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-MaxNestingDepth \<Int32\>\] \[-ResolveMembers\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  -----------------------------------------------------------------------------------------------------------------------------------
+  **Name**           **Type**   **Required**   **Default**              **Description**
+  ------------------ ---------- -------------- ------------------------ -------------------------------------------------------------
+  -Domain            String     No             Current domain           Target domain FQDN.
+
+  -OutputPath        String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -MaxNestingDepth   Int32      No             10                       Maximum nesting depth to resolve before stopping recursion.
+
+  -ResolveMembers    Switch     No             \$false                  Resolve all recursive (transitive) members.
+  -----------------------------------------------------------------------------------------------------------------------------------
+
+**Output Files:**
+
+- GroupInventory.json --- Complete group inventory with metadata
+
+- EmptyGroups.csv --- Groups with zero members
+
+**Examples:**
+
+\# Example 1: Basic group inventory Export-UIAOGroupInventory \# Example 2: Resolve all recursive members Export-UIAOGroupInventory -ResolveMembers \# Example 3: Limit nesting resolution to 5 levels Export-UIAOGroupInventory -MaxNestingDepth 5 -ResolveMembers
+
+**Notes:** -ResolveMembers can be resource-intensive in large domains with deeply nested groups. Circular group memberships are detected and logged as warnings.
+
+**Related:** Export-UIAOUserInventory, Export-UIAOACLReport
+
+3.7 Export-UIAOServiceAccountInventory
+
+**Synopsis:** Inventories all service accounts including gMSA, sMSA, and user-based service accounts.
+
+**Description:** Discovers all Group Managed Service Accounts (gMSA), Standalone Managed Service Accounts (sMSA), and user-based service accounts in the domain. Captures SPN assignments, password management configuration, allowed principals (for gMSA), and last password change dates.
+
+**Syntax:**
+
+Export-UIAOServiceAccountInventory \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-IncludeSPNs\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  --------------------------------------------------------------------------------------------------------------------------
+  **Name**       **Type**   **Required**   **Default**              **Description**
+  -------------- ---------- -------------- ------------------------ --------------------------------------------------------
+  -Domain        String     No             Current domain           Target domain FQDN.
+
+  -OutputPath    String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -IncludeSPNs   Switch     No             \$false                  Include detailed SPN listing for each service account.
+  --------------------------------------------------------------------------------------------------------------------------
+
+**Output:** ServiceAccountInventory.json
+
+**Examples:**
+
+\# Example 1: Basic service account inventory Export-UIAOServiceAccountInventory \# Example 2: Include SPN details Export-UIAOServiceAccountInventory -IncludeSPNs \# Example 3: Target a child domain Export-UIAOServiceAccountInventory -Domain \"child.contoso.local\" -IncludeSPNs
+
+**Notes:** gMSA and sMSA accounts are queried from CN=Managed Service Accounts. User-based service accounts are identified using the same heuristics as Export-UIAOUserInventory -IdentifyServiceAccounts.
+
+**Related:** Export-UIAOUserInventory, Invoke-UIAOADAssessment
+
+3.8 Export-UIAOTrustMap
+
+**Synopsis:** Maps all trust relationships with type, direction, SID filtering, and selective authentication status.
+
+**Description:** Enumerates all Active Directory trust relationships within the forest. Captures trust type (forest, external, shortcut, realm), direction (inbound, outbound, bidirectional), SID filtering status, selective authentication configuration, and trust attributes. Optionally validates trust health via netdom trust verification.
+
+**Syntax:**
+
+Export-UIAOTrustMap \[-OutputPath \<String\>\] \[-ValidateTrusts\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  --------------------------------------------------------------------------------------------------------------------------
+  **Name**          **Type**   **Required**   **Default**              **Description**
+  ----------------- ---------- -------------- ------------------------ -----------------------------------------------------
+  -OutputPath       String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -ValidateTrusts   Switch     No             \$false                  Perform trust validation for each discovered trust.
+  --------------------------------------------------------------------------------------------------------------------------
+
+**Output:** TrustMap.json
+
+**Examples:**
+
+\# Example 1: Basic trust mapping Export-UIAOTrustMap \# Example 2: Map and validate all trusts Export-UIAOTrustMap -ValidateTrusts \# Example 3: Custom output path Export-UIAOTrustMap -OutputPath \"D:\\UIAO\\Assessment\\TrustReview\"
+
+**Notes:** Trust validation (-ValidateTrusts) requires network connectivity to the trusted domain\'s DCs. Failures are logged as warnings, not errors, so the assessment can continue.
+
+**Related:** Export-UIAOForestTopology, Invoke-UIAOADAssessment
+
+3.9 Export-UIAOACLReport
+
+**Synopsis:** Analyzes OU delegation, AdminSDHolder permissions, and non-default ACL entries.
+
+**Description:** Scans Active Directory object ACLs to identify delegated permissions on OUs, non-default permissions on critical objects, and AdminSDHolder configuration. Reports on permission inheritance breaks, explicit deny entries, and over-privileged delegations that may pose security risks during migration.
+
+**Syntax:**
+
+Export-UIAOACLReport \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-TargetOU \<String\>\] \[-IncludeInherited\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ---------------------------------------------------------------------------------------------------------------------
+  **Name**            **Type**   **Required**   **Default**              **Description**
+  ------------------- ---------- -------------- ------------------------ ----------------------------------------------
+  -Domain             String     No             Current domain           Target domain FQDN.
+
+  -OutputPath         String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -TargetOU           String     No             Domain root              Distinguished name of a specific OU to scan.
+
+  -IncludeInherited   Switch     No             \$false                  Include inherited ACL entries in the report.
+  ---------------------------------------------------------------------------------------------------------------------
+
+**Output Files:**
+
+- OUDelegation.json --- OU-level delegation analysis
+
+- AdminSDHolder.json --- AdminSDHolder ACL and protected objects report
+
+**Examples:**
+
+\# Example 1: Full domain ACL report Export-UIAOACLReport \# Example 2: Scan a specific OU with inherited permissions Export-UIAOACLReport -TargetOU \"OU=Servers,DC=contoso,DC=local\" -IncludeInherited \# Example 3: Multiple domains Export-UIAOACLReport -Domain \"child.contoso.local\"
+
+**Notes:** ACL analysis is the most time-consuming operation in the AD assessment. For large domains, scope with -TargetOU. This function uses the AD: PSDrive provider for ACL enumeration.
+
+**Related:** Export-UIAOOUHierarchy, Export-UIAOSchemaExtensions
+
+3.10 Export-UIAOSchemaExtensions
+
+**Synopsis:** Exports custom schema attributes, classes, and confidential attribute markings.
+
+**Description:** Queries the AD Schema naming context to identify custom (non-default) attributes and classes added by applications or administrators. Identifies attributes marked as confidential (searchFlags bit 128) which require special permissions to read. This data is critical for planning schema-dependent application migration.
+
+**Syntax:**
+
+Export-UIAOSchemaExtensions \[-OutputPath \<String\>\] \[-IncludeDefaultSchema\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  -------------------------------------------------------------------------------------------------------------------------------------------
+  **Name**                **Type**   **Required**   **Default**              **Description**
+  ----------------------- ---------- -------------- ------------------------ ----------------------------------------------------------------
+  -OutputPath             String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -IncludeDefaultSchema   Switch     No             \$false                  Include built-in schema attributes and classes (large output).
+  -------------------------------------------------------------------------------------------------------------------------------------------
+
+**Output Files:**
+
+- SchemaExtensions.json --- Custom schema attributes and classes
+
+- ConfidentialAttributes.csv --- Attributes with the confidential flag set
+
+**Examples:**
+
+\# Example 1: Export custom schema extensions only Export-UIAOSchemaExtensions \# Example 2: Include the full default schema (for baseline comparison) Export-UIAOSchemaExtensions -IncludeDefaultSchema \# Example 3: Custom output directory Export-UIAOSchemaExtensions -OutputPath \"D:\\UIAO\\Assessment\\SchemaReview\"
+
+**Notes:** Schema access requires read permissions on CN=Schema,CN=Configuration. Using -IncludeDefaultSchema produces significantly larger output files.
+
+**Related:** Export-UIAOForestTopology, Export-UIAOACLReport
+
+3.11 Invoke-UIAOADAssessment
+
+**Synopsis:** Master orchestrator that runs all Export-UIAO\* AD functions in sequence to produce a complete assessment.
+
+**Description:** Executes all 10 individual export functions in the optimal order, creating a comprehensive AD assessment directory. Generates an AssessmentManifest.json that indexes all output files with timestamps, sizes, and status. Supports skipping specific resource-intensive operations for faster assessment cycles.
+
+**Syntax:**
+
+Invoke-UIAOADAssessment \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-StaleDays \<Int32\>\] \[-SkipGPOSettings\] \[-SkipACLAnalysis\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ------------------------------------------------------------------------------------------------------------------------
+  **Name**           **Type**   **Required**   **Default**              **Description**
+  ------------------ ---------- -------------- ------------------------ --------------------------------------------------
+  -Domain            String     No             Current domain           Target domain FQDN.
+
+  -OutputPath        String     No             D:\\UIAO\\Assessment\\   Root directory for assessment output.
+
+  -StaleDays         Int32      No             90                       Days since last logon to flag objects as stale.
+
+  -SkipGPOSettings   Switch     No             \$false                  Skip GPO XML parsing (faster execution).
+
+  -SkipACLAnalysis   Switch     No             \$false                  Skip ACL/delegation analysis (faster execution).
+  ------------------------------------------------------------------------------------------------------------------------
+
+**Output:** Complete assessment directory with AssessmentManifest.json
+
+**Execution Order:**
+
+16. Export-UIAOForestTopology
+
+17. Export-UIAOTrustMap
+
+18. Export-UIAOSchemaExtensions
+
+19. Export-UIAOOUHierarchy
+
+20. Export-UIAOGPOInventory
+
+21. Export-UIAOComputerInventory
+
+22. Export-UIAOUserInventory
+
+23. Export-UIAOGroupInventory
+
+24. Export-UIAOServiceAccountInventory
+
+25. Export-UIAOACLReport (unless skipped)
+
+**Examples:**
+
+\# Example 1: Full assessment with defaults Invoke-UIAOADAssessment \# Example 2: Fast assessment (skip expensive operations) Invoke-UIAOADAssessment -SkipGPOSettings -SkipACLAnalysis \# Example 3: Assessment with custom stale threshold Invoke-UIAOADAssessment -Domain \"contoso.local\" -StaleDays 60 -OutputPath \"D:\\UIAO\\Assessment\\20260421\"
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Note**                                                                                                                                                                                                                                    |
+|                                                                                                                                                                                                                                             |
+| **Estimated execution time:** 15--60 minutes depending on forest size, number of objects, and whether GPO settings and ACL analysis are included. For forests with 100,000+ objects, expect execution times at the upper end of this range. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+**Related:** All Export-UIAO\* functions
+
+4\. UIAODNSAssessment Module
+
+The UIAODNSAssessment module provides 8 functions for DNS infrastructure assessment, covering zone inventory, record exports, SRV record validation, forwarder auditing, health checks, DNSSEC status, drift detection, and full orchestration.
+
+4.1 Get-UIAODNSZoneInventory
+
+**Synopsis:** Inventories all DNS zones with type, replication scope, and record counts.
+
+**Description:** Queries the specified DNS server for all hosted zones, capturing zone type (primary, secondary, stub, forwarder), AD-integration status, replication scope, dynamic update settings, and total record counts per zone. Optionally includes reverse lookup zones.
+
+**Syntax:**
+
+Get-UIAODNSZoneInventory \[-DNSServer \<String\>\] \[-OutputPath \<String\>\] \[-IncludeReverseLookup\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ---------------------------------------------------------------------------------------------------------------------------
+  **Name**                **Type**   **Required**   **Default**              **Description**
+  ----------------------- ---------- -------------- ------------------------ ------------------------------------------------
+  -DNSServer              String     No             Local server             Target DNS server hostname or IP.
+
+  -OutputPath             String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -IncludeReverseLookup   Switch     No             \$false                  Include reverse lookup zones in the inventory.
+  ---------------------------------------------------------------------------------------------------------------------------
+
+**Output:** DNSZoneInventory.json
+
+**Examples:**
+
+\# Example 1: Zone inventory from local DNS server Get-UIAODNSZoneInventory \# Example 2: Remote DNS server with reverse zones Get-UIAODNSZoneInventory -DNSServer \"DC01.contoso.local\" -IncludeReverseLookup \# Example 3: Custom output path Get-UIAODNSZoneInventory -DNSServer \"DC01\" -OutputPath \"D:\\UIAO\\Assessment\\DNS\"
+
+**Related:** Get-UIAODNSRecordExport, Invoke-UIAODNSAssessment
+
+4.2 Get-UIAODNSRecordExport
+
+**Synopsis:** Exports all DNS records for a specified zone with type, TTL, and record data.
+
+**Description:** Performs a complete record export for a given DNS zone, capturing record name, type, TTL, data value, and timestamp. Supports filtering by record type to focus on specific record categories.
+
+**Syntax:**
+
+Get-UIAODNSRecordExport \[-DNSServer \<String\>\] \[-ZoneName \<String\>\] \[-OutputPath \<String\>\] \[-RecordTypes \<String\[\]\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  -----------------------------------------------------------------------------------------------------------------------------------------
+  **Name**       **Type**     **Required**   **Default**              **Description**
+  -------------- ------------ -------------- ------------------------ ---------------------------------------------------------------------
+  -DNSServer     String       No             Local server             Target DNS server hostname or IP.
+
+  -ZoneName      String       Yes            ---                      Name of the DNS zone to export.
+
+  -OutputPath    String       No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -RecordTypes   String\[\]   No             All types                Filter by record types: A, AAAA, CNAME, MX, SRV, TXT, NS, PTR, SOA.
+  -----------------------------------------------------------------------------------------------------------------------------------------
+
+**Output:** DNSRecords\_\<ZoneName\>.json
+
+**Examples:**
+
+\# Example 1: Export all records for a zone Get-UIAODNSRecordExport -ZoneName \"contoso.local\" \# Example 2: Export only A and CNAME records Get-UIAODNSRecordExport -ZoneName \"contoso.local\" -RecordTypes @(\"A\",\"CNAME\") \# Example 3: Remote server export Get-UIAODNSRecordExport -DNSServer \"DC01\" -ZoneName \"contoso.local\"
+
+**Related:** Get-UIAODNSZoneInventory, Test-UIAOSRVRecords
+
+4.3 Test-UIAOSRVRecords
+
+**Synopsis:** Validates Active Directory-critical SRV records for domain controller locator functionality.
+
+**Description:** Tests the presence and correctness of SRV records required for AD functionality: \_ldap.\_tcp, \_kerberos.\_tcp, \_gc.\_tcp, \_kpasswd.\_tcp, and site-specific variants. Reports missing or misconfigured records that could impact domain join, authentication, or replication.
+
+**Syntax:**
+
+Test-UIAOSRVRecords \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ------------------------------------------------------------------------------------------------------------------
+  **Name**      **Type**   **Required**   **Default**              **Description**
+  ------------- ---------- -------------- ------------------------ -------------------------------------------------
+  -Domain       String     No             Current domain           Target domain FQDN to validate SRV records for.
+
+  -OutputPath   String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+  ------------------------------------------------------------------------------------------------------------------
+
+**Output:** SRVValidation.json
+
+**Examples:**
+
+\# Example 1: Validate SRV records for current domain Test-UIAOSRVRecords \# Example 2: Validate for a specific domain Test-UIAOSRVRecords -Domain \"child.contoso.local\"
+
+**Related:** Get-UIAODNSRecordExport, Get-UIAODNSHealthCheck
+
+4.4 Get-UIAODNSForwarderAudit
+
+**Synopsis:** Audits DNS forwarder configuration, root hints, and recursion settings.
+
+**Description:** Captures the forwarder configuration on the target DNS server including forwarder addresses, conditional forwarders, root hint servers, and recursion settings. Flags potential issues such as external forwarders in restricted environments or disabled recursion on resolving servers.
+
+**Syntax:**
+
+Get-UIAODNSForwarderAudit \[-DNSServer \<String\>\] \[-OutputPath \<String\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ----------------------------------------------------------------------------------------------------
+  **Name**      **Type**   **Required**   **Default**              **Description**
+  ------------- ---------- -------------- ------------------------ -----------------------------------
+  -DNSServer    String     No             Local server             Target DNS server hostname or IP.
+
+  -OutputPath   String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+  ----------------------------------------------------------------------------------------------------
+
+**Output:** DNSForwarderAudit.json
+
+**Examples:**
+
+\# Example 1: Audit local DNS server forwarders Get-UIAODNSForwarderAudit \# Example 2: Audit a remote DNS server Get-UIAODNSForwarderAudit -DNSServer \"DC01.contoso.local\"
+
+**Related:** Get-UIAODNSHealthCheck, Invoke-UIAODNSAssessment
+
+4.5 Get-UIAODNSHealthCheck
+
+**Synopsis:** Performs DNS resolution testing, delegation validation, and scavenging status assessment.
+
+**Description:** Runs a comprehensive health check against the target DNS server: tests resolution of internal and external names, validates delegation records for child zones, checks aging and scavenging configuration, and reports on zone transfer settings. Optionally tests custom domain resolution.
+
+**Syntax:**
+
+Get-UIAODNSHealthCheck \[-DNSServer \<String\>\] \[-OutputPath \<String\>\] \[-TestDomains \<String\[\]\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ---------------------------------------------------------------------------------------------------------------------
+  **Name**       **Type**     **Required**   **Default**              **Description**
+  -------------- ------------ -------------- ------------------------ -------------------------------------------------
+  -DNSServer     String       No             Local server             Target DNS server hostname or IP.
+
+  -OutputPath    String       No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -TestDomains   String\[\]   No             AD domain names          Additional domain names to test resolution for.
+  ---------------------------------------------------------------------------------------------------------------------
+
+**Output:** DNSHealthCheck.json
+
+**Examples:**
+
+\# Example 1: Basic health check Get-UIAODNSHealthCheck \# Example 2: Test custom domains Get-UIAODNSHealthCheck -TestDomains @(\"contoso.local\",\"child.contoso.local\",\"partner.com\") \# Example 3: Remote server health check Get-UIAODNSHealthCheck -DNSServer \"DC01\" -OutputPath \"D:\\UIAO\\Assessment\\DNSHealth\"
+
+**Related:** Get-UIAODNSForwarderAudit, Test-UIAOSRVRecords
+
+4.6 Get-UIAODNSSECStatus
+
+**Synopsis:** Reports DNSSEC signing status, trust anchors, and key management configuration.
+
+**Description:** Checks each zone for DNSSEC signing status, retrieves trust anchor configuration, reports on key signing key (KSK) and zone signing key (ZSK) details, and validates key rollover settings. Essential for understanding DNSSEC posture before DNS migration.
+
+**Syntax:**
+
+Get-UIAODNSSECStatus \[-DNSServer \<String\>\] \[-ZoneName \<String\>\] \[-OutputPath \<String\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ------------------------------------------------------------------------------------------------------------------------
+  **Name**      **Type**   **Required**   **Default**              **Description**
+  ------------- ---------- -------------- ------------------------ -------------------------------------------------------
+  -DNSServer    String     No             Local server             Target DNS server hostname or IP.
+
+  -ZoneName     String     No             All zones                Specific zone to check. If omitted, checks all zones.
+
+  -OutputPath   String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+  ------------------------------------------------------------------------------------------------------------------------
+
+**Output:** DNSSECStatus.json
+
+**Examples:**
+
+\# Example 1: DNSSEC status for all zones Get-UIAODNSSECStatus \# Example 2: Check a specific zone Get-UIAODNSSECStatus -ZoneName \"contoso.local\"
+
+**Related:** Get-UIAODNSZoneInventory, Invoke-UIAODNSAssessment
+
+4.7 Invoke-UIAODNSDriftDetection
+
+**Synopsis:** Compares current DNS state against a previously captured baseline to detect drift.
+
+**Description:** Loads a baseline DNS assessment (from a prior Invoke-UIAODNSAssessment run) and compares it to the current live DNS state. Identifies added, removed, and modified zones and records. Reports drift with severity classification based on the -AlertThreshold parameter.
+
+**Syntax:**
+
+Invoke-UIAODNSDriftDetection \[-BaselinePath \<String\>\] \[-OutputPath \<String\>\] \[-AlertThreshold \<String\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  --------------------------------------------------------------------------------------------------------------------------------
+  **Name**          **Type**   **Required**   **Default**              **Description**
+  ----------------- ---------- -------------- ------------------------ -----------------------------------------------------------
+  -BaselinePath     String     Yes            ---                      Path to the baseline DNS assessment directory.
+
+  -OutputPath       String     No             D:\\UIAO\\Assessment\\   Directory path for drift report output.
+
+  -AlertThreshold   String     No             Medium                   Minimum severity to include: Low, Medium, High, Critical.
+  --------------------------------------------------------------------------------------------------------------------------------
+
+**Output:** DNSDriftReport.json
+
+**Examples:**
+
+\# Example 1: Compare against a baseline Invoke-UIAODNSDriftDetection -BaselinePath \"D:\\UIAO\\Assessment\\DNS-Baseline-20260401\" \# Example 2: Only report critical and high severity drift Invoke-UIAODNSDriftDetection -BaselinePath \"D:\\UIAO\\Assessment\\DNS-Baseline\" -AlertThreshold \"High\"
+
+**Related:** Invoke-UIAODNSAssessment
+
+4.8 Invoke-UIAODNSAssessment
+
+**Synopsis:** Master orchestrator for all DNS assessment functions.
+
+**Description:** Executes all DNS assessment functions in sequence against the specified DNS server and domain. Produces a complete DNS assessment directory with an assessment manifest.
+
+**Syntax:**
+
+Invoke-UIAODNSAssessment \[-DNSServer \<String\>\] \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ------------------------------------------------------------------------------------------------------------
+  **Name**      **Type**   **Required**   **Default**              **Description**
+  ------------- ---------- -------------- ------------------------ -------------------------------------------
+  -DNSServer    String     No             Local server             Target DNS server hostname or IP.
+
+  -Domain       String     No             Current domain           Target domain FQDN.
+
+  -OutputPath   String     No             D:\\UIAO\\Assessment\\   Root directory for DNS assessment output.
+  ------------------------------------------------------------------------------------------------------------
+
+**Output:** Complete DNS assessment directory with DNSAssessmentManifest.json
+
+**Examples:**
+
+\# Example 1: Full DNS assessment Invoke-UIAODNSAssessment \# Example 2: Target a specific DNS server and domain Invoke-UIAODNSAssessment -DNSServer \"DC01.contoso.local\" -Domain \"contoso.local\" \# Example 3: Custom output path Invoke-UIAODNSAssessment -OutputPath \"D:\\UIAO\\Assessment\\DNS-20260421\"
+
+**Related:** All Get-UIAODNS\* and Test-UIAOSRV\* functions
+
+5\. UIAOPKIAssessment Module
+
+The UIAOPKIAssessment module provides 5 functions for PKI infrastructure assessment, including CA discovery, certificate template analysis, ESC vulnerability detection, CRL health checking, and full orchestration.
+
+5.1 Get-UIAOCAInventory
+
+**Synopsis:** Discovers Certificate Authorities via AD-published objects.
+
+**Description:** Queries Active Directory for CA objects published under CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration. Captures CA name, server, certificate, CDP/AIA paths, and enrollment permissions. Optionally detects standalone CAs that may not be AD-integrated.
+
+**Syntax:**
+
+Get-UIAOCAInventory \[-OutputPath \<String\>\] \[-IncludeStandaloneCA\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ------------------------------------------------------------------------------------------------------------------------------
+  **Name**               **Type**   **Required**   **Default**              **Description**
+  ---------------------- ---------- -------------- ------------------------ ----------------------------------------------------
+  -OutputPath            String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -IncludeStandaloneCA   Switch     No             \$false                  Attempt to detect standalone CAs via network scan.
+  ------------------------------------------------------------------------------------------------------------------------------
+
+**Output:** CAInventory.json
+
+**Examples:**
+
+\# Example 1: Discover AD-published CAs Get-UIAOCAInventory \# Example 2: Include standalone CA detection Get-UIAOCAInventory -IncludeStandaloneCA
+
+**Related:** Get-UIAOCertificateTemplates, Export-UIAOPKIAssessment
+
+5.2 Get-UIAOCertificateTemplates
+
+**Synopsis:** Inventories all certificate templates with EKUs, enrollment permissions, and validity periods.
+
+**Description:** Enumerates all certificate templates published in AD, capturing template name, version, EKU (Extended Key Usage) OIDs, enrollment and autoenrollment permissions, validity and renewal periods, key usage flags, subject name requirements, and superseded template references.
+
+**Syntax:**
+
+Get-UIAOCertificateTemplates \[-OutputPath \<String\>\] \[-IncludeArchived\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  --------------------------------------------------------------------------------------------------------------------------
+  **Name**           **Type**   **Required**   **Default**              **Description**
+  ------------------ ---------- -------------- ------------------------ ----------------------------------------------------
+  -OutputPath        String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -IncludeArchived   Switch     No             \$false                  Include archived/superseded certificate templates.
+  --------------------------------------------------------------------------------------------------------------------------
+
+**Output:** CertificateTemplates.json
+
+**Examples:**
+
+\# Example 1: Active templates only Get-UIAOCertificateTemplates \# Example 2: Include archived templates Get-UIAOCertificateTemplates -IncludeArchived
+
+**Related:** Test-UIAOESCVulnerabilities, Get-UIAOCAInventory
+
+5.3 Test-UIAOESCVulnerabilities
+
+**Synopsis:** Detects ESC1 through ESC8 Active Directory Certificate Services vulnerability patterns.
+
+**Description:** Analyzes certificate templates and CA configurations against known ESC (Escalation) vulnerability patterns documented in the "Certified Pre-Owned" research. Each finding includes severity, affected template/CA, vulnerability description, and remediation guidance.
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **⚠ Warning**                                                                                                                                                                                                                               |
+|                                                                                                                                                                                                                                             |
+| This function performs read-only analysis. It does not exploit vulnerabilities. However, its output contains sensitive information about exploitable configurations and should be handled in accordance with the Controlled classification. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+**Syntax:**
+
+Test-UIAOESCVulnerabilities \[-OutputPath \<String\>\] \[-SeverityFilter \<String\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ---------------------------------------------------------------------------------------------------------------------
+  **Name**          **Type**   **Required**   **Default**              **Description**
+  ----------------- ---------- -------------- ------------------------ ------------------------------------------------
+  -OutputPath       String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -SeverityFilter   String     No             All severities           Minimum severity: Critical, High, Medium, Low.
+  ---------------------------------------------------------------------------------------------------------------------
+
+**Output:** ESCVulnerabilities.json with findings including severity, description, and remediation guidance.
+
+**ESC Checks Performed:**
+
+  ---------------------------------------------------------------------------------------------------
+  **Check**   **Description**                                                  **Default Severity**
+  ----------- ---------------------------------------------------------------- ----------------------
+  ESC1        Misconfigured certificate templates allowing domain escalation   Critical
+
+  ESC2        Templates with Any Purpose or no EKU                             Critical
+
+  ESC3        Enrollment agent template abuse                                  High
+
+  ESC4        Vulnerable certificate template ACLs                             High
+
+  ESC5        Vulnerable PKI object ACLs                                       High
+
+  ESC6        EDITF_ATTRIBUTESUBJECTALTNAME2 flag on CA                        Critical
+
+  ESC7        Vulnerable CA ACLs (ManageCA/ManageCertificates)                 High
+
+  ESC8        NTLM relay to AD CS HTTP enrollment endpoints                    Critical
+  ---------------------------------------------------------------------------------------------------
+
+**Examples:**
+
+\# Example 1: Full ESC vulnerability scan Test-UIAOESCVulnerabilities \# Example 2: Only Critical and High findings Test-UIAOESCVulnerabilities -SeverityFilter \"High\" \# Example 3: Custom output path Test-UIAOESCVulnerabilities -OutputPath \"D:\\UIAO\\Assessment\\PKISecurity\"
+
+**Related:** Get-UIAOCertificateTemplates, Get-UIAOCAInventory
+
+5.4 Get-UIAOCRLHealth
+
+**Synopsis:** Validates CRL distribution points, expiration status, and delta CRL configuration.
+
+**Description:** Checks CRL distribution point accessibility, validates CRL expiration dates against the warning threshold, and reports on delta CRL status. Identifies CRLs approaching expiration that could cause certificate validation failures.
+
+**Syntax:**
+
+Get-UIAOCRLHealth \[-OutputPath \<String\>\] \[-WarningDays \<Int32\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ---------------------------------------------------------------------------------------------------------------------
+  **Name**       **Type**   **Required**   **Default**              **Description**
+  -------------- ---------- -------------- ------------------------ ---------------------------------------------------
+  -OutputPath    String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  -WarningDays   Int32      No             7                        Days before CRL expiration to generate a warning.
+  ---------------------------------------------------------------------------------------------------------------------
+
+**Output:** CRLHealth.json
+
+**Examples:**
+
+\# Example 1: CRL health check with default 7-day warning Get-UIAOCRLHealth \# Example 2: Extended warning window of 14 days Get-UIAOCRLHealth -WarningDays 14
+
+**Related:** Get-UIAOCAInventory, Export-UIAOPKIAssessment
+
+5.5 Export-UIAOPKIAssessment
+
+**Synopsis:** Master orchestrator for all PKI assessment functions.
+
+**Description:** Executes all PKI assessment functions in sequence: CA inventory, certificate template analysis, ESC vulnerability detection, and CRL health validation. Produces a complete PKI assessment directory with a manifest file.
+
+**Syntax:**
+
+Export-UIAOPKIAssessment \[-OutputPath \<String\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ------------------------------------------------------------------------------------------------------------
+  **Name**      **Type**   **Required**   **Default**              **Description**
+  ------------- ---------- -------------- ------------------------ -------------------------------------------
+  -OutputPath   String     No             D:\\UIAO\\Assessment\\   Root directory for PKI assessment output.
+
+  ------------------------------------------------------------------------------------------------------------
+
+**Output:** Complete PKI assessment directory with PKIAssessmentManifest.json
+
+**Examples:**
+
+\# Example 1: Full PKI assessment Export-UIAOPKIAssessment \# Example 2: Custom output path Export-UIAOPKIAssessment -OutputPath \"D:\\UIAO\\Assessment\\PKI-20260421\"
+
+**Related:** All Get-UIAOCA\*, Get-UIAOCertificate\*, Test-UIAOESC\*, and Get-UIAOCRL\* functions
+
+6\. UIAOReadOnlyAssessment Module
+
+The UIAOReadOnlyAssessment module provides 5 functions designed for environments where the operator has minimal (authenticated user) permissions. It includes a pre-flight access check and read-only variants of core assessment functions.
+
+6.1 Test-UIAOReadOnlyAccess
+
+**Synopsis:** 18-point pre-flight access check before running an assessment.
+
+**Description:** Tests the current user's ability to read each category of AD, DNS, and PKI data. Returns a Pass/Fail result for each of 18 access checks, allowing operators to understand assessment coverage before committing to a full run.
+
+**Syntax:**
+
+Test-UIAOReadOnlyAccess \[-Domain \<String\>\] \[-Verbose\]
+
+**Parameters:**
+
+  ---------------------------------------------------------------------------
+  **Name**   **Type**   **Required**   **Default**      **Description**
+  ---------- ---------- -------------- ---------------- ---------------------
+  -Domain    String     No             Current domain   Target domain FQDN.
+
+  ---------------------------------------------------------------------------
+
+**Output:** AccessCheckResults object (also written to console)
+
+**Access Checks Performed:**
+
+  ---------------------------------------------------------------------------------------
+  **\#**   **Check**                           **Description**
+  -------- ----------------------------------- ------------------------------------------
+  1        Forest object read                  Read CN=Partitions,CN=Configuration
+
+  2        Domain object read                  Read domain root object
+
+  3        OU enumeration                      List organizational units
+
+  4        User enumeration                    List user objects
+
+  5        Computer enumeration                List computer objects
+
+  6        Group enumeration                   List group objects
+
+  7        GPO read                            Read Group Policy objects
+
+  8        GPO report generation               Generate Get-GPOReport XML
+
+  9        Trust read                          Read CN=System trust objects
+
+  10       Schema read                         Read CN=Schema,CN=Configuration
+
+  11       Site/subnet read                    Read CN=Sites,CN=Configuration
+
+  12       DNS zone read                       Read DNS zone data
+
+  13       PKI object read                     Read CN=Public Key Services
+
+  14       Fine-grained password policy read   Read CN=Password Settings Container
+
+  15       AdminSDHolder read                  Read CN=AdminSDHolder,CN=System
+
+  16       Deleted objects read                Read CN=Deleted Objects container
+
+  17       Confidential attributes read        Read attributes with searchFlags bit 128
+
+  18       WMI filter read                     Read CN=SOM,CN=WMIPolicy,CN=System
+  ---------------------------------------------------------------------------------------
+
+**Examples:**
+
+\# Example 1: Run pre-flight checks for current domain Test-UIAOReadOnlyAccess -Verbose \# Example 2: Check against a specific domain Test-UIAOReadOnlyAccess -Domain \"child.contoso.local\"
+
+**Related:** Invoke-UIAOReadOnlyAssessment
+
+6.2 Export-UIAOReadOnlyForest
+
+**Synopsis:** Read-only forest topology export using authenticated user permissions.
+
+**Description:** A subset of Export-UIAOForestTopology that operates with only the permissions available to a standard authenticated user. Captures forest name, domains, domain controllers, and functional levels without requiring elevated access.
+
+**Syntax:**
+
+Export-UIAOReadOnlyForest \[-OutputPath \<String\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ---------------------------------------------------------------------------------------------------
+  **Name**      **Type**   **Required**   **Default**              **Description**
+  ------------- ---------- -------------- ------------------------ ----------------------------------
+  -OutputPath   String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+
+  ---------------------------------------------------------------------------------------------------
+
+**Output:** ReadOnlyForestTopology.json
+
+**Examples:**
+
+\# Example 1: Read-only forest topology Export-UIAOReadOnlyForest \# Example 2: Custom output path Export-UIAOReadOnlyForest -OutputPath \"D:\\UIAO\\Assessment\\ReadOnly\"
+
+**Related:** Export-UIAOForestTopology, Invoke-UIAOReadOnlyAssessment
+
+6.3 Export-UIAOReadOnlyGPO
+
+**Synopsis:** GPO inventory without requiring elevated permissions.
+
+**Description:** Enumerates GPO names, links, and status using only authenticated user permissions. Does not attempt GPO report generation or settings parsing, which may require additional permissions.
+
+**Syntax:**
+
+Export-UIAOReadOnlyGPO \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ---------------------------------------------------------------------------------------------------
+  **Name**      **Type**   **Required**   **Default**              **Description**
+  ------------- ---------- -------------- ------------------------ ----------------------------------
+  -Domain       String     No             Current domain           Target domain FQDN.
+
+  -OutputPath   String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+  ---------------------------------------------------------------------------------------------------
+
+**Output:** ReadOnlyGPOInventory.json
+
+**Examples:**
+
+\# Example 1: Read-only GPO inventory Export-UIAOReadOnlyGPO \# Example 2: Target a specific domain Export-UIAOReadOnlyGPO -Domain \"child.contoso.local\"
+
+**Related:** Export-UIAOGPOInventory, Invoke-UIAOReadOnlyAssessment
+
+6.4 Export-UIAOReadOnlyOUHierarchy
+
+**Synopsis:** OU hierarchy export using only authenticated user permissions.
+
+**Description:** Exports the OU tree structure using standard LDAP read operations. Captures OU names, distinguished names, and depth. May omit object counts or GPO link details if those require elevated permissions.
+
+**Syntax:**
+
+Export-UIAOReadOnlyOUHierarchy \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ---------------------------------------------------------------------------------------------------
+  **Name**      **Type**   **Required**   **Default**              **Description**
+  ------------- ---------- -------------- ------------------------ ----------------------------------
+  -Domain       String     No             Current domain           Target domain FQDN.
+
+  -OutputPath   String     No             D:\\UIAO\\Assessment\\   Directory path for output files.
+  ---------------------------------------------------------------------------------------------------
+
+**Output:** ReadOnlyOUHierarchy.json
+
+**Examples:**
+
+\# Example 1: Read-only OU hierarchy Export-UIAOReadOnlyOUHierarchy \# Example 2: Target a child domain Export-UIAOReadOnlyOUHierarchy -Domain \"child.contoso.local\"
+
+**Related:** Export-UIAOOUHierarchy, Invoke-UIAOReadOnlyAssessment
+
+6.5 Invoke-UIAOReadOnlyAssessment
+
+**Synopsis:** Master orchestrator for read-only assessment with pre-flight access validation.
+
+**Description:** Runs Test-UIAOReadOnlyAccess first to determine available permissions, then proceeds with all read-only assessment functions for which access is confirmed. Produces a coverage report showing which data was collected and which was inaccessible.
+
+**Syntax:**
+
+Invoke-UIAOReadOnlyAssessment \[-Domain \<String\>\] \[-OutputPath \<String\>\] \[-Verbose\] \[-WhatIf\]
+
+**Parameters:**
+
+  ------------------------------------------------------------------------------------------------------------------
+  **Name**      **Type**   **Required**   **Default**              **Description**
+  ------------- ---------- -------------- ------------------------ -------------------------------------------------
+  -Domain       String     No             Current domain           Target domain FQDN.
+
+  -OutputPath   String     No             D:\\UIAO\\Assessment\\   Root directory for read-only assessment output.
+  ------------------------------------------------------------------------------------------------------------------
+
+**Output:** ReadOnlyAssessment directory with ReadOnlyManifest.json and CoverageReport.json
+
+**Examples:**
+
+\# Example 1: Full read-only assessment Invoke-UIAOReadOnlyAssessment \# Example 2: Target a specific domain Invoke-UIAOReadOnlyAssessment -Domain \"contoso.local\" -OutputPath \"D:\\UIAO\\Assessment\\ReadOnly\"
+
+**Related:** Test-UIAOReadOnlyAccess, Invoke-UIAOADAssessment
+
+7\. Planned Modules (API Preview)
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **❗ Important**                                                                                                                                                                                      |
+|                                                                                                                                                                                                       |
+| The following modules are in the planning stage. Function names, parameters, and behaviors are subject to change. This preview is provided for architectural awareness and integration planning only. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+7.1 UIAOIdentityAssessment (Planned)
+
+Provides hybrid identity assessment by querying Entra ID via Microsoft Graph API and comparing against on-premises AD data.
+
+  ------------------------------------------------------------------------------------------------------------------------------------
+  **Function**                    **Description**                               **Key Parameters**
+  ------------------------------- --------------------------------------------- ------------------------------------------------------
+  Export-UIAOEntraUsers           Entra ID user inventory via Graph API         -TenantId, -OutputPath
+
+  Export-UIAOEntraGroups          Entra ID groups and memberships               -TenantId, -OutputPath, -IncludeDynamic
+
+  Export-UIAOEntraApps            App registrations and service principals      -TenantId, -OutputPath
+
+  Export-UIAOConditionalAccess    Conditional Access policy inventory           -TenantId, -OutputPath
+
+  Compare-UIAOIdentitySources     AD vs Entra comparison report                 -ADAssessmentPath, -EntraAssessmentPath, -OutputPath
+
+  Invoke-UIAOIdentityAssessment   Master orchestrator for identity assessment   -TenantId, -Domain, -OutputPath
+  ------------------------------------------------------------------------------------------------------------------------------------
+
+7.2 UIAOImportAdapters (Planned)
+
+Provides ingestion adapters for third-party assessment tools, normalizing their output into the UIAO schema for correlation and unified reporting.
+
+  -----------------------------------------------------------------------------------------------------------------------------
+  **Function**                    **Description**                                   **Key Parameters**
+  ------------------------------- ------------------------------------------------- -------------------------------------------
+  Import-UIAOAzureMigrateReport   Consume Azure Migrate assessment output           -ReportPath, -OutputPath
+
+  Import-UIAOGPOAnalyticsReport   Consume Intune Group Policy Analytics export      -ReportPath, -OutputPath
+
+  Import-UIAODefenderFindings     Consume Defender for Identity Secure Score data   -ReportPath, -OutputPath
+
+  Import-UIAOSCuBAReport          Consume CISA ScubaGear compliance output          -ReportPath, -OutputPath
+
+  Import-UIAOADReconReport        Consume ADRecon Excel output                      -ReportPath, -OutputPath
+
+  Merge-UIAOAssessmentSources     Correlate and merge multiple import sources       -SourcePaths, -OutputPath, -MergeStrategy
+  -----------------------------------------------------------------------------------------------------------------------------
+
+7.3 UIAOPlanGenerators (Planned)
+
+Generates migration and modernization plans based on assessment data, producing actionable per-device, per-policy, and per-identity migration roadmaps.
+
+  ----------------------------------------------------------------------------------------------------------------------------------------
+  **Function**                        **Description**                                     **Key Parameters**
+  ----------------------------------- --------------------------------------------------- ------------------------------------------------
+  New-UIAOComputerModernizationPlan   Per-device migration plan from computer inventory   -AssessmentPath, -OutputPath, -TargetOS
+
+  New-UIAOGPOMigrationPlan            GPO-to-Intune migration plan from GPO inventory     -AssessmentPath, -OutputPath, -AnalyticsReport
+
+  New-UIAOIdentityMigrationPlan       User/group migration roadmap                        -AssessmentPath, -OutputPath, -WaveSize
+
+  New-UIAODNSMigrationPlan            DNS zone migration sequence and dependencies        -AssessmentPath, -OutputPath
+
+  New-UIAOPKIMigrationPlan            PKI modernization and CA migration sequence         -AssessmentPath, -OutputPath
+
+  Export-UIAOMasterPlan               Combined modernization plan document                -PlanPaths, -OutputPath, -Format
+  ----------------------------------------------------------------------------------------------------------------------------------------
+
+7.4 UIAODriftDetection (Planned)
+
+Provides continuous governance through baseline capture, drift comparison, scheduled monitoring, and alerting.
+
+  ----------------------------------------------------------------------------------------------------------------------------------
+  **Function**                 **Description**                                         **Key Parameters**
+  ---------------------------- ------------------------------------------------------- ---------------------------------------------
+  Get-UIAOBaseline             Capture current state as a governance baseline          -AssessmentPath, -BaselineName, -OutputPath
+
+  Compare-UIAODrift            Compare current state to a stored baseline              -BaselinePath, -CurrentPath, -OutputPath
+
+  Invoke-UIAODriftReport       Generate drift report with severity and remediation     -DriftDataPath, -OutputPath, -Format
+
+  Register-UIAODriftSchedule   Schedule automated drift detection via Task Scheduler   -BaselinePath, -Schedule, -OutputPath
+
+  Send-UIAODriftAlert          Alert on drift exceeding configured thresholds          -DriftReportPath, -AlertMethod, -Threshold
+  ----------------------------------------------------------------------------------------------------------------------------------
+
+8\. Common Parameters and Patterns
+
+8.1 Standard Parameters
+
+The following parameters are implemented consistently across all UIAO modules:
+
+  ------------------------------------------------------------------------------------------------------------------------
+  **Parameter**   **Type**   **Description**                                                      **Default**
+  --------------- ---------- -------------------------------------------------------------------- ------------------------
+  -OutputPath     String     Root directory for all output files. Created if it does not exist.   D:\\UIAO\\Assessment\\
+
+  -Format         String     Output format where applicable. Values: JSON, CSV.                   JSON
+
+  -Verbose        Switch     Enable detailed progress output via Write-Verbose.                   \$false
+
+  -WhatIf         Switch     Show what files would be created without executing.                  \$false
+  ------------------------------------------------------------------------------------------------------------------------
+
+8.2 Error Handling Pattern
+
+All UIAO functions use a consistent error handling pattern with governance-tagged error output:
+
+try { \# Assessment operation \$data = Get-ADForest -ErrorAction Stop } catch \[System.UnauthorizedAccessException\] { Write-Error \"\[UIAO:AccessDenied\] Insufficient permissions: \$\_\" \$errorRecord = \@{ Function = \"Export-UIAOForestTopology\" ErrorType = \"AccessDenied\" Message = \$\_.Exception.Message Timestamp = (Get-Date -Format \"o\") Classification = \"Controlled\" Boundary = \"GCC-Moderate\" } \$errorRecord \| ConvertTo-Json \| Out-File \"\$OutputPath\\Errors.json\" -Append } catch { Write-Error \"\[UIAO:GeneralError\] \$\_\" }
+
+8.3 JSON Output Envelope
+
+Every JSON file produced by UIAO modules uses this envelope structure:
+
+{ \"AssessmentType\": \"ForestTopology\", \"Timestamp\": \"2026-04-21T07:55:00-04:00\", \"Domain\": \"contoso.local\", \"RunAs\": \"CONTOSO\\\\assessor\", \"Classification\": \"Controlled\", \"Boundary\": \"GCC-Moderate\", \"ModuleVersion\": \"1.0.0\", \"Data\": { // Assessment-specific data structure } }
+
+8.4 Logging Conventions
+
+  -------------------------------------------------------------------------------------------------------------------------------------
+  **Cmdlet**      **Usage**                                   **Example**
+  --------------- ------------------------------------------- -------------------------------------------------------------------------
+  Write-Verbose   Progress and diagnostic info                Write-Verbose \"\[UIAO\] Enumerating OUs in contoso.local\...\"
+
+  Write-Warning   Non-fatal issues (partial data)             Write-Warning \"\[UIAO\] Cannot read GPO report for \'Legacy Policy\'\"
+
+  Write-Error     Fatal failures (function cannot complete)   Write-Error \"\[UIAO:AccessDenied\] Cannot read forest object\"
+  -------------------------------------------------------------------------------------------------------------------------------------
+
+8.5 Pipeline Support
+
+The following functions accept pipeline input:
+
+  -------------------------------------------------------------------------
+  **Function**              **Pipeline Input Type**   **Property**
+  ------------------------- ------------------------- ---------------------
+  Get-UIAODNSRecordExport   String                    -ZoneName (ByValue)
+
+  Get-UIAODNSSECStatus      String                    -ZoneName (ByValue)
+
+  Export-UIAOACLReport      String                    -TargetOU (ByValue)
+  -------------------------------------------------------------------------
+
+**Pipeline Example:**
+
+\# Export records for all zones from zone inventory (Get-UIAODNSZoneInventory).Data.Zones.ZoneName \| ForEach-Object { Get-UIAODNSRecordExport -ZoneName \$\_ }
+
+9\. Output Schema Reference
+
+This section documents the JSON schema for each major output file. All schemas include the standard governance envelope (Section 8.3). Only the Data property contents are shown below.
+
+9.1 AssessmentManifest.json
+
+{ \"AssessmentId\": \"a3b1c2d4-e5f6-7890-abcd-ef1234567890\", \"AssessmentType\": \"FullADAssessment\", \"StartTime\": \"2026-04-21T07:55:00-04:00\", \"EndTime\": \"2026-04-21T08:32:15-04:00\", \"DurationSeconds\": 2235, \"Domain\": \"contoso.local\", \"ForestName\": \"contoso.local\", \"RunAs\": \"CONTOSO\\\\assessor\", \"ComputerName\": \"ASSESS-WS01\", \"Files\": \[ { \"FileName\": \"ForestTopology.json\", \"SizeBytes\": 14520, \"Status\": \"Complete\", \"Timestamp\": \"2026-04-21T07:55:12-04:00\" } \], \"Errors\": \[\], \"Warnings\": \[\] }
+
+9.2 ForestTopology.json (Data)
+
+{ \"ForestName\": \"contoso.local\", \"ForestFunctionalLevel\": \"Windows2016Forest\", \"RootDomain\": \"contoso.local\", \"Domains\": \[ { \"Name\": \"contoso.local\", \"DomainFunctionalLevel\": \"Windows2016Domain\", \"NetBIOSName\": \"CONTOSO\", \"DomainControllers\": \[ { \"Name\": \"DC01.contoso.local\", \"IPAddress\": \"10.0.1.10\", \"Site\": \"Default-First-Site-Name\", \"IsGlobalCatalog\": true, \"OperatingSystem\": \"Windows Server 2025\", \"FSMORoles\": \[\"PDCEmulator\",\"RIDMaster\"\] } \] } \], \"FSMORoles\": { \"SchemaMaster\": \"DC01.contoso.local\", \"DomainNamingMaster\": \"DC01.contoso.local\", \"PDCEmulator\": \"DC01.contoso.local\", \"RIDMaster\": \"DC01.contoso.local\", \"InfrastructureMaster\": \"DC01.contoso.local\" }, \"Sites\": \[\"Default-First-Site-Name\",\"Branch-Office\"\] }
+
+9.3 OUHierarchy.json (Data)
+
+{ \"DomainDN\": \"DC=contoso,DC=local\", \"TotalOUs\": 145, \"MaxDepth\": 6, \"OUs\": \[ { \"Name\": \"Corporate\", \"DistinguishedName\": \"OU=Corporate,DC=contoso,DC=local\", \"Depth\": 1, \"LinkedGPOs\": \[\"Default Domain Policy\",\"Corporate Security\"\], \"ObjectCounts\": { \"Users\": 230, \"Computers\": 85, \"Groups\": 12 }, \"Children\": \[\] } \] }
+
+9.4 GPOInventory.json (Data)
+
+{ \"TotalGPOs\": 87, \"LinkedGPOs\": 62, \"UnlinkedGPOs\": 18, \"EmptyGPOs\": 7, \"GPOs\": \[ { \"DisplayName\": \"Corporate Security Baseline\", \"Id\": \"31B2F340-016D-11D2-945F-00C04FB984F9\", \"Status\": \"AllSettingsEnabled\", \"Created\": \"2024-03-15T10:30:00Z\", \"Modified\": \"2026-02-20T14:15:00Z\", \"UserVersion\": 12, \"ComputerVersion\": 45, \"WMIFilter\": null, \"Links\": \[ { \"Target\": \"OU=Workstations,DC=contoso,DC=local\", \"Enforced\": false, \"Enabled\": true } \] } \] }
+
+9.5 ComputerInventory.json (Data)
+
+{ \"TotalComputers\": 1250, \"StaleComputers\": 83, \"ByOS\": { \"Windows Server 2025\": 45, \"Windows 11\": 890, \"Windows 10\": 315 }, \"Computers\": \[ { \"Name\": \"WS-PC0001\", \"DNSHostName\": \"WS-PC0001.contoso.local\", \"OperatingSystem\": \"Windows 11 Enterprise\", \"OSVersion\": \"10.0 (26100)\", \"OU\": \"OU=Workstations,OU=Corporate,DC=contoso,DC=local\", \"Enabled\": true, \"LastLogonTimestamp\": \"2026-04-19T08:30:00Z\", \"PasswordLastSet\": \"2026-03-01T02:00:00Z\", \"IsStale\": false } \] }
+
+9.6 UserInventory.json (Data)
+
+{ \"TotalUsers\": 3200, \"EnabledUsers\": 2980, \"DisabledUsers\": 220, \"PrivilegedUsers\": 18, \"StaleUsers\": 145, \"Users\": \[ { \"SamAccountName\": \"jsmith\", \"DisplayName\": \"John Smith\", \"UPN\": \"jsmith@contoso.local\", \"Enabled\": true, \"OU\": \"OU=Users,OU=Corporate,DC=contoso,DC=local\", \"LastLogonTimestamp\": \"2026-04-20T14:22:00Z\", \"PasswordLastSet\": \"2026-01-15T09:00:00Z\", \"PasswordNeverExpires\": false, \"IsPrivileged\": false, \"IsServiceAccount\": false, \"MemberOf\": \[\"Domain Users\",\"Engineering\"\] } \] }
+
+9.7 GroupInventory.json (Data)
+
+{ \"TotalGroups\": 540, \"SecurityGroups\": 420, \"DistributionGroups\": 120, \"EmptyGroups\": 45, \"Groups\": \[ { \"Name\": \"Engineering\", \"SamAccountName\": \"Engineering\", \"GroupScope\": \"Global\", \"GroupCategory\": \"Security\", \"MemberCount\": 85, \"NestingDepth\": 2, \"OU\": \"OU=Groups,DC=contoso,DC=local\" } \] }
+
+9.8 TrustMap.json (Data)
+
+{ \"TotalTrusts\": 3, \"Trusts\": \[ { \"Source\": \"contoso.local\", \"Target\": \"partner.com\", \"TrustType\": \"External\", \"TrustDirection\": \"Bidirectional\", \"SIDFilteringEnabled\": true, \"SelectiveAuthentication\": false, \"WhenCreated\": \"2023-06-15T10:00:00Z\", \"IsValid\": true } \] }
+
+9.9 ESCVulnerabilities.json (Data)
+
+{ \"TotalFindings\": 4, \"Critical\": 2, \"High\": 1, \"Medium\": 1, \"Low\": 0, \"Findings\": \[ { \"ESCId\": \"ESC1\", \"Severity\": \"Critical\", \"TemplateName\": \"WebServer-Legacy\", \"CAName\": \"CONTOSO-CA01\", \"Description\": \"Template allows requestor to specify SubjectAltName with enrollee-supplied values\", \"AffectedPrincipals\": \[\"Domain Users\"\], \"Remediation\": \"Disable CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT on the template or restrict enrollment permissions\" } \] }
+
+9.10 DNSZoneInventory.json (Data)
+
+{ \"DNSServer\": \"DC01.contoso.local\", \"TotalZones\": 12, \"Zones\": \[ { \"ZoneName\": \"contoso.local\", \"ZoneType\": \"Primary\", \"IsADIntegrated\": true, \"ReplicationScope\": \"ForestDnsZones\", \"DynamicUpdate\": \"Secure\", \"RecordCount\": 2340, \"AgingEnabled\": true, \"ScavengeServers\": \[\"DC01.contoso.local\"\] } \] }
+
+10\. Integration Guide
+
+10.1 Gitea API Integration
+
+Assessment outputs can be automatically committed to a Gitea repository for versioning and governance tracking:
+
+\# Push assessment to Gitea via API \$assessmentPath = \"D:\\UIAO\\Assessment\\20260421-075500\" \$giteaUrl = \"https://gitea.contoso.local/api/v1\" \$repo = \"uiao/assessments\" \$token = \$env:GITEA_TOKEN \# Create a commit with assessment files \$files = Get-ChildItem -Path \$assessmentPath -Recurse -File foreach (\$file in \$files) { \$relativePath = \$file.FullName.Replace(\$assessmentPath, \"\").TrimStart(\"\\\") \$content = \[Convert\]::ToBase64String(\[IO.File\]::ReadAllBytes(\$file.FullName)) \$body = \@{ content = \$content message = \"Assessment upload: \$(Get-Date -Format \'yyyy-MM-dd HH:mm\')\" } \| ConvertTo-Json Invoke-RestMethod -Uri \"\$giteaUrl/repos/\$repo/contents/\$relativePath\" \` -Method PUT -Headers \@{ Authorization = \"token \$token\" } \` -Body \$body -ContentType \"application/json\" }
+
+10.2 UIAO Quarto Pipeline Integration
+
+Assessment JSON outputs are designed for direct consumption by Quarto R Markdown documents to generate formatted reports:
+
+\# In PowerShell: Generate assessment, then trigger Quarto render Invoke-UIAOADAssessment -OutputPath \"D:\\UIAO\\Assessment\\Current\" \# Trigger Quarto report generation quarto render \"D:\\UIAO\\Reports\\ADAssessmentReport.qmd\" \` \--execute-param assessment_path=\"D:\\UIAO\\Assessment\\Current\"
+
+10.3 Azure Arc Integration
+
+For environments using Azure Arc, UIAO assessment data can be correlated with Arc-managed server inventory:
+
+\# Query Arc-managed servers and correlate with AD computer inventory \$arcServers = az connectedmachine list \--resource-group \"UIAO-RG\" \| ConvertFrom-Json \$adComputers = Get-Content \"D:\\UIAO\\Assessment\\Current\\ComputerInventory.json\" \| ConvertFrom-Json \# Find AD computers not in Arc \$adComputers.Data.Computers \| Where-Object { \$\_.Name -notin \$arcServers.name } \| Export-Csv \"D:\\UIAO\\Assessment\\Current\\NotInArc.csv\" -NoTypeInformation
+
+10.4 Microsoft Graph Integration
+
+For hybrid identity comparison between AD and Entra ID (preview, planned for UIAOIdentityAssessment module):
+
+\# Connect to Graph and export Entra users for comparison Connect-MgGraph -Scopes \"User.Read.All\",\"Group.Read.All\" \$entraUsers = Get-MgUser -All -Property Id,DisplayName,UserPrincipalName,OnPremisesSyncEnabled \# Compare with AD assessment \$adUsers = (Get-Content \"D:\\UIAO\\Assessment\\Current\\UserInventory.json\" \| ConvertFrom-Json).Data.Users \$syncGaps = \$adUsers \| Where-Object { \$\_.UPN -notin \$entraUsers.UserPrincipalName }
+
+10.5 Gitea Webhook Integration
+
+Configure a Gitea webhook to trigger governance workflows when assessments are committed:
+
+\# Webhook payload handler (run as a simple HTTP listener) \# Trigger drift detection on post-receive events \$listener = \[System.Net.HttpListener\]::new() \$listener.Prefixes.Add(\"http://+:8080/webhook/\") \$listener.Start() while (\$listener.IsListening) { \$context = \$listener.GetContext() \$body = \[IO.StreamReader\]::new(\$context.Request.InputStream).ReadToEnd() \$payload = \$body \| ConvertFrom-Json if (\$payload.ref -eq \"refs/heads/main\") { \# Trigger drift detection against baseline Invoke-UIAODNSDriftDetection -BaselinePath \"D:\\UIAO\\Baselines\\DNS\" } \$context.Response.StatusCode = 200 \$context.Response.Close() }
+
+10.6 PowerShell Profile Setup
+
+Recommended operator profile configuration for daily UIAO workflows:
+
+\# Add to \$PROFILE (e.g., D:\\Users\\operator\\Documents\\WindowsPowerShell\\profile.ps1) \# Add UIAO modules to path \$env:PSModulePath = \"D:\\UIAO\\Modules;\" + \$env:PSModulePath \# Import all UIAO modules Import-Module UIAOADAssessment Import-Module UIAODNSAssessment Import-Module UIAOPKIAssessment Import-Module UIAOReadOnlyAssessment \# Set default output path with date stamp \$global:UIAOOutputPath = \"D:\\UIAO\\Assessment\\\$(Get-Date -Format \'yyyyMMdd\')\" \# Quick-run function function Start-UIAOFullAssessment { param(\[string\]\$Domain = \$env:USERDNSDOMAIN) \$path = \"D:\\UIAO\\Assessment\\\$(Get-Date -Format \'yyyyMMdd-HHmmss\')\" Invoke-UIAOADAssessment -Domain \$Domain -OutputPath \"\$path\\AD\" Invoke-UIAODNSAssessment -Domain \$Domain -OutputPath \"\$path\\DNS\" Export-UIAOPKIAssessment -OutputPath \"\$path\\PKI\" Write-Host \"Assessment complete: \$path\" -ForegroundColor Green } \# Aliases Set-Alias uiao-assess Start-UIAOFullAssessment Set-Alias uiao-readonly Invoke-UIAOReadOnlyAssessment
+
+11\. Troubleshooting
+
+11.1 Common Errors and Resolutions
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Error**                                     **Cause**                                            **Resolution**
+  --------------------------------------------- ---------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------
+  \[UIAO:AccessDenied\] on forest topology      No read access to Configuration NC                   Ensure the account has "Read" on CN=Configuration,DC=contoso,DC=local. Use Test-UIAOReadOnlyAccess to verify.
+
+  Get-GPOReport fails with "Access denied"      GPMC permissions insufficient                        Account must have read access to SYSVOL and GPO objects. Consider using Export-UIAOReadOnlyGPO as a fallback.
+
+  The term \'Get-ADForest\' is not recognized   RSAT AD PowerShell module not installed              Run Install-WindowsFeature RSAT-AD-PowerShell on Server, or install RSAT via Settings on Windows 10/11.
+
+  Get-DnsServerZone connection refused          DNS Server module not installed or DNS RPC blocked   Install RSAT-DNS-Server feature. Verify RPC connectivity (TCP 135 + dynamic ports) to the DNS server.
+
+  JSON output missing Classification field      Module version mismatch                              Verify module version: (Get-Module UIAOADAssessment).Version. Update to 1.0+ for governance envelope support.
+
+  Out-File : Access to the path is denied       Output directory permissions                         Ensure the operator account has write access to D:\\UIAO\\Assessment\\. Run New-Item -ItemType Directory -Path \"D:\\UIAO\\Assessment\" -Force.
+
+  Assessment hangs on ACL analysis              Very large OU structure with inheritance scanning    Use -TargetOU to scope, or -SkipACLAnalysis on the orchestrator. Consider running ACL analysis per-OU in separate sessions.
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+11.2 Access Denied Scenarios
+
+Use the following decision flow for access-related issues:
+
+26. Run Test-UIAOReadOnlyAccess -Verbose to identify which checks fail.
+
+27. For each failed check, verify the account's effective permissions using dsacls or the AD Users and Computers Security tab.
+
+28. If elevated permissions cannot be granted, use Invoke-UIAOReadOnlyAssessment, which gracefully degrades to available permissions.
+
+29. Document failed checks in the assessment manifest for stakeholder awareness.
+
+11.3 Module Dependency Conflicts
+
+If multiple versions of UIAO modules are in the PSModulePath:
+
+\# Check for conflicting module paths Get-Module -ListAvailable -Name UIAO\* \| Select-Object Name, Version, ModuleBase \# Force a specific version Import-Module UIAOADAssessment -RequiredVersion 1.0.0 -Force \# Remove old versions Remove-Module UIAOADAssessment Import-Module \"D:\\UIAO\\Modules\\UIAOADAssessment\\UIAOADAssessment.psd1\"
+
+11.4 Large Forest Performance Tuning
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------
+  **Scenario**                       **Recommendation**
+  ---------------------------------- -------------------------------------------------------------------------------------------------------------
+  100,000+ user objects              Run Export-UIAOUserInventory separately with -StaleDays filtering. Consider per-domain execution.
+
+  500+ GPOs                          Use -SkipGPOSettings on initial run. Export GPO XML separately with -ExportXML.
+
+  Deep OU hierarchy (10+ levels)     Use -MaxDepth to limit initial scan. Run deep scans against specific subtrees with -TargetOU.
+
+  Multi-domain forest (5+ domains)   Run assessments per-domain in parallel using PowerShell jobs. Merge results with the orchestrator manifest.
+
+  ACL analysis timeout               Scope ACL analysis to critical OUs. Run -IncludeInherited:\$false to reduce scope.
+  ------------------------------------------------------------------------------------------------------------------------------------------------
+
+11.5 Network Connectivity Requirements
+
+  ----------------------------------------------------------------------------------------------------------
+  **Port**       **Protocol**   **Service**           **Required By**
+  -------------- -------------- --------------------- ------------------------------------------------------
+  389            TCP/UDP        LDAP                  All AD assessment functions
+
+  636            TCP            LDAPS                 All AD assessment functions (if LDAPS enforced)
+
+  53             TCP/UDP        DNS                   All DNS assessment functions
+
+  88             TCP/UDP        Kerberos              Authentication for all modules
+
+  135            TCP            RPC Endpoint Mapper   DNS Server module, GPO report generation
+
+  445            TCP            SMB/CIFS              GPO settings reading (SYSVOL access)
+
+  3268/3269      TCP            Global Catalog        Forest-level queries, cross-domain member resolution
+
+  49152--65535   TCP            RPC Dynamic           DNS Server management, replication health
+  ----------------------------------------------------------------------------------------------------------
+
+Appendix A: Quick Reference Card
+
+A.1 Function Index
+
++------------------------------------+--------------------------------------+----------------------------------+-----------------------+
+| **Module**                         | **Function**                         | **Description**                  | **Key Parameters**    |
++------------------------------------+--------------------------------------+----------------------------------+-----------------------+
+| **UIAOADAssessment**               | Export-UIAOForestTopology            | Forest, domains, DCs, FSMO roles | -IncludeDCHealth      |
++------------------------------------+--------------------------------------+----------------------------------+-----------------------+
+| Export-UIAOOUHierarchy             | OU tree with GPO links               | -MaxDepth, -IncludeObjectCounts                          |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Export-UIAOGPOInventory            | GPO inventory and settings           | -IncludeSettings, -ExportXML                             |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Export-UIAOComputerInventory       | Computer objects and stale detection | -StaleDays                                               |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Export-UIAOUserInventory           | Users, privileged, service accounts  | -StaleDays, -IdentifyServiceAccounts                     |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Export-UIAOGroupInventory          | Groups with nesting analysis         | -MaxNestingDepth, -ResolveMembers                        |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Export-UIAOServiceAccountInventory | gMSA, sMSA, user-based SAs           | -IncludeSPNs                                             |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Export-UIAOTrustMap                | Trust relationships                  | -ValidateTrusts                                          |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Export-UIAOACLReport               | OU delegation and ACL analysis       | -TargetOU, -IncludeInherited                             |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Export-UIAOSchemaExtensions        | Custom schema and confidential attrs | -IncludeDefaultSchema                                    |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Invoke-UIAOADAssessment            | Full AD orchestrator                 | -SkipGPOSettings, -SkipACLAnalysis                       |
++------------------------------------+--------------------------------------+----------------------------------+-----------------------+
+| **UIAODNSAssessment**              | Get-UIAODNSZoneInventory             | DNS zone listing                 | -IncludeReverseLookup |
++------------------------------------+--------------------------------------+----------------------------------+-----------------------+
+| Get-UIAODNSRecordExport            | Full record export per zone          | -ZoneName, -RecordTypes                                  |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Test-UIAOSRVRecords                | AD-critical SRV validation           | -Domain                                                  |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Get-UIAODNSForwarderAudit          | Forwarder and recursion audit        | -DNSServer                                               |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Get-UIAODNSHealthCheck             | DNS resolution and scavenging        | -TestDomains                                             |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Get-UIAODNSSECStatus               | DNSSEC signing and key status        | -ZoneName                                                |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Invoke-UIAODNSDriftDetection       | DNS baseline drift comparison        | -BaselinePath, -AlertThreshold                           |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Invoke-UIAODNSAssessment           | Full DNS orchestrator                | -DNSServer, -Domain                                      |
++------------------------------------+--------------------------------------+----------------------------------+-----------------------+
+| **UIAOPKIAssessment**              | Get-UIAOCAInventory                  | CA discovery via AD              | -IncludeStandaloneCA  |
++------------------------------------+--------------------------------------+----------------------------------+-----------------------+
+| Get-UIAOCertificateTemplates       | Certificate template inventory       | -IncludeArchived                                         |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Test-UIAOESCVulnerabilities        | ESC1--ESC8 vulnerability scan        | -SeverityFilter                                          |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Get-UIAOCRLHealth                  | CRL expiration and CDP check         | -WarningDays                                             |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Export-UIAOPKIAssessment           | Full PKI orchestrator                | -OutputPath                                              |
++------------------------------------+--------------------------------------+----------------------------------+-----------------------+
+| **UIAOReadOnlyAssessment**         | Test-UIAOReadOnlyAccess              | 18-point pre-flight access check | -Domain               |
++------------------------------------+--------------------------------------+----------------------------------+-----------------------+
+| Export-UIAOReadOnlyForest          | Read-only forest topology            | -OutputPath                                              |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Export-UIAOReadOnlyGPO             | Read-only GPO inventory              | -Domain                                                  |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Export-UIAOReadOnlyOUHierarchy     | Read-only OU hierarchy               | -Domain                                                  |
++------------------------------------+--------------------------------------+----------------------------------------------------------+
+| Invoke-UIAOReadOnlyAssessment      | Full read-only orchestrator          | -Domain                                                  |
++====================================+======================================+==================================+=======================+
+
+A.2 Common Workflows
+
+**Quick full assessment:**
+
+Invoke-UIAOADAssessment -OutputPath \"D:\\UIAO\\Assessment\\\$(Get-Date -Format \'yyyyMMdd-HHmmss\')\"
+
+**Fast assessment (skip expensive operations):**
+
+Invoke-UIAOADAssessment -SkipGPOSettings -SkipACLAnalysis
+
+**Read-only assessment (least privilege):**
+
+Test-UIAOReadOnlyAccess -Verbose Invoke-UIAOReadOnlyAssessment
+
+**Targeted DNS assessment:**
+
+Invoke-UIAODNSAssessment -DNSServer \"DC01.contoso.local\" -Domain \"contoso.local\"
+
+**PKI security audit:**
+
+Test-UIAOESCVulnerabilities -SeverityFilter \"High\"
+
+**Combined full-stack assessment:**
+
+\$basePath = \"D:\\UIAO\\Assessment\\\$(Get-Date -Format \'yyyyMMdd-HHmmss\')\" Invoke-UIAOADAssessment -OutputPath \"\$basePath\\AD\" Invoke-UIAODNSAssessment -OutputPath \"\$basePath\\DNS\" Export-UIAOPKIAssessment -OutputPath \"\$basePath\\PKI\"
+
+Appendix B: Module Manifest Templates
+
+B.1 UIAOADAssessment.psd1
+
+\@{ RootModule = \'UIAOADAssessment.psm1\' ModuleVersion = \'1.0.0\' GUID = \'a1b2c3d4-e5f6-7890-abcd-000000000001\' Author = \'UIAO Engineering\' CompanyName = \'UIAO\' Copyright = \'(c) 2026 UIAO. All rights reserved.\' Description = \'Active Directory assessment module for UIAO modernization framework\' PowerShellVersion = \'5.1\' RequiredModules = @(\'ActiveDirectory\') FunctionsToExport = @( \'Export-UIAOForestTopology\', \'Export-UIAOOUHierarchy\', \'Export-UIAOGPOInventory\', \'Export-UIAOComputerInventory\', \'Export-UIAOUserInventory\', \'Export-UIAOGroupInventory\', \'Export-UIAOServiceAccountInventory\', \'Export-UIAOTrustMap\', \'Export-UIAOACLReport\', \'Export-UIAOSchemaExtensions\', \'Invoke-UIAOADAssessment\' ) CmdletsToExport = @() VariablesToExport = @() AliasesToExport = @() PrivateData = \@{ PSData = \@{ Tags = @(\'ActiveDirectory\',\'Assessment\',\'UIAO\',\'GCC\') ProjectUri = \'https://gitea.contoso.local/uiao/modules\' } UIAOMetadata = \@{ Classification = \'Controlled\' Boundary = \'GCC-Moderate\' CanonVersion = \'1.0\' } } }
+
+B.2 UIAODNSAssessment.psd1
+
+\@{ RootModule = \'UIAODNSAssessment.psm1\' ModuleVersion = \'1.0.0\' GUID = \'a1b2c3d4-e5f6-7890-abcd-000000000002\' Author = \'UIAO Engineering\' CompanyName = \'UIAO\' Copyright = \'(c) 2026 UIAO. All rights reserved.\' Description = \'DNS infrastructure assessment module for UIAO modernization framework\' PowerShellVersion = \'5.1\' RequiredModules = @(\'DnsServer\') FunctionsToExport = @( \'Get-UIAODNSZoneInventory\', \'Get-UIAODNSRecordExport\', \'Test-UIAOSRVRecords\', \'Get-UIAODNSForwarderAudit\', \'Get-UIAODNSHealthCheck\', \'Get-UIAODNSSECStatus\', \'Invoke-UIAODNSDriftDetection\', \'Invoke-UIAODNSAssessment\' ) CmdletsToExport = @() VariablesToExport = @() AliasesToExport = @() PrivateData = \@{ PSData = \@{ Tags = @(\'DNS\',\'Assessment\',\'UIAO\',\'GCC\') ProjectUri = \'https://gitea.contoso.local/uiao/modules\' } UIAOMetadata = \@{ Classification = \'Controlled\' Boundary = \'GCC-Moderate\' CanonVersion = \'1.0\' } } }
+
+B.3 UIAOPKIAssessment.psd1
+
+\@{ RootModule = \'UIAOPKIAssessment.psm1\' ModuleVersion = \'1.0.0\' GUID = \'a1b2c3d4-e5f6-7890-abcd-000000000003\' Author = \'UIAO Engineering\' CompanyName = \'UIAO\' Copyright = \'(c) 2026 UIAO. All rights reserved.\' Description = \'PKI and Certificate Services assessment module for UIAO modernization framework\' PowerShellVersion = \'5.1\' FunctionsToExport = @( \'Get-UIAOCAInventory\', \'Get-UIAOCertificateTemplates\', \'Test-UIAOESCVulnerabilities\', \'Get-UIAOCRLHealth\', \'Export-UIAOPKIAssessment\' ) CmdletsToExport = @() VariablesToExport = @() AliasesToExport = @() PrivateData = \@{ PSData = \@{ Tags = @(\'PKI\',\'ADCS\',\'Assessment\',\'UIAO\',\'GCC\') ProjectUri = \'https://gitea.contoso.local/uiao/modules\' } UIAOMetadata = \@{ Classification = \'Controlled\' Boundary = \'GCC-Moderate\' CanonVersion = \'1.0\' } } }
+
+B.4 UIAOReadOnlyAssessment.psd1
+
+\@{ RootModule = \'UIAOReadOnlyAssessment.psm1\' ModuleVersion = \'1.0.0\' GUID = \'a1b2c3d4-e5f6-7890-abcd-000000000004\' Author = \'UIAO Engineering\' CompanyName = \'UIAO\' Copyright = \'(c) 2026 UIAO. All rights reserved.\' Description = \'Read-only AD assessment module for least-privilege UIAO environments\' PowerShellVersion = \'5.1\' RequiredModules = @(\'ActiveDirectory\') FunctionsToExport = @( \'Test-UIAOReadOnlyAccess\', \'Export-UIAOReadOnlyForest\', \'Export-UIAOReadOnlyGPO\', \'Export-UIAOReadOnlyOUHierarchy\', \'Invoke-UIAOReadOnlyAssessment\' ) CmdletsToExport = @() VariablesToExport = @() AliasesToExport = @() PrivateData = \@{ PSData = \@{ Tags = @(\'ActiveDirectory\',\'ReadOnly\',\'Assessment\',\'UIAO\',\'GCC\') ProjectUri = \'https://gitea.contoso.local/uiao/modules\' } UIAOMetadata = \@{ Classification = \'Controlled\' Boundary = \'GCC-Moderate\' CanonVersion = \'1.0\' } } }
+
+B.5 Version Numbering Convention
+
+UIAO modules follow Semantic Versioning aligned with the UIAO Canon version:
+
+  -------------------------------------------------------------------------------------------------
+  **Component**   **Meaning**                                         **Example**
+  --------------- --------------------------------------------------- -----------------------------
+  Major           Canon version alignment (breaking changes)          1.x.x = Canon v1
+
+  Minor           New functions or parameters (backward compatible)   1.1.x = New export function
+
+  Patch           Bug fixes, schema corrections (no API change)       1.0.1 = Output fix
+  -------------------------------------------------------------------------------------------------
+
+Appendix C: Assessment Output Directory Structure
+
+D:\\UIAO\\Assessment\\20260421-075500\\ ├── AssessmentManifest.json ├── AD\\ │ ├── ForestTopology.json │ ├── TrustMap.json │ ├── SchemaExtensions.json │ ├── ConfidentialAttributes.csv │ ├── OUHierarchy.json │ ├── OUFlatList.csv │ ├── OUTree.txt │ ├── GPOInventory.json │ ├── GPOLinks.csv │ ├── UnlinkedGPOs.csv │ ├── EmptyGPOs.csv │ ├── GPO-Reports\\ │ │ ├── {GUID1}.xml │ │ ├── {GUID2}.xml │ │ └── \... │ ├── ComputerInventory.json │ ├── ComputersByOS.csv │ ├── StaleComputers.csv │ ├── UserInventory.json │ ├── PrivilegedUsers.csv │ ├── StaleUsers.csv │ ├── ServiceAccounts.csv │ ├── GroupInventory.json │ ├── EmptyGroups.csv │ ├── ServiceAccountInventory.json │ ├── OUDelegation.json │ ├── AdminSDHolder.json │ └── Errors.json (if any) ├── DNS\\ │ ├── DNSAssessmentManifest.json │ ├── DNSZoneInventory.json │ ├── DNSRecords_contoso.local.json │ ├── DNSRecords_10.in-addr.arpa.json │ ├── SRVValidation.json │ ├── DNSForwarderAudit.json │ ├── DNSHealthCheck.json │ ├── DNSSECStatus.json │ └── Errors.json (if any) └── PKI\\ ├── PKIAssessmentManifest.json ├── CAInventory.json ├── CertificateTemplates.json ├── ESCVulnerabilities.json ├── CRLHealth.json └── Errors.json (if any)
+
+C.1 File Naming Conventions
+
+  ---------------------------------------------------------------------------------------------------------
+  **Convention**               **Format**                      **Example**
+  ---------------------------- ------------------------------- --------------------------------------------
+  Assessment root directory    yyyyMMdd-HHmmss                 20260421-075500
+
+  JSON output files            PascalCase.json                 ForestTopology.json
+
+  CSV output files             PascalCase.csv                  StaleComputers.csv
+
+  Per-zone DNS records         DNSRecords\_\<ZoneName\>.json   DNSRecords_contoso.local.json
+
+  GPO XML reports              {GPO-GUID}.xml                  {31B2F340-016D-11D2-945F-00C04FB984F9}.xml
+
+  Timestamp format (in JSON)   ISO 8601 with timezone offset   2026-04-21T07:55:00-04:00
+  ---------------------------------------------------------------------------------------------------------
+
+Appendix D: Permissions Matrix
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------
+  **Function**                         **AD Permission**                   **DNS Permission**       **PKI Permission**           **RO Compatible**
+  ------------------------------------ ----------------------------------- ------------------------ ---------------------------- -------------------
+  Export-UIAOForestTopology            Read Configuration NC               ---                      ---                          Yes
+
+  Export-UIAOOUHierarchy               Read domain OUs                     ---                      ---                          Yes
+
+  Export-UIAOGPOInventory              Read GPOs + SYSVOL                  ---                      ---                          Partial
+
+  Export-UIAOComputerInventory         Read computer objects               ---                      ---                          Yes
+
+  Export-UIAOUserInventory             Read user objects                   ---                      ---                          Yes
+
+  Export-UIAOGroupInventory            Read group objects                  ---                      ---                          Yes
+
+  Export-UIAOServiceAccountInventory   Read MSA container + user objects   ---                      ---                          Yes
+
+  Export-UIAOTrustMap                  Read System container               ---                      ---                          Yes
+
+  Export-UIAOACLReport                 Read ACLs (AD: PSDrive)             ---                      ---                          Partial
+
+  Export-UIAOSchemaExtensions          Read Schema NC                      ---                      ---                          Yes
+
+  Invoke-UIAOADAssessment              All of the above                    ---                      ---                          Partial
+
+  Get-UIAODNSZoneInventory             ---                                 DNS Server read          ---                          Yes
+
+  Get-UIAODNSRecordExport              ---                                 DNS zone read            ---                          Yes
+
+  Test-UIAOSRVRecords                  ---                                 DNS resolution           ---                          Yes
+
+  Get-UIAODNSForwarderAudit            ---                                 DNS Server config read   ---                          Yes
+
+  Get-UIAODNSHealthCheck               ---                                 DNS Server read          ---                          Yes
+
+  Get-UIAODNSSECStatus                 ---                                 DNS Server read          ---                          Yes
+
+  Invoke-UIAODNSDriftDetection         ---                                 DNS Server read          ---                          Yes
+
+  Invoke-UIAODNSAssessment             ---                                 All DNS read             ---                          Yes
+
+  Get-UIAOCAInventory                  Read PKI Services                   ---                      Read Enrollment Services     Yes
+
+  Get-UIAOCertificateTemplates         Read PKI Services                   ---                      Read Certificate Templates   Yes
+
+  Test-UIAOESCVulnerabilities          Read PKI Services                   ---                      Read Templates + CA ACLs     Partial
+
+  Get-UIAOCRLHealth                    ---                                 ---                      Read CDP/AIA                 Yes
+
+  Export-UIAOPKIAssessment             Read PKI Services                   ---                      All PKI read                 Partial
+
+  Test-UIAOReadOnlyAccess              Authenticated User                  Authenticated User       Authenticated User           Yes
+
+  Export-UIAOReadOnlyForest            Authenticated User                  ---                      ---                          Yes
+
+  Export-UIAOReadOnlyGPO               Authenticated User                  ---                      ---                          Yes
+
+  Export-UIAOReadOnlyOUHierarchy       Authenticated User                  ---                      ---                          Yes
+
+  Invoke-UIAOReadOnlyAssessment        Authenticated User                  ---                      ---                          Yes
+  --------------------------------------------------------------------------------------------------------------------------------------------------
+
+D.1 Coverage by Permission Level
+
+  -----------------------------------------------------------------------------------------------------------------
+  **Permission Level**                    **Functions Available**                                    **Coverage**
+  --------------------------------------- ---------------------------------------------------------- --------------
+  **Authenticated User** (Domain Users)   ReadOnly module (5), most DNS (7), most AD inventory (7)   \~65%
+
+  **Authenticated User + SYSVOL Read**    Above + GPO inventory with settings                        \~75%
+
+  **Delegated Read (OU-scoped)**          Above + ACL analysis on delegated OUs                      \~85%
+
+  **Domain Admin / Enterprise Admin**     All 29 functions with full data coverage                   100%
+  -----------------------------------------------------------------------------------------------------------------
+
+UIAO PowerShell Module Reference \| Version 1.0 \| Classification: Controlled \| Boundary: GCC-Moderate
+
+Generated April 21, 2026 \| UIAO Engineering

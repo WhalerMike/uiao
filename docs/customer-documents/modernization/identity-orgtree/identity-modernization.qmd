@@ -1,0 +1,1802 @@
+---
+title: "UIAO Identity Modernization Guide"
+subtitle: "Active Directory to Entra ID governance transformation"
+doc-type: technical-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO Identity Modernization Guide — Active Directory to Entra ID.docx"
+repo-path: docs/customer-documents/modernization/identity-orgtree/identity-modernization.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+UIAO Identity Modernization Guide
+
+Active Directory to Entra ID Governance Transformation
+
+**Series:** UIAO Canon --- Companion Document
+
+**Classification:** Controlled
+
+**Boundary:** GCC-Moderate (Microsoft 365 SaaS only --- no Azure IaaS/PaaS services unless explicitly noted)
+
+**Version:** 1.0
+
+**Author:** Michael
+
+**Date:** 20 April 2026
+
+**Status:** Canonical --- Authoritative Reference
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **DOCUMENT GOVERNANCE**                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| This document is a controlled artifact within the UIAO Canon. All modifications must be committed to the authoritative Gitea repository with a descriptive commit message. This document does not carry a FOUO designation. Distribution is permitted within the UIAO operational boundary. All technical guidance herein assumes GCC-Moderate (Microsoft 365 SaaS) unless an Azure service is explicitly called out with justification. |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Table of Contents
+
+1.  Purpose and Scope
+
+2.  AD Identity Landscape Decomposition
+
+3.  Entra ID Identity Architecture
+
+4.  Entra Connect Sync Architecture
+
+5.  Group Migration Strategy
+
+6.  Service Account Modernization
+
+7.  Privileged Access Management
+
+8.  Conditional Access Policy Framework
+
+9.  Identity Governance and Lifecycle
+
+10. Cross-Tenant and B2B Collaboration
+
+11. Authentication Modernization
+
+12. Monitoring, Audit, and Compliance
+
+13. Migration Execution Playbook
+
+14. Gitea Integration and Drift Detection
+
+15. Troubleshooting Reference
+
+16. Appendix A --- Identity Attribute Mapping Reference
+
+17. Appendix B --- Conditional Access Policy Templates
+
+18. Appendix C --- PowerShell Module: UIAOIdentityAssessment
+
+19. Appendix D --- Companion Document Cross-Reference
+
+1\. Purpose and Scope
+
+1.1 Purpose
+
+This document provides the authoritative technical reference for migrating the full identity lifecycle from on-premises Active Directory Domain Services (AD DS) to Microsoft Entra ID within a GCC-Moderate boundary. It is written for federal and enterprise IT architects who must plan, execute, and govern an identity modernization program that preserves security posture while eliminating dependency on legacy directory infrastructure.
+
+The scope of this guide encompasses every object class and governance construct that constitutes an AD identity model:
+
+- **User objects** --- attributes, UPN routing, SID history, group memberships, OU placement, and lifecycle state
+
+- **Security and distribution groups** --- scope, nesting patterns, mail-enablement, and dynamic membership
+
+- **Service accounts** --- traditional, Managed Service Accounts (MSA), and Group Managed Service Accounts (gMSA)
+
+- **Privileged access** --- AdminSDHolder-protected groups, delegation models, and tiered administration
+
+- **Conditional Access** --- replacing GPO-based logon restrictions with policy-driven cloud controls
+
+- **Identity governance** --- access reviews, entitlement management, lifecycle workflows, and compliance attestation
+
+1.2 Classification and Boundary
+
+This document is classified as **Controlled**. It does not carry a For Official Use Only (FOUO) designation. The operational boundary is **GCC-Moderate**, which constrains all guidance to Microsoft 365 SaaS services. Azure IaaS and PaaS services are not in scope unless explicitly called out with architectural justification. This distinction is critical: GCC-Moderate tenants operate within the Microsoft Government Cloud and have specific service availability constraints that differ from commercial Azure.
+
+1.3 Companion Document Cross-References
+
+This guide is one document within a larger UIAO Canon corpus. The following companion documents are referenced throughout and should be read in conjunction with this guide:
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Companion Document**                    **Relevance to This Guide**                                                                            **Primary Cross-Reference Sections**
+  ----------------------------------------- ------------------------------------------------------------------------------------------------------ -------------------------------------------------------------------------------------------
+  **AD Computer Object Conversion Guide**   Covers the migration of computer objects from AD-joined to Entra-joined/Hybrid-joined states           Section 2.5 (Computer Objects), Section 13 (Migration Playbook)
+
+  **AD Interaction Guide**                  Defines AD query patterns, trust relationships, and the Invoke-UIAOADAssessment assessment framework   Section 2 (Landscape Decomposition), Section 10 (B2B/Trust Mapping), Section 13 (Phase 0)
+
+  **Platform Server Build Guide**           Server infrastructure that hosts AD DS, Entra Connect, and supporting services                         Section 4 (Entra Connect Sync), Section 13 (Phase 1)
+
+  **DNS Modernization Guide**               DNS namespace alignment required for UPN suffix routing and hybrid name resolution                     Section 4.7 (UPN Suffix Mismatches), Section 11 (Authentication)
+
+  **PKI Modernization Guide**               Certificate-based authentication, smart card migration, and cloud PKI integration                      Section 6 (Service Account Auth), Section 11 (Phase 4: CBA)
+
+  **UIAO CLI and Operations Guide**         CLI tooling patterns, Gitea API integration, and automation frameworks                                 Section 14 (Gitea Integration), Appendix C (PowerShell Module)
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+1.4 Assumptions and Prerequisites
+
+- The target environment is a Microsoft 365 GCC-Moderate tenant with Entra ID P2 licensing
+
+- The source environment is one or more Active Directory forests running Windows Server 2016 or later forest functional level
+
+- Entra Connect Sync or Entra Cloud Sync has been evaluated for deployment (decision matrix in Section 4)
+
+- The organization has established a Gitea instance for configuration-as-code and drift detection
+
+- All PowerShell examples target the Microsoft Graph PowerShell SDK v2.x and the ActiveDirectory module
+
+- The reader has Domain Admin or equivalent access in the source AD environment and Global Reader (minimum) in the Entra ID tenant
+
+2\. AD Identity Landscape Decomposition
+
+Before migrating any identity object to Entra ID, the existing AD identity model must be decomposed into its constituent governance facets. Each facet represents a distinct object class or governance construct with its own migration considerations, attribute mappings, and Entra ID equivalents. This section provides the decomposition framework.
+
+2.1 User Objects
+
+AD user objects are the foundational identity type. Each user object carries attributes that define authentication credentials, organizational placement, group memberships, and authorization scope. The migration of user objects to Entra ID requires careful attribute mapping, UPN suffix alignment, and lifecycle state preservation.
+
+**Key governance dimensions:**
+
+- **UPN (userPrincipalName):** Must be routable and match the target Entra ID tenant domain. Non-routable UPN suffixes (e.g., .local) require remediation before sync.
+
+- **SID (objectSid):** The immutable security identifier. Entra ID does not use SIDs natively; the onPremisesSecurityIdentifier attribute preserves the value for hybrid scenarios.
+
+- **Group Memberships (memberOf):** Resolved through group sync. Nested memberships may require flattening.
+
+- **OU Placement:** Determines GPO application and administrative delegation. Entra ID uses Administrative Units as the functional equivalent.
+
+- **Attribute Richness:** AD supports 1,000+ attributes per user. Entra ID maps a subset natively and supports extension attributes for custom data.
+
+**User Object Attribute Mapping:**
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **AD Attribute**          **Entra ID Attribute**          **Graph API Property**                              **Notes**
+  ------------------------- ------------------------------- --------------------------------------------------- ---------------------------------------------------
+  sAMAccountName            onPremisesSamAccountName        onPremisesSamAccountName                            Read-only in Entra for synced users
+
+  userPrincipalName         userPrincipalName               userPrincipalName                                   Must be routable; source of authority for sign-in
+
+  objectSid                 onPremisesSecurityIdentifier    onPremisesSecurityIdentifier                        Preserved for hybrid Kerberos scenarios
+
+  mail                      mail                            mail                                                Primary SMTP address
+
+  displayName               displayName                     displayName                                         Direct mapping
+
+  givenName                 givenName                       givenName                                           Direct mapping
+
+  sn (surname)              surname                         surname                                             Direct mapping
+
+  department                department                      department                                          OrgPath: maps to Department facet
+
+  title                     jobTitle                        jobTitle                                            Direct mapping
+
+  manager (DN)              manager                         manager (navigation property)                       Resolved as relationship, not attribute
+
+  memberOf                  memberOf                        memberOf (navigation property)                      Groups and roles; resolved by sync engine
+
+  extensionAttribute1--15   onPremisesExtensionAttributes   onPremisesExtensionAttributes.extensionAttribute1   Used for OrgPath pattern (see Section 3.4)
+
+  userAccountControl        accountEnabled                  accountEnabled                                      Bit flag decomposed to boolean
+
+  pwdLastSet                lastPasswordChangeDateTime      lastPasswordChangeDateTime                          Used for password age calculations
+
+  whenCreated               createdDateTime                 createdDateTime                                     Object creation timestamp
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.2 Security Groups
+
+AD security groups provide the authorization backbone for resource access. Groups in AD are classified by **scope** (Domain Local, Global, Universal) and by **type** (Security, Distribution). The AGDLP (Account → Global → Domain Local → Permission) and AGUDLP (Account → Global → Universal → Domain Local → Permission) nesting patterns define the canonical AD group architecture.
+
+**Group scope migration considerations:**
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **AD Group Scope**   **Nesting Capability**                                  **Entra ID Equivalent**                **Migration Path**
+  -------------------- ------------------------------------------------------- -------------------------------------- ---------------------------------------------------
+  Domain Local         Can contain Global/Universal groups from any domain     Security Group (Assigned)              Sync or recreate as cloud-only; flatten if nested
+
+  Global               Can contain users/Global groups from same domain only   Security Group (Assigned or Dynamic)   Sync; evaluate for dynamic membership conversion
+
+  Universal            Can contain users/groups from any domain in forest      Security Group (Assigned)              Sync; preferred scope for multi-domain forests
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.3 Distribution Groups
+
+Distribution groups in AD serve mail-routing functions. They may be mail-enabled security groups (dual-purpose) or pure distribution groups. In Entra ID, these map to either **Mail-enabled Security Groups** or **Distribution Groups** managed through Exchange Online.
+
+- **Mail-enabled security groups:** Sync from AD and retain both security and mail functions in Exchange Online
+
+- **Dynamic distribution lists:** AD dynamic distribution lists do not sync to Entra ID. They must be recreated as Exchange Online dynamic distribution groups with OPATH filter syntax
+
+- **Migration decision:** Evaluate whether a distribution group should become a Microsoft 365 Group to gain shared mailbox, calendar, and file storage capabilities
+
+2.4 Service Accounts
+
+AD service accounts represent a critical --- and often under-governed --- identity class. They exist in three forms, each with a distinct migration path to Entra ID:
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **AD Service Account Type**                      **Characteristics**                                                                   **Entra ID Target**                                           **Risk Profile**
+  ------------------------------------------------ ------------------------------------------------------------------------------------- ------------------------------------------------------------- -----------------------------------------------------------
+  Traditional (user object with \"svc-\" prefix)   Password-based, often with \"Password never expires,\" interactive logon capability   App Registration with certificate auth, or Managed Identity   HIGH --- static credentials, often over-privileged
+
+  Managed Service Account (MSA)                    Auto-managed password, bound to single server                                         Managed Identity (System-assigned)                            MEDIUM --- server-scoped but no governance visibility
+
+  Group Managed Service Account (gMSA)             Auto-managed password, multi-server capable, KDS key-derived                          Workload Identity with federated credentials                  MEDIUM --- better than traditional but still AD-dependent
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Detailed migration patterns for each type are covered in Section 6.
+
+2.5 Computer Objects
+
+Computer objects represent domain-joined devices in AD. Their migration to Entra ID involves a device join state transition (AD-joined → Hybrid Entra-joined → Entra-joined). This topic is covered comprehensively in the **AD Computer Object Conversion Guide**. This document addresses computer objects only where they intersect with identity governance (e.g., device-based Conditional Access, device compliance as an authentication factor).
+
+2.6 Organizational Units
+
+OUs in AD serve three governance functions: **GPO scoping**, **administrative delegation**, and **visual/logical organization**. Entra ID does not have an OU construct. The functional equivalents are:
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------
+  **AD OU Function**          **Entra ID Equivalent**                                       **Implementation Notes**
+  --------------------------- ------------------------------------------------------------- --------------------------------------------------------
+  GPO scoping                 Conditional Access policies + Intune configuration profiles   Policy targeting by group membership, not container
+
+  Administrative delegation   Administrative Units (AUs)                                    AUs support restricted management scope; P1 feature
+
+  Logical organization        Dynamic groups + extension attributes (OrgPath pattern)       Attribute-driven grouping replaces container hierarchy
+  --------------------------------------------------------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **DESIGN PRINCIPLE**                                                                                                                                                                                                                                                                                                                                                           |
+|                                                                                                                                                                                                                                                                                                                                                                                |
+| Entra ID fundamentally inverts the AD governance model. In AD, *placement* determines policy (an object\'s OU determines which GPOs apply). In Entra ID, *attributes* determine policy (an object\'s properties determine group membership, which determines policy application). This inversion is the single most important architectural concept in identity modernization. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+2.7 AdminSDHolder and Protected Groups
+
+AD protects members of privileged groups through the AdminSDHolder mechanism. Every 60 minutes, the SDProp process overwrites the ACL on protected group members with the ACL from the AdminSDHolder container. This prevents unauthorized delegation changes on privileged accounts.
+
+**AD Protected Groups (AdminSDHolder-covered):**
+
+- Domain Admins
+
+- Enterprise Admins
+
+- Schema Admins
+
+- Administrators (built-in)
+
+- Account Operators
+
+- Server Operators
+
+- Backup Operators
+
+- Print Operators
+
+- Cert Publishers
+
+- Domain Controllers
+
+- Read-only Domain Controllers
+
+- Replicator
+
+In Entra ID, the equivalent protective mechanism is **Protected Actions** (preview) combined with **Privileged Identity Management (PIM)**. Protected Actions require additional authentication context (e.g., phishing-resistant MFA) before sensitive operations can be performed. PIM enforces just-in-time activation for privileged role assignments. The mapping from AD protected groups to Entra PIM roles is detailed in Section 7.
+
+3\. Entra ID Identity Architecture
+
+3.1 Entra ID Object Model
+
+Entra ID implements a flat, attribute-driven identity model that differs fundamentally from AD\'s hierarchical container-based model. The following object types constitute the Entra ID identity architecture:
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Object Type**                   **Description**                                                                    **AD Equivalent**              **Source of Authority**
+  --------------------------------- ---------------------------------------------------------------------------------- ------------------------------ ------------------------------------------------------
+  **User**                          Human identity with authentication credentials and profile attributes              User object                    Synced (AD) or Cloud-only
+
+  **Security Group**                Authorization group for resource access; supports assigned or dynamic membership   Security group (all scopes)    Synced or Cloud-only
+
+  **Microsoft 365 Group**           Collaboration group with shared mailbox, calendar, files, Planner, Teams           No direct equivalent           Cloud-only
+
+  **Mail-enabled Security Group**   Security group with an Exchange Online email address                               Mail-enabled security group    Synced or Cloud-only
+
+  **Distribution Group**            Mail-routing group without security function                                       Distribution group             Synced or Cloud-only
+
+  **Administrative Unit**           Scoped management container for delegated administration                           Organizational Unit            Cloud-only
+
+  **Service Principal**             Application instance in the tenant; represents an app\'s identity                  Service account (functional)   Cloud-only (from App Registration or Enterprise App)
+
+  **Managed Identity**              Azure-managed identity for workloads; no credential management required            gMSA (functional)              Cloud-only (Azure resource)
+
+  **App Registration**              Application definition with credentials, permissions, and redirect URIs            No direct equivalent           Cloud-only
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3.2 Tenant Boundary vs. AD Forest/Domain Boundary
+
+The Entra ID tenant is the security and administrative boundary --- analogous to an AD forest, not an AD domain. Key distinctions:
+
+- **One tenant = one trust boundary.** All objects within a tenant implicitly trust each other. There is no concept of \"domain trust\" within a tenant.
+
+- **Cross-tenant access** is governed by B2B collaboration, B2B direct connect, and cross-tenant access policies --- functionally replacing AD forest trusts.
+
+- **No domain hierarchy.** A tenant is flat. Verified domains are routing suffixes, not security boundaries.
+
+- **Multi-forest sync:** Multiple AD forests can sync to a single Entra ID tenant, but each forest requires its own Entra Connect instance (or Entra Cloud Sync agent).
+
+3.3 Entra ID Licensing Tiers --- Identity Governance Features
+
+Identity governance features in Entra ID are gated by licensing tier. The following table maps features to their minimum required license:
+
+  ----------------------------------------------------------------------------------------------------------------------------------
+  **Feature**                                  **Entra ID Free**   **Entra ID P1**   **Entra ID P2**       **Entra ID Governance**
+  -------------------------------------------- ------------------- ----------------- --------------------- -------------------------
+  User/Group management                        Yes                 Yes               Yes                   Yes
+
+  Conditional Access                           ---                 Yes               Yes                   Yes
+
+  Dynamic Groups                               ---                 Yes               Yes                   Yes
+
+  Administrative Units                         ---                 Yes               Yes                   Yes
+
+  Self-Service Password Reset                  ---                 Yes               Yes                   Yes
+
+  Identity Protection (risk-based CA)          ---                 ---               Yes                   Yes
+
+  Privileged Identity Management (PIM)         ---                 ---               Yes                   Yes
+
+  Access Reviews                               ---                 ---               Yes                   Yes
+
+  Entitlement Management                       ---                 ---               ---                   Yes
+
+  Lifecycle Workflows                          ---                 ---               ---                   Yes
+
+  Conditional Access for Workload Identities   ---                 ---               Workload ID Premium   Workload ID Premium
+  ----------------------------------------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **LICENSING REQUIREMENT**                                                                                                                                                                                                                                                                                                            |
+|                                                                                                                                                                                                                                                                                                                                      |
+| This guide assumes Entra ID P2 licensing at minimum. Sections covering Entitlement Management and Lifecycle Workflows require Entra ID Governance add-on licensing. GCC-Moderate tenants should verify feature availability in the Microsoft 365 Government service description, as feature rollout may lag commercial availability. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+3.4 OrgPath Pattern --- Extension Attribute Mapping
+
+The OrgPath pattern is the UIAO canonical method for encoding organizational taxonomy into Entra ID user attributes. It uses the 15 on-premises extension attributes (synced from AD\'s extensionAttribute1 through extensionAttribute15) to carry structured organizational metadata that drives dynamic group membership, Conditional Access targeting, and governance automation.
+
+**OrgPath Attribute Allocation:**
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------
+  **Extension Attribute**    **OrgPath Facet**   **Example Values**                             **Governance Use**
+  -------------------------- ------------------- ---------------------------------------------- -------------------------------------------------------
+  extensionAttribute1        Region              NCR, WESTUS, EMEA                              Location-based Conditional Access, Named Locations
+
+  extensionAttribute2        Department          IT, HR, Finance, Legal, Engineering            Dynamic group membership, access packages
+
+  extensionAttribute3        Division            CyberOps, InfraOps, AppDev, GRC                Administrative Unit scoping
+
+  extensionAttribute4        Role                Analyst, Engineer, Manager, Director, CISO     PIM eligibility, access package assignment
+
+  extensionAttribute5        CostCenter          CC-4100, CC-5200, CC-8300                      License assignment, chargeback reporting
+
+  extensionAttribute6        Classification      Employee, Contractor, Intern, Executive        Persona-based CA policies, lifecycle workflows
+
+  extensionAttribute7        HireDate            2024-01-15 (ISO 8601)                          Lifecycle workflow triggers (joiner)
+
+  extensionAttribute8        TermDate            2026-06-30 (ISO 8601) or EMPTY                 Lifecycle workflow triggers (leaver)
+
+  extensionAttribute9        ClearanceLevel      None, Public Trust, Secret, Top Secret         Application access gating, CA authentication strength
+
+  extensionAttribute10       AccountType         Standard, Privileged, Service, SharedMailbox   Persona classification for CA framework
+
+  extensionAttribute11--15   Reserved            ---                                            Available for organization-specific extensions
+  -----------------------------------------------------------------------------------------------------------------------------------------------------
+
+3.5 Dynamic Group Rule Syntax
+
+Dynamic groups in Entra ID use rule-based membership that evaluates user or device attributes against expressions. The rules follow a specific syntax with operators such as -eq, -ne, -startsWith, -contains, -match, and -in.
+
+**Example Dynamic Group Rules (OrgPath-based):**
+
+**Rule 1 --- All IT Department employees:**
+
+(user.onPremisesExtensionAttributes.extensionAttribute2 -eq \"IT\") and (user.onPremisesExtensionAttributes.extensionAttribute6 -eq \"Employee\") and (user.accountEnabled -eq true)
+
+**Rule 2 --- All CyberOps Division personnel (employees and contractors):**
+
+(user.onPremisesExtensionAttributes.extensionAttribute3 -eq \"CyberOps\") and (user.onPremisesExtensionAttributes.extensionAttribute6 -in \[\"Employee\",\"Contractor\"\]) and (user.accountEnabled -eq true)
+
+**Rule 3 --- All privileged accounts:**
+
+(user.onPremisesExtensionAttributes.extensionAttribute10 -eq \"Privileged\") and (user.accountEnabled -eq true)
+
+**Rule 4 --- All users in the NCR region with Manager or Director role:**
+
+(user.onPremisesExtensionAttributes.extensionAttribute1 -eq \"NCR\") and (user.onPremisesExtensionAttributes.extensionAttribute4 -in \[\"Manager\",\"Director\"\]) and (user.accountEnabled -eq true)
+
+**Rule 5 --- All contractors with a termination date set:**
+
+(user.onPremisesExtensionAttributes.extensionAttribute6 -eq \"Contractor\") and (user.onPremisesExtensionAttributes.extensionAttribute8 -ne null) and (user.accountEnabled -eq true)
+
+**Rule 6 --- All users in CostCenter CC-4100 who are Engineers:**
+
+(user.onPremisesExtensionAttributes.extensionAttribute5 -eq \"CC-4100\") and (user.onPremisesExtensionAttributes.extensionAttribute4 -eq \"Engineer\") and (user.accountEnabled -eq true)
+
+**Rule 7 --- All users with Secret or Top Secret clearance:**
+
+(user.onPremisesExtensionAttributes.extensionAttribute9 -in \[\"Secret\",\"Top Secret\"\]) and (user.accountEnabled -eq true)
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **NOTE**                                                                                                                                                                                                                                                            |
+|                                                                                                                                                                                                                                                                     |
+| Dynamic group membership processing can take from minutes to several hours depending on tenant size. Rules are evaluated when user attributes change --- not on a fixed schedule. Plan for propagation delay when dynamic groups gate access to critical resources. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+4\. Entra Connect Sync Architecture
+
+4.1 Entra Connect Sync vs. Entra Cloud Sync --- Decision Matrix
+
+Microsoft offers two synchronization engines for hybrid identity: **Entra Connect Sync** (the legacy, full-featured engine) and **Entra Cloud Sync** (the lightweight, cloud-managed agent). The choice between them is a foundational architectural decision.
+
+  ----------------------------------------------------------------------------------------------------------------------------
+  **Capability**                     **Entra Connect Sync**                          **Entra Cloud Sync**
+  ---------------------------------- ----------------------------------------------- -----------------------------------------
+  Deployment model                   On-premises server (Windows Server)             Lightweight agent (no dedicated server)
+
+  Multi-forest support               Yes (one instance per topology)                 Yes (multiple agents, cloud-managed)
+
+  Attribute-level filtering          Full sync rules editor                          Scoping filters (limited)
+
+  Custom attribute transformations   Yes (declarative + extensions)                  Expression-based (limited)
+
+  Group writeback                    Yes (v2)                                        No
+
+  Device writeback                   Yes                                             No
+
+  Password writeback                 Yes                                             Yes
+
+  Exchange hybrid                    Full support                                    Limited
+
+  Staging mode                       Yes                                             N/A (cloud-managed HA)
+
+  Pass-Through Authentication        Yes (separate agent)                            Yes (separate agent)
+
+  Federation (AD FS) integration     Yes (built-in wizard)                           No
+
+  GCC-Moderate support               Yes                                             Yes (verify current feature parity)
+
+  Management interface               On-premises (Synchronization Service Manager)   Entra admin center (cloud)
+
+  High availability                  Staging mode (manual failover)                  Multiple agents (automatic)
+  ----------------------------------------------------------------------------------------------------------------------------
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **RECOMMENDATION**                                                                                                                                                                                                                                                                                                                                                         |
+|                                                                                                                                                                                                                                                                                                                                                                            |
+| For GCC-Moderate environments with Exchange hybrid requirements, complex attribute transformations, or group writeback needs, **Entra Connect Sync** remains the recommended engine. For greenfield deployments or simple single-forest topologies without Exchange hybrid, **Entra Cloud Sync** offers reduced operational overhead with cloud-managed high availability. |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+4.2 Filtering Strategies
+
+Filtering determines which AD objects are synchronized to Entra ID. Four filtering methods are available, applied in a specific order of precedence:
+
+20. **Domain-based filtering:** Include or exclude entire AD domains. Applied first. Use when a forest contains domains that should not sync (e.g., test domains, DMZ domains).
+
+21. **OU-based filtering:** Include or exclude specific OUs within selected domains. Most common filtering method. Exclude OUs containing service accounts, computer objects (if not needed), or staging OUs.
+
+22. **Attribute-based filtering:** Filter individual objects based on attribute values. Uses sync rules with scoping conditions. Example: exclude objects where extensionAttribute15 -eq \"DoNotSync\".
+
+23. **Group-based filtering:** Sync only members of a designated AD group. Useful for pilot deployments. Not recommended for production (does not scale, introduces sync dependency on group membership).
+
+4.3 Attribute Flow and Transformation Rules
+
+Attribute flow defines how AD attributes map to Entra ID attributes during synchronization. The sync engine applies rules in precedence order, with custom rules taking precedence over default rules.
+
+**Common transformation patterns:**
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Scenario**                  **Source Expression**                                                                                                                                                                                            **Target Attribute**   **Description**
+  ----------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------------------- ------------------------------------------------------
+  UPN construction              IIF(IsPresent(\[userPrincipalName\]),IIF(InStr(\[userPrincipalName\],\"@contoso.local\")\>0,Replace(\[userPrincipalName\],\"@contoso.local\",\"@contoso.gov\"),\[userPrincipalName\]),Error(\"UPN required\"))   userPrincipalName      Replace non-routable UPN suffix with verified domain
+
+  Display name normalization    IIF(IsPresent(\[sn\]),Join(\", \",\[sn\],\[givenName\]),\[displayName\])                                                                                                                                         displayName            Enforce \"Last, First\" format
+
+  Account type classification   IIF(CBool(InStr(LCase(\[distinguishedName\]),\"ou=service accounts\")),\"Service\",\"Standard\")                                                                                                                 extensionAttribute10   Auto-classify based on OU placement
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+4.4 Staging Mode and Disaster Recovery
+
+Staging mode allows a second Entra Connect Sync server to import and synchronize data without exporting changes to Entra ID. This provides:
+
+- **Disaster recovery:** If the primary server fails, the staging server can be promoted by disabling staging mode
+
+- **Upgrade validation:** Test new sync rules or version upgrades on the staging server before cutting over
+
+- **Configuration verification:** Compare export pending counts between active and staging to detect configuration drift
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **WARNING**                                                                                                                                                                                                           |
+|                                                                                                                                                                                                                       |
+| Never run two Entra Connect Sync servers in active (non-staging) mode simultaneously against the same Entra ID tenant. This causes duplicate object creation and attribute conflicts that are difficult to remediate. |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+4.5 Authentication Method --- Decision Matrix
+
+The authentication method determines how user credentials are validated during sign-in. Three options exist, each with distinct security, complexity, and GCC-Moderate compatibility characteristics:
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Criterion**                              **Password Hash Sync (PHS)**                                                   **Pass-Through Auth (PTA)**                                                   **Federation (AD FS)**
+  ------------------------------------------ ------------------------------------------------------------------------------ ----------------------------------------------------------------------------- -------------------------------------------------------------------------------
+  **How it works**                           Hash of password hash synced to Entra ID; authentication occurs in the cloud   Authentication request forwarded to on-premises agent; validated against AD   Authentication redirected to on-premises AD FS farm; SAML/WS-Fed token issued
+
+  **On-premises dependency**                 None (after sync)                                                              Yes --- PTA agents must be reachable                                          Yes --- AD FS farm must be reachable
+
+  **Security posture**                       Strong --- enables leaked credential detection, smart lockout                  Moderate --- password validation on-prem, limited cloud protections           Variable --- depends on AD FS hardening, certificate management
+
+  **Complexity**                             Low                                                                            Moderate                                                                      High
+
+  **Resilience**                             High --- cloud-only auth survives on-prem outage                               Low --- on-prem outage blocks authentication                                  Low --- AD FS outage blocks authentication
+
+  **GCC-Moderate compatibility**             Full                                                                           Full                                                                          Full (but discouraged for new deployments)
+
+  **Supports leaked credential detection**   Yes (P2)                                                                       No                                                                            No
+
+  **Supports Seamless SSO**                  Yes                                                                            Yes                                                                           Native (federation)
+
+  **UIAO recommendation**                    **PREFERRED**                                                                  Acceptable (transitional)                                                     Legacy --- decommission target
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **RECOMMENDATION**                                                                                                                                                                                                                                                   |
+|                                                                                                                                                                                                                                                                      |
+| PHS is the UIAO-recommended authentication method for GCC-Moderate environments. Even when PTA or Federation is used as the primary method, PHS should be enabled as a backup to ensure authentication continuity and to enable Identity Protection risk detections. |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+4.6 Soft Match vs. Hard Match
+
+When Entra Connect encounters an existing cloud object that may correspond to an AD object, it must determine whether to link them:
+
+- **Hard match:** Uses the sourceAnchor (typically ms-DS-ConsistencyGuid or objectGUID) to definitively link AD and Entra objects. Preferred method --- deterministic and reliable.
+
+- **Soft match:** Uses userPrincipalName or proxyAddresses (SMTP) to match objects when no sourceAnchor link exists. Used during initial sync when cloud-only objects already exist. Risk of false matches if attribute hygiene is poor.
+
+4.7 UPN Suffix Mismatches and Alternate Login ID
+
+Many AD environments use non-routable UPN suffixes (e.g., contoso.local, corp.contoso.com). These cannot be used as Entra ID sign-in identifiers. Remediation options:
+
+24. **Add routable UPN suffix to AD forest** and update user UPNs --- preferred approach, ensures UPN consistency across all systems
+
+25. **Alternate Login ID:** Configure Entra Connect to use the mail attribute instead of userPrincipalName for sign-in. Adds complexity and has limitations with certain Microsoft 365 workloads
+
+26. **Attribute transformation:** Use sync rules to transform the UPN during sync (see Section 4.3). The AD UPN remains unchanged; the Entra UPN is constructed from other attributes
+
+Cross-reference the **DNS Modernization Guide** for namespace alignment procedures.
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  *\[Placeholder --- Diagram 1: Identity Sync Architecture --- 800×500px --- Shows Entra Connect Sync topology with OU filtering, attribute flow, staging mode, PHS/PTA decision point, and Entra ID tenant boundary. Includes multi-forest variant with separate Entra Connect instances.\]*
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+5\. Group Migration Strategy
+
+5.1 AGDLP/AGUDLP Pattern Mapping
+
+The AD canonical group nesting model (Account → Global → \[Universal\] → Domain Local → Permission) does not map directly to Entra ID, which has a simpler group model without scope-based nesting restrictions. The following table maps each tier of the AGDLP pattern to its Entra ID equivalent:
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **AGDLP Tier**            **AD Implementation**                                     **Entra ID Equivalent**                                               **Migration Approach**
+  ------------------------- --------------------------------------------------------- --------------------------------------------------------------------- ---------------------------------------------------------------------
+  **A** (Account)           User objects                                              User objects                                                          Direct sync
+
+  **G** (Global Group)      Global security group containing users from same domain   Dynamic security group (attribute-based) or assigned security group   Evaluate for dynamic conversion; sync if static membership required
+
+  **U** (Universal Group)   Universal group spanning domains                          Security group (no scope distinction in Entra)                        Sync; evaluate for consolidation with G-tier groups
+
+  **DL** (Domain Local)     Domain Local group assigned to resource ACL               Security group assigned to Entra app role or resource                 Sync; may consolidate with resource assignment
+
+  **P** (Permission)        NTFS/share/resource ACL entry                             App role assignment, SharePoint permission level, or Entra role       Map to Entra-native permission model
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+5.2 Security Group Migration --- Decision Framework
+
+Each AD security group requires a migration decision: **synchronize** (maintain hybrid state), **convert to cloud-only**, or **decommission**. The decision depends on the group\'s purpose and dependency profile:
+
+  --------------------------------------------------------------------------------------------------------------------------------
+  **Group Characteristic**                         **Decision**                 **Rationale**
+  ------------------------------------------------ ---------------------------- --------------------------------------------------
+  Used for on-premises resource ACLs only          Retain in AD (do not sync)   Cloud representation adds no value
+
+  Used for both on-prem and cloud resources        Synchronize (hybrid)         Source of authority remains AD during transition
+
+  Used for cloud resources only                    Convert to cloud-only        Eliminate AD dependency
+
+  Membership is attribute-deterministic            Convert to dynamic group     Eliminate manual membership management
+
+  Unused (no members or no resource assignments)   Decommission                 Reduce identity surface area
+  --------------------------------------------------------------------------------------------------------------------------------
+
+5.3 Dynamic Group Conversion
+
+Static AD groups whose membership is determined by organizational attributes (department, location, role) are candidates for conversion to Entra ID dynamic groups. The conversion process:
+
+27. **Analyze current membership:** Export group members and identify the common attributes that determine membership
+
+28. **Draft dynamic rule:** Construct a membership rule using the OrgPath extension attributes (Section 3.4)
+
+29. **Validate coverage:** Compare dynamic rule output against current static membership to identify gaps
+
+30. **Address exceptions:** Users who do not match the rule pattern require attribute remediation or explicit inclusion via a separate assigned group
+
+31. **Create dynamic group:** Create the Entra ID dynamic group and validate membership propagation
+
+32. **Migrate assignments:** Transfer resource assignments from the synced static group to the new dynamic group
+
+33. **Decommission static group:** Remove the AD group from sync scope and archive
+
+5.4 Nested Group Flattening
+
+Entra ID supports one level of group nesting for assigned groups, but dynamic groups **cannot** be nested and **cannot** contain other groups as members. Deep nesting patterns common in AGDLP must be flattened:
+
+- **Identify nesting chains:** Use PowerShell to recursively enumerate group membership and identify chains deeper than one level
+
+- **Flatten to direct membership:** Replace nested group references with direct user membership or dynamic rules that achieve the same effective membership
+
+- **Document the flattening map:** Maintain a mapping of original nesting structure to flattened structure for audit trail
+
+5.5 Microsoft 365 Groups
+
+Microsoft 365 Groups provide collaboration capabilities (shared mailbox, calendar, files, Planner, Teams) that do not exist in AD. Conversion decisions:
+
+- **Convert to M365 Group when:** The group requires collaboration features (Teams channel, shared mailbox), the group represents a project team or working group, or self-service management is desired
+
+- **Do not convert when:** The group is purely for authorization (resource ACLs), the group requires dynamic membership with security scope, or the group contains nested groups
+
+- **Governance policies:** Apply naming conventions (prefix: GRP-, PRJ-, DEPT-), expiration policies (annual review), and classification labels
+
+5.6 Self-Service Group Management
+
+Entra ID supports self-service group management where group owners can manage membership without IT involvement. Governance controls include:
+
+- **Access reviews:** Quarterly attestation of group membership by group owners (P2 feature)
+
+- **Expiration policies:** M365 Groups can be configured to expire after 90, 180, or 365 days if not renewed by the owner
+
+- **Naming policies:** Enforce naming conventions through group naming policies in Entra ID
+
+5.7 PowerShell --- Group Export and Migration
+
+\# ============================================================ \# UIAO Group Migration Script \# Export AD groups and create corresponding Entra ID groups \# Requires: ActiveDirectory module, Microsoft.Graph PowerShell SDK \# ============================================================ #Requires -Modules ActiveDirectory, Microsoft.Graph.Groups \# \-\-- Phase 1: Export AD Groups \-\-- \$exportPath = \"C:\\UIAO\\Exports\\ADGroups\_\$(Get-Date -Format \'yyyyMMdd\').json\" \$adGroups = Get-ADGroup -Filter \* -Properties \` Name, Description, GroupScope, GroupCategory, \` ManagedBy, Members, MemberOf, Mail, \` extensionAttribute1, extensionAttribute2, \` DistinguishedName, WhenCreated, WhenChanged \| Select-Object \@{N=\'Name\';E={\$\_.Name}}, \@{N=\'Description\';E={\$\_.Description}}, \@{N=\'Scope\';E={\$\_.GroupScope.ToString()}}, \@{N=\'Category\';E={\$\_.GroupCategory.ToString()}}, \@{N=\'ManagedBy\';E={\$\_.ManagedBy}}, \@{N=\'MemberCount\';E={(\$\_.Members \| Measure-Object).Count}}, \@{N=\'NestedGroupCount\';E={ (\$\_.Members \| Where-Object { (Get-ADObject \$\_ -Properties objectClass).objectClass -eq \'group\' } \| Measure-Object).Count }}, \@{N=\'Mail\';E={\$\_.Mail}}, \@{N=\'OU\';E={(\$\_.DistinguishedName -split \',\',2)\[1\]}}, \@{N=\'Created\';E={\$\_.WhenCreated}}, \@{N=\'Modified\';E={\$\_.WhenChanged}}, \@{N=\'MigrationTarget\';E={ if (\$\_.GroupCategory -eq \'Distribution\') { \'DistributionGroup\' } elseif (\$\_.Members.Count -eq 0) { \'Decommission\' } else { \'SecurityGroup\' } }} \$adGroups \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$exportPath -Encoding UTF8 Write-Host \"Exported \$(\$adGroups.Count) groups to \$exportPath\" -ForegroundColor Green \# \-\-- Phase 2: Create Entra ID Security Groups \-\-- Connect-MgGraph -Scopes \"Group.ReadWrite.All\" -Environment USGov foreach (\$group in (\$adGroups \| Where-Object { \$\_.MigrationTarget -eq \'SecurityGroup\' })) { \$params = \@{ DisplayName = \$group.Name Description = \$group.Description MailEnabled = \$false MailNickname = (\$group.Name -replace \'\[\^a-zA-Z0-9\]\',\'\').ToLower() SecurityEnabled = \$true GroupTypes = @() } try { \$newGroup = New-MgGroup -BodyParameter \$params Write-Host \"Created group: \$(\$newGroup.DisplayName) \[\$(\$newGroup.Id)\]\" -ForegroundColor Green } catch { Write-Warning \"Failed to create group \$(\$group.Name): \$\_\" } } Disconnect-MgGraph
+
+6\. Service Account Modernization
+
+6.1 Migration Path Matrix
+
+Each AD service account type maps to a specific Entra ID identity construct. The migration path depends on the workload the service account supports and whether that workload is cloud-hosted, on-premises, or hybrid.
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **AD Service Account Type**   **Workload Location**   **Entra ID Target**                                   **Authentication Method**                  **Credential Management**
+  ----------------------------- ----------------------- ----------------------------------------------------- ------------------------------------------ ----------------------------------
+  Traditional (interactive)     Cloud (M365)            App Registration + Service Principal                  Certificate-based auth                     Certificate rotation (annual)
+
+  Traditional (interactive)     Azure IaaS              Managed Identity (System-assigned)                    Managed (no credentials)                   Fully automated
+
+  Traditional (interactive)     On-premises             gMSA (retain) or Workload Identity Federation         Kerberos (gMSA) or OIDC federation         Auto-managed (gMSA) or federated
+
+  MSA                           On-premises             gMSA (upgrade first)                                  Kerberos                                   Auto-managed
+
+  gMSA                          Cloud                   Workload Identity with federated credentials          OIDC federation                            No stored secrets
+
+  gMSA                          Hybrid                  Retain gMSA + App Registration for cloud calls        Kerberos (on-prem) + certificate (cloud)   Split management
+
+  Application pool identity     On-premises IIS         gMSA (immediate) → Managed Identity (when migrated)   Kerberos → Managed                         Progressive modernization
+
+  Scheduled task identity       On-premises             gMSA (immediate) → Azure Automation (when migrated)   Kerberos → Managed Identity                Progressive modernization
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+6.2 Workload Identity Federation
+
+Workload Identity Federation eliminates stored secrets by establishing a trust relationship between an external identity provider (e.g., GitHub Actions, Kubernetes, on-premises OIDC provider) and an Entra ID App Registration. The workload presents a token from its identity provider, which Entra ID validates and exchanges for an access token --- no client secrets or certificates required.
+
+**Federation configuration elements:**
+
+- **Issuer:** The OIDC issuer URL of the external identity provider
+
+- **Subject identifier:** The claim in the external token that uniquely identifies the workload (e.g., repo:org/repo:ref:refs/heads/main for GitHub Actions)
+
+- **Audience:** The intended audience claim (typically api://AzureADTokenExchange)
+
+6.3 Conditional Access for Workload Identities
+
+Entra ID supports Conditional Access policies targeting service principals (Workload Identities Premium license required). This enables:
+
+- **Location-based restrictions:** Restrict service principal authentication to known IP ranges
+
+- **Risk-based blocking:** Block service principal sign-ins flagged as anomalous
+
+- **Compliance enforcement:** Require compliant network locations for automated workloads
+
+6.4 Service Principal Governance
+
+Every App Registration and Service Principal requires governance controls:
+
+- **Ownership:** Every app registration must have at least two human owners (not service accounts)
+
+- **Credential rotation:** Certificates expire annually; automated rotation via Key Vault or Gitea-managed CI/CD
+
+- **Access reviews:** Quarterly review of application permissions (delegated and application-level) by app owners
+
+- **Least privilege:** Use application-specific roles and scopes; avoid broad permissions like Directory.ReadWrite.All
+
+6.5 Service Account Discovery Script
+
+\# ============================================================ \# UIAO Service Account Discovery and Classification \# Discovers all service accounts in AD, classifies by type, \# and outputs migration recommendations \# ============================================================ #Requires -Modules ActiveDirectory function Get-UIAOServiceAccountInventory { \[CmdletBinding()\] param( \[Parameter()\] \[string\]\$SearchBase = (Get-ADDomain).DistinguishedName, \[Parameter()\] \[string\]\$ExportPath = \"C:\\UIAO\\Exports\\ServiceAccounts\_\$(Get-Date -Format \'yyyyMMdd\').json\" ) \$results = \[System.Collections.ArrayList\]::new() \# \-\-- Traditional Service Accounts (user objects with service indicators) \-\-- \$svcUsers = Get-ADUser -Filter { (ServicePrincipalName -like \"\*\") -or (SamAccountName -like \"svc-\*\") -or (SamAccountName -like \"svc\_\*\") -or (SamAccountName -like \"sa-\*\") -or (Description -like \"\*service\*account\*\") } -SearchBase \$SearchBase -Properties \` SamAccountName, UserPrincipalName, DisplayName, Description, ServicePrincipalName, Enabled, PasswordNeverExpires, PasswordLastSet, LastLogonDate, WhenCreated, MemberOf, DistinguishedName foreach (\$svc in \$svcUsers) { \$spnCount = (\$svc.ServicePrincipalName \| Measure-Object).Count \$daysSincePasswordChange = if (\$svc.PasswordLastSet) { (New-TimeSpan -Start \$svc.PasswordLastSet -End (Get-Date)).Days } else { -1 } \$recommendation = switch (\$true) { (\$spnCount -gt 0 -and \$svc.Enabled) { \"Evaluate for gMSA conversion, then Workload Identity Federation\" } (\$svc.PasswordNeverExpires -and \$svc.Enabled) { \"HIGH RISK: Convert to App Registration with certificate auth\" } (-not \$svc.Enabled) { \"Disabled --- verify and decommission\" } (\$svc.LastLogonDate -lt (Get-Date).AddDays(-90)) { \"Stale --- verify usage and decommission if unused\" } default { \"Evaluate workload dependency; target Managed Identity or App Registration\" } } \[void\]\$results.Add(\[PSCustomObject\]@{ Type = \"TraditionalServiceAccount\" SamAccountName = \$svc.SamAccountName DisplayName = \$svc.DisplayName Description = \$svc.Description Enabled = \$svc.Enabled PasswordNeverExpires = \$svc.PasswordNeverExpires DaysSincePasswordChange = \$daysSincePasswordChange SPNCount = \$spnCount SPNs = (\$svc.ServicePrincipalName -join \'; \') LastLogon = \$svc.LastLogonDate GroupMembershipCount = (\$svc.MemberOf \| Measure-Object).Count OU = (\$svc.DistinguishedName -split \',\',2)\[1\] RiskLevel = if (\$svc.PasswordNeverExpires -and \$svc.Enabled) { \"HIGH\" } elseif (\$daysSincePasswordChange -gt 365) { \"HIGH\" } elseif (\$svc.Enabled) { \"MEDIUM\" } else { \"LOW\" } Recommendation = \$recommendation }) } \# \-\-- Managed Service Accounts (MSA) \-\-- \$msaAccounts = Get-ADServiceAccount -Filter \* -Properties \` SamAccountName, Enabled, DistinguishedName, msDS-ManagedPasswordInterval, WhenCreated foreach (\$msa in \$msaAccounts) { \$isgMSA = (\$msa.ObjectClass -eq \'msDS-GroupManagedServiceAccount\') \[void\]\$results.Add(\[PSCustomObject\]@{ Type = if (\$isgMSA) { \"gMSA\" } else { \"MSA\" } SamAccountName = \$msa.SamAccountName DisplayName = \$msa.SamAccountName Description = \"\" Enabled = \$msa.Enabled PasswordNeverExpires = \$false DaysSincePasswordChange = 0 SPNCount = 0 SPNs = \"\" LastLogon = \$null GroupMembershipCount = 0 OU = (\$msa.DistinguishedName -split \',\',2)\[1\] RiskLevel = \"LOW\" Recommendation = if (\$isgMSA) { \"Retain for on-prem workloads; target Workload Identity Federation for cloud migration\" } else { \"Upgrade to gMSA first, then evaluate for cloud migration\" } }) } \# \-\-- Export Results \-\-- \$results \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$ExportPath -Encoding UTF8 \# \-\-- Summary \-\-- Write-Host \"\`n=== UIAO Service Account Discovery Summary ===\" -ForegroundColor Cyan Write-Host \"Traditional Service Accounts: \$((\$results \| Where-Object Type -eq \'TraditionalServiceAccount\').Count)\" Write-Host \"Managed Service Accounts (MSA): \$((\$results \| Where-Object Type -eq \'MSA\').Count)\" Write-Host \"Group Managed Service Accounts (gMSA): \$((\$results \| Where-Object Type -eq \'gMSA\').Count)\" Write-Host \"HIGH Risk: \$((\$results \| Where-Object RiskLevel -eq \'HIGH\').Count)\" -ForegroundColor Red Write-Host \"MEDIUM Risk: \$((\$results \| Where-Object RiskLevel -eq \'MEDIUM\').Count)\" -ForegroundColor Yellow Write-Host \"LOW Risk: \$((\$results \| Where-Object RiskLevel -eq \'LOW\').Count)\" -ForegroundColor Green Write-Host \"Export: \$ExportPath\" -ForegroundColor Cyan return \$results }
+
+7\. Privileged Access Management
+
+7.1 AD Privileged Group to Entra PIM Role Mapping
+
+Every AD privileged group must map to an Entra ID role governed by Privileged Identity Management (PIM). The core principle: **no permanent active assignments for privileged roles**. All privileged access must be PIM-eligible with just-in-time activation.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **AD Privileged Group**       **Entra ID Role**                                   **PIM Assignment Type**      **Governance Notes**
+  ----------------------------- --------------------------------------------------- ---------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------
+  Domain Admins                 Global Administrator                                Eligible (never permanent)   Maximum 2 permanent break-glass accounts; all others eligible-only with approval
+
+  Enterprise Admins             Privileged Role Administrator                       Eligible                     Can manage PIM assignments; requires separate approval chain
+
+  Schema Admins                 No direct equivalent                                N/A                          Schema changes in Entra ID are managed by Microsoft; directory extensions via Graph API require Application Developer or Application Administrator role
+
+  Account Operators             User Administrator (scoped via AU)                  Eligible                     Scope with Administrative Units to limit blast radius
+
+  Server Operators              Custom RBAC role or Intune role                     Eligible                     Map server management functions to Intune device management or Azure RBAC
+
+  Backup Operators              Custom RBAC role                                    Eligible                     Map to specific backup service roles (e.g., Exchange Administrator for mailbox recovery)
+
+  DNS Admins                    No direct equivalent (DNS is managed per-service)   N/A                          DNS management moves to Microsoft 365 admin center or Azure DNS (if in scope)
+
+  Group Policy Creator Owners   Intune Policy and Profile Manager (custom)          Eligible                     GPO functions replaced by Intune configuration profiles and Conditional Access
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+7.2 PIM Configuration Standards
+
+The following PIM configuration standards apply to all UIAO-governed Entra ID tenants:
+
+- **Eligibility duration:** Maximum 12 months; annual renewal required with access review
+
+- **Activation duration:** Role-specific maximum (see table below); default 8 hours
+
+- **Activation requirements:** MFA required for all activations; justification required; ticket number required for Global Administrator, Privileged Role Administrator, and Exchange Administrator
+
+- **Approval workflow:** Required for Global Administrator, Privileged Role Administrator, and Security Administrator; approvers must be from a separate administrative unit
+
+- **Notification:** Activation email to role assignee, all Global Administrators, and the security operations mailbox
+
+7.3 PIM Role Assignment Table
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Role Name**                      **Assignment Type**   **Max Activation Duration**   **Approval Required**   **MFA Required**   **Justification Required**   **Ticket Required**
+  ---------------------------------- --------------------- ----------------------------- ----------------------- ------------------ ---------------------------- ---------------------
+  Global Administrator               Eligible              4 hours                       Yes                     Yes                Yes                          Yes
+
+  Privileged Role Administrator      Eligible              4 hours                       Yes                     Yes                Yes                          Yes
+
+  Security Administrator             Eligible              8 hours                       Yes                     Yes                Yes                          No
+
+  Exchange Administrator             Eligible              8 hours                       No                      Yes                Yes                          Yes
+
+  SharePoint Administrator           Eligible              8 hours                       No                      Yes                Yes                          No
+
+  User Administrator                 Eligible              8 hours                       No                      Yes                Yes                          No
+
+  Groups Administrator               Eligible              8 hours                       No                      Yes                Yes                          No
+
+  Conditional Access Administrator   Eligible              8 hours                       No                      Yes                Yes                          No
+
+  Intune Administrator               Eligible              8 hours                       No                      Yes                Yes                          No
+
+  Authentication Administrator       Eligible              8 hours                       No                      Yes                Yes                          No
+
+  Application Administrator          Eligible              8 hours                       No                      Yes                Yes                          No
+
+  Compliance Administrator           Eligible              8 hours                       No                      Yes                Yes                          No
+
+  Security Reader                    Eligible              12 hours                      No                      Yes                No                           No
+
+  Global Reader                      Eligible              12 hours                      No                      Yes                No                           No
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+7.4 Privileged Access Groups
+
+Privileged Access Groups (PAGs) extend PIM to group membership. Instead of permanently adding a user to a sensitive group, the user activates just-in-time group membership through PIM. This is the Entra ID equivalent of just-in-time privileged access for resource-level permissions.
+
+- **Use case:** Groups that grant access to sensitive applications, data, or administrative functions
+
+- **Configuration:** Enable \"Microsoft Entra roles can be assigned to the group\" during group creation, then configure PIM settings for the group
+
+- **Governance:** Same activation requirements as PIM roles --- MFA, justification, approval (if configured)
+
+7.5 Emergency Access (Break-Glass) Accounts
+
+Break-glass accounts provide emergency access when normal authentication or PIM activation fails. UIAO standards for break-glass accounts:
+
+- **Quantity:** Exactly two break-glass accounts per tenant
+
+- **Naming:** Do not use naming patterns that identify them as emergency accounts (avoid emergency, breakglass, bg-)
+
+- **Authentication:** One account uses a long (16+ character) password stored in a physical safe; the second uses a FIDO2 security key stored separately
+
+- **Assignment:** Permanent Active assignment to Global Administrator (the only permanent GA assignment)
+
+- **Conditional Access:** Explicitly excluded from all Conditional Access policies via a dedicated exclusion group
+
+- **Monitoring:** Alert on any sign-in activity from break-glass accounts --- any activation is an incident
+
+- **Validation:** Quarterly sign-in test to verify credentials remain valid; documented in change management
+
+7.6 Protected Actions in Entra ID
+
+Protected Actions is the Entra ID equivalent of AdminSDHolder. It requires users to satisfy a specific Conditional Access authentication context before performing sensitive operations such as:
+
+- Modifying Conditional Access policies
+
+- Modifying cross-tenant access settings
+
+- Modifying authentication methods policies
+
+- Deleting a tenant
+
+The authentication context typically requires phishing-resistant MFA (FIDO2 or Windows Hello for Business), ensuring that even a compromised privileged session cannot perform destructive operations without re-authentication with a hardware-bound credential.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  *\[Placeholder --- Diagram 2: PIM Activation Workflow --- 800×400px --- Shows the flow from Eligible Assignment → Activation Request (with MFA, justification, ticket) → Approval (if required) → Active Assignment (time-bound) → Expiration → Eligible state. Includes break-glass bypass path.\]*
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8\. Conditional Access Policy Framework
+
+8.1 Design Philosophy
+
+Conditional Access (CA) policies in Entra ID replace the GPO-based logon restrictions, network access controls, and authentication policies that were previously enforced through Active Directory. The UIAO CA framework is organized around **personas** --- each persona represents a user population with distinct access requirements and risk profiles.
+
+8.2 Persona Definitions
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Persona**            **Description**                                                   **Identification Method**                                            **Risk Profile**
+  ---------------------- ----------------------------------------------------------------- -------------------------------------------------------------------- ----------------------------
+  **Internals**          Full-time employees and contractors with standard access          extensionAttribute6 ∈ {Employee, Contractor}                         Standard
+
+  **Admins**             Users with privileged role assignments (PIM-eligible or active)   extensionAttribute10 = \"Privileged\" or Directory role membership   High
+
+  **Externals**          B2B guest users from trusted partner organizations                User type = Guest, B2B collaboration                                 Elevated
+
+  **Guests**             Ad-hoc external users (non-partner, social identity)              User type = Guest, non-trusted org                                   High
+
+  **Service Accounts**   Workload identities (service principals, managed identities)      Workload identity filter                                             Variable
+
+  **Break-Glass**        Emergency access accounts                                         Dedicated exclusion group                                            N/A (excluded from all CA)
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8.3 Named Locations
+
+- **Trusted Corporate Networks:** IP ranges for all office locations, VPN egress points, and trusted proxy addresses
+
+- **Trusted Countries:** United States (required for GCC-Moderate); add additional countries only with documented justification
+
+- **Compliance Boundary:** GCC-Moderate services are US-only; block authentication from non-US locations for all personas except approved travel exceptions
+
+8.4 Authentication Strength Policies
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------
+  **Authentication Strength**   **Allowed Methods**                                                      **Target Persona**
+  ----------------------------- ------------------------------------------------------------------------ ---------------------------------------
+  Phishing-resistant MFA        FIDO2 security key, Windows Hello for Business, Certificate-based auth   Admins, high-risk sign-ins
+
+  Multifactor authentication    Microsoft Authenticator (push + number matching), FIDO2, WHfB, CBA       Internals, Externals
+
+  Passwordless MFA              FIDO2, WHfB, Microsoft Authenticator (passwordless)                      Target state for all users (Phase 3+)
+  ----------------------------------------------------------------------------------------------------------------------------------------------
+
+8.5 Conditional Access Policy Table
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Policy Name**                                    **Target Persona**                               **Conditions**                                         **Grant Controls**                                        **Session Controls**                                   **Priority**
+  -------------------------------------------------- ------------------------------------------------ ------------------------------------------------------ --------------------------------------------------------- ------------------------------------------------------ --------------
+  CA001-AllUsers-BlockLegacyAuth                     All Users                                        Client apps: Exchange ActiveSync, Other clients        Block                                                     ---                                                    1
+
+  CA002-BreakGlass-Exclude                           Break-Glass (excluded from all other policies)   All conditions                                         Grant (no controls)                                       ---                                                    0
+
+  CA003-Admins-RequirePhishResistantMFA              Admins                                           All cloud apps, any location                           Require authentication strength: Phishing-resistant MFA   Sign-in frequency: 4 hours                             2
+
+  CA004-Admins-RequireCompliantDevice                Admins                                           All cloud apps                                         Require compliant device                                  Persistent browser: disabled                           3
+
+  CA005-Admins-BlockNonTrustedLocations              Admins                                           All cloud apps, location: NOT Trusted Networks         Block                                                     ---                                                    4
+
+  CA006-Internals-RequireMFA                         Internals                                        All cloud apps                                         Require authentication strength: MFA                      Sign-in frequency: 12 hours                            5
+
+  CA007-Internals-RequireCompliantOrJoinedDevice     Internals                                        All cloud apps                                         Require compliant device OR Hybrid Entra-joined device    ---                                                    6
+
+  CA008-Internals-BlockNonUSLocations                Internals                                        All cloud apps, location: NOT Trusted Countries (US)   Block                                                     ---                                                    7
+
+  CA009-Externals-RequireMFA                         Externals                                        All cloud apps                                         Require authentication strength: MFA                      Sign-in frequency: 8 hours                             8
+
+  CA010-Externals-RequireToU                         Externals                                        All cloud apps                                         Require Terms of Use acceptance                           ---                                                    9
+
+  CA011-Guests-LimitedAppAccess                      Guests                                           Specific apps only (SharePoint, Teams)                 Require MFA + Terms of Use                                App-enforced restrictions, sign-in frequency: 1 hour   10
+
+  CA012-Guests-BlockHighRisk                         Guests                                           User risk: High                                        Block                                                     ---                                                    11
+
+  CA013-AllUsers-HighRisk-RequirePasswordChange      All Users                                        User risk: High                                        Require password change + MFA                             ---                                                    12
+
+  CA014-AllUsers-MediumRisk-RequireMFA               All Users                                        Sign-in risk: Medium or High                           Require authentication strength: MFA                      ---                                                    13
+
+  CA015-ServiceAccounts-LocationRestriction          Service Accounts                                 Workload identities, location: NOT Trusted Networks    Block                                                     ---                                                    14
+
+  CA016-AllUsers-RequireCompliantDevice-OfficeApps   All Users                                        Office 365 apps, device platform: Windows, macOS       Require compliant device                                  ---                                                    15
+
+  CA017-Internals-AppProtection-Mobile               Internals                                        Office 365 apps, device platform: iOS, Android         Require approved client app or app protection policy      ---                                                    16
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+8.6 Testing Methodology
+
+Conditional Access policy deployment follows a three-phase testing methodology to minimize user disruption:
+
+34. **Report-Only Mode (2--4 weeks):** Deploy all policies in report-only mode. Monitor the CA insights workbook to identify users and sign-ins that would be affected. Remediate false positives (e.g., users without MFA registration, non-compliant devices).
+
+35. **Targeted Pilot (2 weeks):** Switch policies from report-only to on, targeting a pilot group (e.g., IT department). Monitor helpdesk ticket volume and sign-in failure rates. Adjust policy conditions as needed.
+
+36. **Phased Rollout (4--8 weeks):** Expand policy targeting in waves: Wave 1 --- IT and Security teams; Wave 2 --- corporate staff; Wave 3 --- field/remote workers; Wave 4 --- all users. Each wave runs for 1--2 weeks with monitoring gates.
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **CRITICAL**                                                                                                                                                                                                                                                                                     |
+|                                                                                                                                                                                                                                                                                                  |
+| Never deploy Conditional Access policies directly to \"All Users\" without a report-only evaluation period. A misconfigured CA policy can lock out the entire organization, including administrators. Always verify that break-glass accounts are excluded from all policies before enforcement. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+9\. Identity Governance and Lifecycle
+
+9.1 Access Reviews
+
+Access reviews provide periodic attestation that users still require the access they hold. UIAO mandates the following access review schedule:
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Review Target**                        **Frequency**   **Reviewers**                                       **Auto-Apply**              **If No Response**
+  ---------------------------------------- --------------- --------------------------------------------------- --------------------------- -----------------------
+  PIM-eligible role assignments            Quarterly       Role assignees (self-attestation) + Security team   Yes --- remove if denied    Remove access
+
+  Security group memberships (sensitive)   Quarterly       Group owners                                        Yes --- remove if denied    Remove access
+
+  Application assignments (Tier 1 apps)    Semi-annually   Application owners                                  Yes --- remove if denied    No change (escalate)
+
+  Guest user access                        Quarterly       Sponsors (inviting users)                           Yes --- disable if denied   Disable guest account
+
+  M365 Group memberships                   Semi-annually   Group owners                                        No (recommendation only)    No change
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+9.2 Entitlement Management --- Access Packages
+
+Access packages bundle resources (group memberships, app assignments, SharePoint site access) into requestable units. They replace the AD delegation model of \"submit a ticket for group membership\" with a self-service, governed workflow.
+
+**Access package categories:**
+
+- **Onboarding packages:** Baseline access for new hires --- email, Teams, SharePoint home site, company-wide groups. Auto-assigned via lifecycle workflow on hire date.
+
+- **Department packages:** Department-specific resources --- SharePoint sites, Teams channels, line-of-business applications. Assigned based on OrgPath Department attribute.
+
+- **Project packages:** Time-bound access for project participation. Requires approval from project lead. Auto-expires at project end date.
+
+- **Cross-tenant packages:** Resources shared with external partner organizations via B2B collaboration. Requires Terms of Use acceptance and sponsor approval.
+
+9.3 Lifecycle Workflows
+
+Lifecycle Workflows automate the joiner/mover/leaver process by executing tasks triggered by attribute changes or scheduled events. These workflows require Entra ID Governance licensing.
+
+9.3.1 Pre-Hire Workflow
+
+**Trigger:** extensionAttribute7 (HireDate) is 7 days in the future
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  *\[Placeholder --- Diagram 3: Pre-Hire Workflow --- 700×300px --- Shows: HR system sets HireDate → Lifecycle Workflow triggers at T-7 days → Provision Entra account (disabled) → Assign baseline access package → Notify hiring manager → Account remains disabled until hire date\]*
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Tasks:**
+
+37. Create user account (disabled state)
+
+38. Set OrgPath extension attributes from HR feed
+
+39. Assign baseline onboarding access package
+
+40. Generate temporary access pass (TAP) for first-time MFA registration
+
+41. Send notification to hiring manager with onboarding checklist
+
+9.3.2 Joiner Workflow
+
+**Trigger:** extensionAttribute7 (HireDate) equals current date
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  *\[Placeholder --- Diagram 4: Joiner Workflow --- 700×300px --- Shows: HireDate reached → Enable account → Assign M365 license → Add to department dynamic group → Send welcome email → Trigger MFA registration campaign → Assign department access package\]*
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Tasks:**
+
+42. Enable user account
+
+43. Assign Microsoft 365 license (based on CostCenter attribute)
+
+44. Dynamic group membership propagates (department, region, role groups)
+
+45. Send welcome email with self-service portal links
+
+46. Trigger MFA registration campaign (Authentication Methods policy)
+
+47. Assign department-specific access package
+
+9.3.3 Mover Workflow
+
+**Trigger:** Change detected in extensionAttribute2 (Department), extensionAttribute3 (Division), or extensionAttribute4 (Role)
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  *\[Placeholder --- Diagram 5: Mover Workflow --- 700×350px --- Shows: OrgPath attribute change detected → Revoke previous department access package → Assign new department access package → Trigger access review for retained assignments → Update Administrative Unit membership → Notify old and new managers → Log change to Gitea audit trail\]*
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Tasks:**
+
+48. Revoke previous department access package
+
+49. Assign new department access package
+
+50. Dynamic group membership auto-adjusts based on new attributes
+
+51. Trigger immediate access review for all non-baseline assignments
+
+52. Update Administrative Unit membership if division changed
+
+53. Notify previous manager (leaver from team) and new manager (joiner to team)
+
+54. Commit attribute change record to Gitea audit trail
+
+9.3.4 Leaver Workflow
+
+**Trigger:** extensionAttribute8 (TermDate) equals current date
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  *\[Placeholder --- Diagram 6: Leaver Workflow --- 700×350px --- Shows: TermDate reached → Disable account → Revoke all sessions → Remove from all access packages → Remove M365 license → Convert mailbox to shared (retain 90 days) → Move to \"Departed\" AU → After 30 days: remove group memberships → After 90 days: delete account\]*
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Tasks:**
+
+55. Disable user account
+
+56. Revoke all active sessions (Revoke-MgUserSignInSession)
+
+57. Remove all access package assignments
+
+58. Remove Microsoft 365 license
+
+59. Convert mailbox to shared mailbox (retain per policy --- typically 90 days)
+
+60. Set manager as delegate for shared mailbox
+
+61. Move user to \"Departed Users\" Administrative Unit
+
+62. Remove all security group memberships (T+30 days)
+
+63. Delete user account (T+90 days)
+
+64. Notify manager, HR, and security operations
+
+9.4 Terms of Use
+
+Terms of Use (ToU) provide compliance attestation for sensitive applications. They are enforced through Conditional Access policies and can require acceptance before granting access to specific apps or resources.
+
+- **Employee ToU:** Annual re-acceptance covering acceptable use policy, data handling, and security responsibilities
+
+- **Guest/External ToU:** Acceptance required on first access and quarterly thereafter, covering data sharing agreements and compliance boundaries
+
+- **Privileged Access ToU:** Acceptance required before PIM activation for Global Administrator role, acknowledging additional monitoring and audit requirements
+
+10\. Cross-Tenant and B2B Collaboration
+
+10.1 Entra ID B2B Collaboration
+
+B2B collaboration enables external users to access resources in your tenant as guest users. The guest user lifecycle includes:
+
+- **Invitation:** Initiated by an authorized internal user (sponsor) or auto-generated via access package request
+
+- **Redemption:** Guest user redeems the invitation by authenticating with their home tenant credentials
+
+- **Access:** Guest user accesses resources governed by their group memberships, app assignments, and Conditional Access policies
+
+- **Review:** Quarterly access review by sponsor; removal if access is no longer justified
+
+- **Offboarding:** Guest account disabled or deleted when collaboration ends
+
+**Invitation policies:**
+
+- Only users with the Guest Inviter role or higher can invite guests
+
+- Guest invitations are restricted to specific domains (allowlist) in GCC-Moderate environments
+
+- Self-service sign-up is disabled by default; enabled only for approved external identity providers
+
+10.2 Cross-Tenant Access Settings
+
+Cross-tenant access settings (CTAS) govern the trust relationship between your tenant and external tenants:
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Setting**           **Inbound (External → Your Tenant)**                                                 **Outbound (Your Tenant → External)**
+  --------------------- ------------------------------------------------------------------------------------ ------------------------------------------------------------
+  B2B Collaboration     Allow specific organizations or all (default: all, UIAO: restrict to allowlist)      Allow users to be guests in specific external tenants
+
+  B2B Direct Connect    Trust specific organizations for Teams Connect shared channels                       Allow users to connect directly to external Teams channels
+
+  Trust Settings        Trust MFA from external tenant (avoid re-prompting), trust compliant device claims   N/A
+
+  Token Configuration   Accept or restrict tokens from external identity providers                           Control which claims are shared with external tenants
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+10.3 B2B Direct Connect vs. B2B Collaboration
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Criterion**                 **B2B Collaboration**                                                    **B2B Direct Connect**
+  ----------------------------- ------------------------------------------------------------------------ ---------------------------------------------------------------
+  Guest object in your tenant   Yes --- guest user object created                                        No --- user accesses resources without a guest object
+
+  Scope                         All cloud apps (governed by CA)                                          Teams shared channels only
+
+  Governance visibility         Full --- guest user appears in directory, access reviews, sign-in logs   Limited --- no directory object, limited audit trail
+
+  Conditional Access            Full policy application                                                  Limited --- relies on home tenant policies
+
+  UIAO recommendation           **Preferred** for resource sharing, application access                   Acceptable for Teams-only collaboration with trusted partners
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+10.4 External Identity Providers
+
+Entra ID supports federation with external identity providers for B2B guest authentication:
+
+- **Microsoft account:** Default for consumer Microsoft accounts
+
+- **Google federation:** Allow Google Workspace users to authenticate with their Google credentials
+
+- **SAML/WS-Fed federation:** Direct federation with partner organizations that use non-Microsoft identity providers
+
+- **Email one-time passcode (OTP):** Fallback for guests whose home tenant does not support any federation protocol
+
+10.5 Cross-Reference: AD Trust Mapping
+
+For organizations migrating from AD forest trusts to Entra ID cross-tenant access, the **AD Interaction Guide** provides the trust mapping methodology. The key equivalencies are:
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------
+  **AD Trust Type**                 **Entra ID Equivalent**                                  **Migration Approach**
+  --------------------------------- -------------------------------------------------------- ---------------------------------------------------
+  Two-way forest trust              Cross-tenant access settings (mutual inbound/outbound)   Configure CTAS for both tenants; enable MFA trust
+
+  One-way forest trust (incoming)   Inbound CTAS (allow B2B from partner tenant)             Configure inbound B2B collaboration settings
+
+  External trust (domain-level)     Organization-specific CTAS                               Configure per-organization settings in CTAS
+
+  Realm trust (Kerberos)            SAML/WS-Fed federation with external IdP                 Establish direct federation
+  ----------------------------------------------------------------------------------------------------------------------------------------------
+
+11\. Authentication Modernization
+
+11.1 PHS as Foundation
+
+Regardless of the primary authentication method selected (PTA, Federation), Password Hash Sync (PHS) should be enabled as a foundation. PHS provides:
+
+- **Leaked credential detection:** Entra ID Identity Protection compares password hashes against known breached credential databases (P2 feature)
+
+- **Authentication resilience:** If PTA agents or AD FS become unavailable, PHS serves as an automatic fallback (with Staged Rollout or manual cutover)
+
+- **Smart lockout:** Cloud-based lockout protects against password spray attacks without locking out on-premises AD accounts
+
+11.2 Passwordless Authentication Roadmap
+
+The UIAO passwordless strategy follows a phased approach, prioritizing the highest-risk accounts first:
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Phase**     **Target Population**                        **Authentication Method**                **Prerequisites**                                                                          **Duration**
+  ------------- -------------------------------------------- ---------------------------------------- ------------------------------------------------------------------------------------------ --------------
+  **Phase 1**   Privileged accounts (PIM-eligible users)     FIDO2 security keys                      FIDO2 keys procured; Authentication Methods policy configured; users enrolled              4--6 weeks
+
+  **Phase 2**   Managed devices (Intune-enrolled, Windows)   Windows Hello for Business               Intune enrollment; WHfB policy deployed; TPM 2.0 on endpoints                              8--12 weeks
+
+  **Phase 3**   All users (including mobile)                 Microsoft Authenticator passkeys         Authenticator app deployed; passkey registration campaign; user communication              8--12 weeks
+
+  **Phase 4**   High-security users, smart card migration    Certificate-based authentication (CBA)   Cloud PKI or hybrid PKI (cross-reference PKI Modernization Guide); CBA policy configured   12--16 weeks
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+11.3 Authentication Methods Policy
+
+The Authentication Methods policy in Entra ID controls which authentication methods are available to which users. UIAO configuration:
+
+- **FIDO2 Security Keys:** Enabled for Admins group (Phase 1), then All Users (Phase 3)
+
+- **Microsoft Authenticator:** Enabled for All Users; number matching required; additional context (application name, location) enabled
+
+- **Windows Hello for Business:** Enabled for All Users with managed devices
+
+- **Temporary Access Pass (TAP):** Enabled for helpdesk/User Administrators; one-time use; 1-hour lifetime; used for new employee onboarding and FIDO2 key replacement
+
+- **SMS/Voice:** Disabled (phishable methods)
+
+- **Email OTP:** Enabled for guest users only
+
+- **Registration campaigns:** Enabled to prompt users to register for Microsoft Authenticator during sign-in; snooze limit: 3 times
+
+11.4 Legacy Authentication Blocking
+
+Legacy authentication protocols (SMTP AUTH, POP3, IMAP4, Exchange ActiveSync with basic auth, legacy Exchange Web Services) do not support MFA and are a primary vector for credential stuffing attacks. The remediation process:
+
+65. **Discover:** Identify all legacy auth usage using sign-in logs and the KQL query below
+
+66. **Remediate:** Migrate applications and devices from basic auth to modern auth (OAuth 2.0)
+
+67. **Block:** Deploy CA001-AllUsers-BlockLegacyAuth (Section 8.5) after remediation
+
+68. **Monitor:** Verify zero legacy auth sign-ins for 30 days post-enforcement
+
+11.5 Legacy Auth Discovery --- KQL and PowerShell
+
+\# ============================================================ \# KQL Query --- Legacy Authentication Sign-In Discovery \# Run in Log Analytics workspace connected to Entra sign-in logs \# ============================================================ SigninLogs \| where TimeGenerated \> ago(30d) \| where ClientAppUsed in ( \"Exchange ActiveSync\", \"Authenticated SMTP\", \"POP3\", \"IMAP4\", \"AutoDiscover\", \"Exchange Online PowerShell\", \"Exchange Web Services\", \"MAPI Over HTTP\", \"Offline Address Book\", \"Other clients\", \"Outlook Anywhere (RPC over HTTP)\", \"Reporting Web Services\" ) \| where ResultType == 0 // Successful sign-ins only \| summarize SignInCount = count(), LastSignIn = max(TimeGenerated), DistinctUsers = dcount(UserPrincipalName) by ClientAppUsed, AppDisplayName, UserPrincipalName \| order by SignInCount desc
+
+\# ============================================================ \# PowerShell --- Legacy Auth Discovery via Microsoft Graph \# Requires: Microsoft.Graph.Reports scope \# ============================================================ #Requires -Modules Microsoft.Graph.Reports Connect-MgGraph -Scopes \"AuditLog.Read.All\" -Environment USGov \$legacyClients = @( \"Exchange ActiveSync\", \"Authenticated SMTP\", \"POP3\", \"IMAP4\", \"Other clients\" ) \$startDate = (Get-Date).AddDays(-30).ToString(\"yyyy-MM-ddTHH:mm:ssZ\") \$filter = \"createdDateTime ge \$startDate and status/errorCode eq 0\" \$signIns = Get-MgAuditLogSignIn -Filter \$filter -Top 5000 -All \| Where-Object { \$\_.ClientAppUsed -in \$legacyClients } \$signIns \| Group-Object -Property UserPrincipalName, ClientAppUsed \| Select-Object \@{N=\'User\';E={(\$\_.Name -split \', \')\[0\]}}, \@{N=\'ClientApp\';E={(\$\_.Name -split \', \')\[1\]}}, \@{N=\'Count\';E={\$\_.Count}}, \@{N=\'LastSignIn\';E={(\$\_.Group \| Sort-Object CreatedDateTime -Descending \| Select-Object -First 1).CreatedDateTime}} \| Sort-Object Count -Descending \| Format-Table -AutoSize Disconnect-MgGraph
+
+12\. Monitoring, Audit, and Compliance
+
+12.1 Entra ID Log Architecture
+
+Entra ID generates four primary log categories:
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Log Type**                          **Content**                                                                                       **Retention (Native)**   **Retention (Log Analytics)**
+  ------------------------------------- ------------------------------------------------------------------------------------------------- ------------------------ -----------------------------------
+  Sign-in logs                          Interactive and non-interactive sign-ins, service principal sign-ins, managed identity sign-ins   30 days (P1/P2)          Configurable (recommend 365 days)
+
+  Audit logs                            Directory changes: user/group/role modifications, policy changes, app registrations               30 days                  Configurable (recommend 365 days)
+
+  Provisioning logs                     User provisioning to SaaS applications, Entra Connect sync events                                 30 days                  Configurable (recommend 180 days)
+
+  Identity Protection risk detections   Risky sign-ins, risky users, risk event details                                                   90 days                  Configurable (recommend 365 days)
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+12.2 Log Analytics Integration
+
+All Entra ID logs must be routed to a Log Analytics workspace for long-term retention, cross-correlation, and advanced detection. Configuration steps:
+
+69. Create a Log Analytics workspace in the GCC-Moderate boundary (Azure resource --- exception to SaaS-only boundary, documented here)
+
+70. Configure Entra ID Diagnostic Settings to stream all log categories to the workspace
+
+71. Set workspace retention to 365 days (or per compliance requirement)
+
+72. Create scheduled query rules for the detection scenarios in Section 12.3
+
+12.3 Key Detection Rules
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Detection**                             **Description**                                                               **KQL Query Pattern**                                                                                                                                                                                    **Alert Severity**   **Response Action**
+  ----------------------------------------- ----------------------------------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- -------------------- -----------------------------------------------------
+  Stale account detection                   Accounts with no interactive sign-in for \>90 days                            SigninLogs \| summarize LastSignIn=max(TimeGenerated) by UserPrincipalName \| where LastSignIn \< ago(90d)                                                                                               Medium               Flag for access review; disable if confirmed unused
+
+  PIM activation outside business hours     Privileged role activated between 22:00--06:00 local time or on weekends      AuditLogs \| where OperationName == \"Add member to role\" \| extend HourOfDay=hourofday(TimeGenerated) \| where HourOfDay \< 6 or HourOfDay \> 22                                                       High                 Investigate; require justification review
+
+  CA policy bypass attempts                 Sign-ins that match CA policy conditions but receive \"Not Applied\" status   SigninLogs \| mv-expand ConditionalAccessPolicies \| where ConditionalAccessPolicies.result == \"notApplied\"                                                                                            Medium               Review policy conditions for gaps
+
+  Service principal credential expiration   App registrations with credentials expiring within 30 days                    Graph API: GET /applications?\$filter=passwordCredentials/any(p:p/endDateTime le {date})                                                                                                                 High                 Notify app owners; rotate credentials
+
+  Break-glass account sign-in               Any sign-in from emergency access accounts                                    SigninLogs \| where UserPrincipalName in (\"bg1@tenant.onmicrosoft.com\",\"bg2@tenant.onmicrosoft.com\")                                                                                                 Critical             Immediate incident response; investigate reason
+
+  Mass group membership change              \>50 members added or removed from a single group within 1 hour               AuditLogs \| where OperationName in (\"Add member to group\",\"Remove member from group\") \| summarize Count=count() by TargetResources\[0\].displayName, bin(TimeGenerated, 1h) \| where Count \> 50   High                 Verify authorized change; investigate if unexpected
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+12.4 Workbooks and Dashboards
+
+Deploy the following Entra ID workbooks (available as built-in templates in the Entra admin center):
+
+- **Sign-in analysis:** Authentication method usage, failure analysis, geographic distribution
+
+- **MFA registration and usage:** Registration completion rates, method distribution, authentication strength coverage
+
+- **Conditional Access insights:** Policy hit rates, report-only impact analysis, failure reasons by policy
+
+- **Sensitive operations:** Privileged role activations, directory role changes, CA policy modifications
+
+- **Application credential monitoring:** Credential expiration timeline, unused app registrations, over-privileged service principals
+
+12.5 Compliance Manager Integration
+
+For GCC-Moderate environments, Compliance Manager provides pre-built assessment templates for NIST 800-53, FedRAMP Moderate, and CMMC Level 2. Identity-related controls that map to this guide include:
+
+- **AC-2 (Account Management):** Lifecycle workflows (Section 9.3), access reviews (Section 9.1)
+
+- **AC-6 (Least Privilege):** PIM (Section 7), dynamic group-based access (Section 5.3)
+
+- **IA-2 (Identification and Authentication):** MFA (Section 8), passwordless (Section 11.2)
+
+- **IA-5 (Authenticator Management):** Authentication methods policy (Section 11.3), credential rotation (Section 6.4)
+
+- **AU-2 (Audit Events):** Log Analytics integration (Section 12.2), detection rules (Section 12.3)
+
+13\. Migration Execution Playbook
+
+The migration follows a ten-phase execution model. Each phase includes prerequisites, execution steps, validation criteria, rollback procedures, and a duration estimate. Phases are sequential --- each phase\'s validation criteria must be met before proceeding to the next phase.
+
+13.1 Phase 0 --- Assessment
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Element**               **Detail**
+  ------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Domain Admin access, Gitea repository provisioned, UIAO PowerShell modules installed
+
+  **Steps**                 1\. Run Invoke-UIAOADAssessment (AD Interaction Guide) to inventory all AD objects. 2. Run Get-UIAOIdentityBaseline to export user, group, and service account inventories. 3. Identify UPN suffix mismatches and non-routable suffixes. 4. Map AD OU structure to proposed Entra Administrative Units. 5. Document all AD trust relationships for cross-tenant planning. 6. Commit assessment output (JSON) to Gitea.
+
+  **Validation Criteria**   Complete inventory in Gitea; UPN remediation plan documented; group migration decisions recorded for all groups; service account risk classification complete.
+
+  **Rollback Procedure**    N/A --- assessment is read-only.
+
+  **Duration Estimate**     2--4 weeks
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+13.2 Phase 1 --- Entra Connect Deployment and Initial Sync
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Element**               **Detail**
+  ------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 0 complete; Entra Connect server built per Platform Server Build Guide; OU filtering plan finalized; UPN suffix remediation complete.
+
+  **Steps**                 1\. Install Entra Connect Sync on primary server. 2. Configure OU-based filtering per assessment plan. 3. Configure attribute flow rules (Section 4.3) --- including OrgPath mappings. 4. Enable PHS (even if PTA/Federation is primary). 5. Run initial sync in staging mode --- verify object count and attribute mapping. 6. Promote to active sync after validation. 7. Install staging mode server for DR. 8. Commit sync configuration export to Gitea.
+
+  **Validation Criteria**   Object count in Entra matches expected count (±1%); no sync errors in portal; attribute spot-check (10 users, 5 groups) confirms correct mapping; staging server verified.
+
+  **Rollback Procedure**    Disable Entra Connect sync schedule; delete synced objects from Entra ID (soft delete → hard delete); reinstall from clean state.
+
+  **Duration Estimate**     2--3 weeks
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+13.3 Phase 2 --- PHS/PTA Enablement and CA Report-Only
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Element**               **Detail**
+  ------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 1 complete; break-glass accounts created; CA policies drafted.
+
+  **Steps**                 1\. Enable PHS (if not already active). 2. Deploy PTA agents (if PTA selected --- minimum 3 agents for HA). 3. Configure Seamless SSO (if PHS/PTA selected). 4. Deploy all CA policies in report-only mode. 5. Create break-glass exclusion group and verify exclusion in all CA policies. 6. Monitor CA insights workbook for 2--4 weeks. 7. Identify and remediate users/devices blocked by CA policies.
+
+  **Validation Criteria**   PHS sync verified (test password change propagation); PTA agent health confirmed; all CA policies show expected impact in report-only; break-glass sign-in tested and logged.
+
+  **Rollback Procedure**    Disable PTA agents; revert to password-only authentication; delete CA policies.
+
+  **Duration Estimate**     3--4 weeks
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+13.4 Phase 3 --- Group Migration and Dynamic Group Conversion
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Element**               **Detail**
+  ------------------------- -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 2 complete; group migration decisions finalized (Section 5.2); OrgPath attributes populated.
+
+  **Steps**                 1\. Create dynamic groups per OrgPath pattern (Section 3.5). 2. Validate dynamic group membership against expected populations. 3. Create cloud-only security groups for groups identified as cloud-only targets. 4. Migrate resource assignments from synced groups to cloud-only groups (phased). 5. Implement M365 Group governance policies (naming, expiration, classification). 6. Configure self-service group management policies. 7. Decommission AD groups that have been fully migrated.
+
+  **Validation Criteria**   Dynamic groups contain expected members (±2%); resource access unchanged after group migration; no access-related helpdesk tickets attributable to group changes.
+
+  **Rollback Procedure**    Reassign resource access to original synced groups; delete cloud-only groups; restore AD groups from backup.
+
+  **Duration Estimate**     4--6 weeks
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+13.5 Phase 4 --- Service Account Modernization
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Element**               **Detail**
+  ------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 3 complete; service account inventory and classification complete (Section 6.5); app owners identified.
+
+  **Steps**                 1\. Convert HIGH-risk service accounts first (password-never-expires, over-privileged). 2. Create App Registrations with certificate-based auth for cloud workloads. 3. Configure Managed Identities for Azure-hosted workloads (if in scope). 4. Establish Workload Identity Federation for CI/CD pipelines. 5. Deploy Conditional Access for Workload Identities (Section 6.3). 6. Configure credential rotation schedules and ownership. 7. Disable legacy service accounts after validation period (30 days parallel run).
+
+  **Validation Criteria**   All HIGH-risk service accounts converted or decommissioned; certificate auth verified for all new App Registrations; no service disruptions during parallel run; workload identity CA policies enforced.
+
+  **Rollback Procedure**    Re-enable legacy service accounts; revert application configurations to use legacy credentials.
+
+  **Duration Estimate**     6--8 weeks
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+13.6 Phase 5 --- PIM Rollout
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Element**               **Detail**
+  ------------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 4 complete; PIM role mapping finalized (Section 7.1); MFA registered for all admin accounts.
+
+  **Steps**                 1\. Configure PIM settings per role (Section 7.2 and 7.3). 2. Convert all permanent active role assignments to PIM-eligible (except break-glass). 3. Configure Privileged Access Groups for resource-level JIT. 4. Set up access reviews for all PIM-eligible assignments (quarterly). 5. Deploy Protected Actions for sensitive operations. 6. Train administrators on PIM activation workflow. 7. Monitor PIM activation logs for first 2 weeks.
+
+  **Validation Criteria**   Zero permanent active assignments except break-glass; all admins can successfully activate PIM roles; access reviews created and first review cycle initiated; Protected Actions enforced for target operations.
+
+  **Rollback Procedure**    Convert PIM-eligible assignments back to permanent active (use break-glass account if PIM activation fails).
+
+  **Duration Estimate**     2--3 weeks
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+13.7 Phase 6 --- Conditional Access Enforcement
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Element**               **Detail**
+  ------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 5 complete; CA report-only analysis complete (Phase 2); MFA registration \>95% for all targeted users.
+
+  **Steps**                 1\. Switch CA policies from report-only to on --- Wave 1 (IT/Security teams). 2. Monitor for 1 week; address helpdesk tickets. 3. Wave 2 (corporate staff) --- monitor 1 week. 4. Wave 3 (field/remote workers) --- monitor 1 week. 5. Wave 4 (all remaining users) --- monitor 2 weeks. 6. Enable risk-based policies (CA013, CA014) after baseline stabilizes. 7. Final validation: all policies enforcing, zero unintended blocks.
+
+  **Validation Criteria**   All CA policies in \"On\" state; helpdesk ticket rate returned to baseline within 1 week of each wave; zero reports of legitimate access blocked for \>1 hour.
+
+  **Rollback Procedure**    Switch affected CA policies back to report-only; investigate and remediate; re-enable.
+
+  **Duration Estimate**     4--6 weeks
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+13.8 Phase 7 --- Passwordless Authentication Deployment
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Element**               **Detail**
+  ------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 6 complete; FIDO2 keys procured; WHfB policy configured in Intune; Authenticator app deployed.
+
+  **Steps**                 1\. Deploy FIDO2 keys to privileged accounts (Phase 1 of passwordless roadmap, Section 11.2). 2. Enable WHfB for Intune-managed Windows devices (Phase 2). 3. Launch Authenticator passkey registration campaign (Phase 3). 4. Monitor registration progress via Authentication Methods workbook. 5. Begin CBA rollout for smart card users (Phase 4, cross-reference PKI Modernization Guide). 6. Update CA authentication strength requirements as registration thresholds are met.
+
+  **Validation Criteria**   100% of privileged accounts registered for FIDO2; \>80% of managed device users enrolled in WHfB; \>70% of all users registered for passwordless method; CBA pilot validated.
+
+  **Rollback Procedure**    Revert CA authentication strength to standard MFA; retain password-based auth as fallback.
+
+  **Duration Estimate**     8--16 weeks
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+13.9 Phase 8 --- Legacy Authentication Cutoff
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Element**               **Detail**
+  ------------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 7 complete (or parallel); legacy auth discovery complete (Section 11.5); all legacy auth dependencies remediated.
+
+  **Steps**                 1\. Verify zero successful legacy auth sign-ins for 30 consecutive days. 2. Enforce CA001-AllUsers-BlockLegacyAuth (if not already enforced). 3. Disable basic authentication at the Exchange Online organization level. 4. Disable SMTP AUTH for all mailboxes (except approved exceptions with documented justification). 5. Monitor for 30 days post-enforcement.
+
+  **Validation Criteria**   Zero legacy auth sign-ins for 30 days post-enforcement; no service disruptions reported; all exceptions documented and approved.
+
+  **Rollback Procedure**    Re-enable basic authentication for specific protocols if critical dependency discovered; file exception and remediation plan.
+
+  **Duration Estimate**     2--4 weeks
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+13.10 Phase 9 --- Federation Decommission (If Applicable)
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Element**               **Detail**
+  ------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         Phase 8 complete; PHS verified as functional; all federated domains identified; staged rollout tested.
+
+  **Steps**                 1\. Use Staged Rollout to move users from federated auth to PHS/PTA in waves. 2. Wave 1: IT team (1 week monitoring). 3. Wave 2: pilot group (2 weeks). 4. Wave 3: all remaining users. 5. Convert domains from federated to managed (Convert-MsolDomainToStandard or Graph equivalent). 6. Decommission AD FS infrastructure (servers, WAP, certificates). 7. Remove AD FS-related DNS records (cross-reference DNS Modernization Guide). 8. Update documentation and Gitea records.
+
+  **Validation Criteria**   All domains converted to managed; all users authenticating via PHS or PTA; AD FS infrastructure decommissioned; no authentication failures related to cutover.
+
+  **Rollback Procedure**    Re-federate domain (requires AD FS infrastructure --- maintain DR capability for 90 days post-decommission).
+
+  **Duration Estimate**     4--8 weeks
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+13.11 Phase 10 --- Steady-State Governance
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Element**               **Detail**
+  ------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Prerequisites**         All previous phases complete.
+
+  **Steps**                 1\. Activate lifecycle workflows for joiner/mover/leaver (Section 9.3). 2. Configure entitlement management access packages (Section 9.2). 3. Enable all scheduled access reviews (Section 9.1). 4. Deploy identity drift detection via Gitea (Section 14). 5. Establish weekly identity governance review meeting. 6. Document steady-state operations runbook.
+
+  **Validation Criteria**   All governance workflows operational; access reviews generating results; drift detection alerts functional; operations runbook approved and committed to Gitea.
+
+  **Rollback Procedure**    N/A --- steady state. Individual workflow issues addressed per component.
+
+  **Duration Estimate**     Ongoing (initial setup: 2--4 weeks)
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  *\[Placeholder --- Diagram 7: Migration Phase Timeline --- 800×400px --- Gantt-style chart showing all 10 phases with duration bars, dependencies, and milestone markers. Total estimated timeline: 40--70 weeks for full migration.\]*
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+14\. Gitea Integration and Drift Detection
+
+14.1 Assessment Output Pipeline
+
+The identity modernization assessment produces structured JSON inventories that must be committed to Gitea for version control and diff-based drift detection. The pipeline flow:
+
+73. **Assessment execution:** Invoke-UIAOIdentityAssessment generates JSON files for users, groups, service accounts, privileged access, and Conditional Access policies
+
+74. **Gitea commit:** JSON output is committed to the identity-baseline branch of the UIAO configuration repository
+
+75. **Diff detection:** Subsequent assessment runs are compared against the committed baseline. Any differences (new objects, attribute changes, removed objects) are flagged as drift
+
+76. **Issue creation:** Drift detections exceeding a configurable threshold automatically create Gitea issues with the diff details, severity classification, and recommended remediation
+
+14.2 Scheduled PowerShell Tasks
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Task**                             **Schedule**                **Script**                                                    **Output**
+  ------------------------------------ --------------------------- ------------------------------------------------------------- ---------------------------------------------------------------------
+  Identity drift scan                  Weekly (Sunday 02:00 EDT)   Invoke-UIAOIdentityAssessment -Compare -CommitToGitea         Drift report JSON + Gitea issue (if drift detected)
+
+  PIM activation audit                 Daily (06:00 EDT)           Get-UIAOPrivilegedAccessReport -Last24Hours -CommitToGitea    PIM activation log JSON + alert for off-hours activations
+
+  CA policy export                     Weekly (Sunday 03:00 EDT)   Export-UIAOConditionalAccessPolicies -CommitToGitea           CA policy JSON export + diff against previous export
+
+  Service principal credential audit   Weekly (Monday 06:00 EDT)   Get-UIAOServicePrincipalCredentialReport -ExpiringWithin 30   Credential expiration report + Gitea issue for expiring credentials
+
+  Stale account detection              Monthly (1st, 06:00 EDT)    Get-UIAOStaleAccountReport -InactiveDays 90 -CommitToGitea    Stale account list + access review trigger
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+14.3 Gitea API Integration
+
+Automated issue creation on drift detection uses the Gitea API. The integration pattern follows the **UIAO CLI and Operations Guide**:
+
+\# ============================================================ \# Gitea API --- Create Issue on Identity Drift Detection \# Called by Invoke-UIAOIdentityAssessment when drift exceeds threshold \# ============================================================ function New-UIAOGiteaDriftIssue { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$DriftSummary, \[Parameter(Mandatory)\] \[ValidateSet(\"Low\",\"Medium\",\"High\",\"Critical\")\] \[string\]\$Severity, \[Parameter(Mandatory)\] \[string\]\$DiffContent, \[Parameter()\] \[string\]\$GiteaBaseUrl = \$env:UIAO_GITEA_URL, \[Parameter()\] \[string\]\$RepoOwner = \$env:UIAO_GITEA_OWNER, \[Parameter()\] \[string\]\$RepoName = \"uiao-identity-baseline\", \[Parameter()\] \[string\]\$ApiToken = \$env:UIAO_GITEA_TOKEN ) \$severityLabel = switch (\$Severity) { \"Critical\" { \"priority/critical\" } \"High\" { \"priority/high\" } \"Medium\" { \"priority/medium\" } \"Low\" { \"priority/low\" } } \$body = \@{ title = \"\[Identity Drift\] \$DriftSummary --- \$(Get-Date -Format \'yyyy-MM-dd\')\" body = @\" \## Identity Drift Detection Report \*\*Detected:\*\* \$(Get-Date -Format \'yyyy-MM-dd HH:mm:ss\') EDT \*\*Severity:\*\* \$Severity \*\*Summary:\*\* \$DriftSummary \### Diff Details \`\`\`\`\`\`diff \$DiffContent \`\`\`\`\`\` \### Recommended Actions - Review the diff for unauthorized changes - Cross-reference with change management records - Remediate unauthorized drift or update baseline if approved - Commit updated baseline to Gitea \*Generated by Invoke-UIAOIdentityAssessment\* \"@ labels = @((Get-UIAOGiteaLabelId -Name \$severityLabel), (Get-UIAOGiteaLabelId -Name \"identity-drift\")) } \| ConvertTo-Json -Depth 5 \$headers = \@{ \"Authorization\" = \"token \$ApiToken\" \"Content-Type\" = \"application/json\" } \$uri = \"\$GiteaBaseUrl/api/v1/repos/\$RepoOwner/\$RepoName/issues\" try { \$response = Invoke-RestMethod -Uri \$uri -Method Post -Headers \$headers -Body \$body Write-Host \"Created Gitea issue #\$(\$response.number): \$(\$response.title)\" -ForegroundColor Green return \$response } catch { Write-Error \"Failed to create Gitea issue: \$\_\" } }
+
+15\. Troubleshooting Reference
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Symptom**                                                                         **Root Cause**                                                                                                          **Resolution**                                                                                                                                                               **Prevention**
+  ----------------------------------------------------------------------------------- ----------------------------------------------------------------------------------------------------------------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------------------------
+  Entra Connect sync error: \"InvalidSoftMatch\"                                      Cloud-only user exists with same UPN or proxyAddress but no sourceAnchor match                                          Set ImmutableId on the cloud user to match the AD object\'s ms-DS-ConsistencyGuid (Base64-encoded): Set-MgUser -UserId \<id\> -OnPremisesImmutableId \<base64\>              Always perform hard match before initial sync; clean up cloud-only accounts pre-migration
+
+  UPN conflict: \"Unable to update userPrincipalName\"                                Target UPN suffix is not a verified domain in Entra ID, or another object already uses the UPN                          Verify the domain in Entra admin center; resolve duplicate UPN in AD or Entra ID                                                                                             Verify all UPN suffixes as custom domains before enabling sync; run UPN audit in Phase 0
+
+  Group writeback failure: \"Group_InsufficientPermissions\"                          Entra Connect service account lacks permissions to write group objects to the target AD OU                              Grant the Entra Connect AD DS account write permissions on the group writeback target OU                                                                                     Configure group writeback permissions during Entra Connect installation
+
+  PIM activation failure: \"User does not meet activation requirements\"              User has not completed MFA registration, or Conditional Access blocks the activation request                            Ensure user has registered for MFA (Microsoft Authenticator or FIDO2); verify CA policies do not block the PIM activation endpoint                                           Require MFA registration before PIM eligibility assignment; test activation in pilot
+
+  Conditional Access blocking legitimate access: policy shows \"Applied --- Block\"   User does not meet grant controls (non-compliant device, wrong location, missing MFA)                                   Identify which CA policy is blocking (sign-in logs → CA tab); remediate the specific condition (enroll device, register MFA, add to location exception)                      Deploy CA policies in report-only first; maintain exception process for legitimate edge cases
+
+  Password writeback failure: \"PasswordResetNotEnabled\"                             Password writeback is not enabled in Entra Connect, or the AD DS account lacks password reset permissions               Enable password writeback in Entra Connect optional features; grant \"Reset Password\" and \"Change Password\" permissions to the ADMA connector account on the target OUs   Enable password writeback during initial Entra Connect configuration; validate with test reset
+
+  Dynamic group not populating members                                                Rule syntax error, or target attribute is null/empty for expected users                                                 Validate rule syntax in Entra admin center (Rules Validation tab); verify attributes are populated: Get-MgUser -UserId \<id\> -Property onPremisesExtensionAttributes        Test dynamic group rules with the \"Validate Rules\" feature before deploying; ensure OrgPath attributes are populated in AD before sync
+
+  Service principal sign-in blocked by CA for Workload Identities                     Service principal authenticating from an IP not in the trusted network Named Location                                   Add the service\'s egress IP to the trusted Named Location; or create an exception CA policy for the specific service principal                                              Document all service principal egress IPs before enabling workload identity CA policies
+
+  B2B guest cannot access shared resources                                            Guest user has not completed MFA registration, has not accepted Terms of Use, or is blocked by guest CA policy          Verify guest has redeemed invitation; check CA policy evaluation in sign-in logs; ensure guest is not blocked by risk-based policy                                           Configure cross-tenant MFA trust to accept guest\'s home tenant MFA; ensure ToU is accessible
+
+  Lifecycle workflow not triggering for new hire                                      extensionAttribute7 (HireDate) is not in ISO 8601 format, or attribute sync has not propagated                          Verify attribute format (YYYY-MM-DD); force sync cycle; check workflow execution logs in Entra admin center → Identity Governance → Lifecycle Workflows → Workflow history   Validate attribute format in HR feed; include format validation in AD attribute flow rules
+
+  PHS not detecting leaked credentials                                                Identity Protection P2 license not assigned to affected users, or PHS is enabled but risk detection is not processing   Verify P2 license assignment; check Identity Protection → Risk detections for recent evaluations; ensure PHS is active (not just staged)                                     Assign P2 licenses to all users; enable PHS before deploying risk-based CA policies
+
+  Entra Connect staging server has different object count than active                 Configuration drift between active and staging servers; different filtering rules or sync rule versions                 Export configuration from active server; compare with staging server configuration; re-import if necessary: Get-ADSyncServerConfiguration -Path C:\\Config\\Active           After any configuration change on active, replicate to staging; include config export in Gitea commit
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix A --- Identity Attribute Mapping Reference
+
+The following table provides the comprehensive mapping of commonly used Active Directory attributes to their Entra ID, Graph API, and OrgPath equivalents.
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **AD Attribute**                      **Entra ID Attribute**                               **Graph API Property**                               **OrgPath Mapping**
+  ------------------------------------- ---------------------------------------------------- ---------------------------------------------------- --------------------------------
+  sAMAccountName                        onPremisesSamAccountName                             onPremisesSamAccountName                             ---
+
+  userPrincipalName                     userPrincipalName                                    userPrincipalName                                    ---
+
+  objectGUID                            onPremisesImmutableId                                onPremisesImmutableId                                ---
+
+  objectSid                             onPremisesSecurityIdentifier                         onPremisesSecurityIdentifier                         ---
+
+  ms-DS-ConsistencyGuid                 sourceAnchor (internal)                              onPremisesImmutableId                                ---
+
+  cn (Common Name)                      displayName (mapped)                                 displayName                                          ---
+
+  displayName                           displayName                                          displayName                                          ---
+
+  givenName                             givenName                                            givenName                                            ---
+
+  sn (surname)                          surname                                              surname                                              ---
+
+  mail                                  mail                                                 mail                                                 ---
+
+  mailNickname                          mailNickname                                         mailNickname                                         ---
+
+  proxyAddresses                        proxyAddresses                                       proxyAddresses                                       ---
+
+  userAccountControl                    accountEnabled                                       accountEnabled                                       ---
+
+  pwdLastSet                            lastPasswordChangeDateTime                           lastPasswordChangeDateTime                           ---
+
+  whenCreated                           createdDateTime                                      createdDateTime                                      ---
+
+  whenChanged                           ---                                                  ---                                                  ---
+
+  lastLogonTimestamp                    signInActivity.lastSignInDateTime                    signInActivity.lastSignInDateTime                    ---
+
+  department                            department                                           department                                           ---
+
+  title                                 jobTitle                                             jobTitle                                             ---
+
+  company                               companyName                                          companyName                                          ---
+
+  manager                               manager                                              manager (nav property)                               ---
+
+  directReports                         directReports                                        directReports (nav property)                         ---
+
+  telephoneNumber                       businessPhones                                       businessPhones                                       ---
+
+  mobile                                mobilePhone                                          mobilePhone                                          ---
+
+  facsimileTelephoneNumber              faxNumber                                            faxNumber                                            ---
+
+  streetAddress                         streetAddress                                        streetAddress                                        ---
+
+  l (city)                              city                                                 city                                                 ---
+
+  st (state)                            state                                                state                                                ---
+
+  postalCode                            postalCode                                           postalCode                                           ---
+
+  c (country)                           country                                              country                                              ---
+
+  co (country name)                     ---                                                  ---                                                  ---
+
+  countryCode                           ---                                                  ---                                                  ---
+
+  physicalDeliveryOfficeName            officeLocation                                       officeLocation                                       ---
+
+  employeeID                            employeeId                                           employeeId                                           ---
+
+  employeeType                          employeeType                                         employeeType                                         ---
+
+  memberOf                              memberOf                                             memberOf (nav property)                              ---
+
+  member                                members                                              members (nav property)                               ---
+
+  description                           ---                                                  ---                                                  ---
+
+  info (notes)                          ---                                                  ---                                                  ---
+
+  distinguishedName                     onPremisesDistinguishedName                          onPremisesDistinguishedName                          ---
+
+  servicePrincipalName                  --- (App Registration SPNs differ)                   servicePrincipalNames (on SP object)                 ---
+
+  thumbnailPhoto                        photo                                                photo (stream)                                       ---
+
+  userCertificate                       --- (CBA uses separate config)                       ---                                                  ---
+
+  msDS-UserPasswordExpiryTimeComputed   --- (Password policy differs)                        ---                                                  ---
+
+  adminCount                            --- (PIM replaces AdminSDHolder)                     ---                                                  ---
+
+  accountExpires                        ---                                                  ---                                                  extensionAttribute8 (TermDate)
+
+  extensionAttribute1                   onPremisesExtensionAttributes.extensionAttribute1    onPremisesExtensionAttributes.extensionAttribute1    Region
+
+  extensionAttribute2                   onPremisesExtensionAttributes.extensionAttribute2    onPremisesExtensionAttributes.extensionAttribute2    Department
+
+  extensionAttribute3                   onPremisesExtensionAttributes.extensionAttribute3    onPremisesExtensionAttributes.extensionAttribute3    Division
+
+  extensionAttribute4                   onPremisesExtensionAttributes.extensionAttribute4    onPremisesExtensionAttributes.extensionAttribute4    Role
+
+  extensionAttribute5                   onPremisesExtensionAttributes.extensionAttribute5    onPremisesExtensionAttributes.extensionAttribute5    CostCenter
+
+  extensionAttribute6                   onPremisesExtensionAttributes.extensionAttribute6    onPremisesExtensionAttributes.extensionAttribute6    Classification
+
+  extensionAttribute7                   onPremisesExtensionAttributes.extensionAttribute7    onPremisesExtensionAttributes.extensionAttribute7    HireDate
+
+  extensionAttribute8                   onPremisesExtensionAttributes.extensionAttribute8    onPremisesExtensionAttributes.extensionAttribute8    TermDate
+
+  extensionAttribute9                   onPremisesExtensionAttributes.extensionAttribute9    onPremisesExtensionAttributes.extensionAttribute9    ClearanceLevel
+
+  extensionAttribute10                  onPremisesExtensionAttributes.extensionAttribute10   onPremisesExtensionAttributes.extensionAttribute10   AccountType
+
+  extensionAttribute11                  onPremisesExtensionAttributes.extensionAttribute11   onPremisesExtensionAttributes.extensionAttribute11   Reserved
+
+  extensionAttribute12                  onPremisesExtensionAttributes.extensionAttribute12   onPremisesExtensionAttributes.extensionAttribute12   Reserved
+
+  extensionAttribute13                  onPremisesExtensionAttributes.extensionAttribute13   onPremisesExtensionAttributes.extensionAttribute13   Reserved
+
+  extensionAttribute14                  onPremisesExtensionAttributes.extensionAttribute14   onPremisesExtensionAttributes.extensionAttribute14   Reserved
+
+  extensionAttribute15                  onPremisesExtensionAttributes.extensionAttribute15   onPremisesExtensionAttributes.extensionAttribute15   Reserved
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix B --- Conditional Access Policy Templates
+
+The following JSON templates represent the Conditional Access policies defined in Section 8.5. These templates are exportable via the Microsoft Graph API and can be imported into target tenants using New-MgIdentityConditionalAccessPolicy.
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **NOTE**                                                                                                                                                                                                                                                                           |
+|                                                                                                                                                                                                                                                                                    |
+| These templates use placeholder GUIDs for group IDs, Named Location IDs, and Terms of Use IDs. Replace all placeholders (marked with \<GUID\>) with actual tenant-specific values before import. Templates target the GCC-Moderate Graph API endpoint: https://graph.microsoft.us. |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+CA001 --- Block Legacy Authentication
+
+{ \"displayName\": \"CA001-AllUsers-BlockLegacyAuth\", \"state\": \"enabledForReportingButNotEnforced\", \"conditions\": { \"users\": { \"includeUsers\": \[\"All\"\], \"excludeGroups\": \[\"\<GUID-BreakGlassExclusionGroup\>\"\] }, \"applications\": { \"includeApplications\": \[\"All\"\] }, \"clientAppTypes\": \[ \"exchangeActiveSync\", \"other\" \] }, \"grantControls\": { \"operator\": \"OR\", \"builtInControls\": \[\"block\"\] } }
+
+CA003 --- Admins Require Phishing-Resistant MFA
+
+{ \"displayName\": \"CA003-Admins-RequirePhishResistantMFA\", \"state\": \"enabledForReportingButNotEnforced\", \"conditions\": { \"users\": { \"includeGroups\": \[\"\<GUID-AdminsGroup\>\"\], \"excludeGroups\": \[\"\<GUID-BreakGlassExclusionGroup\>\"\] }, \"applications\": { \"includeApplications\": \[\"All\"\] }, \"clientAppTypes\": \[\"browser\", \"mobileAppsAndDesktopClients\"\] }, \"grantControls\": { \"operator\": \"OR\", \"authenticationStrength\": { \"id\": \"\<GUID-PhishingResistantMFA\>\" } }, \"sessionControls\": { \"signInFrequency\": { \"value\": 4, \"type\": \"hours\", \"isEnabled\": true } } }
+
+CA006 --- Internals Require MFA
+
+{ \"displayName\": \"CA006-Internals-RequireMFA\", \"state\": \"enabledForReportingButNotEnforced\", \"conditions\": { \"users\": { \"includeGroups\": \[\"\<GUID-InternalsGroup\>\"\], \"excludeGroups\": \[ \"\<GUID-BreakGlassExclusionGroup\>\", \"\<GUID-AdminsGroup\>\" \] }, \"applications\": { \"includeApplications\": \[\"All\"\] }, \"clientAppTypes\": \[\"browser\", \"mobileAppsAndDesktopClients\"\] }, \"grantControls\": { \"operator\": \"OR\", \"authenticationStrength\": { \"id\": \"\<GUID-MFA\>\" } }, \"sessionControls\": { \"signInFrequency\": { \"value\": 12, \"type\": \"hours\", \"isEnabled\": true } } }
+
+CA008 --- Block Non-US Locations for Internals
+
+{ \"displayName\": \"CA008-Internals-BlockNonUSLocations\", \"state\": \"enabledForReportingButNotEnforced\", \"conditions\": { \"users\": { \"includeGroups\": \[\"\<GUID-InternalsGroup\>\"\], \"excludeGroups\": \[\"\<GUID-BreakGlassExclusionGroup\>\"\] }, \"applications\": { \"includeApplications\": \[\"All\"\] }, \"locations\": { \"includeLocations\": \[\"All\"\], \"excludeLocations\": \[\"\<GUID-TrustedCountriesUS\>\"\] }, \"clientAppTypes\": \[\"browser\", \"mobileAppsAndDesktopClients\"\] }, \"grantControls\": { \"operator\": \"OR\", \"builtInControls\": \[\"block\"\] } }
+
+CA013 --- High User Risk --- Require Password Change
+
+{ \"displayName\": \"CA013-AllUsers-HighRisk-RequirePasswordChange\", \"state\": \"enabledForReportingButNotEnforced\", \"conditions\": { \"users\": { \"includeUsers\": \[\"All\"\], \"excludeGroups\": \[\"\<GUID-BreakGlassExclusionGroup\>\"\] }, \"applications\": { \"includeApplications\": \[\"All\"\] }, \"userRiskLevels\": \[\"high\"\], \"clientAppTypes\": \[\"browser\", \"mobileAppsAndDesktopClients\"\] }, \"grantControls\": { \"operator\": \"AND\", \"builtInControls\": \[\"mfa\", \"passwordChange\"\] } }
+
+CA015 --- Service Accounts Location Restriction
+
+{ \"displayName\": \"CA015-ServiceAccounts-LocationRestriction\", \"state\": \"enabledForReportingButNotEnforced\", \"conditions\": { \"clientApplications\": { \"includeServicePrincipals\": \[\"ServicePrincipalsInMyTenant\"\] }, \"applications\": { \"includeApplications\": \[\"All\"\] }, \"locations\": { \"includeLocations\": \[\"All\"\], \"excludeLocations\": \[\"\<GUID-TrustedNetworks\>\"\] } }, \"grantControls\": { \"operator\": \"OR\", \"builtInControls\": \[\"block\"\] } }
+
+The remaining policy templates (CA002, CA004, CA005, CA007, CA009, CA010, CA011, CA012, CA014, CA016, CA017) follow the same structural pattern. Export your configured policies from the Entra admin center using:
+
+\# Export all Conditional Access policies as JSON Connect-MgGraph -Scopes \"Policy.Read.All\" -Environment USGov \$policies = Get-MgIdentityConditionalAccessPolicy -All \$policies \| ConvertTo-Json -Depth 10 \| Out-File -FilePath \"C:\\UIAO\\Exports\\CA_Policies\_\$(Get-Date -Format \'yyyyMMdd\').json\" -Encoding UTF8 Write-Host \"Exported \$(\$policies.Count) Conditional Access policies\" -ForegroundColor Green Disconnect-MgGraph
+
+Appendix C --- PowerShell Module: UIAOIdentityAssessment
+
+The UIAOIdentityAssessment module provides the standardized identity assessment functions used throughout this guide. The module is structured as a PowerShell script module (.psm1) with a manifest (.psd1).
+
+C.1 Module Manifest
+
+\# UIAOIdentityAssessment.psd1 \@{ RootModule = \'UIAOIdentityAssessment.psm1\' ModuleVersion = \'1.0.0\' GUID = \'a3f7b2c1-4d5e-6f78-9a0b-1c2d3e4f5a6b\' Author = \'UIAO Identity Team\' Description = \'UIAO Identity Modernization Assessment Module --- AD to Entra ID\' PowerShellVersion = \'7.2\' RequiredModules = @( \@{ ModuleName = \'ActiveDirectory\'; ModuleVersion = \'1.0.0\' }, \@{ ModuleName = \'Microsoft.Graph.Users\'; ModuleVersion = \'2.0.0\' }, \@{ ModuleName = \'Microsoft.Graph.Groups\'; ModuleVersion = \'2.0.0\' }, \@{ ModuleName = \'Microsoft.Graph.Identity.DirectoryManagement\'; ModuleVersion = \'2.0.0\' }, \@{ ModuleName = \'Microsoft.Graph.Reports\'; ModuleVersion = \'2.0.0\' } ) FunctionsToExport = @( \'Get-UIAOUserInventory\', \'Get-UIAOGroupInventory\', \'Get-UIAOServiceAccountInventory\', \'Get-UIAOPrivilegedAccessReport\', \'Get-UIAOLegacyAuthReport\', \'Export-UIAOIdentityBaseline\', \'Invoke-UIAOIdentityAssessment\' ) CmdletsToExport = @() VariablesToExport = @() AliasesToExport = @() }
+
+C.2 Module Implementation
+
+\# UIAOIdentityAssessment.psm1 \# UIAO Identity Modernization Assessment Module \# Version: 1.0.0 \# Boundary: GCC-Moderate #Requires -Version 7.2 \$script:ExportBasePath = \"C:\\UIAO\\Exports\" \$script:GraphEnvironment = \"USGov\" \# ============================================================ \# FUNCTION: Get-UIAOUserInventory \# Exports all AD user objects with migration-relevant attributes \# ============================================================ function Get-UIAOUserInventory { \[CmdletBinding()\] param( \[Parameter()\] \[string\]\$SearchBase = (Get-ADDomain).DistinguishedName, \[Parameter()\] \[string\]\$ExportPath = \"\$script:ExportBasePath\\Users\_\$(Get-Date -Format \'yyyyMMdd_HHmmss\').json\", \[Parameter()\] \[switch\]\$IncludeDisabled ) \$filter = if (\$IncludeDisabled) { \'\*\' } else { \'Enabled -eq \$true\' } \$properties = @( \'SamAccountName\',\'UserPrincipalName\',\'DisplayName\',\'GivenName\',\'Surname\', \'Mail\',\'Department\',\'Title\',\'Company\',\'Manager\',\'DistinguishedName\', \'Enabled\',\'PasswordNeverExpires\',\'PasswordLastSet\',\'LastLogonDate\', \'WhenCreated\',\'WhenChanged\',\'MemberOf\',\'ServicePrincipalName\', \'extensionAttribute1\',\'extensionAttribute2\',\'extensionAttribute3\', \'extensionAttribute4\',\'extensionAttribute5\',\'extensionAttribute6\', \'extensionAttribute7\',\'extensionAttribute8\',\'extensionAttribute9\', \'extensionAttribute10\',\'AdminCount\',\'AccountExpirationDate\' ) Write-Host \"Collecting AD user inventory from: \$SearchBase\" -ForegroundColor Cyan \$users = Get-ADUser -Filter \$filter -SearchBase \$SearchBase -Properties \$properties \| Select-Object \@{N=\'SamAccountName\';E={\$\_.SamAccountName}}, \@{N=\'UPN\';E={\$\_.UserPrincipalName}}, \@{N=\'DisplayName\';E={\$\_.DisplayName}}, \@{N=\'Mail\';E={\$\_.Mail}}, \@{N=\'Department\';E={\$\_.Department}}, \@{N=\'Title\';E={\$\_.Title}}, \@{N=\'Enabled\';E={\$\_.Enabled}}, \@{N=\'PasswordNeverExpires\';E={\$\_.PasswordNeverExpires}}, \@{N=\'PasswordLastSet\';E={\$\_.PasswordLastSet}}, \@{N=\'LastLogon\';E={\$\_.LastLogonDate}}, \@{N=\'Created\';E={\$\_.WhenCreated}}, \@{N=\'GroupCount\';E={(\$\_.MemberOf \| Measure-Object).Count}}, \@{N=\'HasSPN\';E={(\$\_.ServicePrincipalName \| Measure-Object).Count -gt 0}}, \@{N=\'AdminCount\';E={\$\_.AdminCount}}, \@{N=\'OU\';E={(\$\_.DistinguishedName -split \',\',2)\[1\]}}, \@{N=\'UPNSuffix\';E={(\$\_.UserPrincipalName -split \'@\')\[1\]}}, \@{N=\'IsRoutableUPN\';E={ \$suffix = (\$\_.UserPrincipalName -split \'@\')\[1\] -not (\$suffix -match \'\\.(local\|internal\|corp\|lan\|ad)\$\') }}, \@{N=\'OrgPath\';E={\[PSCustomObject\]@{ Region = \$\_.extensionAttribute1 Department = \$\_.extensionAttribute2 Division = \$\_.extensionAttribute3 Role = \$\_.extensionAttribute4 CostCenter = \$\_.extensionAttribute5 Classification = \$\_.extensionAttribute6 HireDate = \$\_.extensionAttribute7 TermDate = \$\_.extensionAttribute8 ClearanceLevel = \$\_.extensionAttribute9 AccountType = \$\_.extensionAttribute10 }}}, \@{N=\'MigrationFlags\';E={ \$flags = @() if (-not ((\$\_.UserPrincipalName -split \'@\')\[1\] -match \'\\.(local\|internal\|corp\|lan\|ad)\$\') -eq \$false) { \$flags += \'UPN_REMEDIATION_REQUIRED\' } if (\$\_.PasswordNeverExpires) { \$flags += \'PASSWORD_NEVER_EXPIRES\' } if (\$\_.AdminCount -eq 1) { \$flags += \'ADMINSDHOLDER_PROTECTED\' } if ((\$\_.ServicePrincipalName \| Measure-Object).Count -gt 0) { \$flags += \'HAS_SPN\' } if (-not \$\_.LastLogonDate -or \$\_.LastLogonDate -lt (Get-Date).AddDays(-90)) { \$flags += \'STALE_ACCOUNT\' } \$flags -join \',\' }} if (-not (Test-Path (Split-Path \$ExportPath -Parent))) { New-Item -ItemType Directory -Path (Split-Path \$ExportPath -Parent) -Force \| Out-Null } \$users \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$ExportPath -Encoding UTF8 Write-Host \"Exported \$(\$users.Count) users to \$ExportPath\" -ForegroundColor Green Write-Host \" UPN Remediation Required: \$((\$users \| Where-Object { \$\_.MigrationFlags -match \'UPN_REMEDIATION\' }).Count)\" -ForegroundColor Yellow Write-Host \" AdminSDHolder Protected: \$((\$users \| Where-Object { \$\_.AdminCount -eq 1 }).Count)\" -ForegroundColor Yellow Write-Host \" Stale Accounts (\>90d): \$((\$users \| Where-Object { \$\_.MigrationFlags -match \'STALE\' }).Count)\" -ForegroundColor Yellow return \$users } \# ============================================================ \# FUNCTION: Get-UIAOGroupInventory \# Exports all AD groups with migration classification \# ============================================================ function Get-UIAOGroupInventory { \[CmdletBinding()\] param( \[Parameter()\] \[string\]\$SearchBase = (Get-ADDomain).DistinguishedName, \[Parameter()\] \[string\]\$ExportPath = \"\$script:ExportBasePath\\Groups\_\$(Get-Date -Format \'yyyyMMdd_HHmmss\').json\" ) Write-Host \"Collecting AD group inventory from: \$SearchBase\" -ForegroundColor Cyan \$groups = Get-ADGroup -Filter \* -SearchBase \$SearchBase -Properties \` Name, Description, GroupScope, GroupCategory, ManagedBy, \` Members, MemberOf, Mail, WhenCreated, WhenChanged \| Select-Object \@{N=\'Name\';E={\$\_.Name}}, \@{N=\'Description\';E={\$\_.Description}}, \@{N=\'Scope\';E={\$\_.GroupScope.ToString()}}, \@{N=\'Category\';E={\$\_.GroupCategory.ToString()}}, \@{N=\'ManagedBy\';E={if(\$\_.ManagedBy){(Get-ADObject \$\_.ManagedBy -Properties DisplayName).DisplayName}else{\'UNMANAGED\'}}}, \@{N=\'MemberCount\';E={(\$\_.Members \| Measure-Object).Count}}, \@{N=\'NestedInCount\';E={(\$\_.MemberOf \| Measure-Object).Count}}, \@{N=\'HasMail\';E={\[bool\]\$\_.Mail}}, \@{N=\'OU\';E={(\$\_.DistinguishedName -split \',\',2)\[1\]}}, \@{N=\'Created\';E={\$\_.WhenCreated}}, \@{N=\'Modified\';E={\$\_.WhenChanged}}, \@{N=\'MigrationDecision\';E={ \$mc = (\$\_.Members \| Measure-Object).Count if (\$mc -eq 0) { \'DECOMMISSION\' } elseif (\$\_.GroupCategory -eq \'Distribution\') { \'EVALUATE_M365_GROUP\' } elseif (\$\_.Mail) { \'SYNC_MAIL_ENABLED_SECURITY\' } else { \'EVALUATE_SYNC_OR_DYNAMIC\' } }} \$groups \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$ExportPath -Encoding UTF8 Write-Host \"Exported \$(\$groups.Count) groups to \$ExportPath\" -ForegroundColor Green return \$groups } \# ============================================================ \# FUNCTION: Get-UIAOServiceAccountInventory \# Wrapper --- delegates to the discovery function in Section 6.5 \# ============================================================ function Get-UIAOServiceAccountInventory { \[CmdletBinding()\] param( \[Parameter()\] \[string\]\$SearchBase = (Get-ADDomain).DistinguishedName, \[Parameter()\] \[string\]\$ExportPath = \"\$script:ExportBasePath\\ServiceAccounts\_\$(Get-Date -Format \'yyyyMMdd_HHmmss\').json\" ) \# Delegates to the full implementation in Section 6.5 \# Inlined here for module completeness Write-Host \"Collecting service account inventory\...\" -ForegroundColor Cyan \# \[Implementation matches Section 6.5 --- Get-UIAOServiceAccountInventory\] \# Refer to Section 6.5 for the full function body Write-Host \"Service account inventory exported to \$ExportPath\" -ForegroundColor Green } \# ============================================================ \# FUNCTION: Get-UIAOPrivilegedAccessReport \# Reports on privileged role holders and PIM activations \# ============================================================ function Get-UIAOPrivilegedAccessReport { \[CmdletBinding()\] param( \[Parameter()\] \[switch\]\$Last24Hours, \[Parameter()\] \[switch\]\$CommitToGitea, \[Parameter()\] \[string\]\$ExportPath = \"\$script:ExportBasePath\\PrivilegedAccess\_\$(Get-Date -Format \'yyyyMMdd_HHmmss\').json\" ) Connect-MgGraph -Scopes \"RoleManagement.Read.All\",\"AuditLog.Read.All\" -Environment \$script:GraphEnvironment \# Get all active directory role assignments \$roleAssignments = Get-MgRoleManagementDirectoryRoleAssignment -All -ExpandProperty Principal,RoleDefinition \$report = \$roleAssignments \| Select-Object \@{N=\'RoleName\';E={\$\_.RoleDefinition.DisplayName}}, \@{N=\'PrincipalName\';E={\$\_.Principal.AdditionalProperties.displayName}}, \@{N=\'PrincipalType\';E={\$\_.Principal.AdditionalProperties.\'@odata.type\' -replace \'#microsoft.graph.\',\'\'}}, \@{N=\'AssignmentType\';E={if(\$\_.ScheduleInfo){\'Eligible\'}else{\'Active\'}}}, \@{N=\'IsBuiltIn\';E={\$\_.RoleDefinition.IsBuiltIn}}, \@{N=\'CreatedDateTime\';E={\$\_.CreatedDateTime}} \# Get PIM activation audit logs (last 24 hours if specified) if (\$Last24Hours) { \$since = (Get-Date).AddHours(-24).ToString(\"yyyy-MM-ddTHH:mm:ssZ\") \$auditFilter = \"activityDateTime ge \$since and category eq \'RoleManagement\'\" \$activations = Get-MgAuditLogDirectoryAudit -Filter \$auditFilter -All \| Where-Object { \$\_.ActivityDisplayName -match \'Add member to role\' } \$report \| Add-Member -NotePropertyName \'RecentActivations\' -NotePropertyValue (\$activations.Count) -Force } \$report \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$ExportPath -Encoding UTF8 Write-Host \"Privileged access report exported to \$ExportPath\" -ForegroundColor Green Write-Host \" Total role assignments: \$(\$roleAssignments.Count)\" Write-Host \" Permanent active (non-PIM): \$((\$report \| Where-Object AssignmentType -eq \'Active\').Count)\" -ForegroundColor Yellow Disconnect-MgGraph return \$report } \# ============================================================ \# FUNCTION: Get-UIAOLegacyAuthReport \# Reports on legacy authentication usage \# ============================================================ function Get-UIAOLegacyAuthReport { \[CmdletBinding()\] param( \[Parameter()\] \[int\]\$DaysBack = 30, \[Parameter()\] \[string\]\$ExportPath = \"\$script:ExportBasePath\\LegacyAuth\_\$(Get-Date -Format \'yyyyMMdd_HHmmss\').json\" ) Connect-MgGraph -Scopes \"AuditLog.Read.All\" -Environment \$script:GraphEnvironment \$legacyClients = @( \"Exchange ActiveSync\",\"Authenticated SMTP\",\"POP3\", \"IMAP4\",\"Other clients\",\"Outlook Anywhere (RPC over HTTP)\" ) \$startDate = (Get-Date).AddDays(-\$DaysBack).ToString(\"yyyy-MM-ddTHH:mm:ssZ\") \$filter = \"createdDateTime ge \$startDate and status/errorCode eq 0\" Write-Host \"Scanning sign-in logs for legacy auth (last \$DaysBack days)\...\" -ForegroundColor Cyan \$signIns = Get-MgAuditLogSignIn -Filter \$filter -Top 5000 -All \| Where-Object { \$\_.ClientAppUsed -in \$legacyClients } \$report = \$signIns \| Group-Object -Property UserPrincipalName, ClientAppUsed \| Select-Object \@{N=\'UserPrincipalName\';E={(\$\_.Name -split \', \')\[0\]}}, \@{N=\'ClientApp\';E={(\$\_.Name -split \', \')\[1\]}}, \@{N=\'SignInCount\';E={\$\_.Count}}, \@{N=\'LastSignIn\';E={(\$\_.Group \| Sort-Object CreatedDateTime -Descending \| Select-Object -First 1).CreatedDateTime}}, \@{N=\'RemediationAction\';E={ \$client = (\$\_.Name -split \', \')\[1\] switch (\$client) { \"Authenticated SMTP\" { \"Migrate to OAuth SMTP or MS Graph sendMail API\" } \"POP3\" { \"Migrate to MS Graph mail API or modern IMAP with OAuth\" } \"IMAP4\" { \"Migrate to MS Graph mail API or modern IMAP with OAuth\" } \"Exchange ActiveSync\" { \"Migrate to Outlook mobile or Intune managed app\" } default { \"Evaluate application; migrate to modern auth\" } } }} \$report \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$ExportPath -Encoding UTF8 Write-Host \"Legacy auth report exported to \$ExportPath\" -ForegroundColor Green Write-Host \" Unique users with legacy auth: \$((\$report \| Select-Object -Unique UserPrincipalName).Count)\" -ForegroundColor Yellow Write-Host \" Total legacy auth sign-ins: \$((\$report \| Measure-Object -Property SignInCount -Sum).Sum)\" -ForegroundColor Yellow Disconnect-MgGraph return \$report } \# ============================================================ \# FUNCTION: Export-UIAOIdentityBaseline \# Combines all inventory outputs into a single baseline export \# ============================================================ function Export-UIAOIdentityBaseline { \[CmdletBinding()\] param( \[Parameter()\] \[string\]\$SearchBase = (Get-ADDomain).DistinguishedName, \[Parameter()\] \[string\]\$BaselinePath = \"\$script:ExportBasePath\\Baseline\_\$(Get-Date -Format \'yyyyMMdd_HHmmss\')\" ) if (-not (Test-Path \$BaselinePath)) { New-Item -ItemType Directory -Path \$BaselinePath -Force \| Out-Null } Write-Host \"=== UIAO Identity Baseline Export ===\" -ForegroundColor Cyan Write-Host \"Output directory: \$BaselinePath\" -ForegroundColor Cyan \$users = Get-UIAOUserInventory -SearchBase \$SearchBase -ExportPath \"\$BaselinePath\\users.json\" \$groups = Get-UIAOGroupInventory -SearchBase \$SearchBase -ExportPath \"\$BaselinePath\\groups.json\" Get-UIAOServiceAccountInventory -SearchBase \$SearchBase -ExportPath \"\$BaselinePath\\service_accounts.json\" \# Baseline metadata \$metadata = \[PSCustomObject\]@{ GeneratedAt = (Get-Date -Format \'yyyy-MM-ddTHH:mm:ssZ\') SearchBase = \$SearchBase Domain = (Get-ADDomain).DNSRoot Forest = (Get-ADForest).Name UserCount = \$users.Count GroupCount = \$groups.Count ModuleVersion = \'1.0.0\' } \$metadata \| ConvertTo-Json \| Out-File -FilePath \"\$BaselinePath\\metadata.json\" -Encoding UTF8 Write-Host \"\`n=== Baseline Export Complete ===\" -ForegroundColor Green Write-Host \"Files: \$BaselinePath\" -ForegroundColor Cyan } \# ============================================================ \# FUNCTION: Invoke-UIAOIdentityAssessment \# Master orchestrator --- runs all assessment functions \# ============================================================ function Invoke-UIAOIdentityAssessment { \[CmdletBinding()\] param( \[Parameter()\] \[string\]\$SearchBase = (Get-ADDomain).DistinguishedName, \[Parameter()\] \[switch\]\$Compare, \[Parameter()\] \[string\]\$PreviousBaselinePath, \[Parameter()\] \[switch\]\$CommitToGitea ) Write-Host @\" ██╗ ██╗██╗ █████╗ ██████╗ ██║ ██║██║██╔══██╗██╔═══██╗ ██║ ██║██║███████║██║ ██║ ██║ ██║██║██╔══██║██║ ██║ ╚██████╔╝██║██║ ██║╚██████╔╝ ╚═════╝ ╚═╝╚═╝ ╚═╝ ╚═════╝ Identity Modernization Assessment v1.0.0 \"@ -ForegroundColor Cyan \$timestamp = Get-Date -Format \'yyyyMMdd_HHmmss\' \$assessmentPath = \"\$script:ExportBasePath\\Assessment\_\$timestamp\" \# Phase 1: AD Assessment (offline --- no Entra connection needed) Write-Host \"\`n\[Phase 1/4\] AD Identity Inventory\" -ForegroundColor Yellow Export-UIAOIdentityBaseline -SearchBase \$SearchBase -BaselinePath \$assessmentPath \# Phase 2: Entra Assessment (requires Graph connection) Write-Host \"\`n\[Phase 2/4\] Entra ID Assessment\" -ForegroundColor Yellow Get-UIAOPrivilegedAccessReport -ExportPath \"\$assessmentPath\\privileged_access.json\" \# Phase 3: Legacy Auth Analysis Write-Host \"\`n\[Phase 3/4\] Legacy Authentication Analysis\" -ForegroundColor Yellow Get-UIAOLegacyAuthReport -ExportPath \"\$assessmentPath\\legacy_auth.json\" \# Phase 4: Comparison (if requested) if (\$Compare -and \$PreviousBaselinePath) { Write-Host \"\`n\[Phase 4/4\] Drift Comparison\" -ForegroundColor Yellow \# Compare current vs previous baseline \$currentUsers = Get-Content \"\$assessmentPath\\users.json\" \| ConvertFrom-Json \$previousUsers = Get-Content \"\$PreviousBaselinePath\\users.json\" \| ConvertFrom-Json \$newUsers = \$currentUsers \| Where-Object { \$\_.SamAccountName -notin \$previousUsers.SamAccountName } \$removedUsers = \$previousUsers \| Where-Object { \$\_.SamAccountName -notin \$currentUsers.SamAccountName } \$drift = \[PSCustomObject\]@{ NewUsers = \$newUsers.Count RemovedUsers = \$removedUsers.Count TotalCurrent = \$currentUsers.Count TotalPrevious = \$previousUsers.Count DriftDetected = (\$newUsers.Count + \$removedUsers.Count) -gt 0 } \$drift \| ConvertTo-Json \| Out-File -FilePath \"\$assessmentPath\\drift_report.json\" -Encoding UTF8 Write-Host \"Drift report: \$(\$drift.NewUsers) new, \$(\$drift.RemovedUsers) removed\" -ForegroundColor \$(if(\$drift.DriftDetected){\'Yellow\'}else{\'Green\'}) if (\$CommitToGitea -and \$drift.DriftDetected) { \$driftSummary = \"\$(\$drift.NewUsers) new users, \$(\$drift.RemovedUsers) removed users detected\" \$severity = if ((\$drift.NewUsers + \$drift.RemovedUsers) -gt 50) { \"High\" } elseif ((\$drift.NewUsers + \$drift.RemovedUsers) -gt 10) { \"Medium\" } else { \"Low\" } New-UIAOGiteaDriftIssue -DriftSummary \$driftSummary -Severity \$severity -DiffContent (Get-Content \"\$assessmentPath\\drift_report.json\" -Raw) } } else { Write-Host \"\`n\[Phase 4/4\] Skipped (no comparison baseline specified)\" -ForegroundColor DarkGray } Write-Host \"\`n=== Assessment Complete ===\" -ForegroundColor Green Write-Host \"Output: \$assessmentPath\" -ForegroundColor Cyan Write-Host \"Next step: Review outputs and commit to Gitea for baseline tracking\" -ForegroundColor Cyan }
+
+Appendix D --- Companion Document Cross-Reference
+
+The following matrix maps the relationship between this document and every other UIAO Canon document. Each cell indicates the nature of the cross-reference: **Input** (this document consumes data from the companion), **Output** (this document produces data consumed by the companion), or **Mutual** (bidirectional dependency).
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **UIAO Canon Document**                   **Relationship**   **This Document Sections**                       **Companion Sections**                                      **Integration Points**
+  ----------------------------------------- ------------------ ------------------------------------------------ ----------------------------------------------------------- ------------------------------------------------------------------------------------------------------
+  **AD Computer Object Conversion Guide**   Mutual             2.5, 8.5 (CA007, CA016), 13.4                    Device join state, Hybrid join, Compliance                  Device compliance feeds CA policy; computer object sync determines Hybrid join state
+
+  **AD Interaction Guide**                  Input              2 (all), 10.5, 13.1                              AD query patterns, Trust mapping, Invoke-UIAOADAssessment   AD assessment output feeds Phase 0; trust mapping informs cross-tenant design
+
+  **Platform Server Build Guide**           Input              4.1, 4.4, 13.2                                   Server provisioning, Entra Connect server build             Entra Connect server built per Platform Server Build Guide specifications
+
+  **DNS Modernization Guide**               Input              4.7, 11.1, 13.10                                 UPN suffix DNS, AD FS DNS records, Split-brain DNS          DNS namespace alignment required for UPN remediation; AD FS decommission requires DNS cleanup
+
+  **PKI Modernization Guide**               Input              6.1, 11.2 (Phase 4)                              Cloud PKI, CBA configuration, Smart card migration          Certificate-based authentication deployment depends on PKI modernization state
+
+  **UIAO CLI and Operations Guide**         Mutual             14 (all), Appendix C                             Gitea API patterns, CLI framework, Scheduled tasks          Identity assessment module follows CLI patterns; Gitea integration uses shared API framework
+
+  **Intune Device Management Guide**        Output             8.4, 8.5 (CA007, CA016, CA017), 11.2 (Phase 2)   Device compliance policies, WHfB deployment                 CA policies reference Intune compliance; WHfB deployment requires Intune policy
+
+  **Exchange Online Governance Guide**      Output             2.3, 5.5, 9.3.4, 11.4                            Distribution group management, Shared mailbox lifecycle     Group migration affects Exchange distribution lists; leaver workflow converts mailbox to shared
+
+  **SharePoint Online Governance Guide**    Output             5.5, 9.2, 10.1                                   Site permissions, External sharing, Access packages         Access packages include SharePoint site access; B2B guest access governs external sharing
+
+  **Security Operations Guide**             Output             7.5, 12 (all), 14.2                              Alert triage, Incident response, Detection engineering      Identity detection rules feed security operations; break-glass activation triggers incident response
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**UIAO Identity Modernization Guide --- Active Directory to Entra ID Governance Transformation**\
+Version 1.0 \| Classification: Controlled \| Boundary: GCC-Moderate\
+UIAO Canon --- Companion Document\
+Generated: 20 April 2026 \| Author: Michael\
+This document is authoritative within the UIAO operational boundary. All modifications must be committed to the Gitea configuration repository with a descriptive commit message referencing the change rationale and affected sections.

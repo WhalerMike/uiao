@@ -1,0 +1,1036 @@
+---
+title: "UIAO Quarto Pipeline Integration Guide"
+subtitle: "Integrating Quarto documentation rendering into the UIAO Gitea governance pipeline"
+doc-type: technical-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO Quarto Pipeline Integration Guide.docx"
+repo-path: docs/customer-documents/substrate/platform-tooling/quarto-pipeline.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
++----------------------------+
+| CLASSIFICATION: CONTROLLED |
+|                            |
+| \|                         |
+|                            |
+| BOUNDARY: GCC-MODERATE     |
++----------------------------+
+
+UIAO Quarto Pipeline Integration Guide
+
+Integrating Quarto Documentation Rendering into the UIAO Gitea Governance Pipeline
+
+**Author:** Michael Stratton
+
+**Version:** 1.0.0
+
+**Date:** 21 April 2026
+
+**Classification:** Controlled \| **Boundary:** GCC-Moderate
+
+**Repository:** https://github.com/WhalerMike/uiao
+
+**License:** Apache-2.0
+
+Table of Contents
+
+1.  Executive Summary
+
+2.  Architecture Overview
+
+3.  Prerequisites
+
+4.  Project Structure
+
+5.  Quarto Project Configuration (\_quarto.yml)
+
+6.  Custom UIAO Theme (uiao-theme.css)
+
+7.  Quarto Dashboard Integration
+
+8.  Local Rendering
+
+9.  Gitea Integration --- Post-Receive Hook Extension
+
+10. GitHub Actions CI/CD Workflows
+
+11. IIS Internal Hosting Configuration
+
+12. Content Authoring Standards
+
+13. Quarto Extensions and Filters
+
+14. Monitoring and Troubleshooting
+
+15. Integration Matrix
+
+16. Appendix A: Complete File Listing
+
+17. Appendix B: Environment Variables Reference
+
+18. Appendix C: Quarto CLI Quick Reference
+
+1\. Executive Summary
+
+This guide defines the end-to-end integration of **Quarto**, an open-source scientific and technical publishing system, into the **UIAO (Unified Identity-Addressing-Overlay) Gitea Governance Pipeline**. The goal is to transform the existing corpus of 124 .qmd (Quarto Markdown) files in the UIAO docs/ directory into a fully rendered, continuously deployed documentation site that serves both internal stakeholders via IIS and external consumers via GitHub Pages.
+
+1.1 Purpose
+
+The UIAO project maintains governance documentation, assessment reports, modernization playbooks, operational runbooks, and dashboard specifications as structured Quarto Markdown. Today, these files must be rendered manually. This guide establishes an automated pipeline that renders documentation on every commit, validates output quality, and deploys to dual targets --- ensuring documentation is always current, always accessible, and always governed.
+
+1.2 Scope
+
+This document covers the following domains:
+
+- **Project Structure** --- Canonical directory layout for the uiao/docs/ tree and its 124 .qmd files.
+
+- **Quarto Configuration** --- Production-ready \_quarto.yml with UIAO-specific theming, navigation, and format options.
+
+- **CI/CD Workflows** --- Gitea post-receive hook extensions and GitHub Actions workflows for automated rendering, validation, and deployment.
+
+- **Dashboard Integration** --- Embedding the UIAO Governance Dashboard into the Quarto site using Observable JS and Python data sources.
+
+- **Dual Publishing** --- Deployment to both internal IIS (docs.uiao.local) and GitHub Pages (whalermike.github.io/uiao-docs).
+
+- **Content Standards** --- Authoring conventions, frontmatter requirements, cross-reference syntax, and extension/filter architecture.
+
+1.3 Key Facts
+
+  ----------------------------------------------------------------------------------------
+  **Item**                             **Value**
+  ------------------------------------ ---------------------------------------------------
+  Live documentation site (external)   whalermike.github.io/uiao-docs
+
+  Internal documentation site          docs.uiao.local (IIS on Windows Server 2025)
+
+  Source repository                    https://github.com/WhalerMike/uiao
+
+  Total .qmd files in docs/            124
+
+  Existing CI workflows                5 (to be extended with Quarto-specific workflows)
+
+  Rendering engine                     Quarto CLI ≥ 1.5.x (bundled Pandoc)
+
+  Classification                       Controlled \| GCC-Moderate
+  ----------------------------------------------------------------------------------------
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Important --- Governance Alignment**                                                                                                                                                                                                                                                                                    |
+|                                                                                                                                                                                                                                                                                                                           |
+| All documentation produced by this pipeline is subject to the UIAO Governance Canon. Every rendered page carries the classification banner **\"Controlled \| GCC-Moderate\"** in the page footer. Changes to governance documents must be reviewed through the standard Gitea pull-request workflow before merge to main. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+2\. Architecture Overview
+
+The Quarto Pipeline integrates into the existing UIAO infrastructure as a documentation rendering and publishing layer. Authors write .qmd files in the docs/ directory and push changes through the standard Gitea workflow. The pipeline intercepts these changes, renders the site, validates the output, and deploys to two targets simultaneously.
+
+2.1 Pipeline Architecture Diagram
+
++:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:+
+| **DIAGRAM-QUARTO-001**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| *\"Quarto Pipeline Architecture\"*                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Dimensions:** 900 × 500 px                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Description:** Shows the end-to-end flow: Author pushes .qmd files to Gitea → post-receive hook triggers Quarto CLI render → HTML output written to D:\\UIAO\\Docs\\site\\ → IIS serves internal docs site at docs.uiao.local → GitHub Actions workflow mirrors to GitHub Pages at whalermike.github.io/uiao-docs. Includes Gitea API webhook, Quarto CLI, IIS, and GitHub Actions as labeled nodes. Arrows indicate data flow direction. Color coding: blue for authoring nodes, green for build/render nodes, orange for deployment targets. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+2.2 Pipeline Flow
+
+The pipeline operates in a linear flow with two deployment branches:
+
+19. **Author pushes** --- A contributor commits changes to .qmd files and pushes to the Gitea repository.
+
+20. **Post-receive hook fires** --- The Gitea post-receive hook detects changes in docs/ and triggers the rendering pipeline.
+
+21. **Quarto CLI renders** --- The render-docs.ps1 script invokes quarto render against the project, producing static HTML in docs/\_site/.
+
+22. **Validation** --- The validate-links.ps1 script scans rendered output for broken links, missing images, and cross-reference failures.
+
+23. **Internal deploy** --- Rendered HTML is copied to D:\\UIAO\\Docs\\site\\, which IIS serves at docs.uiao.local.
+
+24. **External deploy** --- On push to main on GitHub, the quarto-publish.yml GitHub Actions workflow renders and deploys to GitHub Pages.
+
+2.3 Dual Publishing Architecture
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------
+  **Target**   **URL**                          **Trigger**                      **Authentication**                  **Hosting**
+  ------------ -------------------------------- -------------------------------- ----------------------------------- ----------------------------
+  Internal     docs.uiao.local                  Gitea post-receive hook          Windows Integrated (domain users)   IIS on Windows Server 2025
+
+  External     whalermike.github.io/uiao-docs   GitHub Actions on push to main   Public (GitHub Pages)               GitHub Pages
+  -----------------------------------------------------------------------------------------------------------------------------------------------
+
+2.4 Integration with UIAO Governance Dashboard
+
+The Quarto site incorporates the UIAO Governance Dashboard (see Dashboard Design document) as a set of dedicated .qmd pages under docs/dashboard/. These pages use Quarto\'s dashboard layout format to render drift heatmaps, compliance scorecards, and assessment summaries from JSON data produced by the UIAO Assessment Pipeline at D:\\UIAO\\Assessment\\. The dashboard pages are rendered as standard HTML during the build process and do not require a separate runtime.
+
+3\. Prerequisites
+
+3.1 Required Software
+
+  ----------------------------------------------------------------------------------------------------------------
+  **Component**        **Version**           **Purpose**                                        **Install Path**
+  -------------------- --------------------- -------------------------------------------------- ------------------
+  Quarto CLI           ≥ 1.5.x               Document rendering engine                          D:\\Quarto\\
+
+  R (optional)         ≥ 4.3.x               For R-based computations in .qmd files             Default
+
+  Python (optional)    ≥ 3.11                For Python-based computations and dashboard data   Default
+
+  Pandoc               Bundled with Quarto   Markdown processing and format conversion          Bundled
+
+  Gitea                ≥ 1.22.x              Git server platform (self-hosted)                  D:\\Gitea\\
+
+  IIS                  WS2025 built-in       Internal documentation hosting                     Default
+
+  Git                  ≥ 2.44                Version control                                    Default
+
+  Node.js (optional)   ≥ 20.x                Observable JS runtime for dashboard pages          Default
+  ----------------------------------------------------------------------------------------------------------------
+
+3.2 Installation --- Quarto CLI on Windows Server 2025
+
+Run the following PowerShell commands in an elevated session to install the Quarto CLI:
+
+\# ============================================================================== \# UIAO Quarto CLI Installation Script \# Target: Windows Server 2025 \# Classification: Controlled \| Boundary: GCC-Moderate \# ============================================================================== \# Ensure installer directory exists \$installerDir = \'D:\\UIAO\\Installers\' if (-not (Test-Path \$installerDir)) { New-Item -Path \$installerDir -ItemType Directory -Force \| Out-Null Write-Host \"\[INFO\] Created directory: \$installerDir\" -ForegroundColor Cyan } \# Download Quarto CLI MSI installer \$quartoVersion = \'1.5.57\' \$quartoUrl = \"https://github.com/quarto-dev/quarto-cli/releases/download/v\$quartoVersion/quarto-\$quartoVersion-win.msi\" \$installer = Join-Path \$installerDir \'quarto.msi\' Write-Host \"\[INFO\] Downloading Quarto CLI v\$quartoVersion\...\" -ForegroundColor Cyan Invoke-WebRequest -Uri \$quartoUrl -OutFile \$installer -UseBasicParsing \# Verify download if (-not (Test-Path \$installer)) { Write-Error \"\[ERROR\] Download failed. Check network connectivity and URL.\" exit 1 } Write-Host \"\[INFO\] Download complete: \$installer\" -ForegroundColor Green \# Install Quarto CLI silently \$installDir = \'D:\\Quarto\' Write-Host \"\[INFO\] Installing Quarto CLI to \$installDir\...\" -ForegroundColor Cyan \$msiArgs = \"/i \`\"\$installer\`\" /qn INSTALLDIR=\`\"\$installDir\`\"\" \$process = Start-Process msiexec.exe -ArgumentList \$msiArgs -Wait -PassThru if (\$process.ExitCode -ne 0) { Write-Error \"\[ERROR\] Installation failed with exit code \$(\$process.ExitCode).\" exit 1 } Write-Host \"\[INFO\] Quarto CLI installed successfully.\" -ForegroundColor Green \# Add to PATH if not already present \$currentPath = \[Environment\]::GetEnvironmentVariable(\'PATH\', \'Machine\') \$quartoBin = Join-Path \$installDir \'bin\' if (\$currentPath -notlike \"\*\$quartoBin\*\") { \[Environment\]::SetEnvironmentVariable(\'PATH\', \"\$currentPath;\$quartoBin\", \'Machine\') \$env:PATH = \"\$env:PATH;\$quartoBin\" Write-Host \"\[INFO\] Added \$quartoBin to system PATH.\" -ForegroundColor Green } \# Verify installation Write-Host \"\`n\[INFO\] Verifying Quarto installation\...\" -ForegroundColor Cyan quarto check
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Note**                                                                                                                                                                                                                                                                                                              |
+|                                                                                                                                                                                                                                                                                                                       |
+| If R or Python computations are not used in any .qmd files, those runtimes can be omitted. The quarto check command will report which engines are available. For UIAO, most documents use static Markdown and PowerShell code blocks, so R and Python are optional unless dashboard pages with live data are enabled. |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+4\. Project Structure
+
+4.1 Canonical Directory Layout
+
+The UIAO documentation follows a structured layout within the uiao/docs/ directory. Each subdirectory corresponds to a governance domain, and each .qmd file is a self-contained documentation page with YAML frontmatter.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  uiao/ ├── docs/ │ ├── \_quarto.yml \# Project configuration │ ├── index.qmd \# Landing page │ ├── \_metadata.yml \# Shared metadata for all pages │ ├── governance/ │ │ ├── \_metadata.yml \# Governance section metadata │ │ ├── canon-overview.qmd │ │ ├── drift-detection.qmd │ │ ├── sla-enforcement.qmd │ │ └── \... │ ├── assessment/ │ │ ├── \_metadata.yml \# Assessment section metadata │ │ ├── ad-forest.qmd │ │ ├── dns-audit.qmd │ │ ├── pki-health.qmd │ │ └── \... │ ├── modernization/ │ │ ├── identity.qmd │ │ ├── dns.qmd │ │ ├── pki.qmd │ │ └── \... │ ├── operations/ │ │ ├── runbook.qmd │ │ ├── disaster-recovery.qmd │ │ └── \... │ ├── modules/ │ │ ├── ad-assessment.qmd │ │ ├── dns-assessment.qmd │ │ ├── pki-assessment.qmd │ │ ├── identity-assessment.qmd │ │ ├── drift-detection.qmd │ │ └── \... │ ├── dashboard/ │ │ ├── index.qmd │ │ ├── drift-heatmap.qmd │ │ ├── compliance-scorecard.qmd │ │ └── \... │ ├── \_extensions/ │ │ └── uiao-theme/ \# Custom UIAO Quarto extension │ │ ├── \_extension.yml │ │ └── filters/ │ │ ├── classification-banner.lua │ │ └── metadata-validator.lua │ ├── assets/ │ │ ├── css/ │ │ │ └── uiao-theme.css │ │ ├── images/ │ │ │ └── uiao-logo.png │ │ └── templates/ │ └── \_site/ \# Build output (gitignored) ├── .github/ │ └── workflows/ │ ├── quarto-publish.yml \# GitHub Pages deployment │ ├── quarto-validate.yml \# PR validation │ ├── quarto-link-check.yml \# Link validation │ └── \... └── tools/ └── quarto/ ├── render-docs.ps1 \# Local render script └── validate-links.ps1 \# Link checker
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+4.2 Directory Purpose Reference
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Directory / File**            **Purpose**                                                                                                                                        **Approx. Files**
+  ------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------- -------------------
+  docs/\_quarto.yml               Master project configuration --- defines site structure, navigation, format, and theme. Single source of truth for the Quarto build.               1
+
+  docs/index.qmd                  Landing page for the documentation site. Provides overview, quick links, and project status summary.                                               1
+
+  docs/\_metadata.yml             Shared metadata inherited by all pages --- classification, boundary, default author, and common format options.                                    1
+
+  docs/governance/                Governance Canon documentation --- canon overview, drift detection policies, SLA enforcement rules, compliance frameworks, and audit procedures.   18
+
+  docs/assessment/                Assessment documentation --- AD forest evaluation, DNS audit procedures, PKI health checks, identity assessment, and infrastructure surveys.       22
+
+  docs/modernization/             Modernization playbooks --- identity migration plans, DNS restructuring, PKI modernization, certificate lifecycle, and hybrid identity.            16
+
+  docs/operations/                Operational runbooks --- day-to-day procedures, disaster recovery plans, incident response, change management, and escalation matrices.            14
+
+  docs/modules/                   PowerShell module documentation --- auto-generated function references for UIAO assessment modules, drift detection, and reporting tools.          28
+
+  docs/dashboard/                 Governance Dashboard pages --- drift heatmaps, compliance scorecards, assessment summaries, and SLA tracking visualizations.                       12
+
+  docs/\_extensions/uiao-theme/   Custom Quarto extension --- Lua filters for classification banners and metadata validation.                                                        3
+
+  docs/assets/                    Static assets --- CSS theme files, images (logos, diagrams), and document templates.                                                               8
+
+  docs/\_site/                    Build output directory (gitignored). Contains rendered HTML, CSS, JS, and supporting files produced by quarto render.                              ---
+
+  .github/workflows/              GitHub Actions workflows for CI/CD --- publishing, validation, and link checking.                                                                  3
+
+  tools/quarto/                   Local PowerShell tooling for rendering and validation.                                                                                             2
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+4.3 File Distribution Across Directories
+
+  -----------------------------------------------------------------------------------------------------------
+  **Directory**         **.qmd Count**   **Primary Content**
+  --------------------- ---------------- --------------------------------------------------------------------
+  docs/ (root)          1                index.qmd (landing page)
+
+  docs/governance/      18               Canon definitions, drift policies, SLA rules, compliance checks
+
+  docs/assessment/      22               AD, DNS, PKI, identity assessments, infrastructure audits
+
+  docs/modernization/   16               Identity, DNS, PKI modernization, hybrid identity, migration plans
+
+  docs/operations/      14               Runbooks, DR, incident response, change management
+
+  docs/modules/         28               PowerShell module function references, API documentation
+
+  docs/dashboard/       12               Drift heatmaps, scorecards, SLA tracking, assessment summaries
+
+  docs/guides/          13               Integration guides, setup guides, onboarding documentation
+
+  **Total**             **124**          
+  -----------------------------------------------------------------------------------------------------------
+
+5\. Quarto Project Configuration (\_quarto.yml)
+
+The \_quarto.yml file is the master configuration for the UIAO documentation site. It defines the project type, output directory, website structure, navigation, sidebar, search, footer, and HTML format options. This file must reside at docs/\_quarto.yml.
+
+5.1 Complete \_quarto.yml
+
+\# ============================================================================== \# UIAO Quarto Project Configuration \# File: docs/\_quarto.yml \# Classification: Controlled \| Boundary: GCC-Moderate \# Version: 1.0.0 \# ============================================================================== project: type: website output-dir: \_site render: - \"\*\*/\*.qmd\" - \"!\_archive/\*\*\" website: title: \"UIAO Governance OS\" description: \"Unified Identity-Addressing-Overlay --- Documentation Portal\" site-url: https://whalermike.github.io/uiao-docs repo-url: https://github.com/WhalerMike/uiao repo-actions: \[edit, issue\] reader-mode: true navbar: title: \"UIAO Governance OS\" logo: assets/images/uiao-logo.png left: - text: \"Governance\" menu: - text: \"Canon Overview\" href: governance/canon-overview.qmd - text: \"Drift Detection\" href: governance/drift-detection.qmd - text: \"SLA Enforcement\" href: governance/sla-enforcement.qmd - text: \"Assessment\" menu: - text: \"AD Forest\" href: assessment/ad-forest.qmd - text: \"DNS Audit\" href: assessment/dns-audit.qmd - text: \"PKI Health\" href: assessment/pki-health.qmd - text: \"Modernization\" menu: - text: \"Identity\" href: modernization/identity.qmd - text: \"DNS\" href: modernization/dns.qmd - text: \"PKI\" href: modernization/pki.qmd - text: \"Modules\" href: modules/ - text: \"Dashboard\" href: dashboard/ - text: \"Operations\" menu: - text: \"Runbook\" href: operations/runbook.qmd - text: \"Disaster Recovery\" href: operations/disaster-recovery.qmd right: - icon: github href: https://github.com/WhalerMike/uiao sidebar: - id: governance title: \"Governance\" style: \"docked\" contents: - section: \"Canon\" contents: - governance/canon-overview.qmd - section: \"Drift Detection\" contents: - governance/drift-detection.qmd - section: \"SLA Enforcement\" contents: - governance/sla-enforcement.qmd - id: assessment title: \"Assessment\" style: \"docked\" contents: - section: \"Active Directory\" contents: - assessment/ad-forest.qmd - section: \"DNS\" contents: - assessment/dns-audit.qmd - section: \"PKI\" contents: - assessment/pki-health.qmd - id: modules title: \"PowerShell Modules\" style: \"docked\" contents: - section: \"Assessment Modules\" contents: - modules/ad-assessment.qmd - modules/dns-assessment.qmd - modules/pki-assessment.qmd - modules/identity-assessment.qmd - section: \"Governance Modules\" contents: - modules/drift-detection.qmd page-footer: left: \"Classification: Controlled \| Boundary: GCC-Moderate\" center: \"© 2026 UIAO Governance OS --- Apache-2.0\" right: \"Built with Quarto\" search: location: navbar type: overlay format: html: theme: light: \[cosmo, assets/css/uiao-theme.css\] css: assets/css/uiao-theme.css toc: true toc-depth: 3 toc-expand: 2 code-fold: true code-tools: true code-copy: true code-overflow: wrap number-sections: true anchor-sections: true smooth-scroll: true highlight-style: github mainfont: \"Segoe UI\" monofont: \"Cascadia Code\" execute: freeze: auto cache: true \# Metadata defaults applied to all pages metadata-files: - \_metadata.yml
+
+5.2 Shared Metadata (\_metadata.yml)
+
+\# ============================================================================== \# Shared Metadata for All UIAO Documentation Pages \# File: docs/\_metadata.yml \# ============================================================================== author: \"UIAO Governance Team\" date-modified: last-modified lang: en \# Classification metadata (consumed by Lua filters) classification: \"Controlled\" boundary: \"GCC-Moderate\" \# Default format options format: html: toc: true code-fold: true code-tools: true
+
+5.3 Configuration Reference
+
+  ---------------------------------------------------------------------------------------------------------------------------------------
+  **Key**                **Value**                                  **Purpose**
+  ---------------------- ------------------------------------------ ---------------------------------------------------------------------
+  project.type           website                                    Enables multi-page site with navigation, sidebar, and search
+
+  project.output-dir     \_site                                     Build output directory; must match GitHub Actions upload path
+
+  project.render         \[\"\*\*/\*.qmd\", \"!\_archive/\*\*\"\]   Renders all .qmd files except archived content
+
+  website.site-url       GitHub Pages URL                           Used for canonical URLs, sitemap, and social metadata
+
+  website.repo-actions   \[edit, issue\]                            Adds \"Edit this page\" and \"Report an issue\" links to every page
+
+  website.reader-mode    true                                       Enables distraction-free reading toggle
+
+  format.html.theme      \[cosmo, uiao-theme.css\]                  Base Bootswatch theme plus UIAO custom overrides
+
+  execute.freeze         auto                                       Caches computational results; re-renders only on source change
+
+  execute.cache          true                                       Enables knitr/Jupyter caching for faster incremental builds
+  ---------------------------------------------------------------------------------------------------------------------------------------
+
+6\. Custom UIAO Theme (uiao-theme.css)
+
+The UIAO theme CSS customizes the Quarto-rendered HTML to match the UIAO visual identity. This file is referenced in \_quarto.yml and applied as a layer over the base cosmo Bootswatch theme. Place this file at docs/assets/css/uiao-theme.css.
+
+6.1 Complete Theme CSS
+
+/\* ============================================================================== UIAO Governance OS --- Custom Quarto Theme File: docs/assets/css/uiao-theme.css Classification: Controlled \| Boundary: GCC-Moderate Version: 1.0.0 Color Palette: Primary Blue: #4472C4 Dark Navy: #1B3A5C Light Blue BG: #D6E4F0 Accent Blue: #2B5797 Governance Red: #C0392B Success Green: #27AE60 Warning Orange: #E67E22 Text Black: #1a1a2e Muted Gray: #666666 Border Gray: #cccccc ============================================================================== \*/ /\* \-\-- Global Overrides \-\-- \*/ body { font-family: \"Segoe UI\", Calibri, sans-serif; color: #1a1a2e; background-color: #ffffff; } /\* \-\-- Headings \-\-- \*/ h1, .h1 { color: #1B3A5C; border-bottom: 2px solid #D6E4F0; padding-bottom: 8px; margin-top: 32px; } h2, .h2 { color: #4472C4; border-bottom: 1px solid #E8EEF7; padding-bottom: 4px; } h3, .h3, h4, .h4 { color: #4472C4; } /\* \-\-- Navigation Bar \-\-- \*/ .navbar { background-color: #1B3A5C; border-bottom: 3px solid #4472C4; } .navbar .navbar-brand { color: #ffffff; font-weight: bold; } .navbar .nav-link { color: #D6E4F0; } .navbar .nav-link:hover { color: #ffffff; } /\* \-\-- Sidebar \-\-- \*/ .sidebar { border-right: 1px solid #D6E4F0; } .sidebar .sidebar-title { color: #1B3A5C; font-weight: bold; text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.5px; } .sidebar .sidebar-item .sidebar-link.active { color: #4472C4; font-weight: bold; border-left: 3px solid #4472C4; } /\* \-\-- Tables \-\-- \*/ table { border-collapse: collapse; width: 100%; margin: 16px 0; } thead th { background-color: #1B3A5C; color: #ffffff; font-weight: bold; padding: 10px 12px; border: 1px solid #1B3A5C; text-align: left; } tbody td { padding: 8px 12px; border: 1px solid #D6E4F0; vertical-align: top; } tbody tr:nth-child(even) { background-color: #F5F8FC; } tbody tr:hover { background-color: #E8EEF7; } /\* \-\-- Code Blocks \-\-- \*/ pre { background-color: #F5F5F5; border: 1px solid #D6E4F0; border-left: 3px solid #4472C4; padding: 16px; font-family: \"Cascadia Code\", Consolas, monospace; font-size: 0.88em; line-height: 1.5; } code { font-family: \"Cascadia Code\", Consolas, monospace; color: #1B3A5C; background-color: #F0F4FA; padding: 2px 6px; } pre code { color: inherit; background-color: transparent; padding: 0; } /\* \-\-- Code Block Classification Footer \-\-- \*/ pre::after { content: \"Controlled \| GCC-Moderate\"; display: block; margin-top: 8px; padding-top: 4px; border-top: 1px solid #D6E4F0; font-size: 0.75em; color: #999999; font-family: \"Segoe UI\", Calibri, sans-serif; text-align: right; } /\* \-\-- Callout Blocks --- Governance Notices \-\-- \*/ .callout-note { border-left: 4px solid #4472C4; background-color: #F0F4FA; } .callout-warning { border-left: 4px solid #C0392B; background-color: #FDEDEC; } .callout-important { border-left: 4px solid #E67E22; background-color: #FFF4E0; } .callout-tip { border-left: 4px solid #27AE60; background-color: #EAFAF1; } .callout .callout-header { font-weight: bold; text-transform: uppercase; font-size: 0.9em; letter-spacing: 0.3px; } /\* \-\-- Classification Banner (injected by Lua filter) \-\-- \*/ .classification-banner { background-color: #1B3A5C; color: #ffffff; text-align: center; padding: 6px 0; font-size: 0.8em; font-weight: bold; letter-spacing: 1.5px; position: sticky; top: 0; z-index: 1000; } /\* \-\-- Page Footer \-\-- \*/ .nav-footer { background-color: #F5F8FC; border-top: 2px solid #D6E4F0; color: #666666; font-size: 0.85em; } /\* \-\-- Links \-\-- \*/ a { color: #4472C4; } a:hover { color: #1B3A5C; } /\* \-\-- Table of Contents \-\-- \*/ .sidebar nav\[role=\"doc-toc\"\] a { color: #666666; } .sidebar nav\[role=\"doc-toc\"\] a.active { color: #4472C4; font-weight: bold; } /\* \-\-- Dashboard Styles \-\-- \*/ .dashboard-card { border: 1px solid #D6E4F0; padding: 20px; margin: 12px 0; background-color: #ffffff; } .dashboard-card .card-title { color: #1B3A5C; font-weight: bold; font-size: 1.1em; margin-bottom: 8px; border-bottom: 1px solid #D6E4F0; padding-bottom: 4px; } .dashboard-metric { font-size: 2.5em; font-weight: bold; color: #4472C4; text-align: center; padding: 12px; } .dashboard-metric.status-pass { color: #27AE60; } .dashboard-metric.status-warn { color: #E67E22; } .dashboard-metric.status-fail { color: #C0392B; } .governance-badge { display: inline-block; padding: 2px 8px; font-size: 0.75em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; } .governance-badge.controlled { background-color: #1B3A5C; color: #ffffff; } /\* \-\-- Search Overlay \-\-- \*/ .search-overlay { background-color: rgba(27, 58, 92, 0.95); } /\* \-\-- Print Styles \-\-- \*/ \@media print { .navbar, .sidebar, .nav-footer { display: none; } .classification-banner { position: static; page-break-before: avoid; } pre::after { content: \"CONTROLLED \| GCC-MODERATE\"; } a { color: #000000; text-decoration: none; } }
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Tip**                                                                                                                                                                                                                                                                                                 |
+|                                                                                                                                                                                                                                                                                                         |
+| The theme CSS is approximately 200 lines. When modifying colors, update the palette reference comment at the top of the file and ensure consistency across all selectors. The classification footer on code blocks (pre::after) is a CSS-only mechanism; the Lua filter provides the page-level banner. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+7\. Quarto Dashboard Integration
+
+The UIAO Governance Dashboard is integrated into the Quarto site as a set of dedicated pages under docs/dashboard/. These pages use Quarto\'s dashboard layout format to render interactive governance visualizations directly from assessment data produced by the UIAO pipeline.
+
+7.1 Dashboard Architecture
+
+  -------------------------------------------------------------------------------------------------------------------------
+  **Component**          **Source**                                      **Format**
+  ---------------------- ----------------------------------------------- --------------------------------------------------
+  Drift Heatmap          D:\\UIAO\\Assessment\\drift-report.json         Observable JS (OJS) with Quarto dashboard layout
+
+  Compliance Scorecard   D:\\UIAO\\Assessment\\compliance-summary.json   Python + Quarto dashboard layout
+
+  Assessment Summary     D:\\UIAO\\Assessment\\\*.json                   Static tables from JSON aggregation
+
+  SLA Tracking           D:\\UIAO\\Assessment\\sla-metrics.json          Observable JS gauge charts
+  -------------------------------------------------------------------------------------------------------------------------
+
++:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:+
+| **DIAGRAM-QUARTO-002**                                                                                                                                                                                                                                                                                                                                                                                                                         |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| *\"Dashboard Data Flow\"*                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Dimensions:** 800 × 400 px                                                                                                                                                                                                                                                                                                                                                                                                                   |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Description:** Shows the data flow from UIAO Assessment Pipeline (PowerShell modules output JSON to D:\\UIAO\\Assessment\\) → Quarto dashboard .qmd pages read JSON during render → Observable JS / Python cells process data → Rendered HTML tables and charts embedded in dashboard pages → Served via IIS and GitHub Pages. Labeled nodes: Assessment Pipeline, JSON Data Store, Quarto Render Engine, Dashboard Pages, IIS/GitHub Pages. |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+7.2 Drift Heatmap Dashboard (drift-heatmap.qmd)
+
+\-\-- title: \"Drift Detection Heatmap\" format: dashboard: orientation: rows nav-buttons: \[github\] logo: ../assets/images/uiao-logo.png document_id: \"DASH-DRIFT-001\" classification: \"Controlled\" boundary: \"GCC-Moderate\" author: \"UIAO Governance Team\" date: last-modified \-\-- \# Drift Detection \## Row {height=20%} \`\`\`{ojs} //\| title: \"Last Assessment\" driftData = FileAttachment(\"../../data/drift-report.json\").json() // Summary metrics totalChecks = driftData.checks.length driftCount = driftData.checks.filter(c =\> c.status === \"DRIFT\").length compliantCount = driftData.checks.filter(c =\> c.status === \"COMPLIANT\").length driftPct = ((driftCount / totalChecks) \* 100).toFixed(1) \`\`\` \### Card 1 \`\`\`{ojs} //\| title: \"Total Checks\" html\`\<div class=\"dashboard-metric\"\>\${totalChecks}\</div\>\` \`\`\` \### Card 2 \`\`\`{ojs} //\| title: \"Drift Detected\" html\`\<div class=\"dashboard-metric status-fail\"\>\${driftCount}\</div\>\` \`\`\` \### Card 3 \`\`\`{ojs} //\| title: \"Compliant\" html\`\<div class=\"dashboard-metric status-pass\"\>\${compliantCount}\</div\>\` \`\`\` \### Card 4 \`\`\`{ojs} //\| title: \"Drift Rate\" driftClass = driftPct \> 10 ? \"status-fail\" : driftPct \> 5 ? \"status-warn\" : \"status-pass\" html\`\<div class=\"dashboard-metric \${driftClass}\"\>\${driftPct}%\</div\>\` \`\`\` \## Row {height=80%} \### Drift Heatmap {.tabset} \#### By Domain \`\`\`{ojs} //\| title: \"Drift by Domain\" // Group drift checks by domain domains = \[\...new Set(driftData.checks.map(c =\> c.domain))\] domainSummary = domains.map(d =\> { const checks = driftData.checks.filter(c =\> c.domain === d) const drifts = checks.filter(c =\> c.status === \"DRIFT\").length return { domain: d, total: checks.length, drift: drifts, rate: ((drifts / checks.length) \* 100).toFixed(1) } }) // Render as table Inputs.table(domainSummary, { columns: \[\"domain\", \"total\", \"drift\", \"rate\"\], header: { domain: \"Domain\", total: \"Total Checks\", drift: \"Drift Count\", rate: \"Drift Rate (%)\" }, sort: \"rate\", reverse: true, width: { domain: 200, total: 120, drift: 120, rate: 120 } }) \`\`\` \#### By Severity \`\`\`{ojs} //\| title: \"Drift by Severity\" severities = \[\"CRITICAL\", \"HIGH\", \"MEDIUM\", \"LOW\"\] severitySummary = severities.map(s =\> { const checks = driftData.checks.filter(c =\> c.severity === s) const drifts = checks.filter(c =\> c.status === \"DRIFT\").length return { severity: s, total: checks.length, drift: drifts } }) Inputs.table(severitySummary, { columns: \[\"severity\", \"total\", \"drift\"\], header: { severity: \"Severity\", total: \"Total\", drift: \"Drifted\" }, width: { severity: 150, total: 120, drift: 120 } }) \`\`\`
+
+7.3 Compliance Scorecard Dashboard (compliance-scorecard.qmd)
+
+\-\-- title: \"Compliance Scorecard\" format: dashboard: orientation: columns nav-buttons: \[github\] logo: ../assets/images/uiao-logo.png document_id: \"DASH-COMP-001\" classification: \"Controlled\" boundary: \"GCC-Moderate\" author: \"UIAO Governance Team\" date: last-modified \-\-- \`\`\`{python} #\| label: load-data #\| output: false import json from pathlib import Path from datetime import datetime \# Load compliance data data_path = Path(r\"D:\\UIAO\\Assessment\\compliance-summary.json\") if data_path.exists(): with open(data_path, \'r\') as f: compliance = json.load(f) else: \# Fallback sample data for development/CI compliance = { \"assessment_date\": datetime.now().isoformat(), \"overall_score\": 87.5, \"domains\": \[ {\"name\": \"Active Directory\", \"score\": 92.0, \"checks_passed\": 46, \"checks_total\": 50, \"critical_findings\": 1}, {\"name\": \"DNS\", \"score\": 88.0, \"checks_passed\": 44, \"checks_total\": 50, \"critical_findings\": 2}, {\"name\": \"PKI\", \"score\": 78.0, \"checks_passed\": 39, \"checks_total\": 50, \"critical_findings\": 3}, {\"name\": \"Identity\", \"score\": 91.5, \"checks_passed\": 73, \"checks_total\": 80, \"critical_findings\": 1}, \] } \`\`\` \# Compliance Overview \## Column {width=30%} \### Overall Score \`\`\`{python} #\| content: valuebox #\| title: \"Overall Compliance\" score = compliance\[\"overall_score\"\] if score \>= 90: icon = \"check-circle-fill\" color = \"success\" elif score \>= 75: icon = \"exclamation-triangle-fill\" color = \"warning\" else: icon = \"x-circle-fill\" color = \"danger\" dict( value = f\"{score}%\", icon = icon, color = color ) \`\`\` \### Assessment Date \`\`\`{python} #\| content: valuebox #\| title: \"Last Assessment\" dict( value = compliance\[\"assessment_date\"\]\[:10\], icon = \"calendar-event\", color = \"primary\" ) \`\`\` \## Column {width=70%} \### Domain Scores \`\`\`{python} #\| title: \"Compliance by Domain\" import pandas as pd from IPython.display import Markdown df = pd.DataFrame(compliance\[\"domains\"\]) df.columns = \[\"Domain\", \"Score (%)\", \"Passed\", \"Total\", \"Critical Findings\"\] df = df.sort_values(\"Score (%)\", ascending=False) \# Format as markdown table Markdown(df.to_markdown(index=False)) \`\`\` \### Domain Detail \`\`\`{python} #\| title: \"Domain Compliance Details\" for domain in compliance\[\"domains\"\]: pct = domain\[\"score\"\] status = \"PASS\" if pct \>= 85 else \"WARN\" if pct \>= 70 else \"FAIL\" bar_filled = int(pct / 5) bar_empty = 20 - bar_filled bar = \"█\" \* bar_filled + \"░\" \* bar_empty print(f\"{domain\[\'name\'\]:\<20} {bar} {pct:5.1f}% \[{status}\]\") if domain\[\"critical_findings\"\] \> 0: print(f\"{\'\':\<20} ⚠ {domain\[\'critical_findings\'\]}\" f\" critical finding(s)\") print() \`\`\`
+
+8\. Local Rendering
+
+8.1 Manual Render Commands
+
+The following PowerShell commands can be used for local rendering and preview during development:
+
+\# ============================================================================== \# UIAO Quarto --- Manual Rendering Commands \# Run from: C:\\Users\\whale\\git\\uiao\\docs \# Classification: Controlled \| Boundary: GCC-Moderate \# ============================================================================== \# Navigate to the docs directory Set-Location C:\\Users\\whale\\git\\uiao\\docs \# Full site render --- builds all 124 .qmd files to \_site/ quarto render \# Render a single file (useful during active editing) quarto render governance/drift-detection.qmd \# Render a specific directory quarto render assessment/ \# Preview with live reload on port 4000 \# Opens browser automatically; watches for file changes quarto preview \--port 4000 \# Preview without opening browser quarto preview \--port 4000 \--no-browser \# Render to a specific output directory (override \_quarto.yml) quarto render \--output-dir D:\\UIAO\\Docs\\site \# Check Quarto environment and dependencies quarto check \# List all input files that would be rendered quarto inspect
+
+8.2 PowerShell Render Script (render-docs.ps1)
+
+#Requires -Version 7.0 \<# .SYNOPSIS UIAO Quarto Documentation Render Script .DESCRIPTION Validates Quarto CLI installation, renders the UIAO documentation site, validates output for broken links and missing images, copies output to the IIS site directory, and optionally triggers GitHub Pages deployment. All activity is logged to D:\\UIAO\\Logs\\quarto-render.log. .PARAMETER SkipValidation Skip link and image validation after render. .PARAMETER DeployToGitHub Trigger GitHub Pages deployment after successful render. .PARAMETER SingleFile Render only a specific .qmd file instead of the full site. .EXAMPLE .\\render-docs.ps1 .\\render-docs.ps1 -DeployToGitHub .\\render-docs.ps1 -SingleFile \"governance/drift-detection.qmd\" .NOTES Classification: Controlled \| Boundary: GCC-Moderate Author: Michael Stratton Version: 1.0.0 #\> \[CmdletBinding()\] param( \[switch\]\$SkipValidation, \[switch\]\$DeployToGitHub, \[string\]\$SingleFile ) \# ============================================================================== \# Configuration \# ============================================================================== \$ErrorActionPreference = \'Stop\' \$script:Config = \@{ DocsRoot = \'C:\\Users\\whale\\git\\uiao\\docs\' SiteOutput = \'C:\\Users\\whale\\git\\uiao\\docs\\\_site\' IISTarget = \'D:\\UIAO\\Docs\\site\' LogFile = \'D:\\UIAO\\Logs\\quarto-render.log\' LogDir = \'D:\\UIAO\\Logs\' MinQuartoVer = \[version\]\'1.5.0\' ValidateScript = \'C:\\Users\\whale\\git\\uiao\\tools\\quarto\\validate-links.ps1\' GitHubRepo = \'WhalerMike/uiao\' } \# ============================================================================== \# Logging Functions \# ============================================================================== function Write-Log { \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$Message, \[ValidateSet(\'INFO\',\'WARN\',\'ERROR\',\'SUCCESS\')\] \[string\]\$Level = \'INFO\' ) \$timestamp = Get-Date -Format \'yyyy-MM-dd HH:mm:ss\' \$logEntry = \"\[\$timestamp\] \[\$Level\] \$Message\" \# Ensure log directory exists if (-not (Test-Path \$script:Config.LogDir)) { New-Item -Path \$script:Config.LogDir -ItemType Directory -Force \| Out-Null } \# Write to log file Add-Content -Path \$script:Config.LogFile -Value \$logEntry -Encoding UTF8 \# Write to console with color switch (\$Level) { \'INFO\' { Write-Host \$logEntry -ForegroundColor Cyan } \'WARN\' { Write-Host \$logEntry -ForegroundColor Yellow } \'ERROR\' { Write-Host \$logEntry -ForegroundColor Red } \'SUCCESS\' { Write-Host \$logEntry -ForegroundColor Green } } } \# ============================================================================== \# Step 1: Validate Quarto CLI \# ============================================================================== function Test-QuartoInstallation { Write-Log \"Validating Quarto CLI installation\...\" \$quartoCli = Get-Command quarto -ErrorAction SilentlyContinue if (-not \$quartoCli) { Write-Log \"Quarto CLI not found in PATH. Ensure Quarto is installed.\" -Level ERROR throw \"Quarto CLI not found. Install from https://quarto.org/docs/get-started/\" } \$versionOutput = & quarto \--version 2\>&1 \$installedVersion = \[version\](\$versionOutput -replace \'\[\^0-9.\]\', \'\') if (\$installedVersion -lt \$script:Config.MinQuartoVer) { Write-Log \"Quarto version \$installedVersion is below minimum \$(\$script:Config.MinQuartoVer).\" -Level ERROR throw \"Quarto CLI version \$installedVersion is too old. Minimum: \$(\$script:Config.MinQuartoVer)\" } Write-Log \"Quarto CLI v\$installedVersion validated successfully.\" -Level SUCCESS return \$installedVersion } \# ============================================================================== \# Step 2: Render Documentation \# ============================================================================== function Invoke-QuartoRender { param(\[string\]\$File) Write-Log \"Starting Quarto render\...\" \$renderStart = Get-Date Push-Location \$script:Config.DocsRoot try { if (\$File) { Write-Log \"Rendering single file: \$File\" \$renderOutput = & quarto render \$File 2\>&1 } else { Write-Log \"Rendering full site (all .qmd files)\...\" \$renderOutput = & quarto render 2\>&1 } if (\$LASTEXITCODE -ne 0) { \$errorMsg = \$renderOutput \| Where-Object { \$\_ -match \'ERROR\' } \| Select-Object -First 5 \| Out-String Write-Log \"Quarto render failed with exit code \$LASTEXITCODE\" -Level ERROR Write-Log \"Render errors: \$errorMsg\" -Level ERROR throw \"Quarto render failed. See log for details.\" } \$renderDuration = (Get-Date) - \$renderStart \$fileCount = (Get-ChildItem -Path \$script:Config.SiteOutput \` -Filter \'\*.html\' -Recurse -ErrorAction SilentlyContinue).Count Write-Log (\"Render complete: \$fileCount HTML files generated \" + \"in \$(\$renderDuration.TotalSeconds.ToString(\'F1\'))s.\") -Level SUCCESS return \$fileCount } finally { Pop-Location } } \# ============================================================================== \# Step 3: Validate Output \# ============================================================================== function Invoke-OutputValidation { Write-Log \"Running output validation\...\" if (Test-Path \$script:Config.ValidateScript) { \$validationResult = & \$script:Config.ValidateScript \` -SitePath \$script:Config.SiteOutput 2\>&1 \$brokenLinks = (\$validationResult \| Where-Object { \$\_ -match \'BROKEN\' }).Count if (\$brokenLinks -gt 0) { Write-Log \"\$brokenLinks broken link(s) detected.\" -Level WARN } else { Write-Log \"Link validation passed --- no broken links.\" -Level SUCCESS } return \$brokenLinks } else { Write-Log \"Validation script not found at \$(\$script:Config.ValidateScript). Skipping.\" -Level WARN return -1 } } \# ============================================================================== \# Step 4: Deploy to IIS \# ============================================================================== function Copy-ToIIS { Write-Log \"Deploying rendered site to IIS target: \$(\$script:Config.IISTarget)\" if (-not (Test-Path \$script:Config.IISTarget)) { New-Item -Path \$script:Config.IISTarget -ItemType Directory -Force \| Out-Null Write-Log \"Created IIS target directory.\" -Level INFO } \# Sync files using robocopy (mirror mode) \$robocopyArgs = @( \$script:Config.SiteOutput, \$script:Config.IISTarget, \'/MIR\', \# Mirror directory tree \'/NP\', \# No progress display \'/NFL\', \# No file list \'/NDL\', \# No directory list \'/R:3\', \# Retry 3 times \'/W:5\', \# Wait 5 seconds between retries \'/LOG+:\' + \$script:Config.LogFile ) \$robocopyResult = & robocopy \@robocopyArgs \# Robocopy exit codes: 0-7 are success, 8+ are errors if (\$LASTEXITCODE -ge 8) { Write-Log \"Robocopy failed with exit code \$LASTEXITCODE.\" -Level ERROR throw \"File copy to IIS target failed.\" } \$deployedFiles = (Get-ChildItem -Path \$script:Config.IISTarget \` -Filter \'\*.html\' -Recurse).Count Write-Log \"Deployed \$deployedFiles HTML files to IIS.\" -Level SUCCESS } \# ============================================================================== \# Step 5: (Optional) Trigger GitHub Pages Deployment \# ============================================================================== function Invoke-GitHubDeploy { Write-Log \"Triggering GitHub Pages deployment\...\" \$ghCli = Get-Command gh -ErrorAction SilentlyContinue if (-not \$ghCli) { Write-Log \"GitHub CLI (gh) not found. Cannot trigger deployment.\" -Level WARN return } try { & gh workflow run quarto-publish.yml \--repo \$script:Config.GitHubRepo Write-Log \"GitHub Actions workflow \'quarto-publish.yml\' triggered.\" -Level SUCCESS } catch { Write-Log \"Failed to trigger GitHub deployment: \$\_\" -Level ERROR } } \# ============================================================================== \# Main Execution \# ============================================================================== try { Write-Log \"=\" \* 72 Write-Log \"UIAO Quarto Render Pipeline --- Starting\" Write-Log \"=\" \* 72 \# Step 1: Validate \$quartoVersion = Test-QuartoInstallation \# Step 2: Render \$fileCount = Invoke-QuartoRender -File \$SingleFile \# Step 3: Validate (unless skipped) \$brokenLinks = 0 if (-not \$SkipValidation) { \$brokenLinks = Invoke-OutputValidation } else { Write-Log \"Validation skipped per -SkipValidation flag.\" -Level WARN } \# Step 4: Deploy to IIS Copy-ToIIS \# Step 5: Deploy to GitHub (if requested) if (\$DeployToGitHub) { Invoke-GitHubDeploy } \# Summary Write-Log \"=\" \* 72 Write-Log \"Pipeline Summary:\" Write-Log \" Quarto Version: \$quartoVersion\" Write-Log \" Files Rendered: \$fileCount\" Write-Log \" Broken Links: \$brokenLinks\" Write-Log \" IIS Deploy: Complete\" Write-Log \" GitHub Deploy: \$(if (\$DeployToGitHub) { \'Triggered\' } else { \'Skipped\' })\" Write-Log \"=\" \* 72 Write-Log \"UIAO Quarto Render Pipeline --- Complete\" -Level SUCCESS } catch { Write-Log \"PIPELINE FAILED: \$(\$\_.Exception.Message)\" -Level ERROR Write-Log \"Stack trace: \$(\$\_.ScriptStackTrace)\" -Level ERROR exit 1 }
+
+8.3 Link Validation Script (validate-links.ps1)
+
+#Requires -Version 7.0 \<# .SYNOPSIS UIAO Documentation Link Validator .DESCRIPTION Scans rendered HTML output for broken internal links, missing image references, and invalid cross-document references. Outputs a validation report as JSON. .PARAMETER SitePath Path to the rendered site directory (default: docs/\_site). .PARAMETER OutputReport Path for the JSON validation report output. .EXAMPLE .\\validate-links.ps1 -SitePath \"C:\\Users\\whale\\git\\uiao\\docs\\\_site\" .NOTES Classification: Controlled \| Boundary: GCC-Moderate Author: Michael Stratton Version: 1.0.0 #\> \[CmdletBinding()\] param( \[string\]\$SitePath = \'C:\\Users\\whale\\git\\uiao\\docs\\\_site\', \[string\]\$OutputReport = \'D:\\UIAO\\Logs\\link-validation-report.json\' ) \$ErrorActionPreference = \'Stop\' \# ============================================================================== \# Initialize Report \# ============================================================================== \$report = \@{ timestamp = (Get-Date -Format \'yyyy-MM-ddTHH:mm:ssZ\') site_path = \$SitePath total_files = 0 total_links = 0 broken_links = @() missing_images = @() broken_anchors = @() summary = \@{ links_checked = 0 links_valid = 0 links_broken = 0 images_checked = 0 images_valid = 0 images_missing = 0 anchors_checked = 0 anchors_valid = 0 anchors_broken = 0 } } \# ============================================================================== \# Validate Site Path \# ============================================================================== if (-not (Test-Path \$SitePath)) { Write-Error \"Site path not found: \$SitePath\" exit 1 } \$htmlFiles = Get-ChildItem -Path \$SitePath -Filter \'\*.html\' -Recurse \$report.total_files = \$htmlFiles.Count Write-Host \"\[INFO\] Scanning \$(\$htmlFiles.Count) HTML files in \$SitePath\" \` -ForegroundColor Cyan \# ============================================================================== \# Build Anchor Index (all IDs across all pages) \# ============================================================================== \$anchorIndex = \@{} foreach (\$file in \$htmlFiles) { \$relativePath = \$file.FullName.Replace(\$SitePath, \'\').TrimStart(\'\\\', \'/\') \$content = Get-Content \$file.FullName -Raw -Encoding UTF8 \$idMatches = \[regex\]::Matches(\$content, \'id=\[\"\\u0027\](\[\^\"\\u0027\]+)\[\"\\u0027\]\') \$anchors = @() foreach (\$match in \$idMatches) { \$anchors += \$match.Groups\[1\].Value } \$anchorIndex\[\$relativePath\] = \$anchors } \# ============================================================================== \# Scan Each HTML File \# ============================================================================== foreach (\$file in \$htmlFiles) { \$relativePath = \$file.FullName.Replace(\$SitePath, \'\').TrimStart(\'\\\', \'/\') \$fileDir = Split-Path \$file.FullName -Parent \$content = Get-Content \$file.FullName -Raw -Encoding UTF8 \# \-\-- Check href links \-\-- \$hrefMatches = \[regex\]::Matches(\$content, \'href=\[\"\\u0027\](\[\^\"\\u0027#\]\[\^\"\\u0027\]\*)\[\"\\u0027\]\') foreach (\$match in \$hrefMatches) { \$href = \$match.Groups\[1\].Value \$report.summary.links_checked++ \# Skip external links, javascript, and mailto if (\$href -match \'\^(https?://\|mailto:\|javascript:\|tel:)\') { continue } \# Resolve relative path \$targetPath = Join-Path \$fileDir \$href \$targetPath = \[System.IO.Path\]::GetFullPath(\$targetPath) if (-not (Test-Path \$targetPath)) { \$report.summary.links_broken++ \$report.broken_links += \@{ source = \$relativePath target = \$href type = \'BROKEN\' } Write-Host \" \[BROKEN\] \$relativePath -\> \$href\" -ForegroundColor Red } else { \$report.summary.links_valid++ } } \# \-\-- Check image references \-\-- \$imgMatches = \[regex\]::Matches(\$content, \'src=\[\"\\u0027\](\[\^\"\\u0027\]+)\[\"\\u0027\]\') foreach (\$match in \$imgMatches) { \$src = \$match.Groups\[1\].Value \$report.summary.images_checked++ \# Skip external and data URIs if (\$src -match \'\^(https?://\|data:)\') { continue } \$imgPath = Join-Path \$fileDir \$src \$imgPath = \[System.IO.Path\]::GetFullPath(\$imgPath) if (-not (Test-Path \$imgPath)) { \$report.summary.images_missing++ \$report.missing_images += \@{ source = \$relativePath image = \$src type = \'MISSING\' } Write-Host \" \[MISSING IMG\] \$relativePath -\> \$src\" -ForegroundColor Yellow } else { \$report.summary.images_valid++ } } \# \-\-- Check anchor references (#fragment) \-\-- \$anchorMatches = \[regex\]::Matches(\$content, \'href=\[\"\\u0027\](\[\^\"\\u0027\]\*#\[\^\"\\u0027\]+)\[\"\\u0027\]\') foreach (\$match in \$anchorMatches) { \$fullRef = \$match.Groups\[1\].Value \$report.summary.anchors_checked++ \$parts = \$fullRef -split \'#\', 2 \$targetFile = \$parts\[0\] \$anchor = \$parts\[1\] \# Determine which file to check if (\[string\]::IsNullOrEmpty(\$targetFile)) { \$checkFile = \$relativePath } else { \$checkFile = \$targetFile } \# Look up anchor in index \$normalizedPath = \$checkFile -replace \'\\\\\', \'/\' if (\$anchorIndex.ContainsKey(\$normalizedPath)) { if (\$anchor -notin \$anchorIndex\[\$normalizedPath\]) { \$report.summary.anchors_broken++ \$report.broken_anchors += \@{ source = \$relativePath target = \$fullRef anchor = \$anchor type = \'BROKEN_ANCHOR\' } Write-Host \" \[BROKEN ANCHOR\] \$relativePath -\> \$fullRef\" \` -ForegroundColor Magenta } else { \$report.summary.anchors_valid++ } } } } \# ============================================================================== \# Output Report \# ============================================================================== \$report.total_links = \$report.summary.links_checked + \$report.summary.images_checked + \$report.summary.anchors_checked \# Ensure output directory exists \$reportDir = Split-Path \$OutputReport -Parent if (-not (Test-Path \$reportDir)) { New-Item -Path \$reportDir -ItemType Directory -Force \| Out-Null } \$report \| ConvertTo-Json -Depth 5 \| Set-Content -Path \$OutputReport -Encoding UTF8 \# Console summary Write-Host \"\`n\" -NoNewline Write-Host \"=\" \* 60 -ForegroundColor Cyan Write-Host \"UIAO Link Validation Report\" -ForegroundColor Cyan Write-Host \"=\" \* 60 -ForegroundColor Cyan Write-Host \" Files scanned: \$(\$report.total_files)\" Write-Host \" Links checked: \$(\$report.summary.links_checked)\" Write-Host \" Links broken: \$(\$report.summary.links_broken)\" \` -ForegroundColor \$(if (\$report.summary.links_broken -gt 0) { \'Red\' } else { \'Green\' }) Write-Host \" Images checked: \$(\$report.summary.images_checked)\" Write-Host \" Images missing: \$(\$report.summary.images_missing)\" \` -ForegroundColor \$(if (\$report.summary.images_missing -gt 0) { \'Yellow\' } else { \'Green\' }) Write-Host \" Anchors checked: \$(\$report.summary.anchors_checked)\" Write-Host \" Anchors broken: \$(\$report.summary.anchors_broken)\" \` -ForegroundColor \$(if (\$report.summary.anchors_broken -gt 0) { \'Magenta\' } else { \'Green\' }) Write-Host \"=\" \* 60 -ForegroundColor Cyan Write-Host \" Report saved to: \$OutputReport\" -ForegroundColor Cyan
+
+9\. Gitea Integration --- Post-Receive Hook Extension
+
+The existing UIAO Gitea post-receive hook must be extended to detect changes in the docs/ directory and trigger Quarto rendering. This extension integrates with the existing hook architecture, adding documentation-specific logic without disrupting other hook functionality.
+
+9.1 Hook Extension Architecture
+
+  ---------------------------------------------------------------------------------------------------------
+  **Component**          **Description**
+  ---------------------- ----------------------------------------------------------------------------------
+  Change Detection       Examines git diff output to identify changes in docs/ directory
+
+  Render Trigger         Invokes render-docs.ps1 via PowerShell subprocess
+
+  Status Logging         Appends render status to D:\\UIAO\\Logs\\quarto-render.jsonl (JSON Lines format)
+
+  Webhook Notification   Sends success/failure notification to Gitea API webhook endpoint
+  ---------------------------------------------------------------------------------------------------------
+
+9.2 Complete Hook Extension Code
+
+#Requires -Version 7.0 \<# .SYNOPSIS UIAO Gitea Post-Receive Hook --- Quarto Render Extension .DESCRIPTION This script is called as part of the Gitea post-receive hook pipeline. It detects changes in the docs/ directory and triggers the Quarto render pipeline when documentation files are modified. .NOTES Classification: Controlled \| Boundary: GCC-Moderate Author: Michael Stratton Version: 1.0.0 Integration: Append to existing post-receive hook or call as module. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$OldRev, \[Parameter(Mandatory)\] \[string\]\$NewRev, \[Parameter(Mandatory)\] \[string\]\$RefName ) \# ============================================================================== \# Configuration \# ============================================================================== \$script:QuartoConfig = \@{ RepoRoot = \'D:\\Gitea\\repositories\\whale\\uiao.git\' WorkTree = \'C:\\Users\\whale\\git\\uiao\' DocsDir = \'docs/\' RenderScript = \'C:\\Users\\whale\\git\\uiao\\tools\\quarto\\render-docs.ps1\' JsonlLog = \'D:\\UIAO\\Logs\\quarto-render.jsonl\' LogDir = \'D:\\UIAO\\Logs\' GiteaUrl = \'http://localhost:3000\' GiteaToken = \$env:GITEA_API_TOKEN WebhookUrl = \'http://localhost:3000/api/v1/repos/whale/uiao/hooks\' } \# ============================================================================== \# Helper: Append JSONL log entry \# ============================================================================== function Write-JsonlLog { param( \[string\]\$Status, \[string\]\$Message, \[int\]\$FilesChanged = 0, \[int\]\$FilesRendered = 0, \[double\]\$DurationSeconds = 0 ) if (-not (Test-Path \$script:QuartoConfig.LogDir)) { New-Item -Path \$script:QuartoConfig.LogDir -ItemType Directory -Force \| Out-Null } \$logEntry = \@{ timestamp = (Get-Date -Format \'yyyy-MM-ddTHH:mm:ssZ\') event = \'quarto-render\' status = \$Status message = \$Message ref = \$RefName old_rev = \$OldRev.Substring(0, \[Math\]::Min(8, \$OldRev.Length)) new_rev = \$NewRev.Substring(0, \[Math\]::Min(8, \$NewRev.Length)) files_changed = \$FilesChanged files_rendered = \$FilesRendered duration_sec = \[Math\]::Round(\$DurationSeconds, 2) } \| ConvertTo-Json -Compress Add-Content -Path \$script:QuartoConfig.JsonlLog -Value \$logEntry -Encoding UTF8 } \# ============================================================================== \# Helper: Send Gitea Webhook Notification \# ============================================================================== function Send-GiteaNotification { param( \[string\]\$Status, \[string\]\$Message ) if (-not \$script:QuartoConfig.GiteaToken) { Write-Warning \"\[QUARTO-HOOK\] GITEA_API_TOKEN not set. Skipping notification.\" return } \$statusEmoji = switch (\$Status) { \'success\' { \'✅\' } \'failure\' { \'❌\' } \'skipped\' { \'⏭️\' } default { \'ℹ️\' } } \$commentBody = \@{ body = \"\$statusEmoji \*\*Quarto Render: \$(\$Status.ToUpper())\*\* --- \$Message\" } \$headers = \@{ \'Authorization\' = \"token \$(\$script:QuartoConfig.GiteaToken)\" \'Content-Type\' = \'application/json\' } try { \# Post as a commit comment on the new revision \$apiUrl = \"\$(\$script:QuartoConfig.GiteaUrl)/api/v1/repos/whale/uiao\" + \"/git/commits/\$NewRev/comments\" Invoke-RestMethod -Uri \$apiUrl -Method Post \` -Headers \$headers -Body (\$commentBody \| ConvertTo-Json) \` -ErrorAction SilentlyContinue \| Out-Null } catch { Write-Warning \"\[QUARTO-HOOK\] Failed to send Gitea notification: \$\_\" } } \# ============================================================================== \# Main: Detect docs/ changes and trigger render \# ============================================================================== try { Write-Host \"\[QUARTO-HOOK\] Checking for documentation changes\...\" \` -ForegroundColor Cyan \# Only process pushes to main branch if (\$RefName -ne \'refs/heads/main\') { Write-Host \"\[QUARTO-HOOK\] Skipping non-main branch: \$RefName\" Write-JsonlLog -Status \'skipped\' -Message \"Non-main branch: \$RefName\" return } \# Detect changed files in docs/ \$changedFiles = & git -C \$script:QuartoConfig.WorkTree \` diff \--name-only \$OldRev \$NewRev \-- \$script:QuartoConfig.DocsDir 2\>&1 if (-not \$changedFiles -or \$changedFiles.Count -eq 0) { Write-Host \"\[QUARTO-HOOK\] No changes in docs/. Render skipped.\" Write-JsonlLog -Status \'skipped\' -Message \"No docs/ changes detected\" Send-GiteaNotification -Status \'skipped\' \` -Message \"No documentation changes detected.\" return } \$qmdChanges = (\$changedFiles \| Where-Object { \$\_ -match \'\\.qmd\$\' }).Count \$totalChanges = \$changedFiles.Count Write-Host \"\[QUARTO-HOOK\] Detected \$totalChanges changed file(s) \" + \"(\$qmdChanges .qmd) in docs/\" \# Update work tree Write-Host \"\[QUARTO-HOOK\] Updating work tree\...\" & git -C \$script:QuartoConfig.WorkTree checkout main \--force 2\>&1 \| Out-Null & git -C \$script:QuartoConfig.WorkTree pull \--ff-only 2\>&1 \| Out-Null \# Trigger Quarto render \$renderStart = Get-Date Write-Host \"\[QUARTO-HOOK\] Triggering Quarto render pipeline\...\" \$renderResult = & powershell.exe -NoProfile -ExecutionPolicy Bypass \` -File \$script:QuartoConfig.RenderScript 2\>&1 \$renderDuration = ((Get-Date) - \$renderStart).TotalSeconds if (\$LASTEXITCODE -eq 0) { Write-Host \"\[QUARTO-HOOK\] Render completed successfully \" + \"(\$(\[Math\]::Round(\$renderDuration, 1))s).\" -ForegroundColor Green Write-JsonlLog -Status \'success\' \` -Message \"Render completed successfully\" \` -FilesChanged \$totalChanges \` -FilesRendered \$qmdChanges \` -DurationSeconds \$renderDuration Send-GiteaNotification -Status \'success\' \` -Message (\"Rendered \$qmdChanges .qmd file(s) in \" + \"\$(\[Math\]::Round(\$renderDuration, 1))s. \" + \"Internal site updated at docs.uiao.local.\") } else { \$errorMsg = \$renderResult \| Select-Object -Last 5 \| Out-String Write-Host \"\[QUARTO-HOOK\] Render FAILED.\" -ForegroundColor Red Write-JsonlLog -Status \'failure\' \` -Message \"Render failed: \$errorMsg\" \` -FilesChanged \$totalChanges \` -DurationSeconds \$renderDuration Send-GiteaNotification -Status \'failure\' \` -Message \"Quarto render failed after \$(\[Math\]::Round(\$renderDuration, 1))s. Check logs.\" } } catch { Write-Host \"\[QUARTO-HOOK\] Exception: \$(\$\_.Exception.Message)\" -ForegroundColor Red Write-JsonlLog -Status \'failure\' -Message \"Exception: \$(\$\_.Exception.Message)\" Send-GiteaNotification -Status \'failure\' \` -Message \"Hook exception: \$(\$\_.Exception.Message)\" }
+
+10\. GitHub Actions CI/CD Workflows
+
+10.1 quarto-publish.yml --- Full Deployment
+
+This workflow renders the Quarto project and deploys to GitHub Pages on every push to main that modifies files under docs/.
+
+\# ============================================================================== \# UIAO Docs --- Quarto Publish to GitHub Pages \# File: .github/workflows/quarto-publish.yml \# Classification: Controlled \| Boundary: GCC-Moderate \# ============================================================================== name: UIAO Docs --- Quarto Publish on: push: branches: \[main\] paths: \[\'docs/\*\*\'\] workflow_dispatch: permissions: contents: read pages: write id-token: write concurrency: group: \"pages\" cancel-in-progress: false jobs: build: runs-on: ubuntu-latest steps: - name: Checkout repository uses: actions/checkout@v4 - name: Setup Quarto uses: quarto-dev/quarto-actions/setup@v2 with: version: \'1.5.57\' - name: Setup Python (for dashboard pages) uses: actions/setup-python@v5 with: python-version: \'3.11\' cache: \'pip\' - name: Install Python dependencies run: \| pip install pandas jupyter matplotlib - name: Verify Quarto installation run: quarto check - name: Render Quarto project run: \| cd docs quarto render echo \"::notice::Quarto render completed successfully\" - name: Verify build output run: \| FILE_COUNT=\$(find docs/\_site -name \"\*.html\" \| wc -l) echo \"::notice::Generated \$FILE_COUNT HTML files\" if \[ \"\$FILE_COUNT\" -lt 10 \]; then echo \"::error::Too few HTML files generated (\$FILE_COUNT). Build may have failed.\" exit 1 fi - name: Upload Pages artifact uses: actions/upload-pages-artifact@v3 with: path: docs/\_site deploy: needs: build runs-on: ubuntu-latest environment: name: github-pages url: \${{ steps.deployment.outputs.page_url }} steps: - name: Deploy to GitHub Pages id: deployment uses: actions/deploy-pages@v4 - name: Post deployment notice run: \| echo \"::notice::UIAO Docs deployed to \${{ steps.deployment.outputs.page_url }}\"
+
+10.2 quarto-validate.yml --- PR Validation
+
+This workflow runs on pull requests that touch documentation files. It renders the Quarto project to verify the build succeeds but does not deploy.
+
+\# ============================================================================== \# UIAO Docs --- Quarto Validate (PR Check) \# File: .github/workflows/quarto-validate.yml \# Classification: Controlled \| Boundary: GCC-Moderate \# ============================================================================== name: UIAO Docs --- Quarto Validate on: pull_request: branches: \[main\] paths: \[\'docs/\*\*\'\] permissions: contents: read pull-requests: write jobs: validate: runs-on: ubuntu-latest steps: - name: Checkout repository uses: actions/checkout@v4 - name: Setup Quarto uses: quarto-dev/quarto-actions/setup@v2 with: version: \'1.5.57\' - name: Setup Python uses: actions/setup-python@v5 with: python-version: \'3.11\' cache: \'pip\' - name: Install Python dependencies run: pip install pandas jupyter matplotlib - name: Render Quarto project (validation only) run: \| cd docs quarto render 2\>&1 \| tee render-output.log RENDER_EXIT=\$? if \[ \$RENDER_EXIT -ne 0 \]; then echo \"::error::Quarto render failed. See log output above.\" exit 1 fi - name: Count generated files id: count run: \| HTML_COUNT=\$(find docs/\_site -name \"\*.html\" \| wc -l) echo \"html_count=\$HTML_COUNT\" \>\> \$GITHUB_OUTPUT echo \"::notice::Validation render produced \$HTML_COUNT HTML files\" - name: Check for render warnings run: \| if grep -i \"warning\" docs/render-output.log; then echo \"::warning::Quarto render produced warnings. Review output.\" fi - name: Post PR comment with results if: always() uses: actions/github-script@v7 with: script: \| const htmlCount = \'\${{ steps.count.outputs.html_count }}\'; const status = \'\${{ job.status }}\' === \'success\' ? \'✅\' : \'❌\'; const body = \`\${status} \*\*Quarto Validation Result\*\*\\n\\n\` + \`- \*\*Status:\*\* \${{ job.status }}\\n\` + \`- \*\*HTML files generated:\*\* \${htmlCount}\\n\` + \`- \*\*Quarto version:\*\* 1.5.57\\n\\n\` + \`\*Classification: Controlled \| Boundary: GCC-Moderate\*\`; github.rest.issues.createComment({ issue_number: context.issue.number, owner: context.repo.owner, repo: context.repo.repo, body: body });
+
+10.3 quarto-link-check.yml --- Link Validation
+
+This workflow validates all internal and external links in the rendered documentation output.
+
+\# ============================================================================== \# UIAO Docs --- Link Validation \# File: .github/workflows/quarto-link-check.yml \# Classification: Controlled \| Boundary: GCC-Moderate \# ============================================================================== name: UIAO Docs --- Link Check on: push: branches: \[main\] paths: \[\'docs/\*\*\'\] pull_request: branches: \[main\] paths: \[\'docs/\*\*\'\] schedule: \# Run weekly on Mondays at 06:00 UTC to catch external link rot - cron: \'0 6 \* \* 1\' workflow_dispatch: permissions: contents: read issues: write jobs: link-check: runs-on: ubuntu-latest steps: - name: Checkout repository uses: actions/checkout@v4 - name: Setup Quarto uses: quarto-dev/quarto-actions/setup@v2 with: version: \'1.5.57\' - name: Setup Python uses: actions/setup-python@v5 with: python-version: \'3.11\' - name: Install dependencies run: pip install pandas jupyter matplotlib linkchecker - name: Render Quarto project run: \| cd docs quarto render - name: Run internal link check id: internal run: \| cd docs/\_site \# Check for broken internal links using grep and file existence BROKEN=0 for html_file in \$(find . -name \"\*.html\"); do \# Extract internal hrefs grep -oP \'href=\"(?!https?://\|mailto:\|javascript:\|#\|data:)\\K\[\^\"\]+\' \\ \"\$html_file\" 2\>/dev/null \| while read -r link; do \# Remove query string and fragment clean_link=\$(echo \"\$link\" \| sed \'s/\[?#\].\*//\') dir=\$(dirname \"\$html_file\") target=\"\$dir/\$clean_link\" if \[ ! -f \"\$target\" \] && \[ ! -d \"\$target\" \]; then echo \"::warning::Broken link in \$html_file -\> \$link\" BROKEN=\$((BROKEN + 1)) fi done done echo \"broken_count=\$BROKEN\" \>\> \$GITHUB_OUTPUT - name: Run external link check if: github.event_name == \'schedule\' \|\| github.event_name == \'workflow_dispatch\' continue-on-error: true run: \| cd docs/\_site linkchecker \--check-extern \\ \--no-warnings \\ \--timeout 30 \\ \--threads 5 \\ \--output text \\ index.html 2\>&1 \| tee ../link-check-report.txt \|\| true - name: Upload link check report if: always() uses: actions/upload-artifact@v4 with: name: link-check-report path: docs/link-check-report.txt retention-days: 30 - name: Create issue on broken links (scheduled runs only) if: github.event_name == \'schedule\' && failure() uses: actions/github-script@v7 with: script: \| const body = \`## Broken Links Detected\\n\\n\` + \`The scheduled link check found broken links in the UIAO \` + \`documentation.\\n\\n\` + \`\*\*Run:\*\* \${context.runId}\\n\` + \`\*\*Date:\*\* \${new Date().toISOString()}\\n\\n\` + \`Please review the link-check-report artifact for details.\\n\\n\` + \`\*Classification: Controlled \| Boundary: GCC-Moderate\*\`; github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title: \'🔗 Broken Links Detected in UIAO Docs\', body: body, labels: \[\'documentation\', \'bug\'\] });
+
+11\. IIS Internal Hosting Configuration
+
+The internal documentation site is hosted on IIS (Internet Information Services) on Windows Server 2025, accessible at docs.uiao.local. This provides domain-authenticated access to documentation for internal team members.
+
+11.1 IIS Site Setup
+
+#Requires -Version 7.0 #Requires -RunAsAdministrator \<# .SYNOPSIS UIAO Documentation --- IIS Site Configuration .DESCRIPTION Creates and configures the IIS site for hosting UIAO documentation at docs.uiao.local with Windows Integrated Authentication and HTTPS binding. .NOTES Classification: Controlled \| Boundary: GCC-Moderate Author: Michael Stratton Version: 1.0.0 Prerequisite: IIS and WebAdministration module must be installed. #\> \$ErrorActionPreference = \'Stop\' \# ============================================================================== \# Step 1: Install IIS Features (if not already installed) \# ============================================================================== Write-Host \"\[INFO\] Ensuring IIS features are installed\...\" -ForegroundColor Cyan \$features = @( \'Web-Server\', \'Web-Default-Doc\', \'Web-Static-Content\', \'Web-Http-Errors\', \'Web-Http-Logging\', \'Web-Stat-Compression\', \'Web-Filtering\', \'Web-Windows-Auth\', \'Web-Mgmt-Console\' ) foreach (\$feature in \$features) { \$installed = Get-WindowsFeature -Name \$feature if (-not \$installed.Installed) { Install-WindowsFeature -Name \$feature -IncludeManagementTools Write-Host \"\[INFO\] Installed: \$feature\" -ForegroundColor Green } } Import-Module WebAdministration \# ============================================================================== \# Step 2: Create Site Directory \# ============================================================================== \$sitePath = \'D:\\UIAO\\Docs\\site\' Write-Host \"\[INFO\] Creating site directory: \$sitePath\" -ForegroundColor Cyan if (-not (Test-Path \$sitePath)) { New-Item -Path \$sitePath -ItemType Directory -Force \| Out-Null } \# Set NTFS permissions \$acl = Get-Acl \$sitePath \$iisUser = New-Object System.Security.AccessControl.FileSystemAccessRule( \'IIS_IUSRS\', \'ReadAndExecute\', \'ContainerInherit,ObjectInherit\', \'None\', \'Allow\' ) \$acl.AddAccessRule(\$iisUser) Set-Acl -Path \$sitePath -AclObject \$acl Write-Host \"\[INFO\] NTFS permissions set for IIS_IUSRS.\" -ForegroundColor Green \# ============================================================================== \# Step 3: Create Application Pool \# ============================================================================== \$appPoolName = \'UIAO-Docs-Pool\' Write-Host \"\[INFO\] Creating application pool: \$appPoolName\" -ForegroundColor Cyan if (-not (Test-Path \"IIS:\\AppPools\\\$appPoolName\")) { New-WebAppPool -Name \$appPoolName \| Out-Null } Set-ItemProperty \"IIS:\\AppPools\\\$appPoolName\" -Name managedRuntimeVersion -Value \'\' Set-ItemProperty \"IIS:\\AppPools\\\$appPoolName\" -Name managedPipelineMode -Value \'Integrated\' Set-ItemProperty \"IIS:\\AppPools\\\$appPoolName\" -Name startMode -Value \'AlwaysRunning\' Write-Host \"\[INFO\] Application pool configured.\" -ForegroundColor Green \# ============================================================================== \# Step 4: Create SSL Certificate (Self-Signed for Internal Use) \# ============================================================================== Write-Host \"\[INFO\] Creating SSL certificate for docs.uiao.local\...\" -ForegroundColor Cyan \$certExists = Get-ChildItem -Path Cert:\\LocalMachine\\My \| Where-Object { \$\_.Subject -match \'docs\\.uiao\\.local\' } if (-not \$certExists) { \$cert = New-SelfSignedCertificate \` -DnsName \'docs.uiao.local\' \` -CertStoreLocation \'Cert:\\LocalMachine\\My\' \` -NotAfter (Get-Date).AddYears(5) \` -KeyAlgorithm RSA \` -KeyLength 2048 \` -FriendlyName \'UIAO Docs Internal Certificate\' \$thumbprint = \$cert.Thumbprint Write-Host \"\[INFO\] Certificate created: \$thumbprint\" -ForegroundColor Green } else { \$thumbprint = \$certExists.Thumbprint Write-Host \"\[INFO\] Existing certificate found: \$thumbprint\" -ForegroundColor Yellow } \# ============================================================================== \# Step 5: Create IIS Website \# ============================================================================== \$siteName = \'UIAO-Docs\' Write-Host \"\[INFO\] Creating IIS site: \$siteName\" -ForegroundColor Cyan \# Remove existing site if present if (Get-Website -Name \$siteName -ErrorAction SilentlyContinue) { Remove-Website -Name \$siteName Write-Host \"\[INFO\] Removed existing site.\" -ForegroundColor Yellow } New-Website -Name \$siteName \` -PhysicalPath \$sitePath \` -ApplicationPool \$appPoolName \` -Port 443 \` -Ssl \` -HostHeader \'docs.uiao.local\' \` -SslFlags 1 \| Out-Null \# Bind the certificate \$binding = Get-WebBinding -Name \$siteName -Protocol \'https\' \$binding.AddSslCertificate(\$thumbprint, \'My\') Write-Host \"\[INFO\] IIS site created with HTTPS binding.\" -ForegroundColor Green \# ============================================================================== \# Step 6: Configure Authentication \# ============================================================================== Write-Host \"\[INFO\] Configuring Windows Integrated Authentication\...\" -ForegroundColor Cyan \# Disable anonymous authentication Set-WebConfigurationProperty \` -Filter \'/system.webServer/security/authentication/anonymousAuthentication\' \` -Name \'enabled\' -Value \$false -Location \$siteName \# Enable Windows authentication Set-WebConfigurationProperty \` -Filter \'/system.webServer/security/authentication/windowsAuthentication\' \` -Name \'enabled\' -Value \$true -Location \$siteName Write-Host \"\[INFO\] Authentication configured: Windows Integrated only.\" -ForegroundColor Green \# ============================================================================== \# Step 7: Start the Site \# ============================================================================== Start-Website -Name \$siteName Write-Host \"\[INFO\] Site started: https://docs.uiao.local\" -ForegroundColor Green Write-Host \"\`n\[SUCCESS\] UIAO Docs IIS site configuration complete.\" -ForegroundColor Green Write-Host \" URL: https://docs.uiao.local\" -ForegroundColor Cyan Write-Host \" Physical Path: \$sitePath\" -ForegroundColor Cyan Write-Host \" App Pool: \$appPoolName\" -ForegroundColor Cyan Write-Host \" Auth: Windows Integrated\" -ForegroundColor Cyan Write-Host \" Certificate: \$thumbprint\" -ForegroundColor Cyan
+
+11.2 web.config
+
+Place the following web.config in the D:\\UIAO\\Docs\\site\\ root to configure static content serving, caching, and security headers:
+
+\<?xml version=\"1.0\" encoding=\"UTF-8\"?\> \<configuration\> \<system.webServer\> \<!\-- Default Documents \--\> \<defaultDocument\> \<files\> \<clear /\> \<add value=\"index.html\" /\> \</files\> \</defaultDocument\> \<!\-- Static Content MIME Types \--\> \<staticContent\> \<remove fileExtension=\".json\" /\> \<mimeMap fileExtension=\".json\" mimeType=\"application/json\" /\> \<remove fileExtension=\".woff2\" /\> \<mimeMap fileExtension=\".woff2\" mimeType=\"font/woff2\" /\> \<remove fileExtension=\".woff\" /\> \<mimeMap fileExtension=\".woff\" mimeType=\"font/woff\" /\> \<remove fileExtension=\".webp\" /\> \<mimeMap fileExtension=\".webp\" mimeType=\"image/webp\" /\> \<!\-- Cache static assets for 7 days \--\> \<clientCache cacheControlMode=\"UseMaxAge\" cacheControlMaxAge=\"7.00:00:00\" /\> \</staticContent\> \<!\-- Compression \--\> \<urlCompression doStaticCompression=\"true\" doDynamicCompression=\"false\" /\> \<!\-- Security Headers \--\> \<httpProtocol\> \<customHeaders\> \<add name=\"X-Content-Type-Options\" value=\"nosniff\" /\> \<add name=\"X-Frame-Options\" value=\"SAMEORIGIN\" /\> \<add name=\"X-XSS-Protection\" value=\"1; mode=block\" /\> \<add name=\"Referrer-Policy\" value=\"strict-origin-when-cross-origin\" /\> \<add name=\"Content-Security-Policy\" value=\"default-src \'self\'; script-src \'self\' \'unsafe-inline\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data:; font-src \'self\'\" /\> \<add name=\"X-Classification\" value=\"Controlled \| GCC-Moderate\" /\> \</customHeaders\> \</httpProtocol\> \<!\-- Authentication \--\> \<security\> \<authentication\> \<anonymousAuthentication enabled=\"false\" /\> \<windowsAuthentication enabled=\"true\" /\> \</authentication\> \</security\> \<!\-- Custom Error Pages \--\> \<httpErrors errorMode=\"Custom\" existingResponse=\"Replace\"\> \<remove statusCode=\"404\" /\> \<error statusCode=\"404\" path=\"/404.html\" responseMode=\"ExecuteURL\" /\> \</httpErrors\> \</system.webServer\> \</configuration\>
+
+11.3 DNS Configuration
+
+Add the following DNS record to the internal Active Directory DNS zone to resolve docs.uiao.local:
+
+\# Add DNS A record for docs.uiao.local \# Run on the DNS server or a machine with RSAT DNS tools Add-DnsServerResourceRecordA \` -ZoneName \'uiao.local\' \` -Name \'docs\' \` -IPv4Address \'10.0.0.50\' \` -TimeToLive 01:00:00 \` -ComputerName \'DC01.uiao.local\' \# Verify the record Resolve-DnsName -Name \'docs.uiao.local\' -Type A
+
+12\. Content Authoring Standards
+
+All .qmd files in the UIAO documentation must adhere to the following authoring conventions to ensure consistency, governance compliance, and automated processing.
+
+12.1 YAML Frontmatter Requirements
+
+Every .qmd file must include the following YAML frontmatter fields:
+
+\-\-- document_id: \"GOV-CANON-001\" \# Unique ID: DOMAIN-TOPIC-NNN title: \"Canon Overview\" \# Human-readable page title description: \"Overview of the UIAO Governance Canon and its principles.\" classification: \"Controlled\" \# Always \"Controlled\" for UIAO boundary: \"GCC-Moderate\" \# Always \"GCC-Moderate\" author: \"Michael Stratton\" \# Primary author date: 2026-04-21 \# Creation or last major revision date date-modified: last-modified \# Auto-updated by Quarto version: \"1.0.0\" \# Semantic version of this document categories: \[governance, canon\] \# Tags for search and filtering \-\--
+
+  ---------------------------------------------------------------------------------------------------------------------
+  **Field**        **Required**   **Format**                **Description**
+  ---------------- -------------- ------------------------- -----------------------------------------------------------
+  document_id      Yes            DOMAIN-TOPIC-NNN          Unique identifier used in cross-references and audit logs
+
+  title            Yes            String                    Page title; rendered in browser tab and navigation
+
+  description      Yes            String (1--2 sentences)   Used for search metadata and social preview
+
+  classification   Yes            Controlled                Governance classification level
+
+  boundary         Yes            GCC-Moderate              Data boundary for handling requirements
+
+  author           Yes            String                    Primary author name
+
+  date             Yes            YYYY-MM-DD                Date of creation or last major revision
+
+  date-modified    Yes            last-modified             Auto-set by Quarto from file modification timestamp
+
+  version          Yes            Semantic versioning       Document version; incremented on substantive changes
+
+  categories       Recommended    YAML list                 Tags for filtering and site search
+  ---------------------------------------------------------------------------------------------------------------------
+
+12.2 Code Block Standards
+
+  --------------------------------------------------------------------------------------------------------------------------------------
+  **Convention**   **Rule**                                                   **Example**
+  ---------------- ---------------------------------------------------------- ----------------------------------------------------------
+  Language tag     Always specify the language for syntax highlighting        \`\`\`powershell, \`\`\`yaml, \`\`\`python
+
+  Completeness     PowerShell blocks must be complete and executable          Include param() blocks, error handling, and comments
+
+  Annotations      Use Quarto code annotations for line-by-line explanation   \# \<1\> at end of line, explanation below block
+
+  Folding          Long code blocks should use code-fold: true                Set in frontmatter or per-block with #\| code-fold: true
+
+  Header comment   Every code block should start with a purpose comment       \# UIAO --- \[Purpose Description\]
+  --------------------------------------------------------------------------------------------------------------------------------------
+
+12.3 Cross-Reference Syntax
+
+Use Quarto\'s built-in cross-reference system for linking between documents:
+
+  -------------------------------------------------------------------------------------------------------------------------
+  **Reference Type**        **Syntax**                       **Example**
+  ------------------------- -------------------------------- --------------------------------------------------------------
+  Section in same file      \@sec-section-id                 See \@sec-prerequisites for details.
+
+  Another .qmd file         \[Text\](path/to/file.qmd)       \[Drift Detection\](governance/drift-detection.qmd)
+
+  Section in another file   \[Text\](path/file.qmd#sec-id)   \[SLA Rules\](governance/sla-enforcement.qmd#sec-thresholds)
+
+  Figure reference          \@fig-figure-id                  As shown in \@fig-architecture.
+
+  Table reference           \@tbl-table-id                   See \@tbl-prerequisites for versions.
+  -------------------------------------------------------------------------------------------------------------------------
+
+12.4 Callout Block Usage
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Callout Type**           **Purpose**                                                            **Quarto Syntax**
+  -------------------------- ---------------------------------------------------------------------- ----------------------------------------------------------
+  ::: {.callout-warning}     Governance violation risks, breaking changes, destructive operations   ::: {.callout-warning title=\"Warning\"}
+
+  ::: {.callout-important}   Classification notices, boundary requirements, compliance mandates     ::: {.callout-important title=\"Classification Notice\"}
+
+  ::: {.callout-note}        Supplementary information, context, cross-references                   ::: {.callout-note title=\"Note\"}
+
+  ::: {.callout-tip}         Best practices, performance hints, PowerShell tips                     ::: {.callout-tip title=\"Tip\"}
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+12.5 Table and Diagram Conventions
+
+  --------------------------------------------------------------------------------------------------------------
+  **Convention**         **Rule**
+  ---------------------- ---------------------------------------------------------------------------------------
+  Table headers          Always bold, use sentence case
+
+  Table alignment        Left-align text, right-align numbers, center status indicators
+
+  Table labels           Include #tbl-id for cross-referencing: : Table caption {#tbl-my-table}
+
+  Diagram placeholders   Use format: \[PLACEHOLDER: DIAGRAM-XXX-NNN --- \"Title\" --- WxH px --- Description\]
+
+  Diagram IDs            Unique, prefixed by domain: DIAGRAM-QUARTO-001, DIAGRAM-DASH-001
+
+  Image alt text         Required for all images; descriptive, not decorative
+  --------------------------------------------------------------------------------------------------------------
+
+13\. Quarto Extensions and Filters
+
+The UIAO project uses a custom Quarto extension (uiao-theme) that includes two Lua filters: a classification banner filter and a metadata validation filter. These filters run during the Pandoc processing stage of every Quarto render.
+
+13.1 Extension Structure
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  docs/\_extensions/uiao-theme/ ├── \_extension.yml \# Extension manifest └── filters/ ├── classification-banner.lua \# Injects classification banner └── metadata-validator.lua \# Validates frontmatter compliance
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+13.2 Extension Manifest (\_extension.yml)
+
+\# ============================================================================== \# UIAO Theme Extension Manifest \# File: docs/\_extensions/uiao-theme/\_extension.yml \# ============================================================================== title: UIAO Theme author: Michael Stratton version: 1.0.0 contributes: filters: - filters/classification-banner.lua - filters/metadata-validator.lua
+
+13.3 Classification Banner Lua Filter
+
+This filter injects a classification banner at the top of every rendered HTML page, displaying \"Controlled \| GCC-Moderate\" in the UIAO governance style.
+
+\-- ============================================================================== \-- UIAO Classification Banner Lua Filter \-- File: docs/\_extensions/uiao-theme/filters/classification-banner.lua \-- Purpose: Injects a governance classification banner into every rendered page. \-- Classification: Controlled \| Boundary: GCC-Moderate \-- Version: 1.0.0 \-- ============================================================================== \-- Read classification and boundary from document metadata \-- Falls back to defaults if not specified in frontmatter local function get_classification(meta) local classification = \"Controlled\" local boundary = \"GCC-Moderate\" if meta.classification then classification = pandoc.utils.stringify(meta.classification) end if meta.boundary then boundary = pandoc.utils.stringify(meta.boundary) end return classification, boundary end \-- Build the HTML banner element local function create_banner_html(classification, boundary) local banner_html = string.format( \'\<div class=\"classification-banner\" role=\"banner\" \' .. \'aria-label=\"Document Classification\"\>\' .. \'CLASSIFICATION: %s &nbsp;\|&nbsp; BOUNDARY: %s\' .. \'\</div\>\', string.upper(classification), string.upper(boundary) ) return pandoc.RawBlock(\'html\', banner_html) end \-- Main filter function: process the entire document function Pandoc(doc) local classification, boundary = get_classification(doc.meta) \-- Create the banner block local banner = create_banner_html(classification, boundary) \-- Insert banner at the very beginning of the document body table.insert(doc.blocks, 1, banner) \-- Also add a footer classification notice local footer_html = string.format( \'\<div class=\"classification-footer\" \' .. \'style=\"margin-top: 48px; padding-top: 12px; \' .. \'border-top: 2px solid #1B3A5C; text-align: center; \' .. \'font-size: 0.8em; color: #666666; letter-spacing: 0.5px;\"\>\' .. \'Classification: %s \| Boundary: %s \| \' .. \'&copy; 2026 UIAO Governance OS\' .. \'\</div\>\', classification, boundary ) table.insert(doc.blocks, pandoc.RawBlock(\'html\', footer_html)) return doc end
+
+13.4 Metadata Validation Lua Filter
+
+This filter checks every .qmd file\'s YAML frontmatter for required fields and reports warnings during the render process if any fields are missing or malformed.
+
+\-- ============================================================================== \-- UIAO Metadata Validation Lua Filter \-- File: docs/\_extensions/uiao-theme/filters/metadata-validator.lua \-- Purpose: Validates that every .qmd file includes required UIAO frontmatter. \-- Classification: Controlled \| Boundary: GCC-Moderate \-- Version: 1.0.0 \-- ============================================================================== \-- Required metadata fields and their validation rules local required_fields = { { name = \"document_id\", pattern = \"\^%u+%-%u+%-%d+\$\", message = \"Must follow DOMAIN-TOPIC-NNN format (e.g., GOV-CANON-001)\" }, { name = \"title\", pattern = \".+\", message = \"Title is required and must not be empty\" }, { name = \"classification\", pattern = \"\^Controlled\$\", message = \"Classification must be \'Controlled\' for UIAO documents\" }, { name = \"boundary\", pattern = \"\^GCC%-Moderate\$\", message = \"Boundary must be \'GCC-Moderate\' for UIAO documents\" }, { name = \"author\", pattern = \".+\", message = \"Author is required\" }, { name = \"date\", pattern = \"\^%d%d%d%d%-%d%d%-%d%d\$\", message = \"Date must be in YYYY-MM-DD format\" }, { name = \"version\", pattern = \"\^%d+%.%d+%.%d+\$\", message = \"Version must follow semantic versioning (e.g., 1.0.0)\" } } \-- Validate a single field against its rule local function validate_field(meta, field) local value = meta\[field.name\] if not value then return false, string.format( \"MISSING: \'%s\' --- %s\", field.name, field.message ) end local str_value = pandoc.utils.stringify(value) if field.pattern and not string.match(str_value, field.pattern) then return false, string.format( \"INVALID: \'%s\' = \'%s\' --- %s\", field.name, str_value, field.message ) end return true, nil end \-- Main filter: validate metadata on document load function Meta(meta) local source_file = PANDOC_STATE.input_files\[1\] or \"unknown\" local errors = {} local warnings = 0 for \_, field in ipairs(required_fields) do local valid, message = validate_field(meta, field) if not valid then table.insert(errors, message) warnings = warnings + 1 end end \-- Report results if warnings \> 0 then io.stderr:write(string.format( \"\\n\[UIAO-META\] ⚠ %d validation warning(s) in: %s\\n\", warnings, source_file )) for \_, err in ipairs(errors) do io.stderr:write(string.format(\" → %s\\n\", err)) end io.stderr:write(\"\\n\") end return meta end
+
+14\. Monitoring and Troubleshooting
+
+14.1 Common Issues and Resolutions
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Symptom**                              **Cause**                                                                                        **Resolution**
+  ---------------------------------------- ------------------------------------------------------------------------------------------------ -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Render fails with \"engine not found\"   A .qmd file references an R or Python engine that is not installed                               Install the required runtime, or set engine: knitr / engine: jupyter only on pages that need computation. Mark engine as optional in \_quarto.yml using execute: enabled: false for static-only pages.
+
+  GitHub Pages returns 404                 The output-dir in \_quarto.yml does not match the path uploaded by the GitHub Actions workflow   Verify project.output-dir: \_site matches the path: docs/\_site in the upload-pages-artifact step. Check that GitHub Pages source is set to \"GitHub Actions\" in repository settings.
+
+  IIS shows stale content                  The Quarto render was not triggered, or robocopy failed to sync                                  Check the post-receive hook log at D:\\UIAO\\Logs\\quarto-render.jsonl. Verify render-docs.ps1 ran successfully. Manually run render-docs.ps1 and check the log output. Clear IIS cache: iisreset /restart.
+
+  Broken cross-references                  A file was moved or renamed without updating references in other files                           Run validate-links.ps1 to identify all broken references. Update href attributes in affected files. Consider using Quarto\'s project-relative paths.
+
+  CSS not loading on rendered pages        Theme path mismatch between \_quarto.yml and actual file location                                Verify that assets/css/uiao-theme.css exists relative to docs/. Check the format.html.css path in \_quarto.yml. Inspect browser DevTools console for 404 errors on CSS files.
+
+  Dashboard pages show \"No data\"         JSON data files not found at expected paths on the build machine                                 Verify data files exist at D:\\UIAO\\Assessment\\. For GitHub Actions builds, ensure sample/fallback data is included in the repository. Check file paths in dashboard .qmd code cells.
+
+  Render is very slow (\>10 minutes)       All computational cells re-execute on every render                                               Enable execute: freeze: auto in \_quarto.yml. This caches computational output and only re-runs cells when source changes. Also enable execute: cache: true.
+
+  Lua filter errors during render          Syntax error in Lua filter or incompatible Pandoc version                                        Run quarto check to verify Pandoc version. Test filters in isolation: pandoc \--lua-filter=filter.lua test.md. Check stderr output for Lua stack traces.
+
+  Post-receive hook does not fire          Hook file is not executable or not in the correct directory                                      Verify hook location: D:\\Gitea\\repositories\\whale\\uiao.git\\hooks\\post-receive. Check file permissions. Test manually by simulating a push event.
+
+  Metadata validation warnings             A .qmd file is missing required frontmatter fields                                               Review the stderr output during render for \[UIAO-META\] warnings. Add missing fields per Section 12.1 requirements.
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+14.2 Troubleshooting Commands
+
+\# ============================================================================== \# UIAO Quarto Troubleshooting Commands \# Classification: Controlled \| Boundary: GCC-Moderate \# ============================================================================== \# \-\-- Environment Diagnostics \-\-- \# Check Quarto installation and all engines quarto check \# Show Quarto version quarto \--version \# Show Pandoc version (bundled with Quarto) quarto pandoc \--version \# Inspect project configuration (reports errors in \_quarto.yml) cd C:\\Users\\whale\\git\\uiao\\docs quarto inspect \# \-\-- Render Diagnostics \-\-- \# Render with verbose logging to diagnose failures quarto render \--log-level DEBUG 2\>&1 \| Tee-Object -FilePath D:\\UIAO\\Logs\\quarto-debug.log \# Render a single file in isolation to pinpoint errors quarto render governance/drift-detection.qmd \--log-level DEBUG \# Preview with trace-level logging quarto preview \--port 4000 \--log-level TRACE \# \-\-- Log Review \-\-- \# View the last 20 render log entries (JSONL format) Get-Content D:\\UIAO\\Logs\\quarto-render.jsonl -Tail 20 \| ForEach-Object { \$\_ \| ConvertFrom-Json } \| Format-Table timestamp, status, message -AutoSize \# View render-docs.ps1 log Get-Content D:\\UIAO\\Logs\\quarto-render.log -Tail 50 \# View link validation report Get-Content D:\\UIAO\\Logs\\link-validation-report.json \| ConvertFrom-Json \| ConvertTo-Json -Depth 5 \# \-\-- IIS Diagnostics \-\-- \# Check IIS site status Get-Website -Name \'UIAO-Docs\' \# Check IIS application pool status Get-WebAppPoolState -Name \'UIAO-Docs-Pool\' \# Restart IIS site Restart-WebItem -PSPath \'IIS:\\Sites\\UIAO-Docs\' \# Clear IIS cache and restart iisreset /restart \# Check IIS error logs Get-Content \"\$env:SystemDrive\\inetpub\\logs\\LogFiles\\W3SVC\*\\\*.log\" -Tail 20 \# \-\-- Git / Gitea Diagnostics \-\-- \# Check post-receive hook existence and permissions Get-Item \'D:\\Gitea\\repositories\\whale\\uiao.git\\hooks\\post-receive\' \# Test git diff to simulate change detection git -C C:\\Users\\whale\\git\\uiao diff \--name-only HEAD\~1 HEAD \-- docs/ \# Verify Gitea API connectivity Invoke-RestMethod -Uri \'http://localhost:3000/api/v1/version\'
+
+15\. Integration Matrix
+
+The following matrix documents every integration point between the Quarto pipeline and other UIAO components:
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Component**          **Integration Point**            **Data Flow**                                                        **Protocol**                        **Configuration File**
+  ---------------------- -------------------------------- -------------------------------------------------------------------- ----------------------------------- --------------------------------------
+  Gitea                  Post-receive hook                Push event → triggers render-docs.ps1                                Git hook (local script execution)   hooks/post-receive
+
+  GitHub Actions         quarto-publish.yml workflow      Push to main → render → deploy to GitHub Pages                       GitHub Actions API                  .github/workflows/quarto-publish.yml
+
+  GitHub Pages           Deployment target (external)     Rendered HTML uploaded via deploy-pages action                       HTTPS                               Repository Settings → Pages
+
+  IIS                    docs.uiao.local site             Rendered HTML copied via robocopy to D:\\UIAO\\Docs\\site\\          HTTPS (Windows Auth)                web.config
+
+  Governance Dashboard   dashboard/\*.qmd pages           Reads JSON from D:\\UIAO\\Assessment\\ → renders as HTML dashboard   File system (JSON)                  docs/dashboard/\*.qmd
+
+  Drift Detection        governance/drift-detection.qmd   Embeds drift reports; dashboard reads drift-report.json              File system (JSON)                  docs/governance/drift-detection.qmd
+
+  PowerShell Modules     modules/\*.qmd                   Auto-generated function documentation from module help               PowerShell Get-Help → Markdown      docs/modules/\*.qmd
+
+  Assessment Pipeline    assessment/\*.qmd                Renders assessment reports; links to JSON output for data            File system                         docs/assessment/\*.qmd
+
+  Active Directory DNS   docs.uiao.local A record         DNS resolves docs.uiao.local → IIS server IP                         DNS                                 AD DNS zone: uiao.local
+
+  SSL/TLS Certificates   IIS HTTPS binding                Self-signed or internal CA certificate for docs.uiao.local           HTTPS/TLS                           Cert:\\LocalMachine\\My
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:+
+| **DIAGRAM-QUARTO-003**                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| *\"UIAO Component Integration Map\"*                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Dimensions:** 1000 × 600 px                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Description:** A network-style diagram showing all UIAO components and their connections. Central node: Quarto Pipeline. Connected nodes: Gitea (post-receive), GitHub Actions (CI/CD), GitHub Pages (external deploy), IIS (internal deploy), Assessment Pipeline (JSON data), PowerShell Modules (function docs), Governance Dashboard (visualizations), Active Directory DNS (name resolution). Each connection is labeled with the protocol and data flow direction. |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Appendix A: Complete File Listing
+
+The following tables list all 124 .qmd files in the UIAO documentation, organized by directory.
+
+A.1 Root (1 file)
+
+  ---------------------------------------------------------------------------------------------------------------
+  **File**    **Title**                     **Description**
+  ----------- ----------------------------- ---------------------------------------------------------------------
+  index.qmd   UIAO Governance OS --- Home   Landing page with project overview, quick links, and status summary
+
+  ---------------------------------------------------------------------------------------------------------------
+
+A.2 Governance (18 files)
+
+  --------------------------------------------------------------------------------------------------------------------
+  **File**                    **Title**                **Description**
+  --------------------------- ------------------------ ---------------------------------------------------------------
+  canon-overview.qmd          Canon Overview           Introduction to the UIAO Governance Canon and its principles
+
+  drift-detection.qmd         Drift Detection Policy   Policies and procedures for detecting configuration drift
+
+  sla-enforcement.qmd         SLA Enforcement          Service level agreement thresholds and enforcement mechanisms
+
+  compliance-framework.qmd    Compliance Framework     Mapping UIAO controls to compliance frameworks (NIST, CIS)
+
+  audit-procedures.qmd        Audit Procedures         Step-by-step audit procedures for governance reviews
+
+  change-control.qmd          Change Control           Change management policy for governance-controlled resources
+
+  risk-register.qmd           Risk Register            Active risk register with mitigation tracking
+
+  exception-process.qmd       Exception Process        Procedure for requesting governance exceptions
+
+  canon-ad.qmd                AD Canon                 Active Directory governance canon definitions
+
+  canon-dns.qmd               DNS Canon                DNS governance canon definitions
+
+  canon-pki.qmd               PKI Canon                PKI governance canon definitions
+
+  canon-identity.qmd          Identity Canon           Identity governance canon definitions
+
+  baseline-definitions.qmd    Baseline Definitions     Governance baseline definitions for all domains
+
+  remediation-playbooks.qmd   Remediation Playbooks    Playbooks for addressing governance violations
+
+  reporting-standards.qmd     Reporting Standards      Standards for governance report formats and delivery
+
+  approval-workflows.qmd      Approval Workflows       Approval chains for governance changes
+
+  governance-metrics.qmd      Governance Metrics       KPIs and metrics for governance health
+
+  policy-lifecycle.qmd        Policy Lifecycle         Creating, reviewing, and retiring governance policies
+  --------------------------------------------------------------------------------------------------------------------
+
+A.3 Assessment (22 files)
+
+  --------------------------------------------------------------------------------------------------------------------
+  **File**                    **Title**                      **Description**
+  --------------------------- ------------------------------ ---------------------------------------------------------
+  ad-forest.qmd               AD Forest Assessment           Forest-level Active Directory health evaluation
+
+  dns-audit.qmd               DNS Audit                      DNS infrastructure audit procedures and findings
+
+  pki-health.qmd              PKI Health Check               Certificate services health and compliance assessment
+
+  ad-domain.qmd               AD Domain Assessment           Domain-level AD configuration and security review
+
+  ad-replication.qmd          AD Replication                 Replication health and topology assessment
+
+  ad-security.qmd             AD Security                    AD security posture and vulnerability assessment
+
+  ad-gpo.qmd                  GPO Assessment                 Group Policy Object analysis and optimization
+
+  dns-zones.qmd               DNS Zone Assessment            DNS zone configuration and consistency review
+
+  dns-records.qmd             DNS Records Audit              Stale and orphaned DNS record identification
+
+  dns-security.qmd            DNS Security                   DNSSEC, zone transfer, and DNS security assessment
+
+  pki-ca.qmd                  CA Assessment                  Certificate Authority configuration and security review
+
+  pki-templates.qmd           Certificate Templates          Certificate template security and configuration audit
+
+  pki-enrollment.qmd          Enrollment Services            Certificate enrollment infrastructure assessment
+
+  identity-overview.qmd       Identity Assessment Overview   Cross-domain identity posture summary
+
+  identity-lifecycle.qmd      Identity Lifecycle             User and service account lifecycle assessment
+
+  identity-privileges.qmd     Privileged Access              Privileged identity and access assessment
+
+  infrastructure-survey.qmd   Infrastructure Survey          Server and network infrastructure baseline survey
+
+  os-compliance.qmd           OS Compliance                  Operating system patch and configuration compliance
+
+  network-assessment.qmd      Network Assessment             Network segmentation and connectivity review
+
+  backup-assessment.qmd       Backup Assessment              Backup infrastructure and recovery capability review
+
+  vulnerability-scan.qmd      Vulnerability Scan Results     Vulnerability scan findings and remediation tracking
+
+  assessment-summary.qmd      Assessment Summary             Executive summary of all assessment findings
+  --------------------------------------------------------------------------------------------------------------------
+
+A.4 Modernization (16 files)
+
+  ------------------------------------------------------------------------------------------------------------
+  **File**                    **Title**                 **Description**
+  --------------------------- ------------------------- ------------------------------------------------------
+  identity.qmd                Identity Modernization    Identity platform modernization strategy and roadmap
+
+  dns.qmd                     DNS Modernization         DNS infrastructure modernization plan
+
+  pki.qmd                     PKI Modernization         PKI infrastructure modernization and migration plan
+
+  hybrid-identity.qmd         Hybrid Identity           Entra ID hybrid identity integration guide
+
+  ad-consolidation.qmd        AD Consolidation          Forest/domain consolidation planning and execution
+
+  ad-tier-model.qmd           AD Tier Model             Implementing the tiered administration model
+
+  dns-migration.qmd           DNS Migration             DNS zone migration and cutover procedures
+
+  pki-migration.qmd           PKI Migration             CA migration and certificate rollover procedures
+
+  certificate-lifecycle.qmd   Certificate Lifecycle     Automated certificate lifecycle management
+
+  zero-trust.qmd              Zero Trust Architecture   Zero trust principles applied to UIAO infrastructure
+
+  cloud-integration.qmd       Cloud Integration         Azure/M365 service integration with on-premises
+
+  mfa-deployment.qmd          MFA Deployment            Multi-factor authentication rollout plan
+
+  pam-implementation.qmd      PAM Implementation        Privileged Access Management deployment
+
+  sso-federation.qmd          SSO and Federation        Single sign-on and federation configuration
+
+  legacy-decom.qmd            Legacy Decommission       Legacy system decommissioning procedures
+
+  modernization-roadmap.qmd   Modernization Roadmap     Master modernization timeline and milestones
+  ------------------------------------------------------------------------------------------------------------
+
+A.5 Operations (14 files)
+
+  -------------------------------------------------------------------------------------------------------------
+  **File**                  **Title**             **Description**
+  ------------------------- --------------------- -------------------------------------------------------------
+  runbook.qmd               Operations Runbook    Day-to-day operational procedures index
+
+  disaster-recovery.qmd     Disaster Recovery     DR procedures for all UIAO-managed services
+
+  incident-response.qmd     Incident Response     Incident detection, classification, and response procedures
+
+  change-management.qmd     Change Management     Operational change request and approval workflows
+
+  escalation-matrix.qmd     Escalation Matrix     Contact and escalation paths by severity and domain
+
+  monitoring-setup.qmd      Monitoring Setup      Monitoring agent deployment and alert configuration
+
+  backup-procedures.qmd     Backup Procedures     Backup schedules, retention, and verification procedures
+
+  patching-process.qmd      Patching Process      OS and application patching schedule and procedures
+
+  capacity-planning.qmd     Capacity Planning     Resource capacity monitoring and growth planning
+
+  log-management.qmd        Log Management        Centralized logging configuration and retention
+
+  access-reviews.qmd        Access Reviews        Periodic access review schedules and procedures
+
+  service-health.qmd        Service Health        Service health dashboard and uptime tracking
+
+  maintenance-windows.qmd   Maintenance Windows   Scheduled maintenance window policies and calendar
+
+  onboarding.qmd            Team Onboarding       New team member onboarding checklist and resources
+  -------------------------------------------------------------------------------------------------------------
+
+A.6 Modules (28 files)
+
+  -----------------------------------------------------------------------------------------------------------------------
+  **File**                   **Title**                         **Description**
+  -------------------------- --------------------------------- ----------------------------------------------------------
+  ad-assessment.qmd          UIAO.AD.Assessment Module         AD assessment module function reference
+
+  dns-assessment.qmd         UIAO.DNS.Assessment Module        DNS assessment module function reference
+
+  pki-assessment.qmd         UIAO.PKI.Assessment Module        PKI assessment module function reference
+
+  identity-assessment.qmd    UIAO.Identity.Assessment Module   Identity assessment module function reference
+
+  drift-detection.qmd        UIAO.Drift.Detection Module       Drift detection module function reference
+
+  governance-core.qmd        UIAO.Governance.Core Module       Core governance functions and canon enforcement
+
+  reporting.qmd              UIAO.Reporting Module             Report generation and formatting functions
+
+  logging.qmd                UIAO.Logging Module               Structured logging functions (JSONL, CSV, Console)
+
+  sla-monitor.qmd            UIAO.SLA.Monitor Module           SLA threshold monitoring and alerting functions
+
+  remediation.qmd            UIAO.Remediation Module           Automated remediation action functions
+
+  baseline.qmd               UIAO.Baseline Module              Baseline capture and comparison functions
+
+  inventory.qmd              UIAO.Inventory Module             Infrastructure inventory collection functions
+
+  certificate-mgmt.qmd       UIAO.Certificate.Mgmt Module      Certificate lifecycle management functions
+
+  network-tools.qmd          UIAO.Network.Tools Module         Network diagnostic and assessment functions
+
+  ad-replication-tools.qmd   UIAO.AD.Replication Module        AD replication monitoring functions
+
+  gpo-tools.qmd              UIAO.GPO.Tools Module             GPO analysis and management functions
+
+  dns-tools.qmd              UIAO.DNS.Tools Module             DNS record management and query functions
+
+  security-audit.qmd         UIAO.Security.Audit Module        Security auditing and vulnerability assessment functions
+
+  backup-tools.qmd           UIAO.Backup.Tools Module          Backup status verification functions
+
+  dashboard-data.qmd         UIAO.Dashboard.Data Module        Dashboard data aggregation and formatting functions
+
+  config-mgmt.qmd            UIAO.Config.Mgmt Module           Configuration management and DSC functions
+
+  notification.qmd           UIAO.Notification Module          Alert and notification delivery functions
+
+  scheduler.qmd              UIAO.Scheduler Module             Task scheduling and orchestration functions
+
+  data-export.qmd            UIAO.Data.Export Module           Data export functions (JSON, CSV, HTML)
+
+  api-client.qmd             UIAO.API.Client Module            REST API client functions for Gitea, Azure, M365
+
+  testing.qmd                UIAO.Testing Module               Pester test framework integration functions
+
+  installation.qmd           UIAO Module Installation          Module installation and update procedures
+
+  module-index.qmd           Module Index                      Master index of all UIAO PowerShell modules
+  -----------------------------------------------------------------------------------------------------------------------
+
+A.7 Dashboard (12 files)
+
+  ------------------------------------------------------------------------------------------------------------
+  **File**                   **Title**              **Description**
+  -------------------------- ---------------------- ----------------------------------------------------------
+  index.qmd                  Dashboard Home         Dashboard landing page with navigation to all dashboards
+
+  drift-heatmap.qmd          Drift Heatmap          Visual heatmap of configuration drift across domains
+
+  compliance-scorecard.qmd   Compliance Scorecard   Compliance scores by domain with trend tracking
+
+  assessment-overview.qmd    Assessment Overview    Summary of all assessment results
+
+  sla-tracker.qmd            SLA Tracker            SLA compliance tracking with threshold indicators
+
+  ad-dashboard.qmd           AD Health Dashboard    Active Directory specific health metrics
+
+  dns-dashboard.qmd          DNS Health Dashboard   DNS infrastructure health metrics
+
+  pki-dashboard.qmd          PKI Health Dashboard   PKI and certificate health metrics
+
+  identity-dashboard.qmd     Identity Dashboard     Identity posture and lifecycle metrics
+
+  remediation-tracker.qmd    Remediation Tracker    Open remediation items and closure tracking
+
+  trend-analysis.qmd         Trend Analysis         Historical trend analysis for governance metrics
+
+  executive-summary.qmd      Executive Summary      Executive-level governance and compliance summary
+  ------------------------------------------------------------------------------------------------------------
+
+A.8 Guides (13 files)
+
+  -----------------------------------------------------------------------------------------------------
+  **File**                 **Title**                   **Description**
+  ------------------------ --------------------------- ------------------------------------------------
+  getting-started.qmd      Getting Started             Quick start guide for new UIAO users
+
+  setup-guide.qmd          Setup Guide                 Complete environment setup instructions
+
+  quarto-pipeline.qmd      Quarto Pipeline Guide       This guide --- Quarto pipeline integration
+
+  gitea-setup.qmd          Gitea Setup                 Gitea server installation and configuration
+
+  dashboard-design.qmd     Dashboard Design            Dashboard design principles and implementation
+
+  module-development.qmd   Module Development          Guide to developing UIAO PowerShell modules
+
+  assessment-guide.qmd     Assessment Guide            How to run UIAO assessments end-to-end
+
+  contribution-guide.qmd   Contribution Guide          How to contribute to UIAO documentation
+
+  style-guide.qmd          Documentation Style Guide   Writing style and formatting conventions
+
+  api-reference.qmd        API Reference               UIAO REST API and PowerShell API reference
+
+  migration-guide.qmd      Migration Guide             Migrating from legacy documentation to Quarto
+
+  troubleshooting.qmd      Troubleshooting Guide       Common issues and resolution procedures
+
+  release-notes.qmd        Release Notes               Version history and changelog
+  -----------------------------------------------------------------------------------------------------
+
+Appendix B: Environment Variables Reference
+
+The following environment variables are used by the Quarto pipeline, rendering scripts, and CI/CD workflows:
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------
+  **Variable**          **Scope**   **Default**                           **Description**
+  --------------------- ----------- ------------------------------------- ---------------------------------------------------------------------
+  QUARTO_HOME           System      D:\\Quarto                            Quarto CLI installation directory
+
+  UIAO_ROOT             System      C:\\Users\\whale\\git\\uiao           Root directory of the UIAO repository work tree
+
+  UIAO_DOCS_DIR         System      C:\\Users\\whale\\git\\uiao\\docs     Quarto project root directory
+
+  UIAO_SITE_DIR         System      D:\\UIAO\\Docs\\site                  IIS physical path for docs.uiao.local
+
+  UIAO_LOG_DIR          System      D:\\UIAO\\Logs                        Directory for all UIAO log files
+
+  UIAO_ASSESSMENT_DIR   System      D:\\UIAO\\Assessment                  Directory for assessment JSON output files
+
+  GITEA_API_TOKEN       User        (none)                                Gitea personal access token for API calls and webhook notifications
+
+  GITEA_URL             System      http://localhost:3000                 Gitea server base URL
+
+  GITHUB_TOKEN          CI/CD       (auto-injected)                       GitHub Actions token for Pages deployment (automatic)
+
+  QUARTO_RENDER_LOG     System      D:\\UIAO\\Logs\\quarto-render.log     Path to the render-docs.ps1 log file
+
+  QUARTO_RENDER_JSONL   System      D:\\UIAO\\Logs\\quarto-render.jsonl   Path to the JSONL structured render log
+
+  UIAO_CLASSIFICATION   System      Controlled                            Default classification for generated documents
+
+  UIAO_BOUNDARY         System      GCC-Moderate                          Default data boundary designation
+  ---------------------------------------------------------------------------------------------------------------------------------------------
+
+B.1 Setting Environment Variables
+
+\# ============================================================================== \# UIAO Environment Variables Setup \# Run in elevated PowerShell session \# Classification: Controlled \| Boundary: GCC-Moderate \# ============================================================================== \# System-level variables (persist across sessions) \[Environment\]::SetEnvironmentVariable(\'QUARTO_HOME\', \'D:\\Quarto\', \'Machine\') \[Environment\]::SetEnvironmentVariable(\'UIAO_ROOT\', \'C:\\Users\\whale\\git\\uiao\', \'Machine\') \[Environment\]::SetEnvironmentVariable(\'UIAO_DOCS_DIR\', \'C:\\Users\\whale\\git\\uiao\\docs\', \'Machine\') \[Environment\]::SetEnvironmentVariable(\'UIAO_SITE_DIR\', \'D:\\UIAO\\Docs\\site\', \'Machine\') \[Environment\]::SetEnvironmentVariable(\'UIAO_LOG_DIR\', \'D:\\UIAO\\Logs\', \'Machine\') \[Environment\]::SetEnvironmentVariable(\'UIAO_ASSESSMENT_DIR\', \'D:\\UIAO\\Assessment\', \'Machine\') \[Environment\]::SetEnvironmentVariable(\'GITEA_URL\', \'http://localhost:3000\', \'Machine\') \[Environment\]::SetEnvironmentVariable(\'UIAO_CLASSIFICATION\', \'Controlled\', \'Machine\') \[Environment\]::SetEnvironmentVariable(\'UIAO_BOUNDARY\', \'GCC-Moderate\', \'Machine\') \# User-level variables (sensitive --- do not commit) \[Environment\]::SetEnvironmentVariable(\'GITEA_API_TOKEN\', \'your-token-here\', \'User\') \# Verify all variables Get-ChildItem Env: \| Where-Object { \$\_.Name -match \'UIAO\|QUARTO\|GITEA\' } \| Format-Table Name, Value -AutoSize
+
+Appendix C: Quarto CLI Quick Reference
+
+Essential Quarto CLI commands for UIAO operators and documentation authors:
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Command**                            **Purpose**                                          **Example**
+  -------------------------------------- ---------------------------------------------------- ----------------------------------------------------------------
+  quarto render                          Render the entire project to HTML                    cd docs && quarto render
+
+  quarto render \<file\>                 Render a single .qmd file                            quarto render governance/drift-detection.qmd
+
+  quarto preview                         Start local dev server with live reload              quarto preview \--port 4000
+
+  quarto preview \--no-browser           Preview without auto-opening browser                 quarto preview \--port 4000 \--no-browser
+
+  quarto check                           Verify Quarto installation and engine availability   quarto check
+
+  quarto inspect                         Show project config and list input files             cd docs && quarto inspect
+
+  quarto \--version                      Display installed Quarto version                     quarto \--version
+
+  quarto pandoc \--version               Display bundled Pandoc version                       quarto pandoc \--version
+
+  quarto create project                  Create a new Quarto project scaffold                 quarto create project website my-docs
+
+  quarto add \<extension\>               Install a Quarto extension                           quarto add quarto-ext/lightbox
+
+  quarto publish gh-pages                Publish directly to GitHub Pages (interactive)       quarto publish gh-pages \--no-prompt
+
+  quarto render \--log-level DEBUG       Render with verbose debug output                     quarto render \--log-level DEBUG 2\>&1 \| Tee-Object debug.log
+
+  quarto render \--output-dir \<path\>   Override the output directory                        quarto render \--output-dir D:\\UIAO\\Docs\\site
+
+  quarto render \--to pdf                Render to PDF format (requires LaTeX)                quarto render report.qmd \--to pdf
+
+  quarto render \--execute-params        Pass parameters to computational documents           quarto render \--execute-params \"env:prod\"
+
+  quarto tools install                   Install optional tools (TinyTeX, Chromium)           quarto tools install tinytex
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Tip --- Incremental Rendering**                                                                                                                                                                                                                                                                                                                              |
+|                                                                                                                                                                                                                                                                                                                                                                |
+| During active development, use quarto preview instead of quarto render. The preview server watches for file changes and re-renders only affected pages, significantly reducing iteration time. For the full 124-file UIAO site, a complete render may take 2--5 minutes depending on computational cells, while preview updates are typically under 5 seconds. |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Classification: Controlled \| Boundary: GCC-Moderate\
+UIAO Quarto Pipeline Integration Guide --- Version 1.0.0\
+Author: Michael Stratton \| Date: 21 April 2026\
+Repository: https://github.com/WhalerMike/uiao \| License: Apache-2.0\
+© 2026 UIAO Governance OS

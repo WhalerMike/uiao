@@ -1,0 +1,855 @@
+---
+title: "UIAO Active Directory Interaction Guide"
+subtitle: "Forest discovery, assessment, and governance pipeline"
+doc-type: technical-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO Active Directory Interaction Guide — Forest Discovery, Assessment, and Governance Pipeline.docx"
+repo-path: docs/customer-documents/modernization/ad-interaction-guide.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+UIAO Active Directory Interaction Guide
+
+**Forest Discovery, Assessment, and Governance Pipeline**
+
+UIAO Governance OS --- Canon-Grade Technical Reference
+
+Classification: Controlled \| Environment: GCC-Moderate, Commercial Cloud (FedRAMP)
+
+Version 1.0 \| April 20, 2026
+
++--------------------------------------------------------------------------------------------------------+
+| **Document Control**                                                                                   |
++--------------------------+-----------------------------------------------------------------------------+
+| **Document ID**          | UIAO-AD-ASSESS-001                                                          |
++--------------------------+-----------------------------------------------------------------------------+
+| **Version**              | 1.0                                                                         |
++--------------------------+-----------------------------------------------------------------------------+
+| **Classification**       | Controlled                                                                  |
++--------------------------+-----------------------------------------------------------------------------+
+| **Environment Boundary** | GCC-Moderate --- Microsoft 365 SaaS services only (excludes Azure services) |
++--------------------------+-----------------------------------------------------------------------------+
+| **Platform**             | UIAO Governance OS (https://github.com/WhalerMike/uiao)                     |
++--------------------------+-----------------------------------------------------------------------------+
+| **Effective Date**       | April 20, 2026                                                              |
++==========================+=============================================================================+
+
+Table of Contents
+
+1.  Purpose and Scope
+
+2.  Prerequisites and Module Installation
+
+3.  Forest and Domain Topology Discovery
+
+4.  Organizational Unit Hierarchy Extraction
+
+5.  Group Policy Object Inventory and Analysis
+
+6.  DNS Infrastructure Assessment
+
+7.  Certificate Services (AD CS) Assessment
+
+8.  Computer Object Enumeration and Classification
+
+9.  User Object and Group Membership Analysis
+
+10. Trust Relationship Mapping
+
+11. UIAO Assessment Pipeline Integration
+
+12. Gitea API Integration for Assessment Data
+
+13. Security Considerations and Least Privilege
+
+14. Troubleshooting Reference
+
+15. Appendix A --- Complete UIAO AD Assessment Module
+
+16. Appendix B --- Assessment Output Schema Reference
+
+17. Appendix C --- Quick Reference Card
+
+18. Appendix D --- Companion Document Cross-Reference
+
+1\. Purpose and Scope
+
+1.1 Purpose
+
+This document defines how the UIAO Governance OS platform interacts with Active Directory to perform complete forest discovery, infrastructure assessment, and governance artifact extraction. Every procedure in this guide is PowerShell-first, deterministic, and idempotent --- executing the same command against the same environment will always produce the same output without side effects.
+
+The output of these interactions feeds directly into the UIAO Assessment Phase, producing machine-readable planning documents that drive the entire modernization pipeline. Assessment artifacts are committed to the UIAO Gitea instance, versioned, and consumed by downstream automation to generate migration plans, compliance reports, and governance dashboards.
+
+1.2 Scope --- In Scope
+
+This guide covers the following Active Directory domains and infrastructure components:
+
+- **AD Forest Topology** --- forest structure, domains, sites, and site links
+
+- **Domain Controllers** --- enumeration, roles, operating system, and replication status
+
+- **Organizational Unit (OU) Hierarchy** --- full tree extraction with delegation and GPO linkage
+
+- **Group Policy Objects (GPOs)** --- inventory, settings decomposition, link analysis, conflict detection
+
+- **DNS Infrastructure** --- zone inventory, record analysis, DNSSEC status, scavenging configuration
+
+- **Certificate Services (AD CS)** --- CA discovery, template inventory, security analysis (ESC vulnerabilities)
+
+- **Computer Objects** --- full enumeration, OS classification, staleness detection, delegation analysis
+
+- **User Objects** --- privileged account identification, service account discovery, staleness detection
+
+- **Group Memberships** --- nested group expansion, classification, empty and circular group detection
+
+- **Service Accounts** --- traditional, MSA, and gMSA enumeration
+
+- **FSMO Roles** --- all five forest-wide and domain-wide role holders
+
+- **Trust Relationships** --- direction, type, SID filtering, selective authentication
+
+1.3 Scope --- Out of Scope
+
+The following topics are explicitly out of scope for this document and are addressed in companion UIAO publications:
+
+- **Azure AD / Entra ID Sync Configuration** --- covered in the UIAO Identity Modernization Guide
+
+- **Intune Policy Mapping** --- covered in the UIAO GPO-to-Intune Migration Guide
+
+- **Azure Services** --- the GCC-Moderate boundary in this document applies to Microsoft 365 SaaS services only and does not include Azure services
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **❗ Important --- Environment Boundary**                                                                                                                                                                                                              |
+|                                                                                                                                                                                                                                                        |
+| GCC-Moderate applies to Microsoft 365 SaaS services only. This document does not reference or require Azure services. No references to FedRAMP High, GCC High, or DoD environments apply. All data handling follows the **Controlled** classification. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+2\. Prerequisites and Module Installation
+
+2.1 Operating System Requirements
+
+All assessment operations require one of the following platforms:
+
+- **Windows Server 2025** with Remote Server Administration Tools (RSAT) features installed
+
+- **Windows 11** (24H2 or later) with RSAT capabilities added via Settings or DISM
+
+2.2 Required PowerShell Modules
+
+Install the following modules before executing any assessment functions. Each module has separate installation paths for Server and Client operating systems.
+
++--------------------+-------------------------------------------+-------------------------------------------------+--------------------------------------------------------------------------------------+
+| **Module**         | **Purpose**                               | **Server Install Command**                      | **Client Install Command**                                                           |
++--------------------+-------------------------------------------+-------------------------------------------------+--------------------------------------------------------------------------------------+
+| ActiveDirectory    | AD object queries, forest/domain topology | Install-WindowsFeature -Name RSAT-AD-PowerShell | Add-WindowsCapability -Online -Name Rsat.ActiveDirectory.DS-LDS.Tools\~\~\~\~0.0.1.0 |
++--------------------+-------------------------------------------+-------------------------------------------------+--------------------------------------------------------------------------------------+
+| GroupPolicy        | GPO enumeration, reporting, backup        | Install-WindowsFeature -Name GPMC               | Add-WindowsCapability -Online -Name Rsat.GroupPolicy.Management.Tools\~\~\~\~0.0.1.0 |
++--------------------+-------------------------------------------+-------------------------------------------------+--------------------------------------------------------------------------------------+
+| DnsServer          | DNS zone and record inventory             | Install-WindowsFeature -Name RSAT-DNS-Server    | Add-WindowsCapability -Online -Name Rsat.Dns.Tools\~\~\~\~0.0.1.0                    |
++--------------------+-------------------------------------------+-------------------------------------------------+--------------------------------------------------------------------------------------+
+| ADCSAdministration | Certificate Services assessment           | Install-WindowsFeature -Name RSAT-ADCS-Mgmt     | Add-WindowsCapability -Online -Name Rsat.CertificateServices.Tools\~\~\~\~0.0.1.0    |
++--------------------+-------------------------------------------+-------------------------------------------------+--------------------------------------------------------------------------------------+
+| PSPKI              | Advanced PKI template and CA analysis     | Install-Module -Name PSPKI -Scope CurrentUser                                                                                          |
++====================+===========================================+=================================================+======================================================================================+
+
+2.3 Required Permissions
+
+The assessment service account requires the following minimum permissions:
+
+- **Domain Admin** --- full assessment capability (recommended for initial discovery only)
+
+- **Delegated Read-Only** --- preferred for recurring assessments with the following specific permissions:
+
+  - Read access to all AD objects (users, computers, groups, OUs)
+
+  - Read access to Group Policy Objects and Group Policy Containers
+
+  - Read access to DNS zones and records (DNS Admins or delegated read)
+
+  - Read access to PKI configuration (Cert Publishers or delegated read on PKI containers)
+
+  - Read access to AD Sites and Services configuration partition
+
+2.4 UIAO Output Directory Structure
+
+All assessment outputs are written to a deterministic directory tree. Create this structure before running any assessment functions.
+
+D:\\UIAO\\Assessment\\{DomainName}\\ ├── Forest\\ │ ├── ForestTopology.json │ ├── Sites.json │ ├── SiteLinks.json │ └── Subnets.json ├── Domains\\ │ ├── {DomainName}.json │ └── DomainControllers.json ├── OUs\\ │ ├── OUHierarchy.json │ └── OUFlatList.csv ├── GPOs\\ │ ├── GPOInventory.json │ ├── GPOSettings\\ │ │ ├── {GPO-GUID}.xml │ │ └── {GPO-GUID}.html │ ├── GPOLinks.json │ ├── GPOPermissions.json │ └── GPOBackups\\ ├── DNS\\ │ ├── DNSInventory.json │ └── DNSHealthReport.json ├── PKI\\ │ ├── PKIInventory.json │ └── PKISecurityReport.json ├── Objects\\ │ ├── ComputerInventory.json │ ├── ComputersByOS.csv │ ├── StaleComputers.csv │ ├── DelegationReport.csv │ ├── UserInventory.json │ ├── PrivilegedUsers.csv │ ├── ServiceAccounts.csv │ └── GroupInventory.json ├── Trusts\\ │ └── TrustMap.json ├── ServiceAccounts\\ │ ├── MSAInventory.json │ └── gMSAInventory.json └── AssessmentManifest.json
+
+Run the following to create the directory structure:
+
+\# Create UIAO Assessment directory structure \$DomainName = (Get-ADDomain).DNSRoot \$BasePath = \"D:\\UIAO\\Assessment\\\$DomainName\" \$Folders = @( \"Forest\", \"Domains\", \"OUs\", \"GPOs\", \"GPOs\\GPOSettings\", \"GPOs\\GPOBackups\", \"DNS\", \"PKI\", \"Objects\", \"Trusts\", \"ServiceAccounts\" ) foreach (\$Folder in \$Folders) { \$FullPath = Join-Path -Path \$BasePath -ChildPath \$Folder if (-not (Test-Path -Path \$FullPath)) { New-Item -Path \$FullPath -ItemType Directory -Force \| Out-Null Write-Host \"\[CREATED\] \$FullPath\" -ForegroundColor Green } else { Write-Host \"\[EXISTS\] \$FullPath\" -ForegroundColor Yellow } }
+
+2.5 Prerequisite Verification Script
+
+Execute the following script to validate all prerequisites before running any assessment functions. The script reports pass/fail for each requirement.
+
+function Test-UIAOPrerequisites { \<# .SYNOPSIS Validates all UIAO AD Assessment prerequisites. .DESCRIPTION Checks for required PowerShell modules, operating system version, permissions, and output directory structure. Returns a structured result object with pass/fail status for each check. .EXAMPLE Test-UIAOPrerequisites .OUTPUTS PSCustomObject with Status, Module, and Message properties. #\> \[CmdletBinding()\] param() \$Results = @() \# Check OS Version \$OS = Get-CimInstance -ClassName Win32_OperatingSystem \$OSPass = (\$OS.Version -ge \"10.0.26100\") \$Results += \[PSCustomObject\]@{ Check = \"Operating System\" Status = if (\$OSPass) { \"PASS\" } else { \"FAIL\" } Detail = \"\$(\$OS.Caption) (\$(\$OS.Version))\" } \# Check required modules \$RequiredModules = @( \"ActiveDirectory\", \"GroupPolicy\", \"DnsServer\", \"ADCSAdministration\", \"PSPKI\" ) foreach (\$Module in \$RequiredModules) { \$Loaded = Get-Module -ListAvailable -Name \$Module -ErrorAction SilentlyContinue \$Results += \[PSCustomObject\]@{ Check = \"Module: \$Module\" Status = if (\$Loaded) { \"PASS\" } else { \"FAIL\" } Detail = if (\$Loaded) { \"Version \$(\$Loaded.Version)\" } else { \"Not installed\" } } } \# Check AD connectivity try { \$Forest = Get-ADForest -ErrorAction Stop \$Results += \[PSCustomObject\]@{ Check = \"AD Forest Connectivity\" Status = \"PASS\" Detail = \"Connected to \$(\$Forest.Name)\" } } catch { \$Results += \[PSCustomObject\]@{ Check = \"AD Forest Connectivity\" Status = \"FAIL\" Detail = \$\_.Exception.Message } } \# Check output directory \$BasePath = \"D:\\UIAO\\Assessment\" \$Results += \[PSCustomObject\]@{ Check = \"Output Directory\" Status = if (Test-Path \$BasePath) { \"PASS\" } else { \"FAIL\" } Detail = \$BasePath } \# Display results \$Results \| Format-Table -AutoSize \$FailCount = (\$Results \| Where-Object { \$\_.Status -eq \"FAIL\" }).Count if (\$FailCount -gt 0) { Write-Warning \"\$FailCount prerequisite(s) failed. Resolve before proceeding.\" } else { Write-Host \"All prerequisites satisfied.\" -ForegroundColor Green } return \$Results }
+
+3\. Forest and Domain Topology Discovery
+
+3.1 Forest-Level Discovery
+
+Capture the complete forest configuration including all domains, sites, global catalogs, and schema holders.
+
+\# Capture forest topology \$Forest = Get-ADForest \| Select-Object \` Name, RootDomain, ForestMode, SchemaMaster, DomainNamingMaster, \@{N=\'Domains\'; E={ \$\_.Domains }}, \@{N=\'Sites\'; E={ \$\_.Sites }}, \@{N=\'GlobalCatalogs\'; E={ \$\_.GlobalCatalogs }}, \@{N=\'SPNSuffixes\'; E={ \$\_.SPNSuffixes }}, \@{N=\'UPNSuffixes\'; E={ \$\_.UPNSuffixes }} \$Forest \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$(\$Forest.RootDomain)\\Forest\\ForestInfo.json\" -Encoding UTF8
+
+3.2 Domain-Level Discovery
+
+Iterate through every domain in the forest and capture domain-specific configuration.
+
+\# Enumerate all domains in the forest \$ForestObj = Get-ADForest \$AllDomains = @() foreach (\$DomainDNS in \$ForestObj.Domains) { \$Domain = Get-ADDomain -Server \$DomainDNS \| Select-Object \` DNSRoot, NetBIOSName, DomainMode, DomainSID, PDCEmulator, RIDMaster, InfrastructureMaster, DistinguishedName, ParentDomain, ChildDomains, \@{N=\'DomainControllers\'; E={ (Get-ADDomainController -Filter \* -Server \$DomainDNS).HostName }} \$AllDomains += \$Domain \$Domain \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$(\$ForestObj.RootDomain)\\Domains\\\$DomainDNS.json\" -Encoding UTF8 } \$AllDomains \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$(\$ForestObj.RootDomain)\\Domains\\AllDomains.json\" -Encoding UTF8
+
+3.3 Domain Controller Enumeration
+
+Capture all Domain Controllers across every domain with operating system, IP, GC status, and site membership.
+
+\# Enumerate all Domain Controllers across all domains \$AllDCs = @() foreach (\$DomainDNS in (Get-ADForest).Domains) { \$DCs = Get-ADDomainController -Filter \* -Server \$DomainDNS \| Select-Object HostName, Domain, Site, IPv4Address, OperatingSystem, OperatingSystemVersion, IsGlobalCatalog, IsReadOnly, Enabled, \@{N=\'FSMORoles\'; E={ \$Roles = @() \$Dom = Get-ADDomain -Server \$DomainDNS \$For = Get-ADForest if (\$\_.HostName -eq \$Dom.PDCEmulator) { \$Roles += \"PDCEmulator\" } if (\$\_.HostName -eq \$Dom.RIDMaster) { \$Roles += \"RIDMaster\" } if (\$\_.HostName -eq \$Dom.InfrastructureMaster) { \$Roles += \"InfrastructureMaster\" } if (\$\_.HostName -eq \$For.SchemaMaster) { \$Roles += \"SchemaMaster\" } if (\$\_.HostName -eq \$For.DomainNamingMaster) { \$Roles += \"DomainNamingMaster\" } \$Roles }} \$AllDCs += \$DCs } \$AllDCs \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADForest).RootDomain)\\Domains\\DomainControllers.json\" -Encoding UTF8
+
+3.4 Site Topology Discovery
+
+Capture Active Directory Sites and Services configuration including sites, site links, and subnet-to-site mappings.
+
+\# Enumerate AD Sites \$Sites = Get-ADReplicationSite -Filter \* -Properties \* \| Select-Object Name, Description, Location, \@{N=\'Subnets\'; E={ (Get-ADReplicationSubnet -Filter \"Site -eq \'\$(\$\_.DistinguishedName)\'\" \| Select-Object -ExpandProperty Name) }} \$Sites \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADForest).RootDomain)\\Forest\\Sites.json\" -Encoding UTF8 \# Enumerate Site Links \$SiteLinks = Get-ADReplicationSiteLink -Filter \* -Properties \* \| Select-Object Name, Cost, ReplicationFrequencyInMinutes, \@{N=\'Sites\'; E={ \$\_.SitesIncluded \| ForEach-Object { (\$\_ -split \',\')\[0\] -replace \'CN=\',\'\' } }}, Options, Description \$SiteLinks \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADForest).RootDomain)\\Forest\\SiteLinks.json\" -Encoding UTF8 \# Enumerate Subnets \$Subnets = Get-ADReplicationSubnet -Filter \* -Properties \* \| Select-Object Name, Site, Location, Description \$Subnets \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADForest).RootDomain)\\Forest\\Subnets.json\" -Encoding UTF8
+
+3.5 FSMO Role Holder Summary
+
+Enumerate all five FSMO roles across the forest and each domain, producing a single consolidated reference.
+
+\# Consolidated FSMO role holder report \$Forest = Get-ADForest \$FSMORoles = @() \# Forest-wide roles \$FSMORoles += \[PSCustomObject\]@{ Role = \"Schema Master\" Scope = \"Forest\" Holder = \$Forest.SchemaMaster Domain = \$Forest.RootDomain } \$FSMORoles += \[PSCustomObject\]@{ Role = \"Domain Naming Master\" Scope = \"Forest\" Holder = \$Forest.DomainNamingMaster Domain = \$Forest.RootDomain } \# Domain-wide roles for each domain foreach (\$DomainDNS in \$Forest.Domains) { \$Dom = Get-ADDomain -Server \$DomainDNS \$FSMORoles += \[PSCustomObject\]@{ Role = \"PDC Emulator\" Scope = \"Domain\" Holder = \$Dom.PDCEmulator Domain = \$DomainDNS } \$FSMORoles += \[PSCustomObject\]@{ Role = \"RID Master\" Scope = \"Domain\" Holder = \$Dom.RIDMaster Domain = \$DomainDNS } \$FSMORoles += \[PSCustomObject\]@{ Role = \"Infrastructure Master\" Scope = \"Domain\" Holder = \$Dom.InfrastructureMaster Domain = \$DomainDNS } } \$FSMORoles \| ConvertTo-Json -Depth 3 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$(\$Forest.RootDomain)\\Forest\\FSMORoles.json\" -Encoding UTF8
+
+3.6 Master Forest Topology Aggregation
+
+The Get-UIAOForestTopology wrapper function aggregates all topology discovery into a single call and produces the master ForestTopology.json file.
+
+function Get-UIAOForestTopology { \<# .SYNOPSIS Performs complete AD forest topology discovery for UIAO assessment. .DESCRIPTION Captures forest configuration, all domains, domain controllers, sites, site links, subnets, and FSMO role holders. Produces a consolidated ForestTopology.json master file. .PARAMETER OutputPath Root output directory. Defaults to D:\\UIAO\\Assessment. .EXAMPLE Get-UIAOForestTopology -OutputPath \"D:\\UIAO\\Assessment\" .OUTPUTS ForestTopology.json --- consolidated master topology file. #\> \[CmdletBinding()\] param( \[string\]\$OutputPath = \"D:\\UIAO\\Assessment\" ) \$Forest = Get-ADForest \$BasePath = Join-Path \$OutputPath \$Forest.RootDomain \$ForestPath = Join-Path \$BasePath \"Forest\" \# Ensure output directories exist @(\"Forest\",\"Domains\") \| ForEach-Object { \$Dir = Join-Path \$BasePath \$\_ if (-not (Test-Path \$Dir)) { New-Item -Path \$Dir -ItemType Directory -Force \| Out-Null } } \# Forest info \$ForestInfo = \$Forest \| Select-Object Name, RootDomain, ForestMode, SchemaMaster, DomainNamingMaster, Domains, Sites, GlobalCatalogs, SPNSuffixes, UPNSuffixes \# Domains \$Domains = foreach (\$DomainDNS in \$Forest.Domains) { Get-ADDomain -Server \$DomainDNS \| Select-Object DNSRoot, NetBIOSName, DomainMode, DomainSID, PDCEmulator, RIDMaster, InfrastructureMaster, DistinguishedName } \# Domain Controllers \$DCs = foreach (\$DomainDNS in \$Forest.Domains) { Get-ADDomainController -Filter \* -Server \$DomainDNS \| Select-Object HostName, Domain, Site, IPv4Address, OperatingSystem, IsGlobalCatalog, IsReadOnly } \# Sites, Site Links, Subnets \$Sites = Get-ADReplicationSite -Filter \* \| Select-Object Name, Description, Location \$SiteLinks = Get-ADReplicationSiteLink -Filter \* \| Select-Object Name, Cost, ReplicationFrequencyInMinutes \$Subnets = Get-ADReplicationSubnet -Filter \* \| Select-Object Name, Site, Location \# FSMO roles \$FSMO = @( \[PSCustomObject\]@{ Role=\"SchemaMaster\"; Holder=\$Forest.SchemaMaster } \[PSCustomObject\]@{ Role=\"DomainNamingMaster\"; Holder=\$Forest.DomainNamingMaster } ) foreach (\$DomainDNS in \$Forest.Domains) { \$D = Get-ADDomain -Server \$DomainDNS \$FSMO += \[PSCustomObject\]@{ Role=\"PDCEmulator (\$DomainDNS)\"; Holder=\$D.PDCEmulator } \$FSMO += \[PSCustomObject\]@{ Role=\"RIDMaster (\$DomainDNS)\"; Holder=\$D.RIDMaster } \$FSMO += \[PSCustomObject\]@{ Role=\"InfrastructureMaster (\$DomainDNS)\"; Holder=\$D.InfrastructureMaster } } \# Assemble master topology \$Topology = \[PSCustomObject\]@{ AssessmentTimestamp = (Get-Date -Format \"o\") Forest = \$ForestInfo Domains = \$Domains DomainControllers = \$DCs Sites = \$Sites SiteLinks = \$SiteLinks Subnets = \$Subnets FSMORoles = \$FSMO } \$Topology \| ConvertTo-Json -Depth 10 \| Out-File -FilePath (Join-Path \$ForestPath \"ForestTopology.json\") -Encoding UTF8 Write-Host \"\[COMPLETE\] ForestTopology.json written to \$ForestPath\" -ForegroundColor Green return \$Topology }
+
+4\. Organizational Unit Hierarchy Extraction
+
+4.1 Full OU Enumeration
+
+Extract every OU in the domain with all properties required for governance analysis.
+
+\# Full OU enumeration with all governance-relevant properties \$AllOUs = Get-ADOrganizationalUnit -Filter \* -Properties \` CanonicalName, Description, ManagedBy, Created, Modified, ProtectedFromAccidentalDeletion, LinkedGroupPolicyObjects, DistinguishedName, gPLink, gPOptions \| Select-Object Name, DistinguishedName, CanonicalName, Description, ManagedBy, Created, Modified, ProtectedFromAccidentalDeletion, \@{N=\'LinkedGPOs\'; E={ \$\_.LinkedGroupPolicyObjects }}, \@{N=\'GPLinkRaw\'; E={ \$\_.gPLink }}, \@{N=\'Depth\'; E={ (\$\_.DistinguishedName -split \',OU=\').Count - 1 }} \$AllOUs \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\OUs\\OUFlatExport.json\" -Encoding UTF8 \# CSV export for spreadsheet analysis \$AllOUs \| Select-Object Name, CanonicalName, Description, ManagedBy, ProtectedFromAccidentalDeletion, Depth \| Export-Csv -Path \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\OUs\\OUFlatList.csv\" \` -NoTypeInformation -Encoding UTF8
+
+4.2 Recursive OU Tree Builder
+
+Construct a nested JSON structure representing the full OU hierarchy with depth tracking and child OU enumeration.
+
+\# Recursive OU tree builder function Build-OUTree { \<# .SYNOPSIS Builds a nested JSON tree of the AD OU hierarchy. .DESCRIPTION Recursively enumerates child OUs starting from a given parent DN, producing a nested object suitable for JSON serialization. Includes object counts, GPO links, and delegation data at each node. .PARAMETER ParentDN Distinguished Name of the parent container. .PARAMETER Depth Current recursion depth (used internally). .EXAMPLE \$Tree = Build-OUTree -ParentDN (Get-ADDomain).DistinguishedName -Depth 0 .OUTPUTS Nested PSCustomObject representing the OU tree. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory)\] \[string\]\$ParentDN, \[int\]\$Depth = 0 ) \$ChildOUs = Get-ADOrganizationalUnit -Filter \* -SearchBase \$ParentDN \` -SearchScope OneLevel -Properties Description, ManagedBy, ProtectedFromAccidentalDeletion, LinkedGroupPolicyObjects \$Tree = foreach (\$OU in \$ChildOUs) { \# Count objects in this OU (direct children only) \$UserCount = (Get-ADUser -Filter \* -SearchBase \$OU.DistinguishedName -SearchScope OneLevel -ErrorAction SilentlyContinue).Count \$ComputerCount = (Get-ADComputer -Filter \* -SearchBase \$OU.DistinguishedName -SearchScope OneLevel -ErrorAction SilentlyContinue).Count \$GroupCount = (Get-ADGroup -Filter \* -SearchBase \$OU.DistinguishedName -SearchScope OneLevel -ErrorAction SilentlyContinue).Count \[PSCustomObject\]@{ Name = \$OU.Name DistinguishedName = \$OU.DistinguishedName Description = \$OU.Description ManagedBy = \$OU.ManagedBy ProtectedFromAccidentalDeletion = \$OU.ProtectedFromAccidentalDeletion LinkedGPOs = \$OU.LinkedGroupPolicyObjects Depth = \$Depth ObjectCounts = \[PSCustomObject\]@{ Users = \$UserCount Computers = \$ComputerCount Groups = \$GroupCount } Children = @(Build-OUTree -ParentDN \$OU.DistinguishedName -Depth (\$Depth + 1)) } } return \$Tree } \# Execute tree build from domain root \$DomainDN = (Get-ADDomain).DistinguishedName \$OUTree = Build-OUTree -ParentDN \$DomainDN -Depth 0 \$OUTree \| ConvertTo-Json -Depth 20 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\OUs\\OUHierarchy.json\" -Encoding UTF8
+
+4.3 OU-to-GPO Link Mapping
+
+For each OU, enumerate all linked GPOs with link order, enforcement status, and inheritance blocking.
+
+\# Parse gPLink attribute to extract GPO links with metadata function Get-OUGPOLinks { \[CmdletBinding()\] param(\[Parameter(Mandatory)\]\[string\]\$DistinguishedName) \$OU = Get-ADOrganizationalUnit -Identity \$DistinguishedName -Properties gPLink, gPOptions \$Links = @() if (\$OU.gPLink) { \$LinkEntries = \[regex\]::Matches(\$OU.gPLink, \'\\\[LDAP://cn=\\{(\[\^}\]+)\\},cn=policies,cn=system,(\[\^;\]+);(\\d)\\\]\') \$Order = 1 foreach (\$Match in \$LinkEntries) { \$GpoGuid = \$Match.Groups\[1\].Value \$LinkFlag = \[int\]\$Match.Groups\[3\].Value \$GPO = Get-GPO -Guid \$GpoGuid -ErrorAction SilentlyContinue \$Links += \[PSCustomObject\]@{ OUPath = \$DistinguishedName GPOName = if (\$GPO) { \$GPO.DisplayName } else { \"Unknown\" } GPOGUID = \$GpoGuid LinkOrder = \$Order IsEnforced = (\$LinkFlag -band 2) -eq 2 IsDisabled = (\$LinkFlag -band 1) -eq 1 } \$Order++ } } \[PSCustomObject\]@{ OU = \$DistinguishedName InheritanceBlocked = (\$OU.gPOptions -eq 1) GPOLinks = \$Links } }
+
+4.4 OU Delegation Analysis
+
+Enumerate Access Control Entries on each OU to identify delegated permissions.
+
+\# Analyze delegated permissions on each OU \$OUDelegations = foreach (\$OU in (Get-ADOrganizationalUnit -Filter \*)) { \$ACL = Get-Acl -Path \"AD:\\\$(\$OU.DistinguishedName)\" \$ACEs = \$ACL.Access \| Where-Object { \$\_.IdentityReference -notmatch \"NT AUTHORITY\|BUILTIN\|S-1-5-\" -and \$\_.IsInherited -eq \$false } \| Select-Object IdentityReference, ActiveDirectoryRights, AccessControlType, ObjectType, InheritedObjectType \[PSCustomObject\]@{ OU = \$OU.Name DN = \$OU.DistinguishedName Delegations = \$ACEs } } \$OUDelegations \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\OUs\\OUDelegations.json\" -Encoding UTF8
+
+4.5 Visual Tree Renderer
+
+Produce a human-readable indented text rendering of the OU hierarchy for manual review.
+
+\# Render OU tree as indented text function Show-OUTree { \[CmdletBinding()\] param( \[Parameter(Mandatory)\]\$TreeNodes, \[int\]\$IndentLevel = 0 ) \$Indent = \" \" \* \$IndentLevel foreach (\$Node in \$TreeNodes) { \$GPOCount = (\$Node.LinkedGPOs \| Measure-Object).Count \$Line = \"\${Indent}├── \$(\$Node.Name) \[U:\$(\$Node.ObjectCounts.Users) C:\$(\$Node.ObjectCounts.Computers) G:\$(\$Node.ObjectCounts.Groups) GPO:\$GPOCount\]\" Write-Output \$Line if (\$Node.Children.Count -gt 0) { Show-OUTree -TreeNodes \$Node.Children -IndentLevel (\$IndentLevel + 1) } } } \# Usage Show-OUTree -TreeNodes \$OUTree \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\OUs\\OUTreeVisual.txt\" -Encoding UTF8
+
+4.6 Wrapper Function
+
+function Get-UIAOOUHierarchy { \<# .SYNOPSIS Performs complete OU hierarchy extraction for UIAO assessment. .DESCRIPTION Extracts the full OU tree, flat OU list, GPO link mappings, delegation analysis, and visual tree rendering. .PARAMETER OutputPath Root output directory. Defaults to D:\\UIAO\\Assessment. .EXAMPLE Get-UIAOOUHierarchy -OutputPath \"D:\\UIAO\\Assessment\" .OUTPUTS OUHierarchy.json, OUFlatList.csv, OUDelegations.json, OUTreeVisual.txt #\> \[CmdletBinding()\] param(\[string\]\$OutputPath = \"D:\\UIAO\\Assessment\") \$DomainDNS = (Get-ADDomain).DNSRoot \$OUPath = Join-Path \$OutputPath \"\$DomainDNS\\OUs\" if (-not (Test-Path \$OUPath)) { New-Item -Path \$OUPath -ItemType Directory -Force \| Out-Null } \# Build tree \$DomainDN = (Get-ADDomain).DistinguishedName \$OUTree = Build-OUTree -ParentDN \$DomainDN -Depth 0 \$OUTree \| ConvertTo-Json -Depth 20 \| Out-File (Join-Path \$OUPath \"OUHierarchy.json\") -Encoding UTF8 \# Flat list Get-ADOrganizationalUnit -Filter \* -Properties CanonicalName, Description, ManagedBy \| Select-Object Name, CanonicalName, Description, ManagedBy \| Export-Csv -Path (Join-Path \$OUPath \"OUFlatList.csv\") -NoTypeInformation -Encoding UTF8 \# Visual tree Show-OUTree -TreeNodes \$OUTree \| Out-File (Join-Path \$OUPath \"OUTreeVisual.txt\") -Encoding UTF8 Write-Host \"\[COMPLETE\] OU hierarchy extraction finished.\" -ForegroundColor Green }
+
+5\. Group Policy Object Inventory and Analysis
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **❗ Critical Section**                                                                                                                                                                                                                                           |
+|                                                                                                                                                                                                                                                                   |
+| Group Policy Object inventory is the highest-value assessment artifact for modernization planning. The GPO inventory directly feeds the GPO-to-Intune migration plan. Every GPO setting must be decomposed, categorized, and exported in machine-readable format. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+5.1 GPO Enumeration
+
+Enumerate every Group Policy Object in the domain with full metadata.
+
+\# Full GPO enumeration \$AllGPOs = Get-GPO -All \| Select-Object \` DisplayName, Id, GpoStatus, CreationTime, ModificationTime, Owner, Description, \@{N=\'WmiFilterName\'; E={ if (\$\_.WmiFilter) { \$\_.WmiFilter.Name } else { \$null } }}, \@{N=\'ComputerEnabled\'; E={ \$\_.GpoStatus -notmatch \'ComputerSettingsDisabled\|AllSettingsDisabled\' }}, \@{N=\'UserEnabled\'; E={ \$\_.GpoStatus -notmatch \'UserSettingsDisabled\|AllSettingsDisabled\' }} \$AllGPOs \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\GPOs\\GPOInventory.json\" -Encoding UTF8 Write-Host \"Enumerated \$(\$AllGPOs.Count) GPOs.\" -ForegroundColor Green
+
+5.2 GPO Report Export (XML and HTML)
+
+Generate both XML (machine-readable) and HTML (human-readable) reports for every GPO.
+
+\# Export GPO reports in XML and HTML \$DomainDNS = (Get-ADDomain).DNSRoot \$GPOSetPath = \"D:\\UIAO\\Assessment\\\$DomainDNS\\GPOs\\GPOSettings\" foreach (\$GPO in (Get-GPO -All)) { \$SafeName = \$GPO.Id.ToString() \# XML report --- machine-readable for settings decomposition Get-GPOReport -Guid \$GPO.Id -ReportType XML -Path (Join-Path \$GPOSetPath \"\$SafeName.xml\") \# HTML report --- human-readable for manual review Get-GPOReport -Guid \$GPO.Id -ReportType HTML -Path (Join-Path \$GPOSetPath \"\$SafeName.html\") } Write-Host \"GPO reports exported to \$GPOSetPath\" -ForegroundColor Green
+
+5.3 GPO Link Analysis
+
+For each GPO, identify every OU, site, and domain where it is linked, including link order and enforcement status.
+
+\# Comprehensive GPO link analysis \$GPOLinks = foreach (\$GPO in (Get-GPO -All)) { \# Search all OUs for links to this GPO \$LinkedOUs = Get-ADOrganizationalUnit -Filter \* -Properties gPLink \| Where-Object { \$\_.gPLink -match \$GPO.Id } \| Select-Object -ExpandProperty DistinguishedName \# Check domain root \$DomainObj = Get-ADDomain \$DomainGPLink = (Get-ADObject \$DomainObj.DistinguishedName -Properties gPLink).gPLink \$LinkedToDomain = \$DomainGPLink -match \$GPO.Id \[PSCustomObject\]@{ GPOName = \$GPO.DisplayName GPOGUID = \$GPO.Id.ToString() LinkedOUs = \$LinkedOUs LinkedToDomain = \$LinkedToDomain TotalLinks = \$LinkedOUs.Count + \[int\]\$LinkedToDomain IsUnlinked = (\$LinkedOUs.Count -eq 0 -and -not \$LinkedToDomain) } } \$GPOLinks \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\GPOs\\GPOLinks.json\" -Encoding UTF8
+
+5.4 GPO Settings Decomposition
+
+Parse XML reports to extract and categorize every configured setting by policy area.
+
+\# Parse GPO XML reports and decompose settings by category function Export-UIAOGPOSettings { \<# .SYNOPSIS Decomposes GPO settings from XML reports into categorized JSON. .DESCRIPTION Reads each GPO XML report, parses the XML DOM, and extracts settings organized by configuration area: Security Settings, Administrative Templates, Preferences, Scripts, Software Installation, Folder Redirection, and Registry-based settings. .PARAMETER GPOSettingsPath Path to the directory containing GPO XML reports. .PARAMETER OutputPath Path for the decomposed JSON output. .EXAMPLE Export-UIAOGPOSettings -GPOSettingsPath \"D:\\UIAO\\Assessment\\contoso.com\\GPOs\\GPOSettings\" \` -OutputPath \"D:\\UIAO\\Assessment\\contoso.com\\GPOs\" .OUTPUTS GPOSettingsDecomposed.json --- structured JSON of all settings by category. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory)\]\[string\]\$GPOSettingsPath, \[Parameter(Mandatory)\]\[string\]\$OutputPath ) \$DecomposedGPOs = @() foreach (\$XmlFile in (Get-ChildItem -Path \$GPOSettingsPath -Filter \"\*.xml\")) { \[xml\]\$GPOXml = Get-Content -Path \$XmlFile.FullName -Encoding UTF8 \$NS = \@{ gp = \"http://www.microsoft.com/GroupPolicy/Settings\" } \$GPOEntry = \[PSCustomObject\]@{ GPOName = \$GPOXml.GPO.Name GPOGUID = \$GPOXml.GPO.Identifier.Identifier.\'#text\' Computer = \[PSCustomObject\]@{ SecuritySettings = @(\$GPOXml.GPO.Computer.ExtensionData \| Where-Object { \$\_.Name -match \"Security\" }) AdministrativeTemplates = @(\$GPOXml.GPO.Computer.ExtensionData \| Where-Object { \$\_.Name -match \"Administrative Templates\" }) Preferences = @(\$GPOXml.GPO.Computer.ExtensionData \| Where-Object { \$\_.Name -match \"Preferences\" }) Scripts = @(\$GPOXml.GPO.Computer.ExtensionData \| Where-Object { \$\_.Name -match \"Scripts\" }) SoftwareInstallation = @(\$GPOXml.GPO.Computer.ExtensionData \| Where-Object { \$\_.Name -match \"Software Installation\" }) } User = \[PSCustomObject\]@{ AdministrativeTemplates = @(\$GPOXml.GPO.User.ExtensionData \| Where-Object { \$\_.Name -match \"Administrative Templates\" }) Preferences = @(\$GPOXml.GPO.User.ExtensionData \| Where-Object { \$\_.Name -match \"Preferences\" }) FolderRedirection = @(\$GPOXml.GPO.User.ExtensionData \| Where-Object { \$\_.Name -match \"Folder Redirection\" }) Scripts = @(\$GPOXml.GPO.User.ExtensionData \| Where-Object { \$\_.Name -match \"Scripts\" }) } } \$DecomposedGPOs += \$GPOEntry } \$DecomposedGPOs \| ConvertTo-Json -Depth 15 \| Out-File -FilePath (Join-Path \$OutputPath \"GPOSettingsDecomposed.json\") -Encoding UTF8 Write-Host \"\[COMPLETE\] GPO settings decomposed: \$(\$DecomposedGPOs.Count) GPOs processed.\" -ForegroundColor Green }
+
+5.5 Unlinked and Empty GPO Detection
+
+\# Detect unlinked GPOs \$UnlinkedGPOs = \$GPOLinks \| Where-Object { \$\_.IsUnlinked -eq \$true } Write-Host \"Found \$(\$UnlinkedGPOs.Count) unlinked GPOs.\" -ForegroundColor Yellow \# Detect empty GPOs (no settings configured) \$EmptyGPOs = foreach (\$GPO in (Get-GPO -All)) { \$Report = \[xml\](Get-GPOReport -Guid \$GPO.Id -ReportType XML) \$HasComputer = \$Report.GPO.Computer.ExtensionData -ne \$null \$HasUser = \$Report.GPO.User.ExtensionData -ne \$null if (-not \$HasComputer -and -not \$HasUser) { \[PSCustomObject\]@{ GPOName = \$GPO.DisplayName GPOGUID = \$GPO.Id.ToString() CreationTime = \$GPO.CreationTime Owner = \$GPO.Owner } } } Write-Host \"Found \$(\$EmptyGPOs.Count) empty GPOs.\" -ForegroundColor Yellow
+
+5.6 Conflicting GPO Detection
+
+\# Identify settings configured in multiple GPOs that may conflict function Find-GPOConflicts { \<# .SYNOPSIS Identifies GPO settings that appear in multiple GPOs. .DESCRIPTION Compares registry-based policy settings across all GPOs to detect potential conflicts where the same registry key/value is configured in more than one GPO with different data. .EXAMPLE Find-GPOConflicts .OUTPUTS Array of conflict objects with GPO names and setting details. #\> \[CmdletBinding()\] param() \$SettingMap = \@{} foreach (\$GPO in (Get-GPO -All)) { \[xml\]\$Report = Get-GPOReport -Guid \$GPO.Id -ReportType XML \$Extensions = @() \$Extensions += \$Report.GPO.Computer.ExtensionData \$Extensions += \$Report.GPO.User.ExtensionData foreach (\$Ext in \$Extensions) { if (\$Ext.Extension) { foreach (\$Policy in \$Ext.Extension.ChildNodes) { \$Key = \"\$(\$Policy.LocalName):\$(\$Policy.Name)\" if (-not \$SettingMap.ContainsKey(\$Key)) { \$SettingMap\[\$Key\] = @() } \$SettingMap\[\$Key\] += \[PSCustomObject\]@{ GPOName = \$GPO.DisplayName Setting = \$Policy.Name State = \$Policy.State } } } } } \$Conflicts = \$SettingMap.GetEnumerator() \| Where-Object { \$\_.Value.Count -gt 1 } \| ForEach-Object { \[PSCustomObject\]@{ SettingKey = \$\_.Key GPOCount = \$\_.Value.Count GPOs = \$\_.Value } } return \$Conflicts }
+
+5.7 GPO Permission Analysis
+
+\# GPO permission analysis --- who can edit each GPO \$GPOPermissions = foreach (\$GPO in (Get-GPO -All)) { \$Perms = Get-GPPermission -Guid \$GPO.Id -All \| Select-Object Trustee, TrusteeType, Permission, Inherited \[PSCustomObject\]@{ GPOName = \$GPO.DisplayName GPOGUID = \$GPO.Id.ToString() Permissions = \$Perms } } \$GPOPermissions \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\GPOs\\GPOPermissions.json\" -Encoding UTF8
+
+5.8 GPO Backup
+
+\# Backup all GPOs \$BackupPath = \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\GPOs\\GPOBackups\" Backup-GPO -All -Path \$BackupPath Write-Host \"All GPOs backed up to \$BackupPath\" -ForegroundColor Green
+
+5.9 Wrapper Function
+
+function Get-UIAOGPOInventory { \<# .SYNOPSIS Performs complete GPO inventory and analysis for UIAO assessment. .DESCRIPTION Enumerates all GPOs, exports XML/HTML reports, analyzes links, detects unlinked/empty/conflicting GPOs, captures permissions, and creates full GPO backups. .PARAMETER OutputPath Root output directory. Defaults to D:\\UIAO\\Assessment. .EXAMPLE Get-UIAOGPOInventory -OutputPath \"D:\\UIAO\\Assessment\" .OUTPUTS GPOInventory.json, GPOLinks.json, GPOPermissions.json, GPOSettingsDecomposed.json, GPO XML/HTML reports, GPO backups. #\> \[CmdletBinding()\] param(\[string\]\$OutputPath = \"D:\\UIAO\\Assessment\") \$DomainDNS = (Get-ADDomain).DNSRoot \$GPOPath = Join-Path \$OutputPath \"\$DomainDNS\\GPOs\" \# Ensure directories @(\"GPOs\",\"GPOs\\GPOSettings\",\"GPOs\\GPOBackups\") \| ForEach-Object { \$Dir = Join-Path \$OutputPath \"\$DomainDNS\\\$\_\" if (-not (Test-Path \$Dir)) { New-Item -Path \$Dir -ItemType Directory -Force \| Out-Null } } \# Enumerate GPOs \$AllGPOs = Get-GPO -All \| Select-Object DisplayName, Id, GpoStatus, CreationTime, ModificationTime, Owner, Description \$AllGPOs \| ConvertTo-Json -Depth 5 \| Out-File (Join-Path \$GPOPath \"GPOInventory.json\") -Encoding UTF8 \# Export reports \$SetPath = Join-Path \$GPOPath \"GPOSettings\" foreach (\$GPO in (Get-GPO -All)) { Get-GPOReport -Guid \$GPO.Id -ReportType XML -Path (Join-Path \$SetPath \"\$(\$GPO.Id).xml\") Get-GPOReport -Guid \$GPO.Id -ReportType HTML -Path (Join-Path \$SetPath \"\$(\$GPO.Id).html\") } \# Decompose settings Export-UIAOGPOSettings -GPOSettingsPath \$SetPath -OutputPath \$GPOPath \# Backup Backup-GPO -All -Path (Join-Path \$GPOPath \"GPOBackups\") Write-Host \"\[COMPLETE\] GPO inventory and analysis finished.\" -ForegroundColor Green }
+
+5.10 GPO Assessment Output Files
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------
+  **Filename**                 **Format**   **Contents**                                                 **Downstream Consumer**
+  ---------------------------- ------------ ------------------------------------------------------------ -----------------------------------------
+  GPOInventory.json            JSON         All GPO metadata --- name, GUID, status, owner, timestamps   GPO-to-Intune Migration Plan
+
+  {GUID}.xml                   XML          Full GPO settings report per GPO                             Settings decomposition engine
+
+  {GUID}.html                  HTML         Human-readable GPO report per GPO                            Manual review / stakeholder delivery
+
+  GPOLinks.json                JSON         GPO-to-OU link mapping with enforcement flags                OU-to-OrgPath design, scope tag mapping
+
+  GPOPermissions.json          JSON         Edit/apply permissions per GPO                               RBAC design for Intune
+
+  GPOSettingsDecomposed.json   JSON         All settings categorized by policy area                      Intune configuration profile generator
+
+  GPOBackups\\                 Native       Full GPO backup for restore capability                       Rollback / disaster recovery
+  ------------------------------------------------------------------------------------------------------------------------------------------------
+
+6\. DNS Infrastructure Assessment
+
+6.1 DNS Zone Inventory
+
+Enumerate all DNS zones on each DNS server in the domain, capturing zone type, integration status, and DNSSEC configuration.
+
+\# Enumerate DNS zones across all Domain Controllers running DNS \$DCs = Get-ADDomainController -Filter { IsGlobalCatalog -eq \$true } \| Select-Object -ExpandProperty HostName \$AllZones = foreach (\$DC in \$DCs) { try { Get-DnsServerZone -ComputerName \$DC -ErrorAction Stop \| Select-Object ZoneName, ZoneType, IsAutoCreated, IsDsIntegrated, IsReverseLookupZone, IsSigned, DynamicUpdate, \@{N=\'DnsServer\'; E={ \$DC }}, \@{N=\'DirectoryPartition\'; E={ if (\$\_.IsDsIntegrated) { if (\$\_.DirectoryPartitionName -match \"ForestDns\") { \"ForestDnsZones\" } elseif (\$\_.DirectoryPartitionName -match \"DomainDns\") { \"DomainDnsZones\" } else { \"Domain NC\" } } else { \"File-backed\" } }} } catch { Write-Warning \"Unable to query DNS on \$DC\`: \$(\$\_.Exception.Message)\" } } \$AllZones \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\DNS\\DNSZones.json\" -Encoding UTF8
+
+6.2 DNS Record Inventory
+
+\# Full DNS record inventory per zone \$DC = (Get-ADDomain).PDCEmulator \$Zones = Get-DnsServerZone -ComputerName \$DC \| Where-Object { -not \$\_.IsAutoCreated -and \$\_.ZoneName -ne \"TrustAnchors\" } \$RecordInventory = foreach (\$Zone in \$Zones) { \$Records = Get-DnsServerResourceRecord -ZoneName \$Zone.ZoneName -ComputerName \$DC -ErrorAction SilentlyContinue \| Select-Object HostName, RecordType, Timestamp, TimeToLive, \@{N=\'RecordData\'; E={ \$\_.RecordData.IPv4Address.IPAddressToString ?? \$\_.RecordData.HostNameAlias ?? \$\_.RecordData.DomainName ?? \$\_.RecordData.NameServer ?? \$\_.RecordData.DescriptiveText ?? \"\" }} \[PSCustomObject\]@{ ZoneName = \$Zone.ZoneName ZoneType = \$Zone.ZoneType RecordCount = \$Records.Count RecordsByType = \$Records \| Group-Object RecordType \| Select-Object Name, Count } } \$RecordInventory \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\DNS\\DNSRecordInventory.json\" -Encoding UTF8
+
+6.3 Conditional Forwarder and Stub Zone Enumeration
+
+\# Conditional forwarders \$DC = (Get-ADDomain).PDCEmulator \$Forwarders = Get-DnsServerForwarder -ComputerName \$DC \$ConditionalForwarders = Get-DnsServerZone -ComputerName \$DC \| Where-Object { \$\_.ZoneType -eq \'Forwarder\' } \| Select-Object ZoneName, MasterServers, IsDsIntegrated \# Stub zones \$StubZones = Get-DnsServerZone -ComputerName \$DC \| Where-Object { \$\_.ZoneType -eq \'Stub\' } \| Select-Object ZoneName, MasterServers, IsDsIntegrated
+
+6.4 DNSSEC Status Assessment
+
+\# DNSSEC configuration per zone \$DC = (Get-ADDomain).PDCEmulator \$DNSSECStatus = foreach (\$Zone in (Get-DnsServerZone -ComputerName \$DC \| Where-Object { \$\_.IsSigned })) { \$Settings = Get-DnsServerDnsSecZoneSetting -ZoneName \$Zone.ZoneName -ComputerName \$DC \[PSCustomObject\]@{ ZoneName = \$Zone.ZoneName IsSigned = \$true DenialOfExistence = \$Settings.DenialOfExistence IsKeyMasterServer = \$Settings.IsKeyMasterServer DSRecordGenerationAlgorithm = \$Settings.DSRecordGenerationAlgorithm } }
+
+6.5 Stale Record Detection
+
+\# Detect DNS records not updated within threshold (default 90 days) \$StaleThreshold = (Get-Date).AddDays(-90) \$DC = (Get-ADDomain).PDCEmulator \$StaleRecords = foreach (\$Zone in (Get-DnsServerZone -ComputerName \$DC \| Where-Object { \$\_.IsDsIntegrated -and -not \$\_.IsReverseLookupZone -and -not \$\_.IsAutoCreated })) { Get-DnsServerResourceRecord -ZoneName \$Zone.ZoneName -ComputerName \$DC \| Where-Object { \$\_.Timestamp -ne \$null -and \$\_.Timestamp -lt \$StaleThreshold } \| Select-Object HostName, RecordType, Timestamp, \@{N=\'ZoneName\'; E={ \$Zone.ZoneName }}, \@{N=\'AgeDays\'; E={ ((Get-Date) - \$\_.Timestamp).Days }} }
+
+6.6 SRV Record Validation
+
+Verify that critical SRV records exist for all Domain Controllers.
+
+\# Validate critical SRV records for DC locator \$DomainDNS = (Get-ADDomain).DNSRoot \$DC = (Get-ADDomain).PDCEmulator \$SRVChecks = @(\"\_ldap.\_tcp\", \"\_kerberos.\_tcp\", \"\_gc.\_tcp\", \"\_kpasswd.\_tcp\") \$SRVResults = foreach (\$Prefix in \$SRVChecks) { \$Zone = \"\$Prefix.\$DomainDNS\" \$Records = Resolve-DnsName -Name \$Zone -Type SRV -Server \$DC -ErrorAction SilentlyContinue \[PSCustomObject\]@{ SRVRecord = \$Zone RecordCount = (\$Records \| Measure-Object).Count Status = if (\$Records) { \"PASS\" } else { \"FAIL\" } Targets = (\$Records \| Select-Object -ExpandProperty NameTarget) -join \", \" } } \$SRVResults \| Format-Table -AutoSize
+
+6.7 Scavenging Configuration
+
+\# DNS scavenging configuration \$DC = (Get-ADDomain).PDCEmulator \$Scavenging = Get-DnsServerScavenging -ComputerName \$DC \| Select-Object ScavengingState, ScavengingInterval, RefreshInterval, NoRefreshInterval, LastScavengeTime
+
+6.8 Wrapper Function
+
+function Get-UIAODNSAssessment { \<# .SYNOPSIS Performs complete DNS infrastructure assessment for UIAO. .DESCRIPTION Enumerates all DNS zones, records, conditional forwarders, stub zones, DNSSEC status, stale records, SRV record validation, and scavenging configuration. Produces DNSInventory.json and DNSHealthReport.json. .PARAMETER OutputPath Root output directory. Defaults to D:\\UIAO\\Assessment. .EXAMPLE Get-UIAODNSAssessment -OutputPath \"D:\\UIAO\\Assessment\" .OUTPUTS DNSInventory.json, DNSHealthReport.json #\> \[CmdletBinding()\] param(\[string\]\$OutputPath = \"D:\\UIAO\\Assessment\") \$DomainDNS = (Get-ADDomain).DNSRoot \$DNSPath = Join-Path \$OutputPath \"\$DomainDNS\\DNS\" if (-not (Test-Path \$DNSPath)) { New-Item -Path \$DNSPath -ItemType Directory -Force \| Out-Null } \$DC = (Get-ADDomain).PDCEmulator \# Zone inventory \$Zones = Get-DnsServerZone -ComputerName \$DC \| Where-Object { -not \$\_.IsAutoCreated } \| Select-Object ZoneName, ZoneType, IsDsIntegrated, IsReverseLookupZone, IsSigned, DynamicUpdate \# Scavenging \$Scav = Get-DnsServerScavenging -ComputerName \$DC \# Forwarders \$Fwd = Get-DnsServerForwarder -ComputerName \$DC \$Inventory = \[PSCustomObject\]@{ AssessmentTimestamp = (Get-Date -Format \"o\") DnsServer = \$DC Zones = \$Zones Scavenging = \$Scav Forwarders = \$Fwd } \$Inventory \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$DNSPath \"DNSInventory.json\") -Encoding UTF8 Write-Host \"\[COMPLETE\] DNS assessment finished.\" -ForegroundColor Green }
+
+7\. Certificate Services (AD CS) Assessment
+
+7.1 Enterprise CA Discovery
+
+\# Discover Enterprise CAs using certutil and PSPKI \# Method 1: certutil \$CertutilOutput = certutil -config - -ping 2\>&1 \# Method 2: PSPKI module Import-Module PSPKI -ErrorAction Stop \$CAs = Get-CertificationAuthority \| Select-Object \` DisplayName, ComputerName, Type, ConfigString, IsAccessible, \@{N=\'OperatingSystem\'; E={ (Get-ADComputer -Identity (\$\_.ComputerName -split \'\\.\')\[0\] -Properties OperatingSystem).OperatingSystem }} \$CAs \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\PKI\\CAInventory.json\" -Encoding UTF8
+
+7.2 CA Configuration Enumeration
+
+\# Detailed CA configuration \$CAConfigs = foreach (\$CA in (Get-CertificationAuthority)) { \$CACert = \$CA \| Get-CACertificate \[PSCustomObject\]@{ CAName = \$CA.DisplayName ComputerName = \$CA.ComputerName CAType = \$CA.Type \# EnterpriseRootCA, EnterpriseSubCA, StandaloneRootCA ConfigString = \$CA.ConfigString CertSubject = \$CACert.Subject NotBefore = \$CACert.NotBefore NotAfter = \$CACert.NotAfter KeyLength = \$CACert.PublicKey.Key.KeySize SignatureAlgorithm = \$CACert.SignatureAlgorithm.FriendlyName ValidityPeriod = \"\$(\[math\]::Round((\$CACert.NotAfter - \$CACert.NotBefore).TotalDays / 365, 1)) years\" } }
+
+7.3 Certificate Template Inventory
+
+\# Certificate template inventory using PSPKI \$Templates = Get-CertificateTemplate \| Select-Object \` DisplayName, Name, OID, \@{N=\'SchemaVersion\'; E={ \$\_.SchemaVersion }}, \@{N=\'ValidityPeriod\'; E={ \$\_.Settings.ValidityPeriod }}, \@{N=\'RenewalPeriod\'; E={ \$\_.Settings.RenewalPeriod }}, \@{N=\'KeyUsage\'; E={ \$\_.Settings.KeyUsage }}, \@{N=\'EnrollmentFlags\'; E={ \$\_.Settings.EnrollmentFlags }}, \@{N=\'SubjectNameFlag\'; E={ \$\_.Settings.SubjectName }}, \@{N=\'PrivateKeyFlags\'; E={ \$\_.Settings.PrivateKeyFlags }} \$Templates \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\PKI\\TemplateInventory.json\" -Encoding UTF8
+
+7.4 Certificate Template Security Analysis (ESC Vulnerabilities)
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **⚠ Warning --- Critical Security Assessment**                                                                                                                                                                                                                   |
+|                                                                                                                                                                                                                                                                  |
+| The following checks identify certificate template configurations that may allow privilege escalation. Templates flagged by these checks should be remediated immediately. These patterns are modeled after well-documented ESC1--ESC8 vulnerability categories. |
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+\# ESC vulnerability pattern detection function Get-PKISecurityFindings { \<# .SYNOPSIS Detects dangerous certificate template configurations (ESC1-ESC8 patterns). .DESCRIPTION Analyzes certificate templates for vulnerability patterns including enrollee-supplied SANs, overly broad enrollment permissions, and dangerous CA configuration flags. .EXAMPLE \$Findings = Get-PKISecurityFindings .OUTPUTS Array of security finding objects with severity and remediation guidance. #\> \[CmdletBinding()\] param() \$Findings = @() foreach (\$Template in (Get-CertificateTemplate)) { \# ESC1: Templates with ENROLLEE_SUPPLIES_SUBJECT + Client Auth \$SuppliesSubject = (\$Template.Settings.SubjectName -band 1) -eq 1 \$ClientAuth = \$Template.Settings.KeyUsage -match \"DigitalSignature\" if (\$SuppliesSubject -and \$ClientAuth) { \$Findings += \[PSCustomObject\]@{ Finding = \"ESC1\" Severity = \"Critical\" Template = \$Template.DisplayName Description = \"Template allows enrollee-supplied SANs with client authentication EKU\" Remediation = \"Remove ENROLLEE_SUPPLIES_SUBJECT flag or restrict enrollment permissions\" } } \# ESC2: Templates with Any Purpose EKU or no EKU if (\$Template.Settings.ApplicationPolicies -contains \"2.5.29.37.0\" -or \$Template.Settings.ApplicationPolicies.Count -eq 0) { \$Findings += \[PSCustomObject\]@{ Finding = \"ESC2\" Severity = \"High\" Template = \$Template.DisplayName Description = \"Template has \'Any Purpose\' or no EKU constraint\" Remediation = \"Restrict EKUs to specific intended purposes\" } } \# ESC4: Overly broad template write permissions \$TemplateACL = \$Template \| Get-CertificateTemplateAcl \$DangerousACEs = \$TemplateACL.Access \| Where-Object { \$\_.Rights -match \"Write\|FullControl\" -and \$\_.IdentityReference -match \"Authenticated Users\|Domain Users\|Everyone\" } if (\$DangerousACEs) { \$Findings += \[PSCustomObject\]@{ Finding = \"ESC4\" Severity = \"Critical\" Template = \$Template.DisplayName Description = \"Template grants write permissions to broad groups\" Remediation = \"Restrict template write permissions to PKI administrators only\" } } } \# ESC6: CA with EDITF_ATTRIBUTESUBJECTALTNAME2 flag foreach (\$CA in (Get-CertificationAuthority)) { try { \$RegValue = certutil -config \"\$(\$CA.ConfigString)\" -getreg \"policy\\EditFlags\" 2\>&1 if (\$RegValue -match \"EDITF_ATTRIBUTESUBJECTALTNAME2\") { \$Findings += \[PSCustomObject\]@{ Finding = \"ESC6\" Severity = \"Critical\" Template = \"N/A --- CA-level\" Description = \"CA \$(\$CA.DisplayName) has EDITF_ATTRIBUTESUBJECTALTNAME2 enabled\" Remediation = \"Remove the EDITF_ATTRIBUTESUBJECTALTNAME2 flag from the CA\" } } } catch { } } return \$Findings }
+
+7.5 CRL and AIA Configuration
+
+\# CRL Distribution Points \$CRLConfig = foreach (\$CA in (Get-CertificationAuthority)) { \$CDPs = \$CA \| Get-CACrlDistributionPoint \[PSCustomObject\]@{ CAName = \$CA.DisplayName CDPs = \$CDPs \| Select-Object URI, AddToCertificateCDP, AddToFreshestCRL, PublishToServer } } \# Authority Information Access \$AIAConfig = foreach (\$CA in (Get-CertificationAuthority)) { \$AIAs = \$CA \| Get-CAAuthorityInformationAccess \[PSCustomObject\]@{ CAName = \$CA.DisplayName AIAs = \$AIAs \| Select-Object URI, AddToCertificateAIA, AddToCertificateOCSP } }
+
+7.6 Wrapper Function
+
+function Get-UIAOPKIAssessment { \<# .SYNOPSIS Performs complete AD CS / PKI assessment for UIAO. .DESCRIPTION Discovers Enterprise CAs, enumerates templates, analyzes security configurations for ESC vulnerabilities, captures CRL/AIA settings, and produces PKIInventory.json and PKISecurityReport.json. .PARAMETER OutputPath Root output directory. Defaults to D:\\UIAO\\Assessment. .EXAMPLE Get-UIAOPKIAssessment -OutputPath \"D:\\UIAO\\Assessment\" .OUTPUTS PKIInventory.json, PKISecurityReport.json #\> \[CmdletBinding()\] param(\[string\]\$OutputPath = \"D:\\UIAO\\Assessment\") Import-Module PSPKI -ErrorAction Stop \$DomainDNS = (Get-ADDomain).DNSRoot \$PKIPath = Join-Path \$OutputPath \"\$DomainDNS\\PKI\" if (-not (Test-Path \$PKIPath)) { New-Item -Path \$PKIPath -ItemType Directory -Force \| Out-Null } \# CA inventory \$CAs = Get-CertificationAuthority \| Select-Object DisplayName, ComputerName, Type, ConfigString \$Templates = Get-CertificateTemplate \| Select-Object DisplayName, Name, OID \$Inventory = \[PSCustomObject\]@{ AssessmentTimestamp = (Get-Date -Format \"o\") CertificationAuthorities = \$CAs CertificateTemplates = \$Templates } \$Inventory \| ConvertTo-Json -Depth 10 \| Out-File (Join-Path \$PKIPath \"PKIInventory.json\") -Encoding UTF8 \# Security findings \$Findings = Get-PKISecurityFindings \$Findings \| ConvertTo-Json -Depth 5 \| Out-File (Join-Path \$PKIPath \"PKISecurityReport.json\") -Encoding UTF8 Write-Host \"\[COMPLETE\] PKI assessment finished. \$(\$Findings.Count) security findings.\" -ForegroundColor Green }
+
+8\. Computer Object Enumeration and Classification
+
+8.1 Full Computer Object Extraction
+
+\# Full computer object extraction with all governance-relevant properties \$AllComputers = Get-ADComputer -Filter \* -Properties \` Name, DNSHostName, OperatingSystem, OperatingSystemVersion, OperatingSystemServicePack, Enabled, LastLogonDate, PasswordLastSet, Created, Modified, MemberOf, DistinguishedName, IPv4Address, SID, ServicePrincipalName, TrustedForDelegation, TrustedToAuthForDelegation, \'msDS-AllowedToDelegateTo\', \'msDS-SupportedEncryptionTypes\', Description \| Select-Object Name, DNSHostName, OperatingSystem, OperatingSystemVersion, OperatingSystemServicePack, Enabled, LastLogonDate, PasswordLastSet, Created, Modified, DistinguishedName, IPv4Address, SID, Description, \@{N=\'MemberOfCount\'; E={ \$\_.MemberOf.Count }}, \@{N=\'MemberOf\'; E={ \$\_.MemberOf }}, \@{N=\'SPNs\'; E={ \$\_.ServicePrincipalName }}, \@{N=\'TrustedForDelegation\'; E={ \$\_.TrustedForDelegation }}, \@{N=\'TrustedToAuthForDelegation\'; E={ \$\_.TrustedToAuthForDelegation }}, \@{N=\'AllowedToDelegateTo\'; E={ \$\_.\'msDS-AllowedToDelegateTo\' }}, \@{N=\'SupportedEncryptionTypes\'; E={ \$\_.\'msDS-SupportedEncryptionTypes\' }} \$AllComputers \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\Objects\\ComputerInventory.json\" -Encoding UTF8 Write-Host \"Enumerated \$(\$AllComputers.Count) computer objects.\" -ForegroundColor Green
+
+8.2 Computer Classification by Operating System
+
+\# Classify computers by OS family and version \$ComputersByOS = \$AllComputers \| Group-Object OperatingSystem \| Select-Object \@{N=\'OperatingSystem\'; E={ \$\_.Name }}, \@{N=\'Count\'; E={ \$\_.Count }}, \@{N=\'EnabledCount\'; E={ (\$\_.Group \| Where-Object Enabled -eq \$true).Count }}, \@{N=\'DisabledCount\'; E={ (\$\_.Group \| Where-Object Enabled -eq \$false).Count }} \| Sort-Object Count -Descending \$ComputersByOS \| Export-Csv -Path \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\Objects\\ComputersByOS.csv\" \` -NoTypeInformation -Encoding UTF8
+
+8.3 Stale Computer Detection
+
+\# Detect stale computer accounts (configurable threshold) \$StaleThresholdDays = 90 \$StaleDate = (Get-Date).AddDays(-\$StaleThresholdDays) \$StaleComputers = \$AllComputers \| Where-Object { (\$\_.LastLogonDate -lt \$StaleDate -or \$\_.LastLogonDate -eq \$null) -and (\$\_.PasswordLastSet -lt \$StaleDate -or \$\_.PasswordLastSet -eq \$null) } \| Select-Object Name, DNSHostName, OperatingSystem, Enabled, LastLogonDate, PasswordLastSet, DistinguishedName, \@{N=\'DaysSinceLogon\'; E={ if (\$\_.LastLogonDate) { ((Get-Date) - \$\_.LastLogonDate).Days } else { \"Never\" } }} \$StaleComputers \| Export-Csv -Path \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\Objects\\StaleComputers.csv\" \` -NoTypeInformation -Encoding UTF8 Write-Host \"Found \$(\$StaleComputers.Count) stale computer accounts.\" -ForegroundColor Yellow
+
+8.4 Computer Delegation Analysis
+
+\# Identify computers with delegation configurations \$DelegationReport = \$AllComputers \| Where-Object { \$\_.TrustedForDelegation -eq \$true -or \$\_.TrustedToAuthForDelegation -eq \$true -or \$\_.AllowedToDelegateTo -ne \$null } \| Select-Object Name, DNSHostName, OperatingSystem, \@{N=\'DelegationType\'; E={ if (\$\_.TrustedForDelegation) { \"Unconstrained\" } elseif (\$\_.AllowedToDelegateTo) { \"Constrained\" } elseif (\$\_.TrustedToAuthForDelegation) { \"Protocol Transition\" } }}, \@{N=\'DelegationTargets\'; E={ \$\_.AllowedToDelegateTo -join \"; \" }}, DistinguishedName \$DelegationReport \| Export-Csv -Path \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\Objects\\DelegationReport.csv\" \` -NoTypeInformation -Encoding UTF8
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **⚠ Warning --- Unconstrained Delegation**                                                                                                                                                                                                                                      |
+|                                                                                                                                                                                                                                                                                 |
+| Computers with unconstrained delegation (TrustedForDelegation = \$true) can impersonate any user who authenticates to them. This is a critical security finding. All unconstrained delegation instances should be flagged for immediate review in the UIAO governance pipeline. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+8.5 Wrapper Function
+
+function Get-UIAOComputerInventory { \<# .SYNOPSIS Performs complete computer object enumeration for UIAO assessment. .DESCRIPTION Extracts all computer objects, classifies by OS, detects stale accounts, analyzes delegation configurations, and exports structured inventory data. .PARAMETER OutputPath Root output directory. Defaults to D:\\UIAO\\Assessment. .PARAMETER StaleThresholdDays Days since last logon to classify as stale. Defaults to 90. .EXAMPLE Get-UIAOComputerInventory -OutputPath \"D:\\UIAO\\Assessment\" -StaleThresholdDays 90 .OUTPUTS ComputerInventory.json, ComputersByOS.csv, StaleComputers.csv, DelegationReport.csv #\> \[CmdletBinding()\] param( \[string\]\$OutputPath = \"D:\\UIAO\\Assessment\", \[int\]\$StaleThresholdDays = 90 ) \$DomainDNS = (Get-ADDomain).DNSRoot \$ObjPath = Join-Path \$OutputPath \"\$DomainDNS\\Objects\" if (-not (Test-Path \$ObjPath)) { New-Item -Path \$ObjPath -ItemType Directory -Force \| Out-Null } \$AllComputers = Get-ADComputer -Filter \* -Properties Name, DNSHostName, OperatingSystem, OperatingSystemVersion, Enabled, LastLogonDate, PasswordLastSet, Created, Modified, MemberOf, DistinguishedName, IPv4Address, SID, ServicePrincipalName, TrustedForDelegation, TrustedToAuthForDelegation, \'msDS-AllowedToDelegateTo\' \# Full inventory \$AllComputers \| ConvertTo-Json -Depth 5 \| Out-File (Join-Path \$ObjPath \"ComputerInventory.json\") -Encoding UTF8 \# OS classification \$AllComputers \| Group-Object OperatingSystem \| Select-Object \@{N=\'OperatingSystem\';E={\$\_.Name}}, Count \| Export-Csv (Join-Path \$ObjPath \"ComputersByOS.csv\") -NoTypeInformation -Encoding UTF8 \# Stale detection \$StaleDate = (Get-Date).AddDays(-\$StaleThresholdDays) \$AllComputers \| Where-Object { \$\_.LastLogonDate -lt \$StaleDate } \| Select-Object Name, OperatingSystem, LastLogonDate, Enabled \| Export-Csv (Join-Path \$ObjPath \"StaleComputers.csv\") -NoTypeInformation -Encoding UTF8 \# Delegation \$AllComputers \| Where-Object { \$\_.TrustedForDelegation -or \$\_.\'msDS-AllowedToDelegateTo\' } \| Select-Object Name, TrustedForDelegation, \'msDS-AllowedToDelegateTo\' \| Export-Csv (Join-Path \$ObjPath \"DelegationReport.csv\") -NoTypeInformation -Encoding UTF8 Write-Host \"\[COMPLETE\] Computer inventory finished: \$(\$AllComputers.Count) objects.\" -ForegroundColor Green }
+
+9\. User Object and Group Membership Analysis
+
+9.1 Full User Object Extraction
+
+\# Full user extraction with governance-relevant properties \$AllUsers = Get-ADUser -Filter \* -Properties \` SamAccountName, UserPrincipalName, DisplayName, Enabled, LastLogonDate, PasswordLastSet, PasswordNeverExpires, PasswordExpired, LockedOut, AccountExpirationDate, MemberOf, AdminCount, TrustedForDelegation, ServicePrincipalName, Created, Modified, DistinguishedName, Description, Department, Title \| Select-Object SamAccountName, UserPrincipalName, DisplayName, Enabled, LastLogonDate, PasswordLastSet, PasswordNeverExpires, PasswordExpired, LockedOut, AccountExpirationDate, AdminCount, TrustedForDelegation, Created, Modified, DistinguishedName, Description, Department, Title, \@{N=\'MemberOfCount\'; E={ \$\_.MemberOf.Count }}, \@{N=\'MemberOf\'; E={ \$\_.MemberOf }}, \@{N=\'HasSPN\'; E={ \$\_.ServicePrincipalName.Count -gt 0 }}, \@{N=\'SPNs\'; E={ \$\_.ServicePrincipalName }} \$AllUsers \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\Objects\\UserInventory.json\" -Encoding UTF8 Write-Host \"Enumerated \$(\$AllUsers.Count) user objects.\" -ForegroundColor Green
+
+9.2 Privileged User Identification
+
+\# Identify members of privileged groups \$PrivilegedGroups = @( \"Domain Admins\", \"Enterprise Admins\", \"Schema Admins\", \"Administrators\", \"Account Operators\", \"Server Operators\", \"Backup Operators\", \"Print Operators\" ) \$PrivilegedUsers = foreach (\$GroupName in \$PrivilegedGroups) { try { \$Members = Get-ADGroupMember -Identity \$GroupName -Recursive -ErrorAction SilentlyContinue foreach (\$Member in \$Members) { \$User = Get-ADUser -Identity \$Member.SID -Properties LastLogonDate, PasswordLastSet, Enabled, AdminCount -ErrorAction SilentlyContinue if (\$User) { \[PSCustomObject\]@{ PrivilegedGroup = \$GroupName SamAccountName = \$User.SamAccountName Enabled = \$User.Enabled LastLogonDate = \$User.LastLogonDate PasswordLastSet = \$User.PasswordLastSet AdminCount = \$User.AdminCount } } } } catch { Write-Warning \"Unable to enumerate \$GroupName\`: \$(\$\_.Exception.Message)\" } } \$PrivilegedUsers \| Export-Csv -Path \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\Objects\\PrivilegedUsers.csv\" \` -NoTypeInformation -Encoding UTF8
+
+9.3 AdminSDHolder Protected Accounts
+
+\# Enumerate AdminSDHolder-protected accounts (AdminCount=1) \$AdminSDHolderAccounts = Get-ADUser -Filter { AdminCount -eq 1 } -Properties \` SamAccountName, Enabled, LastLogonDate, MemberOf, AdminCount \| Select-Object SamAccountName, Enabled, LastLogonDate, AdminCount, \@{N=\'MemberOfCount\'; E={ \$\_.MemberOf.Count }}, \@{N=\'IsInPrivGroup\'; E={ \$InPriv = \$false foreach (\$G in \$\_.MemberOf) { if (\$G -match \"Domain Admins\|Enterprise Admins\|Schema Admins\|Administrators\") { \$InPriv = \$true } } \$InPriv }}, \@{N=\'OrphanedAdminCount\'; E={ \# AdminCount=1 but no longer in any privileged group = orphaned \$InPriv = \$false foreach (\$G in \$\_.MemberOf) { if (\$G -match \"Domain Admins\|Enterprise Admins\|Schema Admins\|Administrators\") { \$InPriv = \$true } } -not \$InPriv }}
+
+9.4 Service Account Identification
+
+\# Identify service accounts: SPN-based, MSA, and gMSA \# Traditional service accounts (users with SPNs) \$SPNAccounts = \$AllUsers \| Where-Object { \$\_.HasSPN -eq \$true } \| Select-Object SamAccountName, DisplayName, Enabled, PasswordNeverExpires, LastLogonDate, SPNs, DistinguishedName \# Managed Service Accounts (MSAs) \$MSAs = Get-ADServiceAccount -Filter \* -Properties \` SamAccountName, Enabled, Created, PasswordLastSet, DistinguishedName, ServicePrincipalName \| Select-Object SamAccountName, Enabled, Created, PasswordLastSet, DistinguishedName, ServicePrincipalName, \@{N=\'AccountType\'; E={ if (\$\_.ObjectClass -eq \'msDS-GroupManagedServiceAccount\') { \'gMSA\' } else { \'MSA\' } }} \# Combine all service accounts \$ServiceAccounts = @() \$ServiceAccounts += \$SPNAccounts \| Select-Object SamAccountName, Enabled, \@{N=\'Type\'; E={\'SPN-based\'}}, \@{N=\'SPNs\'; E={ \$\_.SPNs -join \'; \' }} \$ServiceAccounts += \$MSAs \| Select-Object SamAccountName, Enabled, \@{N=\'Type\'; E={ \$\_.AccountType }}, \@{N=\'SPNs\'; E={ \$\_.ServicePrincipalName -join \'; \' }} \$ServiceAccounts \| Export-Csv -Path \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\Objects\\ServiceAccounts.csv\" \` -NoTypeInformation -Encoding UTF8
+
+9.5 Group Analysis
+
+\# Full group inventory with nested membership expansion \$AllGroups = Get-ADGroup -Filter \* -Properties \` SamAccountName, DisplayName, Description, GroupCategory, GroupScope, MemberOf, Members, ManagedBy, Created, Modified, DistinguishedName, AdminCount \| Select-Object SamAccountName, DisplayName, Description, \@{N=\'Category\'; E={ \$\_.GroupCategory }}, \# Security or Distribution \@{N=\'Scope\'; E={ \$\_.GroupScope }}, \# DomainLocal, Global, Universal ManagedBy, Created, Modified, DistinguishedName, AdminCount, \@{N=\'DirectMemberCount\'; E={ \$\_.Members.Count }}, \@{N=\'IsEmpty\'; E={ \$\_.Members.Count -eq 0 }} \$AllGroups \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\Objects\\GroupInventory.json\" -Encoding UTF8 \# Detect empty groups \$EmptyGroups = \$AllGroups \| Where-Object { \$\_.IsEmpty -eq \$true } Write-Host \"Found \$(\$EmptyGroups.Count) empty groups.\" -ForegroundColor Yellow
+
+9.6 Circular Group Nesting Detection
+
+\# Detect circular group nesting function Find-CircularGroupNesting { \<# .SYNOPSIS Detects circular group nesting in Active Directory. .DESCRIPTION Traverses group membership chains to identify groups that are members of themselves through nested membership. .EXAMPLE \$Circular = Find-CircularGroupNesting .OUTPUTS Array of circular nesting chains. #\> \[CmdletBinding()\] param() \$CircularChains = @() foreach (\$Group in (Get-ADGroup -Filter \* -Properties MemberOf)) { \$Visited = @(\$Group.DistinguishedName) \$Queue = @(\$Group.MemberOf) while (\$Queue.Count -gt 0) { \$Current = \$Queue\[0\] \$Queue = \$Queue\[1..(\$Queue.Count - 1)\] if (\$Current -eq \$Group.DistinguishedName) { \$CircularChains += \[PSCustomObject\]@{ Group = \$Group.SamAccountName DN = \$Group.DistinguishedName Chain = \$Visited -join \" -\> \" } break } if (\$Current -notin \$Visited) { \$Visited += \$Current \$Parent = Get-ADGroup -Identity \$Current -Properties MemberOf -ErrorAction SilentlyContinue if (\$Parent) { \$Queue += \$Parent.MemberOf } } } } return \$CircularChains }
+
+9.7 Wrapper Functions
+
+function Get-UIAOUserInventory { \<# .SYNOPSIS Performs complete user object analysis for UIAO assessment. .DESCRIPTION Extracts all users, identifies privileged accounts, enumerates service accounts, and detects stale user objects. .PARAMETER OutputPath Root output directory. Defaults to D:\\UIAO\\Assessment. .PARAMETER StaleThresholdDays Days since last logon to classify as stale. Defaults to 90. .EXAMPLE Get-UIAOUserInventory -OutputPath \"D:\\UIAO\\Assessment\" .OUTPUTS UserInventory.json, PrivilegedUsers.csv, ServiceAccounts.csv #\> \[CmdletBinding()\] param( \[string\]\$OutputPath = \"D:\\UIAO\\Assessment\", \[int\]\$StaleThresholdDays = 90 ) \$DomainDNS = (Get-ADDomain).DNSRoot \$ObjPath = Join-Path \$OutputPath \"\$DomainDNS\\Objects\" if (-not (Test-Path \$ObjPath)) { New-Item -Path \$ObjPath -ItemType Directory -Force \| Out-Null } \# Full user inventory \$Users = Get-ADUser -Filter \* -Properties SamAccountName, UserPrincipalName, DisplayName, Enabled, LastLogonDate, PasswordLastSet, PasswordNeverExpires, AdminCount, ServicePrincipalName, MemberOf, DistinguishedName \$Users \| ConvertTo-Json -Depth 5 \| Out-File (Join-Path \$ObjPath \"UserInventory.json\") -Encoding UTF8 Write-Host \"\[COMPLETE\] User inventory finished: \$(\$Users.Count) objects.\" -ForegroundColor Green } function Get-UIAOGroupInventory { \<# .SYNOPSIS Performs complete group analysis for UIAO assessment. .DESCRIPTION Enumerates all groups, classifies by type and scope, detects empty groups, and checks for circular nesting. .PARAMETER OutputPath Root output directory. Defaults to D:\\UIAO\\Assessment. .EXAMPLE Get-UIAOGroupInventory -OutputPath \"D:\\UIAO\\Assessment\" .OUTPUTS GroupInventory.json #\> \[CmdletBinding()\] param(\[string\]\$OutputPath = \"D:\\UIAO\\Assessment\") \$DomainDNS = (Get-ADDomain).DNSRoot \$ObjPath = Join-Path \$OutputPath \"\$DomainDNS\\Objects\" if (-not (Test-Path \$ObjPath)) { New-Item -Path \$ObjPath -ItemType Directory -Force \| Out-Null } \$Groups = Get-ADGroup -Filter \* -Properties SamAccountName, GroupCategory, GroupScope, Members, MemberOf, Description, ManagedBy \$Groups \| ConvertTo-Json -Depth 5 \| Out-File (Join-Path \$ObjPath \"GroupInventory.json\") -Encoding UTF8 Write-Host \"\[COMPLETE\] Group inventory finished: \$(\$Groups.Count) groups.\" -ForegroundColor Green }
+
+10\. Trust Relationship Mapping
+
+10.1 Trust Enumeration
+
+\# Enumerate all trust relationships \$Trusts = Get-ADTrust -Filter \* -Properties \* \| Select-Object \` Name, Source, Target, \@{N=\'Direction\'; E={ switch (\$\_.Direction) { 0 { \"Disabled\" } 1 { \"Inbound\" } 2 { \"Outbound\" } 3 { \"Bidirectional\" } } }}, \@{N=\'TrustType\'; E={ switch (\$\_.TrustType) { 1 { \"Downlevel (Windows NT)\" } 2 { \"Uplevel (Windows 2000+)\" } 3 { \"Realm (Kerberos)\" } 4 { \"DCE\" } } }}, \@{N=\'TrustAttributes\'; E={ \$Attr = @() if (\$\_.TrustAttributes -band 1) { \$Attr += \"NonTransitive\" } if (\$\_.TrustAttributes -band 2) { \$Attr += \"UplevelOnly\" } if (\$\_.TrustAttributes -band 4) { \$Attr += \"Quarantined (SID Filtered)\" } if (\$\_.TrustAttributes -band 8) { \$Attr += \"ForestTransitive\" } if (\$\_.TrustAttributes -band 16) { \$Attr += \"CrossOrganization\" } if (\$\_.TrustAttributes -band 32) { \$Attr += \"WithinForest\" } if (\$\_.TrustAttributes -band 64) { \$Attr += \"TreatAsExternal\" } \$Attr -join \", \" }}, SelectiveAuthentication, \@{N=\'SIDFilteringForestAware\'; E={ \$\_.SIDFilteringForestAware }}, \@{N=\'SIDFilteringQuarantined\'; E={ \$\_.SIDFilteringQuarantined }}, IntraForest, IsTreeParent, IsTreeRoot, Created, Modified \$Trusts \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \"D:\\UIAO\\Assessment\\\$((Get-ADDomain).DNSRoot)\\Trusts\\TrustMap.json\" -Encoding UTF8
+
+10.2 Trust Validation
+
+\# Validate trust health \$TrustValidation = foreach (\$Trust in (Get-ADTrust -Filter \*)) { \$TestResult = \$null try { \# Test-ADTrust is available on DCs; use netdom on member servers if (Get-Command Test-ADTrust -ErrorAction SilentlyContinue) { \$TestResult = Test-ADTrust -Identity \$Trust.Name -ErrorAction Stop \$Status = \"Valid\" } else { \$NetdomResult = netdom trust \$Trust.Name /verify 2\>&1 \$Status = if (\$LASTEXITCODE -eq 0) { \"Valid\" } else { \"Failed\" } } } catch { \$Status = \"Error: \$(\$\_.Exception.Message)\" } \[PSCustomObject\]@{ TrustPartner = \$Trust.Name Direction = \$Trust.Direction Status = \$Status } }
+
+10.3 Trust Direction Analysis
+
+\# Analyze authentication flow based on trust direction \$TrustFlowAnalysis = foreach (\$Trust in \$Trusts) { \$SourceDomain = (Get-ADDomain).DNSRoot \[PSCustomObject\]@{ TrustPartner = \$Trust.Name Direction = \$Trust.Direction AuthFlow = switch (\$Trust.Direction) { \"Inbound\" { \"Users in \$(\$Trust.Name) CAN authenticate to \$SourceDomain\" } \"Outbound\" { \"Users in \$SourceDomain CAN authenticate to \$(\$Trust.Name)\" } \"Bidirectional\" { \"Users in BOTH domains can cross-authenticate\" } default { \"Trust is disabled\" } } SelectiveAuth = \$Trust.SelectiveAuthentication SIDFiltered = \$Trust.SIDFilteringQuarantined SecurityPosture = if (\$Trust.SelectiveAuthentication) { \"Hardened\" } elseif (\$Trust.SIDFilteringQuarantined) { \"Standard\" } else { \"Review Required\" } } }
+
+10.4 Wrapper Function
+
+function Get-UIAOTrustMap { \<# .SYNOPSIS Performs complete trust relationship mapping for UIAO assessment. .DESCRIPTION Enumerates all AD trusts, validates trust health, analyzes direction and security posture, and exports TrustMap.json. .PARAMETER OutputPath Root output directory. Defaults to D:\\UIAO\\Assessment. .EXAMPLE Get-UIAOTrustMap -OutputPath \"D:\\UIAO\\Assessment\" .OUTPUTS TrustMap.json #\> \[CmdletBinding()\] param(\[string\]\$OutputPath = \"D:\\UIAO\\Assessment\") \$DomainDNS = (Get-ADDomain).DNSRoot \$TrustPath = Join-Path \$OutputPath \"\$DomainDNS\\Trusts\" if (-not (Test-Path \$TrustPath)) { New-Item -Path \$TrustPath -ItemType Directory -Force \| Out-Null } \$Trusts = Get-ADTrust -Filter \* \| Select-Object Name, Direction, TrustType, TrustAttributes, SelectiveAuthentication, IntraForest \$TrustData = \[PSCustomObject\]@{ AssessmentTimestamp = (Get-Date -Format \"o\") Domain = \$DomainDNS TrustCount = \$Trusts.Count Trusts = \$Trusts } \$TrustData \| ConvertTo-Json -Depth 5 \| Out-File (Join-Path \$TrustPath \"TrustMap.json\") -Encoding UTF8 Write-Host \"\[COMPLETE\] Trust mapping finished: \$(\$Trusts.Count) trusts.\" -ForegroundColor Green }
+
+11\. UIAO Assessment Pipeline Integration
+
+11.1 Master Assessment Orchestrator
+
+The Invoke-UIAOADAssessment function calls all wrapper functions in sequence, producing the complete assessment artifact set in a single invocation.
+
+function Invoke-UIAOADAssessment { \<# .SYNOPSIS Executes the complete UIAO Active Directory assessment pipeline. .DESCRIPTION Orchestrates all assessment functions in sequence: forest topology, OU hierarchy, GPO inventory, DNS assessment, PKI assessment, computer inventory, user inventory, group inventory, and trust mapping. Generates AssessmentManifest.json upon completion. .PARAMETER Domain Target domain DNS name. Defaults to current domain. .PARAMETER OutputPath Root output directory. Defaults to D:\\UIAO\\Assessment. .PARAMETER StaleThresholdDays Days threshold for stale object detection. Defaults to 90. .EXAMPLE Invoke-UIAOADAssessment -Domain \"contoso.com\" -OutputPath \"D:\\UIAO\\Assessment\" .OUTPUTS Complete assessment artifact set plus AssessmentManifest.json. #\> \[CmdletBinding()\] param( \[string\]\$Domain = (Get-ADDomain).DNSRoot, \[string\]\$OutputPath = \"D:\\UIAO\\Assessment\", \[int\]\$StaleThresholdDays = 90 ) \$StartTime = Get-Date Write-Host \"========================================\" -ForegroundColor Cyan Write-Host \" UIAO Active Directory Assessment\" -ForegroundColor Cyan Write-Host \" Domain: \$Domain\" -ForegroundColor Cyan Write-Host \" Started: \$StartTime\" -ForegroundColor Cyan Write-Host \"========================================\" -ForegroundColor Cyan \# Phase 1: Forest Topology Write-Host \"\`n\[1/8\] Forest Topology Discovery\...\" -ForegroundColor White Get-UIAOForestTopology -OutputPath \$OutputPath \# Phase 2: OU Hierarchy Write-Host \"\`n\[2/8\] OU Hierarchy Extraction\...\" -ForegroundColor White Get-UIAOOUHierarchy -OutputPath \$OutputPath \# Phase 3: GPO Inventory Write-Host \"\`n\[3/8\] GPO Inventory and Analysis\...\" -ForegroundColor White Get-UIAOGPOInventory -OutputPath \$OutputPath \# Phase 4: DNS Assessment Write-Host \"\`n\[4/8\] DNS Infrastructure Assessment\...\" -ForegroundColor White Get-UIAODNSAssessment -OutputPath \$OutputPath \# Phase 5: PKI Assessment Write-Host \"\`n\[5/8\] Certificate Services Assessment\...\" -ForegroundColor White Get-UIAOPKIAssessment -OutputPath \$OutputPath \# Phase 6: Computer Inventory Write-Host \"\`n\[6/8\] Computer Object Enumeration\...\" -ForegroundColor White Get-UIAOComputerInventory -OutputPath \$OutputPath -StaleThresholdDays \$StaleThresholdDays \# Phase 7: User and Group Inventory Write-Host \"\`n\[7/8\] User and Group Analysis\...\" -ForegroundColor White Get-UIAOUserInventory -OutputPath \$OutputPath -StaleThresholdDays \$StaleThresholdDays Get-UIAOGroupInventory -OutputPath \$OutputPath \# Phase 8: Trust Mapping Write-Host \"\`n\[8/8\] Trust Relationship Mapping\...\" -ForegroundColor White Get-UIAOTrustMap -OutputPath \$OutputPath \# Generate Assessment Manifest \$EndTime = Get-Date \$Duration = \$EndTime - \$StartTime \$BasePath = Join-Path \$OutputPath \$Domain \# Build file inventory with checksums \$Files = Get-ChildItem -Path \$BasePath -Recurse -File \| ForEach-Object { \[PSCustomObject\]@{ RelativePath = \$\_.FullName.Replace(\$BasePath, \"\").TrimStart(\"\\\") SizeBytes = \$\_.Length LastModified = \$\_.LastWriteTime.ToString(\"o\") SHA256 = (Get-FileHash -Path \$\_.FullName -Algorithm SHA256).Hash } } \$Manifest = \[PSCustomObject\]@{ AssessmentId = \[guid\]::NewGuid().ToString() Domain = \$Domain StartTime = \$StartTime.ToString(\"o\") EndTime = \$EndTime.ToString(\"o\") DurationMinutes = \[math\]::Round(\$Duration.TotalMinutes, 2) ExecutedBy = \"\$env:USERDOMAIN\\\$env:USERNAME\" ComputerName = \$env:COMPUTERNAME StaleThresholdDays = \$StaleThresholdDays FileCount = \$Files.Count Files = \$Files } \$Manifest \| ConvertTo-Json -Depth 5 \| Out-File (Join-Path \$BasePath \"AssessmentManifest.json\") -Encoding UTF8 Write-Host \"\`n========================================\" -ForegroundColor Green Write-Host \" Assessment Complete\" -ForegroundColor Green Write-Host \" Duration: \$(\[math\]::Round(\$Duration.TotalMinutes, 2)) minutes\" -ForegroundColor Green Write-Host \" Files: \$(\$Files.Count)\" -ForegroundColor Green Write-Host \" Output: \$BasePath\" -ForegroundColor Green Write-Host \"========================================\" -ForegroundColor Green }
+
+11.2 Pipeline Output Structure
+
+Upon completion, the assessment produces the following directory tree:
+
+D:\\UIAO\\Assessment\\contoso.com\\ ├── AssessmentManifest.json ← Master manifest with checksums ├── Forest\\ │ ├── ForestTopology.json ← Consolidated topology │ ├── ForestInfo.json │ ├── Sites.json │ ├── SiteLinks.json │ ├── Subnets.json │ └── FSMORoles.json ├── Domains\\ │ ├── AllDomains.json │ ├── contoso.com.json │ └── DomainControllers.json ├── OUs\\ │ ├── OUHierarchy.json │ ├── OUFlatList.csv │ ├── OUDelegations.json │ └── OUTreeVisual.txt ├── GPOs\\ │ ├── GPOInventory.json │ ├── GPOLinks.json │ ├── GPOPermissions.json │ ├── GPOSettingsDecomposed.json │ ├── GPOSettings\\ │ │ ├── {GUID}.xml │ │ └── {GUID}.html │ └── GPOBackups\\ ├── DNS\\ │ ├── DNSInventory.json │ └── DNSHealthReport.json ├── PKI\\ │ ├── PKIInventory.json │ └── PKISecurityReport.json ├── Objects\\ │ ├── ComputerInventory.json │ ├── ComputersByOS.csv │ ├── StaleComputers.csv │ ├── DelegationReport.csv │ ├── UserInventory.json │ ├── PrivilegedUsers.csv │ ├── ServiceAccounts.csv │ └── GroupInventory.json ├── Trusts\\ │ └── TrustMap.json └── ServiceAccounts\\ ├── MSAInventory.json └── gMSAInventory.json
+
+11.3 Assessment Data to UIAO Gitea Integration
+
+Assessment artifacts are committed to the uiao.git repository under a timestamped directory.
+
+\# Commit assessment artifacts to Gitea \$Domain = (Get-ADDomain).DNSRoot \$Timestamp = Get-Date -Format \"yyyyMMdd-HHmmss\" \$GitPath = \"assessments/\$Domain/\$Timestamp\" \# Stage and commit (assumes local clone of uiao.git) \$RepoPath = \"D:\\UIAO\\Repos\\uiao\" Copy-Item -Path \"D:\\UIAO\\Assessment\\\$Domain\\\*\" -Destination \"\$RepoPath\\\$GitPath\" -Recurse -Force Push-Location \$RepoPath git add \"\$GitPath/\*\" git commit -m \"Assessment: \$Domain @ \$Timestamp\" git push origin main Pop-Location
+
+11.4 Assessment Output to Planning Document Mapping
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Assessment Artifact**                          **Downstream Planning Document**     **Transformation**
+  ------------------------------------------------ ------------------------------------ ----------------------------------------------------------------------------------------------------
+  GPOInventory.json + GPOSettingsDecomposed.json   GPO-to-Intune Migration Plan         Map each GPO setting to Intune configuration profile, compliance policy, or Settings Catalog entry
+
+  ComputerInventory.json + ComputersByOS.csv       Device Modernization Plan            Classify each device for Entra Join, Hybrid Join, or Arc enrollment based on OS and workload
+
+  DNSInventory.json                                DNS Modernization Plan               Map zones and conditional forwarders to target DNS architecture
+
+  PKIInventory.json + PKISecurityReport.json       Certificate Modernization Plan       Evaluate templates for Entra Certificate-Based Auth eligibility, remediate ESC findings
+
+  OUHierarchy.json                                 OrgPath Design for Dynamic Groups    Convert OU-based targeting to Entra ID dynamic group membership rules
+
+  TrustMap.json                                    Cross-Tenant Configuration Plan      Map trust relationships to Entra ID cross-tenant access settings
+
+  UserInventory.json + GroupInventory.json         Identity Modernization Plan          Design Entra ID group structure, PIM role assignments, Access Review scopes
+
+  ServiceAccounts.csv                              Service Account Modernization Plan   Migrate to gMSA or Managed Identities where applicable
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+11.5 Drift Detection
+
+Schedule recurring assessments and compare against previous runs to detect configuration drift.
+
+\# Schedule recurring assessment via Task Scheduler \$Action = New-ScheduledTaskAction -Execute \"PowerShell.exe\" \` -Argument \'-NoProfile -ExecutionPolicy Bypass -Command \"Import-Module UIAOADAssessment; Invoke-UIAOADAssessment\"\' \$Trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At \"02:00\" \$Principal = New-ScheduledTaskPrincipal -UserId \"DOMAIN\\svc-uiao-assess\" -LogonType Password Register-ScheduledTask -TaskName \"UIAO-AD-Assessment\" \` -Action \$Action -Trigger \$Trigger -Principal \$Principal \` -Description \"Weekly UIAO Active Directory Assessment\" \# Diff against previous assessment function Compare-UIAOAssessments { \<# .SYNOPSIS Compares two UIAO assessment runs to detect configuration drift. .PARAMETER BaselinePath Path to the baseline assessment directory. .PARAMETER CurrentPath Path to the current assessment directory. .EXAMPLE Compare-UIAOAssessments -BaselinePath \"D:\\UIAO\\Assessment\\contoso.com\\20260401\" \` -CurrentPath \"D:\\UIAO\\Assessment\\contoso.com\\20260408\" .OUTPUTS DriftReport.json with added, removed, and changed items. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory)\]\[string\]\$BaselinePath, \[Parameter(Mandatory)\]\[string\]\$CurrentPath ) \$Drift = @() \# Compare key JSON files \$FilesToCompare = @( \"Forest\\ForestTopology.json\", \"Objects\\ComputerInventory.json\", \"Objects\\UserInventory.json\", \"Objects\\GroupInventory.json\", \"GPOs\\GPOInventory.json\", \"Trusts\\TrustMap.json\" ) foreach (\$File in \$FilesToCompare) { \$BaseLine = Get-Content (Join-Path \$BaselinePath \$File) -Raw -ErrorAction SilentlyContinue \$Current = Get-Content (Join-Path \$CurrentPath \$File) -Raw -ErrorAction SilentlyContinue if (\$BaseLine -ne \$Current) { \$Drift += \[PSCustomObject\]@{ File = \$File Status = \"Changed\" Baseline = (Get-FileHash (Join-Path \$BaselinePath \$File) -Algorithm SHA256).Hash Current = (Get-FileHash (Join-Path \$CurrentPath \$File) -Algorithm SHA256).Hash } } } return \$Drift }
+
+12\. Gitea API Integration for Assessment Data
+
+12.1 Posting Assessment Results to Gitea via API
+
+\# Gitea API configuration \$GiteaBaseURL = \"https://gitea.uiao.local/api/v1\" \$GiteaToken = (Get-Content \"D:\\UIAO\\Config\\gitea-token.txt\" -Raw).Trim() \$GiteaHeaders = \@{ \"Authorization\" = \"token \$GiteaToken\" \"Content-Type\" = \"application/json\" } \$RepoOwner = \"uiao\" \$RepoName = \"uiao\" \# Commit a file to the repository via API function Push-UIAOFileToGitea { \<# .SYNOPSIS Commits a single file to the UIAO Gitea repository via REST API. .PARAMETER FilePath Local path to the file to commit. .PARAMETER TargetPath Repository-relative path for the file. .PARAMETER CommitMessage Git commit message. .EXAMPLE Push-UIAOFileToGitea -FilePath \"D:\\UIAO\\Assessment\\contoso.com\\Forest\\ForestTopology.json\" \` -TargetPath \"assessments/contoso.com/20260420/Forest/ForestTopology.json\" \` -CommitMessage \"Assessment: Forest topology capture\" .OUTPUTS Gitea API response object. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory)\]\[string\]\$FilePath, \[Parameter(Mandatory)\]\[string\]\$TargetPath, \[string\]\$CommitMessage = \"UIAO Assessment artifact upload\" ) \$Content = \[Convert\]::ToBase64String(\[IO.File\]::ReadAllBytes(\$FilePath)) \$Body = \@{ message = \$CommitMessage content = \$Content } \| ConvertTo-Json \$URI = \"\$GiteaBaseURL/repos/\$RepoOwner/\$RepoName/contents/\$TargetPath\" try { \$Response = Invoke-RestMethod -Uri \$URI -Method POST -Headers \$GiteaHeaders -Body \$Body Write-Host \"\[PUSHED\] \$TargetPath\" -ForegroundColor Green return \$Response } catch { if (\$\_.Exception.Response.StatusCode -eq 422) { \# File exists --- update instead \$Existing = Invoke-RestMethod -Uri \$URI -Method GET -Headers \$GiteaHeaders \$Body = \@{ message = \$CommitMessage content = \$Content sha = \$Existing.sha } \| ConvertTo-Json \$Response = Invoke-RestMethod -Uri \$URI -Method PUT -Headers \$GiteaHeaders -Body \$Body Write-Host \"\[UPDATED\] \$TargetPath\" -ForegroundColor Yellow return \$Response } else { Write-Error \"Failed to push \$TargetPath\`: \$(\$\_.Exception.Message)\" } } }
+
+12.2 Creating Assessment Branches
+
+\# Create a branch for each assessment run \$Timestamp = Get-Date -Format \"yyyyMMdd-HHmmss\" \$BranchName = \"assessment/\$((Get-ADDomain).DNSRoot)/\$Timestamp\" \$BranchBody = \@{ new_branch_name = \$BranchName old_branch_name = \"main\" } \| ConvertTo-Json Invoke-RestMethod -Uri \"\$GiteaBaseURL/repos/\$RepoOwner/\$RepoName/branches\" \` -Method POST -Headers \$GiteaHeaders -Body \$BranchBody
+
+12.3 Creating Issues for Critical Findings
+
+\# Create Gitea issue when critical findings are detected function New-UIAOSecurityIssue { \<# .SYNOPSIS Creates a Gitea issue for critical security findings from assessment. .PARAMETER Title Issue title. .PARAMETER Body Issue body in Markdown format. .PARAMETER Labels Array of label names to apply. .EXAMPLE New-UIAOSecurityIssue -Title \"ESC1 Vulnerability Detected\" \` -Body \"Template \'WebServer\' allows enrollee-supplied SANs\" \` -Labels @(\"security\",\"critical\",\"pki\") .OUTPUTS Gitea API response with issue URL. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory)\]\[string\]\$Title, \[Parameter(Mandatory)\]\[string\]\$Body, \[string\[\]\]\$Labels = @(\"security\") ) \$IssueBody = \@{ title = \$Title body = \$Body labels = @() \# Label IDs would be resolved here } \| ConvertTo-Json \$Response = Invoke-RestMethod -Uri \"\$GiteaBaseURL/repos/\$RepoOwner/\$RepoName/issues\" \` -Method POST -Headers \$GiteaHeaders -Body \$IssueBody Write-Host \"\[ISSUE\] Created: \$(\$Response.html_url)\" -ForegroundColor Magenta return \$Response } \# Auto-create issues for critical findings function Invoke-UIAOFindingIssues { \[CmdletBinding()\] param(\[string\]\$PKIReportPath, \[string\]\$DelegationReportPath) \# PKI findings if (Test-Path \$PKIReportPath) { \$PKIFindings = Get-Content \$PKIReportPath -Raw \| ConvertFrom-Json foreach (\$Finding in (\$PKIFindings \| Where-Object Severity -eq \"Critical\")) { New-UIAOSecurityIssue -Title \"\$(\$Finding.Finding): \$(\$Finding.Template)\" \` -Body \"\*\*Severity:\*\* \$(\$Finding.Severity)\`n\`n\$(\$Finding.Description)\`n\`n\*\*Remediation:\*\* \$(\$Finding.Remediation)\" \` -Labels @(\"security\",\"critical\",\"pki\") } } \# Unconstrained delegation findings if (Test-Path \$DelegationReportPath) { \$Delegations = Import-Csv \$DelegationReportPath \$Unconstrained = \$Delegations \| Where-Object DelegationType -eq \"Unconstrained\" if (\$Unconstrained.Count -gt 0) { \$Body = \"The following \$(\$Unconstrained.Count) computer(s) have unconstrained delegation:\`n\`n\" \$Body += (\$Unconstrained \| ForEach-Object { \"- \`\`\$(\$\_.Name)\`\` (\$(\$\_.OperatingSystem))\" }) -join \"\`n\" New-UIAOSecurityIssue -Title \"Unconstrained Delegation: \$(\$Unconstrained.Count) computer(s)\" \` -Body \$Body -Labels @(\"security\",\"critical\",\"delegation\") } } }
+
+12.4 Webhook Configuration
+
+Configure a Gitea webhook to trigger downstream automation when assessment artifacts are committed.
+
+\# Create webhook via API \$WebhookBody = \@{ type = \"gitea\" active = \$true config = \@{ url = \"https://automation.uiao.local/api/webhook/assessment\" content_type = \"json\" secret = (New-Guid).ToString() } events = @(\"push\") branch_filter = \"assessment/\*\" } \| ConvertTo-Json -Depth 5 Invoke-RestMethod -Uri \"\$GiteaBaseURL/repos/\$RepoOwner/\$RepoName/hooks\" \` -Method POST -Headers \$GiteaHeaders -Body \$WebhookBody
+
+13\. Security Considerations and Least Privilege
+
+13.1 Minimum Required Permissions by Function
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------
+  **Function**                **Minimum Permission**                                        **Notes**
+  --------------------------- ------------------------------------------------------------- ------------------------------------------------------
+  Get-UIAOForestTopology      Authenticated Users (default read)                            Forest/domain metadata is readable by default
+
+  Get-UIAOOUHierarchy         Read access to all OUs + Read ACLs for delegation analysis    ACL read requires elevated permissions
+
+  Get-UIAOGPOInventory        Read access to Group Policy Objects + Backup GPO permission   GPO backup requires explicit delegation
+
+  Get-UIAODNSAssessment       DnsAdmins group or delegated DNS read                         Remote DNS management requires WinRM
+
+  Get-UIAOPKIAssessment       Read access to PKI configuration containers                   certutil requires local admin on CA for some queries
+
+  Get-UIAOComputerInventory   Read access to computer objects                               Default AD read access is sufficient
+
+  Get-UIAOUserInventory       Read access to user objects + group membership enumeration    Recursive group expansion may be time-intensive
+
+  Get-UIAOTrustMap            Read access to trustedDomain objects                          Trust validation may require Domain Admin
+  ------------------------------------------------------------------------------------------------------------------------------------------------
+
+13.2 Creating the UIAO Assessment Service Account
+
+\# Create dedicated service account with read-only delegation \$ServiceAccountName = \"svc-uiao-assess\" \$ServiceAccountOU = \"OU=ServiceAccounts,DC=contoso,DC=com\" \# Create the account New-ADUser -Name \$ServiceAccountName \` -SamAccountName \$ServiceAccountName \` -UserPrincipalName \"\$ServiceAccountName@contoso.com\" \` -Path \$ServiceAccountOU \` -AccountPassword (Read-Host -AsSecureString \"Enter password\") \` -Enabled \$true \` -PasswordNeverExpires \$false \` -CannotChangePassword \$false \` -Description \"UIAO Governance OS - AD Assessment Service Account (Read-Only)\" \# Add to required groups for DNS read access Add-ADGroupMember -Identity \"DnsAdmins\" -Members \$ServiceAccountName \# Delegate GPO read + backup permissions \# (Performed via GPMC delegation or dsacls)
+
+13.3 Credential Handling
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **⚠ Warning --- Credential Security**                                                                                                                                                                                                 |
+|                                                                                                                                                                                                                                       |
+| Never store credentials in plaintext. Use Get-Credential for interactive sessions. For scheduled tasks, use Managed Service Accounts (gMSAs) or Windows Credential Manager. Assessment scripts must never contain embedded passwords. |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+\# Secure credential storage for interactive use \$Credential = Get-Credential -Message \"Enter UIAO Assessment Service Account credentials\" \# For automated/scheduled use, prefer gMSA \$gMSAName = \"svc-uiao-assess\$\" \# Scheduled task runs under gMSA --- no password storage required
+
+13.4 Network Security Requirements
+
+  -------------------------------------------------------------------------------------------------------------------------------
+  **Protocol**    **Port(s)**                        **Direction**                      **Purpose**
+  --------------- ---------------------------------- ---------------------------------- -----------------------------------------
+  LDAP            TCP 389                            Assessment Host → DCs              AD object queries
+
+  LDAPS           TCP 636                            Assessment Host → DCs              Encrypted AD queries
+
+  Kerberos        TCP/UDP 88                         Assessment Host → DCs              Authentication
+
+  DNS             TCP/UDP 53                         Assessment Host → DNS Servers      DNS zone and record queries
+
+  RPC             TCP 135 + Dynamic (49152--65535)   Assessment Host → DCs/CAs          GPO reports, certutil queries
+
+  WinRM (HTTP)    TCP 5985                           Assessment Host → Remote Servers   Remote PowerShell (DNS, PKI)
+
+  WinRM (HTTPS)   TCP 5986                           Assessment Host → Remote Servers   Encrypted remote PowerShell
+
+  GC LDAP         TCP 3268 / 3269                    Assessment Host → GCs              Cross-domain queries via Global Catalog
+  -------------------------------------------------------------------------------------------------------------------------------
+
+13.5 Data Classification and Handling
+
+- **Classification:** All assessment output is classified as **Controlled**. Assessment data contains sensitive AD topology, privileged account lists, delegation configurations, and PKI vulnerability findings.
+
+- **Encryption at Rest:** Enable BitLocker on the D:\\UIAO volume. Ensure the Gitea data directory is on an encrypted volume.
+
+- **Retention Policy:** Retain assessment data for a minimum of 12 months. Archive assessments older than 12 months to long-term storage. Delete assessments older than 36 months unless subject to legal hold.
+
+- **Audit Trail:** All assessment activities are logged to the Windows Application Event Log under source UIAOAssessment and to D:\\UIAO\\Logs\\Assessment.log.
+
+14\. Troubleshooting Reference
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Error / Symptom**                                                                        **Cause**                                                                                                     **Resolution**
+  ------------------------------------------------------------------------------------------ ------------------------------------------------------------------------------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Get-ADForest: Unable to find a default server with Active Directory Web Services running   Assessment host cannot reach a DC, or ADWS service (TCP 9389) is not running on the target DC.                1\. Verify DNS resolution: Resolve-DnsName contoso.com 2. Verify ADWS port: Test-NetConnection DC01 -Port 9389 3. Start ADWS on DC: Start-Service ADWS 4. Specify DC explicitly: Get-ADForest -Server DC01.contoso.com
+
+  Get-GPOReport: Access is denied                                                            Service account lacks read permission on the GPO or SYSVOL share.                                             1\. Verify SYSVOL access: Get-ChildItem \\\\contoso.com\\SYSVOL 2. Grant GPO read via GPMC delegation 3. Verify Authenticated Users has read permission on each GPO
+
+  Get-DnsServerZone: The RPC server is unavailable                                           WinRM is not enabled on the DNS server, or firewall blocks RPC/WinRM.                                         1\. Enable WinRM on DNS server: Enable-PSRemoting -Force 2. Open firewall: Enable-NetFirewallRule -Name \"WINRM-HTTP-In-TCP\" 3. Test connectivity: Test-WSMan -ComputerName DC01
+
+  Get-CertificationAuthority: No Certification Authority found                               AD CS is not installed in the environment, or the PSPKI module cannot query the AD configuration partition.   1\. Verify AD CS exists: certutil -config - -ping 2. Check PKI container: Get-ADObject \"CN=Public Key Services,CN=Services,CN=Configuration,DC=contoso,DC=com\" 3. Ensure PSPKI module is imported: Import-Module PSPKI
+
+  LDAP query timeout on large directories                                                    Query returns too many objects without pagination; LDAP MaxPageSize policy exceeded.                          1\. Use -ResultSetSize to limit results 2. Query by OU subtree using -SearchBase 3. Increase LDAP MaxPageSize via ntdsutil if authorized 4. Use -ResultPageSize 500 parameter
+
+  WinRM connectivity failures                                                                WinRM not configured or TrustedHosts not set.                                                                 1\. Enable remoting: Enable-PSRemoting -Force 2. Set TrustedHosts if needed: Set-Item WSMan:\\localhost\\Client\\TrustedHosts -Value \"\*.contoso.com\" 3. Verify: Test-WSMan -ComputerName DC01
+
+  Cross-domain authentication failures                                                       Trust not validated, credential delegation not configured, or selective authentication blocking access.       1\. Validate trust: netdom trust child.contoso.com /domain:contoso.com /verify 2. Use explicit credentials: -Credential (Get-Credential) 3. Check selective authentication: Get-ADTrust -Filter \* \| Select Name, SelectiveAuthentication
+
+  The term \'Get-ADForest\' is not recognized                                                ActiveDirectory module not installed.                                                                         1\. Run Test-UIAOPrerequisites to identify missing modules 2. Install: Install-WindowsFeature -Name RSAT-AD-PowerShell (Server) or Add-WindowsCapability -Online -Name Rsat.ActiveDirectory.DS-LDS.Tools\~\~\~\~0.0.1.0 (Client)
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix A --- Complete UIAO AD Assessment Module
+
+A.1 Module Manifest (UIAOADAssessment.psd1)
+
+\@{ RootModule = \'UIAOADAssessment.psm1\' ModuleVersion = \'1.0.0\' GUID = \'a1b2c3d4-e5f6-7890-abcd-ef1234567890\' Author = \'UIAO Governance OS\' CompanyName = \'UIAO\' Copyright = \'(c) 2026 UIAO. All rights reserved.\' Description = \'UIAO Active Directory Assessment Module --- Forest Discovery, Assessment, and Governance Pipeline\' PowerShellVersion = \'5.1\' RequiredModules = @(\'ActiveDirectory\', \'GroupPolicy\') FunctionsToExport = @( \'Test-UIAOPrerequisites\', \'Get-UIAOForestTopology\', \'Get-UIAOOUHierarchy\', \'Get-UIAOGPOInventory\', \'Export-UIAOGPOSettings\', \'Get-UIAODNSAssessment\', \'Get-UIAOPKIAssessment\', \'Get-UIAOComputerInventory\', \'Get-UIAOUserInventory\', \'Get-UIAOGroupInventory\', \'Get-UIAOTrustMap\', \'Invoke-UIAOADAssessment\', \'Compare-UIAOAssessments\', \'Push-UIAOFileToGitea\', \'New-UIAOSecurityIssue\' ) CmdletsToExport = @() VariablesToExport = @() AliasesToExport = @() PrivateData = \@{ PSData = \@{ Tags = @(\'ActiveDirectory\', \'Assessment\', \'Governance\', \'UIAO\') ProjectUri = \'https://github.com/WhalerMike/uiao\' } } }
+
+A.2 Module File (UIAOADAssessment.psm1)
+
+The module file aggregates all functions defined in Sections 2 through 12 of this document. The structure is as follows:
+
+#Requires -Version 5.1 #Requires -Modules ActiveDirectory, GroupPolicy \<# .SYNOPSIS UIAO Active Directory Assessment Module. .DESCRIPTION Provides complete forest discovery, infrastructure assessment, and governance artifact extraction for the UIAO Governance OS platform. All functions are deterministic and idempotent. .NOTES Classification: Controlled Environment: GCC-Moderate, Commercial Cloud (FedRAMP) Version: 1.0.0 #\> \# ============================================================ \# Helper Functions \# ============================================================ function Build-OUTree { \... } \# Section 4.2 function Show-OUTree { \... } \# Section 4.5 function Get-OUGPOLinks { \... } \# Section 4.3 function Find-GPOConflicts { \... } \# Section 5.6 function Get-PKISecurityFindings { \... } \# Section 7.4 function Find-CircularGroupNesting { \... } \# Section 9.6 \# ============================================================ \# Exported Assessment Functions \# ============================================================ function Test-UIAOPrerequisites { \... } \# Section 2.5 function Get-UIAOForestTopology { \... } \# Section 3.6 function Get-UIAOOUHierarchy { \... } \# Section 4.6 function Get-UIAOGPOInventory { \... } \# Section 5.9 function Export-UIAOGPOSettings { \... } \# Section 5.4 function Get-UIAODNSAssessment { \... } \# Section 6.8 function Get-UIAOPKIAssessment { \... } \# Section 7.6 function Get-UIAOComputerInventory { \... } \# Section 8.5 function Get-UIAOUserInventory { \... } \# Section 9.7 function Get-UIAOGroupInventory { \... } \# Section 9.7 function Get-UIAOTrustMap { \... } \# Section 10.4 \# ============================================================ \# Orchestrator \# ============================================================ function Invoke-UIAOADAssessment { \... } \# Section 11.1 \# ============================================================ \# Gitea Integration \# ============================================================ function Push-UIAOFileToGitea { \... } \# Section 12.1 function New-UIAOSecurityIssue { \... } \# Section 12.3 \# ============================================================ \# Drift Detection \# ============================================================ function Compare-UIAOAssessments { \... } \# Section 11.5 Export-ModuleMember -Function @( \'Test-UIAOPrerequisites\', \'Get-UIAOForestTopology\', \'Get-UIAOOUHierarchy\', \'Get-UIAOGPOInventory\', \'Export-UIAOGPOSettings\', \'Get-UIAODNSAssessment\', \'Get-UIAOPKIAssessment\', \'Get-UIAOComputerInventory\', \'Get-UIAOUserInventory\', \'Get-UIAOGroupInventory\', \'Get-UIAOTrustMap\', \'Invoke-UIAOADAssessment\', \'Compare-UIAOAssessments\', \'Push-UIAOFileToGitea\', \'New-UIAOSecurityIssue\' )
+
+A.3 Installation Instructions
+
+\$ModulePath = \"D:\\UIAO\\Modules\\UIAOADAssessment\" New-Item -Path \$ModulePath -ItemType Directory -Force Copy-Item -Path \"UIAOADAssessment.psm1\" -Destination \$ModulePath Copy-Item -Path \"UIAOADAssessment.psd1\" -Destination \$ModulePath
+
+\$CurrentPath = \[Environment\]::GetEnvironmentVariable(\"PSModulePath\", \"Machine\") if (\$CurrentPath -notmatch \"D:\\\\UIAO\\\\Modules\") { \[Environment\]::SetEnvironmentVariable(\"PSModulePath\", \"\$CurrentPath;D:\\UIAO\\Modules\", \"Machine\") }
+
+Import-Module UIAOADAssessment -Verbose Get-Command -Module UIAOADAssessment
+
+Appendix B --- Assessment Output Schema Reference
+
+B.1 ForestTopology.json
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Field**             **Type**            **Description**
+  --------------------- ------------------- -----------------------------------------------------------------------------------------------------------------------------------
+  AssessmentTimestamp   string (ISO 8601)   Timestamp when the assessment was executed
+
+  Forest                object              Forest-level metadata: Name, RootDomain, ForestMode, SchemaMaster, DomainNamingMaster, Domains\[\], Sites\[\], GlobalCatalogs\[\]
+
+  Domains               array of objects    Per-domain: DNSRoot, NetBIOSName, DomainMode, DomainSID, PDCEmulator, RIDMaster, InfrastructureMaster
+
+  DomainControllers     array of objects    Per-DC: HostName, Domain, Site, IPv4Address, OperatingSystem, IsGlobalCatalog, IsReadOnly
+
+  Sites                 array of objects    AD Sites: Name, Description, Location
+
+  SiteLinks             array of objects    Site link configuration: Name, Cost, ReplicationFrequencyInMinutes
+
+  Subnets               array of objects    Subnet-to-site mappings: Name, Site, Location
+
+  FSMORoles             array of objects    All FSMO role holders: Role, Holder
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Example snippet:**
+
+{ \"AssessmentTimestamp\": \"2026-04-20T14:30:00.0000000-04:00\", \"Forest\": { \"Name\": \"contoso.com\", \"RootDomain\": \"contoso.com\", \"ForestMode\": \"Windows2016Forest\", \"SchemaMaster\": \"DC01.contoso.com\", \"DomainNamingMaster\": \"DC01.contoso.com\", \"Domains\": \[\"contoso.com\", \"child.contoso.com\"\], \"Sites\": \[\"Default-First-Site-Name\", \"BranchOffice\"\], \"GlobalCatalogs\": \[\"DC01.contoso.com\", \"DC02.contoso.com\"\] } }
+
+B.2 GPOInventory.json
+
+  -----------------------------------------------------------------------------------------------------------------------------
+  **Field**          **Type**      **Description**
+  ------------------ ------------- --------------------------------------------------------------------------------------------
+  DisplayName        string        GPO display name
+
+  Id                 GUID string   GPO unique identifier
+
+  GpoStatus          string        AllSettingsEnabled, UserSettingsDisabled, ComputerSettingsDisabled, or AllSettingsDisabled
+
+  CreationTime       datetime      When the GPO was created
+
+  ModificationTime   datetime      When the GPO was last modified
+
+  Owner              string        GPO owner (typically DOMAIN\\user)
+  -----------------------------------------------------------------------------------------------------------------------------
+
+B.3 AssessmentManifest.json
+
+  ------------------------------------------------------------------------------------------------------------
+  **Field**             **Type**            **Description**
+  --------------------- ------------------- ------------------------------------------------------------------
+  AssessmentId          GUID string         Unique identifier for this assessment run
+
+  Domain                string              DNS name of assessed domain
+
+  StartTime / EndTime   ISO 8601 datetime   Assessment execution window
+
+  DurationMinutes       decimal             Total assessment duration
+
+  ExecutedBy            string              DOMAIN\\Username of executing account
+
+  FileCount             integer             Total number of output files produced
+
+  Files                 array of objects    Per-file: RelativePath, SizeBytes, LastModified, SHA256 checksum
+  ------------------------------------------------------------------------------------------------------------
+
+B.4 Additional Schema Files
+
+The following output files follow the same schema pattern --- a root object with AssessmentTimestamp and domain-specific arrays:
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------
+  **File**                 **Root Fields**                           **Primary Array**
+  ------------------------ ----------------------------------------- ------------------------------------------------------------------------------
+  OUHierarchy.json         Nested tree nodes                         Each node: Name, DN, Description, LinkedGPOs, ObjectCounts, Children\[\]
+
+  DNSInventory.json        AssessmentTimestamp, DnsServer            Zones\[\]: ZoneName, ZoneType, IsDsIntegrated, IsSigned
+
+  PKIInventory.json        AssessmentTimestamp                       CertificationAuthorities\[\], CertificateTemplates\[\]
+
+  ComputerInventory.json   Array of computer objects                 Name, DNSHostName, OperatingSystem, Enabled, LastLogonDate, SPNs, Delegation
+
+  UserInventory.json       Array of user objects                     SamAccountName, UPN, Enabled, LastLogonDate, AdminCount, MemberOf
+
+  GroupInventory.json      Array of group objects                    SamAccountName, Category, Scope, DirectMemberCount, IsEmpty
+
+  TrustMap.json            AssessmentTimestamp, Domain, TrustCount   Trusts\[\]: Name, Direction, TrustType, SelectiveAuthentication
+  -------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix C --- Quick Reference Card
+
+C.1 Function Reference
+
+  ----------------------------------------------------------------------------------------------------------------------
+  **Function**                **Purpose**                                    **Primary Output File(s)**
+  --------------------------- ---------------------------------------------- -------------------------------------------
+  Test-UIAOPrerequisites      Validate all prerequisites                     Console output (pass/fail table)
+
+  Get-UIAOForestTopology      Forest, domains, DCs, sites, FSMO              ForestTopology.json
+
+  Get-UIAOOUHierarchy         OU tree, delegations, GPO links                OUHierarchy.json, OUFlatList.csv
+
+  Get-UIAOGPOInventory        GPO inventory, settings, links, backups        GPOInventory.json, XML/HTML reports
+
+  Get-UIAODNSAssessment       DNS zones, records, DNSSEC, scavenging         DNSInventory.json
+
+  Get-UIAOPKIAssessment       CAs, templates, ESC vulnerabilities            PKIInventory.json, PKISecurityReport.json
+
+  Get-UIAOComputerInventory   Computers, OS classification, delegation       ComputerInventory.json, CSVs
+
+  Get-UIAOUserInventory       Users, privileged accounts, service accounts   UserInventory.json, CSVs
+
+  Get-UIAOGroupInventory      Groups, classification, nesting analysis       GroupInventory.json
+
+  Get-UIAOTrustMap            Trust relationships and validation             TrustMap.json
+
+  Invoke-UIAOADAssessment     Run complete assessment pipeline               All files + AssessmentManifest.json
+
+  Compare-UIAOAssessments     Detect drift between assessment runs           DriftReport (returned object)
+  ----------------------------------------------------------------------------------------------------------------------
+
+C.2 Assessment Run Checklist
+
+19. **Verify prerequisites.** Run Test-UIAOPrerequisites and resolve any failures.
+
+20. **Validate credentials.** Confirm the assessment service account has the required permissions.
+
+21. **Create output directories.** Run the directory creation script from Section 2.4.
+
+22. **Import the module.** Import-Module UIAOADAssessment
+
+23. **Run the assessment.** Invoke-UIAOADAssessment -Domain \"contoso.com\"
+
+24. **Review the manifest.** Open AssessmentManifest.json and verify file count and checksums.
+
+25. **Review security findings.** Examine PKISecurityReport.json and DelegationReport.csv.
+
+26. **Review stale objects.** Examine StaleComputers.csv and stale user counts.
+
+27. **Commit to Gitea.** Push assessment artifacts to the uiao.git repository.
+
+28. **Create issues for critical findings.** Run Invoke-UIAOFindingIssues.
+
+29. **Run drift comparison (recurring).** Compare against previous baseline with Compare-UIAOAssessments.
+
+30. **Archive previous assessment.** Move prior assessment to archive storage per retention policy.
+
+C.3 Emergency Single-Command Full Assessment
+
++-----------------------------------------------------------------------------------------------------------+
+| **Single-Command Execution**                                                                              |
+|                                                                                                           |
+| The following command runs the complete UIAO Active Directory assessment pipeline in a single invocation: |
++-----------------------------------------------------------------------------------------------------------+
+
+Import-Module UIAOADAssessment; Invoke-UIAOADAssessment -Domain \"contoso.com\" -OutputPath \"D:\\UIAO\\Assessment\" -StaleThresholdDays 90
+
+Appendix D --- Companion Document Cross-Reference
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Companion Document**                                           **Relationship to This Guide**                                                                                                **Key Assessment Outputs Consumed**
+  ---------------------------------------------------------------- ----------------------------------------------------------------------------------------------------------------------------- -----------------------------------------------------------------------------------
+  **AD Computer Object Conversion Guide**                          Uses computer inventory to determine join type (Entra Join, Hybrid Join, Arc) per device                                      ComputerInventory.json, ComputersByOS.csv, DelegationReport.csv
+
+  **UIAO Platform Server Build Guide**                             Defines the server environment where assessment tools execute; references module installation paths                           Module manifest (.psd1), directory structure
+
+  **UIAO CLI and Operations Guide**                                Provides CLI commands that invoke assessment functions and interact with Gitea API                                            AssessmentManifest.json, Gitea API endpoints
+
+  **UIAO Git Infrastructure ADR**                                  Defines the Gitea repository structure, branching strategy, and webhook architecture for assessment data                      Repository layout (assessments/ directory), branch naming
+
+  **(Future) UIAO Identity Modernization Guide**                   Consumes user/group inventory to design Entra ID group structure, PIM roles, and Access Reviews                               UserInventory.json, GroupInventory.json, PrivilegedUsers.csv, ServiceAccounts.csv
+
+  **(Future) UIAO DNS Modernization Guide**                        Consumes DNS inventory to design target DNS architecture and migration plan                                                   DNSInventory.json, DNSHealthReport.json
+
+  **(Future) UIAO PKI Modernization Guide**                        Consumes PKI inventory and security findings to plan certificate modernization                                                PKIInventory.json, PKISecurityReport.json
+
+  **(Future) UIAO Project Plan --- Assessment Phase Milestones**   Defines the project timeline for executing assessments; references this guide as the technical procedure for each milestone   AssessmentManifest.json (used to verify milestone completion)
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+UIAO Governance OS --- Active Directory Interaction Guide v1.0
+
+Classification: Controlled \| Environment: GCC-Moderate, Commercial Cloud (FedRAMP)
+
+https://github.com/WhalerMike/uiao

@@ -1,0 +1,1098 @@
+---
+title: "UIAO Azure Arc Policy Library"
+subtitle: "Azure Policy definitions for Arc-enabled servers"
+doc-type: policy-library
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO Azure Arc Policy Library.docx"
+repo-path: docs/customer-documents/substrate/platform-tooling/azure-arc-policy-library.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+UIAO Azure Arc Policy Library
+
+Governance OS Modernization Program --- Azure Policy Definitions for Arc-Enabled Servers
+
+**Classification:** Controlled
+
+**Boundary:** GCC-Moderate (Azure Arc in Commercial Cloud --- Explicit Exception)
+
+**Version:** 1.0
+
+**Date:** April 21, 2026
+
+**Author:** UIAO Governance Engineering
+
+**Repository:** https://github.com/WhalerMike/uiao
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **BOUNDARY NOTICE**                                                                                                                                                                                                                                                                                                                                         |
+|                                                                                                                                                                                                                                                                                                                                                             |
+| UIAO operates within a GCC-Moderate environment for Microsoft 365 SaaS services. Azure Arc runs in Commercial Cloud under an explicit, documented exception to the GCC-Moderate boundary. All Azure Policy definitions in this library target the Commercial Cloud Azure control plane. Data classification for all managed servers remains **Controlled**. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Table of Contents
+
+1.  Executive Summary
+
+2.  Azure Arc Overview for UIAO
+
+3.  Arc Agent Deployment Policies
+
+4.  Tagging and OrgPath Policies
+
+5.  Security Baseline Policies
+
+6.  Compliance and Governance Policies
+
+7.  Monitoring and Logging Policies
+
+8.  Network Security Policies
+
+9.  UIAO-Specific Governance Policies
+
+10. Policy Initiative (Policy Set) Definitions
+
+11. Deployment Guide
+
+12. Compliance Reporting
+
+13. Remediation Playbooks
+
+14. Appendix A: Policy Definition JSON Templates
+
+15. Appendix B: OrgPath Tag Mapping Reference
+
+16. Appendix C: Guest Configuration Package Development
+
+1\. Executive Summary
+
+Azure Arc extends cloud-native governance capabilities to on-premises and multi-cloud server environments, providing a unified management plane that eliminates the divide between cloud-hosted and traditionally managed infrastructure. For the UIAO Governance OS modernization program, Azure Arc serves as the critical bridge between Active Directory--managed servers and the Entra ID / Intune governance plane that underpins modern identity and device management.
+
+This document provides a comprehensive library of ready-to-deploy Azure Policy definitions purpose-built for the UIAO modernization pipeline. These policies enforce consistent governance across all Arc-enabled servers, ensuring that every machine brought into the UIAO management scope meets established standards for security, compliance, operational health, and organizational taxonomy.
+
+The policy library is organized across five governance domains:
+
+- **Inventory & Agent Health** --- Ensure the Connected Machine Agent is deployed, current, and reporting
+
+- **Security** --- Enforce security baselines, endpoint protection, TLS compliance, and local account controls
+
+- **Compliance** --- Validate operating system currency, patch status, encryption, and backup enrollment
+
+- **Monitoring** --- Deploy Azure Monitor Agent, associate Log Analytics workspaces, and collect governance-critical logs
+
+- **Tagging & OrgPath** --- Enforce UIAO organizational taxonomy via Arc resource tags mapped to OrgPath extension attributes
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **ENVIRONMENT CONTEXT**                                                                                                                                                                                                                                                                                                                                                                                                        |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| UIAO operates within a GCC-Moderate boundary for all Microsoft 365 SaaS services. Azure Arc is deployed in Commercial Cloud under an explicit exception documented in the UIAO architecture decision record. This library targets the Commercial Cloud Azure Policy engine. All 24 policy definitions and 3 policy initiatives defined herein are maintained in the UIAO repository at **https://github.com/WhalerMike/uiao**. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+2\. Azure Arc Overview for UIAO
+
+2.1 What Azure Arc Provides
+
+Azure Arc projects on-premises and multi-cloud servers as first-class Azure resources, enabling organizations to apply cloud-native governance constructs --- Azure Policy, Microsoft Defender for Cloud, Azure Monitor, and Azure Automation --- to infrastructure that resides outside of Azure. Each Arc-enabled server appears in the Azure portal with a resource ID, enabling consistent policy assignment, compliance tracking, and operational monitoring across the entire estate.
+
+2.2 Arc-Enabled Servers in UIAO
+
+The UIAO program targets Windows Server environments running the Connected Machine Agent. Supported operating systems include:
+
+  -------------------------------------------------------------------------------------------------------------
+  **Operating System**                 **Support Status**    **Notes**
+  ------------------------------------ --------------------- --------------------------------------------------
+  Windows Server 2025                  Fully Supported       Preferred target for new deployments
+
+  Windows Server 2022                  Fully Supported       Primary production OS
+
+  Windows Server 2019                  Fully Supported       Migration candidate
+
+  Windows Server 2016                  Supported (Limited)   Extended Security Updates; upgrade path required
+
+  Windows Server 2012 R2 and earlier   Not Supported         End of support --- blocked by UIAO policy
+  -------------------------------------------------------------------------------------------------------------
+
+2.3 Integration Points
+
+- **Azure Policy** --- Enforce governance at scale; audit, deny, modify, or deploy configurations
+
+- **Microsoft Defender for Cloud** --- Security posture management and threat protection
+
+- **Azure Monitor** --- Log collection, performance metrics, and alerting via Azure Monitor Agent
+
+- **Azure Automation** --- Update management, change tracking, and runbook execution
+
+- **Azure Update Manager** --- Patch assessment and deployment orchestration
+
+- **Guest Configuration (Machine Configuration)** --- In-guest policy evaluation for OS-level settings
+
+2.4 UIAO Use Case
+
+Azure Arc serves the specific UIAO need of extending governance to servers that cannot be fully Entra-joined. This includes Domain Controllers, Certificate Authority servers, legacy line-of-business application servers, and other infrastructure that must remain domain-joined to Active Directory. Arc provides a parallel governance plane that does not disrupt AD authentication or Group Policy processing while enabling centralized compliance visibility and automated remediation.
+
+2.5 Relationship to UIAO OrgPath
+
+The UIAO OrgPath taxonomy --- implemented via Entra ID extension attributes --- is projected onto Arc-enabled server resources as Azure resource tags. This mapping ensures that organizational context (Region, Site, Department, Device Tier, Environment, and Device Role) follows each server from Active Directory through Arc into the Azure governance plane, enabling scoped policy assignments and compliance reporting by organizational segment.
+
+3\. Arc Agent Deployment Policies
+
+These policies ensure that the Azure Connected Machine Agent is properly deployed, current, and actively communicating with the Azure control plane across all servers in the UIAO management scope.
+
+Policy 3.1: Arc Agent Installation Verification
+
+**UIAO-Arc-AgentInstalled**
+
+Effect: AuditIfNotExists \| Category: Agent Deployment \| Severity: High
+
+**Description:** Audits Windows servers that do not have the Azure Connected Machine Agent installed. This policy targets all server organizational units identified during the UIAO Active Directory assessment phase and reports non-compliant resources to the governance dashboard.
+
+**Scope:** All server OUs identified in the AD assessment inventory.
+
+**Remediation:** Deploy the Connected Machine Agent using the UIAO deployment script (Install-UIAOArcAgent.ps1) from the UIAO repository. The script handles service principal authentication, proxy configuration, and tag assignment from OrgPath attributes.
+
+Policy 3.2: Arc Agent Version Compliance
+
+**UIAO-Arc-AgentVersion**
+
+Effect: Audit \| Category: Agent Deployment \| Severity: Medium
+
+**Description:** Ensures the Connected Machine Agent is running at or above the minimum required version. Outdated agents may lack security patches, feature support, or compatibility with current Guest Configuration packages.
+
+  ----------------------------------------------------------------------------
+  **Parameter**    **Type**   **Default**   **Description**
+  ---------------- ---------- ------------- ----------------------------------
+  minimumVersion   String     1.38          Minimum acceptable agent version
+
+  ----------------------------------------------------------------------------
+
+**Remediation:** Update the agent via Azure Automation runbook or manual update using the UIAO agent update script.
+
+Policy 3.3: Arc Agent Connectivity Status
+
+**UIAO-Arc-ConnectivityHealth**
+
+Effect: Audit \| Category: Agent Deployment \| Severity: High
+
+**Description:** Audits Arc-enabled servers that have not reported a heartbeat within the configured threshold. Stale connections indicate network issues, agent crashes, or decommissioned servers still registered as Arc resources.
+
+  -----------------------------------------------------------------------------------------------------------
+  **Parameter**   **Type**   **Default**   **Description**
+  --------------- ---------- ------------- ------------------------------------------------------------------
+  maxStaleHours   Integer    24            Maximum hours since last heartbeat before flagging non-compliant
+
+  -----------------------------------------------------------------------------------------------------------
+
+**Remediation:** Investigate connectivity on the server; verify proxy settings, firewall rules for \*.his.arc.azure.com, and agent service status (himds).
+
+4\. Tagging and OrgPath Policies
+
+UIAO OrgPath tags are the foundational taxonomy for scoped governance. These policies enforce that every Arc-enabled server carries the required organizational metadata, that tag values conform to the allowed taxonomy, and that inheritance rules maintain consistency across the resource hierarchy.
+
+Policy 4.1: Required UIAO Tags
+
+**UIAO-Arc-RequiredTags**
+
+Effect: Deny \| Category: Tagging \| Severity: Critical
+
+**Description:** Enforces that all Arc-enabled server resources carry the six required UIAO OrgPath tags. Resources missing any required tag will be denied creation or modification until tags are supplied.
+
+**Required Tags:**
+
+  --------------------------------------------------------------------
+  **Tag Name**       **OrgPath Attribute**   **Extension Attribute**
+  ------------------ ----------------------- -------------------------
+  uiao-region        Region                  extensionAttribute1
+
+  uiao-site          Site                    extensionAttribute2
+
+  uiao-department    Department              extensionAttribute3
+
+  uiao-device-tier   DeviceTier              extensionAttribute4
+
+  uiao-environment   Environment             extensionAttribute5
+
+  uiao-device-role   DeviceRole              extensionAttribute6
+  --------------------------------------------------------------------
+
+Policy 4.2: Tag Value Validation
+
+**UIAO-Arc-TagValues**
+
+Effect: Deny \| Category: Tagging \| Severity: Critical
+
+**Description:** Validates that each UIAO tag value conforms to the allowed taxonomy. Prevents free-text or misspelled values that would fragment governance reporting and policy scoping.
+
+**Allowed Values by Tag:**
+
+  -------------------------------------------------------------------------------------------------------------------------
+  **Tag**            **Allowed Values**
+  ------------------ ------------------------------------------------------------------------------------------------------
+  uiao-region        East, West, Central, Global
+
+  uiao-device-tier   Tier0, Tier1, Tier2
+
+  uiao-environment   Production, Staging, Dev, DR
+
+  uiao-device-role   DomainController, MemberServer, GitServer, AppServer, FileServer, DatabaseServer, Workstation, Kiosk
+  -------------------------------------------------------------------------------------------------------------------------
+
+**Note:** uiao-site and uiao-department values are organization-specific and validated against a parameter array that must be populated during policy assignment based on the UIAO AD assessment output.
+
+Policy 4.3: Tag Inheritance from Resource Group
+
+**UIAO-Arc-TagInheritance**
+
+Effect: Modify \| Category: Tagging \| Severity: Low
+
+**Description:** Automatically inherits uiao-region and uiao-environment tags from the parent resource group if these tags are not already set on the Arc-enabled server resource. This ensures baseline organizational context even when agent deployment scripts do not supply all tags.
+
+**Behavior:** Uses the Modify effect with a managed identity to add missing tags. Existing tag values on the resource are never overwritten.
+
+5\. Security Baseline Policies
+
+Security baseline policies enforce hardening standards on Arc-enabled servers using Azure Policy Guest Configuration (Machine Configuration). These policies evaluate in-guest operating system settings and report compliance without requiring Group Policy modifications.
+
+Policy 5.1: Windows Security Baseline via Guest Configuration
+
+**UIAO-Arc-SecurityBaseline**
+
+Effect: AuditIfNotExists \| Category: Security \| Severity: Critical
+
+**Description:** Applies the Windows Server 2022/2025 security baseline via Azure Policy Guest Configuration. The baseline maps to CIS Level 1 benchmarks and the Microsoft Security Baseline, evaluating server configuration against established security standards.
+
+**Audit Areas:**
+
+- **Password Policy** --- Minimum length, complexity, history, maximum age
+
+- **Audit Policy** --- Logon events, account management, policy changes, privilege use
+
+- **Windows Firewall** --- Profile state, default actions, logging configuration
+
+- **User Rights Assignment** --- Logon rights, privilege assignments, deny policies
+
+- **Security Options** --- Interactive logon settings, network security, UAC configuration
+
+Policy 5.2: Endpoint Protection Verification
+
+**UIAO-Arc-EndpointProtection**
+
+Effect: AuditIfNotExists \| Category: Security \| Severity: Critical
+
+**Description:** Verifies that Microsoft Defender for Endpoint is installed, operational, and reporting to the security console. Servers without active endpoint protection represent a critical gap in the UIAO security posture.
+
+**Compliance Checks:**
+
+- Defender for Endpoint service (MsSense) is running
+
+- Antimalware definitions are current (updated within the last 7 days)
+
+- Real-time protection is enabled and active
+
+Policy 5.3: TLS Configuration
+
+**UIAO-Arc-TLSCompliance**
+
+Effect: Audit \| Category: Security \| Severity: High
+
+**Description:** Audits server TLS configuration to ensure TLS 1.2 is enforced and legacy protocols (TLS 1.0, TLS 1.1, SSL 3.0) are disabled. Uses a Guest Configuration package that validates the relevant registry keys under HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols.
+
+**Validated Registry Settings:**
+
+  -------------------------------------------------------------------------
+  **Protocol**   **Expected State**   **Registry Path (Server\\Enabled)**
+  -------------- -------------------- -------------------------------------
+  TLS 1.2        Enabled (1)          \...\\Protocols\\TLS 1.2\\Server
+
+  TLS 1.1        Disabled (0)         \...\\Protocols\\TLS 1.1\\Server
+
+  TLS 1.0        Disabled (0)         \...\\Protocols\\TLS 1.0\\Server
+
+  SSL 3.0        Disabled (0)         \...\\Protocols\\SSL 3.0\\Server
+  -------------------------------------------------------------------------
+
+Policy 5.4: Local Administrator Management
+
+**UIAO-Arc-LocalAdminControl**
+
+Effect: AuditIfNotExists \| Category: Security \| Severity: High
+
+**Description:** Audits local administrator group membership via Guest Configuration. Flags servers with non-standard local administrator accounts --- any account in the local Administrators group beyond the built-in Administrator, the domain Admins group, and explicitly approved UIAO service accounts.
+
+**Remediation:** Review flagged accounts; remove unauthorized members from local Administrators group using LAPS or UIAO privileged access procedures.
+
+Policy 5.5: Certificate Hygiene
+
+**UIAO-Arc-CertificateExpiry**
+
+Effect: Audit \| Category: Security \| Severity: Medium
+
+**Description:** Audits servers with certificates in the Local Machine certificate store that are expiring within the configured threshold. Expired certificates cause service outages, authentication failures, and TLS errors.
+
+  --------------------------------------------------------------------------------------------
+  **Parameter**         **Type**   **Default**   **Description**
+  --------------------- ---------- ------------- ---------------------------------------------
+  expiryThresholdDays   Integer    30            Days before expiry to flag as non-compliant
+
+  --------------------------------------------------------------------------------------------
+
+6\. Compliance and Governance Policies
+
+These policies enforce organizational compliance requirements across the UIAO server estate, covering operating system currency, patch management, disk encryption, backup enrollment, and time synchronization.
+
+Policy 6.1: Operating System Compliance
+
+**UIAO-Arc-OSCompliance**
+
+Effect: Audit \| Category: Compliance \| Severity: High
+
+**Description:** Audits servers running unsupported operating systems. Only Windows Server versions within the Microsoft support lifecycle are permitted in the UIAO environment.
+
+  ---------------------------------------------------------------------------
+  **Status**   **Operating Systems**
+  ------------ --------------------------------------------------------------
+  Allowed      Windows Server 2016, 2019, 2022, 2025
+
+  Blocked      Windows Server 2012 R2 and earlier (end of extended support)
+  ---------------------------------------------------------------------------
+
+**Remediation:** Initiate OS upgrade via the UIAO migration pipeline. Servers on unsupported operating systems must have a documented upgrade plan with a target completion date.
+
+Policy 6.2: Patch Compliance
+
+**UIAO-Arc-PatchCompliance**
+
+Effect: AuditIfNotExists \| Category: Compliance \| Severity: Critical
+
+**Description:** Verifies that servers are enrolled in Azure Update Manager and are patch-current according to UIAO SLA requirements.
+
+**Compliance Thresholds:**
+
+- **Critical patches:** Must be applied within 14 days of release
+
+- **All other patches:** Must be applied within 30 days of release
+
+**Remediation:** Enroll the server in Azure Update Manager via the UIAO onboarding script. Schedule maintenance windows aligned with the server\'s uiao-environment tag.
+
+Policy 6.3: Disk Encryption
+
+**UIAO-Arc-DiskEncryption**
+
+Effect: Audit \| Category: Compliance \| Severity: High
+
+**Description:** Audits servers that do not have BitLocker enabled on the operating system volume. Disk encryption protects data at rest in the event of physical media theft or decommissioning.
+
+**Exemptions:** Domain Controllers are exempt from BitLocker enforcement per Microsoft guidance, as BitLocker can interfere with Active Directory boot and recovery scenarios. Exemptions must be documented in the UIAO policy exemption register.
+
+Policy 6.4: Backup Verification
+
+**UIAO-Arc-BackupCompliance**
+
+Effect: AuditIfNotExists \| Category: Compliance \| Severity: High
+
+**Description:** Verifies that servers are enrolled in an approved backup solution and that the most recent recovery point is less than 24 hours old. Servers without current backups represent a data loss risk.
+
+**Remediation:** Enroll the server in the organization\'s backup solution and verify that backup jobs are completing successfully. Investigate and resolve any backup failures flagged by the policy.
+
+Policy 6.5: NTP Configuration
+
+**UIAO-Arc-TimeSync**
+
+Effect: Audit \| Category: Compliance \| Severity: Medium
+
+**Description:** Verifies that servers are configured for proper time synchronization. Accurate time is essential for Kerberos authentication, log correlation, and certificate validation.
+
+**Expected Configuration:**
+
+- **Domain-joined servers:** Syncing time from a Domain Controller via NT5DS
+
+- **Standalone servers:** Syncing from a known, approved NTP source via NTP client
+
+7\. Monitoring and Logging Policies
+
+Monitoring policies automate the deployment and configuration of the Azure Monitor Agent and associated data collection infrastructure. These policies use the DeployIfNotExists effect to automatically remediate non-compliant resources, ensuring continuous log ingestion into the UIAO governance pipeline.
+
+Policy 7.1: Azure Monitor Agent Deployment
+
+**UIAO-Arc-AMADeployment**
+
+Effect: DeployIfNotExists \| Category: Monitoring \| Severity: High
+
+**Description:** Automatically deploys the Azure Monitor Agent (AMA) extension on Arc-enabled servers that do not have it installed. Associates the deployed agent with the UIAO data collection rule for governance log ingestion.
+
+**Behavior:** When a non-compliant Arc-enabled server is detected, a remediation task is triggered that installs the AzureMonitorWindowsAgent extension and configures the data collection rule association.
+
+Policy 7.2: Log Analytics Workspace Association
+
+**UIAO-Arc-LAWorkspace**
+
+Effect: DeployIfNotExists \| Category: Monitoring \| Severity: High
+
+**Description:** Associates Arc-enabled servers with the designated UIAO Log Analytics workspace. Ensures all governance and operational logs flow to a centralized location for analysis, alerting, and compliance reporting.
+
+  -------------------------------------------------------------------------------------------
+  **Parameter**   **Type**   **Default**    **Description**
+  --------------- ---------- -------------- -------------------------------------------------
+  workspaceId     String     *(Required)*   Resource ID of the UIAO Log Analytics workspace
+
+  -------------------------------------------------------------------------------------------
+
+Policy 7.3: Diagnostic Settings
+
+**UIAO-Arc-Diagnostics**
+
+Effect: DeployIfNotExists \| Category: Monitoring \| Severity: Medium
+
+**Description:** Enables diagnostic settings on the Arc-enabled server Azure resource to capture platform-level operational telemetry.
+
+**Collected Log Categories:**
+
+- Administrative logs --- Resource management operations
+
+- Security events --- Authentication and authorization events
+
+- Operational events --- Agent health, extension operations, policy evaluation
+
+Policy 7.4: Windows Event Log Collection
+
+**UIAO-Arc-EventLogCollection**
+
+Effect: AuditIfNotExists \| Category: Monitoring \| Severity: High
+
+**Description:** Verifies that Security, System, and Application event logs are being collected and forwarded to the UIAO Log Analytics workspace. The data collection rule targets governance-critical event IDs.
+
+**Critical Event IDs:**
+
+  --------------------------------------------------------------------
+  **Event ID**   **Log**    **Description**
+  -------------- ---------- ------------------------------------------
+  4624           Security   Successful logon
+
+  4625           Security   Failed logon attempt
+
+  4648           Security   Logon using explicit credentials
+
+  4672           Security   Special privileges assigned to new logon
+
+  4688           Security   New process created
+
+  4720           Security   User account created
+
+  4726           Security   User account deleted
+
+  7045           System     New service installed
+  --------------------------------------------------------------------
+
+8\. Network Security Policies
+
+Network security policies audit server-level network configurations that affect the attack surface. These policies use Guest Configuration packages to validate Windows Firewall state, remote access configuration, and legacy protocol status.
+
+Policy 8.1: Windows Firewall State
+
+**UIAO-Arc-FirewallState**
+
+Effect: Audit \| Category: Network Security \| Severity: High
+
+**Description:** Verifies that Windows Firewall is enabled for all three network profiles: Domain, Private, and Public. A disabled firewall on any profile exposes the server to unauthorized network traffic.
+
+**Guest Configuration Checks:**
+
+- Domain Profile: Firewall State = On
+
+- Private Profile: Firewall State = On
+
+- Public Profile: Firewall State = On
+
+Policy 8.2: Remote Desktop Configuration
+
+**UIAO-Arc-RDPSecurity**
+
+Effect: Audit \| Category: Network Security \| Severity: High
+
+**Description:** Audits Remote Desktop Protocol (RDP) configuration to ensure secure remote access. Servers with RDP enabled must enforce Network Level Authentication (NLA) and restrict connections to authorized users.
+
+**Compliance Checks:**
+
+- Network Level Authentication (NLA) is enabled
+
+- RDP port configuration (3389 default or documented custom port)
+
+- Connection restrictions are configured (authorized users/groups only)
+
+Policy 8.3: SMB Configuration
+
+**UIAO-Arc-SMBSecurity**
+
+Effect: Audit \| Category: Network Security \| Severity: High
+
+**Description:** Verifies that SMBv1 is disabled and SMB signing is required. SMBv1 is a legacy protocol with known vulnerabilities (including EternalBlue/WannaCry); SMB signing prevents man-in-the-middle attacks on file share traffic.
+
+**Guest Configuration Registry Checks:**
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Setting**                     **Registry Path**                                                                                     **Expected Value**
+  ------------------------------- ----------------------------------------------------------------------------------------------------- --------------------
+  SMBv1 Disabled                  HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters\\SMB1                            0
+
+  SMB Signing Required (Server)   HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters\\RequireSecuritySignature        1
+
+  SMB Signing Required (Client)   HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanWorkstation\\Parameters\\RequireSecuritySignature   1
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+9\. UIAO-Specific Governance Policies
+
+These policies are unique to the UIAO Governance OS and validate program-specific configurations, including Gitea server compliance, assessment data freshness, governance hook integrity, and UIAO module versioning.
+
+Policy 9.1: Git Server Compliance
+
+**UIAO-Arc-GitServerCompliance**
+
+Effect: Audit \| Category: UIAO Governance \| Severity: High
+
+**Description:** For servers tagged uiao-device-role=GitServer, verifies that the Gitea service is installed and operational, that the IIS reverse proxy is configured and responding, and that Git governance hooks are present in the expected locations.
+
+**Compliance Checks:**
+
+- Gitea Windows service is running (gitea)
+
+- IIS site is configured and responding on the expected port
+
+- Git hooks directory contains required hook files (pre-receive, post-receive, update)
+
+**Scope Condition:** This policy only evaluates servers where the uiao-device-role tag equals GitServer.
+
+Policy 9.2: Assessment Data Currency
+
+**UIAO-Arc-AssessmentCurrency**
+
+Effect: Audit \| Category: UIAO Governance \| Severity: Medium
+
+**Description:** Audits servers where the UIAO assessment data is older than the configured threshold. Stale assessment data means the governance pipeline is operating on outdated inventory, risking drift between actual and recorded server state.
+
+**Check Location:** D:\\UIAO\\Assessment\\ --- evaluates file timestamps of assessment output artifacts.
+
+  ---------------------------------------------------------------------------------------------------------------
+  **Parameter**          **Type**   **Default**   **Description**
+  ---------------------- ---------- ------------- ---------------------------------------------------------------
+  maxAssessmentAgeDays   Integer    30            Maximum age (in days) before assessment data is flagged stale
+
+  ---------------------------------------------------------------------------------------------------------------
+
+Policy 9.3: Governance Hook Integrity
+
+**UIAO-Arc-HookIntegrity**
+
+Effect: Audit \| Category: UIAO Governance \| Severity: Critical
+
+**Description:** Verifies that Git governance hooks (pre-receive, post-receive, update) on UIAO Git servers are present and have not been tampered with. The policy computes content hashes of each hook file and compares them against expected hash values maintained in the policy parameters.
+
+**Scope:** Servers tagged uiao-device-role=GitServer.
+
+**Rationale:** Governance hooks enforce the UIAO schema validation, OrgPath integrity checks, and audit trail generation. Tampered or missing hooks bypass the governance pipeline entirely.
+
+Policy 9.4: UIAO Module Version
+
+**UIAO-Arc-ModuleVersion**
+
+Effect: Audit \| Category: UIAO Governance \| Severity: Medium
+
+**Description:** Verifies that UIAO PowerShell modules installed on the server are at or above the minimum required version. The policy checks module manifest files in D:\\UIAO\\Modules\\ for version information.
+
+**Modules Checked:**
+
+- UIAOAssessment --- AD assessment and inventory collection
+
+- UIAODriftDetection --- Configuration drift monitoring
+
+- UIAOGovernance --- Governance pipeline orchestration
+
+- UIAORemediation --- Automated remediation actions
+
+10\. Policy Initiative (Policy Set) Definitions
+
+Policy initiatives group related policy definitions into logical sets for assignment as a single unit. The UIAO policy library defines three initiatives that cover the full governance spectrum.
+
+Initiative 10.1: UIAO Governance Baseline
+
+**UIAO-GovernanceBaseline**
+
+Type: Policy Initiative \| Assignment Scope: All Arc-enabled servers in UIAO tenant
+
+**Description:** The foundational policy set applied to every Arc-enabled server in the UIAO environment. Combines security baseline, compliance, and monitoring policies to establish a minimum governance standard.
+
+**Included Policies:**
+
+  --------------------------------------------------------------
+  **Policy**                    **Domain**   **Effect**
+  ----------------------------- ------------ -------------------
+  UIAO-Arc-AgentInstalled       Agent        AuditIfNotExists
+
+  UIAO-Arc-AgentVersion         Agent        Audit
+
+  UIAO-Arc-ConnectivityHealth   Agent        Audit
+
+  UIAO-Arc-RequiredTags         Tagging      Deny
+
+  UIAO-Arc-TagValues            Tagging      Deny
+
+  UIAO-Arc-SecurityBaseline     Security     AuditIfNotExists
+
+  UIAO-Arc-EndpointProtection   Security     AuditIfNotExists
+
+  UIAO-Arc-TLSCompliance        Security     Audit
+
+  UIAO-Arc-OSCompliance         Compliance   Audit
+
+  UIAO-Arc-PatchCompliance      Compliance   AuditIfNotExists
+
+  UIAO-Arc-AMADeployment        Monitoring   DeployIfNotExists
+
+  UIAO-Arc-LAWorkspace          Monitoring   DeployIfNotExists
+
+  UIAO-Arc-EventLogCollection   Monitoring   AuditIfNotExists
+  --------------------------------------------------------------
+
+Initiative 10.2: UIAO Tier0 Hardening
+
+**UIAO-Tier0Hardening**
+
+Type: Policy Initiative \| Assignment Scope: Servers tagged uiao-device-tier=Tier0
+
+**Description:** Enhanced security policy set for Tier0 servers --- Domain Controllers, Certificate Authority servers, and Git servers. Includes all Governance Baseline policies plus additional restrictions for privileged infrastructure.
+
+**Additional Policies (beyond Governance Baseline):**
+
+- **Internet Access Audit** --- Verify Tier0 servers have no direct internet access
+
+- **Privileged Access Audit** --- Enhanced audit of privileged logon activity (Event IDs 4672, 4648)
+
+- **Enhanced Logging** --- PowerShell script block logging, command-line process auditing
+
+- **Local Admin Control** --- Zero non-standard local administrators permitted
+
+- **Hook Integrity** --- Governance hook validation for Git servers
+
+Initiative 10.3: UIAO Operational Health
+
+**UIAO-OperationalHealth**
+
+Type: Policy Initiative \| Assignment Scope: All Arc-enabled servers in UIAO tenant
+
+**Description:** Operational health initiative focused on ensuring servers remain monitored, patched, backed up, and connected. This initiative powers the UIAO operational health dashboard and drift detection pipeline.
+
+**Included Policies:**
+
+- UIAO-Arc-ConnectivityHealth --- Agent heartbeat monitoring
+
+- UIAO-Arc-AMADeployment --- Azure Monitor Agent presence
+
+- UIAO-Arc-LAWorkspace --- Log Analytics workspace association
+
+- UIAO-Arc-Diagnostics --- Diagnostic settings
+
+- UIAO-Arc-EventLogCollection --- Event log forwarding
+
+- UIAO-Arc-PatchCompliance --- Patch currency
+
+- UIAO-Arc-BackupCompliance --- Backup enrollment
+
+- UIAO-Arc-TimeSync --- NTP configuration
+
+- UIAO-Arc-AssessmentCurrency --- Assessment data freshness
+
+- UIAO-Arc-ModuleVersion --- UIAO module version compliance
+
+11\. Deployment Guide
+
+11.1 Prerequisites
+
+- Azure subscription with Contributor or Resource Policy Contributor role
+
+- Arc-enabled servers enrolled in the UIAO resource group structure
+
+- Service principal or managed identity for remediation tasks (DeployIfNotExists policies)
+
+- Log Analytics workspace provisioned for the UIAO environment
+
+- Azure CLI (2.50+) or Az PowerShell module (10.0+) installed
+
+- Access to the UIAO policy repository: https://github.com/WhalerMike/uiao
+
+11.2 Resource Group Structure
+
+The UIAO policy library assumes the following resource group naming convention for Arc-enabled server resources:
+
+  --------------------------------------------------------------------------------------------------------------------------
+  rg-uiao-arc-{region}-{environment} Example: rg-uiao-arc-east-production rg-uiao-arc-west-staging rg-uiao-arc-central-dev
+
+  --------------------------------------------------------------------------------------------------------------------------
+
+11.3 Deployment Steps
+
+**Step 1: Clone the UIAO repository**
+
+  -----------------------------------------------------------------------
+  git clone https://github.com/WhalerMike/uiao.git cd uiao/policies/arc
+
+  -----------------------------------------------------------------------
+
+**Step 2: Deploy policy definitions (PowerShell)**
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| \# Connect to Azure Connect-AzAccount \# Set the target subscription Set-AzContext -SubscriptionId \"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| \<                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| subscription-id                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| \>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+|                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| \" \# Deploy all UIAO policy definitions \$policyFiles = Get-ChildItem -Path \".\\definitions\" -Filter \"\*.json\" foreach (\$file in \$policyFiles) { \$policy = Get-Content \$file.FullName \| ConvertFrom-Json New-AzPolicyDefinition \` -Name \$policy.name \` -DisplayName \$policy.properties.displayName \` -Description \$policy.properties.description \` -Policy (\$policy.properties.policyRule \| ConvertTo-Json -Depth 20) \` -Parameter (\$policy.properties.parameters \| ConvertTo-Json -Depth 10) \` -Mode \$policy.properties.mode \` -Metadata (\$policy.properties.metadata \| ConvertTo-Json -Depth 5) } |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+**Step 3: Deploy policy initiatives**
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \# Deploy the Governance Baseline initiative New-AzPolicySetDefinition \` -Name \"UIAO-GovernanceBaseline\" \` -DisplayName \"UIAO Governance Baseline\" \` -PolicyDefinition (Get-Content \".\\initiatives\\governance-baseline.json\")
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Step 4: Assign policies to target scope**
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| \# Assign the Governance Baseline initiative to a resource group New-AzPolicyAssignment \` -Name \"uiao-baseline-east-prod\" \` -DisplayName \"UIAO Governance Baseline - East Production\" \` -PolicySetDefinition (Get-AzPolicySetDefinition -Name \"UIAO-GovernanceBaseline\") \` -Scope \"/subscriptions/ |
+|                                                                                                                                                                                                                                                                                                               |
+| \<                                                                                                                                                                                                                                                                                                            |
+|                                                                                                                                                                                                                                                                                                               |
+| sub-id                                                                                                                                                                                                                                                                                                        |
+|                                                                                                                                                                                                                                                                                                               |
+| \>                                                                                                                                                                                                                                                                                                            |
+|                                                                                                                                                                                                                                                                                                               |
+| /resourceGroups/rg-uiao-arc-east-production\" \` -IdentityType \"SystemAssigned\" \` -Location \"eastus\"                                                                                                                                                                                                     |
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+**Step 5: Create remediation tasks for DeployIfNotExists policies**
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| \# Trigger remediation for Azure Monitor Agent deployment Start-AzPolicyRemediation \` -Name \"remediate-ama-deployment\" \` -PolicyAssignmentId \"/subscriptions/ |
+|                                                                                                                                                                    |
+| \<                                                                                                                                                                 |
+|                                                                                                                                                                    |
+| sub-id                                                                                                                                                             |
+|                                                                                                                                                                    |
+| \>                                                                                                                                                                 |
+|                                                                                                                                                                    |
+| /providers/Microsoft.Authorization/policyAssignments/uiao-baseline-east-prod\" \` -PolicyDefinitionReferenceId \"UIAO-Arc-AMADeployment\"                          |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+11.4 Assignment Scoping
+
+Policies can be assigned at three levels in the Azure resource hierarchy:
+
+  -----------------------------------------------------------------------------------------------------------------
+  **Scope Level**    **Use Case**                                **Example**
+  ------------------ ------------------------------------------- --------------------------------------------------
+  Management Group   Enterprise-wide governance                  Apply Governance Baseline to all subscriptions
+
+  Subscription       Environment-level governance                Apply to all resource groups in a subscription
+
+  Resource Group     Targeted governance by region/environment   Apply Tier0 Hardening to DC resource groups only
+  -----------------------------------------------------------------------------------------------------------------
+
+11.5 Exemption Process
+
+When a server legitimately cannot comply with a policy (e.g., Domain Controllers exempt from BitLocker), a formal exemption must be documented:
+
+17. Submit an exemption request via the UIAO governance pipeline with justification
+
+18. Governance review and approval by the UIAO compliance officer
+
+19. Create the Azure Policy exemption with expiry date and category (Waiver or Mitigated)
+
+20. Document compensating controls in the UIAO exemption register
+
+21. Review and renew exemptions quarterly
+
+12\. Compliance Reporting
+
+12.1 Azure Policy Compliance Dashboard
+
+The Azure Policy compliance dashboard provides real-time visibility into the compliance state of all Arc-enabled servers against the UIAO policy library. Access the dashboard at:
+
+**Azure Portal → Policy → Compliance → Filter by Initiative → UIAO-GovernanceBaseline**
+
+Key metrics available:
+
+- **Overall compliance percentage** --- Percentage of servers compliant with all assigned policies
+
+- **Non-compliant resources by policy** --- Drill-down into specific policy failures
+
+- **Compliance trend** --- 30/60/90-day compliance trajectory
+
+- **Non-compliant resources by resource group** --- Identify problem areas by region or environment
+
+12.2 UIAO Governance Dashboard Integration
+
+The UIAO governance dashboard (cross-referenced in the UIAO Dashboard Design Document) ingests Azure Policy compliance state via the Azure Resource Graph API. This integration enables:
+
+- Unified compliance view across AD, Entra ID, Intune, and Arc governance planes
+
+- OrgPath-segmented compliance reporting (compliance by Region, Site, Department, Tier)
+
+- Executive summary cards showing overall UIAO governance posture
+
+12.3 Compliance Report Export
+
+For audit and governance pipeline consumption, compliance data can be exported using the following Azure Resource Graph query:
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  PolicyResources \| where type == \"microsoft.policyinsights/policystates\" \| where properties.complianceState != \"Compliant\" \| extend resourceId = tostring(properties.resourceId), policyName = tostring(properties.policyDefinitionName), complianceState = tostring(properties.complianceState), timestamp = todatetime(properties.timestamp) \| project resourceId, policyName, complianceState, timestamp \| order by timestamp desc
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+12.4 Drift Detection Integration
+
+Azure Policy compliance state feeds directly into the UIAODriftDetection PowerShell module. When a server transitions from compliant to non-compliant, the drift detection pipeline:
+
+22. Records the drift event with timestamp, policy, and previous state
+
+23. Classifies the drift by severity (Critical, High, Medium, Low)
+
+24. Triggers the appropriate remediation workflow or escalation
+
+25. Updates the UIAO governance dashboard in near real-time
+
+13\. Remediation Playbooks
+
+13.1 Automated Remediation (DeployIfNotExists / Modify)
+
+Policies with DeployIfNotExists or Modify effects support automated remediation via Azure Policy remediation tasks. No manual intervention is required once the remediation task is created.
+
+  --------------------------------------------------------------------------------------------------
+  **Policy**                **Effect**          **Automated Action**
+  ------------------------- ------------------- ----------------------------------------------------
+  UIAO-Arc-AMADeployment    DeployIfNotExists   Installs Azure Monitor Agent extension
+
+  UIAO-Arc-LAWorkspace      DeployIfNotExists   Associates server with Log Analytics workspace
+
+  UIAO-Arc-Diagnostics      DeployIfNotExists   Enables diagnostic settings on Arc resource
+
+  UIAO-Arc-TagInheritance   Modify              Copies region/environment tags from resource group
+  --------------------------------------------------------------------------------------------------
+
+13.2 Manual Remediation Procedures (Audit Policies)
+
+Audit-only policies require manual remediation. The following table provides the remediation action for each audit policy:
+
+  ---------------------------------------------------------------------------------------------------
+  **Policy**                     **Remediation Action**
+  ------------------------------ --------------------------------------------------------------------
+  UIAO-Arc-AgentInstalled        Run Install-UIAOArcAgent.ps1 on the target server
+
+  UIAO-Arc-AgentVersion          Update agent via azcmagent upgrade or Automation runbook
+
+  UIAO-Arc-ConnectivityHealth    Check network, proxy, and himds service on the server
+
+  UIAO-Arc-SecurityBaseline      Apply security settings via Group Policy or DSC configuration
+
+  UIAO-Arc-EndpointProtection    Install/repair Microsoft Defender for Endpoint, update definitions
+
+  UIAO-Arc-TLSCompliance         Apply TLS registry settings via UIAO remediation script
+
+  UIAO-Arc-LocalAdminControl     Remove unauthorized local admin accounts
+
+  UIAO-Arc-CertificateExpiry     Renew expiring certificates via CA or certificate management tool
+
+  UIAO-Arc-OSCompliance          Initiate OS upgrade via UIAO migration pipeline
+
+  UIAO-Arc-PatchCompliance       Enroll in Azure Update Manager; apply missing patches
+
+  UIAO-Arc-DiskEncryption        Enable BitLocker on OS volume
+
+  UIAO-Arc-BackupCompliance      Enroll server in backup solution; verify backup jobs
+
+  UIAO-Arc-TimeSync              Configure W32Time service for proper NTP source
+
+  UIAO-Arc-FirewallState         Enable Windows Firewall on all profiles
+
+  UIAO-Arc-RDPSecurity           Enable NLA; restrict RDP access to authorized groups
+
+  UIAO-Arc-SMBSecurity           Disable SMBv1; enable SMB signing via registry or Group Policy
+
+  UIAO-Arc-GitServerCompliance   Repair Gitea installation; reconfigure IIS reverse proxy
+
+  UIAO-Arc-AssessmentCurrency    Re-run UIAO assessment on the server
+
+  UIAO-Arc-HookIntegrity         Redeploy governance hooks from the UIAO repository
+
+  UIAO-Arc-ModuleVersion         Update UIAO PowerShell modules from the repository
+  ---------------------------------------------------------------------------------------------------
+
+13.3 Escalation Procedures
+
+When remediation cannot be completed within the SLA window or requires elevated privileges:
+
+26. **First escalation:** Notify the UIAO governance engineer responsible for the server\'s region
+
+27. **Second escalation:** Raise to the UIAO program lead with impact assessment
+
+28. **Third escalation:** Engage the compliance officer for risk acceptance or emergency exemption
+
+13.4 SLA Targets
+
+  ------------------------------------------------------------------------------------------------------------------------------
+  **Severity**   **Remediation SLA**   **Example Findings**
+  -------------- --------------------- -----------------------------------------------------------------------------------------
+  **Critical**   72 hours              Missing endpoint protection, tampered governance hooks, Tier0 security baseline failure
+
+  **High**       7 days                TLS misconfiguration, firewall disabled, missing patches (critical), agent offline
+
+  **Medium**     30 days               Certificate expiry warning, stale assessment data, outdated agent version
+
+  **Low**        90 days               Tag inheritance issues, NTP configuration drift
+  ------------------------------------------------------------------------------------------------------------------------------
+
+Appendix A: Policy Definition JSON Templates
+
+The following skeleton JSON templates illustrate the Azure Policy definition structure used by UIAO policies. Complete definitions are maintained in the UIAO repository under /policies/arc/definitions/.
+
+A.1 Audit Policy --- UIAO-Arc-AgentVersion
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  { \"name\": \"UIAO-Arc-AgentVersion\", \"properties\": { \"displayName\": \"UIAO - Arc Agent Version Compliance\", \"description\": \"Audit Arc-enabled servers with Connected Machine Agent below minimum version.\", \"mode\": \"Indexed\", \"metadata\": { \"category\": \"UIAO Governance\", \"version\": \"1.0.0\" }, \"parameters\": { \"minimumVersion\": { \"type\": \"String\", \"defaultValue\": \"1.38\", \"metadata\": { \"displayName\": \"Minimum Agent Version\", \"description\": \"Minimum acceptable Connected Machine Agent version.\" } } }, \"policyRule\": { \"if\": { \"allOf\": \[ { \"field\": \"type\", \"equals\": \"Microsoft.HybridCompute/machines\" }, { \"field\": \"Microsoft.HybridCompute/machines/agentVersion\", \"less\": \"\[parameters(\'minimumVersion\')\]\" } \] }, \"then\": { \"effect\": \"audit\" } } } }
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+A.2 Deny Policy --- UIAO-Arc-RequiredTags
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  { \"name\": \"UIAO-Arc-RequiredTags\", \"properties\": { \"displayName\": \"UIAO - Required OrgPath Tags\", \"description\": \"Deny Arc-enabled server resources missing required UIAO OrgPath tags.\", \"mode\": \"Indexed\", \"metadata\": { \"category\": \"UIAO Governance\", \"version\": \"1.0.0\" }, \"parameters\": {}, \"policyRule\": { \"if\": { \"allOf\": \[ { \"field\": \"type\", \"equals\": \"Microsoft.HybridCompute/machines\" }, { \"anyOf\": \[ { \"field\": \"tags\[\'uiao-region\'\]\", \"exists\": \"false\" }, { \"field\": \"tags\[\'uiao-site\'\]\", \"exists\": \"false\" }, { \"field\": \"tags\[\'uiao-department\'\]\", \"exists\": \"false\" }, { \"field\": \"tags\[\'uiao-device-tier\'\]\", \"exists\": \"false\" }, { \"field\": \"tags\[\'uiao-environment\'\]\", \"exists\": \"false\" }, { \"field\": \"tags\[\'uiao-device-role\'\]\", \"exists\": \"false\" } \] } \] }, \"then\": { \"effect\": \"deny\" } } } }
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+A.3 DeployIfNotExists Policy --- UIAO-Arc-AMADeployment
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  { \"name\": \"UIAO-Arc-AMADeployment\", \"properties\": { \"displayName\": \"UIAO - Deploy Azure Monitor Agent on Arc Servers\", \"description\": \"Automatically deploy Azure Monitor Agent on Arc-enabled Windows servers.\", \"mode\": \"Indexed\", \"metadata\": { \"category\": \"UIAO Governance\", \"version\": \"1.0.0\" }, \"parameters\": {}, \"policyRule\": { \"if\": { \"allOf\": \[ { \"field\": \"type\", \"equals\": \"Microsoft.HybridCompute/machines\" }, { \"field\": \"Microsoft.HybridCompute/machines/osName\", \"equals\": \"Windows\" } \] }, \"then\": { \"effect\": \"deployIfNotExists\", \"details\": { \"type\": \"Microsoft.HybridCompute/machines/extensions\", \"roleDefinitionIds\": \[ \"/providers/Microsoft.Authorization/roleDefinitions/\...\" \], \"existenceCondition\": { \"allOf\": \[ { \"field\": \"Microsoft.HybridCompute/machines/extensions/type\", \"equals\": \"AzureMonitorWindowsAgent\" }, { \"field\": \"Microsoft.HybridCompute/machines/extensions/provisioningState\", \"equals\": \"Succeeded\" } \] }, \"deployment\": { \"properties\": { \"mode\": \"incremental\", \"template\": { \"\$schema\": \"https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#\", \"contentVersion\": \"1.0.0.0\", \"resources\": \[ { \"type\": \"Microsoft.HybridCompute/machines/extensions\", \"apiVersion\": \"2023-10-03-preview\", \"name\": \"\[concat(field(\'name\'), \'/AzureMonitorWindowsAgent\')\]\", \"location\": \"\[field(\'location\')\]\", \"properties\": { \"publisher\": \"Microsoft.Azure.Monitor\", \"type\": \"AzureMonitorWindowsAgent\", \"autoUpgradeMinorVersion\": true } } \] } } } } } } } }
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+A.4 Modify Policy --- UIAO-Arc-TagInheritance
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  { \"name\": \"UIAO-Arc-TagInheritance\", \"properties\": { \"displayName\": \"UIAO - Inherit Region and Environment Tags from Resource Group\", \"description\": \"Inherit uiao-region and uiao-environment tags from the parent resource group.\", \"mode\": \"Indexed\", \"metadata\": { \"category\": \"UIAO Governance\", \"version\": \"1.0.0\" }, \"parameters\": {}, \"policyRule\": { \"if\": { \"allOf\": \[ { \"field\": \"type\", \"equals\": \"Microsoft.HybridCompute/machines\" }, { \"field\": \"tags\[\'uiao-region\'\]\", \"exists\": \"false\" } \] }, \"then\": { \"effect\": \"modify\", \"details\": { \"roleDefinitionIds\": \[ \"/providers/Microsoft.Authorization/roleDefinitions/\...\" \], \"operations\": \[ { \"operation\": \"addOrReplace\", \"field\": \"tags\[\'uiao-region\'\]\", \"value\": \"\[resourceGroup().tags\[\'uiao-region\'\]\]\" } \] } } } } }
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix B: OrgPath Tag Mapping Reference
+
+The following table provides the complete mapping between UIAO OrgPath extension attributes in Entra ID, their corresponding Azure Arc resource tags, and the allowed values for each field.
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Extension Attribute**   **OrgPath Field**   **Arc Tag Name**   **Allowed Values**
+  ------------------------- ------------------- ------------------ ------------------------------------------------------------------------------------------------------
+  extensionAttribute1       Region              uiao-region        East, West, Central, Global
+
+  extensionAttribute2       Site                uiao-site          *Organization-specific (populated from AD assessment)*
+
+  extensionAttribute3       Department          uiao-department    *Organization-specific (populated from AD assessment)*
+
+  extensionAttribute4       DeviceTier          uiao-device-tier   Tier0, Tier1, Tier2
+
+  extensionAttribute5       Environment         uiao-environment   Production, Staging, Dev, DR
+
+  extensionAttribute6       DeviceRole          uiao-device-role   DomainController, MemberServer, GitServer, AppServer, FileServer, DatabaseServer, Workstation, Kiosk
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **IMPLEMENTATION NOTE**                                                                                                                                                                                                                                                                                                                                   |
+|                                                                                                                                                                                                                                                                                                                                                           |
+| When deploying the Arc agent via the UIAO deployment script, OrgPath extension attribute values from the source AD object are automatically read and applied as Arc resource tags. The script calls Get-UIAOOrgPath to retrieve the current OrgPath for the server and maps each attribute to its corresponding tag during the azcmagent connect command. |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+B.1 Tag Flow Diagram
+
+The OrgPath tag flow follows this sequence:
+
+29. **Active Directory** --- OrgPath attributes set on computer objects during UIAO assessment
+
+30. **Entra ID Sync** --- Extension attributes synchronized via Entra Connect (for hybrid-joined devices)
+
+31. **Arc Agent Deployment** --- Tags applied during azcmagent connect from OrgPath values
+
+32. **Azure Policy** --- Tag values validated by UIAO-Arc-RequiredTags and UIAO-Arc-TagValues
+
+33. **Governance Pipeline** --- Tags used for scoped policy assignment, compliance reporting, and dashboard segmentation
+
+Appendix C: Guest Configuration Package Development
+
+Several UIAO policies rely on Azure Policy Guest Configuration (Machine Configuration) to evaluate in-guest operating system settings. This appendix describes how to create, test, and publish custom Guest Configuration packages for UIAO-specific checks.
+
+C.1 Overview
+
+Guest Configuration packages use PowerShell Desired State Configuration (DSC) resources to define the expected state of a server. The package is compiled into a MOF file, zipped with the required DSC resources, and published to Azure Blob Storage where the Guest Configuration agent can retrieve and evaluate it.
+
+C.2 Development Workflow
+
+34. **Author the DSC Configuration** --- Write a PowerShell DSC configuration that checks the desired settings
+
+35. **Compile the MOF** --- Run the configuration to generate the MOF file
+
+36. **Package the artifact** --- Use New-GuestConfigurationPackage to create the .zip package
+
+37. **Test locally** --- Use Test-GuestConfigurationPackage to validate the package against a local server
+
+38. **Publish to Azure Storage** --- Upload the package to a blob container with a SAS URL
+
+39. **Create the Azure Policy definition** --- Reference the package URI in the policy definition
+
+C.3 Example: UIAO Assessment Currency Check
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \# DSC Configuration for checking UIAO assessment file age Configuration UIAOAssessmentCurrency { Import-DscResource -ModuleName GuestConfiguration Node \"UIAOAssessmentCurrency\" { Script CheckAssessmentAge { GetScript = { \$assessmentPath = \"D:\\UIAO\\Assessment\" \$files = Get-ChildItem -Path \$assessmentPath -File -ErrorAction SilentlyContinue \$newestFile = \$files \| Sort-Object LastWriteTime -Descending \| Select-Object -First 1 return \@{ Result = if (\$newestFile) { \$newestFile.LastWriteTime.ToString() } else { \"NoFiles\" } } } TestScript = { \$assessmentPath = \"D:\\UIAO\\Assessment\" \$maxAgeDays = 30 \$files = Get-ChildItem -Path \$assessmentPath -File -ErrorAction SilentlyContinue if (-not \$files) { return \$false } \$newestFile = \$files \| Sort-Object LastWriteTime -Descending \| Select-Object -First 1 \$age = (Get-Date) - \$newestFile.LastWriteTime return (\$age.TotalDays -le \$maxAgeDays) } SetScript = { \# Audit-only: no remediation action } } } } \# Compile the MOF UIAOAssessmentCurrency \# Create the Guest Configuration package New-GuestConfigurationPackage \` -Name \"UIAOAssessmentCurrency\" \` -Configuration \".\\UIAOAssessmentCurrency\\localhost.mof\" \` -Type \"Audit\" \` -Force
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+C.4 Testing and Publishing
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  \# Test the package locally \$result = Test-GuestConfigurationPackage \` -Path \".\\UIAOAssessmentCurrency.zip\" \$result.complianceStatus \# Should return \"Compliant\" or \"NonCompliant\" \# Publish to Azure Storage \$publishResult = Publish-GuestConfigurationPackage \` -Path \".\\UIAOAssessmentCurrency.zip\" \` -ResourceGroupName \"rg-uiao-governance\" \` -StorageAccountName \"stuiaogovernance\" \# Create the policy definition from the published package New-GuestConfigurationPolicy \` -ContentUri \$publishResult.ContentUri \` -DisplayName \"UIAO - Assessment Data Currency\" \` -Description \"Audit servers where UIAO assessment data is older than 30 days.\" \` -Path \".\\policies\" \` -Platform \"Windows\" \` -Version \"1.0.0\"
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+C.5 UIAO-Specific DSC Resources
+
+The UIAO program maintains custom DSC resources in the repository for specialized checks:
+
+  -----------------------------------------------------------------------------------------------
+  **DSC Resource**     **Purpose**                                 **Used By Policy**
+  -------------------- ------------------------------------------- ------------------------------
+  UIAOAssessmentFile   Check assessment file age and integrity     UIAO-Arc-AssessmentCurrency
+
+  UIAOGitHook          Validate Git hook presence and hash         UIAO-Arc-HookIntegrity
+
+  UIAOModuleVersion    Check PowerShell module manifest versions   UIAO-Arc-ModuleVersion
+
+  UIAOGiteaService     Validate Gitea installation and IIS proxy   UIAO-Arc-GitServerCompliance
+  -----------------------------------------------------------------------------------------------
+
+**Classification:** Controlled
+
+**Boundary:** GCC-Moderate (Azure Arc in Commercial Cloud --- Explicit Exception)
+
+**Repository:** https://github.com/WhalerMike/uiao
+
+**Document Version:** 1.0 \| **Date:** April 21, 2026 \| **UIAO Governance OS Modernization Program**
+
+This document contains 24 policy definitions and 3 policy initiatives for the UIAO Azure Arc governance framework. All policy definitions are maintained as code in the UIAO repository and deployed via the CI/CD pipeline described in Section 11.

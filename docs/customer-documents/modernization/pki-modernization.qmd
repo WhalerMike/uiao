@@ -1,0 +1,1431 @@
+---
+title: "UIAO PKI Modernization Guide"
+subtitle: "ADCS to Cloud PKI and Entra CBA"
+doc-type: technical-guide
+audience: [Customer, Technical]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/Posted/UIAO PKI Modernization Guide — ADCS to Cloud PKI and Entra CBA.docx"
+repo-path: docs/customer-documents/modernization/pki-modernization.qmd
+created-at: 2026-04-26
+updated-at: 2026-04-26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+UIAO PKI Modernization Guide
+
+**ADCS to Cloud PKI and Entra CBA**
+
+**Series:** UIAO Governance OS --- Identity & Certificate Services
+
+**Classification:** Controlled \| **Boundary:** GCC-Moderate
+
+**Version:** 1.0 \| **Date:** April 21, 2026
+
+**Repository:** https://github.com/WhalerMike/uiao
+
+**Author:** UIAO Governance Team
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Classification Notice**                                                                                                                                                                                                                                                               |
+|                                                                                                                                                                                                                                                                                         |
+| This document is classified **Controlled** within the GCC-Moderate boundary. Distribution is limited to authorized personnel supporting UIAO PKI modernization operations. This document does not carry FOUO markings. Handle in accordance with organizational data handling policies. |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Table of Contents
+
+1.  Purpose and Scope
+
+2.  ADCS Architecture Baseline
+
+3.  ADCS Security Assessment (ESC Vulnerabilities)
+
+4.  Certificate Inventory and Classification
+
+5.  Target Architecture: Microsoft Cloud PKI
+
+6.  Intune Certificate Deployment
+
+7.  Entra ID Certificate-Based Authentication (CBA)
+
+8.  Hybrid Coexistence Architecture
+
+9.  Migration Execution Playbook
+
+10. OrgPath Integration for Certificate Targeting
+
+11. Monitoring, Compliance, and Drift Detection
+
+12. Security Hardening
+
+13. Troubleshooting Reference
+
+14. Companion Document Cross-Reference
+
+15. Appendix A --- Cloud PKI Deployment Checklist
+
+16. Appendix B --- Certificate Template Migration Matrix
+
+17. Appendix C --- PowerShell PKI Assessment Module
+
+18. Appendix D --- Entra CBA Configuration Checklist
+
+1\. Purpose and Scope
+
+This guide provides a comprehensive, phased methodology for migrating on-premises Active Directory Certificate Services (ADCS) to a cloud-native Public Key Infrastructure (PKI) using Microsoft Cloud PKI, Intune certificate deployment (SCEP/PKCS), and Microsoft Entra ID Certificate-Based Authentication (CBA). It is part of the UIAO Governance OS document corpus and is designed to operate within the GCC-Moderate boundary.
+
+1.1 Scope Definition
+
+This document covers the following domains:
+
+- **Assessment:** Comprehensive inventory and security audit of existing ADCS infrastructure, including ESC vulnerability analysis (ESC1--ESC8).
+
+- **Architecture:** Target-state design using Microsoft Cloud PKI (Cloud Root CA and BYOCA models) integrated with Microsoft Intune.
+
+- **Certificate Deployment:** Intune-managed certificate profiles --- Trusted Root, SCEP, and PKCS --- with strong mapping enforcement (KB5014754).
+
+- **Authentication:** Entra ID CBA configuration, user binding methods, staged rollout, and migration from ADFS certificate authentication.
+
+- **Hybrid Coexistence:** Parallel operation of ADCS and Cloud PKI during transition, including DC certificates, LDAPS, and cross-trust scenarios.
+
+- **Migration Execution:** Six-phase playbook with gates, rollback procedures, and OrgPath-driven targeting.
+
+- **Monitoring:** Certificate health, compliance, and drift detection with Gitea integration for assessment persistence.
+
+1.2 Classification and Handling
+
+  -----------------------------------------------------------------------
+  **Attribute**    **Value**
+  ---------------- ------------------------------------------------------
+  Classification   Controlled
+
+  Boundary         GCC-Moderate
+
+  Distribution     Authorized UIAO personnel and designated contractors
+
+  Retention        Active --- review annually or upon major PKI change
+  -----------------------------------------------------------------------
+
+1.3 Companion Document Cross-References
+
+This guide operates in conjunction with the following UIAO Governance OS documents:
+
+- **AD Interaction Guide:** The ADCS assessment performed in this guide feeds the broader AD assessment framework. Certificate template and CA inventory data flows into the AD Interaction Guide\'s assessment outputs.
+
+- **Identity Modernization Guide:** Entra CBA deployment depends on Entra readiness as defined in the Identity Modernization Guide. Staged rollout and domain conversion must align with identity migration timelines.
+
+- **AD Computer Object Conversion Guide:** Device certificates issued via Intune SCEP/PKCS profiles depend on devices being enrolled in Intune. The Computer Object Conversion Guide governs the process of moving device management from Group Policy to Intune.
+
+1.4 Audience
+
+- PKI administrators and certificate services operators
+
+- Identity and access management (IAM) architects
+
+- Intune and endpoint management administrators
+
+- Security operations and compliance teams
+
+- UIAO governance leads and project managers
+
+2\. ADCS Architecture Baseline
+
+Before migrating to Cloud PKI, organizations must establish a thorough baseline of their existing ADCS infrastructure. This section documents the typical enterprise ADCS topology, certificate template categories, and auto-enrollment configuration that will be assessed and migrated.
+
+2.1 Typical ADCS Topology
+
+Enterprise ADCS deployments generally follow a two-tier or three-tier hierarchy:
+
+- **Offline Root CA:** Air-gapped certificate authority that signs the Issuing CA certificate(s). Typically hosted on a hardened, non-domain-joined server stored in a secure location. Brought online only for Issuing CA certificate renewal or CRL signing.
+
+- **Online Issuing CA(s):** One or more enterprise CAs joined to Active Directory, responsible for all day-to-day certificate issuance. Published to AD for auto-enrollment discovery.
+
+- **NDES (Network Device Enrollment Service):** Provides SCEP protocol endpoint for non-domain-joined devices (network equipment, mobile devices via Intune).
+
+- **CES/CEP (Certificate Enrollment Service / Certificate Enrollment Policy):** Web-based enrollment for devices outside the corporate network. Often paired with Web Application Proxy or Azure AD Application Proxy.
+
+- **CRL Distribution Points (CDPs):** HTTP and LDAP locations where Certificate Revocation Lists are published.
+
+- **Authority Information Access (AIA):** HTTP and LDAP locations for CA certificate chain retrieval.
+
+- **OCSP Responder (optional):** Online Certificate Status Protocol responder for real-time revocation checking.
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  *\[Placeholder --- Diagram PKI-001: ADCS Topology --- 800×450px --- Shows offline Root CA, Issuing CAs, NDES, CRL/AIA distribution points, and certificate consumers\]*
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.2 CA Component Inventory
+
+Document each CA using the following inventory template:
+
+  -------------------------------------------------------------------------------------------------
+  **Attribute**             **Root CA**           **Issuing CA 1**         **Issuing CA 2**
+  ------------------------- --------------------- ------------------------ ------------------------
+  CA Type                   Standalone Root       Enterprise Subordinate   Enterprise Subordinate
+
+  Server Name               \[YOURORG\]-ROOT-CA   \[YOURORG\]-ISS-CA01     \[YOURORG\]-ISS-CA02
+
+  Operating System          Windows Server 2019   Windows Server 2022      Windows Server 2022
+
+  Key Length                4096-bit RSA          2048-bit RSA             2048-bit RSA
+
+  Hash Algorithm            SHA-256               SHA-256                  SHA-256
+
+  Validity Period           20 years              5 years                  5 years
+
+  CRL Distribution Points   HTTP, LDAP            HTTP, LDAP               HTTP, LDAP
+
+  AIA Locations             HTTP, LDAP            HTTP, LDAP               HTTP, LDAP
+
+  OCSP Configured           No                    Yes / No                 Yes / No
+
+  HSM Protected             Yes / No              Yes / No                 Yes / No
+  -------------------------------------------------------------------------------------------------
+
+2.3 Certificate Template Categories
+
+ADCS templates are organized by use case. The following categories are commonly deployed:
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Category**              **Template Name(s)**                         **EKU**                                              **Typical Subjects**
+  ------------------------- -------------------------------------------- ---------------------------------------------------- -----------------------------
+  User Authentication       User, Smartcard User                         Client Authentication (1.3.6.1.5.5.7.3.2)            Domain users
+
+  Computer Authentication   Machine, Computer                            Client Authentication (1.3.6.1.5.5.7.3.2)            Domain-joined computers
+
+  Web Server TLS            Web Server                                   Server Authentication (1.3.6.1.5.5.7.3.1)            IIS servers, load balancers
+
+  Code Signing              Code Signing                                 Code Signing (1.3.6.1.5.5.7.3.3)                     Developers, build servers
+
+  EFS                       Basic EFS, EFS Recovery Agent                Encrypting File System (1.3.6.1.4.1.311.10.3.4)      Domain users
+
+  Smart Card Logon          Smartcard Logon                              Smart Card Logon (1.3.6.1.4.1.311.20.2.2)            PIV/CAC holders
+
+  DC Authentication         Domain Controller, Kerberos Authentication   KDC Authentication (1.3.6.1.5.2.3.5)                 Domain controllers
+
+  OCSP Signing              OCSP Response Signing                        OCSP Signing (1.3.6.1.5.5.7.3.9)                     OCSP Responders
+
+  IPSec                     IPSec (Offline Request)                      IP Security IKE Intermediate (1.3.6.1.5.5.8.2.2)     VPN gateways
+
+  Enrollment Agent          Enrollment Agent                             Certificate Request Agent (1.3.6.1.4.1.311.20.2.1)   Enrollment stations
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.4 Auto-Enrollment Configuration
+
+ADCS auto-enrollment is controlled by Group Policy and template permissions:
+
+- **GPO Setting:** Computer Configuration → Policies → Windows Settings → Security Settings → Public Key Policies → Certificate Services Client - Auto-Enrollment. Must be set to *Enabled* with both \"Renew expired certificates\" and \"Update certificates that use certificate templates\" checked.
+
+- **Template Permissions:** Security groups must have both *Enroll* and *Autoenroll* permissions on the template. Enrollment is denied if either permission is missing.
+
+- **Enrollment Agent Restrictions:** CA-level restrictions can limit which enrollment agents may enroll on behalf of which users and for which templates. Verify via certsrv.msc → CA Properties → Enrollment Agents.
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Assessment Note**                                                                                                                                                                                                                                                                       |
+|                                                                                                                                                                                                                                                                                           |
+| Capture the current auto-enrollment GPO configuration before migration. During transition, auto-enrollment GPOs will need to be scoped to exclude devices that have been migrated to Intune-managed certificate profiles. The AD Interaction Guide provides the GPO assessment framework. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+3\. ADCS Security Assessment (ESC Vulnerabilities)
+
+Before migrating any certificate workload, the existing ADCS infrastructure must be audited for known privilege escalation vulnerabilities. The ESC (Escalation) vulnerability classes, originally documented by SpecterOps in 2021, remain among the most critical attack vectors in Active Directory environments. A misconfigured certificate template can provide an attacker with a direct path to domain administrator privileges.
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Migration Gate**                                                                                                                                                                                                                                    |
+|                                                                                                                                                                                                                                                       |
+| ESC vulnerabilities rated **Critical** or **High** must be remediated before migration proceeds. Migrating certificate workloads from a compromised ADCS infrastructure risks propagating trust chain vulnerabilities into the cloud PKI environment. |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+3.1 ESC1 --- Misconfigured Template Allowing Requestor-Specified SAN
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Risk Level      **Critical**
+
+  Description     A certificate template has CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT enabled, includes Client Authentication EKU, and grants Enroll rights to low-privilege groups (Domain Users, Domain Computers, Authenticated Users). An attacker can request a certificate with any Subject Alternative Name (SAN), including the UPN of a Domain Admin, and use it for Kerberos PKINIT authentication.
+
+  Impact          Full domain compromise. Attacker obtains TGT as any user.
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Detection Script:**
+
+\# ESC1 Detection --- Requires RSAT AD PowerShell module Import-Module ActiveDirectory \$configNC = (Get-ADRootDSE).configurationNamingContext \$templates = Get-ADObject -SearchBase \"CN=Certificate Templates,CN=Public Key Services,CN=Services,\$configNC\" \` -Filter \* -Properties msPKI-Certificate-Name-Flag, msPKI-Certificate-Application-Policy, \` pkiExtendedKeyUsage, nTSecurityDescriptor, displayName foreach (\$tmpl in \$templates) { \$nameFlag = \$tmpl.\'msPKI-Certificate-Name-Flag\' \$ekus = @(\$tmpl.pkiExtendedKeyUsage) + @(\$tmpl.\'msPKI-Certificate-Application-Policy\') \# CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT = 1 if (\$nameFlag -band 1) { \$hasClientAuth = \$ekus -contains \'1.3.6.1.5.5.7.3.2\' \$hasAnyPurpose = \$ekus -contains \'2.5.29.37.0\' if (\$hasClientAuth -or \$hasAnyPurpose) { \$acl = Get-Acl \"AD:\$(\$tmpl.DistinguishedName)\" \$vulnerableEntries = \$acl.Access \| Where-Object { \$\_.ActiveDirectoryRights -match \'ExtendedRight\' -and \$\_.ObjectType -eq \'0e10c968-78fb-11d2-90d4-00c04f79dc55\' -and \# Enroll \$\_.IdentityReference -match \'Domain Users\|Authenticated Users\|Domain Computers\|Everyone\' } if (\$vulnerableEntries) { Write-Warning \"ESC1 VULNERABLE: \$(\$tmpl.displayName)\" Write-Output \" Template: \$(\$tmpl.DistinguishedName)\" Write-Output \" Enrollable by: \$(\$vulnerableEntries.IdentityReference -join \', \')\" } } } }
+
+**Remediation:**
+
+19. Disable CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT on the template (Subject Name tab → select \"Build from Active Directory information\").
+
+20. Restrict Enroll permissions to only the specific security groups that require the template.
+
+21. Enable Manager Approval on sensitive templates requiring SAN specification.
+
+22. Monitor certificate requests with non-matching SANs via CA audit logs (Event ID 4887).
+
+3.2 ESC2 --- Any Purpose or SubCA EKU
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Risk Level      **Critical**
+
+  Description     A template includes the Any Purpose EKU (2.5.29.37.0) or the Subordinate CA EKU, allowing the issued certificate to be used for any purpose including client authentication, code signing, or acting as a subordinate CA.
+
+  Impact          Privilege escalation; potential to create a rogue subordinate CA.
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Detection Script:**
+
+\# ESC2 Detection \$configNC = (Get-ADRootDSE).configurationNamingContext \$templates = Get-ADObject -SearchBase \"CN=Certificate Templates,CN=Public Key Services,CN=Services,\$configNC\" \` -Filter \* -Properties msPKI-Certificate-Application-Policy, pkiExtendedKeyUsage, displayName foreach (\$tmpl in \$templates) { \$ekus = @(\$tmpl.pkiExtendedKeyUsage) + @(\$tmpl.\'msPKI-Certificate-Application-Policy\') \$hasAnyPurpose = \$ekus -contains \'2.5.29.37.0\' \$hasSubCA = (\$ekus.Count -eq 0) \# No EKU = SubCA behavior if (\$hasAnyPurpose -or \$hasSubCA) { Write-Warning \"ESC2 VULNERABLE: \$(\$tmpl.displayName)\" if (\$hasAnyPurpose) { Write-Output \" Issue: Any Purpose EKU present\" } if (\$hasSubCA) { Write-Output \" Issue: No EKU restrictions (SubCA equivalent)\" } } }
+
+**Remediation:** Replace the Any Purpose EKU with specific EKUs matching the template\'s intended use. Remove or restrict templates with no EKU constraints. Limit enrollment to administrative groups only.
+
+3.3 ESC3 --- Certificate Request Agent Abuse
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Risk Level      **High**
+
+  Description     A template with the Certificate Request Agent EKU (1.3.6.1.4.1.311.20.2.1) grants Enroll rights to non-administrative users. An attacker enrolls as a request agent, then requests certificates on behalf of other users, including administrators.
+
+  Impact          Privilege escalation via enrollment agent impersonation.
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Detection Script:**
+
+\# ESC3 Detection \$configNC = (Get-ADRootDSE).configurationNamingContext \$templates = Get-ADObject -SearchBase \"CN=Certificate Templates,CN=Public Key Services,CN=Services,\$configNC\" \` -Filter \* -Properties msPKI-Certificate-Application-Policy, pkiExtendedKeyUsage, \` nTSecurityDescriptor, displayName foreach (\$tmpl in \$templates) { \$ekus = @(\$tmpl.pkiExtendedKeyUsage) + @(\$tmpl.\'msPKI-Certificate-Application-Policy\') if (\$ekus -contains \'1.3.6.1.4.1.311.20.2.1\') { \$acl = Get-Acl \"AD:\$(\$tmpl.DistinguishedName)\" \$broadEnroll = \$acl.Access \| Where-Object { \$\_.ActiveDirectoryRights -match \'ExtendedRight\' -and \$\_.IdentityReference -match \'Domain Users\|Authenticated Users\|Everyone\' } if (\$broadEnroll) { Write-Warning \"ESC3 VULNERABLE: \$(\$tmpl.displayName)\" Write-Output \" Certificate Request Agent enrollable by: \$(\$broadEnroll.IdentityReference -join \', \')\" } } }
+
+**Remediation:** Restrict enrollment on Request Agent templates to designated enrollment agent accounts only. Configure CA-level Enrollment Agent Restrictions to limit which agents can request which templates on behalf of which users.
+
+3.4 ESC4 --- Vulnerable Template ACLs
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Risk Level      **High**
+
+  Description     Low-privilege users have WriteDacl, WriteOwner, or WriteProperty permissions on certificate template AD objects. An attacker modifies the template to enable ESC1 conditions, requests a privileged certificate, then reverts the template.
+
+  Impact          Template manipulation leading to domain compromise.
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Detection Script:**
+
+\# ESC4 Detection \$configNC = (Get-ADRootDSE).configurationNamingContext \$templates = Get-ADObject -SearchBase \"CN=Certificate Templates,CN=Public Key Services,CN=Services,\$configNC\" \` -Filter \* -Properties nTSecurityDescriptor, displayName foreach (\$tmpl in \$templates) { \$acl = Get-Acl \"AD:\$(\$tmpl.DistinguishedName)\" \$dangerousPerms = \$acl.Access \| Where-Object { (\$\_.ActiveDirectoryRights -match \'WriteDacl\|WriteOwner\|WriteProperty\|GenericAll\|GenericWrite\') -and \$\_.IdentityReference -notmatch \'SYSTEM\|Domain Admins\|Enterprise Admins\|Cert Publishers\|Administrator\' } if (\$dangerousPerms) { Write-Warning \"ESC4 VULNERABLE: \$(\$tmpl.displayName)\" foreach (\$perm in \$dangerousPerms) { Write-Output \" \$(\$perm.IdentityReference): \$(\$perm.ActiveDirectoryRights)\" } } }
+
+**Remediation:** Remove WriteDacl, WriteOwner, WriteProperty, GenericAll, and GenericWrite permissions for non-administrative principals on all certificate template objects. Audit template ACLs quarterly.
+
+3.5 ESC5 --- Vulnerable PKI Object ACLs
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Risk Level      **High**
+
+  Description     Non-administrative users have dangerous permissions on PKI-related AD objects: the CA server\'s pKIEnrollmentService object, the NTAuthCertificates object, or the Certificate Templates container. Compromise of these objects can subvert the entire PKI trust chain.
+
+  Impact          CA trust manipulation, rogue certificate issuance.
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Detection Script:**
+
+\# ESC5 Detection --- Check pKIEnrollmentService objects \$configNC = (Get-ADRootDSE).configurationNamingContext \$enrollSvc = Get-ADObject -SearchBase \"CN=Enrollment Services,CN=Public Key Services,CN=Services,\$configNC\" \` -Filter \* -Properties nTSecurityDescriptor, displayName foreach (\$svc in \$enrollSvc) { \$acl = Get-Acl \"AD:\$(\$svc.DistinguishedName)\" \$dangerousPerms = \$acl.Access \| Where-Object { (\$\_.ActiveDirectoryRights -match \'WriteDacl\|WriteOwner\|GenericAll\|GenericWrite\') -and \$\_.IdentityReference -notmatch \'SYSTEM\|Domain Admins\|Enterprise Admins\|Administrator\' } if (\$dangerousPerms) { Write-Warning \"ESC5 VULNERABLE: \$(\$svc.displayName)\" foreach (\$perm in \$dangerousPerms) { Write-Output \" \$(\$perm.IdentityReference): \$(\$perm.ActiveDirectoryRights)\" } } }
+
+**Remediation:** Restrict write permissions on all Public Key Services objects to Enterprise Admins, Domain Admins, and the CA service account only. Monitor changes to NTAuthCertificates via AD audit policies.
+
+3.6 ESC6 --- EDITF_ATTRIBUTESUBJECTALTNAME2 Flag
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Risk Level      **Critical**
+
+  Description     The CA has the EDITF_ATTRIBUTESUBJECTALTNAME2 flag enabled in its policy module, allowing any enrollee to specify an arbitrary SAN on any template --- regardless of the template\'s Subject Name configuration.
+
+  Impact          Any authenticated user with enrollment rights to any template can impersonate any user.
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Detection Script:**
+
+\# ESC6 Detection \$editFlags = certutil -getreg policy\\EditFlags 2\>&1 if (\$editFlags -match \'EDITF_ATTRIBUTESUBJECTALTNAME2\') { Write-Warning \"ESC6 VULNERABLE: EDITF_ATTRIBUTESUBJECTALTNAME2 is ENABLED\" Write-Output \" Any enrollee can specify arbitrary SAN on any template.\" } else { Write-Output \"ESC6: EDITF_ATTRIBUTESUBJECTALTNAME2 is not enabled (safe).\" }
+
+**Remediation:** Remove the flag immediately: certutil -setreg policy\\EditFlags -EDITF_ATTRIBUTESUBJECTALTNAME2, then restart the CA service. Apply the May 2022 security update (KB5014754) which restricts SAN override behavior.
+
+3.7 ESC7 --- Vulnerable CA Security Descriptors
+
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Risk Level      **High**
+
+  Description     Non-administrative users or groups have ManageCA or ManageCertificates rights on the CA. ManageCA allows changing CA configuration (including enabling ESC6). ManageCertificates allows approving pending certificate requests, including those with arbitrary SANs when Manager Approval is the only control.
+
+  Impact          CA configuration manipulation, unauthorized certificate approval.
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Detection Script:**
+
+\# ESC7 Detection \$caSecurity = certutil -getreg CA\\Security 2\>&1 Write-Output \"=== CA Security Descriptor ===\" Write-Output \$caSecurity Write-Output \"\" Write-Output \"Review for non-admin principals with ManageCA or ManageCertificates rights.\" Write-Output \"Expected: Only Domain Admins, Enterprise Admins, CA Admins, SYSTEM.\"
+
+**Remediation:** Remove ManageCA and ManageCertificates permissions for all non-administrative principals. Use dedicated CA Admin and Certificate Manager role groups.
+
+3.8 ESC8 --- HTTP Enrollment NTLM Relay
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  Risk Level      **Critical**
+
+  Description     HTTP-based enrollment endpoints --- NDES (/certsrv/mscep/), Certificate Enrollment Web Service (CES), and Web Enrollment (/certsrv/) --- are vulnerable to NTLM relay attacks when Extended Protection for Authentication (EPA) is not enforced. An attacker coerces a Domain Controller to authenticate to the attacker\'s machine, relays the NTLM authentication to the ADCS HTTP endpoint, and requests a certificate as the DC.
+
+  Impact          Domain Controller impersonation, full domain compromise.
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Detection Script:**
+
+\# ESC8 Detection --- Check NDES/CES/CEP IIS bindings and EPA Import-Module WebAdministration -ErrorAction SilentlyContinue \# Check for HTTP-only bindings (should be HTTPS only) \$sites = Get-Website \| Where-Object { \$\_.Name -match \'Default Web Site\|NDES\|CES\' } foreach (\$site in \$sites) { \$bindings = Get-WebBinding -Name \$site.Name \$httpBindings = \$bindings \| Where-Object { \$\_.protocol -eq \'http\' } if (\$httpBindings) { Write-Warning \"ESC8 RISK: \$(\$site.Name) has HTTP binding enabled\" } \# Check Extended Protection for Authentication \$epa = Get-WebConfigurationProperty -Filter \'system.webServer/security/authentication/windowsAuthentication/extendedProtection\' \` -PSPath \"IIS:\\Sites\\\$(\$site.Name)\" -Name tokenChecking -ErrorAction SilentlyContinue if (\$epa -ne \'Require\') { Write-Warning \"ESC8 RISK: \$(\$site.Name) does not require Extended Protection for Authentication\" } }
+
+**Remediation:**
+
+23. Enforce HTTPS-only on all ADCS web enrollment endpoints. Remove HTTP bindings.
+
+24. Enable Extended Protection for Authentication (EPA) set to *Require* on all IIS sites hosting enrollment endpoints.
+
+25. Disable NTLM authentication where possible; prefer Kerberos.
+
+26. If NDES is only used for Intune, restrict access to the Intune Certificate Connector service account.
+
+3.9 ESC Risk Scoring Matrix
+
+  -------------------------------------------------------------------------------------------------------------------------------------------
+  **ESC ID**   **Vulnerability**                **Risk Level**   **Domain Compromise?**   **Migration Blocker?**   **Remediation Priority**
+  ------------ -------------------------------- ---------------- ------------------------ ------------------------ --------------------------
+  ESC1         Enrollee Supplies Subject        **Critical**     Yes                      Yes                      Immediate
+
+  ESC2         Any Purpose / SubCA EKU          **Critical**     Yes                      Yes                      Immediate
+
+  ESC3         Request Agent Abuse              **High**         Possible                 Yes                      Within 2 weeks
+
+  ESC4         Template ACL Vulnerability       **High**         Possible                 Yes                      Within 2 weeks
+
+  ESC5         PKI Object ACL Vulnerability     **High**         Possible                 Yes                      Within 2 weeks
+
+  ESC6         EDITF_ATTRIBUTESUBJECTALTNAME2   **Critical**     Yes                      Yes                      Immediate
+
+  ESC7         CA Security Descriptor           **High**         Possible                 Yes                      Within 2 weeks
+
+  ESC8         HTTP NTLM Relay                  **Critical**     Yes                      Yes                      Immediate
+  -------------------------------------------------------------------------------------------------------------------------------------------
+
+4\. Certificate Inventory and Classification
+
+Every certificate template and active use case must be classified to determine the appropriate migration path. Not all certificate workloads can move to Cloud PKI simultaneously --- some require hybrid coexistence, others must remain on-premises indefinitely.
+
+4.1 Classification Framework
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Classification**   **Definition**                                                                                                                        **Examples**                                                                                                             **Action**
+  -------------------- ------------------------------------------------------------------------------------------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------ ----------------------------------------------------------------------------------------------------------------------------------------
+  **MIGRATE**          A direct cloud equivalent exists in Cloud PKI / Intune. Certificate can be fully replaced.                                            Wi-Fi 802.1x auth → SCEP, User auth → Entra CBA, VPN client cert → SCEP, Device auth → SCEP                              Deploy cloud certificate profile; allow ADCS-issued cert to expire naturally; do not renew from ADCS.
+
+  **BRIDGE**           Requires hybrid coexistence. Both ADCS and Cloud PKI must operate in parallel.                                                        DC authentication, LDAPS, cross-forest trust certificates, NPS/RADIUS server certs                                       Maintain ADCS issuance for these use cases during transition. Plan for ADCS retention until AD decommission or alternative validation.
+
+  **RETAIN**           No cloud equivalent exists. Workload must remain on-premises ADCS permanently or until the consuming application is decommissioned.   Legacy mutual TLS applications, HSM-protected code signing, custom OID-based certs, on-prem SCEP for network equipment   Keep ADCS operational for these templates. Document as technical debt. Include in long-term decommission planning.
+
+  **RETIRE**           Obsolete use case. The consuming application or service has been or will be decommissioned.                                           EFS on migrated file shares, VPN certs for decommissioned concentrators, legacy 802.1x for deprecated SSIDs              Let existing certificates expire. Remove templates from auto-enrollment. Archive template configuration before deletion.
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+4.2 Certificate Use Case Mapping
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Use Case**                **ADCS Template**        **Classification**   **Cloud PKI Path**         **Intune Profile**     **Dependencies**
+  --------------------------- ------------------------ -------------------- -------------------------- ---------------------- --------------------------
+  Wi-Fi 802.1x (EAP-TLS)      Computer / User          MIGRATE              Cloud PKI SCEP             SCEP + Trusted Root    RADIUS trust update
+
+  VPN client certificate      User VPN                 MIGRATE              Cloud PKI SCEP             SCEP                   VPN gateway trust update
+
+  User authentication (SSO)   User / Smartcard User    MIGRATE              Entra CBA                  SCEP / PKCS            Entra CBA configuration
+
+  Device authentication       Machine / Computer       MIGRATE              Cloud PKI SCEP             SCEP                   Intune enrollment
+
+  Domain Controller auth      Domain Controller        BRIDGE               N/A (must use ADCS)        N/A                    AD operational
+
+  LDAPS server certificate    Kerberos Auth / DC       BRIDGE               Partial (cloud-consumed)   N/A                    LDAP client trust
+
+  Cross-forest trust          Domain Controller Auth   BRIDGE               N/A                        N/A                    Forest trust validation
+
+  NPS/RADIUS server           RAS and IAS Server       BRIDGE               ADCS during transition     N/A                    RADIUS service migration
+
+  Web Server TLS (internal)   Web Server               MIGRATE              Cloud PKI or public CA     PKCS (server deploy)   IIS rebinding
+
+  Code Signing (HSM)          Code Signing             RETAIN               N/A (HSM dependency)       N/A                    HSM infrastructure
+
+  EFS encryption              Basic EFS                RETIRE               N/A (migrating to MIP)     N/A                    MIP/AIP deployment
+
+  Email S/MIME                Exchange User            MIGRATE              PKCS Imported              PKCS Imported          S/MIME policy config
+
+  Smart Card Logon (PIV)      Smartcard Logon          MIGRATE              Entra CBA                  N/A (physical card)    CBA binding config
+
+  OCSP Response Signing       OCSP Signing             RETIRE               N/A (Cloud PKI handles)    N/A                    Cloud PKI CRL
+  ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+4.3 PowerShell Inventory Function
+
+function Get-UIAOCertificateInventory { \<# .SYNOPSIS Exports ADCS certificate template inventory with UIAO migration classification tags to JSON. .DESCRIPTION Queries all certificate templates from Active Directory, enriches with enrollment permissions, EKU analysis, and UIAO migration classification. .OUTPUTS JSON file at specified output path. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = \".\\UIAOCertInventory\_\$(Get-Date -Format \'yyyyMMdd_HHmmss\').json\", \[Parameter(Mandatory = \$false)\] \[hashtable\]\$ClassificationOverrides = \@{} ) Import-Module ActiveDirectory -ErrorAction Stop \$configNC = (Get-ADRootDSE).configurationNamingContext \$templateBase = \"CN=Certificate Templates,CN=Public Key Services,CN=Services,\$configNC\" \$templates = Get-ADObject -SearchBase \$templateBase -Filter \* -Properties \` displayName, msPKI-Certificate-Name-Flag, msPKI-Certificate-Application-Policy, \` pkiExtendedKeyUsage, msPKI-Enrollment-Flag, msPKI-Private-Key-Flag, \` msPKI-Minimal-Key-Size, pKIExpirationPeriod, pKIOverlapPeriod, \` nTSecurityDescriptor, msPKI-Template-Schema-Version, revision \$inventory = @() foreach (\$tmpl in \$templates) { \$ekus = @(\$tmpl.pkiExtendedKeyUsage) + @(\$tmpl.\'msPKI-Certificate-Application-Policy\') \| Select-Object -Unique \$nameFlag = \$tmpl.\'msPKI-Certificate-Name-Flag\' \# Auto-classify based on EKU \$classification = switch -Regex (\$ekus -join \',\') { \'1\\.3\\.6\\.1\\.5\\.5\\.7\\.3\\.2\' { \'MIGRATE\' } \# Client Auth \'1\\.3\\.6\\.1\\.5\\.5\\.7\\.3\\.1\' { \'MIGRATE\' } \# Server Auth \'1\\.3\\.6\\.1\\.4\\.1\\.311\\.20\\.2\\.2\' { \'MIGRATE\' } \# Smart Card Logon \'1\\.3\\.6\\.1\\.5\\.2\\.3\\.5\' { \'BRIDGE\' } \# KDC Auth \'1\\.3\\.6\\.1\\.4\\.1\\.311\\.10\\.3\\.4\' { \'RETIRE\' } \# EFS \'1\\.3\\.6\\.1\\.5\\.5\\.7\\.3\\.3\' { \'RETAIN\' } \# Code Signing default { \'MIGRATE\' } } \# Apply manual overrides if (\$ClassificationOverrides.ContainsKey(\$tmpl.displayName)) { \$classification = \$ClassificationOverrides\[\$tmpl.displayName\] } \$acl = Get-Acl \"AD:\$(\$tmpl.DistinguishedName)\" \$enrollees = (\$acl.Access \| Where-Object { \$\_.ActiveDirectoryRights -match \'ExtendedRight\' -and \$\_.ObjectType -eq \'0e10c968-78fb-11d2-90d4-00c04f79dc55\' }).IdentityReference.Value \$record = \[PSCustomObject\]@{ TemplateName = \$tmpl.displayName DN = \$tmpl.DistinguishedName SchemaVersion = \$tmpl.\'msPKI-Template-Schema-Version\' EKUs = \$ekus SuppliesSubject = \[bool\](\$nameFlag -band 1) MinKeySize = \$tmpl.\'msPKI-Minimal-Key-Size\' EnrolledBy = \$enrollees Classification = \$classification AssessmentDate = (Get-Date -Format \'yyyy-MM-ddTHH:mm:ssZ\') } \$inventory += \$record } \$inventory \| ConvertTo-Json -Depth 5 \| Out-File -FilePath \$OutputPath -Encoding UTF8 Write-Output \"Certificate inventory exported to: \$OutputPath\" Write-Output \"Total templates: \$(\$inventory.Count)\" Write-Output \"MIGRATE: \$((\$inventory \| Where-Object Classification -eq \'MIGRATE\').Count)\" Write-Output \"BRIDGE: \$((\$inventory \| Where-Object Classification -eq \'BRIDGE\').Count)\" Write-Output \"RETAIN: \$((\$inventory \| Where-Object Classification -eq \'RETAIN\').Count)\" Write-Output \"RETIRE: \$((\$inventory \| Where-Object Classification -eq \'RETIRE\').Count)\" return \$inventory }
+
+5\. Target Architecture: Microsoft Cloud PKI
+
+Microsoft Cloud PKI, released as part of the Microsoft Intune Suite, provides a cloud-native certificate authority service that eliminates the need for on-premises ADCS infrastructure for most certificate use cases. It supports two deployment models, each suited to different organizational profiles.
+
+5.1 Cloud PKI Root CA (Full Cloud Hierarchy)
+
+With this model, both the Root CA and Issuing CA are created and managed entirely within the Microsoft Cloud PKI service. No on-premises PKI infrastructure is required.
+
+- **Architecture:** Two-tier hierarchy --- Cloud Root CA signs Cloud Issuing CA. Multiple Issuing CAs can be subordinate to a single Root CA.
+
+- **Trust Distribution:** Root CA public key is deployed to managed devices via Intune Trusted Root Certificate profiles. For non-Intune devices, the root cert must be distributed via GPO, MDM, or manual installation.
+
+- **CRL/AIA:** Hosted automatically by the Microsoft Cloud PKI service. CRL distribution points are internet-accessible.
+
+- **Licensing:** Requires Microsoft Intune Suite add-on or standalone Cloud PKI license.
+
+- **Best For:** Greenfield deployments, organizations without existing PKI, or those fully committed to cloud-native infrastructure.
+
+5.2 BYOCA (Bring Your Own CA)
+
+With BYOCA, the Cloud PKI Issuing CA is subordinate to your existing on-premises Root CA. This maintains the existing trust chain while moving certificate issuance to the cloud.
+
+- **Architecture:** On-premises Root CA (existing, typically offline) signs a CSR generated by the Cloud PKI service. The resulting Cloud Issuing CA is uploaded back to Intune.
+
+- **Trust Distribution:** Devices that already trust the on-premises Root CA automatically trust certificates issued by the Cloud Issuing CA. No new root deployment required for existing managed devices.
+
+- **CRL/AIA:** Cloud Issuing CA CRL is hosted by Microsoft. Root CA CRL remains on-premises (must be accessible to relying parties).
+
+- **Best For:** Enterprises with established PKI trust chains, compliance requirements mandating a specific root, or phased migration strategies.
+
+5.3 Deployment Model Decision Matrix
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------
+  **Criteria**              **Cloud PKI Root CA**                                        **BYOCA**
+  ------------------------- ------------------------------------------------------------ ------------------------------------------------------------
+  Existing on-prem PKI      Not required                                                 Required (Root CA)
+
+  Trust chain               New trust chain --- deploy new root to all relying parties   Existing trust chain preserved
+
+  Compliance / audit        Simpler --- single vendor manages full chain                 Existing root CA audit controls maintained
+
+  Root CA key custody       Microsoft-managed (cloud HSM)                                Organization-managed (on-prem HSM or software)
+
+  Operational complexity    Lower --- no on-prem components                              Moderate --- must maintain offline Root CA for renewal/CRL
+
+  Migration timeline        Faster --- no dependency on on-prem CA availability          Requires Root CA online for initial CSR signing
+
+  Cost                      Intune Suite license only                                    Intune Suite license + on-prem Root CA maintenance
+
+  Cross-forest trust        Requires root deployment to all forests                      Leverages existing cross-forest root trust
+
+  DC / LDAPS certificates   Cannot serve (must use separate ADCS)                        Cannot serve (must use separate ADCS)
+
+  Rollback capability       Moderate --- revert to ADCS auto-enrollment                  Easier --- original Root CA still operational
+  ---------------------------------------------------------------------------------------------------------------------------------------------------
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  *\[Placeholder --- Diagram PKI-002: Cloud PKI Architecture --- 850×500px --- Shows both deployment models side-by-side with Intune tenant, Cloud PKI service, Root CA options, Issuing CAs, SCEP profiles, and certificate consumers\]*
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **UIAO Recommendation**                                                                                                                                                                                                                                                                                                                                                                                |
+|                                                                                                                                                                                                                                                                                                                                                                                                        |
+| For organizations with an established ADCS two-tier hierarchy and cross-forest trusts, BYOCA is the recommended model. It preserves the existing trust chain, simplifies relying party configuration, and provides a natural rollback path. For organizations building net-new PKI infrastructure alongside cloud-first identity, the Cloud PKI Root CA model eliminates all on-premises dependencies. |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+6\. Intune Certificate Deployment
+
+Microsoft Intune supports three certificate profile types for deploying certificates to managed devices. Each profile type serves a distinct purpose in the certificate lifecycle.
+
+6.1 Trusted Root Certificate Profile
+
+Deploys the public key of the Root CA (and optionally intermediate/issuing CAs) to managed devices. This establishes the trust chain so that certificates issued by Cloud PKI or ADCS are trusted by the device.
+
+- **Purpose:** Certificate chain trust establishment.
+
+- **Content:** Base-64 encoded .cer file containing the Root CA public key.
+
+- **Platforms:** Windows, iOS/iPadOS, Android, macOS, Linux.
+
+- **Deployment:** Assign to All Devices or targeted device groups. Must be deployed before SCEP/PKCS profiles.
+
+- **Destination Store:** Computer certificate store → Trusted Root Certification Authorities (Windows); System Keychain (macOS); Trusted credentials (Android).
+
+6.2 SCEP Certificate Profile
+
+Issues unique certificates per device or per user using the Simple Certificate Enrollment Protocol. This is the primary certificate deployment method for Cloud PKI.
+
+6.2.1 SCEP with Cloud PKI (Cloud-Native)
+
+- No on-premises infrastructure required.
+
+- Cloud PKI acts as the SCEP endpoint.
+
+- Intune generates and submits the CSR on behalf of the device.
+
+- Certificate is issued by the Cloud PKI Issuing CA and delivered to the device.
+
+6.2.2 SCEP with On-Premises ADCS
+
+- Requires NDES role installed on a Windows Server.
+
+- Requires **Certificate Connector for Microsoft Intune** (v6.2406.0.1001 or later for strong mapping support).
+
+- NDES receives SCEP requests from Intune, validates, and forwards to ADCS for issuance.
+
+- Suitable for BRIDGE-classified certificate workloads during transition.
+
+6.3 PKCS Certificate Profile
+
+Issues certificates via direct PKCS enrollment through the Certificate Connector. Does not require NDES.
+
+- **Architecture:** Certificate Connector installed on-premises communicates with ADCS. Intune sends certificate request parameters; Connector requests cert from CA and returns to Intune.
+
+- **Use Cases:** User certificates, S/MIME, scenarios requiring specific private key handling.
+
+- **PKCS Imported:** A variant where externally-issued certificates (e.g., from a third-party CA for S/MIME) are imported into Intune and distributed to devices.
+
+6.4 Strong Mapping Enforcement (KB5014754)
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Mandatory Enforcement**                                                                                                                                                                                                                                                              |
+|                                                                                                                                                                                                                                                                                        |
+| As of February 2025, Windows enforces strong certificate-to-account mapping for Kerberos authentication (KB5014754). Certificates that do not include a strong mapping identifier will fail authentication against Active Directory domain controllers running the enforcement update. |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+**SAN URI Tag Format:**
+
+URL=tag:microsoft.com,2022-09-14:sid:\<SID\>
+
+**Impact by profile type:**
+
+- **SCEP (Cloud PKI):** Intune automatically includes the SID-based URI SAN when targeting user or device objects with a synced SID. No additional configuration required.
+
+- **PKCS:** Requires Certificate Connector v6.2406.0.1001 or later. The connector retrieves the user/device SID from Entra ID and includes it in the certificate request.
+
+- **Third-party CAs:** Must support SAN URI tag injection. Verify with the CA vendor. If unsupported, Kerberos authentication against on-prem DCs will fail under enforcement mode.
+
+- **Hybrid-joined devices:** The SID must be synced from on-premises AD to Entra ID via Entra Connect (formerly Azure AD Connect). Verify onPremisesSecurityIdentifier is populated.
+
+6.5 Certificate Use Case Mapping
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Use Case**                     **Profile Type**      **CA Source**               **Platform**                   **Dynamic Group Target (OrgPath)**
+  -------------------------------- --------------------- --------------------------- ------------------------------ -----------------------------------------------
+  Wi-Fi 802.1x (EAP-TLS)           SCEP                  Cloud PKI                   Windows, iOS, Android, macOS   extensionAttribute2 (Site-based)
+
+  VPN client authentication        SCEP                  Cloud PKI or ADCS           Windows, iOS, Android          Remote workers group
+
+  Email S/MIME signing             PKCS Imported         Existing CA / Third-party   Windows, iOS                   extensionAttribute3 (Department)
+
+  Web application mTLS             SCEP                  Cloud PKI                   Windows                        extensionAttribute6 (Application tier)
+
+  Conditional Access device cert   Trusted Root + SCEP   Cloud PKI                   All platforms                  All managed devices
+
+  802.1x wired authentication      SCEP                  Cloud PKI                   Windows                        extensionAttribute6 (Server/Workstation role)
+
+  RADIUS NPS server cert           SCEP                  ADCS (bridge)               Windows Server                 Tier 1 server group
+
+  MDM enrollment bootstrap         SCEP                  Cloud PKI                   All mobile                     All mobile devices
+
+  Remote Desktop Gateway           SCEP                  Cloud PKI or ADCS           Windows Server                 RD Gateway servers
+
+  Azure Application Proxy          PKCS                  Cloud PKI                   Windows                        App Proxy connector servers
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+7\. Entra ID Certificate-Based Authentication (CBA)
+
+Microsoft Entra ID Certificate-Based Authentication enables users to authenticate directly to Entra ID using X.509 certificates --- including smart cards, virtual smart cards, and software certificates --- without requiring a federated identity provider such as ADFS.
+
+7.1 Authentication Flow
+
+27. **Certificate Presentation:** User selects a certificate from the device\'s certificate store (or inserts a smart card) at the Entra ID sign-in page.
+
+28. **Chain Validation:** Entra ID validates the certificate chain against the uploaded trusted CA certificates. It verifies the certificate is not expired and checks revocation status via CRL or OCSP.
+
+29. **User Binding:** Entra ID maps the certificate to a user account using configured binding rules (certificateUserIds, UPN in SAN, etc.).
+
+30. **Authentication Strength Evaluation:** Entra determines whether the certificate satisfies single-factor or multi-factor authentication based on the CBA method policy.
+
+31. **Token Issuance:** Upon successful validation and binding, Entra issues an access token and optional refresh token.
+
+32. **Conditional Access Evaluation:** Standard Conditional Access policies are evaluated, including device compliance, location, and risk-based controls.
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  *\[Placeholder --- Diagram PKI-003: Entra CBA Authentication Flow --- 800×400px --- Certificate presentation, chain validation, user binding, token issuance, Conditional Access evaluation\]*
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+7.2 Certificate-to-User Binding Methods
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Binding Method**                        **Certificate Field**       **Entra User Attribute**    **Affinity**   **Notes**
+  ----------------------------------------- --------------------------- --------------------------- -------------- ----------------------------------------------------------------
+  Principal Name (UPN in SAN)               SAN: PrincipalName          userPrincipalName           Low            Most common; matches UPN in certificate SAN to Entra UPN.
+
+  RFC822Name                                SAN: RFC822Name             userPrincipalName or mail   Low            Email-based matching. Common with S/MIME certificates.
+
+  certificateUserIds (SAN: PrincipalName)   SAN: PrincipalName          certificateUserIds          High           Maps to the multi-value attribute; administrator-controlled.
+
+  certificateUserIds (SAN: RFC822Name)      SAN: RFC822Name             certificateUserIds          High           Email mapped to certificateUserIds for explicit binding.
+
+  certificateUserIds (X.509 SKI)            Subject Key Identifier      certificateUserIds          High           Binds via the certificate\'s SKI hash. Unique per certificate.
+
+  certificateUserIds (SHA1 Public Key)      SHA1 of Public Key          certificateUserIds          High           Hash-based binding. Strongest uniqueness guarantee.
+
+  Issuer + Subject                          Issuer DN + Subject DN      certificateUserIds          High           Combines issuer and subject for unique mapping.
+
+  Issuer + Serial Number                    Issuer DN + Serial Number   certificateUserIds          High           Most specific --- uniquely identifies a single certificate.
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **High-Affinity Binding Recommended**                                                                                                                                                                                                                                                                                                                                                         |
+|                                                                                                                                                                                                                                                                                                                                                                                               |
+| UIAO recommends high-affinity binding methods (certificateUserIds) for production deployments. Low-affinity methods (UPN/RFC822 direct match) are suitable for pilot and testing but are vulnerable to UPN reuse or email aliasing scenarios. High-affinity binding requires explicit administrator action to associate each certificate with a user, providing stronger security guarantees. |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+7.3 Single-Factor vs. Multi-Factor CBA
+
+Entra CBA can be configured to satisfy either single-factor or multi-factor authentication:
+
+- **Single-factor CBA:** Certificate authenticates the user but does not satisfy MFA requirements. User must complete additional MFA (e.g., Authenticator app, FIDO2 key) if Conditional Access requires MFA.
+
+- **Multi-factor CBA:** Certificate satisfies MFA when the authentication method policy is configured to treat CBA as a strong authentication method. This applies when the certificate issuance itself provides two factors (e.g., smart card = something you have + PIN = something you know).
+
+Configure the authentication strength in Microsoft Entra admin center → Protection → Authentication methods → Certificate-based authentication. Set the protection level per certificate issuer or policy OID.
+
+7.4 Staged Rollout Methodology
+
+Staged rollout enables testing Entra CBA with a subset of users while the domain remains federated. This avoids a \"big bang\" cutover and provides a rollback path.
+
+33. **Enable CBA Authentication Method:** Navigate to Microsoft Entra admin center → Protection → Authentication methods → Policies. Enable \"Certificate-based authentication.\" Target to a pilot group (not All Users).
+
+34. **Upload CA Certificates:** Navigate to Security → Certificate authorities. Upload the Root CA and all intermediate/issuing CA certificates (.cer, base-64). Set CRL distribution point URL for each CA.
+
+35. **Configure Binding Rules:** Define username binding rules in the CBA method configuration. Start with UPN-based binding for compatibility; add high-affinity bindings (certificateUserIds) for production.
+
+36. **Create Pilot Security Groups:** Create dedicated security groups in Entra ID for CBA pilot users. Start with 10--20 users representing different certificate types and platforms.
+
+37. **Enable Staged Rollout:** Navigate to Microsoft Entra Connect → Staged rollout of cloud authentication. Enable \"Certificate-based authentication.\" Add the pilot security groups. Ensure Password Hash Sync (PHS) is enabled as a fallback.
+
+38. **Test Authentication:** Pilot users authenticate with certificates at login.microsoftonline.com. They are no longer redirected to ADFS. Verify token claims, MFA satisfaction, and Conditional Access evaluation.
+
+39. **Expand Pilot:** Incrementally add users to the staged rollout groups. Monitor sign-in logs for failures. Target 200+ users across multiple sites and certificate types before full cutover.
+
+40. **Convert Federated Domain to Managed:** Once confidence is established, convert the domain from federated to managed using Update-MgDomain or the Entra admin center. All users in the domain now authenticate against Entra ID.
+
+41. **Monitor and Optimize:** Monitor Entra sign-in logs filtered by authentication method = \"X.509 Certificate.\" Track CBA success rate, binding failures, and CRL/OCSP check latency. Remove staged rollout groups (no longer needed after domain conversion).
+
+7.5 Migration from ADFS CBA
+
+For organizations currently performing certificate-based authentication via ADFS:
+
+- **Coexistence Period:** During staged rollout, ADFS continues to handle CBA for non-pilot users. Pilot users are redirected to Entra ID instead of ADFS.
+
+- **Certificate Trust Store:** All CA certificates currently trusted by ADFS must be uploaded to the Entra certificate authorities store. Verify chain completeness.
+
+- **Binding Parity:** Map ADFS certificate mapping rules (UPN, email, subject) to equivalent Entra CBA binding rules. Test edge cases: certificates with multiple SANs, certificates from multiple CAs.
+
+- **Domain Conversion:** When all users are validated on Entra CBA, convert the domain from federated to managed. This is a one-way operation for each domain (rollback requires re-federating).
+
+- **Rollback Plan:** Before domain conversion, document the ADFS federation configuration (Get-MgDomainFederationConfiguration). Maintain ADFS operational for 30 days post-conversion as a rollback target. Re-federation requires New-MgDomainFederationConfiguration.
+
+8\. Hybrid Coexistence Architecture
+
+During the migration period, ADCS and Cloud PKI will operate in parallel. This section defines the coexistence rules, trust distribution, and transition timeline for each certificate category.
+
+8.1 Domain Controller Certificates
+
+Domain Controller certificates (Kerberos Authentication, Domain Controller Authentication) **must remain on on-premises ADCS** until Active Directory is fully decommissioned. Cloud PKI cannot issue certificates with the KDC Authentication EKU, and DC certificates must be enrolled by domain-joined servers that participate in AD auto-enrollment.
+
+- Continue ADCS auto-enrollment for DC templates.
+
+- Ensure DC certificate templates are classified as BRIDGE.
+
+- DC certificates are not affected by Intune enrollment --- they are not managed by Intune.
+
+8.2 LDAPS Certificates
+
+LDAPS server certificates can transition to Cloud PKI for endpoints consumed by cloud services (e.g., Entra Connect secure LDAP connector). However, LDAPS certificates on domain controllers themselves must still be issued by ADCS to maintain AD trust chain integrity.
+
+8.3 Cross-Trust Scenarios
+
+When Cloud PKI and ADCS coexist, trust must be bidirectional:
+
+- **Cloud PKI root → On-premises devices:** Deploy the Cloud PKI Root CA certificate to on-premises devices via Group Policy (Computer Configuration → Windows Settings → Security Settings → Public Key Policies → Trusted Root Certification Authorities). This enables on-prem servers to trust certificates issued by Cloud PKI.
+
+- **ADCS root → Entra ID:** Upload the on-premises Root CA certificate to the Entra ID certificate authorities trust store. This enables Entra CBA to validate certificates issued by on-premises ADCS during the transition period.
+
+- **Cross-forest:** If multiple forests exist, each forest\'s Root CA must be trusted by Cloud PKI (via Entra upload) and Cloud PKI root must be deployed to each forest (via per-forest GPO).
+
+8.4 CRL Availability
+
+- **Cloud PKI CRL:** Hosted by Microsoft at an internet-accessible URL. Automatically configured during Cloud PKI CA creation. No on-premises CRL infrastructure needed.
+
+- **On-premises ADCS CRL:** Must remain accessible to all relying parties --- both on-premises and cloud. If the CRL distribution point is an internal HTTP URL, consider publishing via Azure Application Proxy or a reverse proxy to ensure Entra ID can perform revocation checks.
+
+- **OCSP:** Entra CBA supports CRL-based revocation checking. OCSP is supported if configured. Ensure OCSP responder URLs in the AIA extension are accessible from the internet.
+
+8.5 Certificate Renewal During Transition
+
+- **Existing ADCS certificates:** Continue to renew via auto-enrollment until the device is migrated to Intune-managed certificate profiles. Do not revoke prematurely.
+
+- **New devices:** Devices enrolling in Intune for the first time receive certificates from Cloud PKI via SCEP profiles. No ADCS enrollment occurs.
+
+- **Cutover trigger:** When all ADCS-issued certificates on a device category have expired or been replaced by Cloud PKI certificates, that category is eligible for ADCS auto-enrollment removal.
+
+- **Certificate lifetime alignment:** Set Cloud PKI certificate validity to match or exceed the remaining ADCS certificate validity to prevent coverage gaps during transition.
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  *\[Placeholder --- Diagram PKI-004: Hybrid Coexistence Timeline --- 900×350px --- Parallel operation periods, pilot waves, certificate renewal windows, ADCS decommission gate\]*
+
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+9\. Migration Execution Playbook
+
+The PKI modernization migration follows six phases, each with defined prerequisites, steps, validation criteria, rollback procedures, and duration estimates. Phase gates must be satisfied before proceeding.
+
+  ----------------------------------
+  Phase 1: Assessment (Weeks 1--4)
+
+  ----------------------------------
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- ---------------------------------------------------------------------------------------------------------------------------------------------
+  Objective       Comprehensive ADCS inventory, ESC vulnerability assessment, certificate classification, and relying party identification.
+
+  Prerequisites   RSAT tools installed; AD PowerShell module available; access to CA servers and AD configuration partition; UIAO assessment module deployed.
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Steps:**
+
+42. Run Get-UIAOCAInventory to document all CA servers, key parameters, and operational status.
+
+43. Run Get-UIAOCertificateTemplates to export all template configurations and permissions.
+
+44. Run Test-UIAOESCVulnerabilities to scan for ESC1--ESC8 vulnerabilities.
+
+45. Run Get-UIAOIssuedCertificates to inventory all active certificates by template.
+
+46. Execute Get-UIAOCertificateInventory to classify templates (MIGRATE/BRIDGE/RETAIN/RETIRE).
+
+47. Identify all relying parties (RADIUS, VPN, Wi-Fi controllers, web applications) and document their CA trust requirements.
+
+48. Remediate all Critical and High ESC vulnerabilities (ESC1, ESC2, ESC6, ESC8 first).
+
+49. Generate assessment report and commit to assessments/pki/{domain}/{timestamp}/ in Gitea.
+
+**Validation Criteria:** Assessment report approved by PKI administrator and security team. All Critical ESC vulnerabilities remediated and verified. Certificate inventory classified with zero unclassified templates.
+
+**Rollback:** N/A --- assessment is non-destructive.
+
+**Duration:** 4 weeks.
+
+  ----------------------------------
+  Phase 2: Foundation (Weeks 5--8)
+
+  ----------------------------------
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- ------------------------------------------------------------------------------------------------------------------------------------------
+  Objective       Provision Cloud PKI infrastructure, establish trust chain, deploy Trusted Root profiles, install Certificate Connector.
+
+  Prerequisites   Phase 1 gate satisfied. Intune Suite license provisioned. Entra Connect syncing user/device SIDs. Offline Root CA accessible (if BYOCA).
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Steps:**
+
+50. Provision Cloud PKI CA: Create Root CA (Cloud Root model) or generate CSR and sign with on-prem Root CA (BYOCA model).
+
+51. Create Cloud PKI Issuing CA subordinate to the Root CA.
+
+52. Install Certificate Connector for Microsoft Intune on a designated Windows Server (v6.2406+ for strong mapping). Configure connectivity to ADCS if BRIDGE workloads exist.
+
+53. Upload Root CA and Issuing CA public keys to the Entra ID certificate authorities trust store.
+
+54. Deploy Trusted Root Certificate profiles via Intune: target \"All Devices\" to establish chain trust.
+
+55. For BYOCA: deploy Cloud PKI Root (same as on-prem root) via GPO to any non-Intune devices.
+
+56. Issue a test certificate from Cloud PKI Issuing CA and verify chain validation on a test device.
+
+57. Verify CRL accessibility from both on-premises and internet-connected endpoints.
+
+**Validation Criteria:** Cloud PKI Root and Issuing CA operational. Test certificate issued and validated successfully. Trusted Root profile deployed to \>99% of managed devices. Certificate Connector reporting healthy.
+
+**Rollback:** Delete Cloud PKI CAs. Remove Trusted Root profiles. Uninstall Certificate Connector. ADCS continues unchanged.
+
+**Duration:** 4 weeks.
+
+  ------------------------------
+  Phase 3: Pilot (Weeks 9--16)
+
+  ------------------------------
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- ---------------------------------------------------------------------------------------------------------------------------------------------------------
+  Objective       Deploy SCEP certificates to 50--100 pilot devices. Enable Entra CBA staged rollout for pilot users. Validate end-to-end authentication.
+
+  Prerequisites   Phase 2 gate satisfied. Pilot device group defined. Pilot user group defined for CBA. RADIUS/Wi-Fi/VPN infrastructure updated to trust Cloud PKI chain.
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Steps:**
+
+58. Create SCEP certificate profile for Wi-Fi 802.1x targeting the pilot device group.
+
+59. Verify certificate issuance: device receives certificate, certificate chain validates, SAN includes strong mapping SID URI (if applicable).
+
+60. Test Wi-Fi authentication with Cloud PKI certificate on pilot devices.
+
+61. Test VPN authentication with Cloud PKI certificate on pilot devices.
+
+62. Enable Entra CBA staged rollout for the pilot user group (Section 7.4).
+
+63. Test user authentication via certificate at Entra ID sign-in. Verify token claims and MFA satisfaction.
+
+64. Monitor Intune certificate dashboard: track issuance success, failures, and pending states.
+
+65. Monitor Entra sign-in logs: filter by authentication method \"X.509 Certificate.\"
+
+66. Address failures: review Troubleshooting Reference (Section 13) for common issues.
+
+**Validation Criteria:** \>95% certificate issuance success rate. Zero authentication failures attributable to certificate configuration. Pilot user CBA authentication functioning with correct MFA claim. All pilot relying parties accepting Cloud PKI certificates.
+
+**Rollback:** Remove SCEP profiles from pilot group. Devices fall back to ADCS auto-enrolled certificates. Remove pilot groups from CBA staged rollout. Users revert to ADFS CBA or password + MFA.
+
+**Duration:** 8 weeks.
+
+  -------------------------------
+  Phase 4: Scale (Weeks 17--28)
+
+  -------------------------------
+
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- --------------------------------------------------------------------------------------------------------------------------------------------
+  Objective       Expand SCEP/PKCS profiles to all managed devices. Expand Entra CBA staged rollout to all users.
+
+  Prerequisites   Phase 3 gate satisfied. OrgPath dynamic groups configured for certificate targeting. All relying parties updated to trust Cloud PKI chain.
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Steps:**
+
+67. Expand SCEP certificate profiles to OrgPath-based dynamic groups (by region, site, department, device tier).
+
+68. Deploy PKCS profiles for S/MIME and application-specific certificates.
+
+69. Expand Entra CBA staged rollout: add all user groups incrementally (200 users per wave, monitor for 48 hours between waves).
+
+70. Verify cross-platform coverage: Windows, iOS, Android, macOS.
+
+71. Monitor certificate compliance: devices with both ADCS and Cloud PKI certs (expected during transition); devices with only Cloud PKI certs (target state).
+
+72. Begin disabling ADCS auto-enrollment for MIGRATE-classified templates on device groups that have received Cloud PKI certificates.
+
+**Validation Criteria:** All managed devices have Cloud PKI certificates for MIGRATE-classified use cases. CBA staged rollout includes all users. ADCS auto-enrollment disabled for MIGRATE templates on migrated devices.
+
+**Rollback:** Re-enable ADCS auto-enrollment GPOs. ADCS certificates renew on next policy refresh. Remove CBA staged rollout groups to revert to ADFS.
+
+**Duration:** 12 weeks.
+
+  ---------------------------------
+  Phase 5: Cutover (Weeks 29--36)
+
+  ---------------------------------
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- ------------------------------------------------------------------------------------------------------------------------------------------------
+  Objective       Complete transition. Convert federated domains to managed. Disable ADFS certificate auth. Stop all ADCS auto-enrollment for MIGRATE templates.
+
+  Prerequisites   Phase 4 gate satisfied. All managed endpoints verified with Cloud PKI certificates. All users validated on Entra CBA.
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Steps:**
+
+73. Verify: zero active ADCS-issued certificates for MIGRATE-classified templates on managed endpoints (all expired or superseded).
+
+74. Convert federated domains to managed authentication (Update-MgDomain).
+
+75. Disable ADFS certificate authentication rules.
+
+76. Remove ADCS auto-enrollment GPO links for MIGRATE templates.
+
+77. Retain ADCS auto-enrollment for BRIDGE templates (DC auth, LDAPS, NPS).
+
+78. Maintain ADFS operational (powered off but restorable) for 30-day rollback window.
+
+79. Update documentation: ADCS operational procedures revised to BRIDGE/RETAIN scope only.
+
+**Validation Criteria:** Zero active ADCS certificates on managed endpoints for MIGRATE templates. All domains converted to managed. ADFS CBA disabled. Entra CBA operational for all users.
+
+**Rollback:** Re-federate domain (New-MgDomainFederationConfiguration). Re-enable ADFS. Re-link auto-enrollment GPOs. ADCS resumes within 4 hours.
+
+**Duration:** 8 weeks.
+
+  --------------------------------------
+  Phase 6: Decommission (Weeks 37--44)
+
+  --------------------------------------
+
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Attribute**   **Detail**
+  --------------- ---------------------------------------------------------------------------------------------------------------------------------------------------
+  Objective       Decommission ADCS infrastructure for migrated workloads. Archive CA databases. Retain only components required for BRIDGE/RETAIN classifications.
+
+  Prerequisites   Phase 5 gate satisfied. 30-day rollback window expired with no incidents. BRIDGE/RETAIN workloads documented and operational.
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+**Steps:**
+
+80. Archive Issuing CA database: certutil -backup \<BackupPath\>. Store in secure, offline location per retention policy.
+
+81. If Cloud PKI Root CA model (not BYOCA): revoke the ADCS Issuing CA certificate from the Root CA.
+
+82. If BYOCA: do not revoke --- the Issuing CA certificate chain is still in use by Cloud PKI.
+
+83. Decommission NDES server: uninstall NDES role, remove IIS site, remove DNS records.
+
+84. Decommission CES/CEP servers if no longer serving BRIDGE workloads.
+
+85. Decommission Issuing CA server (if all workloads migrated or transferred to a retained Issuing CA for BRIDGE use).
+
+86. Retain offline Root CA per compliance and organizational policy. Store securely with documented recovery procedures.
+
+87. Remove auto-enrollment GPOs for decommissioned templates.
+
+88. Remove decommissioned CA\'s pKIEnrollmentService object from Active Directory.
+
+89. Update Gitea repository: commit decommission record to assessments/pki/{domain}/{timestamp}/decommission.json.
+
+**Validation Criteria:** All ADCS infrastructure for MIGRATE workloads decommissioned or archived. Offline Root CA retained and documented. No orphaned auto-enrollment GPOs. Gitea repository updated.
+
+**Rollback:** Restore Issuing CA from backup. Re-join to domain. Re-publish templates. Re-link GPOs. Full CA restoration estimated at 8--12 hours.
+
+**Duration:** 8 weeks.
+
+10\. OrgPath Integration for Certificate Targeting
+
+The UIAO OrgPath model uses Entra ID extension attributes on user and device objects to encode organizational metadata. Certificate profiles are targeted to dynamic groups built from these attributes, enabling precise, policy-driven certificate deployment without manual group management.
+
+10.1 Extension Attribute Mapping
+
+  -----------------------------------------------------------------------------------------------------------------------------------------
+  **Extension Attribute**   **OrgPath Dimension**   **Certificate Targeting Use**
+  ------------------------- ----------------------- ---------------------------------------------------------------------------------------
+  extensionAttribute1       Region                  Regional Wi-Fi SCEP profiles (different RADIUS servers per region)
+
+  extensionAttribute2       Site                    Site-specific trust requirements, site-specific SSID profiles
+
+  extensionAttribute3       Department              Department-specific S/MIME certificates, department-scoped mTLS
+
+  extensionAttribute4       DeviceTier              Tier-based key length (Tier 0: 4096-bit, Tier 1: 2048-bit) and validity period
+
+  extensionAttribute5       Environment             Production vs. Lab/Dev CA selection (separate Issuing CAs per environment)
+
+  extensionAttribute6       DeviceRole              Role-specific certificate templates: server certificates vs. workstation certificates
+  -----------------------------------------------------------------------------------------------------------------------------------------
+
+10.2 Dynamic Group Rule Examples
+
+**Example 1 --- Wi-Fi SCEP for East Region Devices:**
+
+(device.extensionAttribute1 -eq \"East\") and (device.deviceManagementAppId -ne null)
+
+**Example 2 --- S/MIME for Finance Department Users:**
+
+(user.extensionAttribute3 -eq \"Finance\") and (user.accountEnabled -eq true)
+
+**Example 3 --- Tier 0 High-Assurance Certificates (4096-bit RSA):**
+
+(device.extensionAttribute4 -eq \"Tier0\") and (device.deviceOSType -eq \"Windows\")
+
+**Example 4 --- Production Environment Certificates Only:**
+
+(device.extensionAttribute5 -eq \"Production\") and (device.isCompliant -eq true)
+
+**Example 5 --- Server Role Certificates (Server Authentication EKU):**
+
+(device.extensionAttribute6 -eq \"Server\") and (device.extensionAttribute5 -eq \"Production\")
+
+**Example 6 --- All Managed Mobile Devices for MDM Bootstrap Cert:**
+
+(device.deviceOSType -eq \"Android\" -or device.deviceOSType -eq \"iOS\") and (device.deviceManagementAppId -ne null)
+
+**Example 7 --- Site-Specific Wired 802.1x (Headquarters):**
+
+(device.extensionAttribute2 -eq \"HQ\") and (device.extensionAttribute6 -eq \"Workstation\")
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Dynamic Group Processing**                                                                                                                                                                                                                             |
+|                                                                                                                                                                                                                                                          |
+| Entra ID dynamic group membership evaluation can take up to 24 hours for large groups. For time-sensitive certificate deployments, consider using assigned groups for the initial rollout, then converting to dynamic groups once membership stabilizes. |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+11\. Monitoring, Compliance, and Drift Detection
+
+11.1 Intune Certificate Dashboard
+
+The Intune admin center provides certificate lifecycle visibility under Devices → Monitor → Certificate:
+
+- **Issuance Success:** Certificates successfully deployed to devices.
+
+- **Issuance Failure:** Certificate requests that failed --- drill into error codes for root cause.
+
+- **Pending:** Requests awaiting CA response (common with SCEP when NDES or Cloud PKI processing is delayed).
+
+- **Expired:** Certificates past validity --- indicates renewal failure or profile removal.
+
+11.2 Certificate Compliance Policies
+
+Create Intune compliance policies that check for certificate presence:
+
+- **Windows:** Custom compliance script that verifies certificate presence in the Personal store with expected issuer and EKU.
+
+- **iOS/Android:** Compliance policy checks for valid certificate profile deployment status.
+
+- **Non-compliant action:** Mark device non-compliant after grace period → block Conditional Access.
+
+11.3 Drift Detection Patterns
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Drift Pattern**                **Description**                                                 **Detection Method**                                         **Remediation**
+  -------------------------------- --------------------------------------------------------------- ------------------------------------------------------------ --------------------------------------------------------------
+  Expired certificates             Certificates past validity period still present on device       Get-UIAOCertificateHealth --- checks expiry \< 30 days       Verify SCEP renewal profile; reissue if needed
+
+  ADCS certs on migrated devices   Device has ADCS-issued cert for a MIGRATE-classified use case   Compare cert issuer against Cloud PKI CA DN                  Verify Cloud PKI profile assigned; wait for ADCS cert expiry
+
+  Unauthorized CA issuance         Certificates issued by unexpected CA (rogue or misconfigured)   Monitor NTAuthCertificates changes; audit CA issuance logs   Investigate CA; revoke unauthorized certs
+
+  Missing strong mapping           Certificate lacks SID URI in SAN --- will fail Kerberos auth    Parse SAN for tag:microsoft.com URI                          Reissue certificate with updated Connector/profile
+
+  Orphaned profiles                Certificate profile assigned but target group is empty          Intune profile assignment audit                              Remove or reassign profile
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+11.4 PowerShell Health Functions
+
+function Get-UIAOCertificateHealth { \<# .SYNOPSIS Checks certificate health on the local machine or remote endpoints. .DESCRIPTION Validates certificate expiry, chain trust, strong mapping presence, and issuer classification (Cloud PKI vs. ADCS). #\> \[CmdletBinding()\] param( \[Parameter(Mandatory = \$false)\] \[string\]\$StoreName = \"My\", \[Parameter(Mandatory = \$false)\] \[int\]\$ExpiryWarningDays = 30, \[Parameter(Mandatory = \$false)\] \[string\]\$ExpectedIssuerCN = \"\" ) \$certs = Get-ChildItem -Path \"Cert:\\LocalMachine\\\$StoreName\" -Recurse \| Where-Object { \$\_.HasPrivateKey } \$results = @() foreach (\$cert in \$certs) { \$daysToExpiry = (\$cert.NotAfter - (Get-Date)).Days \$sanExtension = \$cert.Extensions \| Where-Object { \$\_.Oid.Value -eq \'2.5.29.17\' } \$hasStrongMapping = \$false if (\$sanExtension) { \$sanText = \$sanExtension.Format(\$true) \$hasStrongMapping = \$sanText -match \'tag:microsoft\\.com\' } \$issuerType = if (\$cert.Issuer -match \'Cloud PKI\|Intune\') { \'CloudPKI\' } else { \'ADCS\' } \$status = \'Healthy\' if (\$daysToExpiry -lt 0) { \$status = \'Expired\' } elseif (\$daysToExpiry -lt \$ExpiryWarningDays) { \$status = \'ExpiringSoon\' } \$results += \[PSCustomObject\]@{ Thumbprint = \$cert.Thumbprint Subject = \$cert.Subject Issuer = \$cert.Issuer IssuerType = \$issuerType NotAfter = \$cert.NotAfter DaysToExpiry = \$daysToExpiry HasStrongMapping = \$hasStrongMapping Status = \$status } } return \$results }
+
+function Test-UIAOCertificateCompliance { \<# .SYNOPSIS Tests certificate compliance against UIAO PKI policy. .DESCRIPTION Verifies that managed devices have the expected certificates from the correct CA source with proper configuration. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory = \$true)\] \[string\]\$ExpectedIssuerCN, \[Parameter(Mandatory = \$false)\] \[string\]\$ExpectedEKU = \"1.3.6.1.5.5.7.3.2\", \[Parameter(Mandatory = \$false)\] \[int\]\$MinKeySize = 2048 ) \$health = Get-UIAOCertificateHealth \$compliance = \@{ DeviceName = \$env:COMPUTERNAME CheckDate = Get-Date -Format \'yyyy-MM-ddTHH:mm:ssZ\' Compliant = \$true Findings = @() } \# Check for expected certificate \$matchingCerts = \$health \| Where-Object { \$\_.Issuer -match \$ExpectedIssuerCN } if (-not \$matchingCerts) { \$compliance.Compliant = \$false \$compliance.Findings += \"MISSING: No certificate from expected issuer \'\$ExpectedIssuerCN\'\" } \# Check for expired certificates \$expired = \$health \| Where-Object { \$\_.Status -eq \'Expired\' } if (\$expired) { \$compliance.Findings += \"WARNING: \$(\$expired.Count) expired certificate(s) found\" } \# Check for ADCS certs that should be Cloud PKI \$adcsMigrate = \$health \| Where-Object { \$\_.IssuerType -eq \'ADCS\' -and \$\_.Status -ne \'Expired\' } if (\$adcsMigrate) { \$compliance.Findings += \"DRIFT: \$(\$adcsMigrate.Count) active ADCS certificate(s) --- verify migration status\" } \# Check strong mapping \$noStrongMap = \$health \| Where-Object { -not \$\_.HasStrongMapping -and \$\_.Status -ne \'Expired\' } if (\$noStrongMap) { \$compliance.Findings += \"RISK: \$(\$noStrongMap.Count) certificate(s) without strong mapping SID URI\" } return \[PSCustomObject\]\$compliance }
+
+11.5 Gitea Integration
+
+Certificate health reports are committed to the UIAO Gitea repository for historical tracking and audit:
+
+- **Path:** assessments/pki/{domain}/{timestamp}/
+
+- **Files:** ca-inventory.json, template-inventory.json, esc-assessment.json, certificate-health.json, compliance-report.json
+
+- **Automation:** Schedule Export-UIAOPKIAssessment via scheduled task or Intune proactive remediation to run weekly and commit results.
+
+12\. Security Hardening
+
+12.1 Cloud PKI Hardening
+
+- **RBAC:** Restrict Cloud PKI administration to dedicated Intune PKI Administrator roles. Use Privileged Identity Management (PIM) for just-in-time access to CA management.
+
+- **Template Restrictions:** Limit SCEP profile configurations to specific EKUs. Do not enable \"Any Purpose\" on Cloud PKI profiles.
+
+- **TPM-Backed Keys:** Where platform supports it (Windows, macOS), configure SCEP profiles to require TPM-backed key storage. This prevents private key export.
+
+- **Certificate Transparency:** Monitor Cloud PKI issuance logs in the Intune admin center. Set alerts for unexpected certificate issuance volumes.
+
+- **Key Size:** Enforce minimum 2048-bit RSA for standard workloads; 4096-bit RSA for Tier 0 assets.
+
+- **Validity Period:** Set certificate validity to the shortest period practical for the use case: 1 year for user/device auth; 2 years for infrastructure certificates.
+
+12.2 Entra CBA Hardening
+
+- **High-Affinity Binding:** Use certificateUserIds binding (SKI, SHA1, or Issuer+SerialNumber) for production. Avoid low-affinity UPN-only binding in production environments.
+
+- **Authentication Strength Policies:** Create a custom authentication strength definition that requires CBA from specific issuers with specific policy OIDs. Use this in Conditional Access policies for high-sensitivity resources.
+
+- **Conditional Access with CBA:** Create policies that require CBA + compliant device for access to sensitive applications. This ensures both identity verification (certificate) and device posture (Intune compliance).
+
+- **CRL Configuration:** Ensure CRL URLs are accessible and refresh intervals are appropriate (no more than 24 hours for issuing CAs). Configure CRL pre-fetching in Entra to avoid authentication delays.
+
+- **Certificate Authority Trust Scope:** Only upload CA certificates to Entra that are actively needed. Remove decommissioned CA certificates promptly to prevent trust chain abuse.
+
+12.3 Residual ADCS Hardening
+
+For ADCS infrastructure retained during the BRIDGE period:
+
+- **Lock Templates:** Remove auto-enrollment permissions from all templates except those actively needed for BRIDGE/RETAIN workloads.
+
+- **Monitor Unauthorized Requests:** Enable CA audit logging (Event IDs 4886, 4887, 4888). Forward to SIEM. Alert on certificate requests for templates that should be disabled.
+
+- **Maintain CRL Schedule:** Ensure CRL publication continues on schedule. A lapsed CRL will cause authentication failures for all certificates in the chain.
+
+- **Patch CA Servers:** Continue applying security updates to Issuing CA servers. CA servers are Tier 0 assets.
+
+- **Network Isolation:** Restrict network access to CA servers. Only authorized enrollment endpoints (NDES, Certificate Connector, domain controllers) should have RPC access to the CA.
+
+13\. Troubleshooting Reference
+
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Issue**                     **Symptoms**                                                                                  **Root Cause**                                                                                                   **Resolution**
+  ----------------------------- --------------------------------------------------------------------------------------------- ---------------------------------------------------------------------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------------------
+  SCEP pending                  Certificate profile shows \"Pending\" in Intune for \>30 minutes                              Cloud PKI processing delay; NDES connectivity issue (if on-prem); device not checking in                         Sync device in Intune; verify NDES URL accessibility; check Cloud PKI service health in Intune admin center
+
+  PKCS failure                  Event ID 1001 in Certificate Connector logs; profile shows \"Failed\"                         Incorrect CA FQDN or CA Name in PKCS profile; Connector service account lacks Enroll permission on template      Verify CA FQDN and CA Name match exactly; grant Enroll to Connector service account on ADCS template
+
+  Strong mapping failure        Kerberos authentication fails with KDC_ERR_CLIENT_NAME_MISMATCH after KB5014754 enforcement   Certificate lacks SID URI in SAN; old Connector version; SID not synced to Entra                                 Update Connector to v6.2406+; verify SID sync via Entra Connect; reissue certificate
+
+  Entra CBA failure             User cannot sign in with certificate; error \"Certificate validation failed\"                 CA certificate not uploaded to Entra trust store; CRL inaccessible; certificate expired; binding rule mismatch   Upload CA certs; verify CRL URL accessible from internet; check certificate validity; verify binding rule matches cert SAN/subject
+
+  Cloud PKI issuance failure    SCEP profile error: \"Certificate Authority error\"                                           Cloud PKI Issuing CA not active; BYOCA CSR not signed or uploaded; Intune Suite license expired                  Verify Issuing CA status in Intune admin center; complete BYOCA setup; verify licensing
+
+  Trusted Root not deploying    Device does not have Root CA in Trusted Root store                                            Profile not assigned to device group; device not syncing with Intune; .cer file format incorrect                 Verify profile assignment; sync device; re-export root cert as Base-64 .cer
+
+  Certificate renewal failure   Certificate expires without renewal; new cert not issued                                      SCEP renewal window configuration; device offline during renewal period; profile removed                         Verify renewal percentage setting (default 20%); ensure device checks in before expiry; verify profile still assigned
+
+  Hybrid trust failure          On-prem servers reject Cloud PKI certificates; cloud rejects ADCS certificates                Cloud PKI root not deployed to on-prem via GPO; ADCS root not uploaded to Entra trust store                      Deploy Cloud PKI root via GPO to on-prem; upload ADCS root to Entra certificate authorities
+
+  CRL unavailable               Authentication failures with \"Revocation check failed\" errors                               On-prem CRL HTTP endpoint not accessible from internet; CRL expired (CA offline)                                 Publish CRL via Azure App Proxy; bring CA online to publish fresh CRL
+
+  Connector health failure      Certificate Connector shows \"Unhealthy\" in Intune admin center                              Connector service stopped; server cannot reach Intune service endpoints; certificate expired on Connector        Restart \"Intune Certificate Connector\" service; verify outbound HTTPS to \*.manage.microsoft.com; renew Connector registration
+
+  Template permission denied    PKCS or SCEP via NDES returns \"Access denied\" from CA                                       Connector service account or NDES account lacks Enroll permission on the ADCS template                           Grant Enroll (and Read) permission to the service account on the certificate template Security tab
+
+  NDES HTTP 500                 SCEP requests fail with HTTP 500 from NDES endpoint                                           NDES application pool crashed; NDES registration authority certificate expired; IIS misconfiguration             Recycle NDES app pool; renew RA certificates (CEP Encryption and Exchange Enrollment Agent); verify IIS request filtering settings
+
+  CBA MFA not satisfied         Conditional Access blocks access requiring MFA despite CBA login                              CBA authentication method not configured as \"multi-factor\" protection level                                    Update CBA method policy: set protection level to \"Multi-factor authentication\" for the issuer/policy OID combination
+  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+14\. Companion Document Cross-Reference
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **Section**                            **Related UIAO Document**                          **Relationship**
+  -------------------------------------- -------------------------------------------------- ----------------------------------------------------------------------------------------------------------------------------------------
+  Section 1 --- Purpose and Scope        UIAO Governance OS Overview                        This guide is part of the Governance OS corpus; scope aligns with overall modernization strategy.
+
+  Section 2 --- ADCS Baseline            AD Interaction Guide                               ADCS assessment outputs feed the AD Interaction Guide\'s infrastructure inventory. CA server data populates the AD topology map.
+
+  Section 3 --- ESC Vulnerabilities      AD Security Assessment Guide                       ESC findings integrate with the broader AD security posture assessment. Critical findings may block AD decommission timelines.
+
+  Section 4 --- Certificate Inventory    AD Interaction Guide                               Certificate classification (MIGRATE/BRIDGE/RETAIN/RETIRE) informs AD dependency mapping.
+
+  Section 5 --- Cloud PKI Architecture   Identity Modernization Guide                       Cloud PKI deployment depends on Intune Suite licensing and Entra ID readiness documented in the Identity Modernization Guide.
+
+  Section 6 --- Intune Deployment        AD Computer Object Conversion Guide                SCEP/PKCS profiles require Intune-enrolled devices. Device enrollment is governed by the Computer Object Conversion Guide.
+
+  Section 7 --- Entra CBA                Identity Modernization Guide                       CBA staged rollout and domain conversion must align with identity migration phases. Entra Connect SID sync is a prerequisite.
+
+  Section 8 --- Hybrid Coexistence       AD Interaction Guide, Network Architecture Guide   Hybrid trust distribution and CRL accessibility depend on network architecture and AD operational status.
+
+  Section 9 --- Migration Playbook       All UIAO Guides                                    Migration phases cross-reference assessment, identity, device, and network modernization timelines.
+
+  Section 10 --- OrgPath Integration     OrgPath Design Guide                               Extension attribute schema and dynamic group patterns are defined in the OrgPath Design Guide.
+
+  Section 11 --- Monitoring              UIAO Monitoring and Compliance Guide               Certificate health telemetry integrates with the broader monitoring framework. Gitea commit patterns follow UIAO assessment standards.
+
+  Section 12 --- Security Hardening      AD Security Assessment Guide                       ADCS hardening aligns with the AD security baseline. Cloud PKI RBAC aligns with Entra role governance.
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix A --- Cloud PKI Deployment Checklist
+
+  -------------------------------------------------------------------------------------------------------------------------------
+  **\#**   **Task**                                                                   **Phase**      **Owner**       **Status**
+  -------- -------------------------------------------------------------------------- -------------- --------------- ------------
+  1        Verify Intune Suite or standalone Cloud PKI license is active              Foundation     Licensing       ☐
+
+  2        Determine deployment model: Cloud PKI Root CA vs. BYOCA                    Foundation     PKI Architect   ☐
+
+  3        Create Cloud PKI Root CA (if Cloud Root model)                             Foundation     PKI Admin       ☐
+
+  4        Generate CSR for Cloud Issuing CA                                          Foundation     PKI Admin       ☐
+
+  5        Sign CSR with on-prem Root CA (if BYOCA)                                   Foundation     PKI Admin       ☐
+
+  6        Upload signed certificate to Cloud PKI (if BYOCA)                          Foundation     PKI Admin       ☐
+
+  7        Activate Cloud PKI Issuing CA                                              Foundation     PKI Admin       ☐
+
+  8        Verify Cloud PKI CRL distribution point is accessible                      Foundation     Network         ☐
+
+  9        Export Root CA certificate (.cer, Base-64)                                 Foundation     PKI Admin       ☐
+
+  10       Upload Root CA and Issuing CA certs to Entra certificate authorities       Foundation     Identity        ☐
+
+  11       Create Intune Trusted Root Certificate profile                             Foundation     Intune Admin    ☐
+
+  12       Assign Trusted Root profile to All Devices                                 Foundation     Intune Admin    ☐
+
+  13       Verify Trusted Root deployment \>99% success                               Foundation     Intune Admin    ☐
+
+  14       Install Certificate Connector for Microsoft Intune (v6.2406+)              Foundation     Server Admin    ☐
+
+  15       Configure Certificate Connector --- verify healthy status                  Foundation     Intune Admin    ☐
+
+  16       Create SCEP profile for pilot Wi-Fi 802.1x use case                        Pilot          Intune Admin    ☐
+
+  17       Assign SCEP profile to pilot device group                                  Pilot          Intune Admin    ☐
+
+  18       Update RADIUS server trust store with Cloud PKI Root CA                    Pilot          Network         ☐
+
+  19       Verify end-to-end Wi-Fi authentication with Cloud PKI cert                 Pilot          Network/PKI     ☐
+
+  20       Create SCEP profile for VPN use case                                       Pilot          Intune Admin    ☐
+
+  21       Verify VPN authentication with Cloud PKI cert                              Pilot          Network/PKI     ☐
+
+  22       Deploy Cloud PKI Root CA to on-prem via GPO (cross-trust)                  Scale          AD Admin        ☐
+
+  23       Expand SCEP profiles to OrgPath dynamic groups                             Scale          Intune Admin    ☐
+
+  24       Disable ADCS auto-enrollment GPOs for MIGRATE templates on migrated OUs    Cutover        AD Admin        ☐
+
+  25       Verify zero active ADCS certs on managed endpoints for MIGRATE use cases   Cutover        PKI Admin       ☐
+
+  26       Archive Issuing CA database                                                Decommission   PKI Admin       ☐
+
+  27       Decommission NDES server                                                   Decommission   Server Admin    ☐
+
+  28       Decommission Issuing CA server (if fully migrated)                         Decommission   PKI Admin       ☐
+
+  29       Remove decommissioned CA pKIEnrollmentService object from AD               Decommission   AD Admin        ☐
+
+  30       Commit final decommission record to Gitea                                  Decommission   UIAO Lead       ☐
+  -------------------------------------------------------------------------------------------------------------------------------
+
+Appendix B --- Certificate Template Migration Matrix
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **ADCS Template**         **Purpose**                             **Migration Path**   **Cloud PKI Equivalent**                                   **Intune Profile Type**   **Priority**   **Dependencies**                          **Status**
+  ------------------------- --------------------------------------- -------------------- ---------------------------------------------------------- ------------------------- -------------- ----------------------------------------- ---------------
+  User                      User authentication (EAP-TLS, SSO)      MIGRATE              Cloud PKI SCEP --- Client Auth EKU                         SCEP                      High           Entra CBA config; RADIUS trust update     ☐ Not Started
+
+  Computer / Machine        Device authentication (802.1x, IPSec)   MIGRATE              Cloud PKI SCEP --- Client Auth EKU                         SCEP                      High           Intune enrollment; RADIUS trust update    ☐ Not Started
+
+  Web Server                Internal TLS (IIS, reverse proxy)       MIGRATE              Cloud PKI SCEP or PKCS --- Server Auth EKU                 SCEP or PKCS              Medium         IIS rebinding; client trust update        ☐ Not Started
+
+  Smartcard User            Smart card logon                        MIGRATE              Entra CBA (certificate remains on physical smart card)     N/A (physical card)       High           Entra CBA binding; CA cert upload         ☐ Not Started
+
+  Smartcard Logon           PIV/CAC logon                           MIGRATE              Entra CBA                                                  N/A (physical card)       High           Entra CBA binding; CA cert upload         ☐ Not Started
+
+  Domain Controller         DC Kerberos authentication              BRIDGE               N/A --- must remain ADCS                                   N/A                       N/A            AD operational                            ⬛ Retain
+
+  Kerberos Authentication   DC auth (enhanced template)             BRIDGE               N/A --- must remain ADCS                                   N/A                       N/A            AD operational                            ⬛ Retain
+
+  RAS and IAS Server        NPS/RADIUS server cert                  BRIDGE               ADCS during transition; future Cloud PKI if NPS migrates   N/A                       Low            NPS migration plan                        ⬛ Retain
+
+  Exchange User (S/MIME)    Email signing / encryption              MIGRATE              PKCS Imported (existing CA or third-party)                 PKCS Imported             Medium         S/MIME policy; key escrow                 ☐ Not Started
+
+  Code Signing              Executable / script signing             RETAIN               N/A --- HSM dependency; requires on-prem CA                N/A                       N/A            HSM infrastructure; code signing policy   ⬛ Retain
+
+  Basic EFS                 Encrypting File System                  RETIRE               N/A --- migrating to Microsoft Information Protection      N/A                       N/A            MIP/AIP deployment complete               ⬛ Retire
+
+  EFS Recovery Agent        EFS key recovery                        RETIRE               N/A                                                        N/A                       N/A            EFS decommission                          ⬛ Retire
+
+  OCSP Response Signing     OCSP responder cert                     RETIRE               Cloud PKI handles revocation natively                      N/A                       N/A            ADCS OCSP decommission                    ⬛ Retire
+
+  Enrollment Agent          Enrollment station delegation           RETIRE               N/A --- Intune handles enrollment directly                 N/A                       N/A            Enrollment station decommission           ⬛ Retire
+
+  IPSec (Offline Request)   VPN gateway IPSec                       MIGRATE              Cloud PKI SCEP --- IPSec EKU                               SCEP                      Medium         VPN gateway cert trust update             ☐ Not Started
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Appendix C --- PowerShell PKI Assessment Module (UIAOPKIAssessment.psm1)
+
+The following module provides the core assessment functions for UIAO PKI modernization. Save as UIAOPKIAssessment.psm1 and import via Import-Module .\\UIAOPKIAssessment.psm1.
+
+C.1 Get-UIAOCAInventory
+
+function Get-UIAOCAInventory { \<# .SYNOPSIS Inventories all Certificate Authority servers registered in Active Directory. .DESCRIPTION Queries the pKIEnrollmentService objects in the AD configuration partition to discover all enterprise CAs. Collects key parameters, OS version, and operational status. .OUTPUTS Array of PSCustomObject with CA inventory data. #\> \[CmdletBinding()\] param() Import-Module ActiveDirectory -ErrorAction Stop \$configNC = (Get-ADRootDSE).configurationNamingContext \$enrollBase = \"CN=Enrollment Services,CN=Public Key Services,CN=Services,\$configNC\" \$caObjects = Get-ADObject -SearchBase \$enrollBase -Filter \* -Properties \` displayName, dNSHostName, cACertificate, certificateTemplates, \` cACertificateDN, whenCreated \$inventory = @() foreach (\$ca in \$caObjects) { \$cert = \[System.Security.Cryptography.X509Certificates.X509Certificate2\]::new(\$ca.cACertificate\[0\]) \$caInfo = \[PSCustomObject\]@{ CAName = \$ca.displayName DNSHostName = \$ca.dNSHostName CACertSubject = \$cert.Subject CACertIssuer = \$cert.Issuer KeyAlgorithm = \$cert.PublicKey.Oid.FriendlyName KeyLength = \$cert.PublicKey.Key.KeySize SignatureAlgorithm = \$cert.SignatureAlgorithm.FriendlyName NotBefore = \$cert.NotBefore NotAfter = \$cert.NotAfter SerialNumber = \$cert.SerialNumber Thumbprint = \$cert.Thumbprint TemplateCount = \$ca.certificateTemplates.Count CreatedDate = \$ca.whenCreated IsRoot = (\$cert.Subject -eq \$cert.Issuer) } \$inventory += \$caInfo } return \$inventory }
+
+C.2 Get-UIAOCertificateTemplates
+
+function Get-UIAOCertificateTemplates { \<# .SYNOPSIS Exports all certificate template configurations from Active Directory. .DESCRIPTION Retrieves all pKICertificateTemplate objects with full property set including permissions, EKUs, name flags, and enrollment settings. .OUTPUTS Array of PSCustomObject with template configuration data. #\> \[CmdletBinding()\] param() Import-Module ActiveDirectory -ErrorAction Stop \$configNC = (Get-ADRootDSE).configurationNamingContext \$templateBase = \"CN=Certificate Templates,CN=Public Key Services,CN=Services,\$configNC\" \$templates = Get-ADObject -SearchBase \$templateBase -Filter \* -Properties \* \$results = @() foreach (\$tmpl in \$templates) { \$acl = Get-Acl \"AD:\$(\$tmpl.DistinguishedName)\" \$enrollPerms = (\$acl.Access \| Where-Object { \$\_.ActiveDirectoryRights -match \'ExtendedRight\' -and \$\_.ObjectType -eq \'0e10c968-78fb-11d2-90d4-00c04f79dc55\' }).IdentityReference.Value \$autoEnrollPerms = (\$acl.Access \| Where-Object { \$\_.ActiveDirectoryRights -match \'ExtendedRight\' -and \$\_.ObjectType -eq \'a05b8cc2-17bc-4802-a710-e7c15ab866a2\' }).IdentityReference.Value \$record = \[PSCustomObject\]@{ Name = \$tmpl.displayName CN = \$tmpl.cn OID = \$tmpl.\'msPKI-Cert-Template-OID\' SchemaVersion = \$tmpl.\'msPKI-Template-Schema-Version\' Version = \$tmpl.revision EKUs = @(\$tmpl.pkiExtendedKeyUsage) AppPolicies = @(\$tmpl.\'msPKI-Certificate-Application-Policy\') NameFlag = \$tmpl.\'msPKI-Certificate-Name-Flag\' EnrollmentFlag = \$tmpl.\'msPKI-Enrollment-Flag\' PrivateKeyFlag = \$tmpl.\'msPKI-Private-Key-Flag\' MinKeySize = \$tmpl.\'msPKI-Minimal-Key-Size\' SuppliesSubject = \[bool\](\$tmpl.\'msPKI-Certificate-Name-Flag\' -band 1) EnrollPermissions = \$enrollPerms AutoEnrollPerms = \$autoEnrollPerms } \$results += \$record } return \$results }
+
+C.3 Test-UIAOESCVulnerabilities
+
+function Test-UIAOESCVulnerabilities { \<# .SYNOPSIS Scans ADCS infrastructure for ESC1-ESC8 vulnerabilities. .DESCRIPTION Comprehensive ESC vulnerability assessment. Returns findings with risk level, affected template/object, and remediation guidance. .OUTPUTS Array of PSCustomObject with vulnerability findings. #\> \[CmdletBinding()\] param() Import-Module ActiveDirectory -ErrorAction Stop \$findings = @() \$configNC = (Get-ADRootDSE).configurationNamingContext \$templates = Get-ADObject -SearchBase \"CN=Certificate Templates,CN=Public Key Services,CN=Services,\$configNC\" \` -Filter \* -Properties displayName, msPKI-Certificate-Name-Flag, \` msPKI-Certificate-Application-Policy, pkiExtendedKeyUsage, nTSecurityDescriptor foreach (\$tmpl in \$templates) { \$ekus = @(\$tmpl.pkiExtendedKeyUsage) + @(\$tmpl.\'msPKI-Certificate-Application-Policy\') \| Where-Object { \$\_ } \| Select-Object -Unique \$nameFlag = \$tmpl.\'msPKI-Certificate-Name-Flag\' \$acl = Get-Acl \"AD:\$(\$tmpl.DistinguishedName)\" \$lowPrivEnroll = \$acl.Access \| Where-Object { \$\_.ActiveDirectoryRights -match \'ExtendedRight\' -and \$\_.ObjectType -eq \'0e10c968-78fb-11d2-90d4-00c04f79dc55\' -and \$\_.IdentityReference -match \'Domain Users\|Authenticated Users\|Domain Computers\|Everyone\' } \# ESC1 if ((\$nameFlag -band 1) -and (\$ekus -contains \'1.3.6.1.5.5.7.3.2\' -or \$ekus -contains \'2.5.29.37.0\') -and \$lowPrivEnroll) { \$findings += \[PSCustomObject\]@{ ESCID = \'ESC1\'; RiskLevel = \'Critical\'; Template = \$tmpl.displayName Description = \'Enrollee supplies subject with Client Auth EKU and broad enrollment\' Remediation = \'Disable CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT; restrict enrollment permissions\' } } \# ESC2 if (\$ekus -contains \'2.5.29.37.0\' -or \$ekus.Count -eq 0) { \$findings += \[PSCustomObject\]@{ ESCID = \'ESC2\'; RiskLevel = \'Critical\'; Template = \$tmpl.displayName Description = \'Any Purpose EKU or no EKU restrictions\' Remediation = \'Replace with specific EKUs; restrict enrollment\' } } \# ESC3 if (\$ekus -contains \'1.3.6.1.4.1.311.20.2.1\' -and \$lowPrivEnroll) { \$findings += \[PSCustomObject\]@{ ESCID = \'ESC3\'; RiskLevel = \'High\'; Template = \$tmpl.displayName Description = \'Certificate Request Agent with broad enrollment\' Remediation = \'Restrict enrollment to designated agent accounts\' } } \# ESC4 \$dangerousACL = \$acl.Access \| Where-Object { (\$\_.ActiveDirectoryRights -match \'WriteDacl\|WriteOwner\|GenericAll\|GenericWrite\') -and \$\_.IdentityReference -notmatch \'SYSTEM\|Domain Admins\|Enterprise Admins\|Administrator\' } if (\$dangerousACL) { \$findings += \[PSCustomObject\]@{ ESCID = \'ESC4\'; RiskLevel = \'High\'; Template = \$tmpl.displayName Description = \"Dangerous ACL: \$(\$dangerousACL.IdentityReference -join \', \')\" Remediation = \'Remove write permissions for non-admin principals\' } } } \# ESC5 --- PKI object ACLs \$enrollSvc = Get-ADObject -SearchBase \"CN=Enrollment Services,CN=Public Key Services,CN=Services,\$configNC\" \` -Filter \* -Properties nTSecurityDescriptor, displayName foreach (\$svc in \$enrollSvc) { \$svcAcl = Get-Acl \"AD:\$(\$svc.DistinguishedName)\" \$svcDangerous = \$svcAcl.Access \| Where-Object { (\$\_.ActiveDirectoryRights -match \'WriteDacl\|WriteOwner\|GenericAll\') -and \$\_.IdentityReference -notmatch \'SYSTEM\|Domain Admins\|Enterprise Admins\|Administrator\' } if (\$svcDangerous) { \$findings += \[PSCustomObject\]@{ ESCID = \'ESC5\'; RiskLevel = \'High\'; Template = \"CA: \$(\$svc.displayName)\" Description = \"PKI object ACL vulnerability: \$(\$svcDangerous.IdentityReference -join \', \')\" Remediation = \'Restrict write permissions on PKI AD objects\' } } } \# ESC6 --- EDITF_ATTRIBUTESUBJECTALTNAME2 \$editFlags = certutil -getreg policy\\EditFlags 2\>&1 if (\$editFlags -match \'EDITF_ATTRIBUTESUBJECTALTNAME2\') { \$findings += \[PSCustomObject\]@{ ESCID = \'ESC6\'; RiskLevel = \'Critical\'; Template = \'CA Policy\' Description = \'EDITF_ATTRIBUTESUBJECTALTNAME2 enabled --- SAN override on all templates\' Remediation = \'certutil -setreg policy\\EditFlags -EDITF_ATTRIBUTESUBJECTALTNAME2\' } } \# ESC7 --- CA Security \# (Manual review recommended --- output CA security for inspection) \# ESC8 --- HTTP enrollment (requires IIS module --- skipped in automated scan) Write-Output \"ESC Assessment complete. Total findings: \$(\$findings.Count)\" return \$findings }
+
+C.4 Get-UIAOIssuedCertificates
+
+function Get-UIAOIssuedCertificates { \<# .SYNOPSIS Retrieves issued certificates from ADCS CA database. .DESCRIPTION Queries the CA database for all issued (non-revoked, non-expired) certificates grouped by template. .PARAMETER CAName The CA common name (e.g., \"YOURORG-ISS-CA01\"). .OUTPUTS Array of PSCustomObject with issued certificate data. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory = \$true)\] \[string\]\$CAName ) \$certs = certutil -view -restrict \"Disposition=20\" -out \` \"RequestID,CommonName,NotAfter,CertificateTemplate,SerialNumber\" csv 2\>&1 \$issued = @() \$lines = \$certs -split \"\`n\" \| Select-Object -Skip 1 foreach (\$line in \$lines) { if (\$line -match \',\') { \$parts = \$line -split \'\",\"\' if (\$parts.Count -ge 4) { \$issued += \[PSCustomObject\]@{ RequestID = \$parts\[0\] -replace \'\"\', \'\' CommonName = \$parts\[1\] NotAfter = \$parts\[2\] Template = \$parts\[3\] Serial = if (\$parts.Count -ge 5) { \$parts\[4\] -replace \'\"\', \'\' } else { \'\' } } } } } \$summary = \$issued \| Group-Object -Property Template \| Select-Object Name, Count \| Sort-Object Count -Descending Write-Output \"=== Issued Certificate Summary by Template ===\" \$summary \| Format-Table -AutoSize return \$issued }
+
+C.5 Get-UIAOCRLHealth
+
+function Get-UIAOCRLHealth { \<# .SYNOPSIS Checks CRL health for ADCS Certificate Authorities. .DESCRIPTION Verifies CRL publication status, freshness, next publish date, and accessibility from the local machine. .OUTPUTS PSCustomObject with CRL health status. #\> \[CmdletBinding()\] param() \$crlInfo = certutil -CRL 2\>&1 \$crlList = certutil -store -enterprise \"CA\" 2\>&1 \# Parse CRL publication info \$results = \[PSCustomObject\]@{ CheckDate = Get-Date -Format \'yyyy-MM-ddTHH:mm:ssZ\' CRLOutput = \$crlInfo PublishStatus = if (\$crlInfo -match \'CRL published\') { \'Published\' } else { \'Unknown\' } } \# Check HTTP CDP accessibility \$configNC = (Get-ADRootDSE).configurationNamingContext \$cas = Get-ADObject -SearchBase \"CN=Enrollment Services,CN=Public Key Services,CN=Services,\$configNC\" \` -Filter \* -Properties \'cRLDistributionPoint\', displayName -ErrorAction SilentlyContinue \$cdpResults = @() foreach (\$ca in \$cas) { \$cdps = @(\$ca.cRLDistributionPoint) \| Where-Object { \$\_ -match \'\^http\' } foreach (\$cdp in \$cdps) { try { \$response = Invoke-WebRequest -Uri \$cdp -Method Head -TimeoutSec 10 -UseBasicParsing \$cdpResults += \[PSCustomObject\]@{ CA = \$ca.displayName CDP = \$cdp Status = \"Accessible (HTTP \$(\$response.StatusCode))\" } } catch { \$cdpResults += \[PSCustomObject\]@{ CA = \$ca.displayName CDP = \$cdp Status = \"UNREACHABLE: \$(\$\_.Exception.Message)\" } } } } \$results \| Add-Member -NotePropertyName CDPResults -NotePropertyValue \$cdpResults return \$results }
+
+C.6 Export-UIAOPKIAssessment
+
+function Export-UIAOPKIAssessment { \<# .SYNOPSIS Runs the full UIAO PKI assessment suite and exports results to a timestamped directory for Gitea commit. .DESCRIPTION Orchestrates all assessment functions and produces JSON output files in the UIAO assessment directory structure. .PARAMETER Domain The AD domain name (e.g., \"contoso.com\"). .PARAMETER OutputBase Base path for assessment output. Default: .\\assessments\\pki .OUTPUTS Directory containing JSON assessment files. #\> \[CmdletBinding()\] param( \[Parameter(Mandatory = \$true)\] \[string\]\$Domain, \[Parameter(Mandatory = \$false)\] \[string\]\$OutputBase = \".\\assessments\\pki\" ) \$timestamp = Get-Date -Format \'yyyyMMdd_HHmmss\' \$outputDir = Join-Path \$OutputBase \"\$Domain\\\$timestamp\" New-Item -ItemType Directory -Path \$outputDir -Force \| Out-Null Write-Output \"=== UIAO PKI Assessment --- \$Domain --- \$timestamp ===\" \# CA Inventory Write-Output \"\[1/5\] Running CA Inventory\...\" \$caInventory = Get-UIAOCAInventory \$caInventory \| ConvertTo-Json -Depth 5 \| Out-File \"\$outputDir\\ca-inventory.json\" -Encoding UTF8 \# Template Inventory Write-Output \"\[2/5\] Running Template Inventory\...\" \$templates = Get-UIAOCertificateTemplates \$templates \| ConvertTo-Json -Depth 5 \| Out-File \"\$outputDir\\template-inventory.json\" -Encoding UTF8 \# ESC Assessment Write-Output \"\[3/5\] Running ESC Vulnerability Assessment\...\" \$escFindings = Test-UIAOESCVulnerabilities \$escFindings \| ConvertTo-Json -Depth 5 \| Out-File \"\$outputDir\\esc-assessment.json\" -Encoding UTF8 \# Certificate Inventory with Classification Write-Output \"\[4/5\] Running Certificate Classification\...\" \$certInventory = Get-UIAOCertificateInventory -OutputPath \"\$outputDir\\certificate-classification.json\" \# CRL Health Write-Output \"\[5/5\] Running CRL Health Check\...\" \$crlHealth = Get-UIAOCRLHealth \$crlHealth \| ConvertTo-Json -Depth 5 \| Out-File \"\$outputDir\\crl-health.json\" -Encoding UTF8 \# Summary \$summary = \[PSCustomObject\]@{ Domain = \$Domain Timestamp = \$timestamp CACount = \$caInventory.Count TemplateCount = \$templates.Count ESCFindings = \$escFindings.Count CriticalESC = (\$escFindings \| Where-Object RiskLevel -eq \'Critical\').Count HighESC = (\$escFindings \| Where-Object RiskLevel -eq \'High\').Count AssessmentFiles = @( \'ca-inventory.json\', \'template-inventory.json\', \'esc-assessment.json\', \'certificate-classification.json\', \'crl-health.json\' ) } \$summary \| ConvertTo-Json \| Out-File \"\$outputDir\\assessment-summary.json\" -Encoding UTF8 Write-Output \"\" Write-Output \"=== Assessment Complete ===\" Write-Output \"Output directory: \$outputDir\" Write-Output \"CA servers found: \$(\$summary.CACount)\" Write-Output \"Templates found: \$(\$summary.TemplateCount)\" Write-Output \"ESC findings: \$(\$summary.ESCFindings) (Critical: \$(\$summary.CriticalESC), High: \$(\$summary.HighESC))\" Write-Output \"\" Write-Output \"To commit to Gitea:\" Write-Output \" cd \$outputDir\" Write-Output \" git add .\" Write-Output \" git commit -m \'PKI Assessment: \$Domain \$timestamp\'\" Write-Output \" git push origin main\" return \$summary }
+
+Appendix D --- Entra CBA Configuration Checklist
+
+Follow this checklist in order. Each step includes the verification command or procedure to confirm successful completion.
+
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  **\#**   **Step**                                 **Detail**                                                                                                                                                                                                                        **Verification**
+  -------- ---------------------------------------- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  1        Verify Entra ID P1 or P2 license         CBA requires Entra ID P1 (minimum) for Conditional Access integration. P2 required for PIM-based role activation.                                                                                                                 Get-MgSubscribedSku \| Select SkuPartNumber, CapabilityStatus --- confirm AAD_PREMIUM or AAD_PREMIUM_P2 active.
+
+  2        Verify Entra Connect SID sync            User and device SIDs must be synced from on-prem AD to Entra ID. Required for strong mapping and certificateUserIds population.                                                                                                   Get-MgUser -UserId user@domain.com -Property onPremisesSecurityIdentifier \| Select onPremisesSecurityIdentifier --- must not be null.
+
+  3        Export Root CA certificate               Export the Root CA certificate and any intermediate/issuing CA certificates as Base-64 encoded .cer files.                                                                                                                        Open .cer in certutil: certutil -dump rootca.cer --- verify subject, validity, key usage.
+
+  4        Upload CA certificates to Entra          Navigate to Microsoft Entra admin center → Security → Certificate authorities. Upload Root CA, then Issuing CA(s). Set *Is root CA certificate* appropriately. Enter CRL distribution point URL for each CA.                      Get-MgOrganizationCertificateBasedAuthConfiguration --- verify CA certs listed with correct issuers and CRL URLs.
+
+  5        Verify CRL accessibility                 The CRL URL configured for each CA must be accessible from the internet (Entra ID fetches CRL during authentication).                                                                                                             From an external network: Invoke-WebRequest -Uri \"http://crl.yourdomain.com/crl.crl\" -Method Head --- must return HTTP 200.
+
+  6        Enable CBA authentication method         Navigate to Protection → Authentication methods → Policies. Enable \"Certificate-based authentication.\" Target to a pilot security group (not All Users initially).                                                              Get-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId \'x509Certificate\' --- verify state is enabled.
+
+  7        Configure username binding rules         In the CBA method configuration, add binding rules. Start with: *PrincipalName → userPrincipalName* (low affinity). Add high-affinity rules for production: *SKI → certificateUserIds* or *SHA1PublicKey → certificateUserIds*.   Review binding rules in the Entra admin center CBA configuration blade. Verify priority order (high-affinity rules should have higher priority).
+
+  8        Configure authentication strength        Set the protection level for CBA: *Single-factor* or *Multi-factor*. For smart card CBA (something you have + PIN = something you know), set to Multi-factor. Configure per issuer or policy OID if needed.                       In CBA configuration, verify the authentication strength level per rule. Test: user authenticates via CBA and Conditional Access requiring MFA is satisfied without additional prompt.
+
+  9        Create pilot security group              Create a security group in Entra ID for CBA pilot users. Add 10--20 users representing different certificate types (smart card, software cert, different CAs).                                                                    Get-MgGroup -Filter \"displayName eq \'CBA-Pilot-Users\'\" \| Select Id, DisplayName --- verify group exists and has members.
+
+  10       Enable staged rollout                    Navigate to Microsoft Entra Connect → Staged rollout of cloud authentication. Enable \"Certificate-based authentication.\" Add the pilot security group.                                                                          Get-MgPolicyFeatureRolloutPolicy \| Where DisplayName -match \'CertificateBasedAuthentication\' --- verify policy exists and is enabled.
+
+  11       Enable Password Hash Sync (PHS)          PHS must be enabled as a fallback for staged rollout users. If CBA fails, the user can fall back to password authentication. Configure in Entra Connect.                                                                          Entra Connect sync status: verify PHS is enabled and syncing. Check Entra admin center → Entra Connect → Sync status.
+
+  12       Test pilot user CBA login                Pilot user navigates to https://login.microsoftonline.com → selects \"Use a certificate or smart card\" → presents certificate → authenticates.                                                                                   Entra sign-in logs: filter by user → verify authentication method = \"X.509 Certificate\", status = \"Success\", MFA claim present (if multi-factor configured).
+
+  13       Verify token claims                      Inspect the issued token (via jwt.ms or app registration test) for correct claims: amr contains x509, MFA claim present, correct UPN.                                                                                             Decode token at jwt.ms or via application logs. Verify \"amr\": \[\"x509\"\] and \"authenticationMethod\": \"X.509\".
+
+  14       Expand staged rollout                    Add additional user groups in waves (200 users per wave, 48 hours between waves). Monitor sign-in logs for failures between each wave.                                                                                            Entra sign-in logs: filter by authentication method \"X.509 Certificate\" → monitor failure rate. Target \<1% failure rate before next wave.
+
+  15       Document ADFS federation configuration   Before domain conversion, capture the current federation configuration for rollback purposes.                                                                                                                                     Get-MgDomainFederationConfiguration -DomainId \"yourdomain.com\" \| ConvertTo-Json \| Out-File adfs-federation-backup.json
+
+  16       Convert domain to managed                When all users are validated, convert the federated domain to managed authentication. This routes all authentication to Entra ID.                                                                                                 Get-MgDomain -DomainId \"yourdomain.com\" \| Select AuthenticationType --- must return Managed.
+
+  17       Disable ADFS CBA rules                   Remove or disable certificate authentication claim rules in ADFS (if ADFS remains for other relying parties).                                                                                                                     Verify no ADFS claim rules reference certificate authentication. Test: users are no longer redirected to ADFS for CBA.
+
+  18       Remove staged rollout groups             After domain conversion, staged rollout is no longer needed. Remove groups from the staged rollout policy.                                                                                                                        Entra Connect staged rollout page: CBA feature should show no assigned groups (or disable the feature).
+
+  19       Configure Conditional Access policy      Create or update Conditional Access policies to require CBA authentication strength for sensitive applications. Combine with device compliance requirement.                                                                       Get-MgIdentityConditionalAccessPolicy \| Where DisplayName -match \'CBA\' --- verify policy exists, is enabled, and targets correct apps/users.
+
+  20       Establish monitoring and alerting        Configure Entra sign-in log alerts for CBA authentication failures. Set threshold (e.g., \>5 failures in 15 minutes). Integrate with SIEM.                                                                                        Trigger a test CBA failure (expired cert). Verify alert fires within configured time window.
+  ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Document Version Control**                                                                                                                                                                                                                             |
+|                                                                                                                                                                                                                                                          |
+| This document is maintained in the UIAO Governance OS repository at https://github.com/WhalerMike/uiao. All changes are tracked via Git version control. For questions, corrections, or contributions, submit a pull request or issue to the repository. |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+UIAO PKI Modernization Guide --- Version 1.0 --- April 2026\
+Classification: Controlled --- Boundary: GCC-Moderate\
+UIAO Governance OS --- https://github.com/WhalerMike/uiao
