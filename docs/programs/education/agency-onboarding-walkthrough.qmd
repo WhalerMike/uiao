@@ -1,0 +1,132 @@
+---
+title: "Agency onboarding walkthrough (UIAO_128 instantiation)"
+subtitle: "First UIAO_128 delivery — narrative-led, comic-style"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Narrative walkthrough an agency CIO / CISO / IAM lead reads end-to-end before adopting the UIAO substrate. Sets the mental model in plain English; defers detail to the spec docs."
+---
+
+## What this is
+
+A 15-minute read aimed at a federal agency executive sponsor (CIO,
+CISO, or senior IAM lead) who has been told "the UIAO substrate" and
+needs to know what they're signing up for, what they get, and what's
+required of them.
+
+It is **deliberately not technical**. Every concept gets one paragraph,
+one picture in the reader's head, and one pointer to the spec doc that
+makes it formal.
+
+## The substrate in one paragraph
+
+UIAO is a **continuous-compliance substrate** for federal agencies. It
+runs alongside whatever you already have — Entra ID, M365, Active
+Directory, ServiceNow, Palo Alto, Infoblox, Terraform — and produces
+two things: real-time drift findings, and OSCAL artifacts (SSP, SAR,
+POA&M) that an ATO package needs. Auditors get a query API; your team
+gets a runtime that says "here's what's drifting and here's what to
+do about it." Nothing in your environment moves without a record.
+
+## What you get
+
+### 1. Continuous compliance evidence
+
+Every adapter dispatch (nightly, on-demand, or event-driven) lands
+evidence in the substrate's evidence graph. The graph remembers
+**every observation, every finding, every remediation**. When the
+auditor asks "what was the state of AC-2 on March 14," the substrate
+answers in seconds, not days.
+
+### 2. Five drift detectors, all blocking
+
+`DRIFT-SCHEMA`, `DRIFT-PROVENANCE`, `DRIFT-SEMANTIC`, `DRIFT-AUTHZ`,
+`DRIFT-IDENTITY` — every adapter run is checked against all five.
+A finding is structured: severity (P1..P5), control id (NIST AC-2,
+IA-2, etc.), the actor, the witness evidence, the recommended action.
+
+### 3. OSCAL output, native
+
+The substrate emits OSCAL SAR / SSP / POA&M / Component Definition
+JSON wired to the FedRAMP Rev 5 Moderate baseline. Each artifact
+carries graph-derived back-matter resources so a third-party tool
+(`trestle`, etc.) can navigate from a control implementation to the
+underlying evidence.
+
+### 4. An audit query surface
+
+CQL — the Compliance Query Language — runs read-only queries over
+findings, the enforcement journal, the data-lake archive, and the
+adapter registry. Auditors hit `/api/v1/cql/evaluate` and get JSON
+back. No SQL access required, no direct database queries, no shadow
+copies.
+
+### 5. ZTMM alignment
+
+Each adapter declares which CISA Zero Trust Maturity Model pillars
+its evidence informs (Identity, Devices, Networks, Applications &
+Workloads, Data). The substrate aggregates per-pillar maturity from
+adapter coverage + evidence freshness — so you see Acme's ZTMM
+posture in one report instead of a dozen spreadsheets.
+
+## What's required of you
+
+### 1. A canon-compliant adapter registry entry per integration
+
+For each system the substrate touches (your tenant, your network
+appliance, your SaaS), one declaration in
+`src/uiao/canon/modernization-registry.yaml` (or
+`adapter-registry.yaml`). Required fields are documented inline; the
+substrate walker fails the PR if any required field is missing.
+
+### 2. Credential scoping through your secret backend
+
+Every tenant + adapter combination binds to a credential record in
+your existing Vault / Key Vault / SecretsManager. The substrate
+never holds long-lived secrets — it requests them per-dispatch and
+discards them immediately after.
+
+### 3. A weekly compliance review forum
+
+The substrate emits findings and OSCAL artifacts continuously. Your
+agency owns the response. We recommend a weekly 30-minute sync
+between your IAM lead, your compliance officer, and the substrate
+maintainer to triage open findings and log decisions in the EPL
+journal.
+
+## What it is **not**
+
+| Not this | But this |
+|---|---|
+| A cloud platform | A substrate that runs on top of your existing cloud |
+| A SIEM | A compliance-evidence + OSCAL emitter; SIEM consumes its journal |
+| A replacement for your IAM team | An automation surface that gives your IAM team a continuous record |
+| A black box | Every component is open canon: spec → schema → impl, all in `src/uiao/canon/` and `src/uiao/` |
+
+## Where to go next
+
+| You are… | Read |
+|---|---|
+| The CIO sponsor | This page is enough. Hand off to your CISO. |
+| The CISO | UIAO_001 (SSOT) + UIAO_120 (Zero-Trust Integration spec) |
+| The IAM lead | UIAO_100 (Compliance Orchestrator) + UIAO_110 (Drift Engine) + UIAO_111 (Enforcement Runtime) |
+| The compliance officer | UIAO_105 (Auditor API) + UIAO_108 (CQL) + UIAO_113 (Evidence Graph) |
+| A contributing engineer | `AGENTS.md` + the [adapter-author training session record](../training/2026-04-26-adapter-author-onboarding.qmd) |
+
+## What to expect in the first 90 days
+
+| Week | What happens |
+|---|---|
+| 1–4 | Substrate stands up against your tenants; canon overlay declared; walker green |
+| 5–8 | First adapter dispatch produces evidence; first OSCAL SAR generated |
+| 9–12 | Production monitoring, EPL policies wired, first OIG query through the Auditor API |
+| 13+ | Steady-state continuous compliance; quarterly review against UIAO roadmap |
+
+The [Acme Federal project plan](../project-plans/agency-acme-modernization-plan.qmd) is a synthetic but representative
+timeline. Your real plan replaces the agency name and adjusts dates.
+
+## Closing
+
+The UIAO substrate is what continuous compliance looks like when the
+mechanism is canon-anchored, machine-checkable, and OSCAL-native. It
+doesn't replace your auditor or your IAM team — it gives both of them
+a substrate they can trust in.
