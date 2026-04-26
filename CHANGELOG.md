@@ -2,6 +2,74 @@
 
 All notable changes to UIAO are documented here. Format adapted from [Keep a Changelog](https://keepachangelog.com/); versioning follows [Semantic Versioning](https://semver.org/). Pre-1.0 minor versions may carry breaking changes.
 
+## [0.5.0] — 2026-04-25
+
+**Theme: adoption readiness — onramp + public-surface coverage.** Phase 1 (tracked in issue #183) closes the gap between *what's implemented* in `src/uiao/` and *what an external user can reach*. After 0.5.0 every ghost-`v1.0.0` feature promise is reachable through the documented public surface, every CLI command has a runnable example in `--help`, and a stranger goes from `git clone` to a full FedRAMP auditor bundle in 10 minutes.
+
+### Added
+
+- **`docs/docs/quickstart.md`** — 10-minute walkthrough from clone to auditor bundle (evidence, POA&M, SSP narrative) using a shipped synthetic SCuBA fixture. CI smoke test (`tests/test_quickstart_smoke.py`, 4 tests) prevents the doc from rotting (#197).
+- **`examples/quickstart/scuba-normalized.json`** — adopter-friendly copy of the synthetic M365 SCuBA fixture (5 KSI results: 2 PASS / 1 WARN / 2 FAIL / 1 unmapped) (#197).
+- **`docs/docs/adapter-authoring-tutorial.md`** — 30-minute walkthrough from zero to a merged adapter PR using the shipped ScubaGear adapter as the worked example. 7 numbered sections + 4 checkpoints + troubleshooting (#199).
+- **`uiao enforcement` sub-app** — UIAO_111 Enforcement Runtime is now CLI-reachable. Two commands: `list-policies` enumerates the built-in demo set, `run` evaluates a policy against a list of IR objects with state-count summary + optional JSON output. 5 behavioral tests in `tests/test_cli_enforcement.py` (#211).
+- **Quickstart "Want a REST API?" section** — names the `[api]` install extra, the uvicorn launch command, and the 5-route-module surface (auditor, boundary, health, orgpath, survey, 17 endpoints total). Quickstart now documents both public shapes (#213).
+- **Evidence-vs-IR division-of-responsibility note** in `src/uiao/rules/canon-consumer.md` — frames `evidence` as the canonical bundle/graph surface and `ir` as the pipeline-stage surface; provides a decision rule for new commands (#214).
+- **`docs/reports/cli-surface-audit-v0.4.0.md`** — M1 audit identifying 36 flat top-level commands, 92% missing examples, 6 already-modularized sub-apps as the target pattern (`1896d890`).
+- **`docs/reports/public-surface-audit-v0.5.0.md`** — M5 audit scoring the v0.5.0 surface against the ghost-`v1.0.0` feature list. Final score after this release: 6/6 reachable (#204).
+- **ADR-046** (`src/uiao/canon/adr/adr-046-cli-surface-convention.md`) — ratifies the sub-app-per-domain CLI convention; documents the 33-row rename table for the v0.5.0 hard-break and bans new flat top-level commands (`AGENTS.md` invariant I6 added) (#195).
+
+### Changed
+
+- **CLI surface reorganized into 11 sub-apps** per ADR-046. `cli/app.py` shrinks from 1,375 → 73 lines (sub-app registration only). 36 flat top-level commands carved into 5 new sub-app modules (`cli/{adapter,canon,conmon,generate,ir}.py`); `validate` and `validate-ssp` move under existing `oscal` sub-app (#195).
+  - **Breaking:** every pre-0.5.0 command name moves under a sub-app. Mapping table in ADR-046. No deprecation shims (zero known external users at v0.4.0; cheapest moment to break names).
+- **44/44 leaf commands now carry a runnable `Example::` block in `--help`** — was 4/44 pre-release (#198).
+- **Quarto site renders the new onboarding docs** and surfaces them through a `Getting started` navbar menu. Render pattern extended to include the two onboarding `.md` files (#201).
+
+### CLI rename map (v0.4.x → v0.5.0)
+
+Full mapping in ADR-046. Highlights:
+
+- `uiao generate-{ssp,docs,docx,pptx,sbom,…}` → `uiao generate {ssp,docs,…}` (11 commands)
+- `uiao ir-{scuba-transform,evidence-bundle,…}` → `uiao ir {scuba-transform,…}` (14 commands)
+- `uiao conmon-{process,export-oa,dashboard}` → `uiao conmon {process,…}` (3 commands)
+- `uiao adapter-run` / `adapter-run-scuba` → `uiao adapter run` / `run-scuba` (2 commands)
+- `uiao canon-check` → `uiao canon check`
+- `uiao validate` / `validate-ssp` → `uiao oscal validate` / `validate-ssp`
+
+### Public-surface coverage
+
+Score against the pre-OSS ghost-`v1.0.0` feature list:
+
+| Feature | v0.4.0 | v0.5.0 |
+|---|---|---|
+| Auditor API | ✅ | ✅ |
+| CQL Engine | ✅ | ✅ |
+| Evidence Graph (UIAO_113) | ✅ | ✅ |
+| Terraform adapter | ✅ | ✅ |
+| Compliance Orchestrator | ✅ | ✅ |
+| **Enforcement Runtime** | ❌ import-only | ✅ `uiao enforcement run` |
+
+### Tooling
+
+- **`tests/test_cli_help_smoke.py`** — walks the Typer command tree and asserts `--help` returns exit 0 for every registered command. 53 parametrized cases at v0.5.0 baseline; new commands automatically join coverage (#195). Catches the class of latent import bug PR #158 hit at v0.4.x.
+- **AGENTS.md invariant I6** — disallows new flat top-level CLI commands; new commands must live under a sub-app (#195).
+
+### Local verification (pre-0.5.0 cut)
+
+```
+$ python -m ruff check .
+All checks passed!
+
+$ python -m ruff format --check .
+381 files already formatted
+
+$ python -m mypy src/uiao
+Success: no issues found in 187 source files
+
+$ python -m pytest -q
+2060 passed, 156 skipped
+```
+
 ## [0.4.0] — 2026-04-23
 
 **Theme: substrate-governance realignment + CI-gate restoration.** Landing this arc closes every silently-disabled quality gate that accumulated after the ADR-032 single-package consolidation (2026-04-20). Every Python quality signal on `main` is now actively enforced.
