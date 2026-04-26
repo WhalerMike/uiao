@@ -1,0 +1,97 @@
+---
+title: "Training session — adapter-author onboarding (2026-04-26)"
+subtitle: "First UIAO_125 delivery"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Internal training session record: walking a new contributor through the adapter-author lifecycle from registry declaration to scheduler integration."
+---
+
+## Session metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_125 (Training) |
+| Track | Contributor |
+| Audience | New adapter author (one attendee) |
+| Duration | 90 minutes |
+| Format | Pair-coding walkthrough |
+| Materials | Live repo + this session record |
+
+## Goals
+
+By the end of the session the attendee can:
+
+1. Declare a new adapter in `src/uiao/canon/modernization-registry.yaml`
+   that passes the four canon-invariant gates (`gcc-boundary`,
+   `ssot-mutation`, `certificate-anchored`, `object-identity-only`).
+2. Wire the adapter into the UIAO_100 scheduler factory map
+   (`src/uiao/orchestrator/scheduler.py::_BUILTIN_ADAPTER_CLASSES`).
+3. Add a `scope:` declaration that satisfies the §0.4 consent-envelope
+   walker gate at P1.
+4. Add a `trust-anchor:` declaration that satisfies the §0.5 issuer-
+   chain walker gate at P1.
+5. Add a `ztmm-pillars:` declaration so the §3.6 ZTMM scorer attributes
+   the adapter to the right pillar.
+6. Run `make test` and watch the canon validators + walker hygiene
+   gates pass before opening the PR.
+
+## Walkthrough script
+
+### 30 min — Reading the substrate
+
+- Open `AGENTS.md` and read the module topology section.
+- `make walk` → understand what the substrate walker checks.
+- Read one existing adapter's registry entry end-to-end (we used
+  `terraform`).
+
+### 30 min — Declaration
+
+- Add a new adapter entry to `modernization-registry.yaml`. Required
+  fields walked through one at a time:
+  - `id`, `name`, `status: active`, `phase: phase-1`
+  - `vendor`, `runtime`, `runner-class`
+  - `scope:` (consent envelope, §0.4)
+  - `gcc-boundary`, `ssot-mutation`, `certificate-anchored`,
+    `object-identity-only`
+  - `trust-anchor:` (issuer chain, §0.5)
+  - `ztmm-pillars:` (ZTMM attribution, §3.6)
+  - `freshness-window-hours` (DRIFT-SEMANTIC, §1.1)
+  - `retention-years` (Data Lake, §3.7)
+- Run `python scripts/tools/docs_leak_check.py` and `make walk` after
+  every save; fix findings inline.
+
+### 20 min — Scheduler wire-up
+
+- Add a stub adapter class in `src/uiao/adapters/`.
+- Register it in `_BUILTIN_ADAPTER_CLASSES`.
+- Run a synthetic dispatch via the scheduler tests; verify evidence
+  lands in the run directory.
+
+### 10 min — PR walkthrough
+
+- Open a PR; watch CI: schema validation, ruff, mypy, pytest, link
+  check, substrate walker. Each gate explained as it runs.
+
+## Observations
+
+- The walker hygiene gates (§0.4 / §0.5 / §3.6 / §3.7) caught two
+  deliberately-introduced misconfigurations during the session — the
+  attendee saw the gates fire and remediated them in-PR. This is the
+  intended onboarding loop.
+- The four canon-invariant fields felt redundant when typing them out
+  by hand. Follow-up: add a `uiao adapter scaffold` CLI subcommand
+  that emits a registry-entry skeleton with the invariants pre-filled.
+
+## Action items
+
+| # | Owner | Action | Due |
+|---|---|---|---|
+| 1 | Substrate maintainer | File issue for `uiao adapter scaffold` | 2026-05-03 |
+| 2 | Attendee | Open PR for the practice adapter | 2026-04-30 |
+| 3 | Substrate maintainer | Add link to this record from `AGENTS.md` adapter-onboarding pointer | 2026-04-26 |
+
+## References
+
+- UIAO_125 Training Program spec
+- `AGENTS.md` adapter-author section
+- Roadmap §3.8 — first program delivery

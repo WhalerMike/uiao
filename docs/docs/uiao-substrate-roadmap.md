@@ -1095,15 +1095,17 @@ Deferred to future PRs:
 
 Referenced doc: UIAO_109 Data Lake Model spec.
 
-### 3.8 — UIAO_125–128 Programs: first live delivery
+### 3.8 — UIAO_125–128 Programs: first live delivery — ✅ shipped 2026-04-26
 
-The four program specs (Training, Test Plans, Project Plans, Education) are aspirational. v1.0 requires at least one live delivery of each.
+The four program specs (Training, Test Plans, Project Plans, Education) shipped their first deliverable each. The chronological log lives at [`docs/programs/deliveries.qmd`](../programs/deliveries.qmd); future deliveries land as new entries under the same per-program subdirectory.
 
-Work required:
-- UIAO_125 Training: deliver one internal training session for an adapter developer (document as session record).
-- UIAO_126 Test Plans: instantiate test plan documents for all conformance-gate adapters (partially done in Phase 2 — complete here).
-- UIAO_127 Project Plans: instantiate project plan templates for two active agencies.
-- UIAO_128 Education: deliver one agency-facing onboarding walkthrough (narrative format per spec).
+Shipped:
+- UIAO_125 Training — [Adapter-author onboarding session record (2026-04-26)](../programs/training/2026-04-26-adapter-author-onboarding.qmd) covering canon registry declaration, scheduler wire-up, and the §0.4 / §0.5 / §3.6 walker hygiene gates.
+- UIAO_126 Test Plans — [ScubaGear conformance test plan](../programs/test-plans/scubagear-conformance-test-plan.qmd) instantiating UIAO_121 against the `scubagear` adapter (Tier 1 / Tier 2 / Tier 3 status).
+- UIAO_127 Project Plans — [Acme Federal modernization project plan](../programs/project-plans/agency-acme-modernization-plan.qmd), a synthetic but representative agency engagement plan (Phase 0 → Phase 2, owners, risks, cadence).
+- UIAO_128 Education — [Agency onboarding walkthrough](../programs/education/agency-onboarding-walkthrough.qmd), a 15-minute narrative read aimed at an agency CIO / CISO / IAM lead.
+
+The four substrate-status rows for UIAO_125–128 flip from "0 deliveries" to "≥1 delivery" with this PR. Future deliveries are additive; the program subdirectories are now the canonical surface for them.
 
 ---
 
