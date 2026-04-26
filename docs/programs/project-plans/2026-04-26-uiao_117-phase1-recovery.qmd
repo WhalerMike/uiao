@@ -1,0 +1,118 @@
+---
+title: "UIAO_117 Phase 1 — Raw-Zone immutability + checkpoint label + manual SOP"
+subtitle: "Implementation record + manual recovery runbook"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Closes action item 117.1 from the §4.4 assessment: ships the Phase-1 recovery primitives (Raw-Zone immutability assertion + checkpoint label on every archive entry) and documents the Class A / Class B manual recovery SOP."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Closes | Action item 117.1 from the [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+| Target spec | UIAO_117 Recovery Layer — Phase 1 |
+| Plan version | 1.0 (first delivery) |
+
+## What shipped
+
+Phase 1 of the §4.4 UIAO_117 work — three concrete deliverables:
+
+1. **Raw-Zone immutability assertion** in `src/uiao/storage/data_lake.py`. `FilesystemArchive` now defaults to `immutable=True`. Once a `(run_id, adapter_id)` key is written, `put()` raises `RawZoneViolation` rather than silently overwriting. The legitimate ways to remove archived data remain `ArchiveManager.expire()` (retention-window aging) and explicit `backend.remove()` (operator action). Tests cover the immutable-default-blocks-overwrite path, the `immutable=False` escape hatch for scratch backends, and the legitimate remove-then-rewrite path.
+2. **Checkpoint label** on every `ArchiveEntry`. Every successful `archive_run` now carries `checkpoint=True` by construction; the boolean round-trips through the JSON index. Legacy index files written before the field landed deserialize cleanly with the field defaulted to `True` (since every archived run was a checkpoint by construction). Downstream tooling can enumerate restore points without re-deriving the property from the directory layout.
+3. **Manual recovery SOP** for failure classes A (localized service) and B (regional control-plane) — see below.
+
+The change is fully back-compatible with the §3.7 / Phase 1 of UIAO_109 surface: existing `archive_run` callers see the same return type and the same on-disk layout. The immutability assertion only fires on the previously-undefined "re-archive same key" path.
+
+## Manual recovery SOP — Classes A and B
+
+### Class A — Localized service failure
+
+**Symptom:** A single substrate component (orchestrator, Auditor API, EPL evaluator) is unhealthy. Adapters are fine; the data lake is intact.
+
+**Recovery:**
+
+1. Identify the failing component from operational logs (`logging` handler output for the runtime, or `enforcement` journal for blocked dispatches).
+2. Restart the component. The orchestrator is stateless between runs; the Auditor API is stateless; the EPL evaluator is stateless. No state is lost on restart.
+3. Replay any in-flight scheduler dispatch that was interrupted. The orchestrator will re-archive into a new `run_id` directory; the previous (partial) directory remains in place but is not indexed and will not be queried by the Auditor API.
+4. Verify recovery: hit `GET /api/v1/archive` against the Auditor API, confirm the latest run is present, confirm the per-adapter `evidence.json` payloads are non-empty.
+
+**Time to recover:** ≤ 5 minutes for any single component.
+
+### Class B — Regional control-plane failure
+
+**Symptom:** The substrate region is unreachable (network partition, host failure, infrastructure outage). Adapters cannot dispatch; Auditor API queries time out.
+
+**Recovery (Phase 1, manual):**
+
+1. Confirm the failure is region-scoped and not adapter-scoped (an Entra outage will look similar from the substrate's perspective; check Microsoft 365 Service Health before triaging the substrate).
+2. Stand up the substrate components in a fallback region against the same data lake mount (read-only). The lake is the source of truth; the orchestrator + Auditor API are stateless and rebuildable from canon.
+3. Promote the fallback region to read-write only after confirming the primary region is fully drained. Two writers against the same lake violate the single-writer-per-cohort invariant from UIAO_114; the immutability assertion shipped here will reject the second write but the recovered state will be incomplete.
+4. Re-run the most recent scheduler dispatch in the fallback region. Verify in `enforcement` journal that the new run lands and produces evidence.
+5. After the primary region is healed, replay any catch-up dispatches in the primary; the fallback region is decommissioned.
+
+**Time to recover:** ≤ 60 minutes assuming the fallback infrastructure is provisioned and the data lake mount is reachable. Actual time depends on the platform team's regional fail-over readiness.
+
+**Out-of-scope for Phase 1 (covered by Phase 2):**
+
+- Automated failover trigger / health-probe loop.
+- Provenance-signed failover-event records.
+- Cross-region data replication enforcement.
+- Federated-consensus disagreement resolution.
+
+### Class C / Class D
+
+Class C (data-zone corruption) and Class D (total system collapse) require the full UIAO_117 5-stage reconstitution pipeline (metadata → evidence → IR → KSI → OSCAL) with provenance-signed recovery manifests. That is Phase 2 work, deferred to the regulated-tenant engagement per the [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd).
+
+A Phase 1 partial mitigation exists: because the Raw Zone is now immutable, the bytes that produced any past KSI / OSCAL output are still on disk and can be re-fed through the orchestrator manually. That is a manual reconstitution, not the automated 5-stage pipeline; it is enough for "audit asks 'show me the evidence behind this finding from 18 months ago'" and not enough for "the lake itself has been corrupted, restore from off-region copy."
+
+## Implementation details (for future maintainers)
+
+### Public API delta
+
+| Module | Before | After |
+|---|---|---|
+| `data_lake.RawZoneViolation` | did not exist | new `RuntimeError` subclass |
+| `data_lake.FilesystemArchive` | `(root: Path)` | `(root: Path, immutable: bool = True)` |
+| `data_lake.FilesystemArchive.put` | silently overwrote existing key | raises `RawZoneViolation` if `immutable=True` |
+| `data_lake.ArchiveEntry` | 7 fields | 8 fields (`checkpoint: bool = True` added) |
+| `data_lake.ArchiveEntry.as_dict` | 7 keys | 8 keys (`checkpoint`) |
+| `data_lake._entry_from_dict` | did not exist | helper used by both `read_index` and `list_index`; defaults `checkpoint=True` for legacy entries |
+
+### Test coverage
+
+| Test class | New tests | What they assert |
+|---|---|---|
+| `TestArchiveEntry` | 3 | `checkpoint` defaults to `True`; round-trips through JSON; legacy index files default to `True` |
+| `TestFilesystemArchive` | 3 | Immutable default blocks overwrite; `immutable=False` allows overwrite; remove-then-put is legitimate |
+| `TestArchiveManager` | 2 | `archive_run` marks every entry as a checkpoint; re-archiving the same run raises `RawZoneViolation` |
+
+24 → 32 tests, all passing.
+
+## Action items closed
+
+| # | From assessment | Action | Status |
+|---|---|---|---|
+| 117.1 (a) | UIAO_117 Phase 1 | Designate archive root as Raw Zone with immutability assertion | ✅ shipped this PR |
+| 117.1 (b) | UIAO_117 Phase 1 | Snapshot orchestrator-run metadata as a checkpoint label | ✅ shipped this PR |
+| 117.1 (c) | UIAO_117 Phase 1 | Document the Class A / Class B manual recovery SOP | ✅ shipped above |
+
+## Action items still open
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 117.2 | UIAO_117 Phase 2 — automated 5-stage reconstitution + recovery manifest signing + drift audit + federation | Partner agency + substrate maintainer | First regulated-tenant engagement |
+
+## Roll-up to substrate-status
+
+| Row | From | To |
+|---|---|---|
+| UIAO_117 | ⚠️ aspirational — Phase 1 scheduled, Phase 2 deferred per assessment | 🟡 working — Phase 1 ✅ shipped 2026-04-26 (`src/uiao/storage/data_lake.py` immutability assertion + checkpoint label; manual SOP in [this plan](../project-plans/2026-04-26-uiao_117-phase1-recovery.qmd)); Phase 2 deferred per [§4.4 assessment](../project-plans/2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+
+## References
+
+- UIAO_117 Recovery spec — `src/uiao/canon/specs/recovery.md`
+- UIAO_109 Data Lake Model spec — `src/uiao/canon/specs/data-lake-model.md` (the storage substrate the Raw-Zone constraint runs on)
+- UIAO_114 HA spec — `src/uiao/canon/specs/ha.md` (single-writer-per-cohort invariant the SOP relies on)
+- §4.4 assessment — [2026-04-26-ha-perf-recovery-tenancy-assessment.qmd](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd)

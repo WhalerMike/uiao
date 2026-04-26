@@ -13,11 +13,14 @@ from pathlib import Path
 
 import yaml
 
+import pytest
+
 from uiao.storage.data_lake import (
     DEFAULT_RETENTION_YEARS,
     ArchiveEntry,
     ArchiveManager,
     FilesystemArchive,
+    RawZoneViolation,
     RetentionPolicy,
     load_retention_policies,
     policy_for,
@@ -175,6 +178,51 @@ class TestArchiveEntry:
         )
         assert not entry.is_expired()
 
+    def test_checkpoint_default_true(self):
+        entry = ArchiveEntry(
+            run_id="r1",
+            adapter_id="a",
+            archived_at="2026-04-26T00:00:00+00:00",
+            retention_until="2030-04-26T00:00:00+00:00",
+            archive_path="/x",
+        )
+        assert entry.checkpoint is True
+        assert entry.as_dict()["checkpoint"] is True
+
+    def test_checkpoint_round_trips_through_json(self, tmp_path):
+        backend = FilesystemArchive(root=tmp_path / "lake")
+        entry = ArchiveEntry(
+            run_id="r1",
+            adapter_id="a",
+            archived_at="2026-04-26T00:00:00+00:00",
+            retention_until="2030-04-26T00:00:00+00:00",
+            archive_path="/x",
+            checkpoint=False,
+        )
+        backend.write_index(entry)
+        roundtrip = backend.read_index("r1", "a")
+        assert roundtrip is not None
+        assert roundtrip.checkpoint is False
+
+    def test_checkpoint_defaults_true_when_missing_in_legacy_index(self, tmp_path):
+        # Index files written before the checkpoint field landed should
+        # deserialize cleanly with checkpoint defaulted to True.
+        backend = FilesystemArchive(root=tmp_path / "lake")
+        legacy = {
+            "run_id": "r1",
+            "adapter_id": "a",
+            "archived_at": "2026-04-26T00:00:00+00:00",
+            "retention_until": "2030-04-26T00:00:00+00:00",
+            "archive_path": "/x",
+            "evidence_class": "baseline",
+            "extra": {},
+        }
+        path = backend.root / "_index" / "r1__a.json"
+        path.write_text(json.dumps(legacy), encoding="utf-8")
+        roundtrip = backend.read_index("r1", "a")
+        assert roundtrip is not None
+        assert roundtrip.checkpoint is True
+
 
 # ---------------------------------------------------------------------------
 # FilesystemArchive
@@ -205,6 +253,39 @@ class TestFilesystemArchive:
         backend.write_index(entry)
         roundtrip = backend.read_index("r1", "a")
         assert roundtrip == entry
+
+    def test_immutable_default_blocks_overwrite(self, tmp_path):
+        backend = FilesystemArchive(root=tmp_path / "lake")
+        source = tmp_path / "run-1"
+        source.mkdir()
+        (source / "evidence.json").write_text("{}", encoding="utf-8")
+        backend.put(source, "adapterA/run-1")
+        with pytest.raises(RawZoneViolation):
+            backend.put(source, "adapterA/run-1")
+
+    def test_immutable_false_allows_overwrite(self, tmp_path):
+        backend = FilesystemArchive(root=tmp_path / "lake", immutable=False)
+        source = tmp_path / "run-1"
+        source.mkdir()
+        (source / "evidence.json").write_text('{"v": 1}', encoding="utf-8")
+        backend.put(source, "adapterA/run-1")
+        (source / "evidence.json").write_text('{"v": 2}', encoding="utf-8")
+        backend.put(source, "adapterA/run-1")
+        target = backend.root / "adapterA" / "run-1" / "evidence.json"
+        assert json.loads(target.read_text(encoding="utf-8")) == {"v": 2}
+
+    def test_immutable_path_after_remove_can_be_rewritten(self, tmp_path):
+        # The legitimate "rewrite" path is remove-then-put. Used by
+        # ArchiveManager.expire when retention ages a key out and a
+        # new run later happens to land on the same key (rare but
+        # possible if run_ids are reused).
+        backend = FilesystemArchive(root=tmp_path / "lake")
+        source = tmp_path / "run-1"
+        source.mkdir()
+        (source / "evidence.json").write_text("{}", encoding="utf-8")
+        backend.put(source, "adapterA/run-1")
+        backend.remove("adapterA/run-1")
+        backend.put(source, "adapterA/run-1")  # no exception
 
     def test_list_index_sorted(self, tmp_path):
         backend = FilesystemArchive(root=tmp_path / "lake")
@@ -279,6 +360,33 @@ class TestArchiveManager:
         ru = entries[0].retention_until_dt
         assert ru is not None
         assert ru.year == 2031
+
+    def test_archive_run_marks_entries_as_checkpoints(self, tmp_path):
+        run = _write_scheduler_run(
+            tmp_path,
+            [{"id": "entra-id"}, {"id": "scuba"}],
+            run_id="schedrun-001",
+        )
+        backend = FilesystemArchive(root=tmp_path / "lake")
+        mgr = ArchiveManager(backend=backend)
+        entries = mgr.archive_run(run)
+        assert all(e.checkpoint is True for e in entries)
+        # Round-trips through the index.
+        for entry in entries:
+            persisted = backend.read_index(entry.run_id, entry.adapter_id)
+            assert persisted is not None
+            assert persisted.checkpoint is True
+
+    def test_archive_run_re_archive_raises_raw_zone_violation(self, tmp_path):
+        run = _write_scheduler_run(tmp_path, [{"id": "entra-id"}], run_id="r")
+        backend = FilesystemArchive(root=tmp_path / "lake")
+        mgr = ArchiveManager(backend=backend)
+        mgr.archive_run(run)
+        # Same run replayed against an immutable backend is a Raw-Zone
+        # violation — the operator is expected to expire-then-rearchive
+        # if a true rewrite is needed.
+        with pytest.raises(RawZoneViolation):
+            mgr.archive_run(run)
 
     def test_evidence_class_pulled_from_payload(self, tmp_path):
         run = _write_scheduler_run(
