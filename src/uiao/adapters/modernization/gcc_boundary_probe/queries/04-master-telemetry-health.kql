@@ -1,0 +1,12 @@
+// Master telemetry health check — data volume by table over 24h.
+//
+// Symptom #6 — Sentinel correlation false-negatives from missing data sources.
+// Source: M365 GCC-Moderate Telemetry & Boundary Assessment, §13.3.4.
+// Provenance: inbox/New_FedRAMP_Boundary/M365_GCC-Moderate_Telemetry_and_Boundary_Assessment_External_with_images.docx
+// Use: catch unexpectedly low data volume that would silently break analytic rules joining tables (e.g., SigninLogs ⋈ DeviceEvents).
+// Operational guidance: alert on tables whose 24h volume drops below the trailing 30-day median by > 50%.
+
+Usage
+| where TimeGenerated > ago(1d)
+| summarize DataVolumeMB = sum(Quantity) by DataType
+| order by DataVolumeMB desc
