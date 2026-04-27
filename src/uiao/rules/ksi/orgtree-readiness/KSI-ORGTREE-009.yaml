@@ -1,0 +1,62 @@
+ksi_id: KSI-ORGTREE-009
+title: Service Accounts Marked Non-Interactive with Required Flags
+category: iam
+description: >
+  All Service Accounts in the OrgTree must be configured with the
+  `SERVICE_ACCOUNT` OrgTree classification flag, the
+  `DONT_EXPIRE_PASSWORD` UAC flag, and an applied Group Policy Object or
+  fine-grained password policy that denies interactive logon rights
+  (i.e. the "Deny log on locally" and "Deny log on through Remote Desktop
+  Services" user rights assignments).  Service accounts without this
+  trifecta of controls are at elevated risk of credential abuse via
+  interactive logon.
+security_objective: >
+  Prevent interactive use of service accounts, enforce password-rotation
+  policy exemptions only where formally classified as service identities,
+  and ensure the full lifecycle (creation, review, rotation, retirement)
+  of non-human accounts is governed and auditable.
+related_controls:
+  - AC-2
+  - AC-2(1)
+  - IA-2
+  - IA-5
+validation_type: automated
+evidence_sources:
+  - entra_id
+  - graph_api
+pass_criteria:
+  description: >
+    100% of accounts classified as SERVICE_ACCOUNT carry the
+    DONT_EXPIRE_PASSWORD UAC flag and are covered by a GPO or FGPP that
+    denies interactive logon.  Zero accounts carry DONT_EXPIRE_PASSWORD
+    without the SERVICE_ACCOUNT classification.
+  type: percentage
+  threshold: 100
+  operator: equals
+  logic: >
+    SELECT a.sam_account_name, a.uac_flags, a.service_account_flag,
+           a.interactive_logon_denied
+    FROM ad_accounts a
+    WHERE (a.service_account_flag = TRUE
+           AND (a.dont_expire_password = FALSE
+                OR a.interactive_logon_denied = FALSE))
+       OR (a.dont_expire_password = TRUE
+           AND a.service_account_flag = FALSE)
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: orgtree.validators.service_account_flags
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-04-27"
+enabled: true
+tags:
+  - orgtree
+  - orgtree-readiness
+  - service-accounts
+  - non-interactive
+  - password-policy
+  - account-management

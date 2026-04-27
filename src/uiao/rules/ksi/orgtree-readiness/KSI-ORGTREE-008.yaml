@@ -1,0 +1,59 @@
+ksi_id: KSI-ORGTREE-008
+title: Admin Accounts Are Tier-0 Separated from Primary User Accounts
+category: iam
+description: >
+  All privileged administrative accounts must be dedicated admin-only
+  accounts (Tier-0 separated) that are distinct from the administrator's
+  primary day-to-day user account.  An admin account is identified by
+  membership in a Tier-0 or Tier-1 privileged group.  The primary user
+  account of the same individual must NOT be a member of those groups.
+  Admin accounts must follow an agreed naming convention (e.g. `a-<upn>`
+  or `admin.<upn>`) and must be housed in a designated Tier-0 OU.
+security_objective: >
+  Enforce administrative tier separation so that compromise of a user's
+  day-to-day account does not yield direct privileged access, and so that
+  privileged actions are performed only through purpose-built, monitored
+  admin accounts subject to enhanced authentication requirements.
+related_controls:
+  - AC-6
+  - AC-6(5)
+  - IA-2
+  - IA-2(1)
+validation_type: automated
+evidence_sources:
+  - entra_id
+  - graph_api
+pass_criteria:
+  description: >
+    No primary user account (identified by standard UPN without admin-prefix
+    naming convention) is a direct or transitive member of any Tier-0 or
+    Tier-1 privileged group.  All such group memberships must be held by
+    dedicated admin accounts housed in the Tier-0 OU.
+  type: percentage
+  threshold: 100
+  operator: equals
+  logic: >
+    SELECT u.sam_account_name
+    FROM ad_users u
+    JOIN group_memberships gm ON u.sid = gm.member_sid
+    JOIN privileged_groups g ON gm.group_dn = g.group_dn
+    WHERE u.account_type = 'USER'
+      AND u.ou NOT IN (SELECT ou_dn FROM tier0_ous)
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: orgtree.validators.admin_tier_separation
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-04-27"
+enabled: true
+tags:
+  - orgtree
+  - orgtree-readiness
+  - tier-separation
+  - privileged-access
+  - admin-accounts
+  - least-privilege
