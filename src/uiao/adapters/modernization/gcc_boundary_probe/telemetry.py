@@ -31,6 +31,21 @@ from typing import Optional
 
 import httpx
 
+# Microsoft Graph base URLs by sovereign cloud.
+# Mirrors src/uiao/adapters/intune_adapter.py — kept local to avoid
+# coupling the gcc_boundary_probe to the Intune adapter module. The
+# probe.py companion intentionally hardcodes commercial endpoints
+# because its scope is GCC-Moderate boundary detection (per ADR-033);
+# only InBoundaryTelemetry is cloud-portable since its mechanism
+# (Graph management plane) is identical across sovereign clouds.
+GRAPH_ENDPOINTS: dict[str, str] = {
+    "commercial": "https://graph.microsoft.com",
+    "gcc-high": "https://graph.microsoft.us",
+    "dod": "https://dod-graph.microsoft.us",
+}
+DEFAULT_CLOUD = "commercial"
+DEFAULT_GRAPH_API_VERSION = "v1.0"
+
 
 @dataclass
 class DeviceHealthRecord:
@@ -59,29 +74,70 @@ class InBoundaryTelemetry:
     Collects device health telemetry within the FedRAMP boundary
     using Graph API management plane (not telemetry plane).
 
-    Graph management plane endpoints ARE available in GCC-Moderate:
+    Graph management plane endpoints are available in every sovereign
+    cloud (GCC-Moderate, GCC-High, DoD); only the hostname differs:
+
       - /deviceManagement/managedDevices (Intune enrollment/compliance)
       - /devices (Entra device objects)
       - /users/{id}/managedDevices (per-user device list)
 
-    These are management API calls, not telemetry streams.
-    They do not require DiagTrack or commercial telemetry endpoints.
+    These are management API calls, not telemetry streams. They do not
+    require DiagTrack or commercial telemetry endpoints.
+
+    Cloud selection
+    ---------------
+    Pass ``cloud="gcc-high"`` or ``cloud="dod"`` to target the sovereign
+    Graph hostnames (``graph.microsoft.us`` / ``dod-graph.microsoft.us``).
+    The default ``"commercial"`` also serves GCC-Moderate per ADR-033.
+    For tests or staging, pass ``graph_base=...`` to override the
+    resolved URL entirely.
     """
 
-    GRAPH_BASE = "https://graph.microsoft.com/v1.0"
-
-    def __init__(self, access_token: str, timeout: int = 30):
+    def __init__(
+        self,
+        access_token: str,
+        timeout: int = 30,
+        *,
+        cloud: str = DEFAULT_CLOUD,
+        graph_api_version: str = DEFAULT_GRAPH_API_VERSION,
+        graph_base: Optional[str] = None,
+    ):
         self._token = access_token
         self._headers = {"Authorization": f"Bearer {access_token}"}
         self._timeout = timeout
+        self._graph_base = self._resolve_graph_base(cloud, graph_api_version, graph_base)
+
+    @staticmethod
+    def _resolve_graph_base(
+        cloud: str,
+        graph_api_version: str,
+        explicit: Optional[str],
+    ) -> str:
+        """Resolve the Graph base URL.
+
+        Explicit ``graph_base`` wins (back-compat for callers pinning a
+        custom or staging endpoint). Otherwise the cloud is looked up in
+        ``GRAPH_ENDPOINTS`` and joined with the API version. Unknown
+        cloud names fail closed.
+        """
+        if explicit is not None:
+            return explicit
+        if cloud not in GRAPH_ENDPOINTS:
+            raise ValueError(
+                f"InBoundaryTelemetry: unknown cloud {cloud!r}. "
+                f"Supported clouds: {sorted(GRAPH_ENDPOINTS)}. "
+                "Set cloud= or pass graph_base= for an explicit override."
+            )
+        return f"{GRAPH_ENDPOINTS[cloud]}/{graph_api_version}"
 
     async def collect_intune_device_health(self) -> list[DeviceHealthRecord]:
         """
         Collect device health from Intune management plane via Graph.
-        This uses the management API, not telemetry — available in GCC-Moderate.
+        This uses the management API, not telemetry — available in every
+        sovereign cloud.
         """
         url = (
-            f"{self.GRAPH_BASE}/deviceManagement/managedDevices"
+            f"{self._graph_base}/deviceManagement/managedDevices"
             "?$select=id,deviceName,operatingSystem,osVersion,"
             "complianceState,lastSyncDateTime,totalStorageSpaceInBytes,"
             "freeStorageSpaceInBytes,physicalMemoryInBytes,"
@@ -131,12 +187,12 @@ class InBoundaryTelemetry:
     async def collect_update_compliance(self) -> dict[str, str]:
         """
         Collect Windows Update compliance state via Graph.
-        Windows Update for Business reports ARE available in GCC-Moderate
-        through the Graph deviceManagement reports endpoint.
-        Returns dict of device_id -> compliance_state.
+        Windows Update for Business reports are available across
+        sovereign clouds through the Graph deviceManagement reports
+        endpoint. Returns dict of device_id -> compliance_state.
         """
         url = (
-            f"{self.GRAPH_BASE}/deviceManagement/managedDevices"
+            f"{self._graph_base}/deviceManagement/managedDevices"
             "?$select=id,osVersion,deviceActionResults"
             "&$filter=operatingSystem eq 'Windows'"
             "&$top=999"
