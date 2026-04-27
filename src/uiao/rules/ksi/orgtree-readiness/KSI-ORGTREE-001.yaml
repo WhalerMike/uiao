@@ -1,0 +1,46 @@
+ksi_id: KSI-ORGTREE-001
+title: OrgUnit OrgPath Projection Completeness
+category: other
+description: >
+  Every Organizational Unit (OU) in the Active Directory forest must project
+  to a valid, fully-qualified OrgPath string in the UIAO canonical OrgTree
+  model.  Any OU that cannot be resolved to a unique, non-empty OrgPath is
+  flagged as a readiness gap and blocks dependent adapters (Intune, Arc, Survey).
+security_objective: >
+  Ensure the organisational hierarchy is unambiguously represented in the
+  identity substrate so that policy targeting, access control, and audit
+  trails are anchored to authoritative structural identifiers.
+related_controls:
+  - CM-8
+  - PM-5
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    100% of OUs resolve to a non-null, schema-valid OrgPath.
+    Zero OUs with null, empty, or duplicate OrgPath values.
+  type: percentage
+  threshold: 100
+  operator: equals
+  logic: >
+    SELECT ou_distinguished_name, org_path
+    FROM orgtree_ou_projection
+    WHERE org_path IS NULL OR org_path = ''
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: orgtree.validators.ou_orgpath_projection
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-04-27"
+enabled: true
+tags:
+  - orgtree
+  - orgtree-readiness
+  - ou-structure
+  - orgpath
+  - inventory
