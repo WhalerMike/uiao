@@ -1,0 +1,99 @@
+---
+title: "UIAO_119 — Migration sandbox (preview a tenant or env change before promoting)"
+subtitle: "Closes assessment action 119.3 (c)"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Closes action 119.3 (c) from the §4.4 assessment: ships the migration sandbox primitive that lets an operator clone a TenantContext, run a pipeline under both 'before' and 'after' contexts, and emit a structured diff report so risky changes can be validated before promotion."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Closes | Action 119.3 (c) from the [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+| Target spec | UIAO_119 Tenancy Strategy — migration sandbox |
+| Plan version | 1.0 (first delivery) |
+| Builds on | [UIAO_119 v1 data layer](2026-04-26-uiao_119-v1-data-layer.qmd), [v2 feature-flag system](2026-04-26-uiao_119-v2-feature-flags.qmd), [check-point wiring wave 1](2026-04-26-uiao_119-checkpoint-wiring.qmd) |
+
+## What shipped
+
+`src/uiao/governance/migration_sandbox.py` — a generic sandbox primitive that lets an operator preview the effect of a tenant or environment change before promoting it.
+
+The shape is deliberately abstract — any callable `(TenantContext) -> Iterable[Any]` works as the runner. The first natural consumers are `EnforcementRuntime.dispatch_context` (preview block-action behavior across environments) and `ArchiveManager.archive_run` (preview archive output across tenants), but future consumers (orchestrator dispatch, CQL queries) plug in without rework.
+
+### `MigrationSandbox`
+
+```python
+sandbox = MigrationSandbox(runner=lambda ctx: dispatch(ctx))
+diff = sandbox.run(before=current_ctx, after=proposed_ctx)
+if diff.is_clean:
+    promote(proposed_ctx)
+else:
+    print(sandbox.explain(diff))
+    print(diff.as_dict())
+```
+
+Fields:
+- `runner: Callable[[TenantContext], Iterable[Any]]` — the pipeline under preview.
+- `serialize: Callable[[Any], str] = repr` — turns each output into a stable string for set-difference. Operators override this for structured outputs (e.g., serialize an `EnforcementAction` to `f"{a.policy_id}:{a.status}"`).
+
+Methods:
+- `run(*, before, after, before_label="before", after_label="after") -> SandboxDiff` — invoke the runner under each context, diff results.
+- `explain(diff) -> str` — one-line human summary; empty when `diff.is_clean`.
+
+### `SandboxRun`
+
+Frozen dataclass — one execution of the runner under one `TenantContext`. Carries the label, the `TenantContext`, and the tuple of serialized outputs. `as_dict()` for JSON emission.
+
+### `SandboxDiff`
+
+Frozen dataclass — structural diff with `added` / `removed` / `unchanged` tuples (each lexicographically sorted for deterministic output). `is_clean` property is `True` when added and removed are both empty. `as_dict()` for JSON emission.
+
+## Public API delta
+
+| Symbol | Before | After |
+|---|---|---|
+| `governance.migration_sandbox` | did not exist | new module |
+| `governance.migration_sandbox.MigrationSandbox` | — | new dataclass |
+| `governance.migration_sandbox.SandboxRun` | — | new frozen dataclass |
+| `governance.migration_sandbox.SandboxDiff` | — | new frozen dataclass |
+
+Pure addition — no existing callers affected. The sandbox does not mutate state on either run; the operator is responsible for ensuring the runner is side-effect-free or scoped to a temporary location (e.g., a tmp_path-backed `EnforcementJournal`).
+
+## Test coverage: 10 new
+
+| Test class | Tests | What they assert |
+|---|---|---|
+| `TestMigrationSandboxBasic` | 7 | Identical runner is clean; environment-branching runner produces non-empty diff; `added`/`removed`/`unchanged` are sorted; custom serialize works; `explain` empty on clean diff; `explain` summarizes counts; custom labels round-trip into `explain` |
+| `TestSandboxDataShapes` | 2 | `SandboxRun.as_dict` exposes context fields; `SandboxDiff.as_dict` round-trips |
+| `TestEnforcementIntegration` | 1 | End-to-end: real `EnforcementRuntime` + `BlockHandler` + canon-shaped `epl.action.block.enabled` flag — dev→prod migration shows `dispatched`→`skipped` transition for the block action |
+
+**10 pass** in `test_migration_sandbox.py`; **270 pass** across the wider UIAO_119 consumer set (`+ tenancy + feature_flags + enforcement + data_lake + substrate_walker + auditor_api_v1 + cql + epl`). No regressions.
+
+## Action items closed
+
+| # | Action | Status |
+|---|---|---|
+| 119.3 (c) | Migration sandbox | ✅ shipped this PR |
+
+## Action items still open
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 119.3 (b) wave 2 | Wire `auditor-api.cql.experimental-ops` and `tenancy.environment.prod-promote` once those consumer surfaces ship | Substrate maintainer | After CQL v2 ops + CLI promote land |
+| 119.3 (b) wave 3 | Wire orchestrator plane selection through the flag system | Substrate maintainer | After orchestrator optional-plane registry |
+| 119.5 | UIAO_124 Adapter Ops Runbook entry for the canary → standard → regulated rollout flow (now that the sandbox exists, the runbook has a concrete tool to reference) | Substrate maintainer | After 119.3 (b) wave 3 |
+
+## Roll-up to substrate-status
+
+| Row | From | To |
+|---|---|---|
+| UIAO_119 | 🟡 working — v1 + v2 + tagging + check-points + API filter shipped | 🟡 working — **+ migration sandbox ✅ shipped 2026-04-26** ([impl record](2026-04-26-uiao_119-migration-sandbox.qmd)); 119.3 (b) waves 2+3 + 119.5 ops runbook open per assessment |
+
+## References
+
+- UIAO_119 Tenancy spec — `src/uiao/canon/specs/tenancy.md`
+- §4.4 assessment — [`2026-04-26-ha-perf-recovery-tenancy-assessment.qmd`](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd)
+- UIAO_111 Enforcement Runtime — natural sandbox consumer (test integration)
+- UIAO_109 Data Lake Model — second natural consumer (deferred to a future test suite or CLI command)
