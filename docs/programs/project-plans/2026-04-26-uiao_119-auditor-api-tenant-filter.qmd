@@ -1,0 +1,100 @@
+---
+title: "UIAO_119 — Auditor API tenant_id + environment filter on /journal + /archive"
+subtitle: "Consumer-side wire-up that activates the journal/archive tagging flags"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Closes the consumer-side gap on action item 119.4: adds tenant_id and environment query parameters to GET /api/v1/enforcement/journal and GET /api/v1/archive, and flips the two tagging feature flags from 'deny all' to enabled in dev/stage internal/canary now that the consumer side exists."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Closes | Consumer-side gap on the [tagging wire-up](2026-04-26-uiao_119-journal-tagging.qmd) (action 119.4) |
+| Target spec | UIAO_119 Tenancy Strategy — Auditor API filter |
+| Plan version | 1.0 (first delivery) |
+| Builds on | [UIAO_119 v1 data layer](2026-04-26-uiao_119-v1-data-layer.qmd), [v2 feature-flag system](2026-04-26-uiao_119-v2-feature-flags.qmd), [tagging wire-up](2026-04-26-uiao_119-journal-tagging.qmd), [check-point wiring wave 1](2026-04-26-uiao_119-checkpoint-wiring.qmd) |
+
+## What shipped
+
+The journal-and-archive tagging shipped in PR #245 was unobservable: records carried `tenant_id` / `actor` / `environment` / `tenant_class` in their `extra` payload, but no API consumer could filter on them. This PR adds the consumer side and flips the two tagging feature flags from "deny all" to enabled in `dev` / `stage` for `internal` / `canary` tenants — completing the rollout knob.
+
+### `src/uiao/api/routes/enforcement.py` — `GET /api/v1/enforcement/journal`
+
+Two new query parameters on the existing endpoint:
+
+- `tenant_id` — filter records whose `extra.tenant_id` matches.
+- `environment` — filter records whose `extra.environment` matches.
+
+Both compose with the existing `policy_id` and `target` filters. `total_unfiltered` continues to report the pre-filter record count so a caller can detect "tagging not yet enabled" by seeing `count == 0` while `total_unfiltered > 0`.
+
+### `src/uiao/api/routes/archive.py` — `GET /api/v1/archive`
+
+Same two parameters with the same semantics, applied to `ArchiveEntry.extra`. Composes with the existing `adapter_id`, `run_id`, and `evidence_class` filters.
+
+### `src/uiao/canon/feature-flags.yaml` — flag canon flip
+
+Both `enforcement.journal.tenant-tagging` and `archive.entry.tenant-tagging` flip from:
+
+```yaml
+environments: []
+tenant_classes: []
+```
+
+to:
+
+```yaml
+environments: [dev, stage]
+tenant_classes: [internal, canary]
+```
+
+Standard / regulated tenants stay opted-out by default — they enable the flags in their own canon overlay once their operator-side filters are wired in.
+
+## Public API delta
+
+| Endpoint | Before | After |
+|---|---|---|
+| `GET /api/v1/enforcement/journal` | `limit`, `policy_id`, `target` | + `tenant_id`, `environment` |
+| `GET /api/v1/archive` | `adapter_id`, `run_id`, `evidence_class` | + `tenant_id`, `environment` |
+
+Untagged records (legacy entries pre-dating the tagging feature, or entries written when the flag was disabled) are excluded by either tenant filter — the filter requires an exact match on `extra.<key>`. Callers that need legacy records in the result set omit the filter.
+
+## Test coverage: 8 new
+
+| Class | Tests | What they assert |
+|---|---|---|
+| `TestJournalTenantFilter` (`test_auditor_api_v1.py`) | 4 | `tenant_id` filter; `environment` filter; compound `tenant_id`+`environment`; legacy untagged records excluded |
+| `TestArchiveTenantFilter` (`test_auditor_api_v1.py`) | 4 | Same matrix for the archive endpoint |
+
+**29 pass** in `test_auditor_api_v1.py` (was 21); **131 pass** across the wider tagging consumer set. No regressions.
+
+## Action items closed
+
+| # | Action | Status |
+|---|---|---|
+| Auditor API consumer | `/journal` filter on `tenant_id` + `environment`; `/archive` filter same | ✅ shipped this PR |
+| Flag canon flip | Move `*tenant-tagging` flags from "deny all" to enabled in dev / stage internal / canary | ✅ shipped this PR |
+
+## Action items still open
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 119.3 (b) wave 2 | Wire `auditor-api.cql.experimental-ops` and `tenancy.environment.prod-promote` once those consumer surfaces ship | Substrate maintainer | After CQL v2 ops + CLI promote land |
+| 119.3 (b) wave 3 | Wire orchestrator plane selection through the flag system | Substrate maintainer | After orchestrator optional-plane registry |
+| 119.3 (c) | Migration sandbox | Substrate maintainer | Independent |
+| 119.5 | UIAO_124 Adapter Ops Runbook entry for the canary → standard → regulated rollout flow | Substrate maintainer | After 119.3 (b) wave 3 |
+
+## Roll-up to substrate-status
+
+| Row | From | To |
+|---|---|---|
+| UIAO_119 | 🟡 working — v1 + v2 + tagging + check-point wiring wave 1 shipped | 🟡 working — **+ Auditor API tenant filter ✅ shipped 2026-04-26** ([impl record](2026-04-26-uiao_119-auditor-api-tenant-filter.qmd)); tagging flags now enabled in dev / stage for internal / canary; 119.3 (b) waves 2+3 + migration sandbox open per assessment |
+
+## References
+
+- UIAO_119 tagging wire-up — [`2026-04-26-uiao_119-journal-tagging.qmd`](2026-04-26-uiao_119-journal-tagging.qmd) (the producer side this PR consumes)
+- UIAO_119 v2 feature-flag system — [`2026-04-26-uiao_119-v2-feature-flags.qmd`](2026-04-26-uiao_119-v2-feature-flags.qmd) (the canon this PR flips)
+- UIAO_105 Auditor API spec — `src/uiao/canon/specs/auditor-api.md`
+- UIAO_111 Enforcement Runtime — emits the journal records this PR filters
+- UIAO_109 Data Lake Model — emits the archive entries this PR filters
