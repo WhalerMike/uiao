@@ -226,9 +226,9 @@ Every record listed here exists verbatim in `synthetic-forest-export.json`
 | 4 | `ws-004.synthetic.local` | Computer | `INELIGIBLE` | tpm=1.2, hvci=False, OS=Win7 Ent |
 | 5 | `srv-win-01.synthetic.local` | Server | `NEEDS_NETWORK_EGRESS` | WS2022, egress=False |
 | 6 | `srv-win-02.synthetic.local` | Server | `READY` | WS2019, egress=True |
-| 7 | `srv-win-03.synthetic.local` | Server | `NEEDS_OS_UPGRADE` | WS2016, egress=True |
-| 8 | `srv-win-04.synthetic.local` | Server | `INELIGIBLE` | WS2012R2, egress=False |
-| 9 | `srv-lnx-01.synthetic.local` | Server | (see fixture `_arc_verdict`) | RHEL9 |
+| 7 | `srv-win-03.synthetic.local` | Server | `READY` | WS2016, egress=True (Arc supports 2016+) |
+| 8 | `srv-win-04.synthetic.local` | Server | `NEEDS_OS_UPGRADE` | WS2012R2, egress=False (ESU-only) |
+| 9 | `srv-lnx-01.synthetic.local` | Server | `READY` | RHEL9, egress=True |
 | 10 | `frank.miller` | User | disabled | uac=514, lastLogon=2020-11-16 |
 | 11 | `grace.wilson` | User | stale-logon | uac=512, lastLogon=2020-11-16 |
 | 12 | `karen.thomas` | User | smartcard-required | uac=262656 |
@@ -253,7 +253,7 @@ The fixture records its own provenance in the top-level `_meta` field:
     "orphaned_sid": "S-1-5-21-3456789012-1234567890-987654321-9999",
     "orphaned_sid_injected_in": "Domain Admins member list",
     "intune_verdicts_computers": "READY×6, NEEDS_OS_UPGRADE×6, NEEDS_TPM×6, NEEDS_HVCI×6, INELIGIBLE×6",
-    "arc_verdicts_servers": "READY×4, NEEDS_OS_UPGRADE×4, NEEDS_NETWORK_EGRESS×4, INELIGIBLE×3"
+    "arc_verdicts_servers": "READY×8, NEEDS_OS_UPGRADE×2, NEEDS_NETWORK_EGRESS×5"
   }
 }
 ```

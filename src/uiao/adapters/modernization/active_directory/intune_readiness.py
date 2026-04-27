@@ -157,18 +157,32 @@ def _parse_os_build(os_version: str) -> int:
     """
     Extract the build number from an AD operatingSystemVersion string.
 
-    AD stores OS version as ``"major.minor.build[.revision]"``.
+    Handles two common AD formats:
+      "major.minor.build[.revision]"  — standard LDAP attribute form
+      "major.minor (build)"           — display form sometimes returned by AD UI
+
     Examples:
-      "10.0.19045"   → 19045   (Windows 10 22H2)
-      "10.0.22631"   → 22631   (Windows 11 23H2)
-      "10.0.17763"   → 17763   (Server 2019)
-      "10.0.14393"   → 14393   (Server 2016)
-      "22.04"        → 0       (Linux — no valid Windows build)
+      "10.0.19045"        → 19045   (Windows 10 22H2)
+      "10.0 (19045)"      → 19045   (display form)
+      "10.0.22631"        → 22631   (Windows 11 23H2)
+      "10.0.17763"        → 17763   (Server 2019)
+      "10.0.14393"        → 14393   (Server 2016)
+      "22.04"             → 0       (Linux — no valid Windows build)
 
     Returns 0 if the string cannot be parsed into a meaningful build number.
     """
+    import re as _re
+
     if not os_version:
         return 0
+    # Try parenthesised form: "10.0 (19045)"
+    paren_match = _re.search(r"\((\d+)\)", os_version)
+    if paren_match:
+        try:
+            return int(paren_match.group(1))
+        except ValueError:
+            return 0
+    # Try dotted form: "10.0.19045"
     parts = os_version.strip().split(".")
     if len(parts) >= 3:
         try:
