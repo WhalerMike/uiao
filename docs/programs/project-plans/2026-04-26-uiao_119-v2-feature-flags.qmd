@@ -1,0 +1,107 @@
+---
+title: "UIAO_119 v2 — Feature-flag system + reference flags + walker hygiene"
+subtitle: "Phased rollout primitive on top of the v1 data layer"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Closes part of action item 119.3 from the §4.4 assessment: ships the feature-flag system that lets the substrate roll features out gradually (Dev → Stage canary → Prod canary → Prod standard → Prod regulated) without committing every callsite to 'this feature is on for everyone'. Migration sandbox + journal tagging are separate follow-ups."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Closes | Part of action item 119.3 from the [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+| Target spec | UIAO_119 Tenancy Strategy — v2 feature-flag system |
+| Plan version | 1.0 (first delivery) |
+| Builds on | [UIAO_119 v1 data layer](2026-04-26-uiao_119-v1-data-layer.qmd) |
+
+## What shipped
+
+`src/uiao/governance/feature_flags.py` — new module on top of the [v1 data layer](2026-04-26-uiao_119-v1-data-layer.qmd):
+
+- **`FeatureFlag`** dataclass — name, `spec_ref`, `expires_at`, and four enablement dimensions (environments, tenant classes, tenant ids, actors). `is_enabled(ctx, tenant=None)` evaluates with the rule:
+  1. **Explicit overrides win** — if `ctx.actor` is in `enabled_actors` or `ctx.tenant_id` is in `enabled_tenant_ids`, return `True` regardless of environment / class. Used sparingly; debugging tool, not policy.
+  2. **Environment gate** — `ctx.environment` must be in `enabled_environments`.
+  3. **Tenant-class gate** — when a resolved `Tenant` is supplied, its `tenant_class` must be in `enabled_tenant_classes`. Without a resolved tenant the gate is skipped.
+
+- **`FeatureFlagRegistry`** — holds the loaded flags; offers a typed `is_enabled(name, ctx, tenant=None)` lookup. **Missing flags evaluate to `False`** — fail-closed is the right default for a check on a typoed / undeclared flag.
+
+- **`load_flags(paths)`** + **`load_canonical_flags(workspace_root=None)`** — YAML loaders following the EPL / CQL pattern. Later registries override earlier; missing files are silently skipped; unknown environment / tenant_class strings fall back to `DEV` / `STANDARD` (the loader stays usable; the walker emits the hygiene finding).
+
+- **`parse_expiry(value)`** — ISO-8601 date parser. Returns `None` on empty / malformed; the walker uses it for the hygiene gate.
+
+`src/uiao/canon/feature-flags.yaml` — five reference flags shipped as canon evidence:
+
+| Flag | Spec ref | Why it exists |
+|---|---|---|
+| `epl.action.block.enabled` | UIAO_111 §3.3 + UIAO_116 §3.5 | Gates the EPL `block` action freezing scheduler dispatch on a DRIFT-AUTHZ finding. Internal + canary in dev / stage only until §3.3 round-2 ships a soft-block UX. |
+| `data-lake.immutable.strict` | UIAO_117 §recovery-invariants | Whether `RawZoneViolation` is raised on re-archive. Internal + canary across all environments; standard / regulated tenants opt in once their pipeline is wired single-writer. |
+| `auditor-api.cql.experimental-ops` | UIAO_108 §3.2 | Gates CQL operators outside the v1 spec (subqueries, joins). Internal only — agency operators see only the v1 surface so canon stays the contract. |
+| `tenancy.environment.prod-promote` | UIAO_119 §rollout (this PR) | Permission to promote a `TenantContext.environment` from stage to prod via the CLI. Internal in dev / stage during v2 rollout. |
+| `enforcement.journal.tenant-tagging` | UIAO_119 v2 action item 119.4 | Whether `EnforcementJournal` records carry the tag payload. Default off until the wire-up PR (action 119.4) lands. |
+
+`src/uiao/substrate/walker.py::_scan_feature_flags` — new walker hygiene gate that fires on:
+
+- Missing or empty `spec_ref:` (P3 DRIFT-SCHEMA — flags without a documented owner rot).
+- Missing `expires_at:` (P3 — undocumented expirations cause flag accumulation).
+- Malformed `expires_at:` that isn't ISO-8601 YYYY-MM-DD (P3).
+- Unknown environment values (anything outside `dev / stage / prod` — P3).
+
+Absence of `feature-flags.yaml` is **not** a finding — single-tenant deployments that don't need flags evaluate every check to `False` (deny by default).
+
+## Public API delta
+
+| Symbol | Before | After |
+|---|---|---|
+| `governance.feature_flags` | did not exist | new module |
+| `governance.feature_flags.FeatureFlag` | — | new dataclass |
+| `governance.feature_flags.FeatureFlagRegistry` | — | new dataclass with `is_enabled` evaluator |
+| `governance.feature_flags.load_flags` | — | new |
+| `governance.feature_flags.load_canonical_flags` | — | new |
+| `governance.feature_flags.parse_expiry` | — | new helper |
+| `walker._scan_feature_flags` | did not exist | new hygiene scan, fired from `walk_substrate` |
+
+Back-compat: pure addition. Existing callers see no signature changes; the new walker scan returns silently when no `feature-flags.yaml` is present.
+
+## Test coverage
+
+| Test class | Tests | What they assert |
+|---|---|---|
+| `TestFeatureFlagEvaluation` | 9 | Environment match / mismatch; tenant-class gate enabled / disabled; explicit actor + tenant_id overrides; no-tenant skips class gate; empty-environments deny by default; `as_dict` round-trip |
+| `TestFeatureFlagRegistry` | 2 | Missing flag returns `False`; evaluation routes through registry |
+| `TestLoadFlags` | 6 | Missing file → empty; simple load; later override; invalid YAML skipped; missing name dropped; unknown env string falls back |
+| `TestLoadCanonicalFlags` | 2 | Synthetic canonical layout resolves; live-canon smoke against `src/uiao/canon/feature-flags.yaml` |
+| `TestParseExpiry` | 3 | ISO date; empty returns None; malformed returns None |
+| `TestWalkerFeatureFlagScan` | 6 | Missing `spec_ref` P3; missing / malformed `expires_at` P3; unknown env P3; well-formed flag clean; absent file → no findings |
+
+**28 new tests in `tests/test_feature_flags.py`. 86 total** in the tenancy + feature-flags + walker test scope; **2066 total** across the impl suite (2 pre-existing trestle failures unrelated). No regressions.
+
+## Action items closed
+
+| # | Action | Status |
+|---|---|---|
+| 119.3 (a) | Feature-flag system: decorator + toggle table; canary-by-flag; scoped by env / tenant / actor | ✅ shipped this PR (model + registry + canon + walker) |
+
+## Action items still open
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 119.3 (b) | Wire feature-flag check-points into orchestrator plane selection (`scheduler.py`), Auditor API CQL evaluator, EPL block action, and Data Lake immutability assertion | Substrate maintainer | Next iteration |
+| 119.3 (c) | Migration sandbox: clone `TenantContext`, run pipeline, snapshot outputs, emit diff report | Substrate maintainer | Next iteration |
+| 119.4 | Wire tenant + environment tagging into EnforcementJournal records and ArchiveEntry extras | Substrate maintainer | After 119.3 |
+| 119.5 | Document the canary → standard → regulated rollout flow as a UIAO_124 Adapter Ops Runbook entry once the feature-flag check-points land | Substrate maintainer | After 119.3 (b) |
+
+## Roll-up to substrate-status
+
+| Row | From | To |
+|---|---|---|
+| UIAO_119 | 🟡 working — v1 data layer shipped | 🟡 working — **v2 feature-flag system ✅ shipped 2026-04-26** (`src/uiao/governance/feature_flags.py` + 5 reference flags in `src/uiao/canon/feature-flags.yaml` + walker hygiene; 28 new tests); v2 check-point wiring + migration sandbox + journal tagging open per assessment |
+
+## References
+
+- UIAO_119 Tenancy spec — `src/uiao/canon/specs/tenancy.md`
+- UIAO_119 v1 data layer — [`2026-04-26-uiao_119-v1-data-layer.qmd`](2026-04-26-uiao_119-v1-data-layer.qmd)
+- §4.4 assessment — [2026-04-26-ha-perf-recovery-tenancy-assessment.qmd](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd)
+- UIAO_111 Enforcement Runtime — consumer of `epl.action.block.enabled`
+- UIAO_117 Recovery Layer Phase 1 — consumer of `data-lake.immutable.strict`

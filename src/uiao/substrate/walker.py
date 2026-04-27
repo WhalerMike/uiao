@@ -217,6 +217,7 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
     _scan_issuer_chain(root, report)
     _scan_ztmm_pillars(root, report)
     _scan_tenants(root, report)
+    _scan_feature_flags(root, report)
 
     return report
 
@@ -302,6 +303,104 @@ def _scan_tenants(root: Path, report: SubstrateReport) -> None:
                     ),
                 )
             )
+
+
+_VALID_FEATURE_FLAG_DIMENSIONS: frozenset[str] = frozenset({"dev", "stage", "prod"})
+
+
+def _scan_feature_flags(root: Path, report: SubstrateReport) -> None:
+    """UIAO_119 v2 / §4.4 feature-flag declaration scan.
+
+    Each flag in ``src/uiao/canon/feature-flags.yaml`` MUST declare:
+
+    - a non-empty ``spec_ref:`` linking to the canon spec or roadmap
+      section that defines it (P3 — flags without an owner rot);
+    - an ``expires_at:`` ISO-8601 date (P3 — undocumented expirations
+      mean dead flags accumulate);
+    - environments drawn from ``dev / stage / prod`` only (P3 —
+      typos in env names silently disable the flag).
+
+    The file is **optional** — a substrate with no flags evaluates
+    every flag check to ``False`` (deny by default). Absence is not a
+    finding; only declared flags with broken metadata are flagged.
+    """
+    path = root / "src" / "uiao" / "canon" / "feature-flags.yaml"
+    if not path.is_file():
+        return
+    try:
+        doc = _load_yaml(path)
+    except yaml.YAMLError:
+        return
+    if not doc:
+        return
+    rel = str(path.relative_to(root))
+    flags = doc.get("flags") if isinstance(doc, dict) else None
+    if not isinstance(flags, list):
+        return
+    for entry in flags:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name", "")).strip()
+        if not name:
+            continue
+        spec_ref = str(entry.get("spec_ref", "")).strip()
+        if not spec_ref:
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-SCHEMA",
+                    severity="P3",
+                    path=f"{rel}#{name}",
+                    detail=(
+                        f"feature flag '{name}' missing spec_ref; flags without a "
+                        "documented owner rot (UIAO_119 v2 hygiene)"
+                    ),
+                )
+            )
+        expires_at = str(entry.get("expires_at", "")).strip()
+        if expires_at:
+            try:
+                from datetime import date as _date
+
+                _date.fromisoformat(expires_at)
+            except ValueError:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-SCHEMA",
+                        severity="P3",
+                        path=f"{rel}#{name}",
+                        detail=(
+                            f"feature flag '{name}' has malformed expires_at "
+                            f"'{expires_at}'; expected ISO-8601 date (YYYY-MM-DD)"
+                        ),
+                    )
+                )
+        else:
+            report.findings.append(
+                DriftFinding(
+                    drift_class="DRIFT-SCHEMA",
+                    severity="P3",
+                    path=f"{rel}#{name}",
+                    detail=(
+                        f"feature flag '{name}' missing expires_at; undocumented expirations cause flag accumulation"
+                    ),
+                )
+            )
+        envs = entry.get("environments") or []
+        if isinstance(envs, list):
+            for env in envs:
+                env_str = str(env).strip().lower()
+                if env_str and env_str not in _VALID_FEATURE_FLAG_DIMENSIONS:
+                    report.findings.append(
+                        DriftFinding(
+                            drift_class="DRIFT-SCHEMA",
+                            severity="P3",
+                            path=f"{rel}#{name}",
+                            detail=(
+                                f"feature flag '{name}' lists unknown environment "
+                                f"'{env_str}'; expected one of dev / stage / prod"
+                            ),
+                        )
+                    )
 
 
 def _scan_ztmm_pillars(root: Path, report: SubstrateReport) -> None:
