@@ -376,11 +376,32 @@ def derive_candidate_orgpath(dn: str, codebook: set[str]) -> Optional[str]:
     """
     Return a candidate OrgPath derived from the OU components of *dn*.
 
-    This is a *suggestion only*. The authoritative OrgPath projection lives
-    in ``orgpath.py`` (WS-A4). This function is a thin wrapper so the
-    enrichment pipeline can call it without knowing the codebook lookup
-    internals.
+    Strategy (Phase 1.5 fix #1 — delegates to A4 canonical implementation):
+      1. If *codebook* is non-empty, call ``orgpath.derive_orgpath`` (WS-A4)
+         which returns the first codebook hit or None.
+      2. When A4 returns a hit, that is the answer.
+      3. When A4 returns None (no codebook hit) OR the codebook is empty,
+         fall back to the local ``derive_orgpath_from_dn`` which generates
+         a valid-format candidate for the governance review queue even when
+         the code is not yet registered in the codebook.
+
+    Import is deferred to break the orgpath→survey circular dependency
+    (orgpath imports DriftFinding and derive_orgpath_from_dn from survey).
     """
+    # Late import to avoid circular dependency.
+    from uiao.adapters.modernization.active_directory.orgpath import (  # noqa: PLC0415
+        derive_orgpath as _derive_orgpath_canonical,
+    )
+
+    if codebook:
+        # Try the canonical A4 path first — returns a codebook hit or None.
+        hit = _derive_orgpath_canonical(dn, codebook)
+        if hit is not None:
+            return hit
+
+    # No codebook hit (or empty codebook): generate a governance-queue
+    # candidate using the local algorithm which returns valid-format paths
+    # even when the code isn't yet registered.
     return derive_orgpath_from_dn(dn, codebook)
 
 
