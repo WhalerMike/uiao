@@ -25,6 +25,21 @@ from .database_base import (
     SchemaMappingObject,
 )
 
+# Microsoft Graph base URLs by sovereign cloud.
+# - "commercial" also serves GCC-Moderate tenants: per ADR-033, GCC-Moderate
+#   is a tenancy designation on commercial infrastructure with FedRAMP
+#   Moderate authorization, not a separate endpoint.
+# - "gcc-high" and "dod" are physically separate clouds with distinct
+#   Graph hostnames documented in the Microsoft 365 government service
+#   description.
+GRAPH_ENDPOINTS: Dict[str, str] = {
+    "commercial": "https://graph.microsoft.com",
+    "gcc-high": "https://graph.microsoft.us",
+    "dod": "https://dod-graph.microsoft.us",
+}
+DEFAULT_CLOUD = "commercial"
+DEFAULT_GRAPH_API_VERSION = "beta"
+
 
 class IntuneAdapter(DatabaseAdapterBase):
     """Intune adapter — endpoint compliance telemetry (conformance, read-only)."""
@@ -36,7 +51,28 @@ class IntuneAdapter(DatabaseAdapterBase):
     def __init__(self, config: Dict[str, Any] | None = None) -> None:
         super().__init__(config or {})
         self._tenant_id: str = self._config.get("tenant_id", "")
-        self._graph_endpoint: str = self._config.get("graph_endpoint", "https://graph.microsoft.com/beta")
+        self._cloud: str = self._config.get("cloud", DEFAULT_CLOUD)
+        self._graph_api_version: str = self._config.get("graph_api_version", DEFAULT_GRAPH_API_VERSION)
+        self._graph_endpoint: str = self._resolve_graph_endpoint()
+
+    def _resolve_graph_endpoint(self) -> str:
+        """Resolve the Graph endpoint from config.
+
+        An explicit ``graph_endpoint`` overrides the cloud-derived URL
+        (back-compat for callers pinning a custom or staging endpoint).
+        Otherwise the cloud name is looked up in ``GRAPH_ENDPOINTS`` and
+        joined with the API version. Unknown cloud names fail closed.
+        """
+        explicit = self._config.get("graph_endpoint")
+        if explicit:
+            return str(explicit)
+        if self._cloud not in GRAPH_ENDPOINTS:
+            raise ValueError(
+                f"IntuneAdapter: unknown cloud {self._cloud!r}. "
+                f"Supported clouds: {sorted(GRAPH_ENDPOINTS)}. "
+                "Set config['cloud'] or pass an explicit config['graph_endpoint']."
+            )
+        return f"{GRAPH_ENDPOINTS[self._cloud]}/{self._graph_api_version}"
 
     def connect(self) -> ConnectionProvenance:
         return ConnectionProvenance(
