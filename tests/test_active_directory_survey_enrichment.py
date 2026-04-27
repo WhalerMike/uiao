@@ -222,6 +222,58 @@ class TestNestedGroupResolution:
 # ===========================================================================
 
 
+class TestFiletimeConversion:
+    """Regression: lastLogonTimestamp FILETIME → datetime conversion (MS-ADTS 2.2.18).
+
+    Windows FILETIME = 100-nanosecond intervals since 1601-01-01 UTC.
+    133_485_408_000_000_000 = 2024-01-01T00:00:00Z (exact).
+    If the value were mistakenly treated as Unix epoch seconds the logon
+    date would be computed as year ~5231, making every account appear non-stale.
+    If treated as Unix milliseconds the date would be ~6220.
+    The correct conversion yields 2024-01-01, which is >90 days before today
+    and thus stale.
+    """
+
+    # FILETIME for 2024-01-01T00:00:00Z:
+    # (datetime(2024,1,1,tzinfo=timezone.utc) - datetime(1601,1,1,tzinfo=timezone.utc)).total_seconds() * 10_000_000
+    # = 133_485_408_000_000_000
+    _FILETIME_2024_01_01: int = 133_485_408_000_000_000
+
+    # Expected days between 2024-01-01 and now, computed at import time so
+    # the test stays green as wall-clock advances (no hardcoded upper bound).
+    _EXPECTED_DAYS: int = (
+        datetime.datetime.now(tz=datetime.timezone.utc)
+        - datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
+    ).days
+
+    def test_known_filetime_not_treated_as_unix_epoch(self) -> None:
+        """2024-01-01 FILETIME must be interpreted as year 2024, not ~5231."""
+        stale, days = is_stale_account(self._FILETIME_2024_01_01, stale_days=90)
+        # 2024-01-01 is well over 90 days in the past → must be stale
+        assert stale is True, (
+            "FILETIME 133_485_408_000_000_000 should map to 2024-01-01 (>90 d stale). "
+            "If this fails, is_stale_account is misinterpreting the epoch."
+        )
+        # days delta must be close to today - 2024-01-01 (allow ±3 for CI clock drift)
+        assert abs(days - self._EXPECTED_DAYS) <= 3, (
+            f"Expected ~{self._EXPECTED_DAYS} days since 2024-01-01, got {days}"
+        )
+
+    def test_known_filetime_round_trip_days(self) -> None:
+        """Verify delta_days matches independently computed days since 2024-01-01."""
+        _, days = is_stale_account(self._FILETIME_2024_01_01, stale_days=9999)
+        assert abs(days - self._EXPECTED_DAYS) <= 3, (
+            f"Expected ~{self._EXPECTED_DAYS}, got {days}"
+        )
+
+    def test_near_future_filetime_not_stale(self) -> None:
+        """A FILETIME representing 'yesterday' must never be stale."""
+        ts = _build_windows_filetime(1)  # 1 day ago
+        stale, days = is_stale_account(ts, stale_days=90)
+        assert stale is False
+        assert 0 <= days <= 3
+
+
 class TestAccountFlagging:
     """Deliverable 2 — userAccountControl bit decoding + stale detection."""
 
