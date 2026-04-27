@@ -7,6 +7,7 @@ created_at: "2026-04-27"
 updated_at: "2026-04-27"
 owner: "Michael Stratton"
 related_canon: ["UIAO_003", "UIAO_109", "UIAO_113"]
+related_ksi: ["KSI-SI-04", "KSI-AU-02", "KSI-AU-03", "KSI-SC-07", "KSI-AC-02"]
 related_findings: ["FINDING-001", "FINDING-006"]
 related_data: ["src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml"]
 gap_matrix_rows:
