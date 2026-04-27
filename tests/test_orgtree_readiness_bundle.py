@@ -306,3 +306,54 @@ def test_cli_orgtree_readiness_bundle_missing_file(tmp_path: Path) -> None:
         ["orgtree-readiness-bundle", str(tmp_path / "nonexistent.json"), "--out-dir", str(tmp_path / "out")],
     )
     assert result.exit_code != 0
+
+
+def test_cli_orgtree_readiness_bundle_no_hmac_key_fails_closed(tmp_path: Path) -> None:
+    """When UIAO_BUNDLE_HMAC_KEY is unset and --insecure-dev-key not passed, exit non-zero.
+
+    Phase 1.5 fix #3: fail-closed behaviour for missing HMAC key.
+    """
+    from typer.testing import CliRunner
+
+    from uiao.cli.ir import ir_app
+
+    survey = {"users": [], "groups": [], "computers": [], "servers": [], "findings": []}
+    survey_file = tmp_path / "survey.json"
+    survey_file.write_text(json.dumps(survey), encoding="utf-8")
+
+    # Explicitly unset UIAO_BUNDLE_HMAC_KEY from env
+    env_without_key = {k: v for k, v in os.environ.items() if k != "UIAO_BUNDLE_HMAC_KEY"}
+
+    runner = CliRunner()
+    result = runner.invoke(
+        ir_app,
+        ["orgtree-readiness-bundle", str(survey_file), "--out-dir", str(tmp_path / "out")],
+        env=env_without_key,
+        catch_exceptions=False,
+    )
+    assert result.exit_code != 0, "Should fail closed when HMAC key is unset and --insecure-dev-key not passed"
+    assert "UIAO_BUNDLE_HMAC_KEY" in result.output
+
+
+def test_cli_orgtree_readiness_bundle_insecure_dev_key_flag(tmp_path: Path) -> None:
+    """--insecure-dev-key allows bundle creation without UIAO_BUNDLE_HMAC_KEY (dev/CI only)."""
+    from typer.testing import CliRunner
+
+    from uiao.cli.ir import ir_app
+
+    survey = {"users": [], "groups": [], "computers": [], "servers": [], "findings": []}
+    survey_file = tmp_path / "survey.json"
+    survey_file.write_text(json.dumps(survey), encoding="utf-8")
+    out_dir = tmp_path / "out"
+
+    env_without_key = {k: v for k, v in os.environ.items() if k != "UIAO_BUNDLE_HMAC_KEY"}
+
+    runner = CliRunner()
+    result = runner.invoke(
+        ir_app,
+        ["orgtree-readiness-bundle", str(survey_file), "--out-dir", str(out_dir), "--insecure-dev-key"],
+        env=env_without_key,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, f"Non-zero exit with --insecure-dev-key: {result.output}"
+    assert (out_dir / "bundle.json").exists()
