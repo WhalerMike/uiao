@@ -1,18 +1,25 @@
-"""Multi-tenant isolation (UIAO_112, §3.4).
+"""Multi-tenant isolation (UIAO_112, §3.4) + tenancy strategy (UIAO_119, §4.4).
 
 Production agency deployments host multiple tenants on one substrate
 instance. Per UIAO_001 (SSOT) and UIAO_112, the substrate must keep
 tenant data, credentials, and audit trails isolated from each other.
 
-This module ships the v1 isolation primitives:
+This module ships the v1 isolation primitives (UIAO_112) and the v1
+tenancy-strategy data layer (UIAO_119):
 
 - :class:`Tenant` — canonical declaration (id, name, credential_scope,
-  parent_org, retention overrides).
+  parent_org, retention overrides, **tenant_class**).
+- :class:`TenantClass` — Internal / Canary / Standard / Regulated.
+  Drives channel and rollout decisions per UIAO_119.
+- :class:`Environment` — Dev / Stage / Prod. Threaded through the
+  runtime via :class:`TenantContext`.
 - :class:`TenantRegistry` — loaded from
   ``src/uiao/canon/tenants.yaml``; resolves tenants by id, returns the
   default tenant for single-tenant deployments.
 - :class:`TenantContext` — runtime context carried through the
-  scheduler / journal / archive / API request lifecycle.
+  scheduler / journal / archive / API request lifecycle. Carries the
+  current :class:`Environment` so downstream consumers can branch on
+  Dev / Stage / Prod without re-querying canon.
 - :func:`tenant_scoped_path` — helper that turns a base path + tenant
   context into a ``base/<tenant_id>/...`` namespaced path. Used by the
   EnforcementJournal, Data Lake archive, and scheduler-run output.
@@ -22,15 +29,21 @@ The journal / archive / scheduler call these helpers; per-tenant
 credential delegation (real Vault / Key Vault / SecretsManager binding)
 is a follow-up gated on the deployment target.
 
-Substrate-walker hygiene gate:
+Substrate-walker hygiene gates:
     Every active tenant declaration MUST carry a non-empty
-    ``credential_scope:`` list. Without it the tenant cannot be wired
-    to a credential backend. P2 walker finding (registry hygiene).
+    ``credential_scope:`` list (UIAO_112). Without it the tenant cannot
+    be wired to a credential backend — P2 finding.
+
+    Every tenant declaration that carries a ``tenant_class:`` field
+    MUST use one of the four canonical values (UIAO_119). An unknown
+    value is a P3 schema-hygiene finding — the runtime falls back to
+    ``standard`` but the canon is wrong.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Optional
 
@@ -39,6 +52,67 @@ import yaml
 DEFAULT_TENANT_ID = "default"
 """Sentinel tenant id used when no canon declaration exists.
 Single-tenant deployments operate under this id end-to-end."""
+
+
+# ---------------------------------------------------------------------------
+# UIAO_119 — tenancy strategy enums
+# ---------------------------------------------------------------------------
+
+
+class TenantClass(str, Enum):
+    """UIAO_119 tenant classes — drive channel + rollout decisions.
+
+    - ``internal``: UIAO's own dev / test / canary tenants. All channels
+      (Beta + Stable + LTS / FIPS).
+    - ``canary``: early-adopter agencies willing to take Beta and Stable
+      channels. First non-internal stage in the rollout pipeline.
+    - ``standard``: production agencies on the Stable channel.
+    - ``regulated``: regulated agencies on the LTS / FIPS channel
+      (e.g., GCC-High customers, FedRAMP High footprint).
+    """
+
+    INTERNAL = "internal"
+    CANARY = "canary"
+    STANDARD = "standard"
+    REGULATED = "regulated"
+
+    @classmethod
+    def parse(cls, value: Any) -> TenantClass:
+        """Coerce a raw string (or None) into a class. Falls back to
+        :attr:`STANDARD` for unrecognized / missing values — the
+        substrate walker emits a hygiene finding when canon carries an
+        unknown class.
+        """
+        if value is None:
+            return cls.STANDARD
+        s = str(value).strip().lower()
+        for member in cls:
+            if member.value == s:
+                return member
+        return cls.STANDARD
+
+
+class Environment(str, Enum):
+    """UIAO_119 deployment environments.
+
+    - ``dev``: fast iteration, synthetic evidence, no canary tenants.
+    - ``stage``: production topology, limited canaries, full HA / CI.
+    - ``prod``: all real tenants, certified components only.
+    """
+
+    DEV = "dev"
+    STAGE = "stage"
+    PROD = "prod"
+
+    @classmethod
+    def parse(cls, value: Any) -> Environment:
+        if value is None:
+            return cls.DEV
+        s = str(value).strip().lower()
+        for member in cls:
+            if member.value == s:
+                return member
+        return cls.DEV
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +137,10 @@ class Tenant:
     "use the adapter default."""
     boundary: str = "GCC-Moderate"
     status: str = "active"
+    tenant_class: TenantClass = TenantClass.STANDARD
+    """UIAO_119 class — drives channel + rollout decisions. Defaults to
+    ``standard`` (most agencies); Internal is the substrate developer's
+    own tenants, Canary is early-adopters, Regulated is GCC-High / LTS."""
 
     @property
     def is_active(self) -> bool:
@@ -77,6 +155,7 @@ class Tenant:
             "retention_years": self.retention_years,
             "boundary": self.boundary,
             "status": self.status,
+            "tenant_class": self.tenant_class.value,
         }
 
 
@@ -87,16 +166,45 @@ class TenantContext:
     Populated by the API or CLI entrypoint from the request principal,
     then propagated. The scheduler / journal / archive helpers consult
     :attr:`tenant_id` to decide which subdirectory / namespace to use.
+
+    UIAO_119 extends this with :attr:`environment` so downstream
+    consumers (feature-flag evaluator, journal record builder,
+    migration sandbox) can branch on Dev / Stage / Prod without
+    re-querying canon. The default is :attr:`Environment.DEV` so a
+    fresh substrate runs developer-mode unless explicitly promoted.
     """
 
     tenant_id: str = DEFAULT_TENANT_ID
     actor: str = ""
     """Free-form actor identifier — Entra OID, service principal name,
     automation pipeline, etc."""
+    environment: Environment = Environment.DEV
+    """UIAO_119 deployment environment carried through the request /
+    dispatch lifecycle."""
 
     @classmethod
     def default(cls) -> TenantContext:
         return cls(tenant_id=DEFAULT_TENANT_ID, actor="system")
+
+    def as_tag_dict(self, tenant: Optional[Tenant] = None) -> dict[str, str]:
+        """Tagging payload for journal records, log lines, and OSCAL
+        back-matter resources.
+
+        Always carries ``tenant_id``, ``actor``, and ``environment``;
+        adds ``tenant_class`` when the caller passes the resolved
+        :class:`Tenant`. Downstream consumers (EnforcementJournal,
+        ArchiveEntry.extra) merge this dict into their record-level
+        metadata so a query for "all PROD records for tenant X under
+        actor Y" works with a single filter.
+        """
+        out: dict[str, str] = {
+            "tenant_id": self.tenant_id,
+            "actor": self.actor,
+            "environment": self.environment.value,
+        }
+        if tenant is not None:
+            out["tenant_class"] = tenant.tenant_class.value
+        return out
 
 
 # ---------------------------------------------------------------------------
@@ -182,6 +290,7 @@ def load_tenants(paths: Iterable[str | Path]) -> TenantRegistry:
                 retention_years=max(0, ry),
                 boundary=str(entry.get("boundary", "GCC-Moderate")).strip(),
                 status=str(entry.get("status", "active")).strip(),
+                tenant_class=TenantClass.parse(entry.get("tenant_class")),
             )
     return TenantRegistry(tenants=by_id)
 
@@ -223,7 +332,9 @@ def assert_tenant_match(
 
 __all__ = [
     "DEFAULT_TENANT_ID",
+    "Environment",
     "Tenant",
+    "TenantClass",
     "TenantContext",
     "TenantRegistry",
     "assert_tenant_match",

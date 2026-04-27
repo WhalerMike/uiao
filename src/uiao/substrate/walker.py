@@ -221,23 +221,34 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
     return report
 
 
+_VALID_TENANT_CLASSES: frozenset[str] = frozenset({"internal", "canary", "standard", "regulated"})
+
+
 def _scan_tenants(root: Path, report: SubstrateReport) -> None:
-    """UIAO_112 / §3.4 multi-tenant declaration scan.
+    """UIAO_112 / §3.4 multi-tenant declaration scan + UIAO_119 hygiene.
 
     Every active tenant in ``src/uiao/canon/tenants.yaml`` MUST declare
-    a non-empty ``credential_scope:`` list. Without it the substrate
-    cannot bind the tenant to a credential backend at runtime.
+    a non-empty ``credential_scope:`` list (UIAO_112). Without it the
+    substrate cannot bind the tenant to a credential backend at
+    runtime.
+
+    Every tenant declaration that carries a ``tenant_class:`` field
+    MUST use one of the four canonical values (UIAO_119): ``internal``,
+    ``canary``, ``standard``, ``regulated``. An unknown value is a P3
+    schema-hygiene finding — the runtime falls back to ``standard`` but
+    the canon is wrong.
 
     The file is **optional** — single-tenant deployments don't need a
     tenants.yaml; the runtime synthesizes a default tenant. So absence
     of the file is not a finding; only declared tenants with missing
-    credential_scope are flagged.
+    credential_scope (or invalid tenant_class) are flagged.
 
     Severity policy:
         - active tenant, no ``credential_scope:`` → P2 (registry hygiene;
           tenant cannot be bound to credentials)
         - active tenant, ``credential_scope: []`` → P2 (same)
-        - inactive tenants → skipped
+        - any tenant, unknown ``tenant_class:`` → P3 (UIAO_119 hygiene)
+        - inactive tenants → still scanned for tenant_class hygiene
     """
     path = root / "src" / "uiao" / "canon" / "tenants.yaml"
     if not path.is_file():
@@ -258,6 +269,23 @@ def _scan_tenants(root: Path, report: SubstrateReport) -> None:
         tid = str(entry.get("id", "")).strip()
         if not tid:
             continue
+        # UIAO_119 tenant_class hygiene runs regardless of status —
+        # an inactive tenant with a bad class is still a canon bug.
+        if "tenant_class" in entry:
+            raw_class = str(entry.get("tenant_class", "")).strip().lower()
+            if raw_class not in _VALID_TENANT_CLASSES:
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-SCHEMA",
+                        severity="P3",
+                        path=f"{rel}#{tid}",
+                        detail=(
+                            f"tenant '{tid}' carries unknown tenant_class "
+                            f"'{raw_class}'; expected one of "
+                            "internal / canary / standard / regulated (UIAO_119)"
+                        ),
+                    )
+                )
         status = str(entry.get("status", "active")).strip().lower()
         if status != "active":
             continue
