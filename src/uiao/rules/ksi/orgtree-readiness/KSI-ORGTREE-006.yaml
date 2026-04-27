@@ -1,0 +1,51 @@
+ksi_id: KSI-ORGTREE-006
+title: Nested Group Depth Does Not Exceed Maximum
+category: iam
+description: >
+  No security group in the Active Directory forest may be nested more than
+  N levels deep (default N=5).  Excessive group nesting creates
+  computationally expensive token-size expansion, obscures effective-access
+  auditing, and complicates least-privilege reviews.  The depth threshold N
+  is configurable per deployment via the OrgTree policy parameter
+  `orgtree.max_group_nesting_depth`.
+security_objective: >
+  Bound group nesting depth to a known maximum to preserve token size
+  within Kerberos / SAML limits, ensure transitive membership enumeration
+  completes in bounded time, and maintain auditable effective-access
+  graphs for access recertification.
+related_controls:
+  - AC-6
+  - AC-6(1)
+validation_type: automated
+evidence_sources:
+  - entra_id
+  - graph_api
+pass_criteria:
+  description: >
+    No group has a computed nesting depth exceeding the configured maximum
+    (default 5).  Depth is measured from the leaf group upward through all
+    parent group chains.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT group_dn, max_nesting_depth
+    FROM group_nesting_analysis
+    WHERE max_nesting_depth > :orgtree_max_group_nesting_depth
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: orgtree.validators.group_nesting_depth
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-04-27"
+enabled: true
+tags:
+  - orgtree
+  - orgtree-readiness
+  - group-nesting
+  - least-privilege
+  - access-control

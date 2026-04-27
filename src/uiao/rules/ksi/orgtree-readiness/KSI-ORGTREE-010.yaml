@@ -1,0 +1,58 @@
+ksi_id: KSI-ORGTREE-010
+title: Computer Objects Have Last-Logon Within Freshness Window
+category: configuration-management
+description: >
+  Every computer object in Active Directory must have recorded a successful
+  network logon within the configured freshness window (default 90 days).
+  Computer objects with a `lastLogonTimestamp` older than the window, or
+  with a null `lastLogonTimestamp`, are stale and may represent decommissioned,
+  lost, or rogue devices that have been removed from physical custody but
+  not from the directory, creating phantom entries in the system component
+  inventory.
+security_objective: >
+  Maintain an accurate, current system component inventory by identifying
+  and flagging computer accounts that have not authenticated within the
+  acceptable freshness window, enabling timely decommission of stale
+  machine identities and preventing phantom devices from consuming
+  licences or appearing as active managed endpoints.
+related_controls:
+  - CM-8
+  - CM-8(1)
+validation_type: automated
+evidence_sources:
+  - entra_id
+  - custom
+pass_criteria:
+  description: >
+    100% of enabled computer objects have a `lastLogonTimestamp` within
+    the configured freshness window (default 90 days).  Disabled computer
+    objects are excluded from this check.
+  type: percentage
+  threshold: 100
+  operator: equals
+  logic: >
+    SELECT computer_dn, last_logon_timestamp,
+           DATEDIFF(day, last_logon_timestamp, GETDATE()) AS days_stale
+    FROM ad_computers
+    WHERE enabled = TRUE
+      AND (last_logon_timestamp IS NULL
+           OR DATEDIFF(day, last_logon_timestamp, GETDATE())
+              > :orgtree_computer_freshness_days)
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: orgtree.validators.computer_last_logon_freshness
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-04-27"
+enabled: true
+tags:
+  - orgtree
+  - orgtree-readiness
+  - computer-inventory
+  - last-logon
+  - stale-devices
+  - freshness-window

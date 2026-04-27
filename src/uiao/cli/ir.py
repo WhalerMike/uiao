@@ -492,6 +492,271 @@ def ir_generate_sar(
         _console.print(build_sar_summary(sar_doc))
 
 
+@ir_app.command("orgtree-readiness-bundle")
+def ir_orgtree_readiness_bundle(
+    survey_json: str = typer.Argument(..., help="Path to survey JSON input file (AD forest survey output)."),
+    out_dir: str = typer.Option(
+        "exports/orgtree-readiness",
+        "--out-dir",
+        "-o",
+        help=(
+            "Output directory. Three files are written: bundle.json, bundle.hash, bundle.sig. "
+            "HMAC key is read from env var UIAO_BUNDLE_HMAC_KEY. "
+            "If the key is unset, the command exits non-zero unless --insecure-dev-key is passed."
+        ),
+    ),
+    insecure_dev_key: bool = typer.Option(
+        False,
+        "--insecure-dev-key",
+        help=(
+            "Use the built-in development HMAC key when UIAO_BUNDLE_HMAC_KEY is not set. "
+            "NEVER use in production — signatures produced with this key offer no security."
+        ),
+    ),
+    oscal_out: str = typer.Option(
+        "",
+        "--oscal-out",
+        help=(
+            "If set, also emit OSCAL Assessment Results evidence via WS-A6 "
+            "(uiao.oscal.orgtree_evidence.emit_orgtree_evidence) into this directory. "
+            "Writes orgtree-evidence.json alongside the bundle artifacts."
+        ),
+    ),
+) -> None:
+    """Build a signed OrgTree Readiness evidence bundle from a survey JSON input.
+
+    Reads ``survey_json``, assembles a bundle dict, validates it against the
+    orgtree-readiness JSON Schema, computes a stable SHA-256 content hash and
+    HMAC-SHA256 signature, then writes three artifacts to ``--out-dir``:
+
+    * ``bundle.json``  — the full validated bundle (canonical JSON)
+    * ``bundle.hash``  — hex SHA-256 of the canonical bundle
+    * ``bundle.sig``   — hex HMAC-SHA256 of the canonical bundle
+
+    When ``--oscal-out`` is given, the WS-A6 OSCAL emitter is also invoked and
+    writes ``orgtree-evidence.json`` into the specified directory.
+
+    The HMAC key is read from the ``UIAO_BUNDLE_HMAC_KEY`` environment variable.
+    If the variable is not set and ``--insecure-dev-key`` is NOT passed, the
+    command exits with code 1. Pass ``--insecure-dev-key`` for local dev/tests.
+
+    Example::
+
+        uiao ir orgtree-readiness-bundle survey.json --out-dir /tmp/orgtree-bundle
+        uiao ir orgtree-readiness-bundle survey.json --out-dir /tmp/b --oscal-out /tmp/oscal
+    """
+    import hashlib as _hashlib
+    import hmac as _hmac
+    import json as _json
+    import os as _os
+    from datetime import datetime, timezone
+    from importlib.resources import files as _res_files
+    from pathlib import Path as _Path
+
+    try:
+        import jsonschema as _jsonschema
+
+        _HAS_JSONSCHEMA = True
+    except ImportError:
+        _HAS_JSONSCHEMA = False
+
+    # ------------------------------------------------------------------
+    # 1. Load survey input
+    # ------------------------------------------------------------------
+    survey_path = _Path(survey_json)
+    if not survey_path.exists():
+        _console.print(f"[red]Survey file not found: {survey_json}[/red]")
+        raise typer.Exit(code=1)
+
+    raw_survey = survey_path.read_text(encoding="utf-8")
+    try:
+        survey_data = _json.loads(raw_survey)
+    except _json.JSONDecodeError as exc:
+        _console.print(f"[red]Failed to parse survey JSON: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    # Stable hash of survey input
+    survey_canonical = _json.dumps(survey_data, sort_keys=True, separators=(",", ":"))
+    source_hash = _hashlib.sha256(survey_canonical.encode("utf-8")).hexdigest()
+
+    # ------------------------------------------------------------------
+    # 2. Extract survey sections (graceful fallback when absent)
+    # ------------------------------------------------------------------
+    # Normalize AD objects: the schema requires "dn" but some survey exporters
+    # (including the synthetic-forest-export fixture) use "distinguishedName".
+    # Copy the alias into "dn" when the canonical key is missing.
+    def _normalize_ad_objects(objs: list) -> list:  # type: ignore[type-arg]
+        result = []
+        for obj in objs or []:
+            if isinstance(obj, dict) and "dn" not in obj and "distinguishedName" in obj:
+                obj = {**obj, "dn": obj["distinguishedName"]}
+            result.append(obj)
+        return result
+
+    users = _normalize_ad_objects(survey_data.get("users", []))
+    groups = _normalize_ad_objects(survey_data.get("groups", []))
+    computers = _normalize_ad_objects(survey_data.get("computers", []))
+    servers = _normalize_ad_objects(survey_data.get("servers", []))
+    findings_raw = survey_data.get("findings", [])
+
+    # ------------------------------------------------------------------
+    # 3. Build readiness plans (lazy import; stub on ImportError)
+    # ------------------------------------------------------------------
+    orgpath_plan: dict = {}
+    intune_plan: dict = {}
+    arc_plan: dict = {}
+
+    try:
+        from uiao.adapters.modernization.active_directory.orgpath import (  # type: ignore[attr-defined]
+            build_orgpath_plan,
+        )
+
+        orgpath_plan = build_orgpath_plan(survey_data)  # type: ignore[no-untyped-call]
+    except (ImportError, AttributeError):
+        # orgpath plan helper not yet available — stub
+        orgpath_plan = {
+            "total_users": len(users),
+            "resolved_count": 0,
+            "unresolved_count": len(users),
+            "coverage_pct": 0.0,
+        }
+
+    try:
+        from uiao.adapters.modernization.active_directory.intune_readiness import (  # type: ignore[attr-defined]
+            build_intune_plan,
+        )
+
+        intune_plan = build_intune_plan(survey_data)  # type: ignore[no-untyped-call]
+    except (ImportError, AttributeError):
+        intune_plan = {
+            "total_computers": len(computers),
+            "enroll_ready_count": 0,
+            "enroll_blocked_count": len(computers),
+            "readiness_pct": 0.0,
+        }
+
+    try:
+        from uiao.adapters.modernization.active_directory.arc_readiness import (  # type: ignore[attr-defined]
+            build_arc_plan,
+        )
+
+        arc_plan = build_arc_plan(survey_data)  # type: ignore[no-untyped-call]
+    except (ImportError, AttributeError):
+        arc_plan = {
+            "total_servers": len(servers),
+            "onboard_ready_count": 0,
+            "onboard_blocked_count": len(servers),
+            "readiness_pct": 0.0,
+        }
+
+    # ------------------------------------------------------------------
+    # 4. HMAC key from env var — fail closed (Phase 1.5 fix #3)
+    # ------------------------------------------------------------------
+    _HMAC_DEFAULT = "uiao-dev-hmac-key-not-for-production"  # noqa: S105
+    hmac_key_raw = _os.environ.get("UIAO_BUNDLE_HMAC_KEY", "")
+    if not hmac_key_raw:
+        if insecure_dev_key:
+            # Explicit opt-in for local dev / CI tests.
+            _console.print(
+                "[yellow]WARNING: --insecure-dev-key is set — using built-in dev HMAC key. "
+                "Do NOT use this in production.[/yellow]"
+            )
+            hmac_key_raw = _HMAC_DEFAULT
+        else:
+            _console.print(
+                "[red]ERROR: UIAO_BUNDLE_HMAC_KEY environment variable is not set. "
+                "Set the variable or pass --insecure-dev-key for local/test use.[/red]"
+            )
+            raise typer.Exit(code=1)
+    hmac_key = hmac_key_raw.encode("utf-8")
+
+    # ------------------------------------------------------------------
+    # 5. Assemble bundle (without signature — sign content only)
+    # ------------------------------------------------------------------
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    bundle: dict = {
+        "version": "0.6.0",
+        "generated_at": generated_at,
+        "users": users,
+        "groups": groups,
+        "computers": computers,
+        "servers": servers,
+        "orgpath_plan": orgpath_plan,
+        "intune_plan": intune_plan,
+        "arc_plan": arc_plan,
+        "findings": findings_raw,
+        "provenance": {
+            "schema_id": "https://uiao.gov/schemas/orgtree-readiness/orgtree-readiness.schema.json",
+            "schema_version": "0.6.0",
+            "canon_refs": ["UIAO_AD_001"],
+            "source_hash": source_hash,
+            "signature": "0" * 64,  # placeholder; replaced below
+            "hmac_alg": "hmac-sha256",
+        },
+    }
+
+    # Compute content hash over bundle without final signature
+    canonical_bundle = _json.dumps(bundle, sort_keys=True, separators=(",", ":"))
+    content_hash = _hashlib.sha256(canonical_bundle.encode("utf-8")).hexdigest()
+
+    # Compute HMAC-SHA256 over canonical bundle bytes
+    sig = _hmac.new(hmac_key, canonical_bundle.encode("utf-8"), _hashlib.sha256).hexdigest()
+
+    # Stamp real signature into provenance
+    bundle["provenance"]["signature"] = sig
+
+    # ------------------------------------------------------------------
+    # 6. Schema validation
+    # ------------------------------------------------------------------
+    schema_bytes = (
+        _res_files("uiao.schemas").joinpath("orgtree-readiness").joinpath("orgtree-readiness.schema.json").read_text()
+    )
+    schema = _json.loads(schema_bytes)
+
+    if _HAS_JSONSCHEMA:
+        try:
+            _jsonschema.validate(instance=bundle, schema=schema)
+        except _jsonschema.ValidationError as exc:
+            _console.print(f"[red]Bundle failed schema validation: {exc.message}[/red]")
+            raise typer.Exit(code=1) from exc
+    else:
+        _console.print("[yellow]jsonschema not installed — skipping schema validation[/yellow]")
+
+    # ------------------------------------------------------------------
+    # 7. Write artifacts
+    # ------------------------------------------------------------------
+    out_path = _Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    final_json = _json.dumps(bundle, indent=2, ensure_ascii=False)
+    (out_path / "bundle.json").write_text(final_json, encoding="utf-8")
+    (out_path / "bundle.hash").write_text(content_hash, encoding="utf-8")
+    (out_path / "bundle.sig").write_text(sig, encoding="utf-8")
+
+    _console.print(f"[bold]OrgTree Readiness bundle written to {out_dir}[/bold]")
+    _console.print(f"  Users      : {len(users)}")
+    _console.print(f"  Groups     : {len(groups)}")
+    _console.print(f"  Computers  : {len(computers)}")
+    _console.print(f"  Servers    : {len(servers)}")
+    _console.print(f"  Findings   : {len(findings_raw)}")
+    _console.print(f"  Hash       : {content_hash[:16]}...")
+    _console.print(f"  Sig        : {sig[:16]}...")
+
+    # ------------------------------------------------------------------
+    # 8. Optionally emit OSCAL evidence (WS-A6 integration — Phase 2 task 4)
+    # ------------------------------------------------------------------
+    if oscal_out:
+        try:
+            from uiao.oscal.orgtree_evidence import emit_orgtree_evidence  # noqa: PLC0415
+
+            oscal_path = emit_orgtree_evidence(bundle, oscal_out)
+            _console.print(f"[green]OSCAL evidence written to {oscal_path}[/green]")
+        except Exception as exc:  # noqa: BLE001
+            _console.print(f"[red]OSCAL emission failed: {exc}[/red]")
+            raise typer.Exit(code=1) from exc
+
+
 @ir_app.command("ssp-inject")
 def ir_ssp_inject(
     normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
