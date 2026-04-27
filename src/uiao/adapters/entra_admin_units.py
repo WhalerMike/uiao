@@ -37,6 +37,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from ._graph_clouds import DEFAULT_CLOUD, resolve_graph_base
+
+# EntraAdminUnitsAdapter targets Graph v1.0 (GA-stable AU + role-management APIs).
+DEFAULT_GRAPH_API_VERSION = "v1.0"
+
 from uiao.modernization.orgtree import (
     AdministrativeUnit,
     DelegationMatrix,
@@ -148,6 +153,14 @@ class EntraAdminUnitsAdapter:
     ) -> None:
         self._config = config or {}
         self._matrix = matrix or default_delegation_matrix()
+        self._cloud: str = self._config.get("cloud", DEFAULT_CLOUD)
+        self._graph_api_version: str = self._config.get("graph_api_version", DEFAULT_GRAPH_API_VERSION)
+        self._graph_endpoint: str = resolve_graph_base(
+            cloud=self._cloud,
+            graph_api_version=self._graph_api_version,
+            explicit=self._config.get("api_base_url"),
+            adapter_name="EntraAdminUnitsAdapter",
+        )
 
     # ------------------------------------------------------------------
     # Planning
@@ -412,7 +425,7 @@ class EntraAdminUnitsAdapter:
                 "Graph client not configured — provide tenant_id, client_id, "
                 "client_secret in adapter config, or override _graph_client()."
             )
-        base_url = self._config.get("api_base_url", "https://graph.microsoft.com/v1.0")
+        base_url = self._graph_endpoint
         if op.op == OP_AU_CREATE:
             if op.canonical_au is None:
                 raise ValueError("au-create requires canonical_au")
