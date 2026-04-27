@@ -3,6 +3,9 @@ active_directory/survey.py
 --------------------------
 UIAO Modernization Adapter: Active Directory Forest Archaeological Survey
 
+lastLogonTimestamp encoding: Windows FILETIME — 100-nanosecond intervals since
+1601-01-01 UTC (MS-ADTS 2.2.18).  See is_stale_account() for the conversion.
+
 Canon reference: Appendix F (Migration Runbook), Phases 1–2.
 Adapter class:   modernization
 Mission class:   identity

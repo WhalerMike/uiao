@@ -502,14 +502,28 @@ class TestEmitOrgTreeEvidence:
 # ---------------------------------------------------------------------------
 
 
-def _normalise_for_golden(data: dict[str, Any]) -> dict[str, Any]:
-    """Strip non-deterministic fields (timestamps) for golden comparison.
+def _canonicalize(data: dict[str, Any]) -> str:
+    """Return a stable canonical string form of *data* for golden comparison.
 
-    The emitter sets ``metadata.last-modified``, ``results[*].start``, and
-    ``observations[*].collected`` to the current time.  We replace these with
-    a sentinel string so the golden comparison remains stable across runs.
+    Transformations applied:
+    - Recursively sorts all dict keys so key-ordering changes don't break the
+      golden.
+    - Replaces ``metadata.last-modified``, ``results[*].start``, and
+      ``observations[*].collected`` with the sentinel ``"__TIMESTAMP__"`` so
+      re-runs at different wall-clock times produce identical output.
+    - Drops ``metadata.version`` because it is bumped independently of the
+      evidence content and would require golden regeneration on every release.
+    - Returns ``json.dumps(..., indent=2, sort_keys=True)`` so the diff is
+      human-readable on failure.
     """
     import copy
+
+    def _sort_keys(obj: Any) -> Any:
+        if isinstance(obj, dict):
+            return {k: _sort_keys(v) for k in sorted(obj.keys()) for v in [obj[k]]}
+        if isinstance(obj, list):
+            return [_sort_keys(item) for item in obj]
+        return obj
 
     d = copy.deepcopy(data)
     ar = d.get("assessment-results", {})
@@ -517,6 +531,7 @@ def _normalise_for_golden(data: dict[str, Any]) -> dict[str, Any]:
     meta = ar.get("metadata", {})
     if "last-modified" in meta:
         meta["last-modified"] = "__TIMESTAMP__"
+    meta.pop("version", None)
 
     for result in ar.get("results", []):
         if "start" in result:
@@ -525,7 +540,7 @@ def _normalise_for_golden(data: dict[str, Any]) -> dict[str, Any]:
             if "collected" in obs:
                 obs["collected"] = "__TIMESTAMP__"
 
-    return d
+    return json.dumps(_sort_keys(d), indent=2, ensure_ascii=False)
 
 
 class TestGoldenFile:
@@ -538,14 +553,11 @@ class TestGoldenFile:
         """Fail closed: emitter output must match the committed golden file."""
         path = emit_orgtree_evidence(_SYNTHETIC_BUNDLE, tmp_path)
         actual_raw = json.loads(path.read_text(encoding="utf-8"))
-        actual = _normalise_for_golden(actual_raw)
+        actual_str = _canonicalize(actual_raw)
 
         if update_golden:
             _GOLDEN_PATH.parent.mkdir(parents=True, exist_ok=True)
-            _GOLDEN_PATH.write_text(
-                json.dumps(actual, indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
+            _GOLDEN_PATH.write_text(actual_str, encoding="utf-8")
             pytest.skip("Golden file updated — re-run without --update-golden to verify.")
             return
 
@@ -554,11 +566,7 @@ class TestGoldenFile:
                 f"Golden file missing: {_GOLDEN_PATH}\nRun: pytest tests/test_orgtree_evidence_oscal.py --update-golden"
             )
 
-        golden = json.loads(_GOLDEN_PATH.read_text(encoding="utf-8"))
-
-        # Compare normalised forms
-        actual_str = json.dumps(actual, indent=2, sort_keys=True)
-        golden_str = json.dumps(golden, indent=2, sort_keys=True)
+        golden_str = _GOLDEN_PATH.read_text(encoding="utf-8")
 
         if actual_str != golden_str:
             # Produce a readable diff for the failure message
