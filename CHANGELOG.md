@@ -2,6 +2,73 @@
 
 All notable changes to UIAO are documented here. Format adapted from [Keep a Changelog](https://keepachangelog.com/); versioning follows [Semantic Versioning](https://semver.org/). Pre-1.0 minor versions may carry breaking changes.
 
+## [Unreleased]
+
+**Theme: GCC-Moderate boundary integration.** Promotes four
+external-assessment source documents from `inbox/New_FedRAMP_Boundary/`
+(M365 GCC-Moderate Telemetry & Boundary Assessment, ThousandEyes
+Workaround Analysis, FedRAMP 20x Assessment & Implications, LinkedIn
+Post Draft) into canonical, queryable, and customer-facing artifacts.
+
+### Added
+
+- **`src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml`** —
+  machine-readable telemetry-gap matrix, 26 rows across four disposition
+  classes (`confirmed` / `inferred` / `restricted` / `retention-limited`).
+- **`src/uiao/canon/compliance/reference/gcc-moderate-boundary-assessment/`**
+  — five-file canon reference: README, methodology (boundary-inference
+  framework with SI-4 / AU-2 / AU-3 / SC-7), capabilities (per-feature
+  dispositions), MITRE Chains A & B, resolved-positions on previously
+  disputed questions.
+- **`docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd`**
+  — fills the B.1 leaf of the boundary-authorization scaffold with the
+  ZTMM ceiling table, compliance posture against BOD 25-01 / M-22-09 /
+  M-21-31 / NIST 800-207, and MAS 2026 forward path.
+- **`src/uiao/adapters/modernization/gcc_boundary_probe/queries/`** —
+  seven KQL validation queries reproducing assessment §13.3, plus a
+  README mapping each to the §10.1 symptom catalog.
+- **`src/uiao/adapters/modernization/gcc_boundary_probe/sentinel_probe.py`**
+  — KQL runner (`SentinelProbe`), per-query findings (`SentinelFinding`),
+  and `dashboard_completeness_score()` reproducing §10.2.
+- **ADR-047** (`src/uiao/canon/adr/adr-047-thousandeyes-networks-pillar-scope.md`)
+  — PROPOSED. Endorses ThousandEyes only as a Networks-pillar component
+  of a broader compensating-architecture stack, with four preconditions
+  (FedRAMP Marketplace SKU verification, Cloud Agent egress documentation,
+  procurement framing, parallel Identity / Devices / Data roadmap).
+- **FINDING-002 through FINDING-009** in `docs/findings/` — eight
+  per-capability findings: ThousandEyes coverage scope, Adoption Score,
+  Endpoint Analytics Advanced, Entra Identity Protection ML (P1),
+  CAE real-time revocation (P1), CQD EUII 28-day cliff, Purview Audit
+  180-day cliff, WUfB reporting depth.
+- **`docs/narrative/2026-04-fedramp-gcc-moderate-three-assessments.md`**
+  — public-surface synthesis with a reference map across all artifacts.
+
+### Changed
+
+- **`src/uiao/canon/data/fedramp-20x.yml`** — extended with four new
+  top-level blocks: `minimum_assessment_scope` (five MAS-CSO inclusion
+  tests), `ksi_families` (all eleven KSI families — was 7 in
+  `core_mappings`), `deployment_surfaces` (Phase 2 Pilot Required;
+  Rev5 Balance Improvement Releases Optional; Phase 1 Pilot Archived),
+  `gap_matrix_scope_effect` (per-signal-class projection of MAS-CSO
+  against the GCC-Moderate gap matrix).
+- **`docs/docs/04_FedRAMP20x_Phase2_Summary.qmd`** — appended §12
+  covering MAS-CSO + the eleven KSI families + the three deployment
+  surfaces + caveats.
+- **`docs/docs/03_FedRAMP20x_Crosswalk.qmd`** — appended §12 with the
+  MAS-CSO scope-effect-by-signal-class crosswalk (~30–40% of the gap
+  matrix has a credible descope path).
+- **ADR-043** — PROPOSED → ACCEPTED on Rev5 Balance Improvement Release
+  publication for Vulnerability Detection and Response and Collaborative
+  Continuous Monitoring (the modernized pathways for RV5-CA07-VLN and
+  RV5-CA07-CCM). Both ratification gates satisfied.
+- **`src/uiao/adapters/modernization/gcc_boundary_probe/probe.py`** —
+  `run_boundary_probe` and `BoundaryProbeReport` extended with optional
+  Sentinel surface (`sentinel_token`, `log_analytics_workspace_id`
+  kwargs; `sentinel_findings`, `completeness_scores`,
+  `evidence_pipeline_failures` fields). No breaking change for callers
+  that only have Graph / ARM credentials.
+
 ## [0.5.0] — 2026-04-25
 
 **Theme: adoption readiness — onramp + public-surface coverage.** Phase 1 (tracked in issue #183) closes the gap between *what's implemented* in `src/uiao/` and *what an external user can reach*. After 0.5.0 every ghost-`v1.0.0` feature promise is reachable through the documented public surface, every CLI command has a runnable example in `--help`, and a stranger goes from `git clone` to a full FedRAMP auditor bundle in 10 minutes.
