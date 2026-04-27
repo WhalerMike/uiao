@@ -501,8 +501,16 @@ def ir_orgtree_readiness_bundle(
         "-o",
         help=(
             "Output directory. Three files are written: bundle.json, bundle.hash, bundle.sig. "
-            "HMAC key is read from env var UIAO_BUNDLE_HMAC_KEY "
-            "(default 'uiao-dev-hmac-key-not-for-production' when env var is unset)."
+            "HMAC key is read from env var UIAO_BUNDLE_HMAC_KEY. "
+            "If the key is unset, the command exits non-zero unless --insecure-dev-key is passed."
+        ),
+    ),
+    insecure_dev_key: bool = typer.Option(
+        False,
+        "--insecure-dev-key",
+        help=(
+            "Use the built-in development HMAC key when UIAO_BUNDLE_HMAC_KEY is not set. "
+            "NEVER use in production — signatures produced with this key offer no security."
         ),
     ),
 ) -> None:
@@ -517,8 +525,8 @@ def ir_orgtree_readiness_bundle(
     * ``bundle.sig``   — hex HMAC-SHA256 of the canonical bundle
 
     The HMAC key is read from the ``UIAO_BUNDLE_HMAC_KEY`` environment variable.
-    If the variable is not set a development default is used and a warning is
-    printed. **Never use the default key in production.**
+    If the variable is not set and ``--insecure-dev-key`` is NOT passed, the
+    command exits with code 1. Pass ``--insecure-dev-key`` for local dev/tests.
 
     Example::
 
@@ -618,16 +626,24 @@ def ir_orgtree_readiness_bundle(
         }
 
     # ------------------------------------------------------------------
-    # 4. HMAC key from env var
+    # 4. HMAC key from env var — fail closed (Phase 1.5 fix #3)
     # ------------------------------------------------------------------
     _HMAC_DEFAULT = "uiao-dev-hmac-key-not-for-production"  # noqa: S105
     hmac_key_raw = _os.environ.get("UIAO_BUNDLE_HMAC_KEY", "")
     if not hmac_key_raw:
-        _console.print(
-            "[yellow]WARNING: UIAO_BUNDLE_HMAC_KEY not set — using insecure development default. "
-            "Do NOT use this default in production.[/yellow]"
-        )
-        hmac_key_raw = _HMAC_DEFAULT
+        if insecure_dev_key:
+            # Explicit opt-in for local dev / CI tests.
+            _console.print(
+                "[yellow]WARNING: --insecure-dev-key is set — using built-in dev HMAC key. "
+                "Do NOT use this in production.[/yellow]"
+            )
+            hmac_key_raw = _HMAC_DEFAULT
+        else:
+            _console.print(
+                "[red]ERROR: UIAO_BUNDLE_HMAC_KEY environment variable is not set. "
+                "Set the variable or pass --insecure-dev-key for local/test use.[/red]"
+            )
+            raise typer.Exit(code=1)
     hmac_key = hmac_key_raw.encode("utf-8")
 
     # ------------------------------------------------------------------
