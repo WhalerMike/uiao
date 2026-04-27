@@ -31,19 +31,27 @@ from typing import Optional
 
 import httpx
 
-# Microsoft Graph base URLs by sovereign cloud.
-# Mirrors src/uiao/adapters/intune_adapter.py — kept local to avoid
-# coupling the gcc_boundary_probe to the Intune adapter module. The
-# probe.py companion intentionally hardcodes commercial endpoints
-# because its scope is GCC-Moderate boundary detection (per ADR-033);
-# only InBoundaryTelemetry is cloud-portable since its mechanism
-# (Graph management plane) is identical across sovereign clouds.
-GRAPH_ENDPOINTS: dict[str, str] = {
-    "commercial": "https://graph.microsoft.com",
-    "gcc-high": "https://graph.microsoft.us",
-    "dod": "https://dod-graph.microsoft.us",
-}
-DEFAULT_CLOUD = "commercial"
+from uiao.adapters._graph_clouds import (
+    DEFAULT_CLOUD,
+    GRAPH_ENDPOINTS,
+    resolve_graph_base,
+)
+
+# Re-export shared constants so existing test imports keep working.
+__all__ = [
+    "DEFAULT_CLOUD",
+    "DEFAULT_GRAPH_API_VERSION",
+    "DeviceHealthRecord",
+    "GRAPH_ENDPOINTS",
+    "InBoundaryTelemetry",
+    "collect_bulk_wmi_via_script",
+    "collect_local_wmi_health",
+]
+
+# InBoundaryTelemetry uses the GA-stable v1.0 surface; the companion
+# probe.py is GCC-Moderate-by-design and intentionally hardcodes
+# commercial Graph URLs, so this constant only governs the
+# cloud-portable telemetry collector.
 DEFAULT_GRAPH_API_VERSION = "v1.0"
 
 
@@ -105,30 +113,12 @@ class InBoundaryTelemetry:
         self._token = access_token
         self._headers = {"Authorization": f"Bearer {access_token}"}
         self._timeout = timeout
-        self._graph_base = self._resolve_graph_base(cloud, graph_api_version, graph_base)
-
-    @staticmethod
-    def _resolve_graph_base(
-        cloud: str,
-        graph_api_version: str,
-        explicit: Optional[str],
-    ) -> str:
-        """Resolve the Graph base URL.
-
-        Explicit ``graph_base`` wins (back-compat for callers pinning a
-        custom or staging endpoint). Otherwise the cloud is looked up in
-        ``GRAPH_ENDPOINTS`` and joined with the API version. Unknown
-        cloud names fail closed.
-        """
-        if explicit is not None:
-            return explicit
-        if cloud not in GRAPH_ENDPOINTS:
-            raise ValueError(
-                f"InBoundaryTelemetry: unknown cloud {cloud!r}. "
-                f"Supported clouds: {sorted(GRAPH_ENDPOINTS)}. "
-                "Set cloud= or pass graph_base= for an explicit override."
-            )
-        return f"{GRAPH_ENDPOINTS[cloud]}/{graph_api_version}"
+        self._graph_base = resolve_graph_base(
+            cloud=cloud,
+            graph_api_version=graph_api_version,
+            explicit=graph_base,
+            adapter_name="InBoundaryTelemetry",
+        )
 
     async def collect_intune_device_health(self) -> list[DeviceHealthRecord]:
         """
