@@ -710,10 +710,7 @@ def ir_orgtree_readiness_bundle(
     # 6. Schema validation
     # ------------------------------------------------------------------
     schema_bytes = (
-        _res_files("uiao.schemas")
-        .joinpath("orgtree-readiness")
-        .joinpath("orgtree-readiness.schema.json")
-        .read_text()
+        _res_files("uiao.schemas").joinpath("orgtree-readiness").joinpath("orgtree-readiness.schema.json").read_text()
     )
     schema = _json.loads(schema_bytes)
 

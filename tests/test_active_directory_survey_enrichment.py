@@ -64,6 +64,7 @@ def _build_windows_filetime(days_ago: int) -> int:
 # expects (all keys optional for flexibility).
 # ---------------------------------------------------------------------------
 
+
 def _make_synthetic_forest() -> dict[str, dict]:
     return {
         # ------ Users ------
