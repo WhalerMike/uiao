@@ -45,6 +45,12 @@ import re
 from dataclasses import dataclass, field
 from typing import Literal
 
+
+def _normalize_os_string(s: str) -> str:
+    """Lowercase and strip non-alphanumeric chars for fuzzy distro matching."""
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
 # ---------------------------------------------------------------------------
 # Verdict type
 # ---------------------------------------------------------------------------
@@ -102,20 +108,24 @@ ARC_EGRESS_ENDPOINTS: dict[str, list[str]] = {
 # Windows Server OS prefix — case-insensitive match against operatingSystem field
 _WINDOWS_SERVER_PREFIX = "Windows Server"
 
-# Linux server distro patterns recognised as server-class
+# Linux server distro tokens recognised as server-class (after normalization).
+# Normalization: lowercase + strip non-alphanumeric chars.
 # Source: https://learn.microsoft.com/azure/azure-arc/servers/prerequisites
 # NOTE: Arc support matrix evolves; verify version requirements per distro.
-_LINUX_SERVER_PATTERNS: list[str] = [
-    r"Red Hat Enterprise Linux",
-    r"RHEL",
-    r"CentOS",
-    r"Ubuntu Server",
-    r"SUSE Linux Enterprise Server",
-    r"SLES",
-    r"Oracle Linux",
-    r"Rocky Linux",
-    r"AlmaLinux",
-    r"Debian",
+# Handles real-world variants such as:
+#   "Red Hat Enterprise Linux 8.9" / "RHEL 8.9" / "Red Hat Enterprise Linux Server release 8.9 (Ootpa)"
+#   "Ubuntu Server 22.04" / "Ubuntu 22.04 LTS Server" / "ubuntu-server-22.04"
+_LINUX_SERVER_TOKENS: list[str] = [
+    "redhatenterprise",  # matches "Red Hat Enterprise Linux *"
+    "rhel",  # matches "RHEL *"
+    "centos",
+    "ubuntuserver",  # matches "Ubuntu Server *" and "ubuntu-server-*"
+    "suselinuxenterprise",  # matches "SUSE Linux Enterprise Server *"
+    "sles",  # matches "SLES *"
+    "oraclelinux",
+    "rockylinux",
+    "almalinux",
+    "debian",
 ]
 
 # Windows Server versions with only ESU support (arc-capable, but flag for upgrade)
@@ -155,11 +165,29 @@ def _matches_any(value: str, patterns: list[str]) -> bool:
     return any(re.search(p, value, re.IGNORECASE) for p in patterns)
 
 
+def _is_linux_server_os(os_version: str) -> bool:
+    """Return True if *os_version* identifies a Linux server-class OS.
+
+    Uses normalized matching (lowercase + strip non-alphanumeric) so that
+    real-world variants like "Red Hat Enterprise Linux Server release 8.9 (Ootpa)",
+    "RHEL 8.9", "ubuntu-server-22.04", and "Ubuntu 22.04 LTS Server" all match.
+
+    Ubuntu is treated specially: the word "server" may appear after the version
+    number (e.g. "Ubuntu 22.04 LTS Server"), so we check for both "ubuntu" and
+    "server" anywhere in the normalized form rather than requiring them adjacent.
+    """
+    normalized = _normalize_os_string(os_version)
+    # Special case: "Ubuntu * Server" variants where "server" trails the version
+    if "ubuntu" in normalized and "server" in normalized:
+        return True
+    return any(token in normalized for token in _LINUX_SERVER_TOKENS)
+
+
 def _is_server_os(os_version: str) -> bool:
     """Return True if *os_version* identifies a server-class OS."""
     if os_version.startswith(_WINDOWS_SERVER_PREFIX):
         return True
-    return _matches_any(os_version, _LINUX_SERVER_PATTERNS)
+    return _is_linux_server_os(os_version)
 
 
 def _is_domain_controller(

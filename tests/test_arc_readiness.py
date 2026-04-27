@@ -18,6 +18,7 @@ import pytest
 from uiao.adapters.modernization.active_directory.arc_readiness import (
     ARC_EGRESS_ENDPOINTS,
     ArcReadinessSummary,
+    _is_linux_server_os,
     assess_fleet_arc_readiness,
     assess_server_arc_readiness,
 )
@@ -71,6 +72,98 @@ class TestEgressEndpoints:
     def test_no_empty_category(self) -> None:
         for category, endpoints in ARC_EGRESS_ENDPOINTS.items():
             assert len(endpoints) > 0, f"Category '{category}' has no endpoints"
+
+
+# ---------------------------------------------------------------------------
+# A3: Linux distro detection robustness — real-world OS string variants
+# ---------------------------------------------------------------------------
+
+
+class TestLinuxDistroNormalization:
+    """A3: normalized matcher handles real-world operatingSystem field variants."""
+
+    @pytest.mark.parametrize(
+        "os_string",
+        [
+            # RHEL variants
+            "Red Hat Enterprise Linux 8.9",
+            "Red Hat Enterprise Linux Server release 8.9 (Ootpa)",
+            "RHEL 8.9",
+            "RHEL9",
+            # Ubuntu variants
+            "Ubuntu Server 22.04",
+            "Ubuntu Server 22.04 LTS",
+            "Ubuntu 22.04 LTS Server",
+            "ubuntu-server-22.04",
+            # SLES variants
+            "SUSE Linux Enterprise Server 15 SP5",
+            "SLES 15",
+            "SLES15SP4",
+            # CentOS variants
+            "CentOS 7",
+            "CentOS Linux 7 (Core)",
+            "CentOS Stream 9",
+            # Oracle Linux variants
+            "Oracle Linux 8.8",
+            "Oracle Linux Server 7.9",
+            "OracleLinux8",
+            # Rocky Linux variants
+            "Rocky Linux 9.2",
+            "Rocky Linux release 9.2 (Blue Onyx)",
+            "RockyLinux9",
+            # AlmaLinux variants
+            "AlmaLinux 9.1",
+            "AlmaLinux OS 9.1 (Lime Lynx)",
+            "Almalinux9",
+            # Debian variants
+            "Debian 12",
+            "Debian GNU/Linux 11 (bullseye)",
+            "Debian GNU/Linux 10",
+        ],
+    )
+    def test_linux_server_os_detected(self, os_string: str) -> None:
+        assert _is_linux_server_os(os_string), f"Expected server OS detection for: {os_string!r}"
+
+    @pytest.mark.parametrize(
+        "os_string",
+        [
+            "Windows 10 Enterprise",
+            "Windows 11 Pro",
+            "macOS 14.2",
+            "Android 13",
+            "FreeBSD 13",  # not in supported list
+        ],
+    )
+    def test_non_linux_server_not_detected(self, os_string: str) -> None:
+        assert not _is_linux_server_os(os_string), f"Expected no detection for: {os_string!r}"
+
+    @pytest.mark.parametrize(
+        "os_string",
+        [
+            "Red Hat Enterprise Linux 8.9",
+            "Red Hat Enterprise Linux Server release 8.9 (Ootpa)",
+            "RHEL 9.2",
+            "Ubuntu Server 22.04 LTS",
+            "Ubuntu 22.04 LTS Server",
+            "ubuntu-server-22.04",
+            "SUSE Linux Enterprise Server 15 SP5",
+            "SLES 15",
+            "Oracle Linux Server 7.9",
+            "Rocky Linux release 9.2 (Blue Onyx)",
+            "AlmaLinux OS 9.1 (Lime Lynx)",
+            "Debian GNU/Linux 11 (bullseye)",
+        ],
+    )
+    def test_real_world_variants_get_ready_verdict(self, os_string: str) -> None:
+        result = assess_server_arc_readiness(
+            computer_name="LNX-SRV",
+            distinguished_name="CN=LNX-SRV,OU=S,DC=corp,DC=com",
+            operating_system=os_string,
+            network_egress_validated=True,
+        )
+        assert result.verdict == "READY", (
+            f"Expected READY for {os_string!r}, got {result.verdict!r}. Notes: {result.notes}"
+        )
 
 
 # ---------------------------------------------------------------------------
