@@ -277,8 +277,15 @@ def assess_intune_readiness(ad_computer: Mapping[str, object]) -> IntuneReadines
 
     os_name = str(ad_computer.get("operatingSystem") or "")
     os_version_str = str(ad_computer.get("operatingSystemVersion") or "")
-    tpm_version = str(ad_computer.get("tpmVersion") or "")
-    hvci_enabled = bool(ad_computer.get("hvciEnabled", False))
+
+    # Phase 1.5 fix #4: distinguish absent keys from explicit bad values.
+    # When tpmVersion / hvciEnabled are absent we emit an attribute_not_collected
+    # finding but do NOT downgrade the verdict — only explicit bad values trigger
+    # NEEDS_TPM / NEEDS_HVCI.
+    _tpm_present = "tpmVersion" in ad_computer and ad_computer["tpmVersion"] is not None
+    _hvci_present = "hvciEnabled" in ad_computer and ad_computer["hvciEnabled"] is not None
+    tpm_version = str(ad_computer["tpmVersion"]) if _tpm_present else ""
+    hvci_enabled = bool(ad_computer["hvciEnabled"]) if _hvci_present else False
 
     os_build = _parse_os_build(os_version_str)
     os_type, eligibility = _classify_os(os_name, os_build)
@@ -338,33 +345,49 @@ def assess_intune_readiness(ad_computer: Mapping[str, object]) -> IntuneReadines
         )
 
     # Gate 2 — TPM (only evaluated if OS gate passed)
-    if not _tpm_ok(tpm_version):
+    if _tpm_present:
+        # Attribute was collected — evaluate it.
+        if not _tpm_ok(tpm_version):
+            rationale.append(
+                f"TPM version '{tpm_version}' does not meet the TPM 2.0 requirement for "
+                "Intune enrollment and Windows Hello for Business. Replace hardware or "
+                "enable firmware TPM (fTPM) in UEFI."
+            )
+            verdict = "NEEDS_TPM"
+            # TPM gate blocks HVCI gate — return immediately
+            return IntuneReadinessResult(
+                computer_name=computer_name,
+                verdict=verdict,
+                rationale=rationale,
+                os_name=os_name,
+                os_build=os_build,
+                tpm_version=tpm_version,
+                hvci_enabled=hvci_enabled,
+                intune_attrs=intune_attrs,
+            )
+    else:
+        # Attribute not present in the survey record — note it but don't fail.
         rationale.append(
-            f"TPM version '{tpm_version}' does not meet the TPM 2.0 requirement for "
-            "Intune enrollment and Windows Hello for Business. Replace hardware or "
-            "enable firmware TPM (fTPM) in UEFI."
-        )
-        verdict = "NEEDS_TPM"
-        # TPM gate blocks HVCI gate — return immediately
-        return IntuneReadinessResult(
-            computer_name=computer_name,
-            verdict=verdict,
-            rationale=rationale,
-            os_name=os_name,
-            os_build=os_build,
-            tpm_version=tpm_version,
-            hvci_enabled=hvci_enabled,
-            intune_attrs=intune_attrs,
+            "attribute_not_collected: tpmVersion absent from survey record. "
+            "TPM readiness cannot be assessed; collect the attribute before enrollment."
         )
 
     # Gate 3 — HVCI (only evaluated if OS + TPM gates passed)
-    if not hvci_enabled:
+    if _hvci_present:
+        # Attribute was collected — evaluate it.
+        if not hvci_enabled:
+            rationale.append(
+                "HVCI (Memory Integrity / Hypervisor-Protected Code Integrity) is not enabled. "
+                "Enable via Intune Device Security baseline, Windows Security Center, or "
+                "UEFI firmware settings before enrollment where required by policy."
+            )
+            verdict = "NEEDS_HVCI"
+    else:
+        # Attribute not present in the survey record — note it but don't fail.
         rationale.append(
-            "HVCI (Memory Integrity / Hypervisor-Protected Code Integrity) is not enabled. "
-            "Enable via Intune Device Security baseline, Windows Security Center, or "
-            "UEFI firmware settings before enrollment where required by policy."
+            "attribute_not_collected: hvciEnabled absent from survey record. "
+            "HVCI readiness cannot be assessed; collect the attribute before enrollment."
         )
-        verdict = "NEEDS_HVCI"
 
     return IntuneReadinessResult(
         computer_name=computer_name,
