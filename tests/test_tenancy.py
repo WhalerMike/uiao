@@ -9,7 +9,9 @@ import yaml
 
 from uiao.governance.tenancy import (
     DEFAULT_TENANT_ID,
+    Environment,
     Tenant,
+    TenantClass,
     TenantContext,
     TenantRegistry,
     assert_tenant_match,
@@ -45,6 +47,50 @@ class TestTenantModel:
         d = t.as_dict()
         assert d["id"] == "x"
         assert d["credential_scope"] == ["a", "b"]
+        # UIAO_119 tenant_class defaults to standard.
+        assert d["tenant_class"] == "standard"
+
+    def test_default_tenant_class_is_standard(self):
+        assert Tenant(id="x").tenant_class is TenantClass.STANDARD
+
+
+# ---------------------------------------------------------------------------
+# UIAO_119 enums
+# ---------------------------------------------------------------------------
+
+
+class TestTenantClassEnum:
+    def test_known_values_parse(self):
+        for s, expected in [
+            ("internal", TenantClass.INTERNAL),
+            ("canary", TenantClass.CANARY),
+            ("standard", TenantClass.STANDARD),
+            ("regulated", TenantClass.REGULATED),
+            ("INTERNAL", TenantClass.INTERNAL),  # case-insensitive
+            ("  Canary  ", TenantClass.CANARY),  # whitespace tolerant
+        ]:
+            assert TenantClass.parse(s) is expected
+
+    def test_unknown_falls_back_to_standard(self):
+        assert TenantClass.parse("phantom") is TenantClass.STANDARD
+        assert TenantClass.parse(None) is TenantClass.STANDARD
+        assert TenantClass.parse("") is TenantClass.STANDARD
+
+
+class TestEnvironmentEnum:
+    def test_known_values_parse(self):
+        for s, expected in [
+            ("dev", Environment.DEV),
+            ("stage", Environment.STAGE),
+            ("prod", Environment.PROD),
+            ("PROD", Environment.PROD),
+            ("  Stage  ", Environment.STAGE),
+        ]:
+            assert Environment.parse(s) is expected
+
+    def test_unknown_falls_back_to_dev(self):
+        assert Environment.parse("phantom") is Environment.DEV
+        assert Environment.parse(None) is Environment.DEV
 
 
 # ---------------------------------------------------------------------------
@@ -57,10 +103,41 @@ class TestTenantContext:
         ctx = TenantContext.default()
         assert ctx.tenant_id == DEFAULT_TENANT_ID
         assert ctx.actor == "system"
+        assert ctx.environment is Environment.DEV
 
     def test_explicit(self):
-        ctx = TenantContext(tenant_id="acme", actor="oid:42")
+        ctx = TenantContext(
+            tenant_id="acme",
+            actor="oid:42",
+            environment=Environment.PROD,
+        )
         assert ctx.tenant_id == "acme"
+        assert ctx.environment is Environment.PROD
+
+    def test_as_tag_dict_without_tenant(self):
+        ctx = TenantContext(
+            tenant_id="acme",
+            actor="oid:42",
+            environment=Environment.STAGE,
+        )
+        tags = ctx.as_tag_dict()
+        assert tags == {
+            "tenant_id": "acme",
+            "actor": "oid:42",
+            "environment": "stage",
+        }
+        assert "tenant_class" not in tags
+
+    def test_as_tag_dict_with_tenant_adds_class(self):
+        ctx = TenantContext(
+            tenant_id="acme",
+            actor="oid:42",
+            environment=Environment.PROD,
+        )
+        tenant = Tenant(id="acme", tenant_class=TenantClass.REGULATED)
+        tags = ctx.as_tag_dict(tenant)
+        assert tags["tenant_class"] == "regulated"
+        assert tags["environment"] == "prod"
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +203,60 @@ class TestLoadTenants:
             {"tenants": [{"id": "x", "retention_years": "ages"}]},
         )
         assert load_tenants([path]).tenants["x"].retention_years == 0
+
+    def test_tenant_class_parsed(self, tmp_path):
+        path = _write(
+            tmp_path / "t.yaml",
+            {
+                "tenants": [
+                    {
+                        "id": "internal-dev",
+                        "credential_scope": ["a"],
+                        "tenant_class": "internal",
+                    },
+                    {
+                        "id": "acme-canary",
+                        "credential_scope": ["b"],
+                        "tenant_class": "canary",
+                    },
+                    {
+                        "id": "regulated-customer",
+                        "credential_scope": ["c"],
+                        "tenant_class": "regulated",
+                    },
+                ]
+            },
+        )
+        registry = load_tenants([path])
+        assert registry.tenants["internal-dev"].tenant_class is TenantClass.INTERNAL
+        assert registry.tenants["acme-canary"].tenant_class is TenantClass.CANARY
+        assert registry.tenants["regulated-customer"].tenant_class is TenantClass.REGULATED
+
+    def test_unknown_tenant_class_falls_back_to_standard(self, tmp_path):
+        # Walker flags this as a P3 finding; loader still returns a
+        # usable record so the runtime keeps working.
+        path = _write(
+            tmp_path / "t.yaml",
+            {
+                "tenants": [
+                    {
+                        "id": "x",
+                        "credential_scope": ["a"],
+                        "tenant_class": "phantom",
+                    }
+                ]
+            },
+        )
+        registry = load_tenants([path])
+        assert registry.tenants["x"].tenant_class is TenantClass.STANDARD
+
+    def test_missing_tenant_class_defaults_to_standard(self, tmp_path):
+        path = _write(
+            tmp_path / "t.yaml",
+            {"tenants": [{"id": "x", "credential_scope": ["a"]}]},
+        )
+        registry = load_tenants([path])
+        assert registry.tenants["x"].tenant_class is TenantClass.STANDARD
 
 
 # ---------------------------------------------------------------------------
@@ -256,3 +387,79 @@ class TestWalkerTenantScan:
         report = walk_substrate(workspace_root=tmp_path)
         tenant_findings = [f for f in report.findings if "credential_scope" in f.detail]
         assert tenant_findings == []
+
+    def test_unknown_tenant_class_p3(self, tmp_path):
+        root = self._scaffold(
+            tmp_path,
+            [
+                {
+                    "id": "acme",
+                    "status": "active",
+                    "credential_scope": ["entra-id"],
+                    "tenant_class": "phantom",
+                }
+            ],
+        )
+        from uiao.substrate.walker import walk_substrate
+
+        report = walk_substrate(workspace_root=root)
+        class_findings = [f for f in report.findings if "tenant_class" in f.detail]
+        assert len(class_findings) == 1
+        assert class_findings[0].severity == "P3"
+        assert "phantom" in class_findings[0].detail
+
+    def test_known_tenant_classes_clean(self, tmp_path):
+        root = self._scaffold(
+            tmp_path,
+            [
+                {
+                    "id": "internal-dev",
+                    "status": "active",
+                    "credential_scope": ["a"],
+                    "tenant_class": "internal",
+                },
+                {
+                    "id": "acme-canary",
+                    "status": "active",
+                    "credential_scope": ["b"],
+                    "tenant_class": "canary",
+                },
+                {
+                    "id": "acme",
+                    "status": "active",
+                    "credential_scope": ["c"],
+                    "tenant_class": "standard",
+                },
+                {
+                    "id": "high-customer",
+                    "status": "active",
+                    "credential_scope": ["d"],
+                    "tenant_class": "regulated",
+                },
+            ],
+        )
+        from uiao.substrate.walker import walk_substrate
+
+        report = walk_substrate(workspace_root=root)
+        class_findings = [f for f in report.findings if "tenant_class" in f.detail]
+        assert class_findings == []
+
+    def test_inactive_tenant_with_bad_class_still_flagged(self, tmp_path):
+        # tenant_class hygiene runs even for inactive tenants — a stale
+        # canon entry is still a canon bug.
+        root = self._scaffold(
+            tmp_path,
+            [
+                {
+                    "id": "old",
+                    "status": "inactive",
+                    "tenant_class": "garbage",
+                }
+            ],
+        )
+        from uiao.substrate.walker import walk_substrate
+
+        report = walk_substrate(workspace_root=root)
+        class_findings = [f for f in report.findings if "tenant_class" in f.detail]
+        assert len(class_findings) == 1
+        assert class_findings[0].severity == "P3"
