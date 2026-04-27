@@ -1,4 +1,5 @@
 """Tests for WS-A5: OrgTree Readiness Bundle — schema validation + CLI smoke."""
+
 from __future__ import annotations
 
 import hashlib
@@ -21,12 +22,7 @@ _HMAC_DEFAULT = "uiao-dev-hmac-key-not-for-production"
 
 
 def _load_schema() -> Any:
-    raw = (
-        _res_files("uiao.schemas")
-        .joinpath("orgtree-readiness")
-        .joinpath("orgtree-readiness.schema.json")
-        .read_text()
-    )
+    raw = _res_files("uiao.schemas").joinpath("orgtree-readiness").joinpath("orgtree-readiness.schema.json").read_text()
     return json.loads(raw)
 
 
@@ -411,8 +407,10 @@ def test_cli_orgtree_readiness_bundle_oscal_out_wires_a6_emitter(tmp_path: Path)
         [
             "orgtree-readiness-bundle",
             str(survey_file),
-            "--out-dir", str(out_dir),
-            "--oscal-out", str(oscal_dir),
+            "--out-dir",
+            str(out_dir),
+            "--oscal-out",
+            str(oscal_dir),
             "--insecure-dev-key",
         ],
         env=env_without_key,

@@ -337,7 +337,9 @@ class TestEmitOrgTreeEvidence:
         path = emit_orgtree_evidence(_SYNTHETIC_BUNDLE, tmp_path)
         ar = json.loads(path.read_text(encoding="utf-8"))["assessment-results"]
         items = ar["results"][0].get("local-definitions", {}).get("inventory-items", [])
-        user_items = [i for i in items if any(p["name"] == "asset-type" and p["value"] == "user" for p in i.get("props", []))]
+        user_items = [
+            i for i in items if any(p["name"] == "asset-type" and p["value"] == "user" for p in i.get("props", []))
+        ]
         assert len(user_items) == 4
         for item in user_items:
             prop_names = {p["name"] for p in item.get("props", [])}
@@ -349,8 +351,7 @@ class TestEmitOrgTreeEvidence:
         ar = json.loads(path.read_text(encoding="utf-8"))["assessment-results"]
         items = ar["results"][0].get("local-definitions", {}).get("inventory-items", [])
         bob_items = [
-            i for i in items
-            if any(p["name"] == "sam-account-name" and p["value"] == "bob" for p in i.get("props", []))
+            i for i in items if any(p["name"] == "sam-account-name" and p["value"] == "bob" for p in i.get("props", []))
         ]
         assert len(bob_items) == 1
         auth_props = [p["value"] for p in bob_items[0]["props"] if p["name"] == "auth-method"]
@@ -362,7 +363,8 @@ class TestEmitOrgTreeEvidence:
         ar = json.loads(path.read_text(encoding="utf-8"))["assessment-results"]
         items = ar["results"][0].get("local-definitions", {}).get("inventory-items", [])
         diana_items = [
-            i for i in items
+            i
+            for i in items
             if any(p["name"] == "sam-account-name" and p["value"] == "diana" for p in i.get("props", []))
         ]
         assert len(diana_items) == 1
@@ -375,8 +377,7 @@ class TestEmitOrgTreeEvidence:
         ar = json.loads(path.read_text(encoding="utf-8"))["assessment-results"]
         items = ar["results"][0].get("local-definitions", {}).get("inventory-items", [])
         computer_items = [
-            i for i in items
-            if any(p["name"] == "asset-type" and p["value"] == "computer" for p in i.get("props", []))
+            i for i in items if any(p["name"] == "asset-type" and p["value"] == "computer" for p in i.get("props", []))
         ]
         assert len(computer_items) >= 1
         for item in computer_items:
@@ -390,8 +391,7 @@ class TestEmitOrgTreeEvidence:
         ar = json.loads(path.read_text(encoding="utf-8"))["assessment-results"]
         items = ar["results"][0].get("local-definitions", {}).get("inventory-items", [])
         server_items = [
-            i for i in items
-            if any(p["name"] == "asset-type" and p["value"] == "server" for p in i.get("props", []))
+            i for i in items if any(p["name"] == "asset-type" and p["value"] == "server" for p in i.get("props", []))
         ]
         assert len(server_items) >= 1
         for item in server_items:
@@ -451,7 +451,8 @@ class TestEmitOrgTreeEvidence:
         ar = json.loads(path.read_text(encoding="utf-8"))["assessment-results"]
         items = ar["results"][0].get("local-definitions", {}).get("inventory-items", [])
         da_items = [
-            i for i in items
+            i
+            for i in items
             if any(p["name"] == "sam-account-name" and p["value"] == "Domain Admins" for p in i.get("props", []))
         ]
         assert len(da_items) == 1
@@ -530,8 +531,7 @@ def _normalise_for_golden(data: dict[str, Any]) -> dict[str, Any]:
 class TestGoldenFile:
     def test_golden_file_exists(self) -> None:
         assert _GOLDEN_PATH.exists(), (
-            f"Golden file not found: {_GOLDEN_PATH}. "
-            "Run: pytest tests/test_orgtree_evidence_oscal.py --update-golden"
+            f"Golden file not found: {_GOLDEN_PATH}. Run: pytest tests/test_orgtree_evidence_oscal.py --update-golden"
         )
 
     def test_golden_matches_emitter_output(self, tmp_path: Path, update_golden: bool) -> None:
@@ -551,8 +551,7 @@ class TestGoldenFile:
 
         if not _GOLDEN_PATH.exists():
             pytest.fail(
-                f"Golden file missing: {_GOLDEN_PATH}\n"
-                "Run: pytest tests/test_orgtree_evidence_oscal.py --update-golden"
+                f"Golden file missing: {_GOLDEN_PATH}\nRun: pytest tests/test_orgtree_evidence_oscal.py --update-golden"
             )
 
         golden = json.loads(_GOLDEN_PATH.read_text(encoding="utf-8"))

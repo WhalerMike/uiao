@@ -157,9 +157,7 @@ def test_ksi_rule_file_has_required_fields(ksi_id: str) -> None:
         doc: Any = yaml.safe_load(raw)
     except yaml.YAMLError:
         # Fall back to raw-text presence check when the file is malformed.
-        assert f"KSI_ID: {ksi_id}" in raw, (
-            f"{ksi_id}.yaml (malformed YAML) missing 'KSI_ID: {ksi_id}' in raw text"
-        )
+        assert f"KSI_ID: {ksi_id}" in raw, f"{ksi_id}.yaml (malformed YAML) missing 'KSI_ID: {ksi_id}' in raw text"
         assert "Title:" in raw, f"{ksi_id}.yaml (malformed YAML) missing 'Title:' in raw text"
         pytest.skip(
             f"{ksi_id}.yaml has a pre-existing YAML formatting issue; "
@@ -169,9 +167,7 @@ def test_ksi_rule_file_has_required_fields(ksi_id: str) -> None:
     assert isinstance(doc, dict)
     assert "KSI_ID" in doc, f"{ksi_id}.yaml missing 'KSI_ID' field"
     assert "Title" in doc, f"{ksi_id}.yaml missing 'Title' field"
-    assert doc["KSI_ID"] == ksi_id, (
-        f"{ksi_id}.yaml declares KSI_ID='{doc['KSI_ID']}', expected '{ksi_id}'"
-    )
+    assert doc["KSI_ID"] == ksi_id, f"{ksi_id}.yaml declares KSI_ID='{doc['KSI_ID']}', expected '{ksi_id}'"
 
 
 def test_ksi_fixture_verdicts_are_valid_values() -> None:
@@ -200,8 +196,7 @@ def test_bundle_signature_validates() -> None:
         from uiao.ir.models.core import canonical_hash  # type: ignore[import]
     except ImportError as exc:
         pytest.skip(
-            f"WS-A5 bundle module not yet wired in Phase 1; "
-            f"re-enable after Phase 2 integration. (ImportError: {exc})"
+            f"WS-A5 bundle module not yet wired in Phase 1; re-enable after Phase 2 integration. (ImportError: {exc})"
         )
 
     data = _load_fixture()
@@ -227,8 +222,7 @@ def test_oscal_emitter_available() -> None:
         importlib.import_module("uiao.oscal.generator")
     except ImportError as exc:
         pytest.skip(
-            f"WS-A6 OSCAL emitter not yet wired in Phase 1; "
-            f"re-enable after Phase 2 integration. (ImportError: {exc})"
+            f"WS-A6 OSCAL emitter not yet wired in Phase 1; re-enable after Phase 2 integration. (ImportError: {exc})"
         )
 
 
@@ -248,8 +242,7 @@ def test_oscal_output_schema_validates(tmp_path: Path) -> None:
         from uiao.oscal.generator import generate_oscal  # type: ignore[import]
     except ImportError as exc:
         pytest.skip(
-            f"WS-A6 OSCAL emitter not yet wired in Phase 1; "
-            f"re-enable after Phase 2 integration. (ImportError: {exc})"
+            f"WS-A6 OSCAL emitter not yet wired in Phase 1; re-enable after Phase 2 integration. (ImportError: {exc})"
         )
 
     # Build a minimal synthetic evidence bundle from the smoke fixture.
@@ -263,9 +256,7 @@ def test_oscal_output_schema_validates(tmp_path: Path) -> None:
         "plane": "orgtree-smoke",
         "manifest": {"total_records": len(data["users"])},
     }
-    (evidence_dir / "bundle.json").write_text(
-        json.dumps(bundle_doc, indent=2), encoding="utf-8"
-    )
+    (evidence_dir / "bundle.json").write_text(json.dumps(bundle_doc, indent=2), encoding="utf-8")
 
     # Write one evidence record per user as NDJSON.
     lines = []
@@ -382,8 +373,10 @@ def test_phase2_end_to_end_pipeline(tmp_path: Path) -> None:
         [
             "orgtree-readiness-bundle",
             str(survey_file),
-            "--out-dir", str(bundle_dir),
-            "--oscal-out", str(oscal_dir),
+            "--out-dir",
+            str(bundle_dir),
+            "--oscal-out",
+            str(oscal_dir),
             "--insecure-dev-key",
         ],
         env=env_ci,
@@ -418,6 +411,7 @@ def test_phase2_end_to_end_pipeline(tmp_path: Path) -> None:
         import jsonschema
 
         from importlib.resources import files as _res_files
+
         schema_bytes = (
             _res_files("uiao.schemas")
             .joinpath("orgtree-readiness")

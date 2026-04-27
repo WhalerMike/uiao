@@ -339,10 +339,7 @@ def _ac2_observation(
     uid = _det_uuid("ac2-obs", key)
     days = _days_since_logon(obj, now_ts)
     days_str = f"{days}d" if days is not None else "unknown"
-    desc = (
-        f"AC-2 finding: {obj_type} account '{sam}' is {reason}. "
-        f"Last logon: {days_str} ago."
-    )
+    desc = f"AC-2 finding: {obj_type} account '{sam}' is {reason}. Last logon: {days_str} ago."
     return _c.Observation(
         uuid=uid,
         title=f"AC-2 {reason.title()} Account: {sam}",
@@ -387,8 +384,7 @@ def _ac6_observation(group: dict[str, Any]) -> _c.Observation:
     members = group.get("members", []) or []
     member_count = len(members)
     desc = (
-        f"AC-6 privileged group '{sam}' has {member_count} member(s). "
-        "Review membership for least-privilege compliance."
+        f"AC-6 privileged group '{sam}' has {member_count} member(s). Review membership for least-privilege compliance."
     )
     return _c.Observation(
         uuid=uid,
