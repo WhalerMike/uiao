@@ -242,8 +242,7 @@ class TestFiletimeConversion:
     # Expected days between 2024-01-01 and now, computed at import time so
     # the test stays green as wall-clock advances (no hardcoded upper bound).
     _EXPECTED_DAYS: int = (
-        datetime.datetime.now(tz=datetime.timezone.utc)
-        - datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
+        datetime.datetime.now(tz=datetime.timezone.utc) - datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc)
     ).days
 
     def test_known_filetime_not_treated_as_unix_epoch(self) -> None:
@@ -262,9 +261,7 @@ class TestFiletimeConversion:
     def test_known_filetime_round_trip_days(self) -> None:
         """Verify delta_days matches independently computed days since 2024-01-01."""
         _, days = is_stale_account(self._FILETIME_2024_01_01, stale_days=9999)
-        assert abs(days - self._EXPECTED_DAYS) <= 3, (
-            f"Expected ~{self._EXPECTED_DAYS}, got {days}"
-        )
+        assert abs(days - self._EXPECTED_DAYS) <= 3, f"Expected ~{self._EXPECTED_DAYS}, got {days}"
 
     def test_near_future_filetime_not_stale(self) -> None:
         """A FILETIME representing 'yesterday' must never be stale."""

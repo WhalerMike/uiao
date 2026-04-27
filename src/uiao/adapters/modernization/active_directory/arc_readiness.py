@@ -50,6 +50,7 @@ def _normalize_os_string(s: str) -> str:
     """Lowercase and strip non-alphanumeric chars for fuzzy distro matching."""
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
+
 # ---------------------------------------------------------------------------
 # Verdict type
 # ---------------------------------------------------------------------------
@@ -116,11 +117,11 @@ _WINDOWS_SERVER_PREFIX = "Windows Server"
 #   "Ubuntu Server 22.04" / "Ubuntu 22.04 LTS Server" / "ubuntu-server-22.04"
 _LINUX_SERVER_TOKENS: list[str] = [
     "redhatenterprise",  # matches "Red Hat Enterprise Linux *"
-    "rhel",              # matches "RHEL *"
+    "rhel",  # matches "RHEL *"
     "centos",
-    "ubuntuserver",      # matches "Ubuntu Server *" and "ubuntu-server-*"
+    "ubuntuserver",  # matches "Ubuntu Server *" and "ubuntu-server-*"
     "suselinuxenterprise",  # matches "SUSE Linux Enterprise Server *"
-    "sles",              # matches "SLES *"
+    "sles",  # matches "SLES *"
     "oraclelinux",
     "rockylinux",
     "almalinux",
