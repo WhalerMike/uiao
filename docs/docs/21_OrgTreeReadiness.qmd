@@ -1,0 +1,248 @@
+---
+title: "21 OrgTree Readiness"
+author: "UIAO Modernization Program"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  html: default
+  docx: default
+  pdf: default
+  gfm: default
+---
+
+# OrgTree Readiness
+
+**Document:** 21
+**Phase:** 6 — OrgTree Readiness v0.6.0
+**Version:** 1.0
+**Status:** Draft
+**Classification:** Public
+**Date:** 2026-04-27
+
+**Provenance:**
+This document derives from and cites the following canonical sources:
+
+| Canon ID | Title | ADR |
+|---|---|---|
+| UIAO_006 | AODIM Architecture | — |
+| UIAO_007 | OrgTree Modernization — AD to Entra ID | — |
+| ADR-035 | OrgPath Codebook — Executable Canon Binding | — |
+| ADR-038 | Device-Plane OrgPath Provisioning | — |
+| ADR-042 | AD Computer Conversion Guide — Phase 4 Device Planes | — |
+
+All claims in this document trace to one of the above canonical sources.
+See [00_CorePrinciples.qmd](00_CorePrinciples.qmd) for the governing SSOT principle.
+
+---
+
+## 1. Overview
+
+The OrgTree Readiness pipeline resolves the structural mismatch between Active
+Directory's X.500 container model (Organizational Units) and the cloud-native
+attribute-driven model required by Microsoft Entra ID, Microsoft Intune, and
+Azure Arc.
+
+Per **UIAO_007** (OrgTree Modernization), the core mental shift is:
+> Stop thinking "tree of containers" — start thinking "tree of attributes +
+> groups + delegation."
+
+Per **UIAO_006** (AODIM), the governing identity principle is:
+> Identity attributes define organizational structure; access is computed, not
+> assigned.
+
+The pipeline produces two readiness verdicts per device:
+
+- **Intune readiness** — OS posture, TPM binding, HVCI, co-management state
+- **Arc readiness** — network path, extension health, policy scope
+
+Both verdicts are projected against the canonical `OrgPath` (per **ADR-035**)
+and emitted as OSCAL evidence observations.
+
+---
+
+## 2. Inputs
+
+| Input | Source | Canon Reference |
+|---|---|---|
+| AD computer object dump | AD Forest survey | ADR-042 |
+| OrgPath codebook | `src/uiao/modernization/orgtree/` | ADR-035 |
+| Intune device inventory | Intune Graph API adapter | ADR-038 |
+| Arc registration status | Azure Arc ARM adapter | ADR-038 |
+| KSI control library | `src/uiao/ksi/` | UIAO_002 |
+
+The AD forest survey emits a SHA-256 content hash over all computer objects at
+survey timestamp. This hash anchors the integrity chain (see Section 7).
+
+---
+
+## 3. Forest → Bundle Pipeline
+
+The end-to-end pipeline moves from AD forest survey through OrgPath projection
+to signed evidence bundle.
+
+```{mermaid}
+flowchart TD
+    A[AD Forest Survey\ncomputer-objects SHA-256] --> B[OrgPath Projection\ncodebook validation]
+    B --> C{Codebook\nMatch?}
+    C -- Yes --> D[Projected OrgPath\nattached to device record]
+    C -- No --> E[Finding: DRIFT-PROVENANCE\nunmapped OU path]
+    D --> F[Device-Plane Scan\nIntune + Arc adapters]
+    F --> G[Readiness Findings\nper device]
+    G --> H[Evidence Bundle\nbundle_hash + HMAC-SHA256]
+    H --> I[OSCAL Emission\nobservations + findings]
+    E --> H
+```
+
+**Pipeline invariants (per UIAO_002 §4):**
+
+1. Each stage produces a content hash that chains to the next.
+2. The evidence bundle is HMAC-SHA256 signed; any modification invalidates the
+   signature.
+3. OSCAL observations trace lineage back to the AD forest survey hash.
+
+---
+
+## 4. OrgPath Projection Model
+
+OrgPath projection converts legacy OU distinguished names into the canonical
+`orgPath` string hierarchy defined in **ADR-035**.
+
+```{mermaid}
+graph TD
+    OU[AD OU Distinguished Name\ne.g. OU=IT,OU=Baltimore,OU=East] --> PROJ[OrgPath Projector\nsrc/uiao/modernization/orgtree/]
+    PROJ --> CB{Codebook\nLookup}
+    CB -- match --> VP[Validated OrgPath\nCORP/US/EAST/BALTIMORE/IT]
+    CB -- no match --> UNK[Unmapped Path\nquarantined]
+    VP --> DG[Dynamic Group Rule\nstartsWith / eq]
+    VP --> AU[Administrative Unit\nscoped role assignment]
+    VP --> CONF[Conformant\ndevice record]
+    UNK --> FND[Finding emitted\nDRIFT-PROVENANCE]
+```
+
+**Codebook validation rules (ADR-035):**
+
+- Exact-node match: `orgPath -eq "CORP/US/EAST/BALTIMORE/IT"`
+- Branch match: `orgPath -startsWith "CORP/US/EAST"`
+- Unresolvable paths are quarantined and a `DRIFT-PROVENANCE` finding is
+  emitted before the record enters the device-plane scan.
+
+---
+
+## 5. Device-Plane Verdicts
+
+### 5.1 Intune Readiness Decision Tree
+
+Per **ADR-038**, Intune readiness gates on four sequential checks. A device is
+`READY` only when all gates pass.
+
+```{mermaid}
+flowchart TD
+    START([Device record\n+ projected OrgPath]) --> OS{OS Version\nmeets baseline?}
+    OS -- No --> FAIL_OS[FAIL: OS out of baseline\nfinding emitted]
+    OS -- Yes --> TPM{TPM 2.0\npresent + active?}
+    TPM -- No --> FAIL_TPM[FAIL: No TPM binding\nfinding emitted]
+    TPM -- Yes --> HVCI{HVCI / Memory\nIntegrity enabled?}
+    HVCI -- No --> WARN_HVCI[WARN: HVCI not enforced\nfinding emitted]
+    HVCI -- Yes --> CO{Co-management\nstate enrolled?}
+    CO -- No --> WARN_CO[WARN: Not co-managed\nfinding emitted]
+    CO -- Yes --> INTUNE_READY([READY: Intune\nconformant])
+```
+
+### 5.2 Arc Readiness Decision Tree
+
+Arc readiness gates on network reachability, extension health, and policy scope
+alignment with the device's projected OrgPath (ADR-038).
+
+```{mermaid}
+flowchart TD
+    START2([Device record\n+ projected OrgPath]) --> NET{Arc endpoint\nreachable?}
+    NET -- No --> FAIL_NET[FAIL: Network path blocked\nfinding emitted]
+    NET -- Yes --> EXT{Connected Machine\nagent healthy?}
+    EXT -- No --> FAIL_EXT[FAIL: Agent unhealthy\nfinding emitted]
+    EXT -- Yes --> POL{Policy scope\naligns OrgPath?}
+    POL -- No --> WARN_POL[WARN: Policy scope mismatch\nfinding emitted]
+    POL -- Yes --> ARC_READY([READY: Arc\nconformant])
+```
+
+---
+
+## 6. Bundle Structure
+
+The signed evidence bundle follows the UIAO_002 §4.4 pattern.
+
+| Field | Type | Description |
+|---|---|---|
+| `bundle_id` | URN | `urn:uiao:orgtree:{tenant}:{run_id}` |
+| `survey_hash` | SHA-256 | Hash of AD computer object dump at survey time |
+| `orgpath_version` | string | Codebook version from ADR-035 |
+| `evidence_items` | list | One `EvidenceItem` per device verdict |
+| `stable_hash` | SHA-256 | Content hash excluding volatile fields |
+| `hmac_sig` | HMAC-SHA256 | Tamper-evident bundle signature |
+| `timestamp` | ISO 8601 | Bundle creation time |
+
+**Integrity chain diagram:** See [`docs/diagrams/uiao-orgtree-integrity-chain.puml`](../diagrams/uiao-orgtree-integrity-chain.puml)
+
+The PlantUML source above maps to the UIAO_002 §4 four-plane pattern:
+
+1. Survey → content hash
+2. Projection + device scan → readiness findings
+3. Evidence bundle → HMAC-SHA256 signature
+4. OSCAL emission → lineage trace back to survey hash
+
+---
+
+## 7. OSCAL Emission
+
+Each device verdict produces an OSCAL 1.1.2 observation:
+
+```yaml
+observation:
+  uuid: <deterministic from evidence_item hash>
+  title: "OrgTree Readiness — <device_id>"
+  description: "Intune: <verdict> | Arc: <verdict>"
+  methods:
+    - AUTOMATED
+  relevant-evidence:
+    - href: <bundle_id>
+      description: "Signed OrgTree readiness bundle"
+  props:
+    - name: survey-hash
+      value: <survey_hash>
+    - name: orgpath
+      value: <projected_orgpath>
+    - name: canon-ref
+      value: "UIAO_007 / ADR-035 / ADR-038"
+```
+
+Failed or warned devices generate a corresponding OSCAL finding with remediation
+state `DETECTED → OPEN`.
+
+---
+
+## 8. KSI Coverage
+
+| KSI ID | KSI Description | Gate |
+|---|---|---|
+| KSI-DEV-01 | Device OS baseline compliance | Intune OS gate |
+| KSI-DEV-02 | TPM 2.0 binding present | Intune TPM gate |
+| KSI-DEV-03 | Memory integrity (HVCI) enforced | Intune HVCI gate |
+| KSI-DEV-04 | Co-management enrollment | Intune co-mgmt gate |
+| KSI-ARC-01 | Arc agent reachability | Arc network gate |
+| KSI-ARC-02 | Connected Machine agent health | Arc extension gate |
+| KSI-ID-05 | OrgPath codebook alignment | Projection codebook gate |
+
+KSI evaluation follows the conservative aggregation rule from UIAO_002 §4.6:
+if any constituent check FAILS, the aggregate KSI status is FAIL; if any WARNS,
+the status is WARN; otherwise PASS.
+
+---
+
+## References
+
+- [UIAO_006 — AODIM Architecture](../../src/uiao/canon/UIAO_006_AODIM_Architecture_v1.0.md)
+- [UIAO_007 — OrgTree Modernization](../../src/uiao/canon/UIAO_007_OrgTree_Modernization_AD_to_EntraID_v1.0.md)
+- [ADR-035 — OrgPath Codebook](../../src/uiao/canon/adr/adr-035-orgpath-codebook-binding.md)
+- [ADR-038 — Device-Plane OrgPath](../../src/uiao/canon/adr/adr-038-device-plane-orgpath.md)
+- [ADR-042 — AD Computer Conversion](../../src/uiao/canon/adr/adr-042-ad-computer-conversion-guide-integration.md)
+- [00_CorePrinciples.qmd](00_CorePrinciples.qmd)
+- [PlantUML integrity chain](../diagrams/uiao-orgtree-integrity-chain.puml)
