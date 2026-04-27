@@ -426,3 +426,102 @@ class TestRuntimeWithCanonicalPolicies:
         runtime2 = EnforcementRuntime(evaluator=evaluator, journal=EnforcementJournal(path=path))
         records = runtime2.journal.read_all()
         assert len(records) >= 1
+
+
+# ---------------------------------------------------------------------------
+# UIAO_119 v2 — tenant tagging on journal records
+# ---------------------------------------------------------------------------
+
+
+class TestRuntimeTenantTagging:
+    def _setup_runtime(self, journal_path, *, tenant_context=None, tenant=None, flags=None):
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+
+        # Local imports to keep the rest of the module import-light.
+        del FeatureFlag, FeatureFlagRegistry  # noqa: F401 (re-imported below)
+        evaluator = EPLEvaluator(policies=[_alert_policy()])
+        return EnforcementRuntime(
+            evaluator=evaluator,
+            journal=EnforcementJournal(path=journal_path),
+            tenant_context=tenant_context,
+            tenant=tenant,
+            flags=flags,
+        )
+
+    def test_no_tenant_context_no_tags(self, tmp_path):
+        runtime = self._setup_runtime(tmp_path / "j.jsonl")
+        actions = runtime.dispatch_matches([_match(_alert_policy())], target="x")
+        assert all("tenant_id" not in a.extra for a in actions)
+
+    def test_tenant_context_unconditional_tags(self, tmp_path):
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        ctx = TenantContext(tenant_id="acme", actor="oid:42", environment=Environment.STAGE)
+        runtime = self._setup_runtime(tmp_path / "j.jsonl", tenant_context=ctx)
+        actions = runtime.dispatch_matches([_match(_alert_policy())], target="x")
+        assert len(actions) == 1
+        assert actions[0].extra["tenant_id"] == "acme"
+        assert actions[0].extra["actor"] == "oid:42"
+        assert actions[0].extra["environment"] == "stage"
+
+    def test_tenant_context_with_tenant_carries_class(self, tmp_path):
+        from uiao.governance.tenancy import (
+            Environment,
+            Tenant,
+            TenantClass,
+            TenantContext,
+        )
+
+        ctx = TenantContext(tenant_id="acme", actor="oid:42", environment=Environment.PROD)
+        tenant = Tenant(id="acme", tenant_class=TenantClass.REGULATED)
+        runtime = self._setup_runtime(tmp_path / "j.jsonl", tenant_context=ctx, tenant=tenant)
+        actions = runtime.dispatch_matches([_match(_alert_policy())], target="x")
+        assert actions[0].extra["tenant_class"] == "regulated"
+
+    def test_disabled_flag_skips_tagging(self, tmp_path):
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        ctx = TenantContext(tenant_id="acme", environment=Environment.DEV)
+        flags = FeatureFlagRegistry(
+            flags={
+                "enforcement.journal.tenant-tagging": FeatureFlag(
+                    name="enforcement.journal.tenant-tagging",
+                    enabled_environments=frozenset(),  # deny all
+                )
+            }
+        )
+        runtime = self._setup_runtime(tmp_path / "j.jsonl", tenant_context=ctx, flags=flags)
+        actions = runtime.dispatch_matches([_match(_alert_policy())], target="x")
+        assert "tenant_id" not in actions[0].extra
+
+    def test_enabled_flag_applies_tagging(self, tmp_path):
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        ctx = TenantContext(tenant_id="acme", environment=Environment.DEV)
+        flags = FeatureFlagRegistry(
+            flags={
+                "enforcement.journal.tenant-tagging": FeatureFlag(
+                    name="enforcement.journal.tenant-tagging",
+                    enabled_environments=frozenset({Environment.DEV}),
+                )
+            }
+        )
+        runtime = self._setup_runtime(tmp_path / "j.jsonl", tenant_context=ctx, flags=flags)
+        actions = runtime.dispatch_matches([_match(_alert_policy())], target="x")
+        assert actions[0].extra["tenant_id"] == "acme"
+
+    def test_tags_round_trip_through_disk(self, tmp_path):
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        ctx = TenantContext(tenant_id="acme", environment=Environment.STAGE)
+        path = tmp_path / "j.jsonl"
+        runtime = self._setup_runtime(path, tenant_context=ctx)
+        runtime.dispatch_matches([_match(_alert_policy())], target="x")
+
+        fresh = EnforcementJournal(path=path)
+        records = fresh.read_all()
+        assert len(records) == 1
+        assert records[0].extra["tenant_id"] == "acme"
+        assert records[0].extra["environment"] == "stage"
