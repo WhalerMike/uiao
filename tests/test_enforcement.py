@@ -96,6 +96,63 @@ class TestBlockHandler:
         handler.dispatch(_match(policy), target="entra-id")
         assert handler.blocked == {"entra-id"}
 
+    def test_disabled_flag_skips_block(self):
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        ctx = TenantContext(tenant_id="acme", environment=Environment.PROD)
+        flags = FeatureFlagRegistry(
+            flags={
+                "epl.action.block.enabled": FeatureFlag(
+                    name="epl.action.block.enabled",
+                    enabled_environments=frozenset({Environment.DEV}),
+                )
+            }
+        )
+        handler = BlockHandler(flags=flags, tenant_context=ctx)
+        policy = EPLPolicy(id="epl:b", action=EPLAction.BLOCK, actor="walker", sla_hours=0)
+        action = handler.dispatch(_match(policy), target="entra-id")
+        assert action.status == "skipped"
+        assert "epl.action.block.enabled" in action.details
+        assert handler.blocked == set()
+
+    def test_enabled_flag_dispatches_block(self):
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        ctx = TenantContext(tenant_id="acme", environment=Environment.DEV)
+        flags = FeatureFlagRegistry(
+            flags={
+                "epl.action.block.enabled": FeatureFlag(
+                    name="epl.action.block.enabled",
+                    enabled_environments=frozenset({Environment.DEV}),
+                )
+            }
+        )
+        handler = BlockHandler(flags=flags, tenant_context=ctx)
+        policy = EPLPolicy(id="epl:b", action=EPLAction.BLOCK, actor="walker", sla_hours=0)
+        action = handler.dispatch(_match(policy), target="entra-id")
+        assert action.status == "dispatched"
+        assert handler.blocked == {"entra-id"}
+
+    def test_no_context_dispatches_unconditionally(self):
+        # Back-compat: handler without flags+context still dispatches.
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+
+        flags = FeatureFlagRegistry(
+            flags={
+                "epl.action.block.enabled": FeatureFlag(
+                    name="epl.action.block.enabled",
+                    enabled_environments=frozenset(),  # deny all
+                )
+            }
+        )
+        # flags supplied but no tenant_context → gate not consulted
+        handler = BlockHandler(flags=flags)
+        policy = EPLPolicy(id="epl:b", action=EPLAction.BLOCK, actor="walker", sla_hours=0)
+        action = handler.dispatch(_match(policy), target="entra-id")
+        assert action.status == "dispatched"
+
 
 class TestRemediateHandler:
     def test_no_wired_remediation_skips(self):
