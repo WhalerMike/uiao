@@ -36,6 +36,20 @@ def list_archive(
     adapter_id: Optional[str] = Query(default=None),
     run_id: Optional[str] = Query(default=None),
     evidence_class: Optional[str] = Query(default=None),
+    tenant_id: Optional[str] = Query(
+        default=None,
+        description=(
+            "Filter entries to those whose extra.tenant_id matches. "
+            "Requires the archive.entry.tenant-tagging flag to be "
+            "enabled when the manager wrote the entries — see UIAO_119 v2."
+        ),
+    ),
+    environment: Optional[str] = Query(
+        default=None,
+        description=(
+            "Filter entries to those whose extra.environment matches. Same UIAO_119 v2 prerequisite as tenant_id."
+        ),
+    ),
     _subject: str = Depends(require_auditor),
 ) -> dict:
     entries = _manager().query(
@@ -43,6 +57,10 @@ def list_archive(
         run_id=run_id or "",
         evidence_class=evidence_class or "",
     )
+    if tenant_id:
+        entries = [e for e in entries if e.extra.get("tenant_id") == tenant_id]
+    if environment:
+        entries = [e for e in entries if e.extra.get("environment") == environment]
     return {
         "count": len(entries),
         "entries": [e.as_dict() for e in entries],

@@ -312,3 +312,176 @@ class TestArchiveRouter:
         monkeypatch.setenv("UIAO_ARCHIVE_ROOT", str(tmp_path / "lake"))
         r = client.get("/api/v1/archive/phantom-run/phantom-adapter", headers=AUTH_HEADERS)
         assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# UIAO_119 v2 — tenant_id + environment filter wire-up on /journal + /archive
+# ---------------------------------------------------------------------------
+
+
+class TestJournalTenantFilter:
+    def _seed_tagged(self, path, tenant_id: str, environment: str, policy_id: str = "epl:t"):
+        from uiao.governance.enforcement import EnforcementAction, EnforcementJournal
+        from uiao.governance.epl import EPLAction
+
+        journal = EnforcementJournal(path=path)
+        journal.record(
+            EnforcementAction(
+                policy_id=policy_id,
+                action=EPLAction.LOG,
+                actor="x",
+                sla_hours=0,
+                target="t",
+                dispatched_at="2026-04-26T00:00:00+00:00",
+                status="dispatched",
+                extra={"tenant_id": tenant_id, "environment": environment},
+            )
+        )
+
+    def test_tenant_id_filter(self, tmp_path, client, monkeypatch):
+        path = tmp_path / "j.jsonl"
+        self._seed_tagged(path, "acme", "stage", policy_id="epl:a")
+        self._seed_tagged(path, "umbrella", "stage", policy_id="epl:b")
+        monkeypatch.setenv("UIAO_ENFORCEMENT_JOURNAL_PATH", str(path))
+        r = client.get(
+            "/api/v1/enforcement/journal?tenant_id=acme",
+            headers=AUTH_HEADERS,
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["count"] == 1
+        assert body["records"][0]["policy_id"] == "epl:a"
+        # total_unfiltered still reports both records.
+        assert body["total_unfiltered"] == 2
+
+    def test_environment_filter(self, tmp_path, client, monkeypatch):
+        path = tmp_path / "j.jsonl"
+        self._seed_tagged(path, "acme", "dev", policy_id="epl:dev")
+        self._seed_tagged(path, "acme", "prod", policy_id="epl:prod")
+        monkeypatch.setenv("UIAO_ENFORCEMENT_JOURNAL_PATH", str(path))
+        r = client.get(
+            "/api/v1/enforcement/journal?environment=prod",
+            headers=AUTH_HEADERS,
+        )
+        body = r.json()
+        assert body["count"] == 1
+        assert body["records"][0]["policy_id"] == "epl:prod"
+
+    def test_compound_filter(self, tmp_path, client, monkeypatch):
+        path = tmp_path / "j.jsonl"
+        self._seed_tagged(path, "acme", "dev", policy_id="epl:1")
+        self._seed_tagged(path, "acme", "prod", policy_id="epl:2")
+        self._seed_tagged(path, "umbrella", "prod", policy_id="epl:3")
+        monkeypatch.setenv("UIAO_ENFORCEMENT_JOURNAL_PATH", str(path))
+        r = client.get(
+            "/api/v1/enforcement/journal?tenant_id=acme&environment=prod",
+            headers=AUTH_HEADERS,
+        )
+        body = r.json()
+        assert body["count"] == 1
+        assert body["records"][0]["policy_id"] == "epl:2"
+
+    def test_filter_misses_untagged_records(self, tmp_path, client, monkeypatch):
+        # Untagged records (extra has no tenant_id key) are excluded
+        # when the filter is supplied. The flag-disabled path produces
+        # untagged records, so this is the consistent default.
+        from uiao.governance.enforcement import EnforcementAction, EnforcementJournal
+        from uiao.governance.epl import EPLAction
+
+        path = tmp_path / "j.jsonl"
+        journal = EnforcementJournal(path=path)
+        journal.record(
+            EnforcementAction(
+                policy_id="epl:legacy",
+                action=EPLAction.LOG,
+                actor="x",
+                sla_hours=0,
+                target="t",
+                dispatched_at="2026-04-26T00:00:00+00:00",
+                status="dispatched",
+            )
+        )
+        monkeypatch.setenv("UIAO_ENFORCEMENT_JOURNAL_PATH", str(path))
+        r = client.get(
+            "/api/v1/enforcement/journal?tenant_id=acme",
+            headers=AUTH_HEADERS,
+        )
+        body = r.json()
+        assert body["count"] == 0
+        # But the unfiltered tally still sees the legacy record.
+        assert body["total_unfiltered"] == 1
+
+
+class TestArchiveTenantFilter:
+    def _seed_lake(self, lake_root: Path) -> None:
+        # Build the lake by hand so we can plant tagged extras directly.
+        from uiao.storage.data_lake import (
+            ArchiveEntry,
+            FilesystemArchive,
+        )
+
+        backend = FilesystemArchive(root=lake_root)
+        for run, aid, tenant, env in [
+            ("r1", "entra-id", "acme", "stage"),
+            ("r2", "entra-id", "umbrella", "stage"),
+            ("r3", "scuba", "acme", "prod"),
+        ]:
+            backend.write_index(
+                ArchiveEntry(
+                    run_id=run,
+                    adapter_id=aid,
+                    archived_at="2026-04-26T00:00:00+00:00",
+                    retention_until="2030-04-26T00:00:00+00:00",
+                    archive_path=f"/lake/{aid}/{run}",
+                    extra={"tenant_id": tenant, "environment": env},
+                )
+            )
+
+    def test_tenant_id_filter(self, tmp_path, client, monkeypatch):
+        lake = tmp_path / "lake"
+        self._seed_lake(lake)
+        monkeypatch.setenv("UIAO_ARCHIVE_ROOT", str(lake))
+        r = client.get("/api/v1/archive?tenant_id=acme", headers=AUTH_HEADERS)
+        body = r.json()
+        assert body["count"] == 2
+        assert {e["run_id"] for e in body["entries"]} == {"r1", "r3"}
+
+    def test_environment_filter(self, tmp_path, client, monkeypatch):
+        lake = tmp_path / "lake"
+        self._seed_lake(lake)
+        monkeypatch.setenv("UIAO_ARCHIVE_ROOT", str(lake))
+        r = client.get("/api/v1/archive?environment=prod", headers=AUTH_HEADERS)
+        body = r.json()
+        assert body["count"] == 1
+        assert body["entries"][0]["run_id"] == "r3"
+
+    def test_compound_filter(self, tmp_path, client, monkeypatch):
+        lake = tmp_path / "lake"
+        self._seed_lake(lake)
+        monkeypatch.setenv("UIAO_ARCHIVE_ROOT", str(lake))
+        r = client.get(
+            "/api/v1/archive?tenant_id=acme&environment=stage",
+            headers=AUTH_HEADERS,
+        )
+        body = r.json()
+        assert body["count"] == 1
+        assert body["entries"][0]["run_id"] == "r1"
+
+    def test_filter_misses_untagged_entries(self, tmp_path, client, monkeypatch):
+        from uiao.storage.data_lake import ArchiveEntry, FilesystemArchive
+
+        lake = tmp_path / "lake"
+        backend = FilesystemArchive(root=lake)
+        backend.write_index(
+            ArchiveEntry(
+                run_id="legacy",
+                adapter_id="a",
+                archived_at="2026-04-26T00:00:00+00:00",
+                retention_until="2030-04-26T00:00:00+00:00",
+                archive_path="/x",
+            )
+        )
+        monkeypatch.setenv("UIAO_ARCHIVE_ROOT", str(lake))
+        r = client.get("/api/v1/archive?tenant_id=acme", headers=AUTH_HEADERS)
+        body = r.json()
+        assert body["count"] == 0
