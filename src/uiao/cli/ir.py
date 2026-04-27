@@ -513,6 +513,15 @@ def ir_orgtree_readiness_bundle(
             "NEVER use in production — signatures produced with this key offer no security."
         ),
     ),
+    oscal_out: str = typer.Option(
+        "",
+        "--oscal-out",
+        help=(
+            "If set, also emit OSCAL Assessment Results evidence via WS-A6 "
+            "(uiao.oscal.orgtree_evidence.emit_orgtree_evidence) into this directory. "
+            "Writes orgtree-evidence.json alongside the bundle artifacts."
+        ),
+    ),
 ) -> None:
     """Build a signed OrgTree Readiness evidence bundle from a survey JSON input.
 
@@ -524,6 +533,9 @@ def ir_orgtree_readiness_bundle(
     * ``bundle.hash``  — hex SHA-256 of the canonical bundle
     * ``bundle.sig``   — hex HMAC-SHA256 of the canonical bundle
 
+    When ``--oscal-out`` is given, the WS-A6 OSCAL emitter is also invoked and
+    writes ``orgtree-evidence.json`` into the specified directory.
+
     The HMAC key is read from the ``UIAO_BUNDLE_HMAC_KEY`` environment variable.
     If the variable is not set and ``--insecure-dev-key`` is NOT passed, the
     command exits with code 1. Pass ``--insecure-dev-key`` for local dev/tests.
@@ -531,6 +543,7 @@ def ir_orgtree_readiness_bundle(
     Example::
 
         uiao ir orgtree-readiness-bundle survey.json --out-dir /tmp/orgtree-bundle
+        uiao ir orgtree-readiness-bundle survey.json --out-dir /tmp/b --oscal-out /tmp/oscal
     """
     import hashlib as _hashlib
     import hmac as _hmac
@@ -721,6 +734,19 @@ def ir_orgtree_readiness_bundle(
     _console.print(f"  Findings   : {len(findings_raw)}")
     _console.print(f"  Hash       : {content_hash[:16]}...")
     _console.print(f"  Sig        : {sig[:16]}...")
+
+    # ------------------------------------------------------------------
+    # 8. Optionally emit OSCAL evidence (WS-A6 integration — Phase 2 task 4)
+    # ------------------------------------------------------------------
+    if oscal_out:
+        try:
+            from uiao.oscal.orgtree_evidence import emit_orgtree_evidence  # noqa: PLC0415
+
+            oscal_path = emit_orgtree_evidence(bundle, oscal_out)
+            _console.print(f"[green]OSCAL evidence written to {oscal_path}[/green]")
+        except Exception as exc:  # noqa: BLE001
+            _console.print(f"[red]OSCAL emission failed: {exc}[/red]")
+            raise typer.Exit(code=1) from exc
 
 
 @ir_app.command("ssp-inject")
