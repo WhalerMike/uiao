@@ -1,8 +1,9 @@
 ---
 id: ADR-043
 title: "FedRAMP RFC-0026 (CA-7 Continuous Monitoring Expectations) — UIAO Integration"
-status: PROPOSED
+status: ACCEPTED
 date: 2026-04-21
+accepted_date: 2026-04-27
 deciders:
   - governance-steward
   - conmon-steward
@@ -34,13 +35,31 @@ related_discussions:
 
 ## Status
 
-**PROPOSED — 2026-04-21.** Tracks an active FedRAMP RFC whose public comment
-period closes **2026-04-22**. This ADR captures UIAO's intent to align with
-RFC-0026 as it stands at the close of comment; ratification to ACCEPTED is
-gated on RFC-0026 reaching a stable "Balance Improvement Release" state and
-the corresponding FedRAMP Marketplace guidance. Until then, treat every
-pathway commitment below as **intent, not obligation**, and re-diff against
-the published release before promoting.
+**ACCEPTED — 2026-04-27.** RFC-0026's public comment period closed
+**2026-04-22**. The FedRAMP 20x assessment companion note
+(`inbox/New_FedRAMP_Boundary/FedRAMP_20x_Assessment_and_Implications.docx`,
+§1.3) and `src/uiao/canon/data/fedramp-20x.yml` (`deployment_surfaces`
+block, `rev5-balance-improvement-releases`) confirm that the Rev5 Balance
+Improvement Releases — including **Vulnerability Detection and Response**
+(the modernized pathway for RV5-CA07-VLN) and **Collaborative Continuous
+Monitoring** (the modernized pathway for RV5-CA07-CCM) — are now
+published at [fedramp.gov/docs/rev5/balance/](https://www.fedramp.gov/docs/rev5/balance/)
+as opt-in updates to existing Rev5-authorized packages. Both ratification
+gates (stable Balance Improvement Release state + corresponding FedRAMP
+Marketplace guidance) are satisfied.
+
+The pathway commitments below transition from **intent** to **obligation**
+on this ratification. The Notice 0009 deadlines (CCM BIR mandatory
+2027-04-01; VDR BIR mandatory 2027-07-01) and the RFC-0026 enforcement
+schedule (gradual adoption end of June 2026; grace period through
+2026-12-31; enforcement 2027-01-01) carry forward unchanged.
+
+### Status history
+
+| Date | Status | Note |
+|---|---|---|
+| 2026-04-21 | PROPOSED | Initial landing during RFC-0026 public comment period. |
+| 2026-04-27 | ACCEPTED | Comment period closed 2026-04-22. Rev5 Balance Improvement Releases for VDR and CCM published; ratification gates satisfied. Anchor evidence: `inbox/New_FedRAMP_Boundary/FedRAMP_20x_Assessment_and_Implications.docx` §1.3 and `canon/data/fedramp-20x.yml` `deployment_surfaces`. |
 
 ## Context
 
