@@ -1,0 +1,62 @@
+@startuml UIAO_OrgTree_Integrity_Chain
+' OrgTree Readiness — Integrity Chain (UIAO_002 §4 pattern)
+
+skinparam backgroundColor #FEFEFE
+skinparam componentBackgroundColor #E8F0FE
+skinparam componentBorderColor #2C3E50
+skinparam componentFontSize 12
+skinparam arrowColor #2C3E50
+skinparam noteBackgroundColor #FFF8E1
+skinparam noteBorderColor #F9A825
+
+title **OrgTree Readiness — Integrity Chain**\n//Survey Hash → Bundle Hash → HMAC Sig → OSCAL Evidence//
+
+component "AD Forest\nSurvey" as SURVEY #E8F8E8 {
+  portin "computer-objects" as CO
+}
+
+component "OrgPath\nProjection" as ORGPATH #E3F2FD {
+  portin "codebook-validate" as CBV
+}
+
+component "Device-Plane\nReadiness Scan" as DEVPLANE #FFF3E0 {
+  portin "Intune verdict" as IV
+  portin "Arc verdict" as AV
+}
+
+component "Evidence\nBundle" as BUNDLE #FCE4EC {
+  portin "bundle_hash" as BH
+  portin "HMAC-SHA256" as HMAC
+}
+
+component "OSCAL\nEvidence" as OSCAL #EDE7F6 {
+  portin "observation" as OBS
+  portin "finding" as FIND
+}
+
+SURVEY --> ORGPATH : content_hash\n(SHA-256)
+ORGPATH --> DEVPLANE : projected\nOrgPath
+DEVPLANE --> BUNDLE : readiness\nfindings
+BUNDLE --> OSCAL : signed bundle\n+ lineage trace
+
+note right of SURVEY
+  SHA-256 over all
+  computer objects at
+  survey timestamp
+end note
+
+note right of BUNDLE
+  HMAC-SHA256 signs
+  the complete bundle;
+  stable_hash excludes
+  volatile fields
+end note
+
+note bottom of OSCAL
+  Every OSCAL observation
+  traces back to survey hash.
+  Lineage: survey → projection
+  → verdict → bundle → OSCAL.
+end note
+
+@enduml
