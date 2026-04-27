@@ -1,0 +1,336 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://uiao.gov/schemas/orgtree-readiness/orgtree-readiness.schema.json",
+  "title": "UIAO OrgTree Readiness Bundle Schema",
+  "description": "Schema for the UIAO OrgTree Readiness evidence bundle (WS-A5). Captures the AD forest archaeological survey output, OrgPath/Intune/ARC readiness plans, and HMAC-signed provenance for FedRAMP-Moderate evidence pipelines.",
+  "type": "object",
+  "required": [
+    "version",
+    "generated_at",
+    "users",
+    "groups",
+    "computers",
+    "servers",
+    "orgpath_plan",
+    "intune_plan",
+    "arc_plan",
+    "findings",
+    "provenance"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Semantic version of the bundle format.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+].+)?$"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when this bundle was generated."
+    },
+    "users": {
+      "type": "array",
+      "description": "AD user objects captured during the survey.",
+      "items": { "$ref": "#/definitions/adUser" }
+    },
+    "groups": {
+      "type": "array",
+      "description": "AD group objects captured during the survey.",
+      "items": { "$ref": "#/definitions/adGroup" }
+    },
+    "computers": {
+      "type": "array",
+      "description": "AD computer (workstation) objects captured during the survey.",
+      "items": { "$ref": "#/definitions/adComputer" }
+    },
+    "servers": {
+      "type": "array",
+      "description": "AD server objects captured during the survey.",
+      "items": { "$ref": "#/definitions/adComputer" }
+    },
+    "orgpath_plan": {
+      "$ref": "#/definitions/orgpathPlan",
+      "description": "OrgPath assignment readiness plan derived from the AD survey."
+    },
+    "intune_plan": {
+      "$ref": "#/definitions/intunePlan",
+      "description": "Intune device-enrollment readiness plan derived from the AD survey."
+    },
+    "arc_plan": {
+      "$ref": "#/definitions/arcPlan",
+      "description": "Azure Arc server-onboarding readiness plan derived from the AD survey."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Drift findings emitted during the survey (DRIFT-IDENTITY, DRIFT-SCHEMA, DRIFT-PROVENANCE, DRIFT-SEMANTIC).",
+      "items": { "$ref": "#/definitions/driftFinding" }
+    },
+    "provenance": {
+      "$ref": "#/definitions/bundleProvenance",
+      "description": "Bundle provenance: canon references, source survey hash, and HMAC-SHA256 signature."
+    }
+  },
+  "definitions": {
+    "adUser": {
+      "type": "object",
+      "description": "Minimal AD user record from the survey pass.",
+      "required": ["dn"],
+      "additionalProperties": true,
+      "properties": {
+        "dn": {
+          "type": "string",
+          "description": "Canonical distinguished name."
+        },
+        "sam_account_name": {
+          "type": "string"
+        },
+        "user_principal_name": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "orgpath": {
+          "type": "string",
+          "description": "Resolved OrgPath (ORG-XX or empty when unresolved)."
+        },
+        "source_forest": {
+          "type": "string"
+        },
+        "last_logon_timestamp": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "adGroup": {
+      "type": "object",
+      "description": "AD group record from the survey pass.",
+      "required": ["dn"],
+      "additionalProperties": true,
+      "properties": {
+        "dn": {
+          "type": "string"
+        },
+        "sam_account_name": {
+          "type": "string"
+        },
+        "group_scope": {
+          "type": "string",
+          "enum": ["DomainLocal", "Global", "Universal"]
+        },
+        "group_type": {
+          "type": "string",
+          "enum": ["Security", "Distribution"]
+        },
+        "member_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_forest": {
+          "type": "string"
+        }
+      }
+    },
+    "adComputer": {
+      "type": "object",
+      "description": "AD computer or server record from the survey pass.",
+      "required": ["dn"],
+      "additionalProperties": true,
+      "properties": {
+        "dn": {
+          "type": "string"
+        },
+        "dns_host_name": {
+          "type": "string"
+        },
+        "operating_system": {
+          "type": "string"
+        },
+        "operating_system_version": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "last_logon_timestamp": {
+          "type": ["string", "null"]
+        },
+        "source_forest": {
+          "type": "string"
+        }
+      }
+    },
+    "orgpathPlan": {
+      "type": "object",
+      "description": "OrgPath assignment readiness plan.",
+      "additionalProperties": true,
+      "properties": {
+        "total_users": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "resolved_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unresolved_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "unresolved_dns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "ou_orgpath_map": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "intunePlan": {
+      "type": "object",
+      "description": "Intune device-enrollment readiness plan.",
+      "additionalProperties": true,
+      "properties": {
+        "total_computers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "enroll_ready_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "enroll_blocked_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked_dns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "readiness_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "arcPlan": {
+      "type": "object",
+      "description": "Azure Arc server-onboarding readiness plan.",
+      "additionalProperties": true,
+      "properties": {
+        "total_servers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "onboard_ready_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "onboard_blocked_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked_dns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "readiness_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "driftFinding": {
+      "type": "object",
+      "description": "A single drift finding emitted by the AD survey.",
+      "required": ["drift_class", "severity", "path", "detail"],
+      "additionalProperties": true,
+      "properties": {
+        "drift_class": {
+          "type": "string",
+          "enum": ["DRIFT-SCHEMA", "DRIFT-SEMANTIC", "DRIFT-PROVENANCE", "DRIFT-IDENTITY"],
+          "description": "Five-class drift taxonomy per UIAO DriftDetectionStandard."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["P1", "P2", "P3", "P4"]
+        },
+        "path": {
+          "type": "string",
+          "description": "Canonical object path or distinguished name."
+        },
+        "detail": {
+          "type": "string",
+          "description": "Human-readable description of the finding."
+        },
+        "error_code": {
+          "type": "string",
+          "description": "GOV-MIG-NNN or GOV-DRF-NNN error code."
+        },
+        "object_type": {
+          "type": "string",
+          "description": "AD object type (User, Computer, OU, GPO, ServiceAccount, Site)."
+        },
+        "source_forest": {
+          "type": "string"
+        },
+        "suggested_orgpath": {
+          "type": "string",
+          "description": "Best-effort OrgPath candidate; empty when unresolvable."
+        }
+      }
+    },
+    "bundleProvenance": {
+      "type": "object",
+      "description": "Provenance block: canon document references, source hash, and HMAC signature.",
+      "required": ["schema_id", "schema_version", "source_hash", "signature", "hmac_alg"],
+      "additionalProperties": false,
+      "properties": {
+        "schema_id": {
+          "type": "string",
+          "description": "$id of the validating JSON Schema."
+        },
+        "schema_version": {
+          "type": "string",
+          "description": "Version of the schema used to validate this bundle."
+        },
+        "canon_refs": {
+          "type": "array",
+          "description": "UIAO_NNN canon document IDs referenced by this bundle.",
+          "items": { "type": "string" }
+        },
+        "source_hash": {
+          "type": "string",
+          "description": "SHA-256 hex digest of the canonicalized survey input JSON.",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        },
+        "signature": {
+          "type": "string",
+          "description": "HMAC-SHA256 hex digest of the canonicalized bundle content (env var UIAO_BUNDLE_HMAC_KEY).",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        },
+        "hmac_alg": {
+          "type": "string",
+          "description": "HMAC algorithm identifier.",
+          "enum": ["hmac-sha256"]
+        },
+        "actor": {
+          "type": "string",
+          "description": "Identity that produced this bundle (CLI invocation context)."
+        }
+      }
+    }
+  }
+}
