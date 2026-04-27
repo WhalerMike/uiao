@@ -287,6 +287,92 @@ class TestFilesystemArchive:
         backend.remove("adapterA/run-1")
         backend.put(source, "adapterA/run-1")  # no exception
 
+    def test_disabled_strict_flag_softens_to_overwrite(self, tmp_path):
+        # When the data-lake.immutable.strict flag is disabled for the
+        # supplied context, the immutable backend allows overwrite as
+        # if immutable=False. This is the rollout knob from UIAO_119
+        # v2 — operators dial strict mode in by tenant + environment.
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        ctx = TenantContext(tenant_id="acme", environment=Environment.PROD)
+        flags = FeatureFlagRegistry(
+            flags={
+                "data-lake.immutable.strict": FeatureFlag(
+                    name="data-lake.immutable.strict",
+                    enabled_environments=frozenset({Environment.DEV, Environment.STAGE}),
+                )
+            }
+        )
+        backend = FilesystemArchive(
+            root=tmp_path / "lake",
+            flags=flags,
+            tenant_context=ctx,
+        )
+        source = tmp_path / "run-1"
+        source.mkdir()
+        (source / "evidence.json").write_text('{"v": 1}', encoding="utf-8")
+        backend.put(source, "adapterA/run-1")
+        # No RawZoneViolation because the flag is disabled for prod.
+        (source / "evidence.json").write_text('{"v": 2}', encoding="utf-8")
+        backend.put(source, "adapterA/run-1")
+        target = backend.root / "adapterA" / "run-1" / "evidence.json"
+        assert json.loads(target.read_text(encoding="utf-8")) == {"v": 2}
+
+    def test_enabled_strict_flag_keeps_immutable_behavior(self, tmp_path):
+        # When the flag enables strict mode for the supplied context,
+        # the existing RawZoneViolation behavior fires.
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        ctx = TenantContext(tenant_id="acme", environment=Environment.DEV)
+        flags = FeatureFlagRegistry(
+            flags={
+                "data-lake.immutable.strict": FeatureFlag(
+                    name="data-lake.immutable.strict",
+                    enabled_environments=frozenset({Environment.DEV}),
+                )
+            }
+        )
+        backend = FilesystemArchive(
+            root=tmp_path / "lake",
+            flags=flags,
+            tenant_context=ctx,
+        )
+        source = tmp_path / "run-1"
+        source.mkdir()
+        (source / "evidence.json").write_text("{}", encoding="utf-8")
+        backend.put(source, "adapterA/run-1")
+        with pytest.raises(RawZoneViolation):
+            backend.put(source, "adapterA/run-1")
+
+    def test_immutable_false_overrides_flag_check(self, tmp_path):
+        # immutable=False bypasses the flag entirely (back-compat for
+        # explicit scratch backends).
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        ctx = TenantContext(tenant_id="acme", environment=Environment.DEV)
+        flags = FeatureFlagRegistry(
+            flags={
+                "data-lake.immutable.strict": FeatureFlag(
+                    name="data-lake.immutable.strict",
+                    enabled_environments=frozenset({Environment.DEV}),
+                )
+            }
+        )
+        backend = FilesystemArchive(
+            root=tmp_path / "lake",
+            immutable=False,
+            flags=flags,
+            tenant_context=ctx,
+        )
+        source = tmp_path / "run-1"
+        source.mkdir()
+        (source / "evidence.json").write_text("{}", encoding="utf-8")
+        backend.put(source, "adapterA/run-1")
+        backend.put(source, "adapterA/run-1")  # no exception
+
     def test_list_index_sorted(self, tmp_path):
         backend = FilesystemArchive(root=tmp_path / "lake")
         for run, aid in [("r2", "b"), ("r1", "a"), ("r1", "b")]:

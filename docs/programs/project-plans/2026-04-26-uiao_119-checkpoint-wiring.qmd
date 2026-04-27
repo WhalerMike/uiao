@@ -1,0 +1,91 @@
+---
+title: "UIAO_119 — Feature-flag check-point wiring (epl.block + data-lake.immutable)"
+subtitle: "First wave of consumer wire-ups under action 119.3 (b)"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Closes part of action item 119.3 (b) from the §4.4 assessment: wires two of the four UIAO_119 v2 reference flags into their actual consumer code paths — BlockHandler honors `epl.action.block.enabled`, FilesystemArchive honors `data-lake.immutable.strict`."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Closes | First wave of action item 119.3 (b) from the [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+| Target spec | UIAO_119 Tenancy Strategy — feature-flag check-points |
+| Plan version | 1.0 (first delivery) |
+| Builds on | [UIAO_119 v2 feature-flag system](2026-04-26-uiao_119-v2-feature-flags.qmd), [tagging wire-up](2026-04-26-uiao_119-journal-tagging.qmd) |
+
+## What shipped
+
+Two of the four UIAO_119 v2 reference flags now have actual consumer wire-ups:
+
+### `epl.action.block.enabled` → `BlockHandler` (`src/uiao/governance/enforcement.py`)
+
+`BlockHandler` (the default `EPLAction.BLOCK` handler) gains optional `flags`, `tenant_context`, and `tenant` fields. When both `flags` and `tenant_context` are supplied, `dispatch` consults the flag before adding to the in-memory deny-list. **A disabled flag returns a `status="skipped"` action** whose details cite the gate; the deny-list is left unchanged. Without `flags` the handler dispatches unconditionally (back-compat for tests + production deployments that want unconditional blocking).
+
+New module constant: `EPL_BLOCK_ACTION_FLAG = "epl.action.block.enabled"`.
+
+### `data-lake.immutable.strict` → `FilesystemArchive` (`src/uiao/storage/data_lake.py`)
+
+`FilesystemArchive` gains optional `flags`, `tenant_context`, and `tenant` fields. New `_strict_mode()` helper:
+
+- `immutable=False` → never strict (back-compat).
+- `immutable=True` and no `flags`/`tenant_context` → always strict (back-compat — preserves UIAO_117 Phase 1 behavior).
+- `immutable=True` and both `flags`/`tenant_context` set → `flags.is_enabled(RAW_ZONE_STRICT_FLAG, ctx, tenant)`.
+
+`put` calls `_strict_mode()` before raising `RawZoneViolation`. **A disabled flag softens the immutable backend to allow overwrite** — the rollout knob: operators dial strict mode in by tenant + environment, exactly like the v2 flag system was designed for.
+
+New module constant: `RAW_ZONE_STRICT_FLAG = "data-lake.immutable.strict"`.
+
+## Public API delta
+
+| Symbol | Before | After |
+|---|---|---|
+| `enforcement.BlockHandler` | 2 fields | 5 fields (`flags`, `tenant_context`, `tenant` added with `None` defaults) |
+| `enforcement.EPL_BLOCK_ACTION_FLAG` | did not exist | new module constant |
+| `data_lake.FilesystemArchive` | 2 fields | 5 fields (`flags`, `tenant_context`, `tenant` added with `None` defaults) |
+| `data_lake.FilesystemArchive._strict_mode` | did not exist | new private helper |
+| `data_lake.RAW_ZONE_STRICT_FLAG` | did not exist | new module constant |
+
+Back-compat: every new field defaults to `None`. Existing callers (including the 32 tests `test_data_lake.py` and 25 `test_enforcement.py` already had on main) see no behavior change.
+
+## Test coverage: 7 new
+
+| Class | Tests | What they assert |
+|---|---|---|
+| `TestBlockHandler` (`test_enforcement.py`) | +3 | Disabled flag → `status="skipped"` + deny-list unchanged + details cite the flag; enabled flag → unchanged dispatch behavior; flags supplied without `tenant_context` → unconditional dispatch (no gate) |
+| `TestFilesystemArchive` (`test_data_lake.py`) | +3 | Disabled strict flag softens to overwrite; enabled strict flag preserves `RawZoneViolation` behavior; explicit `immutable=False` overrides flag check |
+
+**74 pass** in `test_enforcement.py + test_data_lake.py`; **252 pass** across the full UIAO_119 consumer set (+ tenancy / feature_flags / substrate_walker / auditor_api_v1 / cql / epl). No regressions.
+
+## Action items closed
+
+| # | Action | Status |
+|---|---|---|
+| 119.3 (b) — wave 1 | Wire `epl.action.block.enabled` and `data-lake.immutable.strict` flags into their consumer code paths | ✅ shipped this PR |
+
+## Action items still open
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 119.3 (b) — wave 2 | Wire `auditor-api.cql.experimental-ops` (gate experimental CQL operators) and `tenancy.environment.prod-promote` (gate CLI environment promotion) once those consumer surfaces ship | Substrate maintainer | After CQL v2 ops + CLI environment-promote subcommand land |
+| 119.3 (b) — wave 3 | Wire flag check-points into orchestrator plane selection (UIAO_100 scheduler) — gate optional planes by environment / tenant_class | Substrate maintainer | After orchestrator gains an optional-plane registry |
+| 119.3 (c) | Migration sandbox: clone `TenantContext`, run pipeline, snapshot outputs, emit diff report | Substrate maintainer | Independent of (b) |
+| 119.5 | UIAO_124 Adapter Ops Runbook entry for the canary → standard → regulated rollout flow | Substrate maintainer | After 119.3 (b) wave 3 |
+| Auditor API consumer | `/journal` filter on `tenant_id` + `environment`; `/archive` filter same. Once shipped, flip the two tagging flags from "deny all" to enabled per the rollout plan | Substrate maintainer | After this PR |
+
+## Roll-up to substrate-status
+
+| Row | From | To |
+|---|---|---|
+| UIAO_119 | 🟡 working — v1 + v2 + journal/archive tagging shipped | 🟡 working — **+ check-point wiring wave 1 ✅ shipped 2026-04-26** ([impl record](2026-04-26-uiao_119-checkpoint-wiring.qmd)); 119.3 (b) waves 2+3 + migration sandbox open per assessment |
+
+## References
+
+- UIAO_119 v2 feature-flag system — [`2026-04-26-uiao_119-v2-feature-flags.qmd`](2026-04-26-uiao_119-v2-feature-flags.qmd)
+- UIAO_119 journal/archive tagging — [`2026-04-26-uiao_119-journal-tagging.qmd`](2026-04-26-uiao_119-journal-tagging.qmd)
+- §4.4 assessment — [`2026-04-26-ha-perf-recovery-tenancy-assessment.qmd`](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd)
+- UIAO_111 Enforcement Runtime — `BlockHandler` consumer
+- UIAO_109 Data Lake Model — `FilesystemArchive` consumer
+- UIAO_117 Phase 1 — defines the strict-mode behavior the flag now gates

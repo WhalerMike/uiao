@@ -59,6 +59,7 @@ from uiao.governance.feature_flags import FeatureFlagRegistry
 from uiao.governance.tenancy import Tenant, TenantContext
 
 JOURNAL_TAGGING_FLAG = "enforcement.journal.tenant-tagging"
+EPL_BLOCK_ACTION_FLAG = "epl.action.block.enabled"
 
 # ---------------------------------------------------------------------------
 # Vocabulary
@@ -221,10 +222,21 @@ class BlockHandler(EnforcementHandler):
     UIAO_100 scheduler's "skip these adapters on the next dispatch"
     set). The default just records what would be blocked so tests
     can assert on the side-effect.
+
+    UIAO_119 v2 check-point — when ``flags`` and ``tenant_context``
+    are both supplied, ``dispatch`` consults the
+    ``epl.action.block.enabled`` feature flag. Dispatching against a
+    disabled flag returns a ``status="skipped"`` action whose details
+    cite the gate; the in-memory ``blocked`` set is left unchanged.
+    Without ``flags`` the handler dispatches unconditionally
+    (back-compat).
     """
 
     action: EPLAction = EPLAction.BLOCK
     blocked: set[str] = field(default_factory=set)
+    flags: Optional[FeatureFlagRegistry] = None
+    tenant_context: Optional[TenantContext] = None
+    tenant: Optional[Tenant] = None
 
     def dispatch(
         self,
@@ -233,6 +245,18 @@ class BlockHandler(EnforcementHandler):
         *,
         now: Optional[datetime] = None,
     ) -> EnforcementAction:
+        if self.flags is not None and self.tenant_context is not None:
+            if not self.flags.is_enabled(EPL_BLOCK_ACTION_FLAG, self.tenant_context, self.tenant):
+                return _build_action(
+                    match,
+                    target,
+                    status="skipped",
+                    details=(
+                        f"block gated by feature flag {EPL_BLOCK_ACTION_FLAG} "
+                        f"(disabled for environment={self.tenant_context.environment.value})"
+                    ),
+                    now=now,
+                )
         self.blocked.add(target)
         return _build_action(
             match,
@@ -486,6 +510,7 @@ class EnforcementRuntime:
 
 
 __all__ = [
+    "EPL_BLOCK_ACTION_FLAG",
     "JOURNAL_TAGGING_FLAG",
     "AlertHandler",
     "BlockHandler",

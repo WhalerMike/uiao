@@ -59,6 +59,7 @@ from uiao.governance.feature_flags import FeatureFlagRegistry
 from uiao.governance.tenancy import Tenant, TenantContext
 
 ARCHIVE_TAGGING_FLAG = "archive.entry.tenant-tagging"
+RAW_ZONE_STRICT_FLAG = "data-lake.immutable.strict"
 
 # Default retention applied when an adapter declares no
 # `retention-years:` (federal ConMon baseline: 3 years).
@@ -314,21 +315,40 @@ class FilesystemArchive(ArchiveBackend):
     through :meth:`remove` (driven by :meth:`ArchiveManager.expire`).
     Set ``immutable=False`` only for non-canonical scratch backends
     (e.g., synthetic test fixtures that re-archive into the same key).
+
+    UIAO_119 v2 check-point — when ``flags`` and ``tenant_context``
+    are both supplied, :meth:`put` consults the
+    ``data-lake.immutable.strict`` feature flag. When the flag is
+    *disabled* for the supplied context, the immutable behavior
+    softens to allow overwrite (effectively ``immutable=False`` for
+    that call) so an operator can roll the strict mode out gradually.
+    Without ``flags`` the ``immutable`` attribute is the sole gate
+    (back-compat).
     """
 
     root: Path
     immutable: bool = True
+    flags: Optional[FeatureFlagRegistry] = None
+    tenant_context: Optional[TenantContext] = None
+    tenant: Optional[Tenant] = None
 
     def __post_init__(self) -> None:
         self.root = Path(self.root)
         self.root.mkdir(parents=True, exist_ok=True)
         (self.root / "_index").mkdir(exist_ok=True)
 
+    def _strict_mode(self) -> bool:
+        if not self.immutable:
+            return False
+        if self.flags is None or self.tenant_context is None:
+            return True
+        return self.flags.is_enabled(RAW_ZONE_STRICT_FLAG, self.tenant_context, self.tenant)
+
     def put(self, source: Path, key: str) -> str:
         target = self.root / key
         target.parent.mkdir(parents=True, exist_ok=True)
         if target.exists():
-            if self.immutable:
+            if self._strict_mode():
                 raise RawZoneViolation(
                     f"Raw Zone violation: key {key!r} already exists at {target}. "
                     "The archive is immutable; remove via ArchiveManager.expire "
@@ -534,6 +554,7 @@ __all__ = [
     "ARCHIVE_TAGGING_FLAG",
     "DEFAULT_HOT_PERIOD_DAYS",
     "DEFAULT_RETENTION_YEARS",
+    "RAW_ZONE_STRICT_FLAG",
     "ArchiveBackend",
     "ArchiveEntry",
     "ArchiveManager",
