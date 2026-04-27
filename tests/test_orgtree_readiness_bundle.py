@@ -355,6 +355,63 @@ def test_cli_orgtree_readiness_bundle_insecure_dev_key_flag(tmp_path: Path) -> N
     assert (out_dir / "bundle.json").exists()
 
 
+def test_cli_orgtree_readiness_bundle_intune_plan_uses_real_assessment(tmp_path: Path) -> None:
+    """The bundle's intune_plan must reflect assess_intune_readiness() verdicts.
+
+    Regression guard: prior to wiring build_intune_plan() into intune_readiness,
+    the CLI fell back to a stub that reported enroll_ready_count=0 and
+    readiness_pct=0.0 for every survey. This test ensures a populated survey
+    now produces non-stub aggregate counts and surfaces blocked DNs.
+    """
+    from typer.testing import CliRunner
+
+    from uiao.cli.ir import ir_app
+
+    survey = {
+        "users": [],
+        "groups": [],
+        "computers": [
+            {
+                "dn": "CN=READY-PC,OU=W,DC=contoso,DC=com",
+                "operating_system": "Windows 11 Enterprise",
+                "operating_system_version": "10.0 (22631)",
+                "tpm_version": "2.0",
+                "hvci_enabled": True,
+            },
+            {
+                "dn": "CN=OLD-PC,OU=W,DC=contoso,DC=com",
+                "operating_system": "Windows 10 Enterprise",
+                "operating_system_version": "10.0 (19044)",
+                "tpm_version": "2.0",
+                "hvci_enabled": True,
+            },
+        ],
+        "servers": [],
+        "findings": [],
+    }
+    survey_file = tmp_path / "survey.json"
+    survey_file.write_text(json.dumps(survey), encoding="utf-8")
+    out_dir = tmp_path / "bundle-out"
+
+    runner = CliRunner()
+    result = runner.invoke(
+        ir_app,
+        ["orgtree-readiness-bundle", str(survey_file), "--out-dir", str(out_dir), "--insecure-dev-key"],
+        env={k: v for k, v in os.environ.items() if k != "UIAO_BUNDLE_HMAC_KEY"},
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, f"Non-zero exit: {result.output}"
+
+    bundle_data = json.loads((out_dir / "bundle.json").read_text())
+    plan = bundle_data["intune_plan"]
+    assert plan["total_computers"] == 2
+    assert plan["enroll_ready_count"] == 1
+    assert plan["enroll_blocked_count"] == 1
+    assert plan["blocked_dns"] == ["CN=OLD-PC,OU=W,DC=contoso,DC=com"]
+    assert plan["readiness_pct"] == 50.0
+    assert plan["verdict_counts"] == {"READY": 1, "NEEDS_OS_UPGRADE": 1}
+
+
 def test_cli_orgtree_readiness_bundle_oscal_out_wires_a6_emitter(tmp_path: Path) -> None:
     """--oscal-out triggers the WS-A6 OSCAL emitter and writes orgtree-evidence.json.
 

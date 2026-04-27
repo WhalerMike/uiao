@@ -450,3 +450,97 @@ def verdict_summary(results: list[IntuneReadinessResult]) -> dict[str, int]:
     for r in results:
         counts[r.verdict] = counts.get(r.verdict, 0) + 1
     return counts
+
+
+# ------------------------------------------------------------------
+# Survey → readiness plan
+# ------------------------------------------------------------------
+
+# Survey records sometimes use snake_case (per orgtree-readiness adComputer
+# definition) while assess_intune_readiness() expects raw LDAP attribute
+# names (camelCase / PascalCase). This map translates the former to the
+# latter; PascalCase keys present in the input pass through unchanged.
+_SURVEY_TO_LDAP_KEYS: dict[str, str] = {
+    "operating_system": "operatingSystem",
+    "operating_system_version": "operatingSystemVersion",
+    "operating_system_service_pack": "operatingSystemServicePack",
+    "tpm_version": "tpmVersion",
+    "hvci_enabled": "hvciEnabled",
+    "dns_host_name": "dNSHostName",
+    "sam_account_name": "sAMAccountName",
+    "distinguished_name": "distinguishedName",
+    "last_logon_timestamp": "lastLogonTimestamp",
+    "user_account_control": "userAccountControl",
+    "object_guid": "objectGUID",
+    "object_sid": "objectSid",
+}
+
+
+def _normalize_survey_computer(record: Mapping[str, object]) -> dict[str, object]:
+    """Translate snake_case survey keys to LDAP attribute names.
+
+    Keys not in the map pass through unchanged so PascalCase records (the
+    form assess_intune_readiness() expects natively) are not disturbed.
+    """
+    out: dict[str, object] = {}
+    for key, value in record.items():
+        out[_SURVEY_TO_LDAP_KEYS.get(key, key)] = value
+    return out
+
+
+def build_intune_plan(survey_data: Mapping[str, object]) -> dict[str, object]:
+    """
+    Build an Intune device-enrollment readiness plan from an AD forest survey.
+
+    Aggregates per-computer assess_intune_readiness() verdicts into the
+    canonical ``intunePlan`` shape (total_computers, enroll_ready_count,
+    enroll_blocked_count, blocked_dns, readiness_pct) plus a ``verdict_counts``
+    map of each verdict string to its frequency. The schema permits the
+    extra key (``additionalProperties: true``).
+
+    Parameters
+    ----------
+    survey_data:
+        Full survey dict as written by the AD survey adapter. Only the
+        ``computers`` array is consumed; ``servers`` are routed through
+        ``arc_plan`` per ADR-038.
+
+    Returns
+    -------
+    Dict with keys: total_computers, enroll_ready_count,
+    enroll_blocked_count, blocked_dns, readiness_pct, verdict_counts.
+    """
+    raw_computers = survey_data.get("computers") if isinstance(survey_data, Mapping) else None
+    if not isinstance(raw_computers, list):
+        raw_computers = []
+
+    total = 0
+    ready = 0
+    blocked_dns: list[str] = []
+    verdict_counts: dict[str, int] = {}
+
+    for record in raw_computers:
+        if not isinstance(record, Mapping):
+            continue
+        total += 1
+        normalized = _normalize_survey_computer(record)
+        result = assess_intune_readiness(normalized)
+        verdict_counts[result.verdict] = verdict_counts.get(result.verdict, 0) + 1
+        if result.verdict == "READY":
+            ready += 1
+            continue
+        dn = str(record.get("dn") or record.get("distinguishedName") or record.get("distinguished_name") or "")
+        if dn:
+            blocked_dns.append(dn)
+
+    blocked = total - ready
+    readiness_pct = round((ready / total) * 100, 1) if total else 0.0
+
+    return {
+        "total_computers": total,
+        "enroll_ready_count": ready,
+        "enroll_blocked_count": blocked,
+        "blocked_dns": blocked_dns,
+        "readiness_pct": readiness_pct,
+        "verdict_counts": verdict_counts,
+    }
