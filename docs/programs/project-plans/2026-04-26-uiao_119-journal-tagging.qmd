@@ -1,0 +1,91 @@
+---
+title: "UIAO_119 — Journal + archive tenant tagging wire-up"
+subtitle: "EnforcementRuntime + ArchiveManager honor TenantContext.as_tag_dict"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Closes action item 119.4 from the §4.4 assessment: wires the v1 tagging helper (TenantContext.as_tag_dict) into EnforcementJournal records and ArchiveEntry extras, gated by the v2 feature-flag system."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Closes | Action item 119.4 from the [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+| Target spec | UIAO_119 Tenancy Strategy — journal / archive tagging |
+| Plan version | 1.0 (first delivery) |
+| Builds on | [UIAO_119 v1](2026-04-26-uiao_119-v1-data-layer.qmd) (TenantContext.as_tag_dict), [UIAO_119 v2](2026-04-26-uiao_119-v2-feature-flags.qmd) (feature-flag gate) |
+
+## What shipped
+
+`EnforcementRuntime` (UIAO_111) and `ArchiveManager` (UIAO_109) both now know how to merge `TenantContext.as_tag_dict(tenant)` into the records they write — gated by an optional feature-flag registry so the rollout follows the v2 canary pipeline.
+
+### `src/uiao/governance/enforcement.py`
+
+- Added `tenant_context: Optional[TenantContext]`, `tenant: Optional[Tenant]`, and `flags: Optional[FeatureFlagRegistry]` fields to `EnforcementRuntime`.
+- New `_tagging_enabled()` helper — `False` when no `tenant_context`; `True` when `tenant_context` set and no `flags`; `flags.is_enabled("enforcement.journal.tenant-tagging", ctx, tenant)` otherwise.
+- New `_maybe_tag(action)` — when tagging is enabled, returns `replace(action, extra=action.extra | ctx.as_tag_dict(tenant))`; otherwise returns the action unchanged.
+- `dispatch_matches` calls `_maybe_tag(action)` between the handler dispatch and the journal record. Both the "handler dispatched" and "no handler registered → skipped" paths get tagged.
+- New module-level constant `JOURNAL_TAGGING_FLAG = "enforcement.journal.tenant-tagging"`.
+
+### `src/uiao/storage/data_lake.py`
+
+- Added `tenant_context`, `tenant`, `flags` fields to `ArchiveManager` with the same semantics.
+- New `_tagging_enabled()` + `_tag_extra(base)` helpers — the latter takes the existing per-entry extra dict (e.g., `{"retention_years": ...}`) and merges the tagging payload on top when enabled.
+- `archive_run` calls `_tag_extra(...)` when constructing each `ArchiveEntry`. Tags survive the on-disk JSON round-trip via the existing `_entry_from_dict` deserializer (the dict field already preserves arbitrary keys).
+- New module-level constant `ARCHIVE_TAGGING_FLAG = "archive.entry.tenant-tagging"`.
+
+### `src/uiao/canon/feature-flags.yaml`
+
+The existing `enforcement.journal.tenant-tagging` flag now has a documented consumer (`EnforcementRuntime`); a new `archive.entry.tenant-tagging` flag is added with the same shape — both currently ship with empty enablement (deny by default) so canon stays the contract. They flip on once the consumer-side `/journal` and `/archive` filters in the Auditor API land in a follow-up PR.
+
+## Public API delta
+
+| Symbol | Before | After |
+|---|---|---|
+| `enforcement.EnforcementRuntime` | 3 fields | 6 fields (`tenant_context`, `tenant`, `flags` added with `None` defaults) |
+| `enforcement.JOURNAL_TAGGING_FLAG` | did not exist | new module constant |
+| `data_lake.ArchiveManager` | 3 fields | 6 fields (`tenant_context`, `tenant`, `flags` added with `None` defaults) |
+| `data_lake.ARCHIVE_TAGGING_FLAG` | did not exist | new module constant |
+| `canon/feature-flags.yaml` | 5 flags | 6 flags (`archive.entry.tenant-tagging` added) |
+
+Back-compat: every new field defaults to `None`; existing callers see no behavior change. The v2 feature-flag canon stays "deny all" so even the auto-injection at the API layer (a future PR) won't accidentally tag records before the consumer side is wired.
+
+## Test coverage
+
+| Test class | New tests | What they assert |
+|---|---|---|
+| `TestRuntimeTenantTagging` (in `tests/test_enforcement.py`) | 6 | No `tenant_context` → no tags; unconditional tagging when context set without flags; `tenant_class` carried when tenant supplied; disabled flag skips tagging; enabled flag applies tagging; tags round-trip through on-disk journal |
+| `TestArchiveManagerTenantTagging` (in `tests/test_data_lake.py`) | 5 | Same matrix for ArchiveEntry: no context / unconditional / tenant_class / flag-disabled / flag-enabled, plus retention metadata preserved alongside tags |
+
+**133 pass** across `tenancy + feature_flags + enforcement + data_lake`; **246 pass** across the wider tagging consumer set (`+ substrate_walker + auditor_api_v1 + cql + epl`). No regressions.
+
+## Action items closed
+
+| # | Action | Status |
+|---|---|---|
+| 119.4 | Wire tenant + environment tagging into EnforcementJournal records and ArchiveEntry extras | ✅ shipped this PR |
+
+## Action items still open
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 119.3 (b) | Wire feature-flag check-points into orchestrator plane selection (`scheduler.py`), Auditor API CQL evaluator, EPL block action, and Data Lake immutability assertion | Substrate maintainer | Next iteration |
+| 119.3 (c) | Migration sandbox: clone `TenantContext`, run pipeline, snapshot outputs, emit diff report | Substrate maintainer | Next iteration |
+| 119.5 | UIAO_124 Adapter Ops Runbook entry for the canary → standard → regulated rollout flow | Substrate maintainer | After 119.3 (b) |
+| Auditor API consumer | `/journal` filter on `tenant_id` + `environment`; `/archive` filter same. Once shipped, flip both `tagging` flags from "deny all" to enabled per the rollout plan | Substrate maintainer | After this PR |
+
+## Roll-up to substrate-status
+
+| Row | From | To |
+|---|---|---|
+| UIAO_119 | 🟡 working — v1 + v2 feature-flag system shipped | 🟡 working — **journal + archive tagging wire-up ✅ shipped 2026-04-26** ([impl record](2026-04-26-uiao_119-journal-tagging.qmd)); v2 check-point wiring + migration sandbox open per assessment |
+
+## References
+
+- UIAO_119 Tenancy spec — `src/uiao/canon/specs/tenancy.md`
+- UIAO_119 v1 — [`2026-04-26-uiao_119-v1-data-layer.qmd`](2026-04-26-uiao_119-v1-data-layer.qmd)
+- UIAO_119 v2 — [`2026-04-26-uiao_119-v2-feature-flags.qmd`](2026-04-26-uiao_119-v2-feature-flags.qmd)
+- §4.4 assessment — [`2026-04-26-ha-perf-recovery-tenancy-assessment.qmd`](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd)
+- UIAO_111 Enforcement Runtime — primary tagging consumer
+- UIAO_109 Data Lake Model — secondary tagging consumer

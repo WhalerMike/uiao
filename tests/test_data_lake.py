@@ -463,3 +463,88 @@ class TestLiveCanonSmoke:
         for aid in ("entra-id", "scubagear", "terraform"):
             assert aid in policies, f"missing policy for {aid}"
             assert policies[aid].retention_years > 0
+
+
+# ---------------------------------------------------------------------------
+# UIAO_119 v2 — tenant tagging on archive entries
+# ---------------------------------------------------------------------------
+
+
+class TestArchiveManagerTenantTagging:
+    def test_no_tenant_context_no_tags(self, tmp_path):
+        run = _write_scheduler_run(tmp_path, [{"id": "a"}], run_id="r")
+        backend = FilesystemArchive(root=tmp_path / "lake")
+        mgr = ArchiveManager(backend=backend)
+        entries = mgr.archive_run(run)
+        assert "tenant_id" not in entries[0].extra
+        # Round-trip through disk preserves the no-tag baseline.
+        rt = backend.read_index("r", "a")
+        assert rt is not None
+        assert "tenant_id" not in rt.extra
+
+    def test_tenant_context_unconditional_tags(self, tmp_path):
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        run = _write_scheduler_run(tmp_path, [{"id": "a"}], run_id="r")
+        backend = FilesystemArchive(root=tmp_path / "lake")
+        ctx = TenantContext(tenant_id="acme", actor="oid:42", environment=Environment.STAGE)
+        mgr = ArchiveManager(backend=backend, tenant_context=ctx)
+        entries = mgr.archive_run(run)
+        assert entries[0].extra["tenant_id"] == "acme"
+        assert entries[0].extra["environment"] == "stage"
+        # Retention metadata is preserved alongside the tags.
+        assert "retention_years" in entries[0].extra
+
+    def test_tenant_context_with_tenant_carries_class(self, tmp_path):
+        from uiao.governance.tenancy import (
+            Environment,
+            Tenant,
+            TenantClass,
+            TenantContext,
+        )
+
+        run = _write_scheduler_run(tmp_path, [{"id": "a"}], run_id="r")
+        backend = FilesystemArchive(root=tmp_path / "lake")
+        ctx = TenantContext(tenant_id="acme", environment=Environment.PROD)
+        tenant = Tenant(id="acme", tenant_class=TenantClass.REGULATED)
+        mgr = ArchiveManager(backend=backend, tenant_context=ctx, tenant=tenant)
+        entries = mgr.archive_run(run)
+        assert entries[0].extra["tenant_class"] == "regulated"
+
+    def test_disabled_flag_skips_tagging(self, tmp_path):
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        run = _write_scheduler_run(tmp_path, [{"id": "a"}], run_id="r")
+        backend = FilesystemArchive(root=tmp_path / "lake")
+        ctx = TenantContext(tenant_id="acme", environment=Environment.DEV)
+        flags = FeatureFlagRegistry(
+            flags={
+                "archive.entry.tenant-tagging": FeatureFlag(
+                    name="archive.entry.tenant-tagging",
+                    enabled_environments=frozenset(),  # deny all
+                )
+            }
+        )
+        mgr = ArchiveManager(backend=backend, tenant_context=ctx, flags=flags)
+        entries = mgr.archive_run(run)
+        assert "tenant_id" not in entries[0].extra
+
+    def test_enabled_flag_applies_tagging(self, tmp_path):
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        run = _write_scheduler_run(tmp_path, [{"id": "a"}], run_id="r")
+        backend = FilesystemArchive(root=tmp_path / "lake")
+        ctx = TenantContext(tenant_id="acme", environment=Environment.DEV)
+        flags = FeatureFlagRegistry(
+            flags={
+                "archive.entry.tenant-tagging": FeatureFlag(
+                    name="archive.entry.tenant-tagging",
+                    enabled_environments=frozenset({Environment.DEV}),
+                )
+            }
+        )
+        mgr = ArchiveManager(backend=backend, tenant_context=ctx, flags=flags)
+        entries = mgr.archive_run(run)
+        assert entries[0].extra["tenant_id"] == "acme"
