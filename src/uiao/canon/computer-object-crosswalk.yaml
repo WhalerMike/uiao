@@ -192,6 +192,89 @@ functions:
     retirement_blocker: true
 
 # ---------------------------------------------------------------
+# XW-INI-* — Intune Readiness Attribute Crosswalk
+# Added by: WS-A2 (v0.6.0 OrgTree Readiness — intune_readiness.py)
+# Purpose:  Map AD computer-object attributes to Intune device
+#           attributes used during enrollment pre-flight assessment.
+# ---------------------------------------------------------------
+
+intune_attribute_crosswalk:
+
+  - id: XW-INI-001
+    ad_attribute: name
+    intune_attribute: deviceName
+    notes: >
+      Computer name as shown in AD; becomes the Intune device display name
+      on initial enrollment.
+
+  - id: XW-INI-002
+    ad_attribute: sAMAccountName
+    intune_attribute: deviceName
+    notes: >
+      Fallback display-name source when 'name' is absent; same semantics.
+
+  - id: XW-INI-003
+    ad_attribute: distinguishedName
+    intune_attribute: adDistinguishedName
+    notes: >
+      Retained as an Intune device custom attribute (adDistinguishedName)
+      during hybrid join to preserve AD provenance. Consumed by OrgPath
+      write-back logic (ADR-038).
+
+  - id: XW-INI-004
+    ad_attribute: objectGUID
+    intune_attribute: adObjectGuid
+    notes: >
+      GUID pinning for hybrid-join reconciliation. Entra Connect sync
+      uses this to link the Entra device object to the AD computer object.
+
+  - id: XW-INI-005
+    ad_attribute: operatingSystem
+    intune_attribute: operatingSystem
+    notes: >
+      Used by Intune compliance policies and the readiness OS-gate.
+      Carried through as-is.
+
+  - id: XW-INI-006
+    ad_attribute: operatingSystemVersion
+    intune_attribute: osVersion
+    notes: >
+      Build-number gate: Win10 >= 19045 (22H2), Win11 >= 22000, WS >= 17763.
+      Used by assess_intune_readiness() to determine OS eligibility.
+
+  - id: XW-INI-007
+    ad_attribute: tpmVersion
+    intune_attribute: tpmSpecificationVersion
+    notes: >
+      Maps AD tpmVersion to Intune tpmSpecificationVersion. TPM >= 2.0
+      required for Intune enrollment; attribute may be absent on older
+      hardware where TPM was never detected by AD schema extensions.
+
+  - id: XW-INI-008
+    ad_attribute: hvciEnabled
+    intune_attribute: hvciEnabled
+    notes: >
+      HVCI / Memory Integrity gate. Not a standard AD schema attribute;
+      populated by survey adapter from registry/WMI query or GPO compliance
+      data. Boolean: true = HVCI active.
+
+  - id: XW-INI-009
+    ad_attribute: extensionAttribute1
+    intune_attribute: extensionAttribute1
+    notes: >
+      OrgPath storage plane for Entra device objects (ADR-038). Value is
+      synced from AD extensionAttribute1 via Entra Connect. Written by
+      the device-ext-create / device-ext-update adapter operations.
+
+  - id: XW-INI-010
+    ad_attribute: lastLogonTimestamp
+    intune_attribute: lastSyncDateTime
+    notes: >
+      Approximate last-seen time. AD lastLogonTimestamp is replicated
+      at ~14-day intervals; Intune lastSyncDateTime is more granular
+      post-enrollment.
+
+# ---------------------------------------------------------------
 # RETIREMENT BLOCKERS SUMMARY
 # ---------------------------------------------------------------
 retirement_blockers:
