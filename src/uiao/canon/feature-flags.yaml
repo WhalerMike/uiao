@@ -1,0 +1,68 @@
+# Canonical feature flags for the UIAO substrate (UIAO_119 v2, §4.4).
+#
+# Each flag is named by a dotted identifier. Evaluation rules are
+# documented in src/uiao/governance/feature_flags.py — explicit
+# overrides win, then environment gate, then tenant-class gate (when a
+# resolved Tenant is supplied).
+#
+# Walker hygiene rejects flags missing `spec_ref:` or with a malformed
+# `expires_at:` (P3 finding, DRIFT-SCHEMA).
+
+flags:
+  - name: epl.action.block.enabled
+    spec_ref: UIAO_111 §3.3 (Enforcement Runtime) + UIAO_116 §3.5 (EPL)
+    expires_at: "2027-01-31"
+    # The `block` action freezes scheduler dispatch on a DRIFT-AUTHZ
+    # finding. Until §3.3 round-2 lands a soft-block UX, only
+    # internal + canary tenants in dev / stage exercise it.
+    environments: [dev, stage]
+    tenant_classes: [internal, canary]
+    tenant_ids: []
+    actors: []
+
+  - name: data-lake.immutable.strict
+    spec_ref: UIAO_117 §recovery-invariants (Phase 1 PR #235)
+    expires_at: "2027-04-30"
+    # The Raw-Zone immutability assertion raises RawZoneViolation on
+    # re-archive. Production tenants opt in once their archive
+    # pipeline is wired to a true single-writer; canary + internal
+    # exercise the strict mode in dev / stage by default.
+    environments: [dev, stage, prod]
+    tenant_classes: [internal, canary]
+    tenant_ids: []
+    actors: []
+
+  - name: auditor-api.cql.experimental-ops
+    spec_ref: UIAO_108 §3.2 (CQL)
+    expires_at: "2026-10-31"
+    # Gates CQL operators that are not in the v1 spec (e.g.,
+    # subqueries, joins). Internal tenants only — agency operators
+    # see only the v1 surface so canon stays the contract.
+    environments: [dev, stage]
+    tenant_classes: [internal]
+    tenant_ids: []
+    actors: []
+
+  - name: tenancy.environment.prod-promote
+    spec_ref: UIAO_119 §rollout (this PR)
+    expires_at: "2027-04-30"
+    # Permission to promote a tenant_context.environment from stage
+    # to prod via the CLI. Only enabled for substrate maintainers
+    # in dev / stage during the v2 rollout; tenants do not see this
+    # surface.
+    environments: [dev, stage]
+    tenant_classes: [internal]
+    tenant_ids: []
+    actors: []
+
+  - name: enforcement.journal.tenant-tagging
+    spec_ref: UIAO_119 v2 action item 119.4
+    expires_at: "2026-12-31"
+    # Whether EnforcementJournal records carry the
+    # TenantContext.as_tag_dict payload in `extra`. Default off until
+    # the wire-up PR (119.4) lands and the consumer side (Auditor API
+    # `/journal` filter) can use the tags.
+    environments: []
+    tenant_classes: []
+    tenant_ids: []
+    actors: []
