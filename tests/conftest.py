@@ -2,11 +2,23 @@
 
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 
 import pytest
 
 from canon_paths import CANON_ROOT, DATA_DIR, GENERATION_INPUTS_DIR
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Add --update-golden flag to pytest CLI (used by orgtree_evidence golden tests)."""
+    with contextlib.suppress(ValueError):
+        parser.addoption(
+            "--update-golden",
+            action="store_true",
+            default=False,
+            help="Overwrite golden fixture files with current emitter output.",
+        )
 
 
 @pytest.fixture
