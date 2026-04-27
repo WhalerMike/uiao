@@ -36,12 +36,26 @@ DRIFT-SEMANTIC   : geographic OU path encodes 2003 topology, not org structure
 
 from __future__ import annotations
 
+import datetime
 import json
 import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+# ------------------------------------------------------------------
+# userAccountControl bit constants (MS-ADTS 2.2.18)
+# ------------------------------------------------------------------
+UAC_ACCOUNTDISABLE: int = 0x0002
+UAC_LOCKOUT: int = 0x0010
+UAC_PASSWD_NOTREQD: int = 0x0020
+UAC_DONT_EXPIRE_PASSWORD: int = 0x10000
+UAC_SMARTCARD_REQUIRED: int = 0x40000
+UAC_PASSWORD_EXPIRED: int = 0x800000
+
+# Default window for stale-account detection (days)
+_DEFAULT_STALE_DAYS: int = 90
 
 
 # ------------------------------------------------------------------
@@ -137,6 +151,423 @@ class ADSurveyReport:
         d["ok"] = self.ok
         d["blocker_count"] = len(self.blockers)
         return d
+
+
+# ------------------------------------------------------------------
+# Enrichment dataclasses (WS-A1 Phase 1)
+# ------------------------------------------------------------------
+
+
+@dataclass
+class AccountFlags:
+    """Decoded userAccountControl flags for a user or service account."""
+
+    disabled: bool
+    locked_out: bool
+    password_not_required: bool
+    password_never_expires: bool
+    smartcard_required: bool
+    password_expired: bool
+    raw_value: int
+
+
+@dataclass
+class UserEnrichment:
+    """Per-user enrichment produced by enrich_user()."""
+
+    distinguished_name: str
+    sam_account_name: str
+    account_flags: AccountFlags
+    is_stale: bool
+    stale_days: int  # days since last logon; -1 = never logged in
+    manager_chain: list[str]  # ordered list of manager DNs (immediate first)
+    manager_chain_cycle: bool  # True if a cycle was detected before reaching root
+    group_memberships: list[str]  # flat list of all group DNs (recursive)
+    group_memberships_cycle: bool  # True if a cycle was detected during group expansion
+    orphaned_sids: list[str]  # SIDs in memberOf that resolve to nothing
+    candidate_orgpath: Optional[str]  # OU-derived suggestion (not authoritative)
+
+
+# ------------------------------------------------------------------
+# Deliverable 2: userAccountControl decoding
+# ------------------------------------------------------------------
+
+
+def decode_account_flags(uac: int) -> AccountFlags:
+    """
+    Decode a raw userAccountControl integer into named flag fields.
+
+    Uses module-level UAC_* constants so callers never reference magic numbers.
+    """
+    return AccountFlags(
+        disabled=bool(uac & UAC_ACCOUNTDISABLE),
+        locked_out=bool(uac & UAC_LOCKOUT),
+        password_not_required=bool(uac & UAC_PASSWD_NOTREQD),
+        password_never_expires=bool(uac & UAC_DONT_EXPIRE_PASSWORD),
+        smartcard_required=bool(uac & UAC_SMARTCARD_REQUIRED),
+        password_expired=bool(uac & UAC_PASSWORD_EXPIRED),
+        raw_value=uac,
+    )
+
+
+def is_stale_account(last_logon_timestamp: Optional[int], stale_days: int = _DEFAULT_STALE_DAYS) -> tuple[bool, int]:
+    """
+    Determine whether an account is stale based on lastLogonTimestamp.
+
+    lastLogonTimestamp is a Windows FILETIME (100-nanosecond intervals since
+    1601-01-01). Returns (is_stale, days_since_logon).
+
+    A value of 0 or None means the account has never logged in — treated as
+    stale with sentinel days=-1.
+    """
+    if not last_logon_timestamp:
+        return True, -1  # never logged in
+
+    # Convert Windows FILETIME to Unix timestamp.
+    # Windows epoch: 1601-01-01; Unix epoch: 1970-01-01 (difference = 11644473600 s)
+    _EPOCH_DIFF_S: int = 11_644_473_600
+    seconds = last_logon_timestamp // 10_000_000 - _EPOCH_DIFF_S
+    logon_dt = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc) + datetime.timedelta(seconds=seconds)
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    delta_days = (now - logon_dt).days
+    return delta_days > stale_days, delta_days
+
+
+# ------------------------------------------------------------------
+# Deliverable 1: Nested group resolution with cycle detection
+# ------------------------------------------------------------------
+
+
+def resolve_group_members(
+    group_dn: str,
+    all_objects: dict[str, dict],  # DN → raw AD object dict with "members" list
+    visited: Optional[set[str]] = None,
+) -> tuple[list[str], bool]:
+    """
+    Recursively expand group membership for *group_dn*.
+
+    Parameters
+    ----------
+    group_dn    : DN of the group to expand.
+    all_objects : flat index of DN → object dict; each object may have a
+                  ``"members"`` key containing a list of member DNs.
+    visited     : set of DNs already on the current traversal stack (cycle guard).
+
+    Returns
+    -------
+    (members, cycle_detected)
+        members        — deduplicated flat list of all member DNs.
+        cycle_detected — True if a cycle was detected during expansion.
+    """
+    if visited is None:
+        visited = set()
+
+    if group_dn in visited:
+        return [], True  # cycle — stop here
+
+    visited = visited | {group_dn}  # copy; don't mutate caller's set
+
+    obj = all_objects.get(group_dn)
+    if obj is None:
+        return [], False
+
+    direct_members: list[str] = obj.get("members", [])
+    all_members: list[str] = []
+    cycle_detected = False
+
+    for member_dn in direct_members:
+        if member_dn in all_members:
+            continue
+        all_members.append(member_dn)
+        # If the member is itself a group, recurse
+        member_obj = all_objects.get(member_dn)
+        if member_obj and member_obj.get("object_class") == "group":
+            nested, nested_cycle = resolve_group_members(member_dn, all_objects, visited)
+            if nested_cycle:
+                cycle_detected = True
+            for dn in nested:
+                if dn not in all_members:
+                    all_members.append(dn)
+
+    return all_members, cycle_detected
+
+
+# ------------------------------------------------------------------
+# Deliverable 3: Orphaned SID detection
+# ------------------------------------------------------------------
+
+
+def detect_orphaned_sids(
+    member_dns: list[str],
+    all_objects: dict[str, dict],
+) -> list[str]:
+    """
+    Identify member entries that look like unresolvable SIDs.
+
+    An orphaned SID is a group member DN whose CN begins with the SID format
+    "S-1-5-21-..." (foreign security principal) and does not appear as a key
+    in ``all_objects`` — meaning the referenced object no longer exists in the
+    surveyed forest.
+
+    Returns a list of orphaned SID strings.
+    """
+    orphans: list[str] = []
+    for member in member_dns:
+        sid_match = re.search(r"CN=(S-1-5-21-[\d-]+)", member, re.IGNORECASE)
+        if sid_match:
+            sid = sid_match.group(1)
+            if member not in all_objects:
+                orphans.append(sid)
+    return orphans
+
+
+# ------------------------------------------------------------------
+# Deliverable 4: Manager chain resolution
+# ------------------------------------------------------------------
+
+
+def resolve_manager_chain(
+    user_dn: str,
+    all_objects: dict[str, dict],
+    visited: Optional[set[str]] = None,
+) -> tuple[list[str], bool]:
+    """
+    Walk the manager chain from *user_dn* up to the root or a cycle.
+
+    Parameters
+    ----------
+    user_dn     : DN of the user whose manager chain we are resolving.
+    all_objects : flat index of DN → object dict; each object may have a
+                  ``"manager"`` key containing a single manager DN string.
+    visited     : set of DNs already on the current chain (cycle guard).
+
+    Returns
+    -------
+    (chain, cycle_detected)
+        chain          — ordered list of manager DNs (immediate manager first).
+        cycle_detected — True if the chain looped back to a previously seen DN.
+    """
+    if visited is None:
+        visited = set()
+
+    obj = all_objects.get(user_dn)
+    if obj is None:
+        return [], False
+
+    manager_dn: Optional[str] = obj.get("manager")
+    if not manager_dn:
+        return [], False
+
+    if manager_dn in visited:
+        return [manager_dn], True  # cycle
+
+    chain, cycle = resolve_manager_chain(manager_dn, all_objects, visited | {user_dn})
+    return [manager_dn, *chain], cycle
+
+
+# ------------------------------------------------------------------
+# Deliverable 5: OU-derived candidate OrgPath per user
+# (wraps derive_orgpath_from_dn, which is defined later in this module;
+# Python resolves names at call time so forward reference is safe)
+# ------------------------------------------------------------------
+
+
+def derive_candidate_orgpath(dn: str, codebook: set[str]) -> Optional[str]:
+    """
+    Return a candidate OrgPath derived from the OU components of *dn*.
+
+    This is a *suggestion only*. The authoritative OrgPath projection lives
+    in ``orgpath.py`` (WS-A4). This function is a thin wrapper so the
+    enrichment pipeline can call it without knowing the codebook lookup
+    internals.
+    """
+    return derive_orgpath_from_dn(dn, codebook)
+
+
+# ------------------------------------------------------------------
+# Master enrichment entry point
+# ------------------------------------------------------------------
+
+
+def enrich_user(
+    user_dn: str,
+    user_obj: dict,
+    all_objects: dict[str, dict],
+    codebook: set[str],
+    stale_days: int = _DEFAULT_STALE_DAYS,
+) -> UserEnrichment:
+    """
+    Produce a :class:`UserEnrichment` record for a single AD user object.
+
+    Parameters
+    ----------
+    user_dn     : Distinguished name of the user.
+    user_obj    : Raw attribute dict for the user (from LDAP or synthetic survey
+                  fixture). Expected keys (all optional): ``userAccountControl``
+                  (int), ``lastLogonTimestamp`` (int), ``manager`` (str DN),
+                  ``memberOf`` (list[str] of group DNs).
+    all_objects : Flat DN → attribute dict index for the entire surveyed forest
+                  (users, groups, computers). Used for recursive resolution.
+    codebook    : Set of known OrgPath codes for candidate validation.
+    stale_days  : Inactivity window in days (default 90).
+
+    Returns
+    -------
+    UserEnrichment with all 5 deliverable fields populated.
+    """
+    uac = user_obj.get("userAccountControl", 0)
+    flags = decode_account_flags(uac)
+
+    last_logon = user_obj.get("lastLogonTimestamp")
+    stale, stale_delta = is_stale_account(last_logon, stale_days)
+
+    manager_chain, mgr_cycle = resolve_manager_chain(user_dn, all_objects)
+
+    # Expand all group memberships recursively
+    member_of: list[str] = user_obj.get("memberOf", [])
+    all_groups: list[str] = []
+    group_cycle_detected = False
+    for grp_dn in member_of:
+        if grp_dn not in all_groups:
+            all_groups.append(grp_dn)
+        grp_obj = all_objects.get(grp_dn)
+        if grp_obj and grp_obj.get("object_class") == "group":
+            nested, nested_cycle = resolve_group_members(grp_dn, all_objects)
+            if nested_cycle:
+                group_cycle_detected = True
+            for dn in nested:
+                if dn not in all_groups:
+                    all_groups.append(dn)
+
+    # Detect orphaned SIDs across all memberships
+    orphaned = detect_orphaned_sids(all_groups, all_objects)
+
+    candidate = derive_candidate_orgpath(user_dn, codebook)
+
+    return UserEnrichment(
+        distinguished_name=user_dn,
+        sam_account_name=user_obj.get("sAMAccountName", ""),
+        account_flags=flags,
+        is_stale=stale,
+        stale_days=stale_delta,
+        manager_chain=manager_chain,
+        manager_chain_cycle=mgr_cycle,
+        group_memberships=all_groups,
+        group_memberships_cycle=group_cycle_detected,
+        orphaned_sids=orphaned,
+        candidate_orgpath=candidate,
+    )
+
+
+def emit_enrichment_findings(
+    enrichment: UserEnrichment,
+    report: ADSurveyReport,
+    source_forest: str,
+) -> None:
+    """
+    Translate a :class:`UserEnrichment` record into DriftFinding entries and
+    append them to *report*.
+
+    Keeping finding emission separate from enrichment computation allows both
+    to be tested independently.
+    """
+    dn = enrichment.distinguished_name
+
+    # Disabled account
+    if enrichment.account_flags.disabled:
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-IDENTITY",
+                severity="P2",
+                path=dn,
+                detail=f"User '{dn}' is disabled (UAC ACCOUNTDISABLE bit set). "
+                "Verify intent before migration — disabled accounts may indicate "
+                "terminated users that should be excluded.",
+                error_code="GOV-MIG-010",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
+
+    # Locked-out account
+    if enrichment.account_flags.locked_out:
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-IDENTITY",
+                severity="P3",
+                path=dn,
+                detail=f"User '{dn}' is locked out (UAC LOCKOUT bit set). "
+                "Account may be under attack or forgotten — review before migration.",
+                error_code="GOV-MIG-010",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
+
+    # Stale account
+    if enrichment.is_stale:
+        days_str = (
+            "never logged in" if enrichment.stale_days == -1 else f"{enrichment.stale_days} days since last logon"
+        )
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-IDENTITY",
+                severity="P2",
+                path=dn,
+                detail=f"User '{dn}' is stale ({days_str}). "
+                "Account exceeds inactivity threshold; confirm active status before migration.",
+                error_code="GOV-MIG-011",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
+
+    # Cyclic manager chain
+    if enrichment.manager_chain_cycle:
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-SCHEMA",
+                severity="P2",
+                path=dn,
+                detail=f"User '{dn}' has a cyclic manager chain: {enrichment.manager_chain}. "
+                "Manager attribute loop detected; requires manual correction before OrgPath derivation.",
+                error_code="GOV-MIG-012",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
+
+    # Cyclic group membership
+    if enrichment.group_memberships_cycle:
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-SCHEMA",
+                severity="P2",
+                path=dn,
+                detail=f"User '{dn}' belongs to groups with a cyclic membership chain. "
+                "Cycle detected during nested group expansion; full membership cannot be determined. "
+                "Investigate group nesting in AD before migration.",
+                error_code="GOV-MIG-014",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
+
+    # Orphaned SIDs in group memberships
+    for sid in enrichment.orphaned_sids:
+        report.findings.append(
+            DriftFinding(
+                drift_class="DRIFT-PROVENANCE",
+                severity="P2",
+                path=dn,
+                detail=f"User '{dn}' is a member of a group containing orphaned SID '{sid}'. "
+                "The SID does not resolve to any object in the surveyed forest; "
+                "likely a deleted cross-forest trust principal.",
+                error_code="GOV-MIG-013",
+                object_type="User",
+                source_forest=source_forest,
+            )
+        )
 
 
 # ------------------------------------------------------------------
