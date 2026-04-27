@@ -59,3 +59,129 @@ fedramp_20x_config:
       name: "Phishing-Resistant MFA"
       status: "Required"
       deadline: "2026-09-30"
+
+# ----------------------------------------------------------------------------
+# Canonical FedRAMP 20x reference data — added 2026-04-27 from
+# inbox/New_FedRAMP_Boundary/FedRAMP_20x_Assessment_and_Implications.docx
+# (cross-referenced against fedramp.gov/docs/20x/).
+# These blocks are FedRAMP-published facts, not UIAO-specific concept mappings.
+# ----------------------------------------------------------------------------
+
+minimum_assessment_scope:
+  authoritative_url: "https://www.fedramp.gov/docs/20x/minimum-assessment-scope/"
+  status: "Required (Phase 2 Pilot)"
+  rule_summary: >
+    Replaces the prior FedRAMP authorization-boundary construct with a
+    two-pronged inclusion test. Resources that fail both prongs are out of scope.
+  inclusion_tests:
+    - id: "MAS-CSO-IIR"
+      name: "Information Resources"
+      test: >
+        Information resources are in scope if they are likely to handle
+        federal customer data OR likely to impact the confidentiality,
+        integrity, or availability of federal customer data.
+    - id: "MAS-CSO-MDI"
+      name: "Metadata"
+      test: >
+        Metadata is in scope only when the underlying resource is in scope.
+    - id: "MAS-CSO-FLO"
+      name: "Federation / Federal Boundary Flows"
+    - id: "MAS-CSO-TPR"
+      name: "Third-Party Resources"
+    - id: "MAS-CSO-SUP"
+      name: "Supporting Resources"
+  caveats:
+    - "The standard does not use the word 'telemetry' — uses 'information resources' and 'metadata'. Whether a given telemetry stream qualifies as descoped metadata is a 3PAO interpretation, not a documented carve-out."
+    - "The 'likely' test is intentionally broad and open to assessor judgment. Interpretation drift across 3PAOs is a primary risk."
+    - "MAS-CSO does not by itself cause Microsoft to ship features into GCC-Moderate. It removes one formal obstacle; it does not motivate the engineering work."
+
+ksi_families:
+  authoritative_url: "https://www.fedramp.gov/docs/20x/key-security-indicators/"
+  framing: >
+    KSIs sit above NIST 800-53 — they map to control families, but the artifact
+    a CSP produces is a machine-readable, continuously-validated evidence
+    payload rather than an SSP narrative. Compliance shifts from
+    periodic-document-attesting toward continuous-evidence-emitting.
+  families:
+    - id: "KSI-AUTH"
+      name: "Authorization by FedRAMP"
+      domain: "Authorization lifecycle, package status, agency reuse"
+    - id: "KSI-CMT"
+      name: "Change Management"
+      domain: "Significant Change Notifications, baseline drift, version control"
+    - id: "KSI-CNA"
+      name: "Cloud-Native Architecture"
+      domain: "Service composition, multi-tenant isolation, shared-responsibility model"
+    - id: "KSI-CED"
+      name: "Cybersecurity Education"
+      domain: "Workforce training, awareness, role-based education"
+    - id: "KSI-IAM"
+      name: "Identity and Access Management"
+      domain: "Authentication, authorization, MFA, privileged access"
+    - id: "KSI-INR"
+      name: "Incident Response"
+      domain: "Detection, containment, eradication, recovery, lessons learned"
+    - id: "KSI-MLA"
+      name: "Monitoring / Logging / Auditing"
+      domain: "Continuous monitoring, log aggregation, audit-record fidelity"
+    - id: "KSI-PIY"
+      name: "Policy and Inventory"
+      domain: "Policy artifacts, asset inventory, configuration baselines"
+    - id: "KSI-RPL"
+      name: "Recovery Planning"
+      domain: "Backup, restore, business continuity, disaster recovery"
+    - id: "KSI-SVC"
+      name: "Service Configuration"
+      domain: "Hardening baselines, secure defaults, configuration management"
+    - id: "KSI-SCN"
+      name: "Supply Chain Risk"
+      domain: "Third-party risk, vendor management, software supply-chain integrity"
+
+deployment_surfaces:
+  - id: "phase-2-pilot"
+    name: "Phase 2 Pilot"
+    status: "Required"
+    note: "Authoritative requirements at fedramp.gov/docs/20x/ for participants in the Moderate pilot."
+  - id: "rev5-balance-improvement-releases"
+    name: "Rev5 Balance Improvement Releases"
+    status: "Optional"
+    note: >
+      Minimum Assessment Scope, Significant Change Notifications,
+      Authorization Data Sharing, Vulnerability Detection and Response, and
+      Collaborative Continuous Monitoring are available as opt-in updates
+      to existing Rev5-authorized packages without going through full 20x.
+      Most likely near-term path for currently-authorized CSPs to adopt the
+      new scope rule.
+    authoritative_url: "https://www.fedramp.gov/docs/rev5/balance/"
+  - id: "phase-1-pilot"
+    name: "Phase 1 Pilot"
+    status: "Archived"
+    note: "Documents under fedramp.gov/docs/20x/phase1/ are reference-only. Phase 1's 'Minimum Assessment Standard' is the predecessor to the current 'Minimum Assessment Scope' — same two-prong concept, different name and refined language."
+
+# Cross-reference: the GCC-Moderate gap matrix in
+# canon/data/gcc-moderate-telemetry-gaps.yaml records which signals plausibly
+# descope under MAS-CSO-MDI and which remain in-scope under MAS-CSO-IIR
+# regardless of 20x adoption.
+gap_matrix_scope_effect:
+  source_doc: "inbox/New_FedRAMP_Boundary/FedRAMP_20x_Assessment_and_Implications.docx"
+  source_section: "§2 Effect on the GCC-Moderate telemetry gap inventory"
+  net_estimate: "MAS-CSO-IIR plus MAS-CSO-MDI plausibly opens a path for roughly 30-40% of the prior gap matrix (the deterministic, measurement-only end). It does not close the identity / data / behavioral end where prong (1) reads in obviously."
+  by_signal_class:
+    - signal_class: "Network path metrics (latency / jitter / packet-loss; INR-style)"
+      net_effect: "Favorable"
+      reasoning: "Measurement-only, machine-generated, no federal customer data. Strong case as descoped metadata under MAS-CSO-MDI."
+    - signal_class: "Endpoint performance counters (boot time, AppCrashCount, AvgProcessorUsage)"
+      net_effect: "Favorable, with caveats"
+      reasoning: "Anonymized perf data fits the deterministic-telemetry framing. Per-user-identified perf data approaches the 'likely impact' line and may not."
+    - signal_class: "Adoption Score behavioral baselines (chat/email ratios, mobility, content collaboration)"
+      net_effect: "Mixed to unfavorable"
+      reasoning: "User-behavior signals tied to identifiable communication. 'Likely impact CIA of federal customer data' reads in."
+    - signal_class: "Entra Identity Protection ML (impossible travel, atypical IP, leaked credentials)"
+      net_effect: "Unfavorable"
+      reasoning: "Sign-in events handle federal customer data by routine - fail prong (1) directly."
+    - signal_class: "DLP behavioral analytics, sensitivity-label analytics, Copilot prompt richness"
+      net_effect: "Unfavorable"
+      reasoning: "Content-adjacent and policy-event-bearing - fail prong (1)."
+    - signal_class: "CAE real-time revocation paths"
+      net_effect: "Neutral"
+      reasoning: "Not a scope problem; a cross-boundary signaling architecture problem. 20x does not address."
