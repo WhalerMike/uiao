@@ -582,10 +582,21 @@ def ir_orgtree_readiness_bundle(
     # ------------------------------------------------------------------
     # 2. Extract survey sections (graceful fallback when absent)
     # ------------------------------------------------------------------
-    users = survey_data.get("users", [])
-    groups = survey_data.get("groups", [])
-    computers = survey_data.get("computers", [])
-    servers = survey_data.get("servers", [])
+    # Normalize AD objects: the schema requires "dn" but some survey exporters
+    # (including the synthetic-forest-export fixture) use "distinguishedName".
+    # Copy the alias into "dn" when the canonical key is missing.
+    def _normalize_ad_objects(objs: list) -> list:  # type: ignore[type-arg]
+        result = []
+        for obj in objs or []:
+            if isinstance(obj, dict) and "dn" not in obj and "distinguishedName" in obj:
+                obj = {**obj, "dn": obj["distinguishedName"]}
+            result.append(obj)
+        return result
+
+    users = _normalize_ad_objects(survey_data.get("users", []))
+    groups = _normalize_ad_objects(survey_data.get("groups", []))
+    computers = _normalize_ad_objects(survey_data.get("computers", []))
+    servers = _normalize_ad_objects(survey_data.get("servers", []))
     findings_raw = survey_data.get("findings", [])
 
     # ------------------------------------------------------------------
