@@ -30,10 +30,8 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 import httpx
-
 
 # ----------------------------------------------------------------------
 # Findings + scorecard models
@@ -247,11 +245,7 @@ class SentinelProbe:
 
         rows = self._row_count(body)
         result = "OPERATIONAL" if rows > 0 else "NOT_DETECTED"
-        detail = (
-            f"{rows} rows returned"
-            if rows > 0
-            else f"No rows for {meta['symptom_id']} — action required"
-        )
+        detail = f"{rows} rows returned" if rows > 0 else f"No rows for {meta['symptom_id']} — action required"
         return SentinelFinding(
             query_id=query_id,
             symptom_id=meta["symptom_id"],
@@ -272,8 +266,8 @@ class SentinelProbe:
         )
         out: list[SentinelFinding] = []
         ts = datetime.now(timezone.utc).isoformat()
-        for qid, r in zip(QUERY_REGISTRY, results):
-            if isinstance(r, Exception):
+        for qid, r in zip(QUERY_REGISTRY, results, strict=True):
+            if isinstance(r, BaseException):
                 meta = QUERY_REGISTRY[qid]
                 out.append(
                     SentinelFinding(

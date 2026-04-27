@@ -122,9 +122,7 @@ class BoundaryProbeReport:
 
     def as_dict(self) -> dict:
         d = {
-            k: v
-            for k, v in self.__dict__.items()
-            if k not in ("findings", "sentinel_findings", "completeness_scores")
+            k: v for k, v in self.__dict__.items() if k not in ("findings", "sentinel_findings", "completeness_scores")
         }
         d["findings"] = [f.as_dict() for f in self.findings]
         d["sentinel_findings"] = [f.as_dict() for f in self.sentinel_findings]
