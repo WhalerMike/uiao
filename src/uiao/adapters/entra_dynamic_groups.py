@@ -34,6 +34,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from ._graph_clouds import DEFAULT_CLOUD, resolve_graph_base
+
+# EntraDynamicGroupsAdapter targets Graph v1.0 (GA-stable group-management APIs).
+DEFAULT_GRAPH_API_VERSION = "v1.0"
+
 from uiao.modernization.orgtree import (
     DynamicGroupLibrary,
     DynamicGroupSpec,
@@ -133,6 +138,14 @@ class EntraDynamicGroupsAdapter:
     ) -> None:
         self._config = config or {}
         self._library = library or default_dynamic_group_library()
+        self._cloud: str = self._config.get("cloud", DEFAULT_CLOUD)
+        self._graph_api_version: str = self._config.get("graph_api_version", DEFAULT_GRAPH_API_VERSION)
+        self._graph_endpoint: str = resolve_graph_base(
+            cloud=self._cloud,
+            graph_api_version=self._graph_api_version,
+            explicit=self._config.get("api_base_url"),
+            adapter_name="EntraDynamicGroupsAdapter",
+        )
 
     # ------------------------------------------------------------------
     # Planning
@@ -292,7 +305,7 @@ class EntraDynamicGroupsAdapter:
                 "client_secret in adapter config, or override _graph_client()."
             )
         body = spec.to_graph_body()
-        base_url = self._config.get("api_base_url", "https://graph.microsoft.com/v1.0")
+        base_url = self._graph_endpoint
         if op.op == OP_CREATE:
             resp = client.post(f"{base_url}/groups", json=body)
             resp.raise_for_status()

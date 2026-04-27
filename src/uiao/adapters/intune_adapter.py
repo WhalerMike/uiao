@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from ._graph_clouds import DEFAULT_CLOUD, GRAPH_ENDPOINTS, resolve_graph_base
 from .database_base import (
     ClaimObject,
     ClaimSet,
@@ -24,6 +25,20 @@ from .database_base import (
     QueryProvenance,
     SchemaMappingObject,
 )
+
+# Re-export shared constants so callers and tests can keep importing
+# them from this module (the original public surface).
+__all__ = [
+    "DEFAULT_CLOUD",
+    "DEFAULT_GRAPH_API_VERSION",
+    "GRAPH_ENDPOINTS",
+    "IntuneAdapter",
+]
+
+# IntuneAdapter targets the Graph beta surface for early access to
+# compliance / configuration fields. Other adapters using the same
+# table may pick "v1.0" instead.
+DEFAULT_GRAPH_API_VERSION = "beta"
 
 
 class IntuneAdapter(DatabaseAdapterBase):
@@ -36,7 +51,14 @@ class IntuneAdapter(DatabaseAdapterBase):
     def __init__(self, config: Dict[str, Any] | None = None) -> None:
         super().__init__(config or {})
         self._tenant_id: str = self._config.get("tenant_id", "")
-        self._graph_endpoint: str = self._config.get("graph_endpoint", "https://graph.microsoft.com/beta")
+        self._cloud: str = self._config.get("cloud", DEFAULT_CLOUD)
+        self._graph_api_version: str = self._config.get("graph_api_version", DEFAULT_GRAPH_API_VERSION)
+        self._graph_endpoint: str = resolve_graph_base(
+            cloud=self._cloud,
+            graph_api_version=self._graph_api_version,
+            explicit=self._config.get("graph_endpoint"),
+            adapter_name="IntuneAdapter",
+        )
 
     def connect(self) -> ConnectionProvenance:
         return ConnectionProvenance(

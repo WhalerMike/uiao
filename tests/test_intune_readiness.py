@@ -19,6 +19,7 @@ from uiao.adapters.modernization.active_directory.intune_readiness import (
     IntuneReadinessResult,
     assess_intune_readiness,
     assess_intune_readiness_batch,
+    build_intune_plan,
     crosswalk_ad_to_intune,
     verdict_summary,
 )
@@ -419,3 +420,184 @@ def test_computer_name_fallback_to_samaccountname() -> None:
 def test_computer_name_unknown_when_absent() -> None:
     result = assess_intune_readiness({})
     assert result.computer_name == "UNKNOWN"
+
+
+# ---------------------------------------------------------------------------
+# build_intune_plan — survey aggregation
+# ---------------------------------------------------------------------------
+
+
+def test_build_intune_plan_empty_survey() -> None:
+    plan = build_intune_plan({})
+    assert plan["total_computers"] == 0
+    assert plan["enroll_ready_count"] == 0
+    assert plan["enroll_blocked_count"] == 0
+    assert plan["blocked_dns"] == []
+    assert plan["readiness_pct"] == 0.0
+    assert plan["verdict_counts"] == {}
+
+
+def test_build_intune_plan_no_computers_key() -> None:
+    plan = build_intune_plan({"users": [], "groups": []})
+    assert plan["total_computers"] == 0
+    assert plan["readiness_pct"] == 0.0
+
+
+def test_build_intune_plan_all_ready() -> None:
+    survey = {
+        "computers": [
+            {
+                "dn": "CN=WS-001,OU=W,DC=x",
+                "operating_system": "Windows 11 Enterprise",
+                "operating_system_version": "10.0 (22631)",
+                "tpm_version": "2.0",
+                "hvci_enabled": True,
+            },
+            {
+                "dn": "CN=WS-002,OU=W,DC=x",
+                "operating_system": "Windows 10 Enterprise",
+                "operating_system_version": "10.0 (19045)",
+                "tpm_version": "2.0",
+                "hvci_enabled": True,
+            },
+        ]
+    }
+    plan = build_intune_plan(survey)
+    assert plan["total_computers"] == 2
+    assert plan["enroll_ready_count"] == 2
+    assert plan["enroll_blocked_count"] == 0
+    assert plan["blocked_dns"] == []
+    assert plan["readiness_pct"] == 100.0
+    assert plan["verdict_counts"] == {"READY": 2}
+
+
+def test_build_intune_plan_mixed_verdicts_records_blocked_dns() -> None:
+    survey = {
+        "computers": [
+            {
+                "dn": "CN=READY,DC=x",
+                "operating_system": "Windows 11",
+                "operating_system_version": "10.0 (22631)",
+                "tpm_version": "2.0",
+                "hvci_enabled": True,
+            },
+            {
+                "dn": "CN=OLD-OS,DC=x",
+                "operating_system": "Windows 10 Enterprise",
+                "operating_system_version": "10.0 (19044)",
+                "tpm_version": "2.0",
+                "hvci_enabled": True,
+            },
+            {
+                "dn": "CN=BAD-TPM,DC=x",
+                "operating_system": "Windows 11",
+                "operating_system_version": "10.0 (22631)",
+                "tpm_version": "1.2",
+                "hvci_enabled": True,
+            },
+            {
+                "dn": "CN=LINUX-BOX,DC=x",
+                "operating_system": "Ubuntu 22.04",
+                "operating_system_version": "22.04",
+            },
+        ]
+    }
+    plan = build_intune_plan(survey)
+    assert plan["total_computers"] == 4
+    assert plan["enroll_ready_count"] == 1
+    assert plan["enroll_blocked_count"] == 3
+    assert sorted(plan["blocked_dns"]) == ["CN=BAD-TPM,DC=x", "CN=LINUX-BOX,DC=x", "CN=OLD-OS,DC=x"]
+    assert plan["readiness_pct"] == 25.0
+    assert plan["verdict_counts"] == {
+        "READY": 1,
+        "NEEDS_OS_UPGRADE": 1,
+        "NEEDS_TPM": 1,
+        "INELIGIBLE": 1,
+    }
+
+
+def test_build_intune_plan_accepts_camelcase_keys_natively() -> None:
+    """LDAP-style camelCase keys must pass through the snake-case normalizer."""
+    survey = {
+        "computers": [
+            {
+                "dn": "CN=CAMEL,DC=x",
+                "operatingSystem": "Windows 11",
+                "operatingSystemVersion": "10.0.22631",
+                "tpmVersion": "2.0",
+                "hvciEnabled": True,
+            }
+        ]
+    }
+    plan = build_intune_plan(survey)
+    assert plan["enroll_ready_count"] == 1
+    assert plan["readiness_pct"] == 100.0
+
+
+def test_build_intune_plan_skips_non_dict_records() -> None:
+    survey = {
+        "computers": [
+            None,
+            "not-a-dict",
+            42,
+            {
+                "dn": "CN=OK,DC=x",
+                "operatingSystem": "Windows 11",
+                "operatingSystemVersion": "10.0.22631",
+                "tpmVersion": "2.0",
+                "hvciEnabled": True,
+            },
+        ]
+    }
+    plan = build_intune_plan(survey)
+    assert plan["total_computers"] == 1
+    assert plan["enroll_ready_count"] == 1
+
+
+def test_build_intune_plan_blocked_dn_falls_back_to_distinguished_name() -> None:
+    """Records that carry only the LDAP-form key (no normalized 'dn') still surface in blocked_dns."""
+    survey = {
+        "computers": [
+            {
+                "distinguishedName": "CN=ALT,DC=x",
+                "operatingSystem": "Ubuntu",
+                "operatingSystemVersion": "22.04",
+            }
+        ]
+    }
+    plan = build_intune_plan(survey)
+    assert plan["enroll_blocked_count"] == 1
+    assert plan["blocked_dns"] == ["CN=ALT,DC=x"]
+
+
+def test_build_intune_plan_blocked_dn_omitted_when_no_dn_present() -> None:
+    survey = {
+        "computers": [
+            {
+                "operatingSystem": "Ubuntu",
+                "operatingSystemVersion": "22.04",
+            }
+        ]
+    }
+    plan = build_intune_plan(survey)
+    assert plan["enroll_blocked_count"] == 1
+    assert plan["blocked_dns"] == []
+
+
+def test_build_intune_plan_readiness_pct_rounds_to_one_decimal() -> None:
+    """3 ready out of 7 = 42.857... → 42.9."""
+    ready_record = {
+        "operatingSystem": "Windows 11",
+        "operatingSystemVersion": "10.0.22631",
+        "tpmVersion": "2.0",
+        "hvciEnabled": True,
+    }
+    blocked_record = {"operatingSystem": "Ubuntu", "operatingSystemVersion": "22.04"}
+    survey = {
+        "computers": [{**ready_record, "dn": f"CN=R{i},DC=x"} for i in range(3)]
+        + [{**blocked_record, "dn": f"CN=B{i},DC=x"} for i in range(4)]
+    }
+    plan = build_intune_plan(survey)
+    assert plan["total_computers"] == 7
+    assert plan["enroll_ready_count"] == 3
+    assert plan["readiness_pct"] == 42.9

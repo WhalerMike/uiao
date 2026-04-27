@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from ._graph_clouds import DEFAULT_CLOUD, resolve_graph_base
 from .database_base import (
     ClaimObject,
     ClaimSet,
@@ -33,6 +34,11 @@ from .database_base import (
     QueryProvenance,
     SchemaMappingObject,
 )
+
+# M365Adapter targets the Graph v1.0 surface (GA-stable across all
+# five M365 workloads). Override per-adapter via ``graph_api_version``
+# config or per-call via the explicit ``graph_endpoint`` config key.
+DEFAULT_GRAPH_API_VERSION = "v1.0"
 
 
 class M365Adapter(DatabaseAdapterBase):
@@ -58,7 +64,14 @@ class M365Adapter(DatabaseAdapterBase):
     def __init__(self, config: Dict[str, Any] | None = None) -> None:
         super().__init__(config or {})
         self._tenant_id: str = self._config.get("tenant_id", "")
-        self._graph_endpoint: str = self._config.get("graph_endpoint", "https://graph.microsoft.com/v1.0")
+        self._cloud: str = self._config.get("cloud", DEFAULT_CLOUD)
+        self._graph_api_version: str = self._config.get("graph_api_version", DEFAULT_GRAPH_API_VERSION)
+        self._graph_endpoint: str = resolve_graph_base(
+            cloud=self._cloud,
+            graph_api_version=self._graph_api_version,
+            explicit=self._config.get("graph_endpoint"),
+            adapter_name="M365Adapter",
+        )
 
     # ------------------------------------------------------------------
     # 2.1 Connection & Identity
