@@ -78,6 +78,7 @@ _PRIVILEGED_RIDS: frozenset[int] = frozenset(
         512,  # Domain Admins
         519,  # Enterprise Admins
         518,  # Schema Admins
+        544,  # BUILTIN\Administrators (Phase 1.5 fix #2 — was missing)
         548,  # Account Operators
         551,  # Backup Operators
         549,  # Server Operators
