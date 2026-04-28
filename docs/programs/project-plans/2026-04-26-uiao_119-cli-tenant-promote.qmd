@@ -1,0 +1,102 @@
+---
+title: "UIAO_119 — CLI `tenant promote-preview` (wave 2 partial)"
+subtitle: "First consumer surface for `tenancy.environment.prod-promote`"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Closes part of action 119.3 (b) wave 2 from the §4.4 assessment by shipping a CLI consumer for the `tenancy.environment.prod-promote` feature flag. The remaining wave 2 item (`auditor-api.cql.experimental-ops`) still awaits experimental CQL operators."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Closes | Wave 2 — CLI half of action 119.3 (b) from the [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+| Target spec | UIAO_119 Tenancy Strategy — CLI promotion preview |
+| Plan version | 1.0 (first delivery) |
+| Builds on | [v2 feature flags](2026-04-26-uiao_119-v2-feature-flags.qmd), [migration sandbox](2026-04-26-uiao_119-migration-sandbox.qmd), [canary rollout runbook](../ops-runbook/2026-04-26-uiao_119-canary-rollout.qmd) |
+
+## What shipped
+
+`uiao tenant promote-preview` — new CLI subcommand under a new `tenant` sub-app. Renders the substrate-behavior diff for promoting a tenant from one environment to another, gated by the existing `tenancy.environment.prod-promote` feature flag.
+
+```
+$ uiao tenant promote-preview \
+    --tenant-id acme-canary \
+    --tenant-class canary \
+    --from dev \
+    --to stage
+promote-preview acme-canary: dev → stage
+  tenant_class: canary
+  actor:        cli
++1 flags newly enabled
+  + epl.action.block.enabled
+```
+
+The runner under the hood is the v2 [`MigrationSandbox`](2026-04-26-uiao_119-migration-sandbox.qmd) configured to enumerate the set of feature flags that evaluate to `True` for each context. The diff between "before" and "after" enabled-sets is exactly the operator-visible behavior change.
+
+### Surfaces
+
+- **`src/uiao/cli/tenant.py`** — new sub-app. `promote-preview` subcommand with options:
+  - `--tenant-id` (required), `--from`, `--to` (required).
+  - `--tenant-class` (default `standard`), `--actor` (default `cli`).
+  - `--output human|json` (default `human`).
+  - `--allow-no-change` — by default, an empty diff exits 1 to flag operator typos like `--from prod --to prod`; the flag opts out.
+- **`src/uiao/cli/app.py`** — registers `tenant_app` next to the other sub-apps.
+
+### Permission gate
+
+The subcommand consults `tenancy.environment.prod-promote` against the **operator's** context (not the tenant being previewed). The default canon enables it in `dev` / `stage` for the `internal` tenant class. The CLI synthesizes an operator `Tenant(id=actor, tenant_class=…)` so canon's `tenant_classes` constraint is actually enforced — `--operator-tenant-class` controls that synthesized class (default `internal`). Denials exit 2 with a `Permission denied` message that names the flag, environment, and operator tenant class — easy to wire into a CI pre-commit gate.
+
+```yaml
+# Default canon (already in src/uiao/canon/feature-flags.yaml):
+- name: tenancy.environment.prod-promote
+  environments: [dev, stage]
+  tenant_classes: [internal]
+```
+
+## Public API delta
+
+| Symbol | Before | After |
+|---|---|---|
+| `cli.tenant` module | did not exist | new typer sub-app |
+| `cli.tenant.tenant_app` | — | new `Typer` |
+| `cli.tenant.promote_preview` | — | new subcommand |
+| `cli.tenant.PROD_PROMOTE_FLAG` | — | constant |
+| `cli.app` | 13 sub-apps | 14 sub-apps (`tenant` registered) |
+
+Pure addition. No existing CLI surface is altered.
+
+## Test coverage: 7 new
+
+| Test class | Tests | What they assert |
+|---|---|---|
+| `TestPromotePreviewPermissions` | 3 | Dev actor allowed; prod actor denied (exit 2); empty canon denies |
+| `TestPromotePreviewDiff` | 4 | dev→stage no-op exits 1 by default; `--allow-no-change` exits 0; dev→prod surfaces newly-enabled regulated-only flag; `--output json` parses cleanly |
+
+7 pass. **93 pass** across the wider UIAO_119 + sandbox + tenancy + flag-system surface. No regressions.
+
+## Action items closed
+
+| # | Action | Status |
+|---|---|---|
+| 119.3 (b) wave 2 — CLI half | Wire `tenancy.environment.prod-promote` once the consumer surface ships | ✅ shipped this PR |
+
+## Action items still open
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 119.3 (b) wave 2 — CQL half | Wire `auditor-api.cql.experimental-ops` once CQL gains experimental operators (subqueries, joins, regex `~`). Until those exist there is nothing to gate; the flag is pre-positioned. | Substrate maintainer | After CQL v2 ops land |
+
+## Roll-up to substrate-status
+
+| Row | From | To |
+|---|---|---|
+| UIAO_119 | 🟡 working — v1 + v2 + tagging + check-points + API filter + sandbox + ops runbook + plane flags shipped | 🟡 working — **+ CLI tenant promote-preview ✅ shipped 2026-04-26** ([impl record](2026-04-26-uiao_119-cli-tenant-promote.qmd)); only the CQL half of wave 2 stays open (gated on CQL gaining experimental operators) |
+
+## References
+
+- UIAO_119 v2 feature-flag system — [`2026-04-26-uiao_119-v2-feature-flags.qmd`](2026-04-26-uiao_119-v2-feature-flags.qmd) (the canon flag this CLI consumes)
+- UIAO_119 migration sandbox — [`2026-04-26-uiao_119-migration-sandbox.qmd`](2026-04-26-uiao_119-migration-sandbox.qmd) (the diff engine)
+- UIAO_119 canary rollout runbook — [`../ops-runbook/2026-04-26-uiao_119-canary-rollout.qmd`](../ops-runbook/2026-04-26-uiao_119-canary-rollout.qmd) (Step 2+ verification now has a one-line CLI shorthand)
+- §4.4 assessment — [`2026-04-26-ha-perf-recovery-tenancy-assessment.qmd`](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd)
