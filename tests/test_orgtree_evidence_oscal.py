@@ -29,6 +29,7 @@ except the golden-file overwrite when ``--update-golden`` is passed).
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -550,8 +551,14 @@ class TestGoldenFile:
         )
 
     def test_golden_matches_emitter_output(self, tmp_path: Path, update_golden: bool) -> None:
-        """Fail closed: emitter output must match the committed golden file."""
-        path = emit_orgtree_evidence(_SYNTHETIC_BUNDLE, tmp_path)
+        """Fail closed: emitter output must match the committed golden file.
+
+        Pins ``now_dt`` to ``_FIXED_NOW_TS`` so "Last logon: Nd ago"
+        relative-day strings stay deterministic across calendar days
+        (clock-injection follow-up to the daily-drift flake).
+        """
+        frozen_now = datetime.fromtimestamp(_FIXED_NOW_TS, tz=timezone.utc)
+        path = emit_orgtree_evidence(_SYNTHETIC_BUNDLE, tmp_path, now_dt=frozen_now)
         actual_raw = json.loads(path.read_text(encoding="utf-8"))
         actual_str = _canonicalize(actual_raw)
 
