@@ -377,7 +377,7 @@ def _ac2_finding(obs: _c.Observation, control_key: str) -> _c.Finding:
 # ---------------------------------------------------------------------------
 
 
-def _ac6_observation(group: dict[str, Any]) -> _c.Observation:
+def _ac6_observation(group: dict[str, Any], now_dt: datetime) -> _c.Observation:
     sam = str(group.get("samAccountName", "") or "")
     key = f"ac6-priv-{sam}"
     uid = _det_uuid("ac6-obs", key)
@@ -392,7 +392,7 @@ def _ac6_observation(group: dict[str, Any]) -> _c.Observation:
         description=desc,
         methods=["AUTOMATED"],
         types=[_c.ObservationTypeValidValues.finding.value],
-        collected=datetime.now(timezone.utc),
+        collected=now_dt,
         props=[
             _prop("control", "ac-6"),
             _prop("group-name", sam),
@@ -422,8 +422,26 @@ def _ac6_finding(obs: _c.Observation) -> _c.Finding:
 # ---------------------------------------------------------------------------
 
 
-def _build_assessment_results(bundle: dict[str, Any]) -> _ar.AssessmentResults:
-    now_dt = datetime.now(timezone.utc)
+def _build_assessment_results(
+    bundle: dict[str, Any],
+    *,
+    now_dt: datetime | None = None,
+) -> _ar.AssessmentResults:
+    """Build OSCAL AssessmentResults from an OrgTree bundle.
+
+    ``now_dt`` is the "now" instant used for relative calculations
+    (``Last logon: Nd ago`` strings, observation ``collected``
+    timestamps, plan / result start + last_modified). Defaults to
+    ``datetime.now(timezone.utc)`` when omitted; callers (tests in
+    particular) supply a frozen instant so golden-file comparisons
+    are stable across calendar drift.
+    """
+    if now_dt is None:
+        now_dt = datetime.now(timezone.utc)
+    elif now_dt.tzinfo is None:
+        # Defensive: a naive datetime would silently misbehave in
+        # OSCAL serialization. Treat as UTC.
+        now_dt = now_dt.replace(tzinfo=timezone.utc)
     now_ts = now_dt.timestamp()
 
     run_id = str(bundle.get("run_id", "unknown"))
@@ -466,7 +484,7 @@ def _build_assessment_results(bundle: dict[str, Any]) -> _ar.AssessmentResults:
 
     for g in groups:
         if _is_privileged_group(g):
-            obs = _ac6_observation(g)
+            obs = _ac6_observation(g, now_dt)
             ac6_observations.append(obs)
             ac6_findings.append(_ac6_finding(obs))
 
@@ -552,6 +570,8 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
 def emit_orgtree_evidence(
     bundle: dict[str, Any],
     out_dir: Path | str,
+    *,
+    now_dt: datetime | None = None,
 ) -> Path:
     """Emit OSCAL assessment-results evidence from an OrgTree bundle.
 
@@ -563,13 +583,20 @@ def emit_orgtree_evidence(
     out_dir:
         Directory where ``orgtree-evidence.json`` will be written.
         Created automatically if it does not exist.
+    now_dt:
+        Optional frozen ``datetime`` for tests; defaults to
+        ``datetime.now(timezone.utc)``. When supplied, the emitter
+        uses this instant for every ``collected`` / ``start`` /
+        ``last_modified`` field and for "Last logon: Nd ago"
+        relative-day strings — making the output deterministic for
+        golden-file comparisons.
 
     Returns
     -------
     Path
         Absolute path to the written ``orgtree-evidence.json`` file.
     """
-    ar_obj = _build_assessment_results(bundle)
+    ar_obj = _build_assessment_results(bundle, now_dt=now_dt)
     out_path = Path(out_dir) / "orgtree-evidence.json"
     # Use trestle's .json() for correct enum serialization, then round-trip
     # through json.loads so we get a plain dict before pretty-printing.
