@@ -1,0 +1,155 @@
+---
+title: "External-blocker inventory — vendor sandboxes, partner CRADA, IBM engagement, regulated tenant"
+subtitle: "What the substrate needs from external parties to close the remaining v1.0 / v1.1 / Phase 2 gates"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Captures every roadmap item that is genuinely blocked on external engagement. For each, names the unblocker, the substrate-side preparation that's already done, and the specific evidence the external party needs to produce."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Subjects | §2.1–2.5 vendor sandboxes; §4.1 partner CRADA / tier-3; §4.2 IBM z/OS; UIAO_117 Phase 2 |
+| Plan version | 1.0 (first delivery) |
+
+## Purpose
+
+Several roadmap items are explicitly external-blocker items — the substrate is ready to consume the unblock, but the unblock itself requires action by someone outside the UIAO substrate maintainer's authority. This document is the canonical inventory of those items, written so:
+
+1. The substrate maintainer has a one-page reference for what's pending.
+2. A future external owner (vendor partnership lead, agency engagement manager, IBM-side champion, regulated-tenant compliance officer) can read the entry that names them and immediately know what evidence to produce.
+3. The roadmap §4.x narrative stays honest — the substrate-status page can point at this doc instead of accumulating "still blocked" footnotes per item.
+
+The five entries below cover **every** open item that is not self-unblockable as of this writing. Remaining session work (banner round 4 cleanup, this doc) is bookkeeping. After both land, the roadmap is at a natural pause until external action arrives.
+
+## §2.1 — ServiceNow tier-1
+
+**Substrate-side prep ✅:** `service-now` adapter declared `active` in `src/uiao/canon/modernization-registry.yaml`; runtime stub wired into UIAO_100 scheduler; canon entry carries `scope:`, `trust-anchor:`, `ztmm-pillars:`. UIAO_121/123 instantiation will land within hours of the first tier-1 evidence cycle.
+
+**Unblocker:** Sign up for the [ServiceNow Personal Developer Instance (PDI)](https://developer.servicenow.com/) program. PDI is free and self-service; the limiting factor is the substrate maintainer accepting the developer-program ToS (which crosses the canon boundary because the adapter would interact with a real Now Platform).
+
+**Evidence to produce:**
+- PDI subscription confirmation captured in `src/uiao/canon/agency-customer-registry.yaml` under a `vendor-program` block.
+- Service-principal credential stored in the substrate's secret backend.
+- One nightly CI run producing `evidence.json` + `drift.json` against the PDI under the `service-now` adapter.
+
+**Acceptance:** Tier-1 row in substrate-status flips ⏳ → ✅ for `service-now`.
+
+## §2.2 — Palo Alto Networks tier-1
+
+**Substrate-side prep ✅:** Same as above for `palo-alto`.
+
+**Unblocker:** Two paths.
+- Engage the [Palo Alto Networks Developer Hub](https://www.paloaltonetworks.com/) for an XSOAR or PAN-OS sandbox (vendor-driven, may require a partnership conversation).
+- Stand up a PAN-OS evaluation VM in a developer Azure subscription via the existing `terraform` adapter; declare it as a self-managed sandbox.
+
+**Evidence to produce:**
+- Sandbox endpoint URL + service-principal stored under `palo-alto` in the credential backend.
+- Nightly CI job exercising security-policy read + rule-audit against the sandbox.
+
+## §2.3 — CyberArk tier-1
+
+**Substrate-side prep ✅:** Same shape as §2.1 for `cyberark`.
+
+**Unblocker:** Engage the [CyberArk Privilege Cloud trial](https://www.cyberark.com/) (vendor program; may require a sales conversation for trial extension beyond the default window).
+
+**Evidence to produce:**
+- Privilege Cloud trial tenant URL + service principal.
+- Vault account-enumeration + rotation-simulation evidence captured per nightly CI run.
+
+## §2.4 — Scuba (modernization) tier-2 fixtures
+
+**Substrate-side prep ✅:** `scuba` modernization adapter declared `active`; `scubagear` (the conformance variant) already has tier-2 fixtures + UIAO_126 conformance plan instantiated. The remaining gap is the **modernization** flow — `scuba`'s baseline-apply path — needs frozen contract fixtures captured from a known-state M365 dev tenant after a ScubaGear pre-assessment.
+
+**Unblocker:** §0.1 (M365 Developer Program tenant) clears on its own once the substrate maintainer signs up. Tier-2 then becomes a one-day capture exercise.
+
+**Evidence to produce:**
+- Captured `scubagear_results.json` from the dev tenant after `scuba` apply.
+- Frozen as `tests/fixtures/scuba/baseline-apply/*.json`.
+- UIAO_121/123 instantiation under `customer-documents/validation-suites/adapters/scuba/scuba.qmd`.
+
+## §2.5 — Infoblox + BlueCat compensating strategy
+
+**Substrate-side prep ✅:** UIAO_131 §5.1 documents both adapters as permanently excluded from tier-1 (no public sandbox / vendor-contact-only). Adapter registry entries carry `notes:` blocks calling this out.
+
+**Unblocker:** UIAO_131 §5.1 needs an explicit "compensating strategy" subsection: what evidence an agency can substitute when tier-1 isn't achievable.
+
+**Evidence to produce (substrate-side, not external):**
+- New `compensating-strategy:` block in UIAO_131 §5.1 documenting:
+  - Vendor-attested test reports as alternative tier-1 evidence.
+  - Agency-operated sandbox evidence (when an agency runs Infoblox / BlueCat in their own boundary).
+  - Tier-2 contract fixtures sourced from frozen WAPI / BAM API response payloads.
+- Cross-reference from each adapter's `notes:` field.
+
+(This one is technically self-unblockable but bundled here because the spec change touches UIAO_131 governance — best landed alongside the other §2.x items so canon stays coherent.)
+
+## §4.1 — Tier-3 partner-agency reference deployment
+
+**Substrate-side prep ✅:** Substrate ships with deterministic dispatch, OSCAL emission, EPL enforcement, multi-tenant isolation, feature-flag rollout — every prerequisite a tier-3 partner needs. The §3.8 program first-deliveries already include a synthetic agency project plan ([Acme Federal modernization plan](agency-acme-modernization-plan.qmd)) showing the engagement shape.
+
+**Unblocker:** A federal agency willing to host a reference deployment under a Collaborative Research and Development Agreement (CRADA) or equivalent. Requires:
+- Identification of a partner agency with GCC-Moderate footprint.
+- Legal: CRADA template review + execution.
+- Operational: agency-side IAM lead, compliance officer, and platform team available for the weekly review forum (per UIAO_128 onboarding walkthrough).
+
+**Evidence to produce:**
+- Signed CRADA + statement-of-work in the canon-public legal section.
+- Three months of nightly evidence cycles in the partner agency's GCC-Moderate tenant.
+- Redacted reference-deployment report published as a UIAO canon artifact (per the §4.1 work item).
+
+**Acceptance:** Tier-3 column in substrate-status flips 🚫 → ✅ for at least one adapter (entra-id or m365 are the natural first set).
+
+## §4.2 — Mainframe adapter unblock
+
+**Substrate-side prep ✅:** Adapter registered `reserved` / `phase-planning`; canon notes call out the z/OS Connect / MQ bridge as the gating dependency.
+
+**Unblocker:** One of three paths.
+- IBM Government Programs engagement: explicit partnership for a z/OS Connect dev environment.
+- Federal agency with an existing z/OS footprint willing to host a reference instance under a CRADA (overlap with §4.1 if the partner agency has mainframes).
+- IBM partner with z/OS Connect access willing to license a development sandbox.
+
+**Evidence to produce:**
+- z/OS Connect REST bridge endpoint + service principal.
+- Five Terraform-specific extension-method implementations replacing today's stubs (`extract_terraform_state`, etc.) — already named in `src/uiao/canon/modernization-registry.yaml::mainframe.notes`.
+- Tier-2 fixtures: COBOL record payloads mapped to canonical claims.
+- Status flip from `reserved` → `active` in the modernization registry.
+
+## UIAO_117 Phase 2 — automated 5-stage recovery reconstitution
+
+**Substrate-side prep ✅:** [UIAO_117 Phase 1](2026-04-26-uiao_117-phase1-recovery.qmd) shipped — Raw-Zone immutability + checkpoint label + manual Class-A/B SOP. The Phase 2 5-stage reconstitution requires real regulated-tenant data to validate against.
+
+**Unblocker:** First regulated-tenant engagement (overlap with §4.1 if the partner agency is regulated-class). Specifically:
+- Regulated tenant declared in `tenants.yaml` with `tenant_class: regulated`.
+- Cross-region storage approved by the agency (for the off-region snapshot copy the recovery layer requires).
+- Drift-audit baseline captured from a known-good Phase 1 checkpoint.
+
+**Evidence to produce:**
+- 5-stage automated reconstitution code under `src/uiao/storage/recovery.py` (new module).
+- Recovery manifest signing wired through the existing certificate-anchored provenance chain.
+- Post-recovery drift audit comparing reconstructed KSI / OSCAL output to the last known-good Phase 1 checkpoint.
+- Federation-consensus logic for cross-region disagreement resolution.
+
+**Acceptance:** UIAO_117 substrate-status row flips 🟡 → ✅ once Phase 2 lands and the partner agency signs off on a recovery drill.
+
+## Roll-up
+
+| Item | Substrate-side | External | Owner |
+|---|---|---|---|
+| §2.1 ServiceNow tier-1 | ✅ ready | PDI signup | Substrate maintainer |
+| §2.2 Palo Alto tier-1 | ✅ ready | Vendor sandbox or eval VM | Substrate maintainer |
+| §2.3 CyberArk tier-1 | ✅ ready | Privilege Cloud trial | Substrate maintainer |
+| §2.4 Scuba tier-2 | ✅ ready (gated on §0.1) | M365 dev tenant | Substrate maintainer |
+| §2.5 Infoblox/BlueCat compensating | Authoring | UIAO_131 §5.1 update | Substrate maintainer |
+| §4.1 Tier-3 reference deployment | ✅ ready | Partner-agency CRADA | Partnership lead |
+| §4.2 Mainframe adapter | ✅ ready | IBM z/OS engagement | Partnership lead |
+| UIAO_117 Phase 2 | ✅ Phase 1 ready | Regulated-tenant engagement | Partner agency + substrate maintainer |
+
+## References
+
+- UIAO_117 Phase 1 — [`2026-04-26-uiao_117-phase1-recovery.qmd`](2026-04-26-uiao_117-phase1-recovery.qmd)
+- §4.4 assessment — [`2026-04-26-ha-perf-recovery-tenancy-assessment.qmd`](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) (UIAO_114 / UIAO_115 also defer to Phase 2 partner-tenant engagement; not relisted here)
+- Acme Federal synthetic plan — [`agency-acme-modernization-plan.qmd`](agency-acme-modernization-plan.qmd) (the engagement-shape reference any future real partner plan should follow)
+- UIAO_131 Adapter Test Strategy — `src/uiao/canon/specs/adapter-test-strategy.md`
+- Roadmap §2.1–2.5 + §4.1–4.2 — [`docs/docs/uiao-substrate-roadmap.md`](../../docs/uiao-substrate-roadmap.md)

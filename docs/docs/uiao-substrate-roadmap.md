@@ -1138,7 +1138,7 @@ Work required:
 - Create tier-2 fixtures (COBOL record payloads mapped to canonical claims).
 - Flip status from `reserved` to `active`.
 
-### 4.3 — Aspirational banner elimination (rounds 1 + 2 + 3 ✅ shipped 2026-04-26)
+### 4.3 — Aspirational banner elimination (rounds 1 + 2 + 3 + 4 ✅ shipped 2026-04-26)
 
 Target: zero aspirational banners by v1.1.
 
@@ -1155,11 +1155,15 @@ Round 3 (2026-04-26) — **2 more banners removed** from adapter technical-spec 
 - `customer-documents/adapter-specs/terraform/terraform.qmd` — terraform fully clears tier-1 + tier-2 with a UIAO_121/123 validation suite.
 - `customer-documents/adapter-specs/scubagear/scubagear.qmd` — scubagear has a UIAO_126 conformance test plan + tier-2 fixture suite.
 
-Total flagged across `docs/`: **~22 pages** (down from ~44 at session start). Running tally on the Substrate Status page §"Aspirational-content triage".
+Round 4 (2026-04-28) — **1 more banner removed** from the remaining ScubaGear surface, plus an authoritative inventory of every roadmap item that is not self-unblockable:
+- `customer-documents/validation-suites/adapters/scubagear/scubagear.qmd` — parallel to the round-3 adapter-spec un-flag; UIAO_126 conformance plan + tier-2 fixtures already shipped.
+- New UIAO_127 delivery: [`docs/programs/project-plans/2026-04-26-external-blockers-inventory.qmd`](../programs/project-plans/2026-04-26-external-blockers-inventory.qmd) — the canonical map of substrate-side prep ✅, unblocker, evidence-to-produce, and owner for §2.1 ServiceNow PDI, §2.2 Palo Alto sandbox, §2.3 CyberArk Privilege Cloud, §2.4 Scuba tier-2, §2.5 Infoblox/BlueCat compensating strategy, §4.1 partner CRADA, §4.2 IBM z/OS engagement, and UIAO_117 Phase 2 regulated-tenant engagement. Future roadmap entries point at this doc instead of accumulating per-item "still blocked" footnotes.
 
-Round 4+ work remaining (toward v1.1 zero-banner target):
+Total flagged across `docs/`: **~21 pages** (down from ~44 at session start). Running tally on the Substrate Status page §"Aspirational-content triage".
+
+Round 5+ work remaining (toward v1.1 zero-banner target):
 - For each remaining genuinely-aspirational page, either implement the feature or schedule it in a UIAO_127 project plan with a target date.
-- Remaining adapter pages (`customer-documents/adapter-specs/*` × 5, most `validation-suites/adapters/*`) — most are gated on §2.1–2.5 vendor-sandbox unblocks.
+- Remaining adapter pages (`customer-documents/adapter-specs/*` × 5, most `validation-suites/adapters/*`) — most are gated on §2.1–2.5 vendor-sandbox unblocks (see [external-blocker inventory](../programs/project-plans/2026-04-26-external-blockers-inventory.qmd)).
 - Compliance landing pages (8 sub-categories under `customer-documents/compliance/`) are explicit `status: scaffold` content — stay flagged until the leaf pages are authored.
 - Remove banner as each feature ships (round 1 set the pattern: drop frontmatter `aspirational: true`, replace any "Scaffold" callout with a "First delivery shipped" tip linking the live artifact).
 - Eventually re-derive the count from `make walk` rather than running grep manually.
