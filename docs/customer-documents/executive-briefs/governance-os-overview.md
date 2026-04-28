@@ -4,7 +4,6 @@ doc-type: ats
 canon-source: src/uiao/canon/substrate-manifest.yaml
 derived-from: uiao/canon (sync_canon.py)
 generated: '2026-04-22'
-aspirational: true
 ---
 
 # Governance OS Overview — Executive Brief

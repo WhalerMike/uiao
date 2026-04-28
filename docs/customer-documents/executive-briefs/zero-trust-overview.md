@@ -3,7 +3,6 @@ title: "Zero-Trust Overview"
 doc-type: executive-brief
 canon-source: src/uiao/canon/adr/adr-008-zero-trust-identity.md
 derived-from: uiao canon
-aspirational: true
 ---
 
 # Executive Brief — Zero-Trust Identity Anchoring
