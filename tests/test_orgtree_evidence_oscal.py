@@ -29,6 +29,7 @@ except the golden-file overwrite when ``--update-golden`` is passed).
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -66,7 +67,7 @@ def update_golden(request: pytest.FixtureRequest) -> bool:
 # Synthetic bundle — fixed epoch timestamps for full determinism
 # ---------------------------------------------------------------------------
 
-# 2026-04-27T00:00:00Z ≈ 1745712000 (used as mock "now" anchor in golden tests)
+# 2025-04-27T00:00:00Z ≈ 1745712000 (used as mock "now" anchor in golden tests)
 # We use lastLogonTimestamp relative to this to create fresh/stale conditions.
 _FIXED_NOW_TS: float = 1745712000.0
 _FRESH_TS: float = _FIXED_NOW_TS - (5 * 86400)  # 5 days ago
@@ -551,7 +552,8 @@ class TestGoldenFile:
 
     def test_golden_matches_emitter_output(self, tmp_path: Path, update_golden: bool) -> None:
         """Fail closed: emitter output must match the committed golden file."""
-        path = emit_orgtree_evidence(_SYNTHETIC_BUNDLE, tmp_path)
+        _fixed_now = datetime.fromtimestamp(_FIXED_NOW_TS, tz=timezone.utc)
+        path = emit_orgtree_evidence(_SYNTHETIC_BUNDLE, tmp_path, _now=_fixed_now)
         actual_raw = json.loads(path.read_text(encoding="utf-8"))
         actual_str = _canonicalize(actual_raw)
 

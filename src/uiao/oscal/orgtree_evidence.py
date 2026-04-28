@@ -23,7 +23,7 @@ AC-6  Least Privilege — privileged group membership (Domain Admins, Enterprise
 
 Public API
 ----------
-    emit_orgtree_evidence(bundle: dict, out_dir: Path | str) -> Path
+    emit_orgtree_evidence(bundle: dict, out_dir: Path | str, *, _now: datetime | None = None) -> Path
 
 The function is deterministic: identical input always produces identical output.
 It writes a single ``orgtree-evidence.json`` file and returns its path.
@@ -422,8 +422,11 @@ def _ac6_finding(obs: _c.Observation) -> _c.Finding:
 # ---------------------------------------------------------------------------
 
 
-def _build_assessment_results(bundle: dict[str, Any]) -> _ar.AssessmentResults:
-    now_dt = datetime.now(timezone.utc)
+def _build_assessment_results(
+    bundle: dict[str, Any],
+    _now: datetime | None = None,
+) -> _ar.AssessmentResults:
+    now_dt = _now if _now is not None else datetime.now(timezone.utc)
     now_ts = now_dt.timestamp()
 
     run_id = str(bundle.get("run_id", "unknown"))
@@ -552,6 +555,8 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
 def emit_orgtree_evidence(
     bundle: dict[str, Any],
     out_dir: Path | str,
+    *,
+    _now: datetime | None = None,
 ) -> Path:
     """Emit OSCAL assessment-results evidence from an OrgTree bundle.
 
@@ -563,13 +568,17 @@ def emit_orgtree_evidence(
     out_dir:
         Directory where ``orgtree-evidence.json`` will be written.
         Created automatically if it does not exist.
+    _now:
+        Optional datetime to use as "now" for staleness and age calculations.
+        Intended for testing only — when omitted, ``datetime.now(timezone.utc)``
+        is used.
 
     Returns
     -------
     Path
         Absolute path to the written ``orgtree-evidence.json`` file.
     """
-    ar_obj = _build_assessment_results(bundle)
+    ar_obj = _build_assessment_results(bundle, _now=_now)
     out_path = Path(out_dir) / "orgtree-evidence.json"
     # Use trestle's .json() for correct enum serialization, then round-trip
     # through json.loads so we get a plain dict before pretty-printing.
