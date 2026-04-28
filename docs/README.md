@@ -119,7 +119,7 @@ UIAO (Unified Identity-Addressing-Overlay Architecture) is a federal network mod
 
 - See the [Contributing Guidelines](https://github.com/WhalerMike/uiao-docs/wiki/Contributing-Guidelines) wiki page
 - Canon documents (00–20) require Canon Steward review for changes
-- All contributions must follow the [Style Guide](https://github.com/WhalerMike/uiao/blob/main/docs/docs/STYLE-GUIDE.qmd) and [Format Canon](https://github.com/WhalerMike/uiao/blob/main/docs/docs/legacy/FORMAT-CANON.qmd)
+- All contributions must follow the the Style Guide and the Format Canon
 - Diagrams use PlantUML (server-rendered PNG) or Gemini AI images — PlantUML is deprecated
 
 ---
