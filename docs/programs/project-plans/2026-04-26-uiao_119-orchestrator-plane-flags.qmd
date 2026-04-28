@@ -1,0 +1,93 @@
+---
+title: "UIAO_119 — Orchestrator plane selection through feature flags (wave 3)"
+subtitle: "Closes assessment action 119.3 (b) wave 3"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Closes wave 3 of action item 119.3 (b) from the §4.4 assessment: wires the four UIAO_100 orchestrator planes through the UIAO_119 v2 feature-flag system so an operator can disable an optional plane (e.g., skip OSCAL emission on a canary run) by overlaying canon."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Closes | Wave 3 of action 119.3 (b) from the [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+| Target spec | UIAO_119 Tenancy Strategy + UIAO_100 Compliance Orchestrator — plane-selection check-point |
+| Plan version | 1.0 (first delivery) |
+| Builds on | [UIAO_119 v2 feature-flag system](2026-04-26-uiao_119-v2-feature-flags.qmd), [check-point wiring wave 1](2026-04-26-uiao_119-checkpoint-wiring.qmd) |
+
+## What shipped
+
+`src/uiao/orchestrator/orchestrator.py` gains a feature-flag check-point on plane selection so an operator can disable any of the four planes (or future plane 5+) by overlaying canon. Default canon enables all four planes for every environment + tenant class — the back-compat "run all four" behavior is preserved unless an operator deliberately restricts.
+
+### `select_planes(requested, *, flags=None, tenant_context=None, tenant=None) -> list[str]`
+
+New module-level helper. Takes the caller's requested plane list and filters it through the UIAO_119 feature-flag system:
+
+- **No flags or no context** → returns `requested` unchanged (back-compat).
+- **Both supplied** → drops any plane whose `PLANE_FLAGS[plane]` evaluates to `False` for the context.
+- **Unknown plane** (not in `PLANE_FLAGS`) → kept. Fail-open for caller-defined / future plane IDs; the canon walker catches missing flags for well-known planes.
+- **Order-preserving** — the orchestrator iterates planes in execution order (`plane1` → `plane2` → `plane3` → `plane4`); `select_planes` preserves the caller's input order so the filter doesn't accidentally re-sequence.
+
+`PLANE_FLAGS: dict[str, str]` — module-level mapping from plane ID to canonical flag name:
+
+| Plane | Flag |
+|---|---|
+| `plane1` (SCuBA → IR) | `orchestrator.plane.scuba-to-ir.enabled` |
+| `plane2` (IR → KSI) | `orchestrator.plane.ir-to-ksi.enabled` |
+| `plane3` (KSI → Evidence Bundle) | `orchestrator.plane.ksi-to-evidence.enabled` |
+| `plane4` (Evidence → OSCAL/POA&M) | `orchestrator.plane.evidence-to-oscal.enabled` |
+
+### `orchestrate(...)` integration
+
+The `orchestrate()` entry point gains optional keyword args `flags`, `tenant_context`, `tenant` and calls `select_planes()` before dispatching. Every existing caller (CLI invocations, tests) sees the same behavior because the new args default to `None`.
+
+### Canon — `src/uiao/canon/feature-flags.yaml`
+
+Four new reference flags. All four ship with **enable-everywhere** defaults so the substrate keeps running all four planes in every env / class — the rollout knob exists, it just isn't pulled by default. Operators dial individual planes off in their canon overlay if they want.
+
+## Public API delta
+
+| Symbol | Before | After |
+|---|---|---|
+| `orchestrator.PLANE_FLAGS` | did not exist | new `dict[str, str]` |
+| `orchestrator.select_planes` | did not exist | new module-level helper |
+| `orchestrator.orchestrate` | 7 params | + `flags`, `tenant_context`, `tenant` (kw-only, default `None`) |
+| `canon/feature-flags.yaml` | 8 flags | 12 flags (4 plane-selection flags added) |
+
+Back-compat: pure addition. Existing callers see no signature changes; existing canon stays valid.
+
+## Test coverage: 11 new
+
+| Test class | Tests | What they assert |
+|---|---|---|
+| `TestSelectPlanesBackCompat` | 3 | No flags → input unchanged; no tenant_context → input unchanged; empty request stays empty |
+| `TestSelectPlanesFiltering` | 6 | All-enabled returns everything; single disabled plane dropped; multiple disabled planes dropped; unknown plane kept; tenant-class gate applied; input order preserved |
+| `TestLiveCanonSmoke` | 2 | Every PLANE_FLAGS entry exists in canon with non-empty spec_ref; default canon enables all four planes everywhere |
+
+**11 pass** in `test_orchestrator_plane_selection.py`; **210 pass** across the wider UIAO_119 consumer set (`+ feature_flags + tenancy + substrate_walker + data_lake + enforcement + auditor_api_v1 + migration_sandbox`). No regressions.
+
+## Action items closed
+
+| # | Action | Status |
+|---|---|---|
+| 119.3 (b) wave 3 | Wire orchestrator plane selection through the flag system | ✅ shipped this PR |
+
+## Action items still open
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 119.3 (b) wave 2 | Wire `auditor-api.cql.experimental-ops` and `tenancy.environment.prod-promote` once those consumer surfaces ship | Substrate maintainer | After CQL v2 ops + CLI promote land |
+
+## Roll-up to substrate-status
+
+| Row | From | To |
+|---|---|---|
+| UIAO_119 | 🟡 working — v1 + v2 + tagging + check-points + API filter + sandbox + ops runbook shipped | 🟡 working — **+ orchestrator plane selection ✅ shipped 2026-04-26** ([impl record](2026-04-26-uiao_119-orchestrator-plane-flags.qmd)); only 119.3 (b) wave 2 (CQL experimental ops + CLI prod-promote consumer surfaces) open per assessment |
+
+## References
+
+- UIAO_119 v2 feature-flag system — [`2026-04-26-uiao_119-v2-feature-flags.qmd`](2026-04-26-uiao_119-v2-feature-flags.qmd)
+- UIAO_119 check-point wiring wave 1 — [`2026-04-26-uiao_119-checkpoint-wiring.qmd`](2026-04-26-uiao_119-checkpoint-wiring.qmd) (the consumer-side pattern this PR follows)
+- §4.4 assessment — [`2026-04-26-ha-perf-recovery-tenancy-assessment.qmd`](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd)
+- UIAO_100 Compliance Orchestrator — `src/uiao/canon/specs/Compliance-Orchestrator.md`
