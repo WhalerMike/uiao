@@ -42,7 +42,13 @@ DEFAULT_GRAPH_API_VERSION = "beta"
 
 
 class IntuneAdapter(DatabaseAdapterBase):
-    """Intune adapter — endpoint compliance telemetry (conformance, read-only)."""
+    """Intune adapter — endpoint compliance telemetry (conformance, read-only).
+
+    Config keys: ``tenant_id``, ``cloud`` (``commercial`` / ``gcc-high`` /
+    ``dod``, default ``commercial``), ``graph_api_version`` (default
+    ``beta``), and ``graph_endpoint`` (explicit URL override). See
+    AGENTS.md for the cross-adapter convention.
+    """
 
     ADAPTER_ID: str = "intune"
 

@@ -127,7 +127,15 @@ class DynamicGroupReport:
 
 
 class EntraDynamicGroupsAdapter:
-    """Modernization adapter: provision OrgTree-* dynamic groups in Entra."""
+    """Modernization adapter: provision OrgTree-* dynamic groups in Entra.
+
+    Config keys: ``tenant_id``, ``client_id``, ``client_secret`` (for
+    Graph auth in ``_graph_client()``), plus the cross-adapter cloud
+    convention — ``cloud`` (``commercial`` / ``gcc-high`` / ``dod``,
+    default ``commercial``), ``graph_api_version`` (default ``v1.0``),
+    and ``api_base_url`` (explicit URL override; pre-dates the cloud
+    convention but still honoured). See AGENTS.md.
+    """
 
     ADAPTER_ID = "entra-dynamic-groups"
 
