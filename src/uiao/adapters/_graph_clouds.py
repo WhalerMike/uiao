@@ -39,6 +39,36 @@ GRAPH_ENDPOINTS: dict[str, str] = {
 DEFAULT_CLOUD = "commercial"
 
 
+def graph_token_scope(cloud: str, *, adapter_name: str = "adapter") -> str:
+    """Return the MSAL ``.default`` token scope for the given sovereign cloud.
+
+    Microsoft Graph's resource identifier for OAuth2 client-credential
+    flows is ``{graph-host}/.default``. The hostname differs by
+    sovereign cloud — using the wrong scope returns a token that the
+    sovereign Graph endpoint will reject.
+
+    Examples
+    --------
+    >>> graph_token_scope("commercial")
+    'https://graph.microsoft.com/.default'
+    >>> graph_token_scope("gcc-high")
+    'https://graph.microsoft.us/.default'
+    >>> graph_token_scope("dod")
+    'https://dod-graph.microsoft.us/.default'
+
+    Unknown cloud names raise :class:`ValueError` so misconfiguration
+    surfaces at construction time rather than as a 401 from the
+    sovereign Graph endpoint.
+    """
+    if cloud not in GRAPH_ENDPOINTS:
+        raise ValueError(
+            f"{adapter_name}: unknown cloud {cloud!r}. "
+            f"Supported clouds: {sorted(GRAPH_ENDPOINTS)}. "
+            "Set the cloud parameter to derive the MSAL token scope."
+        )
+    return f"{GRAPH_ENDPOINTS[cloud]}/.default"
+
+
 def resolve_graph_base(
     *,
     cloud: str,

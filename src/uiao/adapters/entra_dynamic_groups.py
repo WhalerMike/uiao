@@ -34,7 +34,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from ._graph_clouds import DEFAULT_CLOUD, resolve_graph_base
+from ._graph_clouds import DEFAULT_CLOUD, graph_token_scope, resolve_graph_base
 
 # EntraDynamicGroupsAdapter targets Graph v1.0 (GA-stable group-management APIs).
 DEFAULT_GRAPH_API_VERSION = "v1.0"
@@ -152,6 +152,10 @@ class EntraDynamicGroupsAdapter:
             cloud=self._cloud,
             graph_api_version=self._graph_api_version,
             explicit=self._config.get("api_base_url"),
+            adapter_name="EntraDynamicGroupsAdapter",
+        )
+        self._graph_scope: str = graph_token_scope(
+            self._cloud,
             adapter_name="EntraDynamicGroupsAdapter",
         )
 
@@ -355,6 +359,7 @@ class EntraDynamicGroupsAdapter:
             client_id=client_id,
             client_secret=client_secret,
         )
+        scope = self._graph_scope
 
         class _Auth(httpx.Auth):
             def __init__(self, cred):  # type: ignore[no-untyped-def]
@@ -363,7 +368,7 @@ class EntraDynamicGroupsAdapter:
 
             def auth_flow(self, request):  # type: ignore[no-untyped-def]
                 if self.token is None:
-                    tok = self.cred.get_token("https://graph.microsoft.com/.default")
+                    tok = self.cred.get_token(scope)
                     self.token = tok.token
                 request.headers["Authorization"] = f"Bearer {self.token}"
                 yield request
