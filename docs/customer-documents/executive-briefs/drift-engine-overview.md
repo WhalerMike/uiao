@@ -3,7 +3,6 @@ title: Drift Engine Overview — Executive Brief
 doc-type: executive-brief
 canon-source: docs/docs/16_DriftDetectionStandard.qmd
 derived-from: uiao canon
-aspirational: true
 ---
 
 # Drift Engine Overview — Executive Brief
