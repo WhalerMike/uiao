@@ -1,13 +1,13 @@
 ---
-title: "ADR-025: Continuous Monitoring Program and Customer Documentation Platform Architecture"
-adr: "ADR-025"
+title: "ADR-047: Continuous Monitoring Program and Customer Documentation Platform Architecture"
+adr: "ADR-047"
 status: PROPOSED
 date: "2026-04-14"
 deciders: ["Michael Stratton"]
 tags: ["continuous-monitoring", "iscm", "scubagear", "fedramp", "nist-800-137", "quarto", "git-lfs", "azure-government"]
 ---
 
-# ADR-025: Continuous Monitoring Program and Customer Documentation Platform Architecture
+# ADR-047: Continuous Monitoring Program and Customer Documentation Platform Architecture
 
 > **PARTIAL SUPERSESSION NOTICE (2026-04-17).** Decision **D7** ("`uiao-gos` is firewalled from the federal pair") is **superseded by ADR-028**. The four-repository topology and the federal/commercial firewall described throughout this document's Context, Decisions, and Consequences sections are historical. `uiao-gos` was dissolved into the consolidated `WhalerMike/uiao` monorepo; its Python code lives under `impl/src/uiao/impl/directory_migration/adapters/ipam/` (as reference docs) and its IPAM adapters are registered canonically in `core/canon/modernization-registry.yaml` (`bluecat-address-manager`, `infoblox`). The remaining ConMon-program decisions (D1–D6, D8+) stand. Original decision text preserved below for historical record.
 
