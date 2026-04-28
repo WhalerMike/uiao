@@ -25,12 +25,16 @@ import logging
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from uuid import uuid4
 
 import typer
 from rich.console import Console
 from rich.logging import RichHandler
+
+if TYPE_CHECKING:
+    from uiao.governance.feature_flags import FeatureFlagRegistry
+    from uiao.governance.tenancy import Tenant, TenantContext
 
 # Import plane entry points
 try:
@@ -82,6 +86,51 @@ PLANE_NAMES = {
     "plane3": "KSI → Evidence Bundle",
     "plane4": "Evidence → OSCAL/POA&M",
 }
+
+# UIAO_119 v2 wave 3 — feature-flag check-points for plane selection.
+# Each plane's required-or-optional status is operator-controlled via
+# the feature-flag system. Default canon (src/uiao/canon/feature-flags.yaml)
+# enables all four planes for all environments + tenant classes, so the
+# back-compat "run all four" behavior is preserved unless an operator
+# overlays a more restrictive policy.
+PLANE_FLAGS: dict[str, str] = {
+    "plane1": "orchestrator.plane.scuba-to-ir.enabled",
+    "plane2": "orchestrator.plane.ir-to-ksi.enabled",
+    "plane3": "orchestrator.plane.ksi-to-evidence.enabled",
+    "plane4": "orchestrator.plane.evidence-to-oscal.enabled",
+}
+
+
+def select_planes(
+    requested: list[str],
+    *,
+    flags: Optional[FeatureFlagRegistry] = None,
+    tenant_context: Optional[TenantContext] = None,
+    tenant: Optional[Tenant] = None,
+) -> list[str]:
+    """Filter ``requested`` planes through the UIAO_119 feature-flag system.
+
+    When ``flags`` or ``tenant_context`` is missing, returns ``requested``
+    unchanged (back-compat — the current "run every requested plane"
+    behavior). When both are supplied, drops any plane whose
+    :data:`PLANE_FLAGS` entry evaluates to ``False`` for the context.
+
+    Planes not in :data:`PLANE_FLAGS` (caller-defined custom planes,
+    future plane IDs) are kept — fail-open for unknown planes is the
+    safer default; the canon walker will catch a missing flag for a
+    well-known plane the next time it runs.
+    """
+    if flags is None or tenant_context is None:
+        return list(requested)
+    out: list[str] = []
+    for plane in requested:
+        flag_name = PLANE_FLAGS.get(plane)
+        if flag_name is None:
+            out.append(plane)
+            continue
+        if flags.is_enabled(flag_name, tenant_context, tenant):
+            out.append(plane)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -517,6 +566,10 @@ def orchestrate(
     planes: Optional[List[str]] = None,
     dry_run: bool = False,
     max_retries: int = 1,
+    *,
+    flags: Optional[FeatureFlagRegistry] = None,
+    tenant_context: Optional[TenantContext] = None,
+    tenant: Optional[Tenant] = None,
 ) -> tuple[bool, RunManifest]:
     """Execute the full compliance pipeline with error handling.
 
@@ -542,7 +595,12 @@ def orchestrate(
     tuple[bool, RunManifest]
         (success: bool, manifest: RunManifest)
     """
-    planes_to_run = planes or PLANES_ALL
+    planes_to_run = select_planes(
+        list(planes or PLANES_ALL),
+        flags=flags,
+        tenant_context=tenant_context,
+        tenant=tenant,
+    )
     run_id = f"run-{uuid4().hex[:8]}"
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     run_dir = output_base_dir / f"{ts}Z-{run_id}"
