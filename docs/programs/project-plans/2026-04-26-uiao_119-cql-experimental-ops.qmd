@@ -1,0 +1,113 @@
+---
+title: "UIAO_119 — CQL experimental operators (wave 2 CQL half)"
+subtitle: "Closes the last open UIAO_119 wave 2 item"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "Closes the CQL half of action 119.3 (b) wave 2 from the §4.4 assessment by adding a regex operator to CQL gated on the existing `auditor-api.cql.experimental-ops` feature flag. UIAO_119 is now end-to-end shipped."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Closes | CQL half of action 119.3 (b) wave 2 from the [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+| Target spec | UIAO_108 CQL + UIAO_119 Tenancy Strategy — experimental-ops gate |
+| Plan version | 1.0 (first delivery) |
+| Builds on | [v2 feature flags](2026-04-26-uiao_119-v2-feature-flags.qmd), [check-point wiring wave 1](2026-04-26-uiao_119-checkpoint-wiring.qmd) |
+
+## What shipped
+
+CQL gains its first **experimental** operator (`regex`) and a parse-time gate consults the existing `auditor-api.cql.experimental-ops` feature flag. Without flags + tenant_context the operator is rejected with a parse error citing the flag — agency operators on the v1 surface never see the experimental behavior.
+
+```python
+# Default — no flags or context → strict v1 surface
+parse_query({"source": "findings", "where": {"id": {"op": "regex", "value": "AC-.*"}}})
+# raises CQLParseError("operator 'regex' on field 'id' is experimental; enable
+#   'auditor-api.cql.experimental-ops' for the calling context ...")
+
+# With flags + context where the flag is enabled → accepted
+parse_query(body, flags=load_canonical_flags(), tenant_context=internal_dev_ctx)
+```
+
+### Implementation
+
+**`src/uiao/governance/cql.py`:**
+
+- Operator classification:
+  - `V1_OPS = ("eq", "ne", "in", "not_in", "contains", "gte", "lte", "exists")` — always available.
+  - `EXPERIMENTAL_OPS = ("regex",)` — gated on flag.
+  - `EXPERIMENTAL_OPS_FLAG = "auditor-api.cql.experimental-ops"` — module constant.
+- `_parse_predicate(field_name, raw, *, allow_experimental=False)` rejects experimental ops by default; accepts them when the caller passes `allow_experimental=True`.
+- `parse_query(body, *, flags=None, tenant_context=None, tenant=None)` — when flags + tenant_context are supplied, evaluates the flag against the context and threads `allow_experimental` through to the predicate parser.
+- `CQLPredicate.matches` handles the new `regex` op via `re.search` against `str(actual)`. Invalid patterns and `None` actuals are treated as no-match (no crash).
+
+**`src/uiao/api/routes/cql.py`:**
+
+- `POST /api/v1/cql/evaluate` now passes `flags=load_canonical_flags()` and a context built from env (`UIAO_ENVIRONMENT`, default `dev`) + `UIAO_TENANT_ID` (default `default`) + the auditor's subject. This means the API's evaluate route automatically gates experimental ops per the operator's deployment env.
+
+### Why a parse-time gate (not evaluation-time)
+
+Evaluating an experimental predicate doesn't depend on canon state — it's just `re.search`. The gate exists to control which **operators are part of the contract** for a given tenant class. Putting the gate at parse-time means:
+
+- The predicate object is impossible to construct unless the caller authenticated through the gate.
+- The evaluator stays decoupled from the flag system (no per-record flag check overhead).
+- A query stored in canon with an experimental op fails fast on load, not late in execution.
+
+## Public API delta
+
+| Symbol | Before | After |
+|---|---|---|
+| `cql.V1_OPS` | did not exist | new module constant |
+| `cql.EXPERIMENTAL_OPS` | did not exist | new module constant |
+| `cql.EXPERIMENTAL_OPS_FLAG` | did not exist | new module constant |
+| `cql.CQLPredicate.matches` | 8 ops | 9 ops (`regex` added) |
+| `cql._parse_predicate` | private 2-arg | private 2-arg + `allow_experimental` kw-only |
+| `cql.parse_query` | 1 positional | 1 positional + `flags`/`tenant_context`/`tenant` kw-only |
+| `api.routes.cql.evaluate` | parses without gate | parses with canon-flag gate |
+
+Back-compat: every new field has a default. Existing CQL queries that use only V1 operators continue to parse identically. Existing tests pass unchanged.
+
+## Test coverage: 8 new
+
+| Test class | Tests | What they assert |
+|---|---|---|
+| `TestExperimentalOperators` | 8 | `regex` rejected by default; rejected when flag disabled; accepted when flag enabled; `regex` matches strings; handles missing field; invalid pattern → no-match (no crash); coerces non-string actuals; unknown op still unknown even with experimental enabled |
+
+42 → 50 in `test_cql.py`; **144 pass** across `cql + auditor_api_v1 + feature_flags + tenancy`. No regressions.
+
+## Action items closed
+
+| # | Action | Status |
+|---|---|---|
+| 119.3 (b) wave 2 — CQL half | Wire `auditor-api.cql.experimental-ops` once CQL gains experimental operators | ✅ shipped this PR |
+
+## UIAO_119 — fully closed
+
+With this PR, every action item in the §4.4 UIAO_119 assessment is shipped:
+
+| # | Item | Status |
+|---|---|---|
+| 119.1 | v1 data layer | ✅ |
+| 119.2 | Walker hygiene | ✅ |
+| 119.3 (a) | v2 feature-flag system | ✅ |
+| 119.3 (b) wave 1 | Check-point wiring (BlockHandler + FilesystemArchive) | ✅ |
+| 119.3 (b) wave 2 — CLI half | `uiao tenant promote-preview` | ✅ |
+| 119.3 (b) wave 2 — CQL half | Experimental operators + flag gate | ✅ shipped this PR |
+| 119.3 (b) wave 3 | Orchestrator plane selection | ✅ |
+| 119.3 (c) | Migration sandbox | ✅ |
+| 119.4 | Journal + archive tagging | ✅ |
+| 119.5 | UIAO_124 ops runbook entry | ✅ |
+
+## Roll-up to substrate-status
+
+| Row | From | To |
+|---|---|---|
+| UIAO_119 | 🟡 working — wave 2 CLI half shipped, CQL half open | 🟡 working — **all action items shipped** ([impl record](2026-04-26-uiao_119-cql-experimental-ops.qmd)); UIAO_119 fully closed per [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+
+## References
+
+- UIAO_108 CQL spec — `src/uiao/canon/specs/cql.md`
+- UIAO_119 v2 feature-flag system — [`2026-04-26-uiao_119-v2-feature-flags.qmd`](2026-04-26-uiao_119-v2-feature-flags.qmd)
+- UIAO_119 check-point wiring wave 1 — [`2026-04-26-uiao_119-checkpoint-wiring.qmd`](2026-04-26-uiao_119-checkpoint-wiring.qmd) (the parse-time gate pattern this PR follows)
+- §4.4 assessment — [`2026-04-26-ha-perf-recovery-tenancy-assessment.qmd`](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd)
