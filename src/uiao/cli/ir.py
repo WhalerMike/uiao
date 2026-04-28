@@ -757,6 +757,76 @@ def ir_orgtree_readiness_bundle(
             raise typer.Exit(code=1) from exc
 
 
+@ir_app.command("intune-readiness")
+def ir_intune_readiness(
+    survey_json: str = typer.Argument(..., help="Path to AD forest survey JSON file."),
+    out: str = typer.Option("", "--out", "-o", help="Write the readiness plan as JSON to this file."),
+    fmt: str = typer.Option("text", "--format", "-f", help="Output format: text | json"),
+) -> None:
+    """Compute Intune device-enrollment readiness from an AD survey JSON.
+
+    Aggregates per-computer ``assess_intune_readiness()`` verdicts
+    (READY / NEEDS_OS_UPGRADE / NEEDS_TPM / NEEDS_HVCI / INELIGIBLE)
+    into the canonical ``intunePlan`` shape — total computers, ready
+    count, blocked count, blocked DNs, readiness percentage, and a
+    verdict-count breakdown. This is a quick-look operator command;
+    use ``ir orgtree-readiness-bundle`` instead when you need a
+    signed bundle artefact for OSCAL evidence.
+
+    Example::
+
+        uiao ir intune-readiness exports/survey/contoso.json
+        uiao ir intune-readiness survey.json --format json --out plan.json
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    from uiao.adapters.modernization.active_directory.intune_readiness import (
+        build_intune_plan,
+    )
+
+    survey_path = _Path(survey_json)
+    if not survey_path.exists():
+        _console.print(f"[red]Survey file not found: {survey_json}[/red]")
+        raise typer.Exit(code=1)
+
+    try:
+        survey_data = _json.loads(survey_path.read_text(encoding="utf-8"))
+    except _json.JSONDecodeError as exc:
+        _console.print(f"[red]Failed to parse survey JSON: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    plan = build_intune_plan(survey_data)
+
+    if fmt.lower() == "json":
+        typer.echo(_json.dumps(plan, indent=2, ensure_ascii=False))
+    else:
+        _console.print(f"[bold]Intune Readiness Plan: {survey_json}[/bold]")
+        _console.print(f"  Total computers   : {plan['total_computers']}")
+        _console.print(f"  Enroll-ready      : [green]{plan['enroll_ready_count']}[/green]")
+        _console.print(f"  Enroll-blocked    : [red]{plan['enroll_blocked_count']}[/red]")
+        _console.print(f"  Readiness         : {plan['readiness_pct']}%")
+        verdict_counts = plan.get("verdict_counts") or {}
+        if verdict_counts:
+            _console.print("  Verdict breakdown :")
+            for verdict, count in sorted(verdict_counts.items()):
+                color = "green" if verdict == "READY" else "yellow"
+                _console.print(f"    [{color}]{verdict}[/{color}]: {count}")
+        blocked_dns = plan.get("blocked_dns") or []
+        if blocked_dns:
+            _console.print(f"  Blocked DNs ({len(blocked_dns)}):")
+            for dn in blocked_dns[:10]:
+                _console.print(f"    {dn}")
+            if len(blocked_dns) > 10:
+                _console.print(f"    ... and {len(blocked_dns) - 10} more")
+
+    if out:
+        out_path = _Path(out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(_json.dumps(plan, indent=2, ensure_ascii=False), encoding="utf-8")
+        _console.print(f"[green]Plan written to {out}[/green]")
+
+
 @ir_app.command("ssp-inject")
 def ir_ssp_inject(
     normalized_json: str = typer.Argument(..., help="Path to normalized SCuBA JSON file."),
