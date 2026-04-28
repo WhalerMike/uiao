@@ -10,7 +10,7 @@ import yaml
 from typer.testing import CliRunner
 
 from uiao.cli.app import app
-from uiao.cli.tenant import PROD_PROMOTE_FLAG  # noqa: F401  (used in canon fixture)
+from uiao.cli.tenant import PROD_PROMOTE_FLAG
 
 
 @pytest.fixture
@@ -133,6 +133,55 @@ class TestPromotePreviewPermissions:
             ],
         )
         assert result.exit_code == 2
+
+    def test_non_internal_operator_class_denied(self, runner: CliRunner, tmp_canon: Path) -> None:
+        # Canon enables `tenancy.environment.prod-promote` only for
+        # tenant_classes: [internal]. A standard or regulated operator
+        # must be denied so the canon policy is actually enforced
+        # (regression catch for the bug where the gate's is_enabled
+        # was called without a Tenant — silently bypassing the class
+        # constraint).
+        result = runner.invoke(
+            app,
+            [
+                "tenant",
+                "promote-preview",
+                "--tenant-id",
+                "regulated-tenant",
+                "--tenant-class",
+                "regulated",
+                "--operator-tenant-class",
+                "standard",
+                "--from",
+                "dev",
+                "--to",
+                "stage",
+            ],
+        )
+        assert result.exit_code == 2, f"output: {result.output}"
+        assert "Permission denied" in result.output
+
+    def test_regulated_operator_class_denied(self, runner: CliRunner, tmp_canon: Path) -> None:
+        # Same gate behavior for regulated operator class.
+        result = runner.invoke(
+            app,
+            [
+                "tenant",
+                "promote-preview",
+                "--tenant-id",
+                "regulated-tenant",
+                "--tenant-class",
+                "regulated",
+                "--operator-tenant-class",
+                "regulated",
+                "--from",
+                "dev",
+                "--to",
+                "stage",
+            ],
+        )
+        assert result.exit_code == 2
+        assert "Permission denied" in result.output
 
 
 # ---------------------------------------------------------------------------

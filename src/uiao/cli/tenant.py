@@ -19,18 +19,19 @@ Permission gate
 ---------------
 The subcommand calls
 :func:`uiao.governance.feature_flags.FeatureFlagRegistry.is_enabled` against
-the ``tenancy.environment.prod-promote`` flag with the calling actor's
-context. The default canon enables the flag for ``internal`` tenants in
-``dev`` / ``stage``; agency operators see a denial unless their canon
-overlay enables them explicitly. Denials exit non-zero so a CI gate can
-fail-closed on unauthorized promotions.
+the ``tenancy.environment.prod-promote`` flag with the calling operator's
+context. The default canon enables the flag in ``dev`` / ``stage`` for
+the ``internal`` tenant class. ``--operator-tenant-class`` defaults to
+``internal`` (this is internal tooling for substrate maintainers); a
+non-internal value sees a denial unless canon is overlaid. Denials exit
+non-zero so a CI gate can fail-closed on unauthorized promotions.
 """
 
 from __future__ import annotations
 
 import json
 import sys
-from typing import Optional
+from enum import Enum
 
 import typer
 from rich.console import Console
@@ -49,6 +50,14 @@ from uiao.governance.tenancy import (
 
 PROD_PROMOTE_FLAG = "tenancy.environment.prod-promote"
 
+
+class OutputFormat(str, Enum):
+    """Output renderer for ``promote-preview``."""
+
+    HUMAN = "human"
+    JSON = "json"
+
+
 tenant_app = typer.Typer(
     name="tenant",
     help="UIAO_119 tenant lifecycle — promote-preview, etc.",
@@ -61,7 +70,7 @@ _console = Console()
 def _list_enabled_flags(
     registry: FeatureFlagRegistry,
     ctx: TenantContext,
-    tenant: Optional[Tenant],
+    tenant: Tenant,
 ) -> list[str]:
     """Return the names of every flag that evaluates to True for ctx.
 
@@ -75,20 +84,33 @@ def _list_enabled_flags(
 @tenant_app.command("promote-preview")
 def promote_preview(
     tenant_id: str = typer.Option(..., "--tenant-id", help="Tenant id (matches src/uiao/canon/tenants.yaml)."),
-    from_env: str = typer.Option(..., "--from", help="Current environment: dev / stage / prod."),
-    to_env: str = typer.Option(..., "--to", help="Target environment: dev / stage / prod."),
-    tenant_class: str = typer.Option(
-        "standard",
+    from_env: Environment = typer.Option(..., "--from", help="Current environment: dev / stage / prod."),
+    to_env: Environment = typer.Option(..., "--to", help="Target environment: dev / stage / prod."),
+    tenant_class: TenantClass = typer.Option(
+        TenantClass.STANDARD,
         "--tenant-class",
-        help="Tenant class for the gate evaluation: internal / canary / standard / regulated.",
+        help=(
+            "Tenant class for the previewed tenant — used both by the "
+            "permission gate and the diff evaluation: "
+            "internal / canary / standard / regulated."
+        ),
+    ),
+    operator_tenant_class: TenantClass = typer.Option(
+        TenantClass.INTERNAL,
+        "--operator-tenant-class",
+        help=(
+            "Tenant class to evaluate the prod-promote permission gate "
+            "against. Defaults to 'internal' (substrate-maintainer use). "
+            "Override only when running from a non-internal canon overlay."
+        ),
     ),
     actor: str = typer.Option(
         "cli",
         "--actor",
         help="Actor identifier for the permission gate. Default 'cli'.",
     ),
-    output: str = typer.Option(
-        "human",
+    output: OutputFormat = typer.Option(
+        OutputFormat.HUMAN,
         "--output",
         help="Output format: human (rich) or json.",
     ),
@@ -107,38 +129,34 @@ def promote_preview(
     """
     flags = load_canonical_flags()
 
-    # Permission gate — uses the calling actor's context, not the
-    # tenant being previewed. Operators in dev/stage with the
-    # `tenancy.environment.prod-promote` flag enabled may run the
-    # subcommand; agency operators (standard / regulated tenants)
-    # can't preview a promotion they aren't authorized to schedule.
+    # Permission gate — evaluates the operator's context against canon.
+    # The operator's tenant + tenant_class are what canon's
+    # `tenancy.environment.prod-promote` policy filters on (default
+    # canon: env=dev/stage, tenant_class=internal). Pass a synthesized
+    # operator Tenant so the tenant_classes constraint is actually
+    # enforced — otherwise FeatureFlag.is_enabled skips the class gate
+    # when no Tenant is supplied (see feature_flags.py is_enabled docs).
     operator_ctx = TenantContext(
         tenant_id=tenant_id,
         actor=actor,
-        environment=Environment.parse(from_env),
+        environment=from_env,
     )
-    if not flags.is_enabled(PROD_PROMOTE_FLAG, operator_ctx):
+    operator_tenant = Tenant(id=actor or "cli", tenant_class=operator_tenant_class)
+    if not flags.is_enabled(PROD_PROMOTE_FLAG, operator_ctx, operator_tenant):
         _console.print(
             f"[red]Permission denied:[/red] flag {PROD_PROMOTE_FLAG!r} "
             f"is disabled for environment={operator_ctx.environment.value} "
+            f"operator-tenant-class={operator_tenant_class.value} "
             f"actor={actor!r}. Enable in src/uiao/canon/feature-flags.yaml "
-            f"or run from a permitted env (dev / stage by default)."
+            f"or run from a permitted env / class (dev / stage + internal "
+            "by default)."
         )
         raise typer.Exit(code=2)
 
-    tenant_class_parsed = TenantClass.parse(tenant_class)
-    tenant_obj = Tenant(id=tenant_id, tenant_class=tenant_class_parsed)
+    tenant_obj = Tenant(id=tenant_id, tenant_class=tenant_class)
 
-    before = TenantContext(
-        tenant_id=tenant_id,
-        actor=actor,
-        environment=Environment.parse(from_env),
-    )
-    after = TenantContext(
-        tenant_id=tenant_id,
-        actor=actor,
-        environment=Environment.parse(to_env),
-    )
+    before = TenantContext(tenant_id=tenant_id, actor=actor, environment=from_env)
+    after = TenantContext(tenant_id=tenant_id, actor=actor, environment=to_env)
 
     def runner(ctx: TenantContext) -> list[str]:
         return _list_enabled_flags(flags, ctx, tenant_obj)
@@ -147,15 +165,15 @@ def promote_preview(
     diff = sandbox.run(
         before=before,
         after=after,
-        before_label=f"{tenant_id}@{from_env}",
-        after_label=f"{tenant_id}@{to_env}",
+        before_label=f"{tenant_id}@{from_env.value}",
+        after_label=f"{tenant_id}@{to_env.value}",
     )
 
-    if output == "json":
+    if output is OutputFormat.JSON:
         sys.stdout.write(json.dumps(diff.as_dict(), indent=2, sort_keys=True) + "\n")
     else:
-        _console.print(f"[bold]promote-preview[/bold] {tenant_id}: {from_env} → {to_env}")
-        _console.print(f"  tenant_class: {tenant_class_parsed.value}")
+        _console.print(f"[bold]promote-preview[/bold] {tenant_id}: {from_env.value} → {to_env.value}")
+        _console.print(f"  tenant_class: {tenant_class.value}")
         _console.print(f"  actor:        {actor}")
         if diff.is_clean:
             _console.print("[yellow]No flag-evaluation changes.[/yellow]")
@@ -177,6 +195,7 @@ def promote_preview(
 
 __all__ = [
     "PROD_PROMOTE_FLAG",
+    "OutputFormat",
     "promote_preview",
     "tenant_app",
 ]
