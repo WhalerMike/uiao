@@ -1,0 +1,189 @@
+---
+title: "UIAO_124 ops runbook — UIAO_119 canary → standard → regulated rollout"
+subtitle: "Step-by-step procedure for promoting a feature flag through the v2 rollout pipeline"
+date: "2026-04-26"
+date-format: "MMMM D, YYYY"
+description: "First UIAO_124 Adapter Ops Runbook instance. Closes assessment action 119.5: the operator-facing procedure for rolling a UIAO_119 v2 feature flag through Dev → Stage canary → Prod canary → Prod standard → Prod regulated using the substrate's existing tagging, sandbox, and Auditor API tools."
+---
+
+## Runbook metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_124 (Adapter Operations Runbook) |
+| Closes | Action item 119.5 from the [§4.4 assessment](../project-plans/2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+| Audience | Substrate operators (UIAO maintainers) + agency IAM leads with promote authority |
+| Builds on | [UIAO_119 v2 feature-flag system](../project-plans/2026-04-26-uiao_119-v2-feature-flags.qmd), [tagging](../project-plans/2026-04-26-uiao_119-journal-tagging.qmd), [check-points](../project-plans/2026-04-26-uiao_119-checkpoint-wiring.qmd), [API filter](../project-plans/2026-04-26-uiao_119-auditor-api-tenant-filter.qmd), [migration sandbox](../project-plans/2026-04-26-uiao_119-migration-sandbox.qmd) |
+
+## When to use this runbook
+
+You are about to flip a UIAO_119 feature flag — say, you want to enable `epl.action.block.enabled` for a `STANDARD` tenant in `PROD` — and the change is risky enough that you need a deterministic procedure rather than a one-off canon edit. This runbook walks the four promotion gates the v2 rollout pipeline defines:
+
+```
+Dev (internal)          → flag canon: environments [dev], tenant_classes [internal]
+        ↓
+Stage canary            → environments [dev, stage], tenant_classes [internal, canary]
+        ↓
+Prod canary             → environments [dev, stage, prod], tenant_classes [internal, canary]
+        ↓
+Prod standard           → environments [dev, stage, prod], tenant_classes [internal, canary, standard]
+        ↓
+Prod regulated          → environments [dev, stage, prod], tenant_classes [internal, canary, standard, regulated]
+```
+
+Each step is a one-line canon edit + a verification step. Skipping a step is permitted only when the previous step ran clean for at least one full evidence cycle (default: 24h, set per-flag in `expires_at` metadata).
+
+## Step 0 — Pre-flight
+
+1. Confirm the flag exists in `src/uiao/canon/feature-flags.yaml` and carries a non-empty `spec_ref:` and a parseable `expires_at:`. The substrate walker enforces both — `make walk` returning zero P3 findings on the flag is the green light to start.
+2. Confirm the flag's *consumer* has shipped (the code that calls `flags.is_enabled(name, ctx, tenant)`). Without a consumer, the flag is no-op and the rollout is meaningless. Reference flags shipped in this session's PR set:
+
+   | Flag | Consumer | Shipped |
+   |---|---|---|
+   | `epl.action.block.enabled` | `BlockHandler.dispatch` | PR #249 |
+   | `data-lake.immutable.strict` | `FilesystemArchive.put` | PR #249 |
+   | `enforcement.journal.tenant-tagging` | `EnforcementRuntime._maybe_tag` | PR #245 |
+   | `archive.entry.tenant-tagging` | `ArchiveManager._tag_extra` | PR #245 |
+   | `auditor-api.cql.experimental-ops` | (consumer pending) | — |
+   | `tenancy.environment.prod-promote` | (consumer pending) | — |
+
+3. Verify the tagging flags are enabled in your target environment so the journal/archive records you'll inspect carry `tenant_id` and `environment`. If they aren't, the verification queries in Step 2 won't filter and you'll be flying blind.
+
+## Step 1 — Dev (internal)
+
+```yaml
+# src/uiao/canon/feature-flags.yaml
+- name: <FLAG_NAME>
+  environments: [dev]
+  tenant_classes: [internal]
+```
+
+**Verification.** Run the migration sandbox to preview the diff between "before" (current main) and "after" (this canon edit on a branch). Example for `epl.action.block.enabled`:
+
+```python
+from uiao.governance.migration_sandbox import MigrationSandbox
+from uiao.governance.tenancy import Environment, Tenant, TenantClass, TenantContext
+
+internal = Tenant(id="internal-dev", tenant_class=TenantClass.INTERNAL)
+sandbox = MigrationSandbox(runner=lambda ctx: dispatch_test_fixture(ctx, internal))
+diff = sandbox.run(
+    before=TenantContext(tenant_id="internal-dev", environment=Environment.DEV),
+    after=TenantContext(tenant_id="internal-dev", environment=Environment.DEV),
+)
+assert diff.is_clean, sandbox.explain(diff)
+```
+
+The sandbox should report `is_clean: True` for the internal-dev path. If it doesn't, the flag's consumer code disagrees with the canon you wrote — fix that before proceeding.
+
+**Bake time.** Minimum 24h, ideally one full evidence cycle. Inspect `/api/v1/enforcement/journal?tenant_id=internal-dev&environment=dev` and `/api/v1/archive?tenant_id=internal-dev&environment=dev` for unexpected actions / archive misses. Both return `count: 0` if tagging isn't enabled — that's a setup error, not a rollout signal.
+
+**Roll back.** Edit the canon to remove the flag entirely or set both lists empty. The runtime evaluates missing flags as `False` (deny by default), so removal is the safest rollback.
+
+## Step 2 — Stage canary
+
+```yaml
+- name: <FLAG_NAME>
+  environments: [dev, stage]
+  tenant_classes: [internal, canary]
+```
+
+**Verification.** Promote one canary tenant (declared with `tenant_class: canary` in `src/uiao/canon/tenants.yaml`) into the rollout. The migration sandbox now does the heavy lifting:
+
+```python
+canary = Tenant(id="acme-canary", tenant_class=TenantClass.CANARY)
+sandbox = MigrationSandbox(runner=lambda ctx: dispatch_real_traffic(ctx, canary))
+diff = sandbox.run(
+    before=TenantContext(tenant_id="acme-canary", environment=Environment.DEV),
+    after=TenantContext(tenant_id="acme-canary", environment=Environment.STAGE),
+    before_label="dev-baseline",
+    after_label="stage-canary",
+)
+print(sandbox.explain(diff))
+print(diff.as_dict())
+```
+
+Expected: `dev-baseline → stage-canary: +N added, -M removed` where the additions are the EnforcementActions / ArchiveEntries the flag now produces. Investigate every line. If you can't explain a removed item, **stop and root-cause** — a flag flip should never silently *remove* substrate behavior.
+
+**Bake time.** 24–72h, depending on the flag's blast radius. The Auditor API filter is your operational dashboard: page `/journal` and `/archive` filtered to `tenant_id=acme-canary&environment=stage` and confirm the rate of dispatched actions matches the sandbox prediction within 5%.
+
+**Roll back.** Revert the canon edit. The flag's `is_enabled` evaluation drops the canary tenant immediately on the next dispatch. Existing dispatched actions are not unwound — review the journal for any state changes that need manual remediation (e.g., `BlockHandler` deny-list entries).
+
+## Step 3 — Prod canary
+
+```yaml
+- name: <FLAG_NAME>
+  environments: [dev, stage, prod]
+  tenant_classes: [internal, canary]
+```
+
+**Verification.** Same canary tenant, now in prod. The sandbox preview is identical to Step 2 except the `after` context uses `Environment.PROD`. The risk increases: a prod canary is a real agency tenant.
+
+This is the gate where you involve the agency-side IAM lead. Schedule a 30-minute live review of the sandbox diff and the first-hour journal output before walking away. Reference the [agency onboarding walkthrough](../education/agency-onboarding-walkthrough.qmd) §"What's required of you" — the weekly compliance review forum is the right cadence to hand the rollout off to the agency once verified.
+
+**Bake time.** 7 days minimum. Multiple evidence cycles + at least one weekly compliance review forum.
+
+**Roll back.** Same as Step 2 — revert the canon edit. Prod state changes (block-list entries, archived runs) stay in place; review them with the agency before the next promotion.
+
+## Step 4 — Prod standard
+
+```yaml
+- name: <FLAG_NAME>
+  environments: [dev, stage, prod]
+  tenant_classes: [internal, canary, standard]
+```
+
+**Verification.** This step takes the flag from "two canary tenants" to "all standard agency tenants". The migration sandbox can no longer enumerate every tenant — you're trusting the canary signal from Step 3.
+
+The right verification is **shape-level**, not per-tenant. Query the unfiltered journal for the new flag's effect on dispatch rates:
+
+```
+GET /api/v1/enforcement/journal?policy_id=<flag-affected-policy>
+```
+
+Compute the action-rate change vs. the baseline (the period before the canary was enabled). A >2x dispatch rate spike is a stop-the-line signal even if the canary tenants looked clean.
+
+**Bake time.** 14 days. Two full weekly compliance review cycles before regulated promotion.
+
+**Roll back.** Edit canon to drop `standard` from `tenant_classes`. Everything reverts to the canary set on the next dispatch.
+
+## Step 5 — Prod regulated
+
+```yaml
+- name: <FLAG_NAME>
+  environments: [dev, stage, prod]
+  tenant_classes: [internal, canary, standard, regulated]
+```
+
+**Verification.** The most rigorous step. Regulated tenants (GCC-High / FedRAMP High footprint) require:
+
+1. Sandbox preview against a representative subset of regulated-tenant fixtures (the substrate maintainer keeps these under `tests/fixtures/regulated-tenants/`).
+2. Drift audit confirming no regulated-tenant invariant was broken — see [UIAO_117 Phase 1 manual SOP](../project-plans/2026-04-26-uiao_117-phase1-recovery.qmd) for the audit procedure shape.
+3. Sign-off from the regulated tenant's compliance officer recorded in the EPL enforcement journal as a `dispatched` action with `policy_id="ops:regulated-rollout-signoff"` (a one-off operator policy that exists for exactly this purpose).
+
+**Bake time.** Indefinite — the flag stays at this enablement until either its `expires_at` date arrives or a roll-back is triggered.
+
+**Roll back.** Edit canon to drop `regulated` from `tenant_classes`. **All four lower steps' rollback procedures still apply** — a regulated rollback is not a substitute for them.
+
+## Closing checklist
+
+After Step 5, the flag is fully enabled across the canary pipeline. Before declaring the rollout complete:
+
+- [ ] All five canon edits committed to `src/uiao/canon/feature-flags.yaml` with PR review.
+- [ ] Each step's verification artifact (sandbox diff JSON + journal API response) archived under `output/rollouts/<flag-name>/<step>/`.
+- [ ] `expires_at:` updated to reflect the actual landing date plus the flag's intended lifetime (default: 1 year).
+- [ ] EPL operator policy `ops:regulated-rollout-signoff` (Step 5) records the regulated tenant's sign-off.
+- [ ] Walker `make walk` returns zero P3 findings on the flag entry.
+- [ ] If the flag enabled a check-point that *adds* substrate behavior, document the new behavior in the relevant UIAO_NNN spec's §rollout section so future operators inherit the institutional knowledge.
+
+## Roll-up to substrate-status
+
+| Row | From | To |
+|---|---|---|
+| UIAO_124 | ⚠️ aspirational | 🟡 working — first runbook instance shipped 2026-04-26 ([UIAO_119 canary rollout](../ops-runbook/2026-04-26-uiao_119-canary-rollout.qmd)) |
+
+## References
+
+- UIAO_124 Adapter Operations Runbook spec — `src/uiao/canon/specs/adapter-operations-runbook.md`
+- UIAO_119 Tenancy spec — `src/uiao/canon/specs/tenancy.md`
+- §4.4 assessment — [`2026-04-26-ha-perf-recovery-tenancy-assessment.qmd`](../project-plans/2026-04-26-ha-perf-recovery-tenancy-assessment.qmd)
+- All UIAO_119 impl records cited inline above
