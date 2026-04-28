@@ -6,7 +6,6 @@ canon-source:
   - "docs/docs/06_ProgramVision.qmd"
   - "docs/docs/08_ModernizationTimeline.qmd"
 derived-from: "uiao canon"
-aspirational: true
 ---
 
 This executive brief summarizes what a **UIAO-anchored modernization program**

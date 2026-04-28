@@ -3,7 +3,6 @@ title: Evidence Fabric Overview — Executive Brief
 doc-type: executive-brief
 canon-source: docs/docs/15_ProvenanceProfile.qmd
 derived-from: uiao/canon
-aspirational: true
 ---
 
 # Evidence Fabric Overview

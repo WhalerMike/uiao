@@ -1138,7 +1138,7 @@ Work required:
 - Create tier-2 fixtures (COBOL record payloads mapped to canonical claims).
 - Flip status from `reserved` to `active`.
 
-### 4.3 — Aspirational banner elimination (round 1 ✅ shipped 2026-04-26)
+### 4.3 — Aspirational banner elimination (rounds 1 + 2 ✅ shipped 2026-04-26)
 
 Target: zero aspirational banners by v1.1.
 
@@ -1147,12 +1147,17 @@ Round 1 (2026-04-26) — **10 banners removed** from pages whose underlying prog
 - 4 narrative companions (`narrative/program-training`, `program-test-plans`, `program-project-plans`, `program-education`).
 - 1 adapter validation suite (`customer-documents/validation-suites/adapters/terraform/terraform.qmd`) — once UIAO_121/123 instantiation landed (§2.6).
 
-Each un-flagged page now carries an inline pointer to its first delivery instead of the aspirational banner. Remaining flagged set is **~34 pages**; the running tally lives in the Substrate Status page §"Aspirational-content triage".
+Round 2 (2026-04-26) — **9 more banners removed** from pages describing features that all shipped this session:
+- 6 executive briefs (`drift-engine`, `evidence-fabric`, `governance-os`, `modernization`, `zero-trust` overviews + the brief-set `index`) — every drift class, the EPL/enforcement runtime, the OSCAL pipeline, and the auditor API are now real.
+- 3 academy pages (`index`, `contributor-track`, `operator-track`) — UIAO_125 Training has its first delivery and the tracks are reader-friendly views over canon that already exists.
 
-Round 2+ work required (toward v1.1 zero-banner target):
+Total flagged across `docs/`: **~24 pages** (down from ~44 at session start). Running tally on the Substrate Status page §"Aspirational-content triage".
+
+Round 3+ work remaining (toward v1.1 zero-banner target):
 - For each remaining genuinely-aspirational page, either implement the feature or schedule it in a UIAO_127 project plan with a target date.
-- Remove banner as each feature ships (round 1 sets the pattern: drop frontmatter `aspirational: true`, replace any "Scaffold" callout with a "First delivery shipped" tip linking the live artifact).
-- Re-run the grep heuristic across the remaining 263 inbox candidates and demote false positives out of the inbox file.
+- Adapter pages still flagged (`customer-documents/adapter-specs/*`, most `validation-suites/adapters/*`) — most are gated on §2.1–2.5 vendor-sandbox unblocks.
+- Compliance landing pages (8 sub-categories under `customer-documents/compliance/`) are explicit `status: scaffold` content — stay flagged until the leaf pages are authored.
+- Remove banner as each feature ships (round 1 set the pattern: drop frontmatter `aspirational: true`, replace any "Scaffold" callout with a "First delivery shipped" tip linking the live artifact).
 - Eventually re-derive the count from `make walk` rather than running grep manually.
 
 ### 4.4 — UIAO_114/115/117/119 HA, Performance, Recovery, Tenancy — assessment ✅ shipped 2026-04-26
