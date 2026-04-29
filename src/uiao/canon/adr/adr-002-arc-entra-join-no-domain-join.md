@@ -75,7 +75,6 @@ However, a critical architectural constraint exists that shapes the entire serve
 |---|---|---|
 | Microsoft Learn — Sign in to Arc-enabled server using Entra ID | https://learn.microsoft.com/en-us/entra/identity/devices/howto-vm-sign-in-azure-ad-windows#azure-arc | 2026-04-28 |
 | Blog: Join your Windows Server 2025 to Entra ID (Sinnathurai) | https://blog.sinnathurai.ch — detailed walkthrough with caveats | 2026-04-28 |
-| Mindcore Techblog — Azure Arc RDP with Entra ID Authentication | https://techblog.dvbmedia.net — extension deployment and limitations | 2026-04-28 |
 
 ## Review Triggers
 
