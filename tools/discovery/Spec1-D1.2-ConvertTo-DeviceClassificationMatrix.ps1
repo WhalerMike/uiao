@@ -229,11 +229,14 @@ function Get-MigrationReadiness {
     $score = [math]::Max(0, [math]::Min(100, $score))
 
     # Readiness tier
-    $tier = switch {
-        ($blockers.Count -gt 0)  { "Blocked" }
-        ($score -ge 80)          { "Ready" }
-        ($score -ge 60)          { "Ready with Remediation" }
-        ($score -ge 40)          { "Significant Remediation" }
+    # PowerShell switch evaluates ALL matching cases unless break is used,
+    # so each tier case must terminate with `; break` to prevent fall-through
+    # (e.g., a score of 90 matches `>=80`, `>=60`, AND `>=40` without break).
+    $tier = switch ($true) {
+        ($blockers.Count -gt 0)  { "Blocked"; break }
+        ($score -ge 80)          { "Ready"; break }
+        ($score -ge 60)          { "Ready with Remediation"; break }
+        ($score -ge 40)          { "Significant Remediation"; break }
         default                  { "Not Ready" }
     }
 
