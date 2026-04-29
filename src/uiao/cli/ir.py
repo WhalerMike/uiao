@@ -806,13 +806,15 @@ def ir_intune_readiness(
         _console.print(f"  Enroll-ready      : [green]{plan['enroll_ready_count']}[/green]")
         _console.print(f"  Enroll-blocked    : [red]{plan['enroll_blocked_count']}[/red]")
         _console.print(f"  Readiness         : {plan['readiness_pct']}%")
-        verdict_counts = plan.get("verdict_counts") or {}
+        verdict_counts_raw = plan.get("verdict_counts")
+        verdict_counts: dict[str, int] = verdict_counts_raw if isinstance(verdict_counts_raw, dict) else {}
         if verdict_counts:
             _console.print("  Verdict breakdown :")
             for verdict, count in sorted(verdict_counts.items()):
                 color = "green" if verdict == "READY" else "yellow"
                 _console.print(f"    [{color}]{verdict}[/{color}]: {count}")
-        blocked_dns = plan.get("blocked_dns") or []
+        blocked_dns_raw = plan.get("blocked_dns")
+        blocked_dns: list[str] = blocked_dns_raw if isinstance(blocked_dns_raw, list) else []
         if blocked_dns:
             _console.print(f"  Blocked DNs ({len(blocked_dns)}):")
             for dn in blocked_dns[:10]:
