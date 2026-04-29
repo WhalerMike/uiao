@@ -26,6 +26,7 @@ ir_app = typer.Typer(
     name="ir",
     help="Intermediate Representation operations (SCuBA -> IR -> Evidence/Bundle/POA&M).",
     add_completion=False,
+    rich_markup_mode=None,
 )
 
 _console = Console()
