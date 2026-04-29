@@ -1,0 +1,457 @@
+#Requires -Version 5.1
+
+<#
+.SYNOPSIS
+    UIAO PKI/ADCS Assessment Module
+.DESCRIPTION
+    Comprehensive AD Certificate Services assessment: CA discovery, certificate
+    template inventory, ESC1-ESC8 vulnerability detection, CRL/AIA health,
+    auto-enrollment analysis. Outputs structured JSON for UIAO Gitea pipeline.
+.NOTES
+    Classification : Controlled
+    Boundary       : GCC-Moderate
+    Repository     : https://github.com/WhalerMike/uiao
+    Version        : 1.0.0
+#>
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function Write-UIAOLog {
+    param([string]$Message, [string]$Level = 'Info')
+    $colors = @{ Info='Cyan'; Warn='Yellow'; Error='Red'; Success='Green' }
+    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [$Level] $Message" -ForegroundColor $colors[$Level]
+}
+function New-UIAODir { param([string]$P) if (-not (Test-Path $P)) { New-Item -Path $P -ItemType Directory -Force | Out-Null } }
+function Export-Json { param($Data,[string]$F,[int]$D=10) $Data | ConvertTo-Json -Depth $D | Set-Content -Path $F -Encoding UTF8; Write-UIAOLog "Exported: $F" -Level Success }
+
+#region --- CA Discovery ---
+
+function Get-UIAOCAInventory {
+    <#
+    .SYNOPSIS
+        Discovers all Enterprise CAs in the AD forest via the Configuration partition.
+    .PARAMETER OutputPath
+        Directory for output files.
+    .OUTPUTS
+        CADiscovery.json
+    #>
+    [CmdletBinding()]
+    param([string]$OutputPath = 'D:\UIAO\Assessment\PKI')
+
+    New-UIAODir -Path $OutputPath
+    Write-UIAOLog 'Discovering Enterprise CAs...'
+
+    $configNC = ([ADSI]'LDAP://RootDSE').configurationNamingContext.Value
+    $enrollmentServices = Get-ADObject -SearchBase "CN=Enrollment Services,CN=Public Key Services,CN=Services,$configNC" `
+        -Filter 'objectClass -eq "pKIEnrollmentService"' `
+        -Properties dNSHostName, cACertificateDN, certificateTemplates, 'msPKI-Cert-Template-OID', whenCreated, whenChanged
+
+    $caData = foreach ($ca in $enrollmentServices) {
+        [PSCustomObject]@{
+            Name               = $ca.Name
+            DNSHostName        = $ca.dNSHostName
+            CACertificateDN    = $ca.cACertificateDN
+            TemplateCount      = ($ca.certificateTemplates | Measure-Object).Count
+            Templates          = @($ca.certificateTemplates)
+            Created            = $ca.whenCreated.ToString('o')
+            Modified           = $ca.whenChanged.ToString('o')
+            DistinguishedName  = $ca.DistinguishedName
+        }
+    }
+
+    # AIA containers
+    $aiaData = @()
+    try {
+        $aiaData = Get-ADObject -SearchBase "CN=AIA,CN=Public Key Services,CN=Services,$configNC" `
+            -Filter 'objectClass -eq "certificationAuthority"' `
+            -Properties cACertificate, whenCreated |
+            Select-Object Name, @{N='Created';E={$_.whenCreated.ToString('o')}}, DistinguishedName
+    } catch { Write-UIAOLog 'AIA enumeration failed' -Level Warn }
+
+    # CDP containers
+    $cdpData = @()
+    try {
+        $cdpContainers = Get-ADObject -SearchBase "CN=CDP,CN=Public Key Services,CN=Services,$configNC" `
+            -Filter 'objectClass -eq "container" -or objectClass -eq "cRLDistributionPoint"' `
+            -Properties whenCreated
+        $cdpData = $cdpContainers | Select-Object Name, ObjectClass, DistinguishedName
+    } catch { Write-UIAOLog 'CDP enumeration failed' -Level Warn }
+
+    $inventory = [ordered]@{
+        AssessmentType = 'CADiscovery'
+        Timestamp      = (Get-Date -Format 'o')
+        Classification = 'Controlled'
+        Boundary       = 'GCC-Moderate'
+        CACount        = $caData.Count
+        CAs            = @($caData)
+        AIAContainers  = @($aiaData)
+        CDPContainers  = @($cdpData)
+    }
+
+    Export-Json -Data $inventory -F (Join-Path $OutputPath 'CADiscovery.json')
+    Write-UIAOLog "CA Discovery: $($caData.Count) Enterprise CAs found" -Level Success
+    return $inventory
+}
+
+#endregion
+
+#region --- Certificate Template Inventory ---
+
+function Get-UIAOCertificateTemplates {
+    <#
+    .SYNOPSIS
+        Exports all certificate templates with ACLs and security-relevant properties.
+    .PARAMETER OutputPath
+        Directory for output files.
+    .OUTPUTS
+        CertTemplates.json
+    #>
+    [CmdletBinding()]
+    param([string]$OutputPath = 'D:\UIAO\Assessment\PKI')
+
+    New-UIAODir -Path $OutputPath
+    Write-UIAOLog 'Inventorying certificate templates...'
+
+    $configNC = ([ADSI]'LDAP://RootDSE').configurationNamingContext.Value
+    $templateBase = "CN=Certificate Templates,CN=Public Key Services,CN=Services,$configNC"
+
+    $templates = Get-ADObject -SearchBase $templateBase -Filter 'objectClass -eq "pKICertificateTemplate"' `
+        -Properties *
+
+    $templateData = foreach ($t in $templates) {
+        # Parse flags
+        $enrolleeSuppliesSubject = ($t.'msPKI-Certificate-Name-Flag' -band 1) -eq 1
+        $schemaVersion = $t.'msPKI-Template-Schema-Version'
+
+        # EKU (Extended Key Usage)
+        $ekuOids = @($t.'pKIExtendedKeyUsage')
+        $ekuNames = foreach ($oid in $ekuOids) {
+            switch ($oid) {
+                '1.3.6.1.5.5.7.3.1' { 'Server Authentication' }
+                '1.3.6.1.5.5.7.3.2' { 'Client Authentication' }
+                '1.3.6.1.5.5.7.3.3' { 'Code Signing' }
+                '1.3.6.1.5.5.7.3.4' { 'Secure Email' }
+                '1.3.6.1.4.1.311.20.2.2' { 'Smart Card Logon' }
+                '1.3.6.1.5.2.3.4'   { 'PKINIT Client Authentication' }
+                '2.5.29.37.0'        { 'Any Purpose' }
+                '1.3.6.1.4.1.311.21.5' { 'Certificate Request Agent' }
+                default { $oid }
+            }
+        }
+
+        # Enrollment flags
+        $autoEnrollment = ($t.'msPKI-Enrollment-Flag' -band 32) -eq 32
+
+        # ACL analysis
+        $acl = $null
+        $enrollPermissions = @()
+        try {
+            $templatePath = "AD:\$($t.DistinguishedName)"
+            $acl = Get-Acl $templatePath
+            $enrollPermissions = $acl.Access | Where-Object {
+                $_.ActiveDirectoryRights -match 'ExtendedRight' -and
+                ($_.ObjectType -eq '0e10c968-78fb-11d2-90d4-00c04f79dc55' -or  # Enroll
+                 $_.ObjectType -eq 'a05b8cc2-17bc-4802-a710-e7c15ab866a2')      # AutoEnroll
+            } | Select-Object @{N='Identity';E={$_.IdentityReference.Value}},
+                              @{N='Right';E={
+                                  if ($_.ObjectType -eq '0e10c968-78fb-11d2-90d4-00c04f79dc55') {'Enroll'}
+                                  else {'AutoEnroll'}
+                              }},
+                              AccessControlType
+        } catch {
+            Write-UIAOLog "ACL read failed for $($t.Name): $_" -Level Warn
+        }
+
+        # Dangerous permission check (WriteDacl, WriteOwner, WriteProperty by non-admins)
+        $dangerousPerms = @()
+        if ($acl) {
+            $dangerousPerms = $acl.Access | Where-Object {
+                ($_.ActiveDirectoryRights -match 'WriteDacl|WriteOwner|WriteProperty|GenericAll|GenericWrite') -and
+                $_.IdentityReference.Value -notmatch 'Domain Admins|Enterprise Admins|SYSTEM|Administrators|Cert Publishers'
+            } | Select-Object @{N='Identity';E={$_.IdentityReference.Value}},
+                              @{N='Rights';E={$_.ActiveDirectoryRights.ToString()}}
+        }
+
+        [PSCustomObject]@{
+            Name                      = $t.Name
+            DisplayName               = $t.DisplayName
+            OID                       = $t.'msPKI-Cert-Template-OID'
+            SchemaVersion             = $schemaVersion
+            Version                   = "$($t.'msPKI-Template-Minor-Revision').$($t.Revision)"
+            ValidityPeriod            = $t.'pKIExpirationPeriod'
+            RenewalPeriod             = $t.'pKIOverlapPeriod'
+            MinimumKeySize            = $t.'msPKI-Minimal-Key-Size'
+            EnrolleeSuppliesSubject   = $enrolleeSuppliesSubject
+            AutoEnrollment            = $autoEnrollment
+            EKUs                      = @($ekuNames)
+            EKUOIDs                   = @($ekuOids)
+            HasClientAuth             = $ekuOids -contains '1.3.6.1.5.5.7.3.2'
+            HasAnyPurpose             = $ekuOids -contains '2.5.29.37.0'
+            HasCertRequestAgent       = $ekuOids -contains '1.3.6.1.4.1.311.21.5'
+            EnrollPermissions         = @($enrollPermissions)
+            DangerousPermissions      = @($dangerousPerms)
+            Created                   = $t.whenCreated.ToString('o')
+            Modified                  = $t.whenChanged.ToString('o')
+        }
+    }
+
+    $inventory = [ordered]@{
+        AssessmentType = 'CertificateTemplates'
+        Timestamp      = (Get-Date -Format 'o')
+        Classification = 'Controlled'
+        Boundary       = 'GCC-Moderate'
+        TotalTemplates = $templateData.Count
+        Templates      = @($templateData)
+    }
+
+    Export-Json -Data $inventory -F (Join-Path $OutputPath 'CertTemplates.json')
+    Write-UIAOLog "Templates: $($templateData.Count) certificate templates inventoried" -Level Success
+    return $inventory
+}
+
+#endregion
+
+#region --- ESC Vulnerability Detection ---
+
+function Test-UIAOESCVulnerabilities {
+    <#
+    .SYNOPSIS
+        Detects ESC1-ESC8 ADCS vulnerability patterns.
+    .PARAMETER OutputPath
+        Directory for output files.
+    .OUTPUTS
+        ESCVulnerabilities.json, ESCVulnerabilities.csv
+    #>
+    [CmdletBinding()]
+    param([string]$OutputPath = 'D:\UIAO\Assessment\PKI')
+
+    New-UIAODir -Path $OutputPath
+    Write-UIAOLog 'Scanning for ESC vulnerabilities...'
+
+    # Get templates first
+    $templateResult = Get-UIAOCertificateTemplates -OutputPath $env:TEMP
+    $templates = $templateResult.Templates
+
+    $findings = @()
+
+    foreach ($t in $templates) {
+        # ESC1: Enrollee supplies subject + Client Auth + low-priv enrollment
+        if ($t.EnrolleeSuppliesSubject -and $t.HasClientAuth) {
+            $lowPrivEnroll = $t.EnrollPermissions | Where-Object {
+                $_.Identity -match 'Domain Users|Domain Computers|Authenticated Users|Everyone' -and
+                $_.Right -eq 'Enroll' -and
+                $_.AccessControlType -eq 'Allow'
+            }
+            if ($lowPrivEnroll) {
+                $findings += [PSCustomObject]@{
+                    ESC        = 'ESC1'
+                    Severity   = 'Critical'
+                    Template   = $t.Name
+                    Finding    = 'Template allows enrollee-supplied SAN with Client Auth EKU and low-privilege enrollment'
+                    Detail     = "Enrollable by: $(($lowPrivEnroll.Identity) -join ', ')"
+                    Remediation = 'Remove CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT flag or restrict enrollment to administrators'
+                }
+            }
+        }
+
+        # ESC2: Any Purpose EKU or SubCA EKU
+        if ($t.HasAnyPurpose) {
+            $findings += [PSCustomObject]@{
+                ESC        = 'ESC2'
+                Severity   = 'High'
+                Template   = $t.Name
+                Finding    = 'Template has Any Purpose EKU — can be used for any authentication'
+                Detail     = "EKUs: $(($t.EKUs) -join ', ')"
+                Remediation = 'Replace Any Purpose EKU with specific EKUs required for the use case'
+            }
+        }
+
+        # ESC3: Certificate Request Agent with broad enrollment
+        if ($t.HasCertRequestAgent) {
+            $lowPrivEnroll = $t.EnrollPermissions | Where-Object {
+                $_.Identity -match 'Domain Users|Authenticated Users|Everyone' -and
+                $_.Right -eq 'Enroll'
+            }
+            if ($lowPrivEnroll) {
+                $findings += [PSCustomObject]@{
+                    ESC        = 'ESC3'
+                    Severity   = 'High'
+                    Template   = $t.Name
+                    Finding    = 'Certificate Request Agent template enrollable by low-privilege users'
+                    Detail     = "Enrollable by: $(($lowPrivEnroll.Identity) -join ', ')"
+                    Remediation = 'Restrict enrollment to designated enrollment agents only'
+                }
+            }
+        }
+
+        # ESC4: Dangerous template ACLs
+        if ($t.DangerousPermissions.Count -gt 0) {
+            $findings += [PSCustomObject]@{
+                ESC        = 'ESC4'
+                Severity   = 'High'
+                Template   = $t.Name
+                Finding    = 'Template ACL allows modification by non-administrators'
+                Detail     = ($t.DangerousPermissions | ForEach-Object { "$($_.Identity): $($_.Rights)" }) -join '; '
+                Remediation = 'Remove WriteDacl/WriteOwner/WriteProperty/GenericAll from non-admin identities'
+            }
+        }
+    }
+
+    # ESC6: EDITF_ATTRIBUTESUBJECTALTNAME2 flag on CA
+    # Requires certutil access — attempt detection
+    $caResult = Get-UIAOCAInventory -OutputPath $env:TEMP
+    foreach ($ca in $caResult.CAs) {
+        try {
+            $editFlags = certutil -config "$($ca.DNSHostName)\$($ca.Name)" -getreg policy\EditFlags 2>$null
+            if ($editFlags -match 'EDITF_ATTRIBUTESUBJECTALTNAME2') {
+                $findings += [PSCustomObject]@{
+                    ESC        = 'ESC6'
+                    Severity   = 'Critical'
+                    Template   = "CA: $($ca.Name)"
+                    Finding    = 'CA has EDITF_ATTRIBUTESUBJECTALTNAME2 enabled — allows SAN override on any template'
+                    Detail     = "CA Server: $($ca.DNSHostName)"
+                    Remediation = 'Remove the flag: certutil -config "<CA>" -setreg policy\EditFlags -EDITF_ATTRIBUTESUBJECTALTNAME2'
+                }
+            }
+        } catch {
+            Write-UIAOLog "ESC6 check failed for $($ca.Name) (requires CA admin): $_" -Level Warn
+        }
+    }
+
+    $report = [ordered]@{
+        AssessmentType   = 'ESCVulnerabilities'
+        Timestamp        = (Get-Date -Format 'o')
+        Classification   = 'Controlled'
+        Boundary         = 'GCC-Moderate'
+        TotalFindings    = $findings.Count
+        CriticalCount    = ($findings | Where-Object Severity -eq 'Critical').Count
+        HighCount        = ($findings | Where-Object Severity -eq 'High').Count
+        MediumCount      = ($findings | Where-Object Severity -eq 'Medium').Count
+        Findings         = @($findings)
+    }
+
+    Export-Json -Data $report -F (Join-Path $OutputPath 'ESCVulnerabilities.json')
+    $findings | Select-Object ESC, Severity, Template, Finding, Remediation |
+        Export-Csv -Path (Join-Path $OutputPath 'ESCVulnerabilities.csv') -NoTypeInformation -Encoding UTF8
+
+    if ($findings.Count -gt 0) {
+        Write-UIAOLog "ESC FINDINGS: $($findings.Count) total — $(($findings | Where-Object Severity -eq 'Critical').Count) Critical, $(($findings | Where-Object Severity -eq 'High').Count) High" -Level Warn
+    } else {
+        Write-UIAOLog 'No ESC vulnerabilities detected' -Level Success
+    }
+
+    return $report
+}
+
+#endregion
+
+#region --- CRL Health ---
+
+function Get-UIAOCRLHealth {
+    <#
+    .SYNOPSIS
+        Validates CRL distribution point health and freshness.
+    .PARAMETER OutputPath
+        Directory for output files.
+    .OUTPUTS
+        CRLHealth.json
+    #>
+    [CmdletBinding()]
+    param([string]$OutputPath = 'D:\UIAO\Assessment\PKI')
+
+    New-UIAODir -Path $OutputPath
+    Write-UIAOLog 'Checking CRL health...'
+
+    $configNC = ([ADSI]'LDAP://RootDSE').configurationNamingContext.Value
+    $cdpBase = "CN=CDP,CN=Public Key Services,CN=Services,$configNC"
+
+    $crlObjects = @()
+    try {
+        $crlObjects = Get-ADObject -SearchBase $cdpBase -Filter 'objectClass -eq "cRLDistributionPoint"' `
+            -Properties certificateRevocationList, deltaRevocationList, whenChanged |
+            Select-Object Name,
+                @{N='HasCRL';E={$null -ne $_.certificateRevocationList}},
+                @{N='HasDeltaCRL';E={$null -ne $_.deltaRevocationList}},
+                @{N='LastUpdated';E={$_.whenChanged.ToString('o')}},
+                @{N='AgeHours';E={[math]::Round(((Get-Date) - $_.whenChanged).TotalHours, 1)}}
+    } catch {
+        Write-UIAOLog "CRL enumeration failed: $_" -Level Warn
+    }
+
+    $health = [ordered]@{
+        AssessmentType = 'CRLHealth'
+        Timestamp      = (Get-Date -Format 'o')
+        Classification = 'Controlled'
+        Boundary       = 'GCC-Moderate'
+        CRLCount       = $crlObjects.Count
+        CRLs           = @($crlObjects)
+    }
+
+    Export-Json -Data $health -F (Join-Path $OutputPath 'CRLHealth.json')
+    Write-UIAOLog "CRL Health: $($crlObjects.Count) CRL distribution points checked" -Level Success
+    return $health
+}
+
+#endregion
+
+#region --- Master Orchestrator ---
+
+function Export-UIAOPKIAssessment {
+    <#
+    .SYNOPSIS
+        Master orchestrator for complete UIAO PKI/ADCS assessment.
+    .PARAMETER OutputPath
+        Root directory for all PKI output.
+    .EXAMPLE
+        Export-UIAOPKIAssessment -OutputPath D:\UIAO\Assessment\PKI
+    #>
+    [CmdletBinding()]
+    param([string]$OutputPath = 'D:\UIAO\Assessment\PKI')
+
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    Write-UIAOLog '=== UIAO PKI Assessment ===' -Level Info
+    New-UIAODir -Path $OutputPath
+
+    Write-UIAOLog '[1/4] CA Discovery...'
+    $caResult = Get-UIAOCAInventory -OutputPath $OutputPath
+
+    Write-UIAOLog '[2/4] Certificate Template Inventory...'
+    $templateResult = Get-UIAOCertificateTemplates -OutputPath $OutputPath
+
+    Write-UIAOLog '[3/4] ESC Vulnerability Scan...'
+    $escResult = Test-UIAOESCVulnerabilities -OutputPath $OutputPath
+
+    Write-UIAOLog '[4/4] CRL Health Check...'
+    $crlResult = Get-UIAOCRLHealth -OutputPath $OutputPath
+
+    $sw.Stop()
+
+    $manifest = [ordered]@{
+        Module          = 'UIAOPKIAssessment'
+        Version         = '1.0.0'
+        Timestamp       = (Get-Date -Format 'o')
+        Classification  = 'Controlled'
+        Boundary        = 'GCC-Moderate'
+        ElapsedSeconds  = [math]::Round($sw.Elapsed.TotalSeconds, 1)
+        CAsFound        = $caResult.CACount
+        TemplatesFound  = $templateResult.TotalTemplates
+        ESCFindings     = $escResult.TotalFindings
+        ESCCritical     = $escResult.CriticalCount
+        OutputPath      = $OutputPath
+    }
+
+    Export-Json -Data $manifest -F (Join-Path $OutputPath 'PKIAssessmentManifest.json')
+    Write-UIAOLog "=== PKI Assessment complete in $([math]::Round($sw.Elapsed.TotalSeconds,1))s ===" -Level Success
+    return $manifest
+}
+
+#endregion
+
+Export-ModuleMember -Function @(
+    'Get-UIAOCAInventory',
+    'Get-UIAOCertificateTemplates',
+    'Test-UIAOESCVulnerabilities',
+    'Get-UIAOCRLHealth',
+    'Export-UIAOPKIAssessment'
+)
