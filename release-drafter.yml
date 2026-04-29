@@ -1,0 +1,24 @@
+name: Release Drafter
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: write        # update the draft release
+  pull-requests: read    # read merged PR metadata
+  checks: write          # status on PRs
+
+jobs:
+  update_release_draft:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Draft/update next release notes
+        uses: release-drafter/release-drafter@v7
+        with:
+          config-name: release-drafter.yml
+          commitish: ${{ github.event.pull_request.base.ref || github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

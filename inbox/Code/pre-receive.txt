@@ -1,0 +1,155 @@
+#!/usr/bin/env pwsh
+<#
+.SYNOPSIS
+    UIAO Git Pre-Receive Hook — Governance Enforcement Gate
+.DESCRIPTION
+    Runs on the Gitea server before accepting any push. Enforces:
+    1. FOUO Rejection — Blocks any file containing "FOUO" or "For Official Use Only"
+    2. Canon Metadata Validation — All canon/ YAML frontmatter must have required fields
+    3. Branch Protection — Blocks direct pushes to main; requires merge via Gitea PR
+    4. Classification Boundary — Enforces GCC-Moderate boundary markers
+    5. File Size Limit — Rejects individual files over 50 MB (use LFS instead)
+.NOTES
+    Classification: Controlled | Boundary: GCC-Moderate
+    Install: D:\GitRepos\UIAO\uiao.git\hooks\pre-receive
+    Requires: PowerShell 5.1+, Git in PATH
+#>
+
+$ErrorActionPreference = 'Stop'
+$exitCode = 0
+
+# --- Configuration ---
+$ProtectedBranches = @('refs/heads/main', 'refs/heads/canon')
+$MaxFileSizeBytes = 52428800  # 50 MB
+$RequiredCanonFields = @('document_id', 'title', 'version', 'status', 'classification', 'owner', 'boundary')
+$ForbiddenPatterns = @(
+    'FOUO',
+    'For Official Use Only',
+    'FOR OFFICIAL USE ONLY'
+)
+$CanonPathPrefix = 'canon/'
+
+# --- Helper: Write rejection message ---
+function Write-Rejection {
+    param([string]$Rule, [string]$Message)
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Red
+    Write-Host " UIAO GOVERNANCE GATE — PUSH REJECTED" -ForegroundColor Red
+    Write-Host "========================================" -ForegroundColor Red
+    Write-Host " Rule:    $Rule"
+    Write-Host " Detail:  $Message"
+    Write-Host "========================================" -ForegroundColor Red
+    Write-Host ""
+    $script:exitCode = 1
+}
+
+# --- Process each ref update ---
+while ($line = [Console]::In.ReadLine()) {
+    if ([string]::IsNullOrWhiteSpace($line)) { continue }
+
+    $parts = $line -split ' '
+    $oldRev = $parts[0]
+    $newRev = $parts[1]
+    $refName = $parts[2]
+
+    # Skip delete operations
+    if ($newRev -eq '0000000000000000000000000000000000000000') { continue }
+
+    # --- Rule 1: Branch Protection ---
+    if ($refName -in $ProtectedBranches) {
+        # Check if this is a merge commit (allowed via Gitea PR merge)
+        $parentCount = (git rev-list --parents -n 1 $newRev 2>$null) -split ' '
+        if ($parentCount.Count -le 2) {
+            # Not a merge commit — likely a direct push
+            $pusher = $env:GITEA_PUSHER_NAME
+            if ($pusher -and $pusher -ne 'gitea-admin') {
+                Write-Rejection -Rule "BRANCH-PROTECT" -Message "Direct push to '$refName' is prohibited. Use a Pull Request to merge changes."
+                continue
+            }
+        }
+    }
+
+    # --- Get list of changed files ---
+    if ($oldRev -eq '0000000000000000000000000000000000000000') {
+        # New branch — check all files in the new ref
+        $changedFiles = git diff-tree --no-commit-id --name-only -r $newRev 2>$null
+    } else {
+        $changedFiles = git diff --name-only $oldRev $newRev 2>$null
+    }
+
+    if (-not $changedFiles) { continue }
+
+    foreach ($file in $changedFiles) {
+        if ([string]::IsNullOrWhiteSpace($file)) { continue }
+
+        # --- Rule 2: FOUO Rejection ---
+        try {
+            $content = git show "${newRev}:${file}" 2>$null
+            if ($content) {
+                foreach ($pattern in $ForbiddenPatterns) {
+                    if ($content -match [regex]::Escape($pattern)) {
+                        Write-Rejection -Rule "NO-FOUO" -Message "File '$file' contains prohibited marking '$pattern'. Use 'Controlled' instead per UIAO Canon."
+                        break
+                    }
+                }
+            }
+        } catch {
+            # Binary file or unreadable — skip content check
+        }
+
+        # --- Rule 3: File Size Check ---
+        try {
+            $fileSize = git cat-file -s "${newRev}:${file}" 2>$null
+            if ($fileSize -and [long]$fileSize -gt $MaxFileSizeBytes) {
+                $sizeMB = [math]::Round([long]$fileSize / 1MB, 2)
+                Write-Rejection -Rule "FILE-SIZE" -Message "File '$file' is ${sizeMB} MB (limit: 50 MB). Use Git LFS for large files."
+            }
+        } catch {
+            # Skip if size check fails
+        }
+
+        # --- Rule 4: Canon Metadata Validation ---
+        if ($file -like "${CanonPathPrefix}*" -and ($file -like '*.md' -or $file -like '*.yaml' -or $file -like '*.yml')) {
+            try {
+                $fileContent = git show "${newRev}:${file}" 2>$null
+                if ($fileContent -and $fileContent -match '^---') {
+                    # Extract YAML frontmatter
+                    $frontmatterMatch = [regex]::Match($fileContent, '(?s)^---\r?\n(.*?)\r?\n---')
+                    if ($frontmatterMatch.Success) {
+                        $frontmatter = $frontmatterMatch.Groups[1].Value
+                        foreach ($field in $RequiredCanonFields) {
+                            if ($frontmatter -notmatch "(?m)^${field}\s*:") {
+                                Write-Rejection -Rule "CANON-METADATA" -Message "Canon file '$file' is missing required field '$field'. Required: $($RequiredCanonFields -join ', ')"
+                                break
+                            }
+                        }
+
+                        # Validate boundary value
+                        $boundaryMatch = [regex]::Match($frontmatter, '(?m)^boundary\s*:\s*(.+)')
+                        if ($boundaryMatch.Success) {
+                            $boundaryValue = $boundaryMatch.Groups[1].Value.Trim().Trim('"').Trim("'")
+                            if ($boundaryValue -ne 'GCC-Moderate') {
+                                Write-Rejection -Rule "BOUNDARY-CHECK" -Message "Canon file '$file' has boundary '$boundaryValue'. Must be 'GCC-Moderate'."
+                            }
+                        }
+
+                        # Validate classification value
+                        $classMatch = [regex]::Match($frontmatter, '(?m)^classification\s*:\s*(.+)')
+                        if ($classMatch.Success) {
+                            $classValue = $classMatch.Groups[1].Value.Trim().Trim('"').Trim("'")
+                            if ($classValue -match 'FOUO|For Official Use Only') {
+                                Write-Rejection -Rule "NO-FOUO-META" -Message "Canon file '$file' uses prohibited classification '$classValue'. Use 'Controlled'."
+                            }
+                        }
+                    } else {
+                        Write-Rejection -Rule "CANON-METADATA" -Message "Canon file '$file' has no valid YAML frontmatter block (---). All canon artifacts require metadata."
+                    }
+                }
+            } catch {
+                Write-Host "WARNING: Could not validate canon metadata for '$file': $_" -ForegroundColor Yellow
+            }
+        }
+    }
+}
+
+exit $exitCode

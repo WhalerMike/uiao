@@ -1,0 +1,365 @@
+Option Explicit
+
+'=========================================================
+' ONE MACRO YOU RUN (Alt+F8) — everything else is Private
+'=========================================================
+Public Sub Run_ReportFormatter_AllInOne()
+    On Error GoTo CleanFail
+    Application.ScreenUpdating = False
+
+    Format_AllInOne_ApplyStyles
+    Format_AllInOne_ConvertMarkdownBold
+    Format_AllInOne_NormalizeHeadingsHeuristic
+    Format_AllInOne_ForceFontsEverywhere
+    Format_AllInOne_FormatAllTables_ReportStyle
+    Format_AllInOne_FormatUrls_Courier10
+    Format_AllInOne_StandardizeNoteWarningCallouts
+
+CleanExit:
+    Application.ScreenUpdating = True
+    MsgBox "Done: All formatting applied (styles, headings, fonts, tables, markdown fixes, URLs).", vbInformation
+    Exit Sub
+
+CleanFail:
+    Application.ScreenUpdating = True
+    MsgBox "Macro failed: " & Err.Number & " - " & Err.Description, vbExclamation
+End Sub
+
+
+'=========================================================
+' 1) STYLES (this prevents Word from “snapping back”)
+'=========================================================
+Private Sub Format_AllInOne_ApplyStyles()
+    Dim doc As Document
+    Set doc = ActiveDocument
+
+    'Normal body
+    SetBuiltInStyleFont doc, wdStyleNormal, "Aptos", 11, False, RGB(0, 0, 0)
+
+    'Title / Subtitle (optional; matches what we used)
+    On Error Resume Next
+    With doc.Styles(wdStyleTitle).Font
+        .Name = "Aptos Display"
+        .Size = 28
+        .Bold = True
+        .Color = RGB(0, 0, 0)
+    End With
+
+    With doc.Styles(wdStyleSubtitle).Font
+        .Name = "Aptos"
+        .Size = 14
+        .Bold = False
+        .Color = RGB(89, 89, 89)
+    End With
+    On Error GoTo 0
+
+    'Headings
+    SetBuiltInStyleFont doc, wdStyleHeading1, "Aptos Display", 18, True, RGB(21, 96, 130)
+    SetBuiltInStyleFont doc, wdStyleHeading2, "Aptos Display", 14, True, RGB(21, 96, 130)
+    SetBuiltInStyleFont doc, wdStyleHeading3, "Aptos Display", 13, False, RGB(21, 96, 130)
+
+    'Paragraph spacing for Normal (feel free to tweak)
+    On Error Resume Next
+    With doc.Styles(wdStyleNormal).ParagraphFormat
+        .SpaceBefore = 0
+        .SpaceAfter = 8
+        .LineSpacingRule = wdLineSpaceMultiple
+        .LineSpacing = 13.8 'approx 115% at 11pt
+    End With
+    On Error GoTo 0
+End Sub
+
+Private Sub SetBuiltInStyleFont(ByVal doc As Document, ByVal styleId As WdBuiltinStyle, _
+                                ByVal fontName As String, ByVal fontSize As Single, _
+                                ByVal makeBold As Boolean, ByVal rgbColor As Long)
+    On Error Resume Next
+    With doc.Styles(styleId).Font
+        .Name = fontName
+        .Size = fontSize
+        .Bold = makeBold
+        .Color = rgbColor
+    End With
+    On Error GoTo 0
+End Sub
+
+
+'=========================================================
+' 2) Convert markdown bold **text** -> real bold
+'=========================================================
+Private Sub Format_AllInOne_ConvertMarkdownBold()
+    Dim doc As Document
+    Set doc = ActiveDocument
+
+    Dim rng As Range
+    Set rng = doc.Range
+
+    With rng.Find
+        .ClearFormatting
+        .Replacement.ClearFormatting
+        .Text = "\*\*([!\*\^13]@)\*\*"
+        .MatchWildcards = True
+        .Wrap = wdFindStop
+    End With
+
+    Do While rng.Find.Execute
+        Dim inner As Range
+        Set inner = rng.Duplicate
+        inner.Start = inner.Start + 2
+        inner.End = inner.End - 2
+
+        inner.Font.Bold = True
+        rng.Text = inner.Text
+        rng.Font.Bold = True
+
+        rng.Collapse wdCollapseEnd
+    Loop
+End Sub
+
+
+'=========================================================
+' 3) Promote common pseudo-headings to real headings (heuristic)
+'=========================================================
+Private Sub Format_AllInOne_NormalizeHeadingsHeuristic()
+    Dim doc As Document
+    Set doc = ActiveDocument
+
+    Dim p As Paragraph
+    For Each p In doc.Paragraphs
+        Dim t As String
+        t = Trim$(Replace(p.Range.Text, vbCr, ""))
+
+        If t = "" Then GoTo NextP
+
+        'Prompt sections -> Heading 1
+        If LCase$(Left$(t, 6)) = "prompt" Then
+            p.Style = wdStyleHeading1
+            GoTo NextP
+        End If
+
+        'Common section labels
+        If LCase$(t) = "overview" Then
+            p.Style = wdStyleHeading1
+            GoTo NextP
+        End If
+
+        If LCase$(t) = "scope" Then
+            p.Style = wdStyleHeading2
+            GoTo NextP
+        End If
+
+        'Numbered section headers -> Heading 3
+        If LooksLikeNumberedHeader(t) Then
+            p.Style = wdStyleHeading3
+            GoTo NextP
+        End If
+
+NextP:
+    Next p
+End Sub
+
+Private Function LooksLikeNumberedHeader(ByVal t As String) As Boolean
+    LooksLikeNumberedHeader = False
+
+    If Len(t) < 6 Or Len(t) > 140 Then Exit Function
+
+    'pattern: "1. " , "2. " etc.
+    If Not IsNumeric(Left$(t, 1)) Then Exit Function
+    If Mid$(t, 2, 1) <> "." Then Exit Function
+    If Mid$(t, 3, 1) <> " " Then Exit Function
+
+    LooksLikeNumberedHeader = True
+End Function
+
+
+'=========================================================
+' 4) Force fonts across paragraphs + tables (Aptos 11)
+'    Leave headings to their styles, and fix odd fonts (Arial)
+'=========================================================
+Private Sub Format_AllInOne_ForceFontsEverywhere()
+    Dim doc As Document
+    Set doc = ActiveDocument
+
+    'Apply broadly (this can affect headings; we correct by style)
+    doc.Content.Font.Name = "Aptos"
+    doc.Content.Font.Size = 11
+
+    'Re-apply heading styles so they keep Aptos Display sizing/colors
+    Dim p As Paragraph
+    For Each p In doc.Paragraphs
+        If IsHeadingStyle(p.Style) Then
+            'Leave it to the style
+        Else
+            p.Range.Font.Name = "Aptos"
+            p.Range.Font.Size = 11
+        End If
+    Next p
+
+    'Tables get enforced again later too (safe)
+    Dim tbl As Table
+    For Each tbl In doc.Tables
+        tbl.Range.Font.Name = "Aptos"
+        tbl.Range.Font.Size = 11
+    Next tbl
+End Sub
+
+Private Function IsHeadingStyle(ByVal st As Variant) As Boolean
+    On Error Resume Next
+    Dim nm As String
+    nm = CStr(st)
+    On Error GoTo 0
+
+    IsHeadingStyle = (InStr(1, nm, "Heading 1", vbTextCompare) > 0) Or _
+                     (InStr(1, nm, "Heading 2", vbTextCompare) > 0) Or _
+                     (InStr(1, nm, "Heading 3", vbTextCompare) > 0)
+End Function
+
+
+'=========================================================
+' 5) Tables: bold report-like styling (dark header, thick borders, zebra)
+'=========================================================
+Private Sub Format_AllInOne_FormatAllTables_ReportStyle()
+    Dim doc As Document
+    Set doc = ActiveDocument
+
+    Dim tbl As Table
+    For Each tbl In doc.Tables
+        'Font everywhere in table
+        tbl.Range.Font.Name = "Aptos"
+        tbl.Range.Font.Size = 11
+
+        'Padding
+        On Error Resume Next
+        tbl.TopPadding = 6
+        tbl.BottomPadding = 6
+        tbl.LeftPadding = 6
+        tbl.RightPadding = 6
+        On Error GoTo 0
+
+        'Borders thicker/darker
+        ApplyTableBorders tbl, RGB(64, 64, 64), wdLineWidth150pt
+
+        'Header row
+        If tbl.Rows.Count >= 1 Then
+            ApplyHeaderRowStyle tbl.Rows(1), RGB(47, 47, 47) 'charcoal
+        End If
+
+        'Zebra striping from row 2
+        ApplyZebraStriping tbl, RGB(242, 242, 242)
+    Next tbl
+End Sub
+
+Private Sub ApplyTableBorders(ByVal tbl As Table, ByVal borderColor As Long, ByVal lineWidth As WdLineWidth)
+    Dim b As Border
+    For Each b In tbl.Borders
+        b.LineStyle = wdLineStyleSingle
+        b.LineWidth = lineWidth
+        b.Color = borderColor
+    Next b
+End Sub
+
+Private Sub ApplyHeaderRowStyle(ByVal headerRow As Row, ByVal fillColor As Long)
+    headerRow.Shading.BackgroundPatternColor = fillColor
+
+    With headerRow.Range.Font
+        .Name = "Aptos Display"
+        .Size = 11
+        .Bold = True
+        .Color = wdColorWhite
+    End With
+End Sub
+
+Private Sub ApplyZebraStriping(ByVal tbl As Table, ByVal stripeColor As Long)
+    Dim r As Long
+    For r = 2 To tbl.Rows.Count
+        If (r Mod 2) = 0 Then
+            tbl.Rows(r).Shading.BackgroundPatternColor = stripeColor
+        Else
+            tbl.Rows(r).Shading.BackgroundPatternColor = wdColorAutomatic
+        End If
+    Next r
+End Sub
+
+
+'=========================================================
+' 6) URLs: Courier New 10pt (plain http/https)
+'    Run this after all other font changes.
+'=========================================================
+Private Sub Format_AllInOne_FormatUrls_Courier10()
+    Dim doc As Document
+    Set doc = ActiveDocument
+
+    FormatPlainTextUrlsAsCourier doc, "http://"
+    FormatPlainTextUrlsAsCourier doc, "https://"
+End Sub
+
+Private Sub FormatPlainTextUrlsAsCourier(ByVal doc As Document, ByVal prefix As String)
+    Dim rng As Range
+    Set rng = doc.Range
+
+    With rng.Find
+        .ClearFormatting
+        .Replacement.ClearFormatting
+        .Text = prefix & "*"
+        .MatchWildcards = True
+        .Wrap = wdFindStop
+
+        Do While .Execute
+            rng.Font.Name = "Courier New"
+            rng.Font.Size = 10
+            rng.Collapse wdCollapseEnd
+        Loop
+    End With
+End Sub
+
+
+'=========================================================
+' 7) Note/Warning callouts (simple heuristic)
+'    If paragraph begins with "Note" or "Warning"
+'=========================================================
+Private Sub Format_AllInOne_StandardizeNoteWarningCallouts()
+    Dim doc As Document
+    Set doc = ActiveDocument
+
+    Dim p As Paragraph
+    For Each p In doc.Paragraphs
+        Dim t As String
+        t = LCase$(Trim$(Replace(p.Range.Text, vbCr, "")))
+
+        If t = "" Then GoTo NextP
+
+        If Left$(t, 4) = "note" Then
+            ApplyCalloutFormat p.Range, True
+        ElseIf Left$(t, 7) = "warning" Then
+            ApplyCalloutFormat p.Range, False
+        End If
+
+NextP:
+    Next p
+End Sub
+
+Private Sub ApplyCalloutFormat(ByVal rng As Range, ByVal isNote As Boolean)
+    Dim p As Paragraph
+    Set p = rng.Paragraphs(1)
+
+    p.Range.Font.Name = "Aptos"
+    p.Range.Font.Size = 11
+
+    With p.Format
+        .SpaceBefore = 6
+        .SpaceAfter = 6
+    End With
+
+    If isNote Then
+        p.Shading.BackgroundPatternColor = RGB(243, 249, 255) 'light blue
+        p.Borders.Enable = True
+        p.Borders.OutsideLineStyle = wdLineStyleSingle
+        p.Borders.OutsideColor = RGB(21, 96, 130)
+        p.Borders.OutsideLineWidth = wdLineWidth075pt
+    Else
+        p.Shading.BackgroundPatternColor = RGB(255, 244, 244) 'light red
+        p.Borders.Enable = True
+        p.Borders.OutsideLineStyle = wdLineStyleSingle
+        p.Borders.OutsideColor = RGB(168, 0, 0)
+        p.Borders.OutsideLineWidth = wdLineWidth075pt
+    End If
+End Sub
