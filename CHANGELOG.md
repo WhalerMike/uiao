@@ -2,6 +2,47 @@
 
 All notable changes to UIAO are documented here. Format adapted from [Keep a Changelog](https://keepachangelog.com/); versioning follows [Semantic Versioning](https://semver.org/). Pre-1.0 minor versions may carry breaking changes.
 
+## [Unreleased]
+
+**Theme: Identity transformation canon — AD-to-Entra ID modernization framework.** Establishes the canonical inventory of identity/directory transformations, the Priority 1 deliverable plans, foundational ADRs, the ADR governance protocol, and the first batch of Phase 1 PowerShell discovery scripts that feed every downstream Spec 1/2/3 deliverable.
+
+### Added
+
+#### Canon
+
+- **UIAO_135** (`src/uiao/canon/UIAO_135_identity-directory-transformation-inventory.md`) — Identity & Directory Transformation Inventory. 17 transformations (X.500 → flat attribute model, identity-object, policy, governance), coverage assessment, 8-spec roadmap across three priorities.
+- **UIAO_136** (`src/uiao/canon/UIAO_136_priority1-transformation-project-plans.md`) — Priority 1 Transformation Specs project plans. 107 deliverables across 5 phases: Computer Object Transformation (Spec 1, 30), HR-Agnostic Provisioning Architecture (Spec 2, 33), Service Account → Workload Identity Mapping (Spec 3, 38), 6 cross-cutting deliverables.
+- **UIAO_133** (`src/uiao/canon/adr/adr-index.md`) — Architectural Decision Records Index.
+- **UIAO_134** (`src/uiao/canon/adr/adr-review-protocol.md`) — ADR Review Protocol; event/cadence/signal-based review mechanisms, freshness-check automation scaffolding.
+- **ADR-001** — HAADJ Deprecated; Entra ID Join as sole device join target.
+- **ADR-002** — Arc-enabled servers require non-domain-joined state.
+- **ADR-003** — API-driven inbound provisioning as HR-agnostic canonical path.
+- **ADR-004** — Workload Identity Federation as default for external integrations.
+- **ADR-048** — OrgPath attribute selection (#262).
+
+#### Discovery scripts (UIAO_136 Phase 1)
+
+Eighteen PowerShell scripts under `tools/discovery/`:
+
+- **Spec 1 (Computer Objects):** D1.1 AD computer inventory, D1.2 device classification matrix, D1.4 authentication protocol audit, D1.6 BitLocker/LAPS state assessment.
+- **Spec 2 (HR-driven Provisioning):** D1.1 HR attribute schema, D1.2 OrgPath translation rules, D1.4 HR→AD attribute mapping matrix, D1.6 Worker Type taxonomy, D1.7 HR connector comparison matrix.
+- **Spec 3 (Service Accounts):** D1.4 IIS app pool identity audit, D1.6 Kerberos delegation chain map, D1.7 SPN collision report, D1.8 SQL Server auth audit, D1.9 LDAP bind account inventory, D1.10 cert-based auth audit, D1.11 network service account audit, D1.12 service account owner matrix.
+
+D1.3, D1.5, Spec1-D1.7..D1.9, Spec2-D1.8, and Spec3-D1.1 are pending (corrupted during the originating CoPilot Tasks session, tracked for regeneration).
+
+### Changed
+
+- **UIAO_135 §3 and §4** corrected to acknowledge ADR coverage for previously-flagged gaps; §3.2 reduced to three items still genuinely lacking a transformation spec (AD security group rationalization, Kerberos/NTLM elimination, LDAP-dependent app migration) (#266).
+- **ADR-001..004 cross-references** standardized from provisional `UIAO_IDT_001/002` to canonical `UIAO_135/UIAO_136` per `document-registry.yaml` convention; UIAO_135 §5 refinement note marked resolved.
+- **`document-registry.yaml`** registers UIAO_133, UIAO_134, UIAO_135, UIAO_136 (previously stamped on docs but missing from the registry).
+- **ADR-025** renumbered to ADR-047 to resolve the slot collision created when the four identity-transformation ADRs occupied the empty 001-004 slots.
+
+### Tooling
+
+- `.gitignore` excludes `dev/null/` — Windows-shell mishap when `git lfs install` is invoked with `/dev/null` as a path argument creates the directory in-tree instead of redirecting.
+
+---
+
 ## [0.5.0] — 2026-04-25
 
 **Theme: adoption readiness — onramp + public-surface coverage.** Phase 1 (tracked in issue #183) closes the gap between *what's implemented* in `src/uiao/` and *what an external user can reach*. After 0.5.0 every ghost-`v1.0.0` feature promise is reachable through the documented public surface, every CLI command has a runnable example in `--help`, and a stranger goes from `git clone` to a full FedRAMP auditor bundle in 10 minutes.
@@ -266,4 +307,3 @@ pytest -q                    # baseline: ~1071 passed, ~156 skipped
 ```
 
 Code that still imports from `uiao.impl.*` should be rewritten to import from `uiao.*`.
-
