@@ -92,28 +92,30 @@ The canonical UIAO artifact should define the provisioning **pattern** (attribut
 
 | Domain | UIAO Coverage |
 |---|---|
-| X.500 OU Tree → OrgPath Attributes + Dynamic Groups | Entra ID Org Hierarchy Guide — full pattern |
-| GPO → Intune Configuration Profiles + Compliance Policies | Org Hierarchy Guide Section 8; Phase 2 Intune baselines |
-| OU-Scoped Delegation → AUs + Scoped Roles + Scope Tags | Org Hierarchy Guide Sections 4 & 8.4 |
+| X.500 OU Tree → OrgPath Attributes | adr-035 (orgpath-codebook-binding), adr-038 (device-plane-orgpath), adr-048 (orgpath-attribute-selection); Entra ID Org Hierarchy Guide for narrative |
+| OU → Dynamic Groups | adr-036 (dynamic-group-provisioning); Org Hierarchy Guide |
+| OU-Scoped Delegation → AUs + Scoped Roles + Scope Tags | adr-037 (admin-unit-provisioning); Org Hierarchy Guide §§4 & 8.4 |
+| GPO → Intune Configuration Profiles + Compliance Policies | Org Hierarchy Guide §8; Phase 2 Intune baselines; intune.qmd / intune-policy-templates.qmd |
+| Conditional Access Policy Targeting | adr-039 (policy-targeting); conditional-access-library.qmd |
+| Computer Object → Entra Device + Arc | adr-001 (HAADJ deprecated → Entra Join only), adr-002 (Arc + Entra join, no domain join for servers), adr-034 (three-plane device model), adr-038 (device-plane OrgPath), adr-042 (AD computer conversion guide); UIAO_136 Spec 1 enumerates deliverables |
+| HR-Driven Identity Lifecycle (HR-agnostic) | adr-003 (api-driven-inbound-provisioning) establishes the canonical HR-agnostic pattern; UIAO_136 Spec 2 enumerates deliverables |
+| AD Service Accounts → Workload Identities | adr-004 (workload-identity-federation-default) establishes federation as default; UIAO_136 Spec 3 enumerates deliverables |
 | DNS (AD-Integrated) → Azure DNS / Hybrid DNS | Covered in separate Hybrid DNS Orchestration Guides |
 
 ### 3.2 Partially Defined — Needs Canonical Specification (⚠️)
 
 | Domain | Current State | Gap |
 |---|---|---|
-| HR-Driven Identity Lifecycle | HR Driven EntraID doc (Microsoft reference); no UIAO-canonical spec | Needs UIAO canonical artifact defining the HR-agnostic provisioning architecture |
-| Computer Objects → Entra ID Device Identity + Arc | Program Overview defines conceptually; Intune section in Org Guide; Arc in Phase 2 | Needs detailed computer object transformation spec: domain-joined → Entra joined; Hybrid → cloud-native; server → Arc-enabled |
-| AD Security Groups → Entra ID Groups | Implicit in dynamic group strategy | Needs explicit mapping: security groups, distribution lists, mail-enabled groups, nested group flattening |
-| AD Service Accounts → Entra Workload Identities | Program Overview mentions workload identity; SQL doc covers SQL auth path | Needs spec: service accounts → managed identities, service principals, workload identity federation |
-| Kerberos/NTLM → Modern Auth Protocols | SQL doc covers SQL path; Program Overview references auth transformation | Needs spec: NTLM elimination timeline, Kerberos cloud trust, certificate-based auth rollout |
-| LDAP-Dependent Applications → Entra ID App Proxy + SAML/OIDC | Referenced in migration dependency inventory | Needs detailed pattern for LDAP-bound app discovery and migration |
+| AD Security Group Rationalization | adr-036 covers dynamic-group provisioning; adr-039 covers policy targeting | Distribution lists, mail-enabled groups, and nested-group flattening still need explicit transformation pattern |
+| Kerberos/NTLM → Modern Auth Protocols | SQL Server path covered (Spec3-D1.8 discovery script); broader auth modernization not yet ADR-scoped | NTLM elimination timeline, Cloud Kerberos trust posture, and certificate-based auth rollout still need a canonical spec |
+| LDAP-Dependent Applications → Entra ID App Proxy + SAML/OIDC | Discovery script exists (Spec3-D1.9-Get-LDAPBindAccountInventory.ps1); no transformation ADR | Migration pattern per app class (App Proxy, SAML federation, OIDC migration) still needs a canonical spec |
 
 ### 3.3 Not Yet Defined — Gaps (❌)
 
 | Domain | Description |
 |---|---|
-| AD Sites & Subnets → Named Locations + Conditional Access | Network topology addressing model has no Entra ID equivalent mapping in UIAO |
-| AD Certificate Services → Entra ID Certificate-Based Auth + Cloud PKI | PKI Assessment exists in Runbook; no transformation spec linking ADCS to Entra CBA and Microsoft Cloud PKI |
+| AD Sites & Subnets → Named Locations + Conditional Access | Discovery scripted in UIAO_136 Spec 1 D1.8 (not yet implemented). Network topology addressing model has no Entra ID equivalent transformation spec yet. |
+| AD Certificate Services → Entra ID Certificate-Based Auth + Cloud PKI | Discovery script exists (Spec3-D1.10-Get-CertBasedAuthAudit.ps1). No transformation spec linking ADCS to Entra CBA and Microsoft Cloud PKI. |
 
 ---
 
@@ -121,9 +123,11 @@ The canonical UIAO artifact should define the provisioning **pattern** (attribut
 
 ### Priority 1 — Structural Completeness
 
-1. **Computer Object Transformation Spec** — Domain-joined → Entra joined, servers → Arc-enabled, Hybrid AADJ → cloud-native device identity
-2. **HR-Agnostic Provisioning Architecture** — Define the UIAO canonical pattern independent of Workday/Oracle selection
-3. **Service Account → Workload Identity Mapping** — The hidden landmine in every AD modernization
+The three Priority 1 specs are realized in **UIAO_136** (Phase 1 discovery scripts ~62% landed; Phases 2–5 awaiting drafts):
+
+1. **Computer Object Transformation Spec** — UIAO_136 Spec 1; foundational ADRs: adr-001, adr-002, adr-034, adr-038, adr-042
+2. **HR-Agnostic Provisioning Architecture** — UIAO_136 Spec 2; foundational ADR: adr-003
+3. **Service Account → Workload Identity Mapping** — UIAO_136 Spec 3; foundational ADR: adr-004
 
 ### Priority 2 — Protocol & Infrastructure
 
@@ -143,6 +147,7 @@ The canonical UIAO artifact should define the provisioning **pattern** (attribut
 > **Items flagged for further refinement before promoting from DRAFT:**
 >
 > - [ ] Confirm document_id assignment (UIAO_135 assigned 2026-04-28)
+> - [ ] **Doc-ID scheme reconciliation** — adr-001/002/003/004 reference `UIAO_IDT_001` (this document) and `UIAO_IDT_002` (UIAO_136). Pick a single scheme — `UIAO_NNN` or `UIAO_IDT_NNN` — and update the other side.
 > - [ ] Cross-reference each transformation against the canonical UIAO Article series to ensure no transformations defined in articles are missing from this inventory
 > - [ ] Validate OrgPath attribute implementation — extensionAttributes vs. custom security attributes vs. directory extensions — and lock the canonical approach
 > - [ ] Define whether the HR provisioning architecture should be a standalone UIAO artifact or a section within an existing document
