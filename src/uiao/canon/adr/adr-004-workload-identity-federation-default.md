@@ -7,7 +7,7 @@ deciders: Michael Stratton
 updated: 2026-04-28
 next_review: 2026-11-01
 review_trigger: Microsoft Ignite 2026; any Entra ID workload identity announcement
-impact: UIAO_IDT_002 Spec 3 (Service Account to Workload Identity Mapping)
+impact: UIAO_136 Spec 3 (Service Account to Workload Identity Mapping)
 supersedes: null
 superseded_by: null
 classification: Controlled
@@ -112,6 +112,6 @@ This ADR must be re-evaluated when any of the following occur:
 
 ## Related Documents
 
-- UIAO_IDT_001 — Identity & Directory Transformation Inventory (Transformation #7: SQL Server Authentication, implied for external auth)
-- UIAO_IDT_002 — Spec 3: Service Account to Workload Identity Mapping (D2.4: Workload Identity Federation Pattern)
+- UIAO_135 — Identity & Directory Transformation Inventory (Transformation #7: SQL Server Authentication, implied for external auth)
+- UIAO_136 — Spec 3: Service Account to Workload Identity Mapping (D2.4: Workload Identity Federation Pattern)
 - ADR-002 — Arc-Enabled Servers (Arc managed identities complement WIF for server-side workloads)

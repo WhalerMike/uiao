@@ -147,7 +147,7 @@ The three Priority 1 specs are realized in **UIAO_136** (Phase 1 discovery scrip
 > **Items flagged for further refinement before promoting from DRAFT:**
 >
 > - [ ] Confirm document_id assignment (UIAO_135 assigned 2026-04-28)
-> - [ ] **Doc-ID scheme reconciliation** — adr-001/002/003/004 reference `UIAO_IDT_001` (this document) and `UIAO_IDT_002` (UIAO_136). Pick a single scheme — `UIAO_NNN` or `UIAO_IDT_NNN` — and update the other side.
+> - [x] **Doc-ID scheme reconciliation** — Resolved 2026-04-29: standardized on the `UIAO_NNN` registry scheme. adr-001/002/003/004 cross-references updated from `UIAO_IDT_001`/`UIAO_IDT_002` to `UIAO_135`/`UIAO_136`.
 > - [ ] Cross-reference each transformation against the canonical UIAO Article series to ensure no transformations defined in articles are missing from this inventory
 > - [ ] Validate OrgPath attribute implementation — extensionAttributes vs. custom security attributes vs. directory extensions — and lock the canonical approach
 > - [ ] Define whether the HR provisioning architecture should be a standalone UIAO artifact or a section within an existing document
