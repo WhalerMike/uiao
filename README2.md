@@ -34,7 +34,7 @@
 |------|-------|
 | 20+ canonical documents (`.qmd`) | [uiao-docs](https://github.com/WhalerMike/uiao-docs) |
 | YAML data schemas (30 files) | [uiao-docs/data/](https://github.com/WhalerMike/uiao-docs/tree/main/data) |
-| Rendered HTML site | [whalermike.github.io/uiao-docs](https://whalermike.github.io/uiao-docs/docs/index.html) |
+| Rendered HTML site | [whalermike-archive.github.io/uiao-docs](https://whalermike-archive.github.io/uiao-docs/docs/index.html) |
 | OSCAL generation engine | **This repo** (`src/`) |
 | Adapter framework | **This repo** (`src/adapters/`) |
 | JSON validation schemas | **This repo** (`schemas/`) |
