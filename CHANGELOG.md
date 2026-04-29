@@ -22,13 +22,13 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 #### Discovery scripts (UIAO_136 Phase 1)
 
-Eighteen PowerShell scripts under `tools/discovery/`:
+Twenty-four PowerShell scripts under `tools/discovery/`:
 
-- **Spec 1 (Computer Objects):** D1.1 AD computer inventory, D1.2 device classification matrix, D1.4 authentication protocol audit, D1.6 BitLocker/LAPS state assessment.
-- **Spec 2 (HR-driven Provisioning):** D1.1 HR attribute schema, D1.2 OrgPath translation rules, D1.4 HR→AD attribute mapping matrix, D1.6 Worker Type taxonomy, D1.7 HR connector comparison matrix.
-- **Spec 3 (Service Accounts):** D1.4 IIS app pool identity audit, D1.6 Kerberos delegation chain map, D1.7 SPN collision report, D1.8 SQL Server auth audit, D1.9 LDAP bind account inventory, D1.10 cert-based auth audit, D1.11 network service account audit, D1.12 service account owner matrix.
+- **Spec 1 (Computer Objects):** D1.1 AD computer inventory, D1.2 device classification matrix, D1.3 GPO-to-device dependency map, D1.4 authentication protocol audit, D1.5 Kerberos SPN inventory, D1.6 BitLocker/LAPS state assessment.
+- **Spec 2 (HR-driven Provisioning):** D1.1 HR attribute schema, D1.2 OrgPath translation rules, D1.3 attribute mapping matrix (HR → Entra ID), D1.4 HR→AD attribute mapping matrix, D1.5 UPN generation rules engine, D1.6 Worker Type taxonomy, D1.7 HR connector comparison matrix.
+- **Spec 3 (Service Accounts):** D1.3 Windows service credential audit, D1.4 IIS app pool identity audit, D1.5 COM+/DCOM application identity audit, D1.6 Kerberos delegation chain map, D1.7 SPN collision report, D1.8 SQL Server auth audit, D1.9 LDAP bind account inventory, D1.10 cert-based auth audit, D1.11 network service account audit, D1.12 service account owner matrix.
 
-D1.3, D1.5, Spec1-D1.7..D1.9, Spec2-D1.8, and Spec3-D1.1 are pending (corrupted during the originating CoPilot Tasks session, tracked for regeneration).
+Spec1-D1.7..D1.9, Spec2-D1.8, and Spec3-D1.1 remain pending (corrupted during the originating CoPilot Tasks session, tracked for regeneration).
 
 ### Changed
 
