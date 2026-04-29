@@ -1138,7 +1138,7 @@ Work required:
 - Create tier-2 fixtures (COBOL record payloads mapped to canonical claims).
 - Flip status from `reserved` to `active`.
 
-### 4.3 — Aspirational banner elimination (rounds 1 + 2 ✅ shipped 2026-04-26)
+### 4.3 — Aspirational banner elimination (rounds 1 + 2 + 3 ✅ shipped 2026-04-26)
 
 Target: zero aspirational banners by v1.1.
 
@@ -1151,11 +1151,15 @@ Round 2 (2026-04-26) — **9 more banners removed** from pages describing featur
 - 6 executive briefs (`drift-engine`, `evidence-fabric`, `governance-os`, `modernization`, `zero-trust` overviews + the brief-set `index`) — every drift class, the EPL/enforcement runtime, the OSCAL pipeline, and the auditor API are now real.
 - 3 academy pages (`index`, `contributor-track`, `operator-track`) — UIAO_125 Training has its first delivery and the tracks are reader-friendly views over canon that already exists.
 
-Total flagged across `docs/`: **~24 pages** (down from ~44 at session start). Running tally on the Substrate Status page §"Aspirational-content triage".
+Round 3 (2026-04-26) — **2 more banners removed** from adapter technical-spec pages parallel to the validation suites flipped in §2.6:
+- `customer-documents/adapter-specs/terraform/terraform.qmd` — terraform fully clears tier-1 + tier-2 with a UIAO_121/123 validation suite.
+- `customer-documents/adapter-specs/scubagear/scubagear.qmd` — scubagear has a UIAO_126 conformance test plan + tier-2 fixture suite.
 
-Round 3+ work remaining (toward v1.1 zero-banner target):
+Total flagged across `docs/`: **~22 pages** (down from ~44 at session start). Running tally on the Substrate Status page §"Aspirational-content triage".
+
+Round 4+ work remaining (toward v1.1 zero-banner target):
 - For each remaining genuinely-aspirational page, either implement the feature or schedule it in a UIAO_127 project plan with a target date.
-- Adapter pages still flagged (`customer-documents/adapter-specs/*`, most `validation-suites/adapters/*`) — most are gated on §2.1–2.5 vendor-sandbox unblocks.
+- Remaining adapter pages (`customer-documents/adapter-specs/*` × 5, most `validation-suites/adapters/*`) — most are gated on §2.1–2.5 vendor-sandbox unblocks.
 - Compliance landing pages (8 sub-categories under `customer-documents/compliance/`) are explicit `status: scaffold` content — stay flagged until the leaf pages are authored.
 - Remove banner as each feature ships (round 1 set the pattern: drop frontmatter `aspirational: true`, replace any "Scaffold" callout with a "First delivery shipped" tip linking the live artifact).
 - Eventually re-derive the count from `make walk` rather than running grep manually.
