@@ -7,7 +7,7 @@ deciders: Michael Stratton
 updated: 2026-04-28
 next_review: 2026-11-01
 review_trigger: Microsoft Ignite 2026; any Autopilot or device identity announcement
-impact: UIAO_IDT_002 Spec 1 (Computer Object Transformation)
+impact: UIAO_136 Spec 1 (Computer Object Transformation)
 supersedes: null
 superseded_by: null
 classification: Controlled
@@ -85,6 +85,6 @@ This ADR must be re-evaluated when any of the following occur:
 
 ## Related Documents
 
-- UIAO_IDT_001 — Identity & Directory Transformation Inventory (Transformation #5: Device Identity)
-- UIAO_IDT_002 — Spec 1: Computer Object Transformation (D2.2: Migration Pattern Catalog)
+- UIAO_135 — Identity & Directory Transformation Inventory (Transformation #5: Device Identity)
+- UIAO_136 — Spec 1: Computer Object Transformation (D2.2: Migration Pattern Catalog)
 - ADR-002 — Arc-Enabled Servers Require Non-Domain-Joined State

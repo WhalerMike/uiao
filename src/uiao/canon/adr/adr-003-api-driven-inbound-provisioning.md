@@ -7,7 +7,7 @@ deciders: Michael Stratton
 updated: 2026-04-28
 next_review: 2026-07-01
 review_trigger: OPM GAO protest decisions (expected June 2026); any Entra ID provisioning announcement
-impact: UIAO_IDT_002 Spec 2 (HR-Agnostic Provisioning Architecture)
+impact: UIAO_136 Spec 2 (HR-Agnostic Provisioning Architecture)
 supersedes: null
 superseded_by: null
 classification: Controlled
@@ -118,6 +118,6 @@ This ADR must be re-evaluated when any of the following occur:
 
 ## Related Documents
 
-- UIAO_IDT_001 — Identity & Directory Transformation Inventory (Transformation #10: HR-Driven Provisioning)
-- UIAO_IDT_002 — Spec 2: HR-Agnostic Provisioning Architecture (all phases)
-- ADR-003 supplements the HR system discussion in UIAO_IDT_001 Section 2
+- UIAO_135 — Identity & Directory Transformation Inventory (Transformation #10: HR-Driven Provisioning)
+- UIAO_136 — Spec 2: HR-Agnostic Provisioning Architecture (all phases)
+- ADR-003 supplements the HR system discussion in UIAO_135 Section 2
