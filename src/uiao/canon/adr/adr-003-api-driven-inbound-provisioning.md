@@ -4,7 +4,7 @@ title: "API-Driven Inbound Provisioning as HR-Agnostic Canonical Path"
 status: ACCEPTED
 decided: 2026-04-28
 deciders: Michael Stratton
-updated: 2026-04-28
+updated: 2026-04-30
 next_review: 2026-07-01
 review_trigger: OPM GAO protest decisions (expected June 2026); any Entra ID provisioning announcement
 impact: UIAO_136 Spec 2 (HR-Agnostic Provisioning Architecture)
@@ -100,6 +100,7 @@ Microsoft Entra ID supports three distinct inbound provisioning paths:
 
 | Source | URL | Last Verified |
 |---|---|---|
+| OPM Federal HRIT Modernization — Solicitation 24322626R0007 (Amendments 2, 3, 4); Appendix A Requirements Checklist Req #5 (SCIM 2.0 near-real-time provisioning) | sam.gov solicitation 24322626R0007 (project archive at `inbox/Integrate the Intune-Entra-Arc Track/Federal Human Resources Information Technology (HRIT) Modernization/`) | 2026-04-30 |
 | Microsoft Learn — API-driven inbound provisioning concepts | https://learn.microsoft.com/en-us/entra/identity/app-provisioning/inbound-provisioning-api-concepts | 2026-04-28 |
 | GitHub — AzureAD/entra-id-inbound-provisioning samples | https://github.com/AzureAD/entra-id-inbound-provisioning | 2026-04-28 |
 | Step-by-step guide — API-driven provisioning to on-prem AD | https://thetechtrails.com (Sreejith R. Pillai, Aug 2025) | 2026-04-28 |
