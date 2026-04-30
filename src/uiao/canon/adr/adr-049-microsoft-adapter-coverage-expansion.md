@@ -164,14 +164,16 @@ Three concrete consequences of leaving these surfaces undeclared:
    follow-on PR, that gap is a schema ADR in its own right (not folded
    back into this one).
 
-6. **Reject the inbox-document parallel structure.** The
-   `inbox/Integrate the Intune-Entra-Arc Track/` documents propose a
-   root-level `tracks/ + artifacts/ART-ID-Ex + registries/REG-ID-0x.csv
-   + runbooks/RB-ID-x` tree with a separate identifier scheme. That
-   structure is **not adopted**. UIAO's canonical shape is `src/uiao/
-   canon/` with UIAO_NNN allocations, YAML registries validated by
-   JSON Schema, and adapters under `src/uiao/adapters/`. The valuable
-   content from those documents — the Microsoft-tools gap inventory
+6. **Reject the parallel-structure proposal.** External input
+   documents reviewed during the analysis that prompted this ADR
+   (Intune / Entra / Arc integration draft material, not in the
+   repository) propose a root-level `tracks/ + artifacts/ART-ID-Ex +
+   registries/REG-ID-0x.csv + runbooks/RB-ID-x` tree with a separate
+   identifier scheme. That structure is **not adopted**. UIAO's
+   canonical shape is `src/uiao/canon/` with UIAO_NNN allocations,
+   YAML registries validated by JSON Schema, and adapters under
+   `src/uiao/adapters/`. The valuable content from those documents —
+   the Microsoft-tools gap inventory
    and the four-gaps framing — lands as the entries above and as
    UIAO_009; the proposed CSV registries, the artifact ID scheme, and
    the narrative track document are explicitly out of scope.
@@ -239,8 +241,9 @@ Three concrete consequences of leaving these surfaces undeclared:
   governance boundary that requires Board review per ADR-027 (adapter
   retirement) and the implicit symmetric rule for adapter activation
   in the three-stage lifecycle (canon → docs scaffold → impl code).
-* The inbox documents that prompted this ADR
-  (`inbox/Integrate the Intune-Entra-Arc Track/`) are retained as
-  unpromoted scratch material per the inbox invariant ("Nothing here
-  is canon"). Their valuable content is extracted by this ADR and
-  by UIAO_009; the documents themselves are not promoted.
+* The external draft documents that prompted this ADR (Intune / Entra
+  / Arc integration material reviewed during the analysis pass) are
+  not committed to the repository, consistent with the inbox invariant
+  ("Nothing here is canon"). Their valuable content is extracted by
+  this ADR and by UIAO_009; the source documents themselves are not
+  promoted.
