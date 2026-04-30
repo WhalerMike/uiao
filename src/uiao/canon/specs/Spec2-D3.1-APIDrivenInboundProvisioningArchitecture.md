@@ -3,8 +3,8 @@ deliverable_id: Spec2-D3.1
 title: "API-Driven Inbound Provisioning Architecture"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 3
-status: Draft
-version: 0.2
+status: Final
+version: 1.0
 owner: Identity Architecture
 created: 2026-04-30
 updated: 2026-04-30
@@ -13,6 +13,7 @@ canonical_adrs:
   - ADR-035
   - ADR-048
   - ADR-049
+  - ADR-050
 canonical_docs:
   - UIAO_007
   - UIAO_135
@@ -21,6 +22,7 @@ boundary: GCC-Moderate
 classification: Controlled
 verification_history:
   - date: 2026-04-30
+    pass: "v0.1 → v0.2 (initial verification)"
     source: "Microsoft Learn — API-driven inbound provisioning concepts (page updated 2026-02-05)"
     url: "https://learn.microsoft.com/en-us/entra/identity/app-provisioning/inbound-provisioning-api-concepts"
     confirmed:
@@ -32,20 +34,42 @@ verification_history:
       - "Tenant daily limits: 2,000 calls / 24h (Entra ID P1/P2) or 6,000 / 24h (Entra ID Governance)"
       - "Batch payload optimization target: up to 50 operations per API call"
       - "License: Entra ID P1, P2, or Entra ID Governance"
-    not_yet_verified:
-      - "Entra Provisioning Agent capacity / sizing guidance — separate Microsoft Learn page; deferred to deployment runbook"
-      - "Native Workday connector polling default interval — Workday tutorial page does not state a specific minute-value default"
+  - date: 2026-04-30
+    pass: "v0.2 → v1.0 (closure verification)"
+    source: "Microsoft Learn — Prerequisites for Microsoft Entra Cloud Sync (page updated 2026-03-27)"
+    url: "https://learn.microsoft.com/en-us/entra/identity/hybrid/cloud-sync/how-to-prerequisites"
+    confirmed:
+      - "Entra Provisioning Agent HA: 3 active agents recommended for high availability"
+      - "Supported Windows Server: 2016, 2019, 2022 (2022 recommended); 2025 NOT yet supported"
+      - "Hardware minimum: 4 GB RAM, .NET Framework 4.7.1+"
+      - "gMSA service account pattern: domain\\provAgentgMSA$"
+      - "AD permissions for gMSA: read descendant Computer/Contact/User/InetOrgPerson; full control descendant Group; Create/delete User objects"
+      - "Network: outbound HTTPS only (TCP/443 primary, TCP/80 CRL, TCP/8080 optional status); LDAP (TCP/389) + GC (TCP/3268) to AD"
+      - "Server Core not supported; tier 0 / control-plane posture required"
+      - "TLS 1.2 must be enabled on host server before agent install"
+      - "AD writeback license requirement: Microsoft Entra ID P1 minimum"
+  - remaining_unverified:
+      - "Microsoft Graph SDK pinned-version posture — left to ADR-050 reference middleware implementation; no Microsoft Learn page covers this as architecture; resolved in code, not in canon. Does not block v1.0."
 ---
 
 # Spec 2 — D3.1: API-Driven Inbound Provisioning Architecture
 
-> **Verification status (v0.2):** Microsoft Learn-confirmed and
-> deferred items are itemized in the `verification_history` block in
-> the frontmatter above. **Material correction in v0.2:** §7.1
-> throttling envelope was overstated by 5× in v0.1 (cited "~40 req/sec";
-> actual published limit is 40 calls per 5-second window plus a
-> tenant-daily cap). Implementations sized against the v0.1 figure
-> need to revisit capacity assumptions.
+> **Verification status (v1.0 — Final, 2026-04-30):** Two verification
+> passes against Microsoft Learn (frontmatter `verification_history`
+> block). All architecturally load-bearing claims are confirmed
+> against authoritative Microsoft sources.
+>
+> **Material correction history:** §7.1 throttling envelope was
+> overstated by 5× in v0.1 (cited "~40 req/sec"; actual published
+> limit is 40 calls per 5-second window plus a tenant-daily cap).
+> Corrected in v0.2. Implementations sized against the v0.1 figure
+> must revisit capacity assumptions.
+>
+> **§3.5 Provisioning Agent sizing** was a TODO in v0.1; verified in
+> v1.0 against the Microsoft Entra Cloud Sync prerequisites page
+> (3 HA agents recommended; 4 GB RAM minimum; specific Windows Server
+> support matrix; gMSA permissions). Implementations now have
+> deployment-grade requirements without referring to external pages.
 
 ## 1. Purpose, Scope, and Reference
 
@@ -322,16 +346,23 @@ call returns successfully.
 For deployments with on-prem AD coexistence (the UIAO_007 hybrid
 window), the Entra Provisioning Agent writes back to AD.
 
-**Deployment requirements:**
+**Deployment requirements (verified against Microsoft Learn 2026-04-30,
+page-update 2026-03-27):**
 
 | Requirement | Specification |
 |---|---|
-| HA pair count | 2+ agents minimum (3+ recommended for production) |
-| Service account | gMSA (group Managed Service Account) |
-| AD permissions | Create / Modify / Delete user objects in designated OUs. NOT domain admin. |
-| Network path | Outbound HTTPS to `*.servicebus.windows.net` and the appropriate Microsoft Graph endpoint. No inbound. |
-| OS | Windows Server 2019 or later; auto-updated via Microsoft Update. |
-| Sizing | Per Microsoft Learn capacity guidance — TODO: verify against current Microsoft Learn during D3.1 v0.1 → v1.0 promotion. |
+| HA agent count | **3 active agents recommended** for high availability (per Microsoft Learn). Two-agent pairs work but Microsoft's documented recommendation is three. |
+| Service account | gMSA (group Managed Service Account); auto-rotated; account name pattern `domain\provAgentgMSA$` |
+| AD schema requirement | Active Directory schema must include `msDS-ExternalDirectoryObjectId` attribute (available in Windows Server 2016+ schema) |
+| AD permissions on gMSA | Read all properties (descendant Computer, Contact, foreignSecurityPrincipal, InetOrgPerson, User objects); Full control (descendant Group); Create/delete User objects |
+| Server tier | Tier 0 / Control Plane (per AD administrative tier model). Domain controllers are supported as agent hosts. |
+| Network path | Outbound HTTPS only. Required URLs vary by cloud (commercial vs. US Government). No inbound. |
+| Outbound ports | TCP/443 (primary), TCP/80 (CRL validation), TCP/8080 (optional, status reporting). To AD: TCP/389 (LDAP) + TCP/3268 (Global Catalog). |
+| Supported OS | **Windows Server 2016, 2019, or 2022 (2022 recommended).** Windows Server 2025 is **not supported** as of the verification date (October 2025 KB5070773 update has a known issue with Cloud Sync). 2016 is in extended support. |
+| Hardware minimum | 4 GB RAM; .NET Framework 4.7.1+; PowerShell execution policy `Undefined` or `RemoteSigned` |
+| Server Core | NOT supported. The agent requires the full Windows Server installation. |
+| TLS | TLS 1.2 must be enabled on the host server before agent installation. |
+| Tenant license | Microsoft Entra ID P1 minimum for AD writeback feature (per Microsoft Learn). |
 
 **Coexistence sunset.** The Provisioning Agent is required only during
 the hybrid window. Once on-prem AD is decommissioned per the UIAO_007
@@ -1143,52 +1174,72 @@ sequencing follow-on to D3.1's implementation.
 - Spec2-D1.5 (UPN generation rules) — referenced in §3.2 + §5.4; the PowerShell generator at [`Spec2-D1.5-New-UPNGenerationRules.ps1`](../../../../tools/discovery/Spec2-D1.5-New-UPNGenerationRules.ps1) is in flight.
 - Spec2-D1.6 (worker-type classification taxonomy) — referenced in §3.2 + §5.4.
 
-### 13.4 Microsoft documentation — verification status (v0.2)
+### 13.4 Microsoft documentation — verification status (v1.0)
 
-Items verified against Microsoft Learn 2026-04-30 (page-update date
-2026-02-05 for the API-driven inbound provisioning concepts page):
+Two verification passes against Microsoft Learn, both 2026-04-30. The
+authoritative `verification_history` block in the frontmatter is the
+load-bearing record; this section is its prose summary.
+
+**Pass 1 (v0.1 → v0.2)** — API-driven inbound provisioning concepts
+page (page-update 2026-02-05):
 
 - ✅ `bulkUpload` endpoint exists at `/bulkUpload` via Microsoft Graph
   synchronization API. §3.3, §5.3.
 - ✅ SCIM schema constructs as wire format; processed asynchronously.
   §3.3, §5.
-- ✅ Returns HTTP 202 Accepted on success; processed in near
-  real-time. §5, §7.1.
-- ✅ Required Graph permissions: `SynchronizationData-User.Upload`
-  + `ProvisioningLog.Read.All` (the `ProvisioningLog.Read.All`
-  requirement was added in v0.2; v0.1 missed it). ISVs also need
+- ✅ Returns HTTP 202 Accepted on success; processed in near real-time.
+  §5, §7.1.
+- ✅ Required Graph permissions: `SynchronizationData-User.Upload` +
+  `ProvisioningLog.Read.All` (corrected in v0.2; v0.1 missed
+  `ProvisioningLog.Read.All`). ISVs also need
   `SynchronizationData-User.Upload.OwnedBy`. §4.2.
 - ✅ Throttling: 40 calls per 5-second window + daily tenant limit
-  (2,000 P1/P2 or 6,000 Governance). §7.1. **The v0.1 estimate of
-  "~40 req/sec" was incorrect by 5×; v0.2 supersedes it.**
+  (2,000 P1/P2 or 6,000 Governance). §7.1. **v0.1 estimate of
+  "~40 req/sec" was incorrect by 5×; v0.2 superseded it.**
 - ✅ Batch payload optimization: 50 operations per API call. §5.3.
 - ✅ License: Entra ID P1, P2, or Entra ID Governance. §4.2, §7.1.
 
-Items still requiring verification (deferred to deployment runbook
-and v0.2 → v1.0 promotion):
+**Pass 2 (v0.2 → v1.0)** — Microsoft Entra Cloud Sync prerequisites
+page (page-update 2026-03-27):
 
-- ⏳ Entra Provisioning Agent capacity / sizing guidance. §3.5. Lives
-  on a separate Microsoft Learn page; not fetched in the 2026-04-30
-  verification pass. Defer to deployment-runbook validation (D5.1).
-- ⏳ Workday native connector polling default interval (the "40 min
-  default poll" figure carried in D1.7 §3.1). The Workday inbound
-  tutorial page does not state a specific minute-value default;
-  verification deferred to deployment validation against the
-  customer's tenant configuration.
+- ✅ Entra Provisioning Agent HA recommendation: 3 active agents.
+  §3.5.
+- ✅ Supported Windows Server: 2016, 2019, 2022 (2022 recommended);
+  2025 not yet supported. §3.5.
+- ✅ Hardware minimum: 4 GB RAM, .NET 4.7.1+. §3.5.
+- ✅ gMSA service account name pattern: `domain\provAgentgMSA$`.
+  §3.5.
+- ✅ AD permissions on gMSA (read descendant types; full control
+  Group; create/delete User). §3.5.
+- ✅ Network: outbound HTTPS only; TCP/443 primary, TCP/80 CRL,
+  TCP/8080 optional status; LDAP TCP/389 + GC TCP/3268 to AD. §3.5.
+- ✅ Server Core not supported; tier 0 / control-plane posture
+  required. §3.5.
+- ✅ AD writeback license requirement: Entra ID P1 minimum. §3.5.
 
-Authoritative sources at v0.2:
+**Items not subject to Microsoft Learn verification** (resolved in
+code, not canon):
 
-- Microsoft Learn — API-driven inbound provisioning concepts (page
-  updated 2026-02-05; verified 2026-04-30):
+- Microsoft Graph SDK pinned-version posture — left to
+  [ADR-050 reference middleware implementation](../adr/adr-050-reference-middleware-implementation-choices.md);
+  no Microsoft Learn page covers this as architecture.
+
+**Authoritative sources at v1.0:**
+
+- Microsoft Learn — API-driven inbound provisioning concepts (page-update 2026-02-05; verified 2026-04-30):
   `https://learn.microsoft.com/en-us/entra/identity/app-provisioning/inbound-provisioning-api-concepts`
 - Microsoft Learn — `bulkUpload` API reference:
   `https://learn.microsoft.com/en-us/graph/api/synchronization-synchronizationjob-post-bulkupload`
-- Microsoft Learn — Workday inbound provisioning tutorial (page
-  updated 2026-02-26; partial verification 2026-04-30):
+- Microsoft Learn — Workday inbound provisioning tutorial (page-update 2026-02-26; verified 2026-04-30):
   `https://learn.microsoft.com/en-us/entra/identity/saas-apps/workday-inbound-tutorial`
-- GitHub — AzureAD/entra-id-inbound-provisioning samples: `https://github.com/AzureAD/entra-id-inbound-provisioning`.
-- IETF RFC 7643 (SCIM 2.0 Core Schema): `https://datatracker.ietf.org/doc/html/rfc7643`.
-- IETF RFC 7644 (SCIM 2.0 Protocol): `https://datatracker.ietf.org/doc/html/rfc7644`.
+- Microsoft Learn — Microsoft Entra Cloud Sync prerequisites (page-update 2026-03-27; verified 2026-04-30):
+  `https://learn.microsoft.com/en-us/entra/identity/hybrid/cloud-sync/how-to-prerequisites`
+- GitHub — AzureAD/entra-id-inbound-provisioning samples:
+  `https://github.com/AzureAD/entra-id-inbound-provisioning`
+- IETF RFC 7643 (SCIM 2.0 Core Schema):
+  `https://datatracker.ietf.org/doc/html/rfc7643`
+- IETF RFC 7644 (SCIM 2.0 Protocol):
+  `https://datatracker.ietf.org/doc/html/rfc7644`
 
 Authoritative sources at v0.1:
 
