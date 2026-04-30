@@ -4,9 +4,10 @@ title: "HR Source System Connector Comparison Matrix"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 1
 status: Draft
-version: 0.1
+version: 0.2
 owner: Identity Architecture
 created: 2026-04-30
+updated: 2026-04-30
 canonical_adrs:
   - ADR-003
 canonical_docs:
@@ -15,9 +16,35 @@ canonical_docs:
   - UIAO_136
 boundary: GCC-Moderate
 classification: Controlled
+verification_history:
+  - date: 2026-04-30
+    sources:
+      - "Microsoft Learn — API-driven inbound provisioning concepts (page updated 2026-02-05)"
+      - "Microsoft Learn — Workday inbound provisioning tutorial (page updated 2026-02-26)"
+    confirmed:
+      - "API-driven path: SCIM 2.0 wire protocol over /bulkUpload (§6.1)"
+      - "API-driven path: real-time / push-driven (§4.1, §6.1)"
+      - "API-driven path: tenant daily limit 2,000 calls (P1/P2) or 6,000 (Entra ID Governance)"
+      - "Workday native connector: uses Workday Web Services (WWS) SOAP/XML (§3.1, §6.1) — confirmed by SOAP envelope syntax in tutorial page"
+      - "Workday native default WWS API version: v21.1 (when no version specified in URL)"
+      - "Microsoft maintains native Workday + SAP SuccessFactors connectors but does not provide a native Oracle HCM connector (§3.2 — already canonical per ADR-003 §Rationale §3)"
+    not_yet_verified:
+      - "Workday native polling default = 40 minutes — Workday tutorial page does not state a specific minute value; defer to deployment-time tenant verification"
+      - "SAP SuccessFactors native connector specifics (OData, polling default) — separate Microsoft Learn page; deferred"
+      - "FedRAMP authorization status for Workday Govt Cloud / Oracle Govt Cloud / SAP NS2 — Microsoft Learn does not authoritatively state these (FedRAMP Marketplace is the source of truth); defer to deployment-time validation"
+      - "Number of Entra provisioning expression functions (the ~25 figure in §4.2) — not confirmed on either fetched page"
 ---
 
 # Spec 2 — D1.7: HR Source System Connector Comparison Matrix
+
+> **Verification status (v0.2):** Microsoft Learn-confirmed claims and
+> deferred items are itemized in the `verification_history` block in
+> the frontmatter above. Notable deferral: the "40-minute default
+> polling interval" attributed to native connectors throughout this
+> document is not stated as a specific minute value on the Microsoft
+> Learn Workday tutorial page; treat as a planning estimate pending
+> deployment-time tenant verification. The SCIM 2.0 / `bulkUpload` /
+> daily throttling claims for the API-driven path are confirmed.
 
 ## 1. Purpose, Scope, and Reference
 

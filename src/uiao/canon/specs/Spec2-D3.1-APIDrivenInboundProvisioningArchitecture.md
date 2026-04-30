@@ -4,9 +4,10 @@ title: "API-Driven Inbound Provisioning Architecture"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 3
 status: Draft
-version: 0.1
+version: 0.2
 owner: Identity Architecture
 created: 2026-04-30
+updated: 2026-04-30
 canonical_adrs:
   - ADR-003
   - ADR-035
@@ -18,9 +19,33 @@ canonical_docs:
   - UIAO_136
 boundary: GCC-Moderate
 classification: Controlled
+verification_history:
+  - date: 2026-04-30
+    source: "Microsoft Learn — API-driven inbound provisioning concepts (page updated 2026-02-05)"
+    url: "https://learn.microsoft.com/en-us/entra/identity/app-provisioning/inbound-provisioning-api-concepts"
+    confirmed:
+      - "bulkUpload endpoint exists at /bulkUpload via Microsoft Graph synchronization API"
+      - "SCIM schema constructs are the wire format; processed asynchronously"
+      - "Returns HTTP 202 Accepted on success; processed in near real-time"
+      - "Required Graph permissions: SynchronizationData-User.Upload + ProvisioningLog.Read.All (ISVs also need SynchronizationData-User.Upload.OwnedBy)"
+      - "Throttling: 40 API calls per 5-second window (HTTP 429 on exceed)"
+      - "Tenant daily limits: 2,000 calls / 24h (Entra ID P1/P2) or 6,000 / 24h (Entra ID Governance)"
+      - "Batch payload optimization target: up to 50 operations per API call"
+      - "License: Entra ID P1, P2, or Entra ID Governance"
+    not_yet_verified:
+      - "Entra Provisioning Agent capacity / sizing guidance — separate Microsoft Learn page; deferred to deployment runbook"
+      - "Native Workday connector polling default interval — Workday tutorial page does not state a specific minute-value default"
 ---
 
 # Spec 2 — D3.1: API-Driven Inbound Provisioning Architecture
+
+> **Verification status (v0.2):** Microsoft Learn-confirmed and
+> deferred items are itemized in the `verification_history` block in
+> the frontmatter above. **Material correction in v0.2:** §7.1
+> throttling envelope was overstated by 5× in v0.1 (cited "~40 req/sec";
+> actual published limit is 40 calls per 5-second window plus a
+> tenant-daily cap). Implementations sized against the v0.1 figure
+> need to revisit capacity assumptions.
 
 ## 1. Purpose, Scope, and Reference
 
@@ -344,19 +369,27 @@ principal** using **certificate-based** OAuth 2.0 client credentials.
 
 ### 4.2 Required Microsoft Graph permissions
 
-Application (not delegated) permissions on the service principal:
+Application (not delegated) permissions on the service principal,
+**verified against Microsoft Learn 2026-04-30**:
 
-| Permission | Purpose | Justification |
+| Permission | Required | Purpose |
 |---|---|---|
-| `SynchronizationData-User.Upload` | Submit SCIM payloads to `bulkUpload` | The minimum permission that makes API-driven provisioning work. |
-| `User.Read.All` (optional) | Read Entra user state for correlation lookups | Only if the middleware does correlation pre-checks before bulkUpload; default UIAO posture is to let Entra do correlation. |
-| `Application.Read.All` (optional) | Health checks against the synchronization job state | Useful for monitoring; not load-bearing for provisioning itself. |
+| `SynchronizationData-User.Upload` | **Required** | Submit SCIM payloads to `bulkUpload`. The core permission that makes API-driven provisioning work. |
+| `ProvisioningLog.Read.All` | **Required** | Read provisioning logs to track per-record outcomes. Microsoft Learn lists this as part of the required permission set, not optional — the middleware needs it to surface success/failure status to monitoring (§10.2). |
+| `SynchronizationData-User.Upload.OwnedBy` | Required for ISVs | Used when the API client is an ISV servicing tenants it doesn't own. Not required for first-party UIAO middleware in agency tenants. |
+| `User.Read.All` | Optional | Only if the middleware does correlation pre-checks before bulkUpload. Default UIAO posture is to let Entra handle correlation, so this can usually be omitted. |
+| `Application.Read.All` | Optional | Health checks against the synchronization job state. Useful for monitoring; not load-bearing for provisioning itself. |
 
 **Principle of least privilege.** The middleware MUST NOT request
 broader permissions (e.g., `Directory.ReadWrite.All`,
 `User.ReadWrite.All`). The service principal's permissions surface IS
 the security boundary; over-scoping it is the most common provisioning
 security incident pattern. NIST controls AC-6, AC-6(2) apply.
+
+**Tenant license requirement.** Microsoft Learn states API-driven
+inbound provisioning requires Microsoft Entra ID P1, P2, or Microsoft
+Entra ID Governance license. The Governance license raises the daily
+throttling limit (§7.1) — relevant for large-tenant deployments.
 
 ### 4.3 Token acquisition flow
 
@@ -505,16 +538,25 @@ explicitly bulk-oriented, not single-record):
 }
 ```
 
-**Batch sizing.** The exact batch ceiling is set by Microsoft and
-versioned. The middleware MUST:
+**Batch sizing.** Per Microsoft Learn (verified 2026-04-30):
 
-1. Read the ceiling from the synchronization job's metadata at startup,
-   not hardcode it.
-2. Batch records up to 80% of the ceiling (leave headroom for SCIM
-   protocol overhead).
-3. Spill to the next batch when the 80% threshold is reached.
-4. TODO: verify the current ceiling against Microsoft Learn during
-   D3.1 v0.1 → v1.0 promotion.
+> *"ensure that your SCIM bulk payloads are optimized to include up to
+> 50 operations per API call."*
+
+The middleware MUST:
+
+1. Target 50 operations per `bulkUpload` call as the optimal batch
+   size (the Microsoft-recommended ceiling).
+2. Spill to the next batch when 50 operations is reached.
+3. Treat 50 as the optimization target, not a hard limit. If
+   Microsoft raises the limit in a future version, the middleware
+   reads it from the synchronization job's metadata at startup
+   rather than hardcoding the value.
+4. Recognize that the batch size interacts with §7.1 throttling: at
+   50 ops/call, the daily tenant limit (2,000 or 6,000 calls per 24h)
+   imposes a daily worker-record ceiling of 100,000 (P1/P2 license)
+   or 300,000 (Governance license). For deployments larger than that,
+   the initial bulk load must be spread across multiple days.
 
 ### 5.4 Required field set
 
@@ -631,31 +673,78 @@ complementary, not redundant.
 
 ### 7.1 Microsoft Graph throttling envelope
 
-Microsoft enforces per-tenant and per-application throttling on Graph
-API calls. Provisioning endpoints have their own throttling tier; the
-middleware operates within whatever envelope Microsoft publishes for
-the `bulkUpload` endpoint at deployment time.
+Microsoft enforces per-tenant and per-application throttling on
+`bulkUpload`. Per Microsoft Learn (verified 2026-04-30) the published
+envelope has **two distinct limits** that the middleware must respect:
 
-Per ADR-003 §Consequences §Negative, "Microsoft Graph API rate limits
-apply — bulk provisioning of large workforces must respect Graph API
-throttling (currently ~40 requests/second for provisioning endpoints)"
-— this number is a planning estimate and the middleware MUST resolve
-the actual envelope from Microsoft Learn during deployment validation.
+**Burst limit (per 5-second window):**
+
+> *"There is a limit of 40 API calls within any 5-second window. If
+> this threshold is exceeded, the service returns an HTTP 429 (Too
+> Many Requests) response."*
+
+That is **40 calls / 5 seconds = 8 calls/sec average peak** —
+materially tighter than ADR-003 §Consequences §Negative's earlier
+"~40 requests/second" planning estimate. **The earlier estimate was
+incorrect by a factor of 5; this section supersedes it.** ADR-003 is
+not amended (the Decision field is immutable per CR-003), but
+implementations MUST use the verified figure here.
+
+**Daily tenant limit:**
+
+> *"There is a tenant-level limit of 2,000 API calls per 24-hour
+> period under the Entra ID P1/P2 license, and 6,000 API calls under
+> the Entra ID Governance license. Exceeding these limits results in
+> an HTTP 429 (Too Many Requests) response."*
+
+At the §5.3 batch optimization target of 50 operations/call:
+
+| License tier | Daily call cap | Daily worker-record cap (50 ops/call) |
+|---|---|---|
+| Entra ID P1 / P2 | 2,000 | 100,000 |
+| Entra ID Governance | 6,000 | 300,000 |
+
+Practical implications:
+
+- **Daily delta sync** for typical agency populations (a 100k-worker
+  agency with ~1% daily churn = ~1,000 events/day) sits well within
+  either tier.
+- **Initial bulk load** for large tenants requires planning. A
+  400,000-worker tenant on Entra ID Governance license needs at least
+  ~1.5 days for initial sync; on P1/P2 license, ~4 days. The
+  middleware MUST handle multi-day initial sync gracefully (resume on
+  daily-limit reset, not fail).
+- **The Governance license tier is a real operational difference**,
+  not just a feature gate. For large federal tenants the tier choice
+  shapes the cutover timeline.
 
 ### 7.2 Middleware-side throttle
 
-The middleware MUST implement a token-bucket rate limiter sized at 80%
-of the published throttle envelope. The 20% headroom absorbs:
+The middleware MUST implement two complementary rate limiters, sized
+at 80% of each published limit (§7.1) to leave headroom for monitoring
+calls, jitter, and Microsoft's actual-vs-published-envelope variance:
 
-- Short bursts of HR change events that cluster in time.
-- Concurrent calls from monitoring health checks.
-- Variations in Microsoft's enforcement (the published envelope is a
-  ceiling, not a guarantee).
+| Limiter | Sized at | Equivalent |
+|---|---|---|
+| Burst (token bucket) | 32 calls per 5-second window | ~6.4 calls/sec average peak |
+| Daily (sliding window) | 1,600 calls/24h (P1/P2) or 4,800 calls/24h (Governance) | ~80% of the §7.1 daily cap |
 
-When the bucket is empty, the middleware MUST queue the next
-`bulkUpload` call rather than spin-wait or fail. The queue depth is a
-key health signal (§10.2) — sustained queue depth above a threshold
-indicates the deployment is undersized.
+Both limiters are required because the daily limit is independently
+enforced — burst-staying-under-budget alone does not prevent hitting
+the daily cap on a high-churn day.
+
+When either limiter denies a call, the middleware MUST queue the next
+`bulkUpload` request rather than spin-wait or fail. Queue depth is a
+key health signal (§10.2):
+
+- **Burst-limiter queue depth growth** → deployment is undersized for
+  current arrival rate; horizontal scale-out or batching efficiency
+  improvements help.
+- **Daily-limiter queue depth growth** → either an unexpected mass
+  HR-side change (a reorganization), a license-tier mismatch (large
+  tenant on P1/P2 needs Governance), or a stuck retry storm
+  consuming the daily budget. Different remediation in each case;
+  monitoring MUST distinguish them.
 
 ### 7.3 Bulk batching as a throughput multiplier
 
@@ -1054,19 +1143,52 @@ sequencing follow-on to D3.1's implementation.
 - Spec2-D1.5 (UPN generation rules) — referenced in §3.2 + §5.4; the PowerShell generator at [`Spec2-D1.5-New-UPNGenerationRules.ps1`](../../../../tools/discovery/Spec2-D1.5-New-UPNGenerationRules.ps1) is in flight.
 - Spec2-D1.6 (worker-type classification taxonomy) — referenced in §3.2 + §5.4.
 
-### 13.4 Microsoft documentation (verification debt — D3.1 v0.1 → v1.0)
+### 13.4 Microsoft documentation — verification status (v0.2)
 
-The following references must be verified against Microsoft Learn
-during D3.1 v0.1 → v1.0 promotion. Specific facts to confirm:
+Items verified against Microsoft Learn 2026-04-30 (page-update date
+2026-02-05 for the API-driven inbound provisioning concepts page):
 
-- Exact `bulkUpload` endpoint URL and current API version. §3.3, §5.3.
-- Current `bulkUpload` batch size ceiling (the hardcoded 80%-headroom
-  fraction in §5.3 depends on this). §5.3.
-- Current Graph throttling envelope for provisioning endpoints (the
-  ~40 req/sec figure cited from ADR-003). §7.1.
-- Exact Microsoft-required application permissions (`SynchronizationData-User.Upload`
-  and any sibling permissions for tenant-side correlation). §4.2.
-- Current Entra Provisioning Agent sizing guidance. §3.5.
+- ✅ `bulkUpload` endpoint exists at `/bulkUpload` via Microsoft Graph
+  synchronization API. §3.3, §5.3.
+- ✅ SCIM schema constructs as wire format; processed asynchronously.
+  §3.3, §5.
+- ✅ Returns HTTP 202 Accepted on success; processed in near
+  real-time. §5, §7.1.
+- ✅ Required Graph permissions: `SynchronizationData-User.Upload`
+  + `ProvisioningLog.Read.All` (the `ProvisioningLog.Read.All`
+  requirement was added in v0.2; v0.1 missed it). ISVs also need
+  `SynchronizationData-User.Upload.OwnedBy`. §4.2.
+- ✅ Throttling: 40 calls per 5-second window + daily tenant limit
+  (2,000 P1/P2 or 6,000 Governance). §7.1. **The v0.1 estimate of
+  "~40 req/sec" was incorrect by 5×; v0.2 supersedes it.**
+- ✅ Batch payload optimization: 50 operations per API call. §5.3.
+- ✅ License: Entra ID P1, P2, or Entra ID Governance. §4.2, §7.1.
+
+Items still requiring verification (deferred to deployment runbook
+and v0.2 → v1.0 promotion):
+
+- ⏳ Entra Provisioning Agent capacity / sizing guidance. §3.5. Lives
+  on a separate Microsoft Learn page; not fetched in the 2026-04-30
+  verification pass. Defer to deployment-runbook validation (D5.1).
+- ⏳ Workday native connector polling default interval (the "40 min
+  default poll" figure carried in D1.7 §3.1). The Workday inbound
+  tutorial page does not state a specific minute-value default;
+  verification deferred to deployment validation against the
+  customer's tenant configuration.
+
+Authoritative sources at v0.2:
+
+- Microsoft Learn — API-driven inbound provisioning concepts (page
+  updated 2026-02-05; verified 2026-04-30):
+  `https://learn.microsoft.com/en-us/entra/identity/app-provisioning/inbound-provisioning-api-concepts`
+- Microsoft Learn — `bulkUpload` API reference:
+  `https://learn.microsoft.com/en-us/graph/api/synchronization-synchronizationjob-post-bulkupload`
+- Microsoft Learn — Workday inbound provisioning tutorial (page
+  updated 2026-02-26; partial verification 2026-04-30):
+  `https://learn.microsoft.com/en-us/entra/identity/saas-apps/workday-inbound-tutorial`
+- GitHub — AzureAD/entra-id-inbound-provisioning samples: `https://github.com/AzureAD/entra-id-inbound-provisioning`.
+- IETF RFC 7643 (SCIM 2.0 Core Schema): `https://datatracker.ietf.org/doc/html/rfc7643`.
+- IETF RFC 7644 (SCIM 2.0 Protocol): `https://datatracker.ietf.org/doc/html/rfc7644`.
 
 Authoritative sources at v0.1:
 
