@@ -7,18 +7,20 @@
     Spec2-D1.7-HRConnectorComparisonMatrix.md (in this directory). When this
     script and the Markdown diverge, the MARKDOWN IS AUTHORITATIVE.
 
-    This script's `$connectors` array (Section 1) was reconciled on
-    2026-04-30 to match canon — Oracle HCM is now correctly marked as
-    having no Microsoft-built native connector (per ADR-003 §Rationale §3),
-    and SAP SuccessFactors was added as a fourth profile.
-
-    Sections 2–4 (attribute matrix, JML comparison, feature comparison)
-    still use 3-connector treatment (Workday / OracleHCM / APIDriven) and
-    have NOT been updated for the corrected model. In those sections, the
-    `OracleHCM` column still implies a native connector exists. This is
-    known drift; reconciliation is queued as a follow-up effort. Anyone
-    consuming the script's JSON / CSV outputs should cross-check against
-    the canonical Markdown.
+    Reconciled to 4-connector model on 2026-04-30:
+      * Section 1 ($connectors): Oracle HCM correctly marked as having no
+        Microsoft-built native connector (per ADR-003 §Rationale §3); SAP
+        SuccessFactors added as a fourth profile.
+      * Section 2 ($attributeCategories): SAP_SF column added; OracleHCM
+        column reflects "Via API-Driven path" semantics throughout.
+      * Section 3 ($jmlComparison): SAP_SF block added per lifecycle event;
+        OracleHCM Support is "Via API-Driven path" with mechanism inheriting
+        from APIDriven.
+      * Section 4 ($featureComparison): SAP_SF column added; OracleHCM
+        column reflects API-Driven path characteristics; HRIT Req #5
+        SCIM 2.0 wire protocol row added.
+      * Output assembly: CSV exports include SAP_SF column; inline Markdown
+        report and dashboard render 4-column tables.
 
 .DESCRIPTION
     Generates a structured comparison matrix evaluating four HR-to-Entra ID
@@ -144,57 +146,62 @@ Write-Host "  Built $($connectors.Count) connector profiles" -ForegroundColor Gr
 
 Write-Host "[2/6] Building attribute support matrix..." -ForegroundColor Yellow
 
+# Note: OracleHCM column reflects "via API-Driven path" semantics throughout
+# this section because no Microsoft-built native Oracle HCM connector exists
+# (per ADR-003 §Rationale §3). The column is retained for matrix symmetry and
+# downstream consumers; mechanism details for Oracle integration are
+# equivalent to the APIDriven column.
 $attributeCategories = @(
     @{
         Category = "Core Identity Attributes"
         Attributes = @(
-            @{ Attribute = "userPrincipalName"; Workday = "Expression (Fn)"; OracleHCM = "Expression (Fn)"; APIDriven = "Pre-computed by caller"; Notes = "UPN generation per Spec2-D1.5 rules" },
-            @{ Attribute = "mailNickname"; Workday = "Expression (Fn)"; OracleHCM = "Expression (Fn)"; APIDriven = "Pre-computed by caller"; Notes = "Alias for Exchange mailbox" },
-            @{ Attribute = "displayName"; Workday = "Direct map + Expression"; OracleHCM = "Direct map + Expression"; APIDriven = "Pre-computed by caller"; Notes = "Last, First or First Last" },
-            @{ Attribute = "givenName"; Workday = "Direct map"; OracleHCM = "Direct map"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "" },
-            @{ Attribute = "surname"; Workday = "Direct map"; OracleHCM = "Direct map"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "" },
-            @{ Attribute = "employeeId"; Workday = "Direct map (Worker_ID)"; OracleHCM = "Direct map (PersonNumber)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "Correlation anchor" },
-            @{ Attribute = "employeeType"; Workday = "Direct map (Worker_Type)"; OracleHCM = "Direct map (WorkerType)"; APIDriven = "Pre-computed by caller"; Notes = "Maps to D1.6 worker taxonomy" },
-            @{ Attribute = "department"; Workday = "Direct map (Organization)"; OracleHCM = "Direct map (DepartmentName)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "" },
-            @{ Attribute = "jobTitle"; Workday = "Direct map (Job_Profile)"; OracleHCM = "Direct map (JobName)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "" },
-            @{ Attribute = "manager"; Workday = "Direct map (Manager ref)"; OracleHCM = "Direct map (ManagerId)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "Resolved to Entra objectId" },
-            @{ Attribute = "companyName"; Workday = "Direct map (Company)"; OracleHCM = "Direct map (LegalEntityName)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "" }
+            @{ Attribute = "userPrincipalName"; Workday = "Expression (Fn)"; OracleHCM = "Via API-Driven path"; SAP_SF = "Expression (Fn)"; APIDriven = "Pre-computed by caller"; Notes = "UPN generation per Spec2-D1.5 rules" },
+            @{ Attribute = "mailNickname"; Workday = "Expression (Fn)"; OracleHCM = "Via API-Driven path"; SAP_SF = "Expression (Fn)"; APIDriven = "Pre-computed by caller"; Notes = "Alias for Exchange mailbox" },
+            @{ Attribute = "displayName"; Workday = "Direct map + Expression"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map + Expression"; APIDriven = "Pre-computed by caller"; Notes = "Last, First or First Last" },
+            @{ Attribute = "givenName"; Workday = "Direct map"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "" },
+            @{ Attribute = "surname"; Workday = "Direct map"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "" },
+            @{ Attribute = "employeeId"; Workday = "Direct map (Worker_ID)"; OracleHCM = "Via API-Driven path (Oracle PersonNumber → middleware)"; SAP_SF = "Direct map (personIdExternal)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "Correlation anchor" },
+            @{ Attribute = "employeeType"; Workday = "Direct map (Worker_Type)"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map (employeeClass)"; APIDriven = "Pre-computed by caller"; Notes = "Maps to D1.6 worker taxonomy" },
+            @{ Attribute = "department"; Workday = "Direct map (Organization)"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map (department)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "" },
+            @{ Attribute = "jobTitle"; Workday = "Direct map (Job_Profile)"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map (jobTitle)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "" },
+            @{ Attribute = "manager"; Workday = "Direct map (Manager ref)"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map (managerId)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "Resolved to Entra objectId" },
+            @{ Attribute = "companyName"; Workday = "Direct map (Company)"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map (companyName)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "" }
         )
     },
     @{
         Category = "Location Attributes"
         Attributes = @(
-            @{ Attribute = "city"; Workday = "Direct map"; OracleHCM = "Direct map"; APIDriven = "Direct map"; Notes = "" },
-            @{ Attribute = "state"; Workday = "Direct map"; OracleHCM = "Direct map"; APIDriven = "Direct map"; Notes = "" },
-            @{ Attribute = "country"; Workday = "Direct map"; OracleHCM = "Direct map"; APIDriven = "Direct map"; Notes = "ISO 3166-1 alpha-2" },
-            @{ Attribute = "streetAddress"; Workday = "Direct map"; OracleHCM = "Direct map"; APIDriven = "Direct map"; Notes = "" },
-            @{ Attribute = "postalCode"; Workday = "Direct map"; OracleHCM = "Direct map"; APIDriven = "Direct map"; Notes = "" },
-            @{ Attribute = "officeLocation"; Workday = "Expression"; OracleHCM = "Expression"; APIDriven = "Pre-computed"; Notes = "Physical office/building" },
-            @{ Attribute = "usageLocation"; Workday = "Expression (country → ISO)"; OracleHCM = "Expression (country → ISO)"; APIDriven = "Pre-computed"; Notes = "Required for M365 licensing" }
+            @{ Attribute = "city"; Workday = "Direct map"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map"; APIDriven = "Direct map"; Notes = "" },
+            @{ Attribute = "state"; Workday = "Direct map"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map"; APIDriven = "Direct map"; Notes = "" },
+            @{ Attribute = "country"; Workday = "Direct map"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map"; APIDriven = "Direct map"; Notes = "ISO 3166-1 alpha-2" },
+            @{ Attribute = "streetAddress"; Workday = "Direct map"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map"; APIDriven = "Direct map"; Notes = "" },
+            @{ Attribute = "postalCode"; Workday = "Direct map"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map"; APIDriven = "Direct map"; Notes = "" },
+            @{ Attribute = "officeLocation"; Workday = "Expression"; OracleHCM = "Via API-Driven path"; SAP_SF = "Expression"; APIDriven = "Pre-computed"; Notes = "Physical office/building" },
+            @{ Attribute = "usageLocation"; Workday = "Expression (country → ISO)"; OracleHCM = "Via API-Driven path"; SAP_SF = "Expression (country → ISO)"; APIDriven = "Pre-computed"; Notes = "Required for M365 licensing" }
         )
     },
     @{
         Category = "OrgPath Attributes (ADR-048)"
         Attributes = @(
-            @{ Attribute = "extensionAttribute1 (OrgPath)"; Workday = "Expression (complex)"; OracleHCM = "Expression (complex)"; APIDriven = "Pre-computed by OrgPath calculator"; Notes = "CORP/REGION/STATE/CITY/DEPT — canonical per ADR-048" },
-            @{ Attribute = "extensionAttribute2 (OrgPath Depth)"; Workday = "Expression (Fn)"; OracleHCM = "Expression (Fn)"; APIDriven = "Pre-computed by OrgPath calculator"; Notes = "Numeric depth level for hierarchy queries" },
-            @{ Attribute = "extensionAttribute3-5 (Reserved)"; Workday = "Not mapped (reserved)"; OracleHCM = "Not mapped (reserved)"; APIDriven = "Not mapped (reserved)"; Notes = "Reserved per ADR-048" }
+            @{ Attribute = "extensionAttribute1 (OrgPath)"; Workday = "Expression (complex)"; OracleHCM = "Via API-Driven path (OrgPath calculator in middleware)"; SAP_SF = "Expression (complex)"; APIDriven = "Pre-computed by OrgPath calculator"; Notes = "CORP/REGION/STATE/CITY/DEPT — canonical per ADR-048" },
+            @{ Attribute = "extensionAttribute2 (OrgPath Depth)"; Workday = "Expression (Fn)"; OracleHCM = "Via API-Driven path"; SAP_SF = "Expression (Fn)"; APIDriven = "Pre-computed by OrgPath calculator"; Notes = "Numeric depth level for hierarchy queries" },
+            @{ Attribute = "extensionAttribute3-5 (Reserved)"; Workday = "Not mapped (reserved)"; OracleHCM = "Not mapped (reserved)"; SAP_SF = "Not mapped (reserved)"; APIDriven = "Not mapped (reserved)"; Notes = "Reserved per ADR-048" }
         )
     },
     @{
         Category = "Contact Attributes"
         Attributes = @(
-            @{ Attribute = "mobilePhone"; Workday = "Direct map"; OracleHCM = "Direct map"; APIDriven = "Direct map"; Notes = "MFA registration" },
-            @{ Attribute = "businessPhones"; Workday = "Direct map"; OracleHCM = "Direct map"; APIDriven = "Direct map"; Notes = "" },
-            @{ Attribute = "otherMails"; Workday = "Direct map (personal email)"; OracleHCM = "Direct map"; APIDriven = "Direct map"; Notes = "SSPR recovery" }
+            @{ Attribute = "mobilePhone"; Workday = "Direct map"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map"; APIDriven = "Direct map"; Notes = "MFA registration" },
+            @{ Attribute = "businessPhones"; Workday = "Direct map"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map"; APIDriven = "Direct map"; Notes = "" },
+            @{ Attribute = "otherMails"; Workday = "Direct map (personal email)"; OracleHCM = "Via API-Driven path"; SAP_SF = "Direct map"; APIDriven = "Direct map"; Notes = "SSPR recovery" }
         )
     },
     @{
         Category = "Lifecycle Attributes"
         Attributes = @(
-            @{ Attribute = "accountEnabled"; Workday = "Expression (status → bool)"; OracleHCM = "Expression (status → bool)"; APIDriven = "Pre-computed by caller"; Notes = "Active = true, Leave/Term = false" },
-            @{ Attribute = "employeeHireDate"; Workday = "Direct map (Hire_Date)"; OracleHCM = "Direct map (StartDate)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "Pre-hire provisioning trigger" },
-            @{ Attribute = "employeeLeaveDateTime"; Workday = "Direct map (Termination_Date)"; OracleHCM = "Direct map (ActualTerminationDate)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "Leaver workflow trigger" }
+            @{ Attribute = "accountEnabled"; Workday = "Expression (status → bool)"; OracleHCM = "Via API-Driven path"; SAP_SF = "Expression (status → bool)"; APIDriven = "Pre-computed by caller"; Notes = "Active = true, Leave/Term = false" },
+            @{ Attribute = "employeeHireDate"; Workday = "Direct map (Hire_Date)"; OracleHCM = "Via API-Driven path (Oracle StartDate → middleware)"; SAP_SF = "Direct map (hireDate)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "Pre-hire provisioning trigger" },
+            @{ Attribute = "employeeLeaveDateTime"; Workday = "Direct map (Termination_Date)"; OracleHCM = "Via API-Driven path (Oracle ActualTerminationDate → middleware)"; SAP_SF = "Direct map (terminationDate)"; APIDriven = "Direct map (CSV/SCIM)"; Notes = "Leaver workflow trigger" }
         )
     }
 )
@@ -208,6 +215,9 @@ Write-Host "  Mapped $totalAttributes attributes across $($attributeCategories.C
 
 Write-Host "[3/6] Building JML lifecycle comparison..." -ForegroundColor Yellow
 
+# Note: OracleHCM `Support` is consistently "Via API-Driven path" because no
+# native Microsoft-built connector exists (per ADR-003 §Rationale §3). The
+# Mechanism / Limitations for Oracle inherit from the APIDriven row.
 $jmlComparison = @(
     @{
         LifecycleEvent = "Pre-Hire (account creation before start date)"
@@ -217,9 +227,14 @@ $jmlComparison = @(
             Limitations = "Polling interval (default 40 min) means near-real-time is not possible. Custom provisioning expressions needed for pre-hire logic."
         }
         OracleHCM      = @{
+            Support     = "Via API-Driven path"
+            Mechanism   = "No native connector. Middleware reads Oracle HCM ATOM feed and pushes pre-hire SCIM payloads to /bulkUpload when start-date condition is met."
+            Limitations = "Caller (middleware) must implement pre-hire date logic. ATOM feed propagation delay from Oracle side adds latency."
+        }
+        SAP_SF         = @{
             Support     = "Native"
-            Mechanism   = "Scheduled provisioning based on StartDate. Connector polls Oracle HCM ATOM feed. Similar pre-hire workflow."
-            Limitations = "Same polling interval constraints. ATOM feed may have propagation delays from Oracle side."
+            Mechanism   = "Scheduled provisioning based on hireDate. Connector polls SuccessFactors OData on schedule. Account created with accountEnabled=false until start date."
+            Limitations = "Polling interval (default 40 min) means near-real-time is not possible. Same pre-hire expression authoring as Workday."
         }
         APIDriven      = @{
             Support     = "Full control"
@@ -235,9 +250,14 @@ $jmlComparison = @(
             Limitations = "Relies on correct Workday status transitions. Custom attribute flows require expression authoring."
         }
         OracleHCM      = @{
+            Support     = "Via API-Driven path"
+            Mechanism   = "No native connector. Middleware detects active worker record in Oracle HCM and pushes SCIM payload with all attributes pre-computed."
+            Limitations = "Caller (middleware) must compute all transformations. Schema normalizer layer required."
+        }
+        SAP_SF         = @{
             Support     = "Native"
-            Mechanism   = "ATOM feed publishes active worker record. Connector sets accountEnabled=true, assigns attributes."
-            Limitations = "ATOM feed ordering may cause attribute update delays in high-volume environments."
+            Mechanism   = "OData feed publishes active worker. Connector sets accountEnabled=true, assigns attributes."
+            Limitations = "Relies on correct SF status transitions. Custom attribute flows require expression authoring."
         }
         APIDriven      = @{
             Support     = "Full control"
@@ -253,9 +273,14 @@ $jmlComparison = @(
             Limitations = "OrgPath recalculation requires complex provisioning expression. Manager chain changes may lag."
         }
         OracleHCM      = @{
+            Support     = "Via API-Driven path"
+            Mechanism   = "No native connector. Middleware detects changes in Oracle HCM, recomputes OrgPath in code, pushes updated payload."
+            Limitations = "Caller (middleware) must detect changes. Advantage: OrgPath logic is in maintainable code, not provisioning expressions."
+        }
+        SAP_SF         = @{
             Support     = "Native"
-            Mechanism   = "ATOM feed publishes updated worker data. Changed attributes flow through provisioning expressions."
-            Limitations = "Same OrgPath expression complexity. Transfer between legal entities may require manual intervention."
+            Mechanism   = "OData feed publishes updated worker data. Changed attributes flow through provisioning expressions."
+            Limitations = "Same OrgPath expression complexity as Workday. Transfer between SF entities may require manual intervention."
         }
         APIDriven      = @{
             Support     = "Full control"
@@ -271,8 +296,13 @@ $jmlComparison = @(
             Limitations = "Hard delete requires manual process or Lifecycle Workflow automation. Grace period management is external."
         }
         OracleHCM      = @{
+            Support     = "Via API-Driven path"
+            Mechanism   = "No native connector. Middleware detects ActualTerminationDate in Oracle HCM and pushes termination update with exact disable date."
+            Limitations = "Caller (middleware) must implement termination date logic and grace periods. Full flexibility but more implementation work."
+        }
+        SAP_SF         = @{
             Support     = "Native"
-            Mechanism   = "Termination in Oracle HCM → connector sets accountEnabled=false. Similar Lifecycle Workflow integration."
+            Mechanism   = "Termination in SuccessFactors → connector sets accountEnabled=false. Similar Lifecycle Workflow integration as Workday."
             Limitations = "Same as Workday — soft disable is automatic, hard delete requires additional automation."
         }
         APIDriven      = @{
@@ -289,9 +319,14 @@ $jmlComparison = @(
             Limitations = "May create duplicate if correlation attribute changed. Pre-existing attributes may not reset cleanly."
         }
         OracleHCM      = @{
+            Support     = "Via API-Driven path"
+            Mechanism   = "No native connector. Middleware matches by employeeId (Oracle PersonNumber) and resets attributes deterministically."
+            Limitations = "Caller (middleware) must implement rehire detection and attribute reconciliation logic."
+        }
+        SAP_SF         = @{
             Support     = "Native"
-            Mechanism   = "Oracle rehire event → connector matches existing Entra user, re-enables account."
-            Limitations = "Same correlation challenges. PersonNumber must remain consistent across employment periods."
+            Mechanism   = "SuccessFactors rehire event → connector matches existing Entra user by personIdExternal, re-enables account."
+            Limitations = "Person-ID consistency across employment periods required. Same correlation challenges as Workday."
         }
         APIDriven      = @{
             Support     = "Full control"
@@ -307,8 +342,13 @@ $jmlComparison = @(
             Limitations = "Complex: may require UPN change (different domain), license swap, group membership changes. Not all handled by connector alone."
         }
         OracleHCM      = @{
+            Support     = "Via API-Driven path"
+            Mechanism   = "No native connector. Middleware pushes all updated attributes atomically — new worker type, new OrgPath, new UPN if needed."
+            Limitations = "Most control but most development effort. Advantage: all conversion logic in one place."
+        }
+        SAP_SF         = @{
             Support     = "Limited"
-            Mechanism   = "WorkerType change in Oracle flows through. Similar constraints to Workday."
+            Mechanism   = "employeeClass change in SuccessFactors flows through. Similar constraints to Workday."
             Limitations = "Same complexity — conversion often requires manual coordination with license and access changes."
         }
         APIDriven      = @{
@@ -319,7 +359,7 @@ $jmlComparison = @(
     }
 )
 
-Write-Host "  Analyzed $($jmlComparison.Count) lifecycle events across 3 connectors" -ForegroundColor Green
+Write-Host "  Analyzed $($jmlComparison.Count) lifecycle events across 4 connectors" -ForegroundColor Green
 
 # ═══════════════════════════════════════════════════════════════
 # SECTION 4: Feature Comparison Matrix
@@ -327,42 +367,47 @@ Write-Host "  Analyzed $($jmlComparison.Count) lifecycle events across 3 connect
 
 Write-Host "[4/6] Building feature comparison matrix..." -ForegroundColor Yellow
 
+# Note: OracleHCM column reflects "via API-Driven path" semantics throughout
+# this section because no Microsoft-built native Oracle HCM connector exists
+# (per ADR-003 §Rationale §3). Cells inherit APIDriven characteristics with
+# Oracle-specific notes where relevant.
 $featureComparison = @(
     # ── Provisioning Capabilities ──
-    @{ Category = "Provisioning"; Feature = "Entra ID cloud-only provisioning"; Workday = "Yes"; OracleHCM = "Yes"; APIDriven = "Yes"; Weight = "Critical" },
-    @{ Category = "Provisioning"; Feature = "On-premises AD writeback"; Workday = "Yes (via Provisioning Agent)"; OracleHCM = "Yes (via Provisioning Agent)"; APIDriven = "Yes (via Provisioning Agent)"; Weight = "Critical" },
-    @{ Category = "Provisioning"; Feature = "Hybrid coexistence (AD + Entra ID)"; Workday = "Yes — dual provisioning"; OracleHCM = "Yes — dual provisioning"; APIDriven = "Yes — dual provisioning"; Weight = "Critical" },
-    @{ Category = "Provisioning"; Feature = "Bulk initial load"; Workday = "Yes (full sync)"; OracleHCM = "Yes (full sync)"; APIDriven = "Yes (CSV bulk upload)"; Weight = "High" },
-    @{ Category = "Provisioning"; Feature = "Incremental delta sync"; Workday = "Yes (polling-based)"; OracleHCM = "Yes (ATOM feed delta)"; APIDriven = "Yes (caller-controlled)"; Weight = "High" },
-    @{ Category = "Provisioning"; Feature = "Real-time provisioning (<5 min)"; Workday = "No (40 min default poll)"; OracleHCM = "No (40 min default poll)"; APIDriven = "Yes (immediate on push)"; Weight = "Medium" },
-    @{ Category = "Provisioning"; Feature = "On-demand provisioning (single user)"; Workday = "Yes (portal trigger)"; OracleHCM = "Yes (portal trigger)"; APIDriven = "Yes (single SCIM call)"; Weight = "Medium" },
+    @{ Category = "Provisioning"; Feature = "Entra ID cloud-only provisioning"; Workday = "Yes"; OracleHCM = "Yes (via API-Driven)"; SAP_SF = "Yes"; APIDriven = "Yes"; Weight = "Critical" },
+    @{ Category = "Provisioning"; Feature = "On-premises AD writeback"; Workday = "Yes (via Provisioning Agent)"; OracleHCM = "Yes (via Provisioning Agent, downstream of API-Driven)"; SAP_SF = "Yes (via Provisioning Agent)"; APIDriven = "Yes (via Provisioning Agent)"; Weight = "Critical" },
+    @{ Category = "Provisioning"; Feature = "Hybrid coexistence (AD + Entra ID)"; Workday = "Yes — dual provisioning"; OracleHCM = "Yes — dual provisioning (via API-Driven)"; SAP_SF = "Yes — dual provisioning"; APIDriven = "Yes — dual provisioning"; Weight = "Critical" },
+    @{ Category = "Provisioning"; Feature = "Bulk initial load"; Workday = "Yes (full sync)"; OracleHCM = "Yes (CSV/SCIM bulk upload via API-Driven)"; SAP_SF = "Yes (full sync)"; APIDriven = "Yes (CSV bulk upload)"; Weight = "High" },
+    @{ Category = "Provisioning"; Feature = "Incremental delta sync"; Workday = "Yes (polling-based)"; OracleHCM = "Yes (caller-controlled via API-Driven)"; SAP_SF = "Yes (polling-based)"; APIDriven = "Yes (caller-controlled)"; Weight = "High" },
+    @{ Category = "Provisioning"; Feature = "Real-time provisioning (<5 min)"; Workday = "No (40 min default poll)"; OracleHCM = "Yes (via API-Driven, immediate on push)"; SAP_SF = "No (40 min default poll)"; APIDriven = "Yes (immediate on push)"; Weight = "Medium" },
+    @{ Category = "Provisioning"; Feature = "On-demand provisioning (single user)"; Workday = "Yes (portal trigger)"; OracleHCM = "Yes (single SCIM call via API-Driven)"; SAP_SF = "Yes (portal trigger)"; APIDriven = "Yes (single SCIM call)"; Weight = "Medium" },
 
     # ── Expression & Transformation ──
-    @{ Category = "Expressions"; Feature = "Built-in provisioning expressions"; Workday = "Yes — 25+ functions"; OracleHCM = "Yes — 25+ functions"; APIDriven = "N/A — caller pre-computes"; Weight = "High" },
-    @{ Category = "Expressions"; Feature = "Custom expression authoring"; Workday = "Yes (Entra expression builder)"; OracleHCM = "Yes (Entra expression builder)"; APIDriven = "N/A — arbitrary code"; Weight = "Medium" },
-    @{ Category = "Expressions"; Feature = "OrgPath calculation complexity"; Workday = "High — nested Switch/Join in expression"; OracleHCM = "High — nested Switch/Join in expression"; APIDriven = "Low — OrgPath calculator in code (per D1.2)"; Weight = "Critical" },
-    @{ Category = "Expressions"; Feature = "UPN collision resolution"; Workday = "Limited — expression-based counters"; OracleHCM = "Limited — expression-based counters"; APIDriven = "Full — code-based resolution (per D1.5)"; Weight = "High" },
-    @{ Category = "Expressions"; Feature = "Diacritic transliteration"; Workday = "Manual expression per character"; OracleHCM = "Manual expression per character"; APIDriven = "Full — 80+ transliterations in code (per D1.5)"; Weight = "Medium" },
+    @{ Category = "Expressions"; Feature = "Built-in provisioning expressions"; Workday = "Yes — 25+ functions"; OracleHCM = "N/A — middleware pre-computes (via API-Driven)"; SAP_SF = "Yes — 25+ functions"; APIDriven = "N/A — caller pre-computes"; Weight = "High" },
+    @{ Category = "Expressions"; Feature = "Custom expression authoring"; Workday = "Yes (Entra expression builder)"; OracleHCM = "N/A — arbitrary code (via API-Driven)"; SAP_SF = "Yes (Entra expression builder)"; APIDriven = "N/A — arbitrary code"; Weight = "Medium" },
+    @{ Category = "Expressions"; Feature = "OrgPath calculation complexity"; Workday = "High — nested Switch/Join in expression"; OracleHCM = "Low — OrgPath calculator in code (via API-Driven, per D1.2)"; SAP_SF = "High — nested Switch/Join in expression"; APIDriven = "Low — OrgPath calculator in code (per D1.2)"; Weight = "Critical" },
+    @{ Category = "Expressions"; Feature = "UPN collision resolution"; Workday = "Limited — expression-based counters"; OracleHCM = "Full — code-based resolution (via API-Driven, per D1.5)"; SAP_SF = "Limited — expression-based counters"; APIDriven = "Full — code-based resolution (per D1.5)"; Weight = "High" },
+    @{ Category = "Expressions"; Feature = "Diacritic transliteration"; Workday = "Manual expression per character"; OracleHCM = "Full — 80+ transliterations in code (via API-Driven, per D1.5)"; SAP_SF = "Manual expression per character"; APIDriven = "Full — 80+ transliterations in code (per D1.5)"; Weight = "Medium" },
 
     # ── Monitoring & Operations ──
-    @{ Category = "Operations"; Feature = "Provisioning logs in Entra portal"; Workday = "Yes"; OracleHCM = "Yes"; APIDriven = "Yes"; Weight = "Critical" },
-    @{ Category = "Operations"; Feature = "Quarantine mode (auto-pause on errors)"; Workday = "Yes (built-in)"; OracleHCM = "Yes (built-in)"; APIDriven = "Yes (built-in for /bulkUpload)"; Weight = "High" },
-    @{ Category = "Operations"; Feature = "Audit log retention"; Workday = "30 days (Entra provisioning logs)"; OracleHCM = "30 days (Entra provisioning logs)"; APIDriven = "30 days (Entra provisioning logs)"; Weight = "Medium" },
-    @{ Category = "Operations"; Feature = "Graph API for provisioning status"; Workday = "Yes (provisioningObjectSummary)"; OracleHCM = "Yes (provisioningObjectSummary)"; APIDriven = "Yes (provisioningObjectSummary)"; Weight = "Medium" },
-    @{ Category = "Operations"; Feature = "Email notifications on failure"; Workday = "Yes (configurable)"; OracleHCM = "Yes (configurable)"; APIDriven = "Yes (configurable)"; Weight = "Low" },
+    @{ Category = "Operations"; Feature = "Provisioning logs in Entra portal"; Workday = "Yes"; OracleHCM = "Yes (via API-Driven)"; SAP_SF = "Yes"; APIDriven = "Yes"; Weight = "Critical" },
+    @{ Category = "Operations"; Feature = "Quarantine mode (auto-pause on errors)"; Workday = "Yes (built-in)"; OracleHCM = "Yes (built-in for /bulkUpload via API-Driven)"; SAP_SF = "Yes (built-in)"; APIDriven = "Yes (built-in for /bulkUpload)"; Weight = "High" },
+    @{ Category = "Operations"; Feature = "Audit log retention"; Workday = "30 days (Entra provisioning logs)"; OracleHCM = "30 days (Entra provisioning logs)"; SAP_SF = "30 days (Entra provisioning logs)"; APIDriven = "30 days (Entra provisioning logs)"; Weight = "Medium" },
+    @{ Category = "Operations"; Feature = "Graph API for provisioning status"; Workday = "Yes (provisioningObjectSummary)"; OracleHCM = "Yes (provisioningObjectSummary)"; SAP_SF = "Yes (provisioningObjectSummary)"; APIDriven = "Yes (provisioningObjectSummary)"; Weight = "Medium" },
+    @{ Category = "Operations"; Feature = "Email notifications on failure"; Workday = "Yes (configurable)"; OracleHCM = "Yes (configurable)"; SAP_SF = "Yes (configurable)"; APIDriven = "Yes (configurable)"; Weight = "Low" },
 
     # ── GCC & Compliance ──
-    @{ Category = "Compliance"; Feature = "GCC-Moderate availability"; Workday = "Yes"; OracleHCM = "Yes"; APIDriven = "Yes (inherits Entra)"; Weight = "Critical" },
-    @{ Category = "Compliance"; Feature = "FedRAMP Moderate authorization"; Workday = "Workday Govt Cloud authorized"; OracleHCM = "Oracle Govt Cloud authorized"; APIDriven = "Inherits M365 GCC authorization"; Weight = "Critical" },
-    @{ Category = "Compliance"; Feature = "Data residency (US sovereign)"; Workday = "Workday Govt Cloud — US only"; OracleHCM = "Oracle Govt Cloud — US only"; APIDriven = "Inherits M365 GCC — US only"; Weight = "Critical" },
-    @{ Category = "Compliance"; Feature = "FIPS 140-2 encryption in transit"; Workday = "Yes (TLS 1.2+)"; OracleHCM = "Yes (TLS 1.2+)"; APIDriven = "Yes (Graph API TLS 1.2+)"; Weight = "High" },
+    @{ Category = "Compliance"; Feature = "GCC-Moderate availability"; Workday = "Yes"; OracleHCM = "Yes (inherits Entra via API-Driven)"; SAP_SF = "Yes"; APIDriven = "Yes (inherits Entra)"; Weight = "Critical" },
+    @{ Category = "Compliance"; Feature = "FedRAMP Moderate authorization"; Workday = "Workday Govt Cloud authorized"; OracleHCM = "Oracle Govt Cloud authorized (HR side); Entra GCC inherited (provisioning side)"; SAP_SF = "SAP NS2 / SF Government authorized"; APIDriven = "Inherits M365 GCC authorization"; Weight = "Critical" },
+    @{ Category = "Compliance"; Feature = "Data residency (US sovereign)"; Workday = "Workday Govt Cloud — US only"; OracleHCM = "Oracle Govt Cloud — US only (HR side); M365 GCC — US only (provisioning side)"; SAP_SF = "SAP NS2 — US only"; APIDriven = "Inherits M365 GCC — US only"; Weight = "Critical" },
+    @{ Category = "Compliance"; Feature = "FIPS 140-2 encryption in transit"; Workday = "Yes (TLS 1.2+)"; OracleHCM = "Yes (TLS 1.2+)"; SAP_SF = "Yes (TLS 1.2+)"; APIDriven = "Yes (Graph API TLS 1.2+)"; Weight = "High" },
+    @{ Category = "Compliance"; Feature = "SCIM 2.0 wire protocol (HRIT Req #5)"; Workday = "No (uses Workday Web Services SOAP/XML)"; OracleHCM = "Yes (via API-Driven /bulkUpload)"; SAP_SF = "No (uses SuccessFactors OData)"; APIDriven = "Yes (native /bulkUpload SCIM 2.0)"; Weight = "Critical" },
 
     # ── Architecture & Extensibility ──
-    @{ Category = "Architecture"; Feature = "HR vendor independence"; Workday = "No — Workday only"; OracleHCM = "No — Oracle HCM only"; APIDriven = "Yes — any HR system (ADR-003)"; Weight = "Critical" },
-    @{ Category = "Architecture"; Feature = "Schema normalizer layer"; Workday = "Not needed (direct mapping)"; OracleHCM = "Not needed (direct mapping)"; APIDriven = "Required (custom middleware)"; Weight = "High" },
-    @{ Category = "Architecture"; Feature = "Multi-HR-system federation"; Workday = "One Workday tenant only"; OracleHCM = "One Oracle tenant only"; APIDriven = "Unlimited sources via API"; Weight = "High" },
-    @{ Category = "Architecture"; Feature = "Custom worker type taxonomy"; Workday = "Limited to Workday types"; OracleHCM = "Limited to Oracle types"; APIDriven = "Full — canonical types per D1.6"; Weight = "Medium" },
-    @{ Category = "Architecture"; Feature = "Migration path if HR vendor changes"; Workday = "Replace entire connector"; OracleHCM = "Replace entire connector"; APIDriven = "Update schema normalizer only"; Weight = "Critical" }
+    @{ Category = "Architecture"; Feature = "HR vendor independence"; Workday = "No — Workday only"; OracleHCM = "Yes — middleware abstracts source (via API-Driven)"; SAP_SF = "No — SuccessFactors only"; APIDriven = "Yes — any HR system (ADR-003)"; Weight = "Critical" },
+    @{ Category = "Architecture"; Feature = "Schema normalizer layer"; Workday = "Not needed (direct mapping)"; OracleHCM = "Required (middleware)"; SAP_SF = "Not needed (direct mapping)"; APIDriven = "Required (custom middleware)"; Weight = "High" },
+    @{ Category = "Architecture"; Feature = "Multi-HR-system federation"; Workday = "One Workday tenant only"; OracleHCM = "Unlimited sources via middleware"; SAP_SF = "One SuccessFactors tenant only"; APIDriven = "Unlimited sources via API"; Weight = "High" },
+    @{ Category = "Architecture"; Feature = "Custom worker type taxonomy"; Workday = "Limited to Workday types"; OracleHCM = "Full — canonical types per D1.6 (via middleware)"; SAP_SF = "Limited to SuccessFactors types"; APIDriven = "Full — canonical types per D1.6"; Weight = "Medium" },
+    @{ Category = "Architecture"; Feature = "Migration path if HR vendor changes"; Workday = "Replace entire connector"; OracleHCM = "Update schema normalizer only"; SAP_SF = "Replace entire connector"; APIDriven = "Update schema normalizer only"; Weight = "Critical" }
 )
 
 $categories = $featureComparison | Group-Object Category
@@ -441,7 +486,7 @@ $results = @{
         Generator     = "Spec2-D1.7-New-HRConnectorComparisonMatrix.ps1"
         UIAORef       = "UIAO_136 Spec 2, Phase 1, D1.7"
         ADRRef        = @("ADR-003", "ADR-048")
-        Description   = "HR Connector Comparison Matrix — Workday vs Oracle HCM vs API-Driven Inbound"
+        Description   = "HR Connector Comparison Matrix — Workday vs Oracle HCM (via API-Driven) vs SAP SuccessFactors vs API-Driven Inbound"
     }
     Connectors         = $connectors
     AttributeSupport   = $attributeCategories
@@ -465,6 +510,7 @@ $csvData = foreach ($f in $featureComparison) {
         Weight    = $f.Weight
         Workday   = $f.Workday
         OracleHCM = $f.OracleHCM
+        SAP_SF    = $f.SAP_SF
         APIDriven = $f.APIDriven
     }
 }
@@ -480,6 +526,7 @@ $attrCsvData = foreach ($cat in $attributeCategories) {
             Attribute = $a.Attribute
             Workday   = $a.Workday
             OracleHCM = $a.OracleHCM
+            SAP_SF    = $a.SAP_SF
             APIDriven = $a.APIDriven
             Notes     = $a.Notes
         }
@@ -500,29 +547,32 @@ $md = @"
 
 ## Executive Summary
 
-Three HR-to-Entra ID provisioning approaches were evaluated for UIAO GCC-Moderate
+Four HR-to-Entra ID provisioning approaches were evaluated for UIAO GCC-Moderate
 deployment. **API-Driven Inbound Provisioning (ADR-003) is the canonical UIAO approach**
 because it provides HR vendor independence, superior OrgPath calculation capabilities,
-and immunity to the pending OPM HRIT vendor decision.
+and immunity to the pending OPM HRIT vendor decision. Per ADR-003 §Rationale §3, no
+Microsoft-built native Oracle HCM connector exists — Oracle integration uses the
+API-Driven path.
 
 ## Connector Profiles
 
 | Connector | HR System | GCC-Moderate | Type |
 |---|---|---|---|
 | Workday Inbound | Workday HCM | Available | Native SaaS Connector |
-| Oracle HCM Inbound | Oracle Cloud HCM | Available | Native SaaS Connector |
+| Oracle HCM Cloud | Oracle Cloud HCM | Available (via API-Driven) | No native connector — API-Driven path |
+| SAP SuccessFactors Inbound | SAP SuccessFactors | Available | Native SaaS Connector |
 | API-Driven Inbound | Any (HR-agnostic) | Available | Platform API Endpoint |
 
 ## Feature Comparison (Critical Items)
 
-| Feature | Workday | Oracle HCM | API-Driven |
-|---|---|---|---|
+| Feature | Workday | Oracle HCM | SAP SF | API-Driven |
+|---|---|---|---|---|
 
 "@
 
 $criticalFeatures = $featureComparison | Where-Object { $_.Weight -eq "Critical" }
 foreach ($f in $criticalFeatures) {
-    $md += "| $($f.Feature) | $($f.Workday) | $($f.OracleHCM) | $($f.APIDriven) |`n"
+    $md += "| $($f.Feature) | $($f.Workday) | $($f.OracleHCM) | $($f.SAP_SF) | $($f.APIDriven) |`n"
 }
 
 $md += @"
@@ -569,22 +619,24 @@ Write-Host "================================================================" -F
 Write-Host "`n  CANONICAL APPROACH: " -NoNewline
 Write-Host "API-Driven Inbound Provisioning (ADR-003)" -ForegroundColor Green
 
-Write-Host "`n  ┌─────────────────────────────────────────────────────────────┐"
-Write-Host "  │ FEATURE COVERAGE (Critical Items)                           │"
-Write-Host "  ├──────────────────────────────┬──────┬──────┬───────────────┤"
-Write-Host "  │ Feature                      │  WD  │  ORA │  API-Driven   │"
-Write-Host "  ├──────────────────────────────┼──────┼──────┼───────────────┤"
+Write-Host "`n  ┌────────────────────────────────────────────────────────────────────┐"
+Write-Host "  │ FEATURE COVERAGE (Critical Items)                                  │"
+Write-Host "  ├──────────────────────────────┬──────┬──────┬──────┬───────────────┤"
+Write-Host "  │ Feature                      │  WD  │  ORA │  SF  │  API-Driven   │"
+Write-Host "  ├──────────────────────────────┼──────┼──────┼──────┼───────────────┤"
 
+$yesPattern = "^Yes|^Native|^Full|authorized|Inherits|Available"
 foreach ($f in $criticalFeatures) {
-    $wd  = if ($f.Workday -match "^Yes|^Native") { " Yes " } elseif ($f.Workday -match "^No") { "  No " } else { " Ltd " }
-    $ora = if ($f.OracleHCM -match "^Yes|^Native") { " Yes " } elseif ($f.OracleHCM -match "^No") { "  No " } else { " Ltd " }
-    $api = if ($f.APIDriven -match "^Yes|^Full|^Inherits") { "     Yes     " } elseif ($f.APIDriven -match "^No") { "      No     " } else { "    Varies   " }
+    $wd  = if ($f.Workday   -match $yesPattern) { " Yes " } elseif ($f.Workday   -match "^No") { "  No " } else { " Ltd " }
+    $ora = if ($f.OracleHCM -match $yesPattern) { " Yes " } elseif ($f.OracleHCM -match "^No") { "  No " } else { " Ltd " }
+    $sf  = if ($f.SAP_SF    -match $yesPattern) { " Yes " } elseif ($f.SAP_SF    -match "^No") { "  No " } else { " Ltd " }
+    $api = if ($f.APIDriven -match $yesPattern) { "     Yes     " } elseif ($f.APIDriven -match "^No") { "      No     " } else { "    Varies   " }
 
     $label = $f.Feature.PadRight(28).Substring(0, 28)
-    Write-Host "  │ $label │$wd│$ora│$api│"
+    Write-Host "  │ $label │$wd│$ora│$sf│$api│"
 }
 
-Write-Host "  └──────────────────────────────┴──────┴──────┴───────────────┘"
+Write-Host "  └──────────────────────────────┴──────┴──────┴──────┴───────────────┘"
 
 Write-Host "`n  OPM PROCUREMENT:" -ForegroundColor Yellow
 Write-Host "    Finalists: Workday/Accenture | Oracle/Deloitte"
