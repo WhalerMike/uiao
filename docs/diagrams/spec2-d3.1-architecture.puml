@@ -1,0 +1,62 @@
+' UIAO Spec 2 — D3.1: API-Driven Inbound Provisioning Architecture
+' Canonical reference: src/uiao/canon/specs/Spec2-D3.1-APIDrivenInboundProvisioningArchitecture.md §9
+' Anchored ADRs: ADR-003 (canonical path), ADR-035 (OrgPath codebook), ADR-048 (attribute selection), ADR-049 (downstream consumers)
+
+@startuml spec2_d3_1_architecture
+!theme plain
+skinparam linetype ortho
+skinparam defaultFontName Segoe UI
+
+actor "HR Source\n(any HCM)" as HR
+
+package "UIAO Middleware (per deployment)" {
+  component "Schema\nNormalizer\n(per-source)" as Norm
+  component "OrgPath\nCalculator\n(ADR-035 / 048)" as OrgPath
+  component "UPN\nGenerator\n(D1.5)" as UPN
+  component "Worker-Type\nClassifier\n(D1.6)" as WorkerType
+  component "SCIM Payload\nBuilder" as ScimBuild
+  component "Token Cache\n+ Refresh" as TokenCache
+  component "Rate Limiter\n(token bucket)" as RateLimiter
+  component "Retry / Quarantine\nManager" as Retry
+  component "Provenance\nEmitter" as Prov
+}
+
+cloud "Microsoft Graph\nbulkUpload" as Graph
+component "Entra ID\nProvisioning Service" as ProvSvc
+database "Microsoft Entra ID" as Entra
+node "Entra Provisioning\nAgent (HA pair)\non-prem" as Agent
+database "On-Prem Active\nDirectory\n(coexistence only)" as AD
+database "UIAO Governance OS\nProvenance Store" as UIAOProv
+queue "Quarantine Queue" as Q
+
+HR --> Norm : HR-native records
+Norm --> OrgPath
+Norm --> UPN
+Norm --> WorkerType
+OrgPath --> ScimBuild
+UPN --> ScimBuild
+WorkerType --> ScimBuild
+ScimBuild --> RateLimiter
+TokenCache --> RateLimiter : access token
+RateLimiter --> Retry
+Retry --> Graph : POST /bulkUpload\n(SCIM 2.0)
+Graph --> ProvSvc
+ProvSvc --> Entra
+ProvSvc --> Agent : sync (optional,\ncoexistence only)
+Agent --> AD
+ScimBuild --> Prov : payload + hash
+Retry --> Prov : outcome
+Prov --> UIAOProv
+Retry --> Q : per-record\nvalidation errors
+
+note right of Graph
+  SCIM 2.0 over TLS 1.2+
+  Federal HRIT Req #5 satisfied here
+end note
+
+note bottom of Agent
+  Retired post domain-decommission
+  per UIAO_007 sequencing
+end note
+
+@enduml
