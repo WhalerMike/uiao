@@ -1,8 +1,9 @@
 ---
 id: ADR-050
 title: "D3.1 Reference Middleware — Runtime, Language, Packaging, and Test Choices"
-status: proposed
+status: accepted
 date: 2026-04-30
+accepted: 2026-04-30
 deciders:
   - governance-steward
   - identity-engineer
@@ -22,7 +23,7 @@ canon_refs:
 
 ## Status
 
-PROPOSED
+ACCEPTED — 2026-04-30
 
 ## Context
 
