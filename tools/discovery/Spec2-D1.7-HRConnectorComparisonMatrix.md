@@ -91,9 +91,8 @@ the OPM HR vendor decision**. The relevant facts as of 2026-04-30:
 | GAO protest decisions | Expected early June 2026 |
 | Existing federal HR systems | OPM EHRI + eOPF |
 
-Source: OPM Solicitation 24322626R0007 Amd 2/3/4 (project archive at
-`inbox/Integrate the Intune-Entra-Arc Track/Federal Human Resources
-Information Technology (HRIT) Modernization/`).
+Source: OPM Solicitation 24322626R0007 Amd 2/3/4, public listing at
+sam.gov.
 
 ### 2.1 Why this matters for connector selection
 
@@ -581,10 +580,8 @@ output.
 
 - OPM Federal HRIT Modernization Solicitation 24322626R0007 (Amendments
   2, 3, 4); Appendix A Requirements Checklist Req #5 (SCIM 2.0
-  near-real-time provisioning). Project archive at
-  `inbox/Integrate the Intune-Entra-Arc Track/Federal Human Resources
-  Information Technology (HRIT) Modernization/`. Public listing at
-  sam.gov solicitation 24322626R0007.
+  near-real-time provisioning). Public listing at sam.gov solicitation
+  24322626R0007.
 
 ### 11.3 Microsoft documentation
 

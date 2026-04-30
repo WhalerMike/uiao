@@ -1,13 +1,33 @@
 <#
 .SYNOPSIS
-    UIAO Spec 2 — D1.7: HR Connector Comparison Matrix
+    UIAO Spec 2 — D1.7: HR Connector Comparison Matrix (script form)
+
+.IMPORTANT
+    The CANONICAL D1.7 deliverable is the hand-curated Markdown at
+    Spec2-D1.7-HRConnectorComparisonMatrix.md (in this directory). When this
+    script and the Markdown diverge, the MARKDOWN IS AUTHORITATIVE.
+
+    This script's `$connectors` array (Section 1) was reconciled on
+    2026-04-30 to match canon — Oracle HCM is now correctly marked as
+    having no Microsoft-built native connector (per ADR-003 §Rationale §3),
+    and SAP SuccessFactors was added as a fourth profile.
+
+    Sections 2–4 (attribute matrix, JML comparison, feature comparison)
+    still use 3-connector treatment (Workday / OracleHCM / APIDriven) and
+    have NOT been updated for the corrected model. In those sections, the
+    `OracleHCM` column still implies a native connector exists. This is
+    known drift; reconciliation is queued as a follow-up effort. Anyone
+    consuming the script's JSON / CSV outputs should cross-check against
+    the canonical Markdown.
+
 .DESCRIPTION
-    Generates a structured comparison matrix evaluating three HR-to-Entra ID
+    Generates a structured comparison matrix evaluating four HR-to-Entra ID
     provisioning approaches for federal GCC-Moderate environments:
 
     1. Workday Inbound Provisioning Connector (Entra ID native)
-    2. Oracle HCM Inbound Provisioning Connector (Entra ID native)
-    3. API-Driven Inbound Provisioning (HR-agnostic, ADR-003 canonical)
+    2. Oracle HCM Cloud — no native connector exists (API-Driven path required)
+    3. SAP SuccessFactors Inbound Provisioning Connector (Entra ID native)
+    4. API-Driven Inbound Provisioning (HR-agnostic, ADR-003 canonical)
 
     Evaluation dimensions:
     - Attribute support (OrgPath, worker type, UPN generation)
@@ -80,15 +100,27 @@ $connectors = @(
     },
     @{
         ConnectorId       = "ORACLE_HCM"
-        Name              = "Oracle HCM Inbound Provisioning"
+        Name              = "Oracle HCM Cloud (no native connector)"
+        Vendor            = "No Microsoft-built native connector exists"
+        Type              = "n/a — integration must use API-Driven path"
+        HRSystem          = "Oracle Cloud HCM (Fusion)"
+        GCCModerate       = "Available via API-Driven path"
+        FedRAMPStatus     = "Oracle Cloud for Government — FedRAMP authorized (HR data side); API-Driven path inherits Entra ID GCC-Moderate"
+        ProvisioningAgent = "Entra Provisioning Agent (on-premises for AD writeback, downstream of API-Driven entry)"
+        GraphAPIBased     = $true
+        Description       = "Per ADR-003 §Rationale §3, no Microsoft-built native Oracle HCM connector exists. Integration uses the API-Driven path: middleware reads Oracle HCM ATOM feeds and pushes SCIM 2.0 payloads to Microsoft Graph /bulkUpload. This row formally documents the absence; ADR-003 §Review Triggers includes 'Microsoft builds a native Oracle HCM provisioning connector' as a future review trigger."
+    },
+    @{
+        ConnectorId       = "SAP_SF"
+        Name              = "SAP SuccessFactors Inbound Provisioning"
         Vendor            = "Microsoft (native Entra ID connector)"
         Type              = "Native SaaS Connector"
-        HRSystem          = "Oracle Cloud HCM (Fusion)"
+        HRSystem          = "SAP SuccessFactors"
         GCCModerate       = "Available"
-        FedRAMPStatus     = "Oracle Cloud for Government — FedRAMP Moderate authorized"
+        FedRAMPStatus     = "SAP NS2 / SuccessFactors Government — FedRAMP authorized"
         ProvisioningAgent = "Entra Provisioning Agent (on-premises for AD writeback)"
         GraphAPIBased     = $false
-        Description       = "Purpose-built connector consuming Oracle HCM REST API (ATOM feeds). Reads worker data from Oracle Cloud HCM and provisions/updates/deprovisions users in Entra ID or on-premises AD."
+        Description       = "Purpose-built connector consuming SuccessFactors OData API. Reads worker data and provisions/updates/deprovisions users in Entra ID or on-premises AD. SAP was eliminated from the federal HRIT procurement (per UIAO_135 §2.1) but SF is listed for completeness because agencies outside the OPM contract may already use SuccessFactors."
     },
     @{
         ConnectorId       = "API_DRIVEN"
