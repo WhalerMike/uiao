@@ -321,3 +321,62 @@ Service accounts are the hidden load-bearing walls of AD infrastructure. Unlike 
 | Spec 3: Service Account → Workload Identity | 38 | 24+ weeks |
 | Cross-Cutting | 6 | Parallel with all specs |
 | **TOTAL** | **107** | **24+ weeks (parallel execution)** |
+
+---
+
+# Next Implementation Tracks (2026-04-30)
+
+This section names the next high-leverage tracks beyond the discovery-script
+work that has been landing. It is editorial — every deliverable referenced is
+already enumerated above. Order reflects dependency, not necessarily duration.
+
+## Track A — Land D1.7 Connector Comparison (Spec 2, Phase 1, in progress)
+
+The HR Source System Connector Comparison (D1.7) is the last Spec 2 Phase 1
+deliverable that does not yet have a canonical Markdown form. The
+PowerShell generator at `tools/discovery/Spec2-D1.7-New-HRConnectorComparisonMatrix.ps1`
+builds structured outputs (JSON, CSVs, per-run Markdown report) but the
+hand-curated canonical comparison matrix is the deliverable referenced
+in §SPEC 2 → Phase 1 → D1.7. Closes the connector-evaluation evidence
+gap that ADR-003 currently cites only by reference.
+
+## Track B — Spec 2 Phase 3 (Technical Architecture, D3.1–D3.8)
+
+Once D1.7 is in, the next strategic track is **Spec 2 Phase 3** — the
+technical architecture deliverables (D3.1 through D3.8). This is where
+SCIM and the Microsoft Graph `bulkUpload` API "become real" in the
+codebase rather than living only in canon prose. The lead deliverable
+is **D3.1 — API-Driven Inbound Provisioning Architecture**, the canonical
+SCIM/bulkUpload architecture document.
+
+Track B also creates the integration point for the proposed
+`entra-id-governance` and `entra-workload-identity` adapters
+(ADR-049, PROPOSED) — Access Reviews, Entitlement Management, Lifecycle
+Workflows, and workload identity federation all consume the HR-driven
+provisioning output. Without Track B, those adapters have no canonical
+upstream to reference.
+
+Track B is **premature** until D1.7 (Track A) is complete: the connector
+comparison evidence is what allows D3.1 to make defensible
+build-vs.-buy decisions per HR vendor scenario.
+
+## Track C — Spec 2 Phase 2 (JML Workflow Design)
+
+Phase 2 (D2.1–D2.8) — Joiner / Mover / Leaver / Rehire / Conversion /
+error-handling / pre-hire / scope-filter — runs in parallel with Track B
+once D1.7 is in. Phase 2 is workflow specification work; Phase 3 is
+architecture work. They share the canonical attribute schema (D1.1) and
+attribute mapping matrices (D1.3, D1.4) as inputs but do not block
+each other.
+
+## Sequencing summary
+
+```
+D1.x discovery scripts (in flight)  ──▶  D1.7 canonical matrix (Track A)
+                                              │
+                                              ├──▶  D3.1 SCIM/bulkUpload arch (Track B)
+                                              │     ├──▶  D3.2..D3.8
+                                              │     └──▶  ADR-049 adapter integration
+                                              │
+                                              └──▶  D2.1..D2.8 JML workflows (Track C)
+```
