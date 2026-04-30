@@ -1,8 +1,9 @@
 ---
 id: ADR-049
 title: "Microsoft Modernization Adapter Coverage Expansion — Defender Suite, Azure Migrate, Azure Policy for Arc, Entra Governance, Entra Workload ID, Intune-Modernization"
-status: proposed
+status: accepted
 date: 2026-04-30
+accepted: 2026-04-30
 deciders:
   - governance-steward
   - identity-engineer
@@ -27,7 +28,7 @@ canon_refs:
 
 ## Status
 
-PROPOSED
+ACCEPTED — 2026-04-30
 
 ## Context
 
