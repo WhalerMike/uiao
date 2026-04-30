@@ -523,31 +523,36 @@ conditions holds.
 This section documents drift between this canonical deliverable and
 adjacent artifacts, to be resolved in follow-up commits.
 
-### 10.1 PowerShell generator script
+### 10.1 PowerShell generator script — reconciled 2026-04-30
 
 [`Spec2-D1.7-New-HRConnectorComparisonMatrix.ps1`](Spec2-D1.7-New-HRConnectorComparisonMatrix.ps1)
-(in the same directory) was authored before this canonical deliverable
-and contains two divergences from canon:
+(in the same directory) was originally authored before this canonical
+deliverable and had two divergences from canon (Oracle HCM listed as a
+native connector when none exists; SAP SuccessFactors missing). Both
+have been reconciled across all four data sections of the script:
 
-1. The script's `$connectors` array (lines 82–92) lists "Oracle HCM
-   Inbound Provisioning" as a "Native SaaS Connector" maintained by
-   "Microsoft (native Entra ID connector)". **This contradicts ADR-003
-   §Rationale §3, which states no Microsoft-built native Oracle HCM
-   connector exists.** The `Spec2-D1.7-HRConnectorComparisonMatrix.md`
-   (this document) is the authoritative source; the script's claim is
-   incorrect and should be updated to mark Oracle HCM as
-   "no-native-connector / API-driven path required."
-2. The script covers three connectors (Workday, Oracle HCM,
-   API-driven) but UIAO_136 D1.7 calls for four (the above plus SAP
-   SuccessFactors). The SAP SF row is missing from the script.
+1. **`$connectors` (Section 1)** — Oracle HCM corrected to reflect the
+   absence of a native Microsoft-built connector (per ADR-003 §Rationale
+   §3); SAP SuccessFactors added as a fourth profile.
+2. **`$attributeCategories` (Section 2)** — `SAP_SF` column added across
+   all 27 attribute rows; `OracleHCM` column reflects "Via API-Driven
+   path" semantics throughout.
+3. **`$jmlComparison` (Section 3)** — `SAP_SF` block added for each of
+   the 6 lifecycle events; `OracleHCM` Support is consistently "Via
+   API-Driven path" with mechanism mirroring the `APIDriven` block.
+4. **`$featureComparison` (Section 4)** — `SAP_SF` column added; new
+   row tracing HRIT Req #5 SCIM 2.0 wire protocol (matches §6.1 of
+   this document).
 
-**Reconciliation plan:** a follow-up commit will update the script's
-`$connectors` array to (a) correct the Oracle HCM entry to reflect the
-absence of a native connector, and (b) add SAP SuccessFactors as a
-fourth connector profile. The script's role is to generate
-supplementary structured outputs (JSON / CSV) for downstream tooling;
-this Markdown document is the canonical deliverable and authoritative
-when the two diverge.
+Output assembly updated to match: CSV exports include the `SAP_SF`
+column, the inline Markdown report and console dashboard render
+4-column tables, and the dashboard regex was broadened so
+FedRAMP-authorized cells render as "Yes" rather than falling to "Ltd".
+
+The script and this Markdown are now structurally aligned. This
+Markdown remains canonical when the two diverge in the future; the
+script generates supplementary structured outputs (JSON / CSV) for
+downstream tooling.
 
 ### 10.2 ADR-049 (PROPOSED) integration point
 
