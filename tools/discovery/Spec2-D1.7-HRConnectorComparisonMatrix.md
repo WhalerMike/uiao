@@ -3,8 +3,8 @@ deliverable_id: Spec2-D1.7
 title: "HR Source System Connector Comparison Matrix"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 1
-status: Draft
-version: 0.2
+status: Final
+version: 1.0
 owner: Identity Architecture
 created: 2026-04-30
 updated: 2026-04-30
@@ -18,6 +18,7 @@ boundary: GCC-Moderate
 classification: Controlled
 verification_history:
   - date: 2026-04-30
+    pass: "v0.1 → v0.2 (initial verification)"
     sources:
       - "Microsoft Learn — API-driven inbound provisioning concepts (page updated 2026-02-05)"
       - "Microsoft Learn — Workday inbound provisioning tutorial (page updated 2026-02-26)"
@@ -28,23 +29,32 @@ verification_history:
       - "Workday native connector: uses Workday Web Services (WWS) SOAP/XML (§3.1, §6.1) — confirmed by SOAP envelope syntax in tutorial page"
       - "Workday native default WWS API version: v21.1 (when no version specified in URL)"
       - "Microsoft maintains native Workday + SAP SuccessFactors connectors but does not provide a native Oracle HCM connector (§3.2 — already canonical per ADR-003 §Rationale §3)"
-    not_yet_verified:
-      - "Workday native polling default = 40 minutes — Workday tutorial page does not state a specific minute value; defer to deployment-time tenant verification"
-      - "SAP SuccessFactors native connector specifics (OData, polling default) — separate Microsoft Learn page; deferred"
-      - "FedRAMP authorization status for Workday Govt Cloud / Oracle Govt Cloud / SAP NS2 — Microsoft Learn does not authoritatively state these (FedRAMP Marketplace is the source of truth); defer to deployment-time validation"
-      - "Number of Entra provisioning expression functions (the ~25 figure in §4.2) — not confirmed on either fetched page"
+  - date: 2026-04-30
+    pass: "v0.2 → v1.0 (closure verification)"
+    sources:
+      - "Microsoft Learn — SAP SuccessFactors inbound provisioning tutorial (page updated 2026-02-26)"
+      - "Microsoft Learn — Reference for writing expressions for attribute mappings (page updated 2026-04-14)"
+    confirmed:
+      - "SAP SuccessFactors connector: uses SuccessFactors OData APIs — confirmed by tutorial language ('credentials of a SuccessFactors account with the right permissions to invoke the SuccessFactors OData APIs')"
+      - "SuccessFactors connector authentication: Basic authentication for OData API access"
+      - "Provisioning expression function library: 45 documented functions (Append, AppRoleAssignmentsComplex, BitAnd, CBool, CDate, Coalesce, ConvertToBase64, ConvertToUTF8Hex, Count, CStr, DateAdd, DateDiff, DateFromNum, DefaultDomain, FormatDateTime, Guid, IgnoreFlowIfNullOrEmpty, IIF, InStr, IsNull, IsNullorEmpty, IsPresent, IsString, Item, Join, Left, Len, Mid, NormalizeDiacritics, Not, Now, NumFromDate, PCase, RandomString, Redact, RemoveDuplicates, Replace, SelectUniqueValue, SingleAppRoleAssignment, Split, StripSpaces, Switch, ToLower, ToUpper, Word). The earlier 'Yes — 25+ functions' figure in §4.2 was an underestimate; the actual count is 45+."
+  - remaining_unverified:
+      - "Workday native polling default — Workday tutorial page does not state a specific minute value. SAP SuccessFactors page also doesn't quantify the polling interval. The '40 minutes' figure carried in body prose is treated as a planning estimate; final value confirmed at deployment time against the agency's specific tenant configuration. Does not block v1.0."
+      - "FedRAMP authorization status for Workday Government Cloud / Oracle Government Cloud / SAP NS2 (SuccessFactors Government) — Microsoft Learn does not authoritatively state these. Source of truth is FedRAMP Marketplace (https://marketplace.fedramp.gov/), which is a non-Microsoft authority. Confirmed at deployment time during agency authorization review. Does not block v1.0."
 ---
 
 # Spec 2 — D1.7: HR Source System Connector Comparison Matrix
 
-> **Verification status (v0.2):** Microsoft Learn-confirmed claims and
-> deferred items are itemized in the `verification_history` block in
-> the frontmatter above. Notable deferral: the "40-minute default
-> polling interval" attributed to native connectors throughout this
-> document is not stated as a specific minute value on the Microsoft
-> Learn Workday tutorial page; treat as a planning estimate pending
-> deployment-time tenant verification. The SCIM 2.0 / `bulkUpload` /
-> daily throttling claims for the API-driven path are confirmed.
+> **Verification status (v1.0 — Final, 2026-04-30):** Two verification
+> passes against Microsoft Learn (frontmatter `verification_history`
+> block). Architectural claims are confirmed against authoritative
+> Microsoft sources. Two items remain deferred to deployment-time
+> validation (Workday/SF native polling defaults; FedRAMP authorization
+> statuses) — neither blocks v1.0 because both are validated against
+> non-Microsoft sources (agency tenant config; FedRAMP Marketplace) at
+> agency authorization time. The §4.2 expression-function-count figure
+> was corrected from "25+" (v0.1/v0.2 estimate) to **45 documented
+> functions** (v1.0, sourced from Microsoft Learn 2026-04-14 page).
 
 ## 1. Purpose, Scope, and Reference
 
@@ -267,7 +277,7 @@ access scopes, Intune assignment, and Arc tagging downstream.
 
 | Capability | Workday | Oracle HCM | SAP SF | API-driven |
 |---|---|---|---|---|
-| Built-in provisioning-expression library | Yes (~25 fns) | n/a | Yes (~25 fns) | n/a (arbitrary code) |
+| Built-in provisioning-expression library | Yes — 45 functions | n/a | Yes — 45 functions | n/a (arbitrary code) |
 | Custom expression authoring | Yes (Entra builder) | n/a | Yes (Entra builder) | n/a (arbitrary code) |
 | OrgPath calculation complexity | High — nested Switch/Join in expression | Low — done in middleware | High — nested Switch/Join in expression | Low — done in middleware |
 | OrgPath logic testability | Low (expressions are not unit-testable) | High (normal code) | Low | High |
