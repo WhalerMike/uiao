@@ -13,11 +13,17 @@ their fleet is enrollable without ceremony.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from typer.testing import CliRunner
 
 from uiao.cli.ir import ir_app
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape codes from text."""
+    return re.sub(r"\x1b\[[0-9;]*[mK]", "", text)
 
 
 def _write_survey(path: Path, computers: list[dict]) -> Path:
@@ -36,7 +42,7 @@ def test_help_exits_zero_and_documents_format() -> None:
     result = runner.invoke(ir_app, ["intune-readiness", "--help"])
     assert result.exit_code == 0
     assert "intune-readiness" in result.output.lower() or "Intune" in result.output
-    assert "--format" in result.output
+    assert "--format" in _strip_ansi(result.output)
 
 
 def test_missing_file_exits_nonzero(tmp_path: Path) -> None:
