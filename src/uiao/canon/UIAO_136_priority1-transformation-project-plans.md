@@ -360,6 +360,62 @@ Track B is **premature** until D1.7 (Track A) is complete: the connector
 comparison evidence is what allows D3.1 to make defensible
 build-vs.-buy decisions per HR vendor scenario.
 
+### Track B status (2026-05-01)
+
+D3.1 landed at v1.0 on 2026-04-30 (PRs #272 / #274 / #276 / #277 with
+ADRs #270 / #271 / #275). The remaining 7 D3.x deliverables landed as
+v0.1 (Draft) on 2026-05-01 in a single batch, mirroring the Track C
+v0.1 pattern.
+
+| Deliverable | Path | Status |
+|---|---|---|
+| D3.1 — API-Driven Inbound Provisioning Architecture | [`specs/Spec2-D3.1-APIDrivenInboundProvisioningArchitecture.md`](./specs/Spec2-D3.1-APIDrivenInboundProvisioningArchitecture.md) | v1.0 Final (2026-04-30) |
+| D3.2 — Integration Middleware Specification | [`specs/Spec2-D3.2-IntegrationMiddlewareSpecification.md`](./specs/Spec2-D3.2-IntegrationMiddlewareSpecification.md) | v0.1 Draft |
+| D3.3 — Provisioning Agent Deployment Architecture | [`specs/Spec2-D3.3-ProvisioningAgentDeploymentArchitecture.md`](./specs/Spec2-D3.3-ProvisioningAgentDeploymentArchitecture.md) | v0.1 Draft |
+| D3.4 — Attribute Mapping Engine Configuration | [`specs/Spec2-D3.4-AttributeMappingEngineConfiguration.md`](./specs/Spec2-D3.4-AttributeMappingEngineConfiguration.md) | v0.1 Draft |
+| D3.5 — OrgPath Population Pipeline | [`specs/Spec2-D3.5-OrgPathPopulationPipeline.md`](./specs/Spec2-D3.5-OrgPathPopulationPipeline.md) | v0.1 Draft |
+| D3.6 — Writeback Specification | [`specs/Spec2-D3.6-WritebackSpecification.md`](./specs/Spec2-D3.6-WritebackSpecification.md) | v0.1 Draft |
+| D3.7 — Monitoring & Alerting Configuration | [`specs/Spec2-D3.7-MonitoringAlertingConfiguration.md`](./specs/Spec2-D3.7-MonitoringAlertingConfiguration.md) | v0.1 Draft |
+| D3.8 — Data Flow Security Assessment | [`specs/Spec2-D3.8-DataFlowSecurityAssessment.md`](./specs/Spec2-D3.8-DataFlowSecurityAssessment.md) | v0.1 Draft |
+
+**Cross-spec architecture:**
+
+- D3.2 is the load-bearing one — the canonical middleware contract.
+  ADR-050 names the chosen reference implementation; D3.2 specifies
+  the contract any conformant middleware MUST satisfy.
+- D3.3 binds the Microsoft-verified prerequisites (D3.1 v1.0
+  verification) to the UIAO deployment posture (gMSA naming,
+  OU-scope rules, AD permission model, decommission runbook).
+- D3.4 codifies the two-layer mapping (middleware-side per
+  D3.2 §3 + Entra-side per the synchronization-job export); the
+  two layers MUST agree.
+- D3.5 traces the OrgPath cascade end-to-end across stages 0–8,
+  binding latency planning values and drift-detection contracts.
+- D3.6 names two writeback directions (Entra → AD during
+  coexistence; optional Entra → HR) with sunset paths.
+- D3.7 binds D3.2/D3.3/D3.5/D3.6 telemetry into a 3-tier alert
+  model that integrates with the D2.6 escalation framework.
+- D3.8 is the FedRAMP Moderate security-posture statement; cites
+  every NIST 800-53 Rev 5 control implemented across the
+  substrate.
+
+**Outstanding for v0.2 (per per-spec verification blocks):**
+
+- D3.2: Azure Functions Python developer guide; Logic Apps Standard;
+  managed identities for Microsoft Graph.
+- D3.3: Microsoft Entra Cloud Sync prerequisites delta (2025-server
+  support); Cloud Sync agent installation; gMSA management.
+- D3.4: Provisioning attribute-mappings expression-language reference;
+  how attribute mappings work for app provisioning.
+- D3.5: Dynamic group rule-evaluation latency; AU membership-rule
+  semantics; Intune assignment evaluation timing.
+- D3.6: Cloud Sync attribute writeback; group writeback in Cloud
+  Sync.
+- D3.7: Microsoft Entra ID provisioning logs; Azure Monitor metric
+  naming conventions; Application Insights KQL reference.
+- D3.8: Microsoft Graph permissions reference; TLS 1.2+ enforcement;
+  Conditional Access for service principals.
+
 ## Track C — Spec 2 Phase 2 (JML Workflow Design)
 
 Phase 2 (D2.1–D2.8) — Joiner / Mover / Leaver / Rehire / Conversion /
