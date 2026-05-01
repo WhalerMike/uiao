@@ -2,7 +2,7 @@ name: Image generation pipeline
 
 # Image pipeline workflow with three trigger modes:
 #
-#   1. Manual generation  (workflow_dispatch) — run docs/generate_images.py
+#   1. Manual generation  (workflow_dispatch) — run scripts/generate_images.py
 #      for real. Optional opt-in commit-back of new PNGs + sidecars +
 #      registry updates via Git LFS.
 #
@@ -41,7 +41,7 @@ on:
       - "**/IMAGE-PROMPTS.md"
       - "docs/prompts.json"
       - "src/uiao/canon/image-registry.yaml"
-      - "docs/generate_images.py"
+      - "scripts/generate_images.py"
       - ".github/workflows/image-gen.yml"
 
   pull_request:
@@ -49,7 +49,7 @@ on:
       - "**/IMAGE-PROMPTS.md"
       - "docs/prompts.json"
       - "src/uiao/canon/image-registry.yaml"
-      - "docs/generate_images.py"
+      - "scripts/generate_images.py"
       - ".github/workflows/image-gen.yml"
 
 # Serialize real generation runs so two concurrent commit-back dispatches
@@ -81,7 +81,7 @@ jobs:
           pip install pyyaml
 
       - name: Scan + rebuild manifest
-        run: python docs/generate_images.py --dry-run --scan-only
+        run: python scripts/generate_images.py --dry-run --scan-only
 
       - name: Upload manifest as PR artifact
         if: github.event_name == 'pull_request'
@@ -155,9 +155,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            python docs/generate_images.py --dry-run
+            python scripts/generate_images.py --dry-run
           else
-            python docs/generate_images.py
+            python scripts/generate_images.py
           fi
 
       - name: Upload images as workflow artifact
@@ -199,7 +199,7 @@ jobs:
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           git commit \
             -m "chore(images): automated commit-back from image-gen run ${{ github.run_number }}" \
-            -m "Regenerated images, sidecars, and manifest by docs/generate_images.py. Registry used_by updates (if any) reflect canon-ref placeholders that appeared since the last run. No API keys or secrets in this commit." \
+            -m "Regenerated images, sidecars, and manifest by scripts/generate_images.py. Registry used_by updates (if any) reflect canon-ref placeholders that appeared since the last run. No API keys or secrets in this commit." \
             -m "$RUN_URL"
 
           # Push via LFS so binaries land in LFS storage.

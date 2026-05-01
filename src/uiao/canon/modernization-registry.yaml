@@ -903,3 +903,272 @@ adapters:
       src/uiao/governance/drift_engine.py. dry_run=True is the default
       everywhere; governance-review ops (auto_remediate=false) are
       never dispatched regardless of flag.
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slots allocated by ADR-049 (2026-04-30)
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: defender-for-cloud-apps-actions
+    name: Microsoft Defender for Cloud Apps — Actions (Reserved Slot)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization side of the Defender for Cloud Apps surface —
+      change-making actions: OAuth app governance (revoke / restrict
+      consent), session-control policy writes, Conditional Access App
+      Control bindings. Pairs with the `defender-for-cloud-apps`
+      conformance entry (read-only discovery / risk scoring side).
+      Classified per UIAO_003 §4.7 `integration` (resolved ODA-15).
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - oauth-app-governance
+      - session-control-policies
+      - conditional-access-app-control
+    outputs:
+      - mcas-policy-manifest.json
+      - mcas-action-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - AC-3
+      - AC-6
+      - AC-17
+      - AU-2
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+    notes: >-
+      Reserved slot per ADR-049. Activation requires a per-adapter ADR
+      modeled on ADR-035. The split across both registries
+      (defender-for-cloud-apps in conformance, this entry in
+      modernization) is the precedent set by ADR-049 §Decision 1 for
+      Microsoft surfaces that have both a read-only and a
+      change-making axis.
+
+  - id: azure-policy-arc
+    name: Azure Policy for Arc — Compliance and Remediation (Reserved Slot)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — assigns Azure Policy initiatives to Arc
+      machines, evaluates compliance, and dispatches remediation
+      tasks. Complements `entra-policy-targeting` (MOD_N), which
+      binds Intune profiles + Azure Policy assignments to the OrgTree
+      but explicitly leaves policy *bodies* and *remediation* out of
+      scope. This entry covers the body / remediation side. Classified
+      per UIAO_003 §4.7 `integration`.
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - arc-policy-assignments
+      - arc-policy-remediation-tasks
+      - arc-compliance-state
+    outputs:
+      - arc-policy-manifest.json
+      - arc-remediation-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-2
+      - CM-3
+      - CM-6
+      - CM-8
+      - CA-7
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+    notes: >-
+      Reserved slot per ADR-049. Activation requires a per-adapter ADR.
+      Pairs with `defender-for-servers` (conformance / telemetry)
+      which provides the compliance-state observation that this
+      adapter remediates.
+
+  - id: entra-id-governance
+    name: Microsoft Entra ID Governance (Reserved Slot)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — provisions and updates governance-plane
+      Entra constructs: Access Reviews, Entitlement Management
+      packages, Lifecycle Workflows, PIM role assignments,
+      Separation-of-Duties policies. Sibling of `entra-id` (which
+      handles user / group / SP / CA), `entra-dynamic-groups` (MOD_B),
+      `entra-admin-units` (MOD_D), `entra-device-orgpath` (MOD_C), and
+      `entra-policy-targeting` (MOD_N). Classified per UIAO_003 §4.7
+      `integration`.
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - access-reviews
+      - entitlement-management-packages
+      - lifecycle-workflows
+      - pim-role-assignments
+      - separation-of-duties-policies
+    outputs:
+      - governance-config-manifest.json
+      - governance-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - AC-2
+      - AC-2(3)
+      - AC-5
+      - AC-6
+      - AC-6(2)
+      - AU-2
+      - IA-4
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+    notes: >-
+      Reserved slot per ADR-049. Consumes the HR-driven provisioning
+      output described by UIAO_136 Spec 2 (D3.1 forthcoming). Required
+      Entra ID P2 licensing (per UIAO_136 Cross-Cutting X3).
+      Activation requires a per-adapter ADR.
+
+  - id: entra-workload-identity
+    name: Microsoft Entra Workload Identity (Reserved Slot)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — provisions workload identities, workload
+      identity federation trusts, app credential rotation, and
+      managed-identity assignments. The change-making surface that
+      retires legacy AD service accounts (UIAO_136 Spec 3 / ADR-004).
+      Classified per UIAO_003 §4.7 `integration`.
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - workload-identity-federation
+      - app-credentials
+      - managed-identity-assignments
+      - credential-hygiene
+    outputs:
+      - workload-identity-manifest.json
+      - credential-rotation-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+      - schedule
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - IA-5
+      - IA-5(1)
+      - IA-5(2)
+      - IA-9
+      - AC-2
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+      - ADR-004
+    notes: >-
+      Reserved slot per ADR-049. Anchored in ADR-004
+      (workload-identity-federation-default). Spec 3 of UIAO_136
+      enumerates the AD service account → workload identity
+      transformation deliverables (D2.1–D2.8). Activation requires a
+      per-adapter ADR.
+
+  - id: intune
+    name: Microsoft Intune — Configuration and Compliance Authoring (Reserved Slot)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Modernization adapter — authors and updates Intune device
+      configuration profiles, compliance policies, security baselines,
+      Autopilot deployment profiles, and app deployment policies.
+      Complements `entra-policy-targeting` (MOD_N), which binds
+      existing Intune profiles to OrgTree dynamic groups but leaves
+      policy bodies out of scope. This entry covers the body authoring
+      side. Pairs with the conformance-side `intune` reserved slot in
+      adapter-registry.yaml. Classified per UIAO_003 §4.7
+      `integration`.
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - device-configuration-profiles
+      - compliance-policies
+      - security-baselines
+      - autopilot-deployment-profiles
+      - app-deployment-policies
+    outputs:
+      - intune-config-manifest.json
+      - intune-deploy-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-2
+      - CM-3
+      - CM-6
+      - CM-7
+      - CM-8
+      - AC-3
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+    notes: >-
+      Reserved slot per ADR-049 — modernization-side allocation. The
+      conformance-side `intune` entry (adapter-registry.yaml) covers
+      read-only state observation; this entry covers change-making
+      authoring. Existing in-flight Python implementation lives at
+      src/uiao/adapters/intune_adapter.py (pre-dates this allocation;
+      activation will reconcile that code to the per-adapter ADR
+      contract).

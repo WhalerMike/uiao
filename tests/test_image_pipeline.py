@@ -1,4 +1,4 @@
-"""Unit tests for docs/generate_images.py — the unified image pipeline.
+"""Unit tests for scripts/generate_images.py — the unified image pipeline.
 
 Scoped to pure functions: hash utilities, placeholder parsing, fence
 detection, and registry-schema integrity. Network-calling paths (Gemini
@@ -18,14 +18,14 @@ import yaml
 from jsonschema import Draft202012Validator
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-GENERATOR_PATH = REPO_ROOT / "docs" / "generate_images.py"
+GENERATOR_PATH = REPO_ROOT / "scripts" / "generate_images.py"
 REGISTRY_PATH = REPO_ROOT / "src" / "uiao" / "canon" / "image-registry.yaml"
 SCHEMA_PATH = REPO_ROOT / "src" / "uiao" / "schemas" / "image-registry" / "image-registry.schema.json"
 
 
 @pytest.fixture(scope="module")
 def generator():
-    """Import docs/generate_images.py as a module for direct function access."""
+    """Import scripts/generate_images.py as a module for direct function access."""
     spec = importlib.util.spec_from_file_location("generate_images", GENERATOR_PATH)
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)

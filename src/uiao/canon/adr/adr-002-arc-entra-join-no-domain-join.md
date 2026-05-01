@@ -7,7 +7,7 @@ deciders: Michael Stratton
 updated: 2026-04-28
 next_review: 2026-11-01
 review_trigger: Microsoft Ignite 2026; any Azure Arc or Windows Server identity announcement
-impact: UIAO_IDT_002 Spec 1 (Computer Object Transformation — Servers)
+impact: UIAO_136 Spec 1 (Computer Object Transformation — Servers)
 supersedes: null
 superseded_by: null
 classification: Controlled
@@ -75,7 +75,6 @@ However, a critical architectural constraint exists that shapes the entire serve
 |---|---|---|
 | Microsoft Learn — Sign in to Arc-enabled server using Entra ID | https://learn.microsoft.com/en-us/entra/identity/devices/howto-vm-sign-in-azure-ad-windows#azure-arc | 2026-04-28 |
 | Blog: Join your Windows Server 2025 to Entra ID (Sinnathurai) | https://blog.sinnathurai.ch — detailed walkthrough with caveats | 2026-04-28 |
-| Mindcore Techblog — Azure Arc RDP with Entra ID Authentication | https://techblog.dvbmedia.net — extension deployment and limitations | 2026-04-28 |
 
 ## Review Triggers
 
@@ -91,6 +90,6 @@ This ADR must be re-evaluated when any of the following occur:
 
 ## Related Documents
 
-- UIAO_IDT_001 — Identity & Directory Transformation Inventory (Transformation #6: Azure Arc Telemetry Projection)
-- UIAO_IDT_002 — Spec 1: Computer Object Transformation (D2.8: Server Management Transition Architecture)
+- UIAO_135 — Identity & Directory Transformation Inventory (Transformation #6: Azure Arc Telemetry Projection)
+- UIAO_136 — Spec 1: Computer Object Transformation (D2.8: Server Management Transition Architecture)
 - ADR-001 — HAADJ Deprecated — Entra ID Join as Sole Device Join Target
