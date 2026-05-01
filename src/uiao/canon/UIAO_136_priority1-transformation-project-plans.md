@@ -377,36 +377,79 @@ verification → v1.0 closure).
 
 | Deliverable | Path | Sequence diagram | Status |
 |---|---|---|---|
-| D2.1 — Joiner | [`specs/Spec2-D2.1-JoinerWorkflowSpecification.md`](./specs/Spec2-D2.1-JoinerWorkflowSpecification.md) | yes | v0.1 Draft |
-| D2.2 — Mover | [`specs/Spec2-D2.2-MoverWorkflowSpecification.md`](./specs/Spec2-D2.2-MoverWorkflowSpecification.md) | yes | v0.1 Draft |
-| D2.3 — Leaver | [`specs/Spec2-D2.3-LeaverWorkflowSpecification.md`](./specs/Spec2-D2.3-LeaverWorkflowSpecification.md) | yes | v0.1 Draft |
-| D2.4 — Rehire | [`specs/Spec2-D2.4-RehireWorkflowSpecification.md`](./specs/Spec2-D2.4-RehireWorkflowSpecification.md) | (workflow only) | v0.1 Draft |
-| D2.5 — Conversion | [`specs/Spec2-D2.5-ConversionWorkflowSpecification.md`](./specs/Spec2-D2.5-ConversionWorkflowSpecification.md) | (workflow only) | v0.1 Draft |
-| D2.6 — Error Handling & Quarantine | [`specs/Spec2-D2.6-ErrorHandlingQuarantineSpecification.md`](./specs/Spec2-D2.6-ErrorHandlingQuarantineSpecification.md) | n/a (policy) | v0.1 Draft |
-| D2.7 — Pre-Hire Provisioning Window | [`specs/Spec2-D2.7-PreHireProvisioningWindowSpecification.md`](./specs/Spec2-D2.7-PreHireProvisioningWindowSpecification.md) | n/a (timing) | v0.1 Draft |
-| D2.8 — Provisioning Scope Filter Rules | [`specs/Spec2-D2.8-ProvisioningScopeFilterRules.md`](./specs/Spec2-D2.8-ProvisioningScopeFilterRules.md) | n/a (rules) | v0.1 Draft |
+| D2.1 — Joiner | [`specs/Spec2-D2.1-JoinerWorkflowSpecification.md`](./specs/Spec2-D2.1-JoinerWorkflowSpecification.md) | yes | v0.2 Draft |
+| D2.2 — Mover | [`specs/Spec2-D2.2-MoverWorkflowSpecification.md`](./specs/Spec2-D2.2-MoverWorkflowSpecification.md) | yes | v0.2 Draft |
+| D2.3 — Leaver | [`specs/Spec2-D2.3-LeaverWorkflowSpecification.md`](./specs/Spec2-D2.3-LeaverWorkflowSpecification.md) | yes | v0.2 Draft (corrected) |
+| D2.4 — Rehire | [`specs/Spec2-D2.4-RehireWorkflowSpecification.md`](./specs/Spec2-D2.4-RehireWorkflowSpecification.md) | (workflow only) | v0.2 Draft |
+| D2.5 — Conversion | [`specs/Spec2-D2.5-ConversionWorkflowSpecification.md`](./specs/Spec2-D2.5-ConversionWorkflowSpecification.md) | (workflow only) | v0.2 Draft |
+| D2.6 — Error Handling & Quarantine | [`specs/Spec2-D2.6-ErrorHandlingQuarantineSpecification.md`](./specs/Spec2-D2.6-ErrorHandlingQuarantineSpecification.md) | n/a (policy) | v0.2 Draft (sync) |
+| D2.7 — Pre-Hire Provisioning Window | [`specs/Spec2-D2.7-PreHireProvisioningWindowSpecification.md`](./specs/Spec2-D2.7-PreHireProvisioningWindowSpecification.md) | n/a (timing) | v0.2 Draft |
+| D2.8 — Provisioning Scope Filter Rules | [`specs/Spec2-D2.8-ProvisioningScopeFilterRules.md`](./specs/Spec2-D2.8-ProvisioningScopeFilterRules.md) | n/a (rules) | v0.2 Draft (corrected) |
 
 D2.6 is the canonical failure-routing sister; D2.1–D2.5 + D2.7 + D2.8
 all delegate failure handling there. D3.1 §6.3 (retry / quarantine
 manager) and D2.6 §3 (queue contract) MUST stay wire-compatible.
 
-Outstanding for v0.2 (verification pass against Microsoft Learn):
+### Track C v0.2 verification pass (2026-05-01)
 
-- D2.1: Lifecycle Workflows joiner-trigger semantics; Workday inbound
-  tutorial joiner attribute mapping.
-- D2.2: Lifecycle Workflows mover triggers; Access Reviews on attribute
-  change; group-based licensing region behavior.
-- D2.3: `revokeSignInSessions` + `refreshTokensValidFromDateTime`
-  semantics; CAE revocation; LCW leaver tasks; Exchange shared-mailbox
-  conversion; Purview litigation hold.
-- D2.4: Soft-deleted-user restoration; LCW reactivation tasks; Access
-  Reviews trigger semantics.
-- D2.5: Group-based licensing tier-change semantics; Access Reviews for
-  role-assignable groups.
-- D2.7: `accountEnabled` write semantics; group-based licensing
-  `accountEnabled` filter behavior.
-- D2.8: Synchronization-job scoping filter syntax; `bulkUpload`
-  payload-rejection semantics.
+All 8 Phase 2 specs verified against Microsoft Learn and bumped to
+v0.2 on 2026-05-01. The authoritative `verification_history` block in
+each spec's frontmatter is the load-bearing record; the summary:
+
+**Material corrections landed (architecturally significant):**
+
+- **D2.3 §4 step 3** — Microsoft Graph user property name
+  `refreshTokensValidFromDateTime` (incorrect) → `signInSessions
+  ValidFromDateTime`. v0.1 also prescribed step 3 as a writable
+  PATCH; the property is read-only per Microsoft Graph, so the
+  step is reframed as a verification read-back of step 2's
+  effect. Implementations following v0.1 would have failed with
+  read-only-property errors.
+- **D2.8 §5** — `IN(...) AND ... IN(...)` SQL-style filter syntax
+  (incorrect) → Microsoft's actual Clause/Group authoring shape
+  with `EQUALS`, `ENDS_WITH`, `&`, `!&` operators. Prose-only
+  correction (no implementation impact since v0.1 explicitly
+  flagged the syntax as illustrative).
+
+**Substantive confirmations (v0.1 architectural posture validated):**
+
+- **D2.1 / D2.2 / D2.4** — LCW joiner / mover trigger categories
+  exist; Attribute-changes trigger type substrate-aligns with
+  delta-detection model. LCW per-user license requirement
+  (Entra ID Governance / Entra Suite). LCW does NOT expose a
+  separate 'rehire' trigger — confirms D2.4's rehire-as-
+  derived-event posture.
+- **D2.3** — `revokeSignInSessions` invalidates BOTH refresh
+  tokens AND session cookies; permissions matrix
+  (`User.RevokeSessions.All` least-privileged) confirmed.
+- **D2.5** — Group-based-licensing change-on-group is the
+  canonical mechanism with "over time" propagation; validates
+  §5.1 transition-window framing.
+- **D2.7** — `user.accountEnabled -eq true` confirmed as the
+  canonical dynamic-group filter. Disabled users are NOT
+  auto-blocked from manual group assignments (relevant to
+  Posture-A vs. Posture-B license-cost analysis).
+- **D2.8** — Clause/Group AND/OR structure and operator set
+  (`EQUALS`, `ENDS_WITH`, `&`, `!&`) confirmed.
+
+**Items still unverified (deferred to future passes):**
+
+- Workday inbound provisioning attribute mapping table
+  (referenced but not extracted in this pass).
+- Access Reviews trigger event wire format / API endpoint.
+- LCW built-in joiner/leaver task names.
+- Microsoft Purview litigation-hold policy reference (D2.3 step 9).
+- Exchange shared-mailbox conversion API contract (D2.3 step 8).
+- CAE propagation latency for `revokeSignInSessions`.
+- Group-based-licensing tier-change SLA bound.
+- `bulkUpload` payload-rejection per-class HTTP response codes.
+
+The authoritative source surface for v0.2 was Microsoft Learn search
+results (the `learn.microsoft.com` HTML responded 403 to direct
+WebFetch during this pass; WebSearch surfaced the canonical
+excerpts). Items where direct page extraction was needed have been
+listed under each spec's `remaining_unverified` block for a
+follow-on pass.
 
 ## Sequencing summary
 
