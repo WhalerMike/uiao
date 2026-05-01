@@ -166,22 +166,28 @@ not landed in product
 
 ### Internal remedy (inside UIAO scope)
 
-1. **KSI Emission Surface table in Phase 2 canon
-   ([UIAO_022](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/governance-os.md)).**
+1. **KSI Emission Surface section in Phase 2
+   ([UIAO_022 — Phase 2 Governance OS Deployment](../customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd)).**
    Enumerate each substrate output (drift class, evidence-graph
    node type, provenance entry kind) against the KSI it
-   satisfies. Land as a new section in the Phase 2 chapter.
-2. **20x cATO Crosswalk in Phase 3 canon
-   ([UIAO_023](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/cato-alignment.md)).**
-   Replace generic cATO references with a 20x-specific evidence
-   path: KSI machine-readable payload → agency authorization
-   sponsor → continuous-validation cadence.
+   satisfies. Land as §13.3 KSI Emission Surface, sitting beside
+   §13.1 cATO Framework and §13.2 OSCAL Artifact Generation
+   Pipeline.
+2. **20x cATO Crosswalk in Phase 3
+   ([UIAO_023 — Phase 3 Optimization & cATO](../customer-documents/modernization/uiao-modernization-program/04-phase3-optimization-cato.qmd)).**
+   Add a 20x KSI crosswalk subsection under §4.1 cATO Framework
+   Alignment that maps each existing cATO-NNN row to the
+   corresponding KSI theme(s), retargeting the cATO acceptance
+   path against KSI machine-readable payload → agency
+   authorization sponsor → continuous-validation cadence.
 3. **Forward-looking note in Phase 0 strategic master plan
-   ([UIAO_020](https://github.com/WhalerMike/uiao/blob/main/docs/customer-documents/modernization/uiao-modernization-program/01-phase0-master-plan.qmd)).**
+   ([UIAO_020 — Phase 0 Modernization Master Plan](../customer-documents/modernization/uiao-modernization-program/01-phase0-master-plan.qmd)).**
    Goal #2 ("restore network and telemetry visibility by
    eliminating signal gaps that result from authorization
    boundary constraints") gains an explicit pointer to RFC-0005
-   and 20x as the federal mechanism the goal now operates against.
+   and 20x as the federal mechanism the goal now operates against,
+   appended to the §1 Executive Summary's "FedRAMP Boundary Gap"
+   paragraph.
 4. **Cross-reference from FINDING-001.** Add a §6 Related entry
    pointing to this finding so readers traversing FINDING-001's
    external-remedy path see RFC-0005 / 20x as the active
@@ -242,11 +248,16 @@ value; the internal remedy proceeds independently.
 - [ADR-030 §5.2](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-030-pre-uiao-terminology-reconciliation.md)
   — established the governance-findings artifact class this
   document instantiates.
-- [UIAO_022 — Governance OS specification](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/governance-os.md)
-  — Phase 2 substrate that gains the KSI Emission Surface table
-  in §4.1.
-- [UIAO_023 — Continuous ATO alignment](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/cato-alignment.md)
-  — Phase 3 substrate that gains the 20x cATO Crosswalk in §4.2.
+- [UIAO_022 — Phase 2 Governance OS Deployment](../customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd)
+  — Phase 2 chapter that gains the KSI Emission Surface section
+  (§13.3) per §4.1 above.
+- [UIAO_023 — Phase 3 Optimization & cATO](../customer-documents/modernization/uiao-modernization-program/04-phase3-optimization-cato.qmd)
+  — Phase 3 chapter that gains the 20x KSI Crosswalk subsection
+  under §4.1 per §4.2 above.
+- [UIAO_132 — FedRAMP RFC-0026 CA-7 Pathway Integration](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-rfc-0026-ca7-integration.md)
+  — sibling FedRAMP-RFC integration spec that establishes the
+  pattern this finding's external remedy may follow if a future
+  RFC-0005 / 20x integration spec is promoted to canon.
 - [Phase 0 — Modernization Master Plan](../customer-documents/modernization/uiao-modernization-program/01-phase0-master-plan.qmd)
   — strategic framing whose Goal #2 gains a pointer to this
   finding in §4.3.
