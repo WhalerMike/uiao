@@ -6,7 +6,8 @@ severity: P2
 created_at: "2026-04-27"
 updated_at: "2026-04-27"
 owner: "Michael Stratton"
-related_canon: ["UIAO_003", "UIAO_020", "UIAO_022", "UIAO_023", "UIAO_109", "UIAO_110", "UIAO_113", "UIAO_131"]
+related_canon: ["UIAO_003", "UIAO_020", "UIAO_022", "UIAO_023", "UIAO_109", "UIAO_110", "UIAO_113", "UIAO_131", "UIAO_132", "UIAO_133"]
+related_adrs: ["ADR-047"]
 supersedes: []
 superseded_by: []
 ---
@@ -192,10 +193,23 @@ not landed in product
    pointing to this finding so readers traversing FINDING-001's
    external-remedy path see RFC-0005 / 20x as the active
    framework movement.
+5. **Promote substrate-side decision and operational mechanics
+   to canon.** Land [ADR-047 — FedRAMP 20x Integration](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-047-fedramp-20x-integration.md)
+   (decision, status PROPOSED) and
+   [UIAO_133 — FedRAMP 20x Integration spec](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-20x-integration.md)
+   (operational mechanics: KSI emission tagging, MAS classification
+   rubric, KSI-staleness drift class, dual pathway posture).
+6. **Findings registry.** Land
+   [docs/findings/registry.yaml](./registry.yaml) enumerating
+   FINDING-001 and FINDING-002 with their cross-references, per
+   the README "Registry" section's "lands with the first concrete
+   finding" plan.
 
 These internal actions do not depend on Microsoft or FedRAMP
 landing further milestones; they reframe the substrate's existing
-emissions in the new federal vocabulary.
+emissions in the new federal vocabulary. Items 1–4 landed in
+commit `be8907b`. Items 5–6 land in the same series of commits as
+this finding update.
 
 ### External remedy (outside UIAO scope)
 
@@ -255,9 +269,19 @@ value; the internal remedy proceeds independently.
   — Phase 3 chapter that gains the 20x KSI Crosswalk subsection
   under §4.1 per §4.2 above.
 - [UIAO_132 — FedRAMP RFC-0026 CA-7 Pathway Integration](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-rfc-0026-ca7-integration.md)
-  — sibling FedRAMP-RFC integration spec that establishes the
-  pattern this finding's external remedy may follow if a future
-  RFC-0005 / 20x integration spec is promoted to canon.
+  — sibling FedRAMP-RFC integration spec; UIAO_133 (this
+  finding's §4 item 5) follows the same pattern.
+- [ADR-047 — FedRAMP 20x Integration decision](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-047-fedramp-20x-integration.md)
+  — substrate-level decision (status PROPOSED) committing UIAO to
+  KSI emission tagging, MAS classification, and KSI-staleness
+  drift class. Ratification gate: RFC-0010 publication + stable
+  Moderate KSI catalog + clean dry-run + steward signoff.
+- [UIAO_133 — FedRAMP 20x Integration spec](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/fedramp-20x-integration.md)
+  — operational companion to ADR-047. KSI emission tagging
+  contract (§2), MAS classification rubric (§3), KSI-staleness
+  drift class (§4), dual pathway posture (§5).
+- [docs/findings/registry.yaml](./registry.yaml) — cross-finding
+  index enumerating FINDING-001 and FINDING-002.
 - [Phase 0 — Modernization Master Plan](../customer-documents/modernization/uiao-modernization-program/01-phase0-master-plan.qmd)
   — strategic framing whose Goal #2 gains a pointer to this
   finding in §4.3.
