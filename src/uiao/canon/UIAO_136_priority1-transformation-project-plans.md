@@ -1,13 +1,13 @@
 ---
 document_id: UIAO_136
 title: "Priority 1 Transformation Specs — Project Plans and Deliverable Inventories"
-version: "0.1"
+version: "0.2"
 status: Draft
 classification: CANONICAL
 owner: Michael Stratton
 boundary: GCC-Moderate
 created_at: "2026-04-28"
-updated_at: "2026-04-28"
+updated_at: "2026-04-30"
 parent: UIAO_135
 ---
 
@@ -368,6 +368,45 @@ once D1.7 is in. Phase 2 is workflow specification work; Phase 3 is
 architecture work. They share the canonical attribute schema (D1.1) and
 attribute mapping matrices (D1.3, D1.4) as inputs but do not block
 each other.
+
+### Track C status (2026-04-30)
+
+All 8 Phase 2 deliverables landed as v0.1 (Draft) on 2026-04-30 in a
+single batch following the D3.1 pattern (initial draft → MS-Learn
+verification → v1.0 closure).
+
+| Deliverable | Path | Sequence diagram | Status |
+|---|---|---|---|
+| D2.1 — Joiner | [`specs/Spec2-D2.1-JoinerWorkflowSpecification.md`](./specs/Spec2-D2.1-JoinerWorkflowSpecification.md) | yes | v0.1 Draft |
+| D2.2 — Mover | [`specs/Spec2-D2.2-MoverWorkflowSpecification.md`](./specs/Spec2-D2.2-MoverWorkflowSpecification.md) | yes | v0.1 Draft |
+| D2.3 — Leaver | [`specs/Spec2-D2.3-LeaverWorkflowSpecification.md`](./specs/Spec2-D2.3-LeaverWorkflowSpecification.md) | yes | v0.1 Draft |
+| D2.4 — Rehire | [`specs/Spec2-D2.4-RehireWorkflowSpecification.md`](./specs/Spec2-D2.4-RehireWorkflowSpecification.md) | (workflow only) | v0.1 Draft |
+| D2.5 — Conversion | [`specs/Spec2-D2.5-ConversionWorkflowSpecification.md`](./specs/Spec2-D2.5-ConversionWorkflowSpecification.md) | (workflow only) | v0.1 Draft |
+| D2.6 — Error Handling & Quarantine | [`specs/Spec2-D2.6-ErrorHandlingQuarantineSpecification.md`](./specs/Spec2-D2.6-ErrorHandlingQuarantineSpecification.md) | n/a (policy) | v0.1 Draft |
+| D2.7 — Pre-Hire Provisioning Window | [`specs/Spec2-D2.7-PreHireProvisioningWindowSpecification.md`](./specs/Spec2-D2.7-PreHireProvisioningWindowSpecification.md) | n/a (timing) | v0.1 Draft |
+| D2.8 — Provisioning Scope Filter Rules | [`specs/Spec2-D2.8-ProvisioningScopeFilterRules.md`](./specs/Spec2-D2.8-ProvisioningScopeFilterRules.md) | n/a (rules) | v0.1 Draft |
+
+D2.6 is the canonical failure-routing sister; D2.1–D2.5 + D2.7 + D2.8
+all delegate failure handling there. D3.1 §6.3 (retry / quarantine
+manager) and D2.6 §3 (queue contract) MUST stay wire-compatible.
+
+Outstanding for v0.2 (verification pass against Microsoft Learn):
+
+- D2.1: Lifecycle Workflows joiner-trigger semantics; Workday inbound
+  tutorial joiner attribute mapping.
+- D2.2: Lifecycle Workflows mover triggers; Access Reviews on attribute
+  change; group-based licensing region behavior.
+- D2.3: `revokeSignInSessions` + `refreshTokensValidFromDateTime`
+  semantics; CAE revocation; LCW leaver tasks; Exchange shared-mailbox
+  conversion; Purview litigation hold.
+- D2.4: Soft-deleted-user restoration; LCW reactivation tasks; Access
+  Reviews trigger semantics.
+- D2.5: Group-based licensing tier-change semantics; Access Reviews for
+  role-assignable groups.
+- D2.7: `accountEnabled` write semantics; group-based licensing
+  `accountEnabled` filter behavior.
+- D2.8: Synchronization-job scoping filter syntax; `bulkUpload`
+  payload-rejection semantics.
 
 ## Sequencing summary
 
