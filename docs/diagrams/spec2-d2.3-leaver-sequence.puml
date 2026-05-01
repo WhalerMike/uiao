@@ -1,0 +1,59 @@
+@startuml spec2_d2_3_leaver_sequence
+!theme plain
+skinparam defaultFontName Segoe UI
+skinparam sequenceMessageAlign center
+
+actor "HR Source" as HR
+participant "Middleware\n(D3.1)" as MW
+participant "Microsoft Graph\nbulkUpload" as Graph
+participant "Microsoft Graph\n(non-bulk)" as DirectGraph
+participant "Entra ID\nProvisioning Service" as PS
+database "Microsoft Entra ID" as Entra
+participant "Exchange\nAutomation" as Exchange
+participant "Purview\n(Litigation Hold)" as Purview
+queue "UIAO Provenance\nStore" as Prov
+queue "HR Reassign\nQueue" as Reassign
+
+== Leaver detected ==
+HR -> MW : record (terminationDate ≤ today)
+MW -> MW : pre-conditions; concurrent Mover/Conversion dropped
+MW -> MW : freeze OrgPath, preserve audit attrs
+
+== Step 1: Disable ==
+MW -> Graph : PATCH active=false
+Graph -> PS : 202
+PS -> Entra : disable
+MW -> Prov : leaver.disable
+
+== Step 2-3: Session + token revoke ==
+MW -> DirectGraph : POST revokeSignInSessions
+MW -> DirectGraph : PATCH refreshTokensValidFromDateTime
+MW -> Prov : leaver.session-revoke + leaver.refresh-token-revoke
+
+== Step 4-5: Group + role removal ==
+MW -> DirectGraph : DELETE batch (assigned groups)
+MW -> DirectGraph : PIM revoke (eligible/active)
+MW -> Prov : leaver.group-removal (per group) + leaver.role-revoke
+
+== Step 6: Direct-report reassign ==
+MW -> Reassign : direct-reports-reassign
+MW -> Prov : leaver.direct-reports-reassign
+
+== Step 7-9: Mailbox + hold (out-of-band) ==
+MW -> Exchange : mailbox-archive
+MW -> Exchange : mailbox-convert (shared)
+MW -> Purview : litigation-hold (if flagged)
+MW -> Prov : leaver.mailbox-archive + leaver.mailbox-convert + leaver.litigation-hold
+
+== Step 10: Delegation cleanup ==
+MW -> DirectGraph : enumerate delegations; revoke per surface
+MW -> Prov : leaver.delegation-cleanup (per surface)
+
+== Step 11: Retention ==
+note right of Entra
+  Account stays active=false for retention window.
+  OrgPath frozen. HR-side late edits dropped.
+  Hard delete is NOT middleware's responsibility.
+end note
+
+@enduml
