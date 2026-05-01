@@ -4,11 +4,15 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ## [Unreleased]
 
-**Theme: Identity transformation canon — AD-to-Entra ID modernization framework.** Establishes the canonical inventory of identity/directory transformations, the Priority 1 deliverable plans, foundational ADRs, the ADR governance protocol, and the first batch of Phase 1 PowerShell discovery scripts that feed every downstream Spec 1/2/3 deliverable.
+## [0.6.0] — 2026-05-01
+
+**Theme: Identity transformation canon + FedRAMP 20x integration + hygiene burn-down.** Establishes the canonical inventory of identity/directory transformations, the Priority 1 deliverable plans, foundational ADRs, the ADR governance protocol, the first batch of Phase 1 PowerShell discovery scripts that feed every downstream Spec 1/2/3 deliverable, the FedRAMP 20x KSI integration spec (UIAO_133 + ADR-047), and a comprehensive cleanup of post-consolidation drift in CONTRIBUTING.md, root layout, AGENTS.md module topology, and pyproject.toml dependency hygiene.
+
+> **Note on version skip:** v0.5.0 was tagged on 2026-04-22 at commit `6d68314d` and the GitHub release was left as a draft. The substantial post-tag work (this release) made re-tagging that draft impractical, so v0.5.0 stays where it is and v0.6.0 ships from current main with a clean cut. External consumers will see v0.4.0 → v0.6.0.
 
 ### Added
 
-#### Canon
+#### Canon — Identity transformation framework
 
 - **UIAO_135** (`src/uiao/canon/UIAO_135_identity-directory-transformation-inventory.md`) — Identity & Directory Transformation Inventory. 17 transformations (X.500 → flat attribute model, identity-object, policy, governance), coverage assessment, 8-spec roadmap across three priorities.
 - **UIAO_136** (`src/uiao/canon/UIAO_136_priority1-transformation-project-plans.md`) — Priority 1 Transformation Specs project plans. 107 deliverables across 5 phases: Computer Object Transformation (Spec 1, 30), HR-Agnostic Provisioning Architecture (Spec 2, 33), Service Account → Workload Identity Mapping (Spec 3, 38), 6 cross-cutting deliverables.
@@ -37,9 +41,69 @@ Spec1-D1.7..D1.9, Spec2-D1.8, and Spec3-D1.1 remain pending (corrupted during th
 - **`document-registry.yaml`** registers UIAO_133, UIAO_134, UIAO_135, UIAO_136 (previously stamped on docs but missing from the registry).
 - **ADR-025** renumbered to ADR-047 to resolve the slot collision created when the four identity-transformation ADRs occupied the empty 001-004 slots.
 
+#### Canon — FedRAMP 20x integration
+
+- **UIAO_133** (`src/uiao/canon/specs/fedramp-20x-integration.md`) — FedRAMP 20x Integration spec. KSI emission tagging contract, MAS classification rubric, KSI-staleness drift class, dual-pathway posture (#278).
+- **ADR-047** (`src/uiao/canon/adr/adr-047-fedramp-20x-integration.md`) — substrate-level decision committing UIAO to KSI emission tagging, MAS classification, and KSI-staleness drift class. Status: PROPOSED. Ratification gate: RFC-0010 publication + stable Moderate KSI catalog + clean dry-run + steward signoff (#278).
+- **FINDING-002** (`docs/findings/fedramp-20x-moderate-pilot.md`) — governance finding documenting the FedRAMP 20x Moderate Pilot framework movement and external assessment, with internal remedy across Phase 0/2/3 (#278).
+
+#### Canon — Microsoft coverage doctrine + ingestion contract
+
+- **UIAO_009** (`src/uiao/canon/UIAO_009_Microsoft_Coverage_And_Gap_Doctrine_v1.0.md`) — Microsoft Coverage And Gap Doctrine (#273).
+- **UIAO_007** (`src/uiao/canon/UIAO_007_OrgTree_Modernization_AD_to_EntraID_v1.0.md`) — ingestion contract refresh (#273).
+- **D3.1** (`src/uiao/canon/specs/Spec2-D3.1-APIDrivenInboundProvisioningArchitecture.md`) — API-Driven Inbound Provisioning Architecture, Spec 2 Phase 3 (#272). Verification pass against Microsoft Learn (#274) and v0.2 → v1.0 closure verification (#276).
+- **D1.7** — verification pass against Microsoft Learn (#274) and v0.2 → v1.0 closure verification (#276).
+- **ADR-049** — accepted (#271, #270); +9 reserved adapter slots appended to `adapter-registry.yaml`.
+- **ADR-050** — D3.1 reference middleware implementation choices, accepted (#277, #275).
+
+#### Phase 2 architecture artifacts
+
+- **Per-domain Phase 2 diagram pack** — generator + index under `phase2/` driven by source model at `canon/phase2/UIAO_Phase2_TSA.psd1` via `tools/Write-Phase2TSA.ps1` (#268).
+
+### Changed — Documentation & topology
+
+- **CONTRIBUTING.md** — full rewrite. Old text described the pre-consolidation three-repo layout (`core/` / `impl/` / `docs/`), `pip install -e ./impl`, and the abandoned `[UIAO-CORE]` commit prefix — none of which had matched reality since ADR-028 + ADR-032. New text uses AGENTS.md as source-of-truth: post-ADR-032 `src/uiao/` topology, `pip install -e ".[dev]"`, the actual `<verb>: <module-or-area> — <description>` convention, and the six named invariants (I1–I6) verbatim from AGENTS.md (#282).
+- **CODE_OF_CONDUCT.md** — Contributor Covenant 2.1, fetched from EthicalSource canonical source. Closes the GitHub community-profile gap (#282).
+- **AGENTS.md module topology table** — added `tools/`, `diagrams/`, `phase2/`, `canon/` (root), and `deploy/` rows (previously undocumented despite holding real working content). Includes disambiguation that root `canon/` is **not** the canon authority — that lives at `src/uiao/canon/` per invariant I4 (#284).
+- **`phase2/README.md`** (new) — documents the Phase 2 generator pipeline (`canon/phase2/*.psd1` → `tools/Write-Phase2TSA.ps1` → `phase2/*.md`) and the `UIAO_P2_NNN` namespace distinct from canonical `UIAO_NNN` (#284).
+- **`canon/README.md`** (new) — disambiguation notice ("NOT canon authority"); rename to `models/` planned for follow-up (#284).
+- **CONTRIBUTING.md / CODE_OF_CONDUCT.md / AGENTS.md additions** substantively unblock issue #183 (external-contributor onramp).
+
+### Changed — Identity transformation canon
+
+- **UIAO_135 §3 and §4** corrected to acknowledge ADR coverage for previously-flagged gaps; §3.2 reduced to three items still genuinely lacking a transformation spec (AD security group rationalization, Kerberos/NTLM elimination, LDAP-dependent app migration) (#266).
+- **ADR-001..004 cross-references** standardized from provisional `UIAO_IDT_001/002` to canonical `UIAO_135/UIAO_136` per `document-registry.yaml` convention; UIAO_135 §5 refinement note marked resolved.
+- **`document-registry.yaml`** registers UIAO_133, UIAO_134, UIAO_135, UIAO_136 (previously stamped on docs but missing from the registry).
+- **ADR-025** renumbered to ADR-047 to resolve the slot collision created when the four identity-transformation ADRs occupied the empty 001-004 slots.
+
+### Changed — pyproject.toml hygiene
+
+- **`compliance-trestle-fedramp`** pinned to `>=0.2` (was unpinned — any breaking release would have landed silently) (#285).
+- **`[dependency-groups]` block removed** — was PEP 735 syntax for `uv sync --group dev`, but no workflow or Makefile invokes uv that way (CI uses `pip install -e ".[dev|api]"`). Eliminates phantom "which floor wins?" question that never actually applied (#285).
+- **`[tool.ruff] exclude = ["inbox"]` restored** — Copilot commit `7f0072bc` claimed this fix in its message but the change was lost during the squash-merge of PR #277. Restoring it unblocks any local commit that triggers the ruff hook (#285).
+- **`.pre-commit-config.yaml`** ruff pin bumped `v0.6.9 → v0.9.0` to recognize `UP045` in the codebase's ignore list (was failing every Python-touching local commit) (#286).
+
+### Changed — root + docs/ cleanup
+
+- **Removed dead root files**: `release-drafter.yml` (root copy was a duplicate workflow file that never executed — workflows only run from `.github/workflows/`), `README2.md` (stale draft), `dirtree.txt` (218 KB generated output), and 11 page-screenshot PNGs from `docs/` (~984 KB) (#283).
+- **Relocated misplaced PowerShell scripts**: `Test-UiaoCli.ps1` → `scripts/`, `docs/Split-UIAODocs.ps1` → `scripts/`. Per AGENTS.md, `docs/` is `.qmd`/`.md`/`.yml` only; `scripts/` holds workspace tooling (#283).
+- **Relocated `docs/generate_images.py` → `scripts/generate_images.py`** (1182 lines) with workflow path updates in lockstep across `.github/workflows/image-gen.yml` (7 sites), `tests/test_image_pipeline.py` (3 sites), `docs/academy/{image-pipeline,document-generation}-guide.qmd` (9 sites), `.gitignore`, and `.gitattributes` (#286).
+
+### Fixed
+
+- **Link Check** unblocked on main — repointed two stale `github.com/.../blob/main/...` URLs in `docs/findings/fedramp-20x-moderate-pilot.md` to existing Phase 2/3 Quarto chapters (the canon spec stubs they referenced were never written) (#281).
+
 ### Tooling
 
 - `.gitignore` excludes `dev/null/` — Windows-shell mishap when `git lfs install` is invoked with `/dev/null` as a path argument creates the directory in-tree instead of redirecting.
+
+### Repo metadata
+
+- GitHub repo description, homepage URL, and topics (`fedramp`, `oscal`, `compliance`, `cybersecurity`, `drift-detection`, `governance`, `nist`, `python`, `scuba`, `zero-trust`) configured. Closes the metadata gap flagged in this morning's repo assessment.
+
+### Issues & tracking
+
+- Filed [#279](https://github.com/WhalerMike/uiao/issues/279) — mypy override burn-down; 12 modules, 13 suppressed error codes, 5-phase plan.
 
 ---
 
