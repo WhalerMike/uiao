@@ -119,14 +119,14 @@ active rollout.
 ### What UIAO can newly express because of this framework movement
 
 1. **Native KSI emission language.** Phase 2 substrate output
-   ([UIAO_022](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/governance-os.md))
+   ([Phase 2 — Governance OS Deployment](../customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd))
    — drift findings, evidence-graph nodes, provenance entries —
    can now be expressed in the KSI vocabulary directly, rather
    than translated into bespoke SSP narrative. Strongest fit
    with KSI-MLA (monitoring/logging/audit) and KSI-CMT (change
    management / continuous monitoring) themes.
 2. **Continuous ATO crosswalk.** Phase 3 cATO alignment
-   ([UIAO_023](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/cato-alignment.md))
+   ([Phase 3 — Optimization & Continuous ATO Alignment](../customer-documents/modernization/uiao-modernization-program/04-phase3-optimization-cato.qmd))
    gains a federally-ratified evidence path. Generic cATO
    references in Phase 3 can be retargeted as
    "KSI machine-readable payload → agency authorization sponsor
