@@ -4,10 +4,10 @@ title: "Provisioning Scope Filter Rules"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 2
 status: Draft
-version: 0.1
+version: 0.2
 owner: Identity Architecture
 created: 2026-04-30
-updated: 2026-04-30
+updated: 2026-05-01
 canonical_adrs:
   - ADR-003
 canonical_docs:
@@ -24,13 +24,39 @@ sibling_deliverables:
   - Spec2-D2.7
 boundary: GCC-Moderate
 classification: Controlled
+verification_history:
+  - date: 2026-05-01
+    pass: "v0.1 → v0.2 (initial verification)"
+    source: "Microsoft Learn — Scoping users or groups to be provisioned with scoping filters in Microsoft Entra ID"
+    url: "https://learn.microsoft.com/en-us/entra/identity/app-provisioning/define-conditional-rules-for-provisioning-user-accounts"
+    confirmed:
+      - "Synchronization-job scoping filters consist of one or more clauses; clauses are nested inside Groups"
+      - "All clauses inside a Group must be satisfied (logical AND); when multiple Groups are defined, at least one Group must be satisfied (logical OR)"
+      - "A clause is defined by selecting a source Attribute Name, an Operator, and an Attribute Value"
+      - "Supported operators include: EQUALS (case-sensitive exact match), ENDS_WITH, & (substring contains), !& (substring does NOT contain) among others"
+    corrected:
+      - field: "Illustrative Entra-side filter expression in §5"
+        from: |
+          employmentStatus IN ("Active", "On Leave")
+            AND country IN ("US")
+            AND workerType IN ("Full-Time Employee", "Part-Time Employee", "Contractor", "Intern")
+        to:   "Microsoft does not use SQL-style IN(...) in scoping filter expressions. The canonical authoring surface is the Clauses-within-Groups builder using EQUALS / ENDS_WITH / & / !& operators. v0.2 reframes §5 to describe the Group/Clause structure rather than emit a literal expression string."
+        impact: "Prose-only correction; no implementation impact since §5's prior syntax was illustrative and explicitly flagged as 'final syntax pending v0.2 verification'."
+  - remaining_unverified:
+      - "bulkUpload payload-rejection semantics (specifically: schema-validator-side 4xx codes for fields outside the synchronization job's scope) — search results identify the troubleshooting page exists but did not enumerate response codes per rejection class"
 ---
 
 # Spec 2 — D2.8: Provisioning Scope Filter Rules
 
-> **Status (v0.1, 2026-04-30):** Initial draft. Awaiting verification
-> against Microsoft Learn synchronization-job scoping filter syntax
-> for §5 (Entra-side filter expression).
+> **Status (v0.2, 2026-05-01):** Initial verification pass against
+> Microsoft Learn scoping-filters reference complete. Confirmed
+> the Clause/Group structure (clauses within groups; AND inside,
+> OR across) and the supported operator set (`EQUALS`,
+> `ENDS_WITH`, `&`, `!&`). **Material correction:** v0.1's §5
+> illustrative expression used SQL-style `IN(...) AND ...`
+> syntax which is not Microsoft's authoring surface. v0.2
+> reframes §5 around the canonical Clause-builder operators.
+> See frontmatter `verification_history`.
 
 ## 1. Purpose, Scope, and Reference
 
@@ -205,19 +231,68 @@ be a **superset** of the middleware-side filter — it should not
 let through any record that the middleware would have filtered, but
 it MAY filter additional records (defense in depth).
 
-The canonical Entra-side filter expression (illustrative; final
-syntax pending v0.2 verification):
+### 5.1 Microsoft Entra scoping-filter authoring surface
 
-```
-employmentStatus IN ("Active", "On Leave")
-  AND country IN ("US")
-  AND workerType IN ("Full-Time Employee", "Part-Time Employee", "Contractor", "Intern")
-```
+Per Microsoft Learn (verified 2026-05-01), Entra ID provisioning
+scoping filters are authored as **Clauses nested inside Groups**:
 
-The middleware MUST emit ONLY records that pass this expression.
-If the middleware emits a record that the Entra filter would
-reject, the deployment is misconfigured — both filters MUST be
-treated as the same scope rule.
+- Each **Clause** has three fields: source attribute name, operator,
+  attribute value.
+- All clauses inside a **Group** are joined by logical **AND** —
+  every clause in the group MUST be satisfied for the group to
+  match.
+- When **multiple Groups** are defined, they are joined by logical
+  **OR** — at least ONE group MUST be satisfied for the rule to
+  apply.
+
+Supported operators include:
+
+| Operator | Semantics |
+|---|---|
+| `EQUALS` | Attribute matches the input value exactly (case-sensitive) |
+| `ENDS_WITH` | Attribute ends with the input value |
+| `&` (contains) | Attribute exists/contains the input value |
+| `!&` (not-contains) | Attribute does NOT contain the input value |
+
+Additional operators exist for present/not-present, regex, and
+greater-than/less-than comparisons; the authoritative list is on
+the Microsoft Learn scoping-filters page (linked in §12.4).
+
+### 5.2 The canonical UIAO scoping rule
+
+Expressed in the Microsoft Clause/Group authoring shape:
+
+**Group 1 — Active employees / on-leave employees, US, eligible
+worker types** (all clauses must match):
+
+| Source attribute | Operator | Value |
+|---|---|---|
+| `employmentStatus` | `EQUALS` | `Active` |
+| `country` | `EQUALS` | `US` |
+| `workerType` | `EQUALS` | `Full-Time Employee` |
+
+**Group 2** — same except `workerType EQUALS Part-Time Employee`.
+**Group 3** — `workerType EQUALS Contractor`.
+**Group 4** — `workerType EQUALS Intern`.
+**Group 5** — `employmentStatus EQUALS On Leave` + remaining
+matching predicates.
+
+(The group-multiplication is required because `EQUALS` is
+single-valued; SQL-style multi-value `IN (...)` is not part of
+Microsoft's authoring surface.)
+
+The middleware MUST emit ONLY records that pass this rule. If
+the middleware emits a record that the Entra filter would reject,
+the deployment is misconfigured — both filters MUST be treated as
+the same scope rule.
+
+The deployment's substrate-manifest binds the canonical UIAO
+scope-filter shape (the per-deployment value lists from §3.1) to
+the Entra-side group expansion above. The middleware's startup
+phase MUST validate that the per-deployment Entra synchronization
+job's scoping filter is the expansion of the middleware-side
+configuration; mismatches surface as `filter-version-skew`
+(§10).
 
 ## 6. Audit Posture
 
@@ -381,10 +456,17 @@ who approved it?"
 - Spec2-D1.6 — worker-type taxonomy.
 - Spec2-D1.8 — HR data-quality requirements (forthcoming).
 
-### 12.4 Microsoft documentation (verification pending in v0.2)
+### 12.4 Microsoft documentation
 
-- Microsoft Learn — Entra ID provisioning synchronization-job scoping filter syntax.
-- Microsoft Learn — `bulkUpload` payload-rejection semantics.
+**Verified at v0.2 (2026-05-01):**
+
+- Microsoft Learn — Scoping users or groups to be provisioned with scoping filters in Microsoft Entra ID:
+  `https://learn.microsoft.com/en-us/entra/identity/app-provisioning/define-conditional-rules-for-provisioning-user-accounts`
+  Confirmed: Clause/Group structure; `EQUALS`, `ENDS_WITH`, `&`, `!&` operators; per-clause source attribute + operator + value triple. §5 reframed accordingly.
+
+**Remaining unverified at v0.2:**
+
+- Microsoft Learn — `bulkUpload` payload-rejection semantics (per-rejection-class HTTP response codes). The troubleshooting page exists; this verification pass did not enumerate response-code/error-class mapping.
 
 ### 12.5 Compliance
 
