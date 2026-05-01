@@ -25,11 +25,11 @@
 #
 # Usage (run from any cwd inside the repo):
 #   export GEMINI_API_KEY="<your-key>"
-#   python docs/generate_images.py                 # harvest + legacy
-#   python docs/generate_images.py --dry-run       # report; no API calls
-#   python docs/generate_images.py --mode legacy   # prompts.json only
-#   python docs/generate_images.py --mode harvest  # scanner only
-#   python docs/generate_images.py --scan-only     # placeholders; no gen
+#   python scripts/generate_images.py                 # harvest + legacy
+#   python scripts/generate_images.py --dry-run       # report; no API calls
+#   python scripts/generate_images.py --mode legacy   # prompts.json only
+#   python scripts/generate_images.py --mode harvest  # scanner only
+#   python scripts/generate_images.py --scan-only     # placeholders; no gen
 #
 # Environment variables:
 #   GEMINI_API_KEY   Required unless --dry-run / --scan-only
@@ -48,7 +48,6 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 try:
     import yaml  # type: ignore
@@ -327,16 +326,16 @@ def save_registry(doc: dict, entries: list[RegistryEntry]) -> None:
 def write_sidecar(
     png_path: Path,
     *,
-    document: Optional[Path],
+    document: Path | None,
     placeholder_id: str,
-    canonical_id: Optional[str],
+    canonical_id: str | None,
     slug: str,
     prompt_sha256: str,
     generator: str,
     file_sha256: str,
     version: str = "1.0",
     aspect: str = "16:9",
-    used_by: Optional[list[str]] = None,
+    used_by: list[str] | None = None,
 ) -> Path:
     sidecar_path = png_path.with_suffix(png_path.suffix + ".json")
     payload = {
@@ -366,7 +365,7 @@ def write_sidecar(
 def embed_png_metadata(
     png_path: Path,
     *,
-    canonical_id: Optional[str],
+    canonical_id: str | None,
     prompt_sha256: str,
     generator: str,
     generated_at: str,
@@ -557,7 +556,7 @@ def _is_todo_body(body: str) -> bool:
     return True
 
 
-def _find_companion_document(image_prompts_path: Path) -> Optional[Path]:
+def _find_companion_document(image_prompts_path: Path) -> Path | None:
     """Given a path to an IMAGE-PROMPTS.md file, return the sibling
     document it annotates. Resolution order:
 
