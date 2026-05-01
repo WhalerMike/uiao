@@ -4,10 +4,10 @@ title: "Leaver Workflow Specification"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 2
 status: Draft
-version: 0.1
+version: 0.2
 owner: Identity Architecture
 created: 2026-04-30
-updated: 2026-04-30
+updated: 2026-05-01
 canonical_adrs:
   - ADR-003
   - ADR-035
@@ -27,14 +27,47 @@ sibling_deliverables:
   - Spec2-D2.7
 boundary: GCC-Moderate
 classification: Controlled
+verification_history:
+  - date: 2026-05-01
+    pass: "v0.1 → v0.2 (initial verification)"
+    source: "Microsoft Learn — user: revokeSignInSessions (Microsoft Graph v1.0); user resource type"
+    url: "https://learn.microsoft.com/en-us/graph/api/user-revokesigninsessions"
+    confirmed:
+      - "revokeSignInSessions endpoint: POST /users/{id}/revokeSignInSessions"
+      - "Method invalidates all refresh tokens issued to applications for the user AND session cookies in the user's browser"
+      - "Required permissions (least to most privileged): User.RevokeSessions.All, User.ReadWrite.All, Directory.ReadWrite.All"
+      - "Effect mechanism: resets the user's signInSessionsValidFromDateTime property to the current date-time"
+    corrected:
+      - field: "Microsoft Graph user property name (§4 step 3, §6, §11)"
+        from: "refreshTokensValidFromDateTime"
+        to:   "signInSessionsValidFromDateTime"
+        impact: "v0.1 named the wrong canonical property"
+      - field: "Step 3 of disable sequence (write semantics)"
+        from: "PATCH refreshTokensValidFromDateTime to current UTC timestamp on the user object (second invalidation path)"
+        to:   "Property is read-only per Microsoft Graph user resource. revokeSignInSessions is the ONLY way to update it. The step 3 framing in v0.1 (a separate writable invalidation path) was incorrect. Reframed in v0.2 as a verification step: read-back signInSessionsValidFromDateTime to confirm step 2 succeeded."
+        impact: "Architecturally significant. Implementations following v0.1 would have failed with read-only-property errors on the PATCH."
+  - remaining_unverified:
+      - "CAE (Continuous Access Evaluation) propagation latency for revokeSignInSessions — referenced in §4 step 2 prose; depends on tenant CA configuration + CAE-aware client behavior"
+      - "Exchange shared-mailbox conversion API contract — §4 step 8; out-of-band relative to D3.1 SCIM substrate"
+      - "Microsoft Purview litigation-hold policy reference — §4 step 9; deferred to messaging adapter family per ADR-049 reserved slots"
+      - "Lifecycle Workflows leaver-task names — confirmed LCW supports leaver category and per-user license requirement (Entra ID Governance / Entra Suite); specific built-in task names not exhaustively enumerated"
 ---
 
 # Spec 2 — D2.3: Leaver Workflow Specification
 
-> **Status (v0.1, 2026-04-30):** Initial draft. Awaiting verification
-> against Microsoft Learn `revokeSignInSessions` API, Exchange
-> shared-mailbox conversion, litigation-hold preservation semantics,
-> and Lifecycle Workflows leaver-task references.
+> **Status (v0.2, 2026-05-01):** Initial verification pass against
+> Microsoft Graph `revokeSignInSessions` reference + user resource
+> type complete. **Material correction:** v0.1 named the user
+> property `refreshTokensValidFromDateTime` (incorrect) and
+> prescribed it as the step-3 write target (read-only per Microsoft
+> Graph). v0.2 corrects the property name to
+> `signInSessionsValidFromDateTime` and reframes step 3 as a
+> verification read-back, since `revokeSignInSessions` (step 2) is
+> the only canonical update path. Implementations following v0.1
+> would have failed with read-only-property errors. Exchange
+> shared-mailbox conversion, Purview litigation hold, and CAE
+> propagation latency remain unverified — see frontmatter
+> `remaining_unverified` block.
 
 ## 1. Purpose, Scope, and Reference
 
@@ -142,26 +175,44 @@ This is the load-bearing security-posture change. From this point
 forward, the user cannot acquire NEW tokens (interactive sign-in
 fails). Existing tokens remain valid until step 3.
 
-### Step 2: Sign out all sessions
+### Step 2: Sign out all sessions (refresh tokens + session cookies)
 
 Microsoft Graph: `POST /users/{externalId}/revokeSignInSessions`.
-This invalidates refresh tokens but does NOT immediately invalidate
-access tokens already in flight (those expire on their own up to
-~1 hour later, per Entra defaults; CAE-aware applications observe
-the revocation event in real time).
+This invalidates **both** refresh tokens issued to applications
+**and** session cookies in the user's browser, by resetting the
+user's `signInSessionsValidFromDateTime` property to the current
+date-time. Access tokens already issued and in flight remain
+valid until their own expiry (typically ≤1 hour, per Entra
+defaults); CAE-aware applications observe the revocation event in
+near-real-time.
 
-The middleware MUST issue this call separately from the SCIM PATCH.
-It is not part of the bulkUpload contract — it is a discrete Graph
-call against the user resource.
+Required Microsoft Graph permissions on the middleware's service
+principal (least to most privileged): `User.RevokeSessions.All`,
+`User.ReadWrite.All`, or `Directory.ReadWrite.All`. UIAO's default
+posture is to grant `User.RevokeSessions.All` for the leaver
+workflow specifically and avoid the broader scopes.
 
-### Step 3: Revoke refresh tokens (redundant safety)
+The middleware MUST issue this call separately from the SCIM
+bulkUpload PATCH — it is a discrete Graph call against the user
+resource.
 
-The `revokeSignInSessions` call from step 2 covers refresh tokens
-under the Entra refresh-token policy. The middleware MUST also set
-`refreshTokensValidFromDateTime` to the current UTC timestamp on
-the user object, providing a second invalidation path that
-survives any future change to Microsoft's session-revocation
-semantics.
+### Step 3: Verify revocation took effect
+
+`signInSessionsValidFromDateTime` is **read-only** on the user
+resource per the Microsoft Graph schema; the only canonical write
+path is `revokeSignInSessions` (step 2). The middleware MUST NOT
+attempt to PATCH this property directly — Graph rejects the write
+with a read-only-property error.
+
+Step 3 is therefore a **verification step**, not a redundant
+write: the middleware reads the user's
+`signInSessionsValidFromDateTime` after step 2 and confirms it is
+within an acceptable window of the operation's start time
+(typically ≤30 seconds, accounting for replication latency). If
+the read-back value precedes the operation start time, step 2 did
+not take effect and step 1 (disable) is the only operative
+revocation — the middleware MUST escalate to security incident per
+§10 (`session-revoke-failed` failure_reason).
 
 ### Step 4: Remove from access-granting groups
 
@@ -322,7 +373,7 @@ auditable:
 |---|---|---|
 | 1 | `provisioning.user.leaver.disable` | AC-2, AU-2 |
 | 2 | `provisioning.user.leaver.session-revoke` | AC-12 (session termination) |
-| 3 | `provisioning.user.leaver.refresh-token-revoke` | AC-12 |
+| 3 | `provisioning.user.leaver.session-revoke-verified` | AC-12 |
 | 4 | `provisioning.user.leaver.group-removal` (one per group) | AC-2, AC-6 |
 | 5 | `provisioning.user.leaver.role-revoke` | AC-2, AC-6 |
 | 6 | `provisioning.user.leaver.direct-reports-reassign` | AC-2 |
@@ -369,10 +420,10 @@ Graph -> PS : 202
 PS -> Entra : disable
 MW -> Prov : leaver.disable
 
-== Step 2-3: Session + token revoke ==
-MW -> DirectGraph : POST revokeSignInSessions
-MW -> DirectGraph : PATCH refreshTokensValidFromDateTime
-MW -> Prov : leaver.session-revoke + leaver.refresh-token-revoke
+== Step 2-3: Session revoke + verification ==
+MW -> DirectGraph : POST revokeSignInSessions\n(invalidates refresh tokens + session cookies;\nresets read-only signInSessionsValidFromDateTime)
+MW -> DirectGraph : GET signInSessionsValidFromDateTime\n(verify; property is READ-ONLY)
+MW -> Prov : leaver.session-revoke + leaver.session-revoke-verified
 
 == Step 4-5: Group + role removal ==
 MW -> DirectGraph : DELETE batch (assigned groups)
@@ -458,7 +509,7 @@ before any new HR records process.
 ### 12.4 Microsoft documentation (verification pending in v0.2)
 
 - Microsoft Graph — `revokeSignInSessions` API.
-- Microsoft Graph — `refreshTokensValidFromDateTime` semantics.
+- Microsoft Graph — `signInSessionsValidFromDateTime` user-property semantics (read-only; verified 2026-05-01).
 - Microsoft Graph — group `$ref` membership DELETE batch.
 - Microsoft Learn — Continuous Access Evaluation (CAE) revocation.
 - Microsoft Learn — Lifecycle Workflows leaver tasks.

@@ -4,10 +4,23 @@ title: "Conversion Workflow Specification"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 2
 status: Draft
-version: 0.1
+version: 0.2
 owner: Identity Architecture
 created: 2026-04-30
-updated: 2026-04-30
+updated: 2026-05-01
+verification_history:
+  - date: 2026-05-01
+    pass: "v0.1 → v0.2 (initial verification)"
+    source: "Microsoft Learn — What is group-based licensing? + Scenarios, limitations, and known issues for groups that manage licensing"
+    url: "https://learn.microsoft.com/en-us/entra/fundamentals/concept-group-based-licensing"
+    confirmed:
+      - "When a license changes on a group, Microsoft Entra ID begins applying changes to all users — confirms §5.1 transition-window framing"
+      - "License changes propagate over time (the cascade is not instantaneous); confirms §5.1 'brief window where the user may have neither license or both licenses' analysis"
+      - "Disabled users are NOT auto-blocked from manual group assignments — relevant to §6.1 restricted-group enumeration"
+    no_corrections: true
+  - remaining_unverified:
+      - "Group-based licensing tier-change SLA — propagation is documented as 'over time' but not bounded with a numeric SLA in this verification pass"
+      - "Access Reviews for role-assignable groups — overview confirmed; mandatory-attestation wire format not extracted"
 canonical_adrs:
   - ADR-003
   - ADR-035
@@ -32,9 +45,14 @@ classification: Controlled
 
 # Spec 2 — D2.5: Conversion Workflow Specification
 
-> **Status (v0.1, 2026-04-30):** Initial draft. Awaiting verification
-> against Microsoft Learn group-based licensing tier-change semantics
-> and Lifecycle Workflows worker-type-change tasks if such exist.
+> **Status (v0.2, 2026-05-01):** Initial verification pass complete.
+> Confirmed: GBL change-on-group is the canonical mechanism;
+> propagation is "over time" (not instantaneous), which validates
+> §5.1's transition-window framing; disabled users are not
+> auto-blocked from manual assignments (relevant to §6.1
+> restricted-group enumeration). No corrections. Numeric tier-
+> change SLA bound and Access-Reviews-for-role-assignable-groups
+> wire format remain unverified.
 
 ## 1. Purpose, Scope, and Reference
 

@@ -4,10 +4,22 @@ title: "Pre-Hire Provisioning Window Specification"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 2
 status: Draft
-version: 0.1
+version: 0.2
 owner: Identity Architecture
 created: 2026-04-30
-updated: 2026-04-30
+updated: 2026-05-01
+verification_history:
+  - date: 2026-05-01
+    pass: "v0.1 → v0.2 (initial verification)"
+    source: "Microsoft Learn — What is group-based licensing? + Manage rules for dynamic membership groups + Microsoft Q&A on disabled-user filter behavior"
+    url: "https://learn.microsoft.com/en-us/entra/fundamentals/concept-group-based-licensing"
+    confirmed:
+      - "user.accountEnabled -eq true is the canonical dynamic-group filter expression to exclude disabled users (confirmed; cited in §4.2 of this spec)"
+      - "Microsoft Entra ID does NOT auto-block disabled users from manual group assignments — confirms §4 'pre-hire account is active=false but license can still be assigned via group-based licensing' (Posture A) requires the dynamic group rule to filter on accountEnabled if the tenant chooses Posture B"
+      - "Microsoft Graph user resource accountEnabled property is writable — confirms §5 day-of-hire transition via PATCH active=true is canonical"
+    no_corrections: true
+  - remaining_unverified:
+      - "Group-based licensing accountEnabled-filter propagation latency between accountEnabled flip and license re-eval — relevant to Posture B's day-of-hire-license window"
 canonical_adrs:
   - ADR-003
 canonical_docs:
@@ -28,9 +40,15 @@ classification: Controlled
 
 # Spec 2 — D2.7: Pre-Hire Provisioning Window Specification
 
-> **Status (v0.1, 2026-04-30):** Initial draft. Awaiting verification
-> against agency hiring SLAs and Microsoft Learn `accountEnabled`
-> timing semantics.
+> **Status (v0.2, 2026-05-01):** Initial verification pass complete.
+> Confirmed: `user.accountEnabled -eq true` is the canonical
+> dynamic-group filter expression (cited in §4.2); disabled users
+> are NOT auto-blocked from manual group assignments (the
+> Posture-B day-of-hire-license posture therefore depends on the
+> tenant's dynamic-group rules filtering on `accountEnabled`);
+> `accountEnabled` is a writable property on the Microsoft Graph
+> user resource. No corrections. GBL propagation-latency between
+> `accountEnabled` flip and license re-eval remains unverified.
 
 ## 1. Purpose, Scope, and Reference
 

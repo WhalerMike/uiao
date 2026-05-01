@@ -4,10 +4,22 @@ title: "Rehire Workflow Specification"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 2
 status: Draft
-version: 0.1
+version: 0.2
 owner: Identity Architecture
 created: 2026-04-30
-updated: 2026-04-30
+updated: 2026-05-01
+verification_history:
+  - date: 2026-05-01
+    pass: "v0.1 → v0.2 (initial verification)"
+    source: "Microsoft Learn — What are lifecycle workflows? + user resource type"
+    url: "https://learn.microsoft.com/en-us/entra/id-governance/what-are-lifecycle-workflows"
+    confirmed:
+      - "LCW joiner / mover / leaver are the three canonical trigger categories. Rehire is operationally either a Joiner (Path B) or a reactivation event (Path A) — no separate 'rehire' LCW trigger type was found, consistent with D2.4's posture that rehire is a derived event"
+      - "Microsoft Graph user resource exposes accountEnabled (writable); confirms Path A reactivation via PATCH active=true is canonically supported"
+    no_corrections: true
+  - remaining_unverified:
+      - "Microsoft Graph soft-deleted-user restoration semantics — relevant only when leaver retention has expired AND LCW has hard-deleted the record; outside D2.4's primary scope (Path B treats this as new joiner)"
+      - "Access Reviews trigger event wire format — same gap as D2.2"
 canonical_adrs:
   - ADR-003
   - ADR-035
@@ -30,9 +42,12 @@ classification: Controlled
 
 # Spec 2 — D2.4: Rehire Workflow Specification
 
-> **Status (v0.1, 2026-04-30):** Initial draft. Awaiting verification
-> against Microsoft Graph user-restoration semantics for soft-deleted
-> users and Lifecycle Workflows reactivation reference.
+> **Status (v0.2, 2026-05-01):** Initial verification pass complete.
+> Confirmed: LCW does not expose a separate 'rehire' trigger type
+> (consistent with §1's posture that rehire is a derived event);
+> Path A reactivation via `accountEnabled` PATCH is canonically
+> supported by the Microsoft Graph user resource. No corrections.
+> Soft-deleted-user restoration (post-retention) remains unverified.
 
 ## 1. Purpose, Scope, and Reference
 

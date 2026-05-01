@@ -4,10 +4,23 @@ title: "Joiner Workflow Specification"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 2
 status: Draft
-version: 0.1
+version: 0.2
 owner: Identity Architecture
 created: 2026-04-30
-updated: 2026-04-30
+updated: 2026-05-01
+verification_history:
+  - date: 2026-05-01
+    pass: "v0.1 → v0.2 (initial verification)"
+    source: "Microsoft Learn — What are lifecycle workflows? + Lifecycle workflow execution conditions"
+    url: "https://learn.microsoft.com/en-us/entra/id-governance/what-are-lifecycle-workflows"
+    confirmed:
+      - "LCW supports a Joiner trigger category for when an individual enters the scope of needing access (e.g., a new employee)"
+      - "LCW execution-condition trigger types include: Time-based attribute, Attribute changes, Group membership change, Sign-in activity, On-demand-only — confirms D2.1 §2 trigger model is consistent with the LCW substrate"
+      - "License requirement: every user account a workflow runs against must hold a Microsoft Entra ID Governance (or Entra Suite) license. UIAO posture: D2.1 substrate works without LCW; LCW is a downstream consumer of the substrate, not a prerequisite"
+    no_corrections: true
+  - remaining_unverified:
+      - "Workday inbound provisioning tutorial joiner attribute mapping reference — page exists; per-attribute mapping table not extracted in this pass"
+      - "LCW built-in joiner-task names — substrate-level confirmation only; per-task-name verification deferred"
 canonical_adrs:
   - ADR-003
   - ADR-035
@@ -35,11 +48,15 @@ classification: Controlled
 
 # Spec 2 — D2.1: Joiner Workflow Specification
 
-> **Status (v0.1, 2026-04-30):** Initial draft. Structurally complete;
-> awaiting Microsoft Learn verification pass against the Lifecycle
-> Workflows reference and the Workday inbound provisioning tutorial
-> for joiner-specific timing semantics. v0.2 will close those
-> items.
+> **Status (v0.2, 2026-05-01):** Initial verification pass against
+> Microsoft Learn LCW reference complete. Confirmed: LCW joiner
+> trigger category exists; LCW execution-condition trigger types
+> include attribute-change + sign-in-activity + on-demand;
+> per-user Entra ID Governance license is a prerequisite to RUN
+> LCW workflows but NOT to operate the D2.1 substrate (LCW is a
+> consumer, not a prerequisite). No corrections required.
+> Workday inbound tutorial attribute mapping table remains
+> unverified — see frontmatter `remaining_unverified`.
 
 ## 1. Purpose, Scope, and Reference
 

@@ -4,10 +4,24 @@ title: "Mover Workflow Specification"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 2
 status: Draft
-version: 0.1
+version: 0.2
 owner: Identity Architecture
 created: 2026-04-30
-updated: 2026-04-30
+updated: 2026-05-01
+verification_history:
+  - date: 2026-05-01
+    pass: "v0.1 → v0.2 (initial verification)"
+    source: "Microsoft Learn — Lifecycle Workflows + Lifecycle workflow execution conditions + Group-based licensing concepts + Group-based licensing scenarios/limitations"
+    url: "https://learn.microsoft.com/en-us/entra/id-governance/what-are-lifecycle-workflows"
+    confirmed:
+      - "LCW supports a Mover trigger category for individuals moving between boundaries within an organization"
+      - "LCW Attribute-changes trigger type confirms D2.2 §2 delta-detection model is substrate-aligned"
+      - "Group-based licensing recomputes on attribute change; consistent with D2.2 §6 OrgPath cascade"
+      - "Disabled users are NOT automatically blocked from manual group assignments — static-assigned-group postures MUST explicitly filter on accountEnabled where license-cost protection is required"
+    no_corrections: true
+  - remaining_unverified:
+      - "Access Reviews trigger semantics on attribute change — overview pages reachable; precise trigger-event wire format / API endpoint not extracted"
+      - "Group-based licensing region-restricted SKU re-evaluation latency on usageLocation change"
 canonical_adrs:
   - ADR-003
   - ADR-035
@@ -37,9 +51,15 @@ classification: Controlled
 
 # Spec 2 — D2.2: Mover Workflow Specification
 
-> **Status (v0.1, 2026-04-30):** Initial draft. Awaiting verification
-> against Microsoft Learn Lifecycle Workflows mover-trigger semantics
-> and Access Reviews on-attribute-change documentation.
+> **Status (v0.2, 2026-05-01):** Initial verification pass complete.
+> Confirmed: LCW Mover trigger category exists; Attribute-changes
+> trigger type substrate-aligns with §2 delta detection; GBL
+> recomputes on attribute change. **Posture clarification:**
+> disabled users are NOT auto-blocked from manual group
+> assignments, so static-assigned-group postures MUST explicitly
+> filter on `accountEnabled` for license-cost protection. No
+> body corrections. Access Reviews trigger wire format remains
+> unverified.
 
 ## 1. Purpose, Scope, and Reference
 

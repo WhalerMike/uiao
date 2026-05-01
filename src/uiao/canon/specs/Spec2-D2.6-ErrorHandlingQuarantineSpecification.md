@@ -4,10 +4,17 @@ title: "Error Handling and Quarantine Specification"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 2
 status: Draft
-version: 0.1
+version: 0.2
 owner: Identity Architecture
 created: 2026-04-30
-updated: 2026-04-30
+updated: 2026-05-01
+verification_history:
+  - date: 2026-05-01
+    pass: "v0.1 → v0.2 (synchronization-only)"
+    note: "D2.6 is a policy / taxonomy specification; it does NOT make Microsoft-side architectural claims that require Microsoft Learn verification. The version bump to 0.2 keeps D2.6 in lockstep with sister D2.x specs whose substantive verification this pass landed (D2.3 corrections; D2.8 corrections; D2.1/D2.2/D2.4/D2.5/D2.7 confirmations)."
+    no_corrections: true
+    confirmed:
+      - "D2.6 §2.5 'partial-disable' / 'session-revoke-failed' failure_reasons remain wire-compatible with D2.3 §10 — verified by reviewing the renamed D2.3 step-3 provenance event 'leaver.session-revoke-verified' and confirming D2.6 escalation tier 2 + 15-min SLA continue to apply to that class of failure"
 canonical_adrs:
   - ADR-003
   - ADR-035
@@ -36,10 +43,15 @@ classification: Controlled
 
 # Spec 2 — D2.6: Error Handling and Quarantine Specification
 
-> **Status (v0.1, 2026-04-30):** Initial draft. The quarantine queue
-> mechanics referenced here MUST be wire-compatible with the
-> middleware's retry / quarantine manager from D3.1 §6.3 — the §6
-> shape in this document is the canonical expansion of that hook.
+> **Status (v0.2, 2026-05-01):** Synchronization-only version bump.
+> D2.6 is a policy / taxonomy spec and makes no Microsoft-side
+> architectural claims that need Microsoft Learn verification.
+> The bump keeps D2.6 in lockstep with sister D2.x specs whose
+> substantive v0.2 verification this pass landed. Wire-compatibility
+> with D2.3 §10 confirmed after the D2.3 step-3 rename
+> (`leaver.refresh-token-revoke` → `leaver.session-revoke-verified`):
+> the `partial-disable` / `session-revoke-failed` failure_reasons +
+> tier-2 + 15-min SLA continue to apply unchanged.
 
 ## 1. Purpose, Scope, and Reference
 
