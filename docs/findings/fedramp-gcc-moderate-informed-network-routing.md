@@ -166,6 +166,15 @@ substrate response and proceeds independently.
 
 ## 6. Related
 
+- [FINDING-002 — FedRAMP 20x Moderate Pilot active](./fedramp-20x-moderate-pilot.md)
+  — names the FedRAMP framework movement (RFC-0005 Minimum
+  Assessment Scope Standard + 20x Key Security Indicator taxonomy
+  + Moderate Pilot active) that the §4 external-remedy item
+  *"FedRAMP authorization package for GCC-Moderate permits the
+  specific telemetry signals INR requires"* now operates against.
+  Framework movement does not yet ship the INR feature into
+  GCC-Moderate; this finding stays Awaiting-External-Remediation
+  independently of FINDING-002.
 - [ADR-030 §5.2](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-030-pre-uiao-terminology-reconciliation.md)
   — established the governance-findings artifact class that this
   document instantiates.

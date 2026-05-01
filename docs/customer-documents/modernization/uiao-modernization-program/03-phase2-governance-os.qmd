@@ -1679,6 +1679,72 @@ evidence generation pipeline.
 ![Figure 3.9 — Continuous ATO Evidence Generation Pipeline](images/03-09-continuous-ato-evidence-generation-pipeline.png){fig-alt="Continuous ATO Evidence Generation Pipeline" width="720"}
 
 
+## 13.3 KSI Emission Surface (FedRAMP 20x)
+
+FedRAMP 20x Phase Two introduces Key Security Indicators (KSIs) — a
+small set of machine-readable, continuously-validated evidence themes
+that sit above NIST SP 800-53 controls. At the Moderate baseline,
+approximately sixty-one KSIs are organized into themes including
+**KSI-CNA** (cloud-native architecture), **KSI-SVC** (service
+configuration / encryption / integrity), **KSI-IAM** (identity, access,
+zero trust), **KSI-MLA** (monitoring, logging, audit), **KSI-CMT**
+(change management / continuous monitoring), and **KSI-AFR**
+(FedRAMP-specific reporting). KSIs are the federal-side artifact format
+for continuous-validation evidence; they consume the same governance
+data §13.1 and §13.2 already produce, expressed in a vocabulary the
+FedRAMP authorization framework accepts natively rather than via SSP
+narrative translation.
+
+The Governance OS substrate emits evidence that maps directly onto the
+KSI catalog. Table TBL-P2-011 records that mapping. Each row identifies
+a substrate output, the KSI theme it satisfies, the OSCAL artifact
+type from §13.2 that carries the evidence, and the cadence at which the
+KSI evidence is continuously validated. The mapping is not exhaustive
+of the full Moderate KSI catalog — it covers only the KSIs whose
+evidence is materially produced by the Governance OS substrate; KSIs
+satisfied entirely by underlying CSP attestations or by agency-side
+controls outside the substrate are out of scope for this table.
+
+**TBL-P2-011: KSI Emission Surface (Substrate Output → KSI Theme)**
+
+| Substrate output | KSI theme | OSCAL artifact (per §13.2) | Continuous-validation cadence |
+|---|---|---|---|
+| Canonical baseline (published, version-incremented) | KSI-CNA, KSI-SVC | component-definition | On baseline publish |
+| DriftEvent (real-time and scheduled drift detection) | KSI-MLA, KSI-CMT | assessment-results / finding | Real-time for critical; daily for routine |
+| RemediationWorkflow (open / in-progress / resolved) | KSI-CMT, KSI-AFR | poam-item | On workflow state transition |
+| ProvenanceRecord (every governance action) | KSI-MLA, KSI-AFR | assessment-plan / activity / evidence | Continuous (append-only) |
+| Conditional Access policy evaluation evidence | KSI-IAM | assessment-results / observation | Continuous |
+| Sentinel ingestion completeness and freshness signals | KSI-MLA | assessment-results / observation | Continuous |
+| Cross-plane telemetry adapter health (per §12.2) | KSI-MLA, KSI-CMT | assessment-results / observation | Continuous |
+| SCuBA baseline conformance reports (per §8) | KSI-CNA, KSI-SVC, KSI-IAM | component-definition + assessment-results | On ScubaGear cycle |
+| OSCAL package aggregate (component-definition, assessment-results, POA&M, assessment-plan) | KSI-AFR | system-security-plan (aggregated) | Quarterly cATO package; on-demand for ad-hoc requests |
+
+The KSI emission surface is **not** a re-engineering of the substrate;
+it is a relabeling of evidence already produced by §§13.1–13.2 against
+the federal-side vocabulary FedRAMP 20x publishes. Substrate teams do
+not author KSI payloads directly. Instead, the substrate's existing
+OSCAL artifacts are tagged with the KSI theme they satisfy at
+generation time, and the FedRAMP-side authorization tooling consumes
+them through the RFC-0024 machine-readable package interchange already
+adopted in §13.1.
+
+Two operational consequences flow from this mapping. First, the
+quality bar for substrate evidence freshness rises: KSI continuous
+validation is meaningless if the underlying telemetry is stale, so the
+Sentinel ingestion completeness and adapter health observations
+(rows 6–7) become first-class substrate health signals, not just
+internal operations metrics. Second, KSI mapping confirmation becomes
+an explicit substrate health check: a KSI claimed but not backed by a
+freshly-generated OSCAL artifact is itself a drift class that the
+DriftEvent engine should surface.
+
+The framework movement that introduces KSIs — the FedRAMP 20x Phase
+Two Moderate Pilot active as of November 2025, with public Moderate
+path arriving Q2 2026 — is recorded operationally in
+[FINDING-002 — FedRAMP 20x Moderate Pilot active](../../findings/fedramp-20x-moderate-pilot.md).
+The KSI Emission Surface in this section is the Phase 2 substrate
+response to that finding's §4 internal-remedy item.
+
 # 14. Operational Governance Model
 
 ## 14.1 Roles and Responsibilities
