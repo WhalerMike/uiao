@@ -38,12 +38,12 @@ Each stage is **idempotent**, **inspectable**, and **replayable**. Images persis
 
 | Script | Purpose | When you run it |
 |---|---|---|
-| [`docs/generate_images.py`](https://github.com/WhalerMike/uiao/blob/main/docs/generate_images.py) | Unified image pipeline: harvests `[IMAGE-NN:]` / `[IMAGE-REF:]` placeholders across the repo, calls Gemini Nano Banana, writes PNGs + prompt-hash sidecars, resolves canonical `[IMAGE-REF:]` lookups against `src/uiao/canon/image-registry.yaml`. Also supports the legacy `docs/prompts.json` flat-list input. | You've added or edited prompts and want the PNGs regenerated. Cache-gated by `prompt_sha256`; unchanged prompts are skipped. |
+| [`scripts/generate_images.py`](https://github.com/WhalerMike/uiao/blob/main/scripts/generate_images.py) | Unified image pipeline: harvests `[IMAGE-NN:]` / `[IMAGE-REF:]` placeholders across the repo, calls Gemini Nano Banana, writes PNGs + prompt-hash sidecars, resolves canonical `[IMAGE-REF:]` lookups against `src/uiao/canon/image-registry.yaml`. Also supports the legacy `docs/prompts.json` flat-list input. | You've added or edited prompts and want the PNGs regenerated. Cache-gated by `prompt_sha256`; unchanged prompts are skipped. |
 | [`docs/publications/01-executive-brief/build.py`](https://github.com/WhalerMike/uiao/blob/main/docs/publications/01-executive-brief/build.py) | Full publication assembler: generates images (optional), inserts into DOCX, produces all output formats | You're cutting a publication release |
 
 ::: {.callout-note title="Legacy scripts retired"}
 The older `docs/generate_scuba_images.py` and `scripts/generate_scuba_images.py`
-generators were retired once `docs/generate_images.py` absorbed per-doc
+generators were retired once `scripts/generate_images.py` absorbed per-doc
 IMAGE-PROMPTS.md walking and canonical registry resolution. If you see
 references to them in old session logs or ADRs, treat those as historical.
 :::
@@ -176,13 +176,13 @@ export GEMINI_API_KEY="<your-key>"
 
 # Walk every IMAGE-PROMPTS.md + prompts.json in the repo, regenerate only
 # what changed (cache-gated on prompt_sha256).
-python docs/generate_images.py
+python scripts/generate_images.py
 
 # Dry-run (prints prompts, no API calls, no cost)
-python docs/generate_images.py --dry-run
+python scripts/generate_images.py --dry-run
 
 # Scan only (report placeholders; no generation)
-python docs/generate_images.py --scan-only
+python scripts/generate_images.py --scan-only
 ```
 
 Output:
@@ -310,7 +310,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: pip install google-genai Pillow
-      - run: python docs/generate_images.py
+      - run: python scripts/generate_images.py
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - uses: actions/upload-artifact@v4
