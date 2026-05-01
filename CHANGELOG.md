@@ -4,11 +4,9 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ## [Unreleased]
 
-## [0.6.0] — 2026-05-01
+## [0.4.1] — 2026-05-01
 
 **Theme: Identity transformation canon + FedRAMP 20x integration + hygiene burn-down.** Establishes the canonical inventory of identity/directory transformations, the Priority 1 deliverable plans, foundational ADRs, the ADR governance protocol, the first batch of Phase 1 PowerShell discovery scripts that feed every downstream Spec 1/2/3 deliverable, the FedRAMP 20x KSI integration spec (UIAO_133 + ADR-047), and a comprehensive cleanup of post-consolidation drift in CONTRIBUTING.md, root layout, AGENTS.md module topology, and pyproject.toml dependency hygiene.
-
-> **Note on version skip:** v0.5.0 was tagged on 2026-04-22 at commit `6d68314d` and the GitHub release was left as a draft. The substantial post-tag work (this release) made re-tagging that draft impractical, so v0.5.0 stays where it is and v0.6.0 ships from current main with a clean cut. External consumers will see v0.4.0 → v0.6.0.
 
 ### Added
 
