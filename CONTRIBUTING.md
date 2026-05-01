@@ -1,161 +1,204 @@
 # Contributing to UIAO
 
-Thanks for your interest in UIAO — the Unified Identity-Addressing-Overlay Architecture substrate. This is a FedRAMP-Moderate-oriented governance OS with strong canon invariants, so contribution flow is more disciplined than a typical OSS project. The payoff: every change is traceable, schema-validated, and drift-scanned before it lands.
+Thanks for your interest in UIAO — the Unified Identity-Addressing-Overlay
+Architecture substrate. This is a FedRAMP-Moderate-oriented governance OS
+with strong canon invariants, so contribution flow is more disciplined
+than a typical OSS project. The payoff: every change is traceable,
+schema-validated, and drift-scanned before it lands.
+
+[AGENTS.md](AGENTS.md) is the agent-facing companion to this document
+and the source of truth for module topology, invariants, and the CI
+stack — when this guide and AGENTS.md diverge, AGENTS.md wins.
 
 ## Quick start
+
+### macOS / Linux
 
 ```bash
 git clone https://github.com/WhalerMike/uiao.git
 cd uiao
-export UIAO_WORKSPACE_ROOT="$(pwd)"   # canon-consumer rule: never hardcode paths
-
-# Install the Python package (for impl/)
-pip install -e ./impl
-
-# Verify the substrate is intact
+export UIAO_WORKSPACE_ROOT="$(pwd)"
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
 uiao substrate walk
 ```
 
-If `uiao substrate walk` prints `PASS — no drift detected`, the repo is healthy.
+### Windows (PowerShell)
 
-## Repository map
+```powershell
+git clone https://github.com/WhalerMike/uiao.git
+cd uiao
+$env:UIAO_WORKSPACE_ROOT = (Get-Location).Path
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+uiao substrate walk
+```
 
-| Module | Role | Authority |
-|---|---|---|
-| [`core/`](core/) | Canonical governance | Authoritative — schemas, canon docs, control library, ADRs |
-| [`docs/`](docs/) | Derived documentation | Consumer — every doc traces provenance to `core/` canon |
-| [`impl/`](impl/) | Python implementation | Consumer — CLI, generators, adapters, tests |
+If `uiao substrate walk` exits 0, the substrate is intact.
 
-Declared machine-readably in [`src/uiao/canon/substrate-manifest.yaml`](src/uiao/canon/substrate-manifest.yaml) (UIAO_200).
+## Repository layout
 
-## The three things you need to know before contributing
+UIAO is a **single installable Python package** rooted at
+[`src/uiao/`](src/uiao/). The pre-consolidation `core/`, `impl/`, and
+`gos/` directories no longer exist (ADR-028 + ADR-032).
 
-1. **Canon lives in `core/` only.** If your change creates a new canonical governance document (SSOT, document registry, adapter registry, spec, ADR, crosswalk), it belongs under `src/uiao/canon/`. Anything in `docs/` or `impl/` must **consume** canon, not define it. Enforced by the canon-consumer rule in [`impl/.claude/rules/canon-consumer.md`](impl/.claude/rules/canon-consumer.md).
+| Path | Role |
+|---|---|
+| [`src/uiao/`](src/uiao/) | The `uiao` distribution — runtime code, canon, schemas, rules, KSI, adapters, CLI |
+| [`src/uiao/canon/`](src/uiao/canon/) | Canon authority (SSOT) — governance docs, ADRs, registries, control library, specs |
+| [`src/uiao/schemas/`](src/uiao/schemas/) | JSON Schemas (drafts 07 and 2020-12) for canon, registries, manifests |
+| [`src/uiao/adapters/`](src/uiao/adapters/) | Modernization and conformance adapters |
+| [`src/uiao/cli/`](src/uiao/cli/) | Typer CLI — entry point `uiao.cli.app:app` |
+| [`tests/`](tests/) | Pytest suite — unit, integration, adapter conformance, substrate drift |
+| [`docs/`](docs/) | Quarto documentation source (`.qmd`, `.md`, `.yml`) |
+| [`scripts/`](scripts/) | Workspace tooling — bootstrap, validators, generators |
+| [`inbox/`](inbox/) | Draft staging — not canon. Promote to `src/uiao/canon/` or `docs/` when ready |
+| [`.github/workflows/`](.github/workflows/) | CI — see [AGENTS.md § CI stack](AGENTS.md#ci-stack-all-live-at-repo-root-githubworkflows) |
 
-2. **Every canon document has a schema-validated frontmatter.** If you add a `.md` under `src/uiao/canon/` with a `document_id:`, it must match `^UIAO_\d{3}$` and be allocated in [`src/uiao/canon/document-registry.yaml`](src/uiao/canon/document-registry.yaml). CI enforces this via `.github/workflows/metadata-validator.yml`.
+Module topology is also declared machine-readably in
+[`src/uiao/canon/substrate-manifest.yaml`](src/uiao/canon/substrate-manifest.yaml)
+(UIAO_200).
+
+## The three things you need to know
+
+1. **Canon lives under `src/uiao/canon/` only.** Anything in `docs/`,
+   adapters, generators, or CLI must *consume* canon, not define it.
+   Code reads canon via `importlib.resources`, never by reaching outside
+   its package (invariant I4).
+
+2. **Every canon document has schema-validated frontmatter.** If you add
+   a `.md` under `src/uiao/canon/` with a `document_id:`, it must match
+   `^UIAO_\d{3}$` and be allocated in
+   [`src/uiao/canon/document-registry.yaml`](src/uiao/canon/document-registry.yaml).
+   CI enforces this via `metadata-validator.yml`.
 
 3. **Adapters are a dual-axis taxonomy.** Every adapter declares:
    - `class:` — `modernization` (change-making) or `conformance` (read-only)
    - `mission-class:` — `identity | telemetry | policy | enforcement | integration`
 
-   See [`src/uiao/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md`](src/uiao/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md).
+   See
+   [UIAO_003](src/uiao/canon/UIAO_003_Adapter_Segmentation_Overview_v1.0.md).
 
 ## Commit convention
 
-Commits touching a specific module use a module-prefixed convention:
+Per [AGENTS.md § Commit convention](AGENTS.md#commit-convention):
 
 ```
-[UIAO-CORE] <verb>: <artifact-id> — <short description>
-[UIAO-DOCS] <verb>: <artifact-id> — <short description>
-[UIAO-IMPL] <verb>: <module> — <short description>
+<verb>: <module-or-area> — <description>
 ```
 
-Verbs:
-- `CORE`: CREATE, UPDATE, FIX, ENFORCE, MIGRATE, DEPRECATE
-- `DOCS`: CREATE, UPDATE, FIX, PUBLISH, MIGRATE, DEPRECATE
-- `IMPL`: CREATE, UPDATE, FIX, REFACTOR, TEST, DEPRECATE
+Common verbs: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`.
+Use a scope prefix (e.g. `feat(adapters/bluecat):`) when it clarifies
+blast radius. Cross-cutting commits are permitted — describe the
+cross-cut in the body.
 
-Cross-module commits (touching more than one top-level module) should be split into per-module commits when possible. If they must stay combined, use the `[UIAO]` generic prefix and describe the cross-cutting nature in the body.
+Examples:
+- `feat: adapters — add Defender-for-Endpoint posture adapter`
+- `fix(canon): correct schema ref in modernization-registry.yaml`
+- `docs(findings): land FINDING-002 internal remedy`
 
 ## Development workflow
 
 ### 1. Branch
 
-Create a branch off `main` with a descriptive kebab-case name:
-
 ```bash
 git checkout -b fix/cyberark-adapter-timeout
-git checkout -b feat/mainframe-adapter-activation
 ```
 
-### 2. Make the change
+### 2. Run checks locally
 
-Follow the scope rules above. If your change touches canon, read the relevant ADR history under [`src/uiao/canon/adr/`](src/uiao/canon/adr/) to understand prior decisions.
-
-### 3. Run the checks locally
+The repo Makefile wraps the most common gates:
 
 ```bash
-# Python lint + format
-cd impl
-ruff check .
-ruff format --check .
-
-# Tests
-pytest -q                           # full suite (~10s)
-pytest tests/test_my_change.py -q   # targeted
-
-# Substrate walker
-cd ..
-uiao substrate walk
-
-# Canon frontmatter validation (for canon edits)
-python -c "
-import json, pathlib, re, sys, yaml
-from jsonschema import Draft202012Validator
-schema = json.load(open('src/uiao/schemas/metadata-schema.json'))
-v = Draft202012Validator(schema)
-fm = re.compile(r'^---\s*\n(.*?)\n---\s*(?:\n|$)', re.DOTALL)
-for md in pathlib.Path('core/canon').rglob('*.md'):
-    m = fm.match(md.read_text())
-    if not m: continue
-    data = yaml.safe_load(m.group(1)) or {}
-    if 'document_id' not in data: continue
-    errs = list(v.iter_errors(data))
-    if errs:
-        print(f'{md}: {errs[0].message}')
-        sys.exit(1)
-print('canon frontmatter: PASS')
-"
+make lint            # ruff check + format check
+make test            # pytest -q
+make walk            # uiao substrate walk
+make check-links     # lychee on docs
 ```
 
-### 4. Open the PR
+Run full pytest plus mypy directly when you need them:
 
-Use the appropriate PR template (auto-applied from `.github/PULL_REQUEST_TEMPLATE.md`). Fill in:
-- **Summary** — what and why (the "why" matters more)
-- **Diff stat** — helps reviewers size the change
-- **Test plan** — what you ran and what passed
+```bash
+pytest -q
+mypy src/uiao
+```
 
-### 5. CI
+### 3. Open the PR
 
-Seven workflows run on every PR. See [`.github/workflows/`](.github/workflows/). All are blocking except `link-check.yml` (soft-fail baseline).
+Use the PR template
+([`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md)).
+Fill in **Summary**, **Diff stat**, **Test plan**.
+
+### 4. CI
+
+Ten workflows run on every PR — see
+[AGENTS.md § CI stack](AGENTS.md#ci-stack-all-live-at-repo-root-githubworkflows)
+for the full list. All are blocking except `link-check.yml` (soft-fail).
+
+## Repository invariants
+
+The monorepo structure and packaging rules are load-bearing. Six named
+technical invariants (I1–I6) are defined in
+[AGENTS.md § Repository Invariants](AGENTS.md#repository-invariants):
+
+- **I1** — `src/uiao/` is a single regular package
+- **I2** — Single CLI entry point: `uiao.cli.app:app`
+- **I3** — One `pyproject.toml`, one editable install
+- **I4** — Canon is a read-only dependency of code
+- **I5** — Canon changes flow through the canon-change process
+- **I6** — CLI commands live under sub-apps (ADR-046)
+
+Any PR that modifies an invariant requires an ADR.
 
 ## Canon-change protocol
 
 If your PR modifies `src/uiao/canon/**`:
 
-1. **Search for the UIAO_NNN ID first.** Every new canon document needs a unique ID allocated in [`src/uiao/canon/document-registry.yaml`](src/uiao/canon/document-registry.yaml) before it's authored. Reserved ranges:
+1. **Allocate a `UIAO_NNN` ID first** in
+   [`src/uiao/canon/document-registry.yaml`](src/uiao/canon/document-registry.yaml).
+   Reserved ranges:
    - `UIAO_001` — Single Source of Truth
    - `UIAO_002–UIAO_099` — Top-level canon documents
    - `UIAO_100–UIAO_199` — `canon/specs/` subsystem specifications
    - `UIAO_200–UIAO_299` — Operational / runtime artifacts
    - `UIAO_900–UIAO_999` — Test fixtures
 
-2. **ADRs are append-only.** If you supersede a prior ADR, add a SUPERSEDED callout at the section top and cite the newer ADR in both directions. Don't delete or rewrite decision text.
+2. **ADRs are append-only.** If you supersede a prior ADR, add a
+   SUPERSEDED callout at the section top and cite the newer ADR in
+   both directions. Don't delete or rewrite decision text.
 
-3. **Schema-validate before pushing.** CI will do this, but local validation catches issues early.
+3. **Schema-validate before pushing.** CI will catch issues, but local
+   validation catches them earlier.
 
 ## Activating a reserved adapter
 
-Promoting an adapter from `status: reserved, phase: phase-planning` → `active/phase-1` requires:
+Promoting an adapter from `status: reserved, phase: phase-planning` to
+`active/phase-1` requires:
 
-- [ ] Implementation exists at `impl/src/uiao/impl/adapters/<adapter_id>_adapter.py`
-- [ ] Adapter inherits `DatabaseAdapterBase` and implements all 7 canonical domain methods
-- [ ] At least one test in `impl/tests/test_<adapter_id>_*.py` passes
-- [ ] Registry entry in `src/uiao/canon/modernization-registry.yaml` or `src/uiao/canon/adapter-registry.yaml` has all required fields per `src/uiao/schemas/adapter-registry/adapter-registry.schema.json`
-- [ ] `status:` and `phase:` fields flipped in the registry entry as the final commit
+- [ ] Implementation at `src/uiao/adapters/<adapter_id>_adapter.py`
+- [ ] Adapter inherits `DatabaseAdapterBase` and implements all 7
+      canonical domain methods
+- [ ] At least one test in `tests/adapters/test_<adapter_id>_*.py` passes
+- [ ] Registry entry in
+      [`src/uiao/canon/modernization-registry.yaml`](src/uiao/canon/modernization-registry.yaml)
+      or
+      [`src/uiao/canon/adapter-registry.yaml`](src/uiao/canon/adapter-registry.yaml)
+      has all required fields per
+      [`src/uiao/schemas/adapter-registry/adapter-registry.schema.json`](src/uiao/schemas/adapter-registry/adapter-registry.schema.json)
+- [ ] `status:` and `phase:` fields flipped in the registry entry as
+      the final commit
 
-See [PR #32 (cyberark activation)](https://github.com/WhalerMike/uiao/pull/32) as a canonical example.
+## Code of conduct
+
+This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md).
+Be respectful, constructive, and collaborative.
 
 ## License
 
-Apache 2.0. By contributing, you agree your contributions are licensed under the same terms.
+Apache 2.0. By contributing, you agree your contributions are licensed
+under the same terms.
 
 ## Questions
 
 Open a GitHub discussion or an issue using the appropriate template.
-
-## Repository invariants
-
-The monorepo structure and packaging rules are load-bearing. Read [AGENTS.md § Repository Invariants](AGENTS.md#repository-invariants) before making changes. Any PR that modifies an invariant requires an ADR referencing ADR-031 (PEP 420 namespace package) or ADR-028 (monorepo consolidation), as applicable.
-
-The five named technical invariants (I1 through I5) protect: the PEP 420 namespace, the CLI lazy-import bridge, the install order, Canon's read-only status for code, and the canon-change governance process.
