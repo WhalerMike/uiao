@@ -340,6 +340,50 @@ hand-curated canonical comparison matrix is the deliverable referenced
 in §SPEC 2 → Phase 1 → D1.7. Closes the connector-evaluation evidence
 gap that ADR-003 currently cites only by reference.
 
+### Track A — Phase 1 follow-on canonical specs (2026-05-01)
+
+After D1.7 landed (2026-04-30), the remaining Phase 1 deliverables
+that lacked canonical Markdown form (only PowerShell discovery
+scaffolders existed) were authored as v0.1:
+
+| Deliverable | Path | Status |
+|---|---|---|
+| D1.1 — Canonical HR Attribute Schema | [`specs/Spec2-D1.1-CanonicalHRAttributeSchema.md`](./specs/Spec2-D1.1-CanonicalHRAttributeSchema.md) | v0.1 Draft |
+| D1.2 — HR-to-OrgPath Translation Rules | _(PowerShell scaffolder only; canonical .md forthcoming)_ | (deferred) |
+| D1.3 — HR → Entra ID Attribute Mapping Matrix | [`specs/Spec2-D1.3-HRToEntraAttributeMappingMatrix.md`](./specs/Spec2-D1.3-HRToEntraAttributeMappingMatrix.md) | v0.1 Draft |
+| D1.4 — HR → On-Prem AD Attribute Mapping Matrix | [`specs/Spec2-D1.4-HRToADAttributeMappingMatrix.md`](./specs/Spec2-D1.4-HRToADAttributeMappingMatrix.md) | v0.1 Draft |
+| D1.5 — UPN Generation Rules | _(PowerShell scaffolder only; canonical .md forthcoming)_ | (deferred) |
+| D1.6 — Worker Type Classification Taxonomy | [`specs/Spec2-D1.6-WorkerTypeClassificationTaxonomy.md`](./specs/Spec2-D1.6-WorkerTypeClassificationTaxonomy.md) | v0.1 Draft |
+| D1.7 — HR Source System Connector Comparison | [`tools/discovery/Spec2-D1.7-HRConnectorComparisonMatrix.md`](../../../tools/discovery/Spec2-D1.7-HRConnectorComparisonMatrix.md) | v1.0 Final (2026-04-30) |
+| D1.8 — HR Data Quality Requirements | [`specs/Spec2-D1.8-HRDataQualityRequirements.md`](./specs/Spec2-D1.8-HRDataQualityRequirements.md) | v0.1 Draft |
+
+These five new v0.1 specs close the "forthcoming" cross-references
+across the Phase 2 (D2.x) and Phase 3 (D3.x) specs. Specifically:
+
+- **D1.1** is the input contract for D3.2 §2 (middleware input
+  acceptance) and the basis for D2.6's `schema-validation`
+  failure_reason.
+- **D1.3 / D1.4** are the canonical mapping reference matrices
+  consumed by D3.2 §3.5 (SCIM payload builder), D3.4 §3 + §4
+  (attribute mapping engine, both layers), and D3.3 + D3.6 (AD
+  writeback).
+- **D1.6** is the authoritative source for the seven canonical
+  worker types (FTE / PTE / Contractor / Intern / Vendor /
+  Volunteer / External Collaborator) and their per-type
+  provisioning profiles. Referenced by D1.1 §5, D1.3 §3.9,
+  D2.5 §2 (conversion matrix), D2.7 §2.2 (per-type pre-hire
+  windows), and D2.8 §3 (scope filter).
+- **D1.8** specifies the minimum-viable HR data-quality bar UIAO
+  enforces (required fields, validation rules, referential
+  integrity, freshness SLA). Drives D2.6 quarantine routing and
+  D3.7 alerting on quality-rate elevation.
+
+D1.2 (HR-to-OrgPath translation rules) and D1.5 (UPN generation
+rules) remain as PowerShell scaffolders only; their canonical
+Markdown specs are deferred. ADR-035 (OrgPath codebook binding)
+covers the load-bearing parts of D1.2; D1.5's contract is
+sketched in D3.2 §3.3 (UPN generator sub-component).
+
 ## Track B — Spec 2 Phase 3 (Technical Architecture, D3.1–D3.8)
 
 Once D1.7 is in, the next strategic track is **Spec 2 Phase 3** — the
