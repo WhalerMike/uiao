@@ -551,6 +551,52 @@ excerpts). Items where direct page extraction was needed have been
 listed under each spec's `remaining_unverified` block for a
 follow-on pass.
 
+## Track D — Spec 2 Phase 4 + 5 (Testing/Validation + Cutover/Steady-State)
+
+After Track B + Track C land, Spec 2 Phase 4 + Phase 5 close out
+the deliverable inventory. Phase 4 is testing-and-validation
+substrate (D4.1–D4.5); Phase 5 is cutover-and-steady-state
+operational specs (D5.1–D5.6). All eleven deliverables landed as
+v0.1 (Draft) on 2026-05-02.
+
+### Track D status (2026-05-02)
+
+| Phase | Deliverable | Path | Status |
+|---|---|---|---|
+| 4 | D4.1 — Test HR Data Set | [`specs/Spec2-D4.1-TestHRDataSet.md`](./specs/Spec2-D4.1-TestHRDataSet.md) | v0.1 Draft |
+| 4 | D4.2 — Integration Test Plan | [`specs/Spec2-D4.2-IntegrationTestPlan.md`](./specs/Spec2-D4.2-IntegrationTestPlan.md) | v0.1 Draft |
+| 4 | D4.3 — Performance & Scale Test Plan | [`specs/Spec2-D4.3-PerformanceScaleTestPlan.md`](./specs/Spec2-D4.3-PerformanceScaleTestPlan.md) | v0.1 Draft |
+| 4 | D4.4 — UAT Acceptance Criteria | [`specs/Spec2-D4.4-UATAcceptanceCriteria.md`](./specs/Spec2-D4.4-UATAcceptanceCriteria.md) | v0.1 Draft |
+| 4 | D4.5 — Validation Report (template) | [`specs/Spec2-D4.5-ValidationReport.md`](./specs/Spec2-D4.5-ValidationReport.md) | v0.1 Draft |
+| 5 | D5.1 — Production Cutover Runbook | [`specs/Spec2-D5.1-ProductionCutoverRunbook.md`](./specs/Spec2-D5.1-ProductionCutoverRunbook.md) | v0.1 Draft |
+| 5 | D5.2 — Legacy Provisioning Decommission Plan | [`specs/Spec2-D5.2-LegacyProvisioningDecommissionPlan.md`](./specs/Spec2-D5.2-LegacyProvisioningDecommissionPlan.md) | v0.1 Draft |
+| 5 | D5.3 — Provisioning Governance Specification | [`specs/Spec2-D5.3-ProvisioningGovernanceSpecification.md`](./specs/Spec2-D5.3-ProvisioningGovernanceSpecification.md) | v0.1 Draft |
+| 5 | D5.4 — HR System Onboarding Playbook | [`specs/Spec2-D5.4-HRSystemOnboardingPlaybook.md`](./specs/Spec2-D5.4-HRSystemOnboardingPlaybook.md) | v0.1 Draft |
+| 5 | D5.5 — Provisioning Drift Detection Rules | [`specs/Spec2-D5.5-ProvisioningDriftDetectionRules.md`](./specs/Spec2-D5.5-ProvisioningDriftDetectionRules.md) | v0.1 Draft |
+| 5 | D5.6 — Provisioning Health Dashboard | [`specs/Spec2-D5.6-ProvisioningHealthDashboard.md`](./specs/Spec2-D5.6-ProvisioningHealthDashboard.md) | v0.1 Draft |
+
+**Cross-spec posture:**
+
+- D4.1 fixture is the universally-shared test substrate; D4.2
+  integration tests + D4.3 performance tests + D4.4 UAT all
+  consume it.
+- D4.5 Validation Report is the consolidated artifact that gates
+  D5.1 production cutover.
+- D5.1 cutover runbook invokes D5.2 (legacy decommission) at step 11.
+- D5.3 governance spec defines the steady-state recurring reviews
+  and consumes findings from D5.5 drift detection.
+- D5.6 dashboard operationalizes the metric / alerting / drift
+  surfaces from D3.7 + D5.5 + D2.6 into a single operator pane.
+- D5.4 onboarding playbook formalizes the HR-system-agnostic
+  posture per ADR-003 — adding a new HR source post-cutover
+  (e.g., post-OPM-procurement) is a defined sequence, not ad-hoc.
+
+**Spec 2 status post-Track D:** Spec 2 is canon-spec-complete at
+v0.1+ across **Phases 1, 2, 3, 4, and 5** — 33 of 33 deliverables
+have canonical Markdown form (D1.2 + D1.5 remain PowerShell-
+scaffolder-only; substrate coverage in ADR-035 + D3.2 §3.3
+respectively).
+
 ## Sequencing summary
 
 ```
