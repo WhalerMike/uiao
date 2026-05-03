@@ -144,6 +144,10 @@
 - [ ] **CI-011** [P1] Fix `link-check.yml` rotted URL(s) surfaced by issue #91 (lychee soft-failing on unrelated PRs)
       Path: `.github/workflows/link-check.yml` (or the URL on `main` that lychee can't reach)
       Done-when: a fresh PR touching neither `*.md` nor `*.qmd` shows green link-check; lychee artifact is empty or contains only accepted codes.
+- [ ] **CI-012** [P0] Fix `mypy.yml` path filters and install scope (workflow currently never runs against impl code)
+      Path: `.github/workflows/mypy.yml`
+      Context: the workflow on main triggers on `src/uiao/**/*.py` and `pyproject.toml` at repo root, but post-consolidation the impl code lives at `impl/src/uiao/**/*.py` and the install step (`pip install -e ".[dev]"`) runs at repo root, not in `impl/`. Result: the workflow never actually executes mypy against any code on a normal PR. The job appears green because nothing ran.
+      Done-when: path filters reference `impl/src/uiao/**/*.py` and `impl/pyproject.toml`; install step runs in `impl/` (via `working-directory: impl` or `-C impl`); a deliberately-broken type annotation in `impl/src/uiao/impl/` fails the check on a test PR. Closes **CI-001** when green.
 
 ## INT — Integration / Monorepo
 
