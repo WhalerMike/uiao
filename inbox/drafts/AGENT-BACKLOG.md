@@ -151,6 +151,7 @@
       Path: `impl/pyproject.toml`
       Done-when: `pip install -e impl/` pulls core automatically; `UIAO_CANON_PATH` env fallback is documented, not required.
       Note (2026-04-17): deferred — `core/pyproject.toml` declares `packages = []` (data-only, no Python package). Choose one first: (a) make core an installable package that ships canon data, or (b) formalise the `UIAO_CANON_PATH` env-var resolver with a fallback that locates `../core` relative to the installed impl. Landing either change is a prerequisite for this item.
+      Decision (2026-05-03): **Option C** — land Option B (canon_resolver module + 3-tier lookup: env var → sibling `core/` discovery → loud `CanonNotFoundError`) to close INT-001; defer full packaging migration (Option A) to **INT-005**. Resolver lands against the post-ADR-031 `uiao.impl` namespace.
 - [ ] **INT-002** [P0] Root `pyproject.toml` with `uv` workspace binding core + impl
       Path: `pyproject.toml` (new, repo root)
       Done-when: `uv sync` at repo root installs both packages editable.
@@ -160,6 +161,10 @@
 - [ ] **INT-004** [P2] Cross-folder Makefile targets (`make test` → core+impl pytest; `make install-dev` → editable install of both)
       Path: `Makefile`
       Done-when: a fresh clone running `make install-dev && make test` exercises both packages.
+- [ ] **INT-005** [P2] Migrate `core/` to an installable Python package shipping canon data (Option A from INT-001 decision memo)
+      Paths: `core/pyproject.toml`, `core/uiao/core/__init__.py` (new, post-ADR-031 namespace), `impl/pyproject.toml` (add `uiao-core>=X.Y.Z` dep), every `impl/` call site that currently reads `UIAO_CANON_PATH`
+      Context: deferred from INT-001 close-out (Option C decision, 2026-05-03). Trigger criterion to escalate from P2 → P0: first external consumer request to `pip install` the impl from PyPI, OR first canon/impl version-skew bug, whichever comes first. Until either trigger fires, the canon_resolver landed by INT-001 is sufficient.
+      Done-when: `pip install` from a clean venv resolves `uiao-core` automatically; `importlib.resources.files('uiao.core.canon')` returns the canon tree; canon_resolver falls back to `importlib.resources` as the new tier-1 with env var as dev-only override.
 
 ---
 
