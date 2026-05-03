@@ -89,59 +89,57 @@
 
 ## TST — Test Infrastructure
 
-- [ ] **TST-001** [P0] Fix `impl/.coveragerc` — currently points to `src/uiao_core` (wrong package); omits uiao generators
-      Path: `impl/.coveragerc`
-      Done-when: `source = src/uiao/impl`, omit patterns updated, `coverage run -m pytest` reports for the correct tree.
-- [ ] **TST-002** [P0] Populate empty test file `impl/tests/test_briefing.py` (currently 2 bytes)
-      Path: `impl/tests/test_briefing.py`
+- [ ] **TST-001** [P0] Verify `.coveragerc` (or `[tool.coverage]` in `pyproject.toml`) covers `src/uiao` correctly post-ADR-032
+      Path: `.coveragerc` at repo root, or `[tool.coverage.run]` table in `pyproject.toml`
+      Done-when: `source = src/uiao`, omit patterns are sensible, `coverage run -m pytest` reports for the single canonical tree.
+      Note (2026-05-03): the original "wrong package" complaint (`src/uiao_core`) is from the pre-ADR-032 era. First sub-task: confirm current coverage config and decide whether this is already done or still needed.
+- [ ] **TST-002** [P0] Populate empty test file `tests/test_briefing.py` (was 2 bytes pre-consolidation)
+      Path: `tests/test_briefing.py`
       Done-when: at least one real test passes and the briefing generator has coverage.
-- [ ] **TST-003** [P1] Export conformance test suite from `core/` so impl adapters can import it
-      Pattern: `from uiao.core.tests.conformance import BaseAdapterTest`
-      Paths: `core/tests/conformance/test_adapter_contract.py`, `core/tests/conformance/__init__.py`, `core/pyproject.toml` (extras)
-      Done-when: an impl adapter inherits `BaseAdapterTest` and CI executes it.
-- [ ] **TST-004** [P1] Unit tests for core validators (`metadata_validator`, `sync_canon`, `drift_detector`, `dashboard_exporter`, `appendix_indexer`)
-      Path: `core/tests/tools/test_validators.py`
+      Note (2026-05-03): verify the file still exists / is still empty post-ADR-032 before opening a PR.
+- [ ] **TST-003** [P1] Provide a reusable adapter conformance test base (`BaseAdapterTest`) for adapter unit tests
+      Pattern: `from uiao.testing.conformance import BaseAdapterTest` (or similar internal location)
+      Paths: `src/uiao/testing/conformance.py` (new) or `tests/conformance/__init__.py`
+      Done-when: at least one adapter test inherits `BaseAdapterTest` and exercises the canon contract from CNT-001.
+- [ ] **TST-004** [P1] Unit tests for canon validators (`metadata_validator`, `sync_canon`, `drift_detector`, `dashboard_exporter`, `appendix_indexer`)
+      Path: `tests/tools/test_validators.py` (verify validators still live in `tools/` or under `src/uiao/`)
       Done-when: each validator has happy-path + failure-path coverage.
-- [ ] **TST-005** [P1] E2E pipeline test: core schema change → impl code-gen → adapter conformance → OSCAL output
-      Path: `impl/tests/e2e/test_schema_to_oscal.py`
+- [ ] **TST-005** [P1] E2E pipeline test: schema change → code-gen → adapter conformance → OSCAL output
+      Path: `tests/e2e/test_schema_to_oscal.py` (new)
       Done-when: mutating a fixture schema changes the generated OSCAL deterministically and the test catches it.
 - [ ] **TST-006** [P2] Coverage gate (≥80%) + artifact upload
-      Paths: `impl/.github/workflows/ci.yml` (new step), `impl/.coveragerc`
+      Paths: `.github/workflows/pytest.yml` (add coverage step), `.coveragerc` or `[tool.coverage]` in `pyproject.toml`
       Done-when: CI fails below threshold; coverage HTML/XML uploaded as an artifact.
 
 ## CI — CI / Security
 
-- [ ] **CI-001** [P0] Invoke `mypy src/` in impl CI (mypy is in dev deps but never runs)
-      Path: `.github/workflows/mypy.yml` (new, at repo root — the in-folder `impl/.github/workflows/ci.yml` still does a stale cross-repo checkout; see **CI-010**).
-      Done-when: mypy step runs on every PR and fails on new type errors.
+- [ ] **CI-001** [P0] Verify `.github/workflows/mypy.yml` actually exercises the codebase on Python-touching PRs
+      Path: `.github/workflows/mypy.yml` (exists since 2026-04-18 follow-up; current path filter `src/uiao/**/*.py` is correct for the flat layout).
+      Done-when: a PR that touches `src/uiao/**/*.py` triggers the Mypy job; the job runs `pip install -e .[dev]` and `mypy src/uiao` from repo root; new type errors fail the check.
+      Note (2026-05-03): closure of CI-012 verified the workflow file is shaped correctly for the flat layout. What's still outstanding is confirming the job actually runs against real Python changes — a small smoke PR adding a no-op type annotation in `src/uiao/` should answer this in one CI cycle.
 - [ ] **CI-002** [P1] CodeQL SAST workflow
       Path: `.github/workflows/codeql.yml`
       Done-when: CodeQL runs weekly + on PR; findings surface in the Security tab.
 - [ ] **CI-003** [P1] Dependency-review workflow
       Path: `.github/workflows/dependency-review.yml`
-      Done-when: PRs changing `pyproject.toml` / lockfiles get a diff review with license + vuln flags.
+      Done-when: PRs changing `pyproject.toml` / `uv.lock` get a diff review with license + vuln flags.
 - [ ] **CI-004** [P1] actionlint workflow — validate all workflow YAML against schema
       Path: `.github/workflows/actionlint.yml`
       Done-when: actionlint runs on PRs that touch `.github/workflows/**`.
-- [ ] **CI-005** [P1] Monorepo path filters on `pytest.yml` + `metadata-validator.yml` so core-only changes skip impl pytest (and vice versa)
-      Paths: `.github/workflows/pytest.yml`, `.github/workflows/metadata-validator.yml`
-      Done-when: a core-only PR does not re-run impl pytest and vice versa.
+- [x] **CI-005** [P1] Monorepo path filters on `pytest.yml` + `metadata-validator.yml` so core-only changes skip impl pytest (and vice versa)  ✓ 2026-04-20 — superseded by ADR-032 / PR #111
+      Closure (2026-05-03): the two-tree split that motivated separate path filters no longer exists. A successor item ("scope pytest to source/test changes only, skip pure-docs PRs") may be worth opening if pytest currently runs on docs PRs needlessly — out of scope for this rewrite.
 - [ ] **CI-006** [P2] Enable native GitHub secret scanning + push protection; add trufflehog pre-commit hook
       Paths: `.pre-commit-config.yaml`, repo settings
       Done-when: secret-scanning is enabled repo-wide and trufflehog runs locally on commit.
-- [ ] **CI-007** [P2] Nightly integration workflow (full cross-module suite on schedule + post-merge)
-      Path: `.github/workflows/nightly-integration.yml`
-      Done-when: workflow runs on cron + on push to `main` and exercises core ↔ impl end-to-end.
-- [ ] **CI-008** [P2] Surface `impl/.github/workflows/adapter-conformance.yml` and `acceptance-tests.yml` at repo root so they gate PRs
-      Path: `.github/workflows/impl-integration.yml` (new)
-      Done-when: the new root workflow invokes both jobs as required status checks.
-- [ ] **CI-009** [P2] Consolidate duplicate link-check workflows (repo-root lychee vs impl PowerShell)
-      Paths: `.github/workflows/link-check.yml` (extend), `impl/.github/workflows/link-check.yml` (delete)
-      Done-when: only one link-check workflow remains; it covers root + impl; `make check-links` still works.
-- [ ] **CI-010** [P1] Retire stale `impl/.github/workflows/ci.yml`
-      Path: `impl/.github/workflows/ci.yml`
-      Context: this workflow still does `actions/checkout@v4 with: repository: WhalerMike/uiao, ref: main, path: uiao` — that's the pre-consolidation split. The authoritative impl test workflow is `.github/workflows/pytest.yml` at the repo root. The in-folder file either needs to be deleted or rewritten to use local `core/` (and repoint `UIAO_CANON_PATH` accordingly).
-      Done-when: only one impl pytest workflow runs per PR; no job references the old separate repo.
+- [ ] **CI-007** [P2] Nightly integration workflow (full E2E suite on schedule + post-merge)
+      Path: `.github/workflows/nightly-integration.yml` (new)
+      Done-when: workflow runs on cron + on push to `main` and exercises the full pipeline (canon → adapter conformance → OSCAL → KSI evaluation) against fixture data.
+- [x] **CI-008** [P2] Surface `impl/.github/workflows/adapter-conformance.yml` and `acceptance-tests.yml` at repo root so they gate PRs  ✓ 2026-04-20 — superseded by ADR-032 / PR #111
+      Closure (2026-05-03): both workflows now live at `.github/workflows/adapter-conformance.yml` and `.github/workflows/acceptance-tests.yml` at repo root after ADR-032. Whether they are configured as **required** status checks (vs. just running) is a branch-protection / repo-settings question — open a separate item if that's still outstanding.
+- [x] **CI-009** [P2] Consolidate duplicate link-check workflows (repo-root lychee vs impl PowerShell)  ✓ 2026-04-20 — superseded by ADR-032 / PR #111
+      Closure (2026-05-03): no `impl/` directory exists; only `.github/workflows/link-check.yml` at repo root remains. The PowerShell variant was removed as part of ADR-032.
+- [x] **CI-010** [P1] Retire stale `impl/.github/workflows/ci.yml`  ✓ 2026-04-20 — superseded by ADR-032 / PR #111
+      Closure (2026-05-03): the entire `impl/` tree was removed; the stale workflow file with it. The root `.github/workflows/pytest.yml` is the sole pytest workflow.
 - [ ] **CI-011** [P1] Fix `link-check.yml` rotted URL(s) surfaced by issue #91 (lychee soft-failing on unrelated PRs)
       Path: `.github/workflows/link-check.yml` (or the URL on `main` that lychee can't reach)
       Done-when: a fresh PR touching neither `*.md` nor `*.qmd` shows green link-check; lychee artifact is empty or contains only accepted codes.
@@ -169,23 +167,24 @@
 
 ## Critical Files to Read Before Executing Any Task
 
-- `core/PROJECT-CONTEXT.md`, `core/AGENTS.md`, `core/ARCHITECTURE.md` — canon intent (read-only reference; do **not** edit, that's the docs lane).
-- `impl/PROJECT-CONTEXT.md`, `impl/AGENTS.md` — impl intent.
-- `core/pyproject.toml`, `impl/pyproject.toml` — package layout.
-- `core/canon/adapter-registry.yaml` — current adapter manifest (source of truth for which adapters exist).
-- `impl/src/uiao/impl/adapters/base_adapter.py` — current BaseAdapter (to be promoted per **CNT-001**).
-- `impl/orchestrator/orchestrator.py` — wiring seam for **ADP-002** / **ADP-004**.
-- `.github/workflows/*.yml` and `impl/.github/workflows/*.yml` — existing CI surface.
+- `AGENTS.md`, `README.md`, `CLAUDE.md` (root) — agent + repo entry points.
+- `pyproject.toml` (root) — single-package layout, dependencies, dev extras, mypy/ruff config.
+- `src/uiao/canon/adr/` — ADRs (ADR-032 documents the consolidation; ADR-046 enforces CLI command structure).
+- `src/uiao/canon/adapter-registry.yaml` — current adapter manifest (source of truth for which adapters exist).
+- `src/uiao/config.py` — `Settings._resolve_canon_root()` 3-tier canon resolver.
+- `src/uiao/adapters/` — adapter implementations (BaseAdapter location TBD per **CNT-001** note).
+- `src/uiao/orchestrator/` — wiring seam for **ADP-002** / **ADP-004**.
+- `.github/workflows/*.yml` — existing CI surface (no nested workflow trees).
 - `Makefile` — local/CI parity targets.
 
 ## Existing Reusable Utilities (Do Not Re-build)
 
-- `core/tools/metadata_validator.py`, `sync_canon.py`, `drift_detector.py`, `dashboard_exporter.py`, `appendix_indexer.py` — validators wired into CI.
-- `core/scripts/validate_{canon,schemas,oscal}.py` — one-shot validators.
+- `tools/metadata_validator.py`, `sync_canon.py`, `drift_detector.py`, `dashboard_exporter.py`, `appendix_indexer.py` — validators wired into CI (verify exact location under `tools/` or `src/uiao/tools/`).
+- `scripts/validate_{canon,schemas,oscal}.py` — one-shot validators (verify location).
 - `scripts/bootstrap.sh` — dev env setup (pre-commit, editable installs, pyright cache).
 - `scripts/check-links.ps1` — link crawler used by `make check-links`.
-- `.github/workflows/release.yml` — already publishes impl wheel + CycloneDX SBOM + sigstore.
-- `.github/workflows/ruff.yml` — already lints impl.
+- `.github/workflows/release.yml` — already publishes wheel + CycloneDX SBOM + sigstore.
+- `.github/workflows/ruff.yml` — already lints `src/uiao`.
 
 ---
 
