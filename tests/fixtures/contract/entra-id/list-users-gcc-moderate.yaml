@@ -1,0 +1,90 @@
+# Tier-2 contract fixture: entra-id user enumeration in GCC-Moderate.
+#
+# Codifies the canonical Microsoft Graph response shape for GET /users so the
+# entra-id adapter's user-enumeration operation can be tested without a live
+# tenant. NIST control mapping: AC-2 (Account Management).
+#
+# Pagination: Graph caps page size at 999 for /users. The fixture below is the
+# FIRST page; the @odata.nextLink field MUST be honored by the adapter to fetch
+# subsequent pages. A separate fixture (list-users-page2-gcc-moderate.yaml,
+# follow-on PR) will exercise the nextLink path; this fixture proves the first
+# page contract.
+
+adapter: "entra-id"
+operation: "list_users"
+cloud_variant:
+  - gcc-moderate
+  # Note: Microsoft Graph for GCC-Moderate uses the same host
+  # (graph.microsoft.com) as WW Commercial. GCC-High and DoD use
+  # graph.microsoft.us / dod-graph.microsoft.us respectively and are NOT in
+  # UIAO scope per ADR-028. A separate fixture covers commercial if needed for
+  # negative assertions.
+
+request:
+  method: GET
+  url: "https://graph.microsoft.com/v1.0/users?$select=id,userPrincipalName,displayName,accountEnabled,createdDateTime,userType&$top=999"
+  headers:
+    Authorization: "Bearer <TOKEN>"
+    Accept: "application/json"
+    ConsistencyLevel: "eventual"
+  body: null
+
+response:
+  status: 200
+  headers:
+    Content-Type: "application/json; charset=utf-8"
+  body:
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users(id,userPrincipalName,displayName,accountEnabled,createdDateTime,userType)"
+    "@odata.nextLink": "https://graph.microsoft.com/v1.0/users?$select=id,userPrincipalName,displayName,accountEnabled,createdDateTime,userType&$top=999&$skiptoken=<SKIPTOKEN>"
+    value:
+      - id: "<OBJECT_ID_01>"
+        userPrincipalName: "user1@example.com"
+        displayName: "User One"
+        accountEnabled: true
+        createdDateTime: "2024-06-12T14:23:11Z"
+        userType: "Member"
+      - id: "<OBJECT_ID_02>"
+        userPrincipalName: "user2@example.com"
+        displayName: "User Two"
+        accountEnabled: true
+        createdDateTime: "2024-09-30T08:11:42Z"
+        userType: "Member"
+      - id: "<OBJECT_ID_03>"
+        userPrincipalName: "svc-jit-broker@example.com"
+        displayName: "JIT Broker Service Account"
+        accountEnabled: true
+        createdDateTime: "2025-01-04T19:02:17Z"
+        userType: "Member"
+      - id: "<OBJECT_ID_04>"
+        userPrincipalName: "user4@example.com"
+        displayName: "User Four (disabled)"
+        accountEnabled: false
+        createdDateTime: "2023-11-20T12:00:00Z"
+        userType: "Member"
+      - id: "<OBJECT_ID_05>"
+        userPrincipalName: "guest5_partner.example.com#EXT#@example.onmicrosoft.com"
+        displayName: "Guest Five"
+        accountEnabled: true
+        createdDateTime: "2025-03-15T07:45:33Z"
+        userType: "Guest"
+
+expected_behavior:
+  - "Adapter MUST emit one canonical user object per element in response.body.value (5 in this fixture)."
+  - "Adapter MUST NOT drop disabled accounts (accountEnabled=false) — AC-2(3) requires evidence of disabled accounts, not their omission."
+  - "Adapter MUST follow @odata.nextLink until absent; partial enumeration emits a CapabilityDegraded claim, not a silent truncation."
+  - "Adapter MUST set ConsistencyLevel: eventual on every paged request — Graph requires it for $count and large /users queries."
+  - "Object GUIDs in the canonical claim are passed through unchanged; userPrincipalName is the human-readable identifier, never the primary key."
+  - "Adapter MUST emit DRIFT-IDENTITY (UIAO_110) when a previously-enumerated user disappears between runs without a corresponding tombstone in /directory/deletedItems."
+
+provenance:
+  source: "microsoft-learn"
+  primary_citation:
+    url: "https://learn.microsoft.com/en-us/graph/api/user-list?view=graph-rest-1.0&tabs=http"
+    quote: "Retrieve a list of user objects. … This operation supports paging."
+    accessed: "2026-05-03"
+  supporting_citation:
+    url: "https://learn.microsoft.com/en-us/graph/deployments"
+    quote: "Microsoft Cloud for US Government (GCC, GCC-Moderate): graph.microsoft.com"
+    accessed: "2026-05-03"
+  captured_by: "Schema-derived from Microsoft Learn; no live tenant captured."
+  sanitization: "Bearer token redacted (was never captured live). Object GUIDs replaced with <OBJECT_ID_NN>; UPNs replaced with user<N>@example.com per contract README §sanitization rules."
