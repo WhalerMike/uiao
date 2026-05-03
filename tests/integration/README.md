@@ -35,17 +35,17 @@ at module top. Tests skip when any of them is missing.
 ### service-now (ServiceNow Personal Developer Instance / PDI)
 
 ```
-SERVICENOW_PDI_INSTANCE      # e.g. dev123456.service-now.com
+SERVICENOW_PDI_INSTANCE      # bare hostname, e.g. devNNNNNN.service-now.com
 SERVICENOW_PDI_USER
 SERVICENOW_PDI_PASSWORD
 ```
 
-Sign-up: <https://developer.servicenow.com/> (free PDI; Yokohama or later).
+Sign-up: developer.servicenow.com (free PDI; Yokohama or later).
 
 ### palo-alto (PAN-OS eval VM or XSOAR developer)
 
 ```
-PANOS_HOST                   # e.g. https://10.0.0.1 (RFC1918 within dev VPC)
+PANOS_HOST                   # full URL of the eval VM, RFC1918 inside the dev VPC
 PANOS_API_KEY
 ```
 
@@ -56,12 +56,12 @@ Access paths:
 ### cyberark (CyberArk Privilege Cloud trial)
 
 ```
-CYBERARK_TENANT              # e.g. abc123.privilegecloud.cyberark.cloud
+CYBERARK_TENANT              # bare hostname, e.g. <slug>.privilegecloud.cyberark.cloud
 CYBERARK_CLIENT_ID
 CYBERARK_CLIENT_SECRET
 ```
 
-Access: <https://www.cyberark.com/try-buy/privilege-cloud-trial/>.
+Access: cyberark.com — search for the Privilege Cloud trial program.
 
 ## Running locally
 

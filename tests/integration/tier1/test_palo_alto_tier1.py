@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 
 REQUIRED_VARS = [
-    "PANOS_HOST",       # e.g. https://10.0.0.1
+    "PANOS_HOST",  # full URL of the eval VM, RFC1918 inside the dev VPC
     "PANOS_API_KEY",
 ]
 

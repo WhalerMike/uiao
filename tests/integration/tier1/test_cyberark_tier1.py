@@ -15,7 +15,7 @@ from __future__ import annotations
 import pytest
 
 REQUIRED_VARS = [
-    "CYBERARK_TENANT",        # e.g. abc123.privilegecloud.cyberark.cloud
+    "CYBERARK_TENANT",  # e.g. abc123.privilegecloud.cyberark.cloud
     "CYBERARK_CLIENT_ID",
     "CYBERARK_CLIENT_SECRET",
 ]
