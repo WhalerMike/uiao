@@ -1,10 +1,10 @@
 # Agent Backlog — Repository Gap Remediation
 
-> **Scope:** code, adapters, tests, integration, and CI gaps in the `whalermike/uiao` monorepo (`core/` canon + `impl/` runtime; `gos` merged into `impl/adapters/` and documentation).
+> **Scope:** code, adapters, tests, and CI gaps in the `whalermike/uiao` repository — a single flat Python package `uiao` rooted at `src/uiao/` (post-**ADR-032** consolidation, 2026-04-20).
 >
 > **Out of scope (owned by the Documentation & Training lane):** anything under `docs/`, the Quarto site, narrative markdown (README / CLAUDE.md / AGENTS.md / ARCHITECTURE.md / VISION.md / CONMON.md / PROJECT-CONTEXT.md), tutorials, onboarding guides, CHANGELOG authoring.
 >
-> **Origin:** seeded from three Explore-agent gap surveys (`core/`, `impl/`, repo-root) on 2026-04-17, branch `claude/assess-repo-gaps-EO8Yq`. Re-added 2026-04-18 from a fresh branch after the original PR #72 was closed unmergeable (3,277 commits of pre-consolidation history); tracked as issue #90. Path references updated for the ADR-031 / PR #88 / PR #89 PEP-420 namespace rename (`uiao_impl` → `uiao.impl`).
+> **Origin:** seeded from three Explore-agent gap surveys (`core/`, `impl/`, repo-root) on 2026-04-17, branch `claude/assess-repo-gaps-EO8Yq`. Re-added 2026-04-18 from a fresh branch after the original PR #72 was closed unmergeable (3,277 commits of pre-consolidation history); tracked as issue #90. **Path references rewritten 2026-05-03** for the post-**ADR-032** flat-package layout (PR #111, 915 files): `core/` and `impl/` directories no longer exist; the single Python package lives at `src/uiao/`. ADR-031's `uiao.impl.*` namespace was retired by ADR-032. The Integration / Monorepo workstream (INT-001..005) is now mostly superseded — see closure annotations.
 
 ---
 
@@ -22,26 +22,26 @@
 
 ```
 - [x] **ADP-001** [P0] Consolidate duplicate adapter code  ✓ 2026-04-20 — @agent-ci — PR #142
-      Paths: impl/adapters/cloud/*, impl/src/uiao/impl/adapters/
+      Paths: src/uiao/adapters/
       Done-when: only one adapter tree exists; orchestrator imports resolve.
 ```
 
 ### Workstream keys
 
-| Key | Workstream                  |
-| --- | --------------------------- |
-| ADP | Adapters & Registry         |
-| CNT | Core Contracts & Schemas    |
-| TST | Test Infrastructure         |
-| CI  | CI / Security               |
-| INT | Integration / Monorepo      |
+| Key | Workstream                       |
+| --- | -------------------------------- |
+| ADP | Adapters & Registry              |
+| CNT | Core Contracts & Schemas         |
+| TST | Test Infrastructure              |
+| CI  | CI / Security                    |
+| INT | Integration / Packaging (legacy) |
 
 ---
 
 ## ADP — Adapters & Registry
 
-- [x] **ADP-001** [P0] Consolidate duplicate adapter code  ✓ 2026-04-17 — prior session — PR #81 + PR #86
-      Paths: `impl/src/uiao/impl/adapters/` (sole surviving tree); `impl/adapters/` deleted entirely by PR #86 (SCuBA runtime relocated to `impl/scuba-runtime/`).
+- [x] **ADP-001** [P0] Consolidate duplicate adapter code  ✓ 2026-04-17 — prior session — PR #81 + PR #86; finalised 2026-04-20 by ADR-032 / PR #111
+      Paths: `src/uiao/adapters/` (sole canonical tree). The pre-consolidation `impl/adapters/` was deleted by PR #86; the entire `impl/` and `core/` two-tree split was collapsed by ADR-032 / PR #111.
       Done-when: single canonical adapter tree; deprecated stubs removed; orchestrator imports resolve; tests green.
 - [ ] **ADP-002** [P0] Build adapter registry + dynamic loader (`@register()` decorator)
       Paths: `impl/src/uiao/impl/adapters/__init__.py`, `impl/src/uiao/impl/adapters/registry.py`
@@ -144,31 +144,25 @@
 - [ ] **CI-011** [P1] Fix `link-check.yml` rotted URL(s) surfaced by issue #91 (lychee soft-failing on unrelated PRs)
       Path: `.github/workflows/link-check.yml` (or the URL on `main` that lychee can't reach)
       Done-when: a fresh PR touching neither `*.md` nor `*.qmd` shows green link-check; lychee artifact is empty or contains only accepted codes.
-- [ ] **CI-012** [P0] Fix `mypy.yml` path filters and install scope (workflow currently never runs against impl code)
+- [x] **CI-012** [P0] Fix `mypy.yml` path filters and install scope (workflow currently never runs against impl code)  ✓ 2026-05-03 — misdiagnosed; closed without action
       Path: `.github/workflows/mypy.yml`
-      Context: the workflow on main triggers on `src/uiao/**/*.py` and `pyproject.toml` at repo root, but post-consolidation the impl code lives at `impl/src/uiao/**/*.py` and the install step (`pip install -e ".[dev]"`) runs at repo root, not in `impl/`. Result: the workflow never actually executes mypy against any code on a normal PR. The job appears green because nothing ran.
-      Done-when: path filters reference `impl/src/uiao/**/*.py` and `impl/pyproject.toml`; install step runs in `impl/` (via `working-directory: impl` or `-C impl`); a deliberately-broken type annotation in `impl/src/uiao/impl/` fails the check on a test PR. Closes **CI-001** when green.
+      Closure (2026-05-03): added in PR #300 against the assumption that `impl/` was a separate directory. ADR-032 / PR #111 had already collapsed `core/` + `impl/` into a single flat package; the original `mypy.yml` (`paths: src/uiao/**/*.py`, install at root) is correct for that layout. The attempted fix in PR #301 broke the workflow by pointing `working-directory: impl` at a directory that does not exist; PR #301 closed without merge. Whether `mypy.yml` actually exercises the codebase on a Python-touching PR remains tracked by **CI-001**.
 
-## INT — Integration / Monorepo
+## INT — Integration / Packaging (legacy — mostly superseded by ADR-032)
 
-- [ ] **INT-001** [P0] Pin `uiao` dependency in `impl/pyproject.toml` (path dep now, package dep once core is published)
-      Path: `impl/pyproject.toml`
-      Done-when: `pip install -e impl/` pulls core automatically; `UIAO_CANON_PATH` env fallback is documented, not required.
-      Note (2026-04-17): deferred — `core/pyproject.toml` declares `packages = []` (data-only, no Python package). Choose one first: (a) make core an installable package that ships canon data, or (b) formalise the `UIAO_CANON_PATH` env-var resolver with a fallback that locates `../core` relative to the installed impl. Landing either change is a prerequisite for this item.
-      Decision (2026-05-03): **Option C** — land Option B (canon_resolver module + 3-tier lookup: env var → sibling `core/` discovery → loud `CanonNotFoundError`) to close INT-001; defer full packaging migration (Option A) to **INT-005**. Resolver lands against the post-ADR-031 `uiao.impl` namespace.
-- [ ] **INT-002** [P0] Root `pyproject.toml` with `uv` workspace binding core + impl
-      Path: `pyproject.toml` (new, repo root)
-      Done-when: `uv sync` at repo root installs both packages editable.
-- [ ] **INT-003** [P1] Resolve version-skew policy between core (0.2.0) and impl (0.2.1)
-      Paths: `core/pyproject.toml`, `impl/pyproject.toml`, plus a short `inbox/drafts/VERSIONING.md` note.
-      Done-when: both packages follow a written policy (locked same-major-minor, or independent with compat matrix).
-- [ ] **INT-004** [P2] Cross-folder Makefile targets (`make test` → core+impl pytest; `make install-dev` → editable install of both)
-      Path: `Makefile`
-      Done-when: a fresh clone running `make install-dev && make test` exercises both packages.
-- [ ] **INT-005** [P2] Migrate `core/` to an installable Python package shipping canon data (Option A from INT-001 decision memo)
-      Paths: `core/pyproject.toml`, `core/uiao/core/__init__.py` (new, post-ADR-031 namespace), `impl/pyproject.toml` (add `uiao-core>=X.Y.Z` dep), every `impl/` call site that currently reads `UIAO_CANON_PATH`
-      Context: deferred from INT-001 close-out (Option C decision, 2026-05-03). Trigger criterion to escalate from P2 → P0: first external consumer request to `pip install` the impl from PyPI, OR first canon/impl version-skew bug, whichever comes first. Until either trigger fires, the canon_resolver landed by INT-001 is sufficient.
-      Done-when: `pip install` from a clean venv resolves `uiao-core` automatically; `importlib.resources.files('uiao.core.canon')` returns the canon tree; canon_resolver falls back to `importlib.resources` as the new tier-1 with env var as dev-only override.
+- [x] **INT-001** [P0] Pin `uiao` dependency in `impl/pyproject.toml` (path dep now, package dep once core is published)  ✓ 2026-04-20 — superseded by ADR-032 / PR #111
+      Path: `impl/pyproject.toml` (no longer exists; single root `pyproject.toml` is the only manifest).
+      Closure (2026-05-03): the entire premise is moot. ADR-032 collapsed `core/` + `impl/` into a single package; `src/uiao/config.py:_resolve_canon_root()` already implements a 3-tier lookup (env var → `importlib.resources.files("uiao.canon")` → None); canon ships in the installed wheel via `[tool.setuptools.package-data]`. No separate pin is needed.
+- [x] **INT-002** [P0] Root `pyproject.toml` with `uv` workspace binding core + impl  ✓ 2026-04-20 — superseded by ADR-032 / PR #111
+      Path: `pyproject.toml` (single manifest at root since ADR-032; no workspace needed).
+      Closure (2026-05-03): irrelevant under the flat-package layout. `pip install -e .` (or `uv sync`) at repo root installs the sole package. Workspaces are a multi-package construct with no application here.
+- [x] **INT-003** [P1] Resolve version-skew policy between core (0.2.0) and impl (0.2.1)  ✓ 2026-04-20 — superseded by ADR-032 / PR #111
+      Closure (2026-05-03): no skew possible under a single-package layout. Version is set in `src/uiao/__version__.py` and consumed dynamically by `pyproject.toml`.
+- [x] **INT-004** [P2] Cross-folder Makefile targets (`make test` → core+impl pytest; `make install-dev` → editable install of both)  ✓ 2026-04-20 — superseded by ADR-032 / PR #111
+      Path: `Makefile` (at repo root).
+      Closure (2026-05-03): single package; the existing root `Makefile` is sufficient. Dual-tree concerns dissolved with ADR-032.
+- [x] **INT-005** [P2] Migrate `core/` to an installable Python package shipping canon data (Option A from INT-001 decision memo)  ✓ 2026-05-03 — never materialised; superseded retroactively by ADR-032
+      Closure (2026-05-03): added in PR #300 against the assumption that `core/` was a separate, not-yet-installable package. ADR-032 (which had already landed) made `core/` part of the single `uiao` package, with canon shipped via `[tool.setuptools.package-data]`. The migration described here is exactly what ADR-032 already did.
 
 ---
 
