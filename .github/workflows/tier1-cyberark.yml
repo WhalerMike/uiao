@@ -1,0 +1,45 @@
+name: Tier-1 CyberArk
+
+# Manual-dispatch only today. Once CYBERARK_TENANT / _CLIENT_ID / _CLIENT_SECRET
+# secrets are populated, follow-on PR adds:
+#   schedule:
+#     - cron: '30 6 * * *'
+# See tests/integration/README.md.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  tier1:
+    name: Tier-1 CyberArk Privilege Cloud
+    runs-on: ubuntu-latest
+    env:
+      CYBERARK_TENANT: ${{ secrets.CYBERARK_TENANT }}
+      CYBERARK_CLIENT_ID: ${{ secrets.CYBERARK_CLIENT_ID }}
+      CYBERARK_CLIENT_SECRET: ${{ secrets.CYBERARK_CLIENT_SECRET }}
+      CYBERARK_TEST_SAFE: ${{ secrets.CYBERARK_TEST_SAFE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[test]
+
+      - name: Report secret presence
+        run: |
+          if [ -z "$CYBERARK_TENANT" ]; then
+            echo "CYBERARK_* secrets not set; tier-1 tests will skip cleanly."
+          else
+            echo "CyberArk secrets present; tier-1 tests will run live."
+          fi
+
+      - name: Run tier-1
+        run: pytest tests/integration/tier1/test_cyberark_tier1.py -v --no-header
