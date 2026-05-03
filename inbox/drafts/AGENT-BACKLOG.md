@@ -40,8 +40,8 @@
 
 ## ADP — Adapters & Registry
 
-- [ ] **ADP-001** [P0] Consolidate duplicate adapter code
-      Paths: `impl/adapters/cloud/{m365,entra_id,intune}.py`, `impl/adapters/database/sql_adapter.py`, `impl/adapters/government/__init__.py`, `impl/src/uiao/impl/adapters/`
+- [x] **ADP-001** [P0] Consolidate duplicate adapter code  ✓ 2026-04-17 — prior session — PR #81 + PR #86
+      Paths: `impl/src/uiao/impl/adapters/` (sole surviving tree); `impl/adapters/` deleted entirely by PR #86 (SCuBA runtime relocated to `impl/scuba-runtime/`).
       Done-when: single canonical adapter tree; deprecated stubs removed; orchestrator imports resolve; tests green.
 - [ ] **ADP-002** [P0] Build adapter registry + dynamic loader (`@register()` decorator)
       Paths: `impl/src/uiao/impl/adapters/__init__.py`, `impl/src/uiao/impl/adapters/registry.py`
