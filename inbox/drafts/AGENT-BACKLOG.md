@@ -40,8 +40,8 @@
 
 ## ADP — Adapters & Registry
 
-- [ ] **ADP-001** [P0] Consolidate duplicate adapter code
-      Paths: `impl/adapters/cloud/{m365,entra_id,intune}.py`, `impl/adapters/database/sql_adapter.py`, `impl/adapters/government/__init__.py`, `impl/src/uiao/impl/adapters/`
+- [x] **ADP-001** [P0] Consolidate duplicate adapter code  ✓ 2026-04-17 — prior session — PR #81 + PR #86
+      Paths: `impl/src/uiao/impl/adapters/` (sole surviving tree); `impl/adapters/` deleted entirely by PR #86 (SCuBA runtime relocated to `impl/scuba-runtime/`).
       Done-when: single canonical adapter tree; deprecated stubs removed; orchestrator imports resolve; tests green.
 - [ ] **ADP-002** [P0] Build adapter registry + dynamic loader (`@register()` decorator)
       Paths: `impl/src/uiao/impl/adapters/__init__.py`, `impl/src/uiao/impl/adapters/registry.py`
@@ -144,6 +144,10 @@
 - [ ] **CI-011** [P1] Fix `link-check.yml` rotted URL(s) surfaced by issue #91 (lychee soft-failing on unrelated PRs)
       Path: `.github/workflows/link-check.yml` (or the URL on `main` that lychee can't reach)
       Done-when: a fresh PR touching neither `*.md` nor `*.qmd` shows green link-check; lychee artifact is empty or contains only accepted codes.
+- [ ] **CI-012** [P0] Fix `mypy.yml` path filters and install scope (workflow currently never runs against impl code)
+      Path: `.github/workflows/mypy.yml`
+      Context: the workflow on main triggers on `src/uiao/**/*.py` and `pyproject.toml` at repo root, but post-consolidation the impl code lives at `impl/src/uiao/**/*.py` and the install step (`pip install -e ".[dev]"`) runs at repo root, not in `impl/`. Result: the workflow never actually executes mypy against any code on a normal PR. The job appears green because nothing ran.
+      Done-when: path filters reference `impl/src/uiao/**/*.py` and `impl/pyproject.toml`; install step runs in `impl/` (via `working-directory: impl` or `-C impl`); a deliberately-broken type annotation in `impl/src/uiao/impl/` fails the check on a test PR. Closes **CI-001** when green.
 
 ## INT — Integration / Monorepo
 
@@ -151,6 +155,7 @@
       Path: `impl/pyproject.toml`
       Done-when: `pip install -e impl/` pulls core automatically; `UIAO_CANON_PATH` env fallback is documented, not required.
       Note (2026-04-17): deferred — `core/pyproject.toml` declares `packages = []` (data-only, no Python package). Choose one first: (a) make core an installable package that ships canon data, or (b) formalise the `UIAO_CANON_PATH` env-var resolver with a fallback that locates `../core` relative to the installed impl. Landing either change is a prerequisite for this item.
+      Decision (2026-05-03): **Option C** — land Option B (canon_resolver module + 3-tier lookup: env var → sibling `core/` discovery → loud `CanonNotFoundError`) to close INT-001; defer full packaging migration (Option A) to **INT-005**. Resolver lands against the post-ADR-031 `uiao.impl` namespace.
 - [ ] **INT-002** [P0] Root `pyproject.toml` with `uv` workspace binding core + impl
       Path: `pyproject.toml` (new, repo root)
       Done-when: `uv sync` at repo root installs both packages editable.
@@ -160,6 +165,10 @@
 - [ ] **INT-004** [P2] Cross-folder Makefile targets (`make test` → core+impl pytest; `make install-dev` → editable install of both)
       Path: `Makefile`
       Done-when: a fresh clone running `make install-dev && make test` exercises both packages.
+- [ ] **INT-005** [P2] Migrate `core/` to an installable Python package shipping canon data (Option A from INT-001 decision memo)
+      Paths: `core/pyproject.toml`, `core/uiao/core/__init__.py` (new, post-ADR-031 namespace), `impl/pyproject.toml` (add `uiao-core>=X.Y.Z` dep), every `impl/` call site that currently reads `UIAO_CANON_PATH`
+      Context: deferred from INT-001 close-out (Option C decision, 2026-05-03). Trigger criterion to escalate from P2 → P0: first external consumer request to `pip install` the impl from PyPI, OR first canon/impl version-skew bug, whichever comes first. Until either trigger fires, the canon_resolver landed by INT-001 is sufficient.
+      Done-when: `pip install` from a clean venv resolves `uiao-core` automatically; `importlib.resources.files('uiao.core.canon')` returns the canon tree; canon_resolver falls back to `importlib.resources` as the new tier-1 with env var as dev-only override.
 
 ---
 
