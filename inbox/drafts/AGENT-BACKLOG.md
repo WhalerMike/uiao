@@ -44,46 +44,47 @@
       Paths: `src/uiao/adapters/` (sole canonical tree). The pre-consolidation `impl/adapters/` was deleted by PR #86; the entire `impl/` and `core/` two-tree split was collapsed by ADR-032 / PR #111.
       Done-when: single canonical adapter tree; deprecated stubs removed; orchestrator imports resolve; tests green.
 - [ ] **ADP-002** [P0] Build adapter registry + dynamic loader (`@register()` decorator)
-      Paths: `impl/src/uiao/impl/adapters/__init__.py`, `impl/src/uiao/impl/adapters/registry.py`
+      Paths: `src/uiao/adapters/__init__.py`, `src/uiao/adapters/registry.py` (new)
       Done-when: adapters self-register; orchestrator enumerates from registry; unit test asserts all expected adapter IDs present.
 - [ ] **ADP-003** [P0] Implement the conformance-check module referenced by `adapter-conformance.yml`
-      Path: `impl/src/uiao/impl/adapters/conformance_check.py`
-      Done-when: CLI emits 330-criteria JSON report; `impl/.github/workflows/adapter-conformance.yml` passes without mocks.
+      Path: `src/uiao/adapters/conformance_check.py`
+      Done-when: CLI emits 330-criteria JSON report; `.github/workflows/adapter-conformance.yml` passes without mocks.
 - [ ] **ADP-004** [P1] Wire orchestrator to load adapters via registry (not hardcoded imports)
-      Path: `impl/orchestrator/orchestrator.py`
+      Path: `src/uiao/orchestrator/`
       Done-when: removing an adapter module does not require orchestrator edits.
 - [ ] **ADP-005** [P1] Reusable adapter test harness (fixtures, mock transport, recording helpers)
-      Path: `impl/tests/conftest_adapters.py`
+      Path: `tests/conftest_adapters.py` (new)
       Done-when: at least two adapter test files share the fixtures.
 
 ## CNT — Core Contracts & Schemas
 
-- [ ] **CNT-001** [P0] Promote `BaseAdapter` contract into `core/` (currently only lives in `impl/`)
-      Paths: `core/canon/adapter-interface-v1.0.yaml`, `core/schemas/adapter-registry/base-adapter-interface.json`
-      Done-when: `impl/src/uiao/impl/adapters/base_adapter.py` imports / references the canon contract.
+- [ ] **CNT-001** [P0] Promote `BaseAdapter` contract into canon (interface schema exists; doctrine doesn't)
+      Paths: `src/uiao/canon/adapter-interface-v1.0.yaml`, `src/uiao/schemas/adapter-registry/base-adapter-interface.json`
+      Done-when: the BaseAdapter Python class (under `src/uiao/adapters/`) imports / references the canon contract; conformance-check (ADP-003) consumes the same contract.
+      Note (2026-05-03): the BaseAdapter Python class location post-ADR-032 has not been pinpointed — first sub-task of any CNT-001 PR is to find it (likely `src/uiao/adapters/base_adapter.py` or similar) and confirm before promoting.
 - [ ] **CNT-002** [P0] Author unified compliance matrix (FedRAMP Rev5 → UIAO control planes → remediation → evidence)
-      Path: `core/data/unified_compliance_matrix.yml`
-      Done-when: file validates against a new `core/schemas/compliance/matrix.json`; referenced by KSI rules without `# TODO` markers.
+      Path: `src/uiao/canon/data/unified_compliance_matrix.yml`
+      Done-when: file validates against a new `src/uiao/schemas/compliance/matrix.json`; referenced by KSI rules without `# TODO` markers.
 - [ ] **CNT-003** [P0] Agency parameter tailoring — schema + defaults
-      Paths: `core/schemas/parameters/agency-parameters.json`, `core/data/parameters.yml`
-      Done-when: impl SSP generation consumes `parameters.yml` and produces agency-tailored OSCAL.
+      Paths: `src/uiao/schemas/parameters/agency-parameters.json`, `src/uiao/canon/data/parameters.yml`
+      Done-when: SSP generation consumes `parameters.yml` and produces agency-tailored OSCAL.
 - [ ] **CNT-004** [P1] KSI evaluation engine + seed templates (identity, telemetry, compliance)
-      Paths: `core/ksi/evaluations/`, `core/ksi/rules/`
+      Paths: `src/uiao/ksi/evaluations/`, `src/uiao/rules/` (KSI rule library)
       Done-when: three evaluation templates land and execute against fixture data.
 - [ ] **CNT-005** [P1] Populate empty schema subdirs
-      Paths: `core/schemas/{ksi,udc,uiao-api,substrate-manifest,workspace-contract,adapter-registry}/`
+      Paths: `src/uiao/schemas/{ksi,udc,uiao-api,substrate-manifest,workspace-contract,adapter-registry}/`
       Done-when: each directory contains at least one real JSON Schema (no more `.gitkeep`-only dirs).
 - [ ] **CNT-006** [P1] Compliance enforcement policy file
-      Path: `core/compliance/fedramp-moderate-baseline.yaml`
-      Done-when: `core/compliance/` has a real policy file referenced by validators.
+      Path: `src/uiao/canon/compliance/fedramp-moderate-baseline.yaml`
+      Done-when: a real policy file exists under `src/uiao/canon/compliance/` and is referenced by validators.
 - [ ] **CNT-007** [P2] Canonical OSCAL component definition (data artifact)
-      Path: `core/exports/oscal/uiao-component-definition.json`
+      Path: `src/uiao/canon/oscal/uiao-component-definition.json`
       Done-when: artifact validates against OSCAL 1.3 schema in CI.
 - [ ] **CNT-008** [P2] Evidence-ingestion schema (uuid, control-id, timestamp, source, confidence)
-      Path: `core/schemas/uiao-api/evidence-ingestion.json`
+      Path: `src/uiao/schemas/uiao-api/evidence-ingestion.json`
       Done-when: schema is draft-2020-12 valid and a fixture payload passes validation in CI.
 - [ ] **CNT-009** [P2] Telemetry normalization schema referenced by KSI rules
-      Path: `core/schemas/uiao-api/telemetry-normalization.json`
+      Path: `src/uiao/schemas/uiao-api/telemetry-normalization.json`
       Done-when: schema is referenced by at least one KSI rule and validates a fixture event.
 
 ## TST — Test Infrastructure
