@@ -33,7 +33,14 @@ def _write_survey(path: Path, computers: list[dict]) -> Path:
 
 def test_help_exits_zero_and_documents_format() -> None:
     runner = CliRunner()
-    result = runner.invoke(ir_app, ["intune-readiness", "--help"])
+    # Force ANSI off + wide terminal so rich/typer rendering is deterministic.
+    # In CI, FORCE_COLOR=1 and a narrow COLUMNS interleave ANSI escapes
+    # inside option names ("--for\x1b[0m\x1b[1mmat"), breaking substring search.
+    result = runner.invoke(
+        ir_app,
+        ["intune-readiness", "--help"],
+        env={"NO_COLOR": "1", "COLUMNS": "200", "TERM": "dumb"},
+    )
     assert result.exit_code == 0
     assert "intune-readiness" in result.output.lower() or "Intune" in result.output
     assert "--format" in result.output
