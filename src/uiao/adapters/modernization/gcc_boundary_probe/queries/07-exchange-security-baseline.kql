@@ -1,0 +1,18 @@
+// Exchange security baseline — RBAC, transport rules, mailbox permissions.
+//
+// Source: M365 GCC-Moderate Telemetry & Boundary Assessment, §13.3.7.
+// Provenance: inbox/New_FedRAMP_Boundary/M365_GCC-Moderate_Telemetry_and_Boundary_Assessment_External_with_images.docx
+// Use: surface high-impact admin operations on Exchange Online — RBAC delegation changes, transport-rule modifications,
+//      remote-domain changes, mailbox permission grants. Each of these is a known precursor to BEC and persistence patterns.
+// Pass criterion: every operation listed has a known business owner and change-control record.
+
+OfficeActivity
+| where TimeGenerated > ago(7d)
+| where OfficeWorkload == "Exchange"
+| where Operation in (
+    "New-ManagementRoleAssignment",
+    "Set-TransportRule",
+    "Set-RemoteDomain",
+    "Add-MailboxPermission"
+  )
+| project TimeGenerated, UserId, Operation, Parameters = tostring(Parameters)
