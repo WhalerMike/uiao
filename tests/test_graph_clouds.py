@@ -18,6 +18,7 @@ import pytest
 from uiao.adapters._graph_clouds import (
     DEFAULT_CLOUD,
     GRAPH_ENDPOINTS,
+    graph_token_scope,
     resolve_graph_base,
 )
 
@@ -95,3 +96,49 @@ def test_default_adapter_name_when_unspecified() -> None:
     with pytest.raises(ValueError) as excinfo:
         resolve_graph_base(cloud="atlantis", graph_api_version="v1.0")
     assert "adapter" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# graph_token_scope — sovereign-cloud MSAL .default scope derivation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "cloud,expected",
+    [
+        ("commercial", "https://graph.microsoft.com/.default"),
+        ("gcc-high", "https://graph.microsoft.us/.default"),
+        ("dod", "https://dod-graph.microsoft.us/.default"),
+    ],
+)
+def test_token_scope_returns_dot_default_per_cloud(cloud: str, expected: str) -> None:
+    """OAuth2 client-credential flow uses ``{graph-host}/.default`` per cloud."""
+    assert graph_token_scope(cloud) == expected
+
+
+def test_token_scope_unknown_cloud_raises_with_supported_list() -> None:
+    with pytest.raises(ValueError) as excinfo:
+        graph_token_scope("mars")
+    msg = str(excinfo.value)
+    assert "mars" in msg
+    assert "commercial" in msg and "gcc-high" in msg and "dod" in msg
+
+
+def test_token_scope_adapter_name_appears_in_error() -> None:
+    with pytest.raises(ValueError) as excinfo:
+        graph_token_scope("atlantis", adapter_name="MyAdapter")
+    assert "MyAdapter" in str(excinfo.value)
+
+
+def test_token_scope_default_adapter_name() -> None:
+    with pytest.raises(ValueError) as excinfo:
+        graph_token_scope("atlantis")
+    assert "adapter" in str(excinfo.value)
+
+
+def test_token_scope_host_matches_endpoint_table() -> None:
+    """Scope derivation must use the same host as resolve_graph_base()."""
+    for cloud in GRAPH_ENDPOINTS:
+        scope = graph_token_scope(cloud)
+        assert scope.startswith(GRAPH_ENDPOINTS[cloud])
+        assert scope.endswith("/.default")

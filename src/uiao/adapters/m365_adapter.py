@@ -48,6 +48,11 @@ class M365Adapter(DatabaseAdapterBase):
     Implements the canonical UIAO adapter pattern (7 responsibility domains)
     plus M365-specific extension methods for tenant configuration assessment
     and change-making across the five core workloads.
+
+    Config keys: ``tenant_id``, ``cloud`` (``commercial`` / ``gcc-high`` /
+    ``dod``, default ``commercial``), ``graph_api_version`` (default
+    ``v1.0``), and ``graph_endpoint`` (explicit URL override). See
+    AGENTS.md for the cross-adapter convention.
     """
 
     ADAPTER_ID: str = "m365"
