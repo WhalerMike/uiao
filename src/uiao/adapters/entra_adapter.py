@@ -71,6 +71,11 @@ class EntraAdapter(DatabaseAdapterBase):
       4. Engine merges the alignment into the canon for downstream generation.
 
     This adapter never owns or duplicates data. SSOT remains in the YAML canon.
+
+    Config keys: ``tenant_id``, ``cloud`` (``commercial`` / ``gcc-high`` /
+    ``dod``, default ``commercial``), ``graph_api_version`` (default
+    ``v1.0``), and ``graph_endpoint`` (explicit URL override). See
+    AGENTS.md for the cross-adapter convention.
     """
 
     ADAPTER_ID: str = "entra-id"
