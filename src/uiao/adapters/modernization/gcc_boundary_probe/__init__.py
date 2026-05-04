@@ -8,6 +8,14 @@ from .probe import (
     run_boundary_probe,
     run_boundary_probe_sync,
 )
+from .sentinel_probe import (
+    QUERY_REGISTRY,
+    DashboardCompletenessScore,
+    SentinelFinding,
+    SentinelProbe,
+    dashboard_completeness_score,
+    load_kql_query,
+)
 from .telemetry import (
     DeviceHealthRecord,
     InBoundaryTelemetry,
@@ -19,6 +27,12 @@ __all__ = [
     "BoundaryProbeReport",
     "run_boundary_probe",
     "run_boundary_probe_sync",
+    "SentinelProbe",
+    "SentinelFinding",
+    "DashboardCompletenessScore",
+    "QUERY_REGISTRY",
+    "load_kql_query",
+    "dashboard_completeness_score",
     "InBoundaryTelemetry",
     "DeviceHealthRecord",
     "collect_local_wmi_health",
