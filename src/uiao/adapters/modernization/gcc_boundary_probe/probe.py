@@ -41,6 +41,13 @@ from typing import Optional
 import httpx
 import yaml
 
+from .sentinel_probe import (
+    DashboardCompletenessScore,
+    SentinelFinding,
+    SentinelProbe,
+    dashboard_completeness_score,
+)
+
 
 # ------------------------------------------------------------------
 # DRIFT-BOUNDARY finding — extends the base DriftFinding with
@@ -102,15 +109,26 @@ class BoundaryProbeReport:
     compensated: int = 0
     gap_unmitigated: int = 0
     findings: list[BoundaryFinding] = field(default_factory=list)
+    sentinel_findings: list[SentinelFinding] = field(default_factory=list)
+    completeness_scores: list[DashboardCompletenessScore] = field(default_factory=list)
 
     @property
     def unmitigated_p1(self) -> list[BoundaryFinding]:
         return [f for f in self.findings if f.severity == "P1" and f.compensating_status == "GAP_UNMITIGATED"]
 
+    @property
+    def evidence_pipeline_failures(self) -> list[SentinelFinding]:
+        return [f for f in self.sentinel_findings if f.probe_result != "OPERATIONAL"]
+
     def as_dict(self) -> dict:
-        d = {k: v for k, v in self.__dict__.items() if k != "findings"}
+        d = {
+            k: v for k, v in self.__dict__.items() if k not in ("findings", "sentinel_findings", "completeness_scores")
+        }
         d["findings"] = [f.as_dict() for f in self.findings]
+        d["sentinel_findings"] = [f.as_dict() for f in self.sentinel_findings]
+        d["completeness_scores"] = [s.__dict__ for s in self.completeness_scores]
         d["unmitigated_p1_count"] = len(self.unmitigated_p1)
+        d["evidence_pipeline_failures_count"] = len(self.evidence_pipeline_failures)
         return d
 
 
@@ -357,6 +375,8 @@ async def run_boundary_probe(
     arm_token: Optional[str] = None,
     subscription_id: Optional[str] = None,
     gap_registry_path: Optional[Path] = None,
+    sentinel_token: Optional[str] = None,
+    log_analytics_workspace_id: Optional[str] = None,
 ) -> BoundaryProbeReport:
     """
     Run the full GCC boundary probe.
@@ -369,6 +389,13 @@ async def run_boundary_probe(
     subscription_id  : Azure subscription ID (optional — for ARC probes)
     gap_registry_path: Path to existing gcc-boundary-gap-registry.yaml
                        If provided, probe updates status fields in registry.
+    sentinel_token   : Bearer token for the Log Analytics query API
+                       (``api.loganalytics.io`` Data.Read scope). Optional —
+                       when paired with ``log_analytics_workspace_id`` the
+                       seven Sentinel KQL queries are executed and findings
+                       returned alongside the Graph/ARM findings.
+    log_analytics_workspace_id : Log Analytics workspace GUID (optional —
+                       required for the Sentinel KQL surface).
 
     Returns
     -------
@@ -483,7 +510,13 @@ async def run_boundary_probe(
             report.findings.append(finding)
             _tally(report, status)
 
-    report.total_gaps = len(report.findings)
+    # ---- Sentinel / KQL probes (evidence-pipeline surface) ----
+    if sentinel_token and log_analytics_workspace_id:
+        sentinel = SentinelProbe(sentinel_token, log_analytics_workspace_id)
+        report.sentinel_findings = await sentinel.run_all()
+        report.completeness_scores = dashboard_completeness_score(report.sentinel_findings)
+
+    report.total_gaps = len(report.findings) + len(report.sentinel_findings)
     return report
 
 
@@ -516,6 +549,8 @@ def run_boundary_probe_sync(
     arm_token: Optional[str] = None,
     subscription_id: Optional[str] = None,
     gap_registry_path: Optional[Path] = None,
+    sentinel_token: Optional[str] = None,
+    log_analytics_workspace_id: Optional[str] = None,
 ) -> BoundaryProbeReport:
     """Synchronous wrapper for run_boundary_probe."""
     return asyncio.run(
@@ -525,5 +560,7 @@ def run_boundary_probe_sync(
             arm_token=arm_token,
             subscription_id=subscription_id,
             gap_registry_path=gap_registry_path,
+            sentinel_token=sentinel_token,
+            log_analytics_workspace_id=log_analytics_workspace_id,
         )
     )
