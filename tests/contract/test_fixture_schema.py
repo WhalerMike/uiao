@@ -1,15 +1,20 @@
 """Tier-2 fixture schema validator.
 
-Per ``tests/fixtures/contract/README.md``, every YAML file under that tree
-must conform to a documented contract: required top-level keys, typed
-request / response blocks, an expected_behavior list, and a provenance
-block citing one of the documented source classes.
+Two-layer validation against the contract documented in
+``tests/fixtures/contract/README.md``:
+
+1. The authoritative JSON Schema lives at
+   ``src/uiao/schemas/tier2-fixture/tier2-fixture.schema.json``.
+   Every fixture is validated against it via ``jsonschema``.
+
+2. Cross-cutting filesystem invariants that JSON Schema cannot express
+   (the ``adapter`` field must match the parent directory name) are
+   enforced as Python assertions alongside the schema check.
 
 This is a META-test — it validates the SHAPE of fixtures, not the behavior
 of any adapter. Per-adapter contract tests (``test_<adapter>_contract.py``)
 that exercise the adapter against these fixtures ship per adapter as the
-implementing PRs land. This validator gates fixture authoring errors at PR
-time so a malformed fixture never reaches the per-adapter test layer.
+implementing PRs land.
 
 Discovery is at import / collection time via ``rglob('*.yaml')`` against
 ``tests/fixtures/contract/``. New fixtures land under their adapter's
@@ -18,50 +23,16 @@ subdirectory and are picked up automatically — no per-fixture wiring here.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+import jsonschema
 import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "contract"
-
-# Source classes documented in tests/fixtures/contract/README.md §"Source classes
-# (provenance)". The fifth class is "finding-<id>" which is matched by prefix
-# rather than equality (each FINDING-NNN governance finding gets its own
-# canonical source identifier).
-_VALID_PROVENANCE_SOURCES = {
-    "microsoft-learn",
-    "vendor-docs",
-    "live-capture",
-    "agency-sanitized",
-}
-
-# Cloud variants documented in tests/fixtures/contract/README.md §"Fixture
-# contract". The README reserves these explicitly and the validator should
-# reject typos (e.g. "gcc" instead of "gcc-moderate").
-_VALID_CLOUD_VARIANTS = {
-    "commercial",
-    "gcc-moderate",
-    "gcc-high",
-    "dod",
-    "germany",
-    "china",
-    "govcloud-east",
-    "govcloud-west",
-    "onprem",
-}
-
-_VALID_HTTP_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH"}
-
-_REQUIRED_TOP_LEVEL_KEYS = {
-    "adapter",
-    "operation",
-    "request",
-    "response",
-    "expected_behavior",
-    "provenance",
-}
+SCHEMA_PATH = REPO_ROOT / "src" / "uiao" / "schemas" / "tier2-fixture" / "tier2-fixture.schema.json"
 
 
 def _discover_fixtures() -> list[Path]:
@@ -75,6 +46,17 @@ def _fixture_id(path: Path) -> str:
 
 
 _FIXTURES = _discover_fixtures()
+_SCHEMA = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+_VALIDATOR = jsonschema.Draft202012Validator(_SCHEMA)
+
+
+def test_schema_self_validates() -> None:
+    """The tier-2-fixture schema itself must be a valid Draft 2020-12 JSON Schema.
+
+    Catches syntactic errors in the schema (e.g. unknown keywords, malformed
+    enums) before any fixture is checked against it.
+    """
+    jsonschema.Draft202012Validator.check_schema(_SCHEMA)
 
 
 def test_at_least_one_fixture_exists() -> None:
@@ -90,11 +72,12 @@ def test_at_least_one_fixture_exists() -> None:
 
 
 @pytest.mark.parametrize("fixture_path", _FIXTURES, ids=[_fixture_id(p) for p in _FIXTURES])
-def test_fixture_conforms_to_contract(fixture_path: Path) -> None:
-    """Validate every documented clause of the tier-2 fixture contract.
+def test_fixture_validates_against_json_schema(fixture_path: Path) -> None:
+    """Validate the fixture against the authoritative JSON Schema.
 
-    Failure messages always include the fixture path and name the violated
-    clause so authoring errors are diagnosable from CI output alone.
+    Schema lives at ``src/uiao/schemas/tier2-fixture/tier2-fixture.schema.json``.
+    On failure, every violation is reported (not just the first) so authoring
+    errors are diagnosable from CI output alone.
     """
     text = fixture_path.read_text(encoding="utf-8")
     try:
@@ -102,16 +85,28 @@ def test_fixture_conforms_to_contract(fixture_path: Path) -> None:
     except yaml.YAMLError as exc:
         pytest.fail(f"{fixture_path}: not parseable as YAML: {exc}")
 
-    # ── Top-level shape ───────────────────────────────────────────
-    assert isinstance(data, dict), f"{fixture_path}: top level must be a mapping, got {type(data).__name__}"
-    missing = _REQUIRED_TOP_LEVEL_KEYS - set(data.keys())
-    assert not missing, f"{fixture_path}: missing required top-level keys: {sorted(missing)}"
+    errors = sorted(_VALIDATOR.iter_errors(data), key=lambda e: e.absolute_path)
+    if errors:
+        formatted = "\n".join(
+            f"  - [{'.'.join(str(p) for p in e.absolute_path) or '<root>'}] {e.message}" for e in errors
+        )
+        pytest.fail(f"{fixture_path}: schema validation failed:\n{formatted}")
 
-    # ── adapter must match parent directory ───────────────────────────────
-    adapter = data["adapter"]
-    assert isinstance(adapter, str) and adapter, f"{fixture_path}: adapter must be a non-empty string"
-    # Walk up until the immediate adapter directory is found; allows nested
-    # subdirectories like entra-id/policy-targeting/<file>.yaml.
+
+@pytest.mark.parametrize("fixture_path", _FIXTURES, ids=[_fixture_id(p) for p in _FIXTURES])
+def test_fixture_adapter_matches_parent_directory(fixture_path: Path) -> None:
+    """Cross-cutting filesystem invariant — adapter field MUST match the
+    immediate adapter directory name.
+
+    Catches the most common authoring mistake: copying a fixture from one
+    adapter and forgetting to update the adapter field. Cannot be expressed
+    in the JSON Schema because it depends on filesystem context.
+
+    Walks up the directory tree to support nested fixtures
+    (e.g. entra-id/policy-targeting/<file>.yaml).
+    """
+    data = yaml.safe_load(fixture_path.read_text(encoding="utf-8"))
+    adapter = data.get("adapter")
     adapter_dir = fixture_path.parent
     while adapter_dir.parent != FIXTURE_ROOT and adapter_dir != FIXTURE_ROOT:
         adapter_dir = adapter_dir.parent
@@ -119,57 +114,3 @@ def test_fixture_conforms_to_contract(fixture_path: Path) -> None:
         f"{fixture_path}: adapter='{adapter}' does not match adapter directory "
         f"'{adapter_dir.name}'. Each fixture must live under contract/<adapter>/."
     )
-
-    # ── operation ──────────────────────────────────────────────────
-    operation = data["operation"]
-    assert isinstance(operation, str) and operation, f"{fixture_path}: operation must be a non-empty string"
-
-    # ── request block ────────────────────────────────────────────────
-    req = data["request"]
-    assert isinstance(req, dict), f"{fixture_path}: request must be a mapping"
-    method = req.get("method")
-    assert method in _VALID_HTTP_METHODS, (
-        f"{fixture_path}: request.method='{method}' must be one of {sorted(_VALID_HTTP_METHODS)}"
-    )
-    url = req.get("url")
-    assert isinstance(url, str) and url.startswith(("http://", "https://")), (
-        f"{fixture_path}: request.url must be an absolute http(s) URL"
-    )
-    headers = req.get("headers")
-    assert headers is None or isinstance(headers, dict), f"{fixture_path}: request.headers must be a mapping or null"
-
-    # ── response block ───────────────────────────────────────────────
-    resp = data["response"]
-    assert isinstance(resp, dict), f"{fixture_path}: response must be a mapping"
-    status = resp.get("status")
-    assert isinstance(status, int) and 100 <= status < 600, (
-        f"{fixture_path}: response.status='{status}' must be an integer HTTP status code"
-    )
-
-    # ── expected_behavior ─────────────────────────────────────────────
-    eb = data["expected_behavior"]
-    assert isinstance(eb, list) and eb, f"{fixture_path}: expected_behavior must be a non-empty list"
-    for i, item in enumerate(eb):
-        assert isinstance(item, str) and item.strip(), (
-            f"{fixture_path}: expected_behavior[{i}] must be a non-empty string"
-        )
-
-    # ── provenance ───────────────────────────────────────────────────
-    prov = data["provenance"]
-    assert isinstance(prov, dict), f"{fixture_path}: provenance must be a mapping"
-    source = prov.get("source")
-    assert isinstance(source, str) and source, f"{fixture_path}: provenance.source required"
-    if source not in _VALID_PROVENANCE_SOURCES and not source.startswith("finding-"):
-        pytest.fail(
-            f"{fixture_path}: provenance.source='{source}' must be one of "
-            f"{sorted(_VALID_PROVENANCE_SOURCES)} OR a 'finding-<id>' identifier"
-        )
-
-    # ── cloud_variant (optional) ─────────────────────────────────────────
-    cv = data.get("cloud_variant")
-    if cv is not None:
-        assert isinstance(cv, list) and cv, f"{fixture_path}: cloud_variant must be a non-empty list when present"
-        for i, item in enumerate(cv):
-            assert item in _VALID_CLOUD_VARIANTS, (
-                f"{fixture_path}: cloud_variant[{i}]='{item}' must be one of {sorted(_VALID_CLOUD_VARIANTS)}"
-            )
