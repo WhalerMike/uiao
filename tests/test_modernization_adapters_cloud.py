@@ -126,3 +126,120 @@ def test_all_three_adapters_resolve_to_same_endpoint_for_same_cloud(cloud: str) 
     dg = EntraDynamicGroupsAdapter({"tenant_id": "t", "cloud": cloud})
     au = EntraAdminUnitsAdapter({"tenant_id": "t", "cloud": cloud})
     assert m365._graph_endpoint == dg._graph_endpoint == au._graph_endpoint
+
+
+# ---------------------------------------------------------------------------
+# MSAL token scope (sovereign-cloud OAuth2 .default)
+# ---------------------------------------------------------------------------
+
+
+SCOPE_ADAPTERS = [
+    pytest.param(EntraDynamicGroupsAdapter, id="dynamic-groups"),
+    pytest.param(EntraAdminUnitsAdapter, id="admin-units"),
+]
+
+
+@pytest.mark.parametrize("cls", SCOPE_ADAPTERS)
+def test_default_scope_is_commercial(cls: type) -> None:
+    a = cls({"tenant_id": "t"})
+    assert a._graph_scope == "https://graph.microsoft.com/.default"
+
+
+@pytest.mark.parametrize("cls", SCOPE_ADAPTERS)
+def test_gcc_high_scope_uses_microsoft_us(cls: type) -> None:
+    a = cls({"tenant_id": "t", "cloud": "gcc-high"})
+    assert a._graph_scope == "https://graph.microsoft.us/.default"
+
+
+@pytest.mark.parametrize("cls", SCOPE_ADAPTERS)
+def test_dod_scope_uses_dod_graph_microsoft_us(cls: type) -> None:
+    a = cls({"tenant_id": "t", "cloud": "dod"})
+    assert a._graph_scope == "https://dod-graph.microsoft.us/.default"
+
+
+@pytest.mark.parametrize("cls", SCOPE_ADAPTERS)
+def test_scope_host_matches_endpoint_host(cls: type) -> None:
+    """A token scoped for the wrong cloud's Graph would be rejected by the sovereign endpoint."""
+    for cloud in ("commercial", "gcc-high", "dod"):
+        a = cls({"tenant_id": "t", "cloud": cloud})
+        # Both URLs start with the same host (no path); comparing host segments suffices.
+        endpoint_host = a._graph_endpoint.rsplit("/", 1)[0]  # strip trailing /v1.0 or /beta
+        scope_host = a._graph_scope.rsplit("/", 1)[0]  # strip trailing /.default
+        assert endpoint_host == scope_host
+
+
+@pytest.mark.parametrize(
+    "cls,cloud,expected_scope",
+    [
+        (EntraDynamicGroupsAdapter, "commercial", "https://graph.microsoft.com/.default"),
+        (EntraDynamicGroupsAdapter, "gcc-high", "https://graph.microsoft.us/.default"),
+        (EntraDynamicGroupsAdapter, "dod", "https://dod-graph.microsoft.us/.default"),
+        (EntraAdminUnitsAdapter, "commercial", "https://graph.microsoft.com/.default"),
+        (EntraAdminUnitsAdapter, "gcc-high", "https://graph.microsoft.us/.default"),
+        (EntraAdminUnitsAdapter, "dod", "https://dod-graph.microsoft.us/.default"),
+    ],
+)
+def test_auth_flow_requests_token_with_cloud_appropriate_scope(
+    cls: type,
+    cloud: str,
+    expected_scope: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mock azure.identity + httpx and capture the scope passed to get_token().
+
+    The ``_graph_client()`` body is otherwise ``# pragma: no cover - network
+    path`` because it depends on optional auth deps and a live Graph
+    endpoint. This test stubs both, exercises the auth_flow once via a
+    fake request, and asserts the scope string matches the cloud setting.
+    """
+    captured_scopes: list[str] = []
+
+    # Stub azure.identity.ClientSecretCredential
+    class _StubCred:
+        def __init__(self, **kwargs: object) -> None:
+            pass
+
+        def get_token(self, scope: str) -> object:
+            captured_scopes.append(scope)
+            return type("Tok", (), {"token": "fake-token-" + scope})()
+
+    # Stub httpx.Auth so we can drive auth_flow without a real httpx
+    class _StubAuthBase:
+        pass
+
+    class _StubReq:
+        def __init__(self) -> None:
+            self.headers: dict[str, str] = {}
+
+    class _StubClient:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            self.auth = kwargs.get("auth")
+
+    # The adapter imports azure.identity / httpx inside _graph_client(),
+    # so monkeypatch sys.modules entries.
+    import sys
+    import types
+
+    fake_az = types.ModuleType("azure")
+    fake_az_identity = types.ModuleType("azure.identity")
+    fake_az_identity.ClientSecretCredential = _StubCred  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "azure", fake_az)
+    monkeypatch.setitem(sys.modules, "azure.identity", fake_az_identity)
+
+    fake_httpx = types.ModuleType("httpx")
+    fake_httpx.Auth = _StubAuthBase  # type: ignore[attr-defined]
+    fake_httpx.Client = _StubClient  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "httpx", fake_httpx)
+
+    a = cls({"tenant_id": "t", "client_id": "c", "client_secret": "s", "cloud": cloud})
+    client = a._graph_client()
+    assert client is not None, "_graph_client() returned None even with stubbed deps"
+
+    # Drive auth_flow once via a fake request to trigger get_token()
+    auth = client.auth
+    request = _StubReq()
+    gen = auth.auth_flow(request)
+    next(gen)  # advance past the yield
+
+    assert captured_scopes == [expected_scope], f"expected scope {expected_scope!r}, got {captured_scopes!r}"
+    assert request.headers["Authorization"] == f"Bearer fake-token-{expected_scope}"

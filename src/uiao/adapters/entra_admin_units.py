@@ -37,7 +37,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from ._graph_clouds import DEFAULT_CLOUD, resolve_graph_base
+from ._graph_clouds import DEFAULT_CLOUD, graph_token_scope, resolve_graph_base
 
 # EntraAdminUnitsAdapter targets Graph v1.0 (GA-stable AU + role-management APIs).
 DEFAULT_GRAPH_API_VERSION = "v1.0"
@@ -142,7 +142,15 @@ class DelegationReport:
 
 
 class EntraAdminUnitsAdapter:
-    """Modernization adapter: provision AUs + scoped role assignments."""
+    """Modernization adapter: provision AUs + scoped role assignments.
+
+    Config keys: ``tenant_id``, ``client_id``, ``client_secret`` (for
+    Graph auth in ``_graph_client()``), plus the cross-adapter cloud
+    convention — ``cloud`` (``commercial`` / ``gcc-high`` / ``dod``,
+    default ``commercial``), ``graph_api_version`` (default ``v1.0``),
+    and ``api_base_url`` (explicit URL override; pre-dates the cloud
+    convention but still honoured). See AGENTS.md.
+    """
 
     ADAPTER_ID = "entra-admin-units"
 
@@ -159,6 +167,10 @@ class EntraAdminUnitsAdapter:
             cloud=self._cloud,
             graph_api_version=self._graph_api_version,
             explicit=self._config.get("api_base_url"),
+            adapter_name="EntraAdminUnitsAdapter",
+        )
+        self._graph_scope: str = graph_token_scope(
+            self._cloud,
             adapter_name="EntraAdminUnitsAdapter",
         )
 
@@ -487,6 +499,7 @@ class EntraAdminUnitsAdapter:
             client_id=client_id,
             client_secret=client_secret,
         )
+        scope = self._graph_scope
 
         class _Auth(httpx.Auth):
             def __init__(self, cred):  # type: ignore[no-untyped-def]
@@ -495,7 +508,7 @@ class EntraAdminUnitsAdapter:
 
             def auth_flow(self, request):  # type: ignore[no-untyped-def]
                 if self.token is None:
-                    tok = self.cred.get_token("https://graph.microsoft.com/.default")
+                    tok = self.cred.get_token(scope)
                     self.token = tok.token
                 request.headers["Authorization"] = f"Bearer {self.token}"
                 yield request

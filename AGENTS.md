@@ -124,6 +124,7 @@ Common `<verb>`s: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`. Use 
 - **Canon edits** → `src/uiao/canon/`, plus a UIAO_NNN entry in `document-registry.yaml` if the document is new. Doctrine changes require an ADR under `src/uiao/canon/adr/`.
 - **New CLI commands** ship with happy-path + failure-mode tests in the same PR.
 - **Adapters** go under `src/uiao/adapters/` and register in `src/uiao/canon/adapter-registry.yaml` (conformance) or `modernization-registry.yaml` (modernization). Every adapter declares `class` × `mission-class` per UIAO_003.
+- **Microsoft Graph adapters** resolve their endpoint via `uiao.adapters._graph_clouds.resolve_graph_base()` rather than hardcoding hostnames. Accepted config keys: `cloud` (`commercial` / `gcc-high` / `dod`, default `commercial` — also serves GCC-Moderate per ADR-033), `graph_api_version` (default per-adapter — `beta` for IntuneAdapter; `v1.0` for EntraAdapter, M365Adapter, EntraDynamicGroupsAdapter, EntraAdminUnitsAdapter, InBoundaryTelemetry), and an explicit URL override key (`graph_endpoint` for most adapters; `api_base_url` for the two Entra group/AU adapters that pre-dated the convention). Unknown clouds fail closed at construction.
 - **Canon reads at runtime** use `importlib.resources` against `uiao.canon` / `uiao.rules` / `uiao.schemas`, never hardcoded filesystem paths.
 
 ## History
