@@ -8,9 +8,64 @@ revision_history:
   - "v2 (2026-05-04): TwoPager added, charter set expanded to 4 (CHARTER-001..004)"
   - "v3 (2026-05-04): V3 explicitly superseded by V4U (Mar 7), then UIAO-V1 (Mar 9). UIAO-V1 is the actual current charter. Charter set expanded to ~10 docs across 3 iterations."
   - "v4 (2026-05-04): MAJOR FRAMING CORRECTION — retract 'drift/overlay' framing for governance/compliance work. Repo correctly prioritized compliance perimeter under non-optional forcing functions (Microsoft vendor pressure to Entra/Intune/Azure ARC; mandatory EOs/NIST/FedRAMP/CISA; E911 federal law; new government-wide initiatives like HRIT and FRPP MS landing weekly). Three-tier mental model adopted: Charter / Compliance Perimeter / Regulatory Absorption. Layered-restoration plan (PR-A through PR-L) replaces reset plan."
+  - "v5 (2026-05-05): Architect decisions on all 6 pending items. Charter base confirmed (UIAO-V1 = CHARTER-001, V4U feeders = CHARTER-002..005, V3 = CHARTER-V3-LEGACY). Personal-doc exclusion list confirmed. Telemetry $16.3B PDF + V4 .jpg files BOTH confirmed for ingestion. OMB M-21-31 reconciled into long-form CHARTER-001. Decision #5: agent audit found AtoBZ_clean.md has LOW hallucination risk (~4 invented acronyms) but SEVERE structural corruption (~50% duplicated content, mid-word truncation); AtoBZ and V4U_Master_Reference are complementary not overlapping; ingest BOTH after preprocessing AtoBZ. PR-A fully unblocked."
 ---
 
-# Charter Restoration Plan (Revision 4)
+# Charter Restoration Plan (Revision 5 — Architect Decisions Confirmed)
+
+## Architect decisions (2026-05-05) — five of six settled
+
+| # | Decision | Resolution |
+|---|---|---|
+| 1 | Charter base / supersession chain | **UIAO-V1 = `CHARTER-001` (authoritative current charter); V4U content = `CHARTER-002..005` (feeders); V3 = `CHARTER-V3-LEGACY` (historical predecessor, explicitly superseded by V4U)** |
+| 2 | Personal-doc exclusion | **Confirmed — exclude:** `Federal_Resume_Reformatted_v2.docx/pdf`, `CIO Level Resume.docx`, `Download Benefit Summary and Service Verification Letter.pdf`, `1F0840.docx`. Add to ingestion blocklist; do NOT ingest under any tier. |
+| 3 | Telemetry $16.3B PDF (`Federal Cloud Telemetry Gap...$16.3B Annual 'Blind Ticket' Tax.pdf`) | **Ingest** as `CHARTER-EVIDENCE-TELEMETRY` — supporting evidence for the telemetry-as-control thesis (V4U §10) |
+| 4 | V4 `.jpg` working diagrams | **Ingest** as canonical reference diagrams. They confirm load-bearing concepts (Conversation as a layer, V4U Identity-Forward Architecture branding, Source of Authority Chain). PR-A inventories and ingests under `src/uiao/canon/charter/diagrams/`. |
+| 5 | `AtoBZ_clean.md` vs `V4U_Master_Reference` reconciliation | **RESOLVED — ingest BOTH per audit (path b + c hybrid).** Agent audit (2026-05-05) found low hallucination risk (only ~4 invented acronyms) but **severe structural corruption** — `AtoBZ_clean.md` is ~50% duplicated content (Appendices A-Z and AA-AZ each emitted twice) and ends mid-word at line 35669 (`## 1. Introducti`). Critically, AtoBZ and V4U_Master_Reference are **complementary, not overlapping**: V4U holds strategic + Federal Mandate Crosswalk + Source of Authority + NPE Assurance + 17-Point Canon; AtoBZ holds 52 abstract object-model appendices. **Ingest both, with AtoBZ cleaned first.** See "AtoBZ Audit Findings" section below. |
+| 6 | OMB M-21-31 (TwoPager-only mention) | **Reconcile** into long-form `CHARTER-001` so all charter docs cite the same federal mandate set. Audit other potential mandate-citation gaps between long-form and short-form charter docs in same pass. |
+
+**PR-A is now FULLY UNBLOCKED.** PR-A scope:
+
+- Ingest `CHARTER-001` (UIAO-V1 main spec, `UIAO-Main-Spec-v1.md` Mar 9) with light editorial pass
+- Ingest `CHARTER-001-APPENDICES` (cleaned `AtoBZ_clean.md` — see preprocessing checklist below)
+- Ingest `CHARTER-002` (V4U_Core_Canon_Introduction)
+- Ingest `CHARTER-003` (V4U_Master_Reference — strategic content + Federal Mandate Crosswalk + Source of Authority chains + NPE Assurance + 17-Point Canon. **NOT superseded by AtoBZ; complementary content.**)
+- Ingest `CHARTER-004-NPE` (Federal_Identity_Fragmentation_and_NPE_Assurance_Model)
+- Ingest `CHARTER-005-SOA` (Source_of_Authority_Location_InterAgency)
+- Ingest `CHARTER-V3-LEGACY` (V3 long-form + TwoPager) with light editorial pass; mark explicitly superseded by CHARTER-001..005
+- Ingest `CHARTER-EVIDENCE-TELEMETRY` (Federal Cloud Telemetry Gap PDF)
+- Ingest `CHARTER-001-DIAGRAMS` (V4 .jpg files inventoried)
+- Add OMB M-21-31 reconciliation across all charter docs in same pass
+- **Author reconciliation ADR** ("Charter Reconciliation — V4U Strategic Layer vs AtoBZ Appendix Layer") explaining the V4U/AtoBZ scope split as deliberate complementary canon, not redundant content
+- Carry `tier: foundational, supersedable: false (except V3-LEGACY), load_order: 0` metadata on all
+- Apply explicit non-ingest blocklist for personal docs
+
+## AtoBZ Audit Findings (2026-05-05) — required preprocessing before CHARTER-001-APPENDICES ingestion
+
+Agent audit summary:
+
+| Finding | Severity | Evidence |
+|---|---|---|
+| Hallucination risk | **LOW** | Only ~4 invented acronyms (`UAI` line 22, `UCI-X` line 7607, "UIAO Autonomous Operations Fabric" line 283, "UIAO Assurance and Governance Fabric" line 7876). No fake citations, no fabricated stats, no fake agency case studies. |
+| Federal citations | Clean but thin | Only NIST SP 800-207 / 800-63 / 800-53 / 800-157 + OMB M-22-09 cited. No invented mandates. Suspiciously sparse for a "publication-grade canon" — Copilot may have run out of trained-on citations and recycled. |
+| Vendor product claims | Clean | Only Entra ID, Login.gov, ID.me, PIV/CAC, SPIFFE/SPIRE named. No invented APIs, no fictional product features. |
+| Cross-references | Clean | Zero "see Appendix X" / "Section Y" matches — every appendix is self-contained. (Avoids broken refs but flags lack of integration.) |
+| **Structural corruption** | **SEVERE** | Appendix A duplicated at lines 288 + 8462 (identical prose); Appendix Z appears 3 times (lines 2, 8176, 16350); A-Z emitted twice (288-8175, 8462-16350); AA-AT and AL-AY emitted twice; AA-AZ emitted twice (20019-25640, 29670-35660). File ends mid-word at line 35669. **~50% of file is verbatim duplication.** |
+| Total file size | 35,669 lines | After dedup: ~17,500 lines |
+| Conversion artifacts | Multiple | Garbled metadata bullet lists (e.g. lines 16399-16461); heavy non-breaking hyphen noise (`‑`); pandoc-style truncation. |
+
+**Preprocessing checklist for CHARTER-001-APPENDICES:**
+
+1. Deduplicate appendices A-Z and AA-AZ (keep canonical first occurrence; verify they're truly identical before dropping the second)
+2. Recover the truncated tail of Appendix AL (the cliffhanger "## 1. Introducti" at line 35669 — likely lives in the source file `AtoBZ_clean.md` was concatenated from; check OneDrive UIAO-V1 folder for predecessor docs)
+3. Normalize non-breaking hyphens (`‑` → `-`) and other em-dash artifacts
+4. Repair garbled metadata bullet lists at lines 16399-16461 and similar locations
+5. Annotate the four invented acronyms (UAI, UCI-X, "Operations Fabric", "Governance Fabric") as Copilot-assisted derived terms; flag for architect confirmation that these are intended canon (or replace with V3/V4U-consistent terminology)
+6. Verify post-cleanup file is structurally sound before ingesting
+
+**Audit confidence: HIGH.** The corruption is mechanical and the V4U/AtoBZ complementary-scope split is unambiguous. AtoBZ cleaned ≈ 95% canon-quality content of the ~50% unique material.
+
+# Charter Restoration Plan (Revision 4 detail follows)
 
 ## Framing correction — what this plan IS and IS NOT
 
