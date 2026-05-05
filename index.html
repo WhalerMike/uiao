@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UIAO — Unified Identity-Addressing-Overlay Architecture</title>
+<meta name="description" content="Universal governance and directory migration platform that unifies identity, addressing, and overlay networks — without rip-and-replace.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:    #0D1B2E;   /* primary text / dark accents */
+    --navy2:   #142338;   /* deepest accent */
+    --teal:    #1E8C8C;   /* primary accent */
+    --teal-lt: #27BEBE;   /* hover accent */
+    --teal-bg: #e9f6f5;   /* tinted surface */
+    --amber:   #B27210;   /* readable on light */
+    --amber-lt:#E8A020;   /* highlight */
+    --amber-bg:#fff5e0;   /* tinted surface */
+    --steel:   #6B7A8D;
+    --ink:     #243248;   /* body text on light */
+    --muted:   #5a6878;   /* secondary text */
+    --paper:   #ffffff;   /* primary background */
+    --paper-2: #f5f7fa;   /* alt background */
+    --paper-3: #eef2f7;   /* deepest light tier */
+    --line:    #dfe5ec;   /* hairlines */
+    --line-2:  #e8edf3;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'DM Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-weight: 400;
+    line-height: 1.7;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── GRID OVERLAY (very subtle) ──────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(30,140,140,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(30,140,140,.05) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── NAV ──────────────────────────────────────── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem 3rem;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: saturate(140%) blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .nav-logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .85rem;
+    letter-spacing: .12em;
+    color: var(--navy);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2.5rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .75rem;
+    letter-spacing: .1em;
+    color: var(--muted);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color .2s;
+  }
+
+  .nav-links a:hover { color: var(--teal); }
+
+  .nav-cta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .75rem;
+    letter-spacing: .1em;
+    padding: .55rem 1.2rem;
+    border: 1px solid var(--teal);
+    color: var(--teal);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: background .2s, color .2s;
+    border-radius: 4px;
+  }
+
+  .nav-cta:hover {
+    background: var(--teal);
+    color: white;
+  }
+
+  /* ── HERO ─────────────────────────────────────── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 92vh;
+    display: grid;
+    place-items: center;
+    padding: 8rem 3rem 4rem;
+    text-align: center;
+    background:
+      radial-gradient(900px 400px at 80% 0%, rgba(30,140,140,0.10), transparent 70%),
+      radial-gradient(700px 300px at 0% 30%, rgba(232,160,32,0.08), transparent 70%),
+      var(--paper);
+  }
+
+  .hero-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .78rem;
+    letter-spacing: .2em;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp .8s .2s forwards;
+    font-weight: 500;
+  }
+
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.6rem, 7.5vw, 6rem);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -.02em;
+    color: var(--navy);
+    max-width: 16ch;
+    margin: 0 auto 1.5rem;
+    opacity: 0;
+    animation: fadeUp .8s .4s forwards;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--teal);
+  }
+
+  .hero-sub {
+    font-size: 1.15rem;
+    color: var(--muted);
+    max-width: 56ch;
+    margin: 0 auto 3rem;
+    opacity: 0;
+    animation: fadeUp .8s .6s forwards;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    opacity: 0;
+    animation: fadeUp .8s .8s forwards;
+  }
+
+  .btn-primary {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .82rem;
+    letter-spacing: .08em;
+    padding: .9rem 2rem;
+    background: var(--teal);
+    color: white;
+    text-decoration: none;
+    text-transform: uppercase;
+    font-weight: 500;
+    transition: background .2s, transform .15s, box-shadow .2s;
+    border-radius: 4px;
+  }
+
+  .btn-primary:hover {
+    background: var(--teal-lt);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px -10px rgba(30,140,140,0.5);
+  }
+
+  .btn-ghost {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .82rem;
+    letter-spacing: .08em;
+    padding: .9rem 2rem;
+    border: 1px solid var(--steel);
+    color: var(--navy);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: border-color .2s, color .2s, transform .15s, background .2s;
+    border-radius: 4px;
+    background: white;
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--teal);
+    color: var(--teal);
+    transform: translateY(-2px);
+  }
+
+  /* ── MARQUEE ──────────────────────────────────── */
+  .marquee-wrap {
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 1rem 0;
+    background: var(--paper-2);
+  }
+
+  .marquee-track {
+    display: flex;
+    gap: 3rem;
+    animation: marquee 30s linear infinite;
+    white-space: nowrap;
+  }
+
+  .marquee-item {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .72rem;
+    letter-spacing: .15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .marquee-item span { color: var(--teal); margin-right: .6rem; }
+
+  /* ── SECTION COMMON ───────────────────────────── */
+  section {
+    position: relative;
+    z-index: 1;
+    padding: 7rem 3rem;
+  }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .72rem;
+    letter-spacing: .2em;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    font-weight: 500;
+  }
+
+  .section-title {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    line-height: 1.15;
+    color: var(--navy);
+    max-width: 24ch;
+    margin-bottom: 1.5rem;
+  }
+
+  .section-body {
+    color: var(--muted);
+    max-width: 60ch;
+    font-size: 1.02rem;
+  }
+
+  /* ── PROBLEM STRIP ────────────────────────────── */
+  .problem {
+    background: var(--paper-2);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .problem-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5rem;
+    max-width: 1100px;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  .problem-list {
+    list-style: none;
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+
+  .problem-list li {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    color: var(--ink);
+    font-size: .98rem;
+  }
+
+  .problem-list li::before {
+    content: '//';
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--teal);
+    flex-shrink: 0;
+    margin-top: .1rem;
+    font-weight: 500;
+  }
+
+  /* ── EIGHT CONCEPTS ───────────────────────────── */
+  .concepts { max-width: 1200px; margin: 0 auto; }
+
+  .concepts-header { margin-bottom: 4rem; max-width: 760px; }
+
+  .concepts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .concept-card {
+    background: var(--paper);
+    padding: 2rem 1.8rem;
+    transition: background .2s, transform .15s;
+    cursor: default;
+  }
+
+  .concept-card:hover {
+    background: var(--teal-bg);
+    transform: translateY(-1px);
+  }
+
+  .concept-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .68rem;
+    letter-spacing: .2em;
+    color: var(--teal);
+    margin-bottom: .8rem;
+    font-weight: 500;
+  }
+
+  .concept-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.25rem;
+    color: var(--navy);
+    margin-bottom: .6rem;
+    line-height: 1.25;
+  }
+
+  .concept-desc {
+    font-size: .9rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ── CONTROL PLANES ───────────────────────────── */
+  .planes-wrap {
+    background: var(--paper-3);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .planes-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: 5rem;
+    align-items: center;
+  }
+
+  .planes-list {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    margin-top: 2rem;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: .5rem;
+  }
+
+  .plane-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .9rem 1.2rem;
+    border-left: 2px solid transparent;
+    transition: border-color .2s, background .2s;
+    cursor: default;
+    border-radius: 2px;
+  }
+
+  .plane-item:hover {
+    border-color: var(--teal);
+    background: var(--teal-bg);
+  }
+
+  .plane-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--teal);
+    flex-shrink: 0;
+    box-shadow: 0 0 0 4px rgba(30,140,140,0.12);
+  }
+
+  .plane-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .8rem;
+    color: var(--ink);
+    letter-spacing: .04em;
+  }
+
+  .plane-item:hover .plane-label { color: var(--navy); }
+
+  /* ── COMPLIANCE BADGES ────────────────────────── */
+  .compliance-wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .compliance-header { margin-bottom: 3rem; max-width: 760px; }
+
+  .badge-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 2.5rem;
+  }
+
+  .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .75rem;
+    letter-spacing: .12em;
+    padding: .65rem 1.2rem;
+    border: 1px solid var(--line);
+    color: var(--navy);
+    text-transform: uppercase;
+    background: var(--paper);
+    transition: background .2s, border-color .2s, color .2s, transform .15s;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  .badge:hover {
+    background: var(--teal-bg);
+    border-color: var(--teal);
+    color: var(--teal);
+    transform: translateY(-1px);
+  }
+
+  /* ── CTA BAND (light, tinted) ─────────────────── */
+  .cta-band {
+    background:
+      radial-gradient(700px 280px at 100% 0%, rgba(30,140,140,0.18), transparent 70%),
+      radial-gradient(500px 220px at 0% 100%, rgba(232,160,32,0.14), transparent 70%),
+      var(--paper-2);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+  }
+
+  .cta-band .section-title { margin: 0 auto 1.5rem; }
+
+  .cta-band .section-body { margin: 0 auto 2.5rem; }
+
+  /* ── FOOTER ───────────────────────────────────── */
+  footer {
+    position: relative;
+    z-index: 1;
+    padding: 2.5rem 3rem;
+    border-top: 1px solid var(--line);
+    background: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .footer-logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .78rem;
+    letter-spacing: .15em;
+    color: var(--steel);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+
+  .footer-links a {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .72rem;
+    color: var(--steel);
+    text-decoration: none;
+    letter-spacing: .1em;
+    transition: color .2s;
+  }
+
+  .footer-links a:hover { color: var(--teal); }
+
+  /* ── ANIMATIONS ───────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  /* ── RESPONSIVE ───────────────────────────────── */
+  @media (max-width: 768px) {
+    nav { padding: 1rem 1.5rem; }
+    .nav-links { display: none; }
+    section { padding: 5rem 1.5rem; }
+    .hero { padding: 7rem 1.5rem 3rem; }
+    .problem-grid { grid-template-columns: 1fr; gap: 3rem; }
+    .planes-inner { grid-template-columns: 1fr; gap: 3rem; }
+    footer { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">UIAO</a>
+  <ul class="nav-links">
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#compliance">Compliance</a></li>
+  </ul>
+  <a class="nav-cta" href="https://github.com/WhalerMike/uiao" target="_blank" rel="noopener">View on GitHub</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div>
+    <p class="hero-eyebrow">Open Architecture · Enterprise Identity · Zero Trust</p>
+    <h1>Identity is the <em>root namespace.</em></h1>
+    <p class="hero-sub">UIAO is a universal governance and directory migration platform that unifies identity, addressing, and overlay networks — without rip-and-replace.</p>
+    <div class="hero-actions">
+      <a class="btn-primary" href="https://github.com/WhalerMike/uiao" target="_blank" rel="noopener">Explore the Repo</a>
+      <a class="btn-ghost" href="#architecture">Architecture Overview</a>
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-wrap" aria-hidden="true">
+  <div class="marquee-track">
+    <span class="marquee-item"><span>⬡</span>Zero Trust</span>
+    <span class="marquee-item"><span>⬡</span>TIC 3.0</span>
+    <span class="marquee-item"><span>⬡</span>NIST 800-63</span>
+    <span class="marquee-item"><span>⬡</span>FedRAMP 20x</span>
+    <span class="marquee-item"><span>⬡</span>AD → Entra ID</span>
+    <span class="marquee-item"><span>⬡</span>DRIFT Governance</span>
+    <span class="marquee-item"><span>⬡</span>FIMF Adapter Registry</span>
+    <span class="marquee-item"><span>⬡</span>Six Control Planes</span>
+    <span class="marquee-item"><span>⬡</span>GCC Moderate</span>
+    <span class="marquee-item"><span>⬡</span>SSOT Architecture</span>
+    <!-- duplicate for seamless loop -->
+    <span class="marquee-item"><span>⬡</span>Zero Trust</span>
+    <span class="marquee-item"><span>⬡</span>TIC 3.0</span>
+    <span class="marquee-item"><span>⬡</span>NIST 800-63</span>
+    <span class="marquee-item"><span>⬡</span>FedRAMP 20x</span>
+    <span class="marquee-item"><span>⬡</span>AD → Entra ID</span>
+    <span class="marquee-item"><span>⬡</span>DRIFT Governance</span>
+    <span class="marquee-item"><span>⬡</span>FIMF Adapter Registry</span>
+    <span class="marquee-item"><span>⬡</span>Six Control Planes</span>
+    <span class="marquee-item"><span>⬡</span>GCC Moderate</span>
+    <span class="marquee-item"><span>⬡</span>SSOT Architecture</span>
+  </div>
+</div>
+
+<!-- PROBLEM -->
+<section class="problem" id="problem">
+  <div class="problem-grid">
+    <div>
+      <p class="section-label">The Problem</p>
+      <h2 class="section-title">Enterprise identity migration is broken.</h2>
+    </div>
+    <div>
+      <p class="section-body">Directory migrations fail because they treat identity, addressing, and overlay networks as separate problems. UIAO unifies them under a single architectural framework — automating full-stack discovery and governance across the systems that matter most.</p>
+      <ul class="problem-list">
+        <li>DNS / DHCP / IPAM fragmentation and SSOT failures</li>
+        <li>GPO, SPN, and service account blind spots during AD → Entra ID migrations</li>
+        <li>GCC Moderate telemetry gaps blocking TIC 3.0 and FedRAMP 20x compliance</li>
+        <li>PKI, RADIUS/NPS, and LDAP-dependent apps left outside migration scope</li>
+        <li>No vendor-neutral governance layer across heterogeneous directory stacks</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- EIGHT CONCEPTS -->
+<section id="architecture" class="concepts">
+  <div class="concepts-header">
+    <p class="section-label">Architecture</p>
+    <h2 class="section-title">Eight Core Concepts</h2>
+    <p class="section-body">UIAO's architecture is expressed through eight foundational concepts that span the full lifecycle of enterprise identity governance.</p>
+  </div>
+  <div class="concepts-grid">
+    <div class="concept-card">
+      <div class="concept-num">01</div>
+      <div class="concept-name">Identity as Root Namespace</div>
+      <div class="concept-desc">Every entity — user, device, service, or workload — is anchored to a governed identity before any other attribute is assigned.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">02</div>
+      <div class="concept-name">Unified Addressing</div>
+      <div class="concept-desc">DNS, DHCP, and IPAM are treated as a single coordinated plane, not independent silos. SSOT is non-negotiable.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">03</div>
+      <div class="concept-name">Overlay Governance</div>
+      <div class="concept-desc">Network overlays are policy-governed surfaces, not infrastructure afterthoughts. Every overlay segment carries identity context.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">04</div>
+      <div class="concept-name">DRIFT Modules</div>
+      <div class="concept-desc">Discrete, composable governance modules that encode authoritative rules for identity drift detection, authorization, and remediation.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">05</div>
+      <div class="concept-name">FIMF Adapter Registry</div>
+      <div class="concept-desc">A vendor-neutral interface layer. InfoBlox, BlueCat, and any directory system registers as an adapter — not a hardcoded dependency.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">06</div>
+      <div class="concept-name">No Rip-and-Replace</div>
+      <div class="concept-desc">UIAO operates alongside existing infrastructure. Migration is incremental, reversible, and evidence-driven at every step.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">07</div>
+      <div class="concept-name">Evidence-Driven Compliance</div>
+      <div class="concept-desc">Compliance posture is computed continuously from live telemetry — not asserted at audit time. Zero Trust is a runtime property.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">08</div>
+      <div class="concept-name">Universal Enterprise Scope</div>
+      <div class="concept-desc">Designed for any enterprise. Federal compliance is one vertical. Commercial, hybrid, and multi-cloud deployments are first-class targets.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTROL PLANES -->
+<section class="planes-wrap">
+  <div class="planes-inner">
+    <div>
+      <p class="section-label">Control Planes</p>
+      <h2 class="section-title">Six planes. One coherent architecture.</h2>
+      <p class="section-body">UIAO separates concerns across six distinct control planes, each with its own governance surface and adapter interface — enabling independent evolution without architectural coupling.</p>
+    </div>
+    <div class="planes-list">
+      <div class="plane-item"><div class="plane-dot"></div><span class="plane-label">Identity Control Plane — root namespace governance</span></div>
+      <div class="plane-item"><div class="plane-dot"></div><span class="plane-label">Addressing Control Plane — DNS · DHCP · IPAM</span></div>
+      <div class="plane-item"><div class="plane-dot"></div><span class="plane-label">Overlay Control Plane — network fabric governance</span></div>
+      <div class="plane-item"><div class="plane-dot"></div><span class="plane-label">Authorization Control Plane — policy enforcement</span></div>
+      <div class="plane-item"><div class="plane-dot"></div><span class="plane-label">Telemetry Control Plane — observability and drift detection</span></div>
+      <div class="plane-item"><div class="plane-dot"></div><span class="plane-label">Migration Control Plane — AD · Entra · PKI · RADIUS</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPLIANCE -->
+<section id="compliance">
+  <div class="compliance-wrap">
+    <div class="compliance-header">
+      <p class="section-label">Compliance Alignment</p>
+      <h2 class="section-title">Built for the standards that matter.</h2>
+      <p class="section-body">UIAO's governance framework is designed to produce continuous, machine-readable compliance evidence across the federal and enterprise standards that define the modern threat landscape.</p>
+    </div>
+    <div class="badge-grid">
+      <div class="badge">Zero Trust</div>
+      <div class="badge">CISA Zero Trust Maturity</div>
+      <div class="badge">TIC 3.0</div>
+      <div class="badge">NIST 800-63</div>
+      <div class="badge">FedRAMP 20x</div>
+      <div class="badge">GCC Moderate</div>
+      <div class="badge">NIST CSF 2.0</div>
+      <div class="badge">CMMC</div>
+      <div class="badge">M-22-09</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<section class="cta-band">
+  <p class="section-label" style="text-align:center;">Open Source · Active Development</p>
+  <h2 class="section-title" style="text-align:center; margin:0 auto 1.5rem;">Start with the architecture. Build toward compliance.</h2>
+  <p class="section-body" style="margin:0 auto 2.5rem; text-align:center;">The UIAO canon, DRIFT modules, adapter specifications, and governance tooling are all maintained in the open. Contributions and collaboration welcome.</p>
+  <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+    <a class="btn-primary" href="https://github.com/WhalerMike/uiao" target="_blank" rel="noopener">Explore on GitHub</a>
+    <a class="btn-ghost" href="https://github.com/WhalerMike/uiao/tree/main/docs" target="_blank" rel="noopener">Read the Canon</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-logo">UIAO // Unified Identity-Addressing-Overlay Architecture</span>
+  <ul class="footer-links">
+    <li><a href="https://github.com/WhalerMike/uiao" target="_blank" rel="noopener">GitHub</a></li>
+    <li><a href="https://github.com/WhalerMike/uiao/issues" target="_blank" rel="noopener">Issues</a></li>
+    <li><a href="https://github.com/WhalerMike/uiao/tree/main/docs" target="_blank" rel="noopener">Docs</a></li>
+  </ul>
+</footer>
+
+</body>
+</html>
