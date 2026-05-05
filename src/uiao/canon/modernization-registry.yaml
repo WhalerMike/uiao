@@ -25,7 +25,7 @@
 
 schema-version: "1.0.0"
 registry-class: modernization
-updated: "2026-05-04"
+updated: "2026-05-05"
 
 adapters:
 
@@ -1267,3 +1267,147 @@ adapters:
       conformance: pending — likely requires Microsoft-attested test
       fixtures plus per-tenant sandbox capture. Activation requires a
       per-adapter ADR modeled on ADR-035.
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slots allocated by ADR-055 (2026-05-05)
+  # KYC / Customer Identity canon block — federated identity issuers
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: login-gov-federation-service
+    name: GSA Login.gov Federated Citizen-Identity Service
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Federated identity issuer for citizen-facing federal portals.
+      Login.gov is the GSA-operated FAL-2-capable IdP that issues
+      SAML 2.0 / OIDC assertions to consuming agencies. The adapter
+      provisions Login.gov-side application registrations on behalf
+      of consuming agencies (change-making) and consumes identity
+      assertions at runtime. Classified per UIAO_003 §4.7
+      `integration` and ADR-055.
+    status: reserved
+    phase: phase-planning
+    vendor: GSA
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - app-registration
+      - saml-assertion-issuance
+      - oidc-issuance
+      - ial-2-proofing
+      - aal-2-authentication
+    outputs:
+      - logingov-app-registration-manifest.json
+      - logingov-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 7
+    controls:
+      - IA-2
+      - IA-2(1)
+      - IA-2(2)
+      - IA-4
+      - IA-8
+      - AU-2
+      - AU-12
+      - SC-8
+      - SC-13
+    automation-domain:
+      - configuration-management
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Federal Common Policy CA G2, OU=FPKI, O=U.S. Government, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO-CANON-003
+      - ADR-051  # SAML trust anchor
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+      - https://login.gov/
+      - https://developers.login.gov/
+    notes: >-
+      Login.gov (GSA Technology Transformation Services) is the
+      federally-operated FAL-2 / IAL-2 / AAL-2 IdP for citizen-
+      facing federal portals. Issues SAML 2.0 assertions (per
+      ADR-051 trust-anchor type) and OIDC tokens. Adapter operates
+      against the Login.gov Partner Dashboard for application
+      registration and consumes assertions at runtime. Activation
+      requires a per-adapter ADR modeled on ADR-035.
+
+  - id: id-me-federation-service
+    name: ID.me Federated Citizen-Identity Service
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Federated identity issuer (commercial; federal-authorized) for
+      citizen-facing federal portals. ID.me issues SAML 2.0 / OIDC
+      assertions at IAL-2 / AAL-2 with optional IAL-3 step-up for
+      high-stakes flows. Treated as a complement to Login.gov
+      (`login-gov-federation-service`) — agencies may use either or
+      both depending on their citizen-population mix and historical
+      integration. Classified per UIAO_003 §4.7 `integration` and
+      ADR-055.
+    status: reserved
+    phase: phase-planning
+    vendor: ID.me
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - saml-assertion-issuance
+      - oidc-issuance
+      - ial-2-proofing
+      - ial-3-step-up
+      - aal-2-authentication
+    outputs:
+      - idme-app-registration-manifest.json
+      - idme-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 7
+    controls:
+      - IA-2
+      - IA-2(1)
+      - IA-2(2)
+      - IA-4
+      - IA-8
+      - AU-2
+      - AU-12
+      - SC-8
+      - SC-13
+    automation-domain:
+      - configuration-management
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO-CANON-003
+      - ADR-051  # SAML trust anchor
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+    notes: >-
+      ID.me is a commercial federal-authorized IdP serving multiple
+      federal customer-facing portals (VA, IRS, SSA, etc.). Issues
+      SAML 2.0 assertions (per ADR-051) and OIDC tokens at IAL-2 /
+      AAL-2 with IAL-3 step-up available. Procurement and federal
+      authorization are agency-specific; commercial-license
+      considerations apply unlike the public-domain Login.gov.
+      Activation requires a per-adapter ADR modeled on ADR-035.

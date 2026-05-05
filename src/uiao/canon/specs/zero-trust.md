@@ -1,12 +1,12 @@
 ---
 document_id: UIAO_120
 title: "UIAO Zero-Trust Integration Layer"
-version: "1.1"
+version: "1.2"
 status: Current
 classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-14"
-updated_at: "2026-04-17"
+updated_at: "2026-05-05"
 boundary: "GCC-Moderate"
 ---
 
@@ -68,3 +68,30 @@ the same substrate behavior.
   - EPL policies call:
     - Conditional Access adapter
     - DLP policy adapter
+
+## Customer-Identity Surface (UIAO_120 v1.2)
+
+The four pillars above describe Zero Trust over the **workforce-identity
+surface** — federal employees and contractors authenticated via PIV /
+Entra. Per ADR-055, UIAO recognizes a peer **customer-identity surface**
+covering citizens, businesses, applicants, and beneficiaries who interact
+with federal agencies mission-side.
+
+The Identity pillar takes a Customer Identity Record (CIR) — defined in
+UIAO_141 §2 with six required bindings — as a first-class evidence input
+alongside the workforce inputs above. The CIR's **IAL / AAL / FAL**
+(NIST SP 800-63) values are first-class evaluation inputs to Zero-Trust
+decision envelopes; cached attributes drift-checked against their
+authority of record per UIAO_141 §7.
+
+| ZT pillar | Customer-surface evidence source | Decision surface | Enforcement point |
+|---|---|---|---|
+| Identity | Login.gov / ID.me FAL-2 assertion + authority-of-record attributes (SSA / IRS / USCIS / etc.) | Identity | Citizen-portal SAML/OIDC enforcement; reciprocity entitlement gate |
+| Device | Customer browser/device posture (where in scope) | Telemetry | Step-up MFA; device attestation |
+| Network | Citizen access path (IP geolocation, VPN, anomalous origin) | Addressing + Telemetry | WAF / API gateway controls |
+| Data | Per-attribute disclosure scope (entitlement-bound) | Policy + Governance | Reciprocity entitlement enforcement; attribute-level redaction |
+
+The same `EPL` policy language and adapter framework cover both surfaces;
+the surfaces differ in their identity primitives (Application Identity
+vs. Customer Identity Record) and their authority pattern (workforce =
+PIV/Entra; customer = federation issuer + authority of record).
