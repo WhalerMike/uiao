@@ -1,12 +1,12 @@
 ---
 document_id: UIAO_130
 title: "UIAO Application Identity Onboarding Runbook"
-version: "1.0"
+version: "1.1"
 status: Current
 classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-17"
-updated_at: "2026-04-17"
+updated_at: "2026-05-04"
 boundary: "GCC-Moderate"
 ---
 
@@ -35,8 +35,12 @@ Before onboarding begins, the following must be in place:
    DRIFT-PROVENANCE findings.
 2. **Authority Plane reachable.** IPAM, IAM, Certificate / Token
    Services, and Policy Engine endpoints respond to health checks.
-   Their adapter conformance status is green per UIAO_121 (with
-   tier evidence per UIAO_131).
+   Where a contractually-mandated API gateway intermediates the
+   substrate (e.g., OPM-hosted Azure APIM under Federal HRIT
+   24322626R0007, per ADR-053), that gateway is also part of the
+   Authority Plane and must respond to health checks. Adapter
+   conformance status for every authority above is green per
+   UIAO_121 (with tier evidence per UIAO_131).
 3. **Owner declared.** The application has a named owner with
    write access to the onboarding request queue and the evidence
    graph.
