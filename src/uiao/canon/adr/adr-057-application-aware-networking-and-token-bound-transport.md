@@ -1,8 +1,8 @@
 ---
-adr: ADR-047
+adr: ADR-057
 title: "Application-Aware Networking and Token-Bound Transport Plane"
 status: Proposed
-date: 2026-04-27
+date: 2026-05-05
 author: WhalerMike
 supersedes: []
 superseded_by: null
@@ -14,9 +14,25 @@ related:
   - ADR-039  # Policy Targeting
   - ADR-040  # Drift Engine
   - ADR-043  # FedRAMP RFC-0026 CA-7 Pathway Integration
+  - ADR-051  # SAML Trust Anchor (federation answer to "who issued the token")
+  - ADR-052  # PIV / USAccess Adapter (cardholder identity binding)
+  - ADR-054  # Single-ATO Reciprocity Model (downstream consumer of bundle integrity)
+  - ADR-056  # Login.gov Federation Service Activation (Stage 2)
 ---
 
-# ADR-047: Application-Aware Networking and Token-Bound Transport Plane
+# ADR-057: Application-Aware Networking and Token-Bound Transport Plane
+
+> **Renumber note (2026-05-05):** This ADR was originally drafted as
+> ADR-047 on a stale branch base. Three ADR-047 files exist on `main`
+> (`adr-047-continuous-monitoring-program.md`,
+> `adr-047-fedramp-20x-integration.md`, and the renumber from
+> `adr-025` per commit `572ad6eb`). Renumbered to ADR-057 — the next
+> free slot above the ADR-051..056 federal-federation block — without
+> changing the doctrinal content. Several premises this ADR raised
+> ("who issues the token", "what does federation look like across
+> agencies") are now partly answered by ADR-051 / ADR-052 / ADR-054 /
+> ADR-056; the transport-plane / per-call-token argument itself
+> remains open.
 
 ## Context
 
