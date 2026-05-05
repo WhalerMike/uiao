@@ -1,12 +1,12 @@
 ---
 document_id: UIAO_129
 title: "UIAO Application Identity Model"
-version: "1.0"
+version: "1.1"
 status: Current
 classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-04-17"
-updated_at: "2026-04-17"
+updated_at: "2026-05-04"
 boundary: "GCC-Moderate"
 ---
 
@@ -40,7 +40,7 @@ bindings:
 | Canonical DNS name | DNS authority (IPAM-managed) | `payroll.agency.gov` |
 | Address space | IPAM | `10.42.0.0/24` + cloud VPC/VNet prefix |
 | Workload identity | IAM | SPIFFE ID, managed identity, service principal |
-| Trust anchor | Certificate / token service | mTLS cert + SAN; OIDC/JWT |
+| Trust anchor | Certificate / token service / IdP | mTLS cert + SAN; OIDC/JWT; SAML 2.0 assertion |
 | Segmentation label | Policy Engine | overlay segment / microsegment ID |
 | Logical location | Registry | region / cloud / SDN fabric / SD-WAN zone |
 
@@ -65,8 +65,15 @@ define it.
   Engine.
 - **Trust binding** — mTLS for persistent high-assurance flows
   (service mesh); OAuth/OIDC for ephemeral API calls and
-  cross-domain integrations. Binding cryptographically ties
-  DNS name + workload identity to the application identity.
+  cross-domain integrations; SAML 2.0 for federation with
+  federal and legacy IdPs where the IdP is the authority of
+  record (e.g., OPM Entra under Federal HRIT 24322626R0007,
+  per ADR-051). Binding cryptographically ties DNS name +
+  workload identity to the application identity. Where a
+  contractually-mandated API gateway intermediates, the
+  gateway is the *enforcement* surface (per ADR-053); the
+  Certificate / Token Service or IdP remains the *issuance*
+  authority.
 - **Segmentation binding** — Policy Engine publishes label;
   Control Plane translates to overlay enforcement.
 - **Location binding** — used for locality-aware routing,
