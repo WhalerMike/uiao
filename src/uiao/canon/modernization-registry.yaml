@@ -25,7 +25,7 @@
 
 schema-version: "1.0.0"
 registry-class: modernization
-updated: "2026-04-26"
+updated: "2026-05-04"
 
 adapters:
 
@@ -1187,3 +1187,83 @@ adapters:
       src/uiao/adapters/intune_adapter.py (pre-dates this allocation;
       activation will reconcile that code to the per-adapter ADR
       contract).
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slot allocated by ADR-053 (2026-05-04)
+  # Federal HRIT IAM gap closure — OPM-hosted Azure APIM gateway
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: opm-azure-apim
+    name: OPM Azure API Management Gateway Adapter (Federal HRIT)
+    class: modernization
+    mission-class: integration
+    mission-class-notes: >-
+      Federal-HRIT-mandated centralized API gateway. Enforces OAuth 2.0
+      token validation, rate limiting, IP filtering, mTLS termination,
+      and payload transformation for all persistent OPM-side integrations
+      to the Core HCM platform. Per Appendix B of Solicitation
+      24322626R0007 Amd 4. Adapter operates the gateway via Azure
+      Resource Manager and consumes its observability surface for
+      canonical evidence. Classified per UIAO_003 §4.7 `integration`.
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - oauth2-token-validation
+      - api-rate-limiting
+      - mtls-termination
+      - payload-transformation
+      - developer-portal
+      - cross-agency-api-routing
+    outputs:
+      - apim-policy-manifest.json
+      - apim-traffic-audit.json
+      - apim-developer-portal-inventory.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+      - schedule
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - AC-4
+      - AC-17
+      - AU-2
+      - AU-12
+      - IA-2
+      - IA-8
+      - SC-7
+      - SC-8
+      - SC-13
+      - SC-23
+      - CA-9
+    automation-domain:
+      - configuration-management
+      - event-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Microsoft RSA Root Certificate Authority 2017, O=Microsoft Corporation, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - applications-and-workloads
+      - networks
+    references:
+      - UIAO-CANON-003
+      - ADR-053
+    notes: >-
+      Closes the HRIT IAM gap for the centralized OPM-hosted API gateway
+      mandated by Solicitation 24322626R0007 Amd 4 Appendix B pp. 82, 84.
+      Gateway is operated by OPM; the contractor configures APIs through
+      it but does not own the gateway. The "Core-HCM API boundary" is
+      enforced at this surface — the contractor's responsibility ends at
+      APIM ingress. Adapter activation requires an OPM-issued service
+      principal scoped to the federal-HRIT APIM instance. Tier-1
+      conformance: pending — likely requires Microsoft-attested test
+      fixtures plus per-tenant sandbox capture. Activation requires a
+      per-adapter ADR modeled on ADR-035.
