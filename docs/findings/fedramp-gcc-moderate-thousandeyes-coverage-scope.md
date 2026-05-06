@@ -9,7 +9,7 @@ owner: "Michael Stratton"
 related_canon: ["UIAO_003", "UIAO_109", "UIAO_113", "UIAO_131"]
 related_ksi: ["KSI-SC-07", "KSI-SI-04"]
 related_findings: ["FINDING-001"]
-related_adrs: ["ADR-047"]
+related_adrs: ["ADR-057"]
 supersedes: []
 superseded_by: []
 ---
@@ -132,19 +132,19 @@ of CQD exports, OS-level logs supplementing Intune). That mis-spends
 against the actual risk surface and leaves the Identity / Devices / Data
 gaps fully open.
 
-See **ADR-047** for the canonical proposal.
+See **ADR-057** for the canonical proposal.
 
 ## 7. Related
 
 - **FINDING-001** — INR unavailable in GCC-Moderate (the specific
   Networks-pillar gap that ThousandEyes can substitute for).
-- **ADR-047** — ThousandEyes Networks-pillar conditional adoption (the
+- **ADR-057** — ThousandEyes Networks-pillar conditional adoption (the
   decision-record realization of this finding's recommendation).
 - **Canon spec**:
   `src/uiao/canon/compliance/reference/gcc-moderate-boundary-assessment/`
 - **Gap matrix**: `src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml`
   (rows that ThousandEyes addresses are tagged in the
-  `network_path_substitute` set in ADR-047).
+  `network_path_substitute` set in ADR-057).
 
 ## Status tracking
 
