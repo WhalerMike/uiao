@@ -1,0 +1,164 @@
+---
+title: "B.1 GCC-Moderate Boundary Model"
+subtitle: "Telemetry constraints, capability dispositions, and the structural ZTMM ceiling"
+doc-type: leaf
+audience: [Executive, Customer, Architect]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "April 2026"
+status: Active
+canon-source: "inbox/New_FedRAMP_Boundary/M365_GCC-Moderate_Telemetry_and_Boundary_Assessment_External_with_images.docx"
+canon-reference: "src/uiao/canon/compliance/reference/gcc-moderate-boundary-assessment/"
+gap-matrix-data: "src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml"
+repo-path: docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd
+pillar: compliance
+sub-category: B
+leaf: B.1
+created-at: 2026-04-27
+updated-at: 2026-04-27
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+**CONTROLLED**
+
+# B.1 GCC-Moderate Boundary Model
+
+## 1. Position
+
+Microsoft 365 GCC-Moderate provides the same nominal product set as M365
+commercial, but the FedRAMP Moderate authorization boundary materially
+constrains the outbound telemetry that drives many of the platform's
+higher-order analytics. The result is a structural reduction in the
+fidelity of signals available for Zero Trust decisions, anomaly detection,
+insider-risk detection, and forensic reconstruction.
+
+The paradox: agencies in GCC-Moderate can be technically compliant with
+FedRAMP Moderate yet structurally less observable than commercial
+enterprises that have full access to Microsoft's commercial telemetry
+stack. Closing this observability gap is an agency responsibility, not a
+Microsoft platform feature.
+
+## 2. The Boundary-Inference Framework
+
+The single most important methodological position taken in this assessment
+is that **absence of an explicit "not available in GCC-Moderate" statement
+is not evidence of availability**. Many telemetry-dependent capabilities
+are constrained by the FedRAMP Moderate authorization boundary itself,
+regardless of what any product page says.
+
+The constraining controls are:
+
+| NIST 800-53 control | Constraint applied to outbound telemetry |
+|---|---|
+| **SI-4** Information System Monitoring | Monitoring data must remain within the authorized boundary unless explicitly scoped and authorized for export. |
+| **AU-2 / AU-3** Audit Events / Content of Audit Records | Audit content shipped off-boundary to commercial multi-tenant analytics may exceed authorized export scope. |
+| **SC-7** Boundary Protection | Continuous, rich telemetry to multi-tenant analytics services is exactly the cross-boundary flow SC-7 forces agencies to constrain. |
+
+**Reverse-inference rule.** If a feature requires telemetry to flow to
+Microsoft's commercial multi-tenant processing pipeline, and the FedRAMP
+Moderate boundary restricts that outbound flow under SI-4, AU-2, AU-3, or
+SC-7, then the signal is blocked or degraded *by architecture* — even when
+no Microsoft product page explicitly says so. Such findings are labeled
+**Inferred blocked by FedRAMP boundary architecture** rather than asserted
+documented unavailability.
+
+## 3. Capability Dispositions
+
+Each row of the gap matrix carries one of four `documented` dispositions.
+
+| Disposition | Meaning | Count |
+|---|---|---|
+| `confirmed` | Microsoft documentation explicitly states unavailability | 8 |
+| `inferred` | No explicit doc; blocked by SI-4 / AU-2 / AU-3 / SC-7 architecture | 15 |
+| `restricted` | Available with restrictions (e.g., Office Optional defaults to Required) | 1 |
+| `retention-limited` | Available but data lifetime caps create a forensic cliff | 2 |
+
+The two confirmed-unavailable headline capabilities are:
+
+- **Microsoft Adoption Score** — *"This feature isn't available in GCC
+  High, GCC, and DOD tenants."* The "GCC" item in that list is
+  GCC-Moderate.
+- **Microsoft Informed Network Routing (INR)** — *"supports tenants in WW
+  Commercial cloud but not the GCC Moderate, GCC High, DoD, Germany, or
+  China clouds."*
+
+Capabilities incorrectly listed as unavailable in earlier analyses but
+which **are** available with caveats:
+
+- **Teams Call Quality Dashboard (CQD)** — available with 28-day EUII
+  retention as the operational constraint.
+- **Microsoft 365 Usage Analytics** — available via the GCC-specific
+  Power BI connector; only the Marketplace template-app variant is
+  missing.
+
+For per-row detail, see
+[`src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml`]({{< meta gap-matrix-data >}})
+and
+[`src/uiao/canon/compliance/reference/gcc-moderate-boundary-assessment/capabilities.md`]({{< meta canon-reference >}}capabilities.md).
+
+## 4. ZTMM Maturity Ceiling
+
+CISA Zero Trust Maturity Model v2.0 pillar achievability under GCC-Moderate
+without agency-side analytics:
+
+| Pillar | Achievable without agency analytics | Gating gap | Achievable with agency analytics |
+|---|---|---|---|
+| Identity | Initial | Real-time Identity Protection ML risk + CAE | Advanced |
+| Devices | Initial | Endpoint Analytics Advanced + Intune behavioral analytics | Advanced |
+| Networks | Initial | INR + CQD long-retention EUII | Advanced (with third-party SD-WAN or SASE) |
+| Applications & Workloads | Initial → Advanced | Office Optional diagnostic + Copilot telemetry | Advanced |
+| Data | Initial → Advanced | Adoption Score collaboration baselines + rich DLP context | Advanced |
+| Visibility & Analytics | Initial → Advanced | All of the above | Advanced |
+| Automation & Orchestration | Initial | Real-time CAE; automated risk-based response | Advanced |
+
+**The structural ceiling.** Without agency-side analytics, GCC-Moderate
+caps near Initial maturity in Identity, Devices, and Networks; reaching
+Advanced requires meaningful agency engineering investment; Optimal in any
+pillar requires either Microsoft platform changes (e.g., MAS 2026
+boundary refinement) or substantial agency-built equivalents to
+Microsoft's commercial ML pipelines.
+
+## 5. Compliance Posture Under the Boundary
+
+| Mandate | Met by GCC-Moderate alone? | Closing the gap requires |
+|---|---|---|
+| CISA BOD 25-01 (logging and visibility) | Core logging met if all available logs export to Sentinel / Log Analytics. The "rapid detection and investigation" intent is not. | Agency-built local analytics, custom KQL / SIEM rules, third-party UEBA. |
+| OMB M-22-09 (Federal Zero Trust) | Identity continuous-monitoring intent not met without compensating analytics. | Equivalent agency risk scoring; third-party SASE / SD-WAN; behavior-aware DLP overlay. |
+| OMB M-21-31 (Tier 3 logging) | Met if all categories enabled and routed. | Telemetry completeness scorecard with quarterly verification. |
+| NIST SP 800-207 (ZTA) | Architecture consistent; PE / PA require continuous trust signals. | Trust-algorithm overlay in agency SIEM. |
+
+## 6. Boundary Modernization Path — MAS 2026
+
+MAS 2026 scope refinement is the realistic path to recovering some
+currently-blocked telemetry by **removing Microsoft's commercial telemetry
+pipelines from the agency's authorization scope** rather than blocking the
+data flow at the network boundary. This shifts the conversation from "can
+the data leave?" to "is the receiving service in scope of my ATO?"
+
+For the FedRAMP 20x framing of the same shift — Minimum Assessment Scope
+(MAS-CSO-IIR / MAS-CSO-MDI) and the Rev5 Balance Improvement Releases —
+see [`docs/docs/04_FedRAMP20x_Phase2_Summary.qmd`](../../docs/04_FedRAMP20x_Phase2_Summary.qmd).
+
+## 7. Cross-References
+
+- **Methodology**: [`src/uiao/canon/compliance/reference/gcc-moderate-boundary-assessment/methodology.md`]({{< meta canon-reference >}}methodology.md)
+- **Per-capability dispositions**: [`capabilities.md`]({{< meta canon-reference >}}capabilities.md)
+- **MITRE Chains A & B**: [`mitre-chains.md`]({{< meta canon-reference >}}mitre-chains.md)
+- **Resolved positions on disputed questions**: [`resolved-positions.md`]({{< meta canon-reference >}}resolved-positions.md)
+- **Machine-readable gap matrix**: [`canon/data/gcc-moderate-telemetry-gaps.yaml`]({{< meta gap-matrix-data >}})
+- **INR finding (FINDING-001)**: [`docs/findings/fedramp-gcc-moderate-informed-network-routing.md`](../../findings/fedramp-gcc-moderate-informed-network-routing.md)
+- **Source memo**: [`{{< meta canon-source >}}`]({{< meta canon-source >}})
+
+## 8. Provenance
+
+This leaf is the customer-doc realization of the M365 GCC-Moderate
+Telemetry & Boundary Assessment (External v1.0, 2026-04-25). The narrative
+above is condensed; the canon reference holds the full analytical content
+and the yaml holds the per-row matrix that adapters and validators
+consume.
