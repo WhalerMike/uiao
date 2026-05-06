@@ -288,8 +288,105 @@ This document aligns with Months 3-6 of the modernization timeline.
 
 ---
 
-## 12. Revision History
+## 12. Minimum Assessment Scope and the Eleven Key Security Indicators
+
+FedRAMP 20x is the modernization track that **replaces the assessment
+method, not the assessment scope**. Phase 2 Pilot is active and the
+requirements published at
+[fedramp.gov/docs/20x/](https://www.fedramp.gov/docs/20x/) are
+authoritative. 20x materially changes the federal framing in which
+agencies and CSPs operate, and gives the deterministic-telemetry subset
+of the GCC-Moderate gap matrix a cleaner home as machine-readable
+evidence — but it does not by itself close the boundary-architecture
+gaps that remain Microsoft engineering decisions about commercial-cloud
+features.
+
+### 12.1 Minimum Assessment Scope (the "what's in" rule)
+
+MAS replaces the prior FedRAMP authorization-boundary construct with a
+**two-pronged inclusion test**. Providers must identify information
+resources that are "*likely to handle federal customer data or likely to
+impact the confidentiality, integrity, or availability of federal
+customer data*" (MAS-CSO-IIR). Resources that fail both prongs are out
+of scope. Metadata follows the same rule (MAS-CSO-MDI): metadata is in
+scope only when the underlying resource is in scope.
+
+| MAS-CSO id | Name | Test |
+|---|---|---|
+| MAS-CSO-IIR | Information Resources | Two-prong inclusion test |
+| MAS-CSO-MDI | Metadata | In scope iff underlying resource is in scope |
+| MAS-CSO-FLO | Federation / Federal Boundary Flows | (per spec) |
+| MAS-CSO-TPR | Third-Party Resources | (per spec) |
+| MAS-CSO-SUP | Supporting Resources | (per spec) |
+
+**Why this matters for GCC-Moderate.** Telemetry that is measurement-only
+and does not itself handle federal customer data — synthetic network
+path metrics, anonymized endpoint performance counters, fleet-wide patch
+posture rollups — has a credible path to descoping under MAS-CSO-MDI.
+Telemetry that handles federal customer data routinely (sign-in events,
+mailbox-access events, sensitivity-label content) does not.
+
+For the per-signal-class projection across the GCC-Moderate gap matrix,
+see `src/uiao/canon/data/fedramp-20x.yml` (`gap_matrix_scope_effect`
+block) and the matrix itself at
+`src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml`.
+
+### 12.2 The Eleven Key Security Indicators (the "how it's measured" rule)
+
+| KSI id | Family | Domain |
+|---|---|---|
+| KSI-AUTH | Authorization by FedRAMP | Authorization lifecycle, package status, agency reuse |
+| KSI-CMT | Change Management | Significant Change Notifications, baseline drift, version control |
+| KSI-CNA | Cloud-Native Architecture | Service composition, multi-tenant isolation, shared-responsibility model |
+| KSI-CED | Cybersecurity Education | Workforce training, awareness, role-based education |
+| KSI-IAM | Identity and Access Management | Authentication, authorization, MFA, privileged access |
+| KSI-INR | Incident Response | Detection, containment, eradication, recovery, lessons learned |
+| KSI-MLA | Monitoring / Logging / Auditing | Continuous monitoring, log aggregation, audit-record fidelity |
+| KSI-PIY | Policy and Inventory | Policy artifacts, asset inventory, configuration baselines |
+| KSI-RPL | Recovery Planning | Backup, restore, business continuity, disaster recovery |
+| KSI-SVC | Service Configuration | Hardening baselines, secure defaults, configuration management |
+| KSI-SCN | Supply Chain Risk | Third-party risk, vendor management, software supply-chain integrity |
+
+KSIs sit **above** NIST 800-53 — they map to control families, but the
+artifact a CSP produces is a **machine-readable, continuously-validated
+evidence payload** rather than an SSP narrative. Compliance shifts from
+periodic-document-attesting toward continuous-evidence-emitting.
+
+### 12.3 Three deployment surfaces
+
+| Surface | Status | Note |
+|---|---|---|
+| Phase 2 Pilot | **Required** | Authoritative requirements at fedramp.gov/docs/20x/ for participants in the Moderate pilot. |
+| Rev5 Balance Improvement Releases | **Optional** | Minimum Assessment Scope, Significant Change Notifications, Authorization Data Sharing, Vulnerability Detection and Response, and Collaborative Continuous Monitoring are available as opt-in updates to existing Rev5-authorized packages without going through full 20x. Most likely near-term path for currently-authorized CSPs. |
+| Phase 1 Pilot | Archived | Reference-only. Phase 1's "Minimum Assessment Standard" is the predecessor to the current "Minimum Assessment Scope" — same two-prong concept, different name and refined language. |
+
+### 12.4 Cross-references
+
+- **MITRE Chains, gap matrix, and ZTMM ceiling**:
+  [`docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd`](../customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd).
+- **Canon reference (methodology, capabilities, MITRE chains, resolved positions)**:
+  `src/uiao/canon/compliance/reference/gcc-moderate-boundary-assessment/`.
+- **Crosswalk by signal class**: see §X of
+  [`03_FedRAMP20x_Crosswalk.qmd`](03_FedRAMP20x_Crosswalk.qmd).
+- **Source memo**:
+  `inbox/New_FedRAMP_Boundary/FedRAMP_20x_Assessment_and_Implications.docx`.
+
+### 12.5 Caveats
+
+The standard does not use the word "telemetry" — it uses "information
+resources" and "metadata." Whether a given telemetry stream qualifies
+as descoped metadata is a 3PAO interpretation, not a documented
+carve-out. The "likely" test is intentionally broad and open to
+assessor judgment; interpretation drift across 3PAOs is a primary risk.
+MAS-CSO does not by itself cause Microsoft to ship features into
+GCC-Moderate; it removes one formal obstacle, not the engineering
+work.
+
+---
+
+## 13. Revision History
 
 | Version | Date | Author | Summary |
 |---|---|---|---|
 | 1.0 | 2026-03 | UIAO Canon Engine | Initial canonical release |
+| 1.1 | 2026-04-27 | UIAO Canon Engine | Added §12 — Minimum Assessment Scope and the eleven KSIs. Source: `inbox/New_FedRAMP_Boundary/FedRAMP_20x_Assessment_and_Implications.docx`. |

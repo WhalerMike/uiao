@@ -1,0 +1,377 @@
+# GCC-Moderate Telemetry Gap Matrix
+#
+# Machine-readable extraction of the gap matrix from the M365 GCC-Moderate
+# Telemetry & Boundary Assessment (External v1.0, 2026-04-25). Each row
+# names one telemetry signal that is unavailable, restricted, or inferred
+# blocked under the FedRAMP Moderate authorization boundary, together with
+# its ZTMM mapping and four impact dimensions (zero-trust, anomaly
+# detection, insider risk, forensics).
+#
+# Provenance
+#   source_doc: inbox/New_FedRAMP_Boundary/M365_GCC-Moderate_Telemetry_and_Boundary_Assessment_External_with_images.docx
+#   source_section: "§6 Consolidated Telemetry-Gap Matrix"
+#   extracted_on: 2026-04-27
+#   extraction_method: manual transcription, normalized to the schema below
+#
+# Schema (per row)
+#   id                Stable kebab-case slug.
+#   signal            The specific field, metric, or capability missing.
+#   source_dashboard  Microsoft surface that exposes it in commercial cloud.
+#   documented        confirmed | inferred | restricted | retention-limited
+#                       confirmed         - Microsoft documentation explicitly states unavailability.
+#                       inferred          - No explicit doc; blocked by SI-4/AU-2/AU-3/SC-7 architecture.
+#                       restricted        - Available with restrictions (e.g., Office Optional defaults to Required).
+#                       retention-limited - Available but data lifetime caps create a forensic cliff.
+#   ztmm_pillars      CISA ZTMM v2.0 pillars affected.
+#   ztmm_level        Maturity tier most affected (Initial | Advanced | Optimal | range).
+#   constraining_controls  NIST 800-53 controls that drive the constraint.
+#   impact:           Free-text claims for each of the four dimensions.
+#     zero_trust
+#     anomaly_detection
+#     insider_risk
+#     forensics
+#
+# This file is consumed by:
+#   - src/uiao/adapters/modernization/gcc_boundary_probe/  (validators emit per-row evidence)
+#   - docs/customer-documents/compliance/boundary-authorization/  (rendered tables)
+#   - docs/findings/fedramp-gcc-moderate-*.md                     (per-finding back-references)
+
+gaps:
+  - id: communication-patterns-chat-vs-email
+    signal: Communication patterns (ChatCount vs EmailCount)
+    source_dashboard: Adoption Score
+    documented: confirmed
+    ztmm_pillars: [identity, visibility-analytics]
+    ztmm_level: Advanced
+    constraining_controls: [SI-4, AU-2, AU-3]
+    impact:
+      zero_trust: No "expected communication behavior" baseline for identity verification
+      anomaly_detection: No baseline for normal user-interaction volume
+      insider_risk: Critical - loss of digital-disengagement / flight-risk signal
+      forensics: Low - usage volume rarely the smoking gun
+
+  - id: content-collaboration-attachments-vs-cloudlinks
+    signal: Content collaboration (PhysicalAttachments vs CloudLinks)
+    source_dashboard: Adoption Score
+    documented: confirmed
+    ztmm_pillars: [data, visibility-analytics]
+    ztmm_level: Advanced
+    constraining_controls: [SI-4, AU-2, AU-3]
+    impact:
+      zero_trust: Inability to enforce or monitor cloud-only collaboration policies
+      anomaly_detection: High - regression to legacy methods to bypass DLP
+      insider_risk: High - users hoarding data via local copies
+      forensics: Moderate - harder to establish intent
+
+  - id: mobility-multiplatform-usage
+    signal: Mobility (multi-platform usage patterns)
+    source_dashboard: Adoption Score
+    documented: confirmed
+    ztmm_pillars: [identity, devices]
+    ztmm_level: Initial-Advanced
+    constraining_controls: [SI-4, AU-2, AU-3]
+    impact:
+      zero_trust: Cannot use "unusual platform" as account-takeover signal
+      anomaly_detection: Loss of platform-shift anomaly
+      insider_risk: Moderate - disengagement via specific workstation
+      forensics: Low
+
+  - id: meetings-participation
+    signal: Meetings participation telemetry
+    source_dashboard: Adoption Score
+    documented: confirmed
+    ztmm_pillars: [visibility-analytics]
+    ztmm_level: Advanced
+    constraining_controls: [SI-4, AU-2, AU-3]
+    impact:
+      zero_trust: Reduced behavioral context for risk scoring
+      anomaly_detection: No baseline for collaboration shifts
+      insider_risk: Lowers sensitivity to insider behavior changes
+      forensics: Missing participation data for activity reconstruction
+
+  - id: apps-health-version-channel
+    signal: Apps Health (update channel, version telemetry)
+    source_dashboard: Adoption Score
+    documented: confirmed
+    ztmm_pillars: [applications-workloads, visibility-analytics]
+    ztmm_level: Advanced
+    constraining_controls: [SI-4, AU-2, AU-3]
+    impact:
+      zero_trust: Limits app and version posture as policy input
+      anomaly_detection: No outdated-app anomaly trends
+      insider_risk: Indirect
+      forensics: No version-change history correlated to incidents
+
+  - id: network-connectivity-scores-per-location
+    signal: Network connectivity scores (per location)
+    source_dashboard: Adoption Score
+    documented: confirmed
+    ztmm_pillars: [networks, visibility-analytics]
+    ztmm_level: Advanced-Optimal
+    constraining_controls: [SI-4, SC-7]
+    impact:
+      zero_trust: Cannot distinguish real outages from path manipulation in access decisions
+      anomaly_detection: Hides localized connectivity drops indicating targeted disruption
+      insider_risk: Insiders degrading or rerouting traffic harder to see
+      forensics: Reduced evidence of when and where network conditions shifted
+
+  - id: endpoint-readiness-baselines-tenant-wide
+    signal: Endpoint readiness baselines (tenant-wide)
+    source_dashboard: Adoption Score
+    documented: confirmed
+    ztmm_pillars: [visibility-analytics]
+    ztmm_level: Advanced
+    constraining_controls: [SI-4, AU-2, AU-3]
+    impact:
+      zero_trust: No global posture view for ZT policy tuning
+      anomaly_detection: No tenant-wide deviation detection
+      insider_risk: Subtle group-level shifts harder to see
+      forensics: Weakens reconstruction of baseline drift
+
+  - id: inr-realtime-path-metrics
+    signal: INR real-time path metrics (latency / jitter / packet-loss)
+    source_dashboard: Microsoft INR
+    documented: confirmed
+    ztmm_pillars: [networks, visibility-analytics]
+    ztmm_level: Advanced-Optimal
+    constraining_controls: [SC-7]
+    impact:
+      zero_trust: No "expected path" baseline for path-aware trust
+      anomaly_detection: Infinite gap - no native ability to detect BGP hijack, DNS manipulation, MITM
+      insider_risk: Insiders using unusual paths invisible
+      forensics: Cannot reconstruct routing during incident windows
+
+  - id: device-boot-performance
+    signal: Device boot performance / GP processing / desktop load
+    source_dashboard: Endpoint Analytics - Advanced
+    documented: inferred
+    ztmm_pillars: [devices, visibility-analytics]
+    ztmm_level: Advanced-Optimal
+    constraining_controls: [SI-4, SC-7]
+    impact:
+      zero_trust: Coarse compliance and AV posture only; degradations not risk inputs
+      anomaly_detection: Boot-time outliers as weak compromise signal lost
+      insider_risk: Tools or drivers destabilizing endpoints invisible
+      forensics: Cannot reconstruct device performance around incident
+
+  - id: app-reliability-crashcount-hangrate
+    signal: App reliability (AppCrashCount, hang rates, stability)
+    source_dashboard: Endpoint Analytics - Advanced
+    documented: inferred
+    ztmm_pillars: [devices, applications-workloads]
+    ztmm_level: Advanced-Optimal
+    constraining_controls: [SI-4, SC-7]
+    impact:
+      zero_trust: Cannot use unstable apps as risk signal
+      anomaly_detection: Crash clusters indicating exploit attempts masked
+      insider_risk: Insiders testing unapproved tools obscured
+      forensics: Cannot correlate app instability with incidents
+
+  - id: resource-performance-cpu-memory
+    signal: Resource performance (AverageProcessorUsage, memory spikes)
+    source_dashboard: Endpoint Analytics - Advanced
+    documented: inferred
+    ztmm_pillars: [devices]
+    ztmm_level: Advanced-Optimal
+    constraining_controls: [SI-4, SC-7]
+    impact:
+      zero_trust: '"Resource health" cannot drive dynamic access decisions'
+      anomaly_detection: High - hidden miners or exfil tools bypassing AV go unnoticed
+      insider_risk: Unauthorized software by power users masked
+      forensics: Loss of CPU and RAM history to correlate with data egress
+
+  - id: stop-error-restarts
+    signal: Stop-error restarts
+    source_dashboard: Endpoint Analytics - Advanced
+    documented: inferred
+    ztmm_pillars: [devices, visibility-analytics]
+    ztmm_level: Advanced-Optimal
+    constraining_controls: [SI-4, SC-7]
+    impact:
+      zero_trust: Impairs real-time device-state verification
+      anomaly_detection: Loses automated restart-anomaly detection
+      insider_risk: N/A
+      forensics: Missing restart event correlation
+
+  - id: battery-health-wfa-readiness
+    signal: Battery health / Work-from-anywhere readiness
+    source_dashboard: Endpoint Analytics - Advanced
+    documented: inferred
+    ztmm_pillars: [devices]
+    ztmm_level: Advanced
+    constraining_controls: [SI-4, SC-7]
+    impact:
+      zero_trust: Reduced confidence in remote-endpoint trust
+      anomaly_detection: Less baseline for remote connectivity patterns
+      insider_risk: Unusual remote-only patterns obscured
+      forensics: Limited readiness-score history
+
+  - id: device-performance-anomalies-regression
+    signal: Device performance anomalies (post-config / policy / OS regression)
+    source_dashboard: Endpoint Analytics - Advanced
+    documented: inferred
+    ztmm_pillars: [devices, visibility-analytics]
+    ztmm_level: Advanced-Optimal
+    constraining_controls: [SI-4, SC-7]
+    impact:
+      zero_trust: Weakens continuous device-integrity verification
+      anomaly_detection: Core loss of automated regression detection
+      insider_risk: Targeted policy changes harming subsets of users masked
+      forensics: No anomaly-event timeline
+
+  - id: entra-identity-protection-realtime-risk
+    signal: Entra real-time risk scores / Identity Protection
+    source_dashboard: Entra ID
+    documented: inferred
+    ztmm_pillars: [identity, visibility-analytics]
+    ztmm_level: Advanced-Optimal
+    constraining_controls: [SI-4, AU-2, AU-3, SC-7]
+    impact:
+      zero_trust: "Detection delay: minutes (commercial) -> hours/days (GCC-M)"
+      anomaly_detection: ML-driven impossible-travel and atypical-IP detection lost
+      insider_risk: Low-and-slow spraying invisible
+      forensics: Post-hoc only via log correlation
+
+  - id: cross-tenant-access-telemetry
+    signal: Cross-tenant access telemetry (B2B, Direct Connect)
+    source_dashboard: Entra ID
+    documented: inferred
+    ztmm_pillars: [identity]
+    ztmm_level: Advanced
+    constraining_controls: [SI-4, SC-7]
+    impact:
+      zero_trust: Less context for cross-tenant risk decisions
+      anomaly_detection: Cross-tenant anomaly correlation lost
+      insider_risk: External-collaboration insider patterns harder to see
+      forensics: Cross-tenant timeline reconstruction limited
+
+  - id: cae-realtime-revocation-paths
+    signal: Real-time CAE revocation paths (sub-second)
+    source_dashboard: Entra ID + workloads
+    documented: inferred
+    ztmm_pillars: [identity, automation-orchestration]
+    ztmm_level: Optimal
+    constraining_controls: [SI-4, AU-2, AU-3, SC-7]
+    impact:
+      zero_trust: "Token-theft window 60-90 min vs. <15 min commercial"
+      anomaly_detection: Mid-lifetime hijacks not auto-cut
+      insider_risk: Compromised sessions persist
+      forensics: Limited to token-expiry timeline
+
+  - id: app-protection-policy-violation-analytics
+    signal: App-protection policy violation analytics
+    source_dashboard: Intune
+    documented: inferred
+    ztmm_pillars: [devices, applications-workloads]
+    ztmm_level: Advanced
+    constraining_controls: [SI-4, AU-2, AU-3]
+    impact:
+      zero_trust: Snapshot compliance only; no real-time violation flag
+      anomaly_detection: Sideloaded or shadow apps invisible on BYOD
+      insider_risk: '"Authorized but malicious" elevations masked'
+      forensics: No app-protection telemetry for IR
+
+  - id: wufb-deployment-health-trends
+    signal: WUfB deployment health trends / per-device error codes
+    source_dashboard: Intune
+    documented: inferred
+    ztmm_pillars: [devices, visibility-analytics]
+    ztmm_level: Advanced
+    constraining_controls: [SI-4, SC-7]
+    impact:
+      zero_trust: No real-time fleet patch posture for ZT
+      anomaly_detection: 7-14 day reporting lag
+      insider_risk: Patch state on specific devices opaque
+      forensics: Patch-window-aware forensics weakened
+
+  - id: epm-elevation-operational-analytics
+    signal: EPM elevation operational analytics (process metadata)
+    source_dashboard: Intune
+    documented: inferred
+    ztmm_pillars: [devices, identity, visibility-analytics]
+    ztmm_level: Advanced-Optimal
+    constraining_controls: [SI-4, AU-2, AU-3]
+    impact:
+      zero_trust: No elevation-as-risk input in CA
+      anomaly_detection: Anomalous elevations not "scored" centrally
+      insider_risk: Insider elevation patterns invisible
+      forensics: Elevation timeline reconstruction limited
+
+  - id: office-optional-diagnostic-data
+    signal: Office "Optional" diagnostic data
+    source_dashboard: M365 core
+    documented: restricted
+    ztmm_pillars: [applications-workloads, devices]
+    ztmm_level: Advanced
+    constraining_controls: [SI-4]
+    impact:
+      zero_trust: Reduced client-side feature and use telemetry for trust
+      anomaly_detection: '"Contextual glue" between apps lost'
+      insider_risk: Lateral movement via Office or Teams cross-app navigation invisible
+      forensics: Cannot rewind client-side behavior
+
+  - id: copilot-ai-prompt-response-telemetry
+    signal: Copilot / AI prompt-response telemetry richness
+    source_dashboard: M365 core
+    documented: inferred
+    ztmm_pillars: [applications-workloads, visibility-analytics]
+    ztmm_level: Advanced
+    constraining_controls: [SI-4, AU-2, AU-3]
+    impact:
+      zero_trust: Limited AI-usage posture
+      anomaly_detection: Anomalous AI-usage patterns invisible
+      insider_risk: AI-mediated data hoarding harder to spot
+      forensics: Limited AI-interaction reconstruction
+
+  - id: sensitivity-label-usage-analytics
+    signal: Sensitivity-label usage analytics
+    source_dashboard: M365 core
+    documented: inferred
+    ztmm_pillars: [data, visibility-analytics]
+    ztmm_level: Advanced-Optimal
+    constraining_controls: [SI-4, AU-2, AU-3]
+    impact:
+      zero_trust: Label-state-aware policies coarser
+      anomaly_detection: Bulk label changes / mass decryption signals delayed
+      insider_risk: Insider label-stripping behavior less visible
+      forensics: Label-history forensic detail reduced
+
+  - id: dlp-behavioral-richness
+    signal: DLP behavioral richness (override, near-miss, fingerprint context)
+    source_dashboard: M365 core
+    documented: inferred
+    ztmm_pillars: [data, visibility-analytics]
+    ztmm_level: Advanced-Optimal
+    constraining_controls: [SI-4, AU-2, AU-3]
+    impact:
+      zero_trust: Static DLP only; no behavior-aware policy
+      anomaly_detection: Intent-based detection absent
+      insider_risk: Override-pattern insider signal lost
+      forensics: Reduced DLP forensic context
+
+  - id: cqd-euii-long-term
+    signal: Long-term EUII (BSSID, public IP, subnet/building)
+    source_dashboard: Teams CQD
+    documented: retention-limited
+    ztmm_pillars: [networks]
+    ztmm_level: Advanced-Optimal
+    constraining_controls: [SI-4]
+    retention_days: 28
+    impact:
+      zero_trust: Trusted-location verification weakened for >28-day-old context
+      anomaly_detection: Limits delayed impossible-travel detection in Teams
+      insider_risk: Low
+      forensics: Critical forensic cliff at 28 days
+
+  - id: m365-usage-analytics-historical-pivots
+    signal: Cross-product 12+ month historical pivots
+    source_dashboard: M365 Usage Analytics
+    documented: retention-limited
+    ztmm_pillars: [visibility-analytics]
+    ztmm_level: Advanced
+    constraining_controls: [SI-4]
+    impact:
+      zero_trust: Shorter-window decisions only
+      anomaly_detection: '"Low and slow" attacks across months hard to visualize'
+      insider_risk: Long-term access-shift detection limited
+      forensics: Severely reduced retrospective breach analysis

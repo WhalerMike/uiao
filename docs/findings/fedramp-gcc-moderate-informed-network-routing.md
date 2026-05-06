@@ -7,6 +7,7 @@ created_at: "2026-04-17"
 updated_at: "2026-04-17"
 owner: "Michael Stratton"
 related_canon: ["UIAO_003", "UIAO_109", "UIAO_113", "UIAO_131"]
+related_ksi: ["KSI-SC-07", "KSI-SI-04"]
 supersedes: []
 superseded_by: []
 ---
