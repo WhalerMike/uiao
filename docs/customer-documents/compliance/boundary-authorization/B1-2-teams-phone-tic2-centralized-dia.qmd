@@ -1,0 +1,263 @@
+---
+title: "B.1.2 Teams Phone Under TIC 2.0 Centralized DIA, F5 Removed, No SD-WAN"
+subtitle: "What the F5 retirement fixes, what the topology still costs, and what the boundary is doing independent of either"
+doc-type: leaf
+audience: [Executive, Customer, Architect]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "May 2026"
+status: Active
+canon-source: "inbox/New_FedRAMP_Boundary/M365_GCC-Moderate_Telemetry_and_Boundary_Assessment_External_with_images.docx"
+canon-reference: "src/uiao/canon/compliance/reference/gcc-moderate-boundary-assessment/"
+gap-matrix-data: "src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml"
+parent-leaf: "docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd"
+related-roadmaps:
+  - "docs/docs/14_TIC3_F5RetirementRoadmap.qmd"
+  - "docs/customer-documents/modernization/uiao-modernization-program/04-phase3-optimization-cato.qmd"
+related-adrs: [ADR-057]
+repo-path: docs/customer-documents/compliance/boundary-authorization/B1-2-teams-phone-tic2-centralized-dia.qmd
+pillar: compliance
+sub-category: B
+leaf: B.1.2
+created-at: 2026-05-06
+updated-at: 2026-05-06
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+**CONTROLLED**
+
+# B.1.2 Teams Phone Under TIC 2.0 Centralized DIA, F5 Removed, No SD-WAN
+
+## 1. Position
+
+This leaf documents Teams Phone telephony behavior in a specific
+agency configuration: M365 GCC-Moderate (.com) tenant, FedRAMP
+Moderate authorization boundary, TIC 2.0 hub-and-spoke topology with
+direct internet access (DIA) at centralized data centers, F5 outbound
+proxies retired, and no SD-WAN deployed.
+
+The retirement of outbound F5 proxies is the single largest concrete
+improvement an agency can make for Teams Phone short of full SD-WAN
+adoption. It eliminates a class of breakage that touches every
+quality dimension. It does not, however, address two distinct
+remaining problem classes: a *topology* problem rooted in centralized
+DIA, and a *boundary* problem rooted in FedRAMP Moderate itself. A
+third remaining problem — dispatchable-location compliance for E911 —
+is not affected by network architecture changes at all and remains
+the most legally exposed item in this configuration.
+
+## 2. Configuration Scope
+
+| Element | State |
+|---|---|
+| M365 tenant | GCC-Moderate (.com), FedRAMP Moderate authorization |
+| Internet egress | DIA at centralized data centers (typically 2–4 nationwide) |
+| Outbound proxy | **Removed** — no F5 (or equivalent) outbound proxy in path |
+| TLS interception of M365 | None |
+| Branch-to-DC transport | Agency WAN; backhaul to DC for internet |
+| SD-WAN | **Not deployed** |
+| Path observability tooling | Not deployed (or under evaluation per ADR-057) |
+| Teams Phone calling path | Calling Plan / Operator Connect / Direct Routing — Teams media to Microsoft front doors |
+
+This configuration is common for federal agencies in a TIC 2.0 → TIC
+3.0 transitional state who have completed the F5 retirement step but
+have not yet deployed SD-WAN local breakout.
+
+## 3. What the F5 Retirement Fixed
+
+| Failure mode | Before | After |
+|---|---|---|
+| TLS interception breaking M365 cert pinning / ECH | Active | Eliminated |
+| Teams media forced to TCP/443 fallback when UDP 3478–3481 blocked | Likely active | Eliminated — UDP path open |
+| F5 as outbound single point of failure for telephony | Yes | Eliminated |
+| Proxy-induced latency microbursts on signaling | Yes | Eliminated |
+| Cert / SNI-based service classification breakage | Yes | Eliminated |
+
+Concrete consequences:
+
+- **MOS rises** for every user. Removing TCP-fallback alone often
+  moves MOS from "users complain weekly" to "users notice only on
+  bad-network days."
+- **Adaptive media works as designed.** Teams' jitter buffer, FEC,
+  and codec switching are calibrated for UDP. They were fighting the
+  proxy before; they are not now.
+- **CQD numbers become interpretable.** Per-call jitter, RTT, and
+  packet-loss attribution is meaningful because the call data is no
+  longer being shaped by an inspection device.
+- **Path-observability tooling becomes useful.** ThousandEyes-class
+  measurements at the DC edge now reflect real path performance, not
+  proxy-shaped performance. This is what makes ADR-057 adoption
+  practical from this configuration onward.
+
+Microsoft Network Connectivity Principle 4 ("bypass proxies, packet-
+inspection devices, and duplicate security technologies") is now
+satisfied for M365 traffic.
+
+## 4. What This Configuration Still Leaves Broken
+
+Three independent problem classes remain. Naming them separately is
+load-bearing because each has a different remediation path.
+
+### 4a. Topology problems
+
+These were partially masked by the F5 layer; F5 retirement exposes
+them clearly.
+
+| Issue | Effect on Teams Phone |
+|---|---|
+| Hairpinning persists | Branch user → centralized DC → internet → Microsoft front door. Latency floor is set by user-to-DC distance, not user-to-front-door distance. |
+| Anycast benefit defeated | Microsoft sees the DC egress IP for every user. All users get routed to the front door closest to the **DC**, not closest to the **user**. |
+| Per-DC ISP single-pathed | Without SD-WAN per-flow path selection, a degraded primary ISP at a DC degrades telephony for every site behind it. Failover is coarse and routing-protocol-driven, not application-aware. |
+| Branch-to-branch hairpin | Two users in the same branch can hairpin through the DC twice on the same call. |
+
+Microsoft Network Connectivity Principles 2 ("egress locally") and 3
+("avoid hairpins") are still violated. The cost is paid as latency
+that users notice and as MOS that does not reach what the underlying
+codec and clients are capable of.
+
+### 4b. Boundary problems
+
+Every item below is unchanged by F5 retirement. They are properties
+of the FedRAMP Moderate authorization boundary, not the network
+architecture.
+
+| Capability | Disposition | Gap matrix row |
+|---|---|---|
+| Microsoft Informed Network Routing (INR) — real-time path metrics | Confirmed unavailable | `inr-realtime-path-metrics` |
+| Adoption Score per-location network connectivity rollups | Confirmed unavailable | `network-connectivity-scores-per-location` |
+| CQD/QER native ingestion into Sentinel | Architecturally not wired | SYM-003 (`sentinel_probe.py:300` baseline = 55/100) |
+| CQD long-term EUII (BSSID, public IP, subnet/building) | Retention-limited to 28 days | `cqd-euii-long-term` |
+| Office "Optional" diagnostic data (cross-app glue) | Restricted (default = Required) | `office-optional-diagnostic-data` |
+| Continuous Access Evaluation real-time revocation | Inferred degraded | `cae-realtime-revocation-paths` |
+
+The compensating-control story for these is documented in
+[`B.1`](B1-gcc-moderate-boundary-model.qmd) and the canon reference at
+[`src/uiao/canon/compliance/reference/gcc-moderate-boundary-assessment/`]({{< meta canon-reference >}}).
+F5 retirement does not change any of it.
+
+### 4c. E911 / dispatchable-location obligations — unchanged
+
+This is the configuration's most legally exposed item, and the one
+most likely to be misread as fixed by the F5 work.
+
+| Element | State in this configuration |
+|---|---|
+| Public IP that Microsoft sees for Teams Phone calls | The DC egress IP — every user agency-wide presents the same IP |
+| Reverse-IP location enrichment | Useless for E911 — collapses every user to the DC location |
+| Intune Locations (network fence) | Explicitly unavailable in GCC-Moderate (`GAP-INT-005`) |
+| Location Information Server (LIS) / civic-address authority | Not implemented (PR-K is the proposed roadmap) |
+| Site identity from SD-WAN | None — no SD-WAN |
+| CQD EUII (BSSID, subnet, building) | Available but purges at 28 days |
+
+**RAY BAUM's Act §506 and FCC 47 CFR §9.10 / §9.11 dispatchable-
+location compliance posture has not moved with F5 retirement.** A
+Teams Phone 911 call from a multi-building federal campus is likely
+to reach the PSAP with the DC-egress city and the tenant default
+address. This is independent of, and unaffected by, the network
+modernization work this leaf describes.
+
+The remediation path for this item is the
+[E911 Implementation Roadmap (PR-K)](../../../../inbox/drafts/charter-restoration-plan.md)
+in the charter restoration plan, not network architecture.
+
+## 5. Per-Dimension Impact Summary
+
+| Dimension | Trajectory in this configuration | Why |
+|---|---|---|
+| Call quality (MOS) | Materially improved | UDP media + clean signaling + interpretable CQD |
+| Stability (drops, reconnects) | Improved | F5 SPOF removed; native adaptive media works as designed |
+| Availability | Improved at the F5 layer; still bound by per-DC ISP single-pathing | No SD-WAN per-flow diversity |
+| Jitter / latency / packet loss | Latency *floor* still set by backhaul; per-call numbers are now trustworthy | Topology unchanged; measurement now clean |
+| Path observability | Now usable if a tool is deployed | F5 was poisoning the signal; ThousandEyes-class tools now make sense (ADR-057) |
+| Location / E911 | **Unchanged** | Network architecture changes do not address dispatchable-location |
+
+## 6. Microsoft Network Connectivity Principles Posture
+
+| # | Principle | Status |
+|---|---|---|
+| 1 | Identify Microsoft 365 traffic | Partial — depends on classification at DC edge |
+| 2 | Egress locally | **Violated** — centralized DC ≠ local-to-user |
+| 3 | Avoid hairpinning | **Violated** — canonical hairpin pattern |
+| 4 | Bypass proxies and inspection | Satisfied — F5 removed |
+
+One of four satisfied. Principles 2 and 3 collapse into the same
+architectural step: distributed local breakout, which SD-WAN or the
+TIC 3.0 Cloud Use Case branch-egress pattern provides.
+
+## 7. Remediation, In Priority Order
+
+This configuration's outstanding work, ordered by risk class:
+
+1. **E911 dispatchable-location compliance.** The only piece in this
+   configuration that is *legal exposure* rather than performance debt.
+   Driven by RAY BAUM's Act and FCC 47 CFR §9.10 / §9.11. Workstream:
+   [PR-K E911 Implementation Roadmap](../../../../inbox/drafts/charter-restoration-plan.md)
+   defining the dispatchable-location data model, LIS / civic-address
+   authority, Identity binding, and InfoBlox / Entra integration.
+2. **Path observability at the DC edge.** Fills the INR-shaped gap
+   the boundary leaves. Per [ADR-057](../../../../src/uiao/canon/adr/adr-057-thousandeyes-networks-pillar-scope.md),
+   ThousandEyes is endorsed as a Networks-pillar component subject to
+   four preconditions (FedRAMP Marketplace SKU verification, Cloud
+   Agent egress documentation as cross-boundary, procurement framing
+   names Networks-only, parallel Identity / Devices / Data roadmap).
+3. **Distributed local breakout for M365.** The actual topology fix.
+   Either SD-WAN with M365-aware breakout per
+   [`14_TIC3_F5RetirementRoadmap.qmd`](../../../docs/14_TIC3_F5RetirementRoadmap.qmd),
+   or the TIC 3.0 Cloud Use Case. Once this lands, hairpinning and
+   anycast-defeat both disappear.
+4. **CQD bulk export to long-retention storage.** Preserves EUII past
+   the 28-day cliff for forensic and BOD 25-01 reasons.
+5. **CQD/QER → Sentinel ingestion pipeline.** Closes SYM-003 so call
+   data joins identity and device data in correlation rules. Brings
+   the Teams sentinel-probe baseline above its current 55/100.
+
+## 8. Practitioner Summary
+
+Removing F5 outbound proxies fixed the inspection problem. Teams
+Phone call quality and stability are materially better, CQD numbers
+are now trustworthy, and Microsoft connectivity principle 4 is now
+satisfied. Three problems remain: backhaul topology (principles 2 and
+3), which costs latency for every branch user; the FedRAMP Moderate
+boundary itself, which removes Microsoft's path intelligence and
+per-site rollups regardless of network architecture; and dispatchable-
+location for E911, which is a federal-law obligation untouched by
+network changes. Each has its own workstream — SD-WAN or TIC 3.0 for
+topology, ThousandEyes (ADR-057) for path observability, and the
+E911 implementation roadmap (PR-K) for location. The F5 retirement
+is the right first step; it is not the last step.
+
+## 9. Cross-References
+
+- **Parent leaf**: [`B.1` GCC-Moderate boundary model]({{< meta parent-leaf >}})
+- **Methodology**: [`methodology.md`]({{< meta canon-reference >}}methodology.md)
+- **Per-capability dispositions**: [`capabilities.md`]({{< meta canon-reference >}}capabilities.md)
+- **MITRE compound chains**: [`mitre-chains.md`]({{< meta canon-reference >}}mitre-chains.md)
+- **Machine-readable gap matrix**: [`canon/data/gcc-moderate-telemetry-gaps.yaml`]({{< meta gap-matrix-data >}})
+- **F5 retirement roadmap**: [`14_TIC3_F5RetirementRoadmap.qmd`](../../../docs/14_TIC3_F5RetirementRoadmap.qmd)
+- **Phase 3 CATO optimization (TIC 3.0 transition)**: [`04-phase3-optimization-cato.qmd`](../../modernization/uiao-modernization-program/04-phase3-optimization-cato.qmd)
+- **ADR-057 ThousandEyes Networks-pillar scope**: [`adr-057-thousandeyes-networks-pillar-scope.md`](../../../../src/uiao/canon/adr/adr-057-thousandeyes-networks-pillar-scope.md)
+- **E911 Implementation Roadmap (proposed)**: [`charter-restoration-plan.md` PR-K](../../../../inbox/drafts/charter-restoration-plan.md)
+
+## 10. Provenance
+
+This leaf is a configuration-specific drilldown of
+[`B.1` GCC-Moderate boundary model]({{< meta parent-leaf >}}). It
+applies the boundary analysis from the M365 GCC-Moderate Telemetry &
+Boundary Assessment (External v1.0, 2026-04-25) to a specific agency
+network configuration, and combines it with the TIC 3.0 / F5
+retirement architecture roadmap and the ADR-057 ThousandEyes scoping
+position to produce a per-dimension picture for Teams Phone telephony
+in that configuration.
+
+The configuration described here is the post-F5-retirement,
+pre-SD-WAN transitional state. A successor leaf may be required when
+the agency adopts distributed local breakout (SD-WAN or TIC 3.0
+Cloud Use Case), at which point Microsoft Network Connectivity
+Principles 2 and 3 also become satisfied and the residual issues
+collapse to the boundary class plus the unrelated E911 obligation.
