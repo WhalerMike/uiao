@@ -101,8 +101,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-046](adr-046-cli-surface-convention.md) | CLI Surface Convention: Sub-App-per-Domain | ACCEPTED | 2026-04-23 |
 | [ADR-047a](adr-047-continuous-monitoring-program.md) | Continuous Monitoring Program and Customer Documentation Platform Architecture | PROPOSED | 2026-04-14 |
 | [ADR-047b](adr-047-fedramp-20x-integration.md) | FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption | PROPOSED | 2026-04-27 |
-| [ADR-048a](adr-048-orgpath-attribute-selection.md) | OrgPath Attribute Selection — extensionAttributes over Custom Security Attributes | ACCEPTED | 2026-04-28 |
-| [ADR-048b](adr-048-orgpath-attribute-storage-decision.md) | (frontmatter mismatch — see PR notes) | — | — |
+| [ADR-048](adr-048-orgpath-attribute-selection.md) | OrgPath Attribute Selection — extensionAttributes over Custom Security Attributes | ACCEPTED | 2026-04-28 |
 | [ADR-049](adr-049-microsoft-adapter-coverage-expansion.md) | Microsoft Modernization Adapter Coverage Expansion | ACCEPTED | 2026-04-30 |
 | [ADR-050](adr-050-reference-middleware-implementation-choices.md) | D3.1 Reference Middleware — Runtime, Language, Packaging, and Test Choices | ACCEPTED | 2026-04-30 |
 | [ADR-051](adr-051-saml-trust-anchor.md) | SAML as a Third Trust-Anchor Type for Application Identity | ACCEPTED | 2026-05-04 |
@@ -119,8 +118,6 @@ Per CR-003, accepted ADRs are immutable.
 - `adr-033-gcc-boundary-drift-class.md` declares `id: ADR-030` in frontmatter; filename is the source of truth.
 - `adr-034-three-plane-device-model.md` declares `id: ADR-031` in frontmatter; filename is the source of truth.
 - ADR-047 has two files (`continuous-monitoring-program` and `fedramp-20x-integration`) — duplicate ADR number, listed as 047a / 047b.
-- ADR-048 has two files (`orgpath-attribute-selection` and `orgpath-attribute-storage-decision`) — duplicate ADR number, listed as 048a / 048b.
-- `adr-048-orgpath-attribute-storage-decision.md` has frontmatter title "Unified Identity-Addressing-Overlay Architecture (UIAO)" with `status: Current` (no date) — content does not match the filename's apparent purpose; deferred for review.
 
 ## ADR Governance Rules
 

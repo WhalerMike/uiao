@@ -306,7 +306,7 @@ source of truth. Drift on any §2 field is a finding.
 
 - [ADR-003](../adr/adr-003-api-driven-inbound-provisioning.md)
 - [ADR-035](../adr/adr-035-orgpath-codebook-binding.md)
-- [ADR-048](../adr/adr-048-orgpath-attribute-storage-decision.md) — extensionAttribute1 selection.
+- [ADR-048](../adr/adr-048-orgpath-attribute-selection.md) — extensionAttribute1 selection.
 
 ### 7.2 UIAO docs
 

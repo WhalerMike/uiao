@@ -490,7 +490,7 @@ before any new HR records process.
 
 - [ADR-003 — API-Driven Inbound Provisioning](../adr/adr-003-api-driven-inbound-provisioning.md)
 - [ADR-035 — OrgPath Codebook Binding](../adr/adr-035-orgpath-codebook-binding.md)
-- [ADR-048 — OrgPath Attribute Selection](../adr/adr-048-orgpath-attribute-storage-decision.md)
+- [ADR-048 — OrgPath Attribute Selection](../adr/adr-048-orgpath-attribute-selection.md)
 - [ADR-049 — Microsoft Modernization Adapter Coverage Expansion](../adr/adr-049-microsoft-adapter-coverage-expansion.md)
 
 ### 12.2 UIAO docs
