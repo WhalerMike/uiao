@@ -436,13 +436,13 @@ Every certificate template and active use case must be classified to determine t
   ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   **Classification**   **Definition**                                                                                                                        **Examples**                                                                                                             **Action**
   -------------------- ------------------------------------------------------------------------------------------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------ ----------------------------------------------------------------------------------------------------------------------------------------
-  **MIGRATE**          A direct cloud equivalent exists in Cloud PKI / Intune. Certificate can be fully replaced.                                            Wi-Fi 802.1x auth → SCEP, User auth → Entra CBA, VPN client cert → SCEP, Device auth → SCEP                              Deploy cloud certificate profile; allow ADCS-issued cert to expire naturally; do not renew from ADCS.
+  **MIGRATE**          A direct cloud equivalent exists in Cloud PKI / Intune. Certificate can be fully replaced.                                            Wi-Fi 802.1X auth → SCEP, User auth → Entra CBA, VPN client cert → SCEP, Device auth → SCEP                              Deploy cloud certificate profile; allow ADCS-issued cert to expire naturally; do not renew from ADCS.
 
   **BRIDGE**           Requires hybrid coexistence. Both ADCS and Cloud PKI must operate in parallel.                                                        DC authentication, LDAPS, cross-forest trust certificates, NPS/RADIUS server certs                                       Maintain ADCS issuance for these use cases during transition. Plan for ADCS retention until AD decommission or alternative validation.
 
   **RETAIN**           No cloud equivalent exists. Workload must remain on-premises ADCS permanently or until the consuming application is decommissioned.   Legacy mutual TLS applications, HSM-protected code signing, custom OID-based certs, on-prem SCEP for network equipment   Keep ADCS operational for these templates. Document as technical debt. Include in long-term decommission planning.
 
-  **RETIRE**           Obsolete use case. The consuming application or service has been or will be decommissioned.                                           EFS on migrated file shares, VPN certs for decommissioned concentrators, legacy 802.1x for deprecated SSIDs              Let existing certificates expire. Remove templates from auto-enrollment. Archive template configuration before deletion.
+  **RETIRE**           Obsolete use case. The consuming application or service has been or will be decommissioned.                                           EFS on migrated file shares, VPN certs for decommissioned concentrators, legacy 802.1X for deprecated SSIDs              Let existing certificates expire. Remove templates from auto-enrollment. Archive template configuration before deletion.
   ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 4.2 Certificate Use Case Mapping
@@ -450,7 +450,7 @@ Every certificate template and active use case must be classified to determine t
   ------------------------------------------------------------------------------------------------------------------------------------------------------
   **Use Case**                **ADCS Template**        **Classification**   **Cloud PKI Path**         **Intune Profile**     **Dependencies**
   --------------------------- ------------------------ -------------------- -------------------------- ---------------------- --------------------------
-  Wi-Fi 802.1x (EAP-TLS)      Computer / User          MIGRATE              Cloud PKI SCEP             SCEP + Trusted Root    RADIUS trust update
+  Wi-Fi 802.1X (EAP-TLS)      Computer / User          MIGRATE              Cloud PKI SCEP             SCEP + Trusted Root    RADIUS trust update
 
   VPN client certificate      User VPN                 MIGRATE              Cloud PKI SCEP             SCEP                   VPN gateway trust update
 
@@ -629,7 +629,7 @@ URL=tag:microsoft.com,2022-09-14:sid:\<SID\>
   -----------------------------------------------------------------------------------------------------------------------------------------------------------------
   **Use Case**                     **Profile Type**      **CA Source**               **Platform**                   **Dynamic Group Target (OrgPath)**
   -------------------------------- --------------------- --------------------------- ------------------------------ -----------------------------------------------
-  Wi-Fi 802.1x (EAP-TLS)           SCEP                  Cloud PKI                   Windows, iOS, Android, macOS   extensionAttribute2 (Site-based)
+  Wi-Fi 802.1X (EAP-TLS)           SCEP                  Cloud PKI                   Windows, iOS, Android, macOS   extensionAttribute2 (Site-based)
 
   VPN client authentication        SCEP                  Cloud PKI or ADCS           Windows, iOS, Android          Remote workers group
 
@@ -639,7 +639,7 @@ URL=tag:microsoft.com,2022-09-14:sid:\<SID\>
 
   Conditional Access device cert   Trusted Root + SCEP   Cloud PKI                   All platforms                  All managed devices
 
-  802.1x wired authentication      SCEP                  Cloud PKI                   Windows                        extensionAttribute6 (Server/Workstation role)
+  802.1X wired authentication      SCEP                  Cloud PKI                   Windows                        extensionAttribute6 (Server/Workstation role)
 
   RADIUS NPS server cert           SCEP                  ADCS (bridge)               Windows Server                 Tier 1 server group
 
@@ -891,7 +891,7 @@ The PKI modernization migration follows six phases, each with defined prerequisi
 
 **Steps:**
 
-58. Create SCEP certificate profile for Wi-Fi 802.1x targeting the pilot device group.
+58. Create SCEP certificate profile for Wi-Fi 802.1X targeting the pilot device group.
 
 59. Verify certificate issuance: device receives certificate, certificate chain validates, SAN includes strong mapping SID URI (if applicable).
 
@@ -1072,7 +1072,7 @@ The UIAO OrgPath model uses Entra ID extension attributes on user and device obj
 
 (device.deviceOSType -eq \"Android\" -or device.deviceOSType -eq \"iOS\") and (device.deviceManagementAppId -ne null)
 
-**Example 7 --- Site-Specific Wired 802.1x (Headquarters):**
+**Example 7 --- Site-Specific Wired 802.1X (Headquarters):**
 
 (device.extensionAttribute2 -eq \"HQ\") and (device.extensionAttribute6 -eq \"Workstation\")
 
@@ -1277,7 +1277,7 @@ Appendix A --- Cloud PKI Deployment Checklist
 
   15       Configure Certificate Connector --- verify healthy status                  Foundation     Intune Admin    ☐
 
-  16       Create SCEP profile for pilot Wi-Fi 802.1x use case                        Pilot          Intune Admin    ☐
+  16       Create SCEP profile for pilot Wi-Fi 802.1X use case                        Pilot          Intune Admin    ☐
 
   17       Assign SCEP profile to pilot device group                                  Pilot          Intune Admin    ☐
 
@@ -1315,7 +1315,7 @@ Appendix B --- Certificate Template Migration Matrix
   ------------------------- --------------------------------------- -------------------- ---------------------------------------------------------- ------------------------- -------------- ----------------------------------------- ---------------
   User                      User authentication (EAP-TLS, SSO)      MIGRATE              Cloud PKI SCEP --- Client Auth EKU                         SCEP                      High           Entra CBA config; RADIUS trust update     ☐ Not Started
 
-  Computer / Machine        Device authentication (802.1x, IPSec)   MIGRATE              Cloud PKI SCEP --- Client Auth EKU                         SCEP                      High           Intune enrollment; RADIUS trust update    ☐ Not Started
+  Computer / Machine        Device authentication (802.1X, IPSec)   MIGRATE              Cloud PKI SCEP --- Client Auth EKU                         SCEP                      High           Intune enrollment; RADIUS trust update    ☐ Not Started
 
   Web Server                Internal TLS (IIS, reverse proxy)       MIGRATE              Cloud PKI SCEP or PKCS --- Server Auth EKU                 SCEP or PKCS              Medium         IIS rebinding; client trust update        ☐ Not Started
 
