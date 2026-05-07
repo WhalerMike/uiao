@@ -1,0 +1,84 @@
+---
+title: "G.6 — RADIUS / 802.1X Modernization"
+subtitle: "NPS-on-AD to ISE / Entra-RADIUS in the Hybrid-Cloud model"
+doc-type: subcategory-leaf
+pillar: modernization
+sub-category: G
+leaf: G.6
+status: scaffold
+date: 2026-05-07
+aspirational: true
+canon-source: "src/uiao/modernization/directory-migration/adapters/radius/radius-adapter-interface.md"
+repo-path: docs/customer-documents/modernization/network-transformation/radius-802-1x-modernization.qmd
+---
+
+# G.6 — RADIUS / 802.1X Modernization {.unnumbered}
+
+::: {.callout-warning}
+## Scaffold — canonical adapter declared, customer-facing guide pending
+
+The RADIUS / NPS adapter interface is canonical at
+[`DM_030`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/modernization/directory-migration/adapters/radius/radius-adapter-interface.md).
+This page is a stub that surfaces DM_030 in the customer-documents
+taxonomy; the full operational guide (parallel to `dns-modernization.qmd`)
+is pending.
+:::
+
+## Why this matters
+
+Windows Network Policy Server (NPS) authenticates 802.1X wired/wireless,
+VPN, and dial-up connections against Active Directory groups. Every
+access point, VPN concentrator, and managed switch that uses RADIUS is
+an AD dependency. If NPS goes down before the replacement RADIUS is
+validated, users cannot connect to the network — this is not a degraded
+experience, it is a total access failure.
+
+DM_030 is rated **CRITICAL** in the directory-migration adapter priority
+matrix for that reason; see
+[Directory Migration Adapters — RADIUS / Network Policy Server](../../../modernization/adapters.qmd#radius)
+for the full risk profile and migration sequence.
+
+## Registered implementations
+
+| Implementation        | Role                                  | Source                |
+|-----------------------|---------------------------------------|-----------------------|
+| `nps`                 | Migration source (Windows NPS on AD)  | DM_030                |
+| `cisco-ise`           | Enterprise RADIUS replacement (NAC)   | DM_030                |
+| `aruba-clearpass`     | Enterprise RADIUS replacement         | DM_030                |
+| `entra-radius`        | Cloud-native RADIUS proxy             | DM_030                |
+
+## Related controls
+
+| Control     | Topic                                        |
+|-------------|----------------------------------------------|
+| **AC-18**   | Wireless Access (WPA3-Enterprise / 802.1X)   |
+| **IA-3**    | Device Identification and Authentication     |
+| **IA-5(2)** | Public Key-Based Authentication (cert-issuance for 802.1X) |
+| **SC-7(5)** | Boundary Protection — Deny by Default        |
+
+## What goes here when this scaffold is filled in
+
+A complete G.6 guide will mirror the structure of
+[G.3 DNS Modernization](dns-modernization.qmd):
+
+1. **Landscape decomposition** — current NPS policies, RADIUS clients
+   (APs, VPN concentrators, switches), AD-group dependencies, EAP-method
+   inventory.
+2. **Target architecture** — which workloads land on Cisco ISE, which
+   land on Entra RADIUS Proxy, which retire to Conditional Access /
+   ZTNA.
+3. **Migration sequence** — parallel-run validation, cutover order,
+   30-day decommission window for NPS.
+4. **Validation evidence** — RADIUS-trust update for SCEP-issued device
+   certificates (see IA-5(2)), 802.1X auth-success rates by EAP method,
+   AAA-source attestation.
+5. **Rollback** — conditions for restoring NPS, and how to do so
+   without re-introducing the AD dependency.
+
+## See also
+
+- [DM_030 RADIUS / NPS Adapter Interface](https://github.com/WhalerMike/uiao/blob/main/src/uiao/modernization/directory-migration/adapters/radius/radius-adapter-interface.md)
+  — canonical adapter spec
+- [Directory Migration Adapters — RADIUS](../../../modernization/adapters.qmd#radius)
+  — narrative view with priority matrix
+- [G. Network Transformation — index](index.qmd) — sibling leaves
