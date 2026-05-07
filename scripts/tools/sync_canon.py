@@ -165,7 +165,7 @@ def load_registries(core_root: Path, report: SyncReport) -> list[dict[str, Any]]
         report.drift.append(DriftItem("schema-error", None, str(schema_path), "Schema file not found"))
         return []
 
-    with schema_path.open() as f:
+    with schema_path.open(encoding="utf-8") as f:
         schema = json.load(f)
     validator = Draft7Validator(schema)
 
@@ -181,7 +181,11 @@ def load_registries(core_root: Path, report: SyncReport) -> list[dict[str, Any]]
             report.schema_ok = False
             continue
 
-        with reg_path.open() as f:
+        # encoding="utf-8" is load-bearing: canon registries contain non-ASCII
+        # characters (em-dashes in adapter `name` fields) and Path.open()
+        # without an explicit encoding falls back to the locale default
+        # (cp1252 on Windows), corrupting any UTF-8 byte sequence on read.
+        with reg_path.open(encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         # Validate

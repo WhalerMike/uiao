@@ -34,7 +34,7 @@
 
 schema-version: "1.0.0"
 registry-class: conformance
-updated: "2026-04-23"
+updated: "2026-05-07"
 
 adapters:
 
@@ -558,3 +558,957 @@ adapters:
         notice-0009-mandatory-by: "2027-04-01"
         readiness-lead-days: 90
         adr: ADR-043
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slots allocated by ADR-049 (2026-04-30)
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: defender-for-endpoint
+    name: Microsoft Defender for Endpoint (Reserved Slot)
+    class: conformance
+    mission-class: telemetry
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - device-exposure-score
+      - software-inventory
+      - vulnerability-inventory
+      - attack-path-analysis
+      - device-risk-signals
+    outputs:
+      - mde-exposure-findings.json
+      - mde-vulnerability-inventory.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 3
+    controls:
+      - RA-5
+      - RA-5(5)
+      - CA-7
+      - SI-2
+      - SI-4
+      - CM-8
+    automation-domain:
+      - vulnerability-management
+      - asset-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+    notes: >-
+      Reserved slot per ADR-049. Read-only telemetry feed for device
+      exposure score, software inventory, vulnerability state, and
+      attack-path analysis from Microsoft Defender for Endpoint.
+      Activation requires a per-adapter ADR (modeled on ADR-035) per
+      the three-stage lifecycle (canon → docs scaffold → impl code).
+      Feeds OrgPath device-plane risk signals and the device-cohort
+      sequencing in UIAO_136 Spec 1.
+
+  - id: defender-for-cloud-apps
+    name: Microsoft Defender for Cloud Apps — Discovery (Reserved Slot)
+    class: conformance
+    mission-class: telemetry
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - shadow-it-discovery
+      - oauth-app-inventory
+      - app-risk-scoring
+      - session-analytics
+    outputs:
+      - mcas-discovery-findings.json
+      - mcas-oauth-inventory.json
+      - mcas-risk-scores.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 3
+    controls:
+      - AC-2
+      - AC-3
+      - AC-6
+      - AU-2
+      - CA-7
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+    notes: >-
+      Reserved slot per ADR-049. Read-only telemetry side of the
+      Defender for Cloud Apps surface — Shadow IT discovery, OAuth
+      app inventory, app risk scoring, session analytics. Pairs with
+      `defender-for-cloud-apps-actions` (modernization-registry) for
+      the change-making OAuth governance / session control side. Per
+      ADR-049 §Decision 1, the dual-axis split is justified by ODA-15
+      (modernization = change-making).
+
+  - id: defender-for-servers
+    name: Microsoft Defender for Servers (Reserved Slot)
+    class: conformance
+    mission-class: telemetry
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - server-vulnerability-state
+      - server-edr-findings
+      - posture-recommendations
+      - security-baseline-state
+    outputs:
+      - defender-servers-findings.json
+      - defender-servers-posture.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 3
+    controls:
+      - RA-5
+      - CA-7
+      - SI-2
+      - SI-4
+      - CM-6
+    automation-domain:
+      - vulnerability-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+    notes: >-
+      Reserved slot per ADR-049. Read-only telemetry feed for
+      Arc-server EDR findings, posture recommendations, vulnerability
+      state, and security-baseline state from Microsoft Defender for
+      Servers. Complements the `azure-arc` modernization adapters by
+      providing the server-plane risk signal that UIAO_136 Spec 1
+      device-cohort sequencing depends on.
+
+  - id: azure-migrate
+    name: Azure Migrate Dependency Discovery (Reserved Slot)
+    class: conformance
+    mission-class: telemetry
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - server-dependency-inventory
+      - port-and-protocol-discovery
+      - service-call-mapping
+      - application-discovery
+    outputs:
+      - azure-migrate-dependency-graph.json
+      - azure-migrate-server-inventory.json
+    triggers:
+      - workflow_dispatch
+      - repository_dispatch
+    evidence-class: baseline
+    retention-years: 3
+    controls:
+      - CM-8
+      - CA-7
+      - SC-7
+    automation-domain:
+      - asset-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-049
+    notes: >-
+      Reserved slot per ADR-049. Read-only discovery feed for
+      server-to-server dependencies, port/protocol mapping, and
+      service-call graphs. Primary native input for OrgPath server-
+      plane edges (per UIAO_007 OrgPath ingestion contract). Critical
+      for deterministic domain-retirement sequencing — the
+      cross-server dependency graph that Microsoft does not provide
+      via any other surface.
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slot allocated by ADR-059 (2026-05-07)
+  # Microsoft Purview conformance — read-only telemetry counterpart
+  # to the change-making `purview` scope inside the `m365`
+  # modernization adapter. Driven by FINDING-008 (Audit Standard
+  # 180-day retention cliff) becoming a continuous drift signal
+  # rather than a static one-shot finding.
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: purview-audit
+    name: Microsoft Purview — Audit & Retention State (Reserved Slot)
+    class: conformance
+    mission-class: telemetry
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - unified-audit-retention-tier
+      - audit-event-coverage
+      - dlp-policy-state
+      - sensitivity-label-policy-state
+      - information-protection-coverage
+      - litigation-hold-state
+      - insider-risk-policy-state
+    outputs:
+      - purview-audit-tier-findings.json
+      - purview-dlp-policy-state.json
+      - purview-label-coverage.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 3
+    controls:
+      - AU-2
+      - AU-11
+      - SC-4
+      - MP-3
+      - RA-2
+    automation-domain:
+      - event-management
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-059
+    notes: >-
+      Reserved slot per ADR-059. Read-only telemetry counterpart to
+      the change-making Purview surface bundled inside the `m365`
+      modernization adapter (modernization-registry, scope: purview).
+      Continuously observes audit retention tier (Standard 180d /
+      Premium 1y / 10-year add-on), audit-event coverage, DLP policy
+      state, sensitivity-label policy state, Information Protection
+      coverage, litigation-hold state, and Insider Risk policy state.
+      Activates FINDING-008
+      (docs/findings/fedramp-gcc-moderate-purview-audit-180day-cliff.qmd)
+      as a live drift signal in monthly ConMon packs (UIAO_132 /
+      ADR-047) rather than a static one-shot finding. Sources control
+      evidence for SC-4 (DLP), MP-3 (sensitivity labels), RA-2
+      (information classification) — closes three DRIFT-PROVENANCE
+      registry-layer gaps for Purview-anchored controls.
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slot allocated by ADR-052 (2026-05-04)
+  # Federal HRIT IAM gap closure — PIV / USAccess credential authority
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: piv-usaccess
+    name: PIV / USAccess Federal Personnel Credential Adapter
+    class: conformance
+    mission-class: identity
+    status: reserved
+    phase: phase-planning
+    vendor: GSA
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - piv-credential-issuance
+      - piv-authentication-certificates
+      - federal-common-policy-chain
+      - ocsp-validation
+      - crl-distribution
+    outputs:
+      - piv-credential-inventory.json
+      - piv-validation-report.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 3
+    controls:
+      - IA-2(1)
+      - IA-2(2)
+      - IA-5(2)
+      - SC-12
+      - SC-13
+      - SC-17
+      - PE-2
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Federal Common Policy CA G2, OU=FPKI, O=U.S. Government, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO-CANON-003
+      - ADR-052
+      - https://www.idmanagement.gov/
+      - https://piv.idmanagement.gov/
+    notes: >-
+      Federal Personal Identity Verification (FIPS 201-3) credential
+      observer. Validates issuance authority, certificate chain to the
+      Federal Common Policy CA, and revocation state via OCSP / CRL.
+      Closes the HRIT IAM gap for OPM-user PIV-based authentication
+      mandated by Solicitation 24322626R0007 Amd 4 Clause 1752.224-70(b)
+      and the PWS p. 112 Zero Trust posture (PIV/CAC). Companion to
+      ADR-051 (SAML trust anchor): the federal-personnel authentication
+      chain is PIV-cert → SAML-assertion-to-OPM-Entra → Application
+      Identity binding. Tier-1 conformance status: pending — likely
+      EXCLUDED per UIAO_131 §5.1 (no public USAccess developer sandbox)
+      with compensating evidence per §5.1.1 (vendor-attested test report
+      from GSA OR agency-operated PIV smartcard fixture). Activation
+      requires a per-adapter ADR modeled on ADR-035.
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slots allocated by ADR-055 (2026-05-05)
+  # KYC / Customer Identity canon block — federal authorities of record
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: ssa-attribute-service
+    name: Social Security Administration Attribute Service
+    class: conformance
+    mission-class: identity
+    status: reserved
+    phase: phase-planning
+    vendor: SSA
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - ssn-verification
+      - earnings-record
+      - benefit-eligibility
+      - consent-based-ssn-verification
+    outputs:
+      - ssa-attribute-response.json
+      - ssa-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 7
+    controls:
+      - IA-2
+      - IA-4
+      - AU-2
+      - AU-12
+      - SC-8
+      - SC-13
+    automation-domain:
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Federal Common Policy CA G2, OU=FPKI, O=U.S. Government, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - data
+    references:
+      - UIAO-CANON-003
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+      - https://www.ssa.gov/dataexchange/
+    notes: >-
+      SSA is the federal authority of record for SSN per 42 U.S.C.
+      §405. This adapter observes attribute-disclosure events through
+      SSA Consent-Based SSN Verification (CBSV), Income Verification
+      Express Service (IVES — IRS-hosted but SSA-derived income
+      records), and SSA's eAuthentication / data-exchange channels.
+      Every disclosure must be tied to a reciprocal-consumption
+      entitlement in canon/reciprocal-consumption-registry.yaml with
+      a Privacy Act SORN routine use citation. Activation requires a
+      per-adapter ADR modeled on ADR-035.
+
+  - id: irs-tin-attribute-service
+    name: IRS TIN / Tax-Compliance Attribute Service
+    class: conformance
+    mission-class: identity
+    status: reserved
+    phase: phase-planning
+    vendor: IRS
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - tin-matching
+      - ein-verification
+      - federal-tax-compliance
+      - ives-income-verification
+    outputs:
+      - irs-attribute-response.json
+      - irs-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 7
+    controls:
+      - IA-2
+      - IA-4
+      - AU-2
+      - AU-12
+      - SC-8
+      - SC-13
+    automation-domain:
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Federal Common Policy CA G2, OU=FPKI, O=U.S. Government, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - data
+    references:
+      - UIAO-CANON-003
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+      - https://www.irs.gov/tax-professionals/taxpayer-identification-number-tin-matching
+    notes: >-
+      IRS is the federal authority of record for TIN/EIN per 26 U.S.C.
+      §6109. This adapter observes attribute-disclosure events through
+      IRS TIN Matching (Pub 2108A), Income Verification Express Service
+      (IVES), and federal tax compliance check APIs. Disclosures are
+      tightly governed by 26 U.S.C. §6103 (return information
+      confidentiality) — every entitlement must cite the §6103
+      authorization in addition to the Privacy Act SORN. Activation
+      requires a per-adapter ADR modeled on ADR-035.
+
+  - id: gsa-sam-attribute-service
+    name: GSA SAM.gov Business Identity Attribute Service
+    class: conformance
+    mission-class: identity
+    status: reserved
+    phase: phase-planning
+    vendor: GSA
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - uei-verification
+      - business-registration
+      - exclusion-list
+      - federal-contract-eligibility
+    outputs:
+      - sam-attribute-response.json
+      - sam-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 7
+    controls:
+      - IA-2
+      - IA-4
+      - AU-2
+      - AU-12
+      - CA-9
+    automation-domain:
+      - information-management
+      - asset-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Federal Common Policy CA G2, OU=FPKI, O=U.S. Government, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - applications-and-workloads
+    references:
+      - UIAO-CANON-003
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+      - https://sam.gov/data-services/Entity%20Information
+    notes: >-
+      GSA SAM.gov is the federal authority of record for the Unique
+      Entity Identifier (UEI) and business registration data used in
+      federal contracting and grants. Public-data API; the
+      reciprocal-consumption entitlement model still applies for
+      audit-grade disclosures. Activation requires a per-adapter
+      ADR modeled on ADR-035.
+
+  - id: uscis-immigration-attribute-service
+    name: USCIS Immigration / Citizenship Attribute Service
+    class: conformance
+    mission-class: identity
+    status: reserved
+    phase: phase-planning
+    vendor: USCIS
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - immigration-status
+      - citizenship-verification
+      - save-program
+    outputs:
+      - uscis-attribute-response.json
+      - uscis-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 7
+    controls:
+      - IA-2
+      - IA-4
+      - AU-2
+      - AU-12
+      - SC-8
+      - SC-13
+    automation-domain:
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Federal Common Policy CA G2, OU=FPKI, O=U.S. Government, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - data
+    references:
+      - UIAO-CANON-003
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+      - https://www.uscis.gov/save
+    notes: >-
+      USCIS is the federal authority of record for immigration and
+      citizenship status. Primary integration surface is the SAVE
+      (Systematic Alien Verification for Entitlements) program for
+      benefits-eligibility verification. Subject to Privacy Act
+      SORN DHS/USCIS-004 routine uses. Activation requires a per-
+      adapter ADR modeled on ADR-035.
+
+  - id: dhs-everify-attribute-service
+    name: DHS E-Verify Employment Authorization Attribute Service
+    class: conformance
+    mission-class: identity
+    status: reserved
+    phase: phase-planning
+    vendor: DHS
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - employment-authorization
+      - i9-verification
+    outputs:
+      - everify-attribute-response.json
+      - everify-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 7
+    controls:
+      - IA-2
+      - IA-4
+      - AU-2
+      - AU-12
+      - SC-8
+      - SC-13
+    automation-domain:
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Federal Common Policy CA G2, OU=FPKI, O=U.S. Government, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - data
+    references:
+      - UIAO-CANON-003
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+      - https://www.e-verify.gov/
+    notes: >-
+      E-Verify is a composite authority of record (DHS USCIS + SSA)
+      for employment authorization verification under IIRIRA §403.
+      This adapter observes employment-authorization disclosures —
+      both employer-initiated (Form I-9) and federal-agency-initiated
+      (FAR 52.222-54). Activation requires a per-adapter ADR modeled
+      on ADR-035.
+
+  - id: treasury-ofac-attribute-service
+    name: Treasury OFAC Sanctions Screening Attribute Service
+    class: conformance
+    mission-class: policy
+    status: reserved
+    phase: phase-planning
+    vendor: Treasury
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - sdn-list
+      - consolidated-sanctions-list
+      - sanctions-screening
+    outputs:
+      - ofac-screening-response.json
+      - ofac-screening-audit.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 7
+    controls:
+      - IA-2
+      - AU-2
+      - AU-12
+      - CA-9
+    automation-domain:
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Federal Common Policy CA G2, OU=FPKI, O=U.S. Government, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - data
+    references:
+      - UIAO-CANON-003
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+      - https://ofac.treasury.gov/specially-designated-nationals-and-blocked-persons-list-sdn-human-readable-lists
+    notes: >-
+      OFAC is the federal authority of record for sanctions
+      screening. Public list distribution; entitlement model still
+      applies for audit-grade screening disclosures within
+      compliance and disbursement contexts (e.g., Treasury Do Not
+      Pay). Activation requires a per-adapter ADR modeled on ADR-035.
+
+  - id: state-dmv-realid-attribute-service
+    name: State DMV REAL-ID Attribute Service
+    class: conformance
+    mission-class: identity
+    status: reserved
+    phase: phase-planning
+    vendor: State DMVs
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    scope:
+      - drivers-license-verification
+      - state-id-verification
+      - real-id-compliance
+    outputs:
+      - dmv-attribute-response.json
+      - dmv-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 7
+    controls:
+      - IA-2
+      - IA-4
+      - AU-2
+      - AU-12
+      - SC-8
+      - SC-13
+    automation-domain:
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - data
+    references:
+      - UIAO-CANON-003
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+      - https://www.dhs.gov/real-id
+    notes: >-
+      State DMVs are the per-state authorities of record for driver
+      licenses and state IDs under the REAL ID Act of 2005. Inter-
+      state and federal-state attribute exchange flows through state-
+      operated AAMVA channels. Each consuming engagement may require
+      a per-state legal-basis citation in the entitlement; some
+      states permit only narrow uses. Activation requires a per-
+      adapter ADR modeled on ADR-035.
+
+  - id: dcsa-clearance-attribute-service
+    name: DCSA Federal Security Clearance Attribute Service
+    class: conformance
+    mission-class: identity
+    status: reserved
+    phase: phase-planning
+    vendor: DCSA
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - clearance-status
+      - continuous-evaluation
+      - investigation-record
+    outputs:
+      - dcsa-clearance-response.json
+      - dcsa-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 25
+    controls:
+      - IA-2
+      - IA-4
+      - AC-2
+      - AC-6
+      - AU-2
+      - AU-12
+      - SC-8
+      - SC-13
+    automation-domain:
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Federal Common Policy CA G2, OU=FPKI, O=U.S. Government, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO-CANON-003
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+      - https://www.dcsa.mil/
+    notes: >-
+      DCSA is the federal authority of record for federal security
+      clearance investigations and continuous-evaluation status under
+      EO 12968 and EO 13467. Cross-agency reciprocity is statutorily
+      mandated by SEAD 7. Highest-sensitivity attribute surface;
+      retention extends to 25 years per investigative record
+      retention schedules. Activation requires a per-adapter ADR
+      modeled on ADR-035.
+
+  - id: va-veteran-attribute-service
+    name: VA Veteran Status Attribute Service
+    class: conformance
+    mission-class: identity
+    status: reserved
+    phase: phase-planning
+    vendor: VA
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: per-customer
+    scope:
+      - veteran-status
+      - service-record
+      - dependent-status
+      - veteran-preference
+    outputs:
+      - va-attribute-response.json
+      - va-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 75
+    controls:
+      - IA-2
+      - IA-4
+      - AU-2
+      - AU-12
+      - SC-8
+      - SC-13
+    automation-domain:
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    trust-anchor:
+      subject: "CN=Federal Common Policy CA G2, OU=FPKI, O=U.S. Government, C=US"
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - data
+    references:
+      - UIAO-CANON-003
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+      - https://www.va.gov/
+    notes: >-
+      VA (in coordination with DoD) is the federal authority of
+      record for veteran status, service record, dependent status,
+      and veteran preference (5 U.S.C. §2108). Long-retention
+      attribute surface; subject to USERRA, Privacy Act, and
+      veteran-preference statutes. Activation requires a per-adapter
+      ADR modeled on ADR-035.
+
+  - id: vitals-attribute-service
+    name: State Vital Records Attribute Service
+    class: conformance
+    mission-class: identity
+    status: reserved
+    phase: phase-planning
+    vendor: State Vital Records Bureaus
+    license: Public Domain
+    runtime: python-3.12
+    runner-class: on-prem-self-hosted
+    tenancy: per-customer
+    scope:
+      - birth-record
+      - marriage-record
+      - death-record
+      - evvr
+    outputs:
+      - vitals-attribute-response.json
+      - vitals-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 75
+    controls:
+      - IA-2
+      - IA-4
+      - AU-2
+      - AU-12
+      - SC-8
+      - SC-13
+    automation-domain:
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+      - data
+    references:
+      - UIAO-CANON-003
+      - ADR-055
+      - UIAO_141
+      - UIAO_142
+      - https://www.cdc.gov/nchs/nvss/
+    notes: >-
+      State vital-records bureaus are the per-state authorities of
+      record for birth, marriage, and death records. Federal-state
+      exchange flows through Electronic Verification of Vital Events
+      (EVVE) and SSA's death-record matching programs. Each consuming
+      engagement may require a per-state legal-basis citation;
+      some records carry adoption-record sealing constraints.
+      Activation requires a per-adapter ADR modeled on ADR-035.
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slot allocated by ADR-059 (2026-05-07)
+  # SailPoint NERM — Option-A Commercial-exception carve-out
+  # (non-employee identity lifecycle, FedRAMP Moderate on AWS GovCloud)
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: sailpoint-nerm
+    name: SailPoint Non-Employee Risk Management (Conformance)
+    class: conformance
+    mission-class: identity
+    status: reserved
+    phase: phase-planning
+    vendor: SailPoint
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - non-employee-identity-inventory
+      - sponsorship-state
+      - proofing-events
+      - non-employee-risk-score
+      - lifecycle-state-transitions
+    outputs:
+      - nerm-identity-inventory.json
+      - nerm-disclosure-audit.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 7
+    controls:
+      - IA-2
+      - IA-4
+      - IA-5(6)
+      - AC-2
+      - AC-2(3)
+      - AU-2
+      - AU-12
+      - CA-9
+    automation-domain:
+      - information-management
+    gcc-boundary: commercial-exception-sailpoint-nerm
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    ztmm-pillars:
+      - identity
+    references:
+      - UIAO-CANON-003
+      - ADR-059
+      - UIAO_141
+      - UIAO_142
+      - https://www.sailpoint.com/products/identity-security-cloud/atlas/add-ons/non-employee-risk-management
+      - https://www.sailpoint.com/press-releases/sailpoint-non-employee-risk-management-fedramp-authorized
+    notes: >-
+      SailPoint NERM is the FICAM-aligned, FedRAMP-Moderate-authorized
+      (2025-03-04) substrate for the non-employee branch of UIAO_141
+      Customer Identity Records (contractors, vendors, business
+      partners, sponsored externals). Allocated under the Option-A
+      Commercial-exception carve-out per ADR-059; the boundary value
+      `commercial-exception-sailpoint-nerm` follows the named-product-
+      exception convention established by Amazon Connect. Every NERM-
+      served disclosure must be tied to a reciprocal-consumption
+      entitlement in canon/reciprocal-consumption-registry.yaml per
+      ADR-055 doctrine. Activation requires a per-adapter ADR modeled
+      on ADR-035 documenting the sponsoring-agency entitlement model,
+      the SSOT-conflict resolution for any Entra/AD overlap (NERM
+      reads UIAO-mediated or non-overlapping; writes against UIAO-SSOT
+      objects must fail closed), and the audit-event format.

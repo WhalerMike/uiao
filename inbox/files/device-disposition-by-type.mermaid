@@ -1,0 +1,44 @@
+---
+title: "Device Disposition by Type"
+id: DIAG-GAE-002
+canon_ref: ADR-031
+---
+
+%%{init: {"theme": "neutral"}}%%
+flowchart LR
+    subgraph DT["Desktops / Laptops"]
+        direction TB
+        D_AD["AD Computer Object"]
+        D_AD --> D_IP["Entra Device<br/><i>Identity plane</i>"]
+        D_AD --> D_PP["Intune<br/><i>Policy plane</i>"]
+        D_AD --> D_WP["SP / MI<br/><i>Workload plane<br/>(if needed)</i>"]
+    end
+
+    subgraph SV["Servers"]
+        direction TB
+        S_AD["AD Computer Object"]
+        S_AD --> S_IP["<b>Stays AD</b><br/><i>No Entra-native<br/>computer object</i>"]
+        S_AD --> S_MP["Azure Arc<br/><i>Management plane<br/>ARM resource</i>"]
+        S_AD --> S_WP["Managed Identity<br/>Service Principal<br/><i>Workload plane</i>"]
+    end
+
+    subgraph DC["Domain Controllers"]
+        direction TB
+        DC_AD["AD Computer Object"]
+        DC_AD --> DC_STAY["<b>Stay AD</b><br/><i>Do not migrate</i>"]
+    end
+
+    subgraph SVC["ADCS / ADFS / SPN Servers"]
+        direction TB
+        SV2_AD["AD Computer Object"]
+        SV2_AD --> SV2_STAY["<b>Stay AD</b><br/><i>Until Track 3 complete</i>"]
+        SV2_AD --> SV2_T3["Track 3 rebuild<br/><i>PKI + App identity<br/>before retirement</i>"]
+    end
+
+    classDef stayAD fill:#fdebd0,stroke:#e67e22,stroke-width:2px
+    classDef migrate fill:#eafaea,stroke:#27ae60,stroke-width:1px
+    classDef block fill:#fadbd8,stroke:#e74c3c,stroke-width:2px
+
+    class D_IP,D_PP,D_WP,S_MP,S_WP migrate
+    class S_IP stayAD
+    class DC_STAY,SV2_STAY block

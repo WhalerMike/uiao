@@ -34,6 +34,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from ._graph_clouds import DEFAULT_CLOUD, graph_token_scope, resolve_graph_base
+
+# EntraDynamicGroupsAdapter targets Graph v1.0 (GA-stable group-management APIs).
+DEFAULT_GRAPH_API_VERSION = "v1.0"
+
 from uiao.modernization.orgtree import (
     DynamicGroupLibrary,
     DynamicGroupSpec,
@@ -122,7 +127,15 @@ class DynamicGroupReport:
 
 
 class EntraDynamicGroupsAdapter:
-    """Modernization adapter: provision OrgTree-* dynamic groups in Entra."""
+    """Modernization adapter: provision OrgTree-* dynamic groups in Entra.
+
+    Config keys: ``tenant_id``, ``client_id``, ``client_secret`` (for
+    Graph auth in ``_graph_client()``), plus the cross-adapter cloud
+    convention — ``cloud`` (``commercial`` / ``gcc-high`` / ``dod``,
+    default ``commercial``), ``graph_api_version`` (default ``v1.0``),
+    and ``api_base_url`` (explicit URL override; pre-dates the cloud
+    convention but still honoured). See AGENTS.md.
+    """
 
     ADAPTER_ID = "entra-dynamic-groups"
 
@@ -133,6 +146,18 @@ class EntraDynamicGroupsAdapter:
     ) -> None:
         self._config = config or {}
         self._library = library or default_dynamic_group_library()
+        self._cloud: str = self._config.get("cloud", DEFAULT_CLOUD)
+        self._graph_api_version: str = self._config.get("graph_api_version", DEFAULT_GRAPH_API_VERSION)
+        self._graph_endpoint: str = resolve_graph_base(
+            cloud=self._cloud,
+            graph_api_version=self._graph_api_version,
+            explicit=self._config.get("api_base_url"),
+            adapter_name="EntraDynamicGroupsAdapter",
+        )
+        self._graph_scope: str = graph_token_scope(
+            self._cloud,
+            adapter_name="EntraDynamicGroupsAdapter",
+        )
 
     # ------------------------------------------------------------------
     # Planning
@@ -292,7 +317,7 @@ class EntraDynamicGroupsAdapter:
                 "client_secret in adapter config, or override _graph_client()."
             )
         body = spec.to_graph_body()
-        base_url = self._config.get("api_base_url", "https://graph.microsoft.com/v1.0")
+        base_url = self._graph_endpoint
         if op.op == OP_CREATE:
             resp = client.post(f"{base_url}/groups", json=body)
             resp.raise_for_status()
@@ -334,6 +359,7 @@ class EntraDynamicGroupsAdapter:
             client_id=client_id,
             client_secret=client_secret,
         )
+        scope = self._graph_scope
 
         class _Auth(httpx.Auth):
             def __init__(self, cred):  # type: ignore[no-untyped-def]
@@ -342,7 +368,7 @@ class EntraDynamicGroupsAdapter:
 
             def auth_flow(self, request):  # type: ignore[no-untyped-def]
                 if self.token is None:
-                    tok = self.cred.get_token("https://graph.microsoft.com/.default")
+                    tok = self.cred.get_token(scope)
                     self.token = tok.token
                 request.headers["Authorization"] = f"Bearer {self.token}"
                 yield request

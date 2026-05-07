@@ -1,0 +1,52 @@
+ksi_id: KSI-ORGTREE-002
+title: User Manager Attribute or Service-Account Flag Completeness
+category: iam
+description: >
+  Every user object in Active Directory must either carry a non-null
+  `manager` attribute that resolves to an active user, or be explicitly
+  classified as a service account via an agreed service-account marker
+  (e.g. the `SERVICE_ACCOUNT` OrgTree flag or the `msDS-AllowedToDelegateTo`
+  attribute pattern).  Users with neither attribute are considered orphaned
+  identity objects.
+security_objective: >
+  Ensure every user account is owned by a responsible manager or is
+  formally recognised as a non-human service identity, supporting
+  account lifecycle review, access recertification, and least-privilege
+  enforcement.
+related_controls:
+  - AC-2
+  - AC-2(1)
+validation_type: automated
+evidence_sources:
+  - entra_id
+  - graph_api
+pass_criteria:
+  description: >
+    100% of enabled user accounts have a valid `manager` attribute or carry
+    the SERVICE_ACCOUNT classification flag.
+  type: percentage
+  threshold: 100
+  operator: equals
+  logic: >
+    SELECT COUNT(*) AS violations
+    FROM ad_users
+    WHERE enabled = TRUE
+      AND manager IS NULL
+      AND service_account_flag = FALSE
+    HAVING violations = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: orgtree.validators.user_manager_completeness
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-04-27"
+enabled: true
+tags:
+  - orgtree
+  - orgtree-readiness
+  - account-management
+  - service-accounts
+  - manager-attribute

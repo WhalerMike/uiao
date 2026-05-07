@@ -55,6 +55,12 @@ from typing import Any, Iterable, Mapping, Optional
 
 import yaml
 
+from uiao.governance.feature_flags import FeatureFlagRegistry
+from uiao.governance.tenancy import Tenant, TenantContext
+
+ARCHIVE_TAGGING_FLAG = "archive.entry.tenant-tagging"
+RAW_ZONE_STRICT_FLAG = "data-lake.immutable.strict"
+
 # Default retention applied when an adapter declares no
 # `retention-years:` (federal ConMon baseline: 3 years).
 DEFAULT_RETENTION_YEARS = 3
@@ -309,21 +315,40 @@ class FilesystemArchive(ArchiveBackend):
     through :meth:`remove` (driven by :meth:`ArchiveManager.expire`).
     Set ``immutable=False`` only for non-canonical scratch backends
     (e.g., synthetic test fixtures that re-archive into the same key).
+
+    UIAO_119 v2 check-point — when ``flags`` and ``tenant_context``
+    are both supplied, :meth:`put` consults the
+    ``data-lake.immutable.strict`` feature flag. When the flag is
+    *disabled* for the supplied context, the immutable behavior
+    softens to allow overwrite (effectively ``immutable=False`` for
+    that call) so an operator can roll the strict mode out gradually.
+    Without ``flags`` the ``immutable`` attribute is the sole gate
+    (back-compat).
     """
 
     root: Path
     immutable: bool = True
+    flags: Optional[FeatureFlagRegistry] = None
+    tenant_context: Optional[TenantContext] = None
+    tenant: Optional[Tenant] = None
 
     def __post_init__(self) -> None:
         self.root = Path(self.root)
         self.root.mkdir(parents=True, exist_ok=True)
         (self.root / "_index").mkdir(exist_ok=True)
 
+    def _strict_mode(self) -> bool:
+        if not self.immutable:
+            return False
+        if self.flags is None or self.tenant_context is None:
+            return True
+        return self.flags.is_enabled(RAW_ZONE_STRICT_FLAG, self.tenant_context, self.tenant)
+
     def put(self, source: Path, key: str) -> str:
         target = self.root / key
         target.parent.mkdir(parents=True, exist_ok=True)
         if target.exists():
-            if self.immutable:
+            if self._strict_mode():
                 raise RawZoneViolation(
                     f"Raw Zone violation: key {key!r} already exists at {target}. "
                     "The archive is immutable; remove via ArchiveManager.expire "
@@ -395,11 +420,26 @@ class FilesystemArchive(ArchiveBackend):
 
 @dataclass
 class ArchiveManager:
-    """Orchestrates archival of scheduler runs into a backend."""
+    """Orchestrates archival of scheduler runs into a backend.
+
+    UIAO_119 v2 wire-up — when ``tenant_context`` is supplied, every
+    :class:`ArchiveEntry` written by :meth:`archive_run` carries the
+    tenant tagging payload (``tenant_id`` / ``actor`` / ``environment``,
+    plus ``tenant_class`` when ``tenant`` is also supplied) merged
+    into ``entry.extra``. The optional ``flags`` registry gates the
+    behavior on the ``archive.entry.tenant-tagging`` feature flag —
+    when ``flags`` is set and the flag is disabled for the manager's
+    context, tagging is skipped. Without ``flags`` the tagging is
+    unconditional; pass it only when an operator wants the
+    rollout-controlled behavior.
+    """
 
     backend: FilesystemArchive
     policies: Mapping[str, RetentionPolicy] = field(default_factory=dict)
     default_retention_years: int = DEFAULT_RETENTION_YEARS
+    tenant_context: Optional[TenantContext] = None
+    tenant: Optional[Tenant] = None
+    flags: Optional[FeatureFlagRegistry] = None
 
     def _resolve_policy(self, adapter_id: str) -> RetentionPolicy:
         return policy_for(
@@ -407,6 +447,20 @@ class ArchiveManager:
             self.policies,
             default_retention_years=self.default_retention_years,
         )
+
+    def _tagging_enabled(self) -> bool:
+        if self.tenant_context is None:
+            return False
+        if self.flags is None:
+            return True
+        return self.flags.is_enabled(ARCHIVE_TAGGING_FLAG, self.tenant_context, self.tenant)
+
+    def _tag_extra(self, base: Mapping[str, Any]) -> dict[str, Any]:
+        merged: dict[str, Any] = dict(base)
+        if self._tagging_enabled():
+            assert self.tenant_context is not None  # narrow type for mypy
+            merged.update(self.tenant_context.as_tag_dict(self.tenant))
+        return merged
 
     def archive_run(
         self,
@@ -451,7 +505,7 @@ class ArchiveManager:
                 retention_until=_isoformat(retention_until),
                 archive_path=archive_path,
                 evidence_class=evidence_class,
-                extra={"retention_years": policy.retention_years},
+                extra=self._tag_extra({"retention_years": policy.retention_years}),
             )
             self.backend.write_index(entry)
             results.append(entry)
@@ -497,8 +551,10 @@ class ArchiveManager:
 
 
 __all__ = [
+    "ARCHIVE_TAGGING_FLAG",
     "DEFAULT_HOT_PERIOD_DAYS",
     "DEFAULT_RETENTION_YEARS",
+    "RAW_ZONE_STRICT_FLAG",
     "ArchiveBackend",
     "ArchiveEntry",
     "ArchiveManager",

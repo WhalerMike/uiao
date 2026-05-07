@@ -1,0 +1,718 @@
+#Requires -Version 5.1
+
+<#
+.SYNOPSIS
+    UIAO DNS Assessment Module
+.DESCRIPTION
+    Comprehensive AD-integrated DNS assessment: zone inventory, record enumeration,
+    SRV record validation, DNSSEC status, stale record detection, forwarder audit,
+    and drift detection. Outputs structured JSON for the UIAO Gitea governance pipeline.
+.NOTES
+    Classification : Controlled
+    Boundary       : GCC-Moderate
+    Repository     : https://github.com/WhalerMike/uiao
+    Version        : 1.0.0
+#>
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+#region --- Helpers ---
+
+function Write-UIAOLog {
+    param([string]$Message, [string]$Level = 'Info')
+    $colors = @{ Info='Cyan'; Warn='Yellow'; Error='Red'; Success='Green' }
+    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [$Level] $Message" -ForegroundColor $colors[$Level]
+}
+
+function New-UIAODir {
+    param([string]$Path)
+    if (-not (Test-Path $Path)) { New-Item -Path $Path -ItemType Directory -Force | Out-Null }
+}
+
+function Export-Json {
+    param($Data, [string]$FilePath, [int]$Depth = 10)
+    $Data | ConvertTo-Json -Depth $Depth | Set-Content -Path $FilePath -Encoding UTF8
+    Write-UIAOLog "Exported: $FilePath" -Level Success
+}
+
+#endregion
+
+#region --- Zone Inventory ---
+
+function Get-UIAODNSZoneInventory {
+    <#
+    .SYNOPSIS
+        Enumerates all DNS zones via DnsServer module or AD fallback.
+    .PARAMETER DnsServer
+        Target DNS server FQDN. Defaults to PDC emulator.
+    .PARAMETER OutputPath
+        Directory for output files.
+    .PARAMETER UseADFallback
+        If DnsServer module access fails, enumerate zones from AD objects.
+    .OUTPUTS
+        DNSZoneInventory.json
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DnsServer,
+        [string]$OutputPath = 'D:\UIAO\Assessment\DNS',
+        [switch]$UseADFallback
+    )
+
+    New-UIAODir -Path $OutputPath
+    Write-UIAOLog 'Discovering DNS zones...'
+
+    if (-not $DnsServer) {
+        $DnsServer = (Get-ADDomain).PDCEmulator
+        Write-UIAOLog "Using PDC emulator as DNS server: $DnsServer"
+    }
+
+    $zones = @()
+    $method = 'DnsServer'
+
+    try {
+        Import-Module DnsServer -ErrorAction Stop
+        $rawZones = Get-DnsServerZone -ComputerName $DnsServer
+
+        $zones = foreach ($z in $rawZones) {
+            $recordCount = 0
+            try {
+                $recordCount = (Get-DnsServerResourceRecord -ZoneName $z.ZoneName -ComputerName $DnsServer -ErrorAction SilentlyContinue | Measure-Object).Count
+            } catch { }
+
+            [PSCustomObject]@{
+                ZoneName          = $z.ZoneName
+                ZoneType          = $z.ZoneType.ToString()
+                IsAutoCreated     = $z.IsAutoCreated
+                IsDsIntegrated    = $z.IsDsIntegrated
+                IsReverseLookup   = $z.IsReverseLookupZone
+                IsSigned          = $z.IsSigned
+                DynamicUpdate     = $z.DynamicUpdate.ToString()
+                ReplicationScope  = $z.ReplicationScope
+                RecordCount       = $recordCount
+            }
+        }
+    } catch {
+        Write-UIAOLog "DnsServer module unavailable ($($_.Exception.Message)). Using AD fallback." -Level Warn
+        $method = 'ADFallback'
+
+        # AD-integrated zone discovery via LDAP
+        $partitions = @(
+            "DC=ForestDnsZones,$(([ADSI]'LDAP://RootDSE').configurationNamingContext -replace 'CN=Configuration,','')"
+            "DC=DomainDnsZones,$((Get-ADDomain).DistinguishedName)"
+        )
+
+        foreach ($partition in $partitions) {
+            try {
+                $dnsContainer = "CN=MicrosoftDNS,$partition"
+                $zoneObjects = Get-ADObject -SearchBase $dnsContainer -Filter 'objectClass -eq "dnsZone"' -Properties name, whenCreated, whenChanged -ErrorAction SilentlyContinue
+
+                foreach ($zo in $zoneObjects) {
+                    if ($zo.Name -ne 'RootDNSServers' -and $zo.Name -ne '..TrustAnchors') {
+                        $zones += [PSCustomObject]@{
+                            ZoneName         = $zo.Name
+                            ZoneType         = 'AD-Integrated'
+                            IsAutoCreated    = $false
+                            IsDsIntegrated   = $true
+                            IsReverseLookup  = $zo.Name -match '\.in-addr\.arpa$|\.ip6\.arpa$'
+                            IsSigned         = $null
+                            DynamicUpdate    = 'Unknown'
+                            ReplicationScope = if ($partition -match 'ForestDnsZones') {'Forest'} else {'Domain'}
+                            RecordCount      = -1
+                        }
+                    }
+                }
+            } catch {
+                Write-UIAOLog "Could not enumerate partition $partition : $_" -Level Warn
+            }
+        }
+    }
+
+    $inventory = [ordered]@{
+        AssessmentType    = 'DNSZoneInventory'
+        Timestamp         = (Get-Date -Format 'o')
+        Classification    = 'Controlled'
+        Boundary          = 'GCC-Moderate'
+        DnsServer         = $DnsServer
+        DiscoveryMethod   = $method
+        TotalZones        = $zones.Count
+        ForwardZones      = ($zones | Where-Object { -not $_.IsReverseLookup }).Count
+        ReverseZones      = ($zones | Where-Object IsReverseLookup).Count
+        ADIntegrated      = ($zones | Where-Object IsDsIntegrated).Count
+        SignedZones       = ($zones | Where-Object IsSigned).Count
+        Zones             = @($zones)
+    }
+
+    Export-Json -Data $inventory -FilePath (Join-Path $OutputPath 'DNSZoneInventory.json')
+    return $inventory
+}
+
+#endregion
+
+#region --- Record Export ---
+
+function Get-UIAODNSRecordExport {
+    <#
+    .SYNOPSIS
+        Exports all DNS records from specified zones.
+    .PARAMETER DnsServer
+        Target DNS server FQDN.
+    .PARAMETER ZoneNames
+        Array of zone names to export. If empty, exports all non-auto-created zones.
+    .PARAMETER OutputPath
+        Directory for output files.
+    .OUTPUTS
+        DNS-Records-{ZoneName}.csv per zone
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DnsServer,
+        [string[]]$ZoneNames,
+        [string]$OutputPath = 'D:\UIAO\Assessment\DNS'
+    )
+
+    New-UIAODir -Path $OutputPath
+    if (-not $DnsServer) { $DnsServer = (Get-ADDomain).PDCEmulator }
+
+    Import-Module DnsServer -ErrorAction Stop
+
+    if (-not $ZoneNames) {
+        $ZoneNames = (Get-DnsServerZone -ComputerName $DnsServer |
+            Where-Object { -not $_.IsAutoCreated -and $_.ZoneType -ne 'Forwarder' }).ZoneName
+    }
+
+    foreach ($zone in $ZoneNames) {
+        Write-UIAOLog "Exporting records for zone: $zone"
+        try {
+            $records = Get-DnsServerResourceRecord -ZoneName $zone -ComputerName $DnsServer |
+                Select-Object HostName, RecordType, Timestamp,
+                    @{N='TTL';E={$_.TimeToLive.TotalSeconds}},
+                    @{N='Data';E={
+                        switch ($_.RecordType) {
+                            'A'     { $_.RecordData.IPv4Address.IPAddressToString }
+                            'AAAA'  { $_.RecordData.IPv6Address.IPAddressToString }
+                            'CNAME' { $_.RecordData.HostNameAlias }
+                            'MX'    { "$($_.RecordData.Preference) $($_.RecordData.MailExchange)" }
+                            'NS'    { $_.RecordData.NameServer }
+                            'PTR'   { $_.RecordData.PtrDomainName }
+                            'SRV'   { "$($_.RecordData.Priority) $($_.RecordData.Weight) $($_.RecordData.Port) $($_.RecordData.DomainName)" }
+                            'TXT'   { $_.RecordData.DescriptiveText -join '; ' }
+                            'SOA'   { "$($_.RecordData.PrimaryServer) $($_.RecordData.ResponsiblePerson)" }
+                            default { $_.RecordData.ToString() }
+                        }
+                    }}
+
+            $safeName = $zone -replace '[\\/:*?"<>|]', '_'
+            $records | Export-Csv -Path (Join-Path $OutputPath "DNS-Records-$safeName.csv") -NoTypeInformation -Encoding UTF8
+            Write-UIAOLog "  $zone : $($records.Count) records" -Level Success
+        } catch {
+            Write-UIAOLog "  Failed to export $zone : $_" -Level Warn
+        }
+    }
+}
+
+#endregion
+
+#region --- SRV Validation ---
+
+function Test-UIAOSRVRecords {
+    <#
+    .SYNOPSIS
+        Validates critical AD SRV records are resolvable.
+    .PARAMETER DomainName
+        Domain FQDN to validate.
+    .PARAMETER OutputPath
+        Directory for output files.
+    .OUTPUTS
+        SRVValidation.csv, SRVValidation.json
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DomainName,
+        [string]$OutputPath = 'D:\UIAO\Assessment\DNS'
+    )
+
+    New-UIAODir -Path $OutputPath
+    if (-not $DomainName) { $DomainName = (Get-ADDomain).DNSRoot }
+
+    Write-UIAOLog "Validating SRV records for $DomainName..."
+
+    $srvQueries = @(
+        @{ Name = 'LDAP DC';       Query = "_ldap._tcp.dc._msdcs.$DomainName" }
+        @{ Name = 'Kerberos DC';   Query = "_kerberos._tcp.dc._msdcs.$DomainName" }
+        @{ Name = 'GC';            Query = "_gc._tcp.$DomainName" }
+        @{ Name = 'LDAP GC';       Query = "_ldap._tcp.gc._msdcs.$DomainName" }
+        @{ Name = 'Kerberos';      Query = "_kerberos._tcp.$DomainName" }
+        @{ Name = 'KPassword';     Query = "_kpasswd._tcp.$DomainName" }
+        @{ Name = 'LDAP PDC';      Query = "_ldap._tcp.pdc._msdcs.$DomainName" }
+    )
+
+    # Add per-site SRV records
+    try {
+        $sites = Get-ADReplicationSite -Filter * | Select-Object -ExpandProperty Name
+        foreach ($site in $sites) {
+            $srvQueries += @{ Name = "LDAP Site $site"; Query = "_ldap._tcp.$site._sites.dc._msdcs.$DomainName" }
+            $srvQueries += @{ Name = "Kerberos Site $site"; Query = "_kerberos._tcp.$site._sites.dc._msdcs.$DomainName" }
+        }
+    } catch {
+        Write-UIAOLog 'Could not enumerate sites for per-site SRV validation' -Level Warn
+    }
+
+    $results = foreach ($srv in $srvQueries) {
+        $status = 'FAIL'
+        $recordCount = 0
+        $targets = ''
+        try {
+            $resolved = Resolve-DnsName -Name $srv.Query -Type SRV -DnsOnly -ErrorAction Stop
+            $srvRecords = $resolved | Where-Object { $_.Type -eq 'SRV' }
+            $recordCount = ($srvRecords | Measure-Object).Count
+            $targets = ($srvRecords | Select-Object -ExpandProperty NameTarget) -join '; '
+            if ($recordCount -gt 0) { $status = 'PASS' }
+        } catch {
+            $status = 'FAIL'
+        }
+
+        [PSCustomObject]@{
+            Service     = $srv.Name
+            Query       = $srv.Query
+            Status      = $status
+            RecordCount = $recordCount
+            Targets     = $targets
+        }
+    }
+
+    $passCount = ($results | Where-Object { $_.Status -eq 'PASS' }).Count
+    $failCount = ($results | Where-Object { $_.Status -eq 'FAIL' }).Count
+
+    $validation = [ordered]@{
+        AssessmentType = 'SRVValidation'
+        Timestamp      = (Get-Date -Format 'o')
+        Classification = 'Controlled'
+        Boundary       = 'GCC-Moderate'
+        Domain         = $DomainName
+        TotalChecks    = $results.Count
+        Passed         = $passCount
+        Failed         = $failCount
+        HealthScore    = [math]::Round(($passCount / $results.Count) * 100, 1)
+        Results        = @($results)
+    }
+
+    Export-Json -Data $validation -FilePath (Join-Path $OutputPath 'SRVValidation.json')
+    $results | Export-Csv -Path (Join-Path $OutputPath 'SRVValidation.csv') -NoTypeInformation -Encoding UTF8
+
+    if ($failCount -gt 0) {
+        Write-UIAOLog "SRV Validation: $passCount PASS, $failCount FAIL — investigate failures" -Level Warn
+    } else {
+        Write-UIAOLog "SRV Validation: $passCount/$($results.Count) PASS" -Level Success
+    }
+
+    return $validation
+}
+
+#endregion
+
+#region --- Forwarder Audit ---
+
+function Get-UIAODNSForwarderAudit {
+    <#
+    .SYNOPSIS
+        Audits DNS forwarders and conditional forwarders.
+    .PARAMETER DnsServer
+        DNS server to audit.
+    .PARAMETER OutputPath
+        Directory for output files.
+    .OUTPUTS
+        DNSForwarders.json
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DnsServer,
+        [string]$OutputPath = 'D:\UIAO\Assessment\DNS'
+    )
+
+    New-UIAODir -Path $OutputPath
+    if (-not $DnsServer) { $DnsServer = (Get-ADDomain).PDCEmulator }
+
+    Import-Module DnsServer -ErrorAction Stop
+    Write-UIAOLog "Auditing DNS forwarders on $DnsServer..."
+
+    # Standard forwarders
+    $forwarders = Get-DnsServerForwarder -ComputerName $DnsServer
+    $forwarderData = foreach ($ip in $forwarders.IPAddress) {
+        $reachable = Test-Connection -ComputerName $ip.IPAddressToString -Count 1 -Quiet -ErrorAction SilentlyContinue
+        [PSCustomObject]@{
+            IPAddress   = $ip.IPAddressToString
+            Type        = 'StandardForwarder'
+            Reachable   = $reachable
+        }
+    }
+
+    # Conditional forwarders
+    $conditionalForwarders = Get-DnsServerZone -ComputerName $DnsServer |
+        Where-Object { $_.ZoneType -eq 'Forwarder' }
+
+    $cfData = foreach ($cf in $conditionalForwarders) {
+        $masterServers = @()
+        try {
+            $masterServers = $cf.MasterServers | ForEach-Object {
+                $reachable = Test-Connection -ComputerName $_.IPAddressToString -Count 1 -Quiet -ErrorAction SilentlyContinue
+                [PSCustomObject]@{
+                    IPAddress = $_.IPAddressToString
+                    Reachable = $reachable
+                }
+            }
+        } catch { }
+
+        [PSCustomObject]@{
+            ZoneName      = $cf.ZoneName
+            Type          = 'ConditionalForwarder'
+            IsDsIntegrated = $cf.IsDsIntegrated
+            MasterServers = @($masterServers)
+        }
+    }
+
+    $audit = [ordered]@{
+        AssessmentType         = 'DNSForwarderAudit'
+        Timestamp              = (Get-Date -Format 'o')
+        Classification         = 'Controlled'
+        Boundary               = 'GCC-Moderate'
+        DnsServer              = $DnsServer
+        StandardForwarders     = @($forwarderData)
+        ConditionalForwarders  = @($cfData)
+    }
+
+    Export-Json -Data $audit -FilePath (Join-Path $OutputPath 'DNSForwarders.json')
+    Write-UIAOLog "Forwarders: $($forwarderData.Count) standard, $($cfData.Count) conditional" -Level Success
+    return $audit
+}
+
+#endregion
+
+#region --- DNS Health Check ---
+
+function Get-UIAODNSHealthCheck {
+    <#
+    .SYNOPSIS
+        Performs DNS health checks including scavenging status and stale records.
+    .PARAMETER DnsServer
+        DNS server to check.
+    .PARAMETER OutputPath
+        Directory for output files.
+    .OUTPUTS
+        DNSHealthReport.json
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DnsServer,
+        [string]$OutputPath = 'D:\UIAO\Assessment\DNS'
+    )
+
+    New-UIAODir -Path $OutputPath
+    if (-not $DnsServer) { $DnsServer = (Get-ADDomain).PDCEmulator }
+
+    Import-Module DnsServer -ErrorAction Stop
+    Write-UIAOLog "Running DNS health check on $DnsServer..."
+
+    # Scavenging
+    $scavenging = $null
+    try {
+        $scavenging = Get-DnsServerScavenging -ComputerName $DnsServer |
+            Select-Object ScavengingState, RefreshInterval, NoRefreshInterval, ScavengingInterval, LastScavengeTime
+    } catch {
+        Write-UIAOLog "Scavenging query failed: $_" -Level Warn
+    }
+
+    # Server settings
+    $serverSettings = $null
+    try {
+        $serverSettings = Get-DnsServer -ComputerName $DnsServer |
+            Select-Object -ExpandProperty ServerSetting |
+            Select-Object ListeningIPAddress, AllIPAddress, RoundRobin, LocalNetPriority
+    } catch {
+        Write-UIAOLog "Server settings query failed: $_" -Level Warn
+    }
+
+    # Stale record counts per zone
+    $staleAnalysis = @()
+    $zones = Get-DnsServerZone -ComputerName $DnsServer |
+        Where-Object { -not $_.IsAutoCreated -and -not $_.IsReverseLookupZone -and $_.ZoneType -ne 'Forwarder' }
+
+    foreach ($zone in $zones) {
+        try {
+            $records = Get-DnsServerResourceRecord -ZoneName $zone.ZoneName -ComputerName $DnsServer -ErrorAction SilentlyContinue
+            $staleThreshold = (Get-Date).AddDays(-14)
+            $staticCount = ($records | Where-Object { $_.Timestamp -eq $null -or $_.Timestamp.Year -eq 1 }).Count
+            $dynamicCount = ($records | Where-Object { $_.Timestamp -ne $null -and $_.Timestamp.Year -gt 1 }).Count
+            $staleCount = ($records | Where-Object { $_.Timestamp -ne $null -and $_.Timestamp.Year -gt 1 -and $_.Timestamp -lt $staleThreshold }).Count
+
+            $staleAnalysis += [PSCustomObject]@{
+                ZoneName     = $zone.ZoneName
+                TotalRecords = $records.Count
+                StaticRecords = $staticCount
+                DynamicRecords = $dynamicCount
+                StaleRecords = $staleCount
+            }
+        } catch {
+            Write-UIAOLog "Stale analysis failed for $($zone.ZoneName): $_" -Level Warn
+        }
+    }
+
+    $health = [ordered]@{
+        AssessmentType = 'DNSHealthCheck'
+        Timestamp      = (Get-Date -Format 'o')
+        Classification = 'Controlled'
+        Boundary       = 'GCC-Moderate'
+        DnsServer      = $DnsServer
+        Scavenging     = $scavenging
+        ServerSettings = $serverSettings
+        StaleAnalysis  = @($staleAnalysis)
+    }
+
+    Export-Json -Data $health -FilePath (Join-Path $OutputPath 'DNSHealthReport.json')
+    Write-UIAOLog 'DNS health check complete' -Level Success
+    return $health
+}
+
+#endregion
+
+#region --- DNSSEC Status ---
+
+function Get-UIAODNSSECStatus {
+    <#
+    .SYNOPSIS
+        Checks DNSSEC signing status for all zones.
+    .PARAMETER DnsServer
+        DNS server to query.
+    .PARAMETER OutputPath
+        Directory for output files.
+    .OUTPUTS
+        DNSSECStatus.json
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DnsServer,
+        [string]$OutputPath = 'D:\UIAO\Assessment\DNS'
+    )
+
+    New-UIAODir -Path $OutputPath
+    if (-not $DnsServer) { $DnsServer = (Get-ADDomain).PDCEmulator }
+
+    Import-Module DnsServer -ErrorAction Stop
+    Write-UIAOLog 'Checking DNSSEC status...'
+
+    $zones = Get-DnsServerZone -ComputerName $DnsServer |
+        Where-Object { -not $_.IsAutoCreated -and $_.ZoneType -ne 'Forwarder' }
+
+    $dnssecData = foreach ($zone in $zones) {
+        $signedStatus = [PSCustomObject]@{
+            ZoneName = $zone.ZoneName
+            IsSigned = $zone.IsSigned
+            KeyMaster = $null
+            Algorithms = @()
+        }
+
+        if ($zone.IsSigned) {
+            try {
+                $dnssecSettings = Get-DnsServerDnsSecZoneSetting -ZoneName $zone.ZoneName -ComputerName $DnsServer
+                $signedStatus.KeyMaster = $dnssecSettings.KeyMasterServer
+            } catch { }
+        }
+
+        $signedStatus
+    }
+
+    $status = [ordered]@{
+        AssessmentType = 'DNSSECStatus'
+        Timestamp      = (Get-Date -Format 'o')
+        Classification = 'Controlled'
+        Boundary       = 'GCC-Moderate'
+        DnsServer      = $DnsServer
+        TotalZones     = $dnssecData.Count
+        SignedZones    = ($dnssecData | Where-Object IsSigned).Count
+        UnsignedZones  = ($dnssecData | Where-Object { -not $_.IsSigned }).Count
+        Zones          = @($dnssecData)
+    }
+
+    Export-Json -Data $status -FilePath (Join-Path $OutputPath 'DNSSECStatus.json')
+    Write-UIAOLog "DNSSEC: $(($dnssecData | Where-Object IsSigned).Count) signed, $(($dnssecData | Where-Object {-not $_.IsSigned}).Count) unsigned" -Level Success
+    return $status
+}
+
+#endregion
+
+#region --- Drift Detection ---
+
+function Invoke-UIAODNSDriftDetection {
+    <#
+    .SYNOPSIS
+        Compares current DNS state against a previous baseline and reports drift.
+    .PARAMETER BaselinePath
+        Path to the previous DNSZoneInventory.json baseline file.
+    .PARAMETER DnsServer
+        DNS server to query for current state.
+    .PARAMETER OutputPath
+        Directory for drift report output.
+    .OUTPUTS
+        DNSDriftReport.json
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$BaselinePath,
+        [string]$DnsServer,
+        [string]$OutputPath = 'D:\UIAO\Assessment\DNS'
+    )
+
+    New-UIAODir -Path $OutputPath
+    Write-UIAOLog 'Running DNS drift detection...'
+
+    $baseline = Get-Content $BaselinePath -Raw | ConvertFrom-Json
+    $current = Get-UIAODNSZoneInventory -DnsServer $DnsServer -OutputPath $env:TEMP
+
+    $baselineZones = @{}
+    foreach ($z in $baseline.Zones) { $baselineZones[$z.ZoneName] = $z }
+
+    $currentZones = @{}
+    foreach ($z in $current.Zones) { $currentZones[$z.ZoneName] = $z }
+
+    $added   = @($current.Zones | Where-Object { -not $baselineZones.ContainsKey($_.ZoneName) })
+    $removed = @($baseline.Zones | Where-Object { -not $currentZones.ContainsKey($_.ZoneName) })
+    $changed = @()
+
+    foreach ($zone in $current.Zones) {
+        if ($baselineZones.ContainsKey($zone.ZoneName)) {
+            $bz = $baselineZones[$zone.ZoneName]
+            if ($zone.RecordCount -ne $bz.RecordCount -or
+                $zone.IsSigned -ne $bz.IsSigned -or
+                $zone.DynamicUpdate -ne $bz.DynamicUpdate) {
+                $changed += [PSCustomObject]@{
+                    ZoneName = $zone.ZoneName
+                    Changes  = @(
+                        if ($zone.RecordCount -ne $bz.RecordCount) { "RecordCount: $($bz.RecordCount) -> $($zone.RecordCount)" }
+                        if ($zone.IsSigned -ne $bz.IsSigned) { "IsSigned: $($bz.IsSigned) -> $($zone.IsSigned)" }
+                        if ($zone.DynamicUpdate -ne $bz.DynamicUpdate) { "DynamicUpdate: $($bz.DynamicUpdate) -> $($zone.DynamicUpdate)" }
+                    )
+                }
+            }
+        }
+    }
+
+    $hasDrift = ($added.Count + $removed.Count + $changed.Count) -gt 0
+
+    $report = [ordered]@{
+        AssessmentType  = 'DNSDriftReport'
+        Timestamp       = (Get-Date -Format 'o')
+        Classification  = 'Controlled'
+        Boundary        = 'GCC-Moderate'
+        BaselineDate    = $baseline.Timestamp
+        CurrentDate     = $current.Timestamp
+        DriftDetected   = $hasDrift
+        ZonesAdded      = @($added | Select-Object ZoneName, ZoneType)
+        ZonesRemoved    = @($removed | Select-Object ZoneName, ZoneType)
+        ZonesChanged    = @($changed)
+    }
+
+    Export-Json -Data $report -FilePath (Join-Path $OutputPath 'DNSDriftReport.json')
+
+    if ($hasDrift) {
+        Write-UIAOLog "DNS DRIFT DETECTED: $($added.Count) added, $($removed.Count) removed, $($changed.Count) changed" -Level Warn
+    } else {
+        Write-UIAOLog 'No DNS drift detected' -Level Success
+    }
+
+    return $report
+}
+
+#endregion
+
+#region --- Master Orchestrator ---
+
+function Invoke-UIAODNSAssessment {
+    <#
+    .SYNOPSIS
+        Master orchestrator for complete UIAO DNS assessment.
+    .PARAMETER DnsServer
+        Target DNS server FQDN.
+    .PARAMETER DomainName
+        Domain FQDN for SRV validation.
+    .PARAMETER OutputPath
+        Root directory for all output.
+    .EXAMPLE
+        Invoke-UIAODNSAssessment -DnsServer dc01.contoso.com -OutputPath D:\UIAO\Assessment\DNS
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$DnsServer,
+        [string]$DomainName,
+        [string]$OutputPath = 'D:\UIAO\Assessment\DNS'
+    )
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    Write-UIAOLog '=== UIAO DNS Assessment ===' -Level Info
+
+    New-UIAODir -Path $OutputPath
+
+    # 1. Zone Inventory
+    Write-UIAOLog '[1/5] Zone Inventory...'
+    $zoneResult = Get-UIAODNSZoneInventory -DnsServer $DnsServer -OutputPath $OutputPath
+
+    # 2. SRV Validation
+    Write-UIAOLog '[2/5] SRV Record Validation...'
+    $srvResult = Test-UIAOSRVRecords -DomainName $DomainName -OutputPath $OutputPath
+
+    # 3. Record Export (requires DnsServer module)
+    Write-UIAOLog '[3/5] Record Export...'
+    try {
+        Get-UIAODNSRecordExport -DnsServer $DnsServer -OutputPath $OutputPath
+    } catch {
+        Write-UIAOLog "Record export skipped (requires DNS admin): $_" -Level Warn
+    }
+
+    # 4. Forwarder Audit (requires DnsServer module)
+    Write-UIAOLog '[4/5] Forwarder Audit...'
+    try {
+        Get-UIAODNSForwarderAudit -DnsServer $DnsServer -OutputPath $OutputPath
+    } catch {
+        Write-UIAOLog "Forwarder audit skipped (requires DNS admin): $_" -Level Warn
+    }
+
+    # 5. Health Check (requires DnsServer module)
+    Write-UIAOLog '[5/5] Health Check...'
+    try {
+        Get-UIAODNSHealthCheck -DnsServer $DnsServer -OutputPath $OutputPath
+    } catch {
+        Write-UIAOLog "Health check skipped (requires DNS admin): $_" -Level Warn
+    }
+
+    $stopwatch.Stop()
+
+    $manifest = [ordered]@{
+        Module          = 'UIAODNSAssessment'
+        Version         = '1.0.0'
+        Timestamp       = (Get-Date -Format 'o')
+        Classification  = 'Controlled'
+        Boundary        = 'GCC-Moderate'
+        DnsServer       = $DnsServer
+        ElapsedSeconds  = [math]::Round($stopwatch.Elapsed.TotalSeconds, 1)
+        ZonesDiscovered = $zoneResult.TotalZones
+        SRVHealthScore  = $srvResult.HealthScore
+        OutputPath      = $OutputPath
+    }
+
+    Export-Json -Data $manifest -FilePath (Join-Path $OutputPath 'DNSAssessmentManifest.json')
+    Write-UIAOLog "=== DNS Assessment complete in $([math]::Round($stopwatch.Elapsed.TotalSeconds,1))s ===" -Level Success
+    return $manifest
+}
+
+#endregion
+
+Export-ModuleMember -Function @(
+    'Get-UIAODNSZoneInventory',
+    'Get-UIAODNSRecordExport',
+    'Test-UIAOSRVRecords',
+    'Get-UIAODNSForwarderAudit',
+    'Get-UIAODNSHealthCheck',
+    'Get-UIAODNSSECStatus',
+    'Invoke-UIAODNSDriftDetection',
+    'Invoke-UIAODNSAssessment'
+)

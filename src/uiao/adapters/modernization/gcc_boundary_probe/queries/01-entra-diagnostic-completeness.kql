@@ -1,0 +1,21 @@
+// Validate Entra ID diagnostic-setting completeness.
+//
+// Symptom #1 — invisible non-interactive / service-principal / managed-identity sign-in activity.
+// Source: M365 GCC-Moderate Telemetry & Boundary Assessment, §13.3.1.
+// Provenance: inbox/New_FedRAMP_Boundary/M365_GCC-Moderate_Telemetry_and_Boundary_Assessment_External_with_images.docx
+// Gap-matrix rows validated:
+//   - entra-identity-protection-realtime-risk
+//   - cross-tenant-access-telemetry
+// Pass criterion: every listed table returns RecordCount > 0 with LastRecord within the last 24h.
+
+union withsource=TableName
+    SigninLogs,
+    AADNonInteractiveUserSignInLogs,
+    AADServicePrincipalSignInLogs,
+    AADManagedIdentitySignInLogs,
+    AuditLogs,
+    AADProvisioningLogs,
+    AADRiskyUsers,
+    AADUserRiskEvents
+| summarize RecordCount = count(), LastRecord = max(TimeGenerated) by TableName
+| order by TableName asc
