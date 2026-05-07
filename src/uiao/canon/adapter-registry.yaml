@@ -34,7 +34,7 @@
 
 schema-version: "1.0.0"
 registry-class: conformance
-updated: "2026-05-05"
+updated: "2026-05-07"
 
 adapters:
 
@@ -747,6 +747,73 @@ adapters:
       for deterministic domain-retirement sequencing — the
       cross-server dependency graph that Microsoft does not provide
       via any other surface.
+
+  # ──────────────────────────────────────────────────────────────────
+  # Reserved adapter slot allocated by ADR-058 (2026-05-07)
+  # Microsoft Purview conformance — read-only telemetry counterpart
+  # to the change-making `purview` scope inside the `m365`
+  # modernization adapter. Driven by FINDING-008 (Audit Standard
+  # 180-day retention cliff) becoming a continuous drift signal
+  # rather than a static one-shot finding.
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: purview-audit
+    name: Microsoft Purview — Audit & Retention State (Reserved Slot)
+    class: conformance
+    mission-class: telemetry
+    status: reserved
+    phase: phase-planning
+    vendor: Microsoft
+    license: Commercial
+    tenancy: per-customer
+    scope:
+      - unified-audit-retention-tier
+      - audit-event-coverage
+      - dlp-policy-state
+      - sensitivity-label-policy-state
+      - information-protection-coverage
+      - litigation-hold-state
+      - insider-risk-policy-state
+    outputs:
+      - purview-audit-tier-findings.json
+      - purview-dlp-policy-state.json
+      - purview-label-coverage.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 3
+    controls:
+      - AU-2
+      - AU-11
+      - SC-4
+      - MP-3
+      - RA-2
+    automation-domain:
+      - event-management
+      - information-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - UIAO-CANON-003
+      - ADR-058
+    notes: >-
+      Reserved slot per ADR-058. Read-only telemetry counterpart to
+      the change-making Purview surface bundled inside the `m365`
+      modernization adapter (modernization-registry, scope: purview).
+      Continuously observes audit retention tier (Standard 180d /
+      Premium 1y / 10-year add-on), audit-event coverage, DLP policy
+      state, sensitivity-label policy state, Information Protection
+      coverage, litigation-hold state, and Insider Risk policy state.
+      Activates FINDING-008
+      (docs/findings/fedramp-gcc-moderate-purview-audit-180day-cliff.qmd)
+      as a live drift signal in monthly ConMon packs (UIAO_132 /
+      ADR-047) rather than a static one-shot finding. Sources control
+      evidence for SC-4 (DLP), MP-3 (sensitivity labels), RA-2
+      (information classification) — closes three DRIFT-PROVENANCE
+      registry-layer gaps for Purview-anchored controls.
 
   # ──────────────────────────────────────────────────────────────────
   # Reserved adapter slot allocated by ADR-052 (2026-05-04)
