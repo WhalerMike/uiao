@@ -9,7 +9,7 @@
 - **Name:** `WhalerMike/uiao`
 - **Purpose:** Unified Identity-Addressing-Overlay Architecture — a FedRAMP-Moderate governance substrate with drift-detected canon, schema-enforced adapters, and OSCAL-native evidence pipelines.
 - **Status:** pre-1.0; `main` is the primary development branch.
-- **Cloud boundary:** GCC-Moderate (Microsoft 365 SaaS only). Amazon Connect Contact Center is the sole Commercial exception.
+- **Cloud boundary:** GCC-Moderate (Microsoft 365 SaaS only). Two named Commercial exceptions: Amazon Connect Contact Center, and SailPoint Non-Employee Risk Management (FedRAMP Moderate on AWS GovCloud, per ADR-058). Each exception is encoded as a discrete enum value in the `gcc-boundary` schema; new exceptions are added in lockstep with their authorizing ADR.
 
 ## Module topology
 
