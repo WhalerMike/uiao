@@ -272,7 +272,7 @@ count, and the time the cascade has been pending.
 - [ADR-038](../adr/adr-038-device-plane-orgpath.md) — MOD_C; consumes Stage 4 / 8.
 - [ADR-039](../adr/adr-039-policy-targeting.md) — MOD_N; consumes Stage 6.
 - [ADR-040](../adr/) — drift engine.
-- [ADR-048](../adr/adr-048-orgpath-attribute-storage-decision.md) — extensionAttribute1 selection.
+- [ADR-048](../adr/adr-048-orgpath-attribute-selection.md) — extensionAttribute1 selection.
 
 ### 10.2 UIAO docs
 
