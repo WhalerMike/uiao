@@ -427,7 +427,7 @@ Delegated to D2.6. Mover-specific failure surface:
 - [ADR-037 — entra-admin-units (MOD_D)](../adr/adr-037-admin-unit-provisioning.md)
 - [ADR-038 — entra-device-orgpath (MOD_C)](../adr/adr-038-device-plane-orgpath.md)
 - [ADR-039 — entra-policy-targeting (MOD_N)](../adr/adr-039-policy-targeting.md)
-- [ADR-048 — OrgPath Attribute Selection](../adr/adr-048-orgpath-attribute-storage-decision.md)
+- [ADR-048 — OrgPath Attribute Selection](../adr/adr-048-orgpath-attribute-selection.md)
 - [ADR-049 — Microsoft Modernization Adapter Coverage Expansion](../adr/adr-049-microsoft-adapter-coverage-expansion.md)
 
 ### 14.2 UIAO docs
