@@ -7,7 +7,7 @@ emits a structured inventory the coverage gate consumes.
 
 The audit is intentionally syntactic: it counts invariants, not semantics.
 It cannot tell you whether a given test actually validates the invariant —
-that mapping lives in ``docs/docs/governance/spec-test-coverage.md`` and
+that mapping lives in ``docs/docs/governance/spec-test-coverage.qmd`` and
 is maintained by the author when a new test lands. The gate enforces that
 the count of covered invariants per spec never decreases between PRs.
 
