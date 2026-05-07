@@ -34,6 +34,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-023](adr-023-adapter-concurrency.md) | Adapter Concurrency | ACCEPTED | 2026-03-01 |
 | [ADR-025](adr-025-adapter-health-liveness.md) | Adapter Health and Liveness | ACCEPTED | 2026-03-05 |
 | [ADR-027](adr-027-adapter-retirement.md) | Adapter Retirement | ACCEPTED | 2026-03-10 |
+| [ADR-059](adr-059-sailpoint-adapter-family.md) | SailPoint NERM Adapter — Boundary-Exception Carve-Out and Slot Allocation | ACCEPTED | 2026-05-07 |
 
 ### Identity and Truth Fabric
 
