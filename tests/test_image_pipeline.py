@@ -454,7 +454,10 @@ def test_is_populated(search_tool):
 # ─────────────────────────────────────────────────────────────────────
 
 
-def test_manifest_has_expected_top_level_keys(generator):
+def test_manifest_has_expected_top_level_keys(generator, monkeypatch):
+    # build_manifest reads sidecars from disk via _iter_sidecars(), so we
+    # isolate this test from whatever doc-local images exist in the repo.
+    monkeypatch.setattr(generator, "_iter_sidecars", lambda: iter(()))
     manifest = generator.build_manifest([], [])
     assert manifest["schema_version"] == generator.MANIFEST_SCHEMA_VERSION
     assert "generated_at" in manifest
