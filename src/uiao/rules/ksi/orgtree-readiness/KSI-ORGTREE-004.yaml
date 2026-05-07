@@ -1,0 +1,49 @@
+ksi_id: KSI-ORGTREE-004
+title: Computer OS Version Meets Intune Minimum Requirement
+category: configuration-management
+description: >
+  Every computer object registered in the OrgTree and enrolled in Microsoft
+  Intune must carry an operating system version at or above the
+  organisation's declared Intune minimum baseline.  Devices running
+  end-of-support or sub-minimum OS versions are flagged as non-compliant
+  inventory items that cannot receive full MDM policy enforcement.
+security_objective: >
+  Ensure all managed endpoints operate on a supported, policy-configurable
+  OS version, maintaining the Intune compliance baseline required for
+  conditional-access gate enforcement and patch-state attestation.
+related_controls:
+  - CM-2
+  - CM-6
+validation_type: automated
+evidence_sources:
+  - intune
+pass_criteria:
+  description: >
+    100% of Intune-enrolled computer objects carry an OS version that is
+    greater than or equal to the declared minimum baseline version for
+    that OS family (Windows, macOS, iOS, Android).
+  type: percentage
+  threshold: 100
+  operator: equals
+  logic: >
+    SELECT device_id, os_family, os_version, minimum_required_version
+    FROM intune_device_inventory
+    WHERE os_version < minimum_required_version
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: orgtree.validators.intune_os_minimum
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-04-27"
+enabled: true
+tags:
+  - orgtree
+  - orgtree-readiness
+  - intune
+  - os-version
+  - baseline-configuration
+  - endpoint-compliance

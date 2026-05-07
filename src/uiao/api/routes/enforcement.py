@@ -76,18 +76,37 @@ def get_journal(
     limit: int = Query(default=200, ge=1, le=10_000),
     policy_id: Optional[str] = Query(default=None),
     target: Optional[str] = Query(default=None),
+    tenant_id: Optional[str] = Query(
+        default=None,
+        description=(
+            "Filter records to those whose extra.tenant_id matches. "
+            "Requires the enforcement.journal.tenant-tagging flag to be "
+            "enabled when the runtime wrote the records — see UIAO_119 v2."
+        ),
+    ),
+    environment: Optional[str] = Query(
+        default=None,
+        description=(
+            "Filter records to those whose extra.environment matches. Same UIAO_119 v2 prerequisite as tenant_id."
+        ),
+    ),
     _subject: str = Depends(require_auditor),
 ) -> dict:
     journal = EnforcementJournal(path=_journal_path())
     records = journal.read_all()
+    total_unfiltered = len(records)
     if policy_id:
         records = [r for r in records if r.policy_id == policy_id]
     if target:
         records = [r for r in records if r.target == target]
+    if tenant_id:
+        records = [r for r in records if r.extra.get("tenant_id") == tenant_id]
+    if environment:
+        records = [r for r in records if r.extra.get("environment") == environment]
     sliced = records[-limit:]
     return {
         "count": len(sliced),
-        "total_unfiltered": len(journal.read_all()),
+        "total_unfiltered": total_unfiltered,
         "records": [r.as_dict() for r in sliced],
     }
 

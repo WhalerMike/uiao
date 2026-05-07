@@ -31,6 +31,29 @@ from typing import Optional
 
 import httpx
 
+from uiao.adapters._graph_clouds import (
+    DEFAULT_CLOUD,
+    GRAPH_ENDPOINTS,
+    resolve_graph_base,
+)
+
+# Re-export shared constants so existing test imports keep working.
+__all__ = [
+    "DEFAULT_CLOUD",
+    "DEFAULT_GRAPH_API_VERSION",
+    "DeviceHealthRecord",
+    "GRAPH_ENDPOINTS",
+    "InBoundaryTelemetry",
+    "collect_bulk_wmi_via_script",
+    "collect_local_wmi_health",
+]
+
+# InBoundaryTelemetry uses the GA-stable v1.0 surface; the companion
+# probe.py is GCC-Moderate-by-design and intentionally hardcodes
+# commercial Graph URLs, so this constant only governs the
+# cloud-portable telemetry collector.
+DEFAULT_GRAPH_API_VERSION = "v1.0"
+
 
 @dataclass
 class DeviceHealthRecord:
@@ -59,29 +82,52 @@ class InBoundaryTelemetry:
     Collects device health telemetry within the FedRAMP boundary
     using Graph API management plane (not telemetry plane).
 
-    Graph management plane endpoints ARE available in GCC-Moderate:
+    Graph management plane endpoints are available in every sovereign
+    cloud (GCC-Moderate, GCC-High, DoD); only the hostname differs:
+
       - /deviceManagement/managedDevices (Intune enrollment/compliance)
       - /devices (Entra device objects)
       - /users/{id}/managedDevices (per-user device list)
 
-    These are management API calls, not telemetry streams.
-    They do not require DiagTrack or commercial telemetry endpoints.
+    These are management API calls, not telemetry streams. They do not
+    require DiagTrack or commercial telemetry endpoints.
+
+    Cloud selection
+    ---------------
+    Pass ``cloud="gcc-high"`` or ``cloud="dod"`` to target the sovereign
+    Graph hostnames (``graph.microsoft.us`` / ``dod-graph.microsoft.us``).
+    The default ``"commercial"`` also serves GCC-Moderate per ADR-033.
+    For tests or staging, pass ``graph_base=...`` to override the
+    resolved URL entirely.
     """
 
-    GRAPH_BASE = "https://graph.microsoft.com/v1.0"
-
-    def __init__(self, access_token: str, timeout: int = 30):
+    def __init__(
+        self,
+        access_token: str,
+        timeout: int = 30,
+        *,
+        cloud: str = DEFAULT_CLOUD,
+        graph_api_version: str = DEFAULT_GRAPH_API_VERSION,
+        graph_base: Optional[str] = None,
+    ):
         self._token = access_token
         self._headers = {"Authorization": f"Bearer {access_token}"}
         self._timeout = timeout
+        self._graph_base = resolve_graph_base(
+            cloud=cloud,
+            graph_api_version=graph_api_version,
+            explicit=graph_base,
+            adapter_name="InBoundaryTelemetry",
+        )
 
     async def collect_intune_device_health(self) -> list[DeviceHealthRecord]:
         """
         Collect device health from Intune management plane via Graph.
-        This uses the management API, not telemetry — available in GCC-Moderate.
+        This uses the management API, not telemetry — available in every
+        sovereign cloud.
         """
         url = (
-            f"{self.GRAPH_BASE}/deviceManagement/managedDevices"
+            f"{self._graph_base}/deviceManagement/managedDevices"
             "?$select=id,deviceName,operatingSystem,osVersion,"
             "complianceState,lastSyncDateTime,totalStorageSpaceInBytes,"
             "freeStorageSpaceInBytes,physicalMemoryInBytes,"
@@ -131,12 +177,12 @@ class InBoundaryTelemetry:
     async def collect_update_compliance(self) -> dict[str, str]:
         """
         Collect Windows Update compliance state via Graph.
-        Windows Update for Business reports ARE available in GCC-Moderate
-        through the Graph deviceManagement reports endpoint.
-        Returns dict of device_id -> compliance_state.
+        Windows Update for Business reports are available across
+        sovereign clouds through the Graph deviceManagement reports
+        endpoint. Returns dict of device_id -> compliance_state.
         """
         url = (
-            f"{self.GRAPH_BASE}/deviceManagement/managedDevices"
+            f"{self._graph_base}/deviceManagement/managedDevices"
             "?$select=id,osVersion,deviceActionResults"
             "&$filter=operatingSystem eq 'Windows'"
             "&$top=999"

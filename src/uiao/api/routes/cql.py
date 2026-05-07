@@ -31,6 +31,8 @@ from uiao.governance.cql import (
     parse_query,
 )
 from uiao.governance.enforcement import EnforcementJournal
+from uiao.governance.feature_flags import load_canonical_flags
+from uiao.governance.tenancy import Environment, TenantContext
 from uiao.storage.data_lake import ArchiveManager, FilesystemArchive
 
 router = APIRouter()
@@ -113,13 +115,34 @@ def get_query(
     return {"name": name, **found.as_dict()}
 
 
+def _api_tenant_context(subject: str) -> TenantContext:
+    """Build a TenantContext for the calling Auditor API request.
+
+    The Auditor API doesn't yet have a per-request tenant binding —
+    queries run against the substrate's default tenant. The context's
+    environment is read from ``UIAO_ENVIRONMENT`` (default ``dev``)
+    so an operator can stand up a stage/prod Auditor API and gate
+    experimental CQL operators per environment.
+    """
+    env_name = os.environ.get("UIAO_ENVIRONMENT", "dev")
+    return TenantContext(
+        tenant_id=os.environ.get("UIAO_TENANT_ID", "default"),
+        actor=subject or "auditor",
+        environment=Environment.parse(env_name),
+    )
+
+
 @router.post("/evaluate", summary="Evaluate an ad-hoc CQL query")
 def evaluate(
     body: dict = Body(...),
-    _subject: str = Depends(require_auditor),
+    subject: str = Depends(require_auditor),
 ) -> dict:
     try:
-        query = parse_query(body)
+        query = parse_query(
+            body,
+            flags=load_canonical_flags(),
+            tenant_context=_api_tenant_context(subject),
+        )
     except CQLParseError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

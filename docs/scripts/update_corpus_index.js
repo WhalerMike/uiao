@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // update_corpus_index.js
-// Scans docs/**/*.md, extracts UIAO frontmatter, writes docs/_data/corpus-index.json
-// Run: node scripts/update_corpus_index.js
-// CI: triggered on push to main when docs/**/*.md changes
+// Scans docs/**/*.{md,qmd}, extracts UIAO frontmatter, writes docs/_data/corpus-index.json
+// Run from docs/: node scripts/update_corpus_index.js
+// CI: triggered on push to main when docs/**/*.{md,qmd} changes
 
 const fs = require('fs');
 const path = require('path');
@@ -20,7 +20,7 @@ function getMarkdownFiles(dir) {
     const full = path.join(dir, e.name);
     if (e.isDirectory()) {
       files = files.concat(getMarkdownFiles(full));
-    } else if (e.isFile() && e.name.endsWith('.md')) {
+    } else if (e.isFile() && (e.name.endsWith('.md') || e.name.endsWith('.qmd'))) {
       files.push(full);
     }
   }
@@ -73,7 +73,9 @@ function main() {
 
     // Accept uiao_id, uiao.id, or id fields
     const id = fm['uiao_id'] || fm['uiao.id'] || fm['id'] || null;
-    if (!id || !/^UIAO_[A-Z]_[0-9]{2,}$/.test(id)) continue;
+    // Permitted id shapes (any of):
+    //   UIAO_<SEG>(_<SEG>)+   where SEG is alnum starting with letter (e.g. UIAO_META_ADR_01, UIAO_CANON_DASHBOARD)
+    if (!id || !/^UIAO_[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$/.test(id)) continue;
 
     const title = fm['title'] || id;
     const appendix = id.split('_')[1] || '';

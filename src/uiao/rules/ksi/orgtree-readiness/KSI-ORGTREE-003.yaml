@@ -1,0 +1,50 @@
+ksi_id: KSI-ORGTREE-003
+title: No Orphaned SIDs in Group Memberships
+category: iam
+description: >
+  No Active Directory security group may contain a member whose Security
+  Identifier (SID) no longer resolves to a valid, enabled principal.
+  Orphaned SIDs arise when accounts are deleted without removing group
+  memberships and appear as unresolved SID strings (e.g. S-1-5-21-...) in
+  group member listings.  Their presence creates invisible, unauditable
+  effective access and breaks access-review completeness.
+security_objective: >
+  Eliminate invisible access grants caused by deleted-account SIDs that
+  persist in group memberships, ensuring every group membership can be
+  traced to a live, auditable identity.
+related_controls:
+  - AC-2
+  - IA-4
+validation_type: automated
+evidence_sources:
+  - entra_id
+  - graph_api
+pass_criteria:
+  description: >
+    Zero groups contain member SIDs that do not resolve to an active
+    principal.  All group member entries are resolvable to a current
+    user, computer, or service account object.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT group_dn, unresolved_sid
+    FROM group_memberships
+    WHERE member_type = 'ORPHANED_SID'
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: orgtree.validators.orphaned_sid_scan
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-04-27"
+enabled: true
+tags:
+  - orgtree
+  - orgtree-readiness
+  - orphaned-sids
+  - group-membership
+  - identifier-management

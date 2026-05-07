@@ -1,0 +1,28 @@
+@startuml
+title ID-201-A01 - Identity Source-of-Truth
+
+rectangle "HR System\n(Authoritative Person Data)" as HR
+rectangle "Identity Platform\n(Authoritative Identity)" as IDP
+rectangle "Attribute Governance Engine" as ATTR
+rectangle "Lifecycle Orchestrator" as LCO
+rectangle "Identity Sync Fabric" as SYNC
+rectangle "Access Platform" as ACCESS
+rectangle "App Integration\n(SSO / SCIM)" as APPS
+rectangle "Governance OS" as GOV
+
+HR --> IDP : Authoritative attributes\n(HR -> Identity)
+IDP --> ATTR : Attribute evaluation\n& normalization
+IDP --> LCO : Lifecycle events\n(joiner/mover/leaver)
+IDP --> SYNC : Downstream identity\nprojection
+
+SYNC --> ACCESS : Identity -> Roles/Groups
+SYNC --> APPS : Identity -> App identities\n(SCIM / SSO)
+IDP --> GOV : Identity state & risk\nfor policy evaluation
+
+cloud "Drift Detection Engine" as DRIFT
+DRIFT .. HR : Attribute mismatch
+DRIFT .. IDP : Lifecycle mismatch
+DRIFT .. SYNC : Projection failures
+DRIFT .. GOV : Governance escalation
+
+@enduml

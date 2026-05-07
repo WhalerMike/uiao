@@ -103,3 +103,26 @@ jobs:
                   print(f"  MISSING: {doc_id} -> {path}")
               sys.exit(1)
           EOF
+
+      - name: Validate reciprocal-consumption registry against schema
+        run: |
+          python - <<'EOF'
+          import json, sys, yaml
+          from jsonschema import Draft7Validator
+
+          schema = json.load(open('src/uiao/schemas/reciprocal-consumption/registry.schema.json'))
+          validator = Draft7Validator(schema)
+
+          path = 'src/uiao/canon/reciprocal-consumption-registry.yaml'
+          data = yaml.safe_load(open(path))
+          errors = list(validator.iter_errors(data))
+
+          n = len(data.get('entitlements', []))
+          print(f"[{path}] {'PASS' if not errors else 'FAIL'} ({n} entitlements)")
+
+          if errors:
+              for e in errors[:10]:
+                  loc = '.'.join(str(p) for p in e.absolute_path)
+                  print(f"  [{loc}] {e.message}")
+              sys.exit(1)
+          EOF

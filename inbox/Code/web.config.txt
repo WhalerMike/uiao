@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  UIAO IIS Reverse Proxy Configuration — web.config
+  Platform: Windows Server 2025 IIS 10 with ARR + URL Rewrite
+  Purpose: TLS termination and reverse proxy to Gitea on localhost:3000
+  Classification: Controlled | Boundary: GCC-Moderate
+  Repository: https://github.com/WhalerMike/uiao
+-->
+<configuration>
+  <system.webServer>
+
+    <!-- === Reverse Proxy to Gitea === -->
+    <rewrite>
+      <rules>
+        <!-- HTTP to HTTPS redirect -->
+        <rule name="HTTPS Redirect" stopProcessing="true">
+          <match url="(.*)" />
+          <conditions>
+            <add input="{HTTPS}" pattern="off" />
+          </conditions>
+          <action type="Redirect" url="https://{HTTP_HOST}/{R:1}" redirectType="Permanent" />
+        </rule>
+
+        <!-- Reverse proxy all HTTPS requests to Gitea -->
+        <rule name="ReverseProxyToGitea" stopProcessing="true">
+          <match url="(.*)" />
+          <conditions>
+            <add input="{HTTPS}" pattern="on" />
+          </conditions>
+          <serverVariables>
+            <set name="HTTP_X_FORWARDED_PROTO" value="https" />
+            <set name="HTTP_X_FORWARDED_HOST" value="{HTTP_HOST}" />
+            <set name="HTTP_X_REAL_IP" value="{REMOTE_ADDR}" />
+            <set name="HTTP_X_FORWARDED_FOR" value="{REMOTE_ADDR}" />
+          </serverVariables>
+          <action type="Rewrite" url="http://localhost:3000/{R:1}" />
+        </rule>
+      </rules>
+
+      <!-- Allowed server variables for URL Rewrite -->
+      <allowedServerVariables>
+        <add name="HTTP_X_FORWARDED_PROTO" />
+        <add name="HTTP_X_FORWARDED_HOST" />
+        <add name="HTTP_X_REAL_IP" />
+        <add name="HTTP_X_FORWARDED_FOR" />
+      </allowedServerVariables>
+    </rewrite>
+
+    <!-- === Security: Request Filtering === -->
+    <security>
+      <requestFiltering allowDoubleEscaping="true">
+        <!-- 512 MB for large Git pushes -->
+        <requestLimits maxAllowedContentLength="536870912" />
+        <!-- Block access to sensitive paths -->
+        <hiddenSegments>
+          <add segment="web.config" />
+          <add segment=".git" />
+        </hiddenSegments>
+      </requestFiltering>
+    </security>
+
+    <!-- === Authentication: Let Gitea handle auth === -->
+    <!-- IIS authentication is DISABLED — Gitea handles AD LDAP and Entra OAuth2 -->
+    <!-- Do NOT enable Windows Auth or Basic Auth at IIS level -->
+
+    <!-- === Response Headers: Remove identifying headers === -->
+    <httpProtocol>
+      <customHeaders>
+        <remove name="X-Powered-By" />
+        <add name="X-Content-Type-Options" value="nosniff" />
+        <add name="X-Frame-Options" value="SAMEORIGIN" />
+        <add name="X-XSS-Protection" value="1; mode=block" />
+        <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
+        <add name="Strict-Transport-Security" value="max-age=31536000; includeSubDomains" />
+        <add name="Content-Security-Policy" value="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:" />
+      </customHeaders>
+    </httpProtocol>
+
+    <!-- === Proxy: ARR Settings === -->
+    <proxy enabled="true" preserveHostHeader="true" reverseRewriteHostInResponseHeaders="false" />
+
+    <!-- === Timeout: 300 seconds for large pushes === -->
+    <webSocket enabled="true" />
+
+    <!-- === Static Content Compression === -->
+    <urlCompression doStaticCompression="true" doDynamicCompression="false" />
+
+    <!-- === Logging === -->
+    <!-- IIS logging is configured at site level via IIS Manager -->
+    <!-- Recommended: W3C Extended format, log to D:\IISLogs\UIAOGitServer\ -->
+
+  </system.webServer>
+
+  <!-- === Request timeout for large operations === -->
+  <system.web>
+    <httpRuntime executionTimeout="300" maxRequestLength="524288" />
+  </system.web>
+</configuration>

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UIAO — Unified Identity-Addressing-Overlay Architecture</title>
+<meta name="description" content="A universal governance substrate that unifies identity, addressing, and overlay networks across federal, regulated, and commercial enterprises — without rip-and-replace.">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:    #0D1B2E;
+    --navy2:   #142338;
+    --teal:    #1E8C8C;
+    --teal-lt: #27BEBE;
+    --teal-bg: #e9f6f5;
+    --amber:   #B27210;
+    --amber-lt:#E8A020;
+    --amber-bg:#fff5e0;
+    --steel:   #6B7A8D;
+    --ink:     #243248;
+    --muted:   #5a6878;
+    --paper:   #ffffff;
+    --paper-2: #f5f7fa;
+    --paper-3: #eef2f7;
+    --line:    #dfe5ec;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'DM Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-weight: 400;
+    line-height: 1.7;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--teal); }
+  a:hover { color: var(--teal-lt); }
+
+  /* Nav */
+  nav.uiao-nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem 3rem;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: saturate(140%) blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .uiao-nav .nav-logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .85rem; letter-spacing: .12em;
+    color: var(--navy); text-decoration: none; font-weight: 500;
+  }
+  .uiao-nav .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+  .uiao-nav .nav-links a {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .75rem; letter-spacing: .1em;
+    color: var(--muted); text-decoration: none;
+    text-transform: uppercase; transition: color .2s;
+  }
+  .uiao-nav .nav-links a:hover { color: var(--teal); }
+  .uiao-nav .nav-cta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .75rem; letter-spacing: .1em;
+    padding: .55rem 1.2rem;
+    border: 1px solid var(--teal);
+    color: var(--teal); text-decoration: none;
+    text-transform: uppercase;
+    transition: background .2s, color .2s;
+    border-radius: 4px;
+  }
+  .uiao-nav .nav-cta:hover { background: var(--teal); color: white; }
+
+  /* Hero */
+  .uiao-hero {
+    padding: 8rem 3rem 5rem;
+    text-align: center;
+    background:
+      radial-gradient(900px 380px at 80% 0%, rgba(30,140,140,0.12), transparent 70%),
+      radial-gradient(700px 280px at 0% 30%, rgba(232,160,32,0.10), transparent 70%),
+      var(--paper);
+    border-bottom: 1px solid var(--line);
+  }
+  .uiao-hero .hero-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .78rem; letter-spacing: .2em;
+    color: var(--amber); text-transform: uppercase;
+    margin-bottom: 1.25rem; font-weight: 500;
+  }
+  .uiao-hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.4rem, 6vw, 5rem);
+    font-weight: 400; line-height: 1.05; letter-spacing: -.02em;
+    color: var(--navy); max-width: 18ch;
+    margin: 0 auto 1.25rem;
+  }
+  .uiao-hero h1 em { font-style: italic; color: var(--teal); }
+  .uiao-hero .hero-sub {
+    font-size: 1.15rem; color: var(--muted);
+    max-width: 60ch; margin: 0 auto 2.5rem;
+  }
+  .hero-actions {
+    display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+  }
+  .btn-primary, .btn-ghost {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .82rem; letter-spacing: .08em;
+    padding: .85rem 1.8rem;
+    text-decoration: none; text-transform: uppercase;
+    font-weight: 500; border-radius: 4px;
+    transition: background .2s, transform .15s, box-shadow .2s, border-color .2s, color .2s;
+    display: inline-block;
+  }
+  .btn-primary {
+    background: var(--teal); color: white !important; border: 1px solid var(--teal);
+  }
+  .btn-primary:hover {
+    background: var(--teal-lt); border-color: var(--teal-lt);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px -10px rgba(30,140,140,0.5);
+  }
+  .btn-ghost {
+    border: 1px solid var(--steel);
+    color: var(--navy) !important; background: white;
+  }
+  .btn-ghost:hover {
+    border-color: var(--teal); color: var(--teal) !important;
+    transform: translateY(-2px);
+  }
+
+  /* Marquee */
+  .marquee-wrap {
+    overflow: hidden;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 0.9rem 0; background: var(--paper-2);
+  }
+  .marquee-track {
+    display: flex; gap: 3rem; white-space: nowrap;
+    animation: uiaoMarquee 30s linear infinite;
+  }
+  .marquee-item {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .72rem; letter-spacing: .15em;
+    color: var(--muted); text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .marquee-item span { color: var(--teal); margin-right: .6rem; }
+
+  /* Sections */
+  .uiao-section { padding: 5rem 3rem; }
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .72rem; letter-spacing: .2em;
+    color: var(--amber); text-transform: uppercase;
+    margin-bottom: 0.8rem; font-weight: 500;
+  }
+  .section-title {
+    font-family: 'DM Serif Display', serif; font-weight: 400;
+    font-size: clamp(1.8rem, 3.4vw, 2.6rem); line-height: 1.18;
+    color: var(--navy); max-width: 26ch;
+    margin: 0 0 1.25rem;
+  }
+  .section-body {
+    color: var(--muted); max-width: 64ch; font-size: 1rem;
+  }
+
+  /* Pillars */
+  .pillars {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;
+  }
+  .pillar {
+    background: white; border: 1px solid var(--line);
+    border-top: 3px solid var(--teal);
+    border-radius: 6px; padding: 2rem 1.6rem;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .pillar.compliance    { border-top-color: var(--amber-lt); }
+  .pillar.modernization { border-top-color: #6a8caf; }
+  .pillar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px -18px rgba(13,27,46,0.18);
+  }
+  .pillar-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .7rem; letter-spacing: .18em;
+    color: var(--teal); text-transform: uppercase;
+    font-weight: 500;
+  }
+  .pillar.compliance .pillar-label { color: var(--amber); }
+  .pillar.modernization .pillar-label { color: #4a6a8c; }
+  .pillar h3 {
+    font-family: 'DM Serif Display', serif; font-weight: 400;
+    color: var(--navy); font-size: 1.5rem;
+    margin: .6rem 0 .8rem; line-height: 1.2;
+  }
+  .pillar p {
+    color: var(--muted); font-size: .95rem; margin: 0 0 1rem;
+  }
+  .pillar-link {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .72rem; letter-spacing: .12em;
+    color: var(--teal); text-transform: uppercase;
+    text-decoration: none; font-weight: 500;
+  }
+  .pillar-link:hover { color: var(--teal-lt); }
+  .pillar-link::after { content: ' →'; }
+
+  /* Problem */
+  .problem {
+    background: var(--paper-2);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .problem-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4rem;
+    max-width: 1200px; margin: 0 auto; align-items: start;
+  }
+  .problem-list {
+    list-style: none; margin: 1.5rem 0 0;
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  .problem-list li {
+    display: flex; gap: 1rem; align-items: flex-start;
+    color: var(--ink); font-size: .98rem;
+  }
+  .problem-list li::before {
+    content: '//'; font-family: 'IBM Plex Mono', monospace;
+    color: var(--teal); flex-shrink: 0; margin-top: .1rem;
+    font-weight: 500;
+  }
+
+  /* Concepts */
+  .concepts { max-width: 1200px; margin: 0 auto; }
+  .concepts-header { margin-bottom: 3rem; max-width: 760px; }
+  .concepts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1px; background: var(--line);
+    border: 1px solid var(--line); border-radius: 6px;
+    overflow: hidden;
+  }
+  .concept-card {
+    background: white; padding: 1.6rem 1.5rem;
+    transition: background .2s;
+  }
+  .concept-card:hover { background: var(--teal-bg); }
+  .concept-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .68rem; letter-spacing: .2em;
+    color: var(--teal); margin-bottom: .6rem; font-weight: 500;
+  }
+  .concept-name {
+    font-family: 'DM Serif Display', serif; font-weight: 400;
+    font-size: 1.15rem; color: var(--navy);
+    margin-bottom: .5rem; line-height: 1.25;
+  }
+  .concept-desc {
+    font-size: .88rem; color: var(--muted); line-height: 1.55;
+  }
+
+  /* Planes */
+  .planes-wrap {
+    background: var(--paper-3);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .planes-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1.6fr;
+    gap: 4rem; align-items: center;
+  }
+  .planes-list {
+    display: flex; flex-direction: column; gap: .4rem;
+    margin-top: 1.5rem; background: white;
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: .5rem;
+  }
+  .plane-item {
+    display: flex; align-items: center; gap: 1rem;
+    padding: .85rem 1.1rem;
+    border-left: 2px solid transparent; border-radius: 2px;
+    transition: border-color .2s, background .2s;
+  }
+  .plane-item:hover {
+    border-color: var(--teal); background: var(--teal-bg);
+  }
+  .plane-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--teal); flex-shrink: 0;
+    box-shadow: 0 0 0 4px rgba(30,140,140,0.12);
+  }
+  .plane-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .8rem; color: var(--ink); letter-spacing: .04em;
+  }
+
+  /* Compliance */
+  .compliance-wrap { max-width: 1200px; margin: 0 auto; }
+  .compliance-header { margin-bottom: 2.5rem; max-width: 760px; }
+  .badge-grid {
+    display: flex; flex-wrap: wrap; gap: .75rem;
+  }
+  .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .74rem; letter-spacing: .12em;
+    padding: .6rem 1.1rem;
+    border: 1px solid var(--line);
+    color: var(--navy); text-transform: uppercase;
+    background: white; border-radius: 4px; font-weight: 500;
+    transition: background .2s, border-color .2s, color .2s, transform .15s;
+  }
+  .badge:hover {
+    background: var(--teal-bg); border-color: var(--teal);
+    color: var(--teal); transform: translateY(-1px);
+  }
+
+  /* CTA */
+  .cta-band {
+    background:
+      radial-gradient(700px 280px at 100% 0%, rgba(30,140,140,0.18), transparent 70%),
+      radial-gradient(500px 220px at 0% 100%, rgba(232,160,32,0.14), transparent 70%),
+      var(--paper-2);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+  }
+  .cta-band .section-title { margin: 0 auto 1rem; }
+  .cta-band .section-body { margin: 0 auto 2rem; }
+
+  /* Footer */
+  footer {
+    padding: 2.5rem 3rem;
+    border-top: 1px solid var(--line);
+    background: var(--paper);
+    display: flex; align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap; gap: 1rem;
+  }
+  .footer-logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .78rem; letter-spacing: .15em; color: var(--steel);
+  }
+  .footer-links {
+    display: flex; gap: 2rem; list-style: none;
+  }
+  .footer-links a {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: .72rem; color: var(--steel);
+    text-decoration: none; letter-spacing: .1em;
+    transition: color .2s;
+  }
+  .footer-links a:hover { color: var(--teal); }
+
+  @keyframes uiaoMarquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  @media (max-width: 900px) {
+    .pillars { grid-template-columns: 1fr; }
+    .problem-grid { grid-template-columns: 1fr; gap: 2rem; }
+    .planes-inner { grid-template-columns: 1fr; gap: 2rem; }
+  }
+  @media (max-width: 768px) {
+    nav.uiao-nav { padding: 1rem 1.5rem; }
+    .uiao-nav .nav-links { display: none; }
+    footer { flex-direction: column; align-items: flex-start; }
+  }
+  @media (max-width: 640px) {
+    .uiao-section { padding: 3.5rem 1.5rem; }
+    .uiao-hero { padding: 7rem 1.5rem 3rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="uiao-nav">
+  <a class="nav-logo" href="#">UIAO</a>
+  <ul class="nav-links">
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#compliance">Compliance</a></li>
+    <li><a href="https://whalermike.github.io/uiao/">Docs</a></li>
+  </ul>
+  <a class="nav-cta" href="https://github.com/WhalerMike/uiao" target="_blank" rel="noopener">View on GitHub</a>
+</nav>
+
+<section class="uiao-hero">
+  <p class="hero-eyebrow">Universal Enterprise · Open Architecture · Zero Trust</p>
+  <h1>Identity is the <em>root namespace.</em></h1>
+  <p class="hero-sub">UIAO is a universal governance substrate that unifies identity, addressing, and overlay networks across federal, regulated, and commercial enterprises — without rip-and-replace.</p>
+  <div class="hero-actions">
+    <a class="btn-primary" href="https://github.com/WhalerMike/uiao" target="_blank" rel="noopener">Explore the Repo</a>
+    <a class="btn-ghost" href="#architecture">Architecture Overview</a>
+  </div>
+</section>
+
+<div class="marquee-wrap" aria-hidden="true">
+  <div class="marquee-track">
+    <span class="marquee-item"><span>⬡</span>Zero Trust</span>
+    <span class="marquee-item"><span>⬡</span>SSOT Architecture</span>
+    <span class="marquee-item"><span>⬡</span>Drift Detection</span>
+    <span class="marquee-item"><span>⬡</span>FedRAMP 20x</span>
+    <span class="marquee-item"><span>⬡</span>NIST CSF 2.0</span>
+    <span class="marquee-item"><span>⬡</span>TIC 3.0</span>
+    <span class="marquee-item"><span>⬡</span>NIST 800-63</span>
+    <span class="marquee-item"><span>⬡</span>AD → Entra ID</span>
+    <span class="marquee-item"><span>⬡</span>Six Control Planes</span>
+    <span class="marquee-item"><span>⬡</span>FIMF Adapter Registry</span>
+    <span class="marquee-item"><span>⬡</span>Zero Trust</span>
+    <span class="marquee-item"><span>⬡</span>SSOT Architecture</span>
+    <span class="marquee-item"><span>⬡</span>Drift Detection</span>
+    <span class="marquee-item"><span>⬡</span>FedRAMP 20x</span>
+    <span class="marquee-item"><span>⬡</span>NIST CSF 2.0</span>
+    <span class="marquee-item"><span>⬡</span>TIC 3.0</span>
+    <span class="marquee-item"><span>⬡</span>NIST 800-63</span>
+    <span class="marquee-item"><span>⬡</span>AD → Entra ID</span>
+    <span class="marquee-item"><span>⬡</span>Six Control Planes</span>
+    <span class="marquee-item"><span>⬡</span>FIMF Adapter Registry</span>
+  </div>
+</div>
+
+<section class="uiao-section">
+  <div style="max-width:1200px;margin:0 auto 2.5rem;">
+    <p class="section-label">Three Pillars</p>
+    <h2 class="section-title">Governance, Compliance, and Modernization — unified.</h2>
+    <p class="section-body">UIAO ships as a single substrate that delivers all three. No per-vertical product split. Federal compliance is one mode of operation; commercial, hybrid, and multi-cloud are first-class targets.</p>
+  </div>
+  <div class="pillars">
+    <div class="pillar">
+      <div class="pillar-label">Governance</div>
+      <h3>Canon as the source of truth.</h3>
+      <p>A protected corpus of authoritative schemas, registries, and policies. Every governance claim traces to a certificate-anchored origin. No backfilling, no orphan claims.</p>
+      <a class="pillar-link" href="https://whalermike.github.io/uiao/modernization/">Governance canon</a>
+    </div>
+    <div class="pillar compliance">
+      <div class="pillar-label">Compliance</div>
+      <h3>Continuous evidence, not quarterly attestation.</h3>
+      <p>163 cryptographically-signed Key Security Indicators. OSCAL-native SSPs. Drift detection across schema, semantic, provenance, authorization, and identity classes — with SLA-enforced remediation.</p>
+      <a class="pillar-link" href="https://whalermike.github.io/uiao/customer-documents/compliance/">Compliance pillar</a>
+    </div>
+    <div class="pillar modernization">
+      <div class="pillar-label">Modernization</div>
+      <h3>Migration without rip-and-replace.</h3>
+      <p>Vendor-neutral adapters for AD → Entra ID, PKI, RADIUS, DNS/DHCP/IPAM, and overlay fabric. Every step is incremental, reversible, and evidence-driven — across heterogeneous directory and network stacks.</p>
+      <a class="pillar-link" href="https://whalermike.github.io/uiao/modernization/directory-migration.html">Modernization program</a>
+    </div>
+  </div>
+</section>
+
+<section class="uiao-section problem" id="problem">
+  <div class="problem-grid">
+    <div>
+      <p class="section-label">The Problem</p>
+      <h2 class="section-title">Enterprise identity, addressing, and policy don't talk.</h2>
+    </div>
+    <div>
+      <p class="section-body">Directory migrations, network modernizations, and compliance programs each solve a slice of the problem in isolation. The seams between them are where evidence vanishes, drift accumulates, and audits fail. UIAO unifies those slices under a single architectural substrate.</p>
+      <ul class="problem-list">
+        <li>DNS / DHCP / IPAM fragmentation and SSOT failures</li>
+        <li>GPO, SPN, and service-account blind spots during AD → Entra ID migrations</li>
+        <li>Telemetry gaps that block Zero Trust, TIC 3.0, and FedRAMP 20x posture</li>
+        <li>PKI, RADIUS / NPS, and LDAP-dependent apps left outside migration scope</li>
+        <li>No vendor-neutral governance layer across heterogeneous directory and network stacks</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="architecture" class="uiao-section concepts">
+  <div class="concepts-header">
+    <p class="section-label">Architecture</p>
+    <h2 class="section-title">Eight Core Concepts.</h2>
+    <p class="section-body">UIAO's architecture is expressed through eight foundational concepts spanning the full lifecycle of enterprise identity, addressing, overlay, and governance.</p>
+  </div>
+  <div class="concepts-grid">
+    <div class="concept-card">
+      <div class="concept-num">01</div>
+      <div class="concept-name">Identity as Root Namespace</div>
+      <div class="concept-desc">Every entity — user, device, service, workload — is anchored to a governed identity before any other attribute is assigned.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">02</div>
+      <div class="concept-name">Unified Addressing</div>
+      <div class="concept-desc">DNS, DHCP, and IPAM are treated as a single coordinated plane, not independent silos. SSOT is non-negotiable.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">03</div>
+      <div class="concept-name">Overlay Governance</div>
+      <div class="concept-desc">Network overlays are policy-governed surfaces, not infrastructure afterthoughts. Every segment carries identity context.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">04</div>
+      <div class="concept-name">DRIFT Modules</div>
+      <div class="concept-desc">Composable governance modules that encode authoritative rules for drift detection, authorization, and remediation.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">05</div>
+      <div class="concept-name">FIMF Adapter Registry</div>
+      <div class="concept-desc">A vendor-neutral interface layer. InfoBlox, BlueCat, and any directory or network system registers as an adapter.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">06</div>
+      <div class="concept-name">No Rip-and-Replace</div>
+      <div class="concept-desc">UIAO operates alongside existing infrastructure. Migration is incremental, reversible, and evidence-driven at every step.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">07</div>
+      <div class="concept-name">Evidence-Driven Compliance</div>
+      <div class="concept-desc">Compliance posture is computed continuously from live telemetry — not asserted at audit time. Zero Trust as a runtime property.</div>
+    </div>
+    <div class="concept-card">
+      <div class="concept-num">08</div>
+      <div class="concept-name">Universal Enterprise Scope</div>
+      <div class="concept-desc">Designed for any enterprise. Federal compliance is one vertical. Commercial, hybrid, and multi-cloud are first-class targets.</div>
+    </div>
+  </div>
+</section>
+
+<section class="uiao-section planes-wrap">
+  <div class="planes-inner">
+    <div>
+      <p class="section-label">Control Planes</p>
+      <h2 class="section-title">Six planes. One coherent architecture.</h2>
+      <p class="section-body">UIAO separates concerns across six distinct control planes, each with its own governance surface and adapter interface — enabling independent evolution without architectural coupling.</p>
+    </div>
+    <div class="planes-list">
+      <div class="plane-item"><div class="plane-dot"></div><span class="plane-label">Identity Control Plane — root namespace governance</span></div>
+      <div class="plane-item"><div class="plane-dot"></div><span class="plane-label">Addressing Control Plane — DNS · DHCP · IPAM</span></div>
+      <div class="plane-item"><div class="plane-dot"></div><span class="plane-label">Overlay Control Plane — network fabric governance</span></div>
+      <div class="plane-item"><div class="plane-dot"></div><span class="plane-label">Authorization Control Plane — policy enforcement</span></div>
+      <div class="plane-item"><div class="plane-dot"></div><span class="plane-label">Telemetry Control Plane — observability and drift detection</span></div>
+      <div class="plane-item"><div class="plane-dot"></div><span class="plane-label">Migration Control Plane — AD · Entra · PKI · RADIUS</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="compliance" class="uiao-section">
+  <div class="compliance-wrap">
+    <div class="compliance-header">
+      <p class="section-label">Compliance Alignment</p>
+      <h2 class="section-title">Built for the standards that matter — federal and commercial.</h2>
+      <p class="section-body">UIAO produces continuous, machine-readable compliance evidence across the federal mandates that define government posture and the commercial frameworks that govern regulated enterprise.</p>
+    </div>
+    <div class="badge-grid">
+      <div class="badge">Zero Trust</div>
+      <div class="badge">CISA Zero Trust Maturity</div>
+      <div class="badge">TIC 3.0</div>
+      <div class="badge">NIST 800-63</div>
+      <div class="badge">FedRAMP 20x</div>
+      <div class="badge">GCC Moderate</div>
+      <div class="badge">M-22-09</div>
+      <div class="badge">CMMC</div>
+      <div class="badge">NIST CSF 2.0</div>
+      <div class="badge">ISO 27001</div>
+      <div class="badge">SOC 2</div>
+      <div class="badge">HIPAA</div>
+      <div class="badge">PCI DSS</div>
+      <div class="badge">OSCAL</div>
+    </div>
+  </div>
+</section>
+
+<section class="uiao-section cta-band">
+  <p class="section-label" style="text-align:center;">Open Source · Active Development</p>
+  <h2 class="section-title" style="text-align:center; margin:0 auto 1rem;">Start with the architecture. Build toward governance.</h2>
+  <p class="section-body" style="margin:0 auto 2rem; text-align:center;">The UIAO canon, DRIFT modules, adapter specifications, and governance tooling are all maintained in the open. Contributions and collaboration welcome.</p>
+  <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+    <a class="btn-primary" href="https://github.com/WhalerMike/uiao" target="_blank" rel="noopener">Explore on GitHub</a>
+    <a class="btn-ghost" href="https://whalermike.github.io/uiao/docs/quickstart.html">10-Minute Quickstart</a>
+  </div>
+</section>
+
+<footer>
+  <span class="footer-logo">UIAO // Unified Identity-Addressing-Overlay Architecture</span>
+  <ul class="footer-links">
+    <li><a href="https://github.com/WhalerMike/uiao" target="_blank" rel="noopener">GitHub</a></li>
+    <li><a href="https://github.com/WhalerMike/uiao/issues" target="_blank" rel="noopener">Issues</a></li>
+    <li><a href="https://whalermike.github.io/uiao/">Docs</a></li>
+  </ul>
+</footer>
+
+</body>
+</html>
