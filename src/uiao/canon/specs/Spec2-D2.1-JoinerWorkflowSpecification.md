@@ -406,7 +406,7 @@ joiner.day-of-hire record with `outcome: success` for a given
 
 - [ADR-003 — API-Driven Inbound Provisioning as HR-Agnostic Canonical Path](../adr/adr-003-api-driven-inbound-provisioning.md)
 - [ADR-035 — OrgPath Codebook Binding](../adr/adr-035-orgpath-codebook-binding.md)
-- [ADR-048 — OrgPath Attribute Selection](../adr/adr-048-orgpath-attribute-storage-decision.md)
+- [ADR-048 — OrgPath Attribute Selection](../adr/adr-048-orgpath-attribute-selection.md)
 - [ADR-050 — D3.1 Reference Middleware Implementation Choices](../adr/adr-050-reference-middleware-implementation-choices.md)
 
 ### 14.2 UIAO docs

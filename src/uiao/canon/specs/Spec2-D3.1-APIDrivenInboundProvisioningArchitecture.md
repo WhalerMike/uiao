@@ -1157,7 +1157,7 @@ sequencing follow-on to D3.1's implementation.
 - [ADR-003 — API-Driven Inbound Provisioning as HR-Agnostic Canonical Path](../adr/adr-003-api-driven-inbound-provisioning.md) (status: ACCEPTED) — the architectural decision this document instantiates.
 - [ADR-004 — Workload Identity Federation as Default](../adr/adr-004-workload-identity-federation-default.md) — informs §4.1 service-principal posture.
 - [ADR-035 — OrgPath Codebook Binding](../adr/adr-035-orgpath-codebook-binding.md) — OrgPath calculation contract for §3.2.
-- [ADR-048 — OrgPath Attribute Selection](../adr/adr-048-orgpath-attribute-storage-decision.md) — `extensionAttribute1` mapping for §5.2.
+- [ADR-048 — OrgPath Attribute Selection](../adr/adr-048-orgpath-attribute-selection.md) — `extensionAttribute1` mapping for §5.2.
 - [ADR-049 — Microsoft Modernization Adapter Coverage Expansion](../adr/adr-049-microsoft-adapter-coverage-expansion.md) (status: ACCEPTED) — names downstream consumers in §12.4.
 
 ### 13.2 UIAO docs
