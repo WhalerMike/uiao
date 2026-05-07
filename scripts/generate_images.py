@@ -198,6 +198,14 @@ class RunReport:
     registry_used_by_updates: int = 0
     sidecar_slots_harvested: int = 0  # filled heading-style slots found
     sidecar_slots_merged: int = 0  # slots that became effective placeholders
+    # Canon-draft generation pass — renders status:"draft" registry entries
+    # whose PNG is missing or whose file_sha256 disagrees with the on-disk
+    # bytes. Populated by process_draft_canon_entries().
+    canon_drafts_generated: int = 0
+    canon_drafts_cached: int = 0
+    canon_drafts_failed: int = 0
+    canon_drafts_skipped_no_prompt: int = 0
+    canon_drafts_registry_updates: int = 0
 
 
 # ──────────────────────────────────────────────────────────────
@@ -871,6 +879,203 @@ def process_doc_local_placeholders(
 
 
 # ──────────────────────────────────────────────────────────────
+# Canon-draft prompt extraction. Reads a prompt file under
+# src/uiao/canon/image-prompts/ and returns the body that should be
+# sent to Gemini. Two prompt-file formats are supported:
+#
+#   1. New (per image-pipeline-guide §"Prompt file format"):
+#        ---
+#        id: UIAO-FIG-NNN
+#        ...
+#        ---
+#        ## Description
+#        ...
+#        ## Prompt
+#        <body>
+#
+#   2. Legacy (UIAO-FIG-001..008, extracted from docx):
+#        # UIAO-FIG-NNN -- <Title>
+#        ## Origin
+#        ...
+#        ## Description
+#        <body>
+#        ## Regeneration Guidance
+#        ...
+#
+# We prefer "## Prompt" (explicit prompt body), falling back to
+# "## Description" so the legacy entries still render. YAML frontmatter
+# is stripped before scanning so its `:` characters can't fool the
+# section finder.
+# ──────────────────────────────────────────────────────────────
+_HEADING_RE = re.compile(r"(?m)^##\s+(.+?)\s*$")
+
+
+def extract_canon_prompt_body(prompt_file: Path) -> str | None:
+    """Return the prompt body to send to Gemini, or None if neither a
+    "## Prompt" nor "## Description" section exists."""
+    text = prompt_file.read_text(encoding="utf-8")
+
+    # Strip YAML frontmatter if present
+    if text.startswith("---\n") or text.startswith("---\r\n"):
+        end = text.find("\n---", 3)
+        if end > 0:
+            # Skip past the closing '---' line
+            nl = text.find("\n", end + 3)
+            text = text[nl + 1 :] if nl > 0 else text[end + 4 :]
+
+    # Build a section map: heading title -> (start_of_body, end_of_body)
+    sections: dict[str, tuple[int, int]] = {}
+    matches = list(_HEADING_RE.finditer(text))
+    for i, m in enumerate(matches):
+        body_start = m.end()
+        # Skip the trailing newline after the heading line
+        if body_start < len(text) and text[body_start] == "\n":
+            body_start += 1
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        sections[m.group(1).strip().lower()] = (body_start, body_end)
+
+    for name in ("prompt", "description"):
+        if name in sections:
+            s, e = sections[name]
+            body = text[s:e].strip()
+            if body:
+                return body
+    return None
+
+
+# ──────────────────────────────────────────────────────────────
+# Canon-draft processor. For every registry entry with status:"draft"
+# whose rendered PNG is missing or whose file_sha256 disagrees with
+# the on-disk bytes (e.g., placeholder zeros from a fresh PR), call
+# Gemini with the prompt body and write the PNG + sidecar + tEXt
+# metadata. Updates entry.prompt_sha256, entry.file_sha256, and
+# entry.raw["generated_at"]/["dimensions"] in place — the caller
+# persists via save_registry().
+#
+# Status is NOT touched here. Promotion (draft -> current) remains a
+# human decision via PR review (PROMOTE keyword in approval).
+#
+# Cache semantics:
+#   - PNG exists on disk AND sha256(PNG) == entry.file_sha256
+#     AND sha256(prompt_file) == entry.prompt_sha256  →  cache hit, skip
+#   - Otherwise → render and update both hashes
+#
+# Hash ordering (corrected vs the doc-local pass): the file_sha256 is
+# computed AFTER embed_png_metadata so the registered hash matches the
+# bytes actually on disk. The doc-local pass has the inverse order;
+# fixing that is out of scope for this change.
+# ──────────────────────────────────────────────────────────────
+_PLACEHOLDER_FILE_SHA = "0" * 64
+
+
+def process_draft_canon_entries(
+    entries: list[RegistryEntry],
+    client,
+    report: RunReport,
+    dry_run: bool = False,
+) -> None:
+    for e in entries:
+        if e.status != "draft":
+            continue
+
+        if not e.prompt_file.exists():
+            print(f"  [skip] {e.id}: prompt_file missing at {_repo_rel(e.prompt_file)}")
+            report.canon_drafts_skipped_no_prompt += 1
+            continue
+
+        current_prompt_sha = sha256_prompt_file(e.prompt_file)
+
+        # Cache check: PNG exists, hashes match, prompt unchanged
+        png_exists = e.file.exists()
+        png_hash_ok = (
+            png_exists
+            and e.file_sha256
+            and e.file_sha256 != _PLACEHOLDER_FILE_SHA
+            and sha256_file(e.file) == e.file_sha256
+        )
+        prompt_unchanged = current_prompt_sha == e.prompt_sha256
+        if png_exists and png_hash_ok and prompt_unchanged:
+            print(f"  [cache] {e.id} → {_repo_rel(e.file)}")
+            report.canon_drafts_cached += 1
+            continue
+
+        prompt_body = extract_canon_prompt_body(e.prompt_file)
+        if not prompt_body:
+            print(f"  [skip] {e.id}: no '## Prompt' or '## Description' section in {_repo_rel(e.prompt_file)}")
+            report.canon_drafts_skipped_no_prompt += 1
+            continue
+
+        if dry_run:
+            print(
+                f"  [dry-run] {e.id} → {_repo_rel(e.file)} "
+                f"(prompt {len(prompt_body)} chars from {_repo_rel(e.prompt_file)})"
+            )
+            continue
+
+        e.file.parent.mkdir(parents=True, exist_ok=True)
+
+        print(f"  Generating: {e.id} → {_repo_rel(e.file)}")
+        ok = generate_image(client, prompt_body, e.file)
+        if not ok:
+            report.canon_drafts_failed += 1
+            continue
+
+        # Embed PNG tEXt FIRST so the final on-disk bytes are what we hash.
+        now = _now_iso_utc()
+        embed_png_metadata(
+            e.file,
+            canonical_id=e.id,
+            prompt_sha256=current_prompt_sha,
+            generator=MODEL,
+            generated_at=now,
+            version=e.version,
+            description=(e.raw.get("description") or "")[:120] if e.raw else "",
+        )
+
+        new_file_sha = sha256_file(e.file)
+
+        # Read actual rendered dimensions so the registry stays accurate
+        # vs the planned dimensions in the original entry.
+        try:
+            from PIL import Image as _PILImage
+
+            with _PILImage.open(e.file) as img:
+                rendered_dims = {"width": img.width, "height": img.height}
+        except Exception as exc:
+            print(f"  Warning: couldn't read rendered dimensions for {e.id}: {exc}")
+            rendered_dims = None
+
+        # Mutate entry — save_registry persists later
+        e.prompt_sha256 = current_prompt_sha
+        e.file_sha256 = new_file_sha
+        e.generator = MODEL  # ensure it reflects what actually ran
+        if e.raw is not None:
+            e.raw["generated_at"] = now
+            if rendered_dims is not None:
+                e.raw["dimensions"] = rendered_dims
+
+        used_by_docs = [str(u.get("document", "")) for u in e.used_by]
+        write_sidecar(
+            e.file,
+            document=None,  # canon images are not tied to a single document
+            placeholder_id=e.id,
+            canonical_id=e.id,
+            slug=e.slug,
+            prompt_sha256=current_prompt_sha,
+            generator=MODEL,
+            file_sha256=new_file_sha,
+            version=e.version,
+            aspect=(e.raw.get("aspect") if e.raw else None) or "16:9",
+            used_by=used_by_docs,
+        )
+
+        report.canon_drafts_generated += 1
+        report.canon_drafts_registry_updates += 1
+        report.sidecars_written += 1
+        time.sleep(DELAY_SECONDS)
+
+
+# ──────────────────────────────────────────────────────────────
 # Legacy prompts.json path — preserved so existing uiao-pipeline-test
 # and similar entries still generate without edits.
 # ──────────────────────────────────────────────────────────────
@@ -1004,11 +1209,30 @@ def main() -> int:
         else:
             print("\nNo doc-local placeholders found. Skipping harvest generation.")
 
-    # Persist used_by updates (only if the registry had entries and we
-    # actually made changes). Never overwrite an empty registry.
-    if entries and report.registry_used_by_updates > 0 and not args.dry_run:
+        # Canon-draft pass — render any registry entry with status:"draft"
+        # whose PNG is missing or stale. Runs in harvest mode (and "both")
+        # so the existing legacy-only callers don't pick up new behavior.
+        draft_entries = [e for e in entries if e.status == "draft"]
+        if draft_entries:
+            print(f"\nProcessing {len(draft_entries)} draft canon entrie(s)...")
+            process_draft_canon_entries(
+                entries,
+                client,
+                report,
+                dry_run=args.dry_run,
+            )
+
+    # Persist registry updates if we made any (used_by additions OR
+    # canon-draft hash/timestamp updates). Never overwrite an empty registry.
+    registry_dirty = report.registry_used_by_updates > 0 or report.canon_drafts_registry_updates > 0
+    if entries and registry_dirty and not args.dry_run:
         save_registry(registry_doc, entries)
-        print(f"\nRegistry updated: {report.registry_used_by_updates} used_by addition(s).")
+        msg_parts = []
+        if report.registry_used_by_updates > 0:
+            msg_parts.append(f"{report.registry_used_by_updates} used_by addition(s)")
+        if report.canon_drafts_registry_updates > 0:
+            msg_parts.append(f"{report.canon_drafts_registry_updates} canon-draft hash/timestamp update(s)")
+        print(f"\nRegistry updated: {', '.join(msg_parts)}.")
 
     # Always rebuild the manifest at the end — cheap, deterministic,
     # and gives downstream consumers (editors, LFS audit, render) one
@@ -1018,7 +1242,9 @@ def main() -> int:
     print(f"\nManifest written to {_repo_rel(MANIFEST_PATH)}")
 
     _print_report(report)
-    return 0 if report.doc_local_failed == 0 and not report.canon_refs_missing else 1
+    return (
+        0 if (report.doc_local_failed == 0 and report.canon_drafts_failed == 0 and not report.canon_refs_missing) else 1
+    )
 
 
 # ──────────────────────────────────────────────────────────────
@@ -1175,6 +1401,11 @@ def _print_report(report: RunReport) -> None:
         f"(+{report.sidecar_slots_merged} merged as new placeholders)"
     )
     print(f"Registry used_by adds:   {report.registry_used_by_updates}")
+    print(f"Canon drafts generated:  {report.canon_drafts_generated}")
+    print(f"Canon drafts cached:     {report.canon_drafts_cached}")
+    print(f"Canon drafts failed:     {report.canon_drafts_failed}")
+    print(f"Canon drafts skipped:    {report.canon_drafts_skipped_no_prompt}")
+    print(f"Canon registry rewrites: {report.canon_drafts_registry_updates}")
 
 
 if __name__ == "__main__":
