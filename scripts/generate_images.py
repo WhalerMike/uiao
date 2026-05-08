@@ -944,6 +944,136 @@ def extract_canon_prompt_body(prompt_file: Path) -> str | None:
 
 
 # ──────────────────────────────────────────────────────────────
+# Label overlay. Optional post-render correction layer for canon
+# images. If a sibling <id>.labels.yaml exists next to the prompt
+# file, paint corrected labels onto the rendered PNG using PIL
+# before metadata is embedded. Catches Gemini's text-fidelity
+# defects (typos in baked labels) without sacrificing its
+# structural rendering.
+#
+# Spec format:
+#
+#   font_family: DejaVuSans              # name (PIL searches) or path to .ttf
+#   default_font_size: 14
+#   default_text_color: "#FFFFFF"
+#   overlays:
+#     - text: "Canonical State Store"    # exact text to draw
+#       cover_box: [x1, y1, x2, y2]      # rectangle to paint over (image px)
+#       cover_fill: "#1E8C8C"            # fill color of the cover; omit to skip cover
+#       text_color: "#FFFFFF"            # optional, overrides default
+#       font_size: 12                    # optional, overrides default
+#       align: center                    # left | center | right (default center)
+#       valign: middle                   # top | middle | bottom (default middle)
+#
+# The function returns the count of overlays applied so callers can
+# log it. Errors are logged and counted but do NOT abort the run —
+# typo correction is opt-in per image and shouldn't break canon
+# entries that don't use it.
+# ──────────────────────────────────────────────────────────────
+_FONT_SEARCH_PATHS = [
+    "/usr/share/fonts/truetype/dejavu/{name}.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/Library/Fonts/{name}.ttf",
+    "C:/Windows/Fonts/{name}.ttf",
+    "{name}.ttf",  # let PIL search its own font directories
+]
+
+
+def _load_overlay_font(family_or_path: str, size: int):
+    from PIL import ImageFont
+
+    if family_or_path and (
+        os.sep in family_or_path or family_or_path.endswith((".ttf", ".otf")) and os.path.isabs(family_or_path)
+    ):
+        try:
+            return ImageFont.truetype(family_or_path, size)
+        except OSError:
+            pass
+
+    name = family_or_path.replace(" ", "") if family_or_path else "DejaVuSans"
+    for tmpl in _FONT_SEARCH_PATHS:
+        candidate = tmpl.format(name=name)
+        try:
+            return ImageFont.truetype(candidate, size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
+def apply_label_overlay(png_path: Path, labels_path: Path) -> int:
+    """Apply the label-overlay spec at labels_path onto png_path.
+
+    Mutates png_path in place. Returns the number of overlays applied
+    (0 if the spec has no overlays or PIL/yaml are unavailable).
+    """
+    if yaml is None:
+        print("  Warning: PyYAML not installed; cannot apply label overlays.")
+        return 0
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        print("  Warning: Pillow not installed; cannot apply label overlays.")
+        return 0
+
+    spec = yaml.safe_load(labels_path.read_text(encoding="utf-8")) or {}
+    overlays = spec.get("overlays") or []
+    if not overlays:
+        return 0
+
+    family = spec.get("font_family", "DejaVuSans")
+    default_size = int(spec.get("default_font_size", 14))
+    default_text_color = spec.get("default_text_color", "#FFFFFF")
+
+    img = Image.open(png_path).convert("RGB")
+    draw = ImageDraw.Draw(img)
+    applied = 0
+
+    for o in overlays:
+        bbox = o.get("cover_box") or []
+        text = o.get("text", "")
+        if len(bbox) != 4 or not text:
+            continue
+        x1, y1, x2, y2 = bbox
+
+        cover_fill = o.get("cover_fill")
+        if cover_fill:
+            draw.rectangle([x1, y1, x2, y2], fill=cover_fill)
+
+        size = int(o.get("font_size", default_size))
+        text_color = o.get("text_color", default_text_color)
+        align = o.get("align", "center")
+        valign = o.get("valign", "middle")
+
+        font = _load_overlay_font(family, size)
+
+        # textbbox returns (left, top, right, bottom) for the rendered glyphs
+        tb = draw.textbbox((0, 0), text, font=font)
+        text_w = tb[2] - tb[0]
+        text_h = tb[3] - tb[1]
+
+        box_w = x2 - x1
+        box_h = y2 - y1
+        if align == "center":
+            tx = x1 + (box_w - text_w) // 2 - tb[0]
+        elif align == "right":
+            tx = x2 - text_w - tb[0]
+        else:
+            tx = x1 - tb[0]
+        if valign == "middle":
+            ty = y1 + (box_h - text_h) // 2 - tb[1]
+        elif valign == "bottom":
+            ty = y2 - text_h - tb[1]
+        else:
+            ty = y1 - tb[1]
+
+        draw.text((tx, ty), text, fill=text_color, font=font)
+        applied += 1
+
+    img.save(png_path, format="PNG")
+    return applied
+
+
+# ──────────────────────────────────────────────────────────────
 # Canon-draft processor. For every registry entry with status:"draft"
 # whose rendered PNG is missing or whose file_sha256 disagrees with
 # the on-disk bytes (e.g., placeholder zeros from a fresh PR), call
@@ -985,7 +1115,16 @@ def process_draft_canon_entries(
 
         current_prompt_sha = sha256_prompt_file(e.prompt_file)
 
-        # Cache check: PNG exists, hashes match, prompt unchanged
+        # Optional sibling label-overlay spec at <id>.labels.yaml. Its
+        # contents participate in the cache key so changes invalidate
+        # cache even when the prompt file is unchanged.
+        labels_path = e.prompt_file.parent / f"{e.id}.labels.yaml"
+        current_labels_sha = sha256_prompt_file(labels_path) if labels_path.exists() else None
+        registry_labels_sha = e.raw.get("labels_sha256") if e.raw else None
+        if not registry_labels_sha:
+            registry_labels_sha = None  # normalize empty string to None
+
+        # Cache check: PNG exists, hashes match, prompt + labels unchanged
         png_exists = e.file.exists()
         png_hash_ok = (
             png_exists
@@ -994,7 +1133,8 @@ def process_draft_canon_entries(
             and sha256_file(e.file) == e.file_sha256
         )
         prompt_unchanged = current_prompt_sha == e.prompt_sha256
-        if png_exists and png_hash_ok and prompt_unchanged:
+        labels_unchanged = current_labels_sha == registry_labels_sha
+        if png_exists and png_hash_ok and prompt_unchanged and labels_unchanged:
             print(f"  [cache] {e.id} → {_repo_rel(e.file)}")
             report.canon_drafts_cached += 1
             continue
@@ -1020,8 +1160,23 @@ def process_draft_canon_entries(
             report.canon_drafts_failed += 1
             continue
 
-        # Embed PNG tEXt FIRST so the final on-disk bytes are what we hash.
         now = _now_iso_utc()
+
+        # Optional label overlay BEFORE metadata embed. PIL's save()
+        # strips PngInfo, so apply overlays first and embed metadata
+        # last. The labels spec is a sibling <id>.labels.yaml next to
+        # the prompt file; absent → no overlay (Gemini render kept
+        # as-is). labels_path was set above for the cache check.
+        if labels_path.exists():
+            try:
+                applied = apply_label_overlay(e.file, labels_path)
+                if applied > 0:
+                    print(f"  Applied {applied} label overlay(s) for {e.id}")
+            except Exception as exc:
+                print(f"  Warning: label overlay failed for {e.id}: {exc}")
+
+        # Embed PNG tEXt LAST so the final on-disk bytes carry the
+        # provenance metadata after any overlay has been applied.
         embed_png_metadata(
             e.file,
             canonical_id=e.id,
@@ -1053,6 +1208,12 @@ def process_draft_canon_entries(
             e.raw["generated_at"] = now
             if rendered_dims is not None:
                 e.raw["dimensions"] = rendered_dims
+            # Track labels.yaml hash so changes to the overlay spec
+            # invalidate cache on the next run.
+            if current_labels_sha:
+                e.raw["labels_sha256"] = current_labels_sha
+            elif "labels_sha256" in e.raw:
+                del e.raw["labels_sha256"]
 
         used_by_docs = [str(u.get("document", "")) for u in e.used_by]
         write_sidecar(
