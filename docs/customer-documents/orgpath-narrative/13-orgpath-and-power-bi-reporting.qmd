@@ -12,35 +12,7 @@ source-document: "OrgPath and Power BI Executive Reporting — Governance Postur
 rendered-from: "Pandoc-converted Markdown sidecar of OneDrive .docx; body preserved unchanged."
 ---
 
-**OrgPath and Power BI Executive Reporting**
-
-**Governance Posture Dashboards by Organizational Division**
-
-**Series:** OrgTree and OrgPath Governance Architecture
-
-**Part:** Thirteen of Thirteen — Series Capstone
-
-**Audience:** Senior Infrastructure Engineers, Governance Architects, Governance Leadership
-
-**Classification:** Internal — Governance Architecture
-
-**Date:** May 8, 2026
-
-**Version:** 1.0 — Final
-
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>Series Context</strong></p>
-<p>This is Part Thirteen of thirteen documents in the OrgTree and OrgPath Governance Architecture series. Parts One through Twelve established the OrgTree registry, the OrgPath positional attribute, and its integration across Entra ID, PIM, Lifecycle Workflows, Microsoft Sentinel, Azure RBAC, Microsoft Intune, the Defender suite, DNS, Cloud PKI, Microsoft Purview, B2B guest governance, service principal governance, and Azure Policy Guest Configuration. This document constructs the executive reporting layer that surfaces the intelligence produced by that substrate. The complete series index, including Supplement 8S covering third-party DDI integration, is available in the governance document repository.</p></td>
-</tr>
-</tbody>
-</table>
-
-Chapter 1 — The Reporting Gap: Governance Intelligence Without an Audience
+## Chapter 1 — The Reporting Gap: Governance Intelligence Without an Audience
 
 Twelve parts of this series have been devoted to construction. The labor has been architectural and methodical: establishing a registry that knows the organizational hierarchy, creating an attribute that carries organizational position on every managed object, and propagating that attribute across every surface that the Microsoft cloud estate exposes to governance control. The result is a substrate. It is thorough, and it is real. Every identity in Entra ID carries an OrgPath extension attribute encoding its position in the hierarchy. Every managed device in Intune is governed by a compliance policy derived from that position. Every privileged role assignment in PIM is bounded by eligibility rules that respect the organizational segment to which the assignee belongs. Every Arc-enrolled server is tagged with OrgPath and evaluated against a Guest Configuration baseline keyed to that tag. Every Sentinel detection rule that fires enriches its alert with OrgPath context, and every alert is correlated to the organizational segment from which it originated. Purview DLP policies scope to OrgPath labels. Certificate profiles from Cloud PKI are assigned by OrgPath group membership. The drift detection engine runs continuously, comparing current state to the OrgPath-derived policy intent, committing every discovered variance to an auditable repository. The governance pipeline is running. The governance data is flowing.
 
@@ -54,7 +26,7 @@ OrgPath is the slicer that makes all of this work. Every measure in the semantic
 
 This document covers the complete implementation of that reporting layer. Chapter Two describes the data source architecture and the export pipeline that moves governance data from the six source surfaces into staging files that the Power BI semantic model can consume. Chapter Three defines the Power BI semantic model structure, including the Power Query M definitions for each data table and the relationship model that makes OrgPath the universal slicer. Chapter Four presents the full DAX measure library for governance KPIs, including the Red-Amber-Green status measures that drive the executive scorecard. Chapter Five describes the report page designs for the per-division posture dashboard, the executive summary, and the trend analysis page. Chapter Six covers the automated refresh pipeline using the Power BI REST API. Chapter Seven addresses stakeholder distribution through Microsoft Teams and SharePoint embedding. Chapter Eight closes the series.
 
-Chapter 2 — Data Source Architecture and Export Pipeline
+## Chapter 2 — Data Source Architecture and Export Pipeline
 
 The semantic model consumes data from six distinct sources, each representing a governance surface that the preceding parts of this series instrumented with OrgPath awareness. These sources do not share a common query interface, a common data format, or a common authentication model, which is precisely why an export pipeline layer exists between them and the Power BI semantic model. The pipeline normalizes heterogeneous source data into a consistent set of JSON files that the semantic model's Power Query M definitions can load and shape uniformly.
 
@@ -82,51 +54,51 @@ The following script constitutes the complete export orchestrator. It is designe
 
 Once the export pipeline has run successfully, the staging directory contains six latest JSON files — one per governance surface — and the OrgTree registry copy. The Power BI Gateway's data source configuration points to this staging directory. The gateway does not require any inbound network ports to the export host; it initiates outbound connections to the Power BI service and reads local file system paths. This means the export host can sit on a management network segment without external exposure, which is the correct placement for a host that holds governance data exports.
 
-Chapter 3 — The Power BI Semantic Model
+## Chapter 3 — The Power BI Semantic Model
 
 The semantic model is the architectural center of the reporting layer. It is the component that translates the six heterogeneous JSON exports produced by the pipeline into a single, coherent, queryable model that Power BI report pages consume uniformly. The model has seven tables: six fact tables, one per governance surface, and one shared dimension table — the OrgTree dimension — derived from the authoritative OrgTree registry JSON. All six fact tables join to the OrgTree dimension on the OrgPath column. OrgPath is therefore the universal slicer: selecting any OrgPath value or range of values in the hierarchy slicer on any report page automatically filters every fact table to the rows whose OrgPath value falls within the selected organizational segment.
 
 The Power Query M definitions presented in this chapter are written to be pasted directly into the Power BI Desktop Advanced Editor for each table. The file paths in each definition reference the -latest.json symlink files that the export pipeline maintains, not the timestamped archive files. This ensures that the semantic model always loads the most recently completed export for each surface. In environments using a Fabric Lakehouse, replace the File.Contents source with the appropriate Lakehouse.Contents or Table.FromRows call against the Lakehouse delta table.
 
-OrgTree Dimension Table
+### OrgTree Dimension Table
 
 The OrgTree dimension table is the organizational spine of the entire semantic model. It must be derived from the same authoritative registry file that the OrgPath propagation pipeline uses as its source of truth — not a separately maintained copy that might drift from the operational registry. The M query reads the registry JSON, expands the node records, filters to active nodes only, and adds a computed DisplayName column that combines the node label and OrgPath value for use in report slicers. The Tier column is typed as an integer to support slicer ordering and hierarchy visual configuration in Power BI Desktop.
 
 let // ENV-PARAM: Update the file path to match your staging directory. // In Fabric environments, replace File.Contents with Lakehouse.Contents // pointing to the orgtree-registry-latest table. Source = Json.Document( File.Contents("\\governance-server\PowerBIExports\orgtree-registry-latest.json") ), // The OrgTree registry JSON is an array of node objects. // Each node has: NodeId, Path, Tier, Label, ParentNodeId, Active, EffectiveDate ConvertToTable = Table.FromList( Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error ), ExpandNode = Table.ExpandRecordColumn( ConvertToTable, "Column1", {"NodeId", "Path", "Tier", "Label", "ParentNodeId", "Active", "EffectiveDate"}, {"NodeId", "OrgPath", "Tier", "Label", "ParentNodeId", "Active", "EffectiveDate"} ), // Parse Tier as integer for slicer ordering and hierarchy depth visuals. // Parse Active as logical and EffectiveDate as date for time-bounded filtering. TypedColumns = Table.TransformColumnTypes(ExpandNode, { {"Tier", Int64.Type}, {"Active", type logical}, {"EffectiveDate", type date} }), // The semantic model dimension table contains only active nodes. // Retired nodes are excluded so that decommissioned OrgPath values // do not appear in slicers. Historical fact data referencing retired // OrgPath values will show as unmatched (blank) in the dimension join, // which correctly signals that the organizational position no longer exists. ActiveNodes = Table.SelectRows(TypedColumns, each \[Active\] = true), // DisplayName is used in report slicers and the executive scorecard cards. // Format: "Finance (/COMM/FIN/)" for readable identification. AddDisplayName = Table.AddColumn( ActiveNodes, "DisplayName", each \[Label\] & " (" & \[OrgPath\] & ")", type text ), // TierLabel provides a readable depth indicator for hierarchy slicers. AddTierLabel = Table.AddColumn( AddDisplayName, "TierLabel", each "Tier " & Text.From(\[Tier\]), type text ) in AddTierLabel
 
-Intune Compliance Table
+### Intune Compliance Table
 
 The Intune compliance table represents the most granular fact table in the model — one row per managed device. The IsCompliant column added by the export pipeline (a numeric 1 or 0) enables straightforward DAX SUM aggregation without requiring CALCULATE with a filter expression in every measure that counts compliant devices. The OrgPath null-replacement step ensures that devices whose primary user has no OrgPath attribute — typically newly provisioned devices that have not yet been processed by the Lifecycle Workflows joiner task — appear in the model with the sentinel value /UNKNOWN rather than as null-key rows that would be excluded from OrgTree dimension joins.
 
 let // ENV-PARAM: Update file path to staging directory or Lakehouse location. Source = Json.Document( File.Contents("\\governance-server\PowerBIExports\intune-compliance-latest.json") ), ToTable = Table.FromList( Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error ), Expand = Table.ExpandRecordColumn( ToTable, "Column1", {"DeviceId", "DeviceName", "ComplianceState", "LastSync", "UserUPN", "OrgPath", "IsCompliant"}, {"DeviceId", "DeviceName", "ComplianceState", "LastSync", "UserUPN", "OrgPath", "IsCompliant"} ), // Type the columns. LastSync is exported as ISO 8601 datetimezone string. TypedColumns = Table.TransformColumnTypes(Expand, { {"LastSync", type datetimezone}, {"IsCompliant", Int64.Type} }), // Replace null OrgPath values with the /UNKNOWN sentinel. // This preserves these rows in the fact table while making clear // in visuals that the device's organizational position is not yet resolved. CleanOrgPath = Table.ReplaceValue( TypedColumns, null, "/UNKNOWN", Replacer.ReplaceValue, {"OrgPath"} ), // Add a LastSyncDate column (date only) for day-level filtering // without time component, consistent with Sentinel date columns. AddSyncDate = Table.AddColumn( CleanOrgPath, "LastSyncDate", each Date.From(\[LastSync\]), type date ) in AddSyncDate
 
-Sentinel Drift Summary Table
+### Sentinel Drift Summary Table
 
 The Sentinel drift table carries one row per OrgPath per drift category per day, as produced by the KQL aggregation in the export pipeline. The Category column identifies the type of drift detected — for example, PIM eligibility scope drift, compliance policy assignment drift, or extension attribute value drift — and is used in the drift category breakdown clustered bar chart on the per-division posture dashboard page.
 
 let // ENV-PARAM: Update file path. Source = Json.Document( File.Contents("\\governance-server\PowerBIExports\sentinel-drift-latest.json") ), ToTable = Table.FromList( Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error ), Expand = Table.ExpandRecordColumn( ToTable, "Column1", {"Date", "OrgPath", "Category", "DriftCount"}, {"Date", "OrgPath", "Category", "DriftCount"} ), TypedColumns = Table.TransformColumnTypes(Expand, { {"Date", type date}, {"DriftCount", Int64.Type} }), // Replace null OrgPath with /UNKNOWN, consistent with all fact tables. CleanOrgPath = Table.ReplaceValue( TypedColumns, null, "/UNKNOWN", Replacer.ReplaceValue, {"OrgPath"} ) in CleanOrgPath
 
-Sentinel PIM Activations Table
+### Sentinel PIM Activations Table
 
 The PIM activations table carries one row per OrgPath per day. PIM activation volume relative to organizational segment size is a governance signal: an unusually high activation rate in a particular division may indicate credential compromise, inappropriate role assignment breadth, or a process failure in which users with standing access are activating PIM roles unnecessarily. The trend measure in Chapter Four quantifies this signal as a week-over-week percentage change.
 
 let // ENV-PARAM: Update file path. Source = Json.Document( File.Contents("\\governance-server\PowerBIExports\sentinel-pim-latest.json") ), ToTable = Table.FromList( Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error ), Expand = Table.ExpandRecordColumn( ToTable, "Column1", {"Date", "OrgPath", "PIMActivations"}, {"Date", "OrgPath", "PIMActivations"} ), TypedColumns = Table.TransformColumnTypes(Expand, { {"Date", type date}, {"PIMActivations", Int64.Type} }), CleanOrgPath = Table.ReplaceValue( TypedColumns, null, "/UNKNOWN", Replacer.ReplaceValue, {"OrgPath"} ) in CleanOrgPath
 
-Defender Posture Table
+### Defender Posture Table
 
 The Defender posture table carries one row per Arc-enrolled resource. The AssessmentCount, UnhealthyCount, HealthyCount, and NotApplicable columns enable the Defender Health Rate percentage measure without requiring the DAX measure to perform a row-level calculation across individual assessment records. The OrgTier column, drawn from the resource tag, supports tier-level aggregation in the executive scorecard: an organization may choose to display Defender posture at division tier (Tier 1) for the executive view and at branch tier (Tier 2) for the operational view.
 
 let // ENV-PARAM: Update file path. Source = Json.Document( File.Contents("\\governance-server\PowerBIExports\defender-posture-latest.json") ), ToTable = Table.FromList( Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error ), Expand = Table.ExpandRecordColumn( ToTable, "Column1", {"ResourceId", "ResourceName", "OrgPath", "OrgTier", "AssessmentCount", "UnhealthyCount", "HealthyCount", "NotApplicable"}, {"ResourceId", "ResourceName", "OrgPath", "OrgTier", "AssessmentCount", "UnhealthyCount", "HealthyCount", "NotApplicable"} ), TypedColumns = Table.TransformColumnTypes(Expand, { {"OrgTier", Int64.Type}, {"AssessmentCount", Int64.Type}, {"UnhealthyCount", Int64.Type}, {"HealthyCount", Int64.Type}, {"NotApplicable", Int64.Type} }), CleanOrgPath = Table.ReplaceValue( TypedColumns, null, "/UNKNOWN", Replacer.ReplaceValue, {"OrgPath"} ) in CleanOrgPath
 
-Guest Configuration Compliance Table
+### Guest Configuration Compliance Table
 
 let // ENV-PARAM: Update file path. Source = Json.Document( File.Contents("\\governance-server\PowerBIExports\guestconfig-compliance-latest.json") ), ToTable = Table.FromList( Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error ), Expand = Table.ExpandRecordColumn( ToTable, "Column1", {"id", "machineName", "OrgPath", "PolicyName", "PolicyVersion", "ComplianceState"}, {"ResourceId", "MachineName", "OrgPath", "PolicyName", "PolicyVersion", "ComplianceState"} ), // Add a numeric IsCompliant column for SUM-based DAX aggregation. AddIsCompliant = Table.AddColumn( Expand, "GCIsCompliant", each if \[ComplianceState\] = "Compliant" then 1 else 0, Int64.Type ), CleanOrgPath = Table.ReplaceValue( AddIsCompliant, null, "/UNKNOWN", Replacer.ReplaceValue, {"OrgPath"} ) in CleanOrgPath
 
-B2B Guest Accounts Table
+### B2B Guest Accounts Table
 
 let // ENV-PARAM: Update file path. Source = Json.Document( File.Contents("\\governance-server\PowerBIExports\guests-latest.json") ), ToTable = Table.FromList( Source, Splitter.SplitByNothing(), null, null, ExtraValues.Error ), Expand = Table.ExpandRecordColumn( ToTable, "Column1", {"UserId", "UPN", "DisplayName", "OrgPath", "Created", "AccountEnabled"}, {"UserId", "UPN", "DisplayName", "OrgPath", "Created", "AccountEnabled"} ), TypedColumns = Table.TransformColumnTypes(Expand, { {"Created", type date}, {"AccountEnabled", type logical} }), // The /EXTERNAL/UNREGISTERED sentinel is already set by the export pipeline // for guests without OrgPath. This step handles any residual nulls. CleanOrgPath = Table.ReplaceValue( TypedColumns, null, "/EXTERNAL/UNREGISTERED", Replacer.ReplaceValue, {"OrgPath"} ) in CleanOrgPath
 
-Semantic Model Relationship Configuration
+### Semantic Model Relationship Configuration
 
 The relationship model connects the OrgTree dimension table to each of the six fact tables via the OrgPath column. In Power BI Desktop's Model view, each relationship is configured as follows: the OrgTree table's OrgPath column is the one-side key; the fact table's OrgPath column is the many-side key. The cardinality is one-to-many (OrgTree to fact). The cross-filter direction is single, flowing from the dimension to the fact tables. This configuration is deliberate: bidirectional cross-filtering between dimension and fact tables introduces ambiguous filter propagation paths in models with multiple fact tables sharing a single dimension, and it produces incorrect measure results when a measure on one fact table is used as a filter for another fact table that shares the same dimension.
 
@@ -134,7 +106,7 @@ All six relationships are active. The use of inactive relationships with USERELA
 
 The OrgTree dimension also contains a ParentNodeId column, which Power BI Desktop uses to define the parent-child hierarchy for the hierarchy slicer visual. In the Model view, configure a hierarchy on the OrgTree table using the Tier and Label columns in ascending tier order to enable the expand-and-collapse behavior in the report's OrgPath hierarchy slicer. This is the mechanism by which selecting the Finance branch node in the slicer automatically includes all Finance child nodes in the filter context applied to every fact table.
 
-Chapter 4 — The DAX Measure Library
+## Chapter 4 — The DAX Measure Library
 
 DAX measures are the translation layer between raw fact data and the governance KPIs that report pages display. All measures in this model are housed in a dedicated measures table — a calculated table with no rows, created in Power BI Desktop using the expression \_Measures = {BLANK()} and used purely as an organizational container for measures. Housing all measures in a single container table rather than distributing them across the fact tables from which they derive makes the model easier to navigate, simplifies documentation, and prevents the accumulation of measures in the fact tables themselves, which interferes with the automatic aggregation behavior that Power BI applies to numeric columns in fact tables.
 
@@ -146,11 +118,11 @@ The RAG status measures at the end of the library translate continuous KPI value
 
 With the measure library defined, the semantic model is complete. Every report page in the workbook reads from this single model, ensuring that all visuals reflect the same data, the same OrgPath filter context, and the same governance KPI definitions. Changes to KPI thresholds — for example, raising the Compliance RAG Green threshold from ninety-five to ninety-seven percent — are made once in the measure library and take effect across every report page and every embedded view of the report simultaneously.
 
-Chapter 5 — Report Page Design
+## Chapter 5 — Report Page Design
 
 The Power BI workbook contains three report pages, each designed for a distinct audience and review context. The pages share a single semantic model but differ in layout, visual density, and interactivity level. The design philosophy across all three pages is deliberate constraint: governance dashboards that present too much information simultaneously fail their audience just as thoroughly as dashboards that present too little. Each page is designed to answer one primary question at a glance, with supporting detail available to those who need to drill further.
 
-Per-Division Governance Posture Dashboard
+### Per-Division Governance Posture Dashboard
 
 The Per-Division Governance Posture Dashboard is the primary operational view of the reporting layer. It is the page that a divisional governance lead, a security operations manager, or an identity architect opens when they need to understand the current governance posture of their organizational segment. The page is designed for an audience that has governance context — they know what compliance rate means, they know what a drift event is, and they can interpret a PIM activation count — but who should not need to navigate multiple engineering surfaces to assemble that picture themselves.
 
@@ -162,7 +134,7 @@ The middle zone of the canvas contains two chart visuals side by side. The left 
 
 The bottom zone of the canvas contains a table visual displaying non-compliant device detail for the selected OrgPath segment. The table is filtered by a visual-level filter to show only rows where ComplianceState is not equal to "compliant." The columns displayed are DeviceName, OrgPath, ComplianceState, and LastSyncDate. This table bridges the gap between the aggregate KPI view and the device-level action that remediation requires: a governance lead who sees a compliance rate below threshold can scroll the non-compliant device table, identify the specific devices driving the deficit, and hand off a specific remediation list to the device engineering team. The table is paginated and supports export to Excel for offline remediation tracking.
 
-Executive Summary Page
+### Executive Summary Page
 
 The Executive Summary page is designed for a brief read at a governance board meeting or an executive briefing. Its audience does not interact with the slicer — the page is designed to present the complete organizational governance posture in a single screen without requiring the reader to make any selections. The page does not have a hierarchy slicer. All visuals on this page are unfiltered, displaying organization-wide values, or are filtered by a page-level filter to a specific top-level OrgTree node.
 
@@ -170,13 +142,13 @@ The primary visual on the Executive Summary page is a matrix visual configured a
 
 Above the heatmap matrix, a row of large KPI cards displays the organization-wide values for each governance dimension, giving context for interpreting the per-division heatmap. These cards use the same measure definitions as the per-division dashboard but are unfiltered, returning values across all OrgPath nodes in the OrgTree dimension. The page title includes a "Data as of" annotation using a card visual bound to a measure that returns the maximum LastSyncDate from the IntuneCompliance table, which serves as a proxy for the most recent refresh timestamp visible to the reader.
 
-Trend Analysis Page
+### Trend Analysis Page
 
 The Trend Analysis page presents ninety-day time-series views of the three governance dimensions that are most meaningfully tracked over time: compliance rate, drift event count, and PIM activation volume. This page is used in monthly governance leadership meetings where the question being answered is not "what is our current posture?" but "is our governance posture improving, stable, or degrading over time, and does any division show a trend that requires structural attention?" The page retains the full-height OrgPath hierarchy slicer from the per-division dashboard, allowing a governance leader to isolate a specific division's trend lines for the monthly review discussion.
 
 Each of the three trend charts is a line chart with dual series: the daily measure value as a thin line, and the thirty-day rolling average — computed by the corresponding rolling average measure from Section 9 of the DAX library — as a heavier overlay line. The rolling average smooths day-to-day noise in the daily figures, which can be significant for small-population divisions where a single non-compliant device represents a large percentage movement in the compliance rate, and makes the underlying directional trend visible. Each chart's Y axis is fixed rather than auto-scaled, so that the visual impression of a trend line's slope is comparable across divisions of different sizes. Compliance Rate is fixed at 0–100%; Drift Events are fixed at a maximum configurable by the governance team; PIM Activations are fixed relative to the division's population, requiring a per-division normalization that governance teams can configure after initial deployment.
 
-Chapter 6 — Automated Refresh Pipeline
+## Chapter 6 — Automated Refresh Pipeline
 
 The governance value of the dashboard is directly proportional to its currency. A compliance rate displayed on a governance dashboard that reflects last Tuesday's data cannot drive a Friday governance decision. The semantic model must be refreshed immediately after the export pipeline completes, so that the dashboard reflects the most recent state of every governance surface. The refresh pipeline uses the Power BI REST API to trigger and monitor a full semantic model refresh, and is invoked as the final step of the export orchestrator — after all six export files have been successfully written and their latest-file symlinks updated.
 
@@ -190,19 +162,19 @@ The refresh script is invoked at the end of the export orchestrator script by ap
 
 Power BI Premium and Fabric capacity environments support XMLA endpoint access, which enables the export pipeline to write data directly to the semantic model's tables using Tabular Model Scripting Language commands, bypassing the file-based gateway entirely and eliminating the refresh API call as a separate step. This architecture reduces end-to-end latency between export completion and dashboard currency to near zero. The XMLA endpoint approach requires the semantic model to be deployed to a Premium or Fabric workspace, and requires the service principal to be granted the Analysis Services Administrator role on the XMLA endpoint. For organizations that have made this investment, the XMLA pattern is strongly preferred over the file-and-gateway pattern for a governance dashboard where currency is a primary requirement.
 
-Chapter 7 — Stakeholder Distribution via Teams and SharePoint
+## Chapter 7 — Stakeholder Distribution via Teams and SharePoint
 
 A governance dashboard that lives only in the Power BI Service, navigable only by users who know it exists and who have Power BI Pro licenses, has a stakeholder reach problem. The organizational governance leads, divisional CISOs, and executive board members who are the intended audience of this reporting layer are not, in general, Power BI users. They do not have bookmarked URLs in the Power BI Service. They will not navigate to the governance dashboard unless it is surfaced where they already work — in Microsoft Teams, in the SharePoint intranet, or in a governance portal that their organization has established as the canonical location for governance information.
 
 The distribution architecture for this reporting layer has two channels that serve two distinct audiences. The first channel is Microsoft Teams, serving operational governance teams — identity architects, security engineers, and divisional governance leads who interact with governance data regularly and who benefit from the full interactive capability of the Power BI dashboard, including hierarchy slicer navigation and visual drill-through. The second channel is SharePoint, serving executive stakeholders and governance board members who need a read-only, always-current governance posture view without navigating the Power BI interface.
 
-Teams Integration
+### Teams Integration
 
 The Power BI Teams app provides native embedding of Power BI reports as pinned tabs within Teams channels. The governance Teams channel — which may already exist as the communication hub for the identity engineering and governance team — receives the Per-Division Governance Posture Dashboard as a pinned tab using the Add a Tab function in the channel, selecting Power BI, and choosing the governance workspace and report. The pinned tab renders the full Power BI report canvas within the Teams window, including the OrgPath hierarchy slicer and all interactive visuals. Users who have been granted the Viewer role on the governance workspace in the Power BI Service can interact with the report within Teams without leaving the Teams application.
 
 For divisional governance leads who need access scoped to their own division, the Power BI Teams integration can be supplemented with row-level security on the semantic model. Row-level security is defined in Power BI Desktop using DAX filter expressions on the OrgTree dimension table. A role named after each division node filters the OrgTree table to rows where the OrgPath column starts with the division's OrgPath prefix, which then propagates through the active relationships to all six fact tables. Divisional leads assigned to their corresponding role see only their division's data regardless of what slicer selection they make — they cannot navigate the slicer to other divisions. Row-level security role assignments are managed in the Power BI Service workspace through the Dataset Security settings, which map Entra ID user or group identities to model roles. The OrgPath groups established in prior parts of this series — the Entra ID security groups whose membership corresponds to each OrgPath node — can be assigned directly to their corresponding row-level security roles, making role membership management a consequence of existing OrgPath group governance rather than a separate manual process.
 
-SharePoint Executive Portal Embedding
+### SharePoint Executive Portal Embedding
 
 The Executive Summary report page is embedded in a SharePoint Online governance portal page using the Power BI web part. The Power BI web part is available in the SharePoint page editing experience under the Media and Content section. When configured, it connects to the Power BI Service, allows the page editor to select a report and a specific page within that report, and renders the report in an embedded iframe within the SharePoint page. For users with Power BI Pro or Fabric licenses, the embedded report is fully interactive. For users without Power BI licenses — a common condition for executive board members who are not regular Microsoft 365 productivity users — embedding requires either a Fabric capacity with a Fabric or Power BI Embedded license, or the use of the embed token API to generate a temporary read-only access token for each session.
 
@@ -212,11 +184,11 @@ The following script generates an embed token for the Executive Summary report p
 
 The SharePoint governance portal page is configured with the Power BI web part set to the governance workspace and report, with the page locked to the Executive Summary page via the web part settings. The SharePoint page itself is permissioned to the governance board distribution group in Entra ID, ensuring that only board members and designated governance stakeholders can access the page. A SharePoint page announcement block above the web part displays the "Data as of" date derived from the most recent refresh timestamp, giving executive readers a clear indication of the data currency without requiring them to interpret Power BI refresh metadata.
 
-Governance Review Cadence
+### Governance Review Cadence
 
 The distribution architecture maps directly to a three-cadence governance review model that the organization should establish alongside the technical deployment. The daily cadence is served by the Teams tab: divisional governance leads review their OrgPath segment's Per-Division Governance Posture Dashboard each morning, using the hierarchy slicer to scope to their division, and escalate any Red RAG indicators to the appropriate engineering team for same-day attention. The weekly cadence is served by the SharePoint executive portal: the weekly governance board briefing references the Executive Summary heatmap page, and each division's Overall Governance RAG status is reported as a standing agenda item with narrative commentary from the divisional lead for any Amber or Red dimensions. The monthly cadence is served by the Trend Analysis page in the Power BI Service, where governance leadership reviews ninety-day trend lines for each division and makes structural governance decisions — adjusting policy thresholds, initiating remediation programs, or revising OrgTree structure — based on directional evidence rather than point-in-time snapshots.
 
-Chapter 8 — Series Close: The Governance Substrate, Complete
+## Chapter 8 — Series Close: The Governance Substrate, Complete
 
 It is worth pausing, at the conclusion of this final document, to account for what has actually been built across thirteen parts of this series. The accounting is not a summary in the ordinary sense — a summary would compress the work into bullet points, which would strip it of the thing that makes it meaningful. The meaning is in the sequence: each part of this series depended on the parts that preceded it, and the substrate it constructed was not complete until every surface had been addressed. What follows is a brief reckoning with the full arc of that construction, and a reflection on what it represents.
 
