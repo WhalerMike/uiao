@@ -1075,6 +1075,126 @@ def apply_label_overlay(png_path: Path, labels_path: Path) -> int:
 
 
 # ──────────────────────────────────────────────────────────────
+# Layout helpers — auto-size nodes from text, auto-place pipeline
+# members along an axis. Both are opt-in; existing layouts with
+# explicit bboxes continue to work unchanged.
+# ──────────────────────────────────────────────────────────────
+def _measure_node(node, draw, font_family: str = "DejaVuSans") -> tuple[int, int]:
+    """Compute (width, height) for a node based on its text + padding.
+
+    Used by pipeline auto-layout when a node omits `bbox`. Padding
+    defaults are tuned for rectangles; cylinders get extra so the
+    elliptical caps fit above/below the text. Authors can override
+    via `padding_x`, `padding_y`, `min_width`, `min_height`.
+    """
+    text = node.get("text", "")
+    font_size = int(node.get("font_size", 28))
+    bold = bool(node.get("font_bold", False))
+    family = (font_family + "-Bold") if bold else font_family
+    font = _load_overlay_font(family, font_size)
+
+    shape = node.get("shape", "rect")
+    if shape == "cylinder":
+        # Generous vertical padding so the elliptical caps clear the text.
+        default_pad_x, default_pad_y = 44, 64
+    elif shape == "pill":
+        default_pad_x, default_pad_y = 28, 10
+    else:  # rect or unknown
+        # Tuned to produce ~200 px wide rects for typical 28pt 2-line labels
+        # on the federal-whitepaper diagrams (DejaVu Sans on the runner).
+        default_pad_x, default_pad_y = 36, 28
+
+    pad_x = int(node.get("padding_x", default_pad_x))
+    pad_y = int(node.get("padding_y", default_pad_y))
+
+    if not text:
+        return (
+            max(int(node.get("min_width", 100)), 0),
+            max(int(node.get("min_height", 60)), 0),
+        )
+
+    lines = str(text).split("\n")
+    line_gap = 6
+    max_w = 0
+    total_h = 0
+    for line in lines:
+        tb = draw.textbbox((0, 0), line, font=font)
+        max_w = max(max_w, tb[2] - tb[0])
+        total_h += tb[3] - tb[1]
+    if len(lines) > 1:
+        total_h += line_gap * (len(lines) - 1)
+
+    w = max(max_w + 2 * pad_x, int(node.get("min_width", 0)))
+    h = max(total_h + 2 * pad_y, int(node.get("min_height", 0)))
+    return (w, h)
+
+
+def _resolve_pipelines(spec, nodes_by_id, draw, font_family: str = "DejaVuSans") -> None:
+    """Process spec['pipelines']: for each pipeline group, compute and
+    inject `bbox` for member nodes that omit one.
+
+    Pipeline schema:
+      pipelines:
+        - direction: horizontal | vertical
+          axis_position: int   # y-center (horizontal) or x-center (vertical)
+          start: int           # cursor at the leading edge of the first node
+          gap: int             # space between consecutive members
+          members: [<node_id>, ...]
+
+    Members listed in order; renderer places each one along the axis
+    using `_measure_node` to compute size from text, then advances the
+    cursor by `width + gap` (horizontal) or `height + gap` (vertical).
+    A member that already has an explicit `bbox` is honored as-is and
+    the cursor advances past its trailing edge.
+    """
+    pipelines = spec.get("pipelines") or []
+    for pipe in pipelines:
+        direction = pipe.get("direction", "horizontal")
+        gap = int(pipe.get("gap", 50))
+        members = pipe.get("members") or []
+        if not members:
+            continue
+        if direction == "horizontal":
+            axis_y = int(pipe.get("axis_position", 540))
+            cursor = int(pipe.get("start", 90))
+            for member_id in members:
+                node = nodes_by_id.get(member_id)
+                if node is None:
+                    print(f"  Warning: pipeline member {member_id!r} not found")
+                    continue
+                if "bbox" in node:
+                    cursor = int(node["bbox"][2]) + gap
+                    continue
+                w, h = _measure_node(node, draw, font_family)
+                x1 = cursor
+                x2 = cursor + w
+                y1 = axis_y - h // 2
+                y2 = y1 + h
+                node["bbox"] = [x1, y1, x2, y2]
+                cursor = x2 + gap
+        elif direction == "vertical":
+            axis_x = int(pipe.get("axis_position", 960))
+            cursor = int(pipe.get("start", 90))
+            for member_id in members:
+                node = nodes_by_id.get(member_id)
+                if node is None:
+                    print(f"  Warning: pipeline member {member_id!r} not found")
+                    continue
+                if "bbox" in node:
+                    cursor = int(node["bbox"][3]) + gap
+                    continue
+                w, h = _measure_node(node, draw, font_family)
+                y1 = cursor
+                y2 = cursor + h
+                x1 = axis_x - w // 2
+                x2 = x1 + w
+                node["bbox"] = [x1, y1, x2, y2]
+                cursor = y2 + gap
+        else:
+            print(f"  Warning: unknown pipeline direction {direction!r}; skipping")
+
+
+# ──────────────────────────────────────────────────────────────
 # PIL canon renderer — deterministic, typo-free architecture diagrams.
 #
 # An alternative to Gemini for canon entries whose `generator` field is
@@ -1095,10 +1215,20 @@ def apply_label_overlay(png_path: Path, labels_path: Path) -> int:
 #     width: int, height: int, background: hex
 #   palette:
 #     <name>: <hex>  # named colors referenceable elsewhere by name
+#   pipelines:                           # optional auto-layout sugar
+#     - direction: horizontal | vertical
+#       axis_position: int               # y-center (horiz) / x-center (vert)
+#       start: int                       # leading-edge cursor for first node
+#       gap: int                         # space between consecutive members
+#       members: [<node_id>, ...]        # placement order
 #   nodes:
 #     - id: <stable string>
 #       shape: rect | cylinder | pill
-#       bbox: [x1, y1, x2, y2]
+#       bbox: [x1, y1, x2, y2]           # OPTIONAL when node is a pipeline
+#                                        # member — auto-computed from text +
+#                                        # padding via _measure_node()
+#       padding_x / padding_y: int       # auto-size padding overrides
+#       min_width / min_height: int      # auto-size lower bounds
 #       fill: <name|#hex>
 #       outline: <name|#hex>            # optional
 #       outline_width: int               # optional, default 0
@@ -1174,6 +1304,21 @@ def render_pil_canon_layout(
 
     nodes = spec.get("nodes") or []
     nodes_by_id = {n["id"]: n for n in nodes if "id" in n}
+
+    # ── pipeline auto-layout ──────────────────────────────────
+    # If the layout declares `pipelines`, compute and inject `bbox`
+    # for any pipeline member that omits one. Mutates node dicts in
+    # place via shared references in nodes_by_id.
+    _resolve_pipelines(spec, nodes_by_id, draw, font_family)
+
+    # Print computed bboxes so authors can dial in arrow/annotation
+    # positions that need to align with auto-laid-out nodes. Cheap; only
+    # fires when at least one pipeline was processed.
+    if spec.get("pipelines"):
+        for nid, node in nodes_by_id.items():
+            bb = node.get("bbox")
+            if bb:
+                print(f"  [layout] {nid}: bbox={bb}")
 
     # ── nodes ──────────────────────────────────────────────────
     for node in nodes:
