@@ -1,0 +1,394 @@
+---
+title: "A Proposed Governance Substrate"
+subtitle: "Introducing OrgTree and OrgPath"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+series-order: 03
+status: Published
+source-document: "A Proposed Governance Substrate — Introducing OrgTree and OrgPath.md"
+rendered-from: "Pandoc-converted Markdown sidecar of OneDrive .docx; body preserved unchanged."
+---
+
+GOVERNANCE ARCHITECTURE SERIES — DOCUMENT THREE OF THREE
+
+**A Proposed Governance Substrate**
+
+Introducing OrgTree and OrgPath
+
+Classification: Architecture Proposal Status: For Peer Review Date: May 2026
+
+Chapter One
+
+A Response to the Requirements
+
+Position in the Series
+
+This document is the third and final installment in a series of architecture papers concerned with the structural governance gap that opens when an organization replaces its on-premises directory infrastructure with cloud-based identity and management platforms. The first document in the series described what the on-premises directory model provides as a matter of course — organizational position, policy inheritance, cross-platform coherence, authoritative hierarchy, dependency mapping, and integrated identity governance — and identified what cloud-based platforms do not natively replicate when those on-premises systems are removed. The second document, titled *What Must Exist*, derived twelve precise architectural requirements from that analysis: requirements stated in terms of what a governance substrate must provide in order to close the gap, framed without reference to any specific product, vendor, or implementation technology. Each requirement described a structural property that must exist, not a tool that must be purchased or a feature that must be enabled.
+
+This document proposes the conceptual model that satisfies those requirements. The proposal is organized around two interlocking architectural constructs: OrgTree and OrgPath. These constructs are presented here as original architectural proposals. They are not implementations of any existing product, framework, or vendor offering. They are the logical answer that emerges when the twelve requirements of the companion document are taken seriously as a design problem and addressed with disciplined architectural reasoning. The remainder of this document builds that answer, one component at a time, until the complete model is visible and the connection between each requirement and its proposed resolution is explicit and traceable.
+
+The Two Constructs, Stated Plainly
+
+Before the model is developed in depth, it is worth stating the two constructs in the plainest possible terms, because the rest of the document depends on the reader holding a clear intuition of what each one is and how they differ from each other.
+
+OrgTree is a governed, versioned registry that defines the organizational hierarchy. It is the authoritative record of what the organization's structure is: what its valid segments are, what relationships exist between those segments, and what the complete lineage from the top of the organization to each of its constituent parts looks like at any given point in time. OrgTree answers the question of what the organization looks like, expressed in terms precise enough for a computer to reason about.
+
+OrgPath is a structured attribute that is stamped on every identity, device, and server resource in the managed environment. It is the positional record that encodes, for each individual asset, exactly where that asset sits within the OrgTree at the time the attribute is applied. If OrgTree is the map, OrgPath is the coordinate on that map — not a label, not a freeform annotation, but a machine-readable, validated expression of position within a governed organizational model. Every requirement in the companion document is addressed by one or both of these constructs, either directly or in combination with the management surfaces and pipeline processes they inform.
+
+How This Document Proceeds
+
+The document introduces OrgTree in full before introducing OrgPath, because OrgPath is defined in terms of OrgTree and cannot be understood independently of it. After both constructs have been developed individually, the document describes how they operate together as a closed governance loop. The document then addresses the major architectural requirements from the companion document in turn — Policy Inheritance, Device Governance, Server Identity, Dependency Mapping, Drift Detection, Automation, and Version Control — showing for each requirement precisely how the combination of OrgTree and OrgPath satisfies it. The document closes with a synthesis of the complete model, describing what an organization that has implemented both constructs can do that it cannot do without them, and restating the connection between the proposal and the requirements that motivated it.
+
+Chapter Two
+
+OrgTree — The Governed Definition of Organizational Structure
+
+What OrgTree Is
+
+OrgTree is not a directory. It is not a database. It is not a tree data structure in the computer science sense, although it describes a tree in the organizational sense — a rooted hierarchy in which every node except the root has exactly one parent, and every node may have zero or more children. OrgTree is a governed artifact: a versioned, machine-readable record that defines the complete hierarchy of an organization, encompassing its divisions, departments, units, teams, functions, regions, sites, and any other segment type that the organization uses to describe its own structure. OrgTree is the authoritative answer to the question: what does this organization actually look like, expressed in terms that a computer can reason about?
+
+The significance of framing OrgTree as an artifact — rather than as a system, a service, or a feature — is deliberate and important. An artifact is something that is authored, approved, committed, and versioned. It has a history. It can be read by a human or parsed by a machine. It can be reviewed before it is changed and audited after a change is made. Systems can be configured in inconsistent ways; services can drift from their intended state; features can be enabled or disabled without a record. An artifact, maintained under governance discipline, is the same document it was when it was last approved — or, if it has changed, the change is recorded in the commit history along with the reason for the change and the identity of the person who approved it. This is the property that makes OrgTree useful as the foundation of a governance substrate: its authority derives not from any platform's enforcement mechanism but from the discipline with which it is maintained and the pipeline that derives operational values from it.
+
+The Internal Structure of OrgTree
+
+OrgTree consists of nodes and relationships. Each node represents one organizational segment — one named unit of the hierarchy. A node carries several properties, each of which serves a specific governance function. The identifier of a node is unique within the tree and is stable across renames: when a node's human-readable name changes, its identifier does not, ensuring that OrgPath values derived from a node identifier remain valid across renaming events without requiring mass re-derivation. The human-readable name of the node is the label that appears in reports, audit logs, and administrative interfaces. The type of the node indicates what kind of organizational segment it represents — division, department, unit, team, site, function, or any other category the organization recognizes — and the set of valid types is itself a governed artifact, defined once and extended deliberately. The parent reference of the node establishes its position in the tree: it names the identifier of the node directly above it in the hierarchy, and it is this reference that, taken together with the parent references of all ancestor nodes, defines the complete lineage of the node from the root of the tree.
+
+In addition to its structural properties, each node carries governance metadata. The effective date records when the node was added to the tree or when its current form became authoritative. The review status records whether the node has been validated in the most recent governance review cycle — a mechanism for ensuring that nodes are not allowed to persist indefinitely without human confirmation that they still correspond to real organizational structure. The responsible role identifies the function or position within the organization that is accountable for the accuracy of the node, providing a clear point of contact for any governance question about that segment of the hierarchy. The root node of OrgTree represents the organization as a whole. Every other node is a descendant of the root, connected through the chain of parent references that constitutes the tree.
+
+Path Encoding and the Bridge to OrgPath
+
+Because OrgTree is a tree, any node can be addressed by its path from the root — the ordered sequence of node identifiers from the root down through each successive ancestor to the node itself. This path is the organizational lineage of the node: it encodes not merely where the node is in the current state of the tree but how it is reached — through which organizational layers it passes on the way from the top of the organization to its specific position. The path of a node belonging to the Regional West unit, which is a child of Field Services, which is a child of Operations, which is a direct child of the organizational root, is the concatenated sequence of identifiers for those four nodes, ordered from outermost to innermost. This path encoding is the bridge between OrgTree and OrgPath, and it is what makes the combination of the two constructs architecturally powerful: OrgTree defines the set of valid paths, OrgPath carries the specific path for each managed asset, and the validity of any OrgPath value can be checked mechanically against the current state of the OrgTree registry.
+
+How OrgTree Is Governed
+
+OrgTree is maintained as a version-controlled artifact committed to a governed repository. Every change to OrgTree — adding a node, removing a node, renaming a node's human-readable label, moving a node to a different parent, archiving a node that represents a dissolved organizational unit — is treated as a formal change event. Changes are proposed as change requests through a defined workflow, reviewed against the organization's governance process, approved by the appropriate authority, and committed to the repository with a descriptive record that captures the reason for the change, the identity of the approver, the effective date, and the downstream impact on OrgPath values and dynamic group membership rules. The commit message is not optional administrative commentary; it is the formal record of an organizational structural decision.
+
+This governance process ensures that OrgTree reflects deliberate organizational decisions, not ad-hoc administrative actions. The version history of OrgTree is, in a meaningful sense, the history of the organization's structure — a chronological record of how the organization changed over time, available for audit, for compliance review, and for incident investigation. When a security event is investigated and the question arises of what organizational unit a particular user or device belonged to at the time of the event, the answer is available by checking the state of the OrgTree registry at the relevant date. This is not a forensic reconstruction; it is the direct consequence of treating organizational structure as a versioned artifact rather than as a mutable configuration state.
+
+What OrgTree Is Not Responsible For
+
+OrgTree defines organizational structure — it does not enforce it. This is a boundary that must be clearly understood, because the value of OrgTree depends on it being kept clean. OrgTree specifies what organizational nodes exist and how they relate to one another. It does not apply policies, assign permissions, provision identities, or configure devices. Those operations are the responsibility of the governance pipeline that consumes OrgTree — the tooling that reads the registry, derives OrgPath values for each identity, and propagates those values to the management surfaces that need them. OrgTree provides the authoritative record of what is true. The pipeline is the mechanism by which that truth is expressed in the live environment. Conflating the two — expecting OrgTree itself to enforce governance rather than to define it — would be a category error, and one that would undermine the clean separation of concerns on which the architecture depends.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td><p><strong>Requirement Addressed — Authoritative Registry</strong></p>
+<p><em>The companion document required that the organizational hierarchy itself be a governed artifact: versioned, machine-readable, and authoritative over every attribute value derived from it. OrgTree is that artifact. It is the single governed record that defines what valid organizational positions exist, what the relationships between them are, and what change history exists for every structural decision the organization has made. No other source of organizational truth competes with it. Every OrgPath value, every dynamic group membership rule, and every drift detection result is derived from OrgTree and is only valid in relation to it.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+Chapter Three
+
+OrgPath — Every Identity’s Coordinate in the Organizational Hierarchy
+
+What OrgPath Is and What Problem It Solves
+
+OrgPath is a structured string attribute that is stamped on every identity object in the managed environment — every user, every device, every server resource — and that encodes, for that specific asset, its precise position within the OrgTree at the time the attribute is applied. Where OrgTree is the registry of the hierarchy, OrgPath is the expression of position within that hierarchy for a specific asset. If OrgTree defines that an organization has a division called Operations, and that Operations contains a department called Field Services, and that Field Services contains a unit called Regional West, then the OrgPath of a user assigned to Regional West encodes that complete lineage: Operations, then Field Services, then Regional West, expressed as a path from the organizational root to the user's current position. The OrgPath value does not contain the human-readable names of those nodes; it contains their stable identifiers, the same identifiers that are defined in the OrgTree registry and that do not change when a node is renamed.
+
+The problem OrgPath solves is the absence of a structured, validated, machine-readable position attribute in the cloud identity model. Cloud directories provide freeform attributes — department fields, job title fields, custom extension attributes — but none of these is validated against any authoritative model of organizational structure, none encodes a full lineage from the organizational root, and none is maintained by a governed pipeline that ensures consistency across the identity population. An organization that wants to write a policy targeting all identities in a given division has no native, reliable mechanism to do so using the cloud directory as it is. OrgPath provides that mechanism by making organizational position a first-class, validated, structured attribute — one that a policy engine, a dynamic group membership rule, a drift detection engine, or a compliance reporting tool can evaluate with confidence.
+
+Format and Structure
+
+OrgPath is a delimited string — a sequence of node identifiers from the OrgTree, separated by a consistent delimiter, ordered from the root of the hierarchy to the specific node representing the asset's position. The format is deterministic: given the same position in the same OrgTree, every asset at that position carries the same OrgPath value. There is no variation in representation for the same position, no alternate formats, and no optional components. The determinism of the format is not a stylistic choice; it is an architectural requirement. A policy engine that evaluates OrgPath values must be able to compare them mechanically, without any parsing ambiguity, and it must be able to do so in constant time relative to the length of the path rather than requiring a traversal of the tree at evaluation time.
+
+The format is hierarchically composable: any prefix of an OrgPath value is itself a valid OrgPath representing a higher-level organizational position. This composability is what enables OrgPath to be used for hierarchical policy targeting without requiring a separate attribute for each level of the hierarchy. A rule that matches on a prefix of OrgPath matches every asset at or below the level that prefix represents — from the division level, where the prefix is a single identifier, all the way down to the most granular unit in the hierarchy, where the prefix is the complete OrgPath of that unit. The same attribute, the same syntax, and the same matching logic serve every level of the organizational hierarchy, because the hierarchy is encoded in the structure of the value itself.
+
+Where OrgPath Is Stored
+
+OrgPath is stored as an extended attribute on each identity object in the cloud directory. For user and device identities managed through the cloud identity platform, OrgPath is stored as a directory schema extension — a custom attribute registered to an application, stamped on each object, and readable through the directory's standard query and management interfaces. Directory schema extensions are a supported, standard capability of cloud identity platforms; they do not require any special platform feature to be enabled, and they are accessible to any tool or service that has read access to the directory. The OrgPath attribute is registered once and applied to every identity object in scope.
+
+For server resources managed through the cloud hybrid management plane, OrgPath is stored as a resource tag — a key-value pair attached to the resource record in the management plane, expressed using the same delimited path format as the directory attribute. Resource tags are a supported, standard mechanism for annotating managed resources in cloud management platforms; they are queryable, filterable, and reportable using the management plane's native tooling. The name of the tag is fixed — defined once by the governance architecture and applied consistently across all resource types and all resource groups in scope. The value of the tag is the OrgPath of the server, derived from the same OrgTree registry and expressed in the same format as the OrgPath of a user or device. The same OrgPath value, in the same format, expressed on both surfaces, using the same vocabulary defined by the same OrgTree registry — this uniformity is not coincidental; it is the property that allows the governance model to span management surfaces without requiring surface-specific interpretation logic.
+
+How OrgPath Is Assigned and Maintained
+
+OrgPath values are not set manually by individual administrators. Manual assignment would defeat the purpose of the attribute, because manual assignment is the mechanism by which governance states drift: a conscientious administrator sets the value correctly, an oversight is made in a subsequent provisioning event, and within months the attribute population is inconsistent enough to be unreliable as a governance signal. OrgPath values are derived from OrgTree by the governance pipeline — a governed, event-driven, auditable process that removes the administrator's discretion from the assignment and replaces it with mechanical derivation from the authoritative registry.
+
+When an identity is onboarded — when a new user is provisioned, a new device is enrolled, or a new server is registered — the pipeline performs the following sequence of operations. It determines the identity's organizational assignment from an authoritative source: the organization's human resources system for a new user, the provisioning workflow for a new device, or the change management process for a new server. It validates that assignment against the OrgTree registry to confirm that the target node exists and is currently in a valid, non-archived state. It constructs the OrgPath value by traversing the OrgTree from the root to the target node, assembling the sequence of stable node identifiers into the delimited path format. It stamps the resulting value on the identity object in the appropriate attribute or tag. It records the assignment in the governance repository, including the identity identifier, the OrgPath value assigned, the source of the organizational assignment, the timestamp, and the identity of the pipeline run that performed the operation. The assignment record is not a log entry that might be overwritten; it is a committed record in the versioned governance repository, and it is permanent.
+
+When an identity's organizational position changes — a user moves to a different department, a device is reassigned to a different division, a server is relocated to a different operational unit — the same pipeline derives the new OrgPath from the new position, validates it against the registry, updates the attribute, and records the change. The previous OrgPath value is preserved in the governance repository as part of the identity's position history. The pipeline does not simply overwrite the attribute and move on; it commits a transition record that captures the prior value, the new value, the reason for the change, and the timestamp. This transition record is the source from which an identity's complete organizational history can be reconstructed.
+
+What Distinguishes OrgPath from a Freeform Label
+
+The critical distinction between OrgPath and any freeform organizational attribute is validation against the OrgTree registry. A department attribute can contain any string — it is populated by whoever sets it, carries no structural meaning, and cannot be verified against any authoritative model of the organization. Two users in the same organizational unit may carry different values in a freeform department field simply because different administrators set the field at different times using different conventions. A device may carry a department value that referred to a unit that no longer exists, set years ago when the device was provisioned and never updated since. There is no mechanism to detect this drift, because there is no authoritative model to drift from.
+
+OrgPath is validated: its value is checked against the OrgTree registry on every write, and any value that does not correspond to a valid path in the current OrgTree is rejected at write time. The pipeline never stamps an OrgPath value that the registry does not recognize as valid. This validation is what makes OrgPath trustworthy as a governance signal. It is not a label someone typed. It is a verified coordinate in a governed organizational model, derived by a pipeline that is accountable to the same registry that validates it.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td><p><strong>Requirement Addressed — Organizational Position</strong></p>
+<p><em>The companion document required that every user and device identity carry an authoritative, machine-readable, deterministic representation of its organizational position, encoding the full lineage from the organizational root to the identity's current position, structured so that policy engines and governance tools can evaluate membership at any level of the hierarchy using the same attribute and the same syntax. OrgPath is that representation. Its format is deterministic, its values are validated against the OrgTree registry on every write, its hierarchically composable structure enables evaluation at any level of the hierarchy using prefix matching, and its maintenance is fully automated by the governance pipeline.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+Chapter Four
+
+The Registry and the Attribute — A Closed Governance Loop
+
+The Relationship Between OrgTree and OrgPath
+
+OrgTree and OrgPath are not two independent constructs that happen to be useful in proximity. They are two components of a single closed loop, and neither is meaningful without the other. OrgTree defines what the organization looks like: the nodes, the relationships, the lineages, the governance metadata. OrgPath expresses where each asset sits in that definition: the validated, pipeline-derived, attribute-stamped coordinate for each individual identity or resource. Every OrgPath value is derived from OrgTree and is only valid in relation to OrgTree. There is no such thing as an OrgPath value that exists independently of the organizational model it references.
+
+OrgTree is meaningless without OrgPath, because a registry of organizational structure that is not expressed on any asset governs nothing. An organization could maintain a beautifully governed OrgTree registry — perfectly versioned, carefully reviewed, accurately reflecting the real organizational structure — and it would have no governance consequence whatsoever if the positions it defines were not stamped on the identities and resources that the governance model is supposed to cover. Conversely, OrgPath is meaningless without OrgTree, because a positional attribute that is not validated against an authoritative schema is just a string. Its values cannot be trusted, cannot be verified, and cannot support any governance function that depends on them being accurate. Together, OrgTree and OrgPath constitute a coherent governance model: the registry defines the schema, and the attribute carries the instance. The schema is authoritative; the instance is derived.
+
+The Direction of Authority
+
+OrgTree is the authority in this relationship, and the direction of derived authority flows in one direction only: from the registry to the attribute. When OrgTree changes, OrgPath values derived from affected nodes must be recomputed and reapplied by the governance pipeline. This is not an optional reconciliation step — it is the mechanism by which the governance model remains coherent after organizational change. If a department node in OrgTree is renamed, every identity whose OrgPath traverses that node receives an updated OrgPath value reflecting the new stable identifier path, if the identifier has changed, or — in the case where only the human-readable label has changed but the identifier remains stable — the OrgPath values remain valid as-is but reports and administrative interfaces that display the human-readable label are updated. If a node is moved to a different parent — a unit previously under Operations is reorganized under Finance — every identity at or below that node receives an updated OrgPath reflecting the new lineage. The OrgTree change is the trigger; the OrgPath update is the consequence; and the governance pipeline is the mechanism that propagates the consequence to the live environment.
+
+This directionality has an important practical implication. It means that the governance pipeline is not merely an assignment mechanism — it is also a reconciliation mechanism. After any change to the OrgTree registry, the pipeline must identify every identity whose OrgPath traverses a changed node, recompute the correct OrgPath value, and apply the update. The scope of a reconciliation run is bounded by the change: a change to a leaf node affects only the identities assigned to that node; a change to a high-level node — a divisional restructuring, for example — may affect a large fraction of the identity population. The pipeline must be capable of executing this reconciliation efficiently, and the governance repository must record both the OrgTree change and the set of OrgPath updates it triggered, as a linked pair of records that document the complete consequence of a structural decision.
+
+Policy Coverage and Automatic Adjustment
+
+The most significant operational consequence of the closed loop between OrgTree and OrgPath is that policy coverage adjusts automatically when the organization restructures. Because dynamic group membership rules evaluate the OrgPath attribute, and because OrgPath values are updated when OrgTree changes, the set of identities covered by any given policy scoped to a dynamic group adjusts without any administrator manually modifying group membership. An identity that moves from the Operations division to the Finance division does not remain covered by Operations policies. Its OrgPath changes — the pipeline derives a new value reflecting the Finance lineage — its group memberships change as the dynamic membership rules are re-evaluated against the new attribute value, and its policy coverage updates to reflect its new organizational position. No administrator touches a group. No policy is modified. The structural model tracks the organization, and the policy coverage follows the structural model.
+
+This is the property that the companion document identified as missing from the native cloud platform model and that Active Directory provided through its OU structure and GPO inheritance mechanism. In the Active Directory model, moving a computer object from one OU to another caused it to inherit the policies linked to its new OU automatically. The OrgPath model replicates this behavior in a cloud-native environment by using attribute-based dynamic group membership in place of structural OU inheritance — a different mechanism that produces the same governance outcome: position implies policy coverage, and position changes cause coverage to change automatically.
+
+Schema Validation in Technical Terms
+
+OrgTree maintains, as part of its published state, the complete set of valid node paths — every path from the root to every currently active node in the hierarchy. This set is computed from the tree structure and published alongside the tree definition as part of the registry artifact. The governance pipeline validates every OrgPath write against this set. A value is valid if and only if it corresponds to a node path that currently exists in the published OrgTree. Values that reference nodes that have been removed from OrgTree, nodes that were valid at a previous point in time but have since been merged or archived, or strings that do not conform to the path encoding format of the OrgTree — using the wrong delimiter, containing identifiers that do not exist in the registry, or encoding a path that does not correspond to any root-to-node traversal in the current tree — are rejected at write time. The pipeline logs the rejection, records the attempted value, and reports the failure for remediation. The live environment never contains OrgPath values that reference an organizational reality that no longer exists in the governed registry.
+
+What the Closed Loop Establishes
+
+The OrgTree-OrgPath system, taken together, establishes a single, governed, validated, continuously maintained model of organizational structure that spans every management surface, is derived from one authoritative source, and drives policy coverage automatically without requiring manual group management or point-in-time configuration effort. This is the architectural baseline that all subsequent requirements are addressed against. The specific requirements treated in the chapters that follow are each best understood as consequences of this baseline: each is a capability that the closed loop between OrgTree and OrgPath makes possible, and each represents a governance function that the cloud platform cannot provide without it.
+
+Chapter Five
+
+How OrgPath Restores Hierarchical Policy Targeting
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td><p><strong>Requirement Being Addressed — Policy Inheritance</strong></p>
+<p><em>The companion document established that policy must be derivable from organizational position, not only from explicit group assignment, and that the mechanism for this derivation must be a position attribute combined with a dynamic group library maintained by the hierarchy registry. Policy authors must be able to target a segment of the organizational hierarchy and have that targeting apply to all identities at and below that segment, without maintaining explicit lists of members.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+The Dynamic Group Architecture
+
+For each node in the OrgTree, the governance pipeline maintains two dynamic groups. These two groups are the mechanism by which OrgPath values translate into policy targeting, and their design directly replicates the targeting model that Group Policy Objects provided in the on-premises directory environment.
+
+The first group is the node group. Its membership rule selects every identity whose OrgPath value exactly matches the path of the node it corresponds to. A node group for the Regional West unit contains every user and every device whose OrgPath value is precisely the path that ends at Regional West — not the path of any parent node, not the path of any child node, but exactly and only the path that designates Regional West as the terminal position. This group is useful for policies that must be applied to identities assigned specifically to a given unit and not inherited by that unit's ancestors or descendants. It is the equivalent, in the on-premises model, of a policy linked to an OU with the "block inheritance" option applied — coverage that stops at the precise organizational boundary and does not propagate further.
+
+The second group is the branch group. Its membership rule selects every identity whose OrgPath value starts with the path of the node it corresponds to. A branch group for the Operations division contains every user and every device whose OrgPath begins with the Operations division identifier — which includes identities assigned directly to Operations, identities assigned to any department within Operations, identities assigned to any unit within any of those departments, and identities assigned to any team or subunit at any depth below Operations in the hierarchy. This group is useful for policies that must cover an entire organizational subtree without requiring the policy author to enumerate every unit within it. It is the equivalent, in the on-premises model, of a policy linked to a top-level OU with inheritance enabled — coverage that flows downward through the entire subtree without any additional configuration.
+
+Structural Equivalence to GPO Inheritance
+
+The structural equivalence between the branch group model and GPO inheritance is worth examining precisely, because the equivalence is not merely functional but architectural. In the Active Directory model, a policy linked to an OU applied to that OU and every child OU beneath it because OU membership was a structural property of the directory, not a computed membership list. The OU contained the objects; the objects were in the OU; the policy applied to the objects in the OU and in every child OU. The administrator did not maintain a list of which objects were in scope — the scope was defined by the structure of the directory.
+
+In the OrgPath model, branch group membership provides the same guarantee through a different mechanism. Because branch group membership is derived from the OrgPath attribute, and because OrgPath is validated against the OrgTree registry, membership in a branch group is structurally guaranteed: every identity whose OrgPath is at or below a given node is automatically and necessarily included in that node's branch group, because its OrgPath begins with the node's path, and because the membership rule selects on that prefix. The rule does not need to be updated when the hierarchy below the node grows. Adding a new unit to OrgTree causes a new branch of OrgPath values to become valid; identities stamped with those values are automatically included in every branch group whose node is an ancestor of their position, because the prefix relationship is an arithmetic consequence of the path format, not a list entry that must be explicitly added.
+
+Maintenance Characteristics
+
+The dynamic group library does not require manual maintenance. Its construction is driven by the OrgTree registry: when a node is added to OrgTree, the pipeline creates the corresponding node group and branch group, defines their membership rules according to the established pattern, and registers them in the governance repository. When a node is removed from OrgTree — because an organizational unit has been dissolved or merged — the groups are archived, their membership rules are deactivated, and any policies scoped to those groups are reported as requiring review by the policy author. When a node is renamed or moved, the membership rules of the affected groups are updated to reflect the new path. The policy author's only sustained responsibility is to assign policies to the appropriate groups. The group contents maintain themselves as the OrgPath population changes, and the policy coverage maintains itself with them.
+
+This maintenance characteristic is the property that the companion document identified as most consequentially absent from the native cloud platform governance model. Without OrgPath and the dynamic group library derived from it, maintaining structurally coherent policy coverage requires administrators to manually manage group membership as the organization restructures — an operational burden that grows linearly with the rate of organizational change and that produces governance drift when it is imperfectly executed. With the OrgPath-driven dynamic group library, that burden is eliminated: the pipeline manages group structure, the attribute manages group membership, and the policy coverage maintains itself.
+
+Chapter Six
+
+OrgPath for Devices — Extending Structural Governance to the Endpoint
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td><p><strong>Requirement Being Addressed — Device Governance</strong></p>
+<p><em>The companion document required that every managed device carry an authoritative, machine-readable organizational position attribute derived from the same hierarchy registry that governs user identities, and that device policy targeting be derivable from this attribute using the same dynamic group architecture as is used for user policy targeting.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+Applying OrgPath to Device Identities
+
+When a device is enrolled in the endpoint management platform — through a provisioning workflow, an automated enrollment process, or a deployment program — the governance pipeline determines the device's organizational assignment. For a corporate-owned device, the assignment is derived from the organizational unit of the user to whom the device is assigned, or from the device's intended deployment context as specified in the provisioning request. A shared device — one that is not assigned to a specific user but rather deployed to a specific organizational location or function — receives an OrgPath value derived from that location or function in the OrgTree. In both cases, the assignment is validated against the OrgTree registry, the OrgPath value is derived from the device's position in the hierarchy, and the value is stamped on the device's identity object in the directory using the same schema extension attribute format used for user identities. The format of the value is identical; the derivation mechanism is identical; the validation logic is identical. The only thing that differs between a user OrgPath and a device OrgPath is the identity type to which it is applied.
+
+Symmetry of the Model Across Identity Types
+
+Because both user and device OrgPath values are derived from the same OrgTree registry, expressed in the same format, and stored in the same schema extension attribute, the dynamic group architecture applies uniformly to both identity types. A branch group defined for a division node selects every identity — user or device — whose OrgPath begins with the division's path. A policy author who assigns a configuration policy to the Operations branch group does not need to know, at the time of assignment, which users and which devices are in scope: the branch group contains all of them, and its contents update automatically as users are provisioned, devices are enrolled, and organizational assignments change. Endpoint management configuration profiles, compliance policies, and application deployment assignments can be scoped to the same groups that scope identity governance and access control policies, because the same attribute and the same membership rules drive both.
+
+This symmetry is not incidental — it is the central governance dividend of applying OrgPath uniformly across identity types. In environments where device policy targeting is managed separately from user policy targeting — using different group hierarchies, different naming conventions, different governance processes — the two models inevitably diverge over time. A department that has been reorganized has its user policies updated, but its device policies remain scoped to the old group, because the device groups are maintained by a different administrative function that is not in the organizational change notification workflow. With the OrgPath model, this class of divergence cannot occur: there is one source of organizational truth, one position attribute, one group library, and one pipeline that maintains all of them. The governance model does not know or care whether an identity is a user or a device; it knows its OrgPath, and it applies the appropriate coverage.
+
+When a Device Changes Hands or Moves
+
+The governance pipeline detects device reassignment events — through the provisioning workflow, the change management process, or the scheduled drift detection run — and responds to them through the same mechanism used for initial assignment. The new organizational assignment is validated against the OrgTree registry. The new OrgPath value is derived and stamped on the device identity object. The dynamic group membership rules re-evaluate the updated attribute value. The device's policy coverage changes automatically to reflect its new position. The previous OrgPath value is recorded in the governance repository as part of the device's position history. No administrator manually reassigns the device to new groups. The structural model tracks the assignment, and the policy coverage follows the structural model. This is the same behavior as on-premises directory management, where moving a computer object from one OU to another caused it to inherit the policies of its new OU without any additional administrative action.
+
+Chapter Seven
+
+OrgPath Across Three Surfaces — Resolving the Server Identity Problem
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td><p><strong>Requirement Being Addressed — Server Identity Coherence</strong></p>
+<p><em>The companion document required that organizational position be encoded consistently across all three representations of a server resource — the on-premises directory object, the cloud identity object, and the hybrid management plane resource record — using a common vocabulary derived from a single authoritative hierarchy registry, so that any tool reading any surface can determine the server's organizational position in the same terms.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+The Three-Surface Problem and Its Resolution
+
+A server operating in a hybrid environment simultaneously holds three identity representations. It is a computer object in the on-premises directory, with an organizational position defined by its OU placement. It is a device object in the cloud identity directory, registered through the hybrid identity join mechanism, with an organizational position that is not structurally defined by the cloud directory's flat object model. It is a managed resource in the hybrid management plane, with an organizational position loosely approximated by its resource group membership and resource tags — approximations that are not derived from any authoritative organizational registry and that are not expressed in any vocabulary compatible with the OrgPath values stamped on user and device identities. These three representations exist independently. No native platform mechanism links them. The companion document identified this fragmentation as one of the most practically consequential gaps in the hybrid governance model: a server that exists on three surfaces in three independent representations cannot be queried, governed, or decommissioned coherently using the native tools of any of those surfaces.
+
+When a server is onboarded to the hybrid management plane — whether it is being migrated from an existing on-premises deployment or being provisioned for the first time — the governance pipeline performs three operations in sequence. It determines the server's organizational assignment from the OrgTree registry, using the server's existing OU placement as the source of truth if the server is an existing system being brought under management, or from the provisioning record if the server is being built fresh. It derives the OrgPath value for that assignment. It stamps that value on all three representations of the server: as an extended attribute on the on-premises computer object, as an extended attribute on the cloud device identity, and as a resource tag on the hybrid management plane resource record. From the moment of onboarding, the server carries the same OrgPath value on all three surfaces, expressed in the same format, derived from the same registry.
+
+The Governance Consequence of Uniformity
+
+The governance consequence of this uniformity is substantial. Any tool that can read any one of the three surfaces can now determine the server's organizational position and express it in terms that are directly comparable to the organizational position of any user or device. A query for all assets belonging to a given division returns users, devices, and servers together — because all of them carry OrgPath values derived from the same OrgTree, formatted identically, and stored on their respective management surfaces under the same attribute name or tag key. Incident response operations that require enumerating all assets belonging to a compromised organizational unit return a complete picture across all asset types. Compliance reporting that requires demonstrating that all assets in a given segment of the organization are governed under a specific policy framework can be produced from a single query against a single attribute. Dependency analysis that requires identifying all server assets in a given division before a decommissioning event can be executed without manual cross-referencing of three independent inventories.
+
+Detecting and Correcting Representation Divergence
+
+The three representations of a server are no longer independent identity objects that happen to reference the same hardware. They are views of a single governed asset, unified by the OrgPath value they share. If the OrgPath values across the three representations diverge — because one surface was updated by an out-of-band administrative action and the others were not updated to match, or because a migration event updated the on-premises representation but the pipeline failed to propagate the change to the cloud and management plane representations — the drift detection mechanism identifies the divergence. The drift detection process reads the OrgPath value from each of the three surfaces for every server in scope and compares them. A divergence between surfaces is reported as a cross-surface inconsistency finding, classified at high severity, and the pipeline reconciles the representations by reapplying the authoritative value from the OrgTree registry to all three surfaces in a single pipeline run. The authoritative value is always the one derived from the OrgTree registry — not the value on any particular surface, which may have been set by an out-of-band operation and may not reflect the governed organizational assignment.
+
+Chapter Eight
+
+The Dependency Graph — What Must Be Known Before Anything Is Decommissioned
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td><p><strong>Requirement Being Addressed — Dependency Mapping</strong></p>
+<p><em>The companion document required that before any infrastructure dependency can be decommissioned, a complete, machine-readable dependency map must exist that identifies every consumer of that dependency, the nature of the dependency, and the migration target for each consumer — organized by organizational position so that the impact of decommissioning can be assessed at the appropriate level of the hierarchy.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+OrgTree and OrgPath as Context for Dependency Relationships
+
+The OrgTree registry and the OrgPath attribute do not themselves constitute a dependency map. A dependency map requires knowledge of which assets communicate with which other assets, over which protocols, for which purposes — information that must be gathered from the network, from directory service registrations, from application configuration records, and from identity and credential audit logs. What OrgTree and OrgPath provide is the organizational context within which dependency relationships are understood and the vocabulary with which their impact is communicated to the people who must act on them.
+
+A server that provides a service is an asset with an OrgPath value, located at a specific position in the organizational hierarchy. The clients of that service are identities — users, devices, applications — each with their own OrgPath values. When a dependency relationship is recorded in the dependency graph, both the provider and the consumer are annotated with their OrgPath values at the time the relationship is recorded. When a decommissioning event is planned, the governance pipeline queries the dependency graph for all consumers of the target asset, retrieves their OrgPath values, and produces an impact report organized by organizational position. The report shows which divisions are affected, which departments within those divisions have consumers, and at what level of the hierarchy the impact is concentrated. A decommissioning event that affects consumers distributed across three divisions and fourteen departments is categorically different in its organizational impact from one that affects consumers concentrated in a single unit — and the OrgPath annotation of each consumer makes that difference visible without requiring a manual review of each individual affected identity.
+
+What the Dependency Graph Records
+
+The dependency graph records four categories of dependency, each of which represents a class of relationship that must be understood and resolved before the provider can be retired. Protocol dependencies arise where a client relies on a server-side service for authentication or name resolution — the most common examples being Kerberos ticket-granting, LDAP directory queries, NTLM authentication chains, certificate enrollment against a certificate authority, and DNS resolution against a specific server or set of servers. These dependencies are often invisible to the users and devices that depend on them; they operate at the infrastructure layer and are discovered through network traffic analysis and directory service audit logs rather than through application configuration review. Application dependencies arise where a workload relies on a backend service, database, or integration endpoint — a business application that connects to a database server, a middleware platform that relies on a message queue, or an integration service that polls an on-premises endpoint. Infrastructure dependencies arise where one infrastructure component relies on another for its own operation — a monitoring agent that reports to a central collection server, a backup client that writes to an on-premises backup target, or an update service that pulls from a local distribution point. Identity dependencies arise where a service account or managed identity is the credential under which a dependency relationship is established — a service running under a domain service account that has specific rights on a target system, where the dependency is expressed not through network communication alone but through the combination of a credential and a permission.
+
+Each dependency record in the graph carries the OrgPath of the provider, the OrgPath of the consumer, the dependency type from the categories above, the protocol or mechanism through which the dependency is expressed, the discovery source that identified the relationship, the date on which the relationship was first recorded, and the migration status — whether the dependency has been resolved by migrating the consumer to a modern equivalent, is in active remediation, or has not yet been addressed. The migration status is updated by the pipeline when a resolution event is recorded: when an application migrates from a protocol dependency to a modern authentication mechanism, the dependency record is closed with a resolution timestamp and the migration target is recorded as part of the record. The dependency graph is therefore not a static inventory but a living record of the migration program's progress.
+
+Keeping the Dependency Graph Current
+
+The dependency graph is initialized from the assessment data collected during the discovery phase of the modernization program — the output of network and directory assessment tooling that maps existing communication patterns, service registrations, and identity relationships across the environment. This initialization produces a baseline graph that is, at the time of its creation, a reasonably complete representation of the dependencies that exist in the current environment. It is not a perfect representation: shadow dependencies — relationships that are not expressed in any service registration, that communicate through ports that are not logged, or that are established through mechanisms that the assessment tooling does not instrument — may be missing. The baseline graph is therefore the starting point for an ongoing discovery and validation process, not a finished artifact that is consulted at decommissioning time and trusted to be complete.
+
+The graph is updated continuously as the modernization program proceeds. When a dependency is resolved — when an application migrates from Kerberos to a modern authentication mechanism, when a server is replaced by a cloud-native equivalent and its consumers are migrated to the new endpoint — the dependency record is closed. When new dependencies are discovered — when a previously unknown application is found to depend on a domain controller for LDAP queries, when a network traffic analysis run reveals communication between a client and a service that was not in the baseline graph — a new record is created, annotated with OrgPath values for both parties, and assigned for remediation. The governance repository stores each version of the dependency graph as a committed snapshot, making the history of dependency discovery and resolution part of the permanent governance record.
+
+Chapter Nine
+
+Continuous Validation — Keeping the Governance Model True
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td><p><strong>Requirement Being Addressed — Drift Detection</strong></p>
+<p><em>The companion document required that the governance substrate run drift detection continuously, comparing the live state of every identity's organizational position attribute against the hierarchy registry, surfacing deviations for remediation, and committing the results to a version-controlled governance record after each detection run.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+How Drift Detection Works in Practice
+
+The accuracy of OrgPath values across the identity population is not self-sustaining. Out-of-band administrative actions can overwrite attribute values. Platform events can reset extended attributes when a device re-enrolls or when a user object is recreated after a deletion and recovery cycle. Structural changes to OrgTree can leave identities assigned to nodes that have since been archived or moved. New identities can be provisioned without having OrgPath values assigned, either because the provisioning workflow did not invoke the pipeline or because the pipeline encountered an error during initial assignment. Any of these events produces a deviation between the governed intent recorded in the OrgTree registry and the actual state of the OrgPath attribute population in the live directory. Drift detection is the process that finds those deviations and reports them for remediation.
+
+On a scheduled basis — at minimum daily, and additionally triggered by any change to the OrgTree registry or by any bulk change to the directory's identity population — the drift detection process executes the following sequence. It reads the current OrgTree registry to obtain the complete set of valid organizational paths. It reads the current OrgPath value of every user, device, and server resource in scope — from the directory extension attribute for users and devices, and from the resource tag for server resources. It reads the governance repository's provisioning records to determine the expected OrgPath value for each identity, based on the most recent pipeline-executed assignment. It then compares each actual OrgPath value against both the registry and the expected value, classifying each deviation into one of four categories.
+
+An identity whose OrgPath value does not correspond to any valid path in the current OrgTree is classified as having an invalid position — the most severe category. This finding indicates either that the attribute was never properly set, that the value was set by an out-of-band action that bypassed the pipeline's validation, or that the OrgTree was changed without the pipeline completing its reconciliation run across all affected identities. An identity with no OrgPath value at all is classified as unpositioned — it has not been placed in the organizational hierarchy and is therefore not covered by any structurally derived policy, which means it is invisible to the dynamic group architecture and exempt from the governance model. An identity whose OrgPath value is valid — it corresponds to a node that exists in the current OrgTree — but whose dynamic group memberships do not match the expected membership for that path is classified as having a membership divergence. The attribute is correct, but the policy coverage has not been applied, which may indicate a delay in dynamic group evaluation or a problem with the group membership rule. An identity whose OrgPath value corresponds to a node that has been archived or flagged for removal from OrgTree is classified as having a stale position — its organizational assignment has not been updated to reflect a structural change in the hierarchy.
+
+What Happens with Drift Detection Results
+
+Each deviation is recorded as a finding in the drift detection report — a machine-readable structured file that is committed to the governance repository at the conclusion of each detection run. The report is a permanent record: it captures the identity identifier, the current OrgPath value observed in the live environment, the expected OrgPath value derived from the provisioning record and the current OrgTree, the finding category, the severity, and the recommended remediation action. High-severity findings — invalid positions and unpositioned identities — trigger automated alerts to the governance team and, where the pipeline can determine the correct value from the provisioning record, initiate an automated remediation run that reapplies the correct OrgPath value without waiting for human intervention. Medium-severity findings — membership divergences and stale positions — are collected for batch remediation and included in the governance team's regular review cadence. Low-severity findings — formatting inconsistencies, attribute values that are technically valid but use deprecated segment identifiers from an older version of the OrgTree — are logged for review without triggering immediate action.
+
+The value of the drift detection report extends beyond remediation. Each committed report is a point-in-time measurement of the accuracy of the governance model. The series of reports committed over time constitutes a longitudinal record of governance quality — the fraction of the identity population with valid OrgPath values, the rate at which deviations are introduced relative to the rate at which they are remediated, and the categories of deviation that are most persistent. This record is the evidence base for a governance team's continuous improvement program and the documentation that a compliance review requires to demonstrate that the governance model is actively maintained rather than merely designed.
+
+Chapter Ten
+
+The Governance Pipeline — Automation and Audit as Operational Properties
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td><p><strong>Requirements Being Addressed — Automation and Version Control</strong></p>
+<p><em>The companion document required, first, that every operation the governance substrate performs be automatable — triggered by events rather than by administrator action — and, second, that every change to the governance state be committed to a version-controlled repository, making governance history a byproduct of normal operations rather than a separately maintained audit trail.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+The Event Model
+
+The governance pipeline is event-driven. It does not run on a fixed schedule for all operations, and it does not wait for administrator instruction before executing. It responds to four categories of events, each of which triggers a specific, bounded set of pipeline operations whose outputs are committed to the governance repository as a record of the event's consequences.
+
+Registry events occur when the OrgTree is modified in any way. A node addition, removal, rename, move, or archive operation in the OrgTree registry is a registry event. Registry events trigger three downstream pipeline operations. First, the pipeline identifies every identity whose OrgPath traverses any changed node and recomputes the correct OrgPath value for each of them, applying updates where the structural change requires it. Second, the pipeline reconstructs the membership rules for every dynamic group whose node was affected by the change — updating prefix patterns in branch group rules and exact-match patterns in node group rules to reflect the new node paths. Third, the pipeline executes a targeted drift detection run across all identities whose paths traverse the changed node, confirming that the reconciliation was complete and recording any residual deviations as findings. The outputs of all three operations are committed to the governance repository as a linked record set associated with the OrgTree change event that triggered them.
+
+Identity events occur when a new user, device, or server asset is provisioned or when an existing identity's provisioning record is updated to reflect a change in organizational assignment. Identity events trigger OrgPath derivation and stamping for the affected identity, dynamic group membership re-evaluation against the new OrgPath value, and a single-identity drift check to confirm that the attribute was applied correctly and that the dynamic group memberships have updated to match the new position. The outputs are committed as a provisioning record in the governance repository, linked to the identity and to the OrgTree node that the OrgPath value designates.
+
+Decommissioning events occur when an asset — a server, a service, an application endpoint — is scheduled for retirement from the managed environment. Decommissioning events trigger a dependency graph query for the asset being retired, which returns all consumers of the asset, their OrgPath values, their dependency types, and their current migration status. A decommissioning impact report is generated from this query and committed to the governance repository. A compliance check confirms that no open dependencies — dependencies with a migration status of not-yet-addressed or in-progress — remain before the retirement proceeds. If open dependencies exist, the decommissioning event is blocked and the governance team is notified, with the list of unresolved consumers and their OrgPath values included in the notification. The decommissioning does not proceed until the compliance check passes.
+
+Scheduled events occur on a fixed cadence and trigger full-population drift detection across all users, devices, and server resources in scope; dependency graph validation to identify any records whose provider or consumer has been decommissioned without a corresponding dependency resolution; and governance report generation, producing summary documents for the governance team that capture the current state of the OrgPath population, the current drift detection results, and the current dependency migration status. These reports are committed to the governance repository as part of the scheduled event record.
+
+The Version-Controlled Repository as Governance Record
+
+Every output of the governance pipeline is committed to the version-controlled repository, and this commitment is not an archival afterthought — it is the primary record of governance state. The OrgTree registry is stored in the repository and versioned with every change, so that the complete history of organizational structure is available from the repository's commit log. OrgPath derivation records — the structured log of which identities received which OrgPath values on which dates, under which pipeline runs, from which provisioning sources — are committed as structured data files in the repository's identity history directory. Drift detection reports are committed after each run, both the full-population scheduled runs and the targeted runs triggered by registry and identity events. Dependency graph snapshots are committed on the scheduled cadence and on demand immediately before any decommissioning event, so that the dependency state at the time of each decommissioning decision is permanently recorded. Dynamic group rule definitions are committed when they are created or updated by the pipeline.
+
+The repository's commit history is therefore the complete, auditable record of the organization's governance state — every position assignment, every structural change, every drift finding, every dependency resolved, every decommissioning decision and its compliance basis. This record does not require a separate audit logging process. It does not require an administrator to remember to capture audit evidence before performing a governance operation. It is a consequence of the pipeline's normal operation: the pipeline performs an action, and the pipeline commits the record of that action. The two are inseparable by design. An administrator who wants to know what the OrgPath of a specific user was on a specific date does not need to consult an audit system — they check out the version of the identity history file that was current on that date. An auditor who needs to demonstrate that the governance model was being actively maintained at the time of a compliance review event does not need to reconstruct a narrative from scattered log files — they examine the commit history of the governance repository and observe directly that drift detection reports were committed on schedule, that OrgTree changes were committed with approval records, and that decommissioning events were preceded by dependency compliance checks.
+
+Chapter Eleven
+
+What OrgTree and OrgPath Provide Together
+
+The Complete Model as a System
+
+OrgTree and OrgPath are not two features of a governance tool. They are two components of an architectural model — a model that imposes structure on an inherently flat environment by externalizing that structure into a governed artifact and distributing its expression across every identity and resource that the organization manages. The model is coherent because the two components are designed to serve each other. OrgTree cannot express organizational position without OrgPath to carry it to individual assets; a registry that defines hierarchy without any mechanism for expressing that hierarchy on the assets being governed is a documentation artifact, not a governance substrate. OrgPath cannot be trusted without OrgTree to validate it; a positional attribute that carries an arbitrary string is no more reliable than the department field it replaces. The coherence of the model emerges from the relationship between them: the registry defines the schema, the attribute carries the instance, the pipeline maintains the connection, and the repository records the history.
+
+What the Model Makes Possible
+
+An organization that has implemented OrgTree and OrgPath can do a set of things that it demonstrably cannot do without them. It can answer the question "show me all assets belonging to this division" — users, devices, and servers simultaneously — using a single query against a single attribute, without consulting three independent inventories and manually cross-referencing the results. It can verify policy coverage for any organizational segment by checking whether all identities with an OrgPath value at or below that segment are members of the appropriate branch groups — a verification that takes seconds with a query and would otherwise require a manual audit of policy assignments, group memberships, and identity attributes that could take days. It can determine the organizational impact of decommissioning any infrastructure component by querying the dependency graph for consumers, filtering by OrgPath, and producing a structured report organized by division and department — a report that tells the governance team not just that some identities will be affected but which parts of the organization will feel the impact and at what severity.
+
+It can detect and report on every identity that has drifted from its intended organizational position — automatically, on a scheduled basis, without any administrator manually checking attribute values — and produce a machine-readable report of findings that is committed to the governance repository and available for audit. It can audit the complete history of organizational structure changes by examining the version history of the OrgTree registry — not reconstructing that history from scattered administrative logs but reading it directly from the commit history of the governed artifact. It can prove, at any point in time, that the governance posture of the live environment matches the intended governance posture encoded in the registry — or, where they diverge, identify precisely where and by how much they diverge, through the drift detection report committed after the most recent detection run. This proof is not a narrative claim. It is a structured, machine-readable, version-controlled record.
+
+What the Model Does Not Require
+
+The OrgTree and OrgPath model does not require the cloud directory to be restructured. It does not require new directory features to be provisioned by the platform vendor. It does not require per-tool governance models to be replaced or modified. It does not require the endpoint management platform, the hybrid server management plane, or the cloud identity directory to be configured in ways that are not supported by their existing, generally available feature sets. The model works within the capabilities that these platforms already provide: directory schema extension attributes, resource tags, dynamic group membership rules, and version-controlled file repositories are all standard, available, and supported capabilities of the platforms that enterprise environments already use.
+
+The structural coherence that OrgTree and OrgPath provide is layered on top of the existing platform without requiring the platform to change. The organization is not waiting for a platform update. It is not dependent on a vendor roadmap. It is not betting on a feature that may or may not be delivered on a schedule that may or may not align with its governance needs. It is constructing a governance substrate from capabilities it already has, organized according to a disciplined architectural model that the platform does not provide natively but that the platform is fully capable of supporting.
+
+The Maturity Progression
+
+An organization beginning to implement OrgTree and OrgPath does not need to implement the complete model for the complete organization before any governance value is realized. The model is incremental by design. Implementation begins with a small, well-understood segment of the hierarchy — one division, one functional domain, or one geographic region — where the organizational structure is stable enough to be confidently encoded in an initial OrgTree and where the identity population is small enough to allow the pipeline's behavior to be validated before it is applied more broadly.
+
+The early OrgTree nodes produce a small set of OrgPath values. Those values are tested against the dynamic group rules and the drift detection engine in a limited population before the model is extended to additional organizational segments. Each phase of expansion adds nodes to the OrgTree, extends OrgPath assignment to additional identity populations, adds new entries to the dynamic group library, and broadens the scope of drift detection and dependency mapping. The governance team builds confidence in the pipeline's behavior, the accuracy of the OrgTree registry, and the reliability of the drift detection process through each successive phase, and the model scales with the organization because it is attribute-based and registry-driven. There is no architectural change required as the hierarchy grows — only the addition of new nodes to the governed registry and the derivation of new OrgPath values for the identities that belong to them. The model does not become more complex as it grows; it becomes more populated.
+
+Closing: What Has Been Proposed and Why It Matters
+
+The companion document — *What Must Exist* — asked, for each of its twelve requirements, what a governance substrate must provide. This document has proposed what should exist: OrgTree as the governed, versioned, authoritative registry of organizational structure; OrgPath as the validated, machine-readable, attribute-based expression of organizational position for every identity and resource the organization manages; a governance pipeline that derives, applies, validates, and monitors both constructs continuously in response to events rather than on administrative demand; and a version-controlled repository that makes the history of the organization's governance state an automatic, auditable, permanent record rather than a separately maintained artifact that must be produced on request.
+
+Together, these constructs constitute the governance substrate that the cloud identity and management stack does not natively provide and that any organization committed to maintaining structural governance coherence through a cloud modernization program will need to construct. The requirement is not theoretical. Every organization that has relied on an on-premises directory to provide authoritative organizational position, hierarchical policy inheritance, and cross-platform coherence has been relying on a governance substrate, whether it recognized it as such or not. The modernization program does not eliminate the need for that substrate. It eliminates the substrate that previously provided it — and leaves in its place an environment that is more capable in many dimensions and more governable in none of the structural ones that matter most.
+
+The construction of OrgTree and OrgPath is not simple — it requires disciplined engineering, a sustained governance process, and organizational commitment to maintaining the registry as the organizational structure evolves. The design is not complex — two constructs, one pipeline, one repository, and a set of standard platform capabilities organized according to a coherent model. The discipline required to maintain it is no greater than the discipline required to maintain the Active Directory environment it replaces — and the transparency it provides, the auditability it enables, and the structural coherence it restores are considerably greater than anything the on-premises model natively delivered.
+
+**The tree and the path. The registry and the attribute. The map and the coordinate.\
+OrgTree and OrgPath.**
