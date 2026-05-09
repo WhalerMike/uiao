@@ -26,7 +26,11 @@ pipelines:
   - direction: horizontal
     axis_position: 540
     start: 90
-    gap: 80  # generous so accept/reject branch labels fit cleanly
+    # Tuned so 7 auto-sized nodes (rect default 36 padx + cylinder min_width 240)
+    # fit within 1920 px canvas. v6 with gap=80 clipped the rightmost node at
+    # x=2075. accept/reject branch labels still fit at gap=50 because they sit
+    # on the same arrow centerline (label_above and label_below stack).
+    gap: 50
     members:
       - claim_ingress
       - schema_validator
@@ -130,21 +134,20 @@ arrows:
     width: 4
 
   # Compliance Attestations — outbound DOWN from Control Mapping Engine.
-  # Arrow start.x must match the auto-laid-out node's center x. With
-  # the C3 defaults (rect padding 36,28; gap 80; start 90), the renderer
-  # places control_mapping at approximately x=1370-1550 → center ~1460.
-  # The renderer prints `[layout] <id>: bbox=...` lines so this can be
-  # tightened against actual CI output. Future enhancement: arrow
-  # `anchor_from: bottom` / `from: <node_id>` to compute this edge.
-  - start: [1460, 600]
-    end: [1460, 720]
+  # control_mapping center predicted at x=1539 with gap=50 (derived from
+  # v6 layout-log measurements: control_mapping was at x=1597-1781 with
+  # gap=80, shifting left by 30*5=150 with gap=50 → center moves to
+  # ~1539). Future renderer enhancement: arrow `anchor_from: bottom`
+  # to compute this edge automatically.
+  - start: [1539, 600]
+    end: [1539, 720]
     color: teal
     width: 4
 
   # Outbound RIGHT from Drift Fabric Interface — start.x at node's right
-  # edge. Predicted CI position: ~x=1820 (rightmost node ends ~1820).
-  - start: [1820, 540]
-    end: [1900, 540]
+  # edge. With gap=50, drift_fabric_interface ends at predicted x~1895.
+  - start: [1895, 540]
+    end: [1920, 540]
     color: teal
     width: 4
 
@@ -156,23 +159,23 @@ annotations:
     font_size: 42
     bold: true
 
-  # Inbound annotation ABOVE node 1 (claim_ingress center ~x=190)
+  # Inbound annotation ABOVE node 1 (claim_ingress center predicted ~203)
   - text: "signed Canonical Claims\nfrom adapters"
-    position: [190, 430]
+    position: [203, 430]
     anchor: mb
     color: grey
     font_size: 20
 
-  # Compliance Attestations under the down-arrow (control_mapping center ~1460)
+  # Compliance Attestations under the down-arrow (control_mapping center ~1539)
   - text: "Compliance Attestations"
-    position: [1460, 740]
+    position: [1539, 740]
     anchor: mt
     color: grey
     font_size: 22
 
-  # Outbound annotation ABOVE node 7 (drift_fabric_interface center ~1720)
+  # Outbound annotation ABOVE node 7 (drift_fabric_interface center ~1788)
   - text: "canonical state\nqueries"
-    position: [1720, 430]
+    position: [1788, 430]
     anchor: mb
     color: grey
     font_size: 20
