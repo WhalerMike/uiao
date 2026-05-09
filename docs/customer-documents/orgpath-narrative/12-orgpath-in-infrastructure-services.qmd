@@ -12,101 +12,69 @@ source-document: "OrgPath in Infrastructure Services — DNS Governance, Cloud P
 rendered-from: "Pandoc-converted Markdown sidecar of OneDrive .docx; body preserved unchanged."
 ---
 
-OrgPath Governance Series \| Part Eight of Eight
+## Chapter 2 — — From AD-Integrated DNS to Azure DNS: A Governed Migration
 
-OrgPath in Infrastructure Services
+### The Hybrid DNS Architecture
 
-**DNS Governance, Cloud PKI, and the Complete Governance Model**
+### The Windows Server IPAM Role During Transition
 
-**Series:** Building the OrgPath Governance Substrate \| **Part:** Eight (Final) \| **Scope:** DNS & PKI Integration; Series Synthesis
+### Azure DNS Private Zone Architecture and OrgPath Tagging
 
-**Audience:** Infrastructure Architects, Identity Engineers, Security Operations \| **Prerequisite:** Parts One through Seven
+### Azure DNS Private Resolver and Forwarding Ruleset
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>About This Series</strong></p>
-<p>Parts One through Seven established the governance gap in the Microsoft identity stack, the requirements for a governance substrate, the OrgTree and OrgPath proposal, the build implementation, and security operations integrations spanning PIM, Lifecycle Workflows, Microsoft Sentinel, Azure RBAC, Microsoft Intune, and the full Microsoft Defender suite. This document — Part Eight and the final part — extends OrgPath to the two remaining infrastructure surfaces (DNS and Certificate Services) and delivers the series synthesis: a comprehensive description of the complete OrgPath governance model as it stands across every major surface of the enterprise technology estate.</p></td>
-</tr>
-</tbody>
-</table>
+### Policy Enforcement: Denying Untagged Private DNS Zones
 
-**Contents**
+## Chapter 3 — — Certificate Governance: Mapping Template Coverage to Organizational Position
 
-**Chapter 1** — DNS and PKI: The Infrastructure Backbone That Holds Everything Together
+### The AD CS Architecture Being Replaced
 
-Why DNS and PKI Complete the Model in a Specific Way
+### OrgTree Metadata Extension for PKI Governance
 
-The Architectural Coupling That Makes Migration Dangerous
+### Certificate Profile Assignment Pipeline
 
-The Two Additions This Document Makes
+### Strong Mapping and KB5014754 Compliance
 
-**Chapter 2** — From AD-Integrated DNS to Azure DNS: A Governed Migration
+## Chapter 4 — — Keeping DNS and PKI Coverage Aligned with the Governance Model
 
-The Hybrid DNS Architecture
+### Infrastructure Drift Categories
 
-The Windows Server IPAM Role During Transition
+### DNS Zone Tag Drift Detection (KQL)
 
-Azure DNS Private Zone Architecture and OrgPath Tagging
+### Certificate-OrgPath Misalignment Detection (KQL)
 
-Azure DNS Private Resolver and Forwarding Ruleset
+## Chapter 5 — — When Is It Safe to Decommission? A Quantified Answer
 
-Policy Enforcement: Denying Untagged Private DNS Zones
+### The Five Scoring Dimensions
 
-**Chapter 3** — Certificate Governance: Mapping Template Coverage to Organizational Position
+### Readiness Score Calculation Script
 
-The AD CS Architecture Being Replaced
+### Operational Use of the Score
 
-OrgTree Metadata Extension for PKI Governance
+## Chapter 6 — — Day-to-Day Governance of the DNS and PKI Surfaces
 
-Certificate Profile Assignment Pipeline
+### Weekly DNS Governance Review
 
-Strong Mapping and KB5014754 Compliance
+### Quarterly Certificate Profile Review
 
-**Chapter 4** — Keeping DNS and PKI Coverage Aligned with the Governance Model
+### OrgTree Change Request Process for DNS and PKI
 
-Infrastructure Drift Categories
+## Chapter 7 — — What Has Been Built: The Governance Substrate in Full
 
-DNS Zone Tag Drift Detection (KQL)
+### What OrgTree and OrgPath Restore
 
-Certificate-OrgPath Misalignment Detection (KQL)
+### The Complete Surface Map
 
-**Chapter 5** — When Is It Safe to Decommission? A Quantified Answer
+### The Governance Repository as Audit Record
 
-The Five Scoring Dimensions
+### Automation and Coherence: The Two Properties That Make It Sustainable
 
-Readiness Score Calculation Script
+### Closing Statement
 
-Operational Use of the Score
+## Chapter 1 — THE FINAL SURFACES
 
-**Chapter 6** — Day-to-Day Governance of the DNS and PKI Surfaces
+### DNS and PKI — The Infrastructure Backbone That Holds Everything Together
 
-Weekly DNS Governance Review
-
-Quarterly Certificate Profile Review
-
-OrgTree Change Request Process for DNS and PKI
-
-**Chapter 7** — What Has Been Built: The Governance Substrate in Full
-
-What OrgTree and OrgPath Restore
-
-The Complete Surface Map
-
-The Governance Repository as Audit Record
-
-Automation and Coherence: The Two Properties That Make It Sustainable
-
-Closing Statement
-
-**CHAPTER ONE — THE FINAL SURFACES**
-
-DNS and PKI — The Infrastructure Backbone That Holds Everything Together
-
-Why DNS and PKI Complete the Model in a Specific Way
+### Why DNS and PKI Complete the Model in a Specific Way
 
 The previous six integration chapters — covering Privileged Identity Management, Lifecycle Workflows, Microsoft Sentinel, Azure RBAC, Intune, and the full Microsoft Defender suite — each addressed a surface where governance operates on objects whose organizational position is encoded in the OrgPath attribute: users, devices, and server resources. In each case, the governance model works because the object carries the coordinate, and every downstream control — policy targeting, eligibility assignment, group membership, alert enrichment — reads that coordinate to determine what applies. The model is elegant precisely because the coordinate is universal. The same attribute, in the same format, against the same registry, drives every surface.
 
@@ -114,7 +82,7 @@ DNS and PKI are different. They are not objects that OrgPath governs. They are s
 
 This distinction is what makes their integration the logical final step. OrgPath cannot govern a user's authentication experience if DNS cannot locate the services that authentication depends on. OrgPath cannot govern a device's compliance posture if the device cannot obtain the certificate that satisfies the compliance requirement. Extending the governance model to cover DNS and PKI does not mean treating DNS zones or certificate templates as identity objects — it means ensuring that the name resolution and certificate issuance infrastructure is itself organized according to the same OrgTree structure, tagged with the same OrgPath metadata, and validated by the same governance pipeline that governs every other surface. The governance model does not own DNS and PKI; it depends on them and must therefore account for them.
 
-The Architectural Coupling That Makes Migration Dangerous
+### The Architectural Coupling That Makes Migration Dangerous
 
 Active Directory DNS and AD Certificate Services were not incidentally integrated with Active Directory — they were architecturally coupled to it at a level that makes their migration a specific, sequenced engineering problem, not a configuration exercise. Understanding this coupling precisely is a precondition for migrating it correctly.
 
@@ -124,7 +92,7 @@ The coupling of AD Certificate Services to Active Directory is equally deep. Cer
 
 Organizations that have not methodically migrated each of these mechanisms before decommissioning discover their failures not in a test environment but in production, at the moment a domain controller goes offline for the last time. A device that has not yet received a certificate from Cloud PKI cannot authenticate. A workload that still resolves an on-premises name against an AD-integrated DNS zone that has been decommissioned cannot reach its dependency. A client that expects a CRL from an LDAP distribution point that no longer exists will either fail certificate validation outright or, worse, will silently succeed with revocation checking disabled. These are not edge cases. They are the predictable consequences of decommissioning without a readiness framework. This document builds that framework for both surfaces.
 
-The Two Additions This Document Makes to the Governance Model
+### The Two Additions This Document Makes to the Governance Model
 
 This document makes two additions to the OrgPath governance model, both of which complete coverage of the infrastructure layer that the previous seven parts left unaddressed.
 
@@ -132,11 +100,11 @@ The first addition is DNS governance. Azure DNS Private Zones and Azure DNS Priv
 
 The second addition is PKI governance. OrgTree node metadata is extended with a CertificateProfiles array that identifies which Intune certificate profiles apply to devices and users in each organizational node. A governance pipeline script reads this metadata and assigns SCEP, PKCS, and Trusted Root profiles to the corresponding OrgPath branch groups. Drift detection monitors for certificate-OrgPath misalignment — devices whose enrolled certificate profile does not correspond to their current organizational position — and for SCEP profiles that lack the strong mapping configuration required by KB5014754. Both additions use Azure-native tooling exclusively: Azure DNS Private Zones, Azure DNS Private Resolver, Azure Policy for tag enforcement, Windows Server DHCP and the Windows Server IPAM role for on-premises address management during the transition, and Microsoft Cloud PKI with Intune certificate deployment.
 
-**CHAPTER TWO — DNS GOVERNANCE**
+## Chapter 2 — DNS GOVERNANCE
 
-From AD-Integrated DNS to Azure DNS — A Governed Migration
+### From AD-Integrated DNS to Azure DNS — A Governed Migration
 
-The DNS Architecture the Governance Model Must Transition From and To
+### The DNS Architecture the Governance Model Must Transition From and To
 
 The source DNS architecture is fully integrated with Active Directory. Forward and reverse lookup zones are stored in the domain directory partition and replicate with AD replication to every domain controller in the domain. The Netlogon service on every DC automatically registers and deregisters SRV records, A records, and AAAA records to maintain service locator accuracy without administrator intervention. Windows Server DHCP servers are authorized in AD and perform dynamic DNS updates on behalf of DHCP clients using Kerberos-authenticated secure dynamic update, which means that every client IP address assignment results in an authenticated A and PTR record registered against the AD-integrated DNS zone. Every domain-joined machine's primary DNS servers are the domain controllers, configured via DHCP option 006 or Group Policy, ensuring that every name query — including queries for external internet names — passes through the domain DNS infrastructure first.
 
@@ -144,7 +112,7 @@ The target architecture replaces this with three Azure-native components operati
 
 The transition between these two architectures is not instantaneous. It proceeds zone by zone, scope by scope, as each on-premises DNS zone is migrated to an Azure DNS Private Zone and each DHCP scope is either migrated to Azure or retained in an on-premises scope pending workload modernization. The governance pipeline tracks this progression through the MigrationPhase tag on every Private Zone and through the migration status field in the IPAM export committed to the governance repository. The completeness of migration — as measured by the percentage of on-premises zones with a corresponding Azure Private Zone and a MigrationPhase tag of Complete — is one of the five dimensions in the Decommissioning Readiness Score described in Chapter Five.
 
-The Windows Server IPAM Role During Transition
+### The Windows Server IPAM Role During Transition
 
 Windows Server IPAM is a built-in server role available in Windows Server 2016, 2019, and 2022 that provides a centralized management interface for IP address space, DHCP scope administration, and DNS zone management across the on-premises environment. It is a Microsoft-provided role, installed through the Add Roles and Features Wizard or Server Manager, and it does not require any third-party licensing. The IPAM server role discovers DHCP servers and DNS servers in the domain through AD-based discovery and collects their configuration and utilization data into a local database. The management plane — accessible through the IPAM console in Server Manager or through PowerShell using the IpamServer module — provides address space views, scope utilization metrics, DNS record inventories, and audit trail data.
 
@@ -154,7 +122,7 @@ The PowerShell module installed with the IPAM role exposes the full IPAM databas
 
 \#Requires -Version 5.1 \<# .SYNOPSIS Exports the Windows Server IPAM inventory to JSON for governance repository commitment. .DESCRIPTION Queries the Windows Server IPAM role for all DNS zones, DHCP scopes, IP ranges, and address assignments. Exports each collection as a structured JSON file to a local output directory for subsequent Git commit to the governance repository. This export establishes the on-premises infrastructure baseline used to measure DNS and IP address migration progress toward Azure. Designed to run during the Assessment phase of the OrgPath migration pipeline and on each subsequent weekly pipeline run to capture delta. .PARAMETER OutputPath Directory path where JSON export files will be written before Git commit. Example: "C:\governance\assessment\ipam" The directory will be created if it does not exist. .PARAMETER IpamServer FQDN or NetBIOS name of the IPAM server hosting the IPAM database. Defaults to localhost for execution directly on the IPAM server. Example: "ipam01.corp.contoso.com" \<-- substitute your IPAM server .NOTES Requirements: - Windows Server 2019 or 2022 with the IPAM Server role installed. - PowerShell module IpamServer (installed automatically with the role). - The executing account must hold the IPAM Administrator or IPAM ASM Administrator role in the IPAM database. - IPAM database must be populated via scheduled IPAM discovery and audit tasks (configured in IPAM Server Tasks in Server Manager). Output files: ipam-dns-zones.json -- All DNS zones known to IPAM ipam-dhcp-scopes.json -- All DHCP scopes with utilization data ipam-ranges.json -- All IP address ranges in the space registry ipam-addresses.json -- All individual address assignments After this script completes, run the following from the governance repository root to commit the export: git add assessment/ipam/ git commit -m "chore: IPAM baseline export \$(Get-Date -f 'yyyy-MM-dd')" git push \#\> param( \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = "C:\governance\assessment\ipam", \[Parameter(Mandatory = \$false)\] \[string\]\$IpamServer = "localhost" \# \<-- substitute your IPAM server FQDN ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" \#region --- Preflight ----------------------------------------------------------- \# Verify the IpamServer module is available (installed with the IPAM role) if (-not (Get-Module -ListAvailable -Name IpamServer)) { throw "Module IpamServer not found. Confirm the IPAM Server role is installed " + "on this machine or run this script on the designated IPAM server." } Import-Module IpamServer -ErrorAction Stop \# Create output directory if it does not exist New-Item -ItemType Directory -Path \$OutputPath -Force \| Out-Null Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Output directory: \$OutputPath" \# Establish CIM session to IPAM server Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Connecting to IPAM server: \$IpamServer" \$session = New-CimSession -ComputerName \$IpamServer -ErrorAction Stop Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Connected." \#endregion \#region --- DNS Zones ----------------------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Exporting IPAM DNS zones..." \$dnsZones = Get-IpamDnsZone -CimSession \$session \| Select-Object \` Name, ZoneType, \# Primary, Secondary, Stub, Forwarder ZoneCategory, \# Forward, Reverse AssociatedDhcpServer, UpdateStatus, \# Secure, Unsecure, None RecordCount, LastModifiedTime \$dnsZones \| ConvertTo-Json -Depth 5 \| Set-Content -Path "\$OutputPath\ipam-dns-zones.json" -Encoding UTF8 Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Zones exported: \$(\$dnsZones.Count)" \#endregion \#region --- DHCP Scopes --------------------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Exporting DHCP scopes..." \$dhcpScopes = Get-IpamDhcpScope -CimSession \$session \| Select-Object \` ScopeId, SubnetId, Name, StartRange, EndRange, PercentUtilized, TotalAddresses, InUseAddresses, FreeAddresses, AssociatedServer \# The DHCP server that owns this scope \$dhcpScopes \| ConvertTo-Json -Depth 5 \| Set-Content -Path "\$OutputPath\ipam-dhcp-scopes.json" -Encoding UTF8 Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Scopes exported: \$(\$dhcpScopes.Count)" \#endregion \#region --- IP Ranges ----------------------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Exporting IP address ranges..." \$ipRanges = Get-IpamRange -CimSession \$session \| Select-Object \` NetworkId, StartAddress, EndAddress, Owner, AssignedAddresses, PercentUtilized, Description \$ipRanges \| ConvertTo-Json -Depth 5 \| Set-Content -Path "\$OutputPath\ipam-ranges.json" -Encoding UTF8 Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Ranges exported: \$(\$ipRanges.Count)" \#endregion \#region --- Address Assignments ------------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Exporting address assignments..." \$addresses = Get-IpamAddress -CimSession \$session \| Select-Object \` IpAddress, MacAddress, HostName, ClientId, AssignmentType, \# Static, Dynamic, VIP, Reserved AssignedDate, DeviceType, \# Host, NetworkDevice, Printer, VirtualMachine, etc. Description \$addresses \| ConvertTo-Json -Depth 5 \| Set-Content -Path "\$OutputPath\ipam-addresses.json" -Encoding UTF8 Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Addresses exported: \$(\$addresses.Count)" \#endregion \#region --- Cleanup and Summary ------------------------------------------------- Remove-CimSession \$session Write-Host "" Write-Host "=== IPAM Export Complete ===" Write-Host " DNS Zones : \$(\$dnsZones.Count)" Write-Host " DHCP Scopes : \$(\$dhcpScopes.Count)" Write-Host " IP Ranges : \$(\$ipRanges.Count)" Write-Host " Address Records: \$(\$addresses.Count)" Write-Host " Output path : \$OutputPath" Write-Host "" Write-Host "Next step: commit the output directory to the governance repository." Write-Host " git add assessment/ipam/" Write-Host " git commit -m \`"chore: IPAM baseline export \$(Get-Date -f 'yyyy-MM-dd')\`"" Write-Host " git push" \#endregion
 
-Azure DNS Private Zone Architecture and OrgPath Tagging
+### Azure DNS Private Zone Architecture and OrgPath Tagging
 
 Each OrgTree node that represents a geographic site, a network segment, or an application domain boundary receives a corresponding Azure DNS Private Zone when its DnsBoundary property is set to true in the registry. The zone naming convention follows the organizational hierarchy expressed in the node identifier: a node with ID finance under the base domain internal.contoso.com receives a zone named finance.internal.contoso.com. The node ID is taken directly from the OrgTree registry, ensuring that zone names are stable across organizational restructuring — a node whose display name changes does not change its ID, so the DNS zone is unaffected by display-layer renames.
 
@@ -168,7 +136,7 @@ The following script creates and tags Azure DNS Private Zones for each active Or
 
 \#Requires -Version 5.1 \<# .SYNOPSIS Creates and tags Azure DNS Private Zones for each active OrgTree node designated as a DNS governance boundary. .DESCRIPTION Reads the OrgTree registry and creates an Azure DNS Private Zone for each node whose DnsBoundary property is true and whose Status is Active. Tags each zone with the four OrgPath governance tags. Links each zone to the designated hub virtual network. This script is idempotent: zones that already exist are tagged and linked if they are not already; they are not recreated. Existing tags are overwritten to reflect any OrgTree registry changes (e.g., Tier promotion, MigrationPhase advancement). Triggered by OrgTree registry commits as part of the governance propagation pipeline. Also runs as a scheduled weekly job to catch drift. .PARAMETER OrgTreeRegistryPath Local path to the OrgTree registry JSON file checked out from the governance repository. Example: "C:\governance\orgtree\registry.json" .PARAMETER ResourceGroupName Name of the Azure Resource Group where all Private DNS Zones are managed. All zones created by this script are placed in this resource group. Example: "rg-governance-dns" \<-- substitute your RG name .PARAMETER HubVNetResourceId Full Azure resource ID of the hub virtual network to which all Private DNS Zones are linked for resolution. Format: /subscriptions/{subscriptionId}/resourceGroups/{rg}/ providers/Microsoft.Network/virtualNetworks/{vnetName} Example: "/subscriptions/00000000-0000-0000-0000-000000000000/ resourceGroups/rg-network-hub/ providers/Microsoft.Network/virtualNetworks/vnet-hub-eastus" \<-- substitute all three values .PARAMETER BaseDomainSuffix The base DNS suffix appended to node IDs to form zone names. Example: "internal.contoso.com" \<-- substitute your internal domain Resulting zone example: "finance.internal.contoso.com" .NOTES Required PowerShell modules: Az.PrivateDns (Install-Module Az.PrivateDns) Az.Network (Install-Module Az.Network) Authenticate before running: Connect-AzAccount The automation service principal requires: - DNS Zone Contributor on the DNS resource group - Network Contributor on the hub VNet resource group Run after OrgTree registry has been validated and committed. \#\> param( \[Parameter(Mandatory = \$false)\] \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[Parameter(Mandatory = \$false)\] \[string\]\$ResourceGroupName = "rg-governance-dns", \# \<-- substitute \[Parameter(Mandatory = \$false)\] \[string\]\$HubVNetResourceId = "/subscriptions/{subscriptionId}/resourceGroups/{vnetRg}" + "/providers/Microsoft.Network/virtualNetworks/{hubVNetName}", \# \<-- substitute all three \[Parameter(Mandatory = \$false)\] \[string\]\$BaseDomainSuffix = "internal.contoso.com" \# \<-- substitute ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" \#region --- Preflight ----------------------------------------------------------- foreach (\$mod in @('Az.PrivateDns', 'Az.Network')) { if (-not (Get-Module -ListAvailable -Name \$mod)) { throw "Required module not found: \$mod. Run: Install-Module \$mod" } } if (-not (Test-Path \$OrgTreeRegistryPath)) { throw "OrgTree registry not found at: \$OrgTreeRegistryPath" } \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \# Select nodes that are Active and marked as DNS boundaries \$dnsNodes = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" -and \$\_.DnsBoundary -eq \$true } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] DNS boundary nodes found: \$(\$dnsNodes.Count)" \$results = @{ Created = 0; Tagged = 0; Skipped = 0; Linked = 0; Errors = 0 } \#endregion \#region --- Zone Creation, Tagging, and Linking --------------------------------- foreach (\$node in \$dnsNodes) { \$zoneName = "\$(\$node.Id.ToLower()).\$BaseDomainSuffix" \$linkName = "link-hub-\$(\$node.Id.ToLower())" try { \#-- Step 1: Create the zone if it does not exist ---------------------- \$zone = Get-AzPrivateDnsZone \` -ResourceGroupName \$ResourceGroupName \` -Name \$zoneName \` -ErrorAction SilentlyContinue if (-not \$zone) { Write-Host " \[CREATE\] \$zoneName" \$zone = New-AzPrivateDnsZone \` -ResourceGroupName \$ResourceGroupName \` -Name \$zoneName \$results.Created++ } else { Write-Host " \[EXISTS\] \$zoneName — verifying tags and link..." \$results.Skipped++ } \#-- Step 2: Apply OrgPath governance tags (overwrite to catch drift) -- \$tags = @{ OrgPath = \$node.Path \# e.g. "/Org/Finance" OrgNodeId = \$node.Id \# e.g. "finance" OrgTier = \$node.Tier \# T0 \| T1 \| T2 \| T3 MigrationPhase = \$node.MigrationPhase \# Assessment \| Migration \| Complete } Update-AzPrivateDnsZone \` -ResourceGroupName \$ResourceGroupName \` -Name \$zoneName \` -Tag \$tags \| Out-Null \$results.Tagged++ \#-- Step 3: Link to hub VNet if not already linked -------------------- \$existingLink = Get-AzPrivateDnsVirtualNetworkLink \` -ResourceGroupName \$ResourceGroupName \` -ZoneName \$zoneName \` -Name \$linkName \` -ErrorAction SilentlyContinue if (-not \$existingLink) { New-AzPrivateDnsVirtualNetworkLink \` -ResourceGroupName \$ResourceGroupName \` -ZoneName \$zoneName \` -Name \$linkName \` -VirtualNetworkId \$HubVNetResourceId \` -EnableRegistration \$false \| Out-Null \# EnableRegistration = false: record management is governed, not automatic Write-Host " \[LINKED\] \$zoneName linked to hub VNet" \$results.Linked++ } } catch { Write-Warning " \[ERROR\] \$zoneName : \$\_" \$results.Errors++ } } \#endregion \#region --- Summary ------------------------------------------------------------- Write-Host "" Write-Host "=== DNS Zone Synchronization Complete ===" Write-Host " Created : \$(\$results.Created)" Write-Host " Tagged : \$(\$results.Tagged)" Write-Host " Linked : \$(\$results.Linked)" Write-Host " Skipped : \$(\$results.Skipped)" Write-Host " Errors : \$(\$results.Errors)" if (\$results.Errors -gt 0) { Write-Warning "Errors occurred. Review output above and rerun after remediation." exit 1 } \#endregion
 
-Azure DNS Private Resolver and Forwarding Ruleset Configuration
+### Azure DNS Private Resolver and Forwarding Ruleset Configuration
 
 The Azure DNS Private Resolver is deployed in the hub virtual network and serves as the bidirectional bridge between Azure-hosted name resolution and the on-premises Windows Server DNS infrastructure during the transition period. Its inbound endpoint is allocated a static IP address from a dedicated /28 subnet within the hub VNet — this IP address is configured on the on-premises Windows Server DNS servers as a conditional forwarder target for the internal Azure domain names, allowing on-premises clients to resolve Azure DNS Private Zone records without requiring any changes to the clients themselves. The outbound endpoint is allocated from a separate dedicated subnet and is associated with a Forwarding Ruleset.
 
@@ -188,7 +156,7 @@ The migration signal embedded in the Forwarding Ruleset is operationally signifi
 </tbody>
 </table>
 
-Policy Enforcement: Denying Untagged Private DNS Zones
+### Policy Enforcement: Denying Untagged Private DNS Zones
 
 The Azure Policy definition below is assigned at the subscription or management group scope that contains the DNS resource group. It enforces the governance model at the resource creation plane by denying the creation or update of any Azure DNS Private Zone that does not carry all four required OrgPath governance tags. This prevents ad-hoc zone creation outside the governance pipeline — if a network administrator creates a zone manually through the portal or through an uncontrolled automation script, the policy blocks it, and the zone can only be created by supplying the governance tags. This drives zone creation through the Sync-OrgPathDnsZones.ps1 script, which creates zones with correct tags by construction.
 
@@ -196,11 +164,11 @@ The Azure Policy definition below is assigned at the subscription or management 
 
 The policy uses the Indexed mode, which evaluates only resources that support tags and location — all Private DNS Zone resources qualify. The anyOf condition in the policy rule means the zone is denied if any one of the four tags is absent, not only if all four are absent. This prevents partial tagging, which would pass a simpler existence check for a single tag while leaving the zone ungoverned on the remaining three dimensions.
 
-**CHAPTER THREE — CERTIFICATE SERVICES**
+## Chapter 3 — CERTIFICATE SERVICES
 
-Certificate Governance — Mapping Template Coverage to Organizational Position
+### Certificate Governance — Mapping Template Coverage to Organizational Position
 
-The AD CS Architecture Being Replaced
+### The AD CS Architecture Being Replaced
 
 Active Directory Certificate Services publishes certificate templates as objects in the Configuration naming context of the AD forest. The templates are stored under CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration,DC=... and replicate to every domain controller in the forest through Configuration partition replication. Every domain-joined computer and user can discover available templates by performing an LDAP query against this container — the query returns all templates for which the calling security principal has Enroll or AutoEnroll permission on the template's security descriptor. This LDAP-based template discovery is the mechanism through which auto-enrollment operates: the Windows Certificate Client on each machine queries the directory for available templates, compares the result to the auto-enrollment policy received from Group Policy, and automatically requests any templates that are available and eligible.
 
@@ -208,7 +176,7 @@ The scope of auto-enrollment is governed entirely by OU placement and group memb
 
 In the cloud-native model, each mechanism is replaced by Intune. Trusted Root certificate profiles distribute the root and issuing CA certificates to all managed devices, replacing the AD-based NTAuth store and the certificate chain publication in the Configuration partition. SCEP profiles replace auto-enrollment GPOs for device certificates, using the Simple Certificate Enrollment Protocol to deliver certificates from Microsoft Cloud PKI to Intune-managed devices. PKCS profiles replace legacy PKCS#12 import-based certificate delivery for user certificates and scenarios where SCEP is not appropriate. Cloud PKI hosted in Microsoft Intune replaces the on-premises CA hierarchy entirely — it provides root and issuing CA functionality as a managed service, without requiring the organization to operate CA servers, manage CRL Distribution Points, or publish OCSP responders. Profile assignment to OrgPath-derived branch groups replaces OU-based auto-enrollment scope. The governing question for each device — which certificate templates apply to it — is no longer answered by OU membership and GPO; it is answered by OrgPath position and group membership in the OrgPath branch group library.
 
-OrgTree Metadata Extension for PKI Governance
+### OrgTree Metadata Extension for PKI Governance
 
 The OrgTree registry node schema is extended with a CertificateProfiles property to support PKI governance. This property is an array of profile mapping objects, where each object identifies a certificate profile that must be assigned to the devices or users in that organizational node. The extension is additive — nodes that do not require any node-specific certificate coverage beyond the organization-wide baseline carry an empty array or omit the property entirely. The governance pipeline treats an absent or empty CertificateProfiles array as an indication that the organization-wide Trusted Root profile and any domain-wide SCEP or PKCS baselines are sufficient for devices in that node.
 
@@ -218,13 +186,13 @@ An example node entry in the registry JSON, showing the extended schema:
 
 { "Id": "finance", "Path": "/Org/Finance", "Tier": "T1", "Status": "Active", "MigrationPhase": "Migration", "DnsBoundary": true, "CertificateProfiles": \[ { "ProfileDisplayName": "ROOT-CloudPKI-Issuing", "Type": "TrustedRoot", "Purpose": "Device", "TemplateReplaces": null }, { "ProfileDisplayName": "CERT-SCEP-WIFI-FINANCE", "Type": "SCEP", "Purpose": "Device", "TemplateReplaces": "WorkstationAuthentication" // \<-- AD CS template name }, { "ProfileDisplayName": "CERT-SCEP-VPN-FINANCE", "Type": "SCEP", "Purpose": "Device", "TemplateReplaces": "IPSecIntermediateOffline" // \<-- AD CS template name } \] }
 
-Certificate Profile Assignment Pipeline
+### Certificate Profile Assignment Pipeline
 
 The certificate profile assignment pipeline script reads the OrgTree registry, identifies nodes with CertificateProfiles metadata, retrieves the named profiles from Intune through the Microsoft Graph API, and assigns each profile to the corresponding OrgPath branch group. The script is idempotent — profiles already assigned to the correct group are detected and skipped without modification, so the script can be run repeatedly as part of the weekly pipeline without creating duplicate assignments. Profiles that cannot be found in Intune — because they have not yet been created — are logged as missing and counted in the summary, prompting the PKI team to create them before the next pipeline run.
 
 \#Requires -Version 5.1 \<# .SYNOPSIS Assigns Intune certificate profiles to OrgPath branch groups based on CertificateProfiles metadata in the OrgTree registry. .DESCRIPTION For each active OrgTree node carrying a non-empty CertificateProfiles metadata array, this script retrieves the named Intune certificate configuration profiles and assigns them to the corresponding ORG-BRANCH-{NodeId} device group in Entra ID. Profiles must already exist in Intune before this script runs. This script manages assignments only — it does not create profiles. Profile creation is performed by the PKI team using the Cloud PKI console in the Intune admin center. This script is idempotent. Re-running it on an already-correct environment makes no changes and completes cleanly. .PARAMETER OrgTreeRegistryPath Local path to the OrgTree registry JSON file. Example: "C:\governance\orgtree\registry.json" .PARAMETER TenantId Azure AD / Entra ID Tenant ID. Example: "00000000-0000-0000-0000-000000000000" \<-- substitute .NOTES Required Microsoft Graph scopes: DeviceManagementConfiguration.ReadWrite.All Group.Read.All Authentication: Run under the OrgPath automation service account. The account must have the Intune Administrator or Policy and Profile Manager role in Intune. Profile naming conventions assumed by this script: SCEP profiles : display name starts with "CERT-" PKCS profiles : display name starts with "PKCS-" Root profiles : display name starts with "ROOT-" Adjust the \$filter queries below if your naming convention differs. \#\> param( \[Parameter(Mandatory = \$false)\] \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[Parameter(Mandatory = \$false)\] \[string\]\$TenantId = "00000000-0000-0000-0000-000000000000" \# \<-- substitute ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" \#region --- Authentication ------------------------------------------------------ Connect-MgGraph \` -TenantId \$TenantId \` -Scopes "DeviceManagementConfiguration.ReadWrite.All", "Group.Read.All" \` -NoWelcome Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Connected to Microsoft Graph." \#endregion \#region --- Load OrgTree and Select Nodes with Certificate Metadata ------------- if (-not (Test-Path \$OrgTreeRegistryPath)) { throw "OrgTree registry not found: \$OrgTreeRegistryPath" } \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$nodes = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" -and \$\_.CertificateProfiles -and \$\_.CertificateProfiles.Count -gt 0 } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Nodes with certificate profile metadata: \$(\$nodes.Count)" \#endregion \#region --- Cache Intune Certificate Profiles ----------------------------------- \# Cache all relevant profiles to avoid N\*M Graph API calls. \# Retrieve SCEP, PKCS, and TrustedRoot profiles using naming convention filters. \$allProfiles = @{} \$profileQueries = @( "https://graph.microsoft.com/v1.0/deviceManagement/deviceConfigurations" + "?\`\$filter=startsWith(displayName,'CERT-')", "https://graph.microsoft.com/v1.0/deviceManagement/deviceConfigurations" + "?\`\$filter=startsWith(displayName,'PKCS-')", "https://graph.microsoft.com/v1.0/deviceManagement/deviceConfigurations" + "?\`\$filter=startsWith(displayName,'ROOT-')" ) foreach (\$query in \$profileQueries) { \$response = Invoke-MgGraphRequest -Method GET -Uri \$query foreach (\$profile in \$response.value) { \$allProfiles\[\$profile.displayName\] = \$profile } } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Certificate profiles cached from Intune: \$(\$allProfiles.Count)" \#endregion \#region --- Assignment Loop ----------------------------------------------------- \$stats = @{ Assigned = 0 AlreadyAssigned = 0 MissingProfile = 0 MissingGroup = 0 Failed = 0 } foreach (\$node in \$nodes) { \$branchGroupName = "ORG-BRANCH-\$(\$node.Id)" \# Retrieve the branch group from Entra ID \$branchGroup = Get-MgGroup \` -Filter "displayName eq '\$branchGroupName'" \` -Property "Id,DisplayName" \| Select-Object -First 1 if (-not \$branchGroup) { Write-Warning " Branch group not found in Entra ID: \$branchGroupName" + " — run device group library sync (Part Four) first." \$stats.MissingGroup++ continue } foreach (\$certMeta in \$node.CertificateProfiles) { \$profileName = \$certMeta.ProfileDisplayName if (-not \$allProfiles.ContainsKey(\$profileName)) { Write-Warning " Profile not found in Intune: '\$profileName'" + " (node: \$(\$node.Id)) — create this profile in Cloud PKI first." \$stats.MissingProfile++ continue } \$profile = \$allProfiles\[\$profileName\] \# Check existing assignments for this profile to maintain idempotency \$existingAssignmentsResponse = Invoke-MgGraphRequest \` -Method GET \` -Uri "https://graph.microsoft.com/v1.0/deviceManagement" + "/deviceConfigurations/\$(\$profile.id)/assignments" \$alreadyAssigned = \$existingAssignmentsResponse.value \| Where-Object { \$\_.target.groupId -eq \$branchGroup.Id } if (\$alreadyAssigned) { Write-Host " \[SKIP\] \$profileName already assigned to \$branchGroupName" \$stats.AlreadyAssigned++ continue } \# Build the assignment request body \$assignBody = @{ assignments = @( @{ target = @{ "@odata.type" = "#microsoft.graph.groupAssignmentTarget" groupId = \$branchGroup.Id } } ) } \| ConvertTo-Json -Depth 10 try { Invoke-MgGraphRequest \` -Method POST \` -Uri "https://graph.microsoft.com/v1.0/deviceManagement" + "/deviceConfigurations/\$(\$profile.id)/assign" \` -Body \$assignBody \` -ContentType "application/json" \| Out-Null Write-Host " \[OK\] \$profileName → \$branchGroupName" \$stats.Assigned++ } catch { Write-Warning " \[FAIL\] \$profileName → \$branchGroupName : \$\_" \$stats.Failed++ } } } \#endregion \#region --- Summary and Disconnect ---------------------------------------------- Write-Host "" Write-Host "=== Certificate Profile Assignment Complete ===" Write-Host " Assigned : \$(\$stats.Assigned)" Write-Host " Already Assigned : \$(\$stats.AlreadyAssigned)" Write-Host " Missing Profiles : \$(\$stats.MissingProfile)" Write-Host " Missing Groups : \$(\$stats.MissingGroup)" Write-Host " Failed : \$(\$stats.Failed)" Disconnect-MgGraph \#endregion
 
-Strong Mapping and KB5014754 Compliance
+### Strong Mapping and KB5014754 Compliance
 
 Microsoft Security Update KB5014754, introduced in May 2022 with enforcement phases extending through subsequent years, changed the behavior of the Windows Kerberos Key Distribution Center when evaluating certificate-based authentication requests. Under the new behavior, the KDC requires that the certificate used for authentication contain a Subject Alternative Name extension that includes the user's or device's security identifier (SID) in a form the KDC can cryptographically bind to the requesting principal. Certificates that do not meet this requirement are either rejected outright in Full Enforcement mode or logged as warnings in Compatibility mode, depending on the registry configuration of the domain controllers.
 
@@ -234,17 +202,17 @@ The governance pipeline must verify that every SCEP profile in the OrgPath certi
 
 \#Requires -Version 5.1 \<# .SYNOPSIS Verifies that all SCEP profiles in the OrgPath certificate registry have KB5014754-compliant strong mapping SAN configuration. .DESCRIPTION Queries Intune for all SCEP profiles whose display names appear in any node's CertificateProfiles metadata. For each SCEP profile, retrieves the subjectAlternativeNameType and customSubjectAlternativeName settings and verifies that the onPremisesSecurityIdentifier variable is present in the SAN configuration. Non-compliant profiles are written to a compliance report JSON committed to the governance repository. Profiles flagged as non-compliant must be remediated before they are assigned to branch groups. .PARAMETER OrgTreeRegistryPath Path to the OrgTree registry JSON. .PARAMETER OutputPath Path for the compliance report JSON output. Example: "C:\governance\reports\pki" .NOTES Required Graph scope: DeviceManagementConfiguration.Read.All Strong mapping SAN requirement: KB5014754 (enforced post May 2025 patch) The {{onPremisesSecurityIdentifier}} variable requires device objects to have a valid onPremisesSecurityIdentifier in Entra ID, which requires Entra Connect hybrid join sync or a manually synchronized SID attribute. \#\> param( \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[string\]\$OutputPath = "C:\governance\reports\pki" ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" New-Item -ItemType Directory -Path \$OutputPath -Force \| Out-Null Connect-MgGraph \` -Scopes "DeviceManagementConfiguration.Read.All" \` -NoWelcome \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$scepProfiles = @{} \# Collect all SCEP profile names referenced in registry CertificateProfiles metadata foreach (\$node in \$registry.nodes) { if (\$node.CertificateProfiles) { foreach (\$cp in \$node.CertificateProfiles) { if (\$cp.Type -eq "SCEP") { \$scepProfiles\[\$cp.ProfileDisplayName\] = \$true } } } } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] SCEP profiles to verify: \$(\$scepProfiles.Count)" \$report = @{ AssessedAt = (Get-Date -f 'o'); Profiles = @() } \$compliant = 0 \$nonCompliant = 0 foreach (\$profileName in \$scepProfiles.Keys) { \$graphUri = "https://graph.microsoft.com/v1.0/deviceManagement" + "/deviceConfigurations?\`\$filter=displayName eq '\$profileName'" \$response = Invoke-MgGraphRequest -Method GET -Uri \$graphUri \$profile = \$response.value \| Select-Object -First 1 if (-not \$profile) { Write-Warning " Profile not found in Intune: \$profileName" continue } \# Retrieve full profile details (OData type contains SCEP-specific properties) \$fullProfile = Invoke-MgGraphRequest \` -Method GET \` -Uri "https://graph.microsoft.com/v1.0/deviceManagement" + "/deviceConfigurations/\$(\$profile.id)" \# Check for onPremisesSecurityIdentifier in customSubjectAlternativeNames \$sans = \$fullProfile.customSubjectAlternativeNames \$hasSidSan = \$false if (\$sans) { \$hasSidSan = (\$sans \| Where-Object { \$\_.sanType -eq "onPremisesUserPrincipalName" -or \# Graph API exposes the SID SAN variable as onPremisesSecurityIdentifier \# in the customSubjectAlternativeName sanType field \$\_.sanType -contains "onPremisesSecurityIdentifier" }).Count -gt 0 } \$entry = @{ ProfileName = \$profileName ProfileId = \$profile.id HasSidSan = \$hasSidSan Compliant = \$hasSidSan Remediation = if (-not \$hasSidSan) { "Add onPremisesSecurityIdentifier to customSubjectAlternativeNames in the SCEP profile." } else { \$null } } \$report.Profiles += \$entry if (\$hasSidSan) { Write-Host " \[OK\] \$profileName — SID SAN present" \$compliant++ } else { Write-Warning " \[FAIL\] \$profileName — SID SAN missing (KB5014754 non-compliant)" \$nonCompliant++ } } \$report \| ConvertTo-Json -Depth 10 \| Set-Content -Path "\$OutputPath\scep-strongmapping-compliance.json" -Encoding UTF8 Write-Host "" Write-Host "=== SCEP Strong Mapping Compliance Report ===" Write-Host " Compliant : \$compliant" Write-Host " Non-Compliant : \$nonCompliant" Write-Host " Report written: \$OutputPath\scep-strongmapping-compliance.json" Disconnect-MgGraph
 
-**CHAPTER FOUR — CROSS-SURFACE DRIFT DETECTION FOR INFRASTRUCTURE SERVICES**
+## Chapter 4 — CROSS-SURFACE DRIFT DETECTION FOR INFRASTRUCTURE SERVICES
 
-Keeping DNS and PKI Coverage Aligned with the Governance Model
+### Keeping DNS and PKI Coverage Aligned with the Governance Model
 
-The New Infrastructure Drift Categories
+### The New Infrastructure Drift Categories
 
 The drift detection framework built in Part Four defined four categories of OrgPath attribute drift on identity objects: users without an OrgPath value, users whose OrgPath does not match any active OrgTree node, devices without an OrgPath value, and devices whose OrgPath-derived group membership has not been updated after an OrgPath change. Each category has a remediation pathway in the governance pipeline — either an attribute derivation run, a registry validation correction, or a group membership synchronization.
 
 Infrastructure surfaces introduce three additional drift categories that the governance pipeline must monitor, each representing a specific class of misalignment between the governance registry and the live environment. The first category is DNS zone drift: Private DNS Zones that lack one or more OrgPath governance tags, or whose tag values reference an OrgNodeId that does not correspond to any active node in the OrgTree registry. This indicates either that a zone was created outside the governance pipeline (which Azure Policy should prevent, but which can occur if the policy was temporarily disabled or excluded), or that an OrgTree node was archived without the corresponding zone being updated. The second category is certificate profile assignment drift: profiles that are assigned to Entra ID groups other than the designated OrgPath branch groups, indicating that manual assignment has created coverage outside the registry-governed scope. Manual assignments created through the Intune console are not reflected in the OrgTree registry, making them invisible to the pipeline and ungoverned from the audit perspective. The third category is certificate-OrgPath misalignment: devices that hold valid certificates issued under a profile associated with a different OrgPath node than their current OrgPath value. This occurs when a device is moved from one organizational unit to another — its OrgPath is updated by the pipeline, but the certificate it holds was issued for its old position. The certificate remains valid and the device continues to use it, but the certificate no longer reflects the device's current organizational position and may grant it access to resources scoped to its former segment.
 
-DNS Zone Tag Drift Detection
+### DNS Zone Tag Drift Detection
 
 The KQL query below is scheduled as a weekly Log Analytics alert rule against the Azure Resource Graph connector. It returns all Private DNS Zones in the governance subscription that are missing any of the four required OrgPath tags. A result count greater than zero triggers an alert, generating an incident in Microsoft Sentinel and an email notification to the DNS governance distribution group. The alert cadence matches the weekly pipeline run — DNS zones that fail the policy deny effect because the policy was briefly disabled will be caught by this query on the next scheduled run.
 
@@ -254,7 +222,7 @@ The Azure Resource Graph query below complements the KQL query by cross-referenc
 
 // --------------------------------------------------------------- // Azure Resource Graph: Orphaned DNS Zones (OrgNodeId Mismatch) // Run via: Search-AzGraph -Query ... // Use to identify zones whose OrgNodeId tag does not match any // active node in the OrgTree registry. // --------------------------------------------------------------- Resources \| where type == "microsoft.network/privatednszones" \| extend OrgNodeId = tostring(tags\['OrgNodeId'\]) \| where isnotempty(OrgNodeId) \| project ZoneName = name, ResourceGroup = resourceGroup, OrgNodeId, OrgPath = tostring(tags\['OrgPath'\]), MigrationPhase = tostring(tags\['MigrationPhase'\]) \| order by ZoneName asc // Post-process in PowerShell: compare OrgNodeId values against the // active node IDs from the governance repository registry.json // to identify mismatched (orphaned) zones.
 
-Certificate-OrgPath Misalignment Detection
+### Certificate-OrgPath Misalignment Detection
 
 The KQL query below joins device OrgPath values from the Entra ID audit log against certificate enrollment events from the Intune audit log to identify devices whose most recently enrolled certificate profile is associated with a different OrgPath node than their current OrgPath value. The query assumes the naming convention established in the OrgPath certificate profile assignment script: SCEP profile names contain the node ID as the final hyphen-delimited segment (e.g., CERT-SCEP-WIFI-FINANCE, where FINANCE is the node ID). Organizations using a different naming convention must adjust the CertNodeId extraction logic accordingly.
 
@@ -272,17 +240,17 @@ The KQL query below joins device OrgPath values from the Entra ID audit log agai
 </tbody>
 </table>
 
-**CHAPTER FIVE — THE DECOMMISSIONING READINESS SCORE**
+## Chapter 5 — THE DECOMMISSIONING READINESS SCORE
 
-When Is It Safe to Decommission? A Quantified Answer
+### When Is It Safe to Decommission? A Quantified Answer
 
-The Specific Risk This Score Is Designed to Eliminate
+### The Specific Risk This Score Is Designed to Eliminate
 
 The most dangerous moment in any Active Directory modernization program is the moment a domain controller is permanently shut down. The risk is not that the shutdown is difficult to execute — it is not. The risk is that the shutdown reveals, in production and irreversibly, that a workload dependency was not known, not tracked, or not resolved before the decision to decommission was made. A domain controller that goes offline takes with it its DNS SRV records, its Kerberos ticket issuance capacity for the local site, its SYSVOL share for GPO application, its LDAP service for any application using directory-bound authentication, and — if it is the last DC for a site — the site's entire service locator infrastructure. Every one of these failures is invisible before decommissioning and catastrophic after it.
 
 The Decommissioning Readiness Score is designed to make the readiness question answerable before the action, not discoverable after it. It quantifies, per infrastructure component — per domain controller, per DNS zone, per CA — the percentage of known dependent workloads and infrastructure services that have been fully migrated. A score of one hundred percent means that every known dependency has been resolved and the component can be safely decommissioned. Anything less means dependencies remain and decommissioning will cause failures. The score does not eliminate the possibility of unknown dependencies — no automated tool can enumerate what has not been recorded. But it establishes a governance norm in which dependency recording is a required activity and readiness is a measurable property of the environment, not an administrator's judgment.
 
-The Five Scoring Dimensions
+### The Five Scoring Dimensions
 
 The Decommissioning Readiness Score is composed of five dimensions, each calculated independently and then averaged to produce the overall score. The dimensions are designed to cover every category of dependency that a domain controller can carry.
 
@@ -296,11 +264,11 @@ The Decommissioning Readiness Score is composed of five dimensions, each calcula
 
 Each dimension score is computed as a simple percentage: items in a resolved or complete state divided by total items in scope, multiplied by one hundred. The overall Decommissioning Readiness Score is the arithmetic mean of the five dimension scores. A dimension with no items in scope — for example, a domain controller that has no recorded GPO dependencies because it serves a site where GPO migration is not yet tracked — is scored at one hundred percent for that dimension, but the pipeline logs a warning indicating that the dimension score reflects an empty baseline rather than confirmed migration completion. This prevents artificially elevated scores on components that have not yet been assessed.
 
-Readiness Score Calculation Script
+### Readiness Score Calculation Script
 
 \#Requires -Version 5.1 \<# .SYNOPSIS Calculates and reports the Decommissioning Readiness Score for a specified domain controller. .DESCRIPTION Queries the governance repository registries, the Entra ID directory, and the Intune compliance data to compute a multi-dimensional readiness score for the target domain controller. Outputs a structured JSON report committed to the governance repository as a versioned assessment artifact, and writes a console summary. The readiness score is the arithmetic mean of five dimension scores: 1. Identity Migration Score 2. Dependency Resolution Score 3. DNS Migration Score 4. Certificate Migration Score (simplified: template coverage) 5. GPO Migration Score .PARAMETER TargetDC FQDN of the domain controller being evaluated. Example: "dc01.corp.contoso.com" \<-- substitute .PARAMETER DomainName DNS name of the domain the target DC serves. Example: "corp.contoso.com" \<-- substitute .PARAMETER RegistryBasePath Local path to the governance repository registries directory. Example: "C:\governance\registries" .PARAMETER OutputPath Directory path where the readiness report JSON will be written. Example: "C:\governance\reports\decommission" .PARAMETER AppId Application (client) ID of the Entra ID app registration used to construct the OrgPath extension attribute name. The extension attribute name is: extension\_{AppIdNoHyphens}\_OrgPath Example: "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4" \<-- substitute .NOTES Required modules: Az, Microsoft.Graph, ActiveDirectory Run from a domain-joined management workstation. The executing account requires: - User.Read.All and Device.Read.All on Microsoft Graph - Read access to the governance repository registries \#\> param( \[Parameter(Mandatory = \$false)\] \[string\]\$TargetDC = "dc01.corp.contoso.com", \# \<-- substitute \[Parameter(Mandatory = \$false)\] \[string\]\$DomainName = "corp.contoso.com", \# \<-- substitute \[Parameter(Mandatory = \$false)\] \[string\]\$RegistryBasePath = "C:\governance\registries", \[Parameter(Mandatory = \$false)\] \[string\]\$OutputPath = "C:\governance\reports\decommission", \[Parameter(Mandatory = \$false)\] \[string\]\$AppId = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4" \# \<-- substitute ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" New-Item -ItemType Directory -Path \$OutputPath -Force \| Out-Null Connect-MgGraph -Scopes "User.Read.All", "Device.Read.All" -NoWelcome \$report = @{ TargetDC = \$TargetDC Domain = \$DomainName AssessedAt = (Get-Date).ToUniversalTime().ToString("o") Scores = @{} Warnings = @() OverallReadinessScore = 0 ReadyToDecommission = \$false } \$appIdNoHyphens = \$AppId -replace '-', '' \$orgPathAttr = "extension\_\${appIdNoHyphens}\_OrgPath" \#region --- Score 1: Identity Migration ---------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Scoring identity migration..." \$allUsers = Get-MgUser -All -Property "id,displayName,\$orgPathAttr" \$totalUsers = (\$allUsers \| Measure-Object).Count \$positioned = (\$allUsers \| Where-Object { \$\_.AdditionalProperties\[\$orgPathAttr\] -ne \$null -and \$\_.AdditionalProperties\[\$orgPathAttr\] -ne "" } \| Measure-Object).Count if (\$totalUsers -eq 0) { \$identityScore = 100 \$report.Warnings += "IdentityMigration: No user objects found — verify Graph permissions." } else { \$identityScore = \[math\]::Round((\$positioned / \$totalUsers) \* 100, 1) } \$report.Scores\["IdentityMigration"\] = @{ Score = \$identityScore Total = \$totalUsers Positioned = \$positioned Unpositioned = (\$totalUsers - \$positioned) Note = if (\$totalUsers -eq 0) { "Empty baseline" } else { \$null } } Write-Host " Identity Migration Score: \$identityScore%" \#endregion \#region --- Score 2: Dependency Resolution ------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Scoring dependency resolution..." \$depMapPath = "\$RegistryBasePath\server\dependency-map.json" if (-not (Test-Path \$depMapPath)) { \$depScore = 100 \$report.Warnings += "DependencyResolution: dependency-map.json not found. " + "Run Part Five dependency mapping before scoring." } else { \$depRegistry = Get-Content \$depMapPath -Raw \| ConvertFrom-Json \$dcDeps = \$depRegistry.dependencies \| Where-Object { \$\_.Provider -eq \$TargetDC } \$totalDeps = \$dcDeps.Count \$resolvedDeps = (\$dcDeps \| Where-Object { \$\_.Status -eq "Resolved" }).Count if (\$totalDeps -eq 0) { \$depScore = 100 \$report.Warnings += "DependencyResolution: No dependencies recorded for \$TargetDC. " + "Confirm the dependency discovery pass has been completed." } else { \$depScore = \[math\]::Round((\$resolvedDeps / \$totalDeps) \* 100, 1) } \$report.Scores\["DependencyResolution"\] = @{ Score = \$depScore Total = \$totalDeps Resolved = \$resolvedDeps Pending = (\$totalDeps - \$resolvedDeps) } } Write-Host " Dependency Resolution Score: \$depScore%" \#endregion \#region --- Score 3: DNS Migration --------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Scoring DNS migration..." \$ipamZonesPath = "\$RegistryBasePath\dns\ipam-dns-zones.json" if (-not (Test-Path \$ipamZonesPath)) { \$dnsScore = 0 \$report.Warnings += "DnsMigration: ipam-dns-zones.json not found. " + "Run IPAM export script before scoring." } else { \$ipamZones = Get-Content \$ipamZonesPath -Raw \| ConvertFrom-Json \| Where-Object { \$\_.ZoneCategory -ne "ReverseZone" } \# Forward zones only \$totalZones = \$ipamZones.Count \$migratedZones = (\$ipamZones \| Where-Object { \$\_.MigrationStatus -eq "Complete" }).Count if (\$totalZones -eq 0) { \$dnsScore = 100 \$report.Warnings += "DnsMigration: No forward zones found in IPAM export." } else { \$dnsScore = \[math\]::Round((\$migratedZones / \$totalZones) \* 100, 1) } \$report.Scores\["DnsMigration"\] = @{ Score = \$dnsScore Total = \$totalZones Migrated = \$migratedZones Pending = (\$totalZones - \$migratedZones) } } Write-Host " DNS Migration Score: \$dnsScore%" \#endregion \#region --- Score 4: Certificate Migration ------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Scoring certificate migration..." \$certReportPath = "\$RegistryBasePath\\.\reports\pki\scep-strongmapping-compliance.json" if (-not (Test-Path \$certReportPath)) { \$certScore = 0 \$report.Warnings += "CertMigration: SCEP compliance report not found. " + "Run the strong mapping verification script first." } else { \$certReport = Get-Content \$certReportPath -Raw \| ConvertFrom-Json \$totalProfiles = \$certReport.Profiles.Count \$compliant = (\$certReport.Profiles \| Where-Object { \$\_.Compliant -eq \$true }).Count if (\$totalProfiles -eq 0) { \$certScore = 100 \$report.Warnings += "CertMigration: No SCEP profiles found in compliance report." } else { \$certScore = \[math\]::Round((\$compliant / \$totalProfiles) \* 100, 1) } \$report.Scores\["CertificateMigration"\] = @{ Score = \$certScore TotalProfiles = \$totalProfiles Compliant = \$compliant NonCompliant = (\$totalProfiles - \$compliant) } } Write-Host " Certificate Migration Score: \$certScore%" \#endregion \#region --- Score 5: GPO Migration --------------------------------------------- Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Scoring GPO migration..." \$gpoMapPath = "\$RegistryBasePath\gpo\migration-map.json" if (-not (Test-Path \$gpoMapPath)) { \$gpoScore = 100 \$report.Warnings += "GpoMigration: gpo/migration-map.json not found — scored as 100% " + "with empty-baseline warning. Create the GPO migration map." } else { \$gpoMap = Get-Content \$gpoMapPath -Raw \| ConvertFrom-Json \$totalGpoSettings = (\$gpoMap.settings \| Measure-Object).Count \$deployedSettings = (\$gpoMap.settings \| Where-Object { \$\_.MigrationStatus -eq "Deployed" } \| Measure-Object).Count if (\$totalGpoSettings -eq 0) { \$gpoScore = 100 \$report.Warnings += "GpoMigration: No GPO settings found in migration map." } else { \$gpoScore = \[math\]::Round((\$deployedSettings / \$totalGpoSettings) \* 100, 1) } \$report.Scores\["GpoMigration"\] = @{ Score = \$gpoScore Total = \$totalGpoSettings Deployed = \$deployedSettings Pending = (\$totalGpoSettings - \$deployedSettings) } } Write-Host " GPO Migration Score: \$gpoScore%" \#endregion \#region --- Overall Score and Report ------------------------------------------- \$allDimensionScores = @(\$identityScore, \$depScore, \$dnsScore, \$certScore, \$gpoScore) \$overallScore = \[math\]::Round( (\$allDimensionScores \| Measure-Object -Average).Average, 1 ) \$report\["OverallReadinessScore"\] = \$overallScore \$report\["ReadyToDecommission"\] = (\$overallScore -eq 100 -and \$report.Warnings.Count -eq 0) \$safeDate = Get-Date -f 'yyyyMMdd' \$reportFileName = "\$(\$TargetDC -replace '\\', '-')-\$safeDate-readiness.json" \$reportFilePath = "\$OutputPath\\reportFileName" \$report \| ConvertTo-Json -Depth 10 \| Set-Content -Path \$reportFilePath -Encoding UTF8 Write-Host "" Write-Host "=== Decommissioning Readiness Report — \$TargetDC ===" Write-Host (" Identity Migration : " + \$identityScore + "%") Write-Host (" Dependency Resolution: " + \$depScore + "%") Write-Host (" DNS Migration : " + \$dnsScore + "%") Write-Host (" Certificate Migration: " + \$certScore + "%") Write-Host (" GPO Migration : " + \$gpoScore + "%") Write-Host (" ─────────────────────────────────────────") Write-Host (" OVERALL SCORE : " + \$overallScore + "%") Write-Host (" Safe to Decommission : " + \$report.ReadyToDecommission) if (\$report.Warnings.Count -gt 0) { Write-Host "" Write-Host " Warnings:" foreach (\$w in \$report.Warnings) { Write-Warning " \$w" } } Write-Host "" Write-Host " Report written: \$reportFilePath" Write-Host " Commit to governance repository before the weekly review meeting." Disconnect-MgGraph \#endregion
 
-Operational Use of the Score
+### Operational Use of the Score
 
 The Decommissioning Readiness Score report is committed to the governance repository on each pipeline run. Because the repository is version-controlled, the history of score files for a given domain controller shows the progression of readiness over time — each pipeline execution after a migration activity produces a measurable improvement in one or more dimension scores. The governance team reviews the current score in the weekly infrastructure governance meeting and annotates the repository commit with the outcome of the review.
 
@@ -308,11 +276,11 @@ The operational response to the score follows a tiered framework. A score below 
 
 The formal decommissioning approval workflow requires sign-off from three parties: the infrastructure lead, who confirms that the score reflects current environment state and that no out-of-band changes have been made that are not captured in the registries; the security team, who confirms that the decommissioning does not introduce any gap in monitoring, authentication, or certificate validation coverage; and the application owners of any services that previously carried dependency map entries against the target component, who confirm that their workloads are operating correctly against the migrated infrastructure. Sign-offs are recorded as commits to the governance repository, creating an auditable record of the approval decision. The target component is decommissioned only after all three sign-offs are committed.
 
-**CHAPTER SIX — OPERATIONAL PROCEDURES**
+## Chapter 6 — OPERATIONAL PROCEDURES
 
-Day-to-Day Governance of the DNS and PKI Surfaces
+### Day-to-Day Governance of the DNS and PKI Surfaces
 
-Weekly DNS Governance Review
+### Weekly DNS Governance Review
 
 The weekly DNS governance review is the primary recurring operational procedure for maintaining the DNS surface in a governed state. It runs every Monday morning as part of the broader weekly pipeline execution. The pipeline checks out the latest version of the governance repository, runs Sync-OrgPathDnsZones.ps1 against the current OrgTree registry, and commits any changes — new zones created, tag values updated, VNet links established — back to the repository with a standardized commit message that includes the execution timestamp and a machine-readable count of changes.
 
@@ -320,7 +288,7 @@ The team reviews the commit diff in the weekly governance meeting. The review ag
 
 The weekly DNS review also includes a spot-check of the Azure DNS Private Resolver's Forwarding Ruleset to verify that no rules have been added manually since the previous run. Rules added manually — outside the governance pipeline — represent out-of-band changes that are not reflected in the governance repository and that may persist after the zones they forward for have been migrated to Azure. The spot-check uses a simple Resource Graph query to enumerate the active rules in the Forwarding Ruleset and compares the result to the expected rule set derived from the IPAM zone export.
 
-Quarterly Certificate Profile Review
+### Quarterly Certificate Profile Review
 
 Certificate profiles are reviewed quarterly against the OrgTree registry. The quarterly review serves a different purpose than the weekly drift detection run: where drift detection identifies misalignments that have already occurred, the quarterly review proactively validates that the configured state is correct before problems arise. The review has three components.
 
@@ -330,7 +298,7 @@ The second component is a certificate expiration sweep. The pipeline queries Int
 
 The third component is a TemplateReplaces coverage audit. Every entry in every node's CertificateProfiles array that carries a non-null TemplateReplaces value is reviewed to confirm that the corresponding AD CS template has been deactivated or had its Security permissions removed to prevent new issuance. A legacy AD CS template that remains issuable alongside its Cloud PKI replacement creates two parallel certificate issuance paths for the same purpose — one governed by OrgPath and one not. The quarterly review drives the deactivation of legacy templates as their replacement profiles achieve full enrollment coverage.
 
-OrgTree Change Request Process for DNS and PKI
+### OrgTree Change Request Process for DNS and PKI
 
 The OrgTree change request process, established in Part Three, is extended to cover DNS and PKI considerations for every node addition or removal. The change request form includes two additional fields beyond the standard node properties: DnsBoundary, a boolean indicating whether the new node requires a dedicated Azure DNS Private Zone, and CertificateProfiles, an array of profile mapping objects defining any node-specific certificate profiles that must be assigned. These fields are reviewed by the DNS and PKI teams as part of the standard change request review cycle before the request is approved.
 
@@ -338,15 +306,15 @@ For node additions, the DNS team reviews the DnsBoundary field to determine whet
 
 For node removals — when a department is dissolved, merged into another unit, or reorganized out of the OrgTree — the DNS and PKI handling is deliberately conservative. The corresponding Azure DNS Private Zone is not deleted at the time of node removal. Instead, its MigrationPhase tag is updated to Decommissioning, and the zone is held for a minimum of ninety days. During this period, the DNS team monitors the query log for the zone to determine whether any workloads are still resolving names against it. If queries continue after thirty days, the dependent workloads are identified and their owners are notified of the impending zone deletion. The ninety-day hold period gives application teams time to update their configurations before the zone is removed. Certificate profiles assigned to the archived node's branch group are reviewed at the time of node removal: any device that is a member of the archived branch group is migrated to its new node's branch group through the standard OrgPath update and group synchronization pipeline, and the new branch group's certificate profiles are evaluated to determine whether the migrating devices require certificates beyond those already provided by their new node's profile set.
 
-**CHAPTER SEVEN — SERIES SYNTHESIS (FINAL)**
+## Chapter 7 — SERIES SYNTHESIS (FINAL)
 
-What Has Been Built — The Governance Substrate in Full
+### What Has Been Built — The Governance Substrate in Full
 
 |  |
 |----|
 | *This chapter closes an eight-part series. It does not introduce new implementation components. It describes, with precision and completeness, what the organization has when the full OrgPath governance model is operational — what problem it solves, how each part of the series contributed to solving it, and why the solution is structurally sound.* |
 
-The Problem That Required a Substrate
+### The Problem That Required a Substrate
 
 Part One of this series opened with a statement of the governance gap in the Microsoft cloud identity stack. It is worth returning to that gap now, precisely, because the model built across these eight parts is only legible against the problem it was built to solve.
 
@@ -358,7 +326,7 @@ When organizations migrate from AD to the Microsoft cloud stack, they leave this
 
 Without that representation, governance degrades. Policy targeting is based on manually maintained groups that drift from the actual organizational structure. Access reviews are scoped by groups whose membership does not accurately reflect the scope of the organization's governance boundaries. Certificate profiles are assigned to flat groups that do not express which organizational segment a device belongs to. Security operations analysts have visibility scoped to resource groups rather than to the organizational segments they are responsible for. The tools are present. The governance is not.
 
-What OrgTree and OrgPath Restore
+### What OrgTree and OrgPath Restore
 
 OrgTree is the governed registry of the organization's structure. It is the authoritative record of the organization's divisions, departments, units, and operational segments — maintained as a versioned JSON artifact in a governed Git repository, reviewed and approved through a formal change management process, never modified without a commit that produces an audit trail, and validated against a schema that enforces the structural invariants the governance model depends on. OrgTree is not a mirror of Active Directory's OU tree. It is the organizational structure defined on its own terms, in a format that every cloud tool can read, in a repository that every governance pipeline can query, under change control that every auditor can inspect.
 
@@ -366,7 +334,7 @@ OrgPath is the positional attribute — the structured, validated, machine-reada
 
 Together, OrgTree and OrgPath restore what Active Directory provided: a single, coherent model of organizational structure that drives governance on every surface. They do not replace the cloud tools. They give the cloud tools the organizational context they need to govern correctly. The model does not impose an on-premises architecture on the cloud. It builds a cloud-native artifact — a versioned registry — that provides the same structural information the OU tree provided, in a form that the cloud stack can consume, with governance properties that the OU tree never had: version history, change attribution, schema validation, and automated propagation.
 
-The Complete Surface Map
+### The Complete Surface Map
 
 The following table summarizes every governance surface the complete model covers, the part of the series in which each surface was implemented, and what the model achieves on each surface.
 
@@ -390,7 +358,7 @@ The following table summarizes every governance surface the complete model cover
 | **Azure DNS Private Resolver** | Part Eight (this document) | The Forwarding Ruleset's rule count is the migration progress metric for DNS zone migration. Decreasing rule count indicates zones being migrated from on-premises to Azure. Rule removal for a zone is the DNS-side decommissioning readiness indicator for that zone. |
 | **Conditional Access** | Parts Three, Four & Six | Conditional Access policies are scoped to OrgPath-derived named locations and user groups. Policies that require compliant devices or specific authentication strengths are targeted to OrgPath segments that require them, rather than applied universally or maintained as manually scoped policy sets. |
 
-The Governance Repository as Audit Record
+### The Governance Repository as Audit Record
 
 The version-controlled governance repository is not an implementation convenience. It is the organization's governance record — the authoritative, auditable, time-stamped history of every governance decision and every governance state the organization has been in since the model was deployed.
 
@@ -400,7 +368,7 @@ Every drift detection report, every decommissioning readiness score, every IPAM 
 
 This auditability is a structural property of the model, not a feature added to satisfy a compliance requirement. It is a consequence of the architectural decision — made in Part Three and executed consistently across every subsequent part — to store all governance state as versioned artifacts in a governed repository rather than as configuration in individual tools. The tools are the enforcement layer. The repository is the truth layer. Auditors examine the truth layer. Operators work in both layers simultaneously, and the pipeline keeps them synchronized.
 
-Automation and Coherence: The Two Properties That Make It Sustainable
+### Automation and Coherence: The Two Properties That Make It Sustainable
 
 The complete OrgPath governance model has two properties that distinguish it from governance models that are technically sound but operationally unsustainable: automation and coherence. Both are structural properties, not operational disciplines, and both are maintained by design rather than by effort.
 
@@ -410,7 +378,7 @@ Coherence means that the same vocabulary — the same OrgTree registry, the same
 
 This coherence eliminates the translation problem that plagues multi-tool governance environments: the problem of determining which group in Tool A corresponds to which resource group in Tool B corresponds to which policy in Tool C. In the OrgPath model, there is no translation. Every surface speaks the same language, because they all read from the same dictionary.
 
-Closing Statement
+### Closing Statement
 
 When the full OrgPath governance model is operational, the organization has something specific and valuable that the Microsoft cloud stack does not provide natively and that no individual cloud tool provides on its own. It has a governance substrate that spans every major surface of the enterprise technology estate — from the identity of a user authenticating to a cloud application, to the certificate on a server managed through Azure Arc, to the DNS zone that resolves the application's endpoint, to the PIM eligibility that governs who may administer the server, to the Sentinel alert rule that detects lateral movement toward it.
 
@@ -428,7 +396,7 @@ It is more auditable than any OU tree ever was, because its state is versioned a
 
 The organization that operates this model has exchanged the structural governance of Active Directory — and the perimeter dependency, attack surface, and audit opacity that came with it — for a cloud-native governance posture that provides the same structural coverage, with none of those liabilities, and with auditability and automation properties that the on-premises model could never have achieved. That is what this series set out to build. It is built.
 
-Appendix: Script and Query Reference
+### Appendix: Script and Query Reference
 
 The following table provides a consolidated reference to all scripts, KQL queries, and policy definitions introduced in this document, with the chapter where each is defined and the pipeline stage in which it executes.
 
@@ -443,7 +411,7 @@ The following table provides a consolidated reference to all scripts, KQL querie
 | Certificate-OrgPath Drift (KQL) | KQL (AuditLogs) | 4 | Drift Detection | Scheduled weekly alert |
 | Get-DecommissionReadinessScore.ps1 | PowerShell | 5 | Readiness Assessment | Weekly pipeline / on-demand |
 
-Appendix: Series Index
+### Appendix: Series Index
 
 | **Part** | **Title** | **Primary Contribution** |
 |----|----|----|
@@ -456,4 +424,4 @@ Appendix: Series Index
 | Seven | The Defender Suite | Extended OrgPath to Defender for Endpoint, Identity, Cloud Apps, and Cloud — completing the security operations surface coverage |
 | **Eight** | **DNS Governance, Cloud PKI, and the Complete Governance Model** | **Extended OrgPath to DNS and PKI infrastructure; delivered the Decommissioning Readiness Score framework; synthesized the complete model across all eight surfaces** |
 
-— End of Part Eight — End of Series —
+### — End of Part Eight — End of Series —

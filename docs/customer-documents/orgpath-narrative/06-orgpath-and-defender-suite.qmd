@@ -12,89 +12,55 @@ source-document: "OrgPath and the Microsoft Defender Suite — Organizational Co
 rendered-from: "Pandoc-converted Markdown sidecar of OneDrive .docx; body preserved unchanged."
 ---
 
-*OrgPath Implementation Series — Part Seven of Eight*
+## Chapter 2 — Defender for Endpoint: Device Groups and RBAC Scoping
 
-OrgPath and the Microsoft Defender Suite
+### MDE device group model and OrgPath alignment
 
-**Organizational Context in Security Operations**
+### Dynamic group-backed MDE device group synchronization
 
-**Series:** OrgTree and OrgPath — Enterprise Governance Substrate for the Microsoft Identity Stack\
-**Document:** Part Seven — Defender Suite Integration Layer\
-**Audience:** Senior Security Engineers, SOC Architects, Identity and Access Engineers\
-**Prerequisites:** Parts One through Six (Governance Gap, Substrate Requirements, OrgTree/OrgPath Design, Build Implementation, Security Operations Integration, Intune Device Governance)\
-**Prepared:** May 2026
+### RBAC scoping patterns for organizational SOC roles
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>⚠ Prerequisites</strong></p>
-<p>This document assumes completion of Parts One through Six. The OrgTree registry, OrgPath ETL pipeline, dynamic group library, and the Entra ID extension attribute infrastructure described in those parts are all prerequisites for the integrations documented here. Code samples reference the governance repository structure, registry schema, and naming conventions established in earlier parts.</p></td>
-</tr>
-</tbody>
-</table>
+## Chapter 3 — Defender for Identity: Investigation Enrichment and Alert Context
 
-Contents
+### OrgPath in MDI entity profiles
 
-**Chapter 1 — Security Signals Without Organizational Structure**
+### Sentinel analytics rules with organizational differentiation
 
-The context gap in native Defender telemetry
+### Surge detection across OrgPath segments
 
-What OrgPath changes about the SOC operating model
+## Chapter 4 — Defender for Cloud Apps: Session Controls and Anomaly Detection
 
-**Chapter 2 — Defender for Endpoint: Device Groups and RBAC Scoping**
+### Conditional Access App Control integration with OrgPath groups
 
-MDE device group model and OrgPath alignment
+### Per-segment anomaly detection thresholds
 
-Dynamic group-backed MDE device group synchronization
+## Chapter 5 — Defender for Cloud and Defender for Servers: Tag-Based Initiative Targeting
 
-RBAC scoping patterns for organizational SOC roles
+### Azure Policy initiative enforcement by OrgPath tag
 
-**Chapter 3 — Defender for Identity: Investigation Enrichment and Alert Context**
+### Resource Graph queries for organizational security posture
 
-OrgPath in MDI entity profiles
+## Chapter 6 — The Unified Defender XDR View: Cross-Product Security Posture by OrgPath
 
-Sentinel analytics rules with organizational differentiation
+### Unified KQL dashboard query
 
-Surge detection across OrgPath segments
+### Sentinel workbook design for organizational SOC operations
 
-**Chapter 4 — Defender for Cloud Apps: Session Controls and Anomaly Detection**
+## Chapter 7 — Automated Response Playbooks: OrgPath-Aware Incident Containment
 
-Conditional Access App Control integration with OrgPath groups
+### Logic App playbook architecture and response matrix
 
-Per-segment anomaly detection thresholds
+### Tier-differentiated containment automation
 
-**Chapter 5 — Defender for Cloud and Defender for Servers: Tag-Based Initiative Targeting**
+## Chapter 8 — The Complete Defender Integration Architecture
 
-Azure Policy initiative enforcement by OrgPath tag
+### End-to-end data flow from OrgTree to SOC analyst screen
 
-Resource Graph queries for organizational security posture
+### Operational properties delivered by the complete architecture
 
-**Chapter 6 — The Unified Defender XDR View: Cross-Product Security Posture by OrgPath**
+## Chapter 1 — Security Signals Without Organizational Structure
 
-Unified KQL dashboard query
-
-Sentinel workbook design for organizational SOC operations
-
-**Chapter 7 — Automated Response Playbooks: OrgPath-Aware Incident Containment**
-
-Logic App playbook architecture and response matrix
-
-Tier-differentiated containment automation
-
-**Chapter 8 — The Complete Defender Integration Architecture**
-
-End-to-end data flow from OrgTree to SOC analyst screen
-
-Operational properties delivered by the complete architecture
-
-**CHAPTER ONE**
-
-Security Signals Without Organizational Structure
-
-The Context Gap in Native Defender Telemetry
+### The Context Gap in Native Defender Telemetry
 
 The Microsoft Defender suite occupies a unique position in the enterprise security toolchain. No other product family generates telemetry of comparable breadth and depth across as many attack surfaces simultaneously. Defender for Endpoint produces continuous behavioral signal from every enrolled workstation and server: process creation chains, network connections, file system writes, registry modifications, memory access patterns, and MITRE ATT&CK technique attributions, all correlated and scored by the cloud-native detection engine. Defender for Identity monitors the authentication fabric itself — Active Directory domain controllers, Entra ID sign-in events, service ticket requests, and lateral movement indicators — producing alert-level detections for techniques that span decades of adversarial tradecraft from Kerberoasting to DCSync. Defender for Cloud Apps watches the application layer: which users are accessing which cloud services, at what volume, from which locations, with what classification of data in scope. Defender for Cloud surveys the infrastructure plane, evaluating every Azure resource and Arc-enrolled server against security baselines and surfacing configuration drift, missing patches, and exposed attack surface. The unified Defender XDR portal and Microsoft Sentinel pull all of these signals into a correlated incident view that, at its best, traces an attack chain across device, identity, application, and infrastructure in a single investigation pane.
 
@@ -116,7 +82,7 @@ Consider the most direct illustration of why this matters. A penetration test is
 </tbody>
 </table>
 
-What OrgPath Changes About the SOC Operating Model
+### What OrgPath Changes About the SOC Operating Model
 
 When every device, user, and Arc-enrolled server in the environment carries an OrgPath value, and when that value is present in the telemetry streams that feed Microsoft Sentinel and the Defender portal, organizational context becomes a first-class attribute in every investigation. The change this makes to the SOC operating model is architectural, not cosmetic.
 
@@ -126,13 +92,11 @@ An alert on a device whose OrgPath is /Root/Engineering/SecurityTesting during a
 
 The five chapters that follow describe exactly how this organizational context is introduced into each layer of the Defender suite. Chapter Two covers Defender for Endpoint device groups and the RBAC scoping model that gives organizational SOC roles bounded visibility into their assigned segments. Chapter Three covers Defender for Identity investigation enrichment — how OrgPath surfaces in the MDI entity profile and how Sentinel analytics rules fire differentiated alerts based on the organizational position of the affected identity. Chapter Four covers Defender for Cloud Apps session controls and anomaly detection, explaining how per-segment behavioral baselines are established through Conditional Access policy differentiation backed by OrgPath dynamic user groups. Chapter Five covers Defender for Cloud and Defender for Servers, showing how Azure Policy initiative targeting and Resource Graph queries use the OrgPath resource tag on Arc-enrolled servers to produce an infrastructure security posture view organized by organizational hierarchy. Chapter Six presents the unified cross-product KQL query that joins all Defender signal streams into a single organizational security posture dashboard. Chapter Seven presents the Logic App playbook architecture that reads OrgPath at incident creation time and drives contextually appropriate automated response based on the governance-controlled response matrix.
 
-**CHAPTER TWO**
-
-Defender for Endpoint: Device Groups and RBAC Scoping
+## Chapter 2 — Defender for Endpoint: Device Groups and RBAC Scoping
 
 *Bringing Organizational Structure into the MDE Management Plane*
 
-The MDE Device Group Model and Its Relationship to OrgPath
+### The MDE Device Group Model and Its Relationship to OrgPath
 
 Defender for Endpoint organizes devices into device groups for two distinct and equally important purposes. The first is policy assignment: device groups are the targeting mechanism for antivirus configuration profiles, attack surface reduction rule sets, endpoint detection and response settings, and automated investigation and remediation configurations. The second is RBAC scoping: device groups determine which analysts and administrators can see and act on which devices in the Defender portal. Both purposes benefit directly from OrgPath, and the integration between them is what makes the organizational SOC model operational at scale.
 
@@ -140,7 +104,7 @@ In the native MDE model, device groups are created manually in the Defender port
 
 The relationship between Entra ID dynamic groups and MDE device groups is the core mechanism of this integration. MDE device groups, configured under **Settings \> Endpoints \> Device groups** in the Defender portal, support Entra ID group-backed membership. When the Entra ID group specified as the membership source is a dynamic group whose membership rule evaluates the OrgPath device extension attribute, the MDE device group membership updates automatically whenever a device's OrgPath changes. The ETL pipeline that writes OrgPath values to device objects — established in Part Four — is the same pipeline that drives this membership. No additional automation is required in MDE itself. The organizational hierarchy, maintained in OrgTree and propagated by the pipeline, governs MDE policy scope and analyst visibility boundaries without any MDE-specific maintenance process.
 
-Device Group Hierarchy Design
+### Device Group Hierarchy Design
 
 Not every OrgTree leaf node warrants its own MDE device group. A team of three developers with identical security policy requirements and a shared SOC analyst does not benefit from a dedicated device group; it adds administrative overhead without adding security differentiation. The design principle is that MDE device groups should be created at the level of organizational granularity at which one or more of the following conditions is true:
 
@@ -168,13 +132,13 @@ The following table shows the recommended device group structure for a represent
 | /Root/Legal | Division | Yes | MDE-LEGAL | Partial |
 | /Root/Executive | Segment | Yes | MDE-EXECUTIVE | Full |
 
-MDE Device Group Synchronization Script
+### MDE Device Group Synchronization Script
 
 The following PowerShell script reads the OrgTree registry, identifies nodes flagged as MDE governance boundaries, retrieves their associated Entra ID group GUIDs from node metadata, and creates the corresponding MDE device groups via the Defender for Endpoint REST API. The script is idempotent: it checks for existing groups before creating new ones and skips nodes whose MDE group already exists. Run this script whenever the OrgTree registry is updated to add or modify MDE boundary nodes. Authentication uses certificate-based client credentials, which is the recommended approach for unattended automation against the MDE API.
 
 \#Requires -Version 5.1 \<# data-id="167" .SYNOPSIS Creates Defender for Endpoint device groups aligned with OrgPath branch groups. .DESCRIPTION Reads the OrgTree registry for nodes marked as MDE governance boundaries (MDEBoundary: true in node metadata). For each such node, creates an MDE device group backed by the corresponding ORG-BRANCH-{NodeId} Entra ID group. MDE Device Group API: https://api.securitycenter.microsoft.com/api/machinegroups Authentication: OAuth 2.0 client credentials flow using a certificate-bound app registration. Required API permission: WindowsDefenderATP — Machine.ReadWrite.All .PARAMETER OrgTreeRegistryPath Local path to the OrgTree registry JSON file produced by the ETL pipeline. Example: "C:\governance\orgtree\registry.json" .PARAMETER MDETenantId Entra ID tenant ID. Example: "f1e2d3c4-b5a6-f1e2-d3c4-b5a6f1e2d3c4" Substitute your actual tenant GUID from the Entra ID overview blade. .PARAMETER MDEAppId Client ID of the app registration granted WindowsDefenderATP Machine.ReadWrite.All. Example: "a9b8c7d6-e5f4-a9b8-c7d6-e5f4a9b8c7d6" Substitute the Application (client) ID from the app registration overview blade. .PARAMETER MDECertThumbprint Thumbprint of the certificate uploaded to the app registration for client credentials authentication. The certificate must be present in Cert:\LocalMachine\My on the machine running this script. Example: "AABBCCDDEEFF001122334455AABBCCDDEEFF0011" \#\> param( \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[string\]\$MDETenantId = "f1e2d3c4-b5a6-f1e2-d3c4-b5a6f1e2d3c4", \# SUBSTITUTE: Your tenant GUID \[string\]\$MDEAppId = "a9b8c7d6-e5f4-a9b8-c7d6-e5f4a9b8c7d6", \# SUBSTITUTE: Your app registration client ID \[string\]\$MDECertThumbprint = "AABBCCDDEEFF001122334455AABBCCDDEEFF0011" \# SUBSTITUTE: Your certificate thumbprint ) Set-StrictMode -Version Latest \$ErrorActionPreference = "Stop" Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Starting MDE device group synchronization" \# --------------------------------------------------------------- \# Step 1: Acquire MDE API Token via Certificate Credential \# The MDE API uses the legacy Azure AD v1 token endpoint (resource=). \# --------------------------------------------------------------- \$cert = Get-Item "Cert:\LocalMachine\My\\MDECertThumbprint" \$tokenUrl = "https://login.microsoftonline.com/\$MDETenantId/oauth2/token" \# Build the JWT client assertion (RFC 7523) \$now = \[DateTimeOffset\]::UtcNow \$header = @{ alg = "RS256"; typ = "JWT"; x5t = \[Convert\]::ToBase64String(\$cert.GetCertHash()) } \| ConvertTo-Json -Compress \$payload = @{ aud = \$tokenUrl exp = \$now.AddMinutes(10).ToUnixTimeSeconds() iss = \$MDEAppId jti = \[Guid\]::NewGuid().ToString() nbf = \$now.ToUnixTimeSeconds() sub = \$MDEAppId } \| ConvertTo-Json -Compress function ConvertTo-Base64Url(\[string\]\$input) { \[Convert\]::ToBase64String( \[Text.Encoding\]::UTF8.GetBytes(\$input) ).TrimEnd('=') -replace '\\', '-' -replace '/', '\_' } \$headerB64 = ConvertTo-Base64Url \$header \$payloadB64 = ConvertTo-Base64Url \$payload \$toSign = "\$headerB64.\$payloadB64" \$rsa = \$cert.GetRSAPrivateKey() \$sigBytes = \$rsa.SignData( \[Text.Encoding\]::UTF8.GetBytes(\$toSign), \[Security.Cryptography.HashAlgorithmName\]::SHA256, \[Security.Cryptography.RSASignaturePadding\]::Pkcs1 ) \$sigB64 = \[Convert\]::ToBase64String(\$sigBytes).TrimEnd('=') -replace '\\', '-' -replace '/', '\_' \$clientAssertion = "\$toSign.\$sigB64" \# Exchange the JWT assertion for an access token \$tokenResponse = Invoke-RestMethod -Method POST -Uri \$tokenUrl -Body @{ grant_type = "client_credentials" client_id = \$MDEAppId client_assertion_type = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" client_assertion = \$clientAssertion resource = "https://api.securitycenter.microsoft.com" } \$token = \$tokenResponse.access_token \$headers = @{ Authorization = "Bearer \$token" "Content-Type" = "application/json" } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] MDE API token acquired" \# --------------------------------------------------------------- \# Step 2: Load OrgTree Registry and Identify MDE Boundary Nodes \# The registry is produced by the ETL pipeline (Part Four). \# Each node with MDEBoundary = true will receive an MDE device group. \# Each such node must also have EntraGroupId populated by the \# dynamic group creation step from Part Four. \# --------------------------------------------------------------- \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$boundaryNodes = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" -and \$\_.MDEBoundary -eq \$true } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] MDE boundary nodes found: \$(\$boundaryNodes.Count)" \# --------------------------------------------------------------- \# Step 3: Get Existing MDE Device Groups (to avoid duplicates) \# --------------------------------------------------------------- \$existingGroups = Invoke-RestMethod \` -Method GET \` -Uri "https://api.securitycenter.microsoft.com/api/machinegroups" \` -Headers \$headers \$existingGroupMap = @{} foreach (\$g in \$existingGroups.value) { \$existingGroupMap\[\$g.name\] = \$g } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Existing MDE device groups: \$(\$existingGroupMap.Count)" \# --------------------------------------------------------------- \# Step 4: Create MDE Device Groups for Each Boundary Node \# --------------------------------------------------------------- foreach (\$node in \$boundaryNodes) { \# MDE device group name is derived from the node ID. \# NAMING CONVENTION: MDE-{NodeId} — adjust prefix to match your environment naming standard. \$mdeName = "MDE-\$(\$node.Id)" if (\$existingGroupMap.ContainsKey(\$mdeName)) { Write-Host " \[SKIP\] Group already exists: \$mdeName" continue } \# Determine automated remediation level from the node's governance tier. \# Tier0 nodes receive Full automated remediation (IR team has pre-approved). \# Tier1 nodes receive Partial (semi-automated, pending analyst approval). \# All other nodes receive NoRemediation (manual analyst action required). \# SUBSTITUTE: Adjust tier-to-remediation mapping for your security posture requirements. \$remediationLevel = switch (\$node.Tier) { "Tier0" { "Full" } "Tier1" { "Partial" } default { "NoRemediation" } } \# EntraGroupId is stored in the OrgTree node metadata, populated when the \# ORG-BRANCH dynamic group was created in Part Four. \# If EntraGroupId is missing, the node was not fully provisioned — skip it. if (\[string\]::IsNullOrEmpty(\$node.EntraGroupId)) { Write-Warning " \[WARN\] Node \$(\$node.Id) has no EntraGroupId — skipping." continue } \$body = @{ name = \$mdeName description = "OrgPath device group: \$(\$node.Name) \| Path: \$(\$node.Path)" isUnassignedMachineGroup = \$false \# This is an explicitly scoped group isAzureActiveDirectoryGroup = \$true \# Membership driven by Entra ID group \# The Entra ID group ID for ORG-BRANCH-{NodeId} — stored in OrgTree node metadata. \# Retrieve separately with: Get-MgGroup -Filter "displayName eq 'ORG-BRANCH-\$(\$node.Id)'" azureActiveDirectoryGroupId = \$node.EntraGroupId remediationLevel = \$remediationLevel } \| ConvertTo-Json -Depth 5 Invoke-RestMethod \` -Method POST \` -Uri "https://api.securitycenter.microsoft.com/api/machinegroups" \` -Headers \$headers \` -Body \$body \| Out-Null Write-Host " \[CREATED\] MDE group: \$mdeName \| Remediation: \$remediationLevel \| EntraGroup: \$(\$node.EntraGroupId)" } Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] MDE device group synchronization complete."
 
-MDE RBAC Scoping for Organizational SOC Roles
+### MDE RBAC Scoping for Organizational SOC Roles
 
 With MDE device groups created and backed by OrgPath-derived dynamic groups, the RBAC layer can be configured to give each organizational SOC team bounded visibility into their assigned segment. MDE custom roles are created under **Settings \> Endpoints \> Roles** in the Defender portal. Each custom role is defined by a set of permissions and a set of device groups to which those permissions apply.
 
@@ -200,31 +164,29 @@ This arrangement produces several operational properties that are worth naming e
 </tbody>
 </table>
 
-**CHAPTER THREE**
-
-Defender for Identity: Investigation Enrichment and Alert Context
+## Chapter 3 — Defender for Identity: Investigation Enrichment and Alert Context
 
 *Making MDI Alerts Organizationally Legible*
 
-What MDI Knows and What It Does Not Know
+### What MDI Knows and What It Does Not Know
 
 Defender for Identity is the most identity-focused product in the Defender suite. It deploys sensors on Active Directory domain controllers and reads the Entra ID audit stream to monitor authentication activity, service ticket requests, directory query patterns, and replication traffic. Its detection coverage spans the attack chain that adversaries use once they have an initial foothold in an enterprise environment: reconnaissance through LDAP queries and SPN enumeration, credential access through Kerberoasting and AS-REP roasting, lateral movement through Pass-the-Hash and Pass-the-Ticket, persistence through Golden Ticket and Silver Ticket creation, and privilege escalation through DCSync and AdminSDHolder abuse. Every MDI alert identifies the source account, the target resource or domain controller, the technique with MITRE ATT&CK mapping, the confidence level, and the evidence trail.
 
 What MDI does not natively surface is the organizational position of the affected identities. An analyst investigating a Kerberoasting detection sees the account that requested service tickets and the service accounts that were targeted. To determine the organizational significance of those identities — whether the source is an employee, a contractor, or a service account; which division they belong to; whether the targeted service account is a Tier 0 infrastructure credential or a Tier 2 application service account — the analyst must perform directory lookups outside the MDI investigation screen. This reconstructed context drives the alert severity classification, the escalation decision, and the response priority. Without it, every Kerberoasting detection is treated identically, regardless of whether it targets domain admin credentials or a printer queue service account.
 
-OrgPath in the MDI Entity Profile
+### OrgPath in the MDI Entity Profile
 
 When OrgPath is written to the on-premises Active Directory user object as an extension attribute — which it is when the ETL pipeline uses Entra Connect to synchronize OrgPath values back to on-premises AD, as documented in Part Four — MDI displays the extension attribute value in the entity details panel for every user it investigates. The entity profile panel in the MDI investigation experience in the Defender portal shows synchronized directory attributes, and OrgPath appears there alongside department, title, and manager. An analyst opening the source account's entity profile in a Kerberoasting investigation sees the OrgPath value immediately, without performing any additional lookup.
 
 For service accounts, OrgPath placement in the OrgTree is particularly important. Service accounts should be placed in OrgTree nodes that reflect their infrastructure tier — a Tier 0 service account running on a domain controller should carry the path /Root/Infrastructure/Tier0/ServiceAccounts, not an application team path or an unpositioned state. When an MDI alert targets a service account with a Tier 0 OrgPath, the Sentinel analytics rule described below fires a high-severity, high-urgency alert rather than routing the detection to the standard queue. This differentiation is automatic, data-driven, and requires no analyst judgment at intake.
 
-Sentinel Analytics Rule: Sensitive OrgPath Segment MDI Alerts
+### Sentinel Analytics Rule: Sensitive OrgPath Segment MDI Alerts
 
 The following KQL analytics rule is deployed to Microsoft Sentinel. It runs on a five-minute frequency, examines all MDI alerts in the lookback window, joins them to the most recent OrgPath value for each source identity, and fires a high-severity Sentinel incident for any MDI detection involving a principal in a designated sensitive OrgPath branch. The sensitive OrgPath list is maintained as a parameter in the rule and updated when the OrgTree governance boundary classification changes.
 
 // --------------------------------------------------------------- // Sentinel Analytics Rule: MDI Alerts in Sensitive OrgPath Segments // Rule Name: MDI-SensitiveOrgPath-HighSeverity // Frequency: Every 5 minutes // Lookback: 5 minutes // Severity: High // Trigger: Any MDI alert involving a principal in a sensitive OrgPath branch // Incident: Create incident = enabled // Tables: SecurityAlert, AuditLogs // --------------------------------------------------------------- // SUBSTITUTE: Update this list to match the sensitive governance boundaries // in your OrgTree. These prefixes should align with nodes where compromise // would constitute a P1 incident requiring immediate executive notification. let SensitiveOrgPaths = dynamic(\[ "/Root/Executive", "/Root/Infrastructure/Tier0", "/Root/Finance/Treasury", "/Root/Legal", "/Root/Security/SOC" \]); // Pull MDI alerts from the lookback window. // ProviderName for MDI alerts is "Microsoft Defender for Identity". let MDIAlerts = SecurityAlert \| where TimeGenerated \>= ago(5m) \| where ProviderName == "Microsoft Defender for Identity" \| extend // ExtendedProperties carries alert-specific fields as a JSON bag. // "Account Sid" and "User Name" key names are MDI-specific — do not rename. SourceUserId = tostring(todynamic(ExtendedProperties)\["Account Sid"\]), SourceUPN = tostring(todynamic(ExtendedProperties)\["User Name"\]), AlertTechnique = tostring(todynamic(ExtendedProperties)\["Attack tactic"\]) \| project TimeGenerated, SystemAlertId, AlertName, AlertSeverity, SourceUserId, SourceUPN, AlertTechnique, Description; // Build the most recent OrgPath lookup for each user from the Entra ID audit log. // The ETL pipeline writes OrgPath as an "Update user" operation on the extension attribute. // 7-day lookback provides stable coverage even if audit ingestion is intermittent. let UserOrgPaths = AuditLogs \| where TimeGenerated \>= ago(7d) \| where OperationName == "Update user" \| mv-expand Props = AdditionalDetails \| where tostring(Props.displayName) contains "OrgPath" // SUBSTITUTE: Replace "OrgPath" with the exact displayName of your OrgPath // extension attribute as it appears in the Entra ID audit log. // Typically: "extension\_{AppIdWithoutHyphens}\_OrgPath" \| extend UserId = tostring(TargetResources\[0\].id), UPN = tostring(TargetResources\[0\].userPrincipalName), OrgPath = tostring(Props.newValue) \| summarize arg_max(TimeGenerated, OrgPath) by UserId, UPN \| project UserId, UPN, OrgPath; // Join alerts to OrgPath and filter to sensitive segments. MDIAlerts \| join kind=inner UserOrgPaths on \$left.SourceUPN == \$right.UPN \| where OrgPath has_any (SensitiveOrgPaths) \| extend SensitivePath = true, EscalationNeeded = true, // InvestigationTier drives the ITSM queue routing in the Logic App playbook (Chapter 7). InvestigationTier = "P1" \| project TimeGenerated, SystemAlertId, AlertName, AlertSeverity, SourceUPN, OrgPath, AlertTechnique, Description, SensitivePath, EscalationNeeded, InvestigationTier
 
-Sentinel Analytics Rule: MDI Alert Surge Detection by OrgPath Segment
+### Sentinel Analytics Rule: MDI Alert Surge Detection by OrgPath Segment
 
 The sensitive segment rule handles the case of a single high-value alert. The surge detection rule handles a different and equally dangerous pattern: a sustained volume of identity-based alerts concentrated in a specific organizational segment. This pattern is characteristic of an adversary who has established persistent access in a division and is conducting ongoing reconnaissance or is attempting multiple techniques in sequence. The individual alerts may each be moderate severity, none triggering the sensitive segment rule on their own, but the concentration of activity in one segment over a rolling hour is a significant compound signal.
 
@@ -242,13 +204,11 @@ The sensitive segment rule handles the case of a single high-value alert. The su
 </tbody>
 </table>
 
-**CHAPTER FOUR**
-
-Defender for Cloud Apps: Session Controls and Anomaly Detection by Organizational Segment
+## Chapter 4 — Defender for Cloud Apps: Session Controls and Anomaly Detection by Organizational Segment
 
 *Scoping Cloud Application Security to Organizational Position*
 
-Why Organizational Context Is Essential for MDCA
+### Why Organizational Context Is Essential for MDCA
 
 Defender for Cloud Apps monitors user behavior across cloud applications and produces anomaly detections when activity deviates from established baselines. The behavioral baseline is the critical variable. MDCA establishes baselines per user and per application, flagging deviations from the user's normal activity pattern. The limitation of this per-user baseline model is that it cannot differentiate between legitimate role-driven behavior and actual anomalies when the user's legitimate behavior is itself atypical relative to the broader tenant baseline.
 
@@ -256,31 +216,29 @@ A data analyst who downloads thousands of records from SharePoint and OneDrive d
 
 OrgPath resolves this by enabling per-segment session policy and anomaly detection configuration. MDCA's session controls are applied through Conditional Access App Control policies, which are Conditional Access policies with session control settings that route application traffic through MDCA's proxy for real-time inspection. When Conditional Access policies are scoped to OrgPath-derived dynamic user groups, the session control parameters — download limits, upload restrictions, file classification filters, session duration controls — are set per organizational segment rather than globally. The data analytics team receives a policy calibrated to their download volume norms. The legal department receives a policy calibrated to their much lower normal activity with correspondingly tighter anomaly thresholds.
 
-Conditional Access App Control Policy Creation by OrgPath Segment
+### Conditional Access App Control Policy Creation by OrgPath Segment
 
 The following PowerShell script creates a Conditional Access policy that applies MDCA session monitoring to a specific OrgPath user group. The script is parameterized so it can be called once per OrgPath node that requires a distinct MDCA session control policy. For nodes that share the same session control parameters, the parent branch group's policy provides coverage through dynamic group inheritance.
 
 \#Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Beta.Identity.SignIns \<# data-id="215" .SYNOPSIS Creates a Conditional Access policy applying MDCA session controls to a specific OrgPath branch user group. .DESCRIPTION Creates a Conditional Access policy in report-only mode that routes sessions for users in the specified OrgPath branch group through Microsoft Defender for Cloud Apps for real-time session monitoring. Start all policies in "enabledForReportingButNotEnforced" mode. Validate that no legitimate workflows are blocked by reviewing the sign-in log CA policy report in Entra ID for at least five business days before switching to "enabled". .PARAMETER OrgBranchGroupId Entra ID group GUID of the ORG-BRANCH-{NodeId} user group for this segment. Retrieve with: (Get-MgGroup -Filter "displayName eq 'ORG-BRANCH-{NodeId}'").Id SUBSTITUTE: Replace with the actual GUID for each segment you are onboarding. .PARAMETER NodeId OrgTree node ID for naming and tracking. Must match the node ID in the registry. Example: "FINANCE-ACCOUNTING" .PARAMETER NodeName Human-readable name of the organizational segment. Used in the policy display name. Example: "Finance Accounting" .PARAMETER CloudAppSecurityType MDCA session control type. Options: monitorOnly — Monitor all session activity; no blocking blockDownloads — Allow session but block all file downloads mcasConfigured — Apply the app-specific MDCA policy configured in the MDCA portal SUBSTITUTE: Select appropriate control level per segment sensitivity. Start with monitorOnly for all segments during initial rollout. .NOTES Required Graph scope: Policy.ReadWrite.ConditionalAccess Cloud app IDs are Entra ID service principal appIds for Microsoft cloud apps. 20892 = SharePoint Online, 15600 = OneDrive for Business Add app IDs from the Entra ID Enterprise Applications blade for additional apps. \#\> param( \[Parameter(Mandatory=\$true)\] \[string\]\$OrgBranchGroupId, \[Parameter(Mandatory=\$true)\] \[string\]\$NodeId, \[Parameter(Mandatory=\$true)\] \[string\]\$NodeName, \[ValidateSet("monitorOnly","blockDownloads","mcasConfigured")\] \[string\]\$CloudAppSecurityType = "monitorOnly" ) Connect-MgGraph -Scopes "Policy.ReadWrite.ConditionalAccess" -NoWelcome \$policyBody = @{ displayName = "MDCA Session Control — \$NodeName (ORG-BRANCH-\$NodeId)" \# Start in report-only mode. Switch to "enabled" after validation. \# SUBSTITUTE: Change to "enabled" after reviewing CA sign-in logs. state = "enabledForReportingButNotEnforced" conditions = @{ users = @{ includeGroups = @(\$OrgBranchGroupId) \# SUBSTITUTE: Add exclusion groups for break-glass and service accounts \# that must not be routed through MDCA proxy. excludeGroups = @() } applications = @{ \# 20892 = SharePoint Online, 15600 = OneDrive for Business \# SUBSTITUTE: Add additional Microsoft cloud app IDs as needed. \# Find app IDs in Entra ID \> Enterprise Applications \> the app \> Overview \> Application ID. includeApplications = @("20892", "15600") } \# Apply to all client types — browser and modern auth desktop/mobile clients. clientAppTypes = @("browser", "mobileAppsAndDesktopClients") \# SUBSTITUTE: Add location conditions if the segment has defined work location policies. \# locations = @{ includeLocations = @("AllTrusted"); excludeLocations = @() } } \# No grant controls — this policy applies session controls only. \# Access is governed by separate Conditional Access policies. grantControls = \$null sessionControls = @{ cloudAppSecurity = @{ \# cloudAppSecurityType controls what MDCA does with the routed session. \# monitorOnly: Inspect and log; no enforcement actions. \# blockDownloads: Block all file download attempts. \# mcasConfigured: Apply the per-app MDCA portal policy for this app. cloudAppSecurityType = \$CloudAppSecurityType isEnabled = \$true } \# Re-authentication every 4 hours for sessions under MDCA monitoring. \# SUBSTITUTE: Adjust frequency per segment risk tolerance. signInFrequency = @{ value = 4 type = "hours" authenticationType = "primaryAndSecondaryAuthentication" frequencyInterval = "timeBased" isEnabled = \$true } } } \$result = Invoke-MgGraphRequest \` -Method POST \` -Uri "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies" \` -Body (\$policyBody \| ConvertTo-Json -Depth 10) \` -ContentType "application/json" Write-Host "\[SUCCESS\] Created CA policy ID: \$(\$result.id)" Write-Host " Display Name: MDCA Session Control — \$NodeName" Write-Host " State: Report-only (validate before enforcing)" Write-Host " Segment: \$NodeId \| Group: \$OrgBranchGroupId" Disconnect-MgGraph
 
-MDCA Activity Anomaly Detection by OrgPath — Sentinel Workbook Query
+### MDCA Activity Anomaly Detection by OrgPath — Sentinel Workbook Query
 
 The following KQL query is designed for use as a Sentinel workbook tile. It joins the MDCA activity stream from CloudAppEvents to the OrgPath lookup derived from the audit log, producing a per-segment summary of anomaly detections, bulk download events, and sensitive file accesses over the past twenty-four hours. This view gives the SOC an organizational map of cloud application risk that complements the identity risk view from the MDI queries in Chapter Three.
 
 // --------------------------------------------------------------- // MDCA Activity Anomalies by OrgPath // Table: CloudAppEvents (populated when Defender XDR data connector // is enabled in Microsoft Sentinel) // Purpose: Per-segment cloud app anomaly and sensitive access summary // Use: Sentinel workbook tile; set auto-refresh to 1 hour // --------------------------------------------------------------- // Build OrgPath lookup from Entra ID audit log. // SUBSTITUTE: Match the exact displayName of your OrgPath extension attribute. let UserOrgPaths = AuditLogs \| where TimeGenerated \>= ago(7d) \| where OperationName == "Update user" \| mv-expand Props = AdditionalDetails \| where tostring(Props.displayName) contains "OrgPath" \| extend UPN = tostring(TargetResources\[0\].userPrincipalName), OrgPath = tostring(Props.newValue) \| summarize arg_max(TimeGenerated, OrgPath) by UPN \| project UPN, OrgPath; CloudAppEvents \| where TimeGenerated \>= ago(24h) // Filter to events with a resolved account identity. \| where isnotempty(AccountId) // AccountId in CloudAppEvents contains the UPN for Microsoft 365 apps. // SUBSTITUTE: If your environment uses a different account identifier format, // adjust the join key accordingly. For third-party apps, AccountId may be an email address. \| join kind=leftouter UserOrgPaths on \$left.AccountId == \$right.UPN // Users with no OrgPath assignment are flagged as UNPOSITIONED. // UNPOSITIONED activity should be investigated — these may be unmanaged accounts. \| extend OrgPath = iif(isempty(OrgPath), "UNPOSITIONED", OrgPath) \| summarize TotalEvents = count(), // Anomaly events: those flagged by MDCA policy or behavioral detection. // ActionType contains "Anomaly" covers MDCA's built-in anomaly detections. // ActionType contains "Policy" covers custom MDCA policy violations. AnomalyEvents = countif(ActionType contains "Anomaly" or ActionType contains "Policy"), // BulkDownloads: File download events — volume indicates potential data staging. BulkDownloadCount = countif(ActionType == "FileDownloaded"), // SensitiveAccess: Events involving files with sensitivity labels applied. // Sensitivity field is populated when Microsoft Purview labels are in scope. SensitiveAccess = countif(Sensitivity contains "Confidential" or Sensitivity contains "Restricted" or Sensitivity contains "Highly Confidential"), UniqueUsers = dcount(AccountId), UniqueApps = dcount(Application) by OrgPath, bin(TimeGenerated, 1h) // Focus the workbook tile on segments with detected anomalies or elevated sensitive access. // SUBSTITUTE: Adjust thresholds to match your environment's normal sensitivity label volume. \| where AnomalyEvents \> 0 or SensitiveAccess \> 5 \| project TimeGenerated, OrgPath, TotalEvents, AnomalyEvents, BulkDownloadCount, SensitiveAccess, UniqueUsers, UniqueApps \| order by AnomalyEvents desc, SensitiveAccess desc
 
-**CHAPTER FIVE**
-
-Defender for Cloud and Defender for Servers: Tag-Based Initiative Targeting
+## Chapter 5 — Defender for Cloud and Defender for Servers: Tag-Based Initiative Targeting
 
 *Organizational-Context Security Posture for Hybrid Workloads*
 
-The Infrastructure Plane and the OrgPath Resource Tag
+### The Infrastructure Plane and the OrgPath Resource Tag
 
 The preceding chapters of this document operated primarily on the identity and device planes: users and endpoints. Defender for Cloud operates on a different plane — the infrastructure plane: Azure virtual machines, Arc-enrolled on-premises servers, container workloads, managed databases, and storage accounts. These infrastructure assets carry OrgPath as a resource tag, applied by the tagging pipeline described in Part Five of this series. That resource tag is the bridge between the infrastructure governance model and the Defender for Cloud security posture model, and it enables two capabilities that are not achievable through native Defender for Cloud configuration alone: plan-level differentiation by organizational tier, and security posture reporting organized by organizational hierarchy.
 
 The organizational significance of this is substantial. Enterprise infrastructure is rarely uniform in its security requirements. Tier 0 domain controllers, certificate authorities, and privileged access workstations have security hardening requirements that are categorically more stringent than Tier 1 application servers or Tier 2 developer build machines. Defender for Cloud offers two server protection plans — Plan 1, which includes Microsoft Defender for Endpoint integration and basic vulnerability assessment, and Plan 2, which adds file integrity monitoring, just-in-time VM access, adaptive application controls, Docker host hardening assessment, and the full vulnerability assessment engine. Applying Plan 2 universally across all servers is expensive and may not be operationally warranted for low-sensitivity workloads. Applying Plan 1 uniformly leaves Tier 0 infrastructure without the enhanced detection coverage it requires. OrgPath resource tags enable the organization to express this differentiation through Azure Policy without maintaining manual per-resource or per-subscription plan assignments.
 
-Azure Policy Definition: Tier 0 Defender for Servers Plan 2 Enforcement
+### Azure Policy Definition: Tier 0 Defender for Servers Plan 2 Enforcement
 
 The following Azure Policy definition uses the deployIfNotExists effect to automatically remediate Arc-enrolled servers whose OrgPath tag identifies them as Tier 0 infrastructure, ensuring they receive Defender for Servers Plan 2. The policy evaluates the resource tag at every compliance scan cycle. When a server is newly enrolled and its OrgPath tag is applied by the tagging pipeline, the policy's next compliance evaluation will find the server non-compliant and trigger the remediation task automatically.
 
@@ -298,31 +256,29 @@ The following Azure Policy definition uses the deployIfNotExists effect to autom
 </tbody>
 </table>
 
-Azure Resource Graph Query: Defender for Cloud Findings by OrgPath
+### Azure Resource Graph Query: Defender for Cloud Findings by OrgPath
 
 Azure Resource Graph provides a query interface across the Azure resource inventory that supports joining resource properties — including tags — with Defender for Cloud assessment results. The following query joins the Arc-enrolled machine inventory with the Defender for Cloud security assessment table, filters to high and critical findings, and aggregates the results by OrgPath to produce a per-segment security posture snapshot. This query is the data source for the infrastructure security posture workbook tile described in Chapter Six, and it is also run by the automation script below to produce the governance repository snapshot for drift detection.
 
 // --------------------------------------------------------------- // Azure Resource Graph: Defender for Cloud Findings by OrgPath // // Run location options: // 1. Azure Portal — Resource Graph Explorer (portal.azure.com) // 2. PowerShell: // Install-Module Az.ResourceGraph // Connect-AzAccount // Search-AzGraph -Query \$queryString // 3. Azure CLI: // az graph query -q "\$queryString" // // Returns: OrgPath segments with unresolved high/critical Defender // for Cloud recommendations on Arc-enrolled servers. // Results ordered by severity for SOC prioritization. // --------------------------------------------------------------- Resources // Filter to Arc-enrolled servers only. // To include Azure VMs, add: or type == "microsoft.compute/virtualmachines" \| where type == "microsoft.hybridcompute/machines" \| extend // SUBSTITUTE: These tag names must match the exact tag key names applied // by your OrgPath tagging pipeline from Part Five. OrgPath = tostring(tags\['OrgPath'\]), OrgNodeId = tostring(tags\['OrgNodeId'\]), OrgTier = tostring(tags\['OrgTier'\]), ResourceId = id // Exclude machines that have not received OrgPath tags yet. \| where isnotempty(OrgPath) \| join kind=inner ( SecurityResources \| where type == "microsoft.security/assessments" // Filter to unresolved findings only. \| where properties.status.code != "Passed" \| extend AssessmentName = tostring(properties.displayName), Severity = tostring(properties.metadata.severity), RemediationDesc = tostring(properties.metadata.remediationDescription), // The assessed resource ID is the full ARM resource ID of the // machine that failed the assessment. AssessedResourceId = tostring(properties.resourceDetails.id) // Focus on High and Critical findings for SOC prioritization. // Remove this filter for a complete compliance view including Medium and Low. \| where Severity in ("High", "Critical") \| project AssessedResourceId, AssessmentName, Severity, RemediationDesc ) on \$left.ResourceId == \$right.AssessedResourceId // Aggregate findings per OrgPath segment. \| summarize CriticalFindings = countif(Severity == "Critical"), HighFindings = countif(Severity == "High"), TotalFindings = count(), // make_set with limit of 10 provides a representative sample of findings. // Remove the limit for a complete finding list (increases result size). FindingSample = make_set(AssessmentName, 10) by OrgPath, OrgTier, OrgNodeId \| order by CriticalFindings desc, HighFindings desc
 
-Security Posture Snapshot Automation Script
+### Security Posture Snapshot Automation Script
 
 The following PowerShell script wraps the Resource Graph query and commits its output to the governance repository as the infrastructure security posture snapshot for the current cycle. This snapshot is consumed by the drift detection process to identify organizational segments where security posture is degrading over time, and it is surfaced in the Sentinel workbook as the infrastructure security posture tile alongside the identity and cloud app risk data from Chapters Three and Four.
 
 \#Requires -Modules Az.ResourceGraph, Az.Accounts \<# data-id="240" .SYNOPSIS Executes the OrgPath-annotated Defender for Cloud assessment query and writes the results to the governance repository for version-controlled posture tracking. .DESCRIPTION Authenticates using a managed identity (for automation server execution), runs the Azure Resource Graph assessment query, and exports the results to the governance repository security posture directory as a timestamped JSON file. This script is intended to run on a schedule (daily or per-shift) as part of the governance automation pipeline. The output file is committed to the governance repository by the CI/CD pipeline after this script completes. .PARAMETER OutputPath Path to write the posture snapshot JSON file. SUBSTITUTE: Set to the path within your governance repository working directory where the CI/CD pipeline will commit the file. Example: "C:\governance\security-posture\defender-cloud-by-orgpath.json" .PARAMETER SubscriptionId Optional. Scope the Resource Graph query to a specific subscription. If omitted, the query runs across all subscriptions in scope for the authenticated identity. SUBSTITUTE: Provide your subscription GUID if needed. .NOTES Connect-AzAccount -Identity authenticates using the managed identity of the compute resource running this script (Azure VM, Arc server, or Azure Automation account). The managed identity must have: - Reader role on all subscriptions containing Arc-enrolled servers - Security Reader role to access SecurityResources in Resource Graph \#\> param( \[string\]\$OutputPath = "C:\governance\security-posture\defender-cloud-by-orgpath.json", \[string\]\$SubscriptionId = "" \# SUBSTITUTE: Your subscription GUID, or leave empty for all ) \$ErrorActionPreference = "Stop" \# Authenticate using managed identity on the automation server. \# SUBSTITUTE: Replace with Connect-AzAccount -ServicePrincipal ... if using \# a service principal instead of a managed identity. Connect-AzAccount -Identity Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Running Defender for Cloud OrgPath posture query" \$query = @' Resources \| where type == 'microsoft.hybridcompute/machines' \| extend OrgPath = tostring(tags\['OrgPath'\]), OrgTier = tostring(tags\['OrgTier'\]), OrgNodeId = tostring(tags\['OrgNodeId'\]), ResourceId = id \| where isnotempty(OrgPath) \| join kind=inner ( SecurityResources \| where type == 'microsoft.security/assessments' \| where properties.status.code != 'Passed' \| extend Severity = tostring(properties.metadata.severity), AssessmentName = tostring(properties.displayName), AssessedResourceId = tostring(properties.resourceDetails.id) \| where Severity in ('High', 'Critical') \| project AssessedResourceId, AssessmentName, Severity ) on \$left.ResourceId == \$right.AssessedResourceId \| summarize CriticalFindings = countif(Severity == 'Critical'), HighFindings = countif(Severity == 'High'), TotalFindings = count(), FindingSample = make_set(AssessmentName, 10) by OrgPath, OrgTier, OrgNodeId \| order by CriticalFindings desc '@ \# Build query parameters — scope to subscription if specified \$queryParams = @{ Query = \$query } if (-not \[string\]::IsNullOrEmpty(\$SubscriptionId)) { \$queryParams\["Subscription"\] = @(\$SubscriptionId) Write-Host " Query scope: Subscription \$SubscriptionId" } else { Write-Host " Query scope: All accessible subscriptions" } \$results = Search-AzGraph @queryParams \# Build the output document with provenance metadata \$output = @{ GeneratedAt = (Get-Date).ToUniversalTime().ToString("o") GeneratedBy = "OrgPath-DefenderCloud-PostureSnapshot.ps1" QueryScope = if (\$SubscriptionId) { \$SubscriptionId } else { "All Subscriptions" } TotalSegments = \$results.Count CriticalSegments = (\$results \| Where-Object { \$\_.CriticalFindings -gt 0 }).Count HighSegments = (\$results \| Where-Object { \$\_.HighFindings -gt 0 }).Count Results = \$results } \# Ensure the output directory exists \$outputDir = Split-Path \$OutputPath -Parent if (-not (Test-Path \$outputDir)) { New-Item -ItemType Directory -Path \$outputDir -Force \| Out-Null } \$output \| ConvertTo-Json -Depth 10 \| Set-Content -Path \$OutputPath -Encoding UTF8 Write-Host "\[\$(Get-Date -f 'HH:mm:ss')\] Posture snapshot written to: \$OutputPath" Write-Host " OrgPath segments with findings: \$(\$results.Count)" Write-Host " Segments with Critical findings: \$(\$output.CriticalSegments)" Write-Host " Segments with High findings: \$(\$output.HighSegments)"
 
-**CHAPTER SIX**
-
-The Unified Defender XDR View: Cross-Product Security Posture by OrgPath
+## Chapter 6 — The Unified Defender XDR View: Cross-Product Security Posture by OrgPath
 
 *One Pane of Organizational Security Truth*
 
-Why the Unified View Is the Primary Operational Artifact
+### Why the Unified View Is the Primary Operational Artifact
 
 Chapters Two through Five of this document each addressed one layer of the Defender suite in isolation: device group scoping in MDE, identity alert enrichment in MDI, session control and anomaly detection in MDCA, and infrastructure posture assessment in Defender for Cloud. Each layer produces value on its own. An analyst investigating a specific MDE alert benefits from OrgPath context even if the other layers are not yet integrated. An SOC manager reviewing the Defender for Cloud posture snapshot organized by OrgPath gets organizational clarity even without the identity layer connected. But the full operational payoff of the OrgPath model comes from the unified view that combines all of these signals into a single organizational security posture picture.
 
 The unified Sentinel workbook organized by OrgPath hierarchy is the primary operational artifact for an SOC manager in an OrgPath-governed environment. It answers the question that every security leader asks but that conventional tooling cannot answer concisely: Which parts of the organization are under the most security pressure right now, across all dimensions? The conventional answer to this question requires the manager to aggregate data from four or more dashboards, apply their own judgment about which signals are most significant, and mentally map device names and user accounts to organizational structures. The OrgPath-organized workbook answers this question directly and continuously, with the organizational hierarchy as the primary axis of the entire view.
 
-Data Source Requirements
+### Data Source Requirements
 
 The unified cross-product KQL query joins data from the following tables in the Microsoft Sentinel workspace. All tables must be populated for the unified view to be complete:
 
@@ -333,13 +289,13 @@ The unified cross-product KQL query joins data from the following tables in the 
 | AuditLogs | Entra ID | OrgPath lookup (user and device) | Azure Active Directory |
 | DeviceInfo | Microsoft Defender XDR | Device name to OrgPath mapping | Microsoft Defender XDR |
 
-Unified Cross-Product Sentinel Dashboard Query
+### Unified Cross-Product Sentinel Dashboard Query
 
 The following KQL query is saved as a Sentinel workbook query with a one-hour auto-refresh interval. It produces a table of OrgPath segments with aggregated signal counts from MDE, MDI, and MDCA for the past twenty-four hours, ordered by total signal volume. This table is the primary organizational security posture view for the SOC operations center screen.
 
 // --------------------------------------------------------------- // Unified OrgPath Security Posture Dashboard — Cross-Product View // // Purpose: Single pane showing alert and anomaly distribution across // all Defender products, organized by organizational segment. // Refresh: 1 hour (configure in Sentinel workbook tile settings) // Tables: SecurityAlert, CloudAppEvents, AuditLogs // // Configure this as a Sentinel Workbook grid tile with: // - Column sparklines for MDEAlertCount and MDIAlertCount // - Threshold-based row coloring: red if TotalSignals \> 20, // amber if \> 5, green otherwise // - OrgPath column as the drill-down link to the segment workbook // --------------------------------------------------------------- // --- OrgPath Lookup: Most Recent Path per User --- // materialize() caches the result for reuse across multiple joins // without re-executing the subquery, which improves performance significantly // on large AuditLogs tables. let UserOrgPaths = materialize( AuditLogs \| where TimeGenerated \>= ago(7d) \| where OperationName == "Update user" \| mv-expand Props = AdditionalDetails // SUBSTITUTE: Replace "OrgPath" with the exact displayName of your extension attribute \| where tostring(Props.displayName) contains "OrgPath" \| extend UPN = tostring(TargetResources\[0\].userPrincipalName), OrgPath = tostring(Props.newValue) \| summarize arg_max(TimeGenerated, OrgPath) by UPN \| project UPN, OrgPath ); // --- OrgPath Lookup: Most Recent Path per Device --- let DeviceOrgPaths = materialize( AuditLogs \| where TimeGenerated \>= ago(7d) \| where OperationName == "Update device" \| mv-expand Props = AdditionalDetails \| where tostring(Props.displayName) contains "OrgPath" \| extend // DeviceName in the audit log matches the displayName of the device object. // Confirm this matches how MDE surfaces device names in ExtendedProperties. DeviceName = tostring(TargetResources\[0\].displayName), OrgPath = tostring(Props.newValue) \| summarize arg_max(TimeGenerated, OrgPath) by DeviceName \| project DeviceName, OrgPath ); // --- Metric 1: MDE Alert Summary by OrgPath Segment --- let MDEAlerts = SecurityAlert \| where TimeGenerated \>= ago(24h) \| where ProviderName == "Microsoft Defender for Endpoint" \| extend // "Machine Name" is the ExtendedProperties key for the device name in MDE alerts. DeviceName = tostring(todynamic(ExtendedProperties)\["Machine Name"\]) \| join kind=leftouter DeviceOrgPaths on DeviceName \| extend OrgPath = iif(isempty(OrgPath), "UNPOSITIONED", OrgPath) \| summarize MDEAlertCount = count(), // High and Critical severity counts drive the threshold-based row coloring. MDEHighSeverity = countif(AlertSeverity in ("High", "Critical")) by OrgPath; // --- Metric 2: MDI Alert Summary by OrgPath Segment --- let MDIAlerts = SecurityAlert \| where TimeGenerated \>= ago(24h) \| where ProviderName == "Microsoft Defender for Identity" \| extend // "User Name" is the ExtendedProperties key for the source UPN in MDI alerts. SourceUPN = tostring(todynamic(ExtendedProperties)\["User Name"\]) \| join kind=leftouter UserOrgPaths on \$left.SourceUPN == \$right.UPN \| extend OrgPath = iif(isempty(OrgPath), "UNPOSITIONED", OrgPath) \| summarize MDIAlertCount = count(), MDIHighSeverity = countif(AlertSeverity in ("High", "Critical")) by OrgPath; // --- Metric 3: MDCA Anomalies by OrgPath Segment --- let MDCAEvents = CloudAppEvents \| where TimeGenerated \>= ago(24h) // MDCA anomaly and policy violation events carry "Anomaly" or "Policy" in ActionType. // SUBSTITUTE: Review your CloudAppEvents ActionType values and adjust the filter // to match the specific anomaly event types relevant to your MDCA policy set. \| where ActionType contains "Anomaly" or ActionType contains "Policy" \| join kind=leftouter UserOrgPaths on \$left.AccountId == \$right.UPN \| extend OrgPath = iif(isempty(OrgPath), "UNPOSITIONED", OrgPath) \| summarize MDCAAnomolies = count() by OrgPath; // --- Unified Join: Combine All Three Metric Streams --- // fullouter join ensures all OrgPath segments appear in the result // even if they have activity in only one of the three products. MDEAlerts \| join kind=fullouter MDIAlerts on OrgPath \| join kind=fullouter MDCAEvents on OrgPath // coalesce resolves OrgPath from whichever join arm is non-null. \| extend OrgPath = coalesce(OrgPath, OrgPath1, OrgPath2, "UNKNOWN") // Replace nulls from outer join with zeros for clean display. \| extend MDEAlertCount = coalesce(MDEAlertCount, 0), MDEHighSeverity = coalesce(MDEHighSeverity, 0), MDIAlertCount = coalesce(MDIAlertCount, 0), MDIHighSeverity = coalesce(MDIHighSeverity, 0), MDCAAnomolies = coalesce(MDCAAnomolies, 0) \| extend TotalSignals = MDEAlertCount + MDIAlertCount + MDCAAnomolies \| project OrgPath, MDEAlertCount, MDEHighSeverity, MDIAlertCount, MDIHighSeverity, MDCAAnomolies, TotalSignals \| order by TotalSignals desc
 
-Sentinel Workbook Design for Organizational SOC Operations
+### Sentinel Workbook Design for Organizational SOC Operations
 
 The unified query above serves as the primary grid tile in a Sentinel workbook configured with the following layout. The workbook is organized top-to-bottom to answer progressively more specific questions as the analyst drills down:
 
@@ -351,19 +307,17 @@ The unified query above serves as the primary grid tile in a Sentinel workbook c
 
 - **Row 4 — Unpositioned Assets:** A dedicated tile showing devices and users with no OrgPath assignment, their alert counts, and their last seen dates. This tile represents governance debt: every asset in this view should receive an OrgPath assignment through the pipeline before the next reporting cycle.
 
-**CHAPTER SEVEN**
-
-Automated Response Playbooks: OrgPath-Aware Incident Containment
+## Chapter 7 — Automated Response Playbooks: OrgPath-Aware Incident Containment
 
 *Playbooks That Know Where the Incident Is*
 
-Generic Versus Organizational Incident Response Automation
+### Generic Versus Organizational Incident Response Automation
 
 Sentinel automation rules and Logic App playbooks have been available to SOC teams since Sentinel's general availability, and most mature SOC operations have some playbook automation in place. The typical playbook triggered by a high-severity Sentinel incident sends a notification to a Teams channel or security distribution list, creates an incident ticket in the ITSM system, optionally isolates the affected device in MDE, and closes the automation run. Every high-severity incident receives the same treatment: the same notification channel, the same ITSM queue, the same isolation decision. The playbook is alert-class-aware — it might behave differently for a ransomware detection than for an impossible travel alert — but it is not organization-aware. It cannot differentiate between a high-severity alert on a Tier 0 domain controller and the same alert type on a Tier 2 developer workstation in terms of escalation path, notification list, containment urgency, or review requirements.
 
 An OrgPath-aware playbook changes this. When the playbook reads the OrgPath of the affected identity or device as its first action after receiving the incident trigger, everything that follows can be calibrated to the organizational context. The escalation contact is drawn from the segment's designated SOC team, not a global distribution list. The ITSM queue is the Finance SOC queue or the Infrastructure Tier 0 queue, not a single undifferentiated security queue. The isolation decision is automatic for Tier 0 assets but requires analyst approval for Tier 2 assets because the operational impact of isolating a developer workstation is very different from isolating a domain controller. The access review trigger fires immediately for any incident involving an Executive-segment identity but enters a standard review cycle for a Tier 2 incident. These are not differences in degree; they are differences in kind, and they can only be expressed systematically when the playbook knows where in the organization the incident occurred.
 
-The Response Matrix: Governance-Controlled Playbook Configuration
+### The Response Matrix: Governance-Controlled Playbook Configuration
 
 The playbook's organizational intelligence is not hardcoded in the Logic App definition. It is stored in a JSON file in the governance repository at governance/security/response-matrix.json and retrieved by the playbook at runtime via the repository's REST API. This separation is essential: it means that changes to response procedures for any organizational segment — a change in the Finance escalation contact, a decision to enable automatic isolation for a new department, an update to the Tier 0 PIM revocation policy — are made through the same governed pull request, review, and approval process used for all other governance artifacts. The playbook code does not change; the governance document changes, and the playbook picks up the new configuration on its next execution.
 
@@ -371,7 +325,7 @@ The response matrix structure is illustrated below for three representative OrgP
 
 // governance/security/response-matrix.json // --------------------------------------------------------------- // OrgPath Response Matrix // Format: Array of response configurations ordered from most specific // to least specific OrgPath prefix. The playbook evaluates // prefixes in array order and applies the first match. // More specific paths (longer strings) must appear before // their parent paths in the array. // // Fields: // orgPathPrefix — OrgPath prefix this entry applies to // escalationGroupId — Entra ID group GUID for escalation notification // itsmQueue — ITSM queue name for ticket creation // autoIsolate — true: isolate device automatically // false: require analyst approval // revokePIM — true: suspend PIM eligible assignments pending review // triggerAccessReview — true: create an access review for the affected user // responseRunbook — URL to the applicable runbook in the team wiki // incidentPriority — P1/P2/P3 classification for ITSM routing // --------------------------------------------------------------- { "version": "1.0", "lastUpdated": "2026-05-08", "approvedBy": "Security Architecture Board", "configurations": \[ { "orgPathPrefix": "/Root/Infrastructure/Tier0", "escalationGroupId": "aaaaaaaa-1111-aaaa-1111-aaaaaaaaaaaa", "itsmQueue": "SEC-TIER0-CRITICAL", "autoIsolate": true, "revokePIM": true, "triggerAccessReview": true, "responseRunbook": "https://wiki.internal/security/runbooks/tier0-incident", "incidentPriority": "P1" }, { "orgPathPrefix": "/Root/Finance/Treasury", "escalationGroupId": "bbbbbbbb-2222-bbbb-2222-bbbbbbbbbbbb", "itsmQueue": "SEC-FINANCE-P1", "autoIsolate": true, "revokePIM": true, "triggerAccessReview": true, "responseRunbook": "https://wiki.internal/security/runbooks/finance-treasury", "incidentPriority": "P1" }, { "orgPathPrefix": "/Root/Finance", "escalationGroupId": "cccccccc-3333-cccc-3333-cccccccccccc", "itsmQueue": "SEC-FINANCE-STANDARD", "autoIsolate": false, "revokePIM": false, "triggerAccessReview": true, "responseRunbook": "https://wiki.internal/security/runbooks/finance-standard", "incidentPriority": "P2" }, { "orgPathPrefix": "/Root/Executive", "escalationGroupId": "dddddddd-4444-dddd-4444-dddddddddddd", "itsmQueue": "SEC-EXECUTIVE-VIP", "autoIsolate": false, "revokePIM": true, "triggerAccessReview": true, "responseRunbook": "https://wiki.internal/security/runbooks/executive-incident", "incidentPriority": "P1" }, { "orgPathPrefix": "/Root", "escalationGroupId": "eeeeeeee-5555-eeee-5555-eeeeeeeeeeee", "itsmQueue": "SEC-STANDARD", "autoIsolate": false, "revokePIM": false, "triggerAccessReview": false, "responseRunbook": "https://wiki.internal/security/runbooks/standard-incident", "incidentPriority": "P3" } \] }
 
-Logic App Playbook: OrgPath-Aware Incident Response
+### Logic App Playbook: OrgPath-Aware Incident Response
 
 The following Logic App definition implements the OrgPath-aware incident response playbook. The playbook is triggered by a Sentinel incident creation event. It parses the incident entities, retrieves the OrgPath of each affected user from the Microsoft Graph API using the Logic App's managed identity, evaluates the OrgPath against the response matrix, adds an organizational context comment to the Sentinel incident, and executes the response actions specified by the matrix entry. The managed identity must be granted the following roles: Microsoft Graph User.Read.All for the Graph API calls, and the Sentinel Responder role on the Sentinel workspace for the incident comment and label operations.
 
@@ -395,13 +349,11 @@ The following Logic App definition implements the OrgPath-aware incident respons
 </tbody>
 </table>
 
-**CHAPTER EIGHT**
-
-The Complete Defender Integration Architecture
+## Chapter 8 — The Complete Defender Integration Architecture
 
 *From OrgTree to Organizational Security Operations*
 
-The End-to-End Data Flow
+### The End-to-End Data Flow
 
 The architecture documented across this series now spans from the organizational hierarchy definition in OrgTree through the enriched alert on an analyst's screen. Tracing this flow end-to-end makes the dependencies and the operational properties visible in a way that examining each component in isolation does not.
 
@@ -423,7 +375,7 @@ The unified Sentinel workbook from Chapter Six joins the MDE, MDI, and MDCA sign
 
 When an incident fires — whether from a Sentinel analytics rule, a Defender XDR incident, or a manual incident creation — the Logic App playbook from Chapter Seven is triggered. The playbook reads the incident entities, retrieves the OrgPath of each affected identity from the Microsoft Graph API, evaluates the OrgPath against the governance-controlled response matrix, annotates the incident with the organizational context comment, routes the incident to the correct ITSM queue and escalation contact, and executes the tier-appropriate containment actions — device isolation, PIM revocation, access review initiation — automatically where the response matrix authorizes automated action.
 
-The Operational Property This Architecture Delivers
+### The Operational Property This Architecture Delivers
 
 The security operations center that has completed the implementation described across this document series is working in a categorically different operational environment from one that has not. The difference is not one of tooling; the Defender suite and Microsoft Sentinel are available to any tenant with the appropriate licensing. The difference is one of structure. Organizational structure is present in the data, propagated by the pipeline, enforced by the policy surface, and acted on by the automation layer. Every alert arrives annotated with the organizational context of the affected asset. Every analyst sees only the organizational segments they are responsible for. Every containment action is calibrated to the tier and sensitivity of the affected segment. Every investigation begins with the organizational position of the affected identity or device as a known fact, not as something to be reconstructed from a chain of directory lookups.
 
@@ -441,7 +393,7 @@ The governance model — defined in OrgTree, encoded in OrgPath, propagated auto
 </tbody>
 </table>
 
-Appendix A — Component and Naming Reference
+### Appendix A — Component and Naming Reference
 
 | **Component** | **Naming Convention** | **Defined In** | **Drives** |
 |----|----|----|----|
@@ -453,7 +405,7 @@ Appendix A — Component and Naming Reference
 | Response Matrix | governance/security/response-matrix.json | Chapter Seven (this document) | Logic App playbook containment decisions |
 | Sentinel Analytics Rules | MDI-SensitiveOrgPath-\*, MDI-OrgPath-\* | Chapter Three (this document) | Incident creation, priority classification |
 
-Appendix B — API and Permission Reference
+### Appendix B — API and Permission Reference
 
 | **API Surface** | **Endpoint / Resource** | **Required Permission** | **Used In** |
 |----|----|----|----|
