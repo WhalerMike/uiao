@@ -68,6 +68,7 @@ CANON_PROMPTS_DIR = REPO_ROOT / "src" / "uiao" / "canon" / "image-prompts"
 MANIFEST_PATH = SCRIPT_DIR / "images" / ".image-manifest.json"
 MANIFEST_SCHEMA_VERSION = "1.0.0"
 MODEL = "gemini-2.5-flash-image"
+PIL_RENDERER = "uiao-pil-renderer"  # deterministic PIL-drawn canon diagrams
 DELAY_SECONDS = 2.0
 SCAN_ROOTS = [
     REPO_ROOT / "docs",
@@ -1074,6 +1075,273 @@ def apply_label_overlay(png_path: Path, labels_path: Path) -> int:
 
 
 # ──────────────────────────────────────────────────────────────
+# PIL canon renderer — deterministic, typo-free architecture diagrams.
+#
+# An alternative to Gemini for canon entries whose `generator` field is
+# PIL_RENDERER ("uiao-pil-renderer"). The entry's `prompt_file` points
+# at a YAML layout spec (`<id>.layout.yaml`) that fully describes the
+# diagram: canvas size, palette, nodes (rect/cylinder/pill), arrows
+# (with optional above/below labels and explicit start/end overrides),
+# and free-position annotations.
+#
+# Rendering is pixel-deterministic — the same layout YAML produces
+# byte-identical output every run, eliminating both the spelling-typo
+# problem and the shape-drift problem that fixed-coord overlays had
+# against Gemini's non-deterministic output. The tradeoff is loss of
+# AI-illustrated style; outputs look like clean engineering blueprints.
+#
+# Layout schema (informal):
+#   canvas:
+#     width: int, height: int, background: hex
+#   palette:
+#     <name>: <hex>  # named colors referenceable elsewhere by name
+#   nodes:
+#     - id: <stable string>
+#       shape: rect | cylinder | pill
+#       bbox: [x1, y1, x2, y2]
+#       fill: <name|#hex>
+#       outline: <name|#hex>            # optional
+#       outline_width: int               # optional, default 0
+#       corner_radius: int               # rect only, default 16
+#       text: "single or multi\nline"    # optional
+#       text_color: <name|#hex>          # default "white"
+#       font_size: int                   # default 28
+#       font_bold: bool                  # default False
+#   arrows:
+#     - from: <node id>                  # auto-anchor right edge of source
+#       to: <node id>                    # auto-anchor left edge of target
+#       start: [x, y]                    # OR explicit override
+#       end: [x, y]                      # OR explicit override
+#       color: <name|#hex>               # default "teal"
+#       width: int                       # default 4
+#       label_above: "..."               # optional
+#       label_below: "..."               # optional
+#       label_color: <name|#hex>         # default "grey"
+#       label_font_size: int             # default 22
+#   annotations:
+#     - text: "..."
+#       position: [x, y]                 # top-left anchor by default
+#       anchor: "lt|mt|rt|lm|mm|rm|lb|mb|rb"  # PIL textanchor
+#       color: <name|#hex>               # default "grey"
+#       font_size: int                   # default 22
+#       bold: bool                       # default False
+# ──────────────────────────────────────────────────────────────
+def render_pil_canon_layout(
+    layout_path: Path,
+    output_path: Path,
+) -> tuple[bool, dict | None]:
+    """Render a canon image from a layout YAML spec using PIL.
+
+    Returns (success, dimensions_dict). The dimensions_dict is
+    {"width": W, "height": H} on success, None on failure.
+    """
+    if yaml is None:
+        print("  Warning: PyYAML not installed; cannot render PIL layouts.")
+        return (False, None)
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        print("  Warning: Pillow not installed; cannot render PIL layouts.")
+        return (False, None)
+
+    try:
+        spec = yaml.safe_load(layout_path.read_text(encoding="utf-8")) or {}
+    except Exception as exc:
+        print(f"  Error: cannot parse {layout_path}: {exc}")
+        return (False, None)
+
+    canvas = spec.get("canvas") or {}
+    W = int(canvas.get("width", 1920))
+    H = int(canvas.get("height", 1080))
+    bg = canvas.get("background", "#FFFFFF")
+
+    palette = spec.get("palette") or {}
+    font_family = spec.get("font_family", "DejaVuSans")
+
+    def color(spec_value, default="#000000"):
+        if spec_value is None:
+            return default
+        if isinstance(spec_value, str) and spec_value.startswith("#"):
+            return spec_value
+        return palette.get(spec_value, default)
+
+    def f(size, bold=False):
+        family = (font_family + "-Bold") if bold else font_family
+        return _load_overlay_font(family, int(size))
+
+    img = Image.new("RGB", (W, H), bg)
+    draw = ImageDraw.Draw(img)
+
+    nodes = spec.get("nodes") or []
+    nodes_by_id = {n["id"]: n for n in nodes if "id" in n}
+
+    # ── nodes ──────────────────────────────────────────────────
+    for node in nodes:
+        if "bbox" not in node:
+            continue
+        x1, y1, x2, y2 = [int(v) for v in node["bbox"]]
+        shape = node.get("shape", "rect")
+        fill = color(node.get("fill", "navy"))
+        outline = color(node.get("outline"), default=fill) if node.get("outline") else None
+        outline_w = int(node.get("outline_width", 0))
+
+        if shape == "rect":
+            radius = int(node.get("corner_radius", 16))
+            draw.rounded_rectangle(
+                [x1, y1, x2, y2],
+                radius=radius,
+                fill=fill,
+                outline=outline,
+                width=outline_w if outline else 0,
+            )
+        elif shape == "cylinder":
+            ellipse_h = max(20, (y2 - y1) // 5)
+            # body rectangle (no top/bottom edges)
+            draw.rectangle([x1, y1 + ellipse_h // 2, x2, y2 - ellipse_h // 2], fill=fill)
+            # top ellipse — full
+            draw.ellipse([x1, y1, x2, y1 + ellipse_h], fill=fill, outline=outline, width=outline_w if outline else 0)
+            # bottom ellipse — full
+            draw.ellipse([x1, y2 - ellipse_h, x2, y2], fill=fill, outline=outline, width=outline_w if outline else 0)
+            # vertical sides outline
+            if outline and outline_w:
+                draw.line([(x1, y1 + ellipse_h // 2), (x1, y2 - ellipse_h // 2)], fill=outline, width=outline_w)
+                draw.line([(x2, y1 + ellipse_h // 2), (x2, y2 - ellipse_h // 2)], fill=outline, width=outline_w)
+        elif shape == "pill":
+            radius = (y2 - y1) // 2
+            draw.rounded_rectangle(
+                [x1, y1, x2, y2],
+                radius=radius,
+                fill=fill,
+                outline=outline,
+                width=outline_w if outline else 0,
+            )
+        else:
+            print(f"  Warning: unknown shape {shape!r}; rendering as rect.")
+            draw.rectangle([x1, y1, x2, y2], fill=fill, outline=outline, width=outline_w if outline else 0)
+
+        text = node.get("text")
+        if text:
+            text_color = color(node.get("text_color", "white"), default="#FFFFFF")
+            font_size = int(node.get("font_size", 28))
+            bold = bool(node.get("font_bold", False))
+            font = f(font_size, bold=bold)
+            cx = (x1 + x2) // 2
+            cy = (y1 + y2) // 2
+            lines = str(text).split("\n")
+            # Measure each line
+            line_metrics = []
+            for line in lines:
+                tb = draw.textbbox((0, 0), line, font=font)
+                line_metrics.append((tb[2] - tb[0], tb[3] - tb[1], tb[0], tb[1]))
+            line_gap = 6
+            total_h = sum(m[1] for m in line_metrics) + line_gap * (len(lines) - 1)
+            ty = cy - total_h // 2
+            for line, (lw, lh, lo_x, lo_y) in zip(lines, line_metrics, strict=False):
+                tx = cx - lw // 2 - lo_x
+                draw.text((tx, ty - lo_y), line, fill=text_color, font=font)
+                ty += lh + line_gap
+
+    # ── arrows ─────────────────────────────────────────────────
+    arrows = spec.get("arrows") or []
+    for arrow in arrows:
+        # Resolve endpoints
+        start = arrow.get("start")
+        end = arrow.get("end")
+        if start is None or end is None:
+            from_id = arrow.get("from")
+            to_id = arrow.get("to")
+            from_node = nodes_by_id.get(from_id) if from_id else None
+            to_node = nodes_by_id.get(to_id) if to_id else None
+            if from_node and start is None:
+                fx1, fy1, fx2, fy2 = from_node["bbox"]
+                start = [fx2, (fy1 + fy2) // 2]
+            if to_node and end is None:
+                tx1, ty1, tx2, ty2 = to_node["bbox"]
+                end = [tx1, (ty1 + ty2) // 2]
+        if start is None or end is None:
+            print(f"  Warning: arrow missing endpoints: {arrow}")
+            continue
+        sx, sy = int(start[0]), int(start[1])
+        ex, ey = int(end[0]), int(end[1])
+        a_color = color(arrow.get("color", "teal"), default="#1E8C8C")
+        a_width = int(arrow.get("width", 4))
+
+        # Line
+        draw.line([(sx, sy), (ex, ey)], fill=a_color, width=a_width)
+        # Arrowhead at end
+        dx = ex - sx
+        dy = ey - sy
+        length = (dx * dx + dy * dy) ** 0.5
+        if length > 0:
+            ux = dx / length
+            uy = dy / length
+            head_len = int(arrow.get("head_length", 18))
+            head_half = int(arrow.get("head_half", 10))
+            px, py = -uy, ux  # perpendicular unit
+            head_pts = [
+                (ex, ey),
+                (
+                    int(ex - head_len * ux + head_half * px),
+                    int(ey - head_len * uy + head_half * py),
+                ),
+                (
+                    int(ex - head_len * ux - head_half * px),
+                    int(ey - head_len * uy - head_half * py),
+                ),
+            ]
+            draw.polygon(head_pts, fill=a_color)
+
+        # Above/below labels (only meaningful for roughly horizontal arrows)
+        for key, side in (("label_above", "above"), ("label_below", "below")):
+            label_text = arrow.get(key)
+            if not label_text:
+                continue
+            label_color = color(arrow.get("label_color", "grey"), default="#5A5A5A")
+            label_size = int(arrow.get("label_font_size", 22))
+            label_font = f(label_size)
+            mid_x = (sx + ex) // 2
+            mid_y = (sy + ey) // 2
+            tb = draw.textbbox((0, 0), label_text, font=label_font)
+            tw = tb[2] - tb[0]
+            th = tb[3] - tb[1]
+            tx = mid_x - tw // 2 - tb[0]
+            offset = int(arrow.get("label_offset", 8))
+            ty = (mid_y - th - offset - tb[1]) if side == "above" else (mid_y + offset - tb[1])
+            draw.text((tx, ty), label_text, fill=label_color, font=label_font)
+
+    # ── annotations ────────────────────────────────────────────
+    for anno in spec.get("annotations") or []:
+        text = anno.get("text", "")
+        if not text:
+            continue
+        pos = anno.get("position", [0, 0])
+        a_color = color(anno.get("color", "grey"), default="#5A5A5A")
+        a_size = int(anno.get("font_size", 22))
+        bold = bool(anno.get("bold", False))
+        font = f(a_size, bold=bold)
+        anchor = anno.get("anchor")  # PIL textanchor codes (e.g., "mm", "lt")
+        kwargs = {"fill": a_color, "font": font}
+        if anchor:
+            kwargs["anchor"] = anchor
+        # Multi-line via \n
+        lines = str(text).split("\n")
+        x, y = int(pos[0]), int(pos[1])
+        line_gap = int(anno.get("line_gap", 4))
+        for line in lines:
+            try:
+                draw.text((x, y), line, **kwargs)
+            except ValueError:
+                # Fallback if anchor unsupported by font
+                kwargs.pop("anchor", None)
+                draw.text((x, y), line, **kwargs)
+            tb = draw.textbbox((x, y), line, font=font)
+            y = tb[3] + line_gap
+
+    img.save(str(output_path), format="PNG")
+    return (True, {"width": W, "height": H})
+
+
+# ──────────────────────────────────────────────────────────────
 # Canon-draft processor. For every registry entry with status:"draft"
 # whose rendered PNG is missing or whose file_sha256 disagrees with
 # the on-disk bytes (e.g., placeholder zeros from a fresh PR), call
@@ -1139,35 +1407,49 @@ def process_draft_canon_entries(
             report.canon_drafts_cached += 1
             continue
 
-        prompt_body = extract_canon_prompt_body(e.prompt_file)
-        if not prompt_body:
-            print(f"  [skip] {e.id}: no '## Prompt' or '## Description' section in {_repo_rel(e.prompt_file)}")
-            report.canon_drafts_skipped_no_prompt += 1
-            continue
+        # Route by generator. PIL_RENDERER consumes a YAML layout file
+        # directly and produces deterministic output (no Gemini call,
+        # no overlay needed). Default path uses Gemini + optional
+        # label overlay.
+        is_pil = e.generator == PIL_RENDERER
 
-        if dry_run:
-            print(
-                f"  [dry-run] {e.id} → {_repo_rel(e.file)} "
-                f"(prompt {len(prompt_body)} chars from {_repo_rel(e.prompt_file)})"
-            )
-            continue
+        if not is_pil:
+            prompt_body = extract_canon_prompt_body(e.prompt_file)
+            if not prompt_body:
+                print(f"  [skip] {e.id}: no '## Prompt' or '## Description' section in {_repo_rel(e.prompt_file)}")
+                report.canon_drafts_skipped_no_prompt += 1
+                continue
+
+            if dry_run:
+                print(
+                    f"  [dry-run] Gemini: {e.id} → {_repo_rel(e.file)} "
+                    f"(prompt {len(prompt_body)} chars from {_repo_rel(e.prompt_file)})"
+                )
+                continue
+        else:
+            if dry_run:
+                print(f"  [dry-run] PIL: {e.id} → {_repo_rel(e.file)} (layout {_repo_rel(e.prompt_file)})")
+                continue
 
         e.file.parent.mkdir(parents=True, exist_ok=True)
 
-        print(f"  Generating: {e.id} → {_repo_rel(e.file)}")
-        ok = generate_image(client, prompt_body, e.file)
+        if is_pil:
+            print(f"  Rendering (PIL): {e.id} → {_repo_rel(e.file)}")
+            ok, _dims = render_pil_canon_layout(e.prompt_file, e.file)
+        else:
+            print(f"  Generating (Gemini): {e.id} → {_repo_rel(e.file)}")
+            ok = generate_image(client, prompt_body, e.file)
         if not ok:
             report.canon_drafts_failed += 1
             continue
 
         now = _now_iso_utc()
 
-        # Optional label overlay BEFORE metadata embed. PIL's save()
-        # strips PngInfo, so apply overlays first and embed metadata
-        # last. The labels spec is a sibling <id>.labels.yaml next to
-        # the prompt file; absent → no overlay (Gemini render kept
-        # as-is). labels_path was set above for the cache check.
-        if labels_path.exists():
+        # Optional label overlay BEFORE metadata embed. Only applies
+        # to Gemini-rendered entries; PIL renders are already exact.
+        # PIL's save() strips PngInfo, so apply overlays first and
+        # embed metadata last.
+        if not is_pil and labels_path.exists():
             try:
                 applied = apply_label_overlay(e.file, labels_path)
                 if applied > 0:
@@ -1181,7 +1463,7 @@ def process_draft_canon_entries(
             e.file,
             canonical_id=e.id,
             prompt_sha256=current_prompt_sha,
-            generator=MODEL,
+            generator=e.generator,
             generated_at=now,
             version=e.version,
             description=(e.raw.get("description") or "")[:120] if e.raw else "",
@@ -1200,17 +1482,20 @@ def process_draft_canon_entries(
             print(f"  Warning: couldn't read rendered dimensions for {e.id}: {exc}")
             rendered_dims = None
 
-        # Mutate entry — save_registry persists later
+        # Mutate entry — save_registry persists later. Trust the
+        # registry's generator field as both routing input and recorded
+        # output (do not auto-coerce to MODEL — that would corrupt
+        # PIL-rendered entries).
         e.prompt_sha256 = current_prompt_sha
         e.file_sha256 = new_file_sha
-        e.generator = MODEL  # ensure it reflects what actually ran
         if e.raw is not None:
             e.raw["generated_at"] = now
             if rendered_dims is not None:
                 e.raw["dimensions"] = rendered_dims
             # Track labels.yaml hash so changes to the overlay spec
-            # invalidate cache on the next run.
-            if current_labels_sha:
+            # invalidate cache on the next run. Only meaningful for
+            # Gemini entries; PIL entries don't use labels.yaml.
+            if not is_pil and current_labels_sha:
                 e.raw["labels_sha256"] = current_labels_sha
             elif "labels_sha256" in e.raw:
                 del e.raw["labels_sha256"]
@@ -1223,7 +1508,7 @@ def process_draft_canon_entries(
             canonical_id=e.id,
             slug=e.slug,
             prompt_sha256=current_prompt_sha,
-            generator=MODEL,
+            generator=e.generator,
             file_sha256=new_file_sha,
             version=e.version,
             aspect=(e.raw.get("aspect") if e.raw else None) or "16:9",
@@ -1233,7 +1518,9 @@ def process_draft_canon_entries(
         report.canon_drafts_generated += 1
         report.canon_drafts_registry_updates += 1
         report.sidecars_written += 1
-        time.sleep(DELAY_SECONDS)
+        # Rate-limit only Gemini calls; PIL is synchronous local work.
+        if not is_pil:
+            time.sleep(DELAY_SECONDS)
 
 
 # ──────────────────────────────────────────────────────────────
