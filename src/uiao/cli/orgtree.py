@@ -467,6 +467,68 @@ def export_codebook(
         console.print(f"[green]wrote[/green] {out} ({len(payload['entries'])} entries)")
 
 
+def _dynamic_groups_to_payload(lib: DynamicGroupLibrary) -> dict[str, Any]:
+    """JSON-serializable shape consumed by UIAO_159's pwsh
+    ``Test-DynamicGroupAlignment -GroupLibraryPath``: an object with
+    ``groups`` as a list of ``{groupName, membershipRule, category,
+    orgpathRefs, description}``.
+
+    Field-name mapping (Python dataclass -> pwsh-friendly): ``name`` ->
+    ``groupName``; ``rule`` -> ``membershipRule``. The pwsh cmdlet
+    keys off ``groupName`` (matches tenant display name) and
+    ``membershipRule`` (compares against the tenant group's
+    `MembershipRule` property).
+    """
+    return {
+        "schema_version": lib.schema_version,
+        "document_id": lib.document_id,
+        "naming_regex": lib.naming_regex,
+        "purpose_suffixes": list(lib.purpose_suffixes),
+        "groups": [
+            {
+                "groupName": spec.name,
+                "membershipRule": spec.rule,
+                "category": spec.category,
+                "orgpathRefs": list(spec.orgpath_refs),
+                "description": spec.description,
+            }
+            for spec in lib.groups.values()
+        ],
+    }
+
+
+@export_app.command("dynamic-groups")
+def export_dynamic_groups(
+    out: Optional[Path] = typer.Option(
+        None,
+        "--out",
+        "-o",
+        help="Destination JSON file. Defaults to stdout.",
+    ),
+) -> None:
+    """Export the canonical dynamic-group library (UIAO_152) as JSON.
+
+    Shape matches what the PowerShell `Test-DynamicGroupAlignment
+    -GroupLibraryPath` cmdlet (UIAO_159 §F4) consumes: an object with
+    a `groups` array, each entry exposing `groupName/membershipRule`
+    plus context (`category`, `orgpathRefs`, `description`).
+
+    Use it to bridge the canonical YAML and the pwsh-side JSON file:
+
+        uiao orgtree export dynamic-groups --out /tmp/groups.json
+        pwsh -c "Test-DynamicGroupAlignment -TenantId $env:TENANT_ID -GroupLibraryPath /tmp/groups.json"
+    """
+    lib = load_dynamic_group_library()
+    payload = _dynamic_groups_to_payload(lib)
+    text = json.dumps(payload, indent=2, sort_keys=False)
+    if out is None:
+        sys.stdout.write(text)
+        sys.stdout.write("\n")
+    else:
+        out.write_text(text + "\n", encoding="utf-8")
+        console.print(f"[green]wrote[/green] {out} ({len(payload['groups'])} groups)")
+
+
 # ---------------------------------------------------------------------------
 # list — enumerate all entries from a canonical artifact
 # ---------------------------------------------------------------------------
