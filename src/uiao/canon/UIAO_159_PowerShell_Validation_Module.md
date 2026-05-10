@@ -6,7 +6,7 @@ status: Current
 classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
-updated_at: "2026-05-10"
+updated_at: "2026-05-11"
 boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_I"
@@ -45,8 +45,9 @@ generated from canon, never authored independently.
 
 ## Surface 1 — Python CLI
 
-The six per-artifact validate verbs and the aggregate are registered
-under `uiao orgtree`:
+Four verb groups under `uiao orgtree`:
+
+### `validate` — schema + integrity check
 
 ```
 uiao orgtree validate codebook                [--data PATH]
@@ -61,16 +62,55 @@ uiao orgtree validate all
 Each verb wraps the corresponding `load_*` function under
 `uiao.modernization.orgtree`. With no `--data`, the canonical artifact
 shipped under `uiao.canon.data.orgpath` is loaded; with `--data`, an
-alternate file is loaded (used in tests and tenant-specific audits).
-Success prints a one-line PASS summary; failure prints the typed
-validation error and exits 1.
+alternate file is loaded. Success prints a one-line PASS summary;
+failure prints the typed validation error and exits 1. `validate all`
+runs all six in dependency order (codebook → dynamic groups →
+admin units → device planes → policy targets → drift-engine
+config) and aggregates pass/fail.
 
-`uiao orgtree validate all` runs all six in dependency order
-(codebook → dynamic groups → admin units → device planes →
-policy targets → drift-engine config) and aggregates pass/fail.
+### `show` — print one canonical entry
 
-Tests: `tests/test_cli_orgtree.py` (15 tests; happy path × 7 + bad-input
-path × 6 + 2 help-surface tests).
+```
+uiao orgtree show codebook       <ORG-PATH-CODE>
+uiao orgtree show dynamic-group  <NAME>
+uiao orgtree show admin-unit     <NAME>
+uiao orgtree show device-plane   <NAME>
+```
+
+Loads the artifact, looks up the entry by id, renders it as a Rich
+table. Exits 1 with a `NOT FOUND` line listing up to five known keys
+when the id is missing.
+
+### `resolve` — cross-reference against the codebook
+
+```
+uiao orgtree resolve dynamic-group <NAME>
+```
+
+Prints the group's membership rule, then walks each `orgpath_refs`
+entry and reports OK / MISSING against the codebook (UIAO_151). Exits
+1 if any reference is unregistered. Useful for "what does this group
+target?" without reading raw YAML.
+
+### `export` — emit canon as downstream-consumable JSON
+
+```
+uiao orgtree export codebook [--out PATH]
+```
+
+Serializes the codebook (UIAO_151) to JSON. Shape matches what the
+PowerShell `Get-OrgTreeValidationReport -CodebookPath` cmdlet
+(UIAO_159 §F3) expects: an object with `entries` as a list of
+`{code, level, description, parent}`. Use it to bridge the canonical
+YAML and the pwsh-side JSON file:
+
+```bash
+uiao orgtree export codebook --out /tmp/codebook.json
+pwsh -c "Get-OrgTreeValidationReport -TenantId \$env:TENANT_ID -CodebookPath /tmp/codebook.json"
+```
+
+Tests: `tests/test_cli_orgtree.py` (28 tests covering validate,
+show, resolve, and export).
 
 ## Surface 2 — PowerShell module
 
