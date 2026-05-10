@@ -1,9 +1,153 @@
 ---
 title: "Boundary Impact Model"
 subtitle: "Modeling authorization boundaries and their governance implications"
+doc-type: architecture-explainer
+audience: [Customer, Technical, Architect]
+classification: Controlled
+boundary: GCC-Moderate
+canon-source: "docs/docs/gcc-boundary-solution-architecture.qmd"
+canon-reference:
+  - "docs/docs/gcc-boundary-problem-statement.qmd"
+  - "docs/docs/drift-detection-boundary-amendment.qmd"
+  - "docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd"
+derived-from: "uiao canon"
 ---
 
+# Boundary Impact Model
+
+The **boundary impact model** is UIAO's architectural treatment of what
+happens when authorization boundaries cut across the substrate — most
+notably the GCC-Moderate boundary that constrains telemetry, identity, and
+enforcement surfaces inside Microsoft 365 GCC-Moderate tenants.
+
 ::: {.callout-note}
-## Architecture document in preparation
-Full architecture documentation is being drafted. For current coverage, see the [GCC Moderate Boundary Model](../compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd) and the [Findings section](/findings/).
+## Canon-anchor note
+The original ROADMAP cited `docs/docs/authorization-boundary.qmd`, which
+does not exist. This page anchors instead on the existing GCC-Moderate
+boundary canon (`gcc-boundary-problem-statement.qmd`,
+`gcc-boundary-solution-architecture.qmd`,
+`drift-detection-boundary-amendment.qmd`) and the customer-facing leaf
+[`B.1 GCC-Moderate Boundary Model`](../compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd).
+A canon-change ADR may later promote a generalized authorization-boundary
+canon document; until then, this model is GCC-Moderate-anchored.
 :::
+
+## What the model captures
+
+A boundary in UIAO is **not just a network or tenant edge** — it is any
+surface across which:
+
+- **Telemetry fidelity changes** (e.g. commercial → GCC-Moderate causes
+  silent loss of Endpoint Analytics, Device Health Attestation, etc.).
+- **Identity authority changes** (e.g. a federated trust crosses from one
+  IdP's namespace to another).
+- **Enforcement responsibility changes** (e.g. a control that was platform-
+  enforced becomes agency-enforced, or vice versa).
+- **Provenance classification changes** (e.g. a claim that was
+  `authoritative` from system X becomes `derived` after crossing the
+  boundary).
+
+Each of these axes contributes an **impact dimension** that the model
+quantifies independently.
+
+## The four impact dimensions
+
+| Dimension | Question | Drift class on violation |
+|---|---|---|
+| **Telemetry fidelity** | What signals are *actually* available on this side of the boundary? | `DRIFT-SCHEMA` (missing fields), `DRIFT-PROVENANCE` (broken chain) |
+| **Identity authority** | Who can the issuer of a claim be resolved to here? | `DRIFT-IDENTITY` |
+| **Enforcement responsibility** | Who must enforce this control on this side? | `DRIFT-AUTHZ` (out-of-envelope action) |
+| **Provenance classification** | Is the claim still authoritative on this side, or only derived? | `DRIFT-SEMANTIC` |
+
+The model deliberately maps onto the
+[Drift Engine](drift-engine.qmd)'s five-class taxonomy. Boundary crossings
+are the most common source of multi-class drift, and treating boundary
+modeling as a drift problem (rather than a separate compliance concern)
+keeps both surfaces in one operational language.
+
+## The invisible-boundary problem (worked example)
+
+The structural example for this model is the **GCC-Moderate invisible
+boundary**, documented in
+[`gcc-boundary-problem-statement.qmd`](../../docs/gcc-boundary-problem-statement.qmd):
+
+> Microsoft 365 GCC-Moderate provides the same nominal product set as M365
+> commercial, but the FedRAMP Moderate authorization boundary materially
+> constrains the outbound telemetry that drives many of the platform's
+> higher-order analytics. Features appear available in administrative
+> portals, are described in commercial documentation, and may be referenced
+> in SSPs and migration plans, but silently produce no data, emit no
+> errors, and have no documented resolution path in the GCC-Moderate
+> context.
+
+Mapped onto the four-dimension model:
+
+- **Telemetry fidelity:** Endpoint Analytics, Device Health Attestation,
+  Locations / Network Fence, ARC Server Monitoring, and Expedited Updates
+  are unavailable in GCC-Moderate despite UI presence. The boundary
+  *silently* attenuates telemetry.
+- **Identity authority:** federated trusts from commercial IdPs cross into
+  GCC-Moderate scope; resolution rules differ on each side.
+- **Enforcement responsibility:** controls that commercial customers
+  consume as platform features (e.g. some ZT analytics) become **agency
+  responsibility** in GCC-Moderate.
+- **Provenance classification:** an `authoritative` claim sourced from a
+  commercial-only telemetry path is `derived` (or absent) in GCC-Moderate.
+
+Treating these as a single boundary impact rather than four unrelated
+issues is what allows the
+[B.1 GCC-Moderate Boundary Model](../compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd)
+leaf to produce a single coherent SSP narrative instead of four disjoint
+ones.
+
+## How UIAO compensates: in-boundary equivalents
+
+Per
+[`gcc-boundary-solution-architecture.qmd`](../../docs/gcc-boundary-solution-architecture.qmd),
+UIAO addresses each impact dimension through in-boundary mechanisms rather
+than waiting for Microsoft to fix the platform:
+
+1. **Boundary probe** — programmatically tests which features actually
+   function on each side, producing a structured capability disposition
+   instead of a portal screenshot.
+2. **In-boundary telemetry** — adapters that operate inside the
+   GCC-Moderate boundary and emit canonical claims with explicit
+   `source_classification: derived` when they substitute for an
+   unavailable commercial signal.
+3. **Compensating enforcement** — agency-side enforcement adapters for
+   controls that platform features cannot provide, with their evidence
+   flowing through the same [Evidence Chain](evidence-chain.qmd).
+4. **ATO documentation surface** — the boundary impact is captured as a
+   first-class artifact that the SSP, POA&M, and Component Definition all
+   reference, rather than as a series of footnotes.
+
+## Why this is an architectural concern, not a compliance concern
+
+Two reasons the boundary impact model lives in the Architecture Series and
+not in the Compliance section:
+
+1. **It changes the topology of the substrate.** A boundary crossing
+   redefines which plane is authoritative for which claim. That is a
+   structural property of the architecture, not a control mapping.
+2. **It is the same problem on every boundary.** GCC-Moderate is the
+   worked example, but identity-federation boundaries, classified-network
+   boundaries, and agency-to-agency boundaries all instantiate the same
+   four-dimension model. Solving it once architecturally is cheaper than
+   re-solving it per compliance regime.
+
+## What this means for an ATO package
+
+A UIAO-anchored ATO package treats every authorization boundary as a
+**named, modeled, drift-monitored surface**:
+
+- The boundary itself appears in the SSP, with disposition data per the
+  four impact dimensions.
+- Compensating mechanisms are documented per impact dimension, not as
+  generic mitigations.
+- Drift findings cite the boundary they crossed (e.g.
+  `DRIFT-PROVENANCE @ gcc-moderate-edge`), making remediation scope
+  explicit.
+
+This is what makes the GCC-Moderate boundary tractable: the substrate
+treats the boundary itself as a first-class governed object, not as an
+implicit assumption embedded in every control narrative.
