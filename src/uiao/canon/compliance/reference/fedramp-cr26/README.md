@@ -10,7 +10,10 @@ This material is **not canon authority**. It is reference input, in the
 same sense as `../fedramp-rev5/`. Doctrinal alignment (which KSI themes
 the substrate emits, what counts as `DRIFT-EVIDENCE-STALE`) lives in
 [`UIAO_133`](../../../specs/fedramp-20x-integration.md) and
-[`ADR-047`](../../../adr/adr-047-fedramp-20x-integration.md).
+[`ADR-047`](../../../adr/adr-047-fedramp-20x-integration.md). The
+authority posture, snapshot pin discipline, and conformance-adapter
+slot for vendored CR26 artifacts are governed by
+[`ADR-061`](../../../adr/adr-061-fedramp-cr26-catalog-vendoring.md).
 
 ## Source
 
@@ -62,18 +65,12 @@ Low / Moderate / High baseline tailoring. uiao's GCC-Moderate boundary
 ## Why this is a pointer, not a mirror
 
 The CR26 source data is Public Preview and the Palladium generator is
-explicitly experimental. Mirroring the full XML/JSON/YAML triplicate
-into canon now would:
-
-- bloat the canon tree with material that is expected to churn;
-- create the appearance of authority for content that is unofficial;
-- duplicate something already freely reachable under CC0.
-
-The follow-up PR that vendors a snapshot (path #1b) should land
-alongside an ADR explicitly recording: (a) the CR26-catalog-version-
-dependence already acknowledged in `UIAO_133 §1` Out-of-scope item 3,
-(b) the unofficial-authority caveat, and (c) the `oscal-cli` CI
-round-trip if XML→JSON/YAML reconciliation is needed.
+explicitly experimental. ADR-061 records the policy that lets a
+snapshot land here without conferring canon authority on the upstream:
+snapshots live under `snapshot/<upstream-sha>/` and are immutable;
+local modifications are expressed as overlays under `overlays/`; the
+adapter described in ADR-061 D3 is the only consumer that bridges
+vendored CR26 IDs to substrate KSI rules.
 
 ## Attribution
 
@@ -84,6 +81,6 @@ as a courtesy and for provenance audit clarity.
 ## Local handling
 
 Do not modify any file under this folder by hand. It exists to record
-upstream pinning. The vendored-snapshot follow-up will land artifacts
-under a `snapshot/` subdirectory keyed to the upstream commit SHA so
-that this README never needs to track filenames inside the snapshot.
+upstream pinning. Vendored snapshots land under
+`snapshot/<upstream-sha>/`; local modifications live under
+`overlays/<purpose>/`. See ADR-061 D2 for snapshot pin discipline.
