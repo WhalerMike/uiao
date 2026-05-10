@@ -6,7 +6,7 @@ status: Current
 classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
-updated_at: "2026-05-14"
+updated_at: "2026-05-15"
 boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_I"
@@ -84,18 +84,27 @@ when the id is missing.
 ### `list` — enumerate all entries
 
 ```
-uiao orgtree list codebook        [--prefix PREFIX]
-uiao orgtree list dynamic-groups  [--prefix PREFIX]
-uiao orgtree list admin-units     [--prefix PREFIX]
-uiao orgtree list device-planes   [--prefix PREFIX]
+uiao orgtree list codebook            [--prefix PREFIX]
+uiao orgtree list dynamic-groups      [--prefix PREFIX]
+uiao orgtree list admin-units         [--prefix PREFIX]
+uiao orgtree list device-planes       [--prefix PREFIX]
+uiao orgtree list role-assignments
+uiao orgtree list intune-assignments
 ```
 
 Renders every entry in the artifact as a sortable Rich table, one row
 per entry with the most-scannable columns (id + 2-3 summary fields).
-`--prefix` filters by id-prefix — e.g.
-`uiao orgtree list codebook --prefix ORG-FIN` shows only Finance-tree
-codes. Output title displays "X of Y" so the operator knows whether
-the filter matched everything or trimmed.
+
+The first four kinds are dict-keyed by a canonical id, so `--prefix`
+filters by id-prefix — e.g. `uiao orgtree list codebook --prefix
+ORG-FIN` shows only Finance-tree codes. Output title displays "X of
+Y" so the operator knows whether the filter matched everything or
+trimmed.
+
+The last two kinds (`role-assignments`, `intune-assignments`) are
+tuple-keyed — there's no single canonical id per row, so the table
+is a multi-row dump sorted by tier/scope (role assignments) or
+profile kind/target group (Intune assignments). No `--prefix` filter.
 
 ### `resolve` — cross-reference against the codebook
 
@@ -143,8 +152,8 @@ pwsh -c "Test-DynamicGroupAlignment -TenantId \$env:TENANT_ID -GroupLibraryPath 
 (`$library.groups`) and the legacy bare-array shape for backward
 compatibility with admin-staged fixtures.
 
-Tests: `tests/test_cli_orgtree.py` (36 tests covering validate, show,
-resolve, export, and list).
+Tests: `tests/test_cli_orgtree.py` (38 tests covering validate, show,
+resolve, export, and list including the tuple-keyed kinds).
 
 ## Surface 2 — PowerShell module
 
