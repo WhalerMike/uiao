@@ -39,14 +39,18 @@ __all__ = [
     "STATUS",
     "DEFAULT_SNAPSHOT_SHA",
     "EXPECTED_KSI_THEMES",
+    "MAPPING_FILE",
     "Cr26SnapshotNotFound",
     "Cr26CatalogMalformed",
+    "Cr26MappingMalformed",
     "Finding",
     "Cr26CatalogAdapter",
     "default_snapshot_dir",
     "load_catalog",
     "enumerate_ksi_themes",
     "enumerate_ksi_controls",
+    "load_mapping",
+    "validate_mapping",
     "reconcile",
 ]
 
@@ -72,6 +76,8 @@ EXPECTED_KSI_THEMES: tuple[str, ...] = (
     "KSI-SCR",
 )
 
+MAPPING_FILE: str = "mappings/ksi-mapping.yaml"
+
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -84,6 +90,10 @@ class Cr26SnapshotNotFound(FileNotFoundError):
 
 class Cr26CatalogMalformed(ValueError):
     """Catalog JSON is present but missing required top-level structure."""
+
+
+class Cr26MappingMalformed(ValueError):
+    """Mapping YAML is present but missing required top-level structure."""
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +198,101 @@ def enumerate_ksi_controls(
             controls.append({"id": ctl_id, "title": ctl.get("title", "")})
         out[theme_id] = controls
     return out
+
+
+# ---------------------------------------------------------------------------
+# Mapping loader — local KSI rule ↔ CR26 control mapping (UIAO_137)
+# ---------------------------------------------------------------------------
+
+
+def default_mapping_path() -> Path:
+    """Return the on-disk path of the bundled ksi-mapping.yaml."""
+    candidate = resources.files("uiao.adapters.fedramp_cr26_catalog")
+    for part in MAPPING_FILE.split("/"):
+        candidate = candidate.joinpath(part)
+    return Path(str(candidate))
+
+
+def load_mapping(mapping_path: Path | None = None) -> dict[str, Any]:
+    """Load the UIAO_137 KSI-NNN ↔ CR26 mapping YAML.
+
+    Raises :class:`Cr26MappingMalformed` if the file is missing or
+    lacks the required top-level keys (``mappings``, ``snapshot_sha``).
+    """
+    import yaml  # type: ignore[import-untyped]
+
+    path = mapping_path or default_mapping_path()
+    if not path.is_file():
+        raise Cr26MappingMalformed(f"KSI mapping YAML not found at {path}.")
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise Cr26MappingMalformed(f"KSI mapping YAML at {path} did not parse to a dict.")
+    for required in ("mappings", "snapshot_sha"):
+        if required not in data:
+            raise Cr26MappingMalformed(f"KSI mapping YAML at {path} missing required top-level key '{required}'.")
+    if not isinstance(data["mappings"], list):
+        raise Cr26MappingMalformed(f"KSI mapping YAML at {path} 'mappings' must be a list.")
+    return data
+
+
+def validate_mapping(
+    mapping: dict[str, Any] | None = None,
+    snapshot_dir: Path | None = None,
+) -> list[Finding]:
+    """Check that every CR26 control ID in the mapping resolves in the snapshot.
+
+    Returns a list of ``DRIFT-PROVENANCE`` findings — one per CR26 ID
+    that the mapping cites but the snapshot does not expose. Empty
+    list means the mapping is internally consistent against the
+    pinned snapshot. The mapping file's own ``snapshot_sha`` must
+    match :data:`DEFAULT_SNAPSHOT_SHA`; mismatch is itself a finding.
+    """
+    if mapping is None:
+        mapping = load_mapping()
+    snapshot_dir = snapshot_dir or default_snapshot_dir()
+    findings: list[Finding] = []
+
+    mapping_sha = mapping.get("snapshot_sha")
+    if mapping_sha != DEFAULT_SNAPSHOT_SHA:
+        findings.append(
+            Finding(
+                drift_class="DRIFT-PROVENANCE",
+                severity="P1",
+                summary=(
+                    f"Mapping snapshot_sha {mapping_sha!r} does not match "
+                    f"adapter DEFAULT_SNAPSHOT_SHA {DEFAULT_SNAPSHOT_SHA!r}."
+                ),
+                details={
+                    "mapping_sha": mapping_sha,
+                    "adapter_default_sha": DEFAULT_SNAPSHOT_SHA,
+                },
+            )
+        )
+
+    catalog = load_catalog(snapshot_dir)
+    present_ids: set[str] = set()
+    for theme_controls in enumerate_ksi_controls(catalog).values():
+        for ctl in theme_controls:
+            present_ids.add(ctl["id"])
+
+    for row in mapping.get("mappings", []):
+        local = row.get("local_rule", "<unknown>")
+        for cr26_id in row.get("cr26_controls", []) or []:
+            if cr26_id not in present_ids:
+                findings.append(
+                    Finding(
+                        drift_class="DRIFT-PROVENANCE",
+                        severity="P2",
+                        summary=(
+                            f"Mapping cites CR26 control {cr26_id} (local rule {local}) which is not in the snapshot."
+                        ),
+                        details={
+                            "local_rule": local,
+                            "missing_cr26_id": cr26_id,
+                        },
+                    )
+                )
+    return findings
 
 
 # ---------------------------------------------------------------------------
