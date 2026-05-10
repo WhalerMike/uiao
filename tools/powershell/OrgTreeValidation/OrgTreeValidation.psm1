@@ -110,16 +110,34 @@ function Get-OrgTreeValidationReport {
         each user's OrgPath (ExtensionAttribute1) against the supplied
         codebook, and returns a summary PSCustomObject.
 
-        Requires Microsoft.Graph module and User.Read.All scope.
+        Requires Microsoft.Graph module and User.Read.All scope in production.
+        The two `-Connect*` / `-Get*` parameters accept scriptblocks; their
+        defaults bind to the real Microsoft.Graph cmdlets, and tests pass
+        scriptblock fakes so the cmdlet runs end-to-end without
+        Microsoft.Graph installed.
     .PARAMETER TenantId
         Target tenant identifier.
     .PARAMETER CodebookPath
         Path to a JSON codebook file with shape:
         { "entries": [ { "code": "ORG-FIN" }, ... ] }
+    .PARAMETER ConnectGraph
+        Scriptblock invoked to connect to the tenant. Default binds to
+        Microsoft.Graph's Connect-MgGraph with User.Read.All scope.
+    .PARAMETER GetUser
+        Scriptblock invoked to enumerate tenant users. Default binds to
+        Get-MgUser -All -Property 'Id,DisplayName,OnPremisesExtensionAttributes'.
+        Must return an enumerable of objects with
+        OnPremisesExtensionAttributes.ExtensionAttribute1.
     .EXAMPLE
         Get-OrgTreeValidationReport -TenantId $tid -CodebookPath ./codebook.json
+    .EXAMPLE
+        # Pester unit test (no Microsoft.Graph needed)
+        Get-OrgTreeValidationReport `
+            -TenantId 'fake' -CodebookPath ./fixtures/codebook.json `
+            -ConnectGraph {} `
+            -GetUser { @([pscustomobject]@{ Id='u1'; OnPremisesExtensionAttributes=[pscustomobject]@{ ExtensionAttribute1='ORG' } }) }
     .NOTES
-        UIAO_159 Function 3. Tenant-scope work; no Pester unit-coverage.
+        UIAO_159 Function 3. Tenant-scope; Pester-tested via DI.
     #>
     [CmdletBinding()]
     [OutputType([psobject])]
@@ -130,7 +148,15 @@ function Get-OrgTreeValidationReport {
 
         [Parameter(Mandatory = $true)]
         [ValidateScript({ Test-Path $_ })]
-        [string]$CodebookPath
+        [string]$CodebookPath,
+
+        [scriptblock]$ConnectGraph = {
+            Connect-MgGraph -TenantId $TenantId -Scopes 'User.Read.All' -NoWelcome
+        },
+
+        [scriptblock]$GetUser = {
+            Get-MgUser -All -Property 'Id,DisplayName,OnPremisesExtensionAttributes'
+        }
     )
 
     $codebookJson = Get-Content -Path $CodebookPath -Raw | ConvertFrom-Json
@@ -139,9 +165,13 @@ function Get-OrgTreeValidationReport {
         $codebook[$entry.code] = $entry
     }
 
-    Connect-MgGraph -TenantId $TenantId -Scopes 'User.Read.All' -NoWelcome
+    & $ConnectGraph
 
-    $users = Get-MgUser -All -Property 'Id,DisplayName,OnPremisesExtensionAttributes'
+    # @(...) forces array semantics: pwsh otherwise unwraps a
+    # zero-element scriptblock return to $null and a single-element
+    # return to a scalar, which then makes $users.Count throw under
+    # Set-StrictMode -Version Latest.
+    $users = @(& $GetUser)
     $valid = 0; $invalid = 0; $orphaned = 0
 
     foreach ($user in $users) {
@@ -177,9 +207,21 @@ function Test-DynamicGroupAlignment {
     .PARAMETER TenantId
         Target tenant identifier.
     .PARAMETER GroupLibraryPath
-        JSON path with array of { groupName, membershipRule } entries.
+        JSON path with `{groups: [{groupName, membershipRule}, ...]}` or a
+        bare root array of `{groupName, membershipRule}` for backward
+        compatibility.
+    .PARAMETER ConnectGraph
+        Scriptblock invoked to connect to the tenant. Default binds to
+        Microsoft.Graph's Connect-MgGraph with Group.Read.All scope.
+    .PARAMETER GetGroup
+        Scriptblock invoked once per library entry to fetch the matching
+        tenant group. Receives the display name as a positional argument
+        (`param($DisplayName)`) and must return either a group object
+        (with a `MembershipRule` property) or $null when the group is
+        missing. Default binds to Get-MgGroup with a server-side
+        `displayName eq` filter.
     .NOTES
-        UIAO_159 Function 4. Tenant-scope; no Pester unit-coverage.
+        UIAO_159 Function 4. Tenant-scope; Pester-tested via DI.
     #>
     [CmdletBinding()]
     [OutputType([psobject])]
@@ -190,7 +232,16 @@ function Test-DynamicGroupAlignment {
 
         [Parameter(Mandatory = $true)]
         [ValidateScript({ Test-Path $_ })]
-        [string]$GroupLibraryPath
+        [string]$GroupLibraryPath,
+
+        [scriptblock]$ConnectGraph = {
+            Connect-MgGraph -TenantId $TenantId -Scopes 'Group.Read.All' -NoWelcome
+        },
+
+        [scriptblock]$GetGroup = {
+            param($DisplayName)
+            Get-MgGroup -Filter "displayName eq '$DisplayName'" -ErrorAction SilentlyContinue
+        }
     )
 
     $library = Get-Content -Path $GroupLibraryPath -Raw | ConvertFrom-Json
@@ -201,13 +252,18 @@ function Test-DynamicGroupAlignment {
     # PRs keep working.
     $definitions = if ($null -ne $library.groups) { $library.groups } else { $library }
 
-    Connect-MgGraph -TenantId $TenantId -Scopes 'Group.Read.All' -NoWelcome
+    & $ConnectGraph
 
     $aligned = 0; $misaligned = 0; $missing = 0
     $details = @()
 
     foreach ($definition in $definitions) {
-        $tenantGroup = Get-MgGroup -Filter "displayName eq '$($definition.groupName)'" -ErrorAction SilentlyContinue
+        # Pass DisplayName as an explicit positional arg. Scriptblock
+        # closures across the test/module session boundary don't always
+        # surface the cmdlet's local scope to the scriptblock body, so
+        # "& $GetGroup" with implicit $DisplayName lookup is unreliable
+        # under Pester. Explicit param($DisplayName) is robust.
+        $tenantGroup = & $GetGroup $definition.groupName
         if (-not $tenantGroup) {
             $missing++
             $details += [pscustomobject]@{ GroupName = $definition.groupName; Status = 'Missing' }
@@ -240,8 +296,16 @@ function Export-OrgTreeSnapshot {
         Target tenant identifier.
     .PARAMETER OutputPath
         Destination JSON file path.
+    .PARAMETER ConnectGraph
+        Scriptblock invoked to connect. Default: Connect-MgGraph with
+        User.Read.All + Group.Read.All scopes.
+    .PARAMETER GetUser
+        Scriptblock invoked to enumerate tenant users.
+    .PARAMETER GetGroup
+        Scriptblock invoked to enumerate tenant groups. Output is filtered
+        post-call to OrgTree-* names.
     .NOTES
-        UIAO_159 Function 5. Tenant-scope; no Pester unit-coverage.
+        UIAO_159 Function 5. Tenant-scope; Pester-tested via DI.
     #>
     [CmdletBinding()]
     param(
@@ -249,14 +313,27 @@ function Export-OrgTreeSnapshot {
         [string]$TenantId,
 
         [Parameter(Mandatory = $true)]
-        [string]$OutputPath
+        [string]$OutputPath,
+
+        [scriptblock]$ConnectGraph = {
+            Connect-MgGraph -TenantId $TenantId -Scopes 'User.Read.All', 'Group.Read.All' -NoWelcome
+        },
+
+        [scriptblock]$GetUser = {
+            Get-MgUser -All -Property 'Id,DisplayName,UserPrincipalName,Department,OnPremisesExtensionAttributes'
+        },
+
+        [scriptblock]$GetGroup = {
+            Get-MgGroup -All -Property 'Id,DisplayName,MembershipRule,GroupTypes'
+        }
     )
 
-    Connect-MgGraph -TenantId $TenantId -Scopes 'User.Read.All', 'Group.Read.All' -NoWelcome
+    & $ConnectGraph
 
-    $users = Get-MgUser -All -Property 'Id,DisplayName,UserPrincipalName,Department,OnPremisesExtensionAttributes'
-    $groups = Get-MgGroup -All -Property 'Id,DisplayName,MembershipRule,GroupTypes' |
-        Where-Object { $_.DisplayName -like 'OrgTree-*' }
+    # @(...) forces array semantics; see Get-OrgTreeValidationReport's
+    # matching comment for why.
+    $users = @(& $GetUser)
+    $groups = @((& $GetGroup) | Where-Object { $_.DisplayName -like 'OrgTree-*' })
 
     $snapshot = [pscustomobject]@{
         snapshotDate = (Get-Date -Format 'o')
