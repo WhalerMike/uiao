@@ -1,0 +1,236 @@
+---
+title: "FedRAMP RFCs — UIAO substrate readiness assessment (2026-05)"
+finding_id: "FINDING-003"
+status: Open
+severity: P2
+created_at: "2026-05-10"
+updated_at: "2026-05-10"
+owner: "governance-steward"
+related_canon: ["UIAO_022", "UIAO_023", "UIAO_110", "UIAO_111", "UIAO_113", "UIAO_131", "UIAO_132", "UIAO_133", "UIAO_140", "UIAO_200"]
+related_adrs: ["ADR-033", "ADR-043", "ADR-047", "ADR-054"]
+related_findings: ["FINDING-001", "FINDING-002"]
+supersedes: []
+superseded_by: []
+---
+
+# FedRAMP RFCs — UIAO substrate readiness assessment
+
+Synthesis of the UIAO substrate's posture against the open and
+recently-closed FedRAMP Requests for Comment published at
+[fedramp.gov/rfcs](https://www.fedramp.gov/rfcs/), with per-RFC
+gaps and a prioritized remediation backlog. This is a governance
+assessment, not a finding about a single external constraint —
+it is filed under `docs/findings/` because the artifact class fits
+(structured, evidence-backed, owner-attributed) and several rows
+below escalate into proper FINDING-NNN entries on adoption.
+
+The assessment is anchored on UIAO at the commit at the head of
+`claude/assess-fedramp-uiao-8a6Cr` (post-PR #349). The RFC corpus
+covered is RFC-0005 through RFC-0030 inclusive, with the public
+20x pilot framework (FedRAMP 20x Phase 2 Moderate path) treated
+as the umbrella program the RFCs feed.
+
+## 1. RFC corpus and UIAO posture summary
+
+| RFC | Topic | Comment period | UIAO posture | Severity |
+|---|---|---|---|---|
+| RFC-0005 | Minimum Assessment Scope Standard | Closed 2025-05-25 | **Specified, not enforced.** UIAO_133 §3 defines the `mas-scope` frontmatter field and a classification rubric; classification is not yet applied across all canon documents and there is no CI gate that rejects unclassified canon edits. | P2 |
+| RFC-0006 | 20x Phase 1 KSIs | Closed 2025 | **Reference-only.** Phase 1 KSIs are catalogued in `canon/data/fedramp-20x.yml`; no substrate emission targets the Phase 1 catalog. | P3 |
+| RFC-0008 | Continuous Reporting Standard | Closed 2025-06-09 | **Partially implemented.** ConMon CLI (`conmon-process`, `conmon-export-oa`, `conmon-dashboard`) emits ongoing-authorization records; mitigated-vulnerability rerating is not yet wired through `evidence/poam.py`. | P2 |
+| RFC-0010 | Continuous Reporting Best Practices | Pending | **Awaiting publication.** ADR-047 ratification is gated on this RFC. | P3 |
+| RFC-0012 | Continuous Vulnerability Management Standard | Closed | **Pathway-2 only.** ADR-043 wires the traditional pathway (monthly OS / DB / web / container / service-config scans, monthly POA&M, annual IA scan). VDR Balance Improvement Release pathway is pre-wired but gated. | P2 |
+| RFC-0014 | 20x Phase 2 KSIs | Closed | **Specified, not emitted.** UIAO_133 §2.2 maps 11 substrate outputs to KSI themes; the OSCAL generator at `src/uiao/oscal/generator.py` does not yet inject the four `fedramp:*` `props`. | **P1** |
+| RFC-0019–0023 | Authorization-process updates (designations, marketplace, external frameworks, no-sponsor program) | Closed Q1 2026 | **Acknowledged, not actioned.** No ADR records the FedRAMP-Ready retirement deadline (2026-07-28); the substrate's authorization-state model still assumes the legacy Ready/Authorized two-state vocabulary. | P2 |
+| RFC-0024 | Rev5 Machine-Readable Packages | Closed 2026-03-11 | **Partial.** UIAO emits OSCAL POA&M, SSP, and Assessment Results (`generators/{poam,ssp,sar}.py`, `generators/trestle.py` for compliance-trestle assembly) and CycloneDX SBOM (`generators/sbom.py`). No documented Trust Center / API surface for agency consumption, no validation against the FedRAMP-published machine-readable schema, no integration with the FedRAMP submission pipeline. Effective date 2026-09-30. | **P1** |
+| RFC-0026 | CA-7 Continuous Monitoring Expectations | Closed 2026-04-22 | **Accepted and integrated.** ADR-043 (ACCEPTED 2026-04-27), UIAO_132 spec drafted, Pathway 2 wired, Pathway 1 pre-wired. Enforcement clock: 2027-01-01. | OK |
+| RFC-0027 | Rev5 baseline update — AC, AT, AU, CA, CM | Open (added 2026-03-19) | **Not ingested.** Existing control-library coverage in `canon/data/control-library/{ac,at,au,ca,cm}/` totals 79 controls; the proposed Additional FedRAMP Security Technical Controls Requirements deltas have not been merged into the YAML. | P2 |
+| RFC-0028 | Rev5 baseline update — CP, IA, IR, MA, MP | Open (added 2026-03-19) | **Not ingested.** 66 controls in scope across these families. The MA "where applicable" nationality-documentation issue called out in the RFC comments directly impacts UIAO's contractor-access narratives. | P2 |
+| RFC-0029 | Rev5 baseline update — PE, PL, PM, PS, PT | Open (added 2026-03-19) | **Blocked — control families missing.** `pe/`, `pl/`, `ps/` exist (33 controls); **`pm/` and `pt/` directories are absent from `canon/data/control-library/`**. UIAO cannot produce a complete Moderate SSP from canon at this date. | **P1** |
+| RFC-0030 | Rev5 baseline update — RA, SA, SC, SI, SR | Open (added 2026-03-19) | **Blocked — SR family missing.** `ra/`, `sa/`, `sc/`, `si/` exist (69 controls); **`sr/` (Supply Chain Risk Management) is absent from `canon/data/control-library/`** despite SBOM emission via `generators/sbom.py` and supply-chain references in SA-4, RA-9, RA-3, IR-6(3). | **P1** |
+
+> Posture grades:
+> - **OK** — substrate satisfies the RFC requirement at its published effective date.
+> - **P3** — known gap, no near-term enforcement clock.
+> - **P2** — known gap with an enforcement clock more than 90 days out.
+> - **P1** — known gap blocking a near-term enforcement clock or an emit-side dependency the program-level FINDING-002 already calls out.
+
+## 2. UIAO capabilities verified during this assessment
+
+The substrate already ships the following machinery the RFCs presuppose:
+
+| Capability | Source | RFCs satisfied (in part) |
+|---|---|---|
+| OSCAL POA&M + SSP excerpt generator | `src/uiao/oscal/generator.py` | RFC-0024 |
+| OSCAL SSP / SAR / SBOM generators | `src/uiao/generators/{ssp,sar,sbom}.py`; `generators/trestle.py` for compliance-trestle assembly | RFC-0024 |
+| KSI evaluator + 10-rule library | `src/uiao/ksi/evaluate.py`, `src/uiao/ksi/rules/KSI-001..010.yaml` | RFC-0006 (partial), RFC-0014 (partial) |
+| ConMon ongoing-authorization generator | `src/uiao/monitoring/ongoing_auth.py` | RFC-0008, RFC-0026 |
+| Sentinel hook / event processor | `src/uiao/monitoring/{event_processor,sentinel_hook}.py` | RFC-0008, RFC-0026 |
+| Five-class drift taxonomy + walker | `src/uiao/substrate/walker.py`, `docs/docs/16_DriftDetectionStandard.qmd` | RFC-0014 (DRIFT-EVIDENCE-STALE planned) |
+| Adapter registry with class × mission-class taxonomy | `src/uiao/canon/adapter-registry.yaml`, `modernization-registry.yaml` | RFC-0024 (component-definition source) |
+| GCC-Moderate boundary as canonical drift class | ADR-033, `gcc-boundary-gap-registry.yaml` | RFC-0005 (boundary input) |
+| Single-ATO reciprocity model | ADR-054, UIAO_140 | RFC-0019/0021/0022 (reuse posture) |
+| Rev5 CA-7 Pathway 2 wiring | ADR-043, UIAO_132 | RFC-0026 |
+| Auditor bundle pipeline (evidence → SSP narrative + lineage + POA&M) | `src/uiao/auditor/bundle.py` | RFC-0008, RFC-0024 |
+
+## 3. Gaps blocking near-term RFC compliance
+
+### 3.1 Missing control families (RFC-0029, RFC-0030) — **P1**
+
+`canon/data/control-library/` is missing three families: **`pm/`** (Program
+Management), **`pt/`** (Personally Identifiable Information Processing
+and Transparency), and **`sr/`** (Supply Chain Risk Management).
+
+- PM and PT are scoped by RFC-0029.
+- SR is scoped by RFC-0030 and is required by FedRAMP Moderate even
+  though several SR-adjacent controls (SA-4, RA-9, IR-6(3)) carry
+  supply-chain language in their narratives.
+- The substrate cannot produce a structurally complete OSCAL SSP for
+  Rev5 Moderate without these. `generators/ssp.py` builds from the
+  `canon/data/control-library/` tree; missing families surface as
+  empty `implemented-requirement` arrays on submission.
+
+**Remedy:** add the three family directories with at minimum the
+Moderate-baseline controls (PM-1..PM-32 selected, PT-1..PT-8 selected,
+SR-1..SR-12 selected), and extend `tests/test_control_library.py` to
+fail when any FedRAMP Moderate baseline control is absent.
+
+### 3.2 OSCAL emissions missing FedRAMP `props` (RFC-0014, RFC-0024) — **P1**
+
+UIAO_133 §2.1 specifies four required props (`fedramp:ksi-themes`,
+`fedramp:ksi-mapping-source`, `fedramp:ksi-freshness-cadence`,
+`fedramp:ksi-emitted-at`) on every emitted OSCAL artifact. The
+generator at `src/uiao/oscal/generator.py` does not yet inject them,
+and the validation harness UIAO_133 §2.4 specifies has no
+implementation under `tests/`.
+
+**Remedy:** wire the four props at the emission boundary in
+`oscal/generator.py` (deterministic — derive from the §2.2 emission
+map keyed by `Responsible component`); add the schema-check and
+mapping-source-check tests under `tests/test_oscal_emission_props.py`.
+
+### 3.3 KSI catalog impedance mismatch (RFC-0006, RFC-0014) — **P1**
+
+UIAO ships a 10-rule KSI library (`KSI-001`..`KSI-010`) that is
+SCuBA-anchored and uses a private namespace (e.g. KSI-001 "Multi-Factor
+Authentication Enforcement", source field `MFAEnabled`). The FedRAMP
+20x KSI catalog uses theme-prefixed identifiers
+(`KSI-AUTH`, `KSI-CMT`, `KSI-CNA`, `KSI-CED`, `KSI-IAM`, `KSI-INR`,
+`KSI-MLA`, `KSI-PIY`, `KSI-RPL`, `KSI-SVC`, `KSI-SCN`).
+
+There is no machine-readable crosswalk between the two namespaces in
+canon. `docs/data/ksi-mappings.yml` carries hand-written ksi entries
+keyed by an unrelated `KSI-IDENTITY-MFA` namespace, deepening the
+collision.
+
+**Remedy:** add `src/uiao/canon/data/ksi-crosswalk.yaml` mapping every
+local `KSI-001..010` rule to one or more FedRAMP 20x KSI themes, plus
+the `M365-…` SCuBA policy IDs the rules already cite. Validate the
+crosswalk in `tests/test_ksi_crosswalk.py` and reference it from the
+`fedramp:ksi-mapping-source` prop wired in §3.2.
+
+### 3.4 RFC-0024 Trust Center / API submission surface — P2
+
+RFC-0024 effective date for accepting machine-readable submissions is
+**2026-09-30**. UIAO emits OSCAL artifacts but has no documented
+endpoint that exposes them via the FedRAMP-compatible Trust Center
+API contract referenced in Notice 0009. The FastAPI service in
+`src/uiao/api/` (gated behind the `[api]` extra) is the natural mount
+point, and the auditor bundle in `src/uiao/auditor/bundle.py` already
+produces all of `evidence-bundle.json`, `poam.json`, `ssp-narrative.md`,
+and `lineage.json` — but no API route surfaces them.
+
+**Remedy:** add `/oscal/{ssp,poam,sar,sbom}` GET endpoints to
+`src/uiao/api/` (signed, agency-tenant-scoped via the existing
+single-ATO reciprocity model in ADR-054). Document the contract in a
+new spec under `src/uiao/canon/specs/fedramp-trust-center-api.md`,
+allocate UIAO_141, and gate enforcement on RFC-0024 final guidance.
+
+### 3.5 RFC-0023 — FedRAMP Ready retirement (2026-07-28) — P2
+
+RFC-0023's outcome (Notice 0008) retires FedRAMP Ready. UIAO's
+authorization-state model still assumes Ready/In-Process/Authorized;
+references in `canon/data/fedramp-20x.yml` and several ADRs predate
+the retirement.
+
+**Remedy:** add an ADR ("FedRAMP Ready retirement and authorization-state
+model update") that (a) records the deadline, (b) updates the
+authorization-state vocabulary to In-Process / Program-Certified /
+Agency-Authorized / Decommissioned, and (c) audits the ~12 canon
+documents that name "Ready".
+
+### 3.6 RFC-0027/0028/0029/0030 baseline-text deltas — P2
+
+The four open RFCs propose textual updates to the Additional FedRAMP
+Security Technical Controls Requirements and Guidance. None of the
+proposed deltas are merged into `canon/data/control-library/`. The
+families with existing directories will need diff review against the
+RFC text (79 + 66 + 33 + 69 = 247 controls); the missing families
+(PM, PT, SR) will need de-novo authoring per §3.1.
+
+**Remedy:** open four tracking ADRs (one per RFC), each with a
+narrow scope: ingest the RFC's proposed text into the canon control
+narratives once the comment period closes and FedRAMP publishes
+final guidance. Block-on: the comment-period close dates (currently
+unspecified beyond "added 2026-03-19").
+
+### 3.7 RFC-0008 mitigated-vulnerability rerating — P2
+
+RFC-0008 explicitly encourages reporting mitigated vulnerabilities
+at their estimated post-mitigation risk rating rather than their
+original rating. UIAO's POA&M generator at `src/uiao/evidence/poam.py`
+records `severity` from the source finding and does not carry a
+`risk-status-mitigated` field.
+
+**Remedy:** extend the POA&M record schema with optional
+`severity_post_mitigation` + `mitigation_evidence_id` fields;
+default both to null; surface them via the `conmon-export-oa`
+output. Backfill is not required — the field starts populating
+forward from the schema bump.
+
+### 3.8 NTC-0003 — Automated Security Inbox — P3 (deadline already past)
+
+`canon/data/fedramp-20x.yml` records NTC-0003 (Automated Security
+Inbox, deadline 2026-01-05) as "Required" but the substrate has no
+inbox endpoint. The deadline has passed; this is a documentation
+debt that needs either an exception ADR or a referral to the
+agency-side mailbox of record for the GCC-Moderate boundary.
+
+## 4. Recommended action ordering
+
+1. **Land the three missing control families (PM, PT, SR)** as YAML
+   stubs aligned to the FedRAMP Moderate baseline. This is a
+   structural prerequisite for everything downstream and unblocks
+   RFC-0029/0030 ingestion.
+2. **Wire the four FedRAMP `props` in the OSCAL generator** and add
+   the validation harness under `tests/`. This satisfies the most
+   concrete RFC-0014/RFC-0024 contract UIAO_133 already specifies.
+3. **Land the KSI crosswalk** (`canon/data/ksi-crosswalk.yaml`) so
+   that step 2's `fedramp:ksi-mapping-source` prop has a stable
+   target.
+4. **Open the four RFC-0027/0028/0029/0030 tracking ADRs** with
+   narrow scope and external-trigger gates.
+5. **Specify the Trust Center API surface** in a new spec
+   (UIAO_141) and prototype the four GET endpoints under
+   `src/uiao/api/`.
+6. **POA&M post-mitigation severity** field bump (small, isolated).
+7. **FedRAMP Ready retirement ADR** (documentation-only, but
+   visible).
+8. **NTC-0003 exception ADR** (documentation-only).
+
+Items 1–3 are the only **P1**-graded items; items 4–8 are **P2/P3**
+documentation and integration work.
+
+## 5. Out of scope for this assessment
+
+- 20x Phase 2 Moderate Pilot agency-sponsor selection — agency-side
+  decision tracked in [FINDING-002](./fedramp-20x-moderate-pilot.qmd).
+- Microsoft GCC-Moderate telemetry feature parity — vendor-side
+  constraint tracked in [FINDING-001](./fedramp-gcc-moderate-informed-network-routing.qmd)
+  and the broader GCC-Moderate finding family.
+- 3PAO selection and engagement — out-of-band per ADR-025 §D5.
+
+## 6. Status tracking
+
+| Date | Event | Note |
+|---|---|---|
+| 2026-05-10 | Created | Synthesis of fedramp.gov/rfcs (RFC-0005..RFC-0030) against UIAO at HEAD of `claude/assess-fedramp-uiao-8a6Cr`. |
