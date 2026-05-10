@@ -41,18 +41,10 @@ jobs:
         # DOCX via docs/customer-documents/_metadata.yml. Outputs land in
         # _site/customer-documents/<...>.docx alongside the HTML.
         # Uses pandoc (bundled with Quarto), no LaTeX dependency.
-        #
-        # Parallelism: `quarto render customer-documents --to docx` renders the
-        # 242 .qmd files serially (~1m+ wall time). Pandoc invocations are
-        # independent (no executable code, distinct output paths), so we fan
-        # them out across the runner's cores via xargs -P. Each file inherits
-        # _quarto.yml + _metadata.yml from the project root.
-        run: |
-          set -euo pipefail
-          workers="$(nproc)"
-          echo "Rendering DOCX in parallel with ${workers} workers"
-          find customer-documents -name '*.qmd' -print0 \
-            | xargs -0 -n 1 -P "${workers}" quarto render --to docx --no-execute-daemon
+        # NOTE: Keep this as a single project render. Quarto project state under
+        # docs/.quarto/ is shared and not concurrency-safe across multiple
+        # simultaneous `quarto render` processes.
+        run: quarto render customer-documents --to docx --no-execute-daemon
 
       - name: Upload site artifact
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
