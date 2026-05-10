@@ -6,7 +6,7 @@ status: Current
 classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
-updated_at: "2026-05-12"
+updated_at: "2026-05-13"
 boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_I"
@@ -153,15 +153,26 @@ The bridge cmdlet requires the `uiao` CLI on `PATH`.
 
 ### Test coverage
 
-Pester covers all four offline-testable cmdlets:
+Pester covers all seven exported cmdlets. Offline-testable
+(`Test-OrgPathFormat`, `Test-OrgPathHierarchy`, `Compare-OrgTreeSnapshots`)
+run against fixtures; tenant-scope (`Get-OrgTreeValidationReport`,
+`Test-DynamicGroupAlignment`, `Export-OrgTreeSnapshot`) run against
+Microsoft.Graph SDK mocks. `Microsoft.Graph` is intentionally **not
+installed in CI** — the test file stubs `Connect-MgGraph`, `Get-MgUser`,
+and `Get-MgGroup` into global scope so Pester's `Mock -ModuleName
+OrgTreeValidation <cmd>` can intercept module-internal calls.
 
 - `Test-OrgPathFormat` — 8 cases (valid root, valid 1–4 level paths, lowercase rejection, missing prefix, under-min and over-max segment lengths).
 - `Test-OrgPathHierarchy` — 4 cases (root, child of registered parent, leaf, missing parent).
 - `Compare-OrgTreeSnapshots` — 3 cases (`ValueDrift`, `NewObject`, identical snapshots).
+- `Get-OrgTreeValidationReport` — 5 cases (all valid → no drift; empty OrgPath → orphan; off-codebook OrgPath → invalid; format-violating OrgPath → invalid; Connect-MgGraph invocation count).
+- `Test-DynamicGroupAlignment` — 3 cases (all aligned; one misaligned; all missing).
+- `Export-OrgTreeSnapshot` — 2 cases (JSON shape + OrgTree-* filter; Connect-MgGraph invocation count).
 - **Canonical regex parity test** — extracts the `CANONICAL_REGEX` literal from `src/uiao/modernization/orgtree/codebook.py` at test time and asserts that `Test-OrgPathFormat` matches Python's behavior on a known sample. This is the load-bearing test that prevents the two surfaces from drifting.
 
-Tenant-scope cmdlets (3, 4, 5) are smoke-tested manually against a
-non-production tenant.
+When `Microsoft.Graph` is present in a production install, the global
+stubs are shadowed by the real cmdlets and the cmdlets run end-to-end
+against the tenant. The mocks are a CI gate, not a production fixture.
 
 ## Boundary rules
 
