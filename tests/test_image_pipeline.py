@@ -913,7 +913,7 @@ def test_scan_image_prompts_block_opt_out_skips_only_that_block(generator, tmp_p
 # ─────────────────────────────────────────────────────────────────────
 
 
-def _seed_cached_sidecar(generator, tmp_path: Path, body: str, monkeypatch) -> "generator.DocLocalPlaceholder":
+def _seed_cached_sidecar(generator, tmp_path: Path, body: str, monkeypatch):
     """Build a placeholder + matching sidecar/PNG pair under tmp_path so the
     cache check fires. Returns the placeholder so the caller can pass it to
     process_doc_local_placeholders."""
