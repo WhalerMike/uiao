@@ -279,6 +279,38 @@ class TestExport:
         for entry in payload["entries"]:
             assert regex.match(entry["code"]), f"exported code violates its own regex: {entry['code']}"
 
+    def test_export_dynamic_groups_to_stdout(self) -> None:
+        """Dynamic-groups export emits the pwsh-friendly shape
+        consumed by Test-DynamicGroupAlignment (UIAO_159 §F4)."""
+        result = runner.invoke(app, ["orgtree", "export", "dynamic-groups"])
+        assert result.exit_code == 0, result.stdout
+        payload = json.loads(result.stdout)
+        assert payload["document_id"] == "UIAO_152"
+        assert isinstance(payload["groups"], list)
+        assert len(payload["groups"]) > 0
+        first = payload["groups"][0]
+        # pwsh-friendly field names (groupName / membershipRule),
+        # not the Python dataclass names (name / rule).
+        assert "groupName" in first
+        assert "membershipRule" in first
+        assert "category" in first
+        assert "orgpathRefs" in first
+        # Sanity: groupName matches the canonical naming regex.
+        import re
+
+        regex = re.compile(payload["naming_regex"])
+        for g in payload["groups"]:
+            assert regex.match(g["groupName"]), f"exported group name violates the canonical regex: {g['groupName']}"
+
+    def test_export_dynamic_groups_to_file(self, tmp_path: Path) -> None:
+        out = tmp_path / "groups.json"
+        result = runner.invoke(app, ["orgtree", "export", "dynamic-groups", "--out", str(out)])
+        assert result.exit_code == 0, result.stdout
+        assert out.exists()
+        payload = json.loads(out.read_text(encoding="utf-8"))
+        assert payload["document_id"] == "UIAO_152"
+        assert any(g["groupName"] == "OrgTree-FIN-Users" for g in payload["groups"])
+
 
 # ---------------------------------------------------------------------------
 # List — enumerate all entries
@@ -330,3 +362,23 @@ class TestList:
         # prefix instead.
         assert "ARM-tag" in result.stdout
         assert "extensionAttrib" in result.stdout
+
+    def test_list_role_assignments(self) -> None:
+        result = runner.invoke(app, ["orgtree", "list", "role-assignments"])
+        assert result.exit_code == 0, result.stdout
+        assert "UIAO_154" in result.stdout
+        # Canonical matrix has 15 assignments and at least the tier-1
+        # Global Reader → IT-SEC group entry.
+        assert "15 entries" in result.stdout
+        assert "Global Reader" in result.stdout
+        assert "tier-1" in result.stdout
+
+    def test_list_intune_assignments(self) -> None:
+        result = runner.invoke(app, ["orgtree", "list", "intune-assignments"])
+        assert result.exit_code == 0, result.stdout
+        assert "UIAO_164" in result.stdout
+        # Canonical canon has 5 Intune assignments; at least one is
+        # `include` intent and one is `exclude`.
+        assert "5 entries" in result.stdout
+        assert "include" in result.stdout
+        assert "exclude" in result.stdout

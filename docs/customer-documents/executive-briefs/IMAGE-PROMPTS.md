@@ -3,6 +3,7 @@
 <!-- Maintained by docs/customer-documents authors. Pipeline:
      scripts/generate_images.py harvests [IMAGE-NN: ...] placeholders from
      each .qmd, refreshes this sidecar, and emits PNGs into ./images/. -->
+<!-- companion: governance-os-overview.qmd -->
 
 ## governance-os-overview — IMAGE-01
 

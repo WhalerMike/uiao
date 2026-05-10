@@ -18,12 +18,15 @@ from uiao.adapters.fedramp_cr26_catalog import (
     STATUS,
     Cr26CatalogAdapter,
     Cr26CatalogMalformed,
+    Cr26MappingMalformed,
     Cr26SnapshotNotFound,
     default_snapshot_dir,
     enumerate_ksi_controls,
     enumerate_ksi_themes,
     load_catalog,
+    load_mapping,
     reconcile,
+    validate_mapping,
 )
 
 
@@ -236,3 +239,69 @@ def test_reconcile_finding_serializes_to_dict(tmp_path: Path) -> None:
     payload = findings[0].to_dict()
     assert set(payload.keys()) == {"drift_class", "severity", "summary", "details"}
     assert payload["drift_class"].startswith("DRIFT-")
+
+
+# ---------------------------------------------------------------------------
+# UIAO_137 mapping — loader and consistency against the real snapshot
+# ---------------------------------------------------------------------------
+
+
+def test_load_mapping_returns_uiao_137_payload() -> None:
+    mapping = load_mapping()
+    assert mapping["snapshot_sha"] == DEFAULT_SNAPSHOT_SHA
+    assert mapping["governing_doc"] == "UIAO_137"
+    assert isinstance(mapping["mappings"], list)
+    assert len(mapping["mappings"]) >= 10  # at least KSI-001..010
+    # Every row must declare local_rule + cr26_controls + confidence.
+    for row in mapping["mappings"]:
+        assert "local_rule" in row
+        assert "cr26_controls" in row
+        assert row["confidence"] in {"high", "medium", "low"}
+
+
+def test_load_mapping_covers_all_ten_local_ksi_rules() -> None:
+    mapping = load_mapping()
+    covered = {row["local_rule"] for row in mapping["mappings"]}
+    expected = {f"KSI-{n:03d}" for n in range(1, 11)}
+    assert expected <= covered, f"Local rules missing from mapping: {expected - covered}"
+
+
+def test_validate_mapping_against_real_snapshot_is_consistent() -> None:
+    findings = validate_mapping()
+    assert findings == [], "Every CR26 ID in UIAO_137 must resolve in the pinned snapshot; got: " + ", ".join(
+        f.summary for f in findings
+    )
+
+
+def test_validate_mapping_flags_mismatched_snapshot_sha() -> None:
+    mapping = load_mapping()
+    bogus = dict(mapping)
+    bogus["snapshot_sha"] = "0" * 40
+    findings = validate_mapping(mapping=bogus)
+    assert any("does not match" in f.summary for f in findings)
+
+
+def test_validate_mapping_flags_unresolvable_cr26_id() -> None:
+    mapping = load_mapping()
+    bogus = dict(mapping)
+    bogus["mappings"] = list(mapping["mappings"]) + [
+        {
+            "local_rule": "KSI-099",
+            "cr26_controls": ["KSI-XYZ-ZZZ"],
+            "confidence": "high",
+        }
+    ]
+    findings = validate_mapping(mapping=bogus)
+    assert any("KSI-XYZ-ZZZ" in f.summary for f in findings)
+
+
+def test_load_mapping_raises_on_missing_file(tmp_path: Path) -> None:
+    with pytest.raises(Cr26MappingMalformed):
+        load_mapping(tmp_path / "no-such.yaml")
+
+
+def test_load_mapping_raises_when_required_keys_missing(tmp_path: Path) -> None:
+    p = tmp_path / "bad.yaml"
+    p.write_text("mappings: []\n")  # no snapshot_sha
+    with pytest.raises(Cr26MappingMalformed):
+        load_mapping(p)

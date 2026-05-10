@@ -2,8 +2,11 @@
 
 <!-- Maintained by docs/customer-documents authors. Pipeline:
      scripts/generate_images.py harvests [IMAGE-NN: ...] placeholders
-     from each domain's <domain>.qmd, refreshes this sidecar, and emits
-     PNGs into per-domain images/ directories. -->
+     from each domain's <domain>.qmd directly. Domain specs live in
+     subdirs (<domain>/<domain>.qmd) so this sidecar opts out of
+     file-level companion binding; per-domain prompts are catalogued
+     here as documentation. -->
+<!-- companion: none -->
 
 ## identity — IMAGE-01
 

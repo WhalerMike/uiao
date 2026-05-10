@@ -4,8 +4,12 @@
      scripts/generate_images.py harvests [IMAGE-NN: ...] placeholders
      from each case-study .qmd, refreshes this sidecar, and emits
      PNGs into ./images/. -->
+<!-- companion: none -->
+<!-- Each per-block companion directive routes that section to its own .qmd. -->
 
 ## identity-modernization-case-study — IMAGE-01
+
+<!-- companion: identity-modernization-case-study.qmd -->
 
 Identity migration engagement pattern diagram. Five-phase horizontal
 sequence (Canon-First → Modernization Adapters → Drift-Driven Cleanup
@@ -20,6 +24,8 @@ navy (#0D1B2E) and teal (#1E8C8C) on white background. No
 photographs, purely diagrammatic.
 
 ## cloud-boundary-case-study — IMAGE-01
+
+<!-- companion: cloud-boundary-case-study.qmd -->
 
 GCC-Moderate boundary engagement pattern diagram. Center shows the
 GCC-Moderate authorization boundary as a vertical line. Left of the
@@ -36,6 +42,8 @@ teal (#1E8C8C) on white background, with red (#C74040) reserved for
 unavailable-feature highlights. No photographs, purely diagrammatic.
 
 ## federal-modernization-case-study — IMAGE-01
+
+<!-- companion: federal-modernization-case-study.qmd -->
 
 End-to-end federal modernization engagement diagram. Horizontal
 program timeline with five phases: (1) Substrate Adoption, (2)

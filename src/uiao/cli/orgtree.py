@@ -467,6 +467,68 @@ def export_codebook(
         console.print(f"[green]wrote[/green] {out} ({len(payload['entries'])} entries)")
 
 
+def _dynamic_groups_to_payload(lib: DynamicGroupLibrary) -> dict[str, Any]:
+    """JSON-serializable shape consumed by UIAO_159's pwsh
+    ``Test-DynamicGroupAlignment -GroupLibraryPath``: an object with
+    ``groups`` as a list of ``{groupName, membershipRule, category,
+    orgpathRefs, description}``.
+
+    Field-name mapping (Python dataclass -> pwsh-friendly): ``name`` ->
+    ``groupName``; ``rule`` -> ``membershipRule``. The pwsh cmdlet
+    keys off ``groupName`` (matches tenant display name) and
+    ``membershipRule`` (compares against the tenant group's
+    `MembershipRule` property).
+    """
+    return {
+        "schema_version": lib.schema_version,
+        "document_id": lib.document_id,
+        "naming_regex": lib.naming_regex,
+        "purpose_suffixes": list(lib.purpose_suffixes),
+        "groups": [
+            {
+                "groupName": spec.name,
+                "membershipRule": spec.rule,
+                "category": spec.category,
+                "orgpathRefs": list(spec.orgpath_refs),
+                "description": spec.description,
+            }
+            for spec in lib.groups.values()
+        ],
+    }
+
+
+@export_app.command("dynamic-groups")
+def export_dynamic_groups(
+    out: Optional[Path] = typer.Option(
+        None,
+        "--out",
+        "-o",
+        help="Destination JSON file. Defaults to stdout.",
+    ),
+) -> None:
+    """Export the canonical dynamic-group library (UIAO_152) as JSON.
+
+    Shape matches what the PowerShell `Test-DynamicGroupAlignment
+    -GroupLibraryPath` cmdlet (UIAO_159 §F4) consumes: an object with
+    a `groups` array, each entry exposing `groupName/membershipRule`
+    plus context (`category`, `orgpathRefs`, `description`).
+
+    Use it to bridge the canonical YAML and the pwsh-side JSON file:
+
+        uiao orgtree export dynamic-groups --out /tmp/groups.json
+        pwsh -c "Test-DynamicGroupAlignment -TenantId $env:TENANT_ID -GroupLibraryPath /tmp/groups.json"
+    """
+    lib = load_dynamic_group_library()
+    payload = _dynamic_groups_to_payload(lib)
+    text = json.dumps(payload, indent=2, sort_keys=False)
+    if out is None:
+        sys.stdout.write(text)
+        sys.stdout.write("\n")
+    else:
+        out.write_text(text + "\n", encoding="utf-8")
+        console.print(f"[green]wrote[/green] {out} ({len(payload['groups'])} groups)")
+
+
 # ---------------------------------------------------------------------------
 # list — enumerate all entries from a canonical artifact
 # ---------------------------------------------------------------------------
@@ -557,4 +619,57 @@ def list_device_planes(prefix: Optional[str] = _PREFIX_OPT) -> None:
     for name in keys:
         plane = reg.planes[name]
         table.add_row(name, plane.transport, plane.target_object, plane.description)
+    console.print(table)
+
+
+# Tuple-keyed kinds: role_assignments + intune_assignments don't have a
+# natural single-id key, so the table renders all fields as a multi-row
+# dump sorted by the first listed sort key. No --prefix filter (there's
+# no canonical id to prefix-match against); reach for a tenant-side
+# spreadsheet if you need richer filtering.
+
+
+@list_app.command("role-assignments")
+def list_role_assignments() -> None:
+    """List all role assignments from the delegation matrix (UIAO_154)."""
+    matrix = load_delegation_matrix()
+    rows = sorted(
+        matrix.role_assignments,
+        key=lambda r: (r.tier, r.au_scope, r.role, r.principal_group),
+    )
+    table = Table(
+        title=f"role assignments (UIAO_154) — {len(rows)} entries",
+        show_header=True,
+        header_style="bold",
+    )
+    table.add_column("tier", style="cyan")
+    table.add_column("role")
+    table.add_column("principal_group")
+    table.add_column("au_scope")
+    table.add_column("purpose")
+    for r in rows:
+        table.add_row(r.tier, r.role, r.principal_group, r.au_scope, r.purpose)
+    console.print(table)
+
+
+@list_app.command("intune-assignments")
+def list_intune_assignments() -> None:
+    """List all Intune profile assignments from the policy-targeting canon (UIAO_164)."""
+    canon = load_policy_targeting_canon()
+    rows = sorted(
+        canon.intune_assignments,
+        key=lambda a: (a.profile_ref.kind, a.target_group, a.intent),
+    )
+    table = Table(
+        title=f"Intune assignments (UIAO_164) — {len(rows)} entries",
+        show_header=True,
+        header_style="bold",
+    )
+    table.add_column("profile_kind", style="cyan")
+    table.add_column("profile")
+    table.add_column("target_group")
+    table.add_column("intent")
+    table.add_column("purpose")
+    for a in rows:
+        table.add_row(a.profile_ref.kind, a.profile_ref.value, a.target_group, a.intent, a.purpose)
     console.print(table)

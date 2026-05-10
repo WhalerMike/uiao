@@ -194,12 +194,19 @@ function Test-DynamicGroupAlignment {
     )
 
     $library = Get-Content -Path $GroupLibraryPath -Raw | ConvertFrom-Json
+    # The library is the wrapped shape produced by
+    # `uiao orgtree export dynamic-groups` (UIAO_152): an object with a
+    # `groups` array. We also accept the legacy bare-array shape (root
+    # is the groups list) so admin-staged fixtures from earlier session
+    # PRs keep working.
+    $definitions = if ($null -ne $library.groups) { $library.groups } else { $library }
+
     Connect-MgGraph -TenantId $TenantId -Scopes 'Group.Read.All' -NoWelcome
 
     $aligned = 0; $misaligned = 0; $missing = 0
     $details = @()
 
-    foreach ($definition in $library) {
+    foreach ($definition in $definitions) {
         $tenantGroup = Get-MgGroup -Filter "displayName eq '$($definition.groupName)'" -ErrorAction SilentlyContinue
         if (-not $tenantGroup) {
             $missing++

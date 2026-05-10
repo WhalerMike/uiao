@@ -2,8 +2,10 @@
 
 <!-- Maintained by docs/customer-documents authors. Pipeline:
      scripts/generate_images.py harvests [IMAGE-NN: ...] placeholders
-     from each chapter's index.qmd, refreshes this sidecar, and emits
-     PNGs into per-chapter images/ directories. -->
+     from each chapter's index.qmd directly. Chapters live in subdirs
+     (chNN-*/index.qmd) so this sidecar opts out of file-level companion
+     binding; per-chapter prompts are catalogued here as documentation. -->
+<!-- companion: none -->
 
 ## ch01-why-governance-fails — IMAGE-01
 

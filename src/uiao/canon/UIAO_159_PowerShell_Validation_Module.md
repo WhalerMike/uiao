@@ -6,7 +6,7 @@ status: Current
 classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
-updated_at: "2026-05-12"
+updated_at: "2026-05-15"
 boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_I"
@@ -84,18 +84,27 @@ when the id is missing.
 ### `list` — enumerate all entries
 
 ```
-uiao orgtree list codebook        [--prefix PREFIX]
-uiao orgtree list dynamic-groups  [--prefix PREFIX]
-uiao orgtree list admin-units     [--prefix PREFIX]
-uiao orgtree list device-planes   [--prefix PREFIX]
+uiao orgtree list codebook            [--prefix PREFIX]
+uiao orgtree list dynamic-groups      [--prefix PREFIX]
+uiao orgtree list admin-units         [--prefix PREFIX]
+uiao orgtree list device-planes       [--prefix PREFIX]
+uiao orgtree list role-assignments
+uiao orgtree list intune-assignments
 ```
 
 Renders every entry in the artifact as a sortable Rich table, one row
 per entry with the most-scannable columns (id + 2-3 summary fields).
-`--prefix` filters by id-prefix — e.g.
-`uiao orgtree list codebook --prefix ORG-FIN` shows only Finance-tree
-codes. Output title displays "X of Y" so the operator knows whether
-the filter matched everything or trimmed.
+
+The first four kinds are dict-keyed by a canonical id, so `--prefix`
+filters by id-prefix — e.g. `uiao orgtree list codebook --prefix
+ORG-FIN` shows only Finance-tree codes. Output title displays "X of
+Y" so the operator knows whether the filter matched everything or
+trimmed.
+
+The last two kinds (`role-assignments`, `intune-assignments`) are
+tuple-keyed — there's no single canonical id per row, so the table
+is a multi-row dump sorted by tier/scope (role assignments) or
+profile kind/target group (Intune assignments). No `--prefix` filter.
 
 ### `resolve` — cross-reference against the codebook
 
@@ -111,22 +120,40 @@ target?" without reading raw YAML.
 ### `export` — emit canon as downstream-consumable JSON
 
 ```
-uiao orgtree export codebook [--out PATH]
+uiao orgtree export codebook        [--out PATH]
+uiao orgtree export dynamic-groups  [--out PATH]
 ```
 
-Serializes the codebook (UIAO_151) to JSON. Shape matches what the
-PowerShell `Get-OrgTreeValidationReport -CodebookPath` cmdlet
-(UIAO_159 §F3) expects: an object with `entries` as a list of
-`{code, level, description, parent}`. Use it to bridge the canonical
-YAML and the pwsh-side JSON file:
+Both verbs serialize a canonical artifact to JSON in a shape the
+PowerShell companion module consumes directly:
+
+- **`export codebook`** — emits `{schema_version, document_id, regex,
+  max_depth, entries, deprecated}`. The `entries` array carries
+  `{code, level, description, parent}` per entry. Consumed by
+  `Get-OrgTreeValidationReport -CodebookPath` (UIAO_159 §F3).
+- **`export dynamic-groups`** — emits `{schema_version, document_id,
+  naming_regex, purpose_suffixes, groups}`. The `groups` array carries
+  `{groupName, membershipRule, category, orgpathRefs, description}`
+  per group. The Python dataclass uses `name`/`rule` internally; the
+  export translates to `groupName`/`membershipRule` so the pwsh
+  cmdlet `Test-DynamicGroupAlignment -GroupLibraryPath` (UIAO_159 §F4)
+  keys off the right fields.
+
+Use these to bridge the canonical YAML and the pwsh-side JSON files:
 
 ```bash
-uiao orgtree export codebook --out /tmp/codebook.json
+uiao orgtree export codebook       --out /tmp/codebook.json
+uiao orgtree export dynamic-groups --out /tmp/groups.json
 pwsh -c "Get-OrgTreeValidationReport -TenantId \$env:TENANT_ID -CodebookPath /tmp/codebook.json"
+pwsh -c "Test-DynamicGroupAlignment -TenantId \$env:TENANT_ID -GroupLibraryPath /tmp/groups.json"
 ```
 
-Tests: `tests/test_cli_orgtree.py` (34 tests covering validate, show,
-resolve, export, and list).
+`Test-DynamicGroupAlignment` accepts both the new wrapped shape
+(`$library.groups`) and the legacy bare-array shape for backward
+compatibility with admin-staged fixtures.
+
+Tests: `tests/test_cli_orgtree.py` (38 tests covering validate, show,
+resolve, export, and list including the tuple-keyed kinds).
 
 ## Surface 2 — PowerShell module
 
@@ -161,7 +188,10 @@ Pester covers all four offline-testable cmdlets:
 - **Canonical regex parity test** — extracts the `CANONICAL_REGEX` literal from `src/uiao/modernization/orgtree/codebook.py` at test time and asserts that `Test-OrgPathFormat` matches Python's behavior on a known sample. This is the load-bearing test that prevents the two surfaces from drifting.
 
 Tenant-scope cmdlets (3, 4, 5) are smoke-tested manually against a
-non-production tenant.
+non-production tenant. Two fixture files (`codebook.json`,
+`group-library.json`) under `tests/fixtures/` are staged for a future
+Pester-mock implementation; a first attempt is parked in PR #368
+pending a debug pass with local Pester available.
 
 ## Boundary rules
 
