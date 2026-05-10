@@ -128,25 +128,25 @@ The outbound leg is the path most agencies already understand: assessment result
 
 The outbound leg proceeds through the following stages:
 
-6.  **Step 1a --- Orchestration Trigger.** The GitHub Actions orchestrator fires on a daily cron schedule (e.g., 0 6 \* \* \* UTC). No human initiates the run. The trigger is deterministic and time-based.
+1.  **Step 1a --- Orchestration Trigger.** The GitHub Actions orchestrator fires on a daily cron schedule (e.g., 0 6 \* \* \* UTC). No human initiates the run. The trigger is deterministic and time-based.
 
-7.  **Step 1b --- Non-Interactive Authentication.** ScubaConnect authenticates to the M365 tenant via a Service Principal with certificate-based authentication. No browser pop-up. No interactive MFA. No human in the loop. The certificate is stored as a GitHub Actions secret, rotated on a defined cadence.
+2.  **Step 1b --- Non-Interactive Authentication.** ScubaConnect authenticates to the M365 tenant via a Service Principal with certificate-based authentication. No browser pop-up. No interactive MFA. No human in the loop. The certificate is stored as a GitHub Actions secret, rotated on a defined cadence.
 
-8.  **Step 1c --- Configuration Pull.** ScubaConnect calls M365 APIs --- Microsoft Graph, Exchange Online PowerShell, SharePoint Online Management Shell --- to pull the current configuration settings for all SCuBA-covered products (Exchange Online, SharePoint Online, Microsoft Teams, OneDrive for Business, Microsoft Defender, Entra ID, Power Platform).
+3.  **Step 1c --- Configuration Pull.** ScubaConnect calls M365 APIs --- Microsoft Graph, Exchange Online PowerShell, SharePoint Online Management Shell --- to pull the current configuration settings for all SCuBA-covered products (Exchange Online, SharePoint Online, Microsoft Teams, OneDrive for Business, Microsoft Defender, Entra ID, Power Platform).
 
-9.  **Step 1d --- Data Return.** M365 returns configuration data and audit logs. ScubaGear evaluates these against the current Rego policy baselines and produces assessment results in JSON, CSV, and HTML formats.
+4.  **Step 1d --- Data Return.** M365 returns configuration data and audit logs. ScubaGear evaluates these against the current Rego policy baselines and produces assessment results in JSON, CSV, and HTML formats.
 
-10. **Step 1e --- Sacrosanct Path to CISA.** ScubaConnect pushes official results directly to CISA\'s CDM Dashboard via the CLAW/TALON integration layer. This is the sacrosanct path. UIAO-core does not touch, intercept, modify, or delay this data flow. CISA owns it.
+5. **Step 1e --- Sacrosanct Path to CISA.** ScubaConnect pushes official results directly to CISA\'s CDM Dashboard via the CLAW/TALON integration layer. This is the sacrosanct path. UIAO-core does not touch, intercept, modify, or delay this data flow. CISA owns it.
 
-11. **Step 1f --- Parallel Feed to UIAO.** In parallel with Step 1e, ScubaConnect sends the same assessment results to UIAO-core. This is a read-only, non-blocking copy of the data.
+6. **Step 1f --- Parallel Feed to UIAO.** In parallel with Step 1e, ScubaConnect sends the same assessment results to UIAO-core. This is a read-only, non-blocking copy of the data.
 
-12. **Step 1g --- Governance Event Conversion.** UIAO-core\'s Governance Event Engine receives the raw JSON/CSV output and converts it into a structured governance event --- a typed, timestamped, machine-trackable object that captures what was assessed, what passed, what failed, and against which policy baseline version.
+7. **Step 1g --- Governance Event Conversion.** UIAO-core\'s Governance Event Engine receives the raw JSON/CSV output and converts it into a structured governance event --- a typed, timestamped, machine-trackable object that captures what was assessed, what passed, what failed, and against which policy baseline version.
 
-13. **Step 1h --- Canonical Storage.** The governance event is stored in the Canonical Artifact Repository as a versioned, immutable artifact. Each run produces exactly one artifact. Artifacts are never overwritten --- they accumulate as a complete compliance history.
+8. **Step 1h --- Canonical Storage.** The governance event is stored in the Canonical Artifact Repository as a versioned, immutable artifact. Each run produces exactly one artifact. Artifacts are never overwritten --- they accumulate as a complete compliance history.
 
-14. **Step 1i --- Drift Detection.** The Drift Detection Engine compares the current run\'s results against prior runs. It identifies configuration changes --- both improvements (newly compliant settings) and regressions (newly non-compliant settings) --- and flags delta items for review.
+9. **Step 1i --- Drift Detection.** The Drift Detection Engine compares the current run\'s results against prior runs. It identifies configuration changes --- both improvements (newly compliant settings) and regressions (newly non-compliant settings) --- and flags delta items for review.
 
-15. **Step 1j --- Alerting and Remediation.** If a mandatory \"Shall\" policy violation is detected, an alert is routed to the Agency Dashboard and a remediation ticket is generated in the agency\'s ticketing system. The ticket includes the specific control, the non-compliant setting, the expected value, and the baseline version that defines the requirement.
+10. **Step 1j --- Alerting and Remediation.** If a mandatory \"Shall\" policy violation is detected, an alert is routed to the Agency Dashboard and a remediation ticket is generated in the agency\'s ticketing system. The ticket includes the specific control, the non-compliant setting, the expected value, and the baseline version that defines the requirement.
 
 4.2 Key Architectural Insight
 
@@ -180,11 +180,11 @@ The inbound leg is the leg that **does not exist** without UIAO-core. It address
 
 CISA does not push policy updates to agencies through a live channel. There is no webhook, no pub/sub topic, no push notification. Instead, CISA publishes updates through three surfaces:
 
-16. **cisagov/ScubaGear GitHub Releases.** New Rego rules, updated baseline versions, removed or deprecated policies, and structural changes to the assessment logic are published as tagged releases on the cisagov/ScubaGear GitHub repository.
+1. **cisagov/ScubaGear GitHub Releases.** New Rego rules, updated baseline versions, removed or deprecated policies, and structural changes to the assessment logic are published as tagged releases on the cisagov/ScubaGear GitHub repository.
 
-17. **CISA\'s SCuBA Baselines Page.** Updated Secure Configuration Baseline documents --- the human-readable policy specifications that define \"Shall,\" \"Should,\" and \"May\" controls --- are published on CISA\'s SCuBA web page.
+2. **CISA\'s SCuBA Baselines Page.** Updated Secure Configuration Baseline documents --- the human-readable policy specifications that define \"Shall,\" \"Should,\" and \"May\" controls --- are published on CISA\'s SCuBA web page.
 
-18. **BOD 25-01 Implementation Guidance.** Updated mandatory configuration lists and implementation timelines are published as amendments or supplements to the original directive.
+3. **BOD 25-01 Implementation Guidance.** Updated mandatory configuration lists and implementation timelines are published as amendments or supplements to the original directive.
 
 Without UIAO-core, the inbound signal is invisible. A human must notice the GitHub release, read the changelog, understand which Rego rules changed, determine whether new \"Shall\" controls were added, manually update ScubaGear to the new version, and hope the next assessment run picks up the changes. If the human is on leave, or if the release falls during a sprint cycle, the agency runs assessments against stale baselines --- potentially for weeks or months --- while believing it is compliant.
 
@@ -192,15 +192,15 @@ Without UIAO-core, the inbound signal is invisible. A human must notice the GitH
 
 With UIAO-core, the inbound leg becomes governed:
 
-19. **Step 2a --- Upstream Policy Watch.** UIAO-core\'s Upstream Policy Watcher monitors the cisagov/ScubaGear GitHub repository for new releases. Detection occurs via GitHub webhook (real-time) or scheduled poll (e.g., every 6 hours). The watcher tracks release tags, Rego file diffs, and baseline version increments.
+1. **Step 2a --- Upstream Policy Watch.** UIAO-core\'s Upstream Policy Watcher monitors the cisagov/ScubaGear GitHub repository for new releases. Detection occurs via GitHub webhook (real-time) or scheduled poll (e.g., every 6 hours). The watcher tracks release tags, Rego file diffs, and baseline version increments.
 
-20. **Step 2b --- Governance Event Generation.** On detection of a new release, the Governance Event Engine generates a structured governance event: *\"New Baseline v1.x released: N new Shall controls added to \[product\]. M existing controls modified. K controls deprecated.\"* The event includes the full diff of Rego changes, mapped to human-readable control descriptions.
+2. **Step 2b --- Governance Event Generation.** On detection of a new release, the Governance Event Engine generates a structured governance event: *\"New Baseline v1.x released: N new Shall controls added to \[product\]. M existing controls modified. K controls deprecated.\"* The event includes the full diff of Rego changes, mapped to human-readable control descriptions.
 
-21. **Step 2c --- Agency Prompt.** The governance event prompts the agency security team via dashboard flag, email alert, or ticketing system integration. The prompt includes the release summary, the list of affected controls, and a recommended action (update ScubaGear, re-run assessment, review new Shall controls).
+3. **Step 2c --- Agency Prompt.** The governance event prompts the agency security team via dashboard flag, email alert, or ticketing system integration. The prompt includes the release summary, the list of affected controls, and a recommended action (update ScubaGear, re-run assessment, review new Shall controls).
 
-22. **Step 2d --- Update Trigger.** The Governance Event Engine triggers a ScubaGear/ScubaConnect update workflow via GitHub Actions. This can be configured as automatic (update immediately on detection) or gated (update after human approval). The update workflow pulls the new ScubaGear release, updates the Rego rules, and validates the installation.
+4. **Step 2d --- Update Trigger.** The Governance Event Engine triggers a ScubaGear/ScubaConnect update workflow via GitHub Actions. This can be configured as automatic (update immediately on detection) or gated (update after human approval). The update workflow pulls the new ScubaGear release, updates the Rego rules, and validates the installation.
 
-23. **Step 2e --- Recalibrated Assessment.** The updated ScubaConnect instance re-runs the assessment against the new policy baseline. Results flow through Leg 1 --- closing the loop. The agency\'s compliance posture is now evaluated against the latest mandatory controls, and any new Shall violations are immediately surfaced.
+5. **Step 2e --- Recalibrated Assessment.** The updated ScubaConnect instance re-runs the assessment against the new policy baseline. Results flow through Leg 1 --- closing the loop. The agency\'s compliance posture is now evaluated against the latest mandatory controls, and any new Shall violations are immediately surfaced.
 
 5.3 Key Architectural Insight
 
