@@ -1,0 +1,46 @@
+name: Pester
+
+on:
+  pull_request:
+    paths:
+      - 'tools/powershell/**'
+      - '.github/workflows/pester.yml'
+      - 'src/uiao/modernization/orgtree/codebook.py'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/powershell/**'
+      - 'src/uiao/modernization/orgtree/codebook.py'
+
+jobs:
+  pester:
+    name: PowerShell module tests (Pester)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Pin Pester version
+        shell: pwsh
+        run: |
+          Install-Module -Name Pester -RequiredVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          Get-Module -ListAvailable Pester | Select-Object Name, Version
+
+      - name: Run Pester
+        shell: pwsh
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = './tools/powershell/OrgTreeValidation/tests'
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = 'Detailed'
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputPath = 'pester-results.xml'
+          $config.TestResult.OutputFormat = 'JUnitXml'
+          Invoke-Pester -Configuration $config
+
+      - name: Upload Pester results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pester-results
+          path: pester-results.xml

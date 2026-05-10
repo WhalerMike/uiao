@@ -1,71 +1,143 @@
 ---
 document_id: UIAO_159
-title: "Appendix I — PowerShell Validation Module"
-version: "1.0"
-status: Draft
+title: "OrgTree Validation Surface — Python CLI + PowerShell module"
+version: "2.0"
+status: Current
 classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
-updated_at: "2026-04-18"
+updated_at: "2026-05-10"
 boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_I"
   flattened_at: "2026-05-10"
   flattened_by: "ADR-060"
+provenance_v2:
+  prior_version: "1.0 (Draft, single-surface PowerShell scaffold)"
+  derived_at: "2026-05-10"
+  derived_by: "Promotion to Current; reframed as dual surface (Python canonical + PowerShell M365-admin UX). Implementation lands in the same PR as this revision."
 ---
 
-# Appendix I — PowerShell Validation Module
+# UIAO_159 — OrgTree Validation Surface
 
-Purpose
+## Purpose
 
-This appendix provides a complete PowerShell module for validating OrgTree configuration against the canonical schemas and codebook. The module is the primary validation tool used in migration (Appendix F), enforcement testing (Appendix J), and drift detection (Appendix M).
+This appendix defines the validation surface for the OrgTree corpus
+(UIAO_150 through UIAO_176). Validation has **two complementary
+implementations**, with a single source of truth for shared logic:
 
-Scope
+| Surface | Lives at | Use it for |
+|---|---|---|
+| **Python (canonical)** | `src/uiao/modernization/orgtree/*.py`, exposed via `uiao orgtree validate ...` | Schema and integrity validation of every corpus artifact: codebook (UIAO_151), dynamic groups (UIAO_152), admin units (UIAO_154), device planes (UIAO_153), policy targets (UIAO_164), drift-engine config (UIAO_163). Invoked from CI, the substrate walker, and adapter pipelines. |
+| **PowerShell (UX layer)** | `tools/powershell/OrgTreeValidation/` | M365-admin tenant operations that benefit from the Microsoft Graph PowerShell SDK: live tenant audits, snapshot export, snapshot diff, dynamic-group alignment checks. |
 
-Covers six validation functions that operate against any M365 GCC-Moderate tenant via Microsoft Graph API. All functions are tenant-agnostic, using parameterized $TenantId variables.
+**Authority rule.** When the two surfaces overlap (offline regex,
+codebook hierarchy, snapshot diff), the Python implementation is
+canonical. The PowerShell module either calls back to the Python CLI
+(`Invoke-UiaoOrgTreeValidate`) or carries a small offline implementation
+that is **parity-tested** against the Python source-of-truth (see the
+`Canonical regex parity` test in `OrgTreeValidation.Tests.ps1`).
 
-Canonical Structure
+This authority rule is what allows the two surfaces to coexist without
+becoming a drift source. It directly reflects ADR-060 §"Why" — every
+authoritative artifact has exactly one canonical home; mirrors must be
+generated from canon, never authored independently.
 
-Each function includes comment-based help, parameter validation attributes, try/catch error handling, and Write-Verbose logging. All Graph API calls use the Microsoft Graph PowerShell SDK (Connect-MgGraph).
+## Surface 1 — Python CLI
 
-Technical Scaffolding
+The six per-artifact validate verbs and the aggregate are registered
+under `uiao orgtree`:
 
-Function 1: Test-OrgPathFormat
+```
+uiao orgtree validate codebook                [--data PATH]
+uiao orgtree validate dynamic-groups          [--data PATH]
+uiao orgtree validate admin-units             [--data PATH]
+uiao orgtree validate device-planes           [--data PATH]
+uiao orgtree validate policy-targets          [--data PATH]
+uiao orgtree validate drift-engine-config     [--data PATH]
+uiao orgtree validate all
+```
 
-function Test-OrgPathFormat {     <#     .SYNOPSIS         Validates an OrgPath string against the canonical regex pattern.     .DESCRIPTION         Returns $true if the OrgPath matches ^ORG(-[A-Z]{2,6}){0,4}$, otherwise $false.     .PARAMETER OrgPath         The OrgPath string to validate.     .EXAMPLE         Test-OrgPathFormat -OrgPath "ORG-FIN-AP"     #>     [CmdletBinding()]     [OutputType([bool])]     param(         [Parameter(Mandatory = $true)]         [ValidateNotNullOrEmpty()]         [string]$OrgPath     )      try {         $Pattern = "^ORG(-[A-Z]{2,6}){0,4}$"         $IsValid = $OrgPath -match $Pattern         Write-Verbose "OrgPath '$OrgPath' format valid: $IsValid"         return $IsValid     }     catch {         Write-Error "Error validating OrgPath format: $_"         return $false     } }
+Each verb wraps the corresponding `load_*` function under
+`uiao.modernization.orgtree`. With no `--data`, the canonical artifact
+shipped under `uiao.canon.data.orgpath` is loaded; with `--data`, an
+alternate file is loaded (used in tests and tenant-specific audits).
+Success prints a one-line PASS summary; failure prints the typed
+validation error and exits 1.
 
-Function 2: Test-OrgPathHierarchy
+`uiao orgtree validate all` runs all six in dependency order
+(codebook → dynamic groups → admin units → device planes →
+policy targets → drift-engine config) and aggregates pass/fail.
 
-function Test-OrgPathHierarchy {     <#     .SYNOPSIS         Validates that a child OrgPath has a valid parent in the codebook.     .DESCRIPTION         Checks that the parent path of the given OrgPath exists in the         provided codebook hashtable. Returns $true if valid, $false otherwise.     .PARAMETER ChildPath         The OrgPath to validate.     .PARAMETER Codebook         Hashtable of valid OrgPath codes (keys = OrgPath codes).     .EXAMPLE         Test-OrgPathHierarchy -ChildPath "ORG-FIN-AP" -Codebook $CodebookHash     #>     [CmdletBinding()]     [OutputType([bool])]     param(         [Parameter(Mandatory = $true)]         [ValidateNotNullOrEmpty()]         [string]$ChildPath,          [Parameter(Mandatory = $true)]         [hashtable]$Codebook     )      try {         if ($ChildPath -eq "ORG") {             Write-Verbose "Root OrgPath 'ORG' has no parent; hierarchy valid."             return $true         }          $Segments = $ChildPath -split "-"         if ($Segments.Count -lt 2) {             Write-Verbose "OrgPath '$ChildPath' has insufficient segments."             return $false         }          $ParentSegments = $Segments[0..($Segments.Count - 2)]         $ParentPath = $ParentSegments -join "-"          $ParentExists = $Codebook.ContainsKey($ParentPath)         Write-Verbose "Parent '$ParentPath' of '$ChildPath' exists in codebook: $ParentExists"         return $ParentExists     }     catch {         Write-Error "Error validating OrgPath hierarchy: $_"         return $false     } }
+Tests: `tests/test_cli_orgtree.py` (15 tests; happy path × 7 + bad-input
+path × 6 + 2 help-surface tests).
 
-Function 3: Get-OrgTreeValidationReport
+## Surface 2 — PowerShell module
 
-function Get-OrgTreeValidationReport {     <#     .SYNOPSIS         Runs all OrgTree validations against a tenant and produces a report.     .DESCRIPTION         Connects to the specified tenant, retrieves all users, validates         OrgPath format and hierarchy, and returns a summary report object.     .PARAMETER TenantId         The target tenant identifier.     .PARAMETER CodebookPath         Path to the JSON codebook file.     .EXAMPLE         Get-OrgTreeValidationReport -TenantId $TenantId -CodebookPath "./codebook.json"     #>     [CmdletBinding()]     [OutputType([PSCustomObject])]     param(         [Parameter(Mandatory = $true)]         [ValidateNotNullOrEmpty()]         [string]$TenantId,          [Parameter(Mandatory = $true)]         [ValidateScript({ Test-Path $_ })]         [string]$CodebookPath     )      try {         Write-Verbose "Loading codebook from $CodebookPath"         $CodebookJson = Get-Content -Path $CodebookPath -Raw | ConvertFrom-Json         $Codebook = @{}         foreach ($Entry in $CodebookJson.entries) {             $Codebook[$Entry.code] = $Entry         }          Write-Verbose "Connecting to tenant $TenantId"         Connect-MgGraph -TenantId $TenantId -Scopes "User.Read.All" -NoWelcome          $AllUsers = Get-MgUser -All -Property "Id,DisplayName,OnPremisesExtensionAttributes"         $TotalUsers = $AllUsers.Count         $ValidCount = 0         $InvalidCount = 0         $OrphanedCount = 0         $DriftDetected = $false          foreach ($User in $AllUsers) {             $OrgPath = $User.OnPremisesExtensionAttributes.ExtensionAttribute1             if ([string]::IsNullOrEmpty($OrgPath)) {                 $OrphanedCount++                 $DriftDetected = $true                 continue             }             $FormatValid = Test-OrgPathFormat -OrgPath $OrgPath             $HierarchyValid = Test-OrgPathHierarchy -ChildPath $OrgPath -Codebook $Codebook             if ($FormatValid -and $HierarchyValid -and $Codebook.ContainsKey($OrgPath)) {                 $ValidCount++             }             else {                 $InvalidCount++                 $DriftDetected = $true             }         }          $Report = [PSCustomObject]@{             TotalUsers    = $TotalUsers             ValidOrgPaths = $ValidCount             InvalidOrgPaths = $InvalidCount             OrphanedUsers = $OrphanedCount             DriftDetected = $DriftDetected         }          Write-Verbose "Validation complete. Valid: $ValidCount, Invalid: $InvalidCount, Orphaned: $OrphanedCount"         return $Report     }     catch {         Write-Error "Error generating validation report: $_"         return $null     } }
+Module: `tools/powershell/OrgTreeValidation/OrgTreeValidation.psm1`.
+Manifest: `tools/powershell/OrgTreeValidation/OrgTreeValidation.psd1`.
+Tests: `tools/powershell/OrgTreeValidation/tests/OrgTreeValidation.Tests.ps1`
+(Pester 5.x; runs in CI under `.github/workflows/pester.yml`).
 
-Function 4: Test-DynamicGroupAlignment
+| Cmdlet | Scope | Purpose |
+|---|---|---|
+| `Test-OrgPathFormat` | offline | Validates an OrgPath string against UIAO_151's canonical regex. |
+| `Test-OrgPathHierarchy` | offline | Validates that a child OrgPath has a registered parent in the supplied codebook hashtable. |
+| `Get-OrgTreeValidationReport` | live tenant | Walks tenant users via `Connect-MgGraph` + `Get-MgUser`; classifies each user's OrgPath against the codebook; returns a summary report. |
+| `Test-DynamicGroupAlignment` | live tenant | Compares tenant dynamic groups against the canonical UIAO_152 library (passed as JSON); reports aligned / misaligned / missing. |
+| `Export-OrgTreeSnapshot` | live tenant | Snapshots tenant users + OrgTree-* groups to a JSON file. |
+| `Compare-OrgTreeSnapshots` | offline | Diffs two snapshot JSON files; emits drift entries (`NewObject`, `ValueDrift`). |
+| `Invoke-UiaoOrgTreeValidate` | bridge | Shells out to `uiao orgtree validate all`; surfaces exit-code as `$result.Passed`. |
 
-function Test-DynamicGroupAlignment {     <#     .SYNOPSIS         Validates that dynamic groups in the tenant match the canonical library.     .PARAMETER TenantId         The target tenant identifier.     .PARAMETER GroupLibraryPath         Path to the JSON group library file.     #>     [CmdletBinding()]     [OutputType([PSCustomObject])]     param(         [Parameter(Mandatory = $true)]         [ValidateNotNullOrEmpty()]         [string]$TenantId,          [Parameter(Mandatory = $true)]         [ValidateScript({ Test-Path $_ })]         [string]$GroupLibraryPath     )      try {         $Library = Get-Content -Path $GroupLibraryPath -Raw | ConvertFrom-Json         Connect-MgGraph -TenantId $TenantId -Scopes "Group.Read.All" -NoWelcome          $AlignedGroups = 0         $MisalignedGroups = 0         $MissingGroups = 0         $Details = @()          foreach ($Definition in $Library) {             $TenantGroup = Get-MgGroup -Filter "displayName eq '$($Definition.groupName)'" -ErrorAction SilentlyContinue             if (-not $TenantGroup) {                 $MissingGroups++                 $Details += [PSCustomObject]@{ GroupName = $Definition.groupName; Status = "Missing" }                 continue             }             if ($TenantGroup.MembershipRule -eq $Definition.membershipRule) {                 $AlignedGroups++                 $Details += [PSCustomObject]@{ GroupName = $Definition.groupName; Status = "Aligned" }             }             else {                 $MisalignedGroups++                 $Details += [PSCustomObject]@{ GroupName = $Definition.groupName; Status = "Misaligned" }             }         }          return [PSCustomObject]@{             AlignedGroups   = $AlignedGroups             MisalignedGroups = $MisalignedGroups             MissingGroups   = $MissingGroups             Details         = $Details         }     }     catch {         Write-Error "Error testing dynamic group alignment: $_"         return $null     } }
+### Dependencies
 
-Function 5: Export-OrgTreeSnapshot
+Functions 3, 4, 5 require `Microsoft.Graph` (`Install-Module Microsoft.Graph`).
+Functions 1, 2, 6 are pure pwsh and have no external module dependency.
+The bridge cmdlet requires the `uiao` CLI on `PATH`.
 
-function Export-OrgTreeSnapshot {     <#     .SYNOPSIS         Exports the current OrgTree state as a JSON snapshot.     .PARAMETER TenantId         The target tenant identifier.     .PARAMETER OutputPath         File path for the JSON output.     #>     [CmdletBinding()]     param(         [Parameter(Mandatory = $true)]         [string]$TenantId,          [Parameter(Mandatory = $true)]         [string]$OutputPath     )      try {         Connect-MgGraph -TenantId $TenantId -Scopes "User.Read.All","Group.Read.All" -NoWelcome          $Users = Get-MgUser -All -Property "Id,DisplayName,UserPrincipalName,Department,OnPremisesExtensionAttributes"         $Groups = Get-MgGroup -All -Property "Id,DisplayName,MembershipRule,GroupTypes" |             Where-Object { $_.DisplayName -like "OrgTree-*" }          $Snapshot = [PSCustomObject]@{             snapshotDate = (Get-Date -Format "o")             tenantId     = $TenantId             userCount    = $Users.Count             groupCount   = $Groups.Count             users        = $Users | ForEach-Object {                 [PSCustomObject]@{                     id       = $_.Id                     upn      = $_.UserPrincipalName                     orgPath  = $_.OnPremisesExtensionAttributes.ExtensionAttribute1                     department = $_.Department                 }             }             groups       = $Groups | ForEach-Object {                 [PSCustomObject]@{                     id             = $_.Id                     displayName    = $_.DisplayName                     membershipRule = $_.MembershipRule                 }             }         }          $Snapshot | ConvertTo-Json -Depth 5 | Set-Content -Path $OutputPath -Encoding UTF8         Write-Verbose "Snapshot exported to $OutputPath"     }     catch {         Write-Error "Error exporting OrgTree snapshot: $_"     } }
+### Test coverage
 
-Function 6: Compare-OrgTreeSnapshots
+Pester covers all four offline-testable cmdlets:
 
-function Compare-OrgTreeSnapshots {     <#     .SYNOPSIS         Compares two OrgTree snapshots and identifies drift entries.     .PARAMETER BaselinePath         Path to the baseline snapshot JSON.     .PARAMETER CurrentPath         Path to the current snapshot JSON.     #>     [CmdletBinding()]     [OutputType([PSCustomObject[]])]     param(         [Parameter(Mandatory = $true)]         [ValidateScript({ Test-Path $_ })]         [string]$BaselinePath,          [Parameter(Mandatory = $true)]         [ValidateScript({ Test-Path $_ })]         [string]$CurrentPath     )      try {         $Baseline = Get-Content -Path $BaselinePath -Raw | ConvertFrom-Json         $Current = Get-Content -Path $CurrentPath -Raw | ConvertFrom-Json         $DriftEntries = @()          $BaselineUserMap = @{}         foreach ($User in $Baseline.users) { $BaselineUserMap[$User.id] = $User }          foreach ($CurrentUser in $Current.users) {             if (-not $BaselineUserMap.ContainsKey($CurrentUser.id)) {                 $DriftEntries += [PSCustomObject]@{                     ObjectId   = $CurrentUser.id                     ObjectType = "User"                     DriftType  = "NewObject"                     Field      = "N/A"                     BaselineValue = $null                     CurrentValue  = $CurrentUser.orgPath                 }                 continue             }             $BaselineUser = $BaselineUserMap[$CurrentUser.id]             if ($BaselineUser.orgPath -ne $CurrentUser.orgPath) {                 $DriftEntries += [PSCustomObject]@{                     ObjectId      = $CurrentUser.id                     ObjectType    = "User"                     DriftType     = "ValueDrift"                     Field         = "orgPath"                     BaselineValue = $BaselineUser.orgPath                     CurrentValue  = $CurrentUser.orgPath                 }             }         }          Write-Verbose "Drift entries found: $($DriftEntries.Count)"         return $DriftEntries     }     catch {         Write-Error "Error comparing snapshots: $_"         return @()     } }
+- `Test-OrgPathFormat` — 8 cases (valid root, valid 1–4 level paths, lowercase rejection, missing prefix, under-min and over-max segment lengths).
+- `Test-OrgPathHierarchy` — 4 cases (root, child of registered parent, leaf, missing parent).
+- `Compare-OrgTreeSnapshots` — 3 cases (`ValueDrift`, `NewObject`, identical snapshots).
+- **Canonical regex parity test** — extracts the `CANONICAL_REGEX` literal from `src/uiao/modernization/orgtree/codebook.py` at test time and asserts that `Test-OrgPathFormat` matches Python's behavior on a known sample. This is the load-bearing test that prevents the two surfaces from drifting.
 
-Boundary Rules
+Tenant-scope cmdlets (3, 4, 5) are smoke-tested manually against a
+non-production tenant.
 
-All functions use Microsoft Graph PowerShell SDK, which operates within M365 GCC-Moderate.
+## Boundary rules
 
-No function calls Azure Resource Manager, Azure CLI, or any non-M365 API.
+All cmdlets call Microsoft Graph, which is in-boundary for GCC-Moderate.
+No cmdlet calls Azure Resource Manager, Azure CLI, or any commercial-cloud
+API. The Python side has the same boundary contract, enforced by the
+substrate walker's `boundary: GCC-Moderate` frontmatter requirement.
 
-Drift Considerations
+## Drift considerations
 
-The validation module itself is a governance artifact; changes to function logic require Workflow 8 (Governance Artifact Update).
+Both surfaces are governance artifacts. Behavior changes go through
+the Workflow 8 (Governance Artifact Update) review per UIAO_155.
+Cmdlet outputs and CLI outputs are first-class inputs to drift
+classification (UIAO_163).
 
-Function outputs are the primary input to drift classification (Appendix M).
+The canonical-regex parity test is the early-warning system: if either
+side mutates the OrgPath regex without updating the other, Pester fails
+on the next PR.
 
-Governance Alignment
+## Governance alignment
 
-This module implements Principle 4 (Drift Resistance) by providing the tooling to detect deviations. It implements Principle 6 (Two-Brain Execution): these functions are executed by Execution Substrate, with results validated by Copilot.
+Implements Principle 4 (Drift Resistance): provides the tooling that
+detects deviations.
+
+Implements Principle 6 (Two-Brain Execution): the cmdlets and CLI verbs
+are the tools the Execution Substrate (Microsoft Graph PowerShell SDK
+session, or Python adapter session) runs against tenants; the
+governance brain (Copilot review of PRs that change validation logic)
+reviews the *implementations* of those tools.
+
+Implements Principle 1 (Single Source of Truth): the Python side
+authors the validation logic; the PowerShell side either calls back to
+that authority or carries a parity-tested mirror. The mirror is
+narrow (one regex literal today) and is asserted programmatically on
+every PR via Pester.
