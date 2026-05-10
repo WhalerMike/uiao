@@ -258,7 +258,9 @@ function Test-DynamicGroupAlignment {
 
     foreach ($definition in $definitions) {
         $DisplayName = $definition.groupName
-        $tenantGroup = & $GetGroup
+        $contextVariables = [System.Collections.Generic.List[System.Management.Automation.PSVariable]]::new()
+        $contextVariables.Add([System.Management.Automation.PSVariable]::new('DisplayName', $DisplayName))
+        $tenantGroup = $GetGroup.InvokeWithContext($null, $contextVariables, @($DisplayName))
         if (-not $tenantGroup) {
             $missing++
             $details += [pscustomobject]@{ GroupName = $definition.groupName; Status = 'Missing' }
