@@ -1,9 +1,123 @@
 ---
 title: "SD-WAN Modernization Spec"
 subtitle: "Software-Defined WAN governance specification"
+doc-type: modernization-spec
+audience: [Customer, Architect, Assessor]
+classification: Controlled
+boundary: GCC-Moderate
+canon-source: "src/uiao/canon/modernization-registry.yaml"
+canon-reference:
+  - "docs/customer-documents/architecture-series/six-plane-architecture.qmd"
+  - "docs/docs/01_UnifiedArchitecture.qmd"
+derived-from: "uiao canon"
 ---
 
-::: {.callout-note}
-## Specification in preparation
-This domain specification is being drafted. See the [Modernization Program](../uiao-modernization-program/index.qmd) for current phase documentation covering this domain.
-:::
+# SD-WAN Modernization Spec
+
+## Scope
+
+Cross-adapter specification for Software-Defined WAN (SD-WAN)
+modernization under the UIAO substrate. SD-WAN replaces static MPLS
+WAN with policy-driven, telemetry-informed routing across diverse
+transports. This spec defines the substrate contract for SD-WAN
+adapters: identity-aware routing, telemetry-as-control, and canonical
+claim emission for path and policy decisions.
+
+[IMAGE-01: SD-WAN modernization domain diagram. Center shows three transport lanes (MPLS, Internet, LTE/5G) feeding a central SD-WAN orchestrator. Above the orchestrator, an arrow incoming from the Identity plane labeled "identity-aware policy". Below the orchestrator, an arrow outgoing to the Telemetry plane labeled "path/policy telemetry as canonical claims". On the right, a "Drift findings" lane showing canonical claim emissions for routing decisions, SLA breaches, and policy mismatches. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic.]
+
+## Substrate contract
+
+SD-WAN adapters span the Network, Addressing, and Telemetry planes.
+They inherit:
+
+- **Identity-aware policy** — routing policy consumes identity
+  context where applicable; SD-WAN does not maintain parallel
+  identity authority.
+- **Telemetry as control** — path quality, SLA telemetry, and policy
+  decisions emit as canonical claims; the substrate consumes them as
+  control input, not as after-the-fact reports.
+- **Canonical decision records** — every policy decision (path
+  selection, transport failover, application steering) is a claim
+  with the full provenance envelope.
+
+## Adapter shape
+
+SD-WAN adapters declare:
+
+- `mission-class`: `enforcement` (path-level enforcement),
+  `telemetry` (path-quality observer), or `integration`
+  (controller integration).
+- `class`: `modernization` (replacing legacy WAN) or `conformance`
+  (observing SD-WAN policy/state).
+- `gcc-boundary` per adapter — most SD-WAN controllers operate
+  outside FedRAMP-Moderate boundaries unless explicitly certified.
+
+## Integration shape
+
+```yaml
+provenance:
+  ...
+sdwan_decision:
+  controller_id: "{sd-wan_controller}"
+  decision_kind: "path-selection | failover | application-steering | qos"
+  source_site: "{site_id}"
+  destination: "{site_id | application_id}"
+  selected_path: "{transport_id}"
+  identity_context: "{issuer_identity | n/a}"
+  sla_state: "{sla_class}"
+  policy_refs:
+    - "{canon_policy_id}"
+  evaluation_timestamp: ISO8601
+```
+
+## Control mapping
+
+Maps onto:
+
+- **NIST 800-53** SC (System & Communications Protection), AU
+  families.
+- **FedRAMP CR26** boundary and configuration controls.
+- **NIST 800-207** to the extent SD-WAN supports Zero Trust posture.
+
+## Drift considerations
+
+- **`DRIFT-SCHEMA`** — controller policy schema diverges from
+  canonical shape.
+- **`DRIFT-PROVENANCE`** — telemetry chain breakage between site,
+  controller, and substrate (common at boundary crossings).
+- **`DRIFT-AUTHZ`** — policy decision emitted outside the declared
+  scope (e.g. routing across an unauthorized transport class).
+- **`DRIFT-SEMANTIC`** — SLA classification mismatch between
+  controller and canonical SLA model.
+
+## Boundary treatment
+
+SD-WAN controllers frequently sit *outside* the GCC-Moderate
+boundary. The adapter must declare its boundary disposition explicitly
+(in-boundary, named exception, or compensating-controller). Controllers
+that do not fit any of these categories require an authorizing ADR
+before registration.
+
+## Honest limits
+
+- SD-WAN vendor maturity in federal cloud boundaries varies. Adapter
+  authors may have to carry significant compensating-controller logic
+  for vendors lacking in-boundary controllers.
+- Path-quality telemetry from some SD-WAN vendors is proprietary;
+  canonical claim emission may require synthesis with explicit
+  `source_classification: synthesized` per claim.
+- Identity-aware SD-WAN policy is not universally supported by all
+  vendors; programs adopting an identity-naive SD-WAN cannot realize
+  the full spec.
+
+## Validation pairing
+
+Pairs with the
+[SD-WAN Validation Suite](../../validation-suites/domains/sdwan/sdwan.qmd).
+
+## Related documents
+
+- [Modernization Specs Index](../index.qmd)
+- [Architecture Series — Six-Plane Architecture](../../architecture-series/six-plane-architecture.qmd)
+- [Unified Architecture (canon)](../../../docs/01_UnifiedArchitecture.qmd)
+- [Modernization Registry (canon)](../../../../src/uiao/canon/modernization-registry.yaml)
