@@ -362,3 +362,23 @@ class TestList:
         # prefix instead.
         assert "ARM-tag" in result.stdout
         assert "extensionAttrib" in result.stdout
+
+    def test_list_role_assignments(self) -> None:
+        result = runner.invoke(app, ["orgtree", "list", "role-assignments"])
+        assert result.exit_code == 0, result.stdout
+        assert "UIAO_154" in result.stdout
+        # Canonical matrix has 15 assignments and at least the tier-1
+        # Global Reader → IT-SEC group entry.
+        assert "15 entries" in result.stdout
+        assert "Global Reader" in result.stdout
+        assert "tier-1" in result.stdout
+
+    def test_list_intune_assignments(self) -> None:
+        result = runner.invoke(app, ["orgtree", "list", "intune-assignments"])
+        assert result.exit_code == 0, result.stdout
+        assert "UIAO_164" in result.stdout
+        # Canonical canon has 5 Intune assignments; at least one is
+        # `include` intent and one is `exclude`.
+        assert "5 entries" in result.stdout
+        assert "include" in result.stdout
+        assert "exclude" in result.stdout
