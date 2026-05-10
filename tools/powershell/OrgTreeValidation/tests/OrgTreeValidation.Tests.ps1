@@ -187,7 +187,7 @@ Describe 'Canonical regex parity with Python source-of-truth' {
 # real Graph SDK returns, then assert the cmdlet's counting / classification
 # logic against known inputs.
 
-Describe 'Get-OrgTreeValidationReport' {
+Describe 'Get-OrgTreeValidationReport' -Skip:$SkipTenantScope {
     BeforeEach {
         $script:CodebookPath = Join-Path $script:FixtureDir 'codebook.json'
         Mock -ModuleName OrgTreeValidation Connect-MgGraph {}
@@ -279,7 +279,7 @@ Describe 'Get-OrgTreeValidationReport' {
 # Test-DynamicGroupAlignment (Function 4) — mocked Microsoft.Graph
 # ---------------------------------------------------------------------------
 
-Describe 'Test-DynamicGroupAlignment' {
+Describe 'Test-DynamicGroupAlignment' -Skip:$SkipTenantScope {
     BeforeEach {
         $script:LibraryPath = Join-Path $script:FixtureDir 'group-library.json'
         Mock -ModuleName OrgTreeValidation Connect-MgGraph {}
@@ -349,7 +349,7 @@ Describe 'Test-DynamicGroupAlignment' {
 # Export-OrgTreeSnapshot (Function 5) — mocked Microsoft.Graph + file I/O
 # ---------------------------------------------------------------------------
 
-Describe 'Export-OrgTreeSnapshot' {
+Describe 'Export-OrgTreeSnapshot' -Skip:$SkipTenantScope {
     BeforeEach {
         $script:OutFile = Join-Path ([System.IO.Path]::GetTempPath()) ("orgtree-snap-$([guid]::NewGuid()).json")
         Mock -ModuleName OrgTreeValidation Connect-MgGraph {}
