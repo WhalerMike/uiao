@@ -46,7 +46,7 @@ def adapter() -> EntraDeviceOrgPathAdapter:
 class TestRegistryIntegrity:
     def test_default_registry_loads(self) -> None:
         reg = default_device_plane_registry()
-        assert reg.document_id == "MOD_C"
+        assert reg.document_id == "UIAO_153"
         # Phase 4 ships extensionAttribute1 and ARM-tag only; app-tag is
         # deferred to Phase 5 per ADR-038.
         assert reg.plane_names == {"extensionAttribute1", "ARM-tag"}
@@ -79,7 +79,7 @@ class TestRegistryValidation:
     def _good_yaml(self) -> str:
         return textwrap.dedent("""\
             schema_version: "1.0.0"
-            document_id: MOD_C
+            document_id: UIAO_153
             parent_canon: UIAO_007
             planes:
               - name: extensionAttribute1
@@ -148,7 +148,7 @@ class TestRegistryValidation:
         )
         p = tmp_path / "bad.yaml"
         p.write_text(bad)
-        with pytest.raises(DevicePlaneValidationError, match="canonical MOD_A regex"):
+        with pytest.raises(DevicePlaneValidationError, match="canonical UIAO_151 regex"):
             load_device_plane_registry(p)
 
 

@@ -1,28 +1,31 @@
 ---
-document_id: MOD_B
+document_id: UIAO_152
 title: "Appendix B — Dynamic Group Library"
 version: "2.0"
-status: CANONICAL
+status: Current
 owner: Michael Stratton
 author: Michal Doroszewski
-created_at: 2026-04-18
-updated_at: 2026-04-19
+created_at: "2026-04-18"
+updated_at: "2026-04-19"
 boundary: GCC-Moderate
-namespace: MOD
-parent_canon: UIAO_008
-provenance:
+classification: CANONICAL
+promotion:
   prior_version: "1.0 (DRAFT scaffold)"
   promoted_by: "Copilot Tasks"
   promotion_date: "2026-04-19"
+provenance_flatten:
+  prior_id: "MOD_B"
+  flattened_at: "2026-05-10"
+  flattened_by: "ADR-060"
 ---
 
 # Appendix B — Dynamic Group Library
 
 ## Purpose
 
-This appendix defines all dynamic group definitions that implement the OrgTree structure in Entra ID. Every OrgPath-scoped group in the tenant must conform to a definition in this library. Groups not listed here are non-canonical and will be flagged as Phantom Drift by the drift detection engine (MOD_M).
+This appendix defines all dynamic group definitions that implement the OrgTree structure in Entra ID. Every OrgPath-scoped group in the tenant must conform to a definition in this library. Groups not listed here are non-canonical and will be flagged as Phantom Drift by the drift detection engine (UIAO_163).
 
-The Dynamic Group Library is the operational bridge between the OrgPath Codebook (MOD_A) and every downstream governance artifact: Conditional Access policies target these groups, Administrative Units (MOD_D) scope delegation through them, licensing assignments flow through them, and the drift engine validates them.
+The Dynamic Group Library is the operational bridge between the OrgPath Codebook (UIAO_151) and every downstream governance artifact: Conditional Access policies target these groups, Administrative Units (UIAO_154) scope delegation through them, licensing assignments flow through them, and the drift engine validates them.
 
 ## Scope
 
@@ -163,7 +166,7 @@ Combines multiple OrgPath conditions. Use `-or` operator.
 | Phantom Group | Group with `OrgTree-` prefix exists in tenant but has no entry in this library | MEDIUM | No — investigate, then delete or canonize |
 | Missing Group | Entry exists in this library but no corresponding group in tenant | HIGH | Yes — create group from canonical definition |
 | Name Drift | Group exists with correct rule but wrong name | LOW | Yes — rename to canonical name |
-| Membership Drift | Group membership does not match expected user count | MEDIUM | Root cause is OrgPath values (MOD_A), not group rules |
+| Membership Drift | Group membership does not match expected user count | MEDIUM | Root cause is OrgPath values (UIAO_151), not group rules |
 
 ## Governance Rules
 
@@ -171,7 +174,7 @@ Combines multiple OrgPath conditions. Use `-or` operator.
 2. **One canonical rule per group.** Each group has exactly one membership rule. Multiple rules for the same scope require separate groups.
 3. **Naming is deterministic.** The group name is derived from the OrgPath scope and purpose. Renaming a group without updating this library is drift.
 4. **Changes require governed workflow.** Adding, modifying, or removing a group definition follows Workflow 3 (Dynamic Group Creation/Modification) in Appendix E and requires validation per Appendix J Group Tests.
-5. **OrgPath dependency.** Every membership rule references `extensionAttribute1` values defined in MOD_A. If an OrgPath value is removed from the codebook, all groups referencing it must be updated or retired.
+5. **OrgPath dependency.** Every membership rule references `extensionAttribute1` values defined in UIAO_151. If an OrgPath value is removed from the codebook, all groups referencing it must be updated or retired.
 
 ## PowerShell Validation
 

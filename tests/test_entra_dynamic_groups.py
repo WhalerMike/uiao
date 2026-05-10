@@ -40,7 +40,7 @@ class TestLibraryIntegrity:
 
     def test_default_library_loads(self) -> None:
         lib = default_dynamic_group_library()
-        assert lib.document_id == "MOD_B"
+        assert lib.document_id == "UIAO_152"
         assert len(lib.groups) == 32
         assert lib.naming_regex.startswith("^OrgTree-")
 
@@ -79,7 +79,7 @@ class TestLibraryValidation:
         bad.write_text(
             textwrap.dedent("""\
             schema_version: "1.0.0"
-            document_id: MOD_B
+            document_id: UIAO_152
             parent_canon: UIAO_007
             naming:
               prefix: "OrgTree-"
@@ -101,7 +101,7 @@ class TestLibraryValidation:
         bad.write_text(
             textwrap.dedent("""\
             schema_version: "1.0.0"
-            document_id: MOD_B
+            document_id: UIAO_152
             parent_canon: UIAO_007
             naming:
               prefix: "OrgTree-"
@@ -123,7 +123,7 @@ class TestLibraryValidation:
         bad.write_text(
             textwrap.dedent("""\
             schema_version: "1.0.0"
-            document_id: MOD_B
+            document_id: UIAO_152
             parent_canon: UIAO_007
             naming:
               prefix: "OrgTree-"

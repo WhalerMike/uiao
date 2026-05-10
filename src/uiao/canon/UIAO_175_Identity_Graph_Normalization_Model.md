@@ -1,15 +1,17 @@
 ---
-document_id: MOD_Y
+document_id: UIAO_175
 title: "Appendix Y — Identity Graph Normalization Model"
 version: "1.0"
-status: DRAFT
+status: Draft
 classification: CANONICAL
 owner: Michael Stratton
-created_at: 2026-04-18
-updated_at: 2026-04-18
+created_at: "2026-04-18"
+updated_at: "2026-04-18"
 boundary: GCC-Moderate
-namespace: MOD
-parent_canon: UIAO_008
+provenance_flatten:
+  prior_id: "MOD_Y"
+  flattened_at: "2026-05-10"
+  flattened_by: "ADR-060"
 ---
 
 # Appendix Y — Identity Graph Normalization Model

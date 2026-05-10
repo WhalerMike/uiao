@@ -1,6 +1,6 @@
 """OrgTree canon + codebook loader.
 
-Narrative canon lives in MOD_A..MOD_Z markdown files in this directory; the
+Narrative canon lives in UIAO_151..UIAO_176 markdown files in this directory; the
 executable canon is :mod:`uiao.modernization.orgtree.codebook`, which loads
 ``canon/data/orgpath/codebook.yaml`` and validates it against
 ``schemas/orgpath/codebook.schema.json``.
