@@ -6,7 +6,7 @@ status: Current
 classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
-updated_at: "2026-05-11"
+updated_at: "2026-05-12"
 boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_I"
@@ -81,6 +81,22 @@ Loads the artifact, looks up the entry by id, renders it as a Rich
 table. Exits 1 with a `NOT FOUND` line listing up to five known keys
 when the id is missing.
 
+### `list` — enumerate all entries
+
+```
+uiao orgtree list codebook        [--prefix PREFIX]
+uiao orgtree list dynamic-groups  [--prefix PREFIX]
+uiao orgtree list admin-units     [--prefix PREFIX]
+uiao orgtree list device-planes   [--prefix PREFIX]
+```
+
+Renders every entry in the artifact as a sortable Rich table, one row
+per entry with the most-scannable columns (id + 2-3 summary fields).
+`--prefix` filters by id-prefix — e.g.
+`uiao orgtree list codebook --prefix ORG-FIN` shows only Finance-tree
+codes. Output title displays "X of Y" so the operator knows whether
+the filter matched everything or trimmed.
+
 ### `resolve` — cross-reference against the codebook
 
 ```
@@ -109,8 +125,8 @@ uiao orgtree export codebook --out /tmp/codebook.json
 pwsh -c "Get-OrgTreeValidationReport -TenantId \$env:TENANT_ID -CodebookPath /tmp/codebook.json"
 ```
 
-Tests: `tests/test_cli_orgtree.py` (28 tests covering validate,
-show, resolve, and export).
+Tests: `tests/test_cli_orgtree.py` (34 tests covering validate, show,
+resolve, export, and list).
 
 ## Surface 2 — PowerShell module
 

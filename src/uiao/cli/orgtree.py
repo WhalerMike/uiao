@@ -98,6 +98,13 @@ export_app = typer.Typer(
 )
 orgtree_app.add_typer(export_app, name="export")
 
+list_app = typer.Typer(
+    name="list",
+    help="Enumerate entries from a canonical OrgTree artifact.",
+    no_args_is_help=True,
+)
+orgtree_app.add_typer(list_app, name="list")
+
 console = Console()
 
 
@@ -458,3 +465,96 @@ def export_codebook(
     else:
         out.write_text(text + "\n", encoding="utf-8")
         console.print(f"[green]wrote[/green] {out} ({len(payload['entries'])} entries)")
+
+
+# ---------------------------------------------------------------------------
+# list — enumerate all entries from a canonical artifact
+# ---------------------------------------------------------------------------
+
+
+_PREFIX_OPT = typer.Option(
+    None,
+    "--prefix",
+    "-p",
+    help="Filter entries whose key starts with this prefix.",
+)
+
+
+def _filter_keys(keys: list[str], prefix: Optional[str]) -> list[str]:
+    if prefix is None:
+        return sorted(keys)
+    return sorted(k for k in keys if k.startswith(prefix))
+
+
+@list_app.command("codebook")
+def list_codebook(prefix: Optional[str] = _PREFIX_OPT) -> None:
+    """List all OrgPath codes in the codebook (UIAO_151)."""
+    cb = load_codebook()
+    keys = _filter_keys(list(cb.entries.keys()), prefix)
+    table = Table(
+        title=f"codebook entries (UIAO_151) — {len(keys)} of {len(cb.entries)}", show_header=True, header_style="bold"
+    )
+    table.add_column("code", style="cyan")
+    table.add_column("level", justify="right")
+    table.add_column("parent")
+    table.add_column("description")
+    for code in keys:
+        entry = cb.entries[code]
+        table.add_row(code, str(entry.level), entry.parent or "(root)", entry.description)
+    console.print(table)
+
+
+@list_app.command("dynamic-groups")
+def list_dynamic_groups(prefix: Optional[str] = _PREFIX_OPT) -> None:
+    """List all dynamic groups (UIAO_152)."""
+    lib = load_dynamic_group_library()
+    keys = _filter_keys(list(lib.groups.keys()), prefix)
+    table = Table(
+        title=f"dynamic groups (UIAO_152) — {len(keys)} of {len(lib.groups)}", show_header=True, header_style="bold"
+    )
+    table.add_column("name", style="cyan")
+    table.add_column("category")
+    table.add_column("orgpath_refs")
+    table.add_column("description")
+    for name in keys:
+        spec = lib.groups[name]
+        table.add_row(name, spec.category, ", ".join(spec.orgpath_refs), spec.description)
+    console.print(table)
+
+
+@list_app.command("admin-units")
+def list_admin_units(prefix: Optional[str] = _PREFIX_OPT) -> None:
+    """List all Administrative Units (UIAO_154)."""
+    matrix = load_delegation_matrix()
+    keys = _filter_keys(list(matrix.administrative_units.keys()), prefix)
+    table = Table(
+        title=f"administrative units (UIAO_154) — {len(keys)} of {len(matrix.administrative_units)}",
+        show_header=True,
+        header_style="bold",
+    )
+    table.add_column("name", style="cyan")
+    table.add_column("tier")
+    table.add_column("restricted", justify="center")
+    table.add_column("description")
+    for name in keys:
+        au = matrix.administrative_units[name]
+        table.add_row(name, au.tier, "✓" if au.restricted else "·", au.description)
+    console.print(table)
+
+
+@list_app.command("device-planes")
+def list_device_planes(prefix: Optional[str] = _PREFIX_OPT) -> None:
+    """List all device planes (UIAO_153)."""
+    reg = load_device_plane_registry()
+    keys = _filter_keys(list(reg.planes.keys()), prefix)
+    table = Table(
+        title=f"device planes (UIAO_153) — {len(keys)} of {len(reg.planes)}", show_header=True, header_style="bold"
+    )
+    table.add_column("name", style="cyan")
+    table.add_column("transport")
+    table.add_column("target")
+    table.add_column("description")
+    for name in keys:
+        plane = reg.planes[name]
+        table.add_row(name, plane.transport, plane.target_object, plane.description)
+    console.print(table)

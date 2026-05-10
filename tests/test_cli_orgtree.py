@@ -278,3 +278,55 @@ class TestExport:
         regex = re.compile(payload["regex"])
         for entry in payload["entries"]:
             assert regex.match(entry["code"]), f"exported code violates its own regex: {entry['code']}"
+
+
+# ---------------------------------------------------------------------------
+# List — enumerate all entries
+# ---------------------------------------------------------------------------
+
+
+class TestList:
+    def test_list_codebook(self) -> None:
+        result = runner.invoke(app, ["orgtree", "list", "codebook"])
+        assert result.exit_code == 0, result.stdout
+        # Header + ORG root + some leaf entries must all appear.
+        assert "UIAO_151" in result.stdout
+        assert "ORG" in result.stdout
+        assert "Enterprise Root" in result.stdout
+
+    def test_list_codebook_with_prefix(self) -> None:
+        result = runner.invoke(app, ["orgtree", "list", "codebook", "--prefix", "ORG-FIN"])
+        assert result.exit_code == 0, result.stdout
+        # All ORG-FIN entries appear; no ORG-IT entries.
+        assert "ORG-FIN" in result.stdout
+        assert "ORG-IT-SEC" not in result.stdout
+        # Title shows "X of 26" reduction.
+        assert "of 26" in result.stdout
+
+    def test_list_codebook_with_prefix_no_match(self) -> None:
+        result = runner.invoke(app, ["orgtree", "list", "codebook", "--prefix", "ORG-NOTREAL"])
+        # No matches is not an error — empty table.
+        assert result.exit_code == 0, result.stdout
+        assert "0 of 26" in result.stdout
+
+    def test_list_dynamic_groups(self) -> None:
+        result = runner.invoke(app, ["orgtree", "list", "dynamic-groups"])
+        assert result.exit_code == 0, result.stdout
+        assert "UIAO_152" in result.stdout
+        assert "OrgTree-FIN-Users" in result.stdout
+
+    def test_list_admin_units(self) -> None:
+        result = runner.invoke(app, ["orgtree", "list", "admin-units"])
+        assert result.exit_code == 0, result.stdout
+        assert "UIAO_154" in result.stdout
+        assert "AU-ORG-FIN" in result.stdout
+
+    def test_list_device_planes(self) -> None:
+        result = runner.invoke(app, ["orgtree", "list", "device-planes"])
+        assert result.exit_code == 0, result.stdout
+        assert "UIAO_153" in result.stdout
+        # Both planes appear. Long `extensionAttribute1` may be wrapped/
+        # truncated by Rich at narrow CliRunner widths; match a stable
+        # prefix instead.
+        assert "ARM-tag" in result.stdout
+        assert "extensionAttrib" in result.stdout
