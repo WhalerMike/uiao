@@ -444,3 +444,57 @@ def test_walker_retired_slug_dedupes_per_file(tmp_path: Path) -> None:
     report = walk_substrate(workspace_root=root)
     matches = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "retired slug MOD_X" in f.detail]
     assert len(matches) == 1, report.findings
+
+
+# ---------------------------------------------------------------------------
+# `uiao substrate walk --retired-slugs-only` filter
+# ---------------------------------------------------------------------------
+
+
+def test_cli_walk_retired_slugs_only_filters_out_other_findings(tmp_path: Path) -> None:
+    """`--retired-slugs-only` should suppress findings that aren't from the
+    retired-slug scan, leaving only retired-slug advisories in the output.
+
+    Setup: a workspace with both kinds of P2 findings — a dangling code
+    citation (canon doc citing src/uiao/nonexistent/module.py) AND a
+    retired slug citation (canon doc using MOD_X).
+    """
+    root = _make_workspace_with_retired_slugs(tmp_path)
+    # Finding 1: dangling code reference (DRIFT-PROVENANCE, generic).
+    canon1 = root / "src/uiao/canon/specs/dangling.md"
+    canon1.parent.mkdir(parents=True, exist_ok=True)
+    canon1.write_text("---\ndocument_id: UIAO_990\n---\nSee `src/uiao/nonexistent/module.py`.\n")
+    # Finding 2: retired slug.
+    canon2 = root / "src/uiao/canon/specs/uses-retired.md"
+    canon2.write_text("---\ndocument_id: UIAO_989\n---\nLegacy reference: MOD_X.\n")
+
+    # Without the filter, both findings appear.
+    result_unfiltered = runner.invoke(app, ["walk", "--workspace-root", str(root), "--json"])
+    assert result_unfiltered.exit_code == 0, result_unfiltered.stdout
+    unfiltered = json.loads(result_unfiltered.stdout)
+    assert any("nonexistent/module" in f["detail"] for f in unfiltered["findings"])
+    assert any("retired slug" in f["detail"] for f in unfiltered["findings"])
+
+    # With the filter, only the retired-slug finding remains.
+    result_filtered = runner.invoke(app, ["walk", "--workspace-root", str(root), "--retired-slugs-only", "--json"])
+    assert result_filtered.exit_code == 0, result_filtered.stdout
+    filtered = json.loads(result_filtered.stdout)
+    assert len(filtered["findings"]) >= 1
+    assert all("retired slug" in f["detail"] for f in filtered["findings"])
+    assert not any("nonexistent/module" in f["detail"] for f in filtered["findings"])
+
+
+def test_cli_walk_retired_slugs_only_clean_when_no_retired_refs(tmp_path: Path) -> None:
+    """`--retired-slugs-only` on a workspace with no retired-slug references
+    (but other drift) reports PASS with the retired-slug-specific message."""
+    root = _make_workspace_with_retired_slugs(tmp_path)
+    # Plant only a non-retired-slug finding.
+    canon = root / "src/uiao/canon/specs/dangling.md"
+    canon.parent.mkdir(parents=True, exist_ok=True)
+    canon.write_text("---\ndocument_id: UIAO_988\n---\nSee `src/uiao/nonexistent/module.py`.\n")
+
+    result = runner.invoke(app, ["walk", "--workspace-root", str(root), "--retired-slugs-only"])
+    assert result.exit_code == 0, result.stdout
+    assert "PASS" in result.stdout
+    assert "no retired-slug references" in result.stdout
+    assert "filtered to --retired-slugs-only" in result.stdout
