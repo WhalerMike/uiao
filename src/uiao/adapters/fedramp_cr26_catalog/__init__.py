@@ -115,9 +115,7 @@ def default_snapshot_dir(sha: str = DEFAULT_SNAPSHOT_SHA) -> Path:
     package is installed editably or as a wheel (AGENTS.md I4).
     """
     canon_root = resources.files("uiao.canon")
-    candidate = canon_root.joinpath(
-        "compliance", "reference", "fedramp-cr26", "snapshot", sha
-    )
+    candidate = canon_root.joinpath("compliance", "reference", "fedramp-cr26", "snapshot", sha)
     return Path(str(candidate))
 
 
@@ -138,13 +136,9 @@ def load_catalog(snapshot_dir: Path) -> dict[str, Any]:
     try:
         data = json.loads(catalog_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise Cr26CatalogMalformed(
-            f"CR26 catalog JSON at {catalog_path} is not valid JSON: {exc}"
-        ) from exc
+        raise Cr26CatalogMalformed(f"CR26 catalog JSON at {catalog_path} is not valid JSON: {exc}") from exc
     if not isinstance(data, dict) or "catalog" not in data:
-        raise Cr26CatalogMalformed(
-            f"CR26 catalog at {catalog_path} is missing top-level 'catalog' key."
-        )
+        raise Cr26CatalogMalformed(f"CR26 catalog at {catalog_path} is missing top-level 'catalog' key.")
     return data
 
 
@@ -230,10 +224,7 @@ def reconcile(
                 summary="CR26 catalog missing top-level 'KSI' group.",
                 details={
                     "snapshot_dir": str(snapshot_dir),
-                    "found_top_level_groups": [
-                        g.get("id")
-                        for g in catalog.get("catalog", {}).get("groups", []) or []
-                    ],
+                    "found_top_level_groups": [g.get("id") for g in catalog.get("catalog", {}).get("groups", []) or []],
                 },
             )
         )

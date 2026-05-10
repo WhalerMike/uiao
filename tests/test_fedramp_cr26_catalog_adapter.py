@@ -110,9 +110,8 @@ def test_enumerate_ksi_controls_returns_46_controls_across_ten_themes(
 
 def test_reconcile_against_real_snapshot_emits_no_findings() -> None:
     findings = reconcile()
-    assert findings == [], (
-        "Real vendored snapshot should reconcile cleanly; got: "
-        + ", ".join(f.summary for f in findings)
+    assert findings == [], "Real vendored snapshot should reconcile cleanly; got: " + ", ".join(
+        f.summary for f in findings
     )
 
 
@@ -143,9 +142,7 @@ def test_load_catalog_raises_when_json_is_invalid(tmp_path: Path) -> None:
 def test_load_catalog_raises_when_catalog_key_missing(tmp_path: Path) -> None:
     catalog_path = tmp_path / "catalog" / "json"
     catalog_path.mkdir(parents=True)
-    (catalog_path / "FedRAMP_CR26_catalog.json").write_text(
-        json.dumps({"not-a-catalog": {}})
-    )
+    (catalog_path / "FedRAMP_CR26_catalog.json").write_text(json.dumps({"not-a-catalog": {}}))
     with pytest.raises(Cr26CatalogMalformed):
         load_catalog(tmp_path)
 
@@ -155,9 +152,7 @@ def test_load_catalog_raises_when_catalog_key_missing(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _write_synthetic_snapshot(
-    tmp_path: Path, catalog_payload: dict
-) -> Path:
+def _write_synthetic_snapshot(tmp_path: Path, catalog_payload: dict) -> Path:
     """Write a minimal snapshot directory containing only the catalog JSON."""
     cat_dir = tmp_path / "catalog" / "json"
     cat_dir.mkdir(parents=True)
@@ -195,9 +190,7 @@ def test_reconcile_emits_provenance_drift_for_missing_theme(
                             {
                                 "id": "KSI-CMT",
                                 "title": "Change Management",
-                                "controls": [
-                                    {"id": "KSI-CMT-LMC", "title": "Logging Changes"}
-                                ],
+                                "controls": [{"id": "KSI-CMT-LMC", "title": "Logging Changes"}],
                             }
                         ],
                     }
@@ -207,9 +200,7 @@ def test_reconcile_emits_provenance_drift_for_missing_theme(
     )
     findings = reconcile(snapshot_dir=snapshot, ksi_rules_dir=tmp_path)
     prov = [f for f in findings if f.drift_class == "DRIFT-PROVENANCE"]
-    missing_themes = {
-        f.details.get("expected_theme") for f in prov if "expected_theme" in f.details
-    }
+    missing_themes = {f.details.get("expected_theme") for f in prov if "expected_theme" in f.details}
     assert "KSI-IAM" in missing_themes
 
 
