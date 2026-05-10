@@ -167,7 +167,11 @@ function Get-OrgTreeValidationReport {
 
     & $ConnectGraph
 
-    $users = & $GetUser
+    # @(...) forces array semantics: pwsh otherwise unwraps a
+    # zero-element scriptblock return to $null and a single-element
+    # return to a scalar, which then makes $users.Count throw under
+    # Set-StrictMode -Version Latest.
+    $users = @(& $GetUser)
     $valid = 0; $invalid = 0; $orphaned = 0
 
     foreach ($user in $users) {
@@ -321,8 +325,10 @@ function Export-OrgTreeSnapshot {
 
     & $ConnectGraph
 
-    $users = & $GetUser
-    $groups = (& $GetGroup) | Where-Object { $_.DisplayName -like 'OrgTree-*' }
+    # @(...) forces array semantics; see Get-OrgTreeValidationReport's
+    # matching comment for why.
+    $users = @(& $GetUser)
+    $groups = @((& $GetGroup) | Where-Object { $_.DisplayName -like 'OrgTree-*' })
 
     $snapshot = [pscustomobject]@{
         snapshotDate = (Get-Date -Format 'o')
