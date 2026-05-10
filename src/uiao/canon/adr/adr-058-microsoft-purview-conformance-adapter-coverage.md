@@ -207,7 +207,7 @@ The omission is the natural follow-up to ADR-049, not a new doctrine.
 3. **Stage 3** — Per-adapter activation ADR (modeled on ADR-035) when
    `purview-audit` is promoted from `reserved` to `active`. Activation
    binds the slot to a Python implementation under
-   `src/uiao/adapters/purview_audit_adapter.py` and a workflow under
+   `uiao.adapters.purview_audit_adapter` and a workflow under
    `.github/workflows/`. Activation order is an implementation-track
    decision and is not fixed by this ADR.
 4. **(Deferred)** — Re-evaluate Decision 2 (no `purview-actions`
