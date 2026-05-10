@@ -295,34 +295,53 @@ deprecation window (per §7).
 - `tests/canon_registry/` — extend the existing parametrized test
   with the 22 new ids.
 
-### 7. Deprecation window — closed early (2026-05-11)
+### 7. Deprecation window — superseded by `retired_slugs:` (2026-05-12)
 
-This section originally specified a 30-day deprecation window
-(2026-05-10 → 2026-06-09) backed by a `MOD_*` → `UIAO_15x`
-slug-resolution table at `src/uiao/canon/data/mod-slug-redirects`
-(`.yaml`, since deleted), with a substrate-walker hook that would emit a
-P2 advisory whenever a `MOD_*` slug appeared in a scanned file.
-**The walker hook was never implemented**; the table existed only as
-static reference documentation.
+This section's history runs in three steps:
 
-Closed status, recorded by the cleanup PR that removed the table:
+1. **Original plan (2026-05-10).** A 30-day deprecation window
+   (2026-05-10 → 2026-06-09) backed by a `MOD_*` → `UIAO_15x`
+   slug-resolution table at `src/uiao/canon/data/mod-slug-redirects`
+   (`.yaml`, since deleted), with a substrate-walker hook that would
+   emit a P2 advisory whenever a `MOD_*` slug appeared in a scanned
+   file. The walker hook was **never implemented**; the table existed
+   only as static reference documentation.
 
-- The implementation PR (#352) retargeted every reference inside the
-  in-scope inventory in a single landing, so no in-flight PR ever
-  needed the redirect table to resolve a missing slug.
-- Body prose inside the 27 renamed canon docs (UIAO_150 – UIAO_176)
-  retains historical `MOD_*` references — that was the explicit
-  out-of-scope decision in §"Out of scope" and remains unchanged. Each
-  doc carries a `provenance_flatten:` frontmatter block recording its
-  prior slug, which is now the canonical answer for "what MOD slug did
-  this used to be?"
-- The redirect table and any tooling hook are removed; future ADRs
-  proposing slug-redirect tables should also commit the walker
-  integration in the same PR, not promise it as a follow-on.
+2. **Closed early (2026-05-11).** The implementation PR (#352)
+   retargeted every reference inside the in-scope inventory in a single
+   landing, so no in-flight PR ever needed the redirect table to resolve
+   a missing slug. The table was deleted and this section originally
+   ended with the lesson "future ADRs proposing slug-redirect tables
+   should also commit the walker integration in the same PR, not
+   promise it as a follow-on."
 
-This window was defensive but, in retrospect, redundant: the
-implementation PR's atomic retarget made the table unused from the
-moment it landed.
+3. **Lesson productized (2026-05-12).** That lesson is now the generic
+   `retired_slugs:` block in `src/uiao/canon/substrate-manifest.yaml`,
+   consumed by the substrate walker's `_scan_retired_slugs` pass. Each
+   entry is `{slug, replacement, rationale?}`; the walker scans
+   `canon/` and `docs/` for any literal occurrence of `slug` (with
+   word boundaries) and emits a P2 DRIFT-PROVENANCE advisory naming
+   the replacement. The 27 `MOD_*` slugs from this ADR are seeded
+   into the manifest on the same PR that ships the walker change.
+
+   Three guards keep the scan honest:
+     - `prior_id: "MOD_X"` frontmatter lines are masked (the
+       canonical historical record, not drift).
+     - This ADR (`adr-060-...md`) is excluded by path (it must
+       reference the old slugs by construction).
+     - The substrate manifest itself is excluded (its
+       `retired_slugs:` block lists every retired slug by design).
+
+Body prose inside the 27 renamed canon docs (UIAO_150 – UIAO_176)
+retains historical `MOD_*` references — the explicit out-of-scope
+decision in §"Out of scope" remains unchanged. Each doc carries a
+`provenance_flatten:` frontmatter block recording its prior slug,
+which is the canonical answer for "what MOD slug did this used to
+be?"
+
+The authoring rule going forward: when an ADR retires a slug, the
+same PR adds an entry to `manifest.retired_slugs[]`. The walker keeps
+subsequent PRs honest.
 
 ## Consequences
 
