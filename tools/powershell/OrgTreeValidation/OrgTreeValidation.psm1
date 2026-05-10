@@ -141,7 +141,7 @@ function Get-OrgTreeValidationReport {
 
     Connect-MgGraph -TenantId $TenantId -Scopes 'User.Read.All' -NoWelcome
 
-    $users = Get-MgUser -All -Property 'Id,DisplayName,OnPremisesExtensionAttributes'
+    $users = @(Get-MgUser -All -Property 'Id,DisplayName,OnPremisesExtensionAttributes')
     $valid = 0; $invalid = 0; $orphaned = 0
 
     foreach ($user in $users) {
@@ -247,9 +247,9 @@ function Export-OrgTreeSnapshot {
 
     Connect-MgGraph -TenantId $TenantId -Scopes 'User.Read.All', 'Group.Read.All' -NoWelcome
 
-    $users = Get-MgUser -All -Property 'Id,DisplayName,UserPrincipalName,Department,OnPremisesExtensionAttributes'
-    $groups = Get-MgGroup -All -Property 'Id,DisplayName,MembershipRule,GroupTypes' |
-        Where-Object { $_.DisplayName -like 'OrgTree-*' }
+    $users = @(Get-MgUser -All -Property 'Id,DisplayName,UserPrincipalName,Department,OnPremisesExtensionAttributes')
+    $groups = @(Get-MgGroup -All -Property 'Id,DisplayName,MembershipRule,GroupTypes' |
+            Where-Object { $_.DisplayName -like 'OrgTree-*' })
 
     $snapshot = [pscustomobject]@{
         snapshotDate = (Get-Date -Format 'o')
