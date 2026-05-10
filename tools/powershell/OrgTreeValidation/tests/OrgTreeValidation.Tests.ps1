@@ -117,26 +117,41 @@ Describe 'Compare-OrgTreeSnapshots' {
 
 
 Describe 'Canonical regex parity with Python source-of-truth' {
-    It 'pwsh CanonicalOrgPathPattern matches src/uiao/modernization/orgtree/codebook.py CANONICAL_REGEX' {
+    BeforeAll {
         $codebookPy = Join-Path $script:RepoRoot 'src/uiao/modernization/orgtree/codebook.py'
         Test-Path $codebookPy | Should -BeTrue
 
         # Extract the literal from `CANONICAL_REGEX = re.compile(r"...")`
         $line = (Select-String -Path $codebookPy -Pattern 'CANONICAL_REGEX\s*=\s*re\.compile\(r"' | Select-Object -First 1).Line
         $line | Should -Not -BeNullOrEmpty
-        $match = [regex]::Match($line, 'r"(?<pat>[^"]+)"')
-        $match.Success | Should -BeTrue
+        $patternMatch = [regex]::Match($line, 'r"(?<pat>[^"]+)"')
+        $patternMatch.Success | Should -BeTrue
 
-        $pythonLiteral = $match.Groups['pat'].Value
+        $script:PythonLiteral = $patternMatch.Groups['pat'].Value
+    }
 
-        # The .psm1 stores its literal in $Script:CanonicalOrgPathPattern, which
-        # is module-internal. We probe it via the regex behavior: run a known-good
-        # OrgPath through Test-OrgPathFormat and through the Python literal as a
-        # net-style regex; both must agree.
+    It 'matches Python on an all-uppercase canonical sample' {
         $sample = 'ORG-FIN-AP-USR-EAST'
-        $pythonOk = $sample -match $pythonLiteral
+        # -cmatch is case-sensitive, mirroring Python's re.compile() default.
+        $pythonOk = $sample -cmatch $script:PythonLiteral
         $pwshOk   = Test-OrgPathFormat -OrgPath $sample
-
         $pwshOk | Should -Be $pythonOk
+        $pwshOk | Should -BeTrue
+    }
+
+    It 'matches Python on a mixed-case sample (must reject — guards against case-sensitivity drift)' {
+        $sample = 'ORG-fin'
+        $pythonOk = $sample -cmatch $script:PythonLiteral
+        $pwshOk   = Test-OrgPathFormat -OrgPath $sample
+        $pwshOk | Should -Be $pythonOk
+        $pwshOk | Should -BeFalse
+    }
+
+    It 'matches Python on the bare root' {
+        $sample = 'ORG'
+        $pythonOk = $sample -cmatch $script:PythonLiteral
+        $pwshOk   = Test-OrgPathFormat -OrgPath $sample
+        $pwshOk | Should -Be $pythonOk
+        $pwshOk | Should -BeTrue
     }
 }

@@ -49,7 +49,12 @@ function Test-OrgPathFormat {
         [ValidateNotNullOrEmpty()]
         [string]$OrgPath
     )
-    return [bool]($OrgPath -match $Script:CanonicalOrgPathPattern)
+    # -cmatch is case-SENSITIVE; required to match Python's re.compile()
+    # default behavior on the same regex. PowerShell's -match is
+    # case-insensitive by default, which would silently accept lowercase
+    # segments and drift away from the Python source-of-truth in
+    # src/uiao/modernization/orgtree/codebook.py:CANONICAL_REGEX.
+    return [bool]($OrgPath -cmatch $Script:CanonicalOrgPathPattern)
 }
 
 
