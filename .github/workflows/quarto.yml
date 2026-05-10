@@ -16,9 +16,25 @@ concurrency:
   group: quarto-${{ github.ref }}
   cancel-in-progress: false
 
+# Pipeline shape:
+#   render_html  ─┐
+#                 ├─► assemble ─► deploy (main only)
+#   render_docx ──┘   (merges site-html + site-docx-* into one _site)
+#
+# render_html is the full-site HTML render (project-aware, ~unchanged).
+# render_docx is sharded across 4 runners; each shard renders a disjoint
+# subset of customer-documents/*.qmd to DOCX. Each runner has its own
+# .quarto cache, so there is no shared-state race (the reason single-job
+# xargs parallelism was reverted in #365). assemble downloads both and
+# stitches the .docx outputs into the HTML site before the Pages deploy.
+#
+# To change shard count, update both `matrix.shard` and `SHARD_TOTAL`
+# in render_docx — GitHub Actions does not allow env vars in matrix
+# declarations, so the count is duplicated.
+
 jobs:
-  render:
-    name: Render Quarto site
+  render_html:
+    name: Render HTML site
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,41 +47,108 @@ jobs:
         working-directory: docs
         # Site-wide HTML render. PDF outputs are skipped (TinyTeX would inflate
         # CI runtime without current demand — see docs/customer-documents/
-        # export pipeline notes). DOCX for the Customer Documents tree is
-        # handled as a scoped second pass below.
+        # export pipeline notes). DOCX is produced by render_docx (matrix).
         run: quarto render --to html
 
-      - name: Render Customer Documents DOCX exports
+      - name: Upload HTML site artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: site-html
+          path: docs/_site
+          retention-days: 1
+          if-no-files-found: error
+
+  render_docx:
+    name: Render DOCX shard ${{ matrix.shard }}/4
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Render DOCX shard
         working-directory: docs
-        # Scoped DOCX render: only pages under customer-documents/ opt into
-        # DOCX via docs/customer-documents/_metadata.yml. Outputs land in
-        # _site/customer-documents/<...>.docx alongside the HTML.
-        # Uses pandoc (bundled with Quarto), no LaTeX dependency.
-        #
-        # Run as a single project render to avoid races on shared docs/.quarto
-        # state used during indexing and cross-reference resolution.
+        env:
+          SHARD_INDEX: ${{ matrix.shard }}
+          SHARD_TOTAL: 4
+        # Deterministic round-robin sharding: sort the file list, then take
+        # files where (index % SHARD_TOTAL) + 1 == SHARD_INDEX. Sorting keeps
+        # shard membership stable across runs; round-robin spreads heavy
+        # subtrees (e.g. adapter-specs/) evenly rather than letting one
+        # shard inherit a giant directory.
         run: |
           set -euo pipefail
-          quarto render customer-documents --to docx --no-execute-daemon
+          mapfile -t all < <(find customer-documents -name '*.qmd' | sort)
+          echo "Total files: ${#all[@]}; this shard: ${SHARD_INDEX}/${SHARD_TOTAL}"
+          for i in "${!all[@]}"; do
+            if (( (i % SHARD_TOTAL) + 1 == SHARD_INDEX )); then
+              quarto render "${all[$i]}" --to docx --no-execute-daemon
+            fi
+          done
 
-      - name: Upload site artifact
+      - name: Upload DOCX shard artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: site-docx-${{ matrix.shard }}
+          path: docs/_site/customer-documents/**/*.docx
+          retention-days: 1
+          if-no-files-found: error
+
+  assemble:
+    name: Assemble combined site
+    needs: [render_html, render_docx]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download HTML site
+        uses: actions/download-artifact@v5
+        with:
+          name: site-html
+          path: _site
+
+      - name: Download DOCX shards
+        uses: actions/download-artifact@v5
+        with:
+          pattern: site-docx-*
+          path: _docx
+          merge-multiple: true
+
+      - name: Merge DOCX outputs into site
+        # _docx mirrors the customer-documents/ subtree (because that's the
+        # path inside docs/_site/ that was uploaded). Layer it onto _site/
+        # so each .docx lands beside its companion .html.
+        run: |
+          set -euo pipefail
+          if [ -d _docx ]; then
+            mkdir -p _site/customer-documents
+            cp -a _docx/. _site/customer-documents/
+          fi
+          find _site/customer-documents -name '*.docx' | wc -l \
+            | xargs -I{} echo "Merged {} DOCX files into site"
+
+      - name: Upload Pages artifact
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v5
         with:
-          path: docs/_site
+          path: _site
 
       - name: Upload PR preview artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: quarto-site-pr-${{ github.event.pull_request.number }}
-          path: docs/_site
+          path: _site
           retention-days: 14
 
   deploy:
     name: Deploy to GitHub Pages
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: render
+    needs: assemble
     runs-on: ubuntu-latest
     permissions:
       pages: write
