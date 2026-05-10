@@ -620,3 +620,56 @@ def list_device_planes(prefix: Optional[str] = _PREFIX_OPT) -> None:
         plane = reg.planes[name]
         table.add_row(name, plane.transport, plane.target_object, plane.description)
     console.print(table)
+
+
+# Tuple-keyed kinds: role_assignments + intune_assignments don't have a
+# natural single-id key, so the table renders all fields as a multi-row
+# dump sorted by the first listed sort key. No --prefix filter (there's
+# no canonical id to prefix-match against); reach for a tenant-side
+# spreadsheet if you need richer filtering.
+
+
+@list_app.command("role-assignments")
+def list_role_assignments() -> None:
+    """List all role assignments from the delegation matrix (UIAO_154)."""
+    matrix = load_delegation_matrix()
+    rows = sorted(
+        matrix.role_assignments,
+        key=lambda r: (r.tier, r.au_scope, r.role, r.principal_group),
+    )
+    table = Table(
+        title=f"role assignments (UIAO_154) — {len(rows)} entries",
+        show_header=True,
+        header_style="bold",
+    )
+    table.add_column("tier", style="cyan")
+    table.add_column("role")
+    table.add_column("principal_group")
+    table.add_column("au_scope")
+    table.add_column("purpose")
+    for r in rows:
+        table.add_row(r.tier, r.role, r.principal_group, r.au_scope, r.purpose)
+    console.print(table)
+
+
+@list_app.command("intune-assignments")
+def list_intune_assignments() -> None:
+    """List all Intune profile assignments from the policy-targeting canon (UIAO_164)."""
+    canon = load_policy_targeting_canon()
+    rows = sorted(
+        canon.intune_assignments,
+        key=lambda a: (a.profile_ref.kind, a.target_group, a.intent),
+    )
+    table = Table(
+        title=f"Intune assignments (UIAO_164) — {len(rows)} entries",
+        show_header=True,
+        header_style="bold",
+    )
+    table.add_column("profile_kind", style="cyan")
+    table.add_column("profile")
+    table.add_column("target_group")
+    table.add_column("intent")
+    table.add_column("purpose")
+    for a in rows:
+        table.add_row(a.profile_ref.kind, a.profile_ref.value, a.target_group, a.intent, a.purpose)
+    console.print(table)
