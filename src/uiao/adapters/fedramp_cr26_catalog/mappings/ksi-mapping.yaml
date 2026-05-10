@@ -1,0 +1,172 @@
+# Local KSI rules ↔ FedRAMP CR26 KSI catalog mapping.
+#
+# Machine-readable companion to UIAO_137; consumed by the
+# `fedramp-cr26-catalog` conformance adapter (ADR-061 D3).
+#
+# Two files must stay in lockstep:
+#   - src/uiao/canon/specs/fedramp-cr26-ksi-mapping.md (human-readable)
+#   - this file (machine-readable)
+#
+# The mapping is valid only against the snapshot SHA pinned below;
+# the adapter emits DRIFT-PROVENANCE if a referenced CR26 ID does
+# not resolve in the snapshot at that SHA.
+#
+# Authority posture per ADR-061 D1: the local rule and its UIAO_NNN
+# row remain authoritative; CR26 IDs cited here are navigational aids.
+
+version: "0.1.0"
+status: draft
+generated_at: "2026-05-10"
+snapshot_sha: "c31eb04c082d6d578a26a00de9a482707ab7a00c"
+catalog_uuid: "092dc25a-18ca-51d9-ab85-744e5435405e"
+catalog_version: "0.1.0"
+governing_doc: UIAO_137
+adr: ADR-061
+
+# ---------------------------------------------------------------------
+# Forward mapping: local KSI rule → CR26 controls.
+# Confidence: `high` = local rule's NIST mapping aligns directly with
+# the CR26 control's intent. `medium` = necessary-but-not-sufficient.
+# ---------------------------------------------------------------------
+
+mappings:
+
+  - local_rule: KSI-001
+    local_title: "Multi-Factor Authentication Enforcement"
+    local_nist: [IA-2, "IA-2(1)", "IA-2(11)"]
+    cr26_controls: [KSI-IAM-APM, KSI-IAM-SNU]
+    confidence: high
+    rationale: >-
+      APM (passwordless / modern auth) is MFA's CR26 expression;
+      SNU covers non-user (service) accounts that must authenticate
+      without interactive MFA.
+
+  - local_rule: KSI-002
+    local_title: "Legacy Authentication Disabled"
+    local_nist: [AC-17, IA-5]
+    cr26_controls: [KSI-IAM-APM]
+    confidence: high
+    rationale: >-
+      Disabling legacy is the negative side of enforcing modern auth.
+
+  - local_rule: KSI-003
+    local_title: "Global Administrator Count"
+    local_nist: ["AC-2(1)", AC-6]
+    cr26_controls: [KSI-IAM-ELP, KSI-IAM-AAM]
+    confidence: high
+    rationale: >-
+      ELP (Least Privilege) is the direct match; AAM (Automating
+      Account Management) covers the lifecycle that keeps the count
+      bounded.
+
+  - local_rule: KSI-004
+    local_title: "External Forwarding Restrictions"
+    local_nist: [SC-7, SC-8]
+    cr26_controls: [KSI-SVC-SNT, KSI-SVC-RUD]
+    confidence: medium
+    rationale: >-
+      SNT (Securing Network Traffic) covers the egress boundary;
+      RUD (Removing Unwanted Data) covers data-leak intent.
+
+  - local_rule: KSI-005
+    local_title: "Mailbox Auditing Enabled"
+    local_nist: [AU-2, AU-12]
+    cr26_controls: [KSI-MLA-LET, KSI-MLA-RVL]
+    confidence: high
+    rationale: >-
+      LET (Logging Event Types) is the emission side; RVL (Reviewing
+      Logs) is the review side. AU-2/AU-12 cover both.
+
+  - local_rule: KSI-006
+    local_title: "External Sharing Restrictions"
+    local_nist: [AC-3, AC-21]
+    cr26_controls: [KSI-IAM-ELP, KSI-SVC-RUD]
+    confidence: medium
+    rationale: >-
+      ELP covers the access-control side; RUD covers the
+      data-egress side.
+
+  - local_rule: KSI-007
+    local_title: "Safe Links Protection"
+    local_nist: [SI-3, SI-4]
+    cr26_controls: [KSI-SVC-VCM, KSI-CNA-RNT]
+    confidence: medium
+    rationale: >-
+      VCM (Validating Communications) is the URL-validation control;
+      RNT (Restricting Network Traffic) covers the egress-block side
+      when a link is bad.
+
+  - local_rule: KSI-008
+    local_title: "Safe Attachments Protection"
+    local_nist: [SI-3, SI-4]
+    cr26_controls: [KSI-SVC-VCM, KSI-CNA-MAT]
+    confidence: medium
+    rationale: >-
+      VCM covers attachment scanning; MAT (Minimizing Attack Surface)
+      covers reducing the live-payload paths.
+
+  - local_rule: KSI-009
+    local_title: "Conditional Access Enforcement"
+    local_nist: [AC-3, AC-17]
+    cr26_controls: [KSI-IAM-ELP, KSI-IAM-JIT, KSI-IAM-SUS]
+    confidence: high
+    rationale: >-
+      CA is the policy-enforcement layer for least privilege,
+      just-in-time access, and suspicious-activity response.
+
+  - local_rule: KSI-010
+    local_title: "Data Loss Prevention Enforcement"
+    local_nist: [MP-4, SC-28]
+    cr26_controls: [KSI-SVC-RUD]
+    confidence: high
+    rationale: >-
+      RUD (Removing Unwanted Data) is the direct CR26 expression of DLP.
+
+# ---------------------------------------------------------------------
+# Themes with no local rule coverage. Adapter does NOT emit drift for
+# these — they are known gaps awaiting new local KSI rules. Listed so
+# tooling and roadmap reviews can iterate over them programmatically.
+# ---------------------------------------------------------------------
+
+gaps:
+  themes_with_zero_local_rules:
+    - KSI-CMT
+    - KSI-CED
+    - KSI-INR
+    - KSI-PIY
+    - KSI-RPL
+    - KSI-SCR
+  controls_with_zero_local_rules:
+    - KSI-CMT-LMC
+    - KSI-CMT-RMV
+    - KSI-CMT-RVP
+    - KSI-CMT-VTD
+    - KSI-CNA-DFP
+    - KSI-CNA-EIS
+    - KSI-CNA-IBP
+    - KSI-CNA-OFA
+    - KSI-CNA-RVP
+    - KSI-CNA-ULN
+    - KSI-CED-RAT
+    - KSI-INR-AAR
+    - KSI-INR-RIR
+    - KSI-INR-RPI
+    - KSI-MLA-ALA
+    - KSI-MLA-EVC
+    - KSI-MLA-OSM
+    - KSI-PIY-GIV
+    - KSI-PIY-RES
+    - KSI-PIY-RIS
+    - KSI-PIY-RSD
+    - KSI-PIY-RVD
+    - KSI-RPL-ABO
+    - KSI-RPL-ARP
+    - KSI-RPL-RRO
+    - KSI-RPL-TRC
+    - KSI-SVC-ACM
+    - KSI-SVC-ASM
+    - KSI-SVC-EIS
+    - KSI-SVC-PRR
+    - KSI-SVC-VRI
+    - KSI-SCR-MIT
+    - KSI-SCR-MON
