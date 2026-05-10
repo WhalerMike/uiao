@@ -297,7 +297,8 @@ def _print_record(title: str, record: object) -> None:
     table.add_column("value")
     for f in dataclasses.fields(record):  # type: ignore[arg-type]
         value = getattr(record, f.name)
-        if dataclasses.is_dataclass(value):
+        # is_dataclass narrows to (instance | type); asdict needs an instance.
+        if dataclasses.is_dataclass(value) and not isinstance(value, type):
             rendered = ", ".join(f"{k}={v!r}" for k, v in dataclasses.asdict(value).items())
         elif isinstance(value, (list, tuple)):
             rendered = ", ".join(repr(v) for v in value) if value else "(none)"
