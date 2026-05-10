@@ -1,0 +1,80 @@
+name: FedRAMP CR26 Round-trip
+
+# Advisory check per ADR-061 D4. Runs only on PRs that touch a CR26
+# snapshot under canon, re-converts the vendored XML / JSON / YAML
+# through NIST's oscal-cli, and reports any drift between the
+# canonicalized forms. Never blocks merge — `continue-on-error: true`
+# at the job level keeps the check informational.
+
+on:
+  pull_request:
+    paths:
+      - 'src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/**'
+      - 'scripts/fedramp_cr26_roundtrip.sh'
+      - '.github/workflows/fedramp-cr26-roundtrip.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  roundtrip:
+    name: oscal-cli round-trip on CR26 snapshot
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 15
+
+    env:
+      # NIST oscal-cli, pinned by version + SHA-256.
+      # Upstream-published SHA-1 (Maven .sha1): b42290e444f79fdcf5a055c6da058b135a8a7997
+      # SHA-256 (computed): c90166b6f94a8b32a4c0012bb3f3d32dfa54b950aed31ac1a4902ce75fc6a57e
+      OSCAL_CLI_VERSION: '1.0.3'
+      OSCAL_CLI_URL: 'https://repo1.maven.org/maven2/gov/nist/secauto/oscal/tools/oscal-cli/cli-core/1.0.3/cli-core-1.0.3-oscal-cli.zip'
+      OSCAL_CLI_SHA256: 'c90166b6f94a8b32a4c0012bb3f3d32dfa54b950aed31ac1a4902ce75fc6a57e'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install oscal-cli (pinned)
+        run: |
+          set -euo pipefail
+          curl -sSL -o /tmp/oscal-cli.zip "$OSCAL_CLI_URL"
+          actual=$(sha256sum /tmp/oscal-cli.zip | awk '{print $1}')
+          if [ "$actual" != "$OSCAL_CLI_SHA256" ]; then
+            echo "::error::oscal-cli sha256 mismatch — expected $OSCAL_CLI_SHA256, got $actual"
+            exit 1
+          fi
+          mkdir -p /tmp/oscal-cli
+          unzip -q /tmp/oscal-cli.zip -d /tmp/oscal-cli
+          chmod +x /tmp/oscal-cli/bin/oscal-cli
+          echo "/tmp/oscal-cli/bin" >> "$GITHUB_PATH"
+
+      - name: Verify oscal-cli runs
+        run: oscal-cli --version || oscal-cli --help | head -20
+
+      - name: Run round-trip
+        run: bash scripts/fedramp_cr26_roundtrip.sh
+
+      - name: Append report to job summary
+        if: always()
+        run: |
+          if [ -f /tmp/cr26-roundtrip/report.md ]; then
+            cat /tmp/cr26-roundtrip/report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '_No round-trip report produced._' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload round-trip artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fedramp-cr26-roundtrip-${{ github.run_id }}
+          path: /tmp/cr26-roundtrip/
+          if-no-files-found: warn
+          retention-days: 14
