@@ -1,5 +1,10 @@
 # Image Prompts — Client-Server to Hybrid-Cloud Transformation (Series)
 
+<!-- companion: none -->
+<!-- This series has its own generator (generate-series-images.py) and its
+     own heading dialect (## 00-chapter-slug, not ## IMAGE-NN), so the main
+     harvester opts out here. -->
+
 > Companion catalog for the 11-chapter series. One entry per `![...]`
 > placeholder in the `.qmd` files. Generated images land in `./images/`
 > with the exact filename referenced by the chapter (e.g.
