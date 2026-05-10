@@ -1,9 +1,146 @@
 ---
 title: "Identity Modernization — Case Study"
 subtitle: "Identity plane governance during a large-scale directory migration"
+doc-type: case-study-pattern
+audience: [Customer, Sponsor, Program Lead]
+classification: Public
+boundary: GCC-Moderate
+status: framing-pattern
+canon-source: "src/uiao/canon/adr/adr-008-zero-trust-identity.md"
+canon-reference:
+  - "docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd"
+  - "docs/customer-documents/architecture-series/aodim-architecture.qmd"
+  - "docs/customer-documents/modernization-specs/identity/identity.qmd"
+derived-from: "uiao canon"
 ---
 
-::: {.callout-tip}
-## Case study in preparation
-This case study is being developed. For current coverage, see the [Identity Modernization documentation](../modernization/identity-orgtree/index.qmd) and the [OrgPath Codebook](../modernization/identity-orgtree/ad-to-entraid-tree.qmd).
+# Identity Modernization — Case Study
+
+::: {.callout-important}
+## Framing pattern, not a fabricated engagement
+This page is the **canonical engagement pattern** for an identity-
+modernization case study, structured so that real engagement material
+can be anchored on top when it becomes externally releasable.
+Specific metrics, agency identifiers, and timelines are intentionally
+absent until real material is reviewed.
 :::
+
+[IMAGE-01: Identity migration engagement pattern diagram. Five-phase horizontal sequence (Canon-First → Modernization Adapters → Drift-Driven Cleanup pre-cutover → Cutover → Post-Cutover). Each phase shows the substrate's role: canon authoring, adapter registration, drift findings remediation, identity-plane source switch, continuous remediation. Above the sequence, a "Substrate behaviors" panel lists the four metrics a real engagement would document (provenance breakage rate, attribute-quality drift, cross-pillar correlation health, AODIM realization). Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic.]
+
+## Engagement archetype
+
+A federal agency operating Active Directory at scale (>100k identities,
+multi-forest topology, decade-old OU hierarchy) plans transition to
+Entra ID under GCC-Moderate. The program has identified the technical
+migration tooling but has not addressed the **architectural inversion**
+from hierarchical placement to attribute-driven access (see
+[Modernization Governance Whitepaper](../whitepapers/modernization-governance-whitepaper.qmd)).
+
+Without a substrate, the program risks inheriting the OU-driven model
+in Entra ID and losing most cloud-native value.
+
+## Starting state (typical)
+
+- AD forest topology with several thousand OUs.
+- Group memberships authored manually; movers handled via ticket-
+  driven re-permissioning.
+- Identity claims consumed inconsistently across SIEM, IDP, IPAM,
+  and ATO documentation.
+- ATO package describes intended controls; substrate truth at any
+  given moment is not reproducibly verifiable.
+
+## UIAO intervention pattern
+
+### Phase 1 — canon-first
+
+Author the AODIM attribute model in canon:
+
+- Canonical attribute set (`assignment_scope`, `organizational_role`,
+  `classification_clearance`).
+- Computed-group rules per attribute combinations.
+- Provenance envelope per identity claim.
+
+Substrate walker passes against the new canon before any runtime
+change.
+
+### Phase 2 — modernization adapters
+
+Stand up `entra-id`, `active-directory`, `entra-policy-targeting`,
+and the relevant attribute-source adapters
+(`piv-usaccess`, agency-specific HR adapter). Adapters emit canonical
+claims with full provenance from day one — including during the
+parallel-running period.
+
+### Phase 3 — drift-driven cleanup pre-cutover
+
+Pre-cutover runs surface inherited inconsistencies (stale attributes,
+group rules with retired references, broken provenance chains) as
+canonical drift findings. Each is remediated under the canonical
+SLA tempo.
+
+### Phase 4 — cutover
+
+The directory transition is a substrate event: the identity plane's
+authoritative source switches from on-prem AD to Entra ID. Canon is
+already in place to interpret post-cutover claims.
+
+### Phase 5 — post-cutover
+
+Drift findings continue to surface inconsistencies; auto-remediation
+handles deterministic fixes; the canon-change ADR process handles
+residual model evolution.
+
+## Substrate behaviors observed (pattern)
+
+A real engagement would document, with metrics, behaviors such as:
+
+- **Provenance breakage rate during cutover** — how many claims
+  emitted with incomplete chains during parallel-run, attributable to
+  which adapter, remediated within which SLA tier.
+- **Attribute-quality drift** — how many identities passed canonical
+  validation pre-cutover vs. post-cutover, and how the gap closed
+  under drift-driven cleanup.
+- **Cross-pillar correlation health** — whether the same identity
+  resolves identically across PIV, Entra, and HR systems post-
+  cutover.
+- **AODIM realization** — what fraction of access decisions are
+  attribute-computed vs. manually-administered post-cutover.
+
+These metrics are the credible-claim surface for an externally
+releasable case study. The substrate produces them deterministically;
+authoring requires real engagement material.
+
+## Lessons that propagate back into canon
+
+A real engagement typically reveals:
+
+- Edge cases in the AODIM attribute model that require canon-change
+  ADRs.
+- Adapter conformance gaps (where a vendor's API does not cleanly map
+  to the canonical claim shape).
+- Operational tempo tuning (SLA tiers that work in theory but require
+  agency-specific staffing).
+
+Each lesson lands as either an ADR, a canon-document update, or an
+adapter-registry change. The case study, when complete, becomes a
+provenance source for those changes.
+
+## When this study can be promoted to "real engagement"
+
+Per the section's authoring posture, promotion requires:
+
+1. Engagement material reviewed and cleared for external release.
+2. Specific metrics anonymized or formally authorized for citation.
+3. Canon-change traceability — every "lesson" cited points to the
+   ADR or canon-document update it produced.
+4. Sponsor-side review and approval of the narrative.
+
+Until then, this page documents the engagement *pattern* a customer
+should expect, not a specific engagement outcome.
+
+## Related documents
+
+- [Whitepaper — Modernization Governance](../whitepapers/modernization-governance-whitepaper.qmd)
+- [Architecture Series — AODIM](../architecture-series/aodim-architecture.qmd)
+- [Modernization Spec — Identity](../modernization-specs/identity/identity.qmd)
+- [ADR-008: Zero Trust Identity](../../../src/uiao/canon/adr/adr-008-zero-trust-identity.md)
