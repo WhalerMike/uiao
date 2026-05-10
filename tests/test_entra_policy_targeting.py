@@ -42,7 +42,7 @@ def adapter() -> EntraPolicyTargetingAdapter:
 class TestCanonIntegrity:
     def test_default_canon_loads(self) -> None:
         c = default_policy_targeting_canon()
-        assert c.document_id == "MOD_N"
+        assert c.document_id == "UIAO_164"
         assert len(c.intune_assignments) == 5
         assert len(c.arc_policy_assignments) == 4
 
@@ -70,7 +70,7 @@ class TestCanonValidation:
     def _good_yaml(self) -> str:
         return textwrap.dedent("""\
             schema_version: "1.0.0"
-            document_id: MOD_N
+            document_id: UIAO_164
             parent_canon: UIAO_007
             intune_assignments:
               - profile_ref:
@@ -103,7 +103,7 @@ class TestCanonValidation:
         )
         p = tmp_path / "bad.yaml"
         p.write_text(bad)
-        with pytest.raises(PolicyTargetingValidationError, match="MOD_B"):
+        with pytest.raises(PolicyTargetingValidationError, match="UIAO_152"):
             load_policy_targeting_canon(p)
 
     def test_rejects_arc_prefix_not_in_codebook(self, tmp_path: Path) -> None:
@@ -120,7 +120,7 @@ class TestCanonValidation:
         # Build a file with two arc entries sharing the same assignment_name.
         bad = textwrap.dedent("""\
             schema_version: "1.0.0"
-            document_id: MOD_N
+            document_id: UIAO_164
             parent_canon: UIAO_007
             intune_assignments: []
             arc_policy_assignments:

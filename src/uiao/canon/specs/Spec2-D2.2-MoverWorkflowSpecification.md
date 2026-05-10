@@ -207,20 +207,20 @@ in D3.1 §5.3):
 ## 6. OrgPath Recalculation
 
 OrgPath recalculation is the load-bearing Mover effect. The OrgTree
-adapters (MOD_B / C / D / N — ADR-036 through ADR-039) read
+adapters (UIAO_152 / C / D / N — ADR-036 through ADR-039) read
 `extensionAttribute1` on every attribute-change event and recompute
 their downstream state:
 
 | Adapter | Recompute on OrgPath change |
 |---|---|
-| `entra-dynamic-groups` (MOD_B / ADR-036) | Re-evaluate dynamic group rules; add/remove user from groups |
-| `entra-admin-units` (MOD_D / ADR-037) | Move user between AUs if AU is OrgPath-bound |
-| `entra-device-orgpath` (MOD_C / ADR-038) | Propagate OrgPath to device records owned by the user |
-| `entra-policy-targeting` (MOD_N / ADR-039) | Re-evaluate policy assignments (Intune, Azure Policy, CA) bound to OrgPath |
+| `entra-dynamic-groups` (UIAO_152 / ADR-036) | Re-evaluate dynamic group rules; add/remove user from groups |
+| `entra-admin-units` (UIAO_154 / ADR-037) | Move user between AUs if AU is OrgPath-bound |
+| `entra-device-orgpath` (UIAO_153 / ADR-038) | Propagate OrgPath to device records owned by the user |
+| `entra-policy-targeting` (UIAO_164 / ADR-039) | Re-evaluate policy assignments (Intune, Azure Policy, CA) bound to OrgPath |
 
 D2.2 does NOT directly invoke any of these adapters. The middleware
-emits the OrgPath write; Entra ID's dynamic group engine drives MOD_B
-and MOD_D natively, and the device + policy adapters react via the
+emits the OrgPath write; Entra ID's dynamic group engine drives UIAO_152
+and UIAO_154 natively, and the device + policy adapters react via the
 drift engine (ADR-040) on the next observation pass.
 
 The middleware MUST emit a single provenance record per Mover event
@@ -238,7 +238,7 @@ delta:
 
 This is the audit anchor for the dynamic group cascade. Drift
 investigation (per ADR-040) correlates the membership change in
-MOD_B against the OrgPath delta in this record.
+UIAO_152 against the OrgPath delta in this record.
 
 ## 7. Manager Change & Notification
 
@@ -361,8 +361,8 @@ participant "Middleware\n(D3.1)" as MW
 participant "Microsoft Graph\nbulkUpload" as Graph
 participant "Entra ID\nProvisioning Service" as PS
 database "Microsoft Entra ID" as Entra
-participant "Dynamic Group\nEngine (MOD_B)" as DG
-participant "OrgTree Adapters\n(MOD_C / D / N)" as OrgAdapters
+participant "Dynamic Group\nEngine (UIAO_152)" as DG
+participant "OrgTree Adapters\n(UIAO_153 / D / N)" as OrgAdapters
 queue "Access Review\nTrigger Queue" as AR
 queue "UIAO Provenance\nStore" as Prov
 participant "Notification\nSink" as Notify
@@ -423,10 +423,10 @@ Delegated to D2.6. Mover-specific failure surface:
 
 - [ADR-003 — API-Driven Inbound Provisioning](../adr/adr-003-api-driven-inbound-provisioning.md)
 - [ADR-035 — OrgPath Codebook Binding](../adr/adr-035-orgpath-codebook-binding.md)
-- [ADR-036 — entra-dynamic-groups (MOD_B)](../adr/adr-036-dynamic-group-provisioning.md)
-- [ADR-037 — entra-admin-units (MOD_D)](../adr/adr-037-admin-unit-provisioning.md)
-- [ADR-038 — entra-device-orgpath (MOD_C)](../adr/adr-038-device-plane-orgpath.md)
-- [ADR-039 — entra-policy-targeting (MOD_N)](../adr/adr-039-policy-targeting.md)
+- [ADR-036 — entra-dynamic-groups (UIAO_152)](../adr/adr-036-dynamic-group-provisioning.md)
+- [ADR-037 — entra-admin-units (UIAO_154)](../adr/adr-037-admin-unit-provisioning.md)
+- [ADR-038 — entra-device-orgpath (UIAO_153)](../adr/adr-038-device-plane-orgpath.md)
+- [ADR-039 — entra-policy-targeting (UIAO_164)](../adr/adr-039-policy-targeting.md)
 - [ADR-048 — OrgPath Attribute Selection](../adr/adr-048-orgpath-attribute-selection.md)
 - [ADR-049 — Microsoft Modernization Adapter Coverage Expansion](../adr/adr-049-microsoft-adapter-coverage-expansion.md)
 

@@ -1,6 +1,6 @@
 """Entra ID Administrative Unit + scoped-role provisioning adapter.
 
-Phase 3 (MOD_D / ADR-037). Reconciles the tenant against the canonical
+Phase 3 (UIAO_154 / ADR-037). Reconciles the tenant against the canonical
 delegation matrix (AUs, built-in roles, role assignments) loaded from
 ``uiao.modernization.orgtree.admin_units``.
 
@@ -17,12 +17,12 @@ Verbs
     - ``POST /roleManagement/directory/roleAssignments``
 * :meth:`EntraAdminUnitsAdapter.reconcile` — plan + apply → artefact.
 
-Critical policy (MOD_D §Drift Detection Rules)
+Critical policy (UIAO_154 §Drift Detection Rules)
 ----------------------------------------------
 * ``role-delete-unscoped`` is **never** auto-applied. A tenant-wide
   (directoryScopeId=/) role assignment is a potential privilege
   escalation — the adapter reports it as ``skipped-manual`` and routes
-  to governance review (MOD_E Workflow 5). This matches the MOD_D rule
+  to governance review (UIAO_155 Workflow 5). This matches the UIAO_154 rule
   "Auto-Remediate: No — investigate (potential privilege escalation)".
 * ``au-delete-phantom`` and ``role-delete-phantom`` are also never
   auto-applied; phantoms are governance findings.
@@ -239,7 +239,7 @@ class EntraAdminUnitsAdapter:
                 )
             if not bool(tenant_au.get("isMemberManagementRestricted")):
                 reasons.append(
-                    "isMemberManagementRestricted=False — MOD_D mandates "
+                    "isMemberManagementRestricted=False — UIAO_154 mandates "
                     "Restricted Management for every AU in the matrix"
                 )
             if reasons:
@@ -261,7 +261,7 @@ class EntraAdminUnitsAdapter:
                         op=OP_AU_DELETE_PHANTOM,
                         target=name,
                         reason=(
-                            "Phantom AU — AU-ORG prefix but not in MOD_D matrix. "
+                            "Phantom AU — AU-ORG prefix but not in UIAO_154 matrix. "
                             "Governance review required; NOT auto-applied."
                         ),
                         tenant_state=tenant_au,
@@ -336,7 +336,7 @@ class EntraAdminUnitsAdapter:
                         target=f"assignment:{tenant_ra.get('id', '<unknown>')}",
                         reason=(
                             "Tenant-wide role assignment (directoryScopeId=/) — "
-                            "MOD_D §Governance Rule 4 prohibits unscoped role "
+                            "UIAO_154 §Governance Rule 4 prohibits unscoped role "
                             "assignments. Investigate; NOT auto-applied."
                         ),
                         tenant_state=tenant_ra,
@@ -348,7 +348,7 @@ class EntraAdminUnitsAdapter:
                         op=OP_ROLE_DELETE_PHANTOM,
                         target=f"assignment:{tenant_ra.get('id', '<unknown>')}",
                         reason=(
-                            "Phantom role assignment — not in MOD_D matrix. "
+                            "Phantom role assignment — not in UIAO_154 matrix. "
                             "Potential privilege escalation; NOT auto-applied."
                         ),
                         tenant_state=tenant_ra,
@@ -376,7 +376,7 @@ class EntraAdminUnitsAdapter:
                         op=op.op,
                         target=op.target,
                         status="skipped-manual",
-                        detail=("MOD_D §Drift: governance review required; never auto-applied."),
+                        detail=("UIAO_154 §Drift: governance review required; never auto-applied."),
                     )
                 )
                 continue

@@ -1,19 +1,22 @@
 ---
-document_id: MOD_D
+document_id: UIAO_154
 title: "Appendix D — Delegation Matrix (AUs + Roles)"
 version: "2.0"
-status: CANONICAL
+status: Current
 owner: Michael Stratton
 author: Michal Doroszewski
-created_at: 2026-04-18
-updated_at: 2026-04-19
+created_at: "2026-04-18"
+updated_at: "2026-04-19"
 boundary: GCC-Moderate
-namespace: MOD
-parent_canon: UIAO_008
-provenance:
+classification: CANONICAL
+promotion:
   prior_version: "1.0 (DRAFT scaffold)"
   promoted_by: "Copilot Tasks"
   promotion_date: "2026-04-19"
+provenance_flatten:
+  prior_id: "MOD_D"
+  flattened_at: "2026-05-10"
+  flattened_by: "ADR-060"
 ---
 
 # Appendix D — Delegation Matrix (AUs + Roles)
@@ -105,14 +108,14 @@ Each AU requires a corresponding administrator group. These are NOT dynamic — 
 
 | Admin Group | Type | Members | Governance |
 |------------|------|---------|-----------|
-| `OrgTree-FIN-Admins` | Assigned | Finance division administrators | MOD_E Workflow 5 |
-| `OrgTree-HR-Admins` | Assigned | HR division administrators | MOD_E Workflow 5 |
-| `OrgTree-IT-Admins` | Assigned | IT division administrators | MOD_E Workflow 5 |
-| `OrgTree-OPS-Admins` | Assigned | Operations division administrators | MOD_E Workflow 5 |
-| `OrgTree-LEG-Admins` | Assigned | Legal division administrators | MOD_E Workflow 5 |
-| `OrgTree-IT-SEC-Admins` | Assigned | IT Security department administrators | MOD_E Workflow 5 |
-| `OrgTree-FIN-AP-Admins` | Assigned | AP department administrators | MOD_E Workflow 5 |
-| `OrgTree-HR-REC-Admins` | Assigned | Recruitment department administrators | MOD_E Workflow 5 |
+| `OrgTree-FIN-Admins` | Assigned | Finance division administrators | UIAO_155 Workflow 5 |
+| `OrgTree-HR-Admins` | Assigned | HR division administrators | UIAO_155 Workflow 5 |
+| `OrgTree-IT-Admins` | Assigned | IT division administrators | UIAO_155 Workflow 5 |
+| `OrgTree-OPS-Admins` | Assigned | Operations division administrators | UIAO_155 Workflow 5 |
+| `OrgTree-LEG-Admins` | Assigned | Legal division administrators | UIAO_155 Workflow 5 |
+| `OrgTree-IT-SEC-Admins` | Assigned | IT Security department administrators | UIAO_155 Workflow 5 |
+| `OrgTree-FIN-AP-Admins` | Assigned | AP department administrators | UIAO_155 Workflow 5 |
+| `OrgTree-HR-REC-Admins` | Assigned | Recruitment department administrators | UIAO_155 Workflow 5 |
 
 ## Restricted Management AUs
 
@@ -173,7 +176,7 @@ Is the target user governed by OrgTree?
 ## Governance Rules
 
 1. **All AUs are Restricted Management.** Non-restricted AUs are drift. No exceptions.
-2. **Role assignments use built-in roles only.** Custom role definitions require governance approval through MOD_E Workflow 5.
+2. **Role assignments use built-in roles only.** Custom role definitions require governance approval through UIAO_155 Workflow 5.
 3. **Admin groups are assigned, not dynamic.** Administrator group membership is a governed decision, not an attribute-driven automation.
 4. **No unscoped role assignments.** Every role assignment must be scoped to an AU. Tenant-wide role assignments are governance violations except for designated Governance Stewards.
 5. **Division before department.** Tier 3 (department) AUs are only created when a division has more than 50 users AND the division administrator requests sub-delegation.

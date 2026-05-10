@@ -1,7 +1,7 @@
 """OrgPath codebook loader.
 
 Loads ``src/uiao/canon/data/orgpath/codebook.yaml`` (the executable canon
-bound to MOD_A by ADR-035) and exposes a :class:`Codebook` object the drift
+bound to UIAO_151 by ADR-035) and exposes a :class:`Codebook` object the drift
 engine and the Entra/AD adapters consume.
 
 The loader:
@@ -13,7 +13,7 @@ The loader:
   integrity — prevents *Hierarchy Drift* at the source);
 * exposes helpers (``is_active``, ``is_deprecated``, ``parent_of``,
   ``replacement_for``) so the drift engine can emit the five drift classes
-  MOD_A §Drift describes without re-parsing the YAML.
+  UIAO_151 §Drift describes without re-parsing the YAML.
 """
 
 from __future__ import annotations

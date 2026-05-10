@@ -1,15 +1,17 @@
 ---
-document_id: MOD_G
+document_id: UIAO_157
 title: "Appendix G — Diagram Pack (Text-Rendered)"
 version: "1.0"
-status: DRAFT
+status: Draft
 classification: CANONICAL
 owner: Michael Stratton
-created_at: 2026-04-18
-updated_at: 2026-04-18
+created_at: "2026-04-18"
+updated_at: "2026-04-18"
 boundary: GCC-Moderate
-namespace: MOD
-parent_canon: UIAO_008
+provenance_flatten:
+  prior_id: "MOD_G"
+  flattened_at: "2026-05-10"
+  flattened_by: "ADR-060"
 ---
 
 # Appendix G — Diagram Pack (Text-Rendered)

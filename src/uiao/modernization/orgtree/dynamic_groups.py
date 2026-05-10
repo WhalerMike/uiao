@@ -1,4 +1,4 @@
-"""Dynamic group library loader (MOD_B, ADR-036).
+"""Dynamic group library loader (UIAO_152, ADR-036).
 
 Loads ``src/uiao/canon/data/orgpath/dynamic-groups.yaml`` and exposes a
 :class:`DynamicGroupLibrary` object that the entra-dynamic-groups adapter
@@ -8,7 +8,7 @@ The loader:
 
 * validates the YAML against ``schemas/orgpath/dynamic-groups.schema.json``;
 * enforces that every OrgPath referenced by a group rule exists in the
-  active codebook (MOD_A / ADR-035) — a reference to an unknown or
+  active codebook (UIAO_151 / ADR-035) — a reference to an unknown or
   deprecated code is caught at load, so the drift engine never emits a
   provisioning plan against a broken dependency;
 * exposes lookup helpers (``get``, ``names``, ``by_category``,
@@ -151,7 +151,7 @@ def _validate_integrity(document: Dict, codebook: Codebook) -> None:
                 )
             if not codebook.is_active(code):
                 raise DynamicGroupValidationError(
-                    f"Group '{name}' references unknown OrgPath '{code}' — codebook (MOD_A) does not contain this entry"
+                    f"Group '{name}' references unknown OrgPath '{code}' — codebook (UIAO_151) does not contain this entry"
                 )
 
         rule = group["rule"]

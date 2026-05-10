@@ -1,15 +1,15 @@
-"""Delegation matrix loader — AUs + scoped roles (MOD_D, ADR-037).
+"""Delegation matrix loader — AUs + scoped roles (UIAO_154, ADR-037).
 
 Loads ``src/uiao/canon/data/orgpath/admin-units.yaml`` and exposes a
 :class:`DelegationMatrix` the ``entra-admin-units`` adapter consumes to
-reconcile the tenant against MOD_D.
+reconcile the tenant against UIAO_154.
 
 The loader enforces three layers of validation:
 
 1. **JSON Schema** — structural shape, role template GUIDs, restricted=true.
 2. **Cross-canon integrity** — every AU's ``orgpath_refs`` must be active in
-   the codebook (MOD_A/ADR-035); every role_assignment's ``principal_group``
-   must resolve to either a MOD_B dynamic group (ADR-036) or one of the
+   the codebook (UIAO_151/ADR-035); every role_assignment's ``principal_group``
+   must resolve to either a UIAO_152 dynamic group (ADR-036) or one of the
    admin groups declared in this file; every ``au_scope`` must exist here;
    every ``role`` must exist in the built-in roles table.
 3. **Uniqueness** — AU names, admin-group names, role assignments are
@@ -171,7 +171,7 @@ def _validate_integrity(
     codebook: Codebook,
     dynamic_groups: DynamicGroupLibrary,
 ) -> None:
-    # 1. AU orgpath_refs must be active in MOD_A codebook; AU names unique.
+    # 1. AU orgpath_refs must be active in UIAO_151 codebook; AU names unique.
     au_names: Set[str] = set()
     for au in document["administrative_units"]:
         if au["name"] in au_names:
@@ -185,7 +185,7 @@ def _validate_integrity(
                 )
             if not codebook.is_active(code):
                 raise DelegationMatrixValidationError(
-                    f"AU '{au['name']}' references unknown OrgPath '{code}' — not in MOD_A codebook"
+                    f"AU '{au['name']}' references unknown OrgPath '{code}' — not in UIAO_151 codebook"
                 )
             if f'"{code}"' not in au["membership_rule"]:
                 raise DelegationMatrixValidationError(
@@ -203,14 +203,14 @@ def _validate_integrity(
         role_names.add(role["display_name"])
         role_ids.add(role["template_id"])
 
-    # 3. Admin-group names unique; don't collide with MOD_B dynamic groups.
+    # 3. Admin-group names unique; don't collide with UIAO_152 dynamic groups.
     ag_names: Set[str] = set()
     for ag in document.get("admin_groups", []):
         if ag["name"] in ag_names:
             raise DelegationMatrixValidationError(f"Duplicate admin_group: {ag['name']}")
         if ag["name"] in dynamic_groups.names:
             raise DelegationMatrixValidationError(
-                f"admin_group '{ag['name']}' collides with MOD_B dynamic "
+                f"admin_group '{ag['name']}' collides with UIAO_152 dynamic "
                 "group of the same name — admin groups are assigned, not "
                 "dynamic; pick a different suffix"
             )
@@ -235,8 +235,8 @@ def _validate_integrity(
         if ra["principal_group"] not in valid_principals:
             raise DelegationMatrixValidationError(
                 f"role_assignment '{key}' references principal_group "
-                f"'{ra['principal_group']}' — must be a MOD_B dynamic group "
-                "or a MOD_D admin_group"
+                f"'{ra['principal_group']}' — must be a UIAO_152 dynamic group "
+                "or a UIAO_154 admin_group"
             )
 
 

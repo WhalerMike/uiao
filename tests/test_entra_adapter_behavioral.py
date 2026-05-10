@@ -70,7 +70,7 @@ class TestNormalizeRealData:
 
 
 class TestOrgPathClaimExtraction:
-    """OrgPath alignment (MOD_A / ADR-035). The adapter surfaces the raw
+    """OrgPath alignment (UIAO_151 / ADR-035). The adapter surfaces the raw
     extensionAttribute1 value + format signal; the drift engine owns
     codebook + phantom-drift classification."""
 

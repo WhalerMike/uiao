@@ -556,7 +556,7 @@ adapters:
     mission-class-notes: >-
       Modernization adapter — performs change-making actions against
       on-premises Active Directory (extensionAttribute1–4 write-back during
-      OrgPath assignment, Phase F.3 of MOD_F). The surveying side (Phase
+      OrgPath assignment, Phase F.3 of UIAO_156). The surveying side (Phase
       F.1) is read-only; the pair is grouped under a single adapter id per
       UIAO_003 §4.7 `integration` classification. OrgPath values propagate
       to Entra ID via Entra Connect sync (no direct Graph API writes from
@@ -606,23 +606,23 @@ adapters:
       - UIAO-CANON-003
       - UIAO_007
     notes: >-
-      Binds to MOD_A (OrgPath Codebook) through ADR-035; the executable
+      Binds to UIAO_151 (OrgPath Codebook) through ADR-035; the executable
       canon lives at canon/data/orgpath/codebook.yaml and is validated by
       schemas/orgpath/codebook.schema.json on load. Implementation:
       src/uiao/adapters/modernization/active-directory/{survey,orgpath}.py.
       Writes are gated on an explicit dry_run=False flag.
 
   - id: entra-dynamic-groups
-    name: Entra ID Dynamic Group Provisioning (OrgTree MOD_B)
+    name: Entra ID Dynamic Group Provisioning (OrgTree UIAO_152)
     class: modernization
     mission-class: integration
     mission-class-notes: >-
       Modernization adapter — provisions OrgTree-* dynamic security groups
-      in Microsoft Entra ID from the canonical MOD_B library (Graph API
+      in Microsoft Entra ID from the canonical UIAO_152 library (Graph API
       POST /groups + PATCH /groups). Classified per UIAO_003 §4.7
-      `integration`. Phantom groups are NEVER auto-applied: per MOD_B §Drift
+      `integration`. Phantom groups are NEVER auto-applied: per UIAO_152 §Drift
       they surface as governance findings and route through the Workflow 3
-      review in MOD_E.
+      review in UIAO_155.
     status: active
     phase: phase-1
     vendor: Microsoft
@@ -660,7 +660,7 @@ adapters:
       - UIAO-CANON-003
       - UIAO_007
     notes: >-
-      Binds to MOD_B (Dynamic Group Library) through ADR-036; executable
+      Binds to UIAO_152 (Dynamic Group Library) through ADR-036; executable
       canon at canon/data/orgpath/dynamic-groups.yaml, JSON Schema at
       schemas/orgpath/dynamic-groups.schema.json. Implementation:
       src/uiao/adapters/entra_dynamic_groups.py. plan() and
@@ -668,17 +668,17 @@ adapters:
       POST /groups and PATCH /groups/{id} against Microsoft Graph.
 
   - id: entra-admin-units
-    name: Entra ID Administrative Units + Scoped Role Provisioning (OrgTree MOD_D)
+    name: Entra ID Administrative Units + Scoped Role Provisioning (OrgTree UIAO_154)
     class: modernization
     mission-class: integration
     mission-class-notes: >-
       Modernization adapter — provisions Restricted Management
       Administrative Units and scoped built-in role assignments in
-      Microsoft Entra ID from the canonical MOD_D delegation matrix.
+      Microsoft Entra ID from the canonical UIAO_154 delegation matrix.
       Classified per UIAO_003 §4.7 `integration`. Never auto-applies
       governance-review operations: phantom AUs, tenant-wide (unscoped)
       role assignments, and phantom role assignments surface as
-      skipped-manual per MOD_D §Drift Detection + Governance Rule 4.
+      skipped-manual per UIAO_154 §Drift Detection + Governance Rule 4.
     status: active
     phase: phase-1
     vendor: Microsoft
@@ -718,17 +718,17 @@ adapters:
       - UIAO-CANON-003
       - UIAO_007
     notes: >-
-      Binds to MOD_D (Delegation Matrix) through ADR-037; executable
+      Binds to UIAO_154 (Delegation Matrix) through ADR-037; executable
       canon at canon/data/orgpath/admin-units.yaml, JSON Schema at
-      schemas/orgpath/admin-units.schema.json. Depends on MOD_A
-      (codebook, ADR-035) and MOD_B (dynamic groups, ADR-036) — loader
+      schemas/orgpath/admin-units.schema.json. Depends on UIAO_151
+      (codebook, ADR-035) and UIAO_152 (dynamic groups, ADR-036) — loader
       enforces cross-canon integrity at PR CI. Implementation:
       src/uiao/adapters/entra_admin_units.py. Admin groups
       (OrgTree-*-Admins) are referenced but NOT provisioned — those are
-      MOD_E Workflow 5 assigned groups.
+      UIAO_155 Workflow 5 assigned groups.
 
   - id: entra-device-orgpath
-    name: Device OrgPath Provisioning — Graph + ARM Dual-Plane (OrgTree MOD_C)
+    name: Device OrgPath Provisioning — Graph + ARM Dual-Plane (OrgTree UIAO_153)
     class: modernization
     mission-class: integration
     mission-class-notes: >-
@@ -737,9 +737,9 @@ adapters:
       onPremisesExtensionAttributes.extensionAttribute1 via Microsoft
       Graph for clients, and the `OrgPath` ARM tag on
       Microsoft.HybridCompute/machines for Arc-enrolled servers. Phantom
-      OrgPath values (format-invalid or outside the MOD_A codebook) are
+      OrgPath values (format-invalid or outside the UIAO_151 codebook) are
       NEVER auto-remediated — they surface as skipped-manual per
-      MOD_C §Phantom. Classified per UIAO_003 §4.7 `integration`.
+      UIAO_153 §Phantom. Classified per UIAO_003 §4.7 `integration`.
     status: active
     phase: phase-1
     vendor: Microsoft
@@ -780,17 +780,17 @@ adapters:
       - UIAO-CANON-003
       - UIAO_007
     notes: >-
-      Binds to MOD_C (Attribute Mapping Table) through ADR-038;
+      Binds to UIAO_153 (Attribute Mapping Table) through ADR-038;
       executable canon at canon/data/orgpath/device-planes.yaml, JSON
       Schema at schemas/orgpath/device-planes.schema.json. Depends on
-      MOD_A (codebook, ADR-035) — ARM-tag regex is cross-checked against
+      UIAO_151 (codebook, ADR-035) — ARM-tag regex is cross-checked against
       the codebook regex at load. Implementation:
       src/uiao/adapters/entra_device_orgpath.py. apply(dry_run=False)
       requires subclass override of _execute because the two transports
       (Graph vs ARM) need distinct credentials.
 
   - id: entra-policy-targeting
-    name: OrgTree Policy Targeting — Intune + Azure Policy Dual Transport (MOD_N)
+    name: OrgTree Policy Targeting — Intune + Azure Policy Dual Transport (UIAO_164)
     class: modernization
     mission-class: integration
     mission-class-notes: >-
@@ -844,25 +844,25 @@ adapters:
       - UIAO-CANON-003
       - UIAO_007
     notes: >-
-      Binds to MOD_N through ADR-039; executable canon at
+      Binds to UIAO_164 through ADR-039; executable canon at
       canon/data/orgpath/policy-targets.yaml, JSON Schema at
-      schemas/orgpath/policy-targets.schema.json. Depends on MOD_A
-      (codebook, ADR-035), MOD_B (dynamic groups, ADR-036), MOD_C
+      schemas/orgpath/policy-targets.schema.json. Depends on UIAO_151
+      (codebook, ADR-035), UIAO_152 (dynamic groups, ADR-036), UIAO_153
       (device planes, ADR-038) — every Intune target_group must resolve
-      to a MOD_B group; every Arc prefix must resolve to an active
-      MOD_A code. Implementation:
+      to a UIAO_152 group; every Arc prefix must resolve to an active
+      UIAO_151 code. Implementation:
       src/uiao/adapters/entra_policy_targeting.py. Azure Policy
       definitions MUST accept the canonical parameters `orgPathPrefix`
       and `matchMode` — policy authors follow this contract or surface
       as drift.
 
   - id: orgtree-drift-engine
-    name: OrgTree Drift Detection Engine — MOD_M Six-Phase Orchestrator
+    name: OrgTree Drift Detection Engine — UIAO_163 Six-Phase Orchestrator
     class: modernization
     mission-class: integration
     mission-class-notes: >-
       Modernization adapter — orchestrator over the four OrgTree phase
-      adapters (MOD_B/D/C/N). Implements MOD_M's Snapshot → Compare →
+      adapters (UIAO_152/D/C/N). Implements UIAO_163's Snapshot → Compare →
       Classify → Alert → Remediate → Verify loop. Does not talk to
       Microsoft Graph or ARM directly; delegates planning to each phase
       adapter. Classified as `integration` per UIAO_003 §4.7 because
@@ -909,7 +909,7 @@ adapters:
       - UIAO-CANON-003
       - UIAO_007
     notes: >-
-      Binds to MOD_M through ADR-040; executable config at
+      Binds to UIAO_163 through ADR-040; executable config at
       canon/data/orgpath/drift-engine-config.yaml, JSON Schema at
       schemas/orgpath/drift-engine-config.schema.json. Composes the
       four Phase 2–5 adapters (entra-dynamic-groups,
@@ -980,7 +980,7 @@ adapters:
     mission-class-notes: >-
       Modernization adapter — assigns Azure Policy initiatives to Arc
       machines, evaluates compliance, and dispatches remediation
-      tasks. Complements `entra-policy-targeting` (MOD_N), which
+      tasks. Complements `entra-policy-targeting` (UIAO_164), which
       binds Intune profiles + Azure Policy assignments to the OrgTree
       but explicitly leaves policy *bodies* and *remediation* out of
       scope. This entry covers the body / remediation side. Classified
@@ -1032,9 +1032,9 @@ adapters:
       Entra constructs: Access Reviews, Entitlement Management
       packages, Lifecycle Workflows, PIM role assignments,
       Separation-of-Duties policies. Sibling of `entra-id` (which
-      handles user / group / SP / CA), `entra-dynamic-groups` (MOD_B),
-      `entra-admin-units` (MOD_D), `entra-device-orgpath` (MOD_C), and
-      `entra-policy-targeting` (MOD_N). Classified per UIAO_003 §4.7
+      handles user / group / SP / CA), `entra-dynamic-groups` (UIAO_152),
+      `entra-admin-units` (UIAO_154), `entra-device-orgpath` (UIAO_153), and
+      `entra-policy-targeting` (UIAO_164). Classified per UIAO_003 §4.7
       `integration`.
     status: reserved
     phase: phase-planning
@@ -1138,7 +1138,7 @@ adapters:
       Modernization adapter — authors and updates Intune device
       configuration profiles, compliance policies, security baselines,
       Autopilot deployment profiles, and app deployment policies.
-      Complements `entra-policy-targeting` (MOD_N), which binds
+      Complements `entra-policy-targeting` (UIAO_164), which binds
       existing Intune profiles to OrgTree dynamic groups but leaves
       policy bodies out of scope. This entry covers the body authoring
       side. Pairs with the conformance-side `intune` reserved slot in

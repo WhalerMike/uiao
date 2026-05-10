@@ -1,15 +1,17 @@
 ---
-document_id: MOD_Z
+document_id: UIAO_176
 title: "Appendix Z — Full Governance OS Glossary"
 version: "1.0"
-status: DRAFT
+status: Draft
 classification: CANONICAL
 owner: Michael Stratton
-created_at: 2026-04-18
-updated_at: 2026-04-18
+created_at: "2026-04-18"
+updated_at: "2026-04-18"
 boundary: GCC-Moderate
-namespace: MOD
-parent_canon: UIAO_008
+provenance_flatten:
+  prior_id: "MOD_Z"
+  flattened_at: "2026-05-10"
+  flattened_by: "ADR-060"
 ---
 
 # Appendix Z — Full Governance OS Glossary

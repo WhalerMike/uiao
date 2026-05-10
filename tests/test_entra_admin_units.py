@@ -40,7 +40,7 @@ def adapter() -> EntraAdminUnitsAdapter:
 class TestMatrixIntegrity:
     def test_default_matrix_loads(self) -> None:
         m = default_delegation_matrix()
-        assert m.document_id == "MOD_D"
+        assert m.document_id == "UIAO_154"
         # 1 enterprise + 6 division + 7 department = 14
         assert len(m.administrative_units) == 14
         assert len(m.roles) == 8
@@ -73,7 +73,7 @@ class TestMatrixIntegrity:
         for ra in m.role_assignments:
             principal = ra.principal_group
             assert principal in dg.names or principal in m.admin_group_names, (
-                f"assignment {ra.key()} principal_group {principal} not in MOD_B dynamic groups OR MOD_D admin_groups"
+                f"assignment {ra.key()} principal_group {principal} not in UIAO_152 dynamic groups OR UIAO_154 admin_groups"
             )
 
     def test_every_role_assignment_au_exists(self) -> None:
@@ -90,10 +90,10 @@ class TestMatrixIntegrity:
 class TestMatrixValidation:
     def _good_yaml(self) -> str:
         # Minimal valid YAML for boundary tests. Uses real codebook +
-        # real MOD_B group name so cross-canon references resolve.
+        # real UIAO_152 group name so cross-canon references resolve.
         return textwrap.dedent("""\
             schema_version: "1.0.0"
-            document_id: MOD_D
+            document_id: UIAO_154
             parent_canon: UIAO_007
             naming:
               au_prefix: "AU-ORG"

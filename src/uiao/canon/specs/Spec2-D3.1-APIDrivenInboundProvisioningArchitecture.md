@@ -125,7 +125,7 @@ Out of scope:
   Conversion) — Spec 2 Phase 2 deliverables (D2.1–D2.8).
 - The dynamic-group / admin-unit / device-plane / policy-targeting
   consumers downstream of provisioning — already governed by ADR-036
-  through ADR-040 (the OrgTree MOD_B/C/D/N/M chain).
+  through ADR-040 (the OrgTree UIAO_152/C/D/N/M chain).
 
 ### 1.2 Audience
 
@@ -535,8 +535,8 @@ Notable canonical bindings:
 - `userName` MUST be the UPN computed by the UPN generator (D1.5).
 - `extensionAttribute1` MUST be the OrgPath computed per ADR-035 +
   ADR-048. This is the load-bearing field for the OrgTree
-  (`entra-dynamic-groups` MOD_B, `entra-admin-units` MOD_D,
-  `entra-device-orgpath` MOD_C, `entra-policy-targeting` MOD_N all
+  (`entra-dynamic-groups` UIAO_152, `entra-admin-units` UIAO_154,
+  `entra-device-orgpath` UIAO_153, `entra-policy-targeting` UIAO_164 all
   read it).
 - `active` MUST reflect the worker's HR-side employment status (true
   for active, false for terminated / on-leave / pre-hire-not-yet-
@@ -1108,18 +1108,18 @@ provisions. The Phase 2 specifications enumerate:
 D3.1 is the substrate; D2.x is the behavior. Both must agree on the
 canonical event-type vocabulary used in the provenance records (§8.2).
 
-### 12.2 OrgTree adapters (MOD_B / C / D / N) — ADR-036 through ADR-039
+### 12.2 OrgTree adapters (UIAO_152 / C / D / N) — ADR-036 through ADR-039
 
 Every user record this architecture provisions carries an OrgPath in
 `extensionAttribute1` (§5.4). That value is read by:
 
-- **`entra-dynamic-groups` (MOD_B / ADR-036)** — dynamic-group
+- **`entra-dynamic-groups` (UIAO_152 / ADR-036)** — dynamic-group
   membership recomputation on attribute change.
-- **`entra-admin-units` (MOD_D / ADR-037)** — administrative-unit
+- **`entra-admin-units` (UIAO_154 / ADR-037)** — administrative-unit
   scoping for delegated admin.
-- **`entra-device-orgpath` (MOD_C / ADR-038)** — device-plane OrgPath
+- **`entra-device-orgpath` (UIAO_153 / ADR-038)** — device-plane OrgPath
   propagation (Entra device + Arc machine ARM tag).
-- **`entra-policy-targeting` (MOD_N / ADR-039)** — policy targeting
+- **`entra-policy-targeting` (UIAO_164 / ADR-039)** — policy targeting
   (Intune profiles, Azure Policy assignments) by OrgPath.
 
 The OrgPath the middleware writes IS the OrgPath those adapters read.
