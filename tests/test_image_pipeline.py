@@ -764,3 +764,214 @@ def test_merge_placeholders_stable_sort(generator, tmp_path):
     ]
     merged = generator.merge_placeholders(placeholders, [])
     assert [p.document for p in merged] == [a, b]
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Companion directive: file-level override, opt-out, per-block override
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_find_companion_document_directive_resolves_named_file(generator, tmp_path):
+    folder = tmp_path / "series"
+    folder.mkdir()
+    (folder / "00-intro.qmd").write_text("# Intro\n", encoding="utf-8")
+    (folder / "01-deep-dive.qmd").write_text("# Deep dive\n", encoding="utf-8")
+    prompts = folder / "IMAGE-PROMPTS.md"
+    prompts.write_text(
+        "<!-- companion: 01-deep-dive.qmd -->\n\n## IMAGE-01\n\nbody.\n",
+        encoding="utf-8",
+    )
+    companion = generator._find_companion_document(prompts)
+    assert companion == folder / "01-deep-dive.qmd"
+
+
+def test_find_companion_document_directive_opt_out_returns_none(generator, tmp_path):
+    folder = tmp_path / "publication"
+    folder.mkdir()
+    (folder / "a.qmd").write_text("a", encoding="utf-8")
+    (folder / "b.qmd").write_text("b", encoding="utf-8")
+    prompts = folder / "IMAGE-PROMPTS.md"
+    prompts.write_text(
+        "<!-- companion: none -->\n\n## IMAGE-01\n\nbody.\n",
+        encoding="utf-8",
+    )
+    assert generator._find_companion_document(prompts) is None
+    assert generator._is_companion_opted_out(prompts.read_text(encoding="utf-8")) is True
+
+
+def test_find_companion_document_directive_missing_target_falls_back(generator, tmp_path, capsys):
+    folder = tmp_path / "myfolder"
+    folder.mkdir()
+    (folder / "myfolder.qmd").write_text("# fallback\n", encoding="utf-8")
+    prompts = folder / "IMAGE-PROMPTS.md"
+    prompts.write_text(
+        "<!-- companion: does-not-exist.qmd -->\n\n## IMAGE-01\n\nbody.\n",
+        encoding="utf-8",
+    )
+    companion = generator._find_companion_document(prompts)
+    assert companion == folder / "myfolder.qmd"
+    captured = capsys.readouterr()
+    assert "missing file" in captured.out
+
+
+def test_find_companion_document_directive_rejects_path_escape(generator, tmp_path, capsys):
+    outside = tmp_path / "outside.qmd"
+    outside.write_text("# escape", encoding="utf-8")
+    folder = tmp_path / "folder"
+    folder.mkdir()
+    (folder / "folder.qmd").write_text("# fallback\n", encoding="utf-8")
+    prompts = folder / "IMAGE-PROMPTS.md"
+    prompts.write_text(
+        "<!-- companion: ../outside.qmd -->\n\n## IMAGE-01\n\nbody.\n",
+        encoding="utf-8",
+    )
+    companion = generator._find_companion_document(prompts)
+    assert companion == folder / "folder.qmd"
+    captured = capsys.readouterr()
+    assert "escapes" in captured.out
+
+
+def test_is_companion_opted_out_keywords(generator):
+    assert generator._is_companion_opted_out("<!-- companion: none -->")
+    assert generator._is_companion_opted_out("<!-- companion: skip -->")
+    assert generator._is_companion_opted_out("<!-- companion: - -->")
+    assert generator._is_companion_opted_out("<!-- COMPANION: None -->")
+    assert not generator._is_companion_opted_out("<!-- companion: foo.qmd -->")
+    assert not generator._is_companion_opted_out("no directive here")
+    assert not generator._is_companion_opted_out("")
+
+
+def test_scan_image_prompts_honors_opt_out_silently(generator, tmp_path, capsys):
+    folder = tmp_path / "publication"
+    folder.mkdir()
+    (folder / "UIAO-Brief.docx").write_bytes(b"fake")
+    prompts = _write_image_prompts(
+        folder,
+        "<!-- companion: none -->\n\n## IMAGE-01\n\nA real body.\n",
+    )
+    out = generator.scan_image_prompts_files([prompts])
+    assert out == []
+    captured = capsys.readouterr()
+    assert "no companion" not in captured.out.lower()
+
+
+def test_scan_image_prompts_per_block_directive_overrides_file_level(generator, tmp_path):
+    folder = tmp_path / "series"
+    folder.mkdir()
+    a = folder / "00-intro.qmd"
+    b = folder / "01-deep-dive.qmd"
+    a.write_text("# Intro\n", encoding="utf-8")
+    b.write_text("# Deep dive\n", encoding="utf-8")
+    prompts = _write_image_prompts(
+        folder,
+        "<!-- companion: 00-intro.qmd -->\n\n"
+        "## IMAGE-01\n\nFirst body, attaches to file-level companion.\n\n"
+        "## IMAGE-02\n\n<!-- companion: 01-deep-dive.qmd -->\n\nSecond body, routed elsewhere.\n",
+    )
+    out = generator.scan_image_prompts_files([prompts])
+    by_id = {p.placeholder_id: p for p in out}
+    assert by_id["IMAGE-01"].document == a
+    assert by_id["IMAGE-02"].document == b
+    # Per-block directive is stripped from the prompt body itself.
+    assert "<!-- companion" not in by_id["IMAGE-02"].body
+    assert "Second body" in by_id["IMAGE-02"].body
+
+
+def test_scan_image_prompts_block_directive_missing_falls_back_to_file_level(generator, tmp_path, capsys):
+    folder = tmp_path / "series"
+    folder.mkdir()
+    a = folder / "00-intro.qmd"
+    a.write_text("# Intro\n", encoding="utf-8")
+    prompts = _write_image_prompts(
+        folder,
+        "<!-- companion: 00-intro.qmd -->\n\n"
+        "## IMAGE-01\n\n<!-- companion: nope.qmd -->\n\nBody falls back to file-level.\n",
+    )
+    out = generator.scan_image_prompts_files([prompts])
+    assert len(out) == 1
+    assert out[0].document == a
+    assert "missing file" in capsys.readouterr().out
+
+
+def test_scan_image_prompts_block_opt_out_skips_only_that_block(generator, tmp_path):
+    folder = tmp_path / "series"
+    folder.mkdir()
+    a = folder / "00-intro.qmd"
+    a.write_text("# Intro\n", encoding="utf-8")
+    prompts = _write_image_prompts(
+        folder,
+        "<!-- companion: 00-intro.qmd -->\n\n"
+        "## IMAGE-01\n\nKept block.\n\n"
+        "## IMAGE-02\n\n<!-- companion: skip -->\n\nDropped block.\n",
+    )
+    out = generator.scan_image_prompts_files([prompts])
+    assert [p.placeholder_id for p in out] == ["IMAGE-01"]
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Dry-run cache-hit prediction
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _seed_cached_sidecar(generator, tmp_path: Path, body: str, monkeypatch) -> "generator.DocLocalPlaceholder":
+    """Build a placeholder + matching sidecar/PNG pair under tmp_path so the
+    cache check fires. Returns the placeholder so the caller can pass it to
+    process_doc_local_placeholders."""
+    monkeypatch.setattr(generator, "REPO_ROOT", tmp_path)
+    doc = tmp_path / "doc.qmd"
+    doc.write_text("# Doc\n", encoding="utf-8")
+    placeholder = generator.DocLocalPlaceholder(
+        document=doc,
+        placeholder_id="IMAGE-01",
+        body=body,
+        line_number=1,
+        is_auto=False,
+    )
+    slug = generator._slugify(body.split(".")[0], maxlen=32) or "image"
+    output_path = generator.doc_local_output_path(doc, "IMAGE-01", slug)
+    output_path.write_bytes(b"\x89PNG\r\n\x1a\n")
+    sidecar = output_path.with_suffix(output_path.suffix + ".json")
+    sidecar.write_text(
+        json.dumps({"prompt_sha256": generator.sha256_text(body)}),
+        encoding="utf-8",
+    )
+    return placeholder
+
+
+def test_process_doc_local_dry_run_predicts_cache_hit(generator, tmp_path, monkeypatch, capsys):
+    placeholder = _seed_cached_sidecar(generator, tmp_path, "A clean diagram of the flow.", monkeypatch)
+    report = generator.RunReport()
+    generator.process_doc_local_placeholders([placeholder], client=None, report=report, dry_run=True)
+    assert report.doc_local_cached == 1
+    assert report.doc_local_generated == 0
+    out = capsys.readouterr().out
+    assert "[would-cache]" in out
+    assert "[dry-run]" not in out
+
+
+def test_process_doc_local_dry_run_predicts_regenerate_on_prompt_drift(generator, tmp_path, monkeypatch, capsys):
+    placeholder = _seed_cached_sidecar(generator, tmp_path, "Original prompt body.", monkeypatch)
+    drifted = generator.DocLocalPlaceholder(
+        document=placeholder.document,
+        placeholder_id=placeholder.placeholder_id,
+        body="A different prompt that changes the sha256.",
+        line_number=placeholder.line_number,
+        is_auto=False,
+    )
+    report = generator.RunReport()
+    generator.process_doc_local_placeholders([drifted], client=None, report=report, dry_run=True)
+    assert report.doc_local_cached == 0
+    out = capsys.readouterr().out
+    assert "[dry-run]" in out
+    assert "[would-cache]" not in out
+
+
+def test_process_doc_local_real_run_uses_cache_label(generator, tmp_path, monkeypatch, capsys):
+    placeholder = _seed_cached_sidecar(generator, tmp_path, "Stable prompt body.", monkeypatch)
+    report = generator.RunReport()
+    # client=None is fine: cache hit short-circuits before any API call.
+    generator.process_doc_local_placeholders([placeholder], client=None, report=report, dry_run=False)
+    assert report.doc_local_cached == 1
+    out = capsys.readouterr().out
+    assert "[cache]" in out
+    assert "[would-cache]" not in out
