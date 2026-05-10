@@ -1,13 +1,17 @@
-"""Tests for `uiao orgtree validate ...`.
+"""Tests for `uiao orgtree {validate,show,resolve,export} ...`.
 
-Exercises the six per-artifact validate verbs and the aggregate
-`validate all` against the canonical orgpath data shipped under
+Validate-verb coverage: six per-artifact verbs + the aggregate
+`validate all`, against the canonical orgpath data shipped under
 ``uiao.canon.data.orgpath``. Bad-input paths are covered by writing a
 short malformed YAML to a temp file and pointing ``--data`` at it.
+
+Show / resolve / export coverage: happy-path and not-found paths over
+the same canonical data; export-codebook round-trips through JSON.
 """
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -152,3 +156,125 @@ class TestValidateBadData:
         result = runner.invoke(app, ["orgtree", "validate", "drift-engine-config", "--data", str(bad)])
         assert result.exit_code == 1
         assert "FAIL drift-engine-config" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Show — print one entry from a canonical artifact
+# ---------------------------------------------------------------------------
+
+
+class TestShow:
+    def test_show_codebook_entry(self) -> None:
+        result = runner.invoke(app, ["orgtree", "show", "codebook", "ORG"])
+        assert result.exit_code == 0, result.stdout
+        # The Rich table breaks across lines for narrow terminals; check
+        # for components that survive any wrapping.
+        assert "ORG" in result.stdout
+        assert "Enterprise Root" in result.stdout
+        assert "UIAO_151" in result.stdout
+
+    def test_show_codebook_entry_not_found(self) -> None:
+        result = runner.invoke(app, ["orgtree", "show", "codebook", "ORG-NOTREAL"])
+        assert result.exit_code == 1
+        assert "NOT FOUND" in result.stdout
+        assert "codebook entry" in result.stdout
+        # Pluralization sanity (no "entrys"):
+        assert "Known codebook entries" in result.stdout
+
+    def test_show_dynamic_group(self) -> None:
+        result = runner.invoke(app, ["orgtree", "show", "dynamic-group", "OrgTree-FIN-Users"])
+        assert result.exit_code == 0, result.stdout
+        assert "OrgTree-FIN-Users" in result.stdout
+        assert "UIAO_152" in result.stdout
+
+    def test_show_dynamic_group_not_found(self) -> None:
+        result = runner.invoke(app, ["orgtree", "show", "dynamic-group", "OrgTree-NOTREAL"])
+        assert result.exit_code == 1
+        assert "NOT FOUND" in result.stdout
+
+    def test_show_admin_unit(self) -> None:
+        result = runner.invoke(app, ["orgtree", "show", "admin-unit", "AU-ORG-FIN"])
+        assert result.exit_code == 0, result.stdout
+        assert "AU-ORG-FIN" in result.stdout
+        assert "UIAO_154" in result.stdout
+
+    def test_show_admin_unit_not_found(self) -> None:
+        result = runner.invoke(app, ["orgtree", "show", "admin-unit", "AU-NOTREAL"])
+        assert result.exit_code == 1
+
+    def test_show_device_plane(self) -> None:
+        result = runner.invoke(app, ["orgtree", "show", "device-plane", "extensionAttribute1"])
+        assert result.exit_code == 0, result.stdout
+        assert "extensionAttribute1" in result.stdout
+        assert "UIAO_153" in result.stdout
+
+    def test_show_device_plane_not_found(self) -> None:
+        result = runner.invoke(app, ["orgtree", "show", "device-plane", "no-such-plane"])
+        assert result.exit_code == 1
+
+
+# ---------------------------------------------------------------------------
+# Resolve — cross-reference dynamic group rules against the codebook
+# ---------------------------------------------------------------------------
+
+
+class TestResolve:
+    def test_resolve_dynamic_group_happy(self) -> None:
+        result = runner.invoke(app, ["orgtree", "resolve", "dynamic-group", "OrgTree-FIN-Users"])
+        assert result.exit_code == 0, result.stdout
+        assert "OrgTree-FIN-Users" in result.stdout
+        assert "ORG-FIN" in result.stdout
+        # All references should resolve OK against the canonical codebook.
+        assert "OK" in result.stdout
+        assert "MISSING" not in result.stdout
+        assert "FAIL" not in result.stdout
+
+    def test_resolve_dynamic_group_not_found(self) -> None:
+        result = runner.invoke(app, ["orgtree", "resolve", "dynamic-group", "OrgTree-NOTREAL"])
+        assert result.exit_code == 1
+        assert "NOT FOUND" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Export — emit canon as JSON for downstream consumers
+# ---------------------------------------------------------------------------
+
+
+class TestExport:
+    def test_export_codebook_to_stdout(self) -> None:
+        result = runner.invoke(app, ["orgtree", "export", "codebook"])
+        assert result.exit_code == 0, result.stdout
+        # Must be valid JSON with the shape UIAO_159 §F3 expects.
+        payload = json.loads(result.stdout)
+        assert payload["document_id"] == "UIAO_151"
+        assert isinstance(payload["entries"], list)
+        assert len(payload["entries"]) > 0
+        first = payload["entries"][0]
+        # Each entry must expose the keys the pwsh Get-OrgTreeValidationReport
+        # cmdlet keys off ($entry.code).
+        assert "code" in first
+        assert "level" in first
+        assert "description" in first
+
+    def test_export_codebook_to_file(self, tmp_path: Path) -> None:
+        out = tmp_path / "codebook.json"
+        result = runner.invoke(app, ["orgtree", "export", "codebook", "--out", str(out)])
+        assert result.exit_code == 0, result.stdout
+        assert out.exists()
+        payload = json.loads(out.read_text(encoding="utf-8"))
+        assert payload["document_id"] == "UIAO_151"
+        assert any(e["code"] == "ORG" for e in payload["entries"])
+
+    def test_export_codebook_round_trip_with_validate(self, tmp_path: Path) -> None:
+        """Export and re-validate isn't a round-trip in the YAML sense
+        (export emits JSON, validate reads YAML), but both must agree on
+        which codes count as valid. Spot-check that every exported code
+        round-trips through Test-OrgPathFormat's regex (UIAO_151)."""
+        import re
+
+        result = runner.invoke(app, ["orgtree", "export", "codebook"])
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        regex = re.compile(payload["regex"])
+        for entry in payload["entries"]:
+            assert regex.match(entry["code"]), f"exported code violates its own regex: {entry['code']}"
