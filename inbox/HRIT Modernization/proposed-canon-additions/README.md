@@ -69,7 +69,7 @@ end-to-end:
    — ADR-D.
 
 Combined with existing canon (`entra-id`, `cyberark`, `terraform`,
-`infoblox`, `service-now`, the OrgTree MOD_A–MOD_N stack, Spec2-D3.x
+`infoblox`, `service-now`, the OrgTree UIAO_151–UIAO_164 stack, Spec2-D3.x
 HR-driven IAM), UIAO would have **complete contractual coverage** of the
 HRIT 24322626R0007 IAM mandate.
 
