@@ -6,7 +6,7 @@ status: Current
 classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
-updated_at: "2026-05-15"
+updated_at: "2026-05-16"
 boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_I"
@@ -174,24 +174,46 @@ Tests: `tools/powershell/OrgTreeValidation/tests/OrgTreeValidation.Tests.ps1`
 
 ### Dependencies
 
-Functions 3, 4, 5 require `Microsoft.Graph` (`Install-Module Microsoft.Graph`).
+Functions 3, 4, 5 require `Microsoft.Graph` (`Install-Module Microsoft.Graph`)
+*for production use*. Their parameter contract accepts scriptblock
+delegates (`-ConnectGraph`, `-GetUser`, `-GetGroup`) with sensible
+defaults that bind to the real Microsoft.Graph cmdlets, so:
+
+- **Production**: callers just pass `-TenantId` (and the path
+  parameter). The defaults fire and the cmdlets behave as before.
+- **Tests / CI**: callers pass scriptblock fakes that return canned
+  tenant responses. No `Microsoft.Graph` install needed; no `Mock`
+  scope wrestling. See the `Get-OrgTreeValidationReport` example in
+  the cmdlet's help block.
+
 Functions 1, 2, 6 are pure pwsh and have no external module dependency.
 The bridge cmdlet requires the `uiao` CLI on `PATH`.
 
 ### Test coverage
 
-Pester covers all four offline-testable cmdlets:
+Pester covers all seven exported cmdlets — including the three
+tenant-scope cmdlets, via the dependency-injection design described
+above. No `Mock` magic, no `Microsoft.Graph` install in CI.
+
+Offline:
 
 - `Test-OrgPathFormat` — 8 cases (valid root, valid 1–4 level paths, lowercase rejection, missing prefix, under-min and over-max segment lengths).
 - `Test-OrgPathHierarchy` — 4 cases (root, child of registered parent, leaf, missing parent).
 - `Compare-OrgTreeSnapshots` — 3 cases (`ValueDrift`, `NewObject`, identical snapshots).
 - **Canonical regex parity test** — extracts the `CANONICAL_REGEX` literal from `src/uiao/modernization/orgtree/codebook.py` at test time and asserts that `Test-OrgPathFormat` matches Python's behavior on a known sample. This is the load-bearing test that prevents the two surfaces from drifting.
 
-Tenant-scope cmdlets (3, 4, 5) are smoke-tested manually against a
-non-production tenant. Two fixture files (`codebook.json`,
-`group-library.json`) under `tests/fixtures/` are staged for a future
-Pester-mock implementation; a first attempt is parked in PR #368
-pending a debug pass with local Pester available.
+Tenant-scope (DI-tested):
+
+- `Get-OrgTreeValidationReport` — 5 cases (all valid → no drift; empty OrgPath → orphan; off-codebook OrgPath → invalid; format-violating OrgPath → invalid; `ConnectGraph` delegate invoked exactly once).
+- `Test-DynamicGroupAlignment` — 3 cases (all aligned; one misaligned; all missing).
+- `Export-OrgTreeSnapshot` — 2 cases (JSON shape + `OrgTree-*` filter; `ConnectGraph` delegate invoked exactly once).
+
+The DI approach replaced an earlier `Mock`-based attempt that was
+parked in PR #368 — too many Pester-scope edge cases without a
+debug-capable environment. The scriptblock-parameter design avoids
+the issue entirely: tests pass fake delegates explicitly, the cmdlet
+runs the supplied scriptblock instead of the Graph cmdlet, and there's
+nothing module-scoped about the substitution.
 
 ## Boundary rules
 
