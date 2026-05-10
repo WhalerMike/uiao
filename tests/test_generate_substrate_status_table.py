@@ -13,7 +13,6 @@ registered path that no longer exists).
 from __future__ import annotations
 
 import importlib.util
-import io
 import sys
 from pathlib import Path
 

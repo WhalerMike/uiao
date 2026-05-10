@@ -86,7 +86,7 @@ def load_registry() -> list[dict[str, Any]]:
     text = REGISTRY_PATH.read_text(encoding="utf-8")
     data = yaml.safe_load(text)
     if not isinstance(data, dict) or "documents" not in data:
-        raise SystemExit(f"document-registry.yaml missing 'documents' key")
+        raise SystemExit("document-registry.yaml missing 'documents' key")
     return data["documents"]
 
 
