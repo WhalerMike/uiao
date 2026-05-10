@@ -153,30 +153,18 @@ The bridge cmdlet requires the `uiao` CLI on `PATH`.
 
 ### Test coverage
 
-Pester ships test cases for all seven exported cmdlets. The four
-offline-testable cmdlets (`Test-OrgPathFormat`, `Test-OrgPathHierarchy`,
-`Compare-OrgTreeSnapshots`, plus the `Canonical regex parity` cross-check
-against the Python source-of-truth) run on every PR. The three
-tenant-scope cmdlets (`Get-OrgTreeValidationReport`,
-`Test-DynamicGroupAlignment`, `Export-OrgTreeSnapshot`) ship with
-Pester mocks for the Microsoft.Graph SDK calls but are gated on
-`Microsoft.Graph` being available — Pester reports them as **Skipped**
-on the default CI runner (which doesn't install the 100+ MB module)
-and **Run** on a developer machine with `Install-Module Microsoft.Graph`.
+Pester covers all four offline-testable cmdlets:
 
 - `Test-OrgPathFormat` — 8 cases (valid root, valid 1–4 level paths, lowercase rejection, missing prefix, under-min and over-max segment lengths).
 - `Test-OrgPathHierarchy` — 4 cases (root, child of registered parent, leaf, missing parent).
 - `Compare-OrgTreeSnapshots` — 3 cases (`ValueDrift`, `NewObject`, identical snapshots).
-- `Get-OrgTreeValidationReport` — 5 cases (mocked, run-when-Graph-available): all valid → no drift; empty OrgPath → orphan; off-codebook OrgPath → invalid; format-violating OrgPath → invalid; Connect-MgGraph invocation count.
-- `Test-DynamicGroupAlignment` — 3 cases (mocked, run-when-Graph-available): all aligned; one misaligned; all missing.
-- `Export-OrgTreeSnapshot` — 2 cases (mocked, run-when-Graph-available): JSON shape + OrgTree-* filter; Connect-MgGraph invocation count.
 - **Canonical regex parity test** — extracts the `CANONICAL_REGEX` literal from `src/uiao/modernization/orgtree/codebook.py` at test time and asserts that `Test-OrgPathFormat` matches Python's behavior on a known sample. This is the load-bearing test that prevents the two surfaces from drifting.
 
-The skip-when-Graph-unavailable gate is implemented via Pester's
-`-Skip:$SkipTenantScope` parameter at discovery time. To run the
-tenant-scope tests locally, install Microsoft.Graph
-(`Install-Module Microsoft.Graph -Scope CurrentUser`) and re-run
-`Invoke-Pester ./tools/powershell/OrgTreeValidation/tests`.
+Tenant-scope cmdlets (3, 4, 5) are smoke-tested manually against a
+non-production tenant. Two fixture files (`codebook.json`,
+`group-library.json`) under `tests/fixtures/` are staged for a future
+Pester-mock implementation; a first attempt is parked in PR #368
+pending a debug pass with local Pester available.
 
 ## Boundary rules
 
