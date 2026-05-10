@@ -19,38 +19,24 @@
 # real Microsoft.Graph module is loaded in production, the global stubs
 # are shadowed and the real cmdlets win.
 
+# Discovery-time variables. Pester evaluates `It -Skip:<expr>` at
+# discovery, *before* any BeforeAll runs. Variables set inside
+# BeforeAll are not visible to -Skip; variables set at file top-level
+# are.
+#
+# `$SkipTenantScope` gates the tenant-scope tests below. CI runs without
+# Microsoft.Graph installed (it's a 100+ MB module that would dominate
+# the lane runtime), so the tenant-scope tests `-Skip` automatically
+# and Pester reports them as Skipped, not Failed. A developer with
+# Microsoft.Graph installed locally (`Install-Module Microsoft.Graph`)
+# runs the full suite end-to-end.
+$SkipTenantScope = $null -eq (Get-Module -ListAvailable Microsoft.Graph -ErrorAction SilentlyContinue)
+
 BeforeAll {
     $script:ModuleRoot = (Resolve-Path "$PSScriptRoot/..").Path
     $script:RepoRoot   = (Resolve-Path "$PSScriptRoot/../../../..").Path
     Import-Module "$script:ModuleRoot/OrgTreeValidation.psm1" -Force
     $script:FixtureDir = Join-Path $PSScriptRoot 'fixtures'
-
-    # Define the Microsoft.Graph cmdlets *inside* the OrgTreeValidation
-    # module's own session state. Pester's `Mock` resolves the command
-    # by looking in the test scope first, then the module scope; placing
-    # the stubs here ensures `Mock -ModuleName OrgTreeValidation <cmd>`
-    # finds them even when Microsoft.Graph is not installed (CI). In
-    # production with Microsoft.Graph imported, the module's `Import-Module`
-    # would normally bring the real cmdlets into scope before these
-    # stubs; here we run the stubs unconditionally because the .psm1
-    # itself never imports Microsoft.Graph (it relies on the caller to
-    # have it loaded).
-    InModuleScope OrgTreeValidation {
-        function Connect-MgGraph {
-            [CmdletBinding()]
-            param([Parameter(ValueFromRemainingArguments = $true)]$Rest)
-        }
-        function Get-MgUser {
-            [CmdletBinding()]
-            param([Parameter(ValueFromRemainingArguments = $true)]$Rest)
-            return @()
-        }
-        function Get-MgGroup {
-            [CmdletBinding()]
-            param([Parameter(ValueFromRemainingArguments = $true)]$Rest)
-            return @()
-        }
-    }
 }
 
 
@@ -207,7 +193,7 @@ Describe 'Get-OrgTreeValidationReport' {
         Mock -ModuleName OrgTreeValidation Connect-MgGraph {}
     }
 
-    It 'returns DriftDetected=$false when every user has a valid registered OrgPath' {
+    It 'returns DriftDetected=$false when every user has a valid registered OrgPath' -Skip:$SkipTenantScope {
         Mock -ModuleName OrgTreeValidation Get-MgUser {
             return @(
                 [pscustomobject]@{
@@ -232,7 +218,7 @@ Describe 'Get-OrgTreeValidationReport' {
         $report.DriftDetected   | Should -BeFalse
     }
 
-    It 'classifies users with empty OrgPath as orphaned and flags drift' {
+    It 'classifies users with empty OrgPath as orphaned and flags drift' -Skip:$SkipTenantScope {
         Mock -ModuleName OrgTreeValidation Get-MgUser {
             return @(
                 [pscustomobject]@{
@@ -252,7 +238,7 @@ Describe 'Get-OrgTreeValidationReport' {
         $report.DriftDetected | Should -BeTrue
     }
 
-    It 'classifies users with an OrgPath not in the codebook as invalid' {
+    It 'classifies users with an OrgPath not in the codebook as invalid' -Skip:$SkipTenantScope {
         Mock -ModuleName OrgTreeValidation Get-MgUser {
             return @(
                 [pscustomobject]@{
@@ -267,7 +253,7 @@ Describe 'Get-OrgTreeValidationReport' {
         $report.DriftDetected   | Should -BeTrue
     }
 
-    It 'classifies users with format-violating OrgPaths as invalid' {
+    It 'classifies users with format-violating OrgPaths as invalid' -Skip:$SkipTenantScope {
         Mock -ModuleName OrgTreeValidation Get-MgUser {
             return @(
                 [pscustomobject]@{
@@ -281,7 +267,7 @@ Describe 'Get-OrgTreeValidationReport' {
         $report.DriftDetected   | Should -BeTrue
     }
 
-    It 'invokes Connect-MgGraph exactly once per call' {
+    It 'invokes Connect-MgGraph exactly once per call' -Skip:$SkipTenantScope {
         Mock -ModuleName OrgTreeValidation Get-MgUser { return @() }
         Get-OrgTreeValidationReport -TenantId 'fake' -CodebookPath $script:CodebookPath
         Should -Invoke -ModuleName OrgTreeValidation -CommandName Connect-MgGraph -Times 1 -Exactly
@@ -299,7 +285,7 @@ Describe 'Test-DynamicGroupAlignment' {
         Mock -ModuleName OrgTreeValidation Connect-MgGraph {}
     }
 
-    It 'reports all groups aligned when tenant rules match the library' {
+    It 'reports all groups aligned when tenant rules match the library' -Skip:$SkipTenantScope {
         # Library has 3 groups. Return a matching MembershipRule for each.
         Mock -ModuleName OrgTreeValidation Get-MgGroup {
             param($Filter)
@@ -330,7 +316,7 @@ Describe 'Test-DynamicGroupAlignment' {
         $r.MissingGroups    | Should -Be 0
     }
 
-    It 'reports a misaligned group when the tenant rule differs from the library' {
+    It 'reports a misaligned group when the tenant rule differs from the library' -Skip:$SkipTenantScope {
         Mock -ModuleName OrgTreeValidation Get-MgGroup {
             param($Filter)
             if ($Filter -like '*OrgTree-FIN-Users*') {
@@ -350,7 +336,7 @@ Describe 'Test-DynamicGroupAlignment' {
             Should -Not -BeNullOrEmpty
     }
 
-    It 'reports missing groups when Get-MgGroup returns nothing' {
+    It 'reports missing groups when Get-MgGroup returns nothing' -Skip:$SkipTenantScope {
         Mock -ModuleName OrgTreeValidation Get-MgGroup { return $null }
         $r = Test-DynamicGroupAlignment -TenantId 'fake' -GroupLibraryPath $script:LibraryPath
         $r.MissingGroups | Should -Be 3
@@ -373,7 +359,7 @@ Describe 'Export-OrgTreeSnapshot' {
         if (Test-Path $script:OutFile) { Remove-Item $script:OutFile -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'writes a JSON snapshot with the expected top-level fields' {
+    It 'writes a JSON snapshot with the expected top-level fields' -Skip:$SkipTenantScope {
         Mock -ModuleName OrgTreeValidation Get-MgUser {
             return @(
                 [pscustomobject]@{
@@ -409,7 +395,7 @@ Describe 'Export-OrgTreeSnapshot' {
         $snapshot.groups[0].displayName | Should -Be 'OrgTree-FIN-Users'
     }
 
-    It 'invokes Connect-MgGraph exactly once' {
+    It 'invokes Connect-MgGraph exactly once' -Skip:$SkipTenantScope {
         Mock -ModuleName OrgTreeValidation Get-MgUser { return @() }
         Mock -ModuleName OrgTreeValidation Get-MgGroup { return @() }
         Export-OrgTreeSnapshot -TenantId 'fake' -OutputPath $script:OutFile
