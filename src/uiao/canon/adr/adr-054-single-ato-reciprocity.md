@@ -159,7 +159,7 @@ Without explicit canon, HRIT-bound deployments would:
 | `src/uiao/canon/specs/single-ato-reciprocity-model.md` | New spec (UIAO_140) | done in same PR |
 | `src/uiao/canon/document-registry.yaml` | UIAO_140 entry added | done in same PR |
 | `src/uiao/canon/specs/governance.md` | UIAO_112 amended with UIAO_140 cross-reference; version bumped to 1.1 | done in same PR |
-| `src/uiao/oscal/reciprocity_record.py` | New artifact emitter (separate PR) | deferred |
+| `uiao.oscal.reciprocity_record` | New artifact emitter (separate PR) | deferred |
 | `tests/oscal/test_reciprocity_record.py` | Happy-path + lapsed-ATO failure case (separate PR) | deferred |
 
 ## References

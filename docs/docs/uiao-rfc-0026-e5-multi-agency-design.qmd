@@ -21,7 +21,7 @@ subtitle: "E5 multi-agency architectural design specification"
 | **Q2.2** — Agency ID convention | **Department-abbrev + sub-org kebab-case (e.g. `treasury-ocio`, `dhs-cisa`).** Matches the existing `adapter-registry.yaml` convention for short stable IDs. | User selected default (option a). Concise, stable, matches kebab-case canon pattern. |
 | **Q2.3** — KSI subscription model | **Default to all-KSIs but allow per-agency subsetting** via the `ksi-subscription` field. Agencies that omit the field receive the full KSI surface; agencies that declare a subset receive only those. | User selected default (option b). Flexible without forcing per-agency curation on day one. |
 | **Q2.4** — `data-classification` differentiation | **Moderate-only profile day one.** `data-classification` field exists in the schema (future-proof hook), but the redaction profile (E7) treats Moderate and High identically until a real High-classification agency onboards and a follow-up ADR amends the profile. | User selected default (option a). Avoids day-one over-engineering; the hook is in the schema so the future split is a focused change. |
-| **Q2.5** — Canon placement | **`src/uiao/canon/agency-customer-registry.yaml`** alongside `adapter-registry.yaml`. Agency customers are first-class canon citizens. | User selected default (option a). |
+| **Q2.5** — Canon placement | **`src/uiao/canon/agency-customer-registry`** (proposed; `.yaml` ext) alongside `adapter-registry.yaml`. Agency customers are first-class canon citizens. | User selected default (option a). |
 | **Q2.6** — Schema enforcement timing | **Blocking from day one.** Schema validator gates every PR from PR-1 of the registry. Matches every other UIAO registry's enforcement posture. | User selected default (option a). Soft-warning mode would create a window where invalid entries land silently. |
 
 ---
@@ -44,7 +44,7 @@ Implementation requires your review of this schema because the list of fields pe
 
 **Definition of done:**
 
-1. `src/uiao/canon/agency-customer-registry.yaml` exists and passes schema validation in CI
+1. `src/uiao/canon/agency-customer-registry` (proposed `.yaml`) exists and passes schema validation in CI
 2. `conmon-aggregate.yml` iterates the registry on every run and emits one receipt per agency at `evidence/distribution/<agency-id>/<yyyy-mm>/receipt.json`
 3. Every receipt is HMAC-SHA256 signed with the same key chain that signs the underlying evidence pack (so the audit trail is cryptographically linked, not just temporally)
 4. Missing distribution for any registered agency opens a `conmon-cure`-labelled issue within 24 hours
@@ -54,7 +54,7 @@ Implementation requires your review of this schema because the list of fields pe
 
 ## Proposed registry shape
 
-### `src/uiao/canon/agency-customer-registry.yaml` (proposed)
+### `src/uiao/canon/agency-customer-registry` (proposed `.yaml`)
 
 ```yaml
 # yaml-language-server: $schema=../schemas/agency-customer-registry/agency-customer-registry.schema.json
@@ -177,7 +177,7 @@ One new step after the existing aggregate run:
         run: |
           python scripts/conmon/distribute.py \
             --aggregate-dir exports/conmon \
-            --registry src/uiao/canon/agency-customer-registry.yaml \
+            --registry "$AGENCY_REGISTRY_PATH" \
             --evidence-root evidence/distribution \
             --hmac-key-id ${{ secrets.UIAO_EVIDENCE_HMAC_KEY_ID }}
 ```
@@ -198,7 +198,7 @@ Delivery-channel coupling: `connect-gov-folder` reuses whatever E1 ships; `oscal
 2. ~~**Agency IDs.**~~ **RESOLVED — department-abbrev + sub-org kebab-case.**
 3. ~~**KSI subscription model.**~~ **RESOLVED — default to all-KSIs; per-agency subsetting allowed via the field.**
 4. ~~**`data-classification`.**~~ **RESOLVED — Moderate-only profile day one; field present as future-proof hook.**
-5. ~~**Canon placement.**~~ **RESOLVED — `src/uiao/canon/agency-customer-registry.yaml`.**
+5. ~~**Canon placement.**~~ **RESOLVED — `src/uiao/canon/agency-customer-registry` (proposed `.yaml`).**
 6. ~~**Schema enforcement timing.**~~ **RESOLVED — blocking from day one.**
 
 **All six E5 open questions are resolved.** The implementation PR is unblocked and can start once you merge this design-draft PR.
