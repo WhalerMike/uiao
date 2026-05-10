@@ -1,19 +1,22 @@
 ---
-document_id: MOD_A
+document_id: UIAO_151
 title: "Appendix A — OrgPath Codebook"
 version: "2.0"
-status: CANONICAL
+status: Current
 owner: Michael Stratton
 author: Michal Doroszewski
-created_at: 2026-04-18
-updated_at: 2026-04-19
+created_at: "2026-04-18"
+updated_at: "2026-04-19"
 boundary: GCC-Moderate
-namespace: MOD
-parent_canon: UIAO_008
-provenance:
+classification: CANONICAL
+promotion:
   prior_version: "1.0 (DRAFT scaffold)"
   promoted_by: "Copilot Tasks"
   promotion_date: "2026-04-19"
+provenance_flatten:
+  prior_id: "MOD_A"
+  flattened_at: "2026-05-10"
+  flattened_by: "ADR-060"
 ---
 
 # Appendix A — OrgPath Codebook
@@ -22,7 +25,7 @@ provenance:
 
 This appendix defines the complete enumeration of OrgPath codes used to encode organizational hierarchy in Entra ID extension attributes. Every valid OrgPath in the system must exist in this codebook. An OrgPath that does not appear here is, by definition, invalid and will be flagged as drift.
 
-The OrgPath is the single most foundational artifact in the OrgTree suite. Every other MOD document depends on it: dynamic groups (MOD_B) key off OrgPath values, Administrative Units (MOD_D) scope to OrgPath segments, drift detection (MOD_M) validates against this codebook, and the delegation matrix maps to OrgPath hierarchy.
+The OrgPath is the single most foundational artifact in the OrgTree suite. Every other MOD document depends on it: dynamic groups (UIAO_152) key off OrgPath values, Administrative Units (UIAO_154) scope to OrgPath segments, drift detection (UIAO_163) validates against this codebook, and the delegation matrix maps to OrgPath hierarchy.
 
 ## Scope
 
@@ -157,7 +160,7 @@ Administrative Units mirror the OrgPath hierarchy for scoped delegation. Each AU
 
 ## Drift Detection Rules
 
-The drift detection engine (MOD_M) validates every user's OrgPath against this codebook. Five drift categories apply:
+The drift detection engine (UIAO_163) validates every user's OrgPath against this codebook. Five drift categories apply:
 
 | Category | Definition | Severity | Auto-Remediate | Example |
 |----------|-----------|----------|----------------|---------|
@@ -220,7 +223,7 @@ Write-Host "Value Drift: $($valueDrift.Count) users" -ForegroundColor Yellow
 
 5. **Validate** — Run the PowerShell validation script above to detect format drift and value drift. Resolve all critical issues before enabling governance automation.
 
-6. **Enable drift detection** — Connect this codebook to the drift detection engine (MOD_M) for continuous monitoring.
+6. **Enable drift detection** — Connect this codebook to the drift detection engine (UIAO_163) for continuous monitoring.
 
 ## Governance Alignment
 
