@@ -295,20 +295,34 @@ deprecation window (per §7).
 - `tests/canon_registry/` — extend the existing parametrized test
   with the 22 new ids.
 
-### 7. Deprecation window
+### 7. Deprecation window — closed early (2026-05-11)
 
-For 30 days post-merge, a `MOD_*` → `UIAO_15x` slug-resolution table
-is published as `src/uiao/canon/data/mod-slug-redirects.yaml`. The
-substrate walker reads this table and, when it encounters a `MOD_*`
-slug in any file, emits a P2 (advisory) DRIFT-PROVENANCE finding
-naming the new slug. Any reference fixed during the deprecation window
-is fixed permanently; the redirect file and walker hook are removed
-when the table is empty.
+This section originally specified a 30-day deprecation window
+(2026-05-10 → 2026-06-09) backed by a `MOD_*` → `UIAO_15x`
+slug-resolution table at `src/uiao/canon/data/mod-slug-redirects`
+(`.yaml`, since deleted), with a substrate-walker hook that would emit a
+P2 advisory whenever a `MOD_*` slug appeared in a scanned file.
+**The walker hook was never implemented**; the table existed only as
+static reference documentation.
 
-This window exists to absorb in-flight PRs. The ADR-060
-implementation PR itself closes all 41 references in a single
-landing, so the table starts empty in the main branch — the window is
-defensive, not load-bearing.
+Closed status, recorded by the cleanup PR that removed the table:
+
+- The implementation PR (#352) retargeted every reference inside the
+  in-scope inventory in a single landing, so no in-flight PR ever
+  needed the redirect table to resolve a missing slug.
+- Body prose inside the 27 renamed canon docs (UIAO_150 – UIAO_176)
+  retains historical `MOD_*` references — that was the explicit
+  out-of-scope decision in §"Out of scope" and remains unchanged. Each
+  doc carries a `provenance_flatten:` frontmatter block recording its
+  prior slug, which is now the canonical answer for "what MOD slug did
+  this used to be?"
+- The redirect table and any tooling hook are removed; future ADRs
+  proposing slug-redirect tables should also commit the walker
+  integration in the same PR, not promise it as a follow-on.
+
+This window was defensive but, in retrospect, redundant: the
+implementation PR's atomic retarget made the table unused from the
+moment it landed.
 
 ## Consequences
 
