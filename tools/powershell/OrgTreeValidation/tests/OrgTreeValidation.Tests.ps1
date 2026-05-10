@@ -25,26 +25,27 @@ BeforeAll {
     Import-Module "$script:ModuleRoot/OrgTreeValidation.psm1" -Force
     $script:FixtureDir = Join-Path $PSScriptRoot 'fixtures'
 
-    # Stub Microsoft.Graph cmdlets in global scope so the module can
-    # resolve them at invocation time and Pester can mock them per-test.
-    # The module's functions look up commands via module -> global; these
-    # stubs are inert (always return $null / empty array) but exist so
-    # `Mock <name>` succeeds.
-    if (-not (Get-Command -Name Connect-MgGraph -ErrorAction SilentlyContinue)) {
-        function global:Connect-MgGraph {
+    # Define the Microsoft.Graph cmdlets *inside* the OrgTreeValidation
+    # module's own session state. Pester's `Mock` resolves the command
+    # by looking in the test scope first, then the module scope; placing
+    # the stubs here ensures `Mock -ModuleName OrgTreeValidation <cmd>`
+    # finds them even when Microsoft.Graph is not installed (CI). In
+    # production with Microsoft.Graph imported, the module's `Import-Module`
+    # would normally bring the real cmdlets into scope before these
+    # stubs; here we run the stubs unconditionally because the .psm1
+    # itself never imports Microsoft.Graph (it relies on the caller to
+    # have it loaded).
+    InModuleScope OrgTreeValidation {
+        function Connect-MgGraph {
             [CmdletBinding()]
             param([Parameter(ValueFromRemainingArguments = $true)]$Rest)
         }
-    }
-    if (-not (Get-Command -Name Get-MgUser -ErrorAction SilentlyContinue)) {
-        function global:Get-MgUser {
+        function Get-MgUser {
             [CmdletBinding()]
             param([Parameter(ValueFromRemainingArguments = $true)]$Rest)
             return @()
         }
-    }
-    if (-not (Get-Command -Name Get-MgGroup -ErrorAction SilentlyContinue)) {
-        function global:Get-MgGroup {
+        function Get-MgGroup {
             [CmdletBinding()]
             param([Parameter(ValueFromRemainingArguments = $true)]$Rest)
             return @()
