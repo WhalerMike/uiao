@@ -45,7 +45,7 @@ across two parallel tracks at different abstraction layers:
   `MOD_A`–`MOD_V`). Originated from `inbox/EntraID Governance/AD to
   EntraID Tree.docx` on 2026-04-18, promoted to canon by ADR-044, and
   registered in its own
-  `src/uiao/modernization/orgtree/document-registry.yaml` under a
+  `src/uiao/modernization/orgtree/document-registry` (the `.yaml` registry retired by this ADR) under a
   dedicated `MOD` namespace. Owns the OrgPath codebook, dynamic-group
   library, AU/role delegation, OU-to-Entra migration runbook, and drift
   detection model.
@@ -243,7 +243,7 @@ walker becomes the gate that proves the pass was complete.
 **Module README + registry (2):**
 
 - `src/uiao/modernization/README.md` — rewritten per §2.
-- `src/uiao/modernization/orgtree/document-registry.yaml` — deleted.
+- `src/uiao/modernization/orgtree/document-registry` (the `.yaml` registry retired by this ADR) — deleted.
 
 **Python module docstrings (6):**
 
@@ -383,7 +383,7 @@ defensive, not load-bearing.
    matters).
 4. Insert the 22 new entries into
    `src/uiao/canon/document-registry.yaml` at numeric position.
-5. Delete `src/uiao/modernization/orgtree/document-registry.yaml`.
+5. Delete `src/uiao/modernization/orgtree/document-registry` (the `.yaml` registry retired by this ADR).
 6. Rewrite `src/uiao/modernization/README.md` per §2.
 7. Run `uiao substrate walk` and `uiao substrate drift`. Both must
    return clean (zero P1; P2-only output is acceptable per ADR-044's

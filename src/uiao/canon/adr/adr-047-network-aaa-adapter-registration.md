@@ -216,8 +216,8 @@ substantive PKI work.
 - Wave 1 fixes commit `c56015e`
 - DM_030 RADIUS / NPS Adapter Interface:
   `src/uiao/modernization/directory-migration/adapters/radius/radius-adapter-interface.md`
-- UIAO_110 trust-anchor walker:
-  `src/uiao/canon/UIAO_110-drift-identity.md` (commit `01863ea`)
+- UIAO_110 trust-anchor walker — canon doc as of commit `01863ea`
+  (filename later renamed; resolve via `git show 01863ea -- src/uiao/canon/`)
 - ADR-044 substrate governance realignment
 - IEEE 802.1X-2020 §5.1 (three-party authentication model)
 - RFC 3580 §1.1 (IEEE 802.1X RADIUS Usage Guidelines)

@@ -14,7 +14,7 @@ Each SCuBA report contains policy baseline results per product
 (AAD, Defender, EXO, TEAMS, etc.). This adapter ingests those
 results and creates KSI evidence records in the UIAO canon format.
 
-File: src/uiao/impl/adapters/scubagear_adapter.py
+File: src/uiao/adapters/scubagear_adapter.py
 """
 
 from __future__ import annotations
