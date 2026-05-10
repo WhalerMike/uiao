@@ -131,6 +131,21 @@ AUTO_MARKER = "AUTO"
 CANON_ID_RE = re.compile(r"^UIAO-FIG-\d{3}$")
 IMAGE_PROMPTS_FILENAME = "IMAGE-PROMPTS.md"
 
+# Optional routing directive an author can place at the top of an
+# IMAGE-PROMPTS.md (or inside a single heading block) to override the
+# default companion-document resolution. Forms:
+#
+#   <!-- companion: 00-introduction.qmd -->   route to this sibling file
+#   <!-- companion: none -->                  opt out (no warning printed)
+#
+# A block-scoped directive takes precedence over the file-level one for
+# that block only.
+COMPANION_DIRECTIVE_RE = re.compile(
+    r"<!--\s*companion:\s*(?P<target>[^\s>]+)\s*-->",
+    re.IGNORECASE,
+)
+_COMPANION_OPT_OUT_VALUES = frozenset({"none", "skip", "-"})
+
 # Bodies that count as unfilled scaffolds — treated as absent, not
 # harvested. Matches the default text `sync_canon.py` writes plus
 # common synonyms.
@@ -556,21 +571,71 @@ def _is_todo_body(body: str) -> bool:
     return True
 
 
-def _find_companion_document(image_prompts_path: Path) -> Path | None:
+def _parse_companion_directive(text: str | None) -> str | None:
+    """Returns the raw target string from the first `<!-- companion: ... -->`
+    directive in `text`, or None if the directive is absent. The caller is
+    responsible for resolving the target (filename vs. opt-out keyword)."""
+    if not text:
+        return None
+    m = COMPANION_DIRECTIVE_RE.search(text)
+    return m.group("target").strip() if m else None
+
+
+def _is_companion_opted_out(text: str | None) -> bool:
+    """True iff `text` contains an explicit opt-out directive
+    (`<!-- companion: none -->` and friends)."""
+    target = _parse_companion_directive(text)
+    return target is not None and target.lower() in _COMPANION_OPT_OUT_VALUES
+
+
+def _find_companion_document(image_prompts_path: Path, text: str | None = None) -> Path | None:
     """Given a path to an IMAGE-PROMPTS.md file, return the sibling
     document it annotates. Resolution order:
 
+        0. `<!-- companion: <filename> -->` directive in the file body
         1. <folder>/<folder-name>.qmd
         2. <folder>/<folder-name>.md
         3. Exactly one other .qmd in the same folder
         4. Exactly one other .md in the same folder (excluding this file
            and any README)
 
+    `text` may be passed to avoid a re-read; when omitted the file is read
+    here. An opt-out directive (`companion: none`) returns None — callers
+    that care about distinguishing opt-out from "not found" should consult
+    `_is_companion_opted_out` separately.
+
     Returns None if no deterministic companion can be identified.
     """
     folder = image_prompts_path.parent
-    folder_name = folder.name
 
+    if text is None:
+        try:
+            text = image_prompts_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            text = ""
+
+    target = _parse_companion_directive(text)
+    if target is not None:
+        if target.lower() in _COMPANION_OPT_OUT_VALUES:
+            return None
+        candidate = (folder / target).resolve()
+        # Guard against `../` escapes outside the prompts folder.
+        try:
+            candidate.relative_to(folder.resolve())
+        except ValueError:
+            print(
+                f"  Warning: {_repo_rel(image_prompts_path)} companion directive "
+                f"'{target}' escapes the prompts folder; ignoring."
+            )
+        else:
+            if candidate.is_file():
+                return candidate
+            print(
+                f"  Warning: {_repo_rel(image_prompts_path)} companion directive "
+                f"points to missing file '{target}'; falling back to auto-detect."
+            )
+
+    folder_name = folder.name
     for ext in (".qmd", ".md"):
         candidate = folder / f"{folder_name}{ext}"
         if candidate.is_file():
@@ -646,36 +711,77 @@ def scan_image_prompts_files(
 
     Unfilled scaffolds (TODO / TBD / empty bodies) are skipped.
     Companion-less sidecars (no sibling .qmd/.md to attach to) are skipped
-    with a warning printed once per file so authors see the drift.
+    with a warning printed once per file so authors see the drift —
+    suppressed when the file carries an explicit `<!-- companion: none -->`
+    opt-out directive.
+
+    A per-block `<!-- companion: <filename> -->` directive in the body of a
+    single heading slot overrides the file-level companion for that block.
     """
     out: list[DocLocalPlaceholder] = []
     for path in files:
         if path.name != IMAGE_PROMPTS_FILENAME:
-            continue
-        companion = _find_companion_document(path)
-        if companion is None:
-            # Silent in test-heavy invocations; main() still surfaces a
-            # summary count. Print once per path for author feedback.
-            print(f"  Warning: {_repo_rel(path)} has no companion .qmd/.md in the same folder; skipping.")
             continue
         try:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
 
+        file_companion = _find_companion_document(path, text=text)
+        file_opted_out = _is_companion_opted_out(text)
+
+        if file_companion is None and not file_opted_out:
+            # Silent in test-heavy invocations; main() still surfaces a
+            # summary count. Print once per path for author feedback.
+            print(f"  Warning: {_repo_rel(path)} has no companion .qmd/.md in the same folder; skipping.")
+            continue
+
         for placeholder_id, title, body, line_no in _extract_heading_blocks(text):
-            # Filled prompt? If body starts with a real prompt (not TODO),
-            # we harvest it. Title can be used as filename slug later.
-            if _is_todo_body(body):
+            # Per-block override: strip the directive out of the body
+            # before any TODO/AUTO checks so the prompt text remains clean.
+            block_target = _parse_companion_directive(body)
+            body_clean = COMPANION_DIRECTIVE_RE.sub("", body).strip()
+
+            if _is_todo_body(body_clean):
                 continue
-            is_auto = body.strip().upper() == AUTO_MARKER
-            # Attach the synthetic placeholder to the companion document so
+
+            block_companion: Path | None
+            if block_target is not None and block_target.lower() in _COMPANION_OPT_OUT_VALUES:
+                continue  # explicit per-block opt-out
+            if block_target is not None:
+                candidate = (path.parent / block_target).resolve()
+                try:
+                    candidate.relative_to(path.parent.resolve())
+                except ValueError:
+                    print(
+                        f"  Warning: {_repo_rel(path)}:{placeholder_id} companion directive "
+                        f"'{block_target}' escapes the prompts folder; using file-level companion."
+                    )
+                    block_companion = file_companion
+                else:
+                    if candidate.is_file():
+                        block_companion = candidate
+                    else:
+                        print(
+                            f"  Warning: {_repo_rel(path)}:{placeholder_id} companion directive "
+                            f"points to missing file '{block_target}'; using file-level companion."
+                        )
+                        block_companion = file_companion
+            else:
+                block_companion = file_companion
+
+            if block_companion is None:
+                # File-level opt-out but no per-block override: skip.
+                continue
+
+            is_auto = body_clean.upper() == AUTO_MARKER
+            # Attach the synthetic placeholder to the resolved companion so
             # image output lands beside the rendered HTML/PDF.
             out.append(
                 DocLocalPlaceholder(
-                    document=companion,
+                    document=block_companion,
                     placeholder_id=placeholder_id,
-                    body=body if not title else f"{title} — {body}",
+                    body=body_clean if not title else f"{title} — {body_clean}",
                     line_number=line_no,
                     is_auto=is_auto,
                 )
@@ -822,15 +928,18 @@ def process_doc_local_placeholders(
         sidecar_path = output_path.with_suffix(output_path.suffix + ".json")
 
         # Cache-by-hash: if the prompt hasn't changed AND the PNG exists,
-        # skip the API call. Drift-free, cost-free re-runs.
+        # skip the API call. Drift-free, cost-free re-runs. In dry-run we
+        # still consult the cache so the report mirrors what a real run
+        # would do (predicted hit vs. predicted regenerate).
         prompt_sha = sha256_text(p.body)
-        if sidecar_path.exists() and output_path.exists() and not dry_run:
+        if sidecar_path.exists() and output_path.exists():
             try:
                 with open(sidecar_path, encoding="utf-8") as f:
                     existing = json.load(f)
                 if existing.get("prompt_sha256") == prompt_sha:
                     report.doc_local_cached += 1
-                    print(f"  [cache] {p.document.relative_to(REPO_ROOT)}:{p.placeholder_id} → {output_path.name}")
+                    label = "would-cache" if dry_run else "cache"
+                    print(f"  [{label}] {p.document.relative_to(REPO_ROOT)}:{p.placeholder_id} → {output_path.name}")
                     continue
             except (OSError, json.JSONDecodeError):
                 pass
