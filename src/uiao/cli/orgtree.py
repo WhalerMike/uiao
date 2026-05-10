@@ -428,9 +428,7 @@ def _codebook_to_payload(cb: Codebook) -> dict[str, Any]:
         "regex": cb.regex,
         "max_depth": cb.max_depth,
         "entries": [dataclasses.asdict(e) for e in cb.entries.values()],
-        "deprecated": [dataclasses.asdict(e) for e in cb.deprecated.values()]
-        if isinstance(cb.deprecated, dict)
-        else [dataclasses.asdict(e) for e in cb.deprecated],
+        "deprecated": [dataclasses.asdict(e) for e in cb.deprecated.values()],
     }
 
 
