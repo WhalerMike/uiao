@@ -48,7 +48,7 @@ STYLE_HEADER = (
     "(#1F3A5F) accents; soft teal highlights; white background; no "
     "gradients. No people. No Microsoft or vendor logos. Widescreen "
     "16:9 aspect ratio. Small readable sans-serif text labels on "
-    "elements; monospace for canon identifiers (MOD_A..Z, DM_010..090, "
+    "elements; monospace for canon identifiers (UIAO_151–UIAO_176, DM_010..090, "
     "OrgPath values like ORG-FIN-AP). Government-appropriate; no "
     "marketing gloss. Scene: "
 )
@@ -86,7 +86,7 @@ IMAGES: list[tuple[str, str]] = [
         "'AD Kerberos (read-only)' and 'Entra OIDC (read-write)'; (4) "
         "'Transformation Engine Host' showing three stacked pills — "
         "PowerShell, Python, API Integrators; (5) 'Adapter Dispatcher' "
-        "showing labels 'DM_010..080' and 'MOD_I'. External connectors "
+        "showing labels 'DM_010..080' and 'UIAO_159'. External connectors "
         "extend to small outline boxes around the perimeter labeled "
         "AD Forest, Entra ID, Intune, Azure Arc, Infoblox.",
     ),
@@ -111,7 +111,7 @@ IMAGES: list[tuple[str, str]] = [
         "current-state graph, target-state graph, diff, risk score. "
         "Stage 2 'Plan' (same brain) shows a small YAML action-list "
         "preview with 3-4 sample actions (type: create-administrative"
-        "-unit, type: assign-role-scoped) and a 'MOD_J validated' stamp. "
+        "-unit, type: assign-role-scoped) and a 'UIAO_160 validated' stamp. "
         "Stage 3 'Deliver' (labeled brain: 'Execution Substrate · "
         "execution') shows vendor-API call icons (Graph, ARM, Infoblox "
         "WAPI) and an evidence packet on the far right. A bold vertical "
@@ -129,7 +129,7 @@ IMAGES: list[tuple[str, str]] = [
         "Unit Scope → 'AU-ORG-FIN-AP' with a scope icon; (3) "
         "Conditional Access Targeting → a CA policy badge; (4) "
         "Group-Based License Assignment → a license SKU badge; (5) "
-        "Drift Detection (MOD_M) → a comparator icon. Below the figure, "
+        "Drift Detection (UIAO_163) → a comparator icon. Below the figure, "
         "a single-line footer: 'One attribute. Five governance outcomes. "
         "Zero admin-portal clicks.'",
     ),
@@ -190,7 +190,7 @@ IMAGES: list[tuple[str, str]] = [
         "SSO satisfies subsequent auths; (5) VPN-replacement — SASE "
         "ZTNA reverse-proxy to on-prem app; (6) Privileged elevation "
         "— PIM request, FIDO2 re-challenge, CyberArk session recording, "
-        "MOD_X telemetry; (7) End of day — token expires, CAE revokes. "
+        "UIAO_174 telemetry; (7) End of day — token expires, CAE revokes. "
         "On the right side, a narrow vertical rail labeled 'OrgPath-"
         "scoped · provenance-bound · drift-monitored' running full height.",
     ),
@@ -220,7 +220,7 @@ IMAGES: list[tuple[str, str]] = [
         "an open score; the conductor rendered as the UIAO platform "
         "server icon (a rounded-rectangle WS2025 host) with a baton. "
         "The score is labeled with canon artifacts visible on its "
-        "pages: MOD_A, MOD_B, MOD_D, MOD_M, DM_010, DM_020. Faint "
+        "pages: UIAO_151, UIAO_152, UIAO_154, UIAO_163, DM_010, DM_020. Faint "
         "sheet-music staves flow from the score to each instrument, "
         "representing governed plans and evidence. Warm paper-tone "
         "palette on the stage floor; federal navy on the conductor.",

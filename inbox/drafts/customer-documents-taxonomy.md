@@ -91,17 +91,17 @@ backlog items.
 - B.7 CLI + module reference
 
 #### C. Identity (OrgTree / MOD_*)
-- C.1 OrgPath Codebook (MOD_A)
-- C.2 Dynamic Group Library (MOD_B)
-- C.3 Attribute Mapping Table (MOD_C)
-- C.4 Delegation Matrix — AUs + Roles (MOD_D)
-- C.5 Governance Workflow Catalog (MOD_E)
-- C.6 Migration Runbook OU→Entra (MOD_F)
-- C.7 JSON Schema (MOD_H)
-- C.8 PowerShell Validation Module (MOD_I)
-- C.9 Execution Substrate Integration (MOD_N)
-- C.10 Identity Graph Normalization (MOD_Y)
-- C.11 Identity Risk Scoring (MOD_T)
+- C.1 OrgPath Codebook (UIAO_151)
+- C.2 Dynamic Group Library (UIAO_152)
+- C.3 Attribute Mapping Table (UIAO_153)
+- C.4 Delegation Matrix — AUs + Roles (UIAO_154)
+- C.5 Governance Workflow Catalog (UIAO_155)
+- C.6 Migration Runbook OU→Entra (UIAO_156)
+- C.7 JSON Schema (UIAO_158)
+- C.8 PowerShell Validation Module (UIAO_159)
+- C.9 Execution Substrate Integration (UIAO_164)
+- C.10 Identity Graph Normalization (UIAO_175)
+- C.11 Identity Risk Scoring (UIAO_170)
 
 #### D. Directory Migration (DM_*)
 - D.1 IPAM Adapter — DM_010 (Infoblox/BlueCat/generic)
@@ -163,7 +163,7 @@ backlog items.
 - A.8 DoD IL4 / IL5 (future-state)
 
 #### B. Boundary + Authorization
-- B.1 GCC-Moderate boundary model (MOD_U)
+- B.1 GCC-Moderate boundary model (UIAO_171)
 - B.2 Commercial-Cloud exception (Amazon Connect)
 - B.3 Data classification (Controlled, CUI)
 - B.4 ATO package / OSCAL authoring
@@ -171,11 +171,11 @@ backlog items.
 - B.6 Package handoff / continuous authorization
 
 #### C. Evidence + Telemetry
-- C.1 Governance Telemetry Model (MOD_X)
+- C.1 Governance Telemetry Model (UIAO_174)
 - C.2 KSI (Key Security Indicators)
 - C.3 ScubaGear evidence pipeline
-- C.4 Drift Detection Engine (MOD_M — *primary home is here*)
-- C.5 Governance OS State Machine (MOD_S)
+- C.4 Drift Detection Engine (UIAO_163 — *primary home is here*)
+- C.5 Governance OS State Machine (UIAO_169)
 - C.6 Provenance chain / signed commits
 - C.7 SIEM forwarding
 
@@ -189,16 +189,16 @@ backlog items.
 
 #### E. Controls + Testing
 - E.1 Validation Suites (adapter + domain)
-- E.2 Governance Enforcement Test Suite (MOD_J)
-- E.3 Enforcement Decision Trees (MOD_K)
-- E.4 Mock Tenant Test Harness (MOD_O)
+- E.2 Governance Enforcement Test Suite (UIAO_160)
+- E.3 Enforcement Decision Trees (UIAO_161)
+- E.4 Mock Tenant Test Harness (UIAO_165)
 - E.5 Pester test framework
 - E.6 Continuous monitoring
 - E.7 DR testing
 
 #### F. Incident + Response
 - F.1 Disaster Recovery Playbook (IR-8)
-- F.2 SLA Escalation Playbooks (MOD_Q)
+- F.2 SLA Escalation Playbooks (UIAO_167)
 - F.3 Incident runbooks
 - F.4 Break-glass procedures
 - F.5 Active-passive Git replication
@@ -210,9 +210,9 @@ backlog items.
 - G.4 Canon Change Protocol
 - G.5 ADR-001 Git Infrastructure
 - G.6 ADR-002 Two-Brain Execution (to author)
-- G.7 Canonical Contributor Workflow (MOD_V)
-- G.8 Canonical Error Taxonomy (MOD_W)
-- G.9 Glossary (MOD_Z)
+- G.7 Canonical Contributor Workflow (UIAO_172)
+- G.8 Canonical Error Taxonomy (UIAO_173)
+- G.9 Glossary (UIAO_176)
 - G.10 Document Lifecycle Management
 
 ### 2.3 Substrate (shared spine)
@@ -253,7 +253,7 @@ sub-category. `Target location` is the proposed Quarto path once the
 | 1 | Master Project Plan | Modernization | H.1 | `modernization/program-management/master-project-plan.qmd` | **PARTIAL** — capstone, not yet hosted |
 | 2 | Governance OS A-Z Canonical Suite | Substrate | S.A / S.E | `substrate/core-architecture/a-z-canonical-suite.qmd` | **PARTIAL** — 26 appendices map to MOD_* + substrate |
 | 3 | Gap Analysis (vs MS Native Tools) | Substrate | S.E.3 | `substrate/execution-patterns/instruments-vs-orchestra.qmd` | **MISSING** |
-| 4 | Identity Modernization Guide | Modernization | C | (superseded by MOD_001..Z) | **SUPERSEDED** |
+| 4 | Identity Modernization Guide | Modernization | C | (superseded by UIAO_150..Z) | **SUPERSEDED** |
 | 5 | PKI Modernization Guide | Modernization | D.4 | `modernization/directory-migration/pki/` (companion to DM_020) | **PARTIAL** |
 | 6 | DNS Modernization Guide | Modernization | D.2 / G.3 | `modernization/directory-migration/dns/` (seeds DM_015) | **MISSING target** |
 | 7 | AD Computer Object Conversion Guide | Modernization | D.8 / E.3 | `modernization/directory-migration/device-management/` (companion to DM_060) | **PARTIAL** |
@@ -283,7 +283,7 @@ sub-category. `Target location` is the proposed Quarto path once the
 | 31 | AODIM Architecture + Whitepaper | Substrate | S.E.2 | `substrate/execution-patterns/aodim.qmd` | **MISSING** — 300-word stubs, expand or absorb |
 | 32 | AD to EntraID Tree (transcript) | — | — | `inbox/transcripts/` *(not canon)* | **TRANSCRIPT** |
 | 33 | AD to EntraID - Structural Migration Problem | Modernization | C | (absorb into Client-Server-to-Hybrid-Cloud ch. 00) | **PARTIAL** |
-| 34 | Entra ID Org Hierarchy Guide | Modernization | C.4 | (merge into MOD_D customer-docs page) | **COVERED** |
+| 34 | Entra ID Org Hierarchy Guide | Modernization | C.4 | (merge into UIAO_154 customer-docs page) | **COVERED** |
 | 35 | Master Document Specification v1.3 | Compliance | G.1 | `compliance/governance-canon/master-document-spec.qmd` | **MISSING** |
 | 36 | UIAO-Document-Report Ch 4-9 | Substrate | S.P.8 | `substrate/platform-tooling/document-report.qmd` | **MISSING** — Ch 1-3 absent; canon status undecided |
 | 37 | Claude Integration Plan | Substrate | S.E.1 | `substrate/execution-patterns/claude-integration.qmd` | **MISSING** |
@@ -352,14 +352,14 @@ home assigned; the other pillar(s) cross-reference.
 
 | Component | Candidate primary | Candidate secondary | Recommendation |
 |---|---|---|---|
-| Drift Detection Engine (MOD_M) | Compliance C.4 | Modernization (feeds SSOT) | **Primary: Compliance C.4**. Cross-ref in Mod D + Mod C. Rationale: drift is an evidentiary concept before it is a modernization concept. |
-| Governance Telemetry Model (MOD_X) | Compliance C.1 | Mod B (consumed by engine) | **Primary: Compliance C.1**. Cross-ref in Mod B. |
-| Governance OS State Machine (MOD_S) | Substrate S.A | Compliance C.5 | **Primary: Substrate S.A**. State machine is architecture; compliance consumes it. |
-| SLA Escalation Playbooks (MOD_Q) | Compliance F.2 | Mod H | **Primary: Compliance F.2**. |
+| Drift Detection Engine (UIAO_163) | Compliance C.4 | Modernization (feeds SSOT) | **Primary: Compliance C.4**. Cross-ref in Mod D + Mod C. Rationale: drift is an evidentiary concept before it is a modernization concept. |
+| Governance Telemetry Model (UIAO_174) | Compliance C.1 | Mod B (consumed by engine) | **Primary: Compliance C.1**. Cross-ref in Mod B. |
+| Governance OS State Machine (UIAO_169) | Substrate S.A | Compliance C.5 | **Primary: Substrate S.A**. State machine is architecture; compliance consumes it. |
+| SLA Escalation Playbooks (UIAO_167) | Compliance F.2 | Mod H | **Primary: Compliance F.2**. |
 | A-Z Canonical Document Suite | Substrate S.A/S.E | *capstone candidate* | **Primary: Substrate** as canonical architecture reference. Capstone-vs-MPP decision still pending. |
-| Multi-Cloud Boundary Model (MOD_U) | Compliance B.1 | Mod E | **Primary: Compliance B.1**. |
+| Multi-Cloud Boundary Model (UIAO_171) | Compliance B.1 | Mod E | **Primary: Compliance B.1**. |
 | Two-Brain Execution (ADR-002) | Substrate S.E.1 | Compliance G.6 | **Primary: Substrate S.E.1** (execution pattern); ADR lives in Compliance G.6. Two artifacts. |
-| AODIM | Substrate S.E.2 | Mod C | **Primary: Substrate S.E.2** (conceptual model); if expanded, MOD_C consumes. |
+| AODIM | Substrate S.E.2 | Mod C | **Primary: Substrate S.E.2** (conceptual model); if expanded, UIAO_153 consumes. |
 | Platform Server Build | Mod A | Compliance (runs compliance tooling) | **Primary: Mod A**. |
 | UIAO-Document-Report | Substrate S.P.8 | — | **Primary: Substrate**. Canon status undecided (keep or drop). |
 | CyberArk (PAM) | Mod F.5 | Compliance D | **Primary: Mod F.5**. |
@@ -425,7 +425,7 @@ Canon Steward can make.
 4. **Boundary model reconciliation** — Master Spec v1.3 vs. A-Z Suite +
    Core CLI Reference. Unchanged from earlier assessment.
 5. **SCuBA Value Prop authorship** — Doroszewski attribution.
-6. **AODIM fate** — expand (to MOD_AA/AB) / absorb (into MOD_C + Substrate
+6. **AODIM fate** — expand (to MOD_AA/AB) / absorb (into UIAO_153 + Substrate
    S.E.2) / retire.
 7. **UIAO-Document-Report canon status** — keep (author Ch 1-3) or drop.
 8. **DM registry expansion** — author DM_015/016/085/090 to hit the "15
