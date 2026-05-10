@@ -1,26 +1,33 @@
 """OrgTree CLI: `uiao orgtree ...` subcommands.
 
 Thin verbs over the loader/validator classes in
-:mod:`uiao.modernization.orgtree`. Each validate verb wraps a single
-`load_*` function: load defaults out of the ``uiao.canon.data.orgpath``
-package or from an explicit ``--data PATH`` override, raise the
-module's own typed validation error on bad input, print a one-line
-summary on success.
+:mod:`uiao.modernization.orgtree`. Three verb groups:
+
+- ``validate`` — schema + integrity check, one verb per corpus artifact
+  plus an aggregate. Wraps the typed ``*ValidationError`` exceptions.
+- ``show`` — read one entry from any of the canonical artifacts and
+  pretty-print it. No tenant access.
+- ``resolve`` — cross-reference one dynamic group's membership rule
+  against the codebook (UIAO_151) and report referenced OrgPath
+  validity.
+- ``export`` — serialize a canonical artifact to JSON for downstream
+  consumers (notably the PowerShell module's
+  ``Get-OrgTreeValidationReport -CodebookPath``, UIAO_159 §F3).
 
 The corpus this exercises is documented in canon UIAO_150-UIAO_176.
-The PowerShell companion module under tools/powershell/OrgTreeValidation
-calls these verbs for Functions 1-4 of UIAO_159; the PowerShell-native
-collection helpers (Functions 5-6) wrap Microsoft Graph directly and
-do not round-trip through this CLI.
 """
 
 from __future__ import annotations
 
+import dataclasses
+import json
+import sys
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import typer
 from rich.console import Console
+from rich.table import Table
 
 from uiao.modernization.orgtree.admin_units import (
     DelegationMatrix,
@@ -69,6 +76,27 @@ validate_app = typer.Typer(
     no_args_is_help=True,
 )
 orgtree_app.add_typer(validate_app, name="validate")
+
+show_app = typer.Typer(
+    name="show",
+    help="Print one entry from a canonical OrgTree artifact.",
+    no_args_is_help=True,
+)
+orgtree_app.add_typer(show_app, name="show")
+
+resolve_app = typer.Typer(
+    name="resolve",
+    help="Cross-reference a corpus entry against the codebook and related artifacts.",
+    no_args_is_help=True,
+)
+orgtree_app.add_typer(resolve_app, name="resolve")
+
+export_app = typer.Typer(
+    name="export",
+    help="Serialize a canonical OrgTree artifact to a downstream-consumable format.",
+    no_args_is_help=True,
+)
+orgtree_app.add_typer(export_app, name="export")
 
 console = Console()
 
@@ -255,3 +283,178 @@ def validate_all() -> None:
         console.print(f"[red]FAIL[/red] — {failed} of {len(checks)} corpus artifact(s) failed validation.")
         raise typer.Exit(code=1)
     console.print(f"[green]PASS[/green] — all {len(checks)} OrgTree corpus artifacts validated.")
+
+
+# ---------------------------------------------------------------------------
+# show — print one entry from a canonical artifact
+# ---------------------------------------------------------------------------
+
+
+def _print_record(title: str, record: object) -> None:
+    """Render a frozen dataclass as a two-column key/value table."""
+    table = Table(title=title, show_header=True, header_style="bold")
+    table.add_column("field", style="cyan")
+    table.add_column("value")
+    for f in dataclasses.fields(record):  # type: ignore[arg-type]
+        value = getattr(record, f.name)
+        # is_dataclass narrows to (instance | type); asdict needs an instance.
+        if dataclasses.is_dataclass(value) and not isinstance(value, type):
+            rendered = ", ".join(f"{k}={v!r}" for k, v in dataclasses.asdict(value).items())
+        elif isinstance(value, (list, tuple)):
+            rendered = ", ".join(repr(v) for v in value) if value else "(none)"
+        elif isinstance(value, dict):
+            rendered = ", ".join(f"{k}={v!r}" for k, v in value.items()) if value else "(none)"
+        elif value is None:
+            rendered = "(none)"
+        else:
+            rendered = str(value)
+        table.add_row(f.name, rendered)
+    console.print(table)
+
+
+def _not_found(kind: str, key: str, available: list[str], plural: Optional[str] = None) -> None:
+    """Print a NOT FOUND line listing up to five known keys.
+
+    `plural` overrides the default kind pluralization for the trailing
+    "Known {plural}:" hint (avoids "entrys" / "matrixs" rendering).
+    """
+    label = plural or f"{kind}s"
+    sample = ", ".join(available[:5]) + (", …" if len(available) > 5 else "")
+    console.print(f"[red]NOT FOUND[/red] {kind} '{key}'. Known {label}: {sample}")
+
+
+@show_app.command("codebook")
+def show_codebook_entry(code: str = typer.Argument(..., help="OrgPath code, e.g. ORG-FIN.")) -> None:
+    """Print one codebook entry (UIAO_151)."""
+    cb = load_codebook()
+    entry = cb.entries.get(code)
+    if entry is None:
+        _not_found("codebook entry", code, sorted(cb.entries.keys()), plural="codebook entries")
+        raise typer.Exit(code=1)
+    _print_record(f"codebook entry — {code} (UIAO_151)", entry)
+
+
+@show_app.command("dynamic-group")
+def show_dynamic_group(name: str = typer.Argument(..., help="Group name, e.g. OrgTree-FIN-Users.")) -> None:
+    """Print one dynamic group spec (UIAO_152)."""
+    lib = load_dynamic_group_library()
+    spec = lib.groups.get(name)
+    if spec is None:
+        _not_found("dynamic group", name, sorted(lib.groups.keys()))
+        raise typer.Exit(code=1)
+    _print_record(f"dynamic group — {name} (UIAO_152)", spec)
+
+
+@show_app.command("admin-unit")
+def show_admin_unit(name: str = typer.Argument(..., help="Administrative Unit name.")) -> None:
+    """Print one Administrative Unit (UIAO_154)."""
+    matrix = load_delegation_matrix()
+    au = matrix.administrative_units.get(name)
+    if au is None:
+        _not_found("administrative unit", name, sorted(matrix.administrative_units.keys()))
+        raise typer.Exit(code=1)
+    _print_record(f"administrative unit — {name} (UIAO_154)", au)
+
+
+@show_app.command("device-plane")
+def show_device_plane(name: str = typer.Argument(..., help="Device-plane name.")) -> None:
+    """Print one device plane (UIAO_153)."""
+    reg = load_device_plane_registry()
+    plane = reg.planes.get(name)
+    if plane is None:
+        _not_found("device plane", name, sorted(reg.planes.keys()))
+        raise typer.Exit(code=1)
+    _print_record(f"device plane — {name} (UIAO_153)", plane)
+
+
+# ---------------------------------------------------------------------------
+# resolve — cross-reference dynamic group rules against the codebook
+# ---------------------------------------------------------------------------
+
+
+@resolve_app.command("dynamic-group")
+def resolve_dynamic_group(name: str = typer.Argument(..., help="Group name, e.g. OrgTree-FIN-Users.")) -> None:
+    """Resolve a dynamic group's membership rule against the codebook (UIAO_151).
+
+    Loads the group spec (UIAO_152) and the codebook (UIAO_151), prints
+    the rule verbatim, and reports each OrgPath the rule references plus
+    whether that code is registered. Exits 1 if any reference is
+    unregistered (consistent with the dynamic-group integrity check).
+    """
+    lib = load_dynamic_group_library()
+    spec = lib.groups.get(name)
+    if spec is None:
+        _not_found("dynamic group", name, sorted(lib.groups.keys()))
+        raise typer.Exit(code=1)
+
+    codebook = load_codebook()
+    console.print(f"[bold]dynamic group:[/bold] {spec.name}  ([cyan]UIAO_152[/cyan])")
+    console.print(f"  category: {spec.category}")
+    console.print(f"  description: {spec.description}")
+    console.print(f"  rule: [yellow]{spec.rule}[/yellow]")
+    console.print()
+
+    table = Table(title="OrgPath references", show_header=True, header_style="bold")
+    table.add_column("orgpath")
+    table.add_column("status")
+    table.add_column("codebook description")
+    missing = 0
+    for ref in spec.orgpath_refs:
+        entry = codebook.entries.get(ref)
+        if entry is None:
+            table.add_row(ref, "[red]MISSING[/red]", "(not in codebook)")
+            missing += 1
+        else:
+            table.add_row(ref, "[green]OK[/green]", entry.description)
+    console.print(table)
+
+    if missing:
+        console.print(f"[red]FAIL[/red] — {missing} reference(s) missing from codebook.")
+        raise typer.Exit(code=1)
+
+
+# ---------------------------------------------------------------------------
+# export — emit canon as downstream-consumable JSON
+# ---------------------------------------------------------------------------
+
+
+def _codebook_to_payload(cb: Codebook) -> dict[str, Any]:
+    """JSON-serializable shape consumed by UIAO_159's pwsh
+    ``Get-OrgTreeValidationReport -CodebookPath``: an object with
+    ``entries`` as a list of ``{code, level, description, parent}``.
+    """
+    return {
+        "schema_version": cb.schema_version,
+        "document_id": cb.document_id,
+        "regex": cb.regex,
+        "max_depth": cb.max_depth,
+        "entries": [dataclasses.asdict(e) for e in cb.entries.values()],
+        "deprecated": [dataclasses.asdict(e) for e in cb.deprecated.values()],
+    }
+
+
+@export_app.command("codebook")
+def export_codebook(
+    out: Optional[Path] = typer.Option(
+        None,
+        "--out",
+        "-o",
+        help="Destination JSON file. Defaults to stdout.",
+    ),
+) -> None:
+    """Export the canonical codebook (UIAO_151) as JSON.
+
+    The shape matches what ``Get-OrgTreeValidationReport -CodebookPath``
+    consumes in the PowerShell companion module (UIAO_159 §F3): an
+    object with an ``entries`` array, each entry exposing
+    ``code/level/description/parent``.
+    """
+    cb = load_codebook()
+    payload = _codebook_to_payload(cb)
+    text = json.dumps(payload, indent=2, sort_keys=False)
+    if out is None:
+        sys.stdout.write(text)
+        sys.stdout.write("\n")
+    else:
+        out.write_text(text + "\n", encoding="utf-8")
+        console.print(f"[green]wrote[/green] {out} ({len(payload['entries'])} entries)")

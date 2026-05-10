@@ -55,7 +55,12 @@ $result = Invoke-UiaoOrgTreeValidate
 $result.Passed   # -> $true
 ```
 
-Tenant-side OrgPath audit (live):
+Tenant-side OrgPath audit (live). Generate the JSON codebook from the
+canonical YAML using the Python CLI, then feed it to the cmdlet:
+
+```bash
+uiao orgtree export codebook --out ./codebook.json
+```
 
 ```powershell
 $report = Get-OrgTreeValidationReport `
