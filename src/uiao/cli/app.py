@@ -54,6 +54,7 @@ from uiao.cli.generate import generate_app  # noqa: E402
 from uiao.cli.ir import ir_app  # noqa: E402
 from uiao.cli.ksi import ksi_app  # noqa: E402
 from uiao.cli.orchestrator import orchestrator_app  # noqa: E402
+from uiao.cli.orgtree import orgtree_app  # noqa: E402
 from uiao.cli.oscal import oscal_app  # noqa: E402
 from uiao.cli.scuba import scuba_app  # noqa: E402
 from uiao.cli.substrate import substrate_app  # noqa: E402
@@ -69,6 +70,7 @@ app.add_typer(generate_app, name="generate")
 app.add_typer(ir_app, name="ir")
 app.add_typer(ksi_app, name="ksi")
 app.add_typer(orchestrator_app, name="orchestrator")
+app.add_typer(orgtree_app, name="orgtree")
 app.add_typer(oscal_app, name="oscal")
 app.add_typer(scuba_app, name="scuba")
 app.add_typer(substrate_app, name="substrate")
