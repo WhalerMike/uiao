@@ -263,13 +263,13 @@ Before migrating any certificate workload, the existing ADCS infrastructure must
 
 **Remediation:**
 
-19. Disable CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT on the template (Subject Name tab → select \"Build from Active Directory information\").
+1. Disable CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT on the template (Subject Name tab → select \"Build from Active Directory information\").
 
-20. Restrict Enroll permissions to only the specific security groups that require the template.
+2. Restrict Enroll permissions to only the specific security groups that require the template.
 
-21. Enable Manager Approval on sensitive templates requiring SAN specification.
+3. Enable Manager Approval on sensitive templates requiring SAN specification.
 
-22. Monitor certificate requests with non-matching SANs via CA audit logs (Event ID 4887).
+4. Monitor certificate requests with non-matching SANs via CA audit logs (Event ID 4887).
 
 3.2 ESC2 --- Any Purpose or SubCA EKU
 
@@ -397,13 +397,13 @@ Before migrating any certificate workload, the existing ADCS infrastructure must
 
 **Remediation:**
 
-23. Enforce HTTPS-only on all ADCS web enrollment endpoints. Remove HTTP bindings.
+1. Enforce HTTPS-only on all ADCS web enrollment endpoints. Remove HTTP bindings.
 
-24. Enable Extended Protection for Authentication (EPA) set to *Require* on all IIS sites hosting enrollment endpoints.
+2. Enable Extended Protection for Authentication (EPA) set to *Require* on all IIS sites hosting enrollment endpoints.
 
-25. Disable NTLM authentication where possible; prefer Kerberos.
+3. Disable NTLM authentication where possible; prefer Kerberos.
 
-26. If NDES is only used for Intune, restrict access to the Intune Certificate Connector service account.
+4. If NDES is only used for Intune, restrict access to the Intune Certificate Connector service account.
 
 3.9 ESC Risk Scoring Matrix
 
@@ -656,17 +656,17 @@ Microsoft Entra ID Certificate-Based Authentication enables users to authenticat
 
 7.1 Authentication Flow
 
-27. **Certificate Presentation:** User selects a certificate from the device\'s certificate store (or inserts a smart card) at the Entra ID sign-in page.
+1. **Certificate Presentation:** User selects a certificate from the device\'s certificate store (or inserts a smart card) at the Entra ID sign-in page.
 
-28. **Chain Validation:** Entra ID validates the certificate chain against the uploaded trusted CA certificates. It verifies the certificate is not expired and checks revocation status via CRL or OCSP.
+2. **Chain Validation:** Entra ID validates the certificate chain against the uploaded trusted CA certificates. It verifies the certificate is not expired and checks revocation status via CRL or OCSP.
 
-29. **User Binding:** Entra ID maps the certificate to a user account using configured binding rules (certificateUserIds, UPN in SAN, etc.).
+3. **User Binding:** Entra ID maps the certificate to a user account using configured binding rules (certificateUserIds, UPN in SAN, etc.).
 
-30. **Authentication Strength Evaluation:** Entra determines whether the certificate satisfies single-factor or multi-factor authentication based on the CBA method policy.
+4. **Authentication Strength Evaluation:** Entra determines whether the certificate satisfies single-factor or multi-factor authentication based on the CBA method policy.
 
-31. **Token Issuance:** Upon successful validation and binding, Entra issues an access token and optional refresh token.
+5. **Token Issuance:** Upon successful validation and binding, Entra issues an access token and optional refresh token.
 
-32. **Conditional Access Evaluation:** Standard Conditional Access policies are evaluated, including device compliance, location, and risk-based controls.
+6. **Conditional Access Evaluation:** Standard Conditional Access policies are evaluated, including device compliance, location, and risk-based controls.
 
   ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   *\[Placeholder --- Diagram PKI-003: Entra CBA Authentication Flow --- 800×400px --- Certificate presentation, chain validation, user binding, token issuance, Conditional Access evaluation\]*
@@ -715,23 +715,23 @@ Configure the authentication strength in Microsoft Entra admin center → Protec
 
 Staged rollout enables testing Entra CBA with a subset of users while the domain remains federated. This avoids a \"big bang\" cutover and provides a rollback path.
 
-33. **Enable CBA Authentication Method:** Navigate to Microsoft Entra admin center → Protection → Authentication methods → Policies. Enable \"Certificate-based authentication.\" Target to a pilot group (not All Users).
+1. **Enable CBA Authentication Method:** Navigate to Microsoft Entra admin center → Protection → Authentication methods → Policies. Enable \"Certificate-based authentication.\" Target to a pilot group (not All Users).
 
-34. **Upload CA Certificates:** Navigate to Security → Certificate authorities. Upload the Root CA and all intermediate/issuing CA certificates (.cer, base-64). Set CRL distribution point URL for each CA.
+2. **Upload CA Certificates:** Navigate to Security → Certificate authorities. Upload the Root CA and all intermediate/issuing CA certificates (.cer, base-64). Set CRL distribution point URL for each CA.
 
-35. **Configure Binding Rules:** Define username binding rules in the CBA method configuration. Start with UPN-based binding for compatibility; add high-affinity bindings (certificateUserIds) for production.
+3. **Configure Binding Rules:** Define username binding rules in the CBA method configuration. Start with UPN-based binding for compatibility; add high-affinity bindings (certificateUserIds) for production.
 
-36. **Create Pilot Security Groups:** Create dedicated security groups in Entra ID for CBA pilot users. Start with 10--20 users representing different certificate types and platforms.
+4. **Create Pilot Security Groups:** Create dedicated security groups in Entra ID for CBA pilot users. Start with 10--20 users representing different certificate types and platforms.
 
-37. **Enable Staged Rollout:** Navigate to Microsoft Entra Connect → Staged rollout of cloud authentication. Enable \"Certificate-based authentication.\" Add the pilot security groups. Ensure Password Hash Sync (PHS) is enabled as a fallback.
+5. **Enable Staged Rollout:** Navigate to Microsoft Entra Connect → Staged rollout of cloud authentication. Enable \"Certificate-based authentication.\" Add the pilot security groups. Ensure Password Hash Sync (PHS) is enabled as a fallback.
 
-38. **Test Authentication:** Pilot users authenticate with certificates at login.microsoftonline.com. They are no longer redirected to ADFS. Verify token claims, MFA satisfaction, and Conditional Access evaluation.
+6. **Test Authentication:** Pilot users authenticate with certificates at login.microsoftonline.com. They are no longer redirected to ADFS. Verify token claims, MFA satisfaction, and Conditional Access evaluation.
 
-39. **Expand Pilot:** Incrementally add users to the staged rollout groups. Monitor sign-in logs for failures. Target 200+ users across multiple sites and certificate types before full cutover.
+7. **Expand Pilot:** Incrementally add users to the staged rollout groups. Monitor sign-in logs for failures. Target 200+ users across multiple sites and certificate types before full cutover.
 
-40. **Convert Federated Domain to Managed:** Once confidence is established, convert the domain from federated to managed using Update-MgDomain or the Entra admin center. All users in the domain now authenticate against Entra ID.
+8. **Convert Federated Domain to Managed:** Once confidence is established, convert the domain from federated to managed using Update-MgDomain or the Entra admin center. All users in the domain now authenticate against Entra ID.
 
-41. **Monitor and Optimize:** Monitor Entra sign-in logs filtered by authentication method = \"X.509 Certificate.\" Track CBA success rate, binding failures, and CRL/OCSP check latency. Remove staged rollout groups (no longer needed after domain conversion).
+9. **Monitor and Optimize:** Monitor Entra sign-in logs filtered by authentication method = \"X.509 Certificate.\" Track CBA success rate, binding failures, and CRL/OCSP check latency. Remove staged rollout groups (no longer needed after domain conversion).
 
 7.5 Migration from ADFS CBA
 
@@ -817,21 +817,21 @@ The PKI modernization migration follows six phases, each with defined prerequisi
 
 **Steps:**
 
-42. Run Get-UIAOCAInventory to document all CA servers, key parameters, and operational status.
+1. Run Get-UIAOCAInventory to document all CA servers, key parameters, and operational status.
 
-43. Run Get-UIAOCertificateTemplates to export all template configurations and permissions.
+2. Run Get-UIAOCertificateTemplates to export all template configurations and permissions.
 
-44. Run Test-UIAOESCVulnerabilities to scan for ESC1--ESC8 vulnerabilities.
+3. Run Test-UIAOESCVulnerabilities to scan for ESC1--ESC8 vulnerabilities.
 
-45. Run Get-UIAOIssuedCertificates to inventory all active certificates by template.
+4. Run Get-UIAOIssuedCertificates to inventory all active certificates by template.
 
-46. Execute Get-UIAOCertificateInventory to classify templates (MIGRATE/BRIDGE/RETAIN/RETIRE).
+5. Execute Get-UIAOCertificateInventory to classify templates (MIGRATE/BRIDGE/RETAIN/RETIRE).
 
-47. Identify all relying parties (RADIUS, VPN, Wi-Fi controllers, web applications) and document their CA trust requirements.
+6. Identify all relying parties (RADIUS, VPN, Wi-Fi controllers, web applications) and document their CA trust requirements.
 
-48. Remediate all Critical and High ESC vulnerabilities (ESC1, ESC2, ESC6, ESC8 first).
+7. Remediate all Critical and High ESC vulnerabilities (ESC1, ESC2, ESC6, ESC8 first).
 
-49. Generate assessment report and commit to assessments/pki/{domain}/{timestamp}/ in Gitea.
+8. Generate assessment report and commit to assessments/pki/{domain}/{timestamp}/ in Gitea.
 
 **Validation Criteria:** Assessment report approved by PKI administrator and security team. All Critical ESC vulnerabilities remediated and verified. Certificate inventory classified with zero unclassified templates.
 
@@ -854,21 +854,21 @@ The PKI modernization migration follows six phases, each with defined prerequisi
 
 **Steps:**
 
-50. Provision Cloud PKI CA: Create Root CA (Cloud Root model) or generate CSR and sign with on-prem Root CA (BYOCA model).
+1. Provision Cloud PKI CA: Create Root CA (Cloud Root model) or generate CSR and sign with on-prem Root CA (BYOCA model).
 
-51. Create Cloud PKI Issuing CA subordinate to the Root CA.
+2. Create Cloud PKI Issuing CA subordinate to the Root CA.
 
-52. Install Certificate Connector for Microsoft Intune on a designated Windows Server (v6.2406+ for strong mapping). Configure connectivity to ADCS if BRIDGE workloads exist.
+3. Install Certificate Connector for Microsoft Intune on a designated Windows Server (v6.2406+ for strong mapping). Configure connectivity to ADCS if BRIDGE workloads exist.
 
-53. Upload Root CA and Issuing CA public keys to the Entra ID certificate authorities trust store.
+4. Upload Root CA and Issuing CA public keys to the Entra ID certificate authorities trust store.
 
-54. Deploy Trusted Root Certificate profiles via Intune: target \"All Devices\" to establish chain trust.
+5. Deploy Trusted Root Certificate profiles via Intune: target \"All Devices\" to establish chain trust.
 
-55. For BYOCA: deploy Cloud PKI Root (same as on-prem root) via GPO to any non-Intune devices.
+6. For BYOCA: deploy Cloud PKI Root (same as on-prem root) via GPO to any non-Intune devices.
 
-56. Issue a test certificate from Cloud PKI Issuing CA and verify chain validation on a test device.
+7. Issue a test certificate from Cloud PKI Issuing CA and verify chain validation on a test device.
 
-57. Verify CRL accessibility from both on-premises and internet-connected endpoints.
+8. Verify CRL accessibility from both on-premises and internet-connected endpoints.
 
 **Validation Criteria:** Cloud PKI Root and Issuing CA operational. Test certificate issued and validated successfully. Trusted Root profile deployed to \>99% of managed devices. Certificate Connector reporting healthy.
 
@@ -891,23 +891,23 @@ The PKI modernization migration follows six phases, each with defined prerequisi
 
 **Steps:**
 
-58. Create SCEP certificate profile for Wi-Fi 802.1X targeting the pilot device group.
+1. Create SCEP certificate profile for Wi-Fi 802.1X targeting the pilot device group.
 
-59. Verify certificate issuance: device receives certificate, certificate chain validates, SAN includes strong mapping SID URI (if applicable).
+2. Verify certificate issuance: device receives certificate, certificate chain validates, SAN includes strong mapping SID URI (if applicable).
 
-60. Test Wi-Fi authentication with Cloud PKI certificate on pilot devices.
+3. Test Wi-Fi authentication with Cloud PKI certificate on pilot devices.
 
-61. Test VPN authentication with Cloud PKI certificate on pilot devices.
+4. Test VPN authentication with Cloud PKI certificate on pilot devices.
 
-62. Enable Entra CBA staged rollout for the pilot user group (Section 7.4).
+5. Enable Entra CBA staged rollout for the pilot user group (Section 7.4).
 
-63. Test user authentication via certificate at Entra ID sign-in. Verify token claims and MFA satisfaction.
+6. Test user authentication via certificate at Entra ID sign-in. Verify token claims and MFA satisfaction.
 
-64. Monitor Intune certificate dashboard: track issuance success, failures, and pending states.
+7. Monitor Intune certificate dashboard: track issuance success, failures, and pending states.
 
-65. Monitor Entra sign-in logs: filter by authentication method \"X.509 Certificate.\"
+8. Monitor Entra sign-in logs: filter by authentication method \"X.509 Certificate.\"
 
-66. Address failures: review Troubleshooting Reference (Section 13) for common issues.
+9. Address failures: review Troubleshooting Reference (Section 13) for common issues.
 
 **Validation Criteria:** \>95% certificate issuance success rate. Zero authentication failures attributable to certificate configuration. Pilot user CBA authentication functioning with correct MFA claim. All pilot relying parties accepting Cloud PKI certificates.
 
@@ -930,17 +930,17 @@ The PKI modernization migration follows six phases, each with defined prerequisi
 
 **Steps:**
 
-67. Expand SCEP certificate profiles to OrgPath-based dynamic groups (by region, site, department, device tier).
+1. Expand SCEP certificate profiles to OrgPath-based dynamic groups (by region, site, department, device tier).
 
-68. Deploy PKCS profiles for S/MIME and application-specific certificates.
+2. Deploy PKCS profiles for S/MIME and application-specific certificates.
 
-69. Expand Entra CBA staged rollout: add all user groups incrementally (200 users per wave, monitor for 48 hours between waves).
+3. Expand Entra CBA staged rollout: add all user groups incrementally (200 users per wave, monitor for 48 hours between waves).
 
-70. Verify cross-platform coverage: Windows, iOS, Android, macOS.
+4. Verify cross-platform coverage: Windows, iOS, Android, macOS.
 
-71. Monitor certificate compliance: devices with both ADCS and Cloud PKI certs (expected during transition); devices with only Cloud PKI certs (target state).
+5. Monitor certificate compliance: devices with both ADCS and Cloud PKI certs (expected during transition); devices with only Cloud PKI certs (target state).
 
-72. Begin disabling ADCS auto-enrollment for MIGRATE-classified templates on device groups that have received Cloud PKI certificates.
+6. Begin disabling ADCS auto-enrollment for MIGRATE-classified templates on device groups that have received Cloud PKI certificates.
 
 **Validation Criteria:** All managed devices have Cloud PKI certificates for MIGRATE-classified use cases. CBA staged rollout includes all users. ADCS auto-enrollment disabled for MIGRATE templates on migrated devices.
 
@@ -963,19 +963,19 @@ The PKI modernization migration follows six phases, each with defined prerequisi
 
 **Steps:**
 
-73. Verify: zero active ADCS-issued certificates for MIGRATE-classified templates on managed endpoints (all expired or superseded).
+1. Verify: zero active ADCS-issued certificates for MIGRATE-classified templates on managed endpoints (all expired or superseded).
 
-74. Convert federated domains to managed authentication (Update-MgDomain).
+2. Convert federated domains to managed authentication (Update-MgDomain).
 
-75. Disable ADFS certificate authentication rules.
+3. Disable ADFS certificate authentication rules.
 
-76. Remove ADCS auto-enrollment GPO links for MIGRATE templates.
+4. Remove ADCS auto-enrollment GPO links for MIGRATE templates.
 
-77. Retain ADCS auto-enrollment for BRIDGE templates (DC auth, LDAPS, NPS).
+5. Retain ADCS auto-enrollment for BRIDGE templates (DC auth, LDAPS, NPS).
 
-78. Maintain ADFS operational (powered off but restorable) for 30-day rollback window.
+6. Maintain ADFS operational (powered off but restorable) for 30-day rollback window.
 
-79. Update documentation: ADCS operational procedures revised to BRIDGE/RETAIN scope only.
+7. Update documentation: ADCS operational procedures revised to BRIDGE/RETAIN scope only.
 
 **Validation Criteria:** Zero active ADCS certificates on managed endpoints for MIGRATE templates. All domains converted to managed. ADFS CBA disabled. Entra CBA operational for all users.
 
@@ -998,25 +998,25 @@ The PKI modernization migration follows six phases, each with defined prerequisi
 
 **Steps:**
 
-80. Archive Issuing CA database: certutil -backup \<BackupPath\>. Store in secure, offline location per retention policy.
+1. Archive Issuing CA database: certutil -backup \<BackupPath\>. Store in secure, offline location per retention policy.
 
-81. If Cloud PKI Root CA model (not BYOCA): revoke the ADCS Issuing CA certificate from the Root CA.
+2. If Cloud PKI Root CA model (not BYOCA): revoke the ADCS Issuing CA certificate from the Root CA.
 
-82. If BYOCA: do not revoke --- the Issuing CA certificate chain is still in use by Cloud PKI.
+3. If BYOCA: do not revoke --- the Issuing CA certificate chain is still in use by Cloud PKI.
 
-83. Decommission NDES server: uninstall NDES role, remove IIS site, remove DNS records.
+4. Decommission NDES server: uninstall NDES role, remove IIS site, remove DNS records.
 
-84. Decommission CES/CEP servers if no longer serving BRIDGE workloads.
+5. Decommission CES/CEP servers if no longer serving BRIDGE workloads.
 
-85. Decommission Issuing CA server (if all workloads migrated or transferred to a retained Issuing CA for BRIDGE use).
+6. Decommission Issuing CA server (if all workloads migrated or transferred to a retained Issuing CA for BRIDGE use).
 
-86. Retain offline Root CA per compliance and organizational policy. Store securely with documented recovery procedures.
+7. Retain offline Root CA per compliance and organizational policy. Store securely with documented recovery procedures.
 
-87. Remove auto-enrollment GPOs for decommissioned templates.
+8. Remove auto-enrollment GPOs for decommissioned templates.
 
-88. Remove decommissioned CA\'s pKIEnrollmentService object from Active Directory.
+9. Remove decommissioned CA\'s pKIEnrollmentService object from Active Directory.
 
-89. Update Gitea repository: commit decommission record to assessments/pki/{domain}/{timestamp}/decommission.json.
+10. Update Gitea repository: commit decommission record to assessments/pki/{domain}/{timestamp}/decommission.json.
 
 **Validation Criteria:** All ADCS infrastructure for MIGRATE workloads decommissioned or archived. Offline Root CA retained and documented. No orphaned auto-enrollment GPOs. Gitea repository updated.
 
