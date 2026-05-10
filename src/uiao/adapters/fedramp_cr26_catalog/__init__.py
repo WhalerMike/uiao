@@ -114,8 +114,9 @@ def default_snapshot_dir(sha: str = DEFAULT_SNAPSHOT_SHA) -> Path:
     Uses ``importlib.resources`` so the adapter works whether the
     package is installed editably or as a wheel (AGENTS.md I4).
     """
-    canon_root = resources.files("uiao.canon")
-    candidate = canon_root.joinpath("compliance", "reference", "fedramp-cr26", "snapshot", sha)
+    candidate = resources.files("uiao.canon")
+    for part in ("compliance", "reference", "fedramp-cr26", "snapshot", sha):
+        candidate = candidate.joinpath(part)
     return Path(str(candidate))
 
 
@@ -148,7 +149,8 @@ def load_catalog(snapshot_dir: Path) -> dict[str, Any]:
 
 
 def _ksi_group(catalog: dict[str, Any]) -> dict[str, Any] | None:
-    for group in catalog.get("catalog", {}).get("groups", []) or []:
+    groups: list[dict[str, Any]] = catalog.get("catalog", {}).get("groups", []) or []
+    for group in groups:
         if group.get("id") == "KSI":
             return group
     return None
