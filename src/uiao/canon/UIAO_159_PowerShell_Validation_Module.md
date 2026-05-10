@@ -6,7 +6,7 @@ status: Current
 classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
-updated_at: "2026-05-13"
+updated_at: "2026-05-14"
 boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_I"
@@ -111,21 +111,39 @@ target?" without reading raw YAML.
 ### `export` — emit canon as downstream-consumable JSON
 
 ```
-uiao orgtree export codebook [--out PATH]
+uiao orgtree export codebook        [--out PATH]
+uiao orgtree export dynamic-groups  [--out PATH]
 ```
 
-Serializes the codebook (UIAO_151) to JSON. Shape matches what the
-PowerShell `Get-OrgTreeValidationReport -CodebookPath` cmdlet
-(UIAO_159 §F3) expects: an object with `entries` as a list of
-`{code, level, description, parent}`. Use it to bridge the canonical
-YAML and the pwsh-side JSON file:
+Both verbs serialize a canonical artifact to JSON in a shape the
+PowerShell companion module consumes directly:
+
+- **`export codebook`** — emits `{schema_version, document_id, regex,
+  max_depth, entries, deprecated}`. The `entries` array carries
+  `{code, level, description, parent}` per entry. Consumed by
+  `Get-OrgTreeValidationReport -CodebookPath` (UIAO_159 §F3).
+- **`export dynamic-groups`** — emits `{schema_version, document_id,
+  naming_regex, purpose_suffixes, groups}`. The `groups` array carries
+  `{groupName, membershipRule, category, orgpathRefs, description}`
+  per group. The Python dataclass uses `name`/`rule` internally; the
+  export translates to `groupName`/`membershipRule` so the pwsh
+  cmdlet `Test-DynamicGroupAlignment -GroupLibraryPath` (UIAO_159 §F4)
+  keys off the right fields.
+
+Use these to bridge the canonical YAML and the pwsh-side JSON files:
 
 ```bash
-uiao orgtree export codebook --out /tmp/codebook.json
+uiao orgtree export codebook       --out /tmp/codebook.json
+uiao orgtree export dynamic-groups --out /tmp/groups.json
 pwsh -c "Get-OrgTreeValidationReport -TenantId \$env:TENANT_ID -CodebookPath /tmp/codebook.json"
+pwsh -c "Test-DynamicGroupAlignment -TenantId \$env:TENANT_ID -GroupLibraryPath /tmp/groups.json"
 ```
 
-Tests: `tests/test_cli_orgtree.py` (34 tests covering validate, show,
+`Test-DynamicGroupAlignment` accepts both the new wrapped shape
+(`$library.groups`) and the legacy bare-array shape for backward
+compatibility with admin-staged fixtures.
+
+Tests: `tests/test_cli_orgtree.py` (36 tests covering validate, show,
 resolve, export, and list).
 
 ## Surface 2 — PowerShell module
