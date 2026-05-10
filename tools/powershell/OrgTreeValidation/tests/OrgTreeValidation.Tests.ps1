@@ -10,6 +10,9 @@
 #
 # Functions 3, 4, 5 require a live tenant + Microsoft.Graph SDK and are
 # not exercised here. They are smoke-tested manually per UIAO_159.
+# Mock-based coverage was attempted in PR #368 but parked — the
+# Pester / Microsoft.Graph / `Mock -ModuleName` interaction needs a
+# follow-up with local Pester available to debug.
 
 BeforeAll {
     $script:ModuleRoot = (Resolve-Path "$PSScriptRoot/..").Path
@@ -155,3 +158,4 @@ Describe 'Canonical regex parity with Python source-of-truth' {
         $pwshOk | Should -BeTrue
     }
 }
+

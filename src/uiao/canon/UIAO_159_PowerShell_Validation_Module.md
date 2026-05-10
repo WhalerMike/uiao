@@ -6,7 +6,7 @@ status: Current
 classification: CANONICAL
 owner: Michael Stratton
 created_at: "2026-04-18"
-updated_at: "2026-05-12"
+updated_at: "2026-05-13"
 boundary: GCC-Moderate
 provenance_flatten:
   prior_id: "MOD_I"
@@ -161,7 +161,10 @@ Pester covers all four offline-testable cmdlets:
 - **Canonical regex parity test** — extracts the `CANONICAL_REGEX` literal from `src/uiao/modernization/orgtree/codebook.py` at test time and asserts that `Test-OrgPathFormat` matches Python's behavior on a known sample. This is the load-bearing test that prevents the two surfaces from drifting.
 
 Tenant-scope cmdlets (3, 4, 5) are smoke-tested manually against a
-non-production tenant.
+non-production tenant. Two fixture files (`codebook.json`,
+`group-library.json`) under `tests/fixtures/` are staged for a future
+Pester-mock implementation; a first attempt is parked in PR #368
+pending a debug pass with local Pester available.
 
 ## Boundary rules
 
