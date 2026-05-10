@@ -560,6 +560,64 @@ adapters:
         adr: ADR-043
 
   # ──────────────────────────────────────────────────────────────────
+  # FedRAMP CR26 catalog reconciler — allocated by ADR-061 (2026-05-10)
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: fedramp-cr26-catalog
+    name: FedRAMP CR26 Catalog Reconciler (Vendored Snapshot)
+    class: conformance
+    mission-class: policy
+    status: proposed
+    phase: phase-2
+    vendor: FedRAMP (via Palladium Innovations unofficial OSCAL generator)
+    license: CC0-1.0
+    runtime: python-3.12
+    runner-class: github-hosted
+    tenancy: single-tenant
+    policy-engine: none
+    scope:
+      - cr26-catalog
+      - cr26-profile-20x
+      - cr26-profile-rev5
+      - cr26-to-rev5-mapping
+    outputs:
+      - findings.json
+    triggers:
+      - workflow_dispatch
+      - schedule
+    evidence-class: interval
+    retention-years: 3
+    freshness-window-hours: 720
+    controls:
+      - CA-2
+      - CA-7
+    automation-domain:
+      - configuration-management
+    gcc-boundary: gcc-moderate
+    ssot-mutation: never
+    certificate-anchored: true
+    object-identity-only: true
+    references:
+      - ADR-047
+      - ADR-061
+      - UIAO_132
+      - UIAO_133
+      - https://github.com/Palladium-Innovations/fedramp-cr26-oscal
+    notes: >-
+      Read-only reconciler that loads the vendored CR26 OSCAL snapshot
+      at src/uiao/canon/compliance/reference/fedramp-cr26/snapshot/<sha>/
+      and compares its KSI catalog structure against the local KSI rule
+      corpus at src/uiao/ksi/rules/*.yaml. Emits DRIFT-SCHEMA (catalog
+      shape diverges from the prior pinned snapshot in a way that
+      breaks emitter contracts) and DRIFT-PROVENANCE (a referenced KSI
+      theme or CR26 control ID no longer resolves). Implementation:
+      src/uiao/adapters/fedramp_cr26_catalog/. Snapshot pin discipline
+      and authority posture are governed by ADR-061 D1 / D2; this
+      adapter is the consumer described in ADR-061 D3. Status is
+      `proposed` while ADR-061 itself is PROPOSED — advances to
+      `active` when ADR-061 ratifies.
+
+  # ──────────────────────────────────────────────────────────────────
   # Reserved adapter slots allocated by ADR-049 (2026-04-30)
   # ──────────────────────────────────────────────────────────────────
 
