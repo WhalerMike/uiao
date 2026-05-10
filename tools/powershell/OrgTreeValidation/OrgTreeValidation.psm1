@@ -215,11 +215,11 @@ function Test-DynamicGroupAlignment {
         Microsoft.Graph's Connect-MgGraph with Group.Read.All scope.
     .PARAMETER GetGroup
         Scriptblock invoked once per library entry to fetch the matching
-        tenant group. Receives `$DisplayName` as an automatic variable in
-        scope and must return either a group object (with a
-        `MembershipRule` property) or $null when the group is missing.
-        Default binds to Get-MgGroup with a server-side `displayName eq`
-        filter.
+        tenant group. Receives the display name as a positional argument
+        (`param($DisplayName)`) and must return either a group object
+        (with a `MembershipRule` property) or $null when the group is
+        missing. Default binds to Get-MgGroup with a server-side
+        `displayName eq` filter.
     .NOTES
         UIAO_159 Function 4. Tenant-scope; Pester-tested via DI.
     #>
@@ -239,6 +239,7 @@ function Test-DynamicGroupAlignment {
         },
 
         [scriptblock]$GetGroup = {
+            param($DisplayName)
             Get-MgGroup -Filter "displayName eq '$DisplayName'" -ErrorAction SilentlyContinue
         }
     )
@@ -257,8 +258,12 @@ function Test-DynamicGroupAlignment {
     $details = @()
 
     foreach ($definition in $definitions) {
-        $DisplayName = $definition.groupName
-        $tenantGroup = & $GetGroup
+        # Pass DisplayName as an explicit positional arg. Scriptblock
+        # closures across the test/module session boundary don't always
+        # surface the cmdlet's local scope to the scriptblock body, so
+        # "& $GetGroup" with implicit $DisplayName lookup is unreliable
+        # under Pester. Explicit param($DisplayName) is robust.
+        $tenantGroup = & $GetGroup $definition.groupName
         if (-not $tenantGroup) {
             $missing++
             $details += [pscustomobject]@{ GroupName = $definition.groupName; Status = 'Missing' }

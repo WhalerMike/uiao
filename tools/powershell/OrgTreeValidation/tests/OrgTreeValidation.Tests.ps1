@@ -254,12 +254,12 @@ Describe 'Test-DynamicGroupAlignment' {
             -TenantId 'fake' -GroupLibraryPath $script:LibraryPath `
             -ConnectGraph {} `
             -GetGroup {
-                # $DisplayName is set per-iteration by the cmdlet; mirror
-                # the canonical rule the library declares for that name.
+                param($DisplayName)
+                # Mirror the canonical rule the library declares for each name.
                 switch ($DisplayName) {
-                    'OrgTree-FIN-Users' { [pscustomobject]@{ DisplayName=$_; MembershipRule='(user.extensionAttribute1 -startsWith "ORG-FIN")' } }
-                    'OrgTree-HR-Users'  { [pscustomobject]@{ DisplayName=$_; MembershipRule='(user.extensionAttribute1 -startsWith "ORG-HR")'  } }
-                    'OrgTree-IT-Users'  { [pscustomobject]@{ DisplayName=$_; MembershipRule='(user.extensionAttribute1 -startsWith "ORG-IT")'  } }
+                    'OrgTree-FIN-Users' { [pscustomobject]@{ DisplayName=$DisplayName; MembershipRule='(user.extensionAttribute1 -startsWith "ORG-FIN")' } }
+                    'OrgTree-HR-Users'  { [pscustomobject]@{ DisplayName=$DisplayName; MembershipRule='(user.extensionAttribute1 -startsWith "ORG-HR")'  } }
+                    'OrgTree-IT-Users'  { [pscustomobject]@{ DisplayName=$DisplayName; MembershipRule='(user.extensionAttribute1 -startsWith "ORG-IT")'  } }
                 }
             }
         $r.AlignedGroups    | Should -Be 3
@@ -272,6 +272,7 @@ Describe 'Test-DynamicGroupAlignment' {
             -TenantId 'fake' -GroupLibraryPath $script:LibraryPath `
             -ConnectGraph {} `
             -GetGroup {
+                param($DisplayName)
                 if ($DisplayName -eq 'OrgTree-FIN-Users') {
                     [pscustomobject]@{ DisplayName=$DisplayName; MembershipRule='(user.extensionAttribute1 -eq "ORG-FIN")' }  # wrong operator
                 }
