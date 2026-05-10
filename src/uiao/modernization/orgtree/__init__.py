@@ -1,9 +1,13 @@
 """OrgTree canon + codebook loader.
 
-Narrative canon lives in UIAO_151..UIAO_176 markdown files in this directory; the
-executable canon is :mod:`uiao.modernization.orgtree.codebook`, which loads
-``canon/data/orgpath/codebook.yaml`` and validates it against
-``schemas/orgpath/codebook.schema.json``.
+Narrative canon lives in ``src/uiao/canon/UIAO_150_*.md`` through
+``UIAO_176_*.md`` (registered in
+``src/uiao/canon/document-registry.yaml``). The executable canon is the
+six modules in this package — :mod:`~uiao.modernization.orgtree.codebook`
+loads ``canon/data/orgpath/codebook.yaml`` and validates it against
+``schemas/orgpath/codebook.schema.json``; the other five modules follow
+the same shape for their respective YAML+schema pairs. Both surfaces
+are exercised end-to-end by ``uiao orgtree validate ...``.
 """
 
 from .admin_units import (
