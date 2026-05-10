@@ -20,10 +20,10 @@ renderers, and the drift-engine configuration glue.
 Per [ADR-060](../canon/adr/adr-060-mod-namespace-flatten-into-uiao-canon.md),
 the prior `MOD_xxx` namespace and its sibling `document-registry.yaml`
 were retired. Documents previously addressed as `MOD_001` / `MOD_A` …
-`MOD_Z` are now addressable as `UIAO_150` … `UIAO_176`. The historical
-slug correspondence is recorded in
-[`src/uiao/canon/data/mod-slug-redirects.yaml`](../canon/data/mod-slug-redirects.yaml)
-for the duration of the deprecation window.
+`MOD_Z` are now addressable as `UIAO_150` … `UIAO_176`. Each renamed
+file's frontmatter carries a `provenance_flatten:` block recording its
+prior slug (e.g., `prior_id: "MOD_A"`); use that as the source of truth
+when chasing pre-2026-05-10 references.
 
 ## Module contents
 
