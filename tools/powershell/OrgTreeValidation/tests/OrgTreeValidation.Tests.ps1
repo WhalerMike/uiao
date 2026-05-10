@@ -1,21 +1,55 @@
 # Pester 5.x tests for OrgTreeValidation.psm1.
 #
 # Coverage scope:
-#   - Test-OrgPathFormat          (offline regex; fully covered)
-#   - Test-OrgPathHierarchy       (offline lookup; fully covered)
-#   - Compare-OrgTreeSnapshots    (offline diff; fully covered via fixtures)
-#   - Canonical regex parity      (the literal in the .psm1 must match
-#                                  the Python source-of-truth in
-#                                  src/uiao/modernization/orgtree/codebook.py)
+#   - Test-OrgPathFormat            (offline regex; fully covered)
+#   - Test-OrgPathHierarchy         (offline lookup; fully covered)
+#   - Compare-OrgTreeSnapshots      (offline diff; fully covered via fixtures)
+#   - Canonical regex parity        (the literal in the .psm1 must match
+#                                    the Python source-of-truth in
+#                                    src/uiao/modernization/orgtree/codebook.py)
+#   - Get-OrgTreeValidationReport   (tenant-scope; covered via Graph SDK
+#                                    mocks defined in BeforeAll below)
+#   - Test-DynamicGroupAlignment    (tenant-scope; covered via mocks)
+#   - Export-OrgTreeSnapshot        (tenant-scope; covered via mocks)
 #
-# Functions 3, 4, 5 require a live tenant + Microsoft.Graph SDK and are
-# not exercised here. They are smoke-tested manually per UIAO_159.
+# The tenant-scope cmdlets call Microsoft.Graph cmdlets (Connect-MgGraph,
+# Get-MgUser, Get-MgGroup). Microsoft.Graph is intentionally NOT installed
+# in CI — we stub the three cmdlets in the global scope of this test
+# session so Pester's Mock can substitute behavior per test. When the
+# real Microsoft.Graph module is loaded in production, the global stubs
+# are shadowed and the real cmdlets win.
 
 BeforeAll {
     $script:ModuleRoot = (Resolve-Path "$PSScriptRoot/..").Path
     $script:RepoRoot   = (Resolve-Path "$PSScriptRoot/../../../..").Path
     Import-Module "$script:ModuleRoot/OrgTreeValidation.psm1" -Force
     $script:FixtureDir = Join-Path $PSScriptRoot 'fixtures'
+
+    # Stub Microsoft.Graph cmdlets in global scope so the module can
+    # resolve them at invocation time and Pester can mock them per-test.
+    # The module's functions look up commands via module -> global; these
+    # stubs are inert (always return $null / empty array) but exist so
+    # `Mock <name>` succeeds.
+    if (-not (Get-Command -Name Connect-MgGraph -ErrorAction SilentlyContinue)) {
+        function global:Connect-MgGraph {
+            [CmdletBinding()]
+            param([Parameter(ValueFromRemainingArguments = $true)]$Rest)
+        }
+    }
+    if (-not (Get-Command -Name Get-MgUser -ErrorAction SilentlyContinue)) {
+        function global:Get-MgUser {
+            [CmdletBinding()]
+            param([Parameter(ValueFromRemainingArguments = $true)]$Rest)
+            return @()
+        }
+    }
+    if (-not (Get-Command -Name Get-MgGroup -ErrorAction SilentlyContinue)) {
+        function global:Get-MgGroup {
+            [CmdletBinding()]
+            param([Parameter(ValueFromRemainingArguments = $true)]$Rest)
+            return @()
+        }
+    }
 }
 
 
@@ -153,5 +187,231 @@ Describe 'Canonical regex parity with Python source-of-truth' {
         $pwshOk   = Test-OrgPathFormat -OrgPath $sample
         $pwshOk | Should -Be $pythonOk
         $pwshOk | Should -BeTrue
+    }
+}
+
+
+# ---------------------------------------------------------------------------
+# Get-OrgTreeValidationReport (Function 3) — mocked Microsoft.Graph
+# ---------------------------------------------------------------------------
+#
+# The cmdlet calls Connect-MgGraph + Get-MgUser. We synthesize user objects
+# with the OnPremisesExtensionAttributes.ExtensionAttribute1 shape that the
+# real Graph SDK returns, then assert the cmdlet's counting / classification
+# logic against known inputs.
+
+Describe 'Get-OrgTreeValidationReport' {
+    BeforeEach {
+        $script:CodebookPath = Join-Path $script:FixtureDir 'codebook.json'
+        Mock -ModuleName OrgTreeValidation Connect-MgGraph {}
+    }
+
+    It 'returns DriftDetected=$false when every user has a valid registered OrgPath' {
+        Mock -ModuleName OrgTreeValidation Get-MgUser {
+            return @(
+                [pscustomobject]@{
+                    Id = 'u1'
+                    OnPremisesExtensionAttributes = [pscustomobject]@{ ExtensionAttribute1 = 'ORG' }
+                }
+                [pscustomobject]@{
+                    Id = 'u2'
+                    OnPremisesExtensionAttributes = [pscustomobject]@{ ExtensionAttribute1 = 'ORG-FIN-AP' }
+                }
+                [pscustomobject]@{
+                    Id = 'u3'
+                    OnPremisesExtensionAttributes = [pscustomobject]@{ ExtensionAttribute1 = 'ORG-HR' }
+                }
+            )
+        }
+        $report = Get-OrgTreeValidationReport -TenantId 'fake' -CodebookPath $script:CodebookPath
+        $report.TotalUsers      | Should -Be 3
+        $report.ValidOrgPaths   | Should -Be 3
+        $report.InvalidOrgPaths | Should -Be 0
+        $report.OrphanedUsers   | Should -Be 0
+        $report.DriftDetected   | Should -BeFalse
+    }
+
+    It 'classifies users with empty OrgPath as orphaned and flags drift' {
+        Mock -ModuleName OrgTreeValidation Get-MgUser {
+            return @(
+                [pscustomobject]@{
+                    Id = 'u1'
+                    OnPremisesExtensionAttributes = [pscustomobject]@{ ExtensionAttribute1 = 'ORG-FIN' }
+                }
+                [pscustomobject]@{
+                    Id = 'u2'
+                    OnPremisesExtensionAttributes = [pscustomobject]@{ ExtensionAttribute1 = '' }
+                }
+            )
+        }
+        $report = Get-OrgTreeValidationReport -TenantId 'fake' -CodebookPath $script:CodebookPath
+        $report.TotalUsers    | Should -Be 2
+        $report.OrphanedUsers | Should -Be 1
+        $report.ValidOrgPaths | Should -Be 1
+        $report.DriftDetected | Should -BeTrue
+    }
+
+    It 'classifies users with an OrgPath not in the codebook as invalid' {
+        Mock -ModuleName OrgTreeValidation Get-MgUser {
+            return @(
+                [pscustomobject]@{
+                    Id = 'u1'
+                    OnPremisesExtensionAttributes = [pscustomobject]@{ ExtensionAttribute1 = 'ORG-NOTREAL' }
+                }
+            )
+        }
+        $report = Get-OrgTreeValidationReport -TenantId 'fake' -CodebookPath $script:CodebookPath
+        $report.InvalidOrgPaths | Should -Be 1
+        $report.ValidOrgPaths   | Should -Be 0
+        $report.DriftDetected   | Should -BeTrue
+    }
+
+    It 'classifies users with format-violating OrgPaths as invalid' {
+        Mock -ModuleName OrgTreeValidation Get-MgUser {
+            return @(
+                [pscustomobject]@{
+                    Id = 'u1'
+                    OnPremisesExtensionAttributes = [pscustomobject]@{ ExtensionAttribute1 = 'ORG-fin' }
+                }
+            )
+        }
+        $report = Get-OrgTreeValidationReport -TenantId 'fake' -CodebookPath $script:CodebookPath
+        $report.InvalidOrgPaths | Should -Be 1
+        $report.DriftDetected   | Should -BeTrue
+    }
+
+    It 'invokes Connect-MgGraph exactly once per call' {
+        Mock -ModuleName OrgTreeValidation Get-MgUser { return @() }
+        Get-OrgTreeValidationReport -TenantId 'fake' -CodebookPath $script:CodebookPath
+        Should -Invoke -ModuleName OrgTreeValidation -CommandName Connect-MgGraph -Times 1 -Exactly
+    }
+}
+
+
+# ---------------------------------------------------------------------------
+# Test-DynamicGroupAlignment (Function 4) — mocked Microsoft.Graph
+# ---------------------------------------------------------------------------
+
+Describe 'Test-DynamicGroupAlignment' {
+    BeforeEach {
+        $script:LibraryPath = Join-Path $script:FixtureDir 'group-library.json'
+        Mock -ModuleName OrgTreeValidation Connect-MgGraph {}
+    }
+
+    It 'reports all groups aligned when tenant rules match the library' {
+        # Library has 3 groups. Return a matching MembershipRule for each.
+        Mock -ModuleName OrgTreeValidation Get-MgGroup {
+            param($Filter)
+            switch -Wildcard ($Filter) {
+                "*OrgTree-FIN-Users*" {
+                    return [pscustomobject]@{
+                        DisplayName    = 'OrgTree-FIN-Users'
+                        MembershipRule = '(user.extensionAttribute1 -startsWith "ORG-FIN")'
+                    }
+                }
+                "*OrgTree-HR-Users*" {
+                    return [pscustomobject]@{
+                        DisplayName    = 'OrgTree-HR-Users'
+                        MembershipRule = '(user.extensionAttribute1 -startsWith "ORG-HR")'
+                    }
+                }
+                "*OrgTree-IT-Users*" {
+                    return [pscustomobject]@{
+                        DisplayName    = 'OrgTree-IT-Users'
+                        MembershipRule = '(user.extensionAttribute1 -startsWith "ORG-IT")'
+                    }
+                }
+            }
+        }
+        $r = Test-DynamicGroupAlignment -TenantId 'fake' -GroupLibraryPath $script:LibraryPath
+        $r.AlignedGroups    | Should -Be 3
+        $r.MisalignedGroups | Should -Be 0
+        $r.MissingGroups    | Should -Be 0
+    }
+
+    It 'reports a misaligned group when the tenant rule differs from the library' {
+        Mock -ModuleName OrgTreeValidation Get-MgGroup {
+            param($Filter)
+            if ($Filter -like '*OrgTree-FIN-Users*') {
+                return [pscustomobject]@{
+                    DisplayName    = 'OrgTree-FIN-Users'
+                    MembershipRule = '(user.extensionAttribute1 -eq "ORG-FIN")'   # wrong operator
+                }
+            }
+            return [pscustomobject]@{
+                DisplayName    = 'placeholder'
+                MembershipRule = ''
+            }
+        }
+        $r = Test-DynamicGroupAlignment -TenantId 'fake' -GroupLibraryPath $script:LibraryPath
+        $r.MisalignedGroups | Should -BeGreaterThan 0
+        ($r.Details | Where-Object { $_.GroupName -eq 'OrgTree-FIN-Users' -and $_.Status -eq 'Misaligned' }) |
+            Should -Not -BeNullOrEmpty
+    }
+
+    It 'reports missing groups when Get-MgGroup returns nothing' {
+        Mock -ModuleName OrgTreeValidation Get-MgGroup { return $null }
+        $r = Test-DynamicGroupAlignment -TenantId 'fake' -GroupLibraryPath $script:LibraryPath
+        $r.MissingGroups | Should -Be 3
+        $r.AlignedGroups | Should -Be 0
+    }
+}
+
+
+# ---------------------------------------------------------------------------
+# Export-OrgTreeSnapshot (Function 5) — mocked Microsoft.Graph + file I/O
+# ---------------------------------------------------------------------------
+
+Describe 'Export-OrgTreeSnapshot' {
+    BeforeEach {
+        $script:OutFile = Join-Path ([System.IO.Path]::GetTempPath()) ("orgtree-snap-$([guid]::NewGuid()).json")
+        Mock -ModuleName OrgTreeValidation Connect-MgGraph {}
+    }
+
+    AfterEach {
+        if (Test-Path $script:OutFile) { Remove-Item $script:OutFile -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'writes a JSON snapshot with the expected top-level fields' {
+        Mock -ModuleName OrgTreeValidation Get-MgUser {
+            return @(
+                [pscustomobject]@{
+                    Id                = 'u1'
+                    UserPrincipalName = 'alice@example.gov'
+                    Department        = 'Finance'
+                    OnPremisesExtensionAttributes = [pscustomobject]@{ ExtensionAttribute1 = 'ORG-FIN-AP' }
+                }
+            )
+        }
+        Mock -ModuleName OrgTreeValidation Get-MgGroup {
+            return @(
+                [pscustomobject]@{
+                    Id             = 'g1'
+                    DisplayName    = 'OrgTree-FIN-Users'
+                    MembershipRule = '(user.extensionAttribute1 -startsWith "ORG-FIN")'
+                }
+                [pscustomobject]@{
+                    Id             = 'g2'
+                    DisplayName    = 'NotAnOrgTreeGroup'   # filtered out by Where-Object
+                    MembershipRule = ''
+                }
+            )
+        }
+        Export-OrgTreeSnapshot -TenantId 'fake' -OutputPath $script:OutFile
+        Test-Path $script:OutFile | Should -BeTrue
+        $snapshot = Get-Content -Path $script:OutFile -Raw | ConvertFrom-Json
+        $snapshot.tenantId   | Should -Be 'fake'
+        $snapshot.userCount  | Should -Be 1
+        # Only OrgTree-* groups survive the Where-Object filter.
+        $snapshot.groupCount | Should -Be 1
+        $snapshot.users[0].orgPath | Should -Be 'ORG-FIN-AP'
+        $snapshot.groups[0].displayName | Should -Be 'OrgTree-FIN-Users'
+    }
+
+    It 'invokes Connect-MgGraph exactly once' {
+        Mock -ModuleName OrgTreeValidation Get-MgUser { return @() }
+        Mock -ModuleName OrgTreeValidation Get-MgGroup { return @() }
+        Export-OrgTreeSnapshot -TenantId 'fake' -OutputPath $script:OutFile
+        Should -Invoke -ModuleName OrgTreeValidation -CommandName Connect-MgGraph -Times 1 -Exactly
     }
 }
