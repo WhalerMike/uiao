@@ -42,6 +42,7 @@ import argparse
 import hashlib
 import json
 import os
+import random
 import re
 import sys
 import time
@@ -843,28 +844,62 @@ def doc_local_output_path(document: Path, placeholder_id: str, slug: str) -> Pat
 # Image generator. Wraps the Gemini client call. Centralized so
 # error handling, retry, and rate limiting have one home.
 # ──────────────────────────────────────────────────────────────
+_MAX_RETRY_ATTEMPTS = 5
+_RETRY_MAX_SLEEP_S = 30.0
+# Match HTTP status codes as whole tokens to avoid false positives (e.g. "5000").
+_RETRYABLE_STATUS_RE = re.compile(r"\b(429|500|503)\b")
+_RETRYABLE_STATUS_STRINGS = frozenset({"INTERNAL", "UNAVAILABLE", "rate limit", "Rate limit"})
+
+
+def _is_retryable_error(exc: Exception) -> bool:
+    """Return True if exc looks like a transient upstream error worth retrying.
+
+    Matches Gemini/Google API 500 INTERNAL, 503 UNAVAILABLE, and 429
+    rate-limit responses that may succeed on a subsequent attempt.
+    """
+    msg = str(exc)
+    return bool(_RETRYABLE_STATUS_RE.search(msg)) or any(
+        marker in msg for marker in _RETRYABLE_STATUS_STRINGS
+    )
+
+
 def generate_image(client, prompt_text: str, output_path: Path, model: str = MODEL) -> bool:
     """Generate a single image from a prompt; save to output_path.
-    Returns True on success. Prints diagnostic text responses on partial
-    failure (e.g., the model replied with refusal text instead of an
-    image)."""
-    try:
-        response = client.models.generate_content(
-            model=model,
-            contents=[prompt_text],
-        )
-        for part in response.parts:
-            if part.inline_data is not None:
-                image = part.as_image()
-                image.save(str(output_path))
-                return True
-            elif part.text is not None:
-                print(f"  Model text response: {part.text[:200]}")
-        print("  Warning: No image data returned for this prompt.")
-        return False
-    except Exception as e:
-        print(f"  Error generating image: {e}")
-        return False
+
+    Returns True on success. Transient 5xx/429 errors are retried with
+    bounded exponential backoff and small jitter (up to _MAX_RETRY_ATTEMPTS
+    total attempts). Non-retryable errors and exhausted retries return False.
+    Prints diagnostic text responses on partial failure (e.g., the model
+    replied with refusal text instead of an image).
+    """
+    last_exc: Exception | None = None
+    for attempt in range(1, _MAX_RETRY_ATTEMPTS + 1):
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=[prompt_text],
+            )
+            for part in response.parts:
+                if part.inline_data is not None:
+                    image = part.as_image()
+                    image.save(str(output_path))
+                    return True
+                elif part.text is not None:
+                    print(f"  Model text response: {part.text[:200]}")
+            print("  Warning: No image data returned for this prompt.")
+            return False
+        except Exception as e:
+            last_exc = e
+            if not _is_retryable_error(e) or attempt == _MAX_RETRY_ATTEMPTS:
+                break
+            sleep_s = min(_RETRY_MAX_SLEEP_S, (2 ** attempt) + random.uniform(0, 1))
+            print(
+                f"  Transient image generation failure (attempt {attempt}/{_MAX_RETRY_ATTEMPTS}): {e}"
+            )
+            print(f"  Retrying in {sleep_s:.1f}s...")
+            time.sleep(sleep_s)
+    print(f"  Error generating image: {last_exc}")
+    return False
 
 
 # ──────────────────────────────────────────────────────────────
