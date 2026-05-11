@@ -1,5 +1,5 @@
 param(
-    [string]$ModelPath = "C:\Users\whale\git\uiao\canon\phase2\UIAO_Phase2_TSA.psd1",
+    [string]$ModelPath = "C:\Users\whale\git\uiao\models\phase2\UIAO_Phase2_TSA.psd1",
     [string]$OutputRoot = "C:\Users\whale\git\uiao\phase2"
 )
 
