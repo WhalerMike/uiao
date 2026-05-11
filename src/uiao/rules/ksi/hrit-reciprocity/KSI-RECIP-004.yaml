@@ -1,0 +1,68 @@
+ksi_id: KSI-RECIP-004
+title: Configuration-Latitude Drift Findings Have Remediation Owner
+category: planning-personnel
+description: >
+  Every configuration-latitude drift finding raised by the HRIT
+  productization pipeline must carry an assigned `remediation_owner`
+  that resolves to an active principal in the agency directory.
+  Configuration latitude findings arise when a consuming agency's
+  tenant configuration deviates from the elections declared in the
+  SSP's latitude table (UIAO_140 §4, hrit-productization §5).
+  Unowned findings accumulate as silent technical debt and block
+  ATO renewal.
+security_objective: >
+  Ensure accountability for every detected configuration deviation by
+  requiring each finding to be assigned to a named remediation owner,
+  enabling timely remediation tracking and preventing drift findings from
+  aging without action.
+related_controls:
+  - CA-5
+  - IR-4
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero open configuration-latitude drift findings with a null or
+    unresolvable `remediation_owner`.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT f.finding_id, f.remediation_owner
+    FROM config_latitude_findings f
+    LEFT JOIN agency_principals p
+           ON p.principal_id = f.remediation_owner
+          AND p.status = 'active'
+    WHERE f.status = 'open'
+      AND (f.remediation_owner IS NULL OR p.principal_id IS NULL)
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: false
+  custom_validation_logic: hrit_reciprocity.validators.drift_finding_ownership
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-06"
+enabled: true
+tags:
+  - hrit
+  - hrit-reciprocity
+  - configuration-latitude
+  - drift
+  - remediation
+  - finding-ownership
+severity: medium
+nist_mappings:
+  primary: CA-5
+  secondary:
+    - IR-4
+fedramp_controls:
+  - CA-5
+provenance:
+  spec_ref: hrit-productization
+  adr_ref: ADR-058
+  ruleset_version: "1.0"
+  introduced_by: WS-A10
