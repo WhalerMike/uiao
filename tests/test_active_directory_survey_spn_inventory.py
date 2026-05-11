@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import json
 from importlib.resources import files as _res_files
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -36,13 +35,10 @@ import pytest
 from uiao.adapters.modernization.active_directory.survey import (
     DEFAULT_SPN_SERVICE_CLASS_FILTER,
     SPN_METHOD_LDAP,
-    SPN_METHOD_POWERSHELL,
     SPN_PHASE_POST_MIGRATION,
     SPN_PHASE_PRE_MIGRATION,
     SPN_PHASE_UNSPECIFIED,
     ADSurveyReport,
-    SPNRecord,
-    SpnInventory,
     _parse_spn,
     extract_spn_inventory,
 )
@@ -259,9 +255,7 @@ def test_drift_finding_error_codes_are_unique_per_inventory():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "phase", [SPN_PHASE_PRE_MIGRATION, SPN_PHASE_POST_MIGRATION, SPN_PHASE_UNSPECIFIED]
-)
+@pytest.mark.parametrize("phase", [SPN_PHASE_PRE_MIGRATION, SPN_PHASE_POST_MIGRATION, SPN_PHASE_UNSPECIFIED])
 def test_phase_round_trip(phase):
     principals = [_principal("svc", ["MSSQLSvc/sql01"])]
     inv, _ = extract_spn_inventory(
@@ -370,12 +364,7 @@ def test_repeated_extraction_yields_identical_output():
 
 
 def _load_schema() -> dict:
-    raw = (
-        _res_files("uiao.schemas")
-        .joinpath("orgtree-readiness")
-        .joinpath("orgtree-readiness.schema.json")
-        .read_text()
-    )
+    raw = _res_files("uiao.schemas").joinpath("orgtree-readiness").joinpath("orgtree-readiness.schema.json").read_text()
     return json.loads(raw)
 
 

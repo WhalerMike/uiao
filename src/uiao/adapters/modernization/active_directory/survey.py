@@ -142,7 +142,7 @@ class ADSurveyReport:
     # Optional SPN inventory artifact (Federal SSOT / Evidence Bundle).
     # Populated by extract_spn_inventory(); remains None when no SPN inventory
     # pass has been run for this report.
-    spn_inventory: Optional["SpnInventory"] = None
+    spn_inventory: Optional[SpnInventory] = None
 
     @property
     def ok(self) -> bool:
@@ -1016,7 +1016,7 @@ def _normalize_object_class(raw: str) -> str:
     return raw if raw in _SPN_KNOWN_OBJECT_CLASSES else "other"
 
 
-def _parse_spn(spn: str) -> tuple[str, str, str, Optional[str]]:
+def _parse_spn(spn: str) -> tuple[str, str, Optional[str], str]:
     """
     Parse 'ServiceClass/host[:port_or_instance][/extras...]' into (service_class, host, port_or_instance, full_spn).
 
@@ -1133,9 +1133,7 @@ def extract_spn_inventory(
             service_class, host, port_or_instance, full_spn = _parse_spn(spn)
             if service_class not in classes:
                 continue
-            principal_orgpath = _resolve_principal_orgpath(
-                principal_name, sam, dn, principal_orgpath_index
-            )
+            principal_orgpath = _resolve_principal_orgpath(principal_name, sam, dn, principal_orgpath_index)
             hosting_orgpath = _resolve_hosting_computer_orgpath(host, computer_orgpath_index)
             drift_ref: Optional[str] = None
             if principal_orgpath is None and hosting_orgpath is None:
