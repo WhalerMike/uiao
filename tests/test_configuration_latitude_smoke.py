@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import importlib
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -42,7 +43,7 @@ _TENANT_IRS_CONFIG = _FIXTURE_DIR / "tenant-irs-config.yaml"
 # ---------------------------------------------------------------------------
 
 
-def _import_latitude_module():  # type: ignore[return]
+def _import_latitude_module() -> Any:
     """Import the config_latitude module or skip with an informative message."""
     try:
         return importlib.import_module(_LATITUDE_MODULE)
@@ -50,18 +51,18 @@ def _import_latitude_module():  # type: ignore[return]
         pytest.skip(f"{_LATITUDE_MODULE} not yet merged (pre-Phase-2)")
 
 
-def _load_yaml(path: Path) -> dict:
+def _load_yaml(path: Path) -> dict:  # type: ignore[type-arg]
     """Load a YAML file; skip if PyYAML unavailable or file missing."""
     if not path.exists():
         pytest.skip(f"WS-A8 fixture not yet merged: {path}")
     try:
-        import yaml  # noqa: PLC0415
+        import yaml  # type: ignore[import-untyped]  # noqa: PLC0415
     except ImportError:
         pytest.skip("PyYAML not installed — cannot parse HRIT fixture files")
     return yaml.safe_load(path.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
 
 
-def _build_ssp_latitude_table(mod, raw: dict):  # type: ignore[return]
+def _build_ssp_latitude_table(mod: Any, raw: dict) -> Any:  # type: ignore[type-arg]
     """Construct a SspLatitudeTable from a raw fixture dict using *mod* classes."""
     entries = []
     for item in raw.get("latitude_settings", []):
@@ -79,7 +80,7 @@ def _build_ssp_latitude_table(mod, raw: dict):  # type: ignore[return]
     )
 
 
-def _build_tenant_config(mod, raw: dict):  # type: ignore[return]
+def _build_tenant_config(mod: Any, raw: dict) -> Any:  # type: ignore[type-arg]
     """Construct a TenantConfig from a raw fixture dict using *mod* classes."""
     entries = [
         mod.TenantConfigEntry(setting_key=k, observed_value=str(v)) for k, v in raw.get("configuration", {}).items()

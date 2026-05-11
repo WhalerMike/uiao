@@ -133,10 +133,10 @@ load time; configurations outside the list emit `DRIFT-AUTHZ`.
 
 | Path | Purpose |
 |---|---|
-| `src/uiao/adapters/login_gov.py` | `LoginGovAdapter` class subclassing the modernization-adapter base |
-| `src/uiao/adapters/login_gov/saml.py` | SAML assertion validation + signature verification |
-| `src/uiao/adapters/login_gov/oidc.py` | OIDC ID-token validation; JWKS rotation |
-| `src/uiao/adapters/login_gov/partner_api.py` | Partner Dashboard API client (app registration, cert rotation) |
+| `uiao.adapters.login_gov` | `LoginGovAdapter` class subclassing the modernization-adapter base |
+| `uiao.adapters.login_gov.saml` | SAML assertion validation + signature verification |
+| `uiao.adapters.login_gov.oidc` | OIDC ID-token validation; JWKS rotation |
+| `uiao.adapters.login_gov.partner_api` | Partner Dashboard API client (app registration, cert rotation) |
 | `tests/adapters/test_login_gov_saml.py` | Tier-1 fixtures: signed SAML assertions, audience/timing/IAL boundary cases |
 | `tests/adapters/test_login_gov_oidc.py` | Tier-1 fixtures: signed OIDC tokens, JWKS rotation |
 | `tests/adapters/test_login_gov_integration.py` | Tier-2 fixtures: full inbound-verification flow with a sandbox-issued assertion |
@@ -263,8 +263,8 @@ Stage 3 (separate PR):
 
 | File | Change | Status |
 |---|---|---|
-| `src/uiao/adapters/login_gov.py` | New `LoginGovAdapter` | deferred |
-| `src/uiao/adapters/login_gov/{saml,oidc,partner_api}.py` | Implementation modules | deferred |
+| `uiao.adapters.login_gov` | New `LoginGovAdapter` | deferred |
+| `uiao.adapters.login_gov.{saml,oidc,partner_api}` | Implementation modules | deferred |
 | `tests/adapters/test_login_gov_*.py` | Tier-1 + Tier-2 tests | deferred |
 | `src/uiao/canon/modernization-registry.yaml` | `login-gov-federation-service.status`: `reserved` → `active`; `phase`: `phase-planning` → `phase-2` | deferred (lands with Stage 3) |
 

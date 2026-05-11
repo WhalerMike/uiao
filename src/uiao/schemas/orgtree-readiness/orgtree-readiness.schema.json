@@ -69,6 +69,10 @@
     "provenance": {
       "$ref": "#/definitions/bundleProvenance",
       "description": "Bundle provenance: canon references, source survey hash, and HMAC-SHA256 signature."
+    },
+    "spn_inventory": {
+      "$ref": "#/definitions/spnInventory",
+      "description": "Optional Service Principal Name inventory artifact (MSSQLSvc/* and related service-class SPNs) captured during the AD survey. Pre/post-migration phase-tagged. Drives Kerberos delegation-chain preservation and Azure SSOT stack identity-foundation evidence per the Federal SSOT Alignment whitepaper §3.3 and OrgPath Narrative chapter 07a."
     }
   },
   "definitions": {
@@ -329,6 +333,108 @@
         "actor": {
           "type": "string",
           "description": "Identity that produced this bundle (CLI invocation context)."
+        }
+      }
+    },
+    "spnInventory": {
+      "type": "object",
+      "description": "Service Principal Name inventory artifact. Captures MSSQLSvc/* (and related service-class) SPNs registered in the AD forest, with pre/post-migration phase tagging, OrgPath attribution, and drift-finding back-reference when the SPN cannot be attributed to a verified organizational position.",
+      "required": ["phase", "discovery_timestamp", "discovery_method", "records"],
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": ["pre_migration", "post_migration", "unspecified"],
+          "description": "Migration phase the inventory was captured in. 'unspecified' is used when the caller does not assert a migration phase (e.g. baseline scans outside of a migration window)."
+        },
+        "discovery_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp when the SPN enumeration was performed."
+        },
+        "discovery_method": {
+          "type": "string",
+          "enum": ["AD-SPN-LDAP", "AD-SPN-POWERSHELL", "AD-SPN-DSQUERY"],
+          "description": "Mechanism used to enumerate SPNs from the directory. AD-SPN-LDAP is the survey adapter's default."
+        },
+        "discovery_scope": {
+          "type": "string",
+          "description": "Free-form scope label (domain DN, forest root, or 'GC://forest-root' for Global Catalog queries)."
+        },
+        "service_class_filter": {
+          "type": "array",
+          "description": "Service-class prefixes the inventory was filtered to. Empty/omitted means MSSQLSvc only.",
+          "items": { "type": "string" }
+        },
+        "records": {
+          "type": "array",
+          "description": "Per-SPN records.",
+          "items": { "$ref": "#/definitions/spnRecord" }
+        }
+      }
+    },
+    "spnRecord": {
+      "type": "object",
+      "description": "Single SPN registration record. One row per SPN string (a principal with N MSSQLSvc SPNs produces N records).",
+      "required": ["spn", "service_class", "principal_name", "object_class"],
+      "additionalProperties": false,
+      "properties": {
+        "spn": {
+          "type": "string",
+          "description": "Full SPN string, e.g. 'MSSQLSvc/sql01.corp.example.com:1433'."
+        },
+        "service_class": {
+          "type": "string",
+          "description": "Service-class prefix of the SPN, e.g. 'MSSQLSvc'."
+        },
+        "host_or_fqdn": {
+          "type": "string",
+          "description": "Hostname or FQDN portion of the SPN (everything after the service class, before the first ':')."
+        },
+        "port_or_instance": {
+          "type": ["string", "null"],
+          "description": "Port number (e.g. '1433') or named instance ('SQL2K22'); null when the SPN has no ':' suffix."
+        },
+        "principal_name": {
+          "type": "string",
+          "description": "Common name of the AD principal that registered the SPN."
+        },
+        "sam_account_name": {
+          "type": ["string", "null"]
+        },
+        "object_class": {
+          "type": "string",
+          "enum": [
+            "user",
+            "computer",
+            "msDS-GroupManagedServiceAccount",
+            "msDS-ManagedServiceAccount",
+            "other"
+          ],
+          "description": "AD objectClass of the SPN-registering principal."
+        },
+        "distinguished_name": {
+          "type": ["string", "null"]
+        },
+        "when_created": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "when_changed": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "principal_orgpath": {
+          "type": ["string", "null"],
+          "description": "OrgPath of the SPN-registering principal (preferred attribution hook). Null when the principal cannot be resolved to an OrgPath."
+        },
+        "hosting_computer_orgpath": {
+          "type": ["string", "null"],
+          "description": "OrgPath of the hosting computer derived from host_or_fqdn (fallback attribution hook). Null when the host computer cannot be resolved."
+        },
+        "drift_finding_ref": {
+          "type": ["string", "null"],
+          "description": "Reference (path or error_code) into the bundle 'findings' array when neither principal_orgpath nor hosting_computer_orgpath resolves and a DRIFT-IDENTITY finding has been emitted. Null when attribution succeeded."
         }
       }
     }

@@ -1,0 +1,113 @@
+---
+title: "Zero Trust Modernization Validation Suite"
+subtitle: "Conformance tests and validation criteria for the zero-trust domain"
+doc-type: domain-validation-suite
+audience: [Customer, Assessor, Adapter Owner]
+classification: Controlled
+boundary: GCC-Moderate
+domain: zero-trust
+canon-source: "src/uiao/canon/adr/adr-008-zero-trust-identity.md"
+canon-reference:
+  - "docs/customer-documents/modernization-specs/zero-trust/zero-trust.qmd"
+  - "docs/customer-documents/whitepapers/zero-trust-governance-whitepaper.qmd"
+derived-from: "uiao canon"
+---
+
+# Zero Trust Modernization Validation Suite
+
+## Scope
+
+Conformance tests and validation criteria for the Zero Trust domain.
+Pairs with the
+[Zero Trust Modernization Spec](../../../modernization-specs/zero-trust/zero-trust.qmd).
+The suite gates whether a ZT modernization program meets substrate
+conformance — primary focus is identity-as-root-namespace posture,
+decision-record emission, and ZTMM pillar coverage.
+
+[IMAGE-01: Zero Trust validation suite diagram. Five vertical pillar columns labeled Identity, Devices, Networks, Applications & Workloads, Data. Each column shows a small conformance checkmark or gap badge for the substrate-baseline tests. Across the bottom, a horizontal "Identity-as-root-namespace conformance gate" runs through all five columns. To the right, a panel showing "Decision-record emission shape: provenance + zt_decision claim". Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic.]
+
+## Test categories
+
+### 1. Identity-primacy conformance
+
+Per [ADR-008](../../../../../src/uiao/canon/adr/adr-008-zero-trust-identity.md):
+
+- Every ZT decision consumes an identity claim as authoritative
+  input.
+- Devices, addresses, workloads, and data classifications resolve via
+  identity-plane objects, not parallel namespaces.
+- PDPs (policy decision points) do not maintain parallel identity
+  authority.
+
+### 2. Decision-record schema
+
+For each ZT decision emitted:
+
+- `pdp_id`, `decision`, `identity_context`, `resource_scope`,
+  `policy_refs`, `evaluation_timestamp` are all present.
+- `decision` is one of `permit | deny | escalate`.
+- `policy_refs` resolve to canonical policy IDs.
+- Decision record carries the full provenance envelope.
+
+### 3. Pillar coverage
+
+The domain demonstrates substrate-anchored evidence for each ZTMM
+pillar:
+
+- **Identity** — identity-plane SSOT, identity-derived addressing.
+- **Devices** — device claims via provenance envelope.
+- **Networks** — overlay decisions consume identity claims.
+- **Applications & Workloads** — adapter-mapped controls + KSI
+  bindings.
+- **Data** — provenance envelope on every data-related claim.
+
+### 4. Drift detection coverage
+
+- `DRIFT-IDENTITY` (P1) — issuer cannot resolve; halt + alert.
+- `DRIFT-AUTHZ` (P1/P2) — decision outside consent envelope.
+- `DRIFT-SEMANTIC` — pillar state stale (e.g. retired role still
+  emitting decisions).
+- `DRIFT-PROVENANCE` — cross-pillar correlation chain broken.
+
+## Evidence expectations
+
+- Per-decision claim records with full provenance.
+- Cross-pillar correlation evidence (the same identity resolving
+  identically across pillars).
+- ZTMM dashboard derivations from canonical claims (no parallel
+  attestation pipeline).
+- OSCAL artifacts mapping ZT decisions onto NIST 800-207 and CISA
+  ZTMM controls.
+
+## Conformance gates
+
+| Gate | Required | Tier |
+|---|---|---|
+| **T1 — identity primacy** | All ZT decisions consume identity-plane objects | Required |
+| **T2 — decision schema** | Decision records validate against canon schema | Required |
+| **T3 — pillar coverage** | Substrate-anchored evidence in each ZTMM pillar | Target |
+| **T4 — drift coverage** | All four ZT-relevant drift classes detected | Target |
+
+## Drift procedures
+
+ZT operations focus on the P1/P2 envelope. P1 findings (identity
+unresolvable, AuthZ envelope violation) halt the affected decision
+flow and alert. P2 findings auto-remediate when deterministic;
+otherwise escalate within 1 hour.
+
+## Honest limits
+
+- Optimal ZTMM maturity requires continuous, automated, cross-pillar
+  policy evaluation. Substrate ships the canonical fabric; per-pillar
+  runtime maturity varies.
+- GCC-Moderate platform feature gaps reduce out-of-box ZT analytics
+  fidelity; compensating-enforcement adapters are domain-validation
+  responsibility, not the substrate's.
+- T3 / T4 are target-state for most agencies today; T1 / T2 form the
+  baseline conformance bar.
+
+## Related documents
+
+- [Modernization Spec — Zero Trust](../../../modernization-specs/zero-trust/zero-trust.qmd)
+- [Whitepaper — Zero Trust Governance](../../../whitepapers/zero-trust-governance-whitepaper.qmd)
+- [ADR-008: Zero Trust Identity](../../../../../src/uiao/canon/adr/adr-008-zero-trust-identity.md)

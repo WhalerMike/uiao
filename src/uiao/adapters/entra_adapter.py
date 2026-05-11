@@ -33,10 +33,10 @@ from .database_base import (
 # EntraAdapter targets the Graph v1.0 surface (GA-stable identity APIs).
 DEFAULT_GRAPH_API_VERSION = "v1.0"
 
-# Local copy of the canonical OrgPath regex (MOD_A). Kept here rather than
+# Local copy of the canonical OrgPath regex (UIAO_151). Kept here rather than
 # importing from governance.drift to avoid a dependency cycle between the
 # adapter and the drift engine — both reference the same canon (ADR-035).
-_ORGPATH_REGEX = re.compile(r"^ORG(-[A-Z0-9]{2,6}){0,4}$")
+_ORGPATH_REGEX = re.compile(r"^ORG(-[A-Z0-9]{2,6}){0,8}$")
 
 
 def _extract_orgpath(record: Dict[str, Any]) -> Optional[str]:
@@ -188,7 +188,7 @@ class EntraAdapter(DatabaseAdapterBase):
                 "raw_link": f"https://portal.azure.com/#view/Microsoft_AAD_UsersAndTenants/UserProfileMenuBlade/~/overview/userId/{record_id}",
             }
 
-            # OrgPath alignment (MOD_A / ADR-035). Codebook membership and
+            # OrgPath alignment (UIAO_151 / ADR-035). Codebook membership and
             # phantom-drift classification belong to governance.drift — the
             # adapter's job is to surface the raw value + format signal so
             # downstream classifiers can run without re-fetching.

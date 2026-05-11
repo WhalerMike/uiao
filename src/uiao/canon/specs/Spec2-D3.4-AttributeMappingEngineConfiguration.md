@@ -336,7 +336,7 @@ quarantine queue, since they are configuration concerns.
 
 - [ADR-003](../adr/adr-003-api-driven-inbound-provisioning.md)
 - [ADR-035](../adr/adr-035-orgpath-codebook-binding.md)
-- [ADR-048](../adr/adr-048-orgpath-attribute-storage-decision.md)
+- [ADR-048](../adr/adr-048-orgpath-attribute-selection.md)
 - [ADR-049](../adr/adr-049-microsoft-adapter-coverage-expansion.md)
 
 ### 8.2 UIAO docs

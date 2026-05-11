@@ -53,7 +53,7 @@ if TYPE_CHECKING:
 
 from .survey import DriftFinding, derive_orgpath_from_dn
 
-ORGPATH_REGEX = re.compile(r"^ORG(-[A-Z]{2,6}){0,4}$")
+ORGPATH_REGEX = re.compile(r"^ORG(-[A-Z]{2,6}){0,8}$")
 ORGPATH_SEGMENT_RE = re.compile(r"^[A-Z0-9]{2,6}$")
 REGIONAL_REGEX = re.compile(r"^REG-[A-Z]{2,8}$")
 
@@ -172,7 +172,7 @@ def validate_orgpath(path: object, codebook_arg: object) -> ConformanceResult:
     """Check every prefix of ``path`` against the codebook.
 
     Produces Finding records for:
-      - bad_format    : path does not match ^ORG(-[A-Z0-9]{2,6}){0,4}$
+      - bad_format    : path does not match ^ORG(-[A-Z0-9]{2,6}){0,8}$
       - unknown_segment : one or more prefixes absent from the codebook
 
     Never raises for conformance failures — findings are returned instead.
@@ -183,7 +183,7 @@ def validate_orgpath(path: object, codebook_arg: object) -> ConformanceResult:
     codes = _codes_from_arg(codebook_arg)
 
     # Format check
-    canonical_re = re.compile(r"^ORG(-[A-Z0-9]{2,6}){0,4}$")
+    canonical_re = re.compile(r"^ORG(-[A-Z0-9]{2,6}){0,8}$")
     if not canonical_re.match(path):
         return ConformanceResult(
             path=path,
@@ -192,7 +192,7 @@ def validate_orgpath(path: object, codebook_arg: object) -> ConformanceResult:
                 Finding(
                     kind="bad_format",
                     subjects=[path],
-                    detail=f"OrgPath '{path}' does not match canonical format ^ORG(-[A-Z0-9]{{2,6}}){{0,4}}$",
+                    detail=f"OrgPath '{path}' does not match canonical format ^ORG(-[A-Z0-9]{{2,6}}){{0,8}}$",
                     error_code="GOV-SCH-001",
                 )
             ],

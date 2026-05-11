@@ -322,25 +322,25 @@ Temporary Upload Cleanup
 
 5.4 Gitea Upgrade Procedure
 
-6.  **Read release notes** at the Gitea release page for breaking changes, migration notes, and deprecated features.
+1.  **Read release notes** at the Gitea release page for breaking changes, migration notes, and deprecated features.
 
-7.  **Create full backup:** D:\\UIAO\\Scripts\\Invoke-UIAOBackup.ps1
+2.  **Create full backup:** D:\\UIAO\\Scripts\\Invoke-UIAOBackup.ps1
 
-8.  **Stop Gitea service:** Stop-Service gitea
+3.  **Stop Gitea service:** Stop-Service gitea
 
-9.  **Rename current binary:** Rename-Item D:\\Gitea\\gitea.exe D:\\Gitea\\gitea-old.exe
+4.  **Rename current binary:** Rename-Item D:\\Gitea\\gitea.exe D:\\Gitea\\gitea-old.exe
 
-10. **Copy new binary:** Copy-Item \<new-binary-path\> D:\\Gitea\\gitea.exe
+5. **Copy new binary:** Copy-Item \<new-binary-path\> D:\\Gitea\\gitea.exe
 
-11. **Run database migrations:** D:\\Gitea\\gitea.exe migrate \--config D:\\Gitea\\custom\\conf\\app.ini
+6. **Run database migrations:** D:\\Gitea\\gitea.exe migrate \--config D:\\Gitea\\custom\\conf\\app.ini
 
-12. **Start Gitea service:** Start-Service gitea
+7. **Start Gitea service:** Start-Service gitea
 
-13. **Verify:** Test UI at https://git.uiao.local and API at http://localhost:3000/api/v1/version.
+8. **Verify:** Test UI at https://git.uiao.local and API at http://localhost:3000/api/v1/version.
 
-14. **Run doctor:** D:\\Gitea\\gitea.exe doctor check \--config D:\\Gitea\\custom\\conf\\app.ini
+9. **Run doctor:** D:\\Gitea\\gitea.exe doctor check \--config D:\\Gitea\\custom\\conf\\app.ini
 
-15. **Update references:** Update any module or script version references that depend on the Gitea version.
+10. **Update references:** Update any module or script version references that depend on the Gitea version.
 
 +----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | **❗ Rollback Procedure**                                                                                                                                                                                                                    |
@@ -362,13 +362,13 @@ Get-ChildItem Cert:\\LocalMachine\\My \| Where-Object { \$\_.Subject -match \'gi
 
 Certificate Renewal Process
 
-16. **Generate CSR:** Use certreq or IIS Manager to create a certificate signing request.
+1. **Generate CSR:** Use certreq or IIS Manager to create a certificate signing request.
 
-17. **Submit to CA:** Submit the CSR to your internal PKI or commercial CA.
+2. **Submit to CA:** Submit the CSR to your internal PKI or commercial CA.
 
-18. **Import certificate:** Import the issued certificate into Cert:\\LocalMachine\\My.
+3. **Import certificate:** Import the issued certificate into Cert:\\LocalMachine\\My.
 
-19. **Update IIS binding:**
+4. **Update IIS binding:**
 
 \# Update HTTPS binding with new certificate: \$newCert = Get-ChildItem Cert:\\LocalMachine\\My \| Where-Object { \$\_.Subject -match \'git.uiao.local\' } \| Sort-Object NotAfter -Descending \| Select-Object -First 1 \# Remove old binding and add new: Remove-WebBinding -Name \"git.uiao.local\" -Protocol https -Port 443 New-WebBinding -Name \"git.uiao.local\" -Protocol https -Port 443 -SslFlags 1 \$binding = Get-WebBinding -Name \"git.uiao.local\" -Protocol https \$binding.AddSslCertificate(\$newCert.Thumbprint, \"My\")
 
@@ -412,15 +412,15 @@ This check is also performed as part of the daily health check (Check 9). For co
 | Failover is a **P1 event**. Follow the Incident Response steps in Section 10 in parallel. Coordinate with stakeholders before promoting the secondary server. |
 +---------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
-20. **Confirm primary is down:** Verify via multiple methods --- ping, RDP, service checks, console access. Rule out network issues.
+1. **Confirm primary is down:** Verify via multiple methods --- ping, RDP, service checks, console access. Rule out network issues.
 
-21. **Update DNS:** Change git.uiao.local A record to point to the secondary server IP. Reduce TTL beforehand if possible.
+2. **Update DNS:** Change git.uiao.local A record to point to the secondary server IP. Reduce TTL beforehand if possible.
 
-22. **Verify secondary Gitea:** Confirm the Gitea service is running on the secondary server and the UI is accessible.
+3. **Verify secondary Gitea:** Confirm the Gitea service is running on the secondary server and the UI is accessible.
 
-23. **Notify users:** Inform all users that the platform is in read-only mode on the secondary server until promotion is complete.
+4. **Notify users:** Inform all users that the platform is in read-only mode on the secondary server until promotion is complete.
 
-24. **Promote secondary:**
+5. **Promote secondary:**
 
     - Update app.ini: Set ROOT_URL to https://git.uiao.local
 
@@ -428,7 +428,7 @@ This check is also performed as part of the daily health check (Check 9). For co
 
     - Restart Gitea service on secondary
 
-25. **When primary is restored:**
+6. **When primary is restored:**
 
     - Reverse the mirror direction (secondary → primary)
 
@@ -462,19 +462,19 @@ This check is also performed as part of the daily health check (Check 9). For co
 
 When a drift detection alert triggers (via the daily UIAO-DriftDetection task at 07:00 or via dashboard notification), follow this workflow:
 
-26. **Review drift report:** Open the latest drift JSON in D:\\UIAO\\Assessment\\ or view in the Quarto dashboard at https://docs.uiao.local.
+1. **Review drift report:** Open the latest drift JSON in D:\\UIAO\\Assessment\\ or view in the Quarto dashboard at https://docs.uiao.local.
 
-27. **Classify the change:**
+2. **Classify the change:**
 
     - **Expected change:** Matches an approved change ticket or known maintenance activity.
 
     - **Unexpected drift:** No corresponding change record --- potential unauthorized modification.
 
-28. **If expected:** Update the baseline with the new assessment data to acknowledge the change: Set-UIAOBaseline -SourcePath D:\\UIAO\\Assessment\\AD -BaselineName \"2026-Q2-updated\"
+3. **If expected:** Update the baseline with the new assessment data to acknowledge the change: Set-UIAOBaseline -SourcePath D:\\UIAO\\Assessment\\AD -BaselineName \"2026-Q2-updated\"
 
-29. **If unexpected:** Investigate root cause. Escalate per severity classification (see Section 10). Engage security team if unauthorized access is suspected.
+4. **If unexpected:** Investigate root cause. Escalate per severity classification (see Section 10). Engage security team if unauthorized access is suspected.
 
-30. **Document:** Commit the drift resolution to Gitea with the associated ticket reference:
+5. **Document:** Commit the drift resolution to Gitea with the associated ticket reference:
 
 git add assessments/ baselines/ git commit -m \"drift: resolved TICKET-1234 --- OU structure change approved\" git push origin main
 
@@ -564,19 +564,19 @@ Complete all items after executing a platform change to confirm system integrity
 
 10.3 Incident Response Steps
 
-31. **DETECT:** Incident identified via health check alert, monitoring notification, or user report. Record the time of detection.
+1. **DETECT:** Incident identified via health check alert, monitoring notification, or user report. Record the time of detection.
 
-32. **TRIAGE:** Classify severity (P1--P4) using the table above. Assign an incident number and notify per the escalation matrix.
+2. **TRIAGE:** Classify severity (P1--P4) using the table above. Assign an incident number and notify per the escalation matrix.
 
-33. **CONTAIN:** Prevent further impact. Isolate affected components if needed (e.g., stop a compromised service, block a source IP, disable a user account).
+3. **CONTAIN:** Prevent further impact. Isolate affected components if needed (e.g., stop a compromised service, block a source IP, disable a user account).
 
-34. **DIAGNOSE:** Perform root cause analysis using logs (Section 2.3), health check output, Event Viewer, and Gitea diagnostics.
+4. **DIAGNOSE:** Perform root cause analysis using logs (Section 2.3), health check output, Event Viewer, and Gitea diagnostics.
 
-35. **RESOLVE:** Apply the fix or execute the applicable recovery runbook (Gitea upgrade rollback, failover procedure, backup restoration, etc.).
+5. **RESOLVE:** Apply the fix or execute the applicable recovery runbook (Gitea upgrade rollback, failover procedure, backup restoration, etc.).
 
-36. **VERIFY:** Run the full health check (Invoke-UIAODailyHealthCheck.ps1) and complete the post-change checklist (Section 9.2) to confirm restoration.
+6. **VERIFY:** Run the full health check (Invoke-UIAODailyHealthCheck.ps1) and complete the post-change checklist (Section 9.2) to confirm restoration.
 
-37. **DOCUMENT:** Write an incident report with timeline, root cause, resolution, and lessons learned. Update this runbook if new failure modes are identified. Commit the report to Gitea.
+7. **DOCUMENT:** Write an incident report with timeline, root cause, resolution, and lessons learned. Update this runbook if new failure modes are identified. Commit the report to Gitea.
 
 11\. Maintenance Windows
 

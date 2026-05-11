@@ -1,0 +1,149 @@
+name: Sync Canon Check
+
+# Reconciles src/uiao/canon/{adapter,modernization}-registry.yaml against
+# the docs/customer-documents/{adapter-specs,validation-suites/adapters}/
+# trees via scripts/tools/sync_canon.py --check-only.
+#
+# Drift classification (script-internal, not workflow-internal):
+#   schema-error     -> registry fails JSON Schema or registry-class mismatch
+#   status-mismatch  -> docs frontmatter (status / phase / class / mission /
+#                       gcc-boundary) disagrees with canon (silent rot)
+#   orphan           -> docs folder exists for an adapter id not in canon
+#   additive         -> canon has an adapter id with no docs folder
+#
+# CI policy (this workflow):
+#   schema-error / status-mismatch / orphan  -> FAIL the job
+#   additive                                 -> informational (Step Summary
+#                                              only). Will flip to blocking
+#                                              once the stage-2 catch-up PR
+#                                              clears the existing 30+ slot
+#                                              backlog.
+#
+# Pair workflows: schema-validation.yml (registry shape only); this gate
+# adds the canon <-> docs frontmatter consistency check on top.
+
+on:
+  pull_request:
+    paths:
+      - 'src/uiao/canon/adapter-registry.yaml'
+      - 'src/uiao/canon/modernization-registry.yaml'
+      - 'src/uiao/schemas/adapter-registry/**'
+      - 'docs/customer-documents/adapter-specs/**'
+      - 'docs/customer-documents/validation-suites/adapters/**'
+      - 'scripts/tools/sync_canon.py'
+      - '.github/workflows/sync-canon-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/uiao/canon/adapter-registry.yaml'
+      - 'src/uiao/canon/modernization-registry.yaml'
+      - 'src/uiao/schemas/adapter-registry/**'
+      - 'docs/customer-documents/adapter-specs/**'
+      - 'docs/customer-documents/validation-suites/adapters/**'
+      - 'scripts/tools/sync_canon.py'
+
+permissions:
+  contents: read
+
+jobs:
+  sync-canon-check:
+    name: Verify canon and docs frontmatter are in sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install --quiet pyyaml jsonschema
+
+      - name: Run sync_canon --check-only --json
+        id: check
+        run: |
+          # The script returns non-zero on any drift, including additive.
+          # We capture the JSON regardless and let the next step decide
+          # which drift kinds are blocking under this workflow's policy.
+          set +e
+          python scripts/tools/sync_canon.py \
+            --check-only \
+            --core-root src/uiao \
+            --docs-root . \
+            --json > sync-report.json
+          script_exit=$?
+          set -e
+          echo "script_exit=${script_exit}" >> "$GITHUB_OUTPUT"
+          test -s sync-report.json
+
+      - name: Classify drift and write Step Summary
+        run: |
+          python - <<'EOF'
+          import json, os, sys
+          from collections import defaultdict
+
+          with open('sync-report.json', encoding='utf-8') as f:
+              report = json.load(f)
+
+          drift = report.get('drift', [])
+          by_kind = defaultdict(list)
+          for d in drift:
+              by_kind[d['kind']].append(d)
+
+          schema_errors      = by_kind.get('schema-error', [])
+          status_mismatches  = by_kind.get('status-mismatch', [])
+          orphans            = by_kind.get('orphan', [])
+          additives          = by_kind.get('additive', [])
+
+          # CI policy: additives are informational under this gate (the
+          # repo currently has a backlog of reserved slots without
+          # scaffolds; they ship via stage-2 catch-up PRs, not here).
+          fatal = schema_errors + status_mismatches + orphans
+
+          lines = []
+          lines.append("## sync_canon.py — canon ↔ docs reconciliation")
+          lines.append("")
+          lines.append(f"- schema-ok: `{report.get('schema_ok')}`")
+          lines.append(f"- registries loaded: `{report.get('registries_loaded')}`")
+          lines.append(f"- adapters total: `{report.get('adapters_total')}`")
+          lines.append("")
+          lines.append("| Drift kind | Count | Policy |")
+          lines.append("|---|---|---|")
+          lines.append(f"| `schema-error` | {len(schema_errors)} | **blocks** |")
+          lines.append(f"| `status-mismatch` | {len(status_mismatches)} | **blocks** |")
+          lines.append(f"| `orphan` | {len(orphans)} | **blocks** |")
+          lines.append(f"| `additive` (missing scaffold) | {len(additives)} | informational |")
+          lines.append("")
+
+          def render(items, header, limit=25):
+              if not items:
+                  return
+              lines.append(f"### {header}")
+              lines.append("")
+              for d in items[:limit]:
+                  aid = d.get('adapter_id') or '-'
+                  lines.append(f"- `[{d['kind']}]` `{aid}` — {d.get('detail','')} ({d.get('path','')})")
+              if len(items) > limit:
+                  lines.append(f"- … and {len(items) - limit} more")
+              lines.append("")
+
+          render(schema_errors,     "Schema errors (blocking)")
+          render(status_mismatches, "Status mismatches (blocking) — frontmatter has drifted from canon; run `sync_canon.py --scaffold` locally")
+          render(orphans,           "Orphans (blocking) — docs folder has no canon entry; either add the canon entry or remove the folder")
+          render(additives,         "Missing scaffolds (informational)")
+
+          summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
+          if summary_path:
+              with open(summary_path, 'a', encoding='utf-8') as f:
+                  f.write("\n".join(lines) + "\n")
+          else:
+              print("\n".join(lines))
+
+          if fatal:
+              print(f"::error::sync_canon found {len(fatal)} blocking drift item(s); see Step Summary.")
+              sys.exit(1)
+
+          print(f"OK — no blocking drift. ({len(additives)} additive items are informational.)")
+          EOF

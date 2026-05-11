@@ -74,7 +74,7 @@ example of each:
 - **Declare and structure** — Microsoft Intune (device configuration;
   Microsoft-provided but the OrgTree-policy-targeting binding adds
   structure UIAO requires). UIAO declares `entra-policy-targeting`
-  (MOD_N) on top of Intune, and writes the binding to canon at
+  (UIAO_164) on top of Intune, and writes the binding to canon at
   [`canon/data/orgpath/policy-targets.yaml`](data/orgpath/policy-targets.yaml).
 
 ## 2. Microsoft Coverage UIAO Leverages
@@ -98,7 +98,7 @@ adapter (or adapters) that declares each.
 | Microsoft surface | UIAO adapter declaration | Notes |
 |---|---|---|
 | Microsoft Intune (configuration profiles, compliance policies, baselines, Autopilot, app deployment) | [`intune`](modernization-registry.yaml) (modernization side, reserved per ADR-049) + [`intune`](adapter-registry.yaml) (conformance side, reserved) | Two-axis declaration per ADR-049 §Decision 1. |
-| Intune policy targeting by OrgTree | [`entra-policy-targeting`](modernization-registry.yaml) (active, MOD_N / [ADR-039](adr/adr-039-policy-targeting.md)) | UIAO structure on top of Microsoft Intune assignments. |
+| Intune policy targeting by OrgTree | [`entra-policy-targeting`](modernization-registry.yaml) (active, UIAO_164 / [ADR-039](adr/adr-039-policy-targeting.md)) | UIAO structure on top of Microsoft Intune assignments. |
 | Microsoft Defender for Endpoint | [`defender-for-endpoint`](adapter-registry.yaml) (reserved per ADR-049) | Device exposure score, software/vulnerability inventory, attack-path analysis. |
 | Windows Autopilot | n/a — consumed via `intune` adapter scope | Not a separate declaration. |
 
@@ -106,8 +106,8 @@ adapter (or adapters) that declares each.
 
 | Microsoft surface | UIAO adapter declaration | Notes |
 |---|---|---|
-| Azure Arc (server onboarding, managed identity attachment) | [`active-directory`](modernization-registry.yaml) (Phase F) + [`entra-device-orgpath`](modernization-registry.yaml) (MOD_C / [ADR-038](adr/adr-038-device-plane-orgpath.md)) | OrgPath propagation to Arc machines is structured by UIAO. |
-| Azure Policy for Arc (compliance + remediation) | [`azure-policy-arc`](modernization-registry.yaml) (reserved per ADR-049) | Body authoring + remediation; complements MOD_N targeting. |
+| Azure Arc (server onboarding, managed identity attachment) | [`active-directory`](modernization-registry.yaml) (Phase F) + [`entra-device-orgpath`](modernization-registry.yaml) (UIAO_153 / [ADR-038](adr/adr-038-device-plane-orgpath.md)) | OrgPath propagation to Arc machines is structured by UIAO. |
+| Azure Policy for Arc (compliance + remediation) | [`azure-policy-arc`](modernization-registry.yaml) (reserved per ADR-049) | Body authoring + remediation; complements UIAO_164 targeting. |
 | Microsoft Defender for Servers | [`defender-for-servers`](adapter-registry.yaml) (reserved per ADR-049) | EDR, posture, vulnerability, baseline state for hybrid servers. |
 | Azure Migrate (dependency discovery) | [`azure-migrate`](adapter-registry.yaml) (reserved per ADR-049) | Primary native input for OrgPath server-plane edges. |
 | Arc Guest Configuration / Azure Monitor Agent / Update Management | n/a — consumed via `azure-policy-arc` adapter scope | Not separate declarations. |
@@ -220,7 +220,7 @@ and the OrgTree-based device cohort sequencing.
 - **Anchor canon:** [UIAO_007 — OrgTree Modernization (AD → Entra)](UIAO_007_OrgTree_Modernization_AD_to_EntraID_v1.0.md), [UIAO_136 §SPEC 1](UIAO_136_priority1-transformation-project-plans.md).
 - **Discovery:** Spec1-D1.x discovery scripts under
   [`tools/discovery/`](../../../tools/discovery/).
-- **Sequencing model:** OrgTree dynamic groups (MOD_B / [ADR-036](adr/adr-036-dynamic-group-provisioning.md)) define device cohorts; policy targeting (MOD_N) binds Intune profiles to those cohorts.
+- **Sequencing model:** OrgTree dynamic groups (UIAO_152 / [ADR-036](adr/adr-036-dynamic-group-provisioning.md)) define device cohorts; policy targeting (UIAO_164) binds Intune profiles to those cohorts.
 - **Open work:** Spec 1 Phase 2 deliverables (D2.x) are not yet
   authored; this is a known UIAO surface to expand.
 

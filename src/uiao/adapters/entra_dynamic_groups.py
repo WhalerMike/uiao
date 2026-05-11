@@ -1,4 +1,4 @@
-"""Entra ID dynamic-group provisioning adapter (MOD_B / ADR-036).
+"""Entra ID dynamic-group provisioning adapter (UIAO_152 / ADR-036).
 
 Change-making modernization adapter. Reads the canonical library from
 ``uiao.modernization.orgtree.dynamic_groups`` and reconciles the tenant
@@ -19,7 +19,7 @@ Design notes
 * Tenant state comes from ``EntraCollector`` when wired in, but can also be
   injected directly (``current_tenant_state=...``) to keep tests offline.
 * ``delete-phantom`` is **never** auto-applied; phantom groups become drift
-  findings for governance review (MOD_B §Drift: "No — investigate, then
+  findings for governance review (UIAO_152 §Drift: "No — investigate, then
   delete or canonize"). The canon only auto-remediates ``create`` and
   ``update``.
 * Rule normalisation is intentionally strict — the canonical rule string
@@ -238,7 +238,7 @@ class EntraDynamicGroupsAdapter:
 
         Operations in :data:`OPS_AUTO_APPLIED` (``create``, ``update``) are
         executed; ``delete-phantom`` is always reported as ``skipped-manual``
-        per the MOD_B auto-remediate policy.
+        per the UIAO_152 auto-remediate policy.
         """
         report = DynamicGroupReport(
             generated_at=datetime.now(timezone.utc).isoformat(),
@@ -251,7 +251,7 @@ class EntraDynamicGroupsAdapter:
                         op=op.op,
                         group_name=op.group_name,
                         status="skipped-manual",
-                        detail="Phantom group — governance review required (MOD_B).",
+                        detail="Phantom group — governance review required (UIAO_152).",
                     )
                 )
                 continue

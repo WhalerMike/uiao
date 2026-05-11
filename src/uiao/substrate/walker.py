@@ -54,6 +54,12 @@ class DriftFinding:
     severity: str
     path: str
     detail: str
+    # Machine-readable label for sub-flavors within a `drift_class`. The walker
+    # emits multiple kinds of DRIFT-PROVENANCE (dangling code refs, missing
+    # canon docs, retired-slug citations); `subkind` lets callers and the CLI
+    # filter on the specific check via equality instead of substring-on-detail.
+    # `None` for findings that don't need to be distinguished.
+    subkind: Optional[str] = None
 
 
 @dataclass
@@ -100,6 +106,7 @@ class SubstrateReport:
                     "severity": f.severity,
                     "path": f.path,
                     "detail": f.detail,
+                    "subkind": f.subkind,
                 }
                 for f in self.findings
             ],
@@ -213,6 +220,7 @@ def walk_substrate(workspace_root: Optional[Path] = None) -> SubstrateReport:
 
     _scan_canon_code_refs(root, report)
     _scan_docs_code_refs(root, report)
+    _scan_retired_slugs(root, report, manifest.get("retired_slugs") or [])
     _scan_consent_envelope(root, report)
     _scan_issuer_chain(root, report)
     _scan_ztmm_pillars(root, report)
@@ -681,3 +689,95 @@ def _scan_docs_code_refs(root: Path, report: SubstrateReport) -> None:
         source_label="docs document",
         report=report,
     )
+
+
+def _scan_retired_slugs(
+    root: Path,
+    report: SubstrateReport,
+    retired_slugs: list[dict],
+) -> None:
+    """Emit a P2 advisory for any literal occurrence of a retired slug
+    inside the canon or docs trees.
+
+    The walker reads the manifest's `retired_slugs:` block (a list of
+    `{slug, replacement, rationale?}`) and scans `src/uiao/canon/` and
+    `docs/` for any text that contains the slug as a word. Each
+    `(file, slug)` pair produces one finding naming the replacement
+    so the operator can fix the reference in-place.
+
+    Three guards keep the scan honest:
+
+      1. The slug-bearing files inside the canon tree (e.g. each
+         renamed UIAO_15x doc carries a `prior_id: "MOD_X"` frontmatter
+         line as a permanent historical record) are intentionally
+         excluded — `prior_id:` is the right place for a retired slug
+         to live, not drift.
+      2. The ADR that retired the slug is excluded — it's the
+         historical artifact about the rename, by construction it
+         must reference the old slug.
+      3. The substrate manifest itself is excluded — its
+         `retired_slugs:` block contains every retired slug by design.
+    """
+    if not retired_slugs:
+        return
+    canon_dir = root / CANON_ROOT
+    docs_dir = root / DOCS_ROOT
+
+    # Build a single regex per slug (word-boundary literal match).
+    slug_patterns: list[tuple[re.Pattern[str], str, str]] = []
+    for entry in retired_slugs:
+        slug = entry.get("slug")
+        replacement = entry.get("replacement")
+        if not slug or not replacement:
+            continue
+        rationale = entry.get("rationale", "")
+        slug_patterns.append((re.compile(rf"\b{re.escape(slug)}\b"), replacement, rationale))
+    if not slug_patterns:
+        return
+
+    files: list[Path] = []
+    for d, patterns in ((canon_dir, ("*.md",)), (docs_dir, ("*.md", "*.qmd"))):
+        if not d.is_dir():
+            continue
+        for glob in patterns:
+            files.extend(d.rglob(glob))
+
+    seen: set[tuple[str, str]] = set()
+    for md_file in sorted(set(files)):
+        try:
+            text = md_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        # Mask out frontmatter `prior_id:` values — those are the
+        # permanent historical record and must not be flagged.
+        masked = re.sub(r'^\s*prior_id:\s*"[^"]*"\s*$', "", text, flags=re.MULTILINE)
+        # Also mask the substrate-manifest's own retired_slugs block by
+        # path: the only place we'd encounter is canon/substrate-manifest.yaml
+        # (.yaml is not in the scan globs above, so this is defensive).
+        file_rel = md_file.relative_to(root).as_posix()
+        if file_rel.endswith("substrate-manifest.yaml"):
+            continue
+        # ADR-060 references retired slugs by construction; it's the
+        # rename's source-of-truth artifact. Skip it.
+        if "adr-060-mod-namespace-flatten-into-uiao-canon.md" in file_rel:
+            continue
+
+        for pat, replacement, rationale in slug_patterns:
+            for match in pat.finditer(masked):
+                slug_text = match.group(0)
+                key = (file_rel, slug_text)
+                if key in seen:
+                    continue
+                seen.add(key)
+                detail = f"{file_rel} cites retired slug {slug_text}; use {replacement} instead"
+                if rationale:
+                    detail += f" (per {rationale})"
+                report.findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-PROVENANCE",
+                        severity="P2",
+                        path=file_rel,
+                        detail=detail,
+                        subkind="retired-slug",
+                    )
+                )

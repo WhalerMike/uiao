@@ -1,4 +1,4 @@
-"""OrgTree policy-targeting canon loader (MOD_N, ADR-039).
+"""OrgTree policy-targeting canon loader (UIAO_164, ADR-039).
 
 Loads ``src/uiao/canon/data/orgpath/policy-targets.yaml`` and exposes a
 :class:`PolicyTargetingCanon` that the ``entra-policy-targeting``
@@ -11,11 +11,11 @@ is canon-governed.
 
 The loader enforces cross-canon integrity:
 
-* every Intune ``target_group`` must resolve to a live MOD_B dynamic
+* every Intune ``target_group`` must resolve to a live UIAO_152 dynamic
   group (ADR-036), otherwise the assignment points at a name that will
   never exist in a tenant;
 * every Arc ``orgpath_selector.prefix`` must be either the root ``ORG``
-  (baseline-everything) or an active code in the MOD_A codebook — no
+  (baseline-everything) or an active code in the UIAO_151 codebook — no
   Arc assignment may scope to a deprecated or absent OrgPath;
 * ``(profile_ref, target_group)`` pairs are unique within
   ``intune_assignments[]``;
@@ -146,7 +146,7 @@ def _validate_integrity(
             raise PolicyTargetingValidationError(
                 f"intune_assignments[{i}] target_group "
                 f"'{assignment['target_group']}' does not resolve to a "
-                "MOD_B dynamic group (ADR-036)"
+                "UIAO_152 dynamic group (ADR-036)"
             )
         dedup = (
             (
@@ -173,14 +173,14 @@ def _validate_integrity(
         prefix = assignment["orgpath_selector"]["prefix"]
         if codebook.is_deprecated(prefix):
             raise PolicyTargetingValidationError(
-                f"arc_policy_assignment '{name}' selector prefix '{prefix}' is deprecated in MOD_A codebook"
+                f"arc_policy_assignment '{name}' selector prefix '{prefix}' is deprecated in UIAO_151 codebook"
             )
         # ORG (root) is not an entry in the codebook's `codes` list if the
         # codebook chooses to omit the root, so accept it explicitly.
         if prefix != "ORG" and not codebook.is_active(prefix):
             raise PolicyTargetingValidationError(
                 f"arc_policy_assignment '{name}' selector prefix '{prefix}' "
-                "is not an active OrgPath in the MOD_A codebook"
+                "is not an active OrgPath in the UIAO_151 codebook"
             )
 
 

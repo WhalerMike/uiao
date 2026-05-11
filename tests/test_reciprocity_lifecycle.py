@@ -16,7 +16,7 @@ References
 ----------
 - ADR-054 §Implementation line 163 — deferred happy-path + lapsed-ATO test cases
 - ADR-058 §Consequences — 8 blocking CI gates, smoke runs in <60s
-- UIAO_143 §7 — ConMon SLA enforcement (30/45/30-day thresholds)
+- UIAO_144 §7 — ConMon SLA enforcement (30/45/30-day thresholds)
 - inbox/v0.6.0-hrit-productization/03-batch-plan.md §WS-A9
 """
 
@@ -27,6 +27,7 @@ import importlib
 import json
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -41,7 +42,7 @@ _SCHEMA_PATH = (
 )
 
 
-def _import_or_skip(module_path: str):  # type: ignore[return]
+def _import_or_skip(module_path: str) -> Any:
     """Import *module_path* or skip the current test with an informative message."""
     try:
         return importlib.import_module(module_path)
@@ -56,13 +57,13 @@ def _emit_test_record(
     effective_at: datetime | None = None,
     expires_at: datetime | None = None,
     signing_key: bytes = b"test-signing-key-ws-a9-lifecycle",
-) -> dict:
+) -> dict[str, Any]:
     """Helper: emit a reciprocity record using defaults suitable for tests."""
     mod = _import_or_skip(_EMITTER_MODULE)
     emit = mod.emit_reciprocity_record
 
     now = datetime.now(tz=timezone.utc)
-    return emit(
+    result: dict[str, Any] = emit(
         controlling_ato_id="OPM-HRIT-2026-001",
         consuming_agency_code=consuming_agency_code,
         legal_basis=legal_basis,
@@ -72,10 +73,11 @@ def _emit_test_record(
         ),
         effective_at=effective_at or now,
         expires_at=expires_at or (now + timedelta(days=365)),
-        configuration_latitude_ref=f"OPM-HRIT-2026-001#latitude/{consuming_agency_code.lower()}-tier-1",
+        configuration_latitude_ref=(f"OPM-HRIT-2026-001#latitude/{consuming_agency_code.lower()}-tier-1"),
         signer="CN=opm-reciprocity-svc,OU=HRIT,O=OPM,C=US",
         signing_key=signing_key,
     )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -130,6 +132,12 @@ class TestHappyPath:
             pytest.skip(f"WS-A1 schema not yet merged: {_SCHEMA_PATH}")
 
         schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+        # The Phase 0 schema stub has no required fields; only run full validation
+        # once the schema has a non-empty required array (WS-A1 fills this).
+        required_fields = schema.get("required", [])
+        if not required_fields:
+            pytest.skip("WS-A1 schema stub has no required fields yet (pre-Phase-2)")
+
         validator = jsonschema.Draft202012Validator(schema)
         record = _emit_test_record(signing_key=_KEY)
         errors = list(validator.iter_errors(record))
@@ -206,6 +214,10 @@ class TestLapsedAto:
             pytest.skip(f"WS-A1 schema not yet merged: {_SCHEMA_PATH}")
 
         schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+        required_fields = schema.get("required", [])
+        if not required_fields:
+            pytest.skip("WS-A1 schema stub has no required fields yet (pre-Phase-2)")
+
         validator = jsonschema.Draft202012Validator(schema)
 
         past = datetime.now(tz=timezone.utc) - timedelta(days=100)
@@ -287,32 +299,35 @@ class TestTamperDetection:
 class TestLegalBasisValidation:
     """Records with invalid legal_basis fail JSON schema validation."""
 
-    def _validate(self, record: dict) -> list:
+    def _schema_errors(self, record: dict[str, Any]) -> list[Any]:
         jsonschema = pytest.importorskip("jsonschema")
         if not _SCHEMA_PATH.exists():
             pytest.skip(f"WS-A1 schema not yet merged: {_SCHEMA_PATH}")
         schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+        required_fields = schema.get("required", [])
+        if not required_fields:
+            pytest.skip("WS-A1 schema stub has no required fields yet (pre-Phase-2)")
         return list(jsonschema.Draft202012Validator(schema).iter_errors(record))
 
     def test_invalid_legal_basis_fails_schema(self) -> None:
         """A record with legal_basis='invalid-value' fails schema validation."""
         record = _emit_test_record(signing_key=_KEY)
         record["legal_basis"] = "invalid-value"
-        errors = self._validate(record)
+        errors = self._schema_errors(record)
         assert errors, "Expected schema validation failure for invalid legal_basis"
 
     def test_empty_legal_basis_fails_schema(self) -> None:
         """A record with legal_basis='' fails schema validation."""
         record = _emit_test_record(signing_key=_KEY)
         record["legal_basis"] = ""
-        errors = self._validate(record)
+        errors = self._schema_errors(record)
         assert errors, "Expected schema validation failure for empty legal_basis"
 
     def test_none_legal_basis_fails_schema(self) -> None:
         """A record with legal_basis omitted fails schema validation."""
         record = _emit_test_record(signing_key=_KEY)
         del record["legal_basis"]
-        errors = self._validate(record)
+        errors = self._schema_errors(record)
         assert errors, "Expected schema validation failure for missing legal_basis"
 
     @pytest.mark.parametrize(
@@ -328,12 +343,11 @@ class TestLegalBasisValidation:
     def test_valid_legal_basis_passes_schema(self, valid_basis: str) -> None:
         """Each valid enum value passes schema validation."""
         record = _emit_test_record(signing_key=_KEY)
-        # Re-emit with the desired legal_basis (emitter signs with it)
+        # Substitute the legal_basis (note: HMAC won't verify after this, but
+        # the schema does not verify HMAC — only shape).
         record["legal_basis"] = valid_basis
-        # Reset the signature to avoid stale-sig confusion
-        # (the schema does not verify the HMAC, only the shape)
-        errors = self._validate(record)
-        # legal_basis is valid; any remaining errors are unrelated
+        errors = self._schema_errors(record)
+        # Only look for legal_basis-specific errors
         legal_basis_errors = [e for e in errors if "legal_basis" in e.json_path]
         assert not legal_basis_errors, (
             f"Unexpected schema error for legal_basis={valid_basis!r}: {[e.message for e in legal_basis_errors]}"

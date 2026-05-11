@@ -4,6 +4,74 @@ All notable changes to UIAO are documented here. Format adapted from [Keep a Cha
 
 ## [Unreleased]
 
+**Theme: GCC-Moderate boundary integration — completion.** Lands the
+remaining canonical, customer-doc, and adapter-data artifacts derived
+from the four `inbox/New_FedRAMP_Boundary/` source documents (M365
+GCC-Moderate Telemetry & Boundary Assessment, ThousandEyes Workaround
+Analysis, FedRAMP 20x Assessment & Implications, LinkedIn Post Draft).
+Companion to the Phase 1.4 / Phase 4 / Phase 5 cherry-picks already
+landed via PRs #307 and #308 (the seven KQL queries, `sentinel_probe.py`
++ scorecard + 16 tests, and FINDING-002..009).
+
+### Added
+
+- **`src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml`** —
+  machine-readable telemetry-gap matrix, 26 rows across four
+  disposition classes (`confirmed` / `inferred` / `restricted` /
+  `retention-limited`). Backs the cherry-picked findings and the
+  scorecard in `sentinel_probe.py`.
+- **`src/uiao/canon/compliance/reference/gcc-moderate-boundary-assessment/`**
+  — five-file canon reference: README, methodology
+  (boundary-inference framework over SI-4 / AU-2 / AU-3 / SC-7),
+  capabilities (per-feature dispositions), MITRE Chains A & B,
+  resolved-positions on previously disputed questions.
+- **`docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd`**
+  — fills the B.1 leaf of the boundary-authorization scaffold with
+  the ZTMM ceiling table, BOD 25-01 / M-22-09 / M-21-31 / NIST 800-207
+  posture, and MAS 2026 forward path.
+- **ADR-057** (`src/uiao/canon/adr/adr-057-thousandeyes-networks-pillar-scope.md`)
+  — PROPOSED. Endorses ThousandEyes only as a Networks-pillar
+  component of a broader compensating-architecture stack with four
+  preconditions. (Originally drafted as ADR-047 on the integration
+  branch; renumbered after main's two unrelated ADR-047 files
+  landed.)
+- **`docs/narrative/2026-04-fedramp-gcc-moderate-three-assessments.md`**
+  — public-surface synthesis with a reference map across all
+  artifacts.
+- **`inbox/New_FedRAMP_Boundary/`** — original `.docx` source
+  documents + `IMAGE-PROMPTS-fedramp-moderate.md` + image-pipeline
+  Python scripts. Immutable provenance for every derived artifact in
+  this section.
+
+### Changed
+
+- **`src/uiao/canon/data/fedramp-20x.yml`** — extended with four new
+  top-level blocks: `minimum_assessment_scope` (five MAS-CSO inclusion
+  tests), `ksi_families` (all eleven KSI families — was 7 in the
+  UIAO-specific `core_mappings`), `deployment_surfaces` (Phase 2 Pilot
+  Required; Rev5 Balance Improvement Releases Optional; Phase 1 Pilot
+  Archived), and `gap_matrix_scope_effect` (per-signal-class
+  projection of MAS-CSO against the GCC-Moderate gap matrix).
+- **`docs/docs/04_FedRAMP20x_Phase2_Summary.qmd`** — appended §12
+  covering MAS-CSO, the eleven KSI families, the three deployment
+  surfaces, and three caveats on assessor interpretation drift.
+- **`docs/docs/03_FedRAMP20x_Crosswalk.qmd`** — appended §12 with the
+  MAS-CSO scope-effect-by-signal-class crosswalk; ~30–40% of the gap
+  matrix has a credible descope path under MAS-CSO-MDI.
+- **ADR-043** — PROPOSED → ACCEPTED on Rev5 Balance Improvement
+  Release publication for Vulnerability Detection and Response and
+  Collaborative Continuous Monitoring (the modernized pathways for
+  RV5-CA07-VLN and RV5-CA07-CCM).
+- **`docs/findings/fedramp-gcc-moderate-informed-network-routing.md`
+  (FINDING-001)** — added `related_ksi: ["KSI-SC-07", "KSI-SI-04"]` to
+  bring it to parity with the cherry-picked findings, which already
+  carry the cross-reference.
+- **`docs/findings/fedramp-gcc-moderate-thousandeyes-coverage-scope.md`
+  (FINDING-002 ThousandEyes)** — repointed all four ADR references
+  from `ADR-047` to `ADR-057`. The cherry-pick from PR #307 captured
+  the original branch's ADR-047 reference, but main's ADR-047 slot is
+  now occupied by two unrelated ADRs.
+
 ## [0.4.1] — 2026-05-01
 
 **Theme: Identity transformation canon + FedRAMP 20x integration + hygiene burn-down.** Establishes the canonical inventory of identity/directory transformations, the Priority 1 deliverable plans, foundational ADRs, the ADR governance protocol, the first batch of Phase 1 PowerShell discovery scripts that feed every downstream Spec 1/2/3 deliverable, the FedRAMP 20x KSI integration spec (UIAO_133 + ADR-047), and a comprehensive cleanup of post-consolidation drift in CONTRIBUTING.md, root layout, AGENTS.md module topology, and pyproject.toml dependency hygiene.

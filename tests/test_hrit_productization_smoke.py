@@ -11,7 +11,7 @@ References
 ----------
 - ADR-054 §Implementation (deferred test cases now closed by this module)
 - ADR-058 — HRIT Productization mission theme
-- UIAO_143 §4–9 — Operational spec for each runtime component
+- UIAO_144 §4–9 — Operational spec for each runtime component
 - inbox/v0.6.0-hrit-productization/03-batch-plan.md §WS-A9
 """
 
@@ -21,6 +21,7 @@ import importlib
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -73,30 +74,21 @@ def _all_hrit_modules_available() -> bool:
     return True
 
 
-def _skip_unless_all_modules() -> pytest.MarkDecorator:
-    """Skip-marker when any required Batch A module is missing."""
-    if not _all_hrit_modules_available():
-        return pytest.mark.skip(reason="One or more Batch A modules not yet merged (pre-Phase-2)")
-    if not _SSP_LATITUDE_TABLE.exists():
-        return pytest.mark.skip(reason="WS-A8 fixture not yet merged (ssp-latitude-table.yaml missing)")
-    return pytest.mark.usefixtures()  # type: ignore[return-value]  # no-op mark
-
-
 # ---------------------------------------------------------------------------
 # Helpers — parse YAML fixture files without requiring PyYAML at import time
 # ---------------------------------------------------------------------------
 
 
-def _load_yaml_fixture(path: Path) -> dict:
+def _load_yaml_fixture(path: Path) -> dict:  # type: ignore[type-arg]
     """Load a YAML fixture file.  Skips the test if PyYAML is unavailable."""
     try:
-        import yaml  # noqa: PLC0415
+        import yaml  # type: ignore[import-untyped]  # noqa: PLC0415
     except ImportError:
         pytest.skip("PyYAML not installed — cannot parse HRIT fixture files")
     return yaml.safe_load(path.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
 
 
-def _build_ssp_latitude_table(raw: dict):  # type: ignore[return]
+def _build_ssp_latitude_table(raw: dict) -> Any:  # type: ignore[type-arg]
     """Construct a SspLatitudeTable from the raw fixture dict."""
     from uiao.governance.config_latitude import (  # noqa: PLC0415
         LatitudeTableEntry,
@@ -119,7 +111,7 @@ def _build_ssp_latitude_table(raw: dict):  # type: ignore[return]
     )
 
 
-def _build_tenant_config(raw: dict):  # type: ignore[return]
+def _build_tenant_config(raw: dict) -> Any:  # type: ignore[type-arg]
     """Construct a TenantConfig from the raw fixture dict."""
     from uiao.governance.config_latitude import TenantConfig, TenantConfigEntry  # noqa: PLC0415
 
@@ -287,7 +279,7 @@ class TestHritProductizationLifecycle:
             signing_key=self._SIGNING_KEY,
         )
         component_def = emit_scoped_component_definition(record)
-        assessment_results: dict = {
+        assessment_results: dict[str, Any] = {
             "assessment-results": {
                 "uuid": "00000000-0000-0000-0000-000000000001",
                 "metadata": {"title": "TREAS Assessment Results (smoke)", "version": "1.0.0"},

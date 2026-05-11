@@ -2,13 +2,13 @@
 
 Covers the nine acceptance scenarios from the WS-A5 workstream card:
 
-1.  Award 100d ago, no SSPs submitted → SSP-Draft-30 FAIL, SSP-Final-45 FAIL
-2.  Award 28d ago, no SSPs → SSP-Draft-30 WARN
-3.  Award 28d ago, draft 5d after award → SSP-Draft-30 PASS, SSP-Final-45 WARN
-4.  Award 50d ago, draft @ d10, final @ d44 → both PASS
-5.  ATO expires 25d from now, decision 35d ago → Reauthorization-30 WARN
-6.  ATO expires 10d ago → Reauthorization-30 FAIL
-7.  ATO expires None → Reauthorization-30 N/A
+1.  Award 100d ago, no SSPs submitted -> SSP-Draft-30 FAIL, SSP-Final-45 FAIL
+2.  Award 28d ago, no SSPs -> SSP-Draft-30 WARN
+3.  Award 28d ago, draft 5d after award -> SSP-Draft-30 PASS, SSP-Final-45 WARN
+4.  Award 50d ago, draft @ d10, final @ d44 -> both PASS
+5.  ATO expires 25d from now, decision 35d ago -> Reauthorization-30 WARN
+6.  ATO expires 10d ago -> Reauthorization-30 FAIL
+7.  ATO expires None -> Reauthorization-30 N/A
 8.  CLI happy-path: all PASS, --json returns parseable JSON, exit 0
 9.  CLI --exit-on-fail with FAIL state returns exit 1
 """
@@ -77,7 +77,7 @@ def _get_verdict(report: CadenceReport, name: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Scenario 1: Award 100d ago, no SSPs submitted → both FAIL
+# Scenario 1: Award 100d ago, no SSPs submitted -> both FAIL
 # ---------------------------------------------------------------------------
 
 
@@ -91,7 +91,7 @@ def test_scenario_1_no_ssps_overdue() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Scenario 2: Award 28d ago, no SSPs → Draft WARN (within window, over 28d)
+# Scenario 2: Award 28d ago, no SSPs -> Draft WARN (within window, over 28d)
 # ---------------------------------------------------------------------------
 
 
@@ -112,7 +112,7 @@ def test_scenario_2_award_27d_no_ssps_draft_pass() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Scenario 3: Award 28d ago, draft 5d after award → Draft PASS, Final WARN
+# Scenario 3: Award 28d ago, draft 5d after award -> Draft PASS, Final WARN
 # ---------------------------------------------------------------------------
 
 
@@ -121,12 +121,12 @@ def test_scenario_3_draft_submitted_early() -> None:
     report = evaluate_ato_cadence(inp)
 
     assert _get_verdict(report, "SSP-Draft-30") == "PASS"
-    # Final not submitted, 29d elapsed > 43d warn threshold? No — 29 < 43, so PASS
+    # Final not submitted, 29d elapsed > 43d warn threshold? No -- 29 < 43, so PASS
     assert _get_verdict(report, "SSP-Final-45") == "PASS"
 
 
 def test_scenario_3_draft_submitted_final_warn() -> None:
-    """Award 44d ago, draft submitted on d5 → Draft PASS, Final WARN (44 > 43)."""
+    """Award 44d ago, draft submitted on d5 -> Draft PASS, Final WARN (44 > 43)."""
     inp = _inp(days_since_award=44, ssp_draft_day=5)
     report = evaluate_ato_cadence(inp)
 
@@ -136,7 +136,7 @@ def test_scenario_3_draft_submitted_final_warn() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Scenario 4: Award 50d ago, draft @d10, final @d44 → both PASS
+# Scenario 4: Award 50d ago, draft @d10, final @d44 -> both PASS
 # ---------------------------------------------------------------------------
 
 
@@ -150,7 +150,7 @@ def test_scenario_4_both_ssps_on_time() -> None:
 
 
 def test_scenario_4_draft_late_fails() -> None:
-    """Draft submitted on d31 (1d late) → FAIL."""
+    """Draft submitted on d31 (1d late) -> FAIL."""
     inp = _inp(days_since_award=50, ssp_draft_day=31, ssp_final_day=44)
     report = evaluate_ato_cadence(inp)
 
@@ -159,7 +159,7 @@ def test_scenario_4_draft_late_fails() -> None:
 
 
 def test_scenario_4_final_late_fails() -> None:
-    """Final submitted on d46 (1d late) → FAIL."""
+    """Final submitted on d46 (1d late) -> FAIL."""
     inp = _inp(days_since_award=50, ssp_draft_day=10, ssp_final_day=46)
     report = evaluate_ato_cadence(inp)
 
@@ -168,7 +168,7 @@ def test_scenario_4_final_late_fails() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Scenario 5: ATO expires 25d from now, decision 35d ago → Reauth WARN
+# Scenario 5: ATO expires 25d from now, decision 35d ago -> Reauth WARN
 # ---------------------------------------------------------------------------
 
 
@@ -176,7 +176,7 @@ def test_scenario_5_reauth_warn() -> None:
     """Now is inside the 30d reauth window but decision was before the window opened."""
     award = date(2026, 1, 1)
     expires_at = date(2026, 5, 1)
-    # now is 25d before expiry → inside the 30d window
+    # now is 25d before expiry -> inside the 30d window
     now_date = expires_at - timedelta(days=25)
     now_dt = _now_from_date(now_date)
     # decision was 35d ago (before now) but also before reauth_deadline
@@ -198,7 +198,7 @@ def test_scenario_5_reauth_warn() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Scenario 6: ATO expires 10d ago → Reauth FAIL
+# Scenario 6: ATO expires 10d ago -> Reauth FAIL
 # ---------------------------------------------------------------------------
 
 
@@ -223,13 +223,13 @@ def test_scenario_6_reauth_fail_lapsed() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Scenario 7: ATO expires None → Reauth N/A
+# Scenario 7: ATO expires None -> Reauth N/A
 # ---------------------------------------------------------------------------
 
 
 def test_scenario_7_reauth_na_no_expiry() -> None:
     inp = _inp(days_since_award=50, ssp_draft_day=10, ssp_final_day=44)
-    # No ato_expires_day → current_ato_expires_at is None
+    # No ato_expires_day -> current_ato_expires_at is None
     report = evaluate_ato_cadence(inp)
 
     verdict = next(v for v in report.verdicts if v.name == "Reauthorization-30")
@@ -238,7 +238,7 @@ def test_scenario_7_reauth_na_no_expiry() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Scenario 8: CLI happy-path — all PASS, --json returns parseable JSON, exit 0
+# Scenario 8: CLI happy-path -- all PASS, --json returns parseable JSON, exit 0
 # ---------------------------------------------------------------------------
 
 
@@ -292,7 +292,7 @@ def test_scenario_8_cli_table_all_pass() -> None:
 
 
 def test_scenario_9_cli_exit_on_fail() -> None:
-    # Award 100d ago, no SSPs → FAIL
+    # Award 100d ago, no SSPs -> FAIL
     result = runner.invoke(
         app,
         [
@@ -326,7 +326,7 @@ def test_scenario_9_cli_no_exit_on_fail_flag_doesnt_exit_1() -> None:
 
 
 def test_reauth_pass_when_decision_within_window() -> None:
-    """Decision within 30d of expiry → PASS."""
+    """Decision within 30d of expiry -> PASS."""
     award = date(2026, 1, 1)
     expires_at = date(2026, 5, 1)
     reauth_deadline = expires_at - timedelta(days=30)
@@ -349,7 +349,7 @@ def test_reauth_pass_when_decision_within_window() -> None:
 
 
 def test_reauth_pass_outside_window() -> None:
-    """Now well before the 30d reauth window → PASS."""
+    """Now well before the 30d reauth window -> PASS."""
     award = date(2026, 1, 1)
     expires_at = date(2027, 1, 1)
     now_date = date(2026, 6, 1)  # >30d before expiry

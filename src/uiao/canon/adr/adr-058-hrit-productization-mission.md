@@ -20,7 +20,7 @@ canon_refs:
   - UIAO_113  # Evidence Graph — v1.2 amendment in scope
   - UIAO_140  # Single-ATO Reciprocity Model
   - UIAO_141  # Customer Identity Model
-  - UIAO_143  # HRIT Productization Operational Spec — new spec introduced by this ADR
+  - UIAO_144  # HRIT Productization Operational Spec — new spec introduced by this ADR
   - Spec2-D6.1  # Federal HRIT Integration Runbook
 hrit_traceability:
   - "Solicitation 24322626R0007 Amd 4, PWS §5.1.1 #5 (p. 26) — single ATO covers all agencies"
@@ -80,7 +80,7 @@ This ADR ratifies **option 1** as the v0.6.0 mission theme.
 Adopt **HRIT Single-ATO Productization** as the v0.6.0 mission theme.
 Concretely:
 
-1. **Allocate UIAO_143** as the *HRIT Productization Operational Spec*
+1. **Allocate UIAO_144** as the *HRIT Productization Operational Spec*
    under `src/uiao/canon/specs/hrit-productization.md`. Operational
    counterpart to UIAO_140 (model) and Spec2-D6.1 (federal-integration
    runbook).
@@ -124,10 +124,10 @@ Concretely:
 
 ## Consequences
 
-### Canon work in scope (this ADR + UIAO_143)
+### Canon work in scope (this ADR + UIAO_144)
 
 - ADR-058 (this document)
-- UIAO_143 spec (HRIT Productization Operational Spec)
+- UIAO_144 spec (HRIT Productization Operational Spec)
 - UIAO_113 v1.2 amendment — adds `ato-decision` + `reciprocity-record` node types
 - New schema: `reciprocity-record.schema.json`
 - KSI rules: KSI-RECIP-* family
@@ -170,7 +170,7 @@ activation work is independent.
 - The ADR index (`canon/adr/index.md`) needs a refresh to include
   ADR-032 through ADR-058 — pre-existing housekeeping debt.
 - The transferable-ATO framing used informally in earlier
-  documentation now points to ADR-054 + UIAO_140 + UIAO_143.
+  documentation now points to ADR-054 + UIAO_140 + UIAO_144.
 
 ## Rejected alternatives
 
@@ -190,7 +190,7 @@ activation work is independent.
 Acceptance of ADR-058 is a doctrinal commitment; verification is the
 existence and integrity of the downstream artifacts:
 
-- [ ] UIAO_143 (HRIT Productization Operational Spec) drafted and
+- [ ] UIAO_144 (HRIT Productization Operational Spec) drafted and
       registered in `document-registry.yaml`
 - [ ] All 10 Batch A workstreams from `03-batch-plan.md` complete
 - [ ] Quickstart smoke test passes end-to-end on synthetic fixture
