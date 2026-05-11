@@ -36,7 +36,7 @@ DEFAULT_GRAPH_API_VERSION = "v1.0"
 # Local copy of the canonical OrgPath regex (UIAO_151). Kept here rather than
 # importing from governance.drift to avoid a dependency cycle between the
 # adapter and the drift engine — both reference the same canon (ADR-035).
-_ORGPATH_REGEX = re.compile(r"^ORG(-[A-Z0-9]{2,6}){0,4}$")
+_ORGPATH_REGEX = re.compile(r"^ORG(-[A-Z0-9]{2,6}){0,8}$")
 
 
 def _extract_orgpath(record: Dict[str, Any]) -> Optional[str]:
