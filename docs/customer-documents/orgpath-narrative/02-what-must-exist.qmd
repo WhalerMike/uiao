@@ -1,0 +1,495 @@
+---
+title: "What Must Exist"
+subtitle: "The Governance Substrate Requirements for Enterprise Identity Modernization"
+doc-type: orgpath-narrative-chapter
+audience: [Technical, Customer]
+classification: Controlled
+boundary: GCC-Moderate
+family: orgpath-narrative
+series-order: 02
+status: Published
+source-document: "What Must Exist — The Governance Substrate Requirements for Enterprise Identity Modernization.md"
+rendered-from: "Pandoc-converted Markdown sidecar of OneDrive .docx; body preserved unchanged."
+---
+
+## Chapter 2 — Every Identity Must Know Where It Sits
+
+> The Organizational Position Requirement
+
+## Chapter 3 — The Hierarchy Itself Must Be a Governed Artifact
+
+> The Authoritative Registry Requirement
+
+## Chapter 4 — Policy Must Flow From Structure, Not Only From Assignment
+
+> The Policy Inheritance Requirement
+
+## Chapter 5 — Devices Must Carry Organizational Position, Not Just Compliance State
+
+> The Device Governance Requirement
+
+## Chapter 6 — Three Surfaces, One Asset, No Native Linkage
+
+> The Server Identity Problem
+
+## Chapter 7 — Nothing Can Be Decommissioned Without a Map
+
+> The Dependency Mapping Requirement
+
+## Chapter 8 — Governance Is Not a Point in Time
+
+> The Drift Detection Requirement
+
+## Chapter 9 — The Governance Model Must Span Every Surface
+
+> The Cross-Platform Coherence Requirement
+
+## Chapter 10 — A Governance Model That Requires Manual Operation Is Not a Governance Model
+
+> The Automation Requirement
+
+## Chapter 11 — Governance History Must Be a First-Class Artifact
+
+> The Version Control Requirement
+
+## Chapter 12 — The Substrate That Is Required
+
+> Synthesis: The Shape of What Must Exist
+
+## Chapter 1 — RESTATING THE PROBLEM AS A SET OF REQUIREMENTS
+
+### The Gap, Expressed as Requirements
+
+### Where the Companion Document Stopped
+
+The companion document to this analysis — *The Microsoft Identity and Governance Stack: Native Capabilities and Inherited Limitations* — established with precision what the Microsoft cloud stack provides natively and where its native capabilities end. It described the tools, their individual strengths, and the structural boundaries beyond which those tools do not reach. This document begins where that one stopped. It takes the gap that was established there and translates it into a requirements language: not what the platform lacks, but what must exist in order to close the gap.
+
+That distinction matters more than it may initially appear. A list of platform limitations invites a search for compensating features — another license tier, another configuration option, another integration that might bridge the distance between what the tool does and what the organization needs. The companion document made clear that the gap in question cannot be closed that way. It is not a collection of missing features remediable by configuration changes or additional licensing. It is a structural absence. The Microsoft cloud stack has no shared substrate that represents organizational structure, communicates it across tools, or causes policy to flow from organizational position. Every tool in the stack governs through explicit assignment. None of them governs through structure. That is the condition this document addresses, and the requirements it establishes are derived from that condition directly.
+
+### The Derivation of Requirements From What Was Left Behind
+
+Requirements do not emerge from abstract principles. They emerge from the gap between what an organization's governance posture was and what its governance posture becomes when the infrastructure that supported it is replaced. Organizations that operated Active Directory for a decade or more did not merely use a directory service. They relied on a governance substrate — a unified, hierarchical, policy-bearing infrastructure whose properties were so thoroughly embedded in routine operations that many of those properties were never articulated as requirements, because they were never absent. The OU tree organized identities into governance boundaries. Group Policy inherited through that tree automatically. Administrators were delegated authority over branches of that tree without manual per-object configuration. Security perimeters were defined by the tree's structure, not by spreadsheets. The governance model was, in a meaningful sense, built into the directory itself.
+
+When an organization moves its identity infrastructure to the Microsoft cloud stack, it does not move the governance substrate. It moves the identities. The directory is replaced with a flat cloud directory. The OU tree is replaced with nothing — or, more precisely, it is replaced with a collection of attributes, groups, and policy assignments that must be manually constructed and manually maintained to approximate what the tree provided automatically. The requirement space this document describes is the space defined by that approximation: what must be constructed, governed, and automated in the cloud-native environment in order to provide the governance properties that Active Directory provided as a structural byproduct of its own design.
+
+### Six Baseline Requirements
+
+The chapters that follow develop each of these requirements in depth, establishing the reasoning behind each one and stating it with the precision needed to guide architectural planning. Before developing them individually, it is useful to state them together, as a set, so that their mutual dependencies are visible from the outset.
+
+The first requirement is that organizational structure must be representable in the cloud directory — not merely implied by freeform strings in unmaintained attributes, but encoded in a governed, machine-readable form that is structurally meaningful to every tool that needs to evaluate organizational membership. The second requirement is that policy must be derivable from organizational position, not only from explicit group assignment — that the connection between where an identity sits in the organization and what governance rules apply to it must be computable, not manually maintained. The third requirement is that the same organizational model must span identity, devices, and servers simultaneously — it cannot be surface-specific, applying to users in one tool and inapplicable to devices in another. The fourth requirement is that the model must be authoritative: there must be one version of organizational truth, one governed record from which all position values are derived, not one version per tool and one version per administrator's best recollection. The fifth requirement is that the model must be governable — versioned, validated, and auditable, not inferred from whatever attributes happen to be populated on a given day. The sixth requirement is that the model must detect drift: when the real-world state of the environment diverges from the intended governance state encoded in the model, the system must detect that divergence, surface it, and support its remediation.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td style="text-align: left;"><p><em><strong>Architectural Requirement — Chapter 1</strong></em></p>
+<p><em>These six requirements are not aspirational. They describe the minimum conditions under which a cloud-native governance posture can be considered structurally equivalent to what organizations leave behind when they migrate from Active Directory. A cloud environment that satisfies fewer than all six of these requirements is not merely imperfect — it is structurally incomplete as a governance substrate, and its incompleteness will compound over time as the organization grows, changes, and depends more heavily on the governance model to enforce consistency across an expanding surface area.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+## Chapter 2 — THE ORGANIZATIONAL POSITION REQUIREMENT
+
+### Every Identity Must Know Where It Sits
+
+### What Organizational Position Meant in Active Directory
+
+In Active Directory, an identity's organizational position was not a label applied to a user record as a matter of convenience. It was a placement in a tree that carried with it a structured set of inherited expectations. The OU path of a user object determined which Group Policy Objects applied to that user, which resource access was available through group membership inherited at the OU level, which administrators held delegated authority over that identity, and what the security perimeter around that identity looked like. The path was not metadata in the informal sense of supplementary information attached to a primary record. It was governance lineage. The OU path encoded the identity's full relationship to the organization's governance structure, from the root domain at the top to the most granular operational unit at the bottom, and every node in that path was a meaningful governance boundary.
+
+This is the property that is entirely absent in a flat directory. The Microsoft cloud directory organizes identity objects into a single flat namespace. There is no container hierarchy. There is no inheritance model built into the directory's structure. Every governance relationship must be encoded explicitly, because no governance relationship can be inferred from where the object sits — because, in a meaningful sense, objects in a flat directory do not sit anywhere. They exist at the same level, differentiated only by their attribute values.
+
+### Why Available Attributes Do Not Satisfy This Requirement
+
+The instinctive response to the absence of an OU hierarchy in the cloud directory is to use the attributes that already exist on user objects to encode organizational context. The display name, the department field, the job title attribute, the manager field — these are the tools administrators reach for when they need to express where a user sits in the organization. They are, without exception, inadequate for the purpose of governance, and understanding why they are inadequate is essential to understanding what the correct solution must look like.
+
+Display names are freeform strings controlled by the administrator who created the object or the HR system that synchronized it. They encode a user's name, not their organizational position, and they are not subject to any schema validation that would make them usable as a governance signal. Department values are populated inconsistently. In a large organization with multiple HR systems, multiple identity lifecycle workflows, and multiple generations of directory management practice, the department attribute on any given user object may reflect the department the user was in at the time of provisioning, the department their HR system last reported, the department an administrator manually typed during account creation, or nothing at all. Consistency across objects cannot be assumed and cannot be enforced through the attribute's native schema. The manager field encodes an individual reporting relationship — it points to a single other user object, not to an organizational boundary. It cannot be used to determine that a user is inside a specific governance boundary, because individual reporting relationships and governance segmentation are not the same concept and do not follow the same rules. Job titles are HR constructs that describe a role, not a governance position. The same job title may exist across multiple organizational units with entirely different policy requirements. None of these attributes encodes governance boundary membership in a deterministic, validated form that a policy engine can consume reliably.
+
+### What the Attribute Must Be
+
+The inadequacy of existing attributes is not a consequence of the attributes being poorly maintained. It is a consequence of those attributes being designed for purposes other than governance segmentation. Improving their maintenance does not change what they fundamentally are. A better-maintained department field is still a freeform string with no schema validation and no structural relationship to the organization's governance hierarchy. What is needed is an attribute — or a structured set of attributes — designed specifically for the purpose of encoding governance lineage, in a form that is both machine-readable and deterministic.
+
+The attribute that satisfies this requirement must encode not just a leaf-level label identifying the user's immediate organizational unit, but the full lineage from the root of the organization to the identity's current position. This lineage must be structured in a way that allows policy engines, reporting tools, and governance workflows to evaluate organizational membership at any level of the hierarchy — from the organization's outermost boundary down to the most granular operational unit — using the same attribute and the same syntax. A tool that needs to know whether a user belongs to a particular division must be able to answer that question by examining the lineage attribute, without cross-referencing any other record. A tool that needs to know whether a user belongs to any subdivision of a particular department must be able to answer that question using the same attribute, by evaluating whether the lineage string begins with the path prefix corresponding to that department. The attribute must be structured enough to support these prefix-based evaluations, which means it must be a path-encoded string with a consistent delimiter and a consistent normalization convention, not a freeform label.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td style="text-align: left;"><p><em><strong>Architectural Requirement — Chapter 2</strong></em></p>
+<p><em>Every user and device identity in the cloud directory must carry an authoritative, machine-readable, deterministic representation of its organizational position. That representation must encode not just a leaf-level label but the full lineage from the root of the organization to the identity's current position. It must be structured in a way that allows policy engines, reporting tools, and governance workflows to evaluate organizational membership at any level of the hierarchy using the same attribute and the same syntax. This requirement rules out freeform attributes, manually maintained department fields, and display name conventions. It requires a governed, schema-validated, machine-readable attribute that encodes organizational lineage in a form that can be consumed deterministically by any tool that needs to know where an identity sits.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+## Chapter 3 — THE AUTHORITATIVE REGISTRY REQUIREMENT
+
+### The Hierarchy Itself Must Be a Governed Artifact
+
+### Two Distinct Problems
+
+Chapter 2 established the requirement that every identity must carry a structured attribute encoding its organizational position. That requirement, standing alone, is insufficient. Storing a hierarchical position on an identity object and governing the hierarchy itself are two separate problems, and the second is at least as important as the first. An attribute value that encodes organizational position is only as reliable as the schema that defines what valid values look like. Without a governed schema — a definitive record of what organizational nodes exist, how they relate to one another, and what values are valid within the path-encoded position string — the attribute degrades into a freeform field. Different administrators populate it differently. Changes are made to individual objects without review. New organizational units are added by some administrators and not others. Values that were once valid become invalid when the organization restructures, but no mechanism exists to identify or update the affected objects. The attribute becomes, over time, another version of the department field problem: better intended but equally ungoverned.
+
+This is not a hypothetical failure mode. It is the predictable outcome of any governance model that stores governed values in a distributed set of identity objects without maintaining a central, authoritative record of what those values should be. The objects are the wrong place to store the definition of validity. They are the right place to store values derived from that definition, once the definition exists and is maintained separately.
+
+### The OU Tree as a Unified Schema and Data Layer
+
+In Active Directory, this problem did not arise in the same way, because the OU tree served simultaneously as the schema and the data. The existence of an OU in a specific position in the tree defined a valid organizational segment. Its position in the tree defined its relationship to its parent and to all child OUs beneath it. Moving an OU changed its relationship to every policy, every delegation, and every child object that existed below it. Adding an OU to the tree was the act of defining a new valid organizational segment. Removing an OU was the act of eliminating one. The set of valid organizational segments was not stored separately from the tree — it was the tree. Administrators could not invent a position value that did not correspond to a real OU, because position values were not attribute strings; they were OU paths, and OU paths existed only if the OUs they referenced existed.
+
+The cloud-native model cannot replicate this unification directly, because it has no native container hierarchy for identity objects. The flat directory stores every user and device object in the same namespace. The position attribute described in Chapter 2 is a string that lives on each object individually. The governance of what strings are valid — and what the relationships between valid strings are — cannot be embedded in the directory's structure, because the directory has no governance-bearing structure to embed it in. This means the schema must be maintained separately, as an explicit, versioned artifact.
+
+### The Registry as the Governing Authority
+
+The organizational hierarchy — the set of valid nodes, their relationships to one another, the rules governing which segments can appear at which levels of the path, and the normalization rules that ensure consistent formatting — must be maintained as a first-class governed artifact. This artifact is properly understood as a registry: a machine-readable record that defines the organizational hierarchy independently of any individual identity's position attribute. The registry is the authority. The position attribute on each identity object is a derived value — derived from the registry at the time the attribute was set, and subject to revalidation against the registry whenever the registry changes.
+
+This relationship between registry and attribute is not merely a technical architecture preference. It is the condition under which the position attribute can be trusted. When an administrator looks at a user's organizational position attribute and sees a path value, the question they need to be able to answer is: is this value still valid, or has the organization restructured in a way that makes this path obsolete? Without a registry, that question cannot be answered definitively, because there is no authoritative record of what the valid paths currently are. With a registry, the question is trivially answerable — the path value either appears in the registry's current set of valid nodes or it does not.
+
+When the organization restructures — when a division is renamed, when two departments are merged, when a new regional branch is established — the change is made to the registry first. The registry's updated definition of the hierarchy then propagates: every identity whose current position attribute references a node affected by the change is identified, and its attribute is updated to reflect the restructuring. The direction of authority runs from the registry outward to the identity objects, not from individual object edits inward toward an inferred structure.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td style="text-align: left;"><p><em><strong>Architectural Requirement — Chapter 3</strong></em></p>
+<p><em>The organizational hierarchy must be maintained as a versioned, machine-readable governance artifact — a registry of valid organizational nodes, their relationships, their allowed segment values, and the rules governing valid hierarchy paths. Changes to the hierarchy must be made to this registry, not to individual identity attribute values. The registry must be auditable, version-controlled, and authoritative over every attribute value derived from it. No position attribute value on any identity object can be considered valid unless it corresponds to a node currently defined in the registry.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+## Chapter 4 — THE POLICY INHERITANCE REQUIREMENT
+
+### Policy Must Flow From Structure, Not Only From Assignment
+
+### What GPO Inheritance Provided
+
+The governance property that most organizations miss first, most acutely, and most visibly after migrating from Active Directory is policy inheritance. In the Active Directory model, a Group Policy Object applied to an OU applied automatically to every object in that OU and every object in every child OU beneath it, without additional configuration. A single policy action at the division level cascaded to every user, every device, and every sub-unit within that division. Adding a new team to the division automatically brought it under the division's policy coverage, because the new team's objects existed beneath the division's OU in the tree, and the policy applied to the tree, not to an explicitly enumerated list of objects. Removing a team from the division removed it from that coverage by the same structural logic. The policy assignment was made once, at the appropriate level of the hierarchy, and the hierarchy did the work of determining scope — automatically, continuously, and without additional administrative action.
+
+This model had important governance consequences beyond mere administrative convenience. It meant that the governance coverage of a policy was determined by the organization's structure, not by an administrator's ability to keep a group membership list current. It meant that gaps in policy coverage could not arise from the simple oversight of failing to add a new team to a group. If the team's objects were in the right place in the tree, they were covered. If they were not covered, it was because their placement in the tree was wrong — which was itself a visible, auditable condition, not a silent gap in a group membership list.
+
+### What Explicit Assignment Cannot Replicate
+
+In the cloud-native model, every policy assignment is explicit. A device configuration profile in Intune assigned to a group applies to the members of that group and no others. A Conditional Access policy scoped to a group applies to the members of that group and no others. An Azure Policy assignment scoped to a resource group applies to the resources in that resource group and no others. There is no inheritance model that propagates policy coverage from a parent scope to a child scope based on structural membership. The scope of every policy is exactly the set of objects explicitly included in its targeting configuration, and that set changes only when an administrator explicitly changes it.
+
+This creates a governance condition that is structurally different from the Active Directory model in a way that is easy to underestimate. In the explicit assignment model, the guarantee of policy coverage is only as strong as the process for maintaining group memberships. When a new team is created within a division, it does not automatically inherit the division's policy coverage. Someone must identify the relevant policies for that team's members, identify the groups those policies are assigned to, and add the team's members — or a group representing the team — to those assignment groups. If that process is not followed, the new team's members may be subject to fewer policies than the rest of the division, with no visible signal that a gap exists. The gap is not an error that the platform surfaces. It is simply an omission in a group membership list, which looks, from the platform's perspective, exactly like an intentional configuration choice.
+
+### Structural Position as the Foundation for Policy Targeting
+
+The path from explicit-assignment governance to structure-derived governance in the cloud-native model runs through the combination of the position attribute established in Chapter 2 and the authoritative registry established in Chapter 3. Together, these two elements provide the raw material for a policy targeting mechanism that approximates the inheritance behavior of the OU model, using the primitives available in the cloud-native platform.
+
+The mechanism is the dynamic group. A dynamic group whose membership rule evaluates the organizational position attribute and includes every identity whose position attribute begins with a specific path prefix — that is, every identity at or below a specific node in the hierarchy — is functionally equivalent, from a policy targeting perspective, to a policy applied at that node in an OU tree. Every identity that is placed within that organizational segment, at any depth, is automatically included in the group. When an identity's organizational position changes — because the individual moved to a different team, or because the team was restructured under a different division — the position attribute is updated, and the dynamic group's membership is recomputed to reflect the new position. The policy coverage updates automatically, as a consequence of the structural placement, without manual intervention.
+
+This mechanism requires a library of dynamic groups that corresponds to every meaningful level of the organizational hierarchy. Each group targets one node in the hierarchy, using a prefix match against the position attribute. Together, the group library expresses the hierarchy in terms that every policy engine can consume. The maintenance of this group library must itself be governed by the registry: when a new node is added to the hierarchy, a corresponding dynamic group must be created; when a node is removed, the corresponding group must be retired; when a node is renamed, the corresponding group's membership rule must be updated. These operations must be driven by registry changes, not by independent administrative action.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td style="text-align: left;"><p><em><strong>Architectural Requirement — Chapter 4</strong></em></p>
+<p><em>Policy must be derivable from organizational position, not only from explicit group assignment. The mechanism for this derivation must be the combination of a path-encoded position attribute and a matching dynamic group library, maintained by the organizational hierarchy registry, and evaluated continuously by the directory's membership processing engine. The dynamic group library must express every meaningful level of the organizational hierarchy, so that policy can be scoped to organizational boundaries using the same structural logic across every management surface that supports dynamic group targeting.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+## Chapter 5 — THE DEVICE GOVERNANCE REQUIREMENT
+
+### Devices Must Carry Organizational Position, Not Just Compliance State
+
+### What Device Placement in the Tree Provided
+
+In Active Directory, a computer object's placement in the OU tree was the primary determinant of its governance state. The machine's OU path determined which Group Policy Objects governed its configuration — which security baselines applied, which software was deployed to it, which scripts ran at startup, which administrators had authority over it, and which networks it was permitted to access through network access control policies evaluated at the OU boundary. The machine's identity and its governance posture were unified in its placement. Moving a machine to a different OU changed its governance posture, automatically and completely, without any additional configuration. There was no separate step required to update the machine's policy coverage — the structural placement was the policy coverage.
+
+This meant that in a well-structured Active Directory, a new computer object in the correct OU was immediately under the correct governance coverage. A laptop enrolled in the finance division's OU received finance-division security baselines, finance-division software deployment, and finance-division network access controls from the moment of enrollment, without any administrator needing to identify the correct groups to add it to. The organization's governance intent, expressed in the OU structure and the policies linked to it, was applied automatically to every correctly placed object.
+
+### The Absence of Organizational Context in Cloud Device Management
+
+In the cloud-native model, device governance is driven by Intune policy assignments scoped to groups, and device group membership is either manually maintained or driven by dynamic rules based on device attributes. The critical observation is that none of the native device attributes encode organizational context in a form that is structurally meaningful to a governance model. A device enrolled through Autopilot carries its hardware identifiers, its device name, its operating system version, its compliance state, and whatever device category tags have been assigned to it. What it does not carry, natively, is any representation of the organizational unit it belongs to.
+
+The relationship between a device and its organizational context exists, in most organizations, only in the minds of the administrators who configured the policy assignments, in the name conventions applied to device names, or in the manual group memberships that were created to target policies at specific organizational populations. None of these representations is governed in the sense established by Chapters 2 and 3. Device names are naming conventions, not schema-validated governance attributes. Manual group memberships require maintenance that is subject to the same structural limitations as any explicitly managed group. Device categories are a limited mechanism that does not naturally express the depth or complexity of a real organizational hierarchy.
+
+The result is a device governance model that is functionally capable — Intune can enforce sophisticated configuration and compliance policies — but organizationally blind. The management system can determine whether a device is compliant, but it cannot determine, from native attributes, whether a device belongs to the finance division, the operations group, or the field services team, in a form that can be evaluated programmatically against the organization's governed hierarchy. Device policy gaps cannot be detected by comparing device organizational placement against policy coverage, because device organizational placement is not encoded in the directory in a form that supports such a comparison.
+
+### Extending the Position Model to Device Identities
+
+The solution follows directly from the architecture established in the preceding chapters. The same organizational position model that governs user identities must extend to device identities. A device must carry, in a structured extension attribute on its directory object, an authoritative representation of its organizational assignment — the division, department, or operational unit it belongs to — encoded in the same path-encoded, schema-validated form as the user position attribute. The derivation of device organizational position must be governed by the same hierarchy registry: the segment vocabulary is identical, the path encoding convention is identical, and the normalization rules are identical. A device in the finance division carries a position attribute whose path begins with the same prefix as every user in the finance division, because both are derived from the same registry node.
+
+This consistency is what allows the dynamic group library established in Chapter 4 to work for device objects as well as user objects. A dynamic group that targets all identities — users and devices — whose position attribute begins with the finance division prefix will automatically include both the users and the devices assigned to that division. Intune configuration profiles, compliance policies, application deployments, and endpoint security settings can be targeted through this group with the same structural logic as Conditional Access policies targeting users. The governance model is unified across the identity and device surfaces, because the position model is shared.
+
+The governance of device organizational position assignment must be defined: when a device is enrolled, what determines its organizational position, and who has authority to change it? The answers to these questions must be encoded in the governance model as explicit rules, not left to administrative judgment at enrollment time. Autopilot deployment profiles can carry organizational position values. Enrollment policies can enforce position attribute population as a condition of successful enrollment. The assignment of a device's organizational position must be as governed as the assignment of a user's organizational position, because both feed the same policy derivation pipeline.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td style="text-align: left;"><p><em><strong>Architectural Requirement — Chapter 5</strong></em></p>
+<p><em>Every managed device must carry an authoritative, machine-readable organizational position attribute derived from the same hierarchy registry that governs user identities. The attribute must use the same path encoding, the same segment vocabulary, and the same normalization convention as the user position attribute. Device policy targeting must be derivable from this attribute — through the same dynamic group library that governs user policy targeting — and must not depend solely on manually maintained group membership or device naming conventions.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+## Chapter 6 — THE SERVER IDENTITY PROBLEM
+
+### Three Surfaces, One Asset, No Native Linkage
+
+### The Multi-Surface Reality of Infrastructure Modernization
+
+The device governance requirement established in Chapter 5 addresses the governance of end-user devices — laptops, workstations, mobile endpoints. The problem of server governance is related but distinct, and its complexity at scale is qualitatively different from anything that arises in endpoint management. The distinction emerges from a specific and concrete condition that characterizes large infrastructure modernization programs: during the transition period — which, in organizations of meaningful scale, is measured in years rather than months — a single physical or virtual server simultaneously holds three distinct identity representations in three separate management systems, each of which expresses a partial view of the server's governance state, none of which is natively linked to either of the others.
+
+The first representation is the Active Directory computer object. This object encodes the server's domain membership, its OU placement, the GPOs that govern it, the security groups it belongs to, and the administrative delegation model that determines who has authority over it. The OU path of this object is the primary governance signal for everything that Active Directory manages — Group Policy, delegation, and domain authentication. The second representation is the Microsoft Entra ID device object, which may exist if the server has been registered for co-management or configured for Hybrid Entra Join. This object encodes the server's compliance state in the Intune model, its registration status, and whatever RBAC assignments have been made against it in the cloud identity plane. The third representation is the Azure Arc resource object in the Azure Resource Manager. This object encodes the server's presence in the Azure management plane, its resource group placement, its tag set, its Azure Policy assignments, and its patch management status as reported through the Arc agent.
+
+### Three Independent Governance Expressions of the Same Asset
+
+These three representations reference the same physical or virtual asset, but they are not connected by any native platform mechanism. They share a hostname and, in some cases, a hardware identifier, but the governance posture they each express is entirely independent. The Active Directory computer object knows what GPOs apply to the server and what OU it belongs to, but it has no visibility into what Azure Policies govern it or what Entra ID roles have been delegated over its cloud identity. The Arc resource object knows the server's patch compliance status, its resource group, and what Azure Policy initiatives are assigned to it, but it has no awareness of the server's domain membership, its OU placement, or the Group Policy Objects that were applied to it before Arc management was added. The Entra ID device object, where it exists, knows the server's compliance state as reported by the management agent, but does not connect that compliance state to either the Arc resource's policy assignments or the Active Directory object's governance lineage.
+
+The consequence of this fragmentation is a specific and significant governance failure that manifests most acutely during the decommissioning phase of an infrastructure modernization program. When an organization prepares to decommission its on-premises Active Directory infrastructure, one of the critical governance questions is whether every server that was previously managed through Active Directory has been successfully onboarded to cloud-native management with equivalent governance coverage. Answering that question requires correlating the three identity representations — finding every Active Directory computer object, confirming that it has a corresponding Entra ID device object and a corresponding Arc resource, and verifying that the governance posture expressed in all three representations is consistent and complete. No native platform tool performs this correlation. The three representations exist in separate management planes, and the work of connecting them is manual, error-prone, and invisible to any governance audit tool that looks at only one plane at a time.
+
+### A Common Organizational Position Across All Three Surfaces
+
+The requirement this situation establishes is an extension of the position model developed in Chapters 2 through 5. When a server is onboarded to cloud-native management, its organizational position — the division, department, or operational unit responsible for it — must be encoded consistently across all three management surfaces, using the same organizational position vocabulary that governs user and device identities. On the Active Directory computer object, this means the OU path already encodes the organizational position, but it must be mappable to the same path-encoded vocabulary used in the cloud-native model. On the Entra ID device object, this means the extension attribute that carries organizational position for endpoint devices must be populated for server objects using the same schema. On the Arc resource object, this means resource tags must carry the organizational position value using the same path-encoded string and the same segment vocabulary, so that the Arc management plane participates in the same governance vocabulary as the identity and device management planes.
+
+When this consistency is achieved, the governance model can treat all three representations as views of a single governed asset rather than as independent identity objects that happen to describe the same hardware. A query against the organizational position vocabulary returns all users, all devices, and all servers assigned to a given organizational unit, because they all carry the same position value expressed in the same terms. A compliance audit for a specific division can verify not only that the division's users and workstations are governed correctly, but also that the division's servers are correctly onboarded and tagged. A security incident response team looking for every asset belonging to a specific organizational unit can query a single attribute and receive a complete picture rather than three partial pictures requiring manual correlation.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td style="text-align: left;"><p><em><strong>Architectural Requirement — Chapter 6</strong></em></p>
+<p><em>When a server is onboarded to cloud-native management, its organizational position must be encoded consistently across all three management surfaces — the on-premises directory, the cloud device directory, and the hybrid server management plane — using the same organizational position model that governs user and device identities. Tags on the Arc resource, attributes on the Entra device object, and the existing computer object OU path must all express the same organizational context through a common vocabulary. The governance model must be capable of treating all three representations as views of a single governed asset, not as independent identity objects requiring manual correlation.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+## Chapter 7 — THE DEPENDENCY MAPPING REQUIREMENT
+
+### Nothing Can Be Decommissioned Without a Map
+
+### The Most Dangerous Moment Is Not Migration
+
+Infrastructure modernization programs are typically planned and communicated as migration programs. The framing is about moving things from one platform to another: moving workloads from on-premises servers to cloud infrastructure, moving identities from on-premises directories to cloud directories, moving device management from Group Policy to cloud-based management platforms. Migration receives the planning attention, the project resources, and the governance focus, because migration is the visible work — it has milestones, deliverables, and cutover dates that make it trackable and reportable.
+
+But the most dangerous moment in any infrastructure modernization program is not the moment of migration. It is the moment of decommissioning. Migrating a workload to a new platform is recoverable — if the migration is incomplete or incorrect, the old platform is still available to fall back on, and the window for correction exists as long as the old infrastructure is running. Decommissioning the old platform eliminates that safety net. When the on-premises domain controllers are shut down, when the DNS zones are deleted, when the certificate authority infrastructure is taken offline, anything that was still depending on that infrastructure fails. And the critical condition that makes decommissioning dangerous is that the failures may not be immediately visible. A service that relied on LDAP directory queries and receives no response when the domain controllers are gone may fail silently, logging errors that go unnoticed for hours or days. An application that used NTLM authentication as a fallback when Kerberos failed may stop serving requests for a user population whose Kerberos tickets cannot be refreshed, with no obvious connection to the infrastructure decommissioning event that caused the failure.
+
+### The Web of Dependencies That Active Directory Creates
+
+Active Directory does not merely store identity information. It is the foundation of an enormous web of dependencies that accumulates over the operational life of the directory. Domain controllers are referenced by SRV records in DNS, and every domain-joined machine queries those records on a regular basis. Kerberos authentication for every application that uses integrated Windows authentication depends on those domain controllers being reachable and the domain being valid. LDAP bind operations from directory-aware applications — HR systems, ERP platforms, custom web applications, monitoring tools, backup software — depend on the domain controllers and the schema they serve. Group Policy processing for every domain-joined computer depends on domain controller reachability and SYSVOL access over SMB. Certificate enrollment for machines and users depends on the Certificate Authority infrastructure published in the Active Directory Certificate Services enrollment service records. NTLMv2 authentication falls back to domain controllers when Kerberos fails, and Kerberos fails in more circumstances than most architecture documentation acknowledges. Print spoolers, scheduled tasks running under domain service account identities, COM+ application identities, and legacy service wrappers all carry domain references that are embedded in configuration files, registry entries, and application databases that no centralized inventory has ever captured.
+
+None of these dependencies are enumerated in any single Microsoft native tool. Active Directory itself does not maintain a dependency graph of what consumes it. The closest analogs — network traffic analysis, application inventory tools, and change management databases — each capture partial pictures from their own perspective. Network traffic analysis can identify LDAP query sources and Kerberos ticket requests, but it cannot identify what application logic those queries serve or what would happen if the queries returned no response. Application inventory tools can enumerate installed software but cannot identify the authentication mechanisms those applications use or the directory services they depend on. Change management databases record what was changed and when, but not what depends on what. The complete dependency picture must be assembled from multiple partial views, and the assembly process is manual, incomplete, and time-consuming — which means it is typically performed under pressure, as decommissioning deadlines approach, rather than methodically, as a prerequisite to planning.
+
+### The Map as a Governance Prerequisite
+
+The requirement this situation establishes is unambiguous. Before any Active Directory dependency — any domain controller, any DNS zone, any certificate authority, any domain-joined computer — can be decommissioned, a complete dependency map must exist that identifies every consumer of that dependency, the nature of the dependency, and the migration target for each consumer. The dependency map is not a project planning artifact. It is a governance prerequisite. An organization that decommissions infrastructure without a complete, current dependency map is not making an informed governance decision — it is accepting unknown risk that will materialize as service failures affecting users and applications whose migration status was unknown at the time of decommissioning.
+
+The dependency map must be machine-readable, meaning it must exist as a structured data artifact that can be queried programmatically, not as a spreadsheet maintained by a project team member or a diagram in a presentation. It must be continuously updated as the environment changes — as new applications are deployed, as new servers are enrolled, as existing dependencies are migrated and resolved. And it must be queryable in both directions: given an infrastructure component, the map must return every consumer of that component; given a consumer, the map must return every infrastructure dependency it holds. This bidirectional queryability is what makes the map useful for migration planning, for decommissioning risk assessment, and for incident response when a dependency failure occurs unexpectedly.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td style="text-align: left;"><p><em><strong>Architectural Requirement — Chapter 7</strong></em></p>
+<p><em>Before any Active Directory dependency can be decommissioned, a complete, machine-readable dependency map must exist that identifies every consumer of that dependency, the nature of the dependency, and the migration target for each consumer. The dependency map must be continuously updated as the environment changes and must be queryable in both directions — from component to consumers and from consumer to dependencies. The map must be maintained as a governance artifact, not reconstructed from memory or inferred from network traffic at the moment of planned decommissioning.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+## Chapter 8 — THE DRIFT DETECTION REQUIREMENT
+
+### Governance Is Not a Point in Time
+
+### The Temporal Nature of Governance State
+
+A foundational distinction runs through every chapter of this document, but it has not yet been stated explicitly: governance is not a configuration event. It is a continuous condition. An organization that correctly configures its policy assignments on a given day, correctly populates every identity's position attribute, correctly maintains every dynamic group, and correctly documents every infrastructure dependency, and then makes no further governance investments in the weeks and months that follow, will find that the real-world state of its environment has diverged from its intended governance state. Not because anyone made errors. Not because any tools failed. But because the environment is not static, and a governance model that is not continuously maintained cannot remain accurate against a continuously changing reality.
+
+Users move between organizational units when they change roles. New users are onboarded, and the onboarding process does not always follow the governed enrollment workflow that populates the position attribute correctly. Devices are provisioned — sometimes through approved Autopilot workflows, sometimes through manual enrollment by local administrators who do not know about the position attribute requirement. Servers are added to resource groups without the correct organizational position tags, because the engineer who provisioned them was focused on the workload, not on the governance tagging convention. Dynamic group membership rules are modified by administrators who need to solve an immediate policy targeting problem without understanding that the rule is part of a governed hierarchy representation. Service accounts accumulate permissions through ad-hoc privileged access requests that are approved individually but never reviewed collectively. The environment drifts, continuously and in many dimensions simultaneously.
+
+### Why Cloud-Native Drift Is Qualitatively Different
+
+Drift is not a new problem. Active Directory environments drifted too — computer objects in wrong OUs, users in incorrect security groups, GPOs linked to OUs they should not have been linked to. The significant difference is that in an Active Directory environment, structural drift was visible. The OU tree was the record of intended structure. An administrator who wanted to know whether a computer object was in the wrong OU could compare the object's current OU path against the OU path that the governance model specified for objects of its type. The tree was both the governance model and the data — and because they were the same artifact, comparing current state against intended state was a tractable operation, requiring directory inspection rather than cross-reference against a separate authority document.
+
+In the cloud-native model, the intended state exists only as an intention — unless it has been explicitly encoded in a governed, machine-readable artifact. If the organizational hierarchy registry described in Chapter 3 does not exist, there is nothing to compare the current state of identity attributes against. If an identity's position attribute carries a value that was valid twelve months ago but references an organizational node that was renamed or restructured since then, there is no mechanism to detect that the value is now stale. The attribute still contains a string. The string is no longer consistent with the current hierarchy. But because there is no authoritative registry of valid paths to compare against, the staleness is invisible — not because nothing has changed, but because there is no reference against which to measure the change.
+
+This invisibility is the qualitative difference between drift in an Active Directory environment and drift in a cloud-native governance model built on the architecture described in this document. In the Active Directory environment, structural drift was visible in the tree. In the cloud-native model, structural drift is invisible unless a drift detection capability is built that continuously compares live state against the authoritative registry. Without that capability, the governance model degrades silently over time, and the degradation is not recoverable without a full audit — which is expensive, disruptive, and typically performed only after the degradation has already caused a governance failure.
+
+### Drift Detection as a Continuous Governance Operation
+
+The drift detection capability that the governance substrate must include is not a manual periodic audit. It is an automated, scheduled process that runs continuously against the live directory state, comparing every identity's organizational position attribute against the current state of the hierarchy registry, and producing a classified inventory of detected deviations. The classification must distinguish between different categories of drift: attributes that contain values not present in the current registry — which may indicate a stale value from a hierarchy restructuring; identities that have no organizational position attribute populated at all — which indicates an enrollment governance failure; position attributes whose path structure is syntactically invalid — which indicates a data quality problem in the attribute derivation process; and group memberships that do not match the group memberships that should be derived from the current position attribute values — which indicates that the dynamic group library has not been kept current with the registry.
+
+Each category of drift has a different remediation profile. Stale path values require attribute updates that propagate registry changes to the affected identity objects. Missing attributes require enforcement of enrollment governance. Syntactically invalid attributes require investigation of the provisioning workflow that generated them. Group membership inconsistencies require investigation of the dynamic group rules and their alignment with the registry. The drift detection report must surface these distinctions, and it must do so in machine-readable form that can be committed to the version-controlled governance record, so that the history of drift events — when deviations arose, what their nature was, when they were remediated — is preserved as part of the organization's governance audit trail.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td style="text-align: left;"><p><em><strong>Architectural Requirement — Chapter 8</strong></em></p>
+<p><em>The governance substrate must include a continuous drift detection capability. The authoritative hierarchy registry must serve as the baseline against which the current state of every identity's organizational position attribute is compared on a scheduled basis. Deviations must be detected, classified by type and severity, and surfaced for remediation. Drift detection must be automated, not manual. Its outputs must be machine-readable and committed to a version-controlled governance record, so that the history of drift events is auditable independently of the live directory state at any given moment.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+## Chapter 9 — THE CROSS-PLATFORM COHERENCE REQUIREMENT
+
+### The Governance Model Must Span Every Surface
+
+### The Harder Requirement
+
+The requirements established in Chapters 2 through 8 describe what must exist at the level of individual governance surfaces and individual governance capabilities. Each requirement, taken alone, is architecturally achievable. A structured position attribute can be defined in a directory schema extension. A hierarchy registry can be maintained in a version-controlled repository. A dynamic group library can be built that maps registry nodes to membership rules. Device objects can carry the same position schema as user objects. Server resources can carry the same vocabulary as an Arc resource tag. Dependency maps can be compiled and maintained. Drift detection can be scheduled and automated. Each of these capabilities, built in isolation, addresses a real governance gap.
+
+The harder requirement is the one that binds all of them together: the governance model must be coherent across all surfaces simultaneously. The organizational position of a user, the device that user works on, and the servers that user's applications run on must all be expressible in the same terms, governed by the same registry, and auditable through the same pipeline. This is the cross-platform coherence requirement, and it is the requirement most likely to be underestimated during architectural planning, because each surface's governance can be made to work in isolation — and working in isolation can feel like working. The integration failure only becomes visible when an organization tries to ask a question that crosses surface boundaries.
+
+### The Cost of Fragmented Vocabularies
+
+To understand why vocabulary coherence across surfaces is a hard requirement rather than a cosmetic preference, consider what happens when organizational position is encoded differently in each management plane. If user organizational position is encoded in a custom extension attribute using a path-encoded hierarchy string, device organizational position is encoded in a device category tag using a different vocabulary and a different delimiter convention, and server organizational position is encoded in an Azure resource tag using a third vocabulary that reflects the resource group hierarchy rather than the organizational hierarchy, then no tool that consumes any one of these values can participate in the same governance conversation as a tool that consumes another. The three encodings describe the same organizational reality — the same divisions, the same departments, the same operational units — but they describe it in three different languages, and translation between them must be custom-built, maintained separately, and updated every time the organizational hierarchy changes.
+
+A security team investigating a credential compromise incident needs to know every asset associated with the compromised identity's organizational unit — every user who might share the same access patterns, every device that might have been accessed from a compromised session, every server that might hold data relevant to the investigation. If organizational unit membership is expressed in three different vocabularies across the three asset types, the investigation requires three separate queries in three separate tools, followed by manual correlation of the results. The correlation is error-prone and slow. Assets will be missed. The investigation scope will be incomplete. None of this is a consequence of any individual tool's limitation — it is a consequence of the governance model's failure to establish a shared vocabulary.
+
+A compliance team auditing policy coverage for a business unit has the same problem in a different context. Verifying that every member of the business unit — every user, every device, every server — is covered by the required policies requires querying each management surface separately, correlating the results against the business unit's membership as defined in each surface's local vocabulary, and reconciling the resulting coverage reports into a single view. If the vocabulary is not shared, the reconciliation requires a translation table that must be maintained separately from all three systems and kept current as the hierarchy changes. The translation table becomes itself a governance artifact that can drift and fail.
+
+### The Vocabulary as a Shared Foundation
+
+The cross-platform coherence requirement is satisfied only when the organizational position vocabulary — the segment names, the hierarchy structure, the path encoding convention, and the schema validation rules — is identical across every management surface where organizational position is stored. The user extension attribute, the device extension attribute, and the server resource tag must use the same segment names, the same delimiter convention, the same normalization rules for capitalization and whitespace, and the same path structure for encoding the full lineage from the hierarchy root to the leaf node. When this consistency is achieved, any tool that understands the vocabulary can query any surface. There is no translation layer between the user governance model and the device governance model, because they are not different models — they are the same model applied to different object types.
+
+This consistency is achievable only if the vocabulary is defined once, in the authoritative hierarchy registry, and derived from that registry everywhere it is used. If the device team maintains its own device category vocabulary, and the cloud infrastructure team maintains its own resource tagging taxonomy, and the identity team maintains its own extension attribute schema, coherence is structurally impossible regardless of how much manual effort is invested in keeping them aligned. They will drift from one another as each team makes changes to meet its own operational needs. The registry must be the single source of the vocabulary, and the derivation of every position value — on user objects, on device objects, on server resource tags — must be governed by the registry and validated against it.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td style="text-align: left;"><p><em><strong>Architectural Requirement — Chapter 9</strong></em></p>
+<p><em>The organizational position vocabulary — segment names, hierarchy structure, path encoding convention, and schema validation rules — must be identical across every management surface where organizational position is stored. The user attribute, the device attribute, and the server resource tag must use the same vocabulary, validated by the same registry, so that any tool consuming any of these values can participate in the same governance conversation without translation. Cross-surface governance queries, cross-surface compliance reporting, and cross-surface incident response are possible only when the vocabulary is coherent. This is not a consistency preference — it is the foundational condition for unified governance across a multi-surface cloud-native environment.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+## Chapter 10 — THE AUTOMATION REQUIREMENT
+
+### A Governance Model That Requires Manual Operation Is Not a Governance Model
+
+### The Theoretical Sufficiency of Manual Processes
+
+A pointed and important observation is available at this stage of the analysis: every requirement established in the preceding chapters can, in principle, be satisfied manually. A sufficiently large, diligent, and expert team of administrators, operating in a sufficiently small and stable organization, over a sufficiently short period of time, could manually populate position attributes on every identity, manually maintain a hierarchy registry spreadsheet, manually update policy assignments when organizational changes occur, manually run periodic audits to detect drift, and manually maintain a dependency map in a shared document. None of these operations requires automation in order to be technically possible. They are all operations that a person can perform, given enough time and organizational knowledge.
+
+The problem with manual processes is not that they cannot be made to work. The problem is that they cannot be made to scale, and they cannot be made to stay true. The qualification embedded in the preceding paragraph — "sufficiently large, diligent, and expert" team; "sufficiently small and stable" organization; "sufficiently short" period of time — is not rhetorical hedging. It is a precise statement of the conditions under which manual governance can function. When any of those conditions is no longer satisfied, manual governance fails. And in every organization that is growing, changing, and operating a complex technology environment, all three conditions are eventually violated, usually simultaneously, and usually before the governance team has acknowledged that the model has stopped working.
+
+### The Scaling Problem
+
+Governance requirements do not diminish as organizations grow. They intensify. The number of identities grows. The rate of organizational change grows — more restructurings, more team movements, more personnel turnover. The number of policy surfaces grows as new cloud capabilities are adopted. The number of infrastructure dependencies grows as more workloads are migrated and more applications are onboarded. The number of servers subject to the organizational position model grows as Arc onboarding progresses. A governance model that requires a fixed amount of manual effort to maintain a fixed governance state will require proportionally more manual effort to maintain the same governance state as the environment expands. At some point in that growth curve, the manual effort required exceeds the capacity available, and the governance model falls behind — not because of any failure of intent, but because the throughput of the manual process has become the binding constraint.
+
+There is a subtler problem than throughput. Manual governance processes depend on organizational knowledge — specifically, on the knowledge held by the people performing the processes. When an administrator manually updates policy assignments in response to an organizational restructuring, that administrator must know which policies exist, which groups they are assigned to, which groups correspond to which organizational units, and which identities have moved to which new positions. This knowledge is not stored anywhere that is accessible to the governance model. It exists in the administrator's memory and judgment. When that administrator leaves the organization, or moves to a different role, or is unavailable during a critical restructuring event, the governance process does not gracefully degrade — it simply stops, because the knowledge required to perform it is no longer present in the team performing it.
+
+### Automation as an Architectural Commitment
+
+The requirement for automation is therefore not a preference for efficiency — it is a requirement for governance durability. A governance model that can only function with specific people performing specific manual operations is not a governance model that can be relied upon over the full operational life of the organization's cloud environment. It is a governance model that will work well initially, when the team is engaged and knowledgeable, and will degrade progressively as the team changes, the organization grows, and the gap between the pace of environmental change and the throughput of the manual process widens.
+
+Every operation that the governance substrate performs — attribute derivation from registry changes, propagation of organizational restructuring events to affected identity objects, maintenance of the dynamic group library when registry nodes are added or removed, drift detection against the registry baseline, dependency map updates as new assets are enrolled, compliance reporting against policy coverage requirements — must be automatable. Not optional-to-automate. Must be automatable, meaning the substrate must expose the interfaces and the event triggers that allow governance operations to be executed automatically in response to events, without administrator initiation for each operation.
+
+The event model is the key design requirement within the automation requirement. A registry change is an event. A new identity enrollment is an event. An organizational restructuring notification from the HR system is an event. A new server onboarded to Arc management is an event. Each of these events should trigger a defined set of governance operations: attribute updates, group membership recomputations, dependency map registrations, drift detection passes against the affected objects. The governance pipeline must be capable of consuming these events and responding to them within a timeframe that keeps the governance state current — which means hours or minutes, not days or weeks. The pipeline must also operate on a scheduled cadence for operations that are not event-driven: periodic full drift detection passes, periodic dependency map validation, periodic compliance reporting. These scheduled operations must run without human initiation, and their outputs must be committed to the version-controlled governance record without human review required for each run.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td style="text-align: left;"><p><em><strong>Architectural Requirement — Chapter 10</strong></em></p>
+<p><em>Every operation that the governance substrate performs must be automatable and must be capable of being triggered by events rather than by administrator action. Attribute derivation, policy group maintenance, drift detection, dependency map updates, and compliance reporting must all operate as automated, event-driven or scheduled pipeline stages that produce versioned, machine-readable outputs without requiring human initiation for each execution. A governance model that cannot function at the pace of organizational change without proportionally increasing manual effort is not a governance model that survives organizational growth.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+## Chapter 11 — THE VERSION CONTROL REQUIREMENT
+
+### Governance History Must Be a First-Class Artifact
+
+### The Universal Expectation of Historical Recoverability
+
+Organizations that have operated Active Directory for a decade or more have, embedded in their change management records — whether those records are formal ITSM tickets, informal email threads, or something in between — some historical account of how their directory governance changed over time. The quality and completeness of those records varies enormously. Some organizations have rigorous change control processes that require documented justification for every GPO modification, every OU restructuring, and every privileged group membership change. Others have accumulated years of undocumented changes whose authors and rationale are no longer recoverable. The historical record may be incomplete, but the expectation that it should exist is universal. Compliance frameworks assume it. Audit processes depend on it. Incident investigations require it. The ability to answer the question "what was the governance state at this point in the past, and how did it get from there to here" is not a nice-to-have feature of a governance model. It is a baseline expectation that governance programs must be designed to satisfy.
+
+In the cloud-native model, the native audit log — the Entra ID unified audit log, the Azure Activity Log, the Intune device management event log — provides a record of individual administrative actions over a retention window that is typically measured in months. Within that window, it is possible to determine that a specific attribute was changed on a specific date, that a specific policy was modified, that a specific group membership was updated. These records are valuable, but they are event records, not state records. They tell you that a change occurred; they do not tell you what the complete governance state was before the change, what motivated the change, or whether the change was consistent with the organization's governance intent as defined in some authoritative baseline.
+
+### Events Versus Intent
+
+The distinction between events and intent is the critical gap in native audit log coverage. Knowing that a user's organizational position attribute was changed from one value to another on a specific date tells you that a change occurred. It does not tell you whether the change was authorized, whether it was consistent with a planned organizational restructuring, whether the new value is valid according to the current hierarchy registry, or whether it should have triggered corresponding changes to the user's policy group memberships. Answering those questions requires not just an event record but a governance record — a document that captures the intended state at each point in time, the authority under which changes were made, and the relationship between individual changes and the broader governance model they are part of.
+
+The audit log records events. Governance requires intent. The gap between them is not closed by increasing the retention period of the audit log or by adding more detail to individual event records. It is closed by maintaining a separate, governed record of the intended state — a record that captures not just what happened but what was supposed to happen, why it was supposed to happen, and who authorized it. This record is the governance history, and it must be a first-class artifact in the governance substrate, not a derived report generated on demand from audit log events.
+
+### Version Control as the Persistence Mechanism
+
+The persistence mechanism best suited to this purpose is version control. A version-controlled repository provides exactly the properties that governance history requires: every change is committed with a timestamp, an author identity, and a commit message that describes the change and its rationale; the complete history of every file in the repository is preserved indefinitely, not subject to a rolling retention window; any prior state of the repository can be recovered by checking out the state at a specific point in time; changes can be compared across any two points in time using standard diff operations; and the repository is itself a governed artifact — access to it is controlled, changes to it require authorization, and the integrity of its history is protected by the version control system's cryptographic commitment model.
+
+Every change to the governance substrate must be committed to the version-controlled repository. Changes to the hierarchy registry — new nodes, renamed nodes, removed nodes, modified relationships — are committed with a description of the organizational restructuring that motivated them. Updates to identity position attributes that are not already recorded in the registry change that triggered them must be committed as a separate record. Drift detection reports must be committed as timestamped documents. Dependency map updates must be committed as versioned entries. The version-controlled repository is not a backup of the governance data. It is the primary governance record, and the cloud directory is the execution target where the governed state defined in the repository is applied. The direction of authority runs from the repository to the directory, not from the directory to the repository.
+
+This framing has a consequential implication for the governance architecture: the source of truth is not the cloud directory. The cloud directory is the consumer of the governance record, not its author. When the governance state in the directory diverges from the state defined in the repository — which is precisely what drift detection, as described in Chapter 8, detects — the repository is the authority and the directory must be brought back into alignment with it. The repository is also the record that governance audits, compliance assessments, and incident investigations consult when they need to understand the historical state of the governance model. The directory's current state answers the question "what is the governance state now." The repository's history answers the question "what was the governance state at any prior point, and how did it arrive at its current state."
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td style="text-align: left;"><p><em><strong>Architectural Requirement — Chapter 11</strong></em></p>
+<p><em>The governance substrate must use version control as its primary persistence mechanism. Every change to the hierarchy registry, every update to identity organizational position, every modification to a dynamic group rule, every drift detection report, and every dependency map update must be committed to a version-controlled repository with a record that captures the who, what, when, and why of the change. The repository must be the authoritative source of governance truth. The cloud directory is the execution target where the governed state is applied — it is not the governance record. The history of the governance state must be recoverable at any prior point in time from the repository without reconstruction from audit log events.</em></p></td>
+</tr>
+</tbody>
+</table>
+
+## Chapter 12 — SYNTHESIS
+
+### The Substrate That Is Required
+
+### Restating the Problem with Precision
+
+Eleven chapters of this document have established eleven distinct requirements, each derived from a specific governance property that Active Directory provided and the Microsoft cloud stack does not. Before synthesizing those requirements into a unified description of what must be built, it is worth restating the underlying problem with the clarity that the preceding analysis has earned. Organizations migrating from Active Directory to the Microsoft cloud stack are not simply upgrading their identity infrastructure. They are leaving behind a unified governance substrate — a hierarchical, policy-bearing, authority-delegating, drift-visible infrastructure that provided governance coherence as a structural property of its own design — and arriving at a set of capable, individually functional, structurally disconnected point tools. The tools govern through assignment, not through structure. They have no shared concept of organizational position. They do not share a data model, an inheritance model, or an authority model. They each maintain their own representation of the organization, expressed in their own vocabulary, governing through their own mechanisms, with no native coordination between them. The result is a cloud-native environment that is individually functional at the tool level and collectively incoherent at the governance level.
+
+This collective incoherence is not visible at the beginning of a migration program. In the early stages, the Active Directory infrastructure is still running, and its governance properties are still providing the coherence that the cloud tools cannot yet provide. The incoherence becomes visible as the migration progresses — as more workloads move to cloud management, as the on-premises infrastructure is scaled back, as the organization relies more heavily on the cloud tools to provide governance coverage that was previously provided by the directory hierarchy. By the time the incoherence is fully visible, the organization has invested years of migration effort and is past the point where returning to the previous model is an option. The gap must be closed by building what is missing, not by reversing the migration.
+
+### The Shape of What Must Exist
+
+What must exist is a governance substrate that sits between the organizational hierarchy — which exists as a business reality, independent of any technology, defined by the organization's structure, its reporting relationships, its operational boundaries, and its governance accountability model — and the management tools that enforce governance on identities, devices, and servers. This substrate does not replace any of the Microsoft management tools. It connects them, by providing the shared organizational model that they individually lack. It is the missing layer between the organization and the tools.
+
+The substrate's first component is the hierarchy registry: the versioned, machine-readable, schema-validated record of the organization's governance hierarchy. The registry defines the set of valid organizational nodes, their relationships to one another, the segment vocabulary that governs how each node is labeled, the path encoding convention that governs how positions in the hierarchy are expressed as attribute strings, and the validation rules that determine whether any given position attribute value is current and valid. The registry is maintained as a version-controlled artifact. Every change to it is committed with a record of who made the change, why, and what organizational event motivated it. The registry is the source of truth for the organization's governance structure — not the HR system, not the directory, not the management tool. Those systems may inform the registry, but the registry is authoritative over every value derived from it.
+
+The substrate's second component is the attribute derivation pipeline: the automated process that takes the registry's current state and derives an organizational position value for every user identity and every device identity in the directory, storing that value in a structured, path-encoded extension attribute that is consistent in format and vocabulary across every identity type. The derivation pipeline runs in response to registry changes — when a node is added, renamed, or restructured, every identity whose current position attribute references that node is identified and its attribute is updated to reflect the change. The pipeline also runs as part of the identity enrollment workflow — when a new user is onboarded or a new device is enrolled, the position attribute is populated from the registry as part of the provisioning process, not as a separate manual step. The pipeline commits its outputs — the set of attribute updates it applied and the registry state from which they were derived — to the version-controlled governance record.
+
+The substrate's third component is the dynamic group library: the collection of Entra ID dynamic groups that expresses the organizational hierarchy in terms that every Microsoft policy engine can consume. Each group targets one node in the hierarchy, using a prefix match against the position attribute to include every identity — user or device — whose organizational position is at or below that node. The group library is maintained by the registry: new nodes generate new groups, removed nodes retire their groups, renamed nodes update their groups' membership rules. The group library is the policy targeting interface. Every Intune policy, every Conditional Access policy, every Azure Policy assignment that should apply to an organizational segment uses the corresponding dynamic group as its scope. Policy is scoped to organizational structure through this library, not through manually maintained assignment groups.
+
+The substrate's fourth component is the server position model: the extension of the organizational position vocabulary to the Azure Arc management plane, through resource tags that carry the same path-encoded position strings as the user and device extension attributes. When a server is onboarded to Arc, its organizational position is encoded in a mandatory resource tag using the same vocabulary, the same delimiter convention, and the same normalization rules as every other position value in the governance model. The Arc tagging convention is governed by the hierarchy registry. Tag values that do not correspond to valid registry nodes are invalid. The server position model allows the governance substrate to treat server assets as participants in the organizational hierarchy, not as separately governed resources with their own independent taxonomy.
+
+The substrate's fifth component is the dependency map: the continuously maintained, machine-readable record of every dependency between infrastructure components and the identities, applications, services, and devices that consume them. The dependency map is the prerequisite for decommissioning decisions. It is updated as new assets are enrolled, as existing dependencies are migrated and resolved, and as the environment changes in ways that add or remove dependency relationships. The map is queryable in both directions and is committed to the version-controlled governance record, so that the history of dependency relationships is preserved alongside the history of the governance model.
+
+The substrate's sixth component is the drift detection engine: the automated, scheduled process that compares the live state of every identity's position attribute against the current registry baseline, identifies deviations by type and severity, and produces a machine-readable drift report that is committed to the version-controlled governance record. The drift detection engine is the mechanism by which the governance substrate remains honest about the real state of the environment over time. It is the answer to the question that no static configuration can answer: is the governance model that was designed and deployed still the governance model that is actually operating today? When the answer is no — when drift is detected — the report surfaces the deviation, classifies it, and provides the information needed for remediation, without requiring a manual audit to discover the discrepancy.
+
+The substrate's seventh component is the automation and event integration layer: the set of interfaces, pipelines, and event triggers that allow every other component to operate without manual initiation for each governance operation. Registry changes trigger attribute updates and group rule modifications. New identity enrollments trigger position attribute derivation. Organizational restructuring events trigger registry updates. Scheduled cron triggers initiate drift detection passes and dependency map validation cycles. Every output of every pipeline stage is committed to the version-controlled governance record automatically, as a byproduct of the pipeline's normal operation. The governance history is not a reporting effort — it is a continuous emission from the governance pipeline, written to the version-controlled record as governance operations execute.
+
+### The Architectural Conclusion
+
+The six requirements stated at the opening of this document — that organizational structure must be representable in the cloud directory, that policy must be derivable from organizational position, that the model must span identity and devices and servers, that the model must be authoritative, that it must be governable, and that it must detect drift — are not aspirational. They are not a vision of an ideal future state toward which organizations should strive while accepting something less in the present. They are the minimum conditions under which a cloud-native governance posture can be considered structurally equivalent to the governance substrate that organizations leave behind when they migrate from Active Directory. An environment that satisfies fewer than all six is not merely imperfect — it is structurally incomplete, and its incompleteness will deepen as the organization grows, changes, and depends more heavily on the governance model to maintain coherence across a surface area that Active Directory once held together by the force of its own hierarchical design.
+
+Nothing in the Microsoft cloud stack natively provides this substrate. The stack provides the primitives from which the substrate can be assembled: directory schema extensions that can carry the position attribute; dynamic group rules that can evaluate the attribute using prefix matching; Azure resource tags that can carry the position vocabulary; version-controlled repositories that can hold the hierarchy registry; automation pipelines that can execute attribute derivation and drift detection without human initiation. The primitives are capable. The substrate that must be built from them is not beyond the reach of a well-governed engineering program. But it requires deliberate architectural commitment — a decision to build the missing layer rather than to manage without it. It requires governed tooling that enforces the registry's authority over every derived value and every policy scope. And it requires sustained operational discipline — the recognition that the governance substrate is not a project deliverable that can be completed and handed off, but an ongoing operational investment that must be maintained with the same rigor as the directory itself, because it is, in every meaningful sense, the governance layer that the directory requires in order to function as an organizational infrastructure rather than merely as an identity store.
+
+The architecture described in this document is achievable. The work it requires is concrete and well-defined. The path through it runs from the hierarchy registry outward — first to the attribute model, then to the dynamic group library, then to the device and server extensions, then to the dependency map, then to drift detection, and finally to the automation and versioning infrastructure that makes the entire model durable. Each step is tractable. The commitment to take the first step — to treat the organizational hierarchy as a governed artifact rather than an implied convention — is the architectural decision upon which every other capability depends, and it is the decision that separates organizations that will govern their cloud environments coherently from those that will manage them in perpetual reactive response to the drift and disconnection that an ungoverned substrate inevitably produces.
+
+<table style="width:1%;">
+<colgroup>
+<col style="width: 1%" />
+</colgroup>
+<tbody>
+<tr>
+<td style="text-align: left;"><p><em><strong>Architectural Conclusion</strong></em></p>
+<p><em>The only path to a cloud-native governance posture that is coherent, auditable, and durable over the full operational life of the organization's modern infrastructure is the deliberate assembly of a governance substrate from the platform primitives available in the Microsoft cloud stack. That substrate — comprising a hierarchy registry, a position attribute derivation pipeline, a dynamic group library, a server position model, a dependency map, a drift detection engine, and an automation and versioning layer — is the architectural answer to the structural absence that the companion document identified. Building it is not optional for organizations that require governance equivalence with the infrastructure they are leaving behind. It is the minimum necessary work.</em></p></td>
+</tr>
+</tbody>
+</table>

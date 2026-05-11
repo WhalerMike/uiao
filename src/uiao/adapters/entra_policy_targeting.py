@@ -1,11 +1,11 @@
-"""Policy-targeting adapter (Phase 5, MOD_N / ADR-039).
+"""Policy-targeting adapter (Phase 5, UIAO_164 / ADR-039).
 
 Closes the "policy consumer" layer of the OrgTree. Phases 2–4 produced
 the governance surface:
 
-* Phase 2 — OrgTree-* dynamic groups (MOD_B)
-* Phase 3 — Restricted Management AUs + scoped roles (MOD_D)
-* Phase 4 — device-plane OrgPath on Entra devices + Arc machines (MOD_C)
+* Phase 2 — OrgTree-* dynamic groups (UIAO_152)
+* Phase 3 — Restricted Management AUs + scoped roles (UIAO_154)
+* Phase 4 — device-plane OrgPath on Entra devices + Arc machines (UIAO_153)
 
 Phase 5 **binds existing policy objects to that surface**:
 

@@ -25,6 +25,12 @@ substrate_app = typer.Typer(
 console = Console()
 
 
+# Subkind tag set by walker._scan_retired_slugs(); the CLI filter matches on
+# this rather than substring-on-detail so wording changes in the finding's
+# detail message don't silently break the filter.
+_RETIRED_SLUG_SUBKIND = "retired-slug"
+
+
 @substrate_app.command("walk")
 def walk(
     workspace_root: Optional[Path] = typer.Option(
@@ -38,14 +44,25 @@ def walk(
         "--json",
         help="Emit findings as machine-readable JSON instead of a table.",
     ),
+    retired_slugs_only: bool = typer.Option(
+        False,
+        "--retired-slugs-only",
+        "-r",
+        help="Show only findings emitted by the retired-slug scan (manifest.retired_slugs). Other findings are filtered out.",
+    ),
 ) -> None:
     """Walk the substrate: validate module paths and canon document registry.
 
     Example::
 
         uiao substrate walk
+        uiao substrate walk --retired-slugs-only
     """
     report = walk_substrate(workspace_root=workspace_root)
+
+    if retired_slugs_only:
+        report.findings = [f for f in report.findings if f.subkind == _RETIRED_SLUG_SUBKIND]
+
     if as_json:
         json.dump(report.as_dict(), sys.stdout, indent=2)
         sys.stdout.write("\n")
@@ -59,9 +76,14 @@ def walk(
     console.print(f"  modules checked:    {report.modules_checked}")
     console.print(f"  documents checked:  {report.documents_checked}")
     console.print(f"  code refs checked:  {report.code_refs_checked}")
+    if retired_slugs_only:
+        console.print("  [dim](filtered to --retired-slugs-only)[/dim]")
 
     if report.ok:
-        console.print("\n[green]PASS[/green] — no drift detected.")
+        if retired_slugs_only:
+            console.print("\n[green]PASS[/green] — no retired-slug references.")
+        else:
+            console.print("\n[green]PASS[/green] — no drift detected.")
         return
 
     def _print_table(findings, style: str) -> None:  # type: ignore[no-untyped-def]

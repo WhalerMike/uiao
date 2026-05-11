@@ -276,7 +276,7 @@ attributes (§7).
 
 - [ADR-003](../adr/adr-003-api-driven-inbound-provisioning.md)
 - [ADR-035](../adr/adr-035-orgpath-codebook-binding.md)
-- [ADR-048](../adr/adr-048-orgpath-attribute-storage-decision.md)
+- [ADR-048](../adr/adr-048-orgpath-attribute-selection.md)
 
 ### 12.2 UIAO docs
 

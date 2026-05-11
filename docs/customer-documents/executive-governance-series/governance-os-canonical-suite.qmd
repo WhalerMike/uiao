@@ -776,15 +776,15 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 **Steps:**
 
-8.  Export all OUs from legacy AD with full distinguished name paths.
+1.  Export all OUs from legacy AD with full distinguished name paths.
 
-9.  Export all user objects with OU membership, department, title, manager, and employeeId.
+2.  Export all user objects with OU membership, department, title, manager, and employeeId.
 
-10. Export all security groups with membership lists.
+3. Export all security groups with membership lists.
 
-11. Export all Group Policy Objects (GPOs) linked to OUs.
+4. Export all Group Policy Objects (GPOs) linked to OUs.
 
-12. Generate a discovery report with counts: total OUs, total users, total groups, total GPOs.
+5. Generate a discovery report with counts: total OUs, total users, total groups, total GPOs.
 
 **PowerShell Commands:**
 
@@ -802,15 +802,15 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 **Steps:**
 
-13. For each legacy OU, identify the corresponding OrgPath code from Appendix A.
+1. For each legacy OU, identify the corresponding OrgPath code from Appendix A.
 
-14. Create a mapping table: Legacy OU Distinguished Name → OrgPath Code.
+2. Create a mapping table: Legacy OU Distinguished Name → OrgPath Code.
 
-15. Identify unmappable OUs (OUs with no OrgPath equivalent) and flag for governance review.
+3. Identify unmappable OUs (OUs with no OrgPath equivalent) and flag for governance review.
 
-16. Validate that every user\'s OU maps to a valid OrgPath.
+4. Validate that every user\'s OU maps to a valid OrgPath.
 
-17. Generate a mapping report with coverage statistics.
+5. Generate a mapping report with coverage statistics.
 
 \# Create mapping hashtable \$OUtoOrgPath = \@{ \"OU=Finance,OU=Departments,DC=org,DC=local\" = \"ORG-FIN\" \"OU=AP,OU=Finance,OU=Departments,DC=org,DC=local\" = \"ORG-FIN-AP\" \"OU=HR,OU=Departments,DC=org,DC=local\" = \"ORG-HR\" \"OU=IT,OU=Departments,DC=org,DC=local\" = \"ORG-IT\" \"OU=Security,OU=IT,OU=Departments,DC=org,DC=local\" = \"ORG-IT-SEC\" } \# Validate all users have a mapping \$UnmappedUsers = \$LegacyUsers \| Where-Object { -not \$OUtoOrgPath.ContainsKey(\$\_.DistinguishedName -replace \"CN=.\*?,\",\"\") } Write-Verbose \"Unmapped users: \$(\$UnmappedUsers.Count)\" \# Validate OrgPath codes against regex \$OrgPathRegex = \"\^ORG(-\[A-Z\]{2,6}){0,4}\$\" \$InvalidMappings = \$OUtoOrgPath.Values \| Where-Object { \$\_ -notmatch \$OrgPathRegex } Write-Verbose \"Invalid OrgPath mappings: \$(\$InvalidMappings.Count)\" \# Export mapping \$OUtoOrgPath.GetEnumerator() \| Select-Object \@{N=\"LegacyOU\";E={\$\_.Key}}, \@{N=\"OrgPath\";E={\$\_.Value}} \| Export-Csv -Path \"\$OutputPath\\ou-orgpath-mapping.csv\" -NoTypeInformation
 
@@ -826,15 +826,15 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 **Steps:**
 
-18. For each user, write the OrgPath value to extensionAttribute1.
+1. For each user, write the OrgPath value to extensionAttribute1.
 
-19. Write role code to extensionAttribute2 based on role mapping.
+2. Write role code to extensionAttribute2 based on role mapping.
 
-20. Write lifecycle state ACTIVE to extensionAttribute3.
+3. Write lifecycle state ACTIVE to extensionAttribute3.
 
-21. Write migration status IN-PROGRESS to extensionAttribute4.
+4. Write migration status IN-PROGRESS to extensionAttribute4.
 
-22. Validate all attribute writes completed successfully.
+5. Validate all attribute writes completed successfully.
 
 \# Provision OrgPath for each user foreach (\$Mapping in \$UserOrgPathMappings) { try { \$UserParams = \@{ UserId = \$Mapping.EntraUserId OnPremisesExtensionAttributes = \@{ extensionAttribute1 = \$Mapping.OrgPath extensionAttribute3 = \"ACTIVE\" extensionAttribute4 = \"IN-PROGRESS\" } } Update-MgUser \@UserParams Write-Verbose \"Updated user \$(\$Mapping.EntraUserId) with OrgPath \$(\$Mapping.OrgPath)\" } catch { Write-Error \"Failed to update user \$(\$Mapping.EntraUserId): \$\_\" } } \# Verify provisioning \$ProvisionedUsers = Get-MgUser -All -Property \"Id,OnPremisesExtensionAttributes\" \| Where-Object { \$\_.OnPremisesExtensionAttributes.ExtensionAttribute1 -match \"\^ORG\" } Write-Verbose \"Provisioned users: \$(\$ProvisionedUsers.Count)\" \# Identify failures \$UnprovisionedUsers = Get-MgUser -All -Property \"Id,OnPremisesExtensionAttributes\" \| Where-Object { \[string\]::IsNullOrEmpty(\$\_.OnPremisesExtensionAttributes.ExtensionAttribute1) } Write-Verbose \"Unprovisioned users: \$(\$UnprovisionedUsers.Count)\" \# Update migration status for successful provisions foreach (\$User in \$ProvisionedUsers) { Update-MgUser -UserId \$User.Id -OnPremisesExtensionAttributes \@{ extensionAttribute4 = \"COMPLETED\" } }
 
@@ -850,15 +850,15 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 **Steps:**
 
-23. Create each dynamic group per Appendix B definitions.
+1. Create each dynamic group per Appendix B definitions.
 
-24. Set membership rules exactly as specified in the library.
+2. Set membership rules exactly as specified in the library.
 
-25. Wait for dynamic membership processing (up to 24 hours).
+3. Wait for dynamic membership processing (up to 24 hours).
 
-26. Validate group membership counts against expected user populations.
+4. Validate group membership counts against expected user populations.
 
-27. Update migration status.
+5. Update migration status.
 
 \# Create a dynamic security group \$GroupParams = \@{ DisplayName = \"OrgTree-FIN-All\" Description = \"All Finance Division members including subdepartments\" MailEnabled = \$false MailNickname = \"OrgTree-FIN-All\" SecurityEnabled = \$true GroupTypes = @(\"DynamicMembership\") MembershipRule = \'(user.extensionAttribute1 -eq \"ORG-FIN\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-\")\' MembershipRuleProcessingState = \"On\" } New-MgGroup -BodyParameter \$GroupParams \# Verify group creation \$CreatedGroup = Get-MgGroup -Filter \"displayName eq \'OrgTree-FIN-All\'\" Write-Verbose \"Group created: \$(\$CreatedGroup.DisplayName), Id: \$(\$CreatedGroup.Id)\" \# Check membership after processing delay \$Members = Get-MgGroupMember -GroupId \$CreatedGroup.Id -All Write-Verbose \"OrgTree-FIN-All membership count: \$(\$Members.Count)\" \# Validate membership rule matches canonical definition \$CanonicalRule = \'(user.extensionAttribute1 -eq \"ORG-FIN\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-\")\' if (\$CreatedGroup.MembershipRule -ne \$CanonicalRule) { Write-Error \"Membership rule drift detected for OrgTree-FIN-All\" }
 
@@ -874,15 +874,15 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 **Steps:**
 
-28. Create each Administrative Unit per Appendix D registry.
+1. Create each Administrative Unit per Appendix D registry.
 
-29. Configure dynamic membership rules.
+2. Configure dynamic membership rules.
 
-30. Set restricted management flag where specified.
+3. Set restricted management flag where specified.
 
-31. Create scoped role assignments per Appendix D role matrix.
+4. Create scoped role assignments per Appendix D role matrix.
 
-32. Validate AU membership and role assignment accuracy.
+5. Validate AU membership and role assignment accuracy.
 
 \# Create Administrative Unit \$AUParams = \@{ DisplayName = \"AU-FIN\" Description = \"Administrative Unit for Finance Division (ORG-FIN)\" MembershipType = \"Dynamic\" MembershipRule = \'(user.extensionAttribute1 -eq \"ORG-FIN\") or (user.extensionAttribute1 -startsWith \"ORG-FIN-\")\' MembershipRuleProcessingState = \"On\" } \$NewAU = New-MgDirectoryAdministrativeUnit -BodyParameter \$AUParams Write-Verbose \"AU created: \$(\$NewAU.DisplayName), Id: \$(\$NewAU.Id)\" \# Assign scoped role \$RoleDefinition = Get-MgRoleManagementDirectoryRoleDefinition -Filter \"displayName eq \'User Administrator\'\" \$AssigneeGroup = Get-MgGroup -Filter \"displayName eq \'OrgTree-FIN-Admins\'\" \$RoleAssignment = \@{ RoleDefinitionId = \$RoleDefinition.Id PrincipalId = \$AssigneeGroup.Id DirectoryScopeId = \"/administrativeUnits/\$(\$NewAU.Id)\" } New-MgRoleManagementDirectoryRoleAssignment -BodyParameter \$RoleAssignment \# Validate \$AUMembers = Get-MgDirectoryAdministrativeUnitMember -AdministrativeUnitId \$NewAU.Id -All Write-Verbose \"AU-FIN member count: \$(\$AUMembers.Count)\"
 
@@ -898,15 +898,15 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 **Steps:**
 
-33. Run Test-OrgPathFormat against all users.
+1. Run Test-OrgPathFormat against all users.
 
-34. Run Test-OrgPathHierarchy against all users.
+2. Run Test-OrgPathHierarchy against all users.
 
-35. Run Test-DynamicGroupAlignment against all groups.
+3. Run Test-DynamicGroupAlignment against all groups.
 
-36. Run Get-OrgTreeValidationReport for full status.
+4. Run Get-OrgTreeValidationReport for full status.
 
-37. Review and remediate any failures before proceeding.
+5. Review and remediate any failures before proceeding.
 
 \# Import validation module Import-Module \"\$ModulePath\\OrgTreeValidation\\OrgTreeValidation.psm1\" \# Full validation report \$Report = Get-OrgTreeValidationReport -TenantId \$TenantId -CodebookPath \"\$CodebookPath\\orgpath-codebook.json\" Write-Verbose \"Total Users: \$(\$Report.TotalUsers)\" Write-Verbose \"Valid OrgPaths: \$(\$Report.ValidOrgPaths)\" Write-Verbose \"Invalid OrgPaths: \$(\$Report.InvalidOrgPaths)\" Write-Verbose \"Orphaned Users: \$(\$Report.OrphanedUsers)\" Write-Verbose \"Drift Detected: \$(\$Report.DriftDetected)\" \# Export snapshot as baseline Export-OrgTreeSnapshot -TenantId \$TenantId -OutputPath \"\$OutputPath\\baseline-snapshot.json\" \# Group alignment check \$GroupReport = Test-DynamicGroupAlignment -TenantId \$TenantId -GroupLibraryPath \"\$LibraryPath\\dynamic-groups.json\" Write-Verbose \"Aligned Groups: \$(\$GroupReport.AlignedGroups)\" Write-Verbose \"Misaligned Groups: \$(\$GroupReport.MisalignedGroups)\"
 
@@ -922,15 +922,15 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 **Steps:**
 
-38. Enable drift detection engine monitoring (Appendix M).
+1. Enable drift detection engine monitoring (Appendix M).
 
-39. Activate SLA tracking for all governance operations.
+2. Activate SLA tracking for all governance operations.
 
-40. Set extensionAttribute4 = VALIDATED for all users.
+3. Set extensionAttribute4 = VALIDATED for all users.
 
-41. Notify all division administrators of go-live.
+4. Notify all division administrators of go-live.
 
-42. Begin telemetry collection (Appendix X).
+5. Begin telemetry collection (Appendix X).
 
 \# Mark all users as validated \$AllUsers = Get-MgUser -All -Property \"Id\" -Filter \"userType eq \'Member\'\" foreach (\$User in \$AllUsers) { try { Update-MgUser -UserId \$User.Id -OnPremisesExtensionAttributes \@{ extensionAttribute4 = \"VALIDATED\" } } catch { Write-Error \"Failed to update migration status for \$(\$User.Id): \$\_\" } } \# Create post-cutover snapshot Export-OrgTreeSnapshot -TenantId \$TenantId -OutputPath \"\$OutputPath\\cutover-snapshot.json\" \# Compare against baseline \$DriftReport = Compare-OrgTreeSnapshots -BaselinePath \"\$OutputPath\\baseline-snapshot.json\" \` -CurrentPath \"\$OutputPath\\cutover-snapshot.json\" Write-Verbose \"Drift entries since baseline: \$(\$DriftReport.Count)\"
 
@@ -946,15 +946,15 @@ The migration consists of eight sequential phases. Each phase has prerequisites,
 
 **Steps:**
 
-43. Verify no active dependencies on legacy OU structure.
+1. Verify no active dependencies on legacy OU structure.
 
-44. Remove legacy OU-based group policies where replaced by Conditional Access.
+2. Remove legacy OU-based group policies where replaced by Conditional Access.
 
-45. Archive legacy OU export data for compliance retention.
+3. Archive legacy OU export data for compliance retention.
 
-46. Document decommission completion in governance log.
+4. Document decommission completion in governance log.
 
-47. Clear extensionAttribute4 (migration tracking no longer needed).
+5. Clear extensionAttribute4 (migration tracking no longer needed).
 
 \# Final validation before decommission \$FinalReport = Get-OrgTreeValidationReport -TenantId \$TenantId -CodebookPath \"\$CodebookPath\\orgpath-codebook.json\" if (\$FinalReport.InvalidOrgPaths -gt 0 -or \$FinalReport.DriftDetected -eq \$true) { Write-Error \"Cannot decommission: validation failures exist\" return } \# Clear migration tracking attribute \$AllUsers = Get-MgUser -All -Property \"Id\" -Filter \"userType eq \'Member\'\" foreach (\$User in \$AllUsers) { Update-MgUser -UserId \$User.Id -OnPremisesExtensionAttributes \@{ extensionAttribute4 = \$null } } \# Export final decommission snapshot Export-OrgTreeSnapshot -TenantId \$TenantId -OutputPath \"\$OutputPath\\decommission-final-snapshot.json\" Write-Verbose \"Decommission complete. Legacy OU dependencies removed.\"
 
@@ -1558,31 +1558,31 @@ The integration follows a request-response pattern: Copilot produces an instruct
 
 ### Execution Contract
 
-48. Chrome-Claude MUST NOT interpret instructions beyond literal execution.
+1. Chrome-Claude MUST NOT interpret instructions beyond literal execution.
 
-49. Chrome-Claude MUST return structured results conforming to expectedOutput.
+2. Chrome-Claude MUST return structured results conforming to expectedOutput.
 
-50. Chrome-Claude MUST halt execution immediately upon detecting a boundary violation.
+3. Chrome-Claude MUST halt execution immediately upon detecting a boundary violation.
 
-51. Chrome-Claude MUST NOT modify governance artifacts, schemas, or codebooks.
+4. Chrome-Claude MUST NOT modify governance artifacts, schemas, or codebooks.
 
-52. Chrome-Claude MUST log all execution steps with timestamps.
+5. Chrome-Claude MUST log all execution steps with timestamps.
 
 ### Handoff Protocol
 
-53. Copilot generates an instruction set conforming to the schema above.
+1. Copilot generates an instruction set conforming to the schema above.
 
-54. Copilot validates the instruction against all boundary rules (Appendix K, Decision Tree 5).
+2. Copilot validates the instruction against all boundary rules (Appendix K, Decision Tree 5).
 
-55. Copilot dispatches the validated instruction to Chrome-Claude.
+3. Copilot dispatches the validated instruction to Chrome-Claude.
 
-56. Chrome-Claude parses the instruction and executes the specified operation.
+4. Chrome-Claude parses the instruction and executes the specified operation.
 
-57. Chrome-Claude returns a structured result with status, output data, and any errors.
+5. Chrome-Claude returns a structured result with status, output data, and any errors.
 
-58. Copilot validates the result against expectedOutput schema.
+6. Copilot validates the result against expectedOutput schema.
 
-59. Copilot records full provenance: instructionId, timestamp, executor, result hash.
+7. Copilot records full provenance: instructionId, timestamp, executor, result hash.
 
 ### Error Codes
 
@@ -1778,13 +1778,13 @@ TIME ELAPSED \| 0%\-\-\-\-\-\-\--+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
 
 **Required Actions:**
 
-60. Send automated notification to owner via Teams and email.
+1. Send automated notification to owner via Teams and email.
 
-61. Log warning event in governance telemetry (event type: SLAWarning).
+2. Log warning event in governance telemetry (event type: SLAWarning).
 
-62. Owner must acknowledge notification within 1 hour.
+3. Owner must acknowledge notification within 1 hour.
 
-63. If no acknowledgment, auto-escalate to Level 2.
+4. If no acknowledgment, auto-escalate to Level 2.
 
 **Documentation:** Warning timestamp, owner ID, operation ID recorded in telemetry.
 
@@ -1798,15 +1798,15 @@ TIME ELAPSED \| 0%\-\-\-\-\-\-\--+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
 
 **Required Actions:**
 
-64. Send breach notification to owner and manager.
+1. Send breach notification to owner and manager.
 
-65. Escalate ticket to priority queue.
+2. Escalate ticket to priority queue.
 
-66. Begin remediation tracking with 15-minute status updates from owner.
+3. Begin remediation tracking with 15-minute status updates from owner.
 
-67. Manager must confirm corrective action plan within 2 hours.
+4. Manager must confirm corrective action plan within 2 hours.
 
-68. Log breach event in telemetry (event type: SLABreached).
+5. Log breach event in telemetry (event type: SLABreached).
 
 **Documentation:** Breach timestamp, escalation ticket ID, corrective action plan.
 
@@ -1820,15 +1820,15 @@ TIME ELAPSED \| 0%\-\-\-\-\-\-\--+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
 
 **Required Actions:**
 
-69. Convene emergency governance review (async if within business hours, sync if Critical severity).
+1. Convene emergency governance review (async if within business hours, sync if Critical severity).
 
-70. Assign backup owner with required skills and access.
+2. Assign backup owner with required skills and access.
 
-71. Initiate root cause analysis for the delay.
+3. Initiate root cause analysis for the delay.
 
-72. Governance Board must issue directive within 4 hours.
+4. Governance Board must issue directive within 4 hours.
 
-73. Log governance escalation event in telemetry (event type: GovernanceEscalation).
+5. Log governance escalation event in telemetry (event type: GovernanceEscalation).
 
 **Documentation:** Board directive, backup owner assignment, root cause analysis initiation.
 
@@ -1842,17 +1842,17 @@ TIME ELAPSED \| 0%\-\-\-\-\-\-\--+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
 
 **Required Actions:**
 
-74. Trigger emergency governance session.
+1. Trigger emergency governance session.
 
-75. Send executive notification with situation summary.
+2. Send executive notification with situation summary.
 
-76. Mandatory remediation must complete within 4 hours of Level 4 trigger.
+3. Mandatory remediation must complete within 4 hours of Level 4 trigger.
 
-77. All other governance operations may be deprioritized to focus resources.
+4. All other governance operations may be deprioritized to focus resources.
 
-78. Post-incident review scheduled within 48 hours.
+5. Post-incident review scheduled within 48 hours.
 
-79. Log emergency event in telemetry (event type: EmergencyEscalation).
+6. Log emergency event in telemetry (event type: EmergencyEscalation).
 
 **Documentation:** Emergency session minutes, executive notification record, remediation timeline, post-incident review schedule.
 
@@ -2208,13 +2208,13 @@ Services are classified as In-Scope (available and authorized for Governance OS 
 
 External systems cannot directly interact with the Governance OS. If an external system needs to trigger a governance operation or consume governance data, the following rules apply:
 
-80. The external system must submit a request through an approved M365 channel (e.g., a SharePoint form, a Teams message, or an email to a governance mailbox).
+1. The external system must submit a request through an approved M365 channel (e.g., a SharePoint form, a Teams message, or an email to a governance mailbox).
 
-81. The request is reviewed by a governance steward before any action is taken.
+2. The request is reviewed by a governance steward before any action is taken.
 
-82. No automated API integration between external systems and the Governance OS is permitted without Governance Board approval.
+3. No automated API integration between external systems and the Governance OS is permitted without Governance Board approval.
 
-83. Data exported from the Governance OS for external consumption must be sanitized to remove tenant-specific values and classified appropriately.
+4. Data exported from the Governance OS for external consumption must be sanitized to remove tenant-specific values and classified appropriately.
 
 ## Boundary Rules
 
@@ -2250,25 +2250,25 @@ The workflow is a linear, gated process with automated and manual validation che
 
 ### Workflow Steps
 
-84. **Fork/Branch:** Create a branch with naming convention governance/\[type\]/\[short-description\] where type is one of: codebook, schema, module, runbook, workflow, model, glossary, docs.
+1. **Fork/Branch:** Create a branch with naming convention governance/\[type\]/\[short-description\] where type is one of: codebook, schema, module, runbook, workflow, model, glossary, docs.
 
-85. **Author Change:** Make modifications following the canonical schemas and style guidelines. All JSON must validate. All PowerShell must lint clean.
+2. **Author Change:** Make modifications following the canonical schemas and style guidelines. All JSON must validate. All PowerShell must lint clean.
 
-86. **Self-Validate:** Run local validation before submitting: Invoke-Pester for PowerShell, JSON schema validation for data files, and manual review against the relevant appendix requirements.
+3. **Self-Validate:** Run local validation before submitting: Invoke-Pester for PowerShell, JSON schema validation for data files, and manual review against the relevant appendix requirements.
 
-87. **Submit PR:** Open a pull request using the PR template (see below). All fields must be completed.
+4. **Submit PR:** Open a pull request using the PR template (see below). All fields must be completed.
 
-88. **Automated Validation (CI):** CI pipeline runs: JSON schema validation (validate-schema.yml), PowerShell lint (validate-powershell.yml), boundary compliance check (scan for excluded service references).
+5. **Automated Validation (CI):** CI pipeline runs: JSON schema validation (validate-schema.yml), PowerShell lint (validate-powershell.yml), boundary compliance check (scan for excluded service references).
 
-89. **Governance Review:** CODEOWNERS-designated reviewers are assigned automatically. Reviewers validate: technical correctness, governance principle compliance, boundary adherence, and impact assessment completeness.
+6. **Governance Review:** CODEOWNERS-designated reviewers are assigned automatically. Reviewers validate: technical correctness, governance principle compliance, boundary adherence, and impact assessment completeness.
 
-90. **Approval:** Minimum 2 approvals required for canonical artifacts. Schema changes require Governance Board approval. No open objections may remain.
+7. **Approval:** Minimum 2 approvals required for canonical artifacts. Schema changes require Governance Board approval. No open objections may remain.
 
-91. **Merge:** Squash merge to main branch. Commit message must include PR number and change summary.
+8. **Merge:** Squash merge to main branch. Commit message must include PR number and change summary.
 
-92. **Post-Merge Validation:** CI re-runs all validation against the merged main branch. If validation fails, merge is automatically reverted.
+9. **Post-Merge Validation:** CI re-runs all validation against the merged main branch. If validation fails, merge is automatically reverted.
 
-93. **Publication:** Upon successful post-merge validation, the artifact status transitions to Canonical in the state machine (Appendix S).
+10. **Publication:** Upon successful post-merge validation, the artifact status transitions to Canonical in the state machine (Appendix S).
 
 ### PR Template
 
@@ -2434,15 +2434,15 @@ Error codes follow the format GOV-\[CATEGORY\]-\[NUMBER\] where CATEGORY is a th
 
 ### Error Handling Rules
 
-94. **Propagation:** Errors propagate upward through the governance layer stack. An Identity Layer error generates a Structure Layer alert, which may trigger a Governance Layer escalation.
+1. **Propagation:** Errors propagate upward through the governance layer stack. An Identity Layer error generates a Structure Layer alert, which may trigger a Governance Layer escalation.
 
-95. **Retry Logic:** Auto-recoverable errors (marked Y) are retried up to 3 times with exponential backoff (1s, 4s, 16s). After 3 failures, the error is reclassified as non-recoverable.
+2. **Retry Logic:** Auto-recoverable errors (marked Y) are retried up to 3 times with exponential backoff (1s, 4s, 16s). After 3 failures, the error is reclassified as non-recoverable.
 
-96. **Escalation:** Non-recoverable Critical errors trigger immediate Level 2 escalation (Appendix Q). Non-recoverable High errors follow standard SLA escalation.
+3. **Escalation:** Non-recoverable Critical errors trigger immediate Level 2 escalation (Appendix Q). Non-recoverable High errors follow standard SLA escalation.
 
-97. **Dead Letter:** Errors that cannot be resolved after Level 4 escalation are recorded in a dead-letter log for Governance Board review at the next scheduled session.
+4. **Dead Letter:** Errors that cannot be resolved after Level 4 escalation are recorded in a dead-letter log for Governance Board review at the next scheduled session.
 
-98. **Correlation:** All errors include a correlationId that links related errors across layers and operations.
+5. **Correlation:** All errors include a correlationId that links related errors across layers and operations.
 
 ## Boundary Rules
 

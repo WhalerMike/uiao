@@ -8,7 +8,7 @@ modernization program (see
 ## Generation pipeline
 
 ```
-canon/phase2/UIAO_Phase2_TSA.psd1     ← source model (PowerShell data file)
+models/phase2/UIAO_Phase2_TSA.psd1     ← source model (PowerShell data file)
             ↓
 tools/Write-Phase2TSA.ps1              ← generator
             ↓

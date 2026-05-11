@@ -1,4 +1,4 @@
-"""Tests for the OrgPath codebook loader (ADR-035, MOD_A)."""
+"""Tests for the OrgPath codebook loader (ADR-035, UIAO_151)."""
 
 from __future__ import annotations
 
@@ -22,8 +22,8 @@ PROV = ProvenanceRecord(source="test", timestamp="2026-04-20T00:00:00Z", version
 def test_default_codebook_loads_and_validates() -> None:
     codebook = load_codebook()
     assert isinstance(codebook, Codebook)
-    assert codebook.document_id == "MOD_A"
-    assert codebook.regex == "^ORG(-[A-Z0-9]{2,6}){0,4}$"
+    assert codebook.document_id == "UIAO_151"
+    assert codebook.regex == "^ORG(-[A-Z0-9]{2,6}){0,8}$"
     assert codebook.is_active("ORG-IT-SEC-SOC-T1")
     assert codebook.parent_of("ORG-IT-SEC-SOC-T1") == "ORG-IT-SEC-SOC"
     # Root has no parent
@@ -42,11 +42,11 @@ def test_rejects_missing_parent(tmp_path: Path) -> None:
     bad.write_text(
         textwrap.dedent("""\
         schema_version: "1.0.0"
-        document_id: MOD_A
+        document_id: UIAO_151
         parent_canon: UIAO_007
         format:
-          regex: "^ORG(-[A-Z0-9]{2,6}){0,4}$"
-          max_depth: 4
+          regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"
+          max_depth: 8
           segment_pattern: "^[A-Z0-9]{2,6}$"
           root: ORG
           separator: "-"
@@ -64,11 +64,11 @@ def test_rejects_non_root_null_parent(tmp_path: Path) -> None:
     bad.write_text(
         textwrap.dedent("""\
         schema_version: "1.0.0"
-        document_id: MOD_A
+        document_id: UIAO_151
         parent_canon: UIAO_007
         format:
-          regex: "^ORG(-[A-Z0-9]{2,6}){0,4}$"
-          max_depth: 4
+          regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"
+          max_depth: 8
           segment_pattern: "^[A-Z0-9]{2,6}$"
           root: ORG
           separator: "-"
@@ -86,11 +86,11 @@ def test_rejects_deprecated_pointing_to_unknown(tmp_path: Path) -> None:
     bad.write_text(
         textwrap.dedent("""\
         schema_version: "1.0.0"
-        document_id: MOD_A
+        document_id: UIAO_151
         parent_canon: UIAO_007
         format:
-          regex: "^ORG(-[A-Z0-9]{2,6}){0,4}$"
-          max_depth: 4
+          regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"
+          max_depth: 8
           segment_pattern: "^[A-Z0-9]{2,6}$"
           root: ORG
           separator: "-"
@@ -110,11 +110,11 @@ def test_phantom_drift_fires_on_deprecated_code(tmp_path: Path) -> None:
     good.write_text(
         textwrap.dedent("""\
         schema_version: "1.0.0"
-        document_id: MOD_A
+        document_id: UIAO_151
         parent_canon: UIAO_007
         format:
-          regex: "^ORG(-[A-Z0-9]{2,6}){0,4}$"
-          max_depth: 4
+          regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"
+          max_depth: 8
           segment_pattern: "^[A-Z0-9]{2,6}$"
           root: ORG
           separator: "-"
