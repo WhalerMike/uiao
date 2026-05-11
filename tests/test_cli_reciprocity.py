@@ -18,6 +18,7 @@ from typing import Any
 from unittest import mock
 
 import pytest
+from click.testing import Result
 from typer.testing import CliRunner
 
 from uiao.cli.app import app
@@ -25,7 +26,7 @@ from uiao.cli.app import app
 runner = CliRunner()
 
 
-def _invoke_help(*args: str) -> tuple[object, str]:
+def _invoke_help(*args: str) -> tuple[Result, str]:
     """Return the raw result and ANSI-stripped help output."""
     result = runner.invoke(app, list(args), env={"NO_COLOR": "1", "COLUMNS": "200", "TERM": "dumb"})
     plain = re.sub(r"\x1b\[[0-9;]*[mK]", "", result.output)
