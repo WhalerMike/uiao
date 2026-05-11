@@ -1,5 +1,5 @@
 ---
-id: ADR-045
+id: ADR-062
 title: "OrgPath Hierarchy Depth Extension — 4 Levels to 8 Levels"
 status: accepted
 date: 2026-04-26
@@ -11,22 +11,40 @@ related_adrs:
   - ADR-035
   - ADR-037
   - ADR-038
+  - ADR-045
+  - ADR-060
 canon_refs:
-  - MOD_A_OrgPath_Codebook
-  - MOD_H_OrgPath_JSON_Schema
+  - UIAO_151_OrgPath_Codebook
+  - UIAO_158_OrgPath_JSON_Schema
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
+provenance:
+  prior_filename: "adr-045-orgpath-depth-extension.md"
+  renumbered_from: "ADR-045"
+  renumbered_at: "2026-05-11"
+  reason: "ADR-045 number was claimed concurrently by adr-045-scan-redaction-policy.md on main; this ADR was renumbered to the next free slot. The ADR-060 namespace flatten also renamed MOD_A → UIAO_151 and MOD_H → UIAO_158 after this ADR was authored — canon_refs updated to match."
 ---
 
-# ADR-045: OrgPath Hierarchy Depth Extension — 4 Levels to 8 Levels
+# ADR-062: OrgPath Hierarchy Depth Extension — 4 Levels to 8 Levels
 
 ## Status
 
 Accepted
 
+## Provenance note
+
+This ADR was originally authored on 2026-04-26 as **ADR-045**. The number
+was claimed concurrently by `adr-045-scan-redaction-policy.md` on `main`,
+and the ADR-060 namespace flatten (2026-05-10) renamed `MOD_A` → `UIAO_151`
+and `MOD_H` → `UIAO_158` after this ADR was written. The ADR was renumbered
+to **ADR-062** and its frontmatter `canon_refs` updated; the prose below
+preserves the `MOD_*` names that were canonical at authoring time. The
+post-flatten paths (`src/uiao/canon/UIAO_151_*.md`, etc.) are the surfaces
+the ADR's normative changes apply to today.
+
 ## Context
 
 [ADR-035](adr-035-orgpath-codebook-binding.md) bound the OrgPath codebook
-(MOD_A) to executable canon and pinned the canonical regex
+(MOD_A, now UIAO_151) to executable canon and pinned the canonical regex
 `^ORG(-[A-Z0-9]{2,6}){0,4}$` across the codebook, the JSON Schema
 (`src/uiao/schemas/orgpath/codebook.schema.json`), the device-plane ARM
 tag regex (MOD_C / ADR-038), the dynamic-group / admin-unit /
