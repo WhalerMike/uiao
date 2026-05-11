@@ -347,6 +347,11 @@ def test_phase2_end_to_end_pipeline(tmp_path: Path) -> None:
 
     This test replaces the Phase 1 skip strategy: all modules are now integrated.
     """
+    # Step 3 invokes uiao.oscal.orgtree_evidence which imports trestle at module
+    # load time. trestle is in core runtime deps and is present in CI's
+    # `pip install -e ".[api]"`; skip cleanly when a contributor's local
+    # `--no-deps` install does not have it.
+    pytest.importorskip("trestle.oscal.assessment_results")
     t_start = time.monotonic()
 
     # --- Step 1: Load fixture (synthetic-forest-export.json, WS-A8) ----------
