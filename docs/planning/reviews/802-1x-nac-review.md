@@ -12,6 +12,7 @@ scope:
   - docs/narrative/
   - docs/planning/customer-documents-taxonomy.md
   - docs/docs/system-architecture.qmd
+aspirational: true
 ---
 
 # Review — 802.1X / NAC references across the UIAO corpus
