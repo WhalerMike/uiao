@@ -1,0 +1,257 @@
+---
+title: "OrgPath FAQ"
+subtitle: "Plain-Language Answers to the Questions Operators Actually Ask"
+date: 2026-05-11
+---
+
+::: {.callout-note}
+## Why this page exists
+
+Most OrgPath confusion isn't about the canon — the canon is precise.
+It's about which canonical artifact answers which operator question,
+and which terminology means what. This FAQ collects the questions
+that have actually been asked during assessment and migration work,
+in the order they tend to come up, with the shortest accurate answer
+and one or two pointers to the deeper doc.
+
+If your question isn't here, that's a contribution opportunity — open
+a PR adding it.
+:::
+
+## Storage and authority
+
+### Where does OrgPath data actually live?
+
+In three places at once, each playing a different role:
+
+| Layer | Where | What it holds |
+|-------|-------|---------------|
+| **Vocabulary** | `src/uiao/canon/data/orgpath/codebook.yaml` (Git) | The valid OrgPath codes and their hierarchy |
+| **Assignment** | `extensionAttribute1` on each Entra principal | The actual OrgPath value carried by each user/device |
+| **Authority** | The HR system (Workday / SAP HR / HRIS) | The source of truth that drives the assignment |
+
+See [Where OrgTree & OrgPath Data Lives](where-data-lives.qmd) for the
+full mental model.
+
+### Is OrgPath stored in a "registry"?
+
+No — there is no separate registry database. The codebook is a YAML
+file in Git; the per-user values live on the Entra directory object
+itself. The top-level `registry/` directory in this repo holds
+*Governance OS adapter manifests* (pipeline sequencing, boundary
+definitions). It is **not** the OrgPath store.
+
+### Is it stored in Entra ID extension attributes? Are those attributes pre-defined?
+
+Yes, in `extensionAttribute1`. The slot itself is **pre-defined by
+Microsoft** — `extensionAttribute1..15` exist on every Entra tenant
+out of the box. UIAO doesn't create the attribute; it *claims* `extensionAttribute1`
+as the canonical OrgPath slot.
+
+The *values* in that slot are populated during migration and
+maintained by HR provisioning. See
+[ADR-063](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-063-orgpath-storage-slot-binding.md)
+for the rationale (and why not `extensionAttribute2..15`, directory
+extension schemas, or `employeeOrgData`).
+
+### Are OrgPath codes pre-defined or built during AD assessment?
+
+The *valid set of codes* (the codebook) is built during assessment —
+it's deliverable UIAO_151. The *Microsoft attribute slot* that
+carries them is pre-existing in every tenant. So: structure is
+pre-defined, vocabulary is assessment-defined, values are
+migration-time + ongoing HR provisioning.
+
+### Who decides what OrgPath value a given user has?
+
+The HR system. The canon's operating rule is: *"HR system is the
+authoritative source — IT never manually edits OrgPath values."* Any
+IT-originated write is itself a drift event under the provenance
+rules in
+[UIAO_163](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md).
+
+### What if HR is wrong?
+
+The drift engine still detects the disagreement between HR and Entra
+and flags it as **Value Drift** (P2 High). When `auto_remediate=true`
+the engine writes HR's value back to `extensionAttribute1`. When HR is
+suspected of being stale, the finding is escalated for human review
+rather than auto-applied — see the
+[Drift Detection Walk-through](drift-walkthrough.qmd) for the full
+finding payload and severity ladder.
+
+### What about contractors / non-HR-managed users?
+
+If the principal isn't represented in the authoritative HR system,
+they need an alternate source of authority documented in the
+governance steward log. The most common pattern is a separate
+contractor-management system that writes to a dedicated HR-equivalent
+feed; the codebook itself doesn't care about the source, only that
+*some* authoritative system owns the value.
+
+## The codebook
+
+### Where do new OrgPath codes come from?
+
+A pull request adds a new entry to
+`src/uiao/canon/data/orgpath/codebook.yaml`. The PR follows the
+canonical Contributor Workflow
+([UIAO_172](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_172_Canonical_Contributor_Workflow.md))
+— CI validates the regex, hierarchy, and JSON Schema; reviewers
+approve; the codebook is signed and merged.
+
+### How deep can an OrgPath go?
+
+Up to 8 segments after the root, per
+[ADR-062](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-062-orgpath-depth-extension.md).
+The regex is `^ORG(-[A-Z0-9]{2,6}){0,8}$`. The original cap of 4
+proved too shallow for federal-agency and military-command
+hierarchies (Department → Sub-agency → Bureau → Office → Division →
+Branch → Section → Team).
+
+### Are deprecated codes ever cleaned up automatically?
+
+No. A code marked `status: deprecated` with a `replaced_by` successor
+triggers **Phantom Drift** (P3) for any user still carrying it; the
+engine auto-reassigns those users to the successor. The deprecated
+*codebook entry itself* is retained for audit history — never deleted
+automatically — and is removed only via a governed PR.
+
+### What about codes with zero matching users?
+
+Those are **Orphan Drift** (P3) — flagged for governance review but
+never auto-deleted. The codebook entry might be temporarily empty
+during a reorganization, or might represent a structural placeholder
+the org wants to retain. The operator decides.
+
+## Devices, Azure resources, and service principals
+
+### Is OrgPath stored on devices the same way as users?
+
+Mostly. Entra-joined client devices use `device.extensionAttribute1`,
+exactly like users. Azure Arc servers (and Azure resources tagged for
+governance) use an **ARM tag named `OrgPath`** instead, because that's
+the addressable surface for `Microsoft.HybridCompute/machines`.
+See [Where Data Lives — Devices and Azure](where-data-lives-devices-and-azure.qmd).
+
+### What if a device is both Entra-joined and Arc-enrolled?
+
+It carries the OrgPath in *both* slots and the canon treats string
+equality between them as a required invariant. **Runtime
+cross-plane enforcement is deferred** — today, equality is achieved
+via adapter-side write dispatch
+([`EntraDeviceOrgPathAdapter`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/adapters/entra_device_orgpath.py)),
+not by a drift-engine equality check. A future ADR will introduce
+that runtime check.
+
+### Are service principals / managed identities in scope?
+
+Per [ADR-063](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-063-orgpath-storage-slot-binding.md),
+yes — the canonical slot is `servicePrincipal.extensionAttribute1`.
+However, the drift engine v1 reads only the user and device planes;
+SP consumption is deferred.
+
+### Why not just use an Intune scope tag for devices?
+
+Intune scope tags *derive* from `extensionAttribute1` — they aren't
+an independent storage location. Putting the OrgPath in a scope tag
+directly would create two sources of truth and break the agreement
+rule with the Entra device's `extensionAttribute1`. See
+[Customer narrative ch. 5 — OrgPath and Intune](../customer-documents/orgpath-narrative/05-orgpath-and-intune.qmd)
+for the lifecycle.
+
+## Drift detection
+
+### What's the difference between the five drift categories?
+
+| Category | What broke | Severity |
+|----------|-----------|----------|
+| **Schema** | Value violates regex or type | P1 |
+| **Value** | Schema OK, but disagrees with HR | P2 |
+| **Hierarchy** | References a parent that no longer exists | P1 |
+| **Orphan** | Codebook entry with zero users | P3 |
+| **Phantom** | User carrying a deprecated code | P3 |
+
+The [Drift Walk-through](drift-walkthrough.qmd) has concrete OrgPath
+examples and sample `DriftFinding` JSON for each.
+
+### How often does the drift engine run?
+
+The cadence is defined by the deployment, not the canon — typical
+production cadences are nightly for full population scans and
+on-demand via CLI for targeted re-checks after remediation. The
+engine itself is stateless between runs; every scan is a fresh
+snapshot.
+
+### Can I dry-run the drift engine?
+
+Yes — `DriftScanReport` carries a `dry_run` boolean. With `dry_run=true`
+the engine emits findings but applies no remediation; this is the
+default for new tenants and for CI gates.
+
+## Tenant-specific concerns
+
+### My tenant already uses `extensionAttribute1` for something else. What do I do?
+
+Don't write over it. Follow the rebind procedure in
+[ADR-063 §3](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-063-orgpath-storage-slot-binding.md):
+snapshot the prior values to the Evidence Fabric, relocate the
+inherited use to `extensionAttribute2` or `extensionAttribute3` via
+the upstream provisioning system, verify cutover, *then* enable
+OrgPath writes. Tenants where the slot cannot be vacated are blocked
+from the modernization pipeline by design — that decision sits with
+the governance steward, not the deploying operator.
+
+### Can I just pick a different slot in my tenant?
+
+No. The slot is not a per-tenant configuration knob. Attempting to
+retarget in code (e.g., editing `orgpath_plane` in a
+`ComputerDisposition`) is a canon violation and fails CI under
+[UIAO_172](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_172_Canonical_Contributor_Workflow.md).
+
+## Diagrams and rendering
+
+### Do we have images for this?
+
+The image *prompts* and *registry entries* are in the repo
+(UIAO-FIG-012 OrgPath storage, UIAO-FIG-013 drift engine loop,
+UIAO-FIG-014 device/Azure routing). The *rendered PNGs* are produced
+on demand by the Gemini-based image pipeline. The status of a given
+figure is recorded in
+[`src/uiao/canon/image-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/image-registry.yaml)
+under `status:` — `draft` means the prompt exists but the PNG hasn't
+been generated yet; `current` means it's rendered and approved.
+
+### How do I render a figure?
+
+Two paths, both documented in the
+[Image Pipeline & Registry Guide](../academy/image-pipeline-guide.qmd):
+
+- **Local:** `export GEMINI_API_KEY=…` then
+  `python scripts/generate_images.py`.
+- **GitHub Actions:** Dispatch the `image-gen.yml` workflow with
+  `commit_back: true` for canon figures so `file_sha256` is
+  backfilled atomically with the PNG landing.
+
+### How do I find if a figure I need already exists?
+
+Use the registry search CLI:
+
+```bash
+python scripts/tools/image_registry_search.py "your topic"
+```
+
+Or filter by audience / document-type / visual-style. The CLI ranks
+by weighted field match with `reuse_score` as the tiebreaker, so the
+most-reused canonical image for a subject surfaces first. Prefer
+`[IMAGE-REF: UIAO-FIG-NNN]` reuse over a fresh `[IMAGE-NN: …]` prompt
+— cheaper to render, visually consistent, drift-tracked.
+
+## Where to go next
+
+- **First-time reader:** [Where OrgTree & OrgPath Data Lives](where-data-lives.qmd)
+- **Device / Azure operator:** [Where Data Lives — Devices and Azure](where-data-lives-devices-and-azure.qmd)
+- **Governance / drift operator:** [Drift Detection Walk-through](drift-walkthrough.qmd)
+- **Codebook editor:** [OrgPath Codebook (UIAO_151)](codebook.qmd)
+- **Image pipeline operator:** [Image Pipeline & Registry Guide](../academy/image-pipeline-guide.qmd)
+- **Canon spec reader:** [`src/uiao/canon/UIAO_150…UIAO_176`](https://github.com/WhalerMike/uiao/tree/main/src/uiao/canon)
