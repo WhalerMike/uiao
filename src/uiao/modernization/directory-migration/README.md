@@ -59,6 +59,35 @@ Not just users. Every object AD was holding together:
 4. **Migrate** — execute with continuous validation
 5. **Validate** — prove governance continuity with evidence
 
+## Discovery and Inventory Artifacts
+
+Phase 1 (Discover) is implemented as a modernization adapter, not as
+per-engagement scripts. The artifacts the discovery pass produces are
+canonical, schema-validated, and feed every subsequent phase plus the
+FedRAMP Evidence Bundle.
+
+| Discovery surface | Implementation | Output artifact |
+|---|---|---|
+| Forest archaeological survey (OUs, users, computers, GPOs, sites) | [`src/uiao/adapters/modernization/active_directory/survey.py`](../../adapters/modernization/active_directory/survey.py) — `run_discovery()` entry point | `ADSurveyReport` → orgtree-readiness bundle |
+| Service account scan (SPN inventory, delegation, AdminCount, naming patterns, risk classification) | Spec3-D1.1 — [`UIAO_139`](../../canon/specs/Spec3-D1.1-Get-ServiceAccountScan.md); implemented inline in `survey.py` (`ServiceAccountRisk`, `classify_sa_adcs_dependency`) | `service-accounts.json` + risk-scored `ServiceAccountRisk` records |
+| **SPN inventory** (`MSSQLSvc/*` and related service-class SPNs, phase-tagged) | `survey.py::extract_spn_inventory()` (added in PR #395) | `spn_inventory` field on the orgtree-readiness bundle — see schema [`src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json`](../../schemas/orgtree-readiness/orgtree-readiness.schema.json) `#/definitions/spnInventory` |
+| OrgPath / Intune / Azure Arc readiness plans | OrgTree plane modules under [`src/uiao/modernization/orgtree/`](../orgtree/) | `orgpath_plan`, `intune_plan`, `arc_plan` sections of the orgtree-readiness bundle |
+| Drift findings (`DRIFT-IDENTITY`, `DRIFT-SCHEMA`, `DRIFT-PROVENANCE`, `DRIFT-SEMANTIC`) | Emitted inline by the survey pass; classified per [`docs/docs/16_DriftDetectionStandard.qmd`](../../../../docs/docs/16_DriftDetectionStandard.qmd) | `findings[]` array on the orgtree-readiness bundle |
+
+All artifacts roll up into the single OrgTree readiness bundle defined
+in [`src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json`](../../schemas/orgtree-readiness/orgtree-readiness.schema.json),
+which is HMAC-signed for FedRAMP Moderate evidence and consumed by
+post-migration validation, the drift engine, and the auditor bundle.
+The SPN inventory artifact specifically supports the SPN drift detection
+contract documented in
+[`docs/docs/16_DriftDetectionStandard.qmd` §7.1](../../../../docs/docs/16_DriftDetectionStandard.qmd).
+
+The deliberate non-pattern: there is **no separate PowerShell discovery
+script tree**. The `survey.py` adapter is the single discovery
+implementation. PowerShell consumers invoke it via the `uiao` CLI; they
+do not run parallel scripts that would create a second inventory of
+record.
+
 ## Built On
 
 UIAO's Eight Core Concepts — proven in federal civilian compliance under
@@ -86,7 +115,8 @@ directory-migration/
     ├── sync-engine/sync-adapter-interface.md
     ├── device-management/device-adapter-interface.md
     ├── ntp/ntp-adapter-interface.md
-    └── dfs/dfs-adapter-interface.md
+    ├── dfs/dfs-adapter-interface.md
+    └── sql-server/sql-server-adapter-interface.md
 ```
 
 ## Related

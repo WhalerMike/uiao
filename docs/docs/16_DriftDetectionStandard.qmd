@@ -14,10 +14,10 @@ format:
 
 **Document:** 16
 **Phase:** 5 — Data Governance Substrate
-**Version:** 1.0
+**Version:** 1.2
 **Status:** Draft
 **Classification:** Public
-**Date:** 2026-04-01
+**Date:** 2026-05-11
 **Promotes:** PHASE5_RuntimeDriftModel.md (see that document for operational runtime detail)
 
 ---
@@ -94,18 +94,113 @@ Certified UIAO adapters MUST:
 
 ---
 
-## 7. Cross-References
+## 7. Federal SSOT Context
+
+The drift taxonomy formalized in §2 is the substrate mechanism through
+which UIAO supports federal SSOT and continuous-monitoring mandates over
+the identity layer. Each drift class corresponds to a specific class of
+condition under which a federal mandate's assumptions about the
+authoritative state of the identity namespace no longer hold.
+`DRIFT-IDENTITY` and `DRIFT-AUTHZ` in particular are the two classes most
+directly load-bearing for federal identity SSOT, because they surface
+the conditions under which a principal's authoritative state can no
+longer be verified against canon — which is the precise failure mode the
+federal SSOT mandates exist to prevent.
+
+| Federal mandate | Load-bearing drift class(es) | Mechanism |
+|---|---|---|
+| Evidence Act — Data Asset Inventories | `DRIFT-PROVENANCE` | Every change to a canon record produces a provenance chain entry; drift findings are themselves inventory artifacts |
+| Federal Data Strategy — SSOT Designation | `DRIFT-IDENTITY`, `DRIFT-PROVENANCE` | Identity namespace as root SSOT; drift findings are the condition under which the SSOT designation is no longer trustworthy |
+| OMB M-22-09 (Federal Zero Trust) / EO 14028 | `DRIFT-IDENTITY`, `DRIFT-AUTHZ` | Continuous identity verification; authorization-state drift surfaces the condition under which a Zero Trust policy decision is no longer load-bearing |
+| FedRAMP 20x continuous monitoring | All five classes | Drift findings accumulate continuously and are emitted as Evidence Bundle artifacts rather than assembled at assessment time |
+| NIST 800-63 AAL requirements | `DRIFT-IDENTITY` | Authenticator assurance level encoded per principal; drift surfaces conditions under which AAL is no longer continuously verified |
+| DAMA-DMBOK — Quality, Lineage, Metadata | `DRIFT-SCHEMA`, `DRIFT-SEMANTIC`, `DRIFT-PROVENANCE` | Drift classes are the operational form of DAMA-DMBOK data-quality and lineage concerns applied to the identity layer |
+| CDO Data Governance Board requirements | `DRIFT-AUTHZ`, `DRIFT-PROVENANCE` | Ownership, accountability, and access-decision drift; findings are the artifact a Data Governance Board consumes |
+
+For the federal mandate alignment that frames this cross-walk — including
+the COR schema as identity MDM hub, the provenance chain as data lineage
+equivalent, and the six control planes as federated governance — see the
+[Federal SSOT Alignment whitepaper](../customer-documents/whitepapers/federal-ssot-alignment.qmd).
+
+For the structural compliance conflict the GCC-Moderate boundary creates
+against three of these mandates simultaneously (TIC 3.0 × Zero Trust ×
+FedRAMP 20x) and the Evidence Bundle finding shape the substrate emits
+for it, see [B.1.1 The Three-Way GCC-Moderate Compliance Conflict](../customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd).
+
+For the identity-substrate role beneath the Microsoft Fabric + OneLake +
+Purview Azure SSOT stack — including the discovery → OrgPath enrichment
+→ Purview registration → Fabric Domain assignment → drift verification
+loop — see [OrgPath Narrative 07a — UIAO Beneath the Azure SSOT Stack](../customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd).
+
+### 7.1 SPN Drift Detection (`MSSQLSvc/*`)
+
+Service Principal Names registered in Active Directory under the
+`MSSQLSvc/*` prefix (and the related service-class prefixes captured by
+the `spn_inventory` artifact emitted by the AD survey adapter) are the
+canonical example of a `DRIFT-IDENTITY` failure mode that surfaces only
+after a migration event has completed. When a SQL Server service account
+is migrated from AD to an Entra ID managed identity, a different domain
+principal, or a group Managed Service Account, the SPN registration must
+be explicitly re-established against the new principal. If it is not,
+Kerberos authentication to that SQL instance breaks silently — LDAP-
+dependent applications lose connectivity, linked-server connections
+fail, and Reporting Services delegation chains disintegrate. None of
+those failures appears immediately, which is the precise reason the
+federal SSOT mandates require continuous identity-state verification
+rather than point-in-time attestation.
+
+The substrate's response is structured. The `spn_inventory` artifact
+defined in
+[`src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json`]({{< meta canon-reference >}}#spnInventory)
+(introduced in PR #395) captures the pre-migration SPN registration
+state with phase-tagged provenance. The post-migration state is captured
+in the same artifact form on the migrated tenant, and the drift
+comparison emits findings in four shapes:
+
+| Drift condition | Drift class | Severity | Detection signal |
+|---|---|---|---|
+| SPN present pre-migration, absent post-migration | `DRIFT-IDENTITY` | P1 — Kerberos chain broken | Set-difference: SPNs in pre-migration inventory not in post-migration |
+| SPN host or port changed without a recorded migration event | `DRIFT-PROVENANCE` | P2 | Same `(service_class, principal_name)` key, different `host_or_fqdn` or `port_or_instance` |
+| SPN owner (service-account principal) changed without provenance | `DRIFT-AUTHZ` | P1 | Same SPN, different `principal_name` / `distinguished_name`, no transition record in provenance chain |
+| SPN present in AD but no Entra ID Kerberos delegation configured | `DRIFT-IDENTITY` | P2 — hybrid gap | Cross-reference fails between AD SPN record and Entra workload-identity federation config |
+
+Each drift finding is written to the parent OrgTree-readiness Evidence
+Bundle through the existing `findings` array, with the `spn_record`
+identifying the SPN that triggered the finding (via the
+`drift_finding_ref` back-pointer on the SPN record). This closes the
+round-trip established by the
+[Federal SSOT Alignment whitepaper §3.3](../customer-documents/whitepapers/federal-ssot-alignment.qmd)
+between the drift engine and the federal continuous-monitoring mandate:
+the SPN inventory is the pre-migration baseline, the post-migration
+inventory is the verification artifact, and the drift findings are the
+auditor-consumable evidence that the substrate has detected the failure
+mode rather than letting it surface as a P1 incident weeks later.
+
+Operationally, the four drift conditions above map to the standard
+remediation contract in §4. The P1 conditions halt-and-alert per the
+severity model (§3); the P2 conditions auto-remediate when deterministic
+(re-registering an SPN against the migrated principal is deterministic;
+attributing an unknown owner is not).
+
+---
+
+## 8. Cross-References
 
 - `docs/PHASE5_RuntimeDriftModel.md` — Operational runtime drift model (promoted by this document)
 - `docs/15_ProvenanceProfile.md` — Provenance envelope that drift detection validates
 - `docs/17_ConsentEnvelope.md` — Authorization drift detection
 - `docs/18_ClaimCatalog.md` — Schema drift detection against catalog versions
 - `scripts/detect_drift.py` — Drift detection automation
+- `docs/customer-documents/whitepapers/federal-ssot-alignment.qmd` — Federal mandate alignment over the identity layer
+- `docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd` — TIC 3.0 × Zero Trust × FedRAMP 20x structural compliance conflict
+- `docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd` — Identity-substrate role beneath the Azure SSOT stack
 
 ---
 
-## 8. Revision History
+## 9. Revision History
 
 | Version | Date | Author | Summary |
 |---|---|---|---|
 | 1.0 | 2026-04-01 | UIAO Canon Engine | Initial canonical release — promotes PHASE5_RuntimeDriftModel.md |
+| 1.1 | 2026-05-11 | UIAO Canon Engine | Adds §7 Federal SSOT Context — drift-class-to-mandate cross-walk + cross-refs to federal-ssot-alignment whitepaper, B.1.1 three-way conflict finding, and OrgPath Narrative chapter 07a. Renumbers prior §7 Cross-References → §8, §8 Revision History → §9. External references to §2 and §4 are unaffected. |
+| 1.2 | 2026-05-11 | UIAO Canon Engine | Adds §7.1 SPN Drift Detection (`MSSQLSvc/*`) — concrete drift-condition table tied to the `spn_inventory` artifact introduced in PR #395. No section renumbering. |
