@@ -1,0 +1,247 @@
+---
+title: "HRIT Single-ATO Productization"
+date: "2026-05-06"
+---
+
+**Document:** 22
+**Phase:** 6 — HRIT Productization v0.6.0
+**Version:** 1.0
+**Status:** Draft
+**Classification:** Public
+
+**Provenance:**
+This document derives from and cites the following canonical sources:
+
+| Canon ID | Title | ADR |
+|---|---|---|
+| UIAO_140 | Single-ATO Reciprocity Model | ADR-054 |
+| UIAO_113 | Evidence Graph | ADR-054 |
+| UIAO_143 | HRIT Productization | ADR-058 |
+| Spec2-D6.1 | Federal HRIT Integration Runbook | ADR-054, ADR-058 |
+
+All claims in this document trace to one of the above canonical sources.
+See [00_CorePrinciples.qmd](00_CorePrinciples.qmd) for the governing SSOT principle.
+
+---
+
+## 1. What This Is
+
+This document narrates the operational productization of the Single-ATO
+Reciprocity Model (UIAO_140, ratified by ADR-054).  It answers the question:
+*what does it take to run a real system under this model?*
+
+The model itself lives in `src/uiao/canon/specs/single-ato-reciprocity-model.md`
+(UIAO_140).  The ADR that ratified the production commitments for this model is
+`ADR-058` (`adr-058-hrit-productization-mission.md`).  The federal-civilian
+integration runbook that makes the model concrete for OPM HRIT and peer agencies
+is `Spec2-D6.1`.
+
+**This document is the narrative gateway** — it introduces the artifacts, shows
+how they connect, and points to the KSI family that operationalises continuous
+compliance checking across the reciprocity chain.
+
+---
+
+## 2. The Mission
+
+The Single-ATO model operates as follows:
+
+- **One platform, one SSP, one ATO.** The platform authority (e.g. the OPM HRIT
+  reference instance under Solicitation 24322626R0007 Amd 4) maintains a single
+  System Security Plan and receives a single Authority to Operate from its
+  Authorising Official.
+
+- **N consuming agencies, N reciprocity records.** Each agency that wishes to
+  operate on the platform acknowledges the controlling SSP, declares any
+  configuration elections within the approved latitude table, and receives a
+  reciprocity record that binds them to the controlling ATO.  They do not obtain
+  a separate ATO.
+
+- **OPM HRIT as the reference instance.** The Federal HRIT modernisation
+  programme (Solicitation 24322626R0007 Amd 4) is the first production instance.
+  Its consuming agencies include OPM itself, DoD civilian HR, NFC-serviced
+  agencies, and IBC-serviced agencies — all defined in the Spec2-D6.1 Federal HR
+  Systems Matrix.
+
+This model reduces the ATO surface dramatically: instead of N×ATO processes
+running in parallel across agencies, only one ATO is maintained.  Consuming
+agencies enter and exit through the reciprocity layer without disturbing the
+controlling ATO.
+
+---
+
+## 3. The Artifacts
+
+Four classes of artifact are produced and maintained under this model:
+
+| Artifact | Description | Canon reference |
+|---|---|---|
+| **Reciprocity record** | Per-agency record that binds the consuming agency to the controlling ATO.  Contains `legal_basis`, `controlling_ato_id`, `configuration_latitude`, `expires_at`, and `acknowledged_by`. | UIAO_140 §4 |
+| **Per-agency bundle** | OSCAL evidence bundle (component-definition + assessment-results) generated for each consuming agency.  HMAC-SHA256 signed. | hrit-productization §8 |
+| **ATO-cadence telemetry** | Timestamped records of SSP delivery milestones (30-day draft, 45-day final) and reauthorization initiation events. | Spec2-D6.1 §4 |
+| **Configuration-latitude findings** | Drift findings raised when a consuming agency's tenant config deviates from the elections in the SSP latitude table. | hrit-productization §5 |
+
+These artifacts are not independent — they form a chain: the ATO-cadence
+telemetry gates SSP delivery, the SSP gates the reciprocity record, the
+reciprocity record gates the per-agency bundle, and the bundle is the evidence
+that consuming-agency Authorising Officials review.
+
+---
+
+## 4. The Evidence Graph
+
+The UIAO evidence graph (UIAO_113 v1.2) represents the causal chain from the
+controlling ATO decision through to each consuming agency's reciprocity record.
+Every active reciprocity record must be reachable from an `ato-decision` node
+via a directed edge; records that are not so anchored are flagged by
+KSI-RECIP-008.
+
+```{mermaid}
+graph TD
+    AO[Authorising Official] -->|issues| ATD[ato-decision node\nControlling ATO]
+    ATD -->|edge: ato-decision → reciprocity-record| RR1[reciprocity-record\nAgency 1]
+    ATD -->|edge: ato-decision → reciprocity-record| RR2[reciprocity-record\nAgency 2]
+    ATD -->|edge: ato-decision → reciprocity-record| RRN[reciprocity-record\nAgency N]
+    RR1 --> CA1[Consuming Agency 1\nAO acknowledgement]
+    RR2 --> CA2[Consuming Agency 2\nAO acknowledgement]
+    RRN --> CAN[Consuming Agency N\nAO acknowledgement]
+    ATD -->|conmon evidence attaches here| CM[Continuous-Monitoring\nevidence stream]
+    CM -.->|single platform-scope stream| RR1
+    CM -.->|single platform-scope stream| RR2
+    CM -.->|single platform-scope stream| RRN
+```
+
+**Key invariants (UIAO_140 §6):**
+
+1. Continuous-monitoring evidence attaches to the controlling `ato-decision`,
+   not to individual reciprocity records.
+2. Per-agency bundles are derived views of the platform-scope stream filtered to
+   each agency's configuration-latitude elections.
+3. Every edge in the graph is directed; the graph is acyclic; root is always
+   an `ato-decision` node.
+
+---
+
+## 5. The Lifecycle
+
+A reciprocity record moves through five states from creation to retirement.
+The lifecycle is triggered by events in the ATO pipeline, the consuming-agency
+onboarding workflow, and the continuous-monitoring stream.
+
+```{mermaid}
+stateDiagram-v2
+    [*] --> Draft : Agency onboarding request\nreceived; SSP latitude\ntable reviewed
+    Draft --> Issued : Authorising Official\nsigns controlling ATO;\nreciprocity record\ngenerated
+    Issued --> Active : Consuming-agency CIO\nor delegate provides\nPIV-anchored acknowledgement
+    Active --> Expiring : expires_at within 60 days;\nreauthorization window opens
+    Expiring --> Active : Renewal record created\n(renewed_from back-ref);\nupdated expires_at set
+    Expiring --> Expired : No renewal within 30-day\nSLA (KSI-RECIP-006 FAIL)
+    Expired --> [*] : Record archived;\nconsuming agency\noffboarded
+    Active --> Expired : AO formally withdraws\nreciprocity grant
+```
+
+**Transition triggers:**
+
+| Transition | Trigger | KSI gate |
+|---|---|---|
+| Draft → Issued | Controlling ATO signed by AO | KSI-RECIP-002 |
+| Issued → Active | Consuming-agency CIO acknowledgement (PIV) | KSI-RECIP-001 |
+| Active → Expiring | 60-day pre-expiry window opens | KSI-RECIP-003 |
+| Expiring → Active | Renewal record created within 30-day SLA | KSI-RECIP-006 |
+| Expiring → Expired | 30-day SLA breached with no renewal | KSI-RECIP-006 FAIL |
+
+---
+
+## 6. The KSI Family
+
+The KSI-RECIP family provides continuous automated compliance checking across
+all eight operational requirements of the reciprocity model.  Each KSI maps
+to one or more NIST SP 800-53 controls and emits a deterministic PASS / WARN /
+FAIL verdict that feeds into the platform's FedRAMP continuous-monitoring stream.
+
+| KSI ID | Title | Primary Control | Severity |
+|---|---|---|---|
+| KSI-RECIP-001 | Reciprocity Record Legal-Basis Citation Required | AC-21 | HIGH |
+| KSI-RECIP-002 | Reciprocity Record References Existing Controlling ATO | CA-2 | HIGH |
+| KSI-RECIP-003 | No Expired Reciprocity Records Without Renewal | CA-6 | HIGH |
+| KSI-RECIP-004 | Configuration-Latitude Drift Findings Have Remediation Owner | CA-5 | MEDIUM |
+| KSI-RECIP-005 | SSP ATO-Cycle Cadence Met (30-Day Draft, 45-Day Final) | PL-2 | HIGH |
+| KSI-RECIP-006 | 30-Day Reauthorization Window SLA Met | CA-6 | HIGH |
+| KSI-RECIP-007 | Per-Agency Bundle Cryptographic Signature Verified | AU-9 | HIGH |
+| KSI-RECIP-008 | Evidence Graph Contains ATO-Decision to Reciprocity-Record Edge | CM-3 | MEDIUM |
+
+KSI rule files are located at:
+`src/uiao/rules/ksi/hrit-reciprocity/KSI-RECIP-{001..008}.yaml`
+
+Each rule file follows the ORGTREE-readiness KSI schema pattern:
+`ksi_id`, `title`, `category`, `description`, `security_objective`,
+`related_controls`, `validation_type`, `evidence_sources`, `pass_criteria`
+(with embedded SQL-like logic), `uiao_extensions`, `oscal_props`,
+`version`, `last_updated`, `enabled`, `tags`, `severity`, `nist_mappings`,
+`fedramp_controls`, and `provenance`.
+
+The KSI family entries are registered in the control-mapping registry at:
+`src/uiao/rules/ksi/uiao-control-to-ksi-mapping.yaml` (under `ksi_summary`,
+appended 2026-05-06).
+
+---
+
+## 7. How to Walk This
+
+The operational quickstart for HRIT productization is documented in
+`docs/hrit-productization-quickstart.md` (produced by WS-A8).  That document
+provides:
+
+- Step-by-step agency onboarding flow (Draft → Issued → Active)
+- How to issue a reciprocity record via `uiao reciprocity issue`
+- How to check KSI compliance via `uiao reciprocity check-ksi`
+- How to generate and sign a per-agency bundle
+- How to handle expiry and reauthorization
+
+See also:
+
+- `src/uiao/canon/specs/single-ato-reciprocity-model.md` — the governing model
+  (UIAO_140)
+- `src/uiao/canon/specs/hrit-productization.md` — the productization spec
+  (UIAO_143 / ADR-058)
+- `src/uiao/canon/specs/Spec2-D6.1-FederalHRITIntegrationRunbook.md` — the
+  federal HR systems integration runbook
+
+---
+
+## 8. Bundle Aggregation Flow
+
+The per-agency bundle is assembled from four upstream sources and verified by
+the consuming-agency Authorising Official before acceptance.
+
+```{mermaid}
+flowchart TD
+    SSP[Controlling SSP\nPlatform-scope security plan] --> REC[Reciprocity Record\nAgency elections + legal_basis]
+    LAT[Configuration Latitude Table\nSSP-declared tenant elections] --> REC
+    TCFG[Tenant Configuration\nActual agency settings] --> DRIFT{Latitude\nDrift Check}
+    LAT --> DRIFT
+    DRIFT -- No drift --> REC
+    DRIFT -- Drift found --> FIND[Config-Latitude Finding\nremediation_owner required\nKSI-RECIP-004]
+    FIND --> REC
+    REC --> CDEF[OSCAL component-definition\nPlatform components]
+    REC --> ARES[OSCAL assessment-results\nContinuous monitoring]
+    CDEF --> BUNDLE[Per-Agency Bundle\nbundle_id + bundle_hash]
+    ARES --> BUNDLE
+    BUNDLE --> SIG{HMAC-SHA256\nSignature}
+    SIG -- Verified --> AO_VER[Consuming-Agency AO\nVerification + Acceptance]
+    SIG -- Fails --> QUAR[Bundle Quarantined\nKSI-RECIP-007 FAIL]
+    AO_VER --> ACTIVE[Reciprocity Record\nstatus = Active]
+```
+
+---
+
+## References
+
+- [ADR-054 — Single-ATO Reciprocity Model](../../src/uiao/canon/adr/adr-054-single-ato-reciprocity.md)
+- [ADR-058 — HRIT Productization Mission](../../src/uiao/canon/adr/adr-058-hrit-productization-mission.md)
+- [UIAO_140 — Single-ATO Reciprocity Model Spec](../../src/uiao/canon/specs/single-ato-reciprocity-model.md)
+- [UIAO_143 / hrit-productization Spec](../../src/uiao/canon/specs/hrit-productization.md)
+- [Spec2-D6.1 — Federal HRIT Integration Runbook](../../src/uiao/canon/specs/Spec2-D6.1-FederalHRITIntegrationRunbook.md)
+- OPM Solicitation 24322626R0007 Amendment 4
+- [00_CorePrinciples.qmd](00_CorePrinciples.qmd)
+- [21_OrgTreeReadiness.qmd](21_OrgTreeReadiness.qmd)
