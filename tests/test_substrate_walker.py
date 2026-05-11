@@ -349,3 +349,152 @@ def test_cli_walk_shows_warnings_separately(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.stdout
     assert "WARN" in result.stdout
     assert "P2" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Retired-slug detection (manifest.retired_slugs[])
+# ---------------------------------------------------------------------------
+
+
+def _make_workspace_with_retired_slugs(tmp_path: Path) -> Path:
+    """Workspace with a single retired-slug entry: MOD_X -> UIAO_174."""
+    root = _make_workspace(tmp_path)
+    manifest = root / "src/uiao/canon/substrate-manifest.yaml"
+    body = yaml.safe_load(manifest.read_text())
+    body["retired_slugs"] = [
+        {"slug": "MOD_X", "replacement": "UIAO_174", "rationale": "ADR-060 flatten"},
+    ]
+    _write_yaml(manifest, body)
+    return root
+
+
+def test_walker_retired_slug_in_canon_doc_fires_p2(tmp_path: Path) -> None:
+    """Canon doc body containing a retired slug raises a P2 advisory
+    naming the replacement and the rationale."""
+    root = _make_workspace_with_retired_slugs(tmp_path)
+    spec = root / "src/uiao/canon/specs/uses-retired.md"
+    spec.parent.mkdir(parents=True, exist_ok=True)
+    spec.write_text("---\ndocument_id: UIAO_993\n---\n# Uses retired\nSee MOD_X for governance telemetry.\n")
+    report = walk_substrate(workspace_root=root)
+    matches = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "retired slug MOD_X" in f.detail]
+    assert matches, report.findings
+    assert matches[0].severity == "P2"
+    assert "UIAO_174" in matches[0].detail
+    assert "ADR-060 flatten" in matches[0].detail
+
+
+def test_walker_retired_slug_in_docs_qmd_fires_p2(tmp_path: Path) -> None:
+    """Docs .qmd body containing a retired slug raises a P2 advisory."""
+    root = _make_workspace_with_retired_slugs(tmp_path)
+    qmd = root / "docs/some-page.qmd"
+    qmd.parent.mkdir(parents=True, exist_ok=True)
+    qmd.write_text("# Heading\nLegacy reference: MOD_X.\n")
+    report = walk_substrate(workspace_root=root)
+    matches = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "retired slug MOD_X" in f.detail]
+    assert matches, report.findings
+
+
+def test_walker_retired_slug_no_op_when_block_absent(tmp_path: Path) -> None:
+    """No retired_slugs in manifest => scan is a no-op even if a doc
+    contains what looks like a retired-slug-shaped string."""
+    root = _make_workspace(tmp_path)  # no retired_slugs
+    spec = root / "src/uiao/canon/specs/looks-retired.md"
+    spec.parent.mkdir(parents=True, exist_ok=True)
+    spec.write_text("---\ndocument_id: UIAO_992\n---\nSee MOD_X.\n")
+    report = walk_substrate(workspace_root=root)
+    assert not any("retired slug" in f.detail for f in report.findings), report.findings
+
+
+def test_walker_retired_slug_skips_prior_id_frontmatter(tmp_path: Path) -> None:
+    """The `prior_id: "MOD_X"` frontmatter line is the canonical
+    historical record and must not be flagged."""
+    root = _make_workspace_with_retired_slugs(tmp_path)
+    spec = root / "src/uiao/canon/UIAO_174_Demo.md"
+    spec.parent.mkdir(parents=True, exist_ok=True)
+    spec.write_text(
+        "---\n"
+        "document_id: UIAO_174\n"
+        "provenance_flatten:\n"
+        '  prior_id: "MOD_X"\n'
+        "---\n"
+        "# Demo doc\nNo body reference to the retired slug here.\n"
+    )
+    report = walk_substrate(workspace_root=root)
+    assert not any("retired slug" in f.detail for f in report.findings), report.findings
+
+
+def test_walker_retired_slug_skips_adr_060(tmp_path: Path) -> None:
+    """ADR-060 references retired slugs by construction (it's the
+    source-of-truth artifact about the rename); the scan must skip it."""
+    root = _make_workspace_with_retired_slugs(tmp_path)
+    adr = root / "src/uiao/canon/adr/adr-060-mod-namespace-flatten-into-uiao-canon.md"
+    adr.parent.mkdir(parents=True, exist_ok=True)
+    adr.write_text("---\ndocument_id: UIAO_999\n---\n# ADR-060\nThis ADR retires MOD_X; the replacement is UIAO_174.\n")
+    report = walk_substrate(workspace_root=root)
+    assert not any("retired slug" in f.detail for f in report.findings), report.findings
+
+
+def test_walker_retired_slug_dedupes_per_file(tmp_path: Path) -> None:
+    """Multiple occurrences of the same retired slug in one file produce
+    exactly one finding."""
+    root = _make_workspace_with_retired_slugs(tmp_path)
+    spec = root / "src/uiao/canon/specs/triple-mention.md"
+    spec.parent.mkdir(parents=True, exist_ok=True)
+    spec.write_text("---\ndocument_id: UIAO_991\n---\n# Triple\nMOD_X here. MOD_X again. And once more: MOD_X.\n")
+    report = walk_substrate(workspace_root=root)
+    matches = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "retired slug MOD_X" in f.detail]
+    assert len(matches) == 1, report.findings
+
+
+# ---------------------------------------------------------------------------
+# `uiao substrate walk --retired-slugs-only` filter
+# ---------------------------------------------------------------------------
+
+
+def test_cli_walk_retired_slugs_only_filters_out_other_findings(tmp_path: Path) -> None:
+    """`--retired-slugs-only` should suppress findings that aren't from the
+    retired-slug scan, leaving only retired-slug advisories in the output.
+
+    Setup: a workspace with both kinds of P2 findings — a dangling code
+    citation (canon doc citing src/uiao/nonexistent/module.py) AND a
+    retired slug citation (canon doc using MOD_X).
+    """
+    root = _make_workspace_with_retired_slugs(tmp_path)
+    # Finding 1: dangling code reference (DRIFT-PROVENANCE, generic).
+    canon1 = root / "src/uiao/canon/specs/dangling.md"
+    canon1.parent.mkdir(parents=True, exist_ok=True)
+    canon1.write_text("---\ndocument_id: UIAO_990\n---\nSee `src/uiao/nonexistent/module.py`.\n")
+    # Finding 2: retired slug.
+    canon2 = root / "src/uiao/canon/specs/uses-retired.md"
+    canon2.write_text("---\ndocument_id: UIAO_989\n---\nLegacy reference: MOD_X.\n")
+
+    # Without the filter, both findings appear.
+    result_unfiltered = runner.invoke(app, ["walk", "--workspace-root", str(root), "--json"])
+    assert result_unfiltered.exit_code == 0, result_unfiltered.stdout
+    unfiltered = json.loads(result_unfiltered.stdout)
+    assert any("nonexistent/module" in f["detail"] for f in unfiltered["findings"])
+    assert any("retired slug" in f["detail"] for f in unfiltered["findings"])
+
+    # With the filter, only the retired-slug finding remains.
+    result_filtered = runner.invoke(app, ["walk", "--workspace-root", str(root), "--retired-slugs-only", "--json"])
+    assert result_filtered.exit_code == 0, result_filtered.stdout
+    filtered = json.loads(result_filtered.stdout)
+    assert len(filtered["findings"]) >= 1
+    assert all("retired slug" in f["detail"] for f in filtered["findings"])
+    assert not any("nonexistent/module" in f["detail"] for f in filtered["findings"])
+
+
+def test_cli_walk_retired_slugs_only_clean_when_no_retired_refs(tmp_path: Path) -> None:
+    """`--retired-slugs-only` on a workspace with no retired-slug references
+    (but other drift) reports PASS with the retired-slug-specific message."""
+    root = _make_workspace_with_retired_slugs(tmp_path)
+    # Plant only a non-retired-slug finding.
+    canon = root / "src/uiao/canon/specs/dangling.md"
+    canon.parent.mkdir(parents=True, exist_ok=True)
+    canon.write_text("---\ndocument_id: UIAO_988\n---\nSee `src/uiao/nonexistent/module.py`.\n")
+
+    result = runner.invoke(app, ["walk", "--workspace-root", str(root), "--retired-slugs-only"])
+    assert result.exit_code == 0, result.stdout
+    assert "PASS" in result.stdout
+    assert "no retired-slug references" in result.stdout
+    assert "filtered to --retired-slugs-only" in result.stdout

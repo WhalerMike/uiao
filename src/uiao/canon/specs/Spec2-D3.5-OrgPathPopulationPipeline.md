@@ -57,7 +57,7 @@ OrgPath is the single most-load-bearing UIAO attribute. Per
 ADR-035 (codebook binding) + ADR-048 (attribute selection),
 OrgPath is stamped on every Entra ID identity (user, device, and
 ultimately service principal) and read by the OrgTree adapters
-(MOD_B / C / D / N — ADR-036 / ADR-037 / ADR-038 / ADR-039) to
+(UIAO_152 / C / D / N — ADR-036 / ADR-037 / ADR-038 / ADR-039) to
 drive group membership, admin-unit scoping, device-plane
 propagation, and policy targeting.
 
@@ -84,7 +84,7 @@ Out of scope:
 - The attribute mapping engine (D3.4).
 - The middleware (D3.2; D3.5 is downstream of D3.2's OrgPath
   calculator sub-component).
-- Per-adapter logic for MOD_B / C / D / N (each has its own ADR).
+- Per-adapter logic for UIAO_152 / C / D / N (each has its own ADR).
 
 ## 2. The Pipeline Stages
 
@@ -108,20 +108,20 @@ Stage 3: SCIM payload with extensionAttribute1 = OrgPath
               ▼
 Stage 4: Entra ID provisioning service writes user.extensionAttribute1
               │
-              │  (Entra dynamic-group engine; MOD_B / ADR-036)
+              │  (Entra dynamic-group engine; UIAO_152 / ADR-036)
               ▼
 Stage 5: Dynamic group memberships recompute
               │
               │  (Entra group cascade)
               ▼
-Stage 6: Group-scoped policies (Intune, Azure Policy, CA — MOD_N / ADR-039)
+Stage 6: Group-scoped policies (Intune, Azure Policy, CA — UIAO_164 / ADR-039)
          re-evaluate target users
               │
-              │  (Entra admin-units evaluator; MOD_D / ADR-037)
+              │  (Entra admin-units evaluator; UIAO_154 / ADR-037)
               ▼
 Stage 7: Administrative-unit membership (when AU is OrgPath-bound) updates
               │
-              │  (Device plane; MOD_C / ADR-038)
+              │  (Device plane; UIAO_153 / ADR-038)
               ▼
 Stage 8: Device-side OrgPath propagation (Entra device + Arc machine ARM tag)
               │
@@ -142,7 +142,7 @@ characteristic latency. UIAO's planning assumptions:
 | 4 → 5 (dynamic group recompute) | seconds to ~10 minutes | Microsoft documented as "near real time"; UIAO planning value: 10 min p95 |
 | 5 → 6 (policy targeting) | minutes for Intune / hours for some Azure Policy cases | Per-policy-engine |
 | 5 → 7 (AU recompute when OrgPath-bound) | seconds to minutes | Per Microsoft docs |
-| 4 → 8 (device-plane propagation) | minutes; depends on device check-in cadence | Per MOD_C / ADR-038 |
+| 4 → 8 (device-plane propagation) | minutes; depends on device check-in cadence | Per UIAO_153 / ADR-038 |
 
 **Cumulative end-to-end** (typical): a single HR-side org change
 becomes observable in dynamic group membership within ~15
@@ -267,10 +267,10 @@ count, and the time the cascade has been pending.
 
 - [ADR-003](../adr/adr-003-api-driven-inbound-provisioning.md)
 - [ADR-035](../adr/adr-035-orgpath-codebook-binding.md)
-- [ADR-036](../adr/adr-036-dynamic-group-provisioning.md) — MOD_B; consumes Stage 4 output.
-- [ADR-037](../adr/adr-037-admin-unit-provisioning.md) — MOD_D; consumes Stage 4 / 7.
-- [ADR-038](../adr/adr-038-device-plane-orgpath.md) — MOD_C; consumes Stage 4 / 8.
-- [ADR-039](../adr/adr-039-policy-targeting.md) — MOD_N; consumes Stage 6.
+- [ADR-036](../adr/adr-036-dynamic-group-provisioning.md) — UIAO_152; consumes Stage 4 output.
+- [ADR-037](../adr/adr-037-admin-unit-provisioning.md) — UIAO_154; consumes Stage 4 / 7.
+- [ADR-038](../adr/adr-038-device-plane-orgpath.md) — UIAO_153; consumes Stage 4 / 8.
+- [ADR-039](../adr/adr-039-policy-targeting.md) — UIAO_164; consumes Stage 6.
 - [ADR-040](../adr/) — drift engine.
 - [ADR-048](../adr/adr-048-orgpath-attribute-selection.md) — extensionAttribute1 selection.
 

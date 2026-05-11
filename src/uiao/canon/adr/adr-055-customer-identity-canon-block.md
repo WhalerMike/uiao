@@ -218,7 +218,7 @@ UIAO_130 + the supporting adapters):
 | `src/uiao/canon/modernization-registry.yaml` | +2 reserved modernization slots (Login.gov, ID.me) |
 | `src/uiao/canon/specs/graph-schema.md` | UIAO_113 v1.1 — new event-type enumeration |
 | `src/uiao/canon/specs/<UIAO_120 path>` | UIAO_120 v1.1 — customer-surface amendment |
-| `src/uiao/canon/adr/adr-NNN-customer-identity-canon-block.md` | This document, renamed and ID-allocated |
+| `src/uiao/canon/adr/adr-055-customer-identity-canon-block.md` | This document |
 
 This is approximately 14 file touches — significantly larger than the
 HRIT IAM bundle (11 files). Recommend splitting into 2–3 commits at

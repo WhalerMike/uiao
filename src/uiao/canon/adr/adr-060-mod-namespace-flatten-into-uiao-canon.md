@@ -45,7 +45,7 @@ across two parallel tracks at different abstraction layers:
   `MOD_A`–`MOD_V`). Originated from `inbox/EntraID Governance/AD to
   EntraID Tree.docx` on 2026-04-18, promoted to canon by ADR-044, and
   registered in its own
-  `src/uiao/modernization/orgtree/document-registry.yaml` under a
+  `src/uiao/modernization/orgtree/document-registry` (the `.yaml` registry retired by this ADR) under a
   dedicated `MOD` namespace. Owns the OrgPath codebook, dynamic-group
   library, AU/role delegation, OU-to-Entra migration runbook, and drift
   detection model.
@@ -243,7 +243,7 @@ walker becomes the gate that proves the pass was complete.
 **Module README + registry (2):**
 
 - `src/uiao/modernization/README.md` — rewritten per §2.
-- `src/uiao/modernization/orgtree/document-registry.yaml` — deleted.
+- `src/uiao/modernization/orgtree/document-registry` (the `.yaml` registry retired by this ADR) — deleted.
 
 **Python module docstrings (6):**
 
@@ -295,20 +295,53 @@ deprecation window (per §7).
 - `tests/canon_registry/` — extend the existing parametrized test
   with the 22 new ids.
 
-### 7. Deprecation window
+### 7. Deprecation window — superseded by `retired_slugs:` (2026-05-12)
 
-For 30 days post-merge, a `MOD_*` → `UIAO_15x` slug-resolution table
-is published as `src/uiao/canon/data/mod-slug-redirects.yaml`. The
-substrate walker reads this table and, when it encounters a `MOD_*`
-slug in any file, emits a P2 (advisory) DRIFT-PROVENANCE finding
-naming the new slug. Any reference fixed during the deprecation window
-is fixed permanently; the redirect file and walker hook are removed
-when the table is empty.
+This section's history runs in three steps:
 
-This window exists to absorb in-flight PRs. The ADR-060
-implementation PR itself closes all 41 references in a single
-landing, so the table starts empty in the main branch — the window is
-defensive, not load-bearing.
+1. **Original plan (2026-05-10).** A 30-day deprecation window
+   (2026-05-10 → 2026-06-09) backed by a `MOD_*` → `UIAO_15x`
+   slug-resolution table at `src/uiao/canon/data/mod-slug-redirects`
+   (`.yaml`, since deleted), with a substrate-walker hook that would
+   emit a P2 advisory whenever a `MOD_*` slug appeared in a scanned
+   file. The walker hook was **never implemented**; the table existed
+   only as static reference documentation.
+
+2. **Closed early (2026-05-11).** The implementation PR (#352)
+   retargeted every reference inside the in-scope inventory in a single
+   landing, so no in-flight PR ever needed the redirect table to resolve
+   a missing slug. The table was deleted and this section originally
+   ended with the lesson "future ADRs proposing slug-redirect tables
+   should also commit the walker integration in the same PR, not
+   promise it as a follow-on."
+
+3. **Lesson productized (2026-05-12).** That lesson is now the generic
+   `retired_slugs:` block in `src/uiao/canon/substrate-manifest.yaml`,
+   consumed by the substrate walker's `_scan_retired_slugs` pass. Each
+   entry is `{slug, replacement, rationale?}`; the walker scans
+   `canon/` and `docs/` for any literal occurrence of `slug` (with
+   word boundaries) and emits a P2 DRIFT-PROVENANCE advisory naming
+   the replacement. The 27 `MOD_*` slugs from this ADR are seeded
+   into the manifest on the same PR that ships the walker change.
+
+   Three guards keep the scan honest:
+     - `prior_id: "MOD_X"` frontmatter lines are masked (the
+       canonical historical record, not drift).
+     - This ADR (`adr-060-...md`) is excluded by path (it must
+       reference the old slugs by construction).
+     - The substrate manifest itself is excluded (its
+       `retired_slugs:` block lists every retired slug by design).
+
+Body prose inside the 27 renamed canon docs (UIAO_150 – UIAO_176)
+retains historical `MOD_*` references — the explicit out-of-scope
+decision in §"Out of scope" remains unchanged. Each doc carries a
+`provenance_flatten:` frontmatter block recording its prior slug,
+which is the canonical answer for "what MOD slug did this used to
+be?"
+
+The authoring rule going forward: when an ADR retires a slug, the
+same PR adds an entry to `manifest.retired_slugs[]`. The walker keeps
+subsequent PRs honest.
 
 ## Consequences
 
@@ -383,7 +416,7 @@ defensive, not load-bearing.
    matters).
 4. Insert the 22 new entries into
    `src/uiao/canon/document-registry.yaml` at numeric position.
-5. Delete `src/uiao/modernization/orgtree/document-registry.yaml`.
+5. Delete `src/uiao/modernization/orgtree/document-registry` (the `.yaml` registry retired by this ADR).
 6. Rewrite `src/uiao/modernization/README.md` per §2.
 7. Run `uiao substrate walk` and `uiao substrate drift`. Both must
    return clean (zero P1; P2-only output is acceptable per ADR-044's

@@ -1,4 +1,4 @@
-"""Device-plane OrgPath provisioning adapter (Phase 4, MOD_C / ADR-038).
+"""Device-plane OrgPath provisioning adapter (Phase 4, UIAO_153 / ADR-038).
 
 Closes the gap the session notes flagged as the *critical extension* of
 the OrgTree model: device objects need OrgPath just like user objects, but
@@ -12,20 +12,20 @@ This adapter consumes:
 
 * ``ComputerDisposition`` objects from
   :mod:`uiao.adapters.modernization.active_directory.disposition`
-* The MOD_A codebook (ADR-035) for OrgPath value validation
-* The device-plane registry (MOD_C / this ADR) for write dispatch
+* The UIAO_151 codebook (ADR-035) for OrgPath value validation
+* The device-plane registry (UIAO_153 / this ADR) for write dispatch
 
 And emits a plan of six operation types across two transport planes
 (Graph and ARM). ``apply()`` is dry-run by default; write mode is a single
 flag flip, and writes are dispatched per-plane using the endpoint
 templates declared in the registry.
 
-MOD_C §Governance:
+UIAO_153 §Governance:
 
 * **Phantom OrgPath is never auto-remediated.** A device with an OrgPath
-  value that fails format validation *or* is not in MOD_A codebook
+  value that fails format validation *or* is not in UIAO_151 codebook
   becomes a ``device-phantom-orgpath`` / ``arc-phantom-orgpath`` finding
-  that surfaces as ``skipped-manual`` — governance review (MOD_E) owns
+  that surfaces as ``skipped-manual`` — governance review (UIAO_155) owns
   the decision to rewrite or retire.
 * **Skipped dispositions emit no operation** — the plan still records a
   ``skip-no-plane`` entry so operators see every device in the report.
@@ -265,7 +265,7 @@ class EntraDeviceOrgPathAdapter:
                 self._plan_device_extension(target, plane, devices_by_name, plan)
             elif plane.name == "ARM-tag":
                 self._plan_arc_tag(target, plane, arc_by_name, plan)
-            # app-tag deferred to Phase 5 (see MOD_C §Phase 5 note)
+            # app-tag deferred to Phase 5 (see UIAO_153 §Phase 5 note)
 
         return plan
 
@@ -439,7 +439,7 @@ class EntraDeviceOrgPathAdapter:
                         op=op.op,
                         target=op.target,
                         status="skipped-manual",
-                        detail=("MOD_C §Phantom OrgPath: governance review required; never auto-applied."),
+                        detail=("UIAO_153 §Phantom OrgPath: governance review required; never auto-applied."),
                     )
                 )
                 continue
