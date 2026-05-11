@@ -1,0 +1,77 @@
+# Tier-2 contract fixture: m365 organization-info enumeration in GCC-Moderate.
+#
+# Codifies the canonical Microsoft Graph response shape for GET /organization.
+# This is the bedrock identity-of-tenant call every other m365 operation
+# depends on — the adapter must extract tenantId, displayName, country code,
+# and the verifiedDomains list, all of which surface in OSCAL evidence as
+# system-identification metadata.
+#
+# NIST control mapping: CM-8 (System Component Inventory) — the tenant
+# itself is the top-level component for every M365 control.
+
+adapter: "m365"
+operation: "get_organization_info"
+cloud_variant:
+  - gcc-moderate
+
+request:
+  method: GET
+  url: "https://graph.microsoft.com/v1.0/organization"
+  headers:
+    Authorization: "Bearer <TOKEN>"
+    Accept: "application/json"
+  body: null
+
+response:
+  status: 200
+  headers:
+    Content-Type: "application/json; charset=utf-8"
+  body:
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#organization"
+    value:
+      - id: "<TENANT_GUID>"
+        displayName: "Example Federal Agency"
+        countryLetterCode: "US"
+        preferredLanguage: "en"
+        tenantType: "AAD"
+        createdDateTime: "2023-01-15T08:00:00Z"
+        verifiedDomains:
+          - name: "example.onmicrosoft.us"
+            type: "Managed"
+            isDefault: false
+            isInitial: true
+            capabilities: "Email, OfficeCommunicationsOnline"
+          - name: "example.gov"
+            type: "Managed"
+            isDefault: true
+            isInitial: false
+            capabilities: "Email, OfficeCommunicationsOnline"
+        assignedPlans:
+          - assignedDateTime: "2023-01-15T08:00:00Z"
+            capabilityStatus: "Enabled"
+            service: "exchange"
+            servicePlanId: "<PLAN_GUID_01>"
+        provisionedPlans:
+          - capabilityStatus: "Enabled"
+            provisioningStatus: "Success"
+            service: "exchange"
+
+expected_behavior:
+  - "Adapter MUST emit exactly one canonical organization claim from response.body.value[0]; multi-tenant responses (len > 1) emit DRIFT-IDENTITY."
+  - "Adapter MUST extract tenantId, displayName, country, and verifiedDomains as separate fields in the canonical claim."
+  - "Adapter MUST flag the default verifiedDomain (isDefault=true) as the tenant's primary identity boundary; other verified domains are alternates."
+  - "Adapter MUST NOT include @odata fields in the canonical claim (envelope, not payload)."
+  - "Tenant created_at older than 90 days from current time emits DRIFT-PROVENANCE only if no prior organization claim exists in evidence storage (a missing baseline is the drift, not the age)."
+
+provenance:
+  source: "microsoft-learn"
+  primary_citation:
+    url: "https://learn.microsoft.com/en-us/graph/api/organization-list?view=graph-rest-1.0&tabs=http"
+    quote: "Retrieve a list of organization objects."
+    accessed: "2026-05-10"
+  supporting_citation:
+    url: "https://learn.microsoft.com/en-us/graph/deployments"
+    quote: "Microsoft Cloud for US Government (GCC, GCC-Moderate): graph.microsoft.com"
+    accessed: "2026-05-10"
+  captured_by: "Schema-derived from Microsoft Learn; no live tenant captured. UIAO_131 §3.2 tier-2 authoring."
+  sanitization: "Bearer token redacted (was never captured live). Tenant GUID replaced with <TENANT_GUID>; service-plan GUID replaced with <PLAN_GUID_01>; domain names replaced with example.gov / example.onmicrosoft.us per contract README §sanitization rules."
