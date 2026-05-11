@@ -13,13 +13,28 @@ provenance:
     - src/uiao/canon/modernization-registry.yaml
     - src/uiao/canon/adapter-registry.yaml
     - src/uiao/canon/document-registry.yaml
-  derived_at: "2026-04-17"
+  derived_at: "2026-05-10"
   derived_by: "substrate status page — human-readable snapshot of machine-readable substrate state"
 ---
 
 # UIAO Substrate Status
 
 Snapshot of the substrate's current state, derived from the canonical artifacts listed in the provenance block above. This page is regenerable: running `make walk` produces the same facts in machine form; this page renders them for humans.
+
+::: {.callout-note}
+## 2026-05-10 refresh — partial
+
+The high-level claims (topology, adapter inventory, drift taxonomy, CI
+stack, document count) have been re-verified against canon as of today.
+
+**The per-document UIAO_NNN table further down still reflects the
+2026-04-17 baseline of 38 entries.** The canon has since grown to 81
+registered documents; rows for UIAO_004–009, UIAO_132–176, and UIAO_202
+have not yet been populated. They are listed in the "Documents not yet
+classified" note at the end of that section; a programmatic
+regenerator is the right long-term fix rather than per-document
+hand-curation.
+:::
 
 ## Topology
 
@@ -44,6 +59,8 @@ Source: [`src/uiao/canon/modernization-registry.yaml`](https://github.com/Whaler
 
 ### Modernization adapters (change-making)
 
+The modernization registry has grown to **24 entries** since 2026-04-17 (was 10). The Phase-1 anchor set:
+
 | Adapter | Status | Phase | Mission class | FedRAMP | Vendor |
 |---|---|---|---|---|---|
 | `entra-id` | active | phase-1 | integration | — | Microsoft |
@@ -57,11 +74,28 @@ Source: [`src/uiao/canon/modernization-registry.yaml`](https://github.com/Whaler
 | `bluecat-address-manager` | active | phase-1 | integration | — | BlueCat |
 | `mainframe` | reserved | phase-planning | integration | — | IBM |
 
-**9 of 10 active.** Only `mainframe` remains reserved — blocks on z/OS Connect / MQ bridge infrastructure (see its `notes:` field).
+Plus 14 entries registered since 2026-04-17 (Entra orgpath / dynamic-groups
+/ admin-units / device-orgpath / policy-targeting, orgtree-drift-engine,
+defender-for-cloud-apps-actions, azure-policy-arc, entra-id-governance,
+entra-workload-identity, and others). See
+[`modernization-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/modernization-registry.yaml)
+for the authoritative list.
+
+**Active vs reserved breakdown:** of the 24 registered, the majority are
+active; reserved entries (`mainframe`, `defender-for-cloud-apps-actions`,
+`azure-policy-arc`, `entra-id-governance`, `entra-workload-identity`)
+block on vendor sandbox access or upstream capability.
 
 ### Conformance adapters (read-only)
 
-See `src/uiao/canon/adapter-registry.yaml` for the complete list. Notable: `scubagear` (CISA SCuBA assessor).
+**28 entries** as of 2026-05-10. See
+[`adapter-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adapter-registry.yaml)
+for the complete list. Notable: `scubagear` (CISA SCuBA assessor; the
+canonical Phase-1 conformance/policy adapter for M365), `defender-for-*`
+family, the attribute-service family (`dcsa-clearance`, `dhs-everify`,
+`gsa-sam`, `irs-tin`, `treasury-ofac`, `uscis-immigration`,
+`va-veteran`), `id-me-federation-service`, `ccm-bir`,
+`azure-migrate`.
 
 ### Test-tier status
 
@@ -71,18 +105,23 @@ Per [UIAO_131 Adapter Test Strategy](https://github.com/WhalerMike/uiao/blob/mai
 |---|---|:-:|:-:|:-:|---|
 | `entra-id` | active | ⏳ pending (live tenant) | ✅ scheduler-wired | 🚫 none | dispatches through UIAO_100 scheduler; live tenant via M365 Developer Program pending |
 | `m365` | active | ⏳ pending | ⏳ pending | 🚫 none | fixture setup required for `beta` |
-| `service-now` | active | ⏳ pending | ⏳ pending | 🚫 none | vendor developer program sign-up pending |
-| `palo-alto` | active | ⏳ pending | ⏳ pending | 🚫 none | vendor sandbox pending |
+| `service-now` | active | 🟡 **workflow shipped** ([`tier1-service-now.yml`](https://github.com/WhalerMike/uiao/blob/main/.github/workflows/tier1-service-now.yml)) | ⏳ pending | 🚫 none | manual-dispatch live; nightly cron unlocks once `SERVICENOW_PDI_*` secrets populated |
+| `palo-alto` | active | 🟡 **workflow shipped** ([`tier1-palo-alto.yml`](https://github.com/WhalerMike/uiao/blob/main/.github/workflows/tier1-palo-alto.yml)) | ⏳ pending | 🚫 none | manual-dispatch live; cron unlocks once `PANOS_HOST` / `PANOS_API_KEY` secrets populated |
 | `scuba` | active | ⏳ pending | ⏳ pending | 🚫 none | ScubaGear fixture + live run |
 | `terraform` | active | ✅ **55 tests** | ✅ fixture + scheduler-wired | 🚫 none | first real adapter wired into UIAO_100 scheduler (§1.5) |
-| `cyberark` | active | ⏳ pending | ⏳ pending | 🚫 none | vendor developer program pending |
+| `cyberark` | active | 🟡 **workflow shipped** ([`tier1-cyberark.yml`](https://github.com/WhalerMike/uiao/blob/main/.github/workflows/tier1-cyberark.yml)) | ⏳ pending | 🚫 none | manual-dispatch live; cron unlocks once `CYBERARK_TENANT` / `_CLIENT_ID` / `_CLIENT_SECRET` populated |
 | `infoblox` | active | 🟥 blocked | ⏳ pending | 🚫 none | No public developer sandbox — exclusion per UIAO_131 §5.1 |
 | `bluecat-address-manager` | active | 🟥 excluded | ⏳ pending | 🚫 none | Vendor-contact-only access — exclusion per UIAO_131 §5.1 |
 | `mainframe` | reserved | N/A | N/A | N/A | No impl; no target |
 
-Legend: ✅ green · ⏳ pending (author work required) · 🟥 blocked/excluded · 🚫 requires partner agency · N/A not applicable
+Legend: ✅ green · 🟡 workflow shipped, secrets pending · ⏳ pending (author work required) · 🟥 blocked/excluded · 🚫 requires partner agency · N/A not applicable
 
-**Reality at writing:** zero adapters have completed tier-1 or tier-2 evidence. All currently-`active` adapter registry entries sit above the UIAO_131 conformance gate threshold. That's drift — flagged below.
+**Reality 2026-05-10:** still zero adapters have completed tier-1 evidence,
+but three (`cyberark`, `palo-alto`, `service-now`) now have manual-dispatch
+tier-1 workflow scaffolds awaiting secret population. `terraform` remains
+the only adapter green on both tier-1 and tier-2. All currently-`active`
+registry entries continue to sit above the UIAO_131 conformance gate
+threshold — flagged below as substrate drift.
 
 ## Canon invariants
 
@@ -107,7 +146,7 @@ Source: [`src/uiao/canon/document-registry.yaml`](https://github.com/WhalerMike/
 | `UIAO_200–299` | Operational / runtime artifacts | UIAO_200 Substrate Manifest, UIAO_201 Workspace Contract |
 | `UIAO_900–999` | Test fixtures | — |
 
-**31 documents registered** (32 with UIAO_131). Of those, the implementation-reality map:
+**81 documents registered as of 2026-05-10** (from 32 at the 2026-04-17 snapshot — UIAO_004–009, UIAO_132–176, and UIAO_202 added since). The per-document implementation-reality map below covers the 2026-04-17 baseline of 38 entries; the 43 newer documents are listed under "Documents not yet classified" at the end of this section.
 
 | UIAO_NNN | Doc | Spec | Impl | Deployed | Real today? |
 |---|---|:-:|:-:|:-:|---|
@@ -125,7 +164,7 @@ Source: [`src/uiao/canon/document-registry.yaml`](https://github.com/WhalerMike/
 | UIAO_107 | Collector Interface | ✅ | partial | — | ⚠️ aspirational |
 | UIAO_108 | CQL | ✅ | core impl | `src/uiao/governance/cql.py`; 5 canonical queries; `/api/v1/cql/*` endpoints; 42 tests | 🟡 working |
 | UIAO_109 | Data Lake Model | ✅ | core impl | `src/uiao/storage/data_lake.py`; per-adapter retention from canon `retention-years:`; FilesystemArchive backend; 24 tests | 🟡 working |
-| UIAO_110 | Drift Engine | ✅ | DRIFT-SCHEMA + DRIFT-PROVENANCE only | walker runs | 🟡 partial (2/5 classes) |
+| UIAO_110 | Drift Engine | ✅ | **all 5 classes shipped** (SCHEMA + PROVENANCE in walker; SEMANTIC + AUTHZ + IDENTITY in runtime modules) | walker + runtime | ✅ complete (see drift taxonomy table below) |
 | UIAO_111 | Enforcement Runtime | ✅ | core impl | `src/uiao/governance/enforcement.py`; 5 default handlers; EnforcementJournal JSONL audit trail; 25 tests | 🟡 working |
 | UIAO_112 | Multi-Tenant Isolation | ✅ | core impl | `src/uiao/governance/tenancy.py`; tenant model + namespace primitives + walker hygiene gate; 37 tests (UIAO_119 v1 added 13) | 🟡 working |
 | UIAO_113 | [Evidence Graph](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/graph-schema.md) | ✅ | working | scheduler-run ingestion + 4-emitter OSCAL augmentation + back-matter link resources; 62 tests | ✅ |
@@ -152,29 +191,95 @@ Source: [`src/uiao/canon/document-registry.yaml`](https://github.com/WhalerMike/
 
 ### Summary
 
-- **✅ Real today:** 8 of 37 artifacts (UIAO_001, 003, 004, 104, 106, 118, 200, 201)
-- **🟡 Partially implemented:** 13 (UIAO_002, 103, 110, 113, 117, 119, 121, 123, 124, 125, 126, 127, 128)
-- **⚠️ Aspirational or draft:** 16
+Counts below cover the 38 documents enumerated in the table above (the
+2026-04-17 baseline). Today's canon has 81 registered documents; the
+remaining 43 are listed in "Documents not yet classified" below.
 
-That's the honest state. An aspirational banner is applied per ADR-030 §6 to pages describing ⚠️ and 🟡 artifacts.
+- **✅ Real today:** 11 of 38 enumerated artifacts (UIAO_001, 003, 004, 103, 104, 106, 110, 113, 118, 200, 201)
+- **🟡 Partially implemented / working:** 20 (UIAO_002, 100, 105, 108, 109, 111, 112, 116, 117, 119, 120, 121, 123, 124, 125, 126, 127, 128, 129, 130)
+- **⚠️ Aspirational or draft:** 7 (UIAO_101, 102, 107, 114, 115, 122, 131)
+
+That's the honest state for the baselined subset. An aspirational banner is
+applied per ADR-030 §6 to pages describing ⚠️ and 🟡 artifacts.
+
+### Documents not yet classified (added since 2026-04-17)
+
+The following 43 documents are registered in canon but have not yet been
+classified into the implementation-reality table above. They require
+per-document audit (spec status, impl status, deployed status) before being
+folded in. Listed by document-registry order:
+
+- **UIAO_004 – UIAO_009** — top-level canon (6 docs).
+- **UIAO_132 – UIAO_137** — subsystem specs in the 130s range (6 docs).
+- **UIAO_140 – UIAO_143** — subsystem specs (4 docs).
+- **UIAO_150 – UIAO_176** — operational/runtime artifacts in the 150–170s
+  range (26 docs), including the FedRAMP CR26 catalog vendoring work
+  (ADR-061), the orgtree CLI surface, the SCuBAGear upstream-track
+  integration, and the various Phase-2 modernization adapter additions.
+- **UIAO_202** — UIAO Image Registry (the canonical figure registry that
+  the image-generation pipeline writes through).
+
+Until the table above is regenerated, the canonical source for each of
+these documents is
+[`document-registry.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/document-registry.yaml)
+plus its referenced artifact path.
 
 ## CI enforcement stack
 
 Source: [`.github/workflows/`](https://github.com/WhalerMike/uiao/tree/main/.github/workflows).
+**24 workflow files as of 2026-05-10** (was 7 substantive at the
+2026-04-17 snapshot). Grouped by role:
 
-| Workflow | Status | Trigger |
+### Blocking gates on every relevant PR
+
+| Workflow | Trigger | Notes |
 |---|---|---|
-| `schema-validation.yml` | **blocking** | Canon / schema PRs |
-| `pytest.yml` | **blocking** (substrate + full impl) | `impl/**` PRs |
-| `substrate-drift.yml` | **blocking** | Substrate / registry PRs |
-| `metadata-validator.yml` | **blocking** | Canon doc PRs |
-| `quarto.yml` | **blocking** render; deploy on main | `docs/**` PRs |
-| `ruff.yml` | **blocking** | `impl/**` PRs |
-| `link-check.yml` | **blocking** | Any Markdown/Quarto PR + weekly cron |
-| `release.yml` | tag-triggered | `v*.*.*` push → wheel + sdist + CycloneDX SBOM + sigstore signing |
-| `release-drafter.yml` | continuous | Every main push / PR label — maintains the draft release |
+| `schema-validation.yml` | Canon / schema PRs | JSON-schema validation of every registry, manifest, frontmatter edit |
+| `pytest.yml` | `src/uiao/**`, `tests/**`, `pyproject.toml` | Substrate fast + full suite |
+| `substrate-drift.yml` | Canon / substrate / workspace PRs | DRIFT-SCHEMA + DRIFT-PROVENANCE detection |
+| `metadata-validator.yml` | `src/uiao/canon/**/*.md` + metadata schema | Canonical frontmatter enforcement |
+| `quarto.yml` | `docs/**` PRs | Render block; deploy on main |
+| `adapter-conformance.yml` | `src/uiao/adapters/**` + adapter tests | Per-adapter conformance contract |
+| `ruff.yml` | Python PRs | Lint baseline cleared (230 → 0 findings) |
+| `mypy.yml` | Python PRs | Type-check baseline cleared (130 → 0 findings) |
+| `link-check.yml` | `*.md` / `*.qmd` PRs + weekly cron | Lychee, blocking since 2026-04-25 |
+| `spec-test-coverage.yml` | spec + test changes | UIAO_103 spec-test enforcement (RFC 2119 audit) |
+| `sync-canon-check.yml` | canon sync | Canon-sync determinism |
+| `docs-leak-check.yml` | `docs/**` | Forbids `evidence/**` paths under `docs/**` |
+| `fedramp-cr26-roundtrip.yml` | FedRAMP CR26 catalog edits | Vendored-catalog roundtrip (ADR-061) |
 
-**All 7 substantive workflows are blocking.** Link-check was promoted from soft-fail to blocking in §0.6 (2026-04-25) once the lychee baseline against the live repo returned 0 errors with the existing `.lycheeignore`.
+### Pipeline workflows (run on schedule / dispatch / events)
+
+| Workflow | Trigger | Role |
+|---|---|---|
+| `acceptance-tests.yml` | dispatch | Acceptance bundle |
+| `conmon-aggregate.yml` | scheduled / dispatch | Continuous monitoring aggregation |
+| `diagrams-ci.yaml` | diagrams source edits | Mermaid + PlantUML render gate |
+| `image-gen.yml` | dispatch / placeholder changes | Gemini Nano Banana harvest + scan |
+| `orchestrator-schedule-nightly.yml` | nightly cron | UIAO_100 scheduler nightly run |
+| `pester.yml` | PowerShell source edits | Pester test gate for PowerShell modules |
+| `scubagear-upstream-track.yml` | scheduled | Tracks CISA SCuBA upstream releases |
+
+### Tier-1 adapter workflows (manual-dispatch, secrets pending)
+
+| Workflow | Adapter | Status |
+|---|---|---|
+| `tier1-cyberark.yml` | `cyberark` | Manual-dispatch; nightly cron once `CYBERARK_*` secrets populated |
+| `tier1-palo-alto.yml` | `palo-alto` | Manual-dispatch; nightly cron once `PANOS_*` secrets populated |
+| `tier1-service-now.yml` | `service-now` | Manual-dispatch; nightly cron once `SERVICENOW_PDI_*` secrets populated |
+
+### Release / draft workflows
+
+| Workflow | Trigger | Role |
+|---|---|---|
+| `release.yml` | `v*.*.*` tag | Wheel + sdist + CycloneDX SBOM + sigstore signing |
+| `release-drafter.yml` | every main push / PR label | Maintains the draft release |
+
+**13 blocking gates** (up from 7 at the 2026-04-17 snapshot). The increase
+reflects the `mypy` and `ruff` baselines being cleared since then (both
+flipped to blocking), and new blocking gates for adapter conformance,
+spec-test coverage, canon-sync, docs leak-check, and the FedRAMP CR26
+catalog roundtrip.
 
 ## Drift taxonomy
 
@@ -188,7 +293,16 @@ Five classes defined in [`docs/docs/16_DriftDetectionStandard.qmd`](16_DriftDete
 | `DRIFT-AUTHZ` | runtime — `src/uiao/governance/drift.py::classify_authz_drift` (state-diff: role/delegation/escalation) **+** `src/uiao/governance/consent_envelope.py::ConsentEnvelopeValidator` (registry consent envelope: out-of-scope object access). Substrate walker scans both registries for missing/empty `scope:` declarations | P1 | ✅ complete |
 | `DRIFT-IDENTITY` | runtime — `src/uiao/governance/drift.py::classify_identity_drift` (state-diff: OrgPath / lifecycle / required-field) **+** `src/uiao/governance/issuer_resolution.py::IssuerResolver` (runtime issuer-chain: terminal-issuer match against canon `trust-anchor:`). Substrate walker scans both registries for missing `trust-anchor:` declarations on `certificate-anchored: true` adapters | P1 | ✅ complete |
 
-Runtime classes have their home in `src/uiao/canon/specs/drift.md` (UIAO_110); implementation is tracked as future engineering work (see ADR-029 §Consequences).
+All five drift classes are now implemented as of 2026-05-10 — the
+2026-04-17 closing note about runtime classes being "future engineering
+work" is superseded by the runtime modules cited in the table above
+(`src/uiao/freshness/drift_semantic.py`,
+`src/uiao/governance/drift.py`,
+`src/uiao/governance/consent_envelope.py`,
+`src/uiao/governance/issuer_resolution.py`).
+
+Runtime classes are anchored in `src/uiao/canon/specs/drift.md` (UIAO_110);
+ADR-029 §Consequences references the original phasing plan.
 
 ## Aspirational-content triage
 
@@ -208,6 +322,65 @@ The scan is intentionally noisy — about 30–40% are false positives (session 
 **Total flagged ≈ 22 pages (~4% of the 504 rendered surfaces).** Selective flagging preserves signal — a banner on half the site is noise.
 
 The remaining 263 hits are under per-file review; not mass-flagged pending author judgment.
+
+## Open backlog (2026-05-10)
+
+Prioritized punch list of substrate-level work still open. Smaller items
+are tracked in GitHub issues; larger ones are flagged for planning passes.
+
+### Tier 1 — finish the things almost done
+
+1. **Populate tier-1 adapter secrets** for `cyberark`, `palo-alto`,
+   `service-now`. Workflows are scaffolded and waiting; populating
+   the named secrets in repo settings flips three adapters from
+   "🟡 workflow shipped" to "✅ live tenant."
+2. **Refresh the per-document UIAO_NNN classification table** above —
+   43 documents added since 2026-04-17 (UIAO_004–009, 132–176, 202)
+   are unclassified. A programmatic regenerator that reads
+   `document-registry.yaml` and per-doc frontmatter would be the
+   right long-term fix.
+3. **Customer-documents ROADMAP — generate the 47 image placeholders.**
+   All inline `[IMAGE-NN: ...]` markers are planted and the pipeline
+   sidecars are routed. Requires `GEMINI_API_KEY` on the
+   `image-gen.yml` workflow to flip from harvest-only to generate.
+
+### Tier 2 — substrate gaps with named owners
+
+4. **UIAO_131 Adapter Test Strategy** — 0 of 10 modernization adapters
+   have completed tier-1 or tier-2 evidence. This is the largest single
+   concentrated gap. Tier 1 work converges with item 1 above; tier 2
+   (contract fixtures) is per-adapter author work.
+5. **UIAO_114 HA / Fault Tolerance** — deferred to Phase 2 per the
+   2026-04-26 §4.4 assessment. Needs a kickoff plan.
+6. **UIAO_115 Performance Engineering** — deferred pending baseline
+   measurement infrastructure (same §4.4 assessment).
+7. **UIAO_101 Platform Overview / UIAO_102 Platform Services Layer**
+   — partial impl. Spec authored; runtime crosswalk incomplete.
+8. **UIAO_107 Collector Interface** — partial. Needs a canonical
+   collector contract distinct from the adapter contract.
+9. **UIAO_129 / UIAO_130 Application Identity Model + Onboarding
+   Runbook** — specs exist, no impl. Required before workload-identity
+   adapters can fully conform.
+
+### Tier 3 — known doctrine cleanups
+
+10. **Rename top-level `canon/` to `models/`** per AGENTS.md (collides
+    with `src/uiao/canon/` which is the canon authority). Mechanical
+    rename + reference updates.
+11. **Triage the 263 unreviewed aspirational-signal grep hits** flagged
+    in §"Aspirational-content triage" below.
+12. **Phase 2 placeholder scaffolds** under `phase2/` — most
+    domain/lifecycle/transformation files are scaffolds pending design
+    sessions per AGENTS.md.
+
+### Tier 4 — soft follow-ups dependent on external action
+
+13. **Customer-documents case-study patterns → real engagements.**
+    Promotion requires reviewed, externally-releasable engagement
+    material from sponsors.
+14. **Tier-3 reference deployments.** All 10 modernization adapters
+    show 🚫 for tier-3 because the substrate operates outside any
+    federal boundary; needs a partner agency.
 
 ## Optimization posture
 
