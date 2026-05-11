@@ -1,0 +1,65 @@
+ksi_id: KSI-RECIP-007
+title: Per-Agency Bundle Cryptographic Signature Verified
+category: monitoring-logging
+description: >
+  Every per-agency OSCAL evidence bundle produced by the HRIT
+  productization pipeline must carry a valid HMAC-SHA256 signature
+  that verifies against the bundle's declared `bundle_hash` and the
+  platform's signing key.  Bundles whose signatures do not verify are
+  considered tampered and must be quarantined; they must not be used
+  by consuming agencies or audit tools as evidence of compliance.
+  This rule enforces the integrity chain described in hrit-productization
+  §8 and UIAO_002 §4.4.
+security_objective: >
+  Ensure the cryptographic integrity of every per-agency evidence bundle,
+  preventing acceptance of tampered or forged compliance artifacts and
+  anchoring the audit trail to a tamper-evident signing root.
+related_controls:
+  - AU-9
+  - SC-28
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero per-agency bundles in the current ATO cycle whose HMAC-SHA256
+    signature fails verification against the platform signing key and the
+    declared bundle_hash.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT b.bundle_id, b.agency_id, b.signature_status
+    FROM per_agency_bundles b
+    WHERE b.ato_cycle_id = current_ato_cycle()
+      AND b.signature_status != 'verified'
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: hrit_reciprocity.validators.bundle_signature_verify
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-06"
+enabled: true
+tags:
+  - hrit
+  - hrit-reciprocity
+  - bundle-integrity
+  - signature
+  - hmac-sha256
+  - audit-trail
+severity: high
+nist_mappings:
+  primary: AU-9
+  secondary:
+    - SC-28
+fedramp_controls:
+  - AU-9
+provenance:
+  spec_ref: hrit-productization
+  adr_ref: ADR-058
+  ruleset_version: "1.0"
+  introduced_by: WS-A10

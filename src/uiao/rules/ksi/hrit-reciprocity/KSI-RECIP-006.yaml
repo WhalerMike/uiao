@@ -1,0 +1,68 @@
+ksi_id: KSI-RECIP-006
+title: 30-Day Reauthorization Window SLA Met
+category: planning-personnel
+description: >
+  Every reciprocity record that enters the Expiring state (within 60 days
+  of `expires_at`) must have a reauthorization action initiated within
+  30 calendar days of entering that state, as required by the HRIT
+  productization reauthorization SLA (hrit-productization §6, UIAO_140 §5).
+  The reauthorization action includes submission of an updated SSP section
+  to the Authorising Official and acknowledgement from the consuming
+  agency's CIO or delegate.  Breaching the 30-day SLA generates a
+  REAUTH-SLA-BREACH finding.
+security_objective: >
+  Guarantee that the reauthorization pipeline is initiated with sufficient
+  lead time to complete before the consuming agency's reciprocity record
+  expires, preventing accidental lapses of authorisation.
+related_controls:
+  - CA-6
+  - PL-2
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero reciprocity records in Expiring state for more than 30 calendar
+    days where no reauthorization_initiated_at timestamp has been recorded.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT record_id,
+           expiring_since,
+           reauthorization_initiated_at,
+           NOW() - expiring_since AS days_in_expiring
+    FROM reciprocity_records
+    WHERE status = 'expiring'
+      AND reauthorization_initiated_at IS NULL
+      AND NOW() - expiring_since > INTERVAL '30 days'
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: false
+  custom_validation_logic: hrit_reciprocity.validators.reauth_sla_check
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-06"
+enabled: true
+tags:
+  - hrit
+  - hrit-reciprocity
+  - reauthorization
+  - sla
+  - ato-cadence
+  - expiry
+severity: high
+nist_mappings:
+  primary: CA-6
+  secondary:
+    - PL-2
+fedramp_controls:
+  - CA-6
+provenance:
+  spec_ref: hrit-productization
+  adr_ref: ADR-058
+  ruleset_version: "1.0"
+  introduced_by: WS-A10

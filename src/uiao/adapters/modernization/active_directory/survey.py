@@ -139,6 +139,10 @@ class ADSurveyReport:
     site_stale: int = 0
     # Findings
     findings: list[DriftFinding] = field(default_factory=list)
+    # Optional SPN inventory artifact (Federal SSOT / Evidence Bundle).
+    # Populated by extract_spn_inventory(); remains None when no SPN inventory
+    # pass has been run for this report.
+    spn_inventory: Optional[SpnInventory] = None
 
     @property
     def ok(self) -> bool:
@@ -149,10 +153,11 @@ class ADSurveyReport:
         return [f for f in self.findings if f.severity == "P1"]
 
     def as_dict(self) -> dict:
-        d = {k: v for k, v in self.__dict__.items() if k != "findings"}
+        d = {k: v for k, v in self.__dict__.items() if k not in ("findings", "spn_inventory")}
         d["findings"] = [f.__dict__ for f in self.findings]
         d["ok"] = self.ok
         d["blocker_count"] = len(self.blockers)
+        d["spn_inventory"] = self.spn_inventory.to_dict() if self.spn_inventory else None
         return d
 
 
@@ -815,7 +820,7 @@ def derive_orgpath_from_dn(distinguished_name: str, codebook: set[str]) -> Optio
     # Nothing in codebook — return the deepest valid-format candidate
     # for governance review queue
     candidate = "ORG-" + "-".join(segments)
-    if re.match(r"^ORG(-[A-Z]{2,6}){1,4}$", candidate):
+    if re.match(r"^ORG(-[A-Z]{2,6}){1,8}$", candidate):
         return candidate  # Valid format but not yet in codebook → queue for registration
 
     return None
@@ -899,6 +904,276 @@ def classify_sa_adcs_dependency(spns: list[str]) -> bool:
     ]
     spn_str = " ".join(spns).lower()
     return any(re.search(p, spn_str) for p in adcs_patterns)
+
+
+# ------------------------------------------------------------------
+# SPN Inventory Artifact (Federal SSOT / Evidence Bundle)
+#
+# Schema: src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json
+#   #/definitions/spnInventory and #/definitions/spnRecord
+# Canon refs:
+#   - docs/customer-documents/whitepapers/federal-ssot-alignment.qmd
+#   - docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd
+#   - docs/docs/16_DriftDetectionStandard.qmd §7
+#   - src/uiao/canon/specs/Spec3-D1.1-Get-ServiceAccountScan.md (UIAO_139)
+#
+# The inventory is phase-tagged (pre_migration | post_migration | unspecified)
+# and joined to OrgPath via the SPN-registering principal (preferred) or the
+# hosting computer (fallback). Unattributed records emit a DRIFT-IDENTITY
+# finding into the parent ADSurveyReport.
+# ------------------------------------------------------------------
+
+# Valid spn_inventory.phase values
+SPN_PHASE_PRE_MIGRATION: str = "pre_migration"
+SPN_PHASE_POST_MIGRATION: str = "post_migration"
+SPN_PHASE_UNSPECIFIED: str = "unspecified"
+_VALID_SPN_PHASES: tuple[str, ...] = (
+    SPN_PHASE_PRE_MIGRATION,
+    SPN_PHASE_POST_MIGRATION,
+    SPN_PHASE_UNSPECIFIED,
+)
+
+# Discovery method enum (matches schema)
+SPN_METHOD_LDAP: str = "AD-SPN-LDAP"
+SPN_METHOD_POWERSHELL: str = "AD-SPN-POWERSHELL"
+SPN_METHOD_DSQUERY: str = "AD-SPN-DSQUERY"
+
+# Default service-class filter — MSSQLSvc is the headline migration-failure
+# surface per the Spec3-D1.1 / federal SSOT alignment.
+DEFAULT_SPN_SERVICE_CLASS_FILTER: tuple[str, ...] = ("MSSQLSvc",)
+
+# AD objectClass values the spnRecord schema enumerates. Anything else maps to "other".
+_SPN_KNOWN_OBJECT_CLASSES: frozenset[str] = frozenset(
+    {
+        "user",
+        "computer",
+        "msDS-GroupManagedServiceAccount",
+        "msDS-ManagedServiceAccount",
+    }
+)
+
+
+@dataclass
+class SPNRecord:
+    """One row of the spn_inventory artifact. Matches schema #/definitions/spnRecord."""
+
+    spn: str
+    service_class: str
+    principal_name: str
+    object_class: str  # user | computer | msDS-GroupManagedServiceAccount | msDS-ManagedServiceAccount | other
+    host_or_fqdn: str = ""
+    port_or_instance: Optional[str] = None
+    sam_account_name: Optional[str] = None
+    distinguished_name: Optional[str] = None
+    when_created: Optional[str] = None
+    when_changed: Optional[str] = None
+    principal_orgpath: Optional[str] = None
+    hosting_computer_orgpath: Optional[str] = None
+    drift_finding_ref: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "spn": self.spn,
+            "service_class": self.service_class,
+            "host_or_fqdn": self.host_or_fqdn,
+            "port_or_instance": self.port_or_instance,
+            "principal_name": self.principal_name,
+            "sam_account_name": self.sam_account_name,
+            "object_class": self.object_class,
+            "distinguished_name": self.distinguished_name,
+            "when_created": self.when_created,
+            "when_changed": self.when_changed,
+            "principal_orgpath": self.principal_orgpath,
+            "hosting_computer_orgpath": self.hosting_computer_orgpath,
+            "drift_finding_ref": self.drift_finding_ref,
+        }
+
+
+@dataclass
+class SpnInventory:
+    """SPN inventory bundle artifact. Matches schema #/definitions/spnInventory."""
+
+    phase: str  # pre_migration | post_migration | unspecified
+    discovery_timestamp: str  # ISO-8601 UTC
+    discovery_method: str = SPN_METHOD_LDAP
+    discovery_scope: str = ""
+    service_class_filter: list[str] = field(default_factory=list)
+    records: list[SPNRecord] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            "phase": self.phase,
+            "discovery_timestamp": self.discovery_timestamp,
+            "discovery_method": self.discovery_method,
+            "discovery_scope": self.discovery_scope,
+            "service_class_filter": list(self.service_class_filter),
+            "records": [r.to_dict() for r in self.records],
+        }
+
+
+def _normalize_object_class(raw: str) -> str:
+    """Map any AD objectClass value to the schema enum (everything unknown -> 'other')."""
+    return raw if raw in _SPN_KNOWN_OBJECT_CLASSES else "other"
+
+
+def _parse_spn(spn: str) -> tuple[str, str, Optional[str], str]:
+    """
+    Parse 'ServiceClass/host[:port_or_instance][/extras...]' into (service_class, host, port_or_instance, full_spn).
+
+    Returns (service_class, host_or_fqdn, port_or_instance_or_None, normalized_spn). The full SPN is returned
+    unchanged; the caller stores it verbatim.
+    """
+    if "/" not in spn:
+        return ("", "", None, spn)
+    service_class, _, remainder = spn.partition("/")
+    # SPNs sometimes carry a trailing realm (host/extra), but the colon split happens first.
+    host_part = remainder.split("/", 1)[0]
+    if ":" in host_part:
+        host, _, suffix = host_part.partition(":")
+        return (service_class, host, suffix or None, spn)
+    return (service_class, host_part, None, spn)
+
+
+def _resolve_principal_orgpath(
+    principal_name: str,
+    sam_account_name: Optional[str],
+    distinguished_name: Optional[str],
+    principal_orgpath_index: Optional[dict[str, str]],
+) -> Optional[str]:
+    """
+    Look up the OrgPath of the SPN-registering principal via the caller-supplied index.
+
+    Index keys may be any of: DN, sAMAccountName, principal common name. First hit wins.
+    Returns None when no resolution is found (or no index supplied).
+    """
+    if not principal_orgpath_index:
+        return None
+    for key in (distinguished_name, sam_account_name, principal_name):
+        if key and key in principal_orgpath_index:
+            return principal_orgpath_index[key]
+    return None
+
+
+def _resolve_hosting_computer_orgpath(
+    host_or_fqdn: str,
+    computer_orgpath_index: Optional[dict[str, str]],
+) -> Optional[str]:
+    """
+    Look up the OrgPath of the hosting computer derived from host_or_fqdn.
+
+    Matches against full FQDN first, then short hostname (everything before the first '.').
+    Returns None when no match (or no index supplied).
+    """
+    if not computer_orgpath_index or not host_or_fqdn:
+        return None
+    if host_or_fqdn in computer_orgpath_index:
+        return computer_orgpath_index[host_or_fqdn]
+    short = host_or_fqdn.split(".", 1)[0]
+    if short and short in computer_orgpath_index:
+        return computer_orgpath_index[short]
+    return None
+
+
+def extract_spn_inventory(
+    *,
+    principals: list[dict],
+    phase: str,
+    discovery_timestamp: str,
+    discovery_method: str = SPN_METHOD_LDAP,
+    discovery_scope: str = "",
+    service_class_filter: Optional[list[str]] = None,
+    principal_orgpath_index: Optional[dict[str, str]] = None,
+    computer_orgpath_index: Optional[dict[str, str]] = None,
+) -> tuple[SpnInventory, list[DriftFinding]]:
+    """
+    Build an SpnInventory artifact from a list of principal records.
+
+    Each principal dict must carry at minimum:
+      - 'principal_name': str
+      - 'object_class': str (raw AD objectClass; mapped to schema enum)
+      - 'spns': list[str]
+    Optional fields: sam_account_name, distinguished_name, when_created, when_changed.
+
+    Filtering: only SPNs whose service-class prefix is in service_class_filter are kept
+    (default: MSSQLSvc only). Per the schema, one record is emitted per SPN string —
+    a principal with N matching SPNs yields N records.
+
+    Attribution: each record's principal_orgpath is looked up from principal_orgpath_index;
+    hosting_computer_orgpath from computer_orgpath_index. When neither resolves, a
+    DRIFT-IDENTITY P2 finding is emitted and the record's drift_finding_ref carries the
+    finding's error_code.
+
+    Returns the SpnInventory and the list of DriftFinding objects to merge into the
+    parent ADSurveyReport.findings list.
+    """
+    if phase not in _VALID_SPN_PHASES:
+        raise ValueError(f"phase must be one of {_VALID_SPN_PHASES}; got {phase!r}")
+    classes = list(service_class_filter) if service_class_filter else list(DEFAULT_SPN_SERVICE_CLASS_FILTER)
+    inventory = SpnInventory(
+        phase=phase,
+        discovery_timestamp=discovery_timestamp,
+        discovery_method=discovery_method,
+        discovery_scope=discovery_scope,
+        service_class_filter=classes,
+    )
+    findings: list[DriftFinding] = []
+    unattributed_idx = 0
+    for principal in principals:
+        spns = principal.get("spns") or []
+        if not spns:
+            continue
+        raw_object_class = principal.get("object_class", "") or ""
+        object_class = _normalize_object_class(raw_object_class)
+        principal_name = principal.get("principal_name", "") or ""
+        sam = principal.get("sam_account_name")
+        dn = principal.get("distinguished_name")
+        when_created = principal.get("when_created")
+        when_changed = principal.get("when_changed")
+        for spn in spns:
+            service_class, host, port_or_instance, full_spn = _parse_spn(spn)
+            if service_class not in classes:
+                continue
+            principal_orgpath = _resolve_principal_orgpath(principal_name, sam, dn, principal_orgpath_index)
+            hosting_orgpath = _resolve_hosting_computer_orgpath(host, computer_orgpath_index)
+            drift_ref: Optional[str] = None
+            if principal_orgpath is None and hosting_orgpath is None:
+                unattributed_idx += 1
+                error_code = f"GOV-SPN-{unattributed_idx:03d}"
+                drift_ref = error_code
+                findings.append(
+                    DriftFinding(
+                        drift_class="DRIFT-IDENTITY",
+                        severity="P2",
+                        path=dn or principal_name or full_spn,
+                        detail=(
+                            f"SPN '{full_spn}' is registered to principal '{principal_name}' "
+                            "but neither the principal nor the hosting computer resolves to a "
+                            "verified OrgPath. SPN cannot be attributed to an organizational "
+                            "position; re-registration after migration must be done with "
+                            "explicit owner reassignment."
+                        ),
+                        error_code=error_code,
+                        object_type="SPN",
+                    )
+                )
+            inventory.records.append(
+                SPNRecord(
+                    spn=full_spn,
+                    service_class=service_class,
+                    host_or_fqdn=host,
+                    port_or_instance=port_or_instance,
+                    principal_name=principal_name,
+                    sam_account_name=sam,
+                    object_class=object_class,
+                    distinguished_name=dn,
+                    when_created=when_created,
+                    when_changed=when_changed,
+                    principal_orgpath=principal_orgpath,
+                    hosting_computer_orgpath=hosting_orgpath,
+                    drift_finding_ref=drift_ref,
+                )
+            )
+    return inventory, findings
 
 
 # ------------------------------------------------------------------

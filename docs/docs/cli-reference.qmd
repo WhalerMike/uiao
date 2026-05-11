@@ -107,15 +107,171 @@ Software supply chain transparency is a FedRAMP and NIST requirement. UIAO gener
 
 ---
 
-### 3.4 Continuous Monitoring (ConMon)
+### 3.4 Reciprocity (HRIT Single-ATO)
 
-Continuous monitoring is the operational heartbeat of FedRAMP compliance. These commands process live security telemetry (Sentinel alerts), manage Plans of Action & Milestones (POA&Ms), export ongoing authorization evidence, and produce KSI (Key Security Indicator) dashboards. The ConMon pipeline transforms raw security events into governance-grade artifacts.
+The `reciprocity` sub-app implements the HRIT Single-ATO Reciprocity Model (UIAO_140 / ADR-054). It emits signed, schema-valid reciprocity records per consuming agency, verifies HMAC-SHA256 signatures, and enumerates all registered records with live expiry status.
+
+| Command | Description | Pipeline Role |
+|---------|-------------|---------------|
+| reciprocity onboard-agency | Emit a signed reciprocity record for a consuming agency. | Primary record-creation command; calls WS-A2 emitter. |
+| reciprocity list-records | Enumerate reciprocity records and display their Active/Expired status. | Record inventory and health check. |
+| reciprocity verify | Verify the HMAC-SHA256 signature of a reciprocity record. | Signature integrity validation. |
+
+#### `uiao reciprocity onboard-agency`
+
+Emit a reciprocity record for a consuming agency. Calls `uiao.oscal.reciprocity_record.emit_reciprocity_record`, writes the signed JSON to `<out-dir>/<consuming-agency>/reciprocity-record.json`.
+
+**Synopsis:**
+
+```
+uiao reciprocity onboard-agency [OPTIONS]
+```
+
+**Options:**
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `--controlling-ato` | TEXT | Yes | Identifier of the controlling ATO (e.g. `OPM-HRIT-2026-001`). |
+| `--consuming-agency` | TEXT | Yes | Two-to-six character agency code for the consuming agency (e.g. `TREAS`). |
+| `--legal-basis` | ENUM | Yes | Legal basis for reciprocity. One of: `interagency-mou`, `economy-act`, `fisma-shared-service`, `fedramp-authorization`, `other-statutory-authority`. |
+| `--configuration-latitude-ref` | TEXT | Yes | Reference identifier for the SSP configuration-latitude baseline. |
+| `--reciprocity-basis` | TEXT | No | Reciprocity basis identifier string (default: `interagency-reciprocity`). |
+| `--effective-at` | TEXT | No | ISO-8601 datetime at which the record becomes effective (default: now). |
+| `--expires-at` | TEXT | No | ISO-8601 datetime at which the record expires (default: now + 365 days). |
+| `--signer` | TEXT | No | Signer identity (default: `$USER` env var or `uiao-reciprocity-operator`). |
+| `--out-dir` | PATH | No | Output directory root (default: `reciprocity-records`). |
+| `--signing-key-env` | TEXT | No | Name of the env var that holds the HMAC signing key (default: `UIAO_RECIPROCITY_HMAC_KEY`). |
+| `--dry-run` | FLAG | No | Print the record that would be emitted; do not write to disk. |
+
+**Exit codes:** `0` success, `1` validation/write error, `3` WS-A2 emitter not yet merged.
+
+**Example:**
+
+```bash
+uiao reciprocity onboard-agency \
+    --controlling-ato OPM-HRIT-2026-001 \
+    --consuming-agency TREAS \
+    --legal-basis interagency-mou \
+    --configuration-latitude-ref ssp-2026-latitude-baseline-v1 \
+    --out-dir /tmp/hrit-recip
+# → Reciprocity record written to /tmp/hrit-recip/TREAS/reciprocity-record.json
+
+# Dry-run (no file written)
+uiao reciprocity onboard-agency \
+    --controlling-ato OPM-HRIT-2026-001 \
+    --consuming-agency IRS \
+    --legal-basis economy-act \
+    --configuration-latitude-ref ssp-2026-latitude-baseline-v1 \
+    --dry-run
+```
+
+**Expected output shape:**
+
+```json
+{
+  "controlling_ato_id": "OPM-HRIT-2026-001",
+  "consuming_agency_code": "TREAS",
+  "legal_basis": "interagency-mou",
+  "reciprocity_basis": "interagency-reciprocity",
+  "effective_at": "2026-05-11T00:00:00+00:00",
+  "expires_at": "2027-05-11T00:00:00+00:00",
+  "configuration_latitude_ref": "ssp-2026-latitude-baseline-v1",
+  "signature": {
+    "algorithm": "HMAC-SHA256",
+    "value": "<hex-digest>",
+    "signed_at": "2026-05-11T00:00:00+00:00",
+    "signer": "uiao-reciprocity-operator"
+  },
+  "provenance": { "...": "..." }
+}
+```
+
+---
+
+#### `uiao reciprocity list-records`
+
+Walk `<records-dir>/**/reciprocity-record.json` and print a table of (controlling_ato_id, consuming_agency_code, effective_at, expires_at, status). Status is `Active` or `Expired` relative to current UTC time.
+
+**Synopsis:**
+
+```
+uiao reciprocity list-records [OPTIONS]
+```
+
+**Options:**
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `--records-dir` | PATH | Yes | Root directory containing per-agency `reciprocity-record.json` files. |
+| `--json` | FLAG | No | Emit records as a JSON array on stdout instead of a rich table. |
+
+**Examples:**
+
+```bash
+# Rich table output
+uiao reciprocity list-records --records-dir /tmp/hrit-recip
+
+# JSON array output (for downstream tooling)
+uiao reciprocity list-records --records-dir /tmp/hrit-recip --json
+```
+
+**Expected output shape (table):**
+
+```
+ controlling_ato_id   consuming_agency_code  effective_at        expires_at          status
+ OPM-HRIT-2026-001    TREAS                  2026-05-11T00:00:00 2027-05-11T00:00:00 Active
+ OPM-HRIT-2026-001    IRS                    2026-05-11T00:00:00 2027-05-11T00:00:00 Active
+2 record(s) found
+```
+
+---
+
+#### `uiao reciprocity verify`
+
+Verify the HMAC-SHA256 signature of a reciprocity record. Calls `uiao.oscal.reciprocity_record.verify_signature`.
+
+**Synopsis:**
+
+```
+uiao reciprocity verify [OPTIONS]
+```
+
+**Options:**
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `--record` | PATH | Yes | Path to a `reciprocity-record.json` file to verify. |
+| `--signing-key-env` | TEXT | No | Name of the env var that holds the HMAC signing key (default: `UIAO_RECIPROCITY_HMAC_KEY`). |
+
+**Exit codes:** `0` signature valid, `1` signature invalid or record unreadable, `3` WS-A2 verifier not yet merged.
+
+**Example:**
+
+```bash
+export UIAO_RECIPROCITY_HMAC_KEY="my-secret-key"
+
+uiao reciprocity verify \
+    --record /tmp/hrit-recip/TREAS/reciprocity-record.json \
+    --signing-key-env UIAO_RECIPROCITY_HMAC_KEY
+# → Signature valid.
+
+# Non-zero exit on invalid signature
+uiao reciprocity verify --record /tmp/hrit-recip/TREAS/reciprocity-record.json
+# → Signature INVALID.   (exit code 1)
+```
+
+---
+
+### 3.6 Continuous Monitoring (ConMon)
+
+Continuous monitoring is the operational heartbeat of FedRAMP compliance. These commands process live security telemetry (Sentinel alerts), manage Plans of Action & Milestones (POA&Ms), export ongoing authorization evidence, produce KSI (Key Security Indicator) dashboards, and validate ATO lifecycle SLA cadence. The ConMon pipeline transforms raw security events into governance-grade artifacts.
 
 | Command | Description | Pipeline Role |
 |---------|-------------|---------------|
 | conmon process | Process a Sentinel alert and auto-upsert a POA&M entry. | Primary ConMon event processing automation. |
 | conmon export-oa | Export an OSCAL ongoing-authorization evidence artifact. | ATO maintenance; evidence for authorizing officials. |
 | conmon dashboard | Export the KSI continuous monitoring dashboard. | Governance-grade security posture summary. |
+| conmon ato-cadence-check | Validate ATO lifecycle SLA cadence (SSP windows + reauthorization). | SLA enforcement; CI-friendly PASS/WARN/FAIL verdict. |
 
 #### Details
 
@@ -125,9 +281,73 @@ Continuous monitoring is the operational heartbeat of FedRAMP compliance. These 
 
 **conmon dashboard** — Generates the Key Security Indicator (KSI) dashboard — a governance-grade summary of security posture, control effectiveness, and operational health. Includes SLA status, drift indicators, and trend data.
 
+**conmon ato-cadence-check** — Validates the three ATO lifecycle SLAs defined in UIAO_140 §4 and ADR-054 Q&A #44: draft SSP within 30 days of award (`SSP-Draft-30`), final SSP within 45 days of award (`SSP-Final-45`), and reauthorization package due at least 30 days before ATO expiry (`Reauthorization-30`). Verdicts are `PASS`, `WARN`, `FAIL`, or `N/A`; the overall verdict is the worst-case severity. Emits a rich table by default; use `--json` for machine-readable output.
+
+**Synopsis:**
+
+```
+uiao conmon ato-cadence-check [OPTIONS]
+```
+
+**Options:**
+
+| Option | Metavar | Required | Description |
+|--------|---------|----------|-------------|
+| `--award-date` | `YYYY-MM-DD` | Yes | Contract award date. |
+| `--ssp-draft-at` | `ISO-DATETIME` | No | ISO-8601 datetime when the draft SSP was submitted. |
+| `--ssp-final-at` | `ISO-DATETIME` | No | ISO-8601 datetime when the final SSP was submitted. |
+| `--current-ato-decision` | `YYYY-MM-DD` | No | Date of the most recent ATO authorization decision. |
+| `--current-ato-expires` | `YYYY-MM-DD` | No | Date the current ATO expires. |
+| `--json` | FLAG | No | Emit the CadenceReport as JSON instead of a rich table. |
+| `--exit-on-fail` | FLAG | No | Exit with code 1 if the overall verdict is FAIL (CI-friendly). |
+
+**Example:**
+
+```bash
+uiao conmon ato-cadence-check \
+    --award-date 2026-01-01 \
+    --ssp-draft-at 2026-01-25T12:00:00Z \
+    --ssp-final-at 2026-02-10T12:00:00Z \
+    --current-ato-decision 2026-03-01 \
+    --current-ato-expires 2027-03-01 \
+    --exit-on-fail
+
+# JSON output for downstream tooling
+uiao conmon ato-cadence-check \
+    --award-date 2026-01-01 \
+    --ssp-draft-at 2026-01-25T12:00:00Z \
+    --json
+```
+
+**Expected output shape (table):**
+
+```
+            ATO Cadence SLA Report
+ SLA                  Threshold  Actual (days)  Verdict  Message
+ SSP-Draft-30         30d        24             PASS     Draft SSP submitted 24 days after award.
+ SSP-Final-45         45d        40             PASS     Final SSP submitted 40 days after award.
+ Reauthorization-30   30d        —              N/A      No current ATO decision date provided.
+
+Overall: PASS  (evaluated at 2026-05-11T00:00:00+00:00)
+```
+
+**Expected output shape (JSON with `--json`):**
+
+```json
+{
+  "overall": "PASS",
+  "evaluated_at": "2026-05-11T00:00:00+00:00",
+  "verdicts": [
+    {"name": "SSP-Draft-30", "threshold_days": 30, "actual_days": 24, "verdict": "PASS", "message": "..."},
+    {"name": "SSP-Final-45", "threshold_days": 45, "actual_days": 40, "verdict": "PASS", "message": "..."},
+    {"name": "Reauthorization-30", "threshold_days": 30, "actual_days": null, "verdict": "N/A", "message": "..."}
+  ]
+}
+```
+
 ---
 
-### 3.5 Full Pipeline
+### 3.7 Full Pipeline
 
 For end-to-end generation from canon YAML through all output artifacts in a single deterministic pass.
 
@@ -141,7 +361,7 @@ For end-to-end generation from canon YAML through all output artifacts in a sing
 
 ---
 
-### 3.6 Adapter Layer
+### 3.8 Adapter Layer
 
 Adapters are the integration boundary between external vendor tools and the UIAO canonical data model. They ingest third-party assessment outputs and normalize them into UIAO's DNS-style claim format — lightweight, human-readable, and traceable — without requiring heavy OSCAL conversion at the adapter boundary. The adapter layer is where external truth enters the UIAO provenance chain.
 
@@ -158,7 +378,7 @@ Adapters are the integration boundary between external vendor tools and the UIAO
 
 ---
 
-### 3.7 IR (Intermediate Representation) Pipeline
+### 3.9 IR (Intermediate Representation) Pipeline
 
 The IR pipeline is the analytical and governance core of UIAO. It transforms normalized adapter output (starting with SCuBA) through a deterministic chain: raw results → normalized IR objects → evidence bundles → governance actions → auditor packages. Every stage produces traceable, machine-readable artifacts. The IR layer enables drift detection, freshness tracking, POA&M generation, SSP narrative synthesis, and full auditor evidence packaging — all from a single source-of-truth pipeline.
 
@@ -202,7 +422,7 @@ The IR pipeline is the analytical and governance core of UIAO. It transforms nor
 
 ---
 
-### 3.8 CQL (Compliance Query Language) Engine
+### 3.10 CQL (Compliance Query Language) Engine
 
 The CQL engine (UIAO_108) is an SQL-like query layer over compliance data. It lets operators interrogate evidence bundles, controls, drift records, and POA&M entries without writing Python. CQL supports filtering, ordering, date windowing, and control-scoped evidence queries — all from the command line.
 
@@ -244,7 +464,7 @@ uiao cql query "SHOW POAM WHERE severity >= 'High' ORDER BY severity DESC" \
 
 ---
 
-### 3.9 Evidence Graph (UIAO_113)
+### 3.11 Evidence Graph (UIAO_113)
 
 The Evidence Graph is a directed property graph that links controls, IR objects, evidence nodes, provenance records, findings, and POA&M entries. Every edge carries typed metadata so you can trace any compliance claim back to its raw assessment output. The graph sub-command is part of the `evidence` command group.
 

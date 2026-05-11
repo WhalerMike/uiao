@@ -5,10 +5,16 @@ doc-type: whitepaper
 audience: [Customer, Assessor, Architect]
 classification: Public
 boundary: GCC-Moderate
+status: Draft
 canon-source: "src/uiao/canon/adapter-registry.yaml#scubagear"
 canon-reference:
   - "docs/customer-documents/adapter-specs/scubagear/index.qmd"
   - "docs/customer-documents/compliance/evidence-telemetry/index.qmd"
+  - "docs/customer-documents/whitepapers/federal-ssot-alignment.qmd"
+  - "docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd"
+  - "docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd"
+  - "docs/customer-documents/case-studies/reference-deployment-fedciv-ad-to-entra.qmd"
+  - "docs/docs/16_DriftDetectionStandard.qmd"
 derived-from: "uiao canon"
 ---
 
@@ -25,7 +31,7 @@ operated as a **point assessor**: someone runs it, archives the report,
 and revisits it at audit time.
 
 UIAO's substrate treats SCuBAGear differently. Per
-[`adapter-registry.yaml`](../../../../src/uiao/canon/adapter-registry.yaml),
+[`adapter-registry.yaml`](../../../src/uiao/canon/adapter-registry.yaml),
 SCuBAGear is registered as the canonical **Phase-1 conformance / policy
 adapter** for M365 — meaning its outputs flow through the canonical
 evidence chain, its findings carry the canonical drift taxonomy, and its
@@ -65,7 +71,7 @@ The SCuBAGear adapter's canonical declaration:
   retention-years: 3
 ```
 
-Source: [`adapter-registry.yaml`](../../../../src/uiao/canon/adapter-registry.yaml).
+Source: [`adapter-registry.yaml`](../../../src/uiao/canon/adapter-registry.yaml).
 
 Five canonical properties matter for an authorizing official:
 
@@ -94,7 +100,7 @@ manual / not-applicable, plus narrative detail. The UIAO adapter wraps
 each result in the canonical provenance envelope (per
 [`15_ProvenanceProfile.qmd`](../../docs/15_ProvenanceProfile.qmd)) and
 maps it onto canonical KSI rules via the KSI mapping table at
-[`uiao-control-to-ksi-mapping.yaml`](../../../../src/uiao/rules/ksi/uiao-control-to-ksi-mapping.yaml).
+[`uiao-control-to-ksi-mapping.yaml`](../../../src/uiao/rules/ksi/uiao-control-to-ksi-mapping.yaml).
 
 The mapping yields three structural properties:
 
@@ -168,7 +174,101 @@ coverage in-boundary. Where coverage gaps exist (e.g. for cloud-only
 telemetry features that SCuBA does not currently evaluate), the gap is
 named and treated as a separate boundary finding.
 
-### 5. Why "interval" matters
+### 5. SCuBA in the Federal SSOT story
+
+SCuBAGear is one input to a larger compliance posture. UIAO's recent
+canon work (PRs #390 / #393 / #394 / #395 / #397 / #402) frames the
+identity layer as the SSOT root that federal data-governance mandates
+sit on top of, and positions every adapter — including SCuBAGear — as a
+node in a continuously-verified evidence chain rather than a
+freestanding tool. This section maps SCuBAGear into that larger frame
+so an authorizing official can see where the adapter fits in the
+Federal SSOT posture, not just in M365 configuration assessment.
+
+**What SCuBAGear sees, and what it does not.** SCuBAGear evaluates
+configuration state in the M365 tenant — the cloud half of the
+identity-and-data picture. The substrate's *on-premises half* is the
+AD survey adapter at
+[`src/uiao/adapters/modernization/active_directory/survey.py`](../../../src/uiao/adapters/modernization/active_directory/survey.py),
+which produces the OrgTree readiness bundle including the phase-tagged
+`spn_inventory` artifact introduced in PR #395 (defined in
+[`src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json`](../../../src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json)
+`#/definitions/spnInventory`). The two halves see different surfaces
+and emit into the same Evidence Bundle — together they describe the
+identity posture an agency carries through the AD → Entra ID transition,
+not just the cloud baseline at a moment in time.
+
+**Federal mandate alignment.** The
+[Federal SSOT Alignment whitepaper](federal-ssot-alignment.qmd)
+catalogues the federal mandates that the substrate as a whole supports
+(Evidence Act, Federal Data Strategy, OMB M-22-09, FedRAMP 20x, NIST
+800-63 AAL, DAMA-DMBOK, CDO Data Governance Board). SCuBAGear's role in
+that catalogue is specific and bounded: it is the canonical
+**configuration-conformance evidence source** for the M365 components
+inside the GCC-Moderate boundary. CISA BOD 25-01's "core logging" intent
+is satisfied directly by SCuBA configuration findings; CISA BOD 25-01's
+"rapid detection and investigation" intent is *not* satisfied by
+SCuBAGear alone — that requires the substrate's drift engine running
+across SCuBA evidence plus the AD-side spn_inventory and the Purview
+data-map state. SCuBAGear's `evidence-class: interval` and its
+deterministic OSCAL emission are what make this drift comparison
+mechanically possible.
+
+**The GCC-Moderate three-way compliance conflict.** As §4 above notes,
+SCuBAGear operates inside the GCC-Moderate boundary and its policies
+were authored against features the boundary actually exposes. The
+boundary itself, however, produces a structural compliance conflict
+catalogued as a first-class finding in
+[B.1.1 The Three-Way GCC-Moderate Compliance Conflict](../compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd)
+(TIC 3.0 × Zero Trust × FedRAMP 20x). SCuBAGear does not surface this
+conflict directly — it is structural, not a per-policy finding — but
+SCuBAGear's evidence is one of the artifacts the agency uses to
+document the compensating controls that B.1.1 §4 catalogues. The B.1.1
+finding (`GCC-BOUNDARY-3WAY-001`) references SCuBA conformance evidence
+in its `compensating_controls` array as one of the agency-side controls
+that demonstrates the boundary's risk is being continuously verified.
+
+**Drift taxonomy cross-walk.** SCuBAGear findings map onto the
+substrate's drift classes per the standard formalized in
+[`docs/docs/16_DriftDetectionStandard.qmd`](../../docs/16_DriftDetectionStandard.qmd)
+§2:
+
+| SCuBA finding pattern | Drift class | Severity model reference |
+|---|---|---|
+| Tenant configuration drifts from a SCuBA baseline that previously passed | `DRIFT-SCHEMA` or `DRIFT-SEMANTIC` (depending on whether the schema or the value drifted) | §3 P3 by default; escalates to P2 if the drift affects a live KSI |
+| SCuBA evidence claim emitted without a complete provenance envelope | `DRIFT-PROVENANCE` | §3 P1 — claim integrity is load-bearing |
+| Conditional Access policy state contradicts the AAL recorded in the COR | `DRIFT-AUTHZ` | §3 P1 — authorization integrity is load-bearing |
+| AAD principal in a SCuBA finding cannot be resolved in the identity plane | `DRIFT-IDENTITY` | §3 P1 — identity attribution is load-bearing |
+
+§7 of the drift standard (Federal SSOT Context, added in PR #394) maps
+these classes to the federal mandates each supports; §7.1 (SPN Drift
+Detection, added in PR #397) catalogues the four SPN-specific drift
+conditions that surface when the AD-side `spn_inventory` is compared
+across migration phases. SCuBAGear evidence joins the spn_inventory
+evidence in the same Evidence Bundle the 3PAO consumes — neither alone
+is sufficient for the federal SSOT posture; together they are
+continuous.
+
+**Identity foundation beneath the Azure SSOT stack.** The
+[OrgPath Narrative chapter 07a — UIAO Beneath the Azure SSOT Stack](../orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd)
+positions the identity-governance substrate beneath the Microsoft
+Fabric + OneLake + Purview Azure SSOT stack. SCuBAGear is the
+configuration-baseline assessor for the Entra ID identity plane that
+chapter 07a depends on. When chapter 07a says "the Azure SSOT stack
+assumes a trusted, consistent, continuously-verified Entra ID identity
+plane," SCuBAGear's interval-evidence emission is one of the substrate
+mechanisms that produces that continuous verification.
+
+**Reference deployment.** For a synthetic end-to-end engagement that
+exercises SCuBAGear alongside the AD survey adapter, the spn_inventory
+artifact, the OrgTree readiness bundle, the B.1.1 three-way conflict
+finding, the SQL Server adapter, and the Azure SSOT bridge, see
+[Federal Civilian AD → Entra ID + SQL Estate — Reference Deployment Pattern](../case-studies/reference-deployment-fedciv-ad-to-entra.qmd).
+That case study is the canonical walkthrough showing where SCuBAGear's
+output lands in the broader Evidence Bundle a federal civilian agency
+produces under the substrate.
+
+### 6. Why "interval" matters
 
 An adapter declared `evidence-class: interval` is structurally different
 from a `point-in-time` adapter:
@@ -187,7 +287,7 @@ This is the structural reason SCuBAGear-anchored ATO packages can
 carry continuous-conformance language honestly — the substrate
 supports it.
 
-### 6. Adoption posture
+### 7. Adoption posture
 
 For an agency operating M365 today, the integration is incremental:
 
@@ -208,7 +308,7 @@ For an agency operating M365 today, the integration is incremental:
    the OSCAL pipeline; treating them as such is a low-effort
    adoption step.
 
-### 7. Honest limits
+### 8. Honest limits
 
 - SCuBAGear's coverage is per-policy. It evaluates the SCuBA baselines;
   it does not evaluate every M365 control. UIAO's adapter taxonomy
@@ -223,7 +323,7 @@ For an agency operating M365 today, the integration is incremental:
   onto KSI rules is a canon-change operation, not an adapter-side
   edit.
 
-### 8. Conclusion
+### 9. Conclusion
 
 CISA SCuBAGear is, in UIAO's substrate, **a canonical adapter, not a
 freestanding tool.** Its findings carry full provenance, map onto KSI
