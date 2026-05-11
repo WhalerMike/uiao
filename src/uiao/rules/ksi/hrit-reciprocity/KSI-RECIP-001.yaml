@@ -1,0 +1,67 @@
+ksi_id: KSI-RECIP-001
+title: Reciprocity Record Legal-Basis Citation Required
+category: planning-personnel
+description: >
+  Every reciprocity record in the UIAO registry must cite a `legal_basis`
+  field whose value belongs to the authorised enumeration defined in the
+  single-ATO reciprocity model (UIAO_140 §4).  Reciprocity records that
+  lack a legal basis, or that cite a value outside the approved enum, are
+  invalid authorisation instruments and must not be used to grant consuming
+  agencies access under the controlling ATO.
+security_objective: >
+  Guarantee that every act of ATO reciprocity is traceable to an explicit
+  statutory or regulatory authority (e.g. FedRAMP Rev 5, OMB M-24-15,
+  FISMA §3554), preventing unauthorised or legally unsupported delegation
+  of authority to consuming agencies.
+related_controls:
+  - AC-21
+  - CA-3
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero reciprocity records with a null, empty, or non-enumerated
+    `legal_basis` field.  The allowed enumeration is:
+    [fedramp-rev5, fisma-3554, omb-m-24-15, dod-8500.01, agency-ato].
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT record_id, legal_basis
+    FROM reciprocity_records
+    WHERE legal_basis IS NULL
+       OR legal_basis NOT IN (
+           'fedramp-rev5', 'fisma-3554', 'omb-m-24-15',
+           'dod-8500.01', 'agency-ato'
+       )
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: hrit_reciprocity.validators.legal_basis_citation
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-06"
+enabled: true
+tags:
+  - hrit
+  - hrit-reciprocity
+  - single-ato
+  - legal-basis
+  - reciprocity-record
+  - uiao-140
+severity: high
+nist_mappings:
+  primary: AC-21
+  secondary:
+    - CA-3
+fedramp_controls:
+  - AC-21
+provenance:
+  spec_ref: UIAO_140
+  adr_ref: ADR-054
+  ruleset_version: "1.0"
+  introduced_by: WS-A10
