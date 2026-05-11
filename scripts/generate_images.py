@@ -858,9 +858,7 @@ def _is_retryable_error(exc: Exception) -> bool:
     rate-limit responses that may succeed on a subsequent attempt.
     """
     msg = str(exc)
-    return bool(_RETRYABLE_STATUS_RE.search(msg)) or any(
-        marker in msg for marker in _RETRYABLE_STATUS_STRINGS
-    )
+    return bool(_RETRYABLE_STATUS_RE.search(msg)) or any(marker in msg for marker in _RETRYABLE_STATUS_STRINGS)
 
 
 def generate_image(client, prompt_text: str, output_path: Path, model: str = MODEL) -> bool:
@@ -892,10 +890,8 @@ def generate_image(client, prompt_text: str, output_path: Path, model: str = MOD
             last_exc = e
             if not _is_retryable_error(e) or attempt == _MAX_RETRY_ATTEMPTS:
                 break
-            sleep_s = min(_RETRY_MAX_SLEEP_S, (2 ** attempt) + random.uniform(0, 1))
-            print(
-                f"  Transient image generation failure (attempt {attempt}/{_MAX_RETRY_ATTEMPTS}): {e}"
-            )
+            sleep_s = min(_RETRY_MAX_SLEEP_S, (2**attempt) + random.uniform(0, 1))
+            print(f"  Transient image generation failure (attempt {attempt}/{_MAX_RETRY_ATTEMPTS}): {e}")
             print(f"  Retrying in {sleep_s:.1f}s...")
             time.sleep(sleep_s)
     print(f"  Error generating image: {last_exc}")
