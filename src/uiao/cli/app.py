@@ -51,11 +51,13 @@ from uiao.cli.cql import cql_app  # noqa: E402
 from uiao.cli.enforcement import enforcement_app  # noqa: E402
 from uiao.cli.evidence import evidence_app  # noqa: E402
 from uiao.cli.generate import generate_app  # noqa: E402
+from uiao.cli.init import init_app  # noqa: E402
 from uiao.cli.ir import ir_app  # noqa: E402
 from uiao.cli.ksi import ksi_app  # noqa: E402
 from uiao.cli.orchestrator import orchestrator_app  # noqa: E402
 from uiao.cli.orgtree import orgtree_app  # noqa: E402
 from uiao.cli.oscal import oscal_app  # noqa: E402
+from uiao.cli.reciprocity import reciprocity_app  # noqa: E402
 from uiao.cli.scuba import scuba_app  # noqa: E402
 from uiao.cli.substrate import substrate_app  # noqa: E402
 from uiao.cli.tenant import tenant_app  # noqa: E402
@@ -67,11 +69,13 @@ app.add_typer(cql_app, name="cql")
 app.add_typer(enforcement_app, name="enforcement")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(generate_app, name="generate")
+app.add_typer(init_app, name="init")
 app.add_typer(ir_app, name="ir")
 app.add_typer(ksi_app, name="ksi")
 app.add_typer(orchestrator_app, name="orchestrator")
 app.add_typer(orgtree_app, name="orgtree")
 app.add_typer(oscal_app, name="oscal")
+app.add_typer(reciprocity_app, name="reciprocity")
 app.add_typer(scuba_app, name="scuba")
 app.add_typer(substrate_app, name="substrate")
 app.add_typer(tenant_app, name="tenant")

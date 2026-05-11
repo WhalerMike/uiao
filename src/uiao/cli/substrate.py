@@ -25,7 +25,10 @@ substrate_app = typer.Typer(
 console = Console()
 
 
-_RETIRED_SLUG_MARKER = "cites retired slug"
+# Subkind tag set by walker._scan_retired_slugs(); the CLI filter matches on
+# this rather than substring-on-detail so wording changes in the finding's
+# detail message don't silently break the filter.
+_RETIRED_SLUG_SUBKIND = "retired-slug"
 
 
 @substrate_app.command("walk")
@@ -58,7 +61,7 @@ def walk(
     report = walk_substrate(workspace_root=workspace_root)
 
     if retired_slugs_only:
-        report.findings = [f for f in report.findings if _RETIRED_SLUG_MARKER in f.detail]
+        report.findings = [f for f in report.findings if f.subkind == _RETIRED_SLUG_SUBKIND]
 
     if as_json:
         json.dump(report.as_dict(), sys.stdout, indent=2)

@@ -28,7 +28,7 @@ from typing import Dict, Mapping, Optional, Set
 
 import yaml
 
-CANONICAL_REGEX = re.compile(r"^ORG(-[A-Z0-9]{2,6}){0,4}$")
+CANONICAL_REGEX = re.compile(r"^ORG(-[A-Z0-9]{2,6}){0,8}$")
 
 
 class CodebookValidationError(ValueError):

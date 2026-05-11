@@ -379,6 +379,7 @@ def test_walker_retired_slug_in_canon_doc_fires_p2(tmp_path: Path) -> None:
     matches = [f for f in report.findings if f.drift_class == "DRIFT-PROVENANCE" and "retired slug MOD_X" in f.detail]
     assert matches, report.findings
     assert matches[0].severity == "P2"
+    assert matches[0].subkind == "retired-slug"
     assert "UIAO_174" in matches[0].detail
     assert "ADR-060 flatten" in matches[0].detail
 
@@ -475,13 +476,20 @@ def test_cli_walk_retired_slugs_only_filters_out_other_findings(tmp_path: Path) 
     assert any("nonexistent/module" in f["detail"] for f in unfiltered["findings"])
     assert any("retired slug" in f["detail"] for f in unfiltered["findings"])
 
-    # With the filter, only the retired-slug finding remains.
+    # With the filter, only the retired-slug finding remains, and every
+    # surviving finding carries subkind=="retired-slug" — the filter discriminates
+    # on the subkind label, not on detail-string substrings.
     result_filtered = runner.invoke(app, ["walk", "--workspace-root", str(root), "--retired-slugs-only", "--json"])
     assert result_filtered.exit_code == 0, result_filtered.stdout
     filtered = json.loads(result_filtered.stdout)
     assert len(filtered["findings"]) >= 1
-    assert all("retired slug" in f["detail"] for f in filtered["findings"])
+    assert all(f["subkind"] == "retired-slug" for f in filtered["findings"])
     assert not any("nonexistent/module" in f["detail"] for f in filtered["findings"])
+    # And in the unfiltered output, the dangling-code-ref finding has no
+    # subkind tag — proving the filter wouldn't accidentally let it through
+    # if the detail wording ever shifted.
+    dangling = [f for f in unfiltered["findings"] if "nonexistent/module" in f["detail"]]
+    assert dangling and all(f["subkind"] is None for f in dangling)
 
 
 def test_cli_walk_retired_slugs_only_clean_when_no_retired_refs(tmp_path: Path) -> None:

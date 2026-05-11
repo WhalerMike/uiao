@@ -1,0 +1,64 @@
+ksi_id: KSI-RECIP-002
+title: Reciprocity Record References Existing Controlling ATO
+category: planning-personnel
+description: >
+  Every reciprocity record must reference a `controlling_ato_id` whose
+  value resolves to a current, active entry in the ATO registry.
+  Reciprocity records that cite a non-existent, expired, or withdrawn
+  controlling ATO are invalid and must not be used to authorise consuming
+  agencies.  This rule enforces referential integrity between the
+  reciprocity layer and the canonical ATO registry (UIAO_140 §3).
+security_objective: >
+  Ensure that no consuming agency operates under a reciprocity grant that
+  is detached from a valid, active controlling ATO, which would constitute
+  an unmonitored and legally indefensible authorisation-to-operate.
+related_controls:
+  - CA-2
+  - CA-6
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero reciprocity records whose `controlling_ato_id` does not resolve
+    to an active entry in the ATO registry table.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT rr.record_id, rr.controlling_ato_id
+    FROM reciprocity_records rr
+    LEFT JOIN ato_registry ar
+           ON ar.ato_id = rr.controlling_ato_id
+          AND ar.status = 'active'
+    WHERE ar.ato_id IS NULL
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: hrit_reciprocity.validators.controlling_ato_exists
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-06"
+enabled: true
+tags:
+  - hrit
+  - hrit-reciprocity
+  - single-ato
+  - ato-registry
+  - reciprocity-record
+  - referential-integrity
+severity: high
+nist_mappings:
+  primary: CA-2
+  secondary:
+    - CA-6
+fedramp_controls:
+  - CA-2
+provenance:
+  spec_ref: UIAO_140
+  adr_ref: ADR-054
+  ruleset_version: "1.0"
+  introduced_by: WS-A10

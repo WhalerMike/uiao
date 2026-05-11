@@ -1,0 +1,68 @@
+ksi_id: KSI-RECIP-003
+title: No Expired Reciprocity Records Without Renewal
+category: planning-personnel
+description: >
+  No reciprocity record whose `expires_at` timestamp has elapsed may remain
+  in the registry without a corresponding renewal record.  An expired
+  reciprocity record with no renewal entry means the consuming agency is
+  operating under a lapsed authorisation, creating a compliance gap and
+  potential FISMA finding.  The renewal record must carry a `renewed_from`
+  back-reference to the original record and an updated `expires_at`
+  reflecting the new authorisation window (UIAO_140 §5, CA-6 requirement).
+security_objective: >
+  Prevent consuming agencies from operating under expired authorisation
+  grants, ensuring continuous ATO coverage across the reciprocity chain
+  and eliminating silent lapses that would not be detected by spot-check
+  reviews.
+related_controls:
+  - CA-6
+  - PL-2
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero reciprocity records whose `expires_at` is in the past and that
+    have no associated renewal record in the registry.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT rr.record_id, rr.expires_at
+    FROM reciprocity_records rr
+    LEFT JOIN reciprocity_records renewal
+           ON renewal.renewed_from = rr.record_id
+          AND renewal.status = 'active'
+    WHERE rr.expires_at < NOW()
+      AND renewal.record_id IS NULL
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: hrit_reciprocity.validators.expiry_renewal_check
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-06"
+enabled: true
+tags:
+  - hrit
+  - hrit-reciprocity
+  - single-ato
+  - expiry
+  - renewal
+  - reciprocity-record
+  - ato-cadence
+severity: high
+nist_mappings:
+  primary: CA-6
+  secondary:
+    - PL-2
+fedramp_controls:
+  - CA-6
+provenance:
+  spec_ref: UIAO_140
+  adr_ref: ADR-054
+  ruleset_version: "1.0"
+  introduced_by: WS-A10

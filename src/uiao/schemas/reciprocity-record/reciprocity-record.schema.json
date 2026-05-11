@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uiao.gov/schemas/reciprocity-record/reciprocity-record.schema.json",
+  "title": "UIAO Reciprocity-Record Schema",
+  "description": "JSON Schema for a per-consuming-agency reciprocity record under the UIAO Single-ATO Reciprocity Model (UIAO_140 §6). Established by ADR-058. Authoritative field list per UIAO_140 §6 lines 114-121. Legal basis enum copied from src/uiao/schemas/reciprocal-consumption/registry.schema.json (ADR-055 enforcement). Signature algorithm is HMAC-SHA256. Provenance block conforms to src/uiao/schemas/metadata-schema.json provenance sub-object.",
+  "type": "object",
+  "required": [
+    "schema-version",
+    "controlling_ato_id",
+    "consuming_agency_code",
+    "reciprocity_basis",
+    "legal_basis",
+    "effective_at",
+    "expires_at",
+    "configuration_latitude_ref",
+    "signature",
+    "provenance"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema-version": {
+      "type": "string",
+      "description": "Semantic version of this record document schema. WS-A1 promotes to 1.0.0.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "controlling_ato_id": {
+      "type": "string",
+      "description": "Stable identifier of the controlling ATO under which this reciprocity record is issued (e.g., OPM-HRIT-2026-001). Never renamed once assigned.",
+      "minLength": 1
+    },
+    "consuming_agency_code": {
+      "type": "string",
+      "description": "Three-to-six uppercase letter agency code of the consuming agency (e.g., TREAS, IRS, SSA). Must match the canonical agency abbreviation list.",
+      "pattern": "^[A-Z]{3,6}$"
+    },
+    "reciprocity_basis": {
+      "type": "string",
+      "description": "Human-readable description of the reciprocity basis — the plain-language statement of why this agency is authorized to consume the platform under the controlling ATO.",
+      "minLength": 1
+    },
+    "legal_basis": {
+      "type": "string",
+      "description": "Machine-readable legal basis type authorizing this reciprocity. Copied from the registry.schema.json legal_basis.type enum (ADR-055). CI rejects records without a valid legal basis.",
+      "enum": [
+        "privacy-act-sorn-routine-use",
+        "cmppa-matching-agreement",
+        "statute",
+        "customer-consent",
+        "interagency-mou"
+      ]
+    },
+    "effective_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 date-time at which this reciprocity record becomes effective."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 date-time at which this reciprocity record expires. Past this date without a renewal record, KSI-RECIP-003 fires a FAIL verdict."
+    },
+    "configuration_latitude_ref": {
+      "type": "string",
+      "description": "Reference to the controlling SSP's enumerated configuration-latitude table entry that governs this consuming agency's permitted configuration elections. Format: <ssp-id>#latitude/<entry-id>.",
+      "minLength": 1
+    },
+    "signature": {
+      "type": "object",
+      "description": "HMAC-SHA256 signature over the canonical content hash of this record, excluding volatile fields (signature.value, signature.signed_at). Provides tamper-evidence for audit and KSI-RECIP-007.",
+      "required": ["algorithm", "value", "signed_at", "signer"],
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "description": "Signing algorithm. Only HMAC-SHA256 is accepted.",
+          "enum": ["HMAC-SHA256"]
+        },
+        "value": {
+          "type": "string",
+          "description": "Hex-encoded HMAC-SHA256 digest over the stable content hash of the record.",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "signed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 date-time at which the signature was computed."
+        },
+        "signer": {
+          "type": "string",
+          "description": "Identity of the signing principal (PIV-bound DN, service principal ID, or CIO identity string).",
+          "minLength": 1
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Provenance block tying this emitted reciprocity record to its canonical source spec and the tool that produced it. Conforms to the provenance sub-object in src/uiao/schemas/metadata-schema.json.",
+      "required": ["source", "version", "derived_at", "derived_by"],
+      "additionalProperties": true,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Path or URI of the canonical source artifact that defines the schema for this record (e.g., src/uiao/canon/specs/single-ato-reciprocity-model.md).",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the canonical source artifact at the time this record was derived.",
+          "minLength": 1
+        },
+        "derived_at": {
+          "type": "string",
+          "description": "ISO 8601 date or date-time at which this record was derived/emitted.",
+          "minLength": 1
+        },
+        "derived_by": {
+          "type": "string",
+          "description": "Tool, pipeline, or principal that derived/emitted this record (e.g., uiao.oscal.reciprocity_record v0.6.0).",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "$comment": "WS-A1 filled 2026-05-11. Established under ADR-058. Required-field set per UIAO_140 §6 lines 114-121: controlling_ato_id, consuming_agency_code, reciprocity_basis, legal_basis (enum from registry.schema.json ADR-055), effective_at, expires_at, configuration_latitude_ref, signature (HMAC-SHA256), provenance (metadata-schema.json contract). schema-version promoted to 1.0.0. additionalProperties set to false on root object."
+}
