@@ -38,6 +38,8 @@ UIAO is a governance substrate, not a product. It defines:
 - **KSI** — Key Security Indicators. 163 continuous-compliance signals,
   cryptographically signed.
 
+The **v0.6.0 mission theme** is [HRIT Single-ATO Productization](src/uiao/canon/adr/adr-058-hrit-productization-mission.md) (ADR-058): runtime emission of signed, OSCAL-mapped reciprocity records per consuming agency, with ConMon SLA enforcement and configuration-latitude drift detection.
+
 ## Repository layout
 
 As of [ADR-032](src/uiao/canon/adr/adr-032-single-package-consolidation.md) (2026-04-20) UIAO is a **single Python package** rooted at `src/uiao/`. The pre-consolidation `core/` and `impl/` directories no longer exist — every concern they held now lives under `src/uiao/<subpackage>/`.
