@@ -56,7 +56,7 @@ hovering above the middle column.
    - **Entra Device** cylinder (top) — sub-label "extensionAttribute1".
    - **Arc Machine** cylinder (bottom) — sub-label "ARM tag: OrgPath".
    A small horizontal teal double-arrow connects the two cylinders'
-   inner edges, labeled "must agree (regex-equal)".
+   inner edges, labeled "validates against same codebook".
 
 4. **Top — shared validator** — a single rounded rectangle labeled
    "Codebook (UIAO_151)" centered above the middle column, with a
@@ -94,7 +94,7 @@ hovering above the middle column.
   DECOMMISSION); the transport sub-labels (PATCH /devices/{object_id},
   PATCH api-version=2023-03-15-preview); the storage sub-labels
   (extensionAttribute1, ARM tag: OrgPath); and the connector
-  annotations (no write, must agree (regex-equal), validates, derives
+  annotations (no write, validates against same codebook, validates, derives
   from, reads). No additional decorative text.
 - Publication-grade, suitable for inclusion in the modernization
   canon and customer-facing device-governance deliverables.
