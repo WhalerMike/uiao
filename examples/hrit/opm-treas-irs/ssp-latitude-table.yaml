@@ -1,0 +1,137 @@
+# SSP Configuration-Latitude Table
+# OPM Federal HRIT Modernization Platform — ssp-opm-hrit-platform-v1
+# ATO: OPM-HRIT-2026-001 (expires 2027-04-15)
+#
+# This table enumerates every configuration setting that consuming agencies
+# may elect within their Reciprocity Records. Settings not listed here are
+# fixed by the controlling SSP and may not be varied by consuming agencies.
+# Any tenant-observed value outside the allowed_values or not matching
+# allowed_pattern triggers a DRIFT-SCHEMA P2 finding (UIAO_140 §5).
+
+ssp_ref: ssp-opm-hrit-platform-v1
+controlling_ato_id: OPM-HRIT-2026-001
+version: "1.0"
+effective_date: "2026-04-15"
+
+latitude_settings:
+  - key: mfa_required
+    description: >
+      Multi-factor authentication must be enforced for all user accounts
+      on the platform. PIV/CAC or FIDO2 hardware token required per
+      OMB M-22-09 and ADR-052.
+    allowed_values:
+      - "true"
+    default: "true"
+    rationale: MFA is mandatory; no agency may opt out under the controlling SSP.
+
+  - key: password_minimum_length
+    description: >
+      Minimum password length for any local or federated account where
+      password authentication is permitted as a secondary fallback.
+      Must be at least 12 characters per NIST SP 800-63B §5.1.1.
+    allowed_pattern: "^(1[2-9]|[2-9][0-9])$"
+    pattern_description: "Integer 12 or greater (12–99)"
+    default: "14"
+    rationale: NIST SP 800-63B minimum is 8; the SSP enforces 12+ for federal posture.
+
+  - key: session_timeout_minutes
+    description: >
+      Idle session timeout before automatic sign-out. Shorter timeouts
+      reduce exposure on shared or unattended workstations.
+    allowed_values:
+      - "15"
+      - "30"
+      - "60"
+    default: "30"
+    rationale: >
+      FedRAMP AC-11 requires a configurable inactivity lock. Agencies may
+      choose 15, 30, or 60 minutes; values outside this set are not
+      evaluated by the ConMon pipeline.
+
+  - key: audit_log_retention_days
+    description: >
+      Number of days audit log events must be retained in platform-
+      accessible storage before archival or deletion. FedRAMP requires
+      at least 1 year; longer retention periods meet stricter agency
+      requirements (OIG, IG Act audits).
+    allowed_pattern: "^(365|730|1095|1825)$"
+    pattern_description: "365 (1 yr) | 730 (2 yr) | 1095 (3 yr) | 1825 (5 yr)"
+    default: "365"
+    rationale: >
+      FedRAMP AU-11 baseline is 1 year. Treasury and IRS components with
+      tax-record obligations may elect 3 or 5 years.
+
+  - key: data_residency
+    description: >
+      GovCloud region(s) where platform data at rest is stored.
+      Data must remain within US Government Cloud boundary per
+      FedRAMP boundary and IRS Publication 1075 §9.3.
+    allowed_values:
+      - "us-gov-east"
+      - "us-gov-west"
+    default: "us-gov-east"
+    rationale: >
+      Dual-region active-active is permitted; single-region is the default.
+      No data may reside outside GovCloud boundary.
+
+  - key: tls_minimum_version
+    description: >
+      Minimum TLS version accepted on all platform-facing endpoints.
+      TLS 1.0 and 1.1 are prohibited per NIST SP 800-52r2 and
+      FedRAMP SC-8 enhancement.
+    allowed_values:
+      - "TLS-1.2"
+      - "TLS-1.3"
+    default: "TLS-1.3"
+    rationale: >
+      TLS 1.3 is preferred; agencies running legacy clients that cannot
+      negotiate 1.3 may downgrade to TLS 1.2 only.
+
+  - key: fips_140_3_required
+    description: >
+      All cryptographic modules used by the platform must be validated
+      to FIPS 140-3 Level 1 or higher per OMB M-22-09 and the
+      controlling SSP SC-13 implementation.
+    allowed_values:
+      - "true"
+    default: "true"
+    rationale: FIPS 140-3 compliance is non-negotiable; no agency may opt out.
+
+  - key: pii_encryption_at_rest
+    description: >
+      Encryption algorithm applied to PII data stores (personnel records,
+      benefits data, HR attribute tables). Must satisfy FedRAMP SC-28.
+    allowed_values:
+      - "aes-256-gcm"
+    default: "aes-256-gcm"
+    rationale: >
+      AES-256-GCM is the sole approved cipher for PII at rest on this
+      platform. No alternative is permitted under the controlling SSP.
+
+  - key: backup_frequency
+    description: >
+      Frequency at which platform data is backed up to immutable storage.
+      Hourly backups reduce RPO for high-criticality agencies (e.g., IRS
+      during filing season).
+    allowed_values:
+      - "daily"
+      - "hourly"
+    default: "daily"
+    rationale: >
+      FedRAMP CP-9 requires backup; frequency is agency-configurable
+      within these two tiers. Hourly backups incur additional storage cost
+      allocated to the consuming agency.
+
+  - key: incident_notification_hours
+    description: >
+      Maximum elapsed hours between an agency-affecting security incident
+      and initial notification to the agency CIO (or delegate). Must be
+      1–12 hours per the controlling SSP IR-6 implementation and
+      FISMA reporting requirements.
+    allowed_pattern: "^([1-9]|1[0-2])$"
+    pattern_description: "Integer 1 through 12 (inclusive)"
+    default: "4"
+    rationale: >
+      FedRAMP IR-6 requires incident notification; the controlling SSP
+      caps the window at 12 hours. Agencies with stricter SLAs (e.g., IRS,
+      Treasury OCC) may elect a shorter window down to 1 hour.
