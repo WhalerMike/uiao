@@ -10,6 +10,7 @@ Covers:
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -22,6 +23,12 @@ from typer.testing import CliRunner
 from uiao.cli.app import app
 
 runner = CliRunner()
+
+
+def _plain(text: str) -> str:
+    """Strip ANSI escape sequences from *text* for stable string assertions."""
+    return re.sub(r"\x1b\[[0-9;]*m", "", text)
+
 
 # ---------------------------------------------------------------------------
 # --help smoke tests
@@ -36,21 +43,24 @@ def test_reciprocity_help_exits_zero() -> None:
 def test_onboard_agency_help_exits_zero() -> None:
     result = runner.invoke(app, ["reciprocity", "onboard-agency", "--help"])
     assert result.exit_code == 0, result.stdout
+    out = _plain(result.stdout)
     # Verify the runnable example block is present
-    assert "OPM-HRIT-2026-001" in result.stdout
-    assert "--controlling-ato" in result.stdout
+    assert "OPM-HRIT-2026-001" in out
+    assert "--controlling-ato" in out
 
 
 def test_list_records_help_exits_zero() -> None:
     result = runner.invoke(app, ["reciprocity", "list-records", "--help"])
     assert result.exit_code == 0, result.stdout
-    assert "--records-dir" in result.stdout
+    out = _plain(result.stdout)
+    assert "--records-dir" in out
 
 
 def test_verify_help_exits_zero() -> None:
     result = runner.invoke(app, ["reciprocity", "verify", "--help"])
     assert result.exit_code == 0, result.stdout
-    assert "--record" in result.stdout
+    out = _plain(result.stdout)
+    assert "--record" in out
 
 
 # ---------------------------------------------------------------------------
