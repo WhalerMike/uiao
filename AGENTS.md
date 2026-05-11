@@ -76,6 +76,20 @@ Authoritative record of what is CLI-reachable, what is library-only, and what is
 | **Enforcement Runtime** | `uiao.enforcement` | ❌ None | **Library-only** | UIAO_111; policies are Python callables — see `docs/docs/cli-reference.md §4.1` |
 | **FastAPI REST API** | `uiao.api` | ❌ None (server) | **`[api]` extra** | `pip install "uiao[api]"`; see `docs/docs/cli-reference.md §5` |
 
+## Public surface additions (v0.6.0)
+
+New CLI commands and library modules introduced by the HRIT Single-ATO Productization mission theme (ADR-058 / UIAO_143). These rows supplement the v0.5.0 inventory above.
+
+| Feature | Module | CLI surface | Tier | Notes |
+|---|---|---|---|---|
+| Reciprocity operations | `uiao.cli.reciprocity` | `uiao reciprocity onboard-agency`, `list-records`, `verify` | CLI | UIAO_140 / ADR-054 |
+| HRIT Single-ATO Reciprocity emitter | `uiao.oscal.reciprocity_record` | (via `uiao reciprocity onboard-agency`) | CLI | UIAO_140 §6, HMAC-SHA256 signing |
+| Per-agency reciprocity bundle | `uiao.oscal.reciprocity_bundle` | (library, used by CLI) | Library | UIAO_140 §7, self-verifying |
+| ATO cadence SLA validator | `uiao.monitoring.ato_cadence` | `uiao conmon ato-cadence-check` | CLI | UIAO_140 §4, 30/45-day SSP + 30-day reauth |
+| Configuration-latitude drift | `uiao.governance.config_latitude` | (governance library) | Library | UIAO_140 §5, DRIFT-SCHEMA emission |
+| Evidence Graph v1.2 (ATO nodes) | `uiao.evidence.graph` | (via `uiao evidence graph`) | Library | UIAO_113 v1.2, ATO-decision + reciprocity-record nodes |
+| KSI-RECIP family | `uiao.rules.ksi` (KSI-RECIP-001..008) | (via `uiao ksi evaluate`) | Data | 8 KSIs covering reciprocity-program health |
+
 ### Rules for moving a feature between tiers
 
 - **Library-only → CLI**: write a Typer command, add happy-path + failure-mode tests, update this table and `docs/docs/cli-reference.md`.
