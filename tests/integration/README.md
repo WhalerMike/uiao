@@ -53,6 +53,23 @@ Access paths:
 - PAN-OS eval ISO from Palo Alto support portal (account required).
 - Stand up a PAN-OS VM in a developer Azure subscription via Terraform.
 
+**Runner-reachability decision required before populating secrets.** The
+default `runs-on: ubuntu-latest` runner cannot reach RFC1918 addresses
+inside a dev VPC. Pick one before wiring `PANOS_HOST`:
+
+- **Self-hosted runner inside the VPC** (preferred — keeps the PAN-OS
+  management plane private). Change `runs-on:` in
+  `.github/workflows/tier1-palo-alto.yml` to a self-hosted label.
+- **Public eval VM with a non-RFC1918 IP**. Requires IP-allowlist on
+  the firewall and a short-lived `PANOS_API_KEY` — exposes the
+  management plane to the internet.
+- **Tunnel** (Tailscale, Cloudflare Tunnel) added as a step before
+  `Run tier-1`. Tunnels add their own auth surface and operational
+  burden.
+
+Track the choice in an ADR and update the workflow header + `runs-on:`
+once resolved.
+
 ### cyberark (CyberArk Privilege Cloud trial)
 
 ```
