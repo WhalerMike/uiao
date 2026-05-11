@@ -15,6 +15,7 @@ tests, so this file focuses on the welcome / walkthrough surface.
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 import pytest
 from typer.testing import CliRunner
@@ -23,6 +24,7 @@ from uiao.cli.app import app
 from uiao.cli.init import _CANON_REFS, _WALKTHROUGH_STEPS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
 
 @pytest.fixture
@@ -76,8 +78,9 @@ def test_init_canon_ref_paths_resolve_on_filesystem() -> None:
 def test_init_help_exits_zero(runner: CliRunner) -> None:
     result = runner.invoke(app, ["init", "--help"])
     assert result.exit_code == 0
-    assert "--demo" in result.output
-    assert "--out-dir" in result.output
+    plain_output = _ANSI_ESCAPE_RE.sub("", result.output)
+    assert "--demo" in plain_output
+    assert "--out-dir" in plain_output
 
 
 def test_init_demo_flag_fails_gracefully_when_subprocess_fails(
