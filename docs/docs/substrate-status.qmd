@@ -105,21 +105,25 @@ Per [UIAO_131 Adapter Test Strategy](https://github.com/WhalerMike/uiao/blob/mai
 |---|---|:-:|:-:|:-:|---|
 | `entra-id` | active | ⏳ pending (live tenant) | ✅ scheduler-wired | 🚫 none | dispatches through UIAO_100 scheduler; live tenant via M365 Developer Program pending |
 | `m365` | active | ⏳ pending | ⏳ pending | 🚫 none | fixture setup required for `beta` |
-| `service-now` | active | 🟡 **workflow shipped** ([`tier1-service-now.yml`](https://github.com/WhalerMike/uiao/blob/main/.github/workflows/tier1-service-now.yml)) | ⏳ pending | 🚫 none | manual-dispatch live; nightly cron unlocks once `SERVICENOW_PDI_*` secrets populated |
-| `palo-alto` | active | 🟡 **workflow shipped** ([`tier1-palo-alto.yml`](https://github.com/WhalerMike/uiao/blob/main/.github/workflows/tier1-palo-alto.yml)) | ⏳ pending | 🚫 none | manual-dispatch live; cron unlocks once `PANOS_HOST` / `PANOS_API_KEY` secrets populated |
+| `service-now` | active | 🟡 **workflow shipped, stub bodies** ([`tier1-service-now.yml`](https://github.com/WhalerMike/uiao/blob/main/.github/workflows/tier1-service-now.yml)) | ⏳ pending | 🚫 none | dispatch live; flips to green once `SERVICENOW_PDI_*` secrets are populated **and** the three `_NOT_IMPLEMENTED` stub bodies in `tests/integration/tier1/test_service_now_tier1.py` are filled in with live HTTP calls |
+| `palo-alto` | active | 🟡 **workflow shipped, stub bodies** ([`tier1-palo-alto.yml`](https://github.com/WhalerMike/uiao/blob/main/.github/workflows/tier1-palo-alto.yml)) | ⏳ pending | 🚫 none | dispatch live; flips to green once `PANOS_HOST` / `PANOS_API_KEY` secrets are populated, the two stub bodies are filled in, **and** a self-hosted-runner-vs-public-host decision lands (RFC1918 host is unreachable from `ubuntu-latest`) |
 | `scuba` | active | ⏳ pending | ⏳ pending | 🚫 none | ScubaGear fixture + live run |
 | `terraform` | active | ✅ **55 tests** | ✅ fixture + scheduler-wired | 🚫 none | first real adapter wired into UIAO_100 scheduler (§1.5) |
-| `cyberark` | active | 🟡 **workflow shipped** ([`tier1-cyberark.yml`](https://github.com/WhalerMike/uiao/blob/main/.github/workflows/tier1-cyberark.yml)) | ⏳ pending | 🚫 none | manual-dispatch live; cron unlocks once `CYBERARK_TENANT` / `_CLIENT_ID` / `_CLIENT_SECRET` populated |
+| `cyberark` | active | 🟡 **workflow shipped, stub bodies** ([`tier1-cyberark.yml`](https://github.com/WhalerMike/uiao/blob/main/.github/workflows/tier1-cyberark.yml)) | ⏳ pending | 🚫 none | dispatch live; flips to green once `CYBERARK_TENANT` / `_CLIENT_ID` / `_CLIENT_SECRET` (plus `CYBERARK_TEST_SAFE` for rotation) secrets are populated **and** the two stub bodies in `tests/integration/tier1/test_cyberark_tier1.py` are filled in |
 | `infoblox` | active | 🟥 blocked | ⏳ pending | 🚫 none | No public developer sandbox — exclusion per UIAO_131 §5.1 |
 | `bluecat-address-manager` | active | 🟥 excluded | ⏳ pending | 🚫 none | Vendor-contact-only access — exclusion per UIAO_131 §5.1 |
 | `mainframe` | reserved | N/A | N/A | N/A | No impl; no target |
 
 Legend: ✅ green · 🟡 workflow shipped, secrets pending · ⏳ pending (author work required) · 🟥 blocked/excluded · 🚫 requires partner agency · N/A not applicable
 
-**Reality 2026-05-10:** still zero adapters have completed tier-1 evidence,
-but three (`cyberark`, `palo-alto`, `service-now`) now have manual-dispatch
-tier-1 workflow scaffolds awaiting secret population. `terraform` remains
-the only adapter green on both tier-1 and tier-2. All currently-`active`
+**Reality 2026-05-10:** still zero adapters have completed tier-1 evidence.
+Three (`cyberark`, `palo-alto`, `service-now`) have manual-dispatch tier-1
+workflow scaffolds, but the test files in `tests/integration/tier1/` are
+plumbing-only stubs: every test body resolves credentials, then calls
+`pytest.skip(_NOT_IMPLEMENTED_MSG)`. **Secrets are necessary but not
+sufficient** — flipping these to ✅ green also requires filling in the
+live HTTP calls and assertions in each test body. `terraform` remains the
+only adapter green on both tier-1 and tier-2. All currently-`active`
 registry entries continue to sit above the UIAO_131 conformance gate
 threshold — flagged below as substrate drift.
 
