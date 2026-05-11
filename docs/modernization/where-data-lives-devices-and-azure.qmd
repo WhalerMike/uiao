@@ -28,7 +28,7 @@ a computer object decomposes across three planes:
 | **Identity** (clients) | Entra Device | `extensionAttribute1` | Dynamic Entra group |
 | **Management** (clients) | Intune enrollment | *Inherited* from Entra device | Intune scope tag |
 | **Management** (servers) | Azure Arc machine | ARM tag `OrgPath` | Azure Policy assignment |
-| **Workload** | Service Principal / Managed Identity | App tag or custom claim | App role / API permission |
+| **Workload** | Service Principal / Managed Identity | `servicePrincipal.extensionAttribute1` (per ADR-063) | App role / API permission |
 
 The two storage slots that actually carry an OrgPath string are
 `extensionAttribute1` (Entra) and the ARM tag `OrgPath` (Azure
@@ -94,11 +94,23 @@ Both slots validate against the *exact same* canon:
   Devices do not get their own drift categories.
 
 A device that is *both* Entra-joined and Arc-enrolled (rare but
-possible, e.g., dev VMs) MUST carry the same OrgPath in both slots.
-The drift engine reads both planes and emits a P1 Schema Drift if
-they disagree — the disagreement is treated as schema violation
-because the canon requires the two slots to be string-equal, not
-because either value is individually malformed.
+possible, e.g., dev VMs) is canonically required to carry the same
+OrgPath in both slots — the two slots validate against the same
+codebook and the canon treats string equality between them as a
+required invariant.
+
+::: {.callout-warning title="Runtime enforcement of cross-plane equality is deferred"}
+As of UIAO_163 v1, the drift engine reads the Graph plane
+(`extensionAttribute1`) but does *not* perform a cross-plane equality
+check against the ARM `OrgPath` tag. Today's enforcement is
+**adapter-side** in `EntraDeviceOrgPathAdapter`
+([`src/uiao/adapters/entra_device_orgpath.py`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/adapters/entra_device_orgpath.py))
+which dispatches the write to the correct transport for the
+disposition. A future ADR (companion to the `DRIFT-SCHEMA::slot-occupied`
+sub-class deferred in ADR-063) will introduce the cross-plane equality
+check; until then, dual-plane disagreement is detected on the next
+codebook-driven re-write rather than as a runtime drift event.
+:::
 
 ## What is *not* in this story
 
@@ -129,8 +141,8 @@ because either value is individually malformed.
 | Where is a workstation's OrgPath? | `device.extensionAttribute1` in Entra |
 | Where is an Arc server's OrgPath? | ARM tag `OrgPath` on the `Microsoft.HybridCompute/machines` resource |
 | Where is an Azure VM's OrgPath? | ARM tag `OrgPath` on the resource; *plus* `device.extensionAttribute1` if the VM is also Entra-joined |
-| Where is a domain controller's OrgPath? | Not written; DCs are out of the disposition matrix |
-| Where is a Managed Identity's OrgPath? | App tag or custom claim on the SP; not consumed by drift v1 |
+| Where is a domain controller's OrgPath? | Not written. `STAY-AD-DC` is a defined skip disposition in [`device-planes.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/device-planes.yaml) — the canon's rule for DCs is explicitly "no write". |
+| Where is a Managed Identity's OrgPath? | `servicePrincipal.extensionAttribute1` (per ADR-063); declared in-scope but not consumed by drift v1 |
 | What enforces the binding? | `entra-device-orgpath` adapter + `device-planes.yaml` + drift engine (UIAO_163) |
 | Who decides which slot? | `ComputerDisposition.orgpath_plane`, computed from the disposition matrix |
 
