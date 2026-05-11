@@ -22,7 +22,7 @@ against the synthetic three-agency (OPM + Treasury + IRS) fixture.
   Ratifies the runtime emission contract, ConMon SLA cadences (30-day draft SSP,
   45-day final SSP, 30-day reauthorization window), and the KSI-RECIP-001..008
   accountability signals.
-- **UIAO_143** (`src/uiao/canon/specs/hrit-productization.md`) — HRIT
+- **UIAO_144** (`src/uiao/canon/specs/hrit-productization.md`) — HRIT
   Productization Operational Spec. Expands ADR-058 into the full operational
   narrative: reciprocity record lifecycle, per-agency bundle aggregation,
   configuration-latitude drift detection, and KSI mapping table.
