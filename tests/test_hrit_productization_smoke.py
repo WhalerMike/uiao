@@ -38,9 +38,7 @@ _MODULE_ATTRS = [
 
 
 @pytest.mark.parametrize("module_path,attr", _MODULE_ATTRS)
-def test_module_attribute_is_importable_or_skipped(
-    module_path: str, attr: str
-) -> None:
+def test_module_attribute_is_importable_or_skipped(module_path: str, attr: str) -> None:
     """Each Batch A module is importable with its expected public attribute.
 
     Skips cleanly when the module is not yet merged (pre-Phase-2).
@@ -56,19 +54,12 @@ def test_module_attribute_is_importable_or_skipped(
 # Fixtures — resolve paths to WS-A8 example files
 # ---------------------------------------------------------------------------
 
-_FIXTURE_DIR = (
-    Path(__file__).parent.parent / "examples" / "hrit" / "opm-treas-irs"
-)
+_FIXTURE_DIR = Path(__file__).parent.parent / "examples" / "hrit" / "opm-treas-irs"
 _SSP_LATITUDE_TABLE = _FIXTURE_DIR / "ssp-latitude-table.yaml"
 _TENANT_TREAS_CONFIG = _FIXTURE_DIR / "tenant-treas-config.yaml"
 _TENANT_IRS_CONFIG = _FIXTURE_DIR / "tenant-irs-config.yaml"
 _SCHEMA_PATH = (
-    Path(__file__).parent.parent
-    / "src"
-    / "uiao"
-    / "schemas"
-    / "reciprocity-record"
-    / "reciprocity-record.schema.json"
+    Path(__file__).parent.parent / "src" / "uiao" / "schemas" / "reciprocity-record" / "reciprocity-record.schema.json"
 )
 
 
@@ -132,10 +123,7 @@ def _build_tenant_config(raw: dict):  # type: ignore[return]
     """Construct a TenantConfig from the raw fixture dict."""
     from uiao.governance.config_latitude import TenantConfig, TenantConfigEntry  # noqa: PLC0415
 
-    entries = [
-        TenantConfigEntry(setting_key=k, observed_value=str(v))
-        for k, v in raw.get("configuration", {}).items()
-    ]
+    entries = [TenantConfigEntry(setting_key=k, observed_value=str(v)) for k, v in raw.get("configuration", {}).items()]
     return TenantConfig(
         consuming_agency_code=raw["consuming_agency_code"],
         entries=entries,
@@ -185,9 +173,7 @@ class TestHritProductizationLifecycle:
         treas_config = _build_tenant_config(raw_treas)
 
         findings = detect_latitude_drift(ssp_table, treas_config)
-        assert findings == [], (
-            f"Expected zero findings for TREAS; got: {[f.model_dump() for f in findings]}"
-        )
+        assert findings == [], f"Expected zero findings for TREAS; got: {[f.model_dump() for f in findings]}"
 
     def test_irs_config_one_drift_finding(self) -> None:
         """IRS config (one violation) produces exactly one DRIFT-SCHEMA P2 finding."""
@@ -200,8 +186,7 @@ class TestHritProductizationLifecycle:
 
         findings = detect_latitude_drift(ssp_table, irs_config)
         assert len(findings) == 1, (
-            f"Expected exactly 1 finding for IRS; got {len(findings)}: "
-            f"{[f.model_dump() for f in findings]}"
+            f"Expected exactly 1 finding for IRS; got {len(findings)}: {[f.model_dump() for f in findings]}"
         )
         finding = findings[0]
         assert finding.verdict == "OUT_OF_LATITUDE"

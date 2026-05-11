@@ -37,12 +37,7 @@ import pytest
 _EMITTER_MODULE = "uiao.oscal.reciprocity_record"
 _CADENCE_MODULE = "uiao.monitoring.ato_cadence"
 _SCHEMA_PATH = (
-    Path(__file__).parent.parent
-    / "src"
-    / "uiao"
-    / "schemas"
-    / "reciprocity-record"
-    / "reciprocity-record.schema.json"
+    Path(__file__).parent.parent / "src" / "uiao" / "schemas" / "reciprocity-record" / "reciprocity-record.schema.json"
 )
 
 
@@ -185,8 +180,8 @@ class TestLapsedAto:
         evaluate_ato_cadence = cadence_mod.evaluate_ato_cadence
 
         award = date(2026, 1, 1)
-        expired_ato = date(2026, 3, 1)   # ATO expired > 30 days ago
-        now_dt = datetime(2026, 5, 11, tzinfo=timezone.utc)   # well past expiry
+        expired_ato = date(2026, 3, 1)  # ATO expired > 30 days ago
+        now_dt = datetime(2026, 5, 11, tzinfo=timezone.utc)  # well past expiry
 
         inp = AtoCadenceInput(
             award_date=award,
@@ -197,9 +192,7 @@ class TestLapsedAto:
         )
         report = evaluate_ato_cadence(inp)
 
-        reauth_verdict = next(
-            v for v in report.verdicts if v.name == "Reauthorization-30"
-        )
+        reauth_verdict = next(v for v in report.verdicts if v.name == "Reauthorization-30")
         assert reauth_verdict.verdict == "FAIL", (
             f"Expected FAIL on Reauthorization-30 for lapsed ATO; "
             f"got {reauth_verdict.verdict}: {reauth_verdict.message}"
@@ -218,9 +211,7 @@ class TestLapsedAto:
         past = datetime.now(tz=timezone.utc) - timedelta(days=100)
         record = _emit_test_record(expires_at=past, signing_key=_KEY)
         errors = list(validator.iter_errors(record))
-        assert errors == [], (
-            f"Lapsed record should still schema-validate; got: {[e.message for e in errors]}"
-        )
+        assert errors == [], f"Lapsed record should still schema-validate; got: {[e.message for e in errors]}"
 
 
 # ---------------------------------------------------------------------------
@@ -345,6 +336,5 @@ class TestLegalBasisValidation:
         # legal_basis is valid; any remaining errors are unrelated
         legal_basis_errors = [e for e in errors if "legal_basis" in e.json_path]
         assert not legal_basis_errors, (
-            f"Unexpected schema error for legal_basis={valid_basis!r}: "
-            f"{[e.message for e in legal_basis_errors]}"
+            f"Unexpected schema error for legal_basis={valid_basis!r}: {[e.message for e in legal_basis_errors]}"
         )
