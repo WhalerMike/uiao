@@ -418,6 +418,12 @@ def test_cli_orgtree_readiness_bundle_oscal_out_wires_a6_emitter(tmp_path: Path)
     Phase 2 task 4: wires uiao.oscal.orgtree_evidence.emit_orgtree_evidence into
     the WS-A5 bundle CLI via the --oscal-out flag.
     """
+    # The OSCAL emitter imports `trestle.oscal.assessment_results` at module
+    # load time. trestle is in core runtime deps (pyproject `[project].dependencies`)
+    # so it is present in any normal `pip install -e .` and in CI (`pip install
+    # -e ".[api]"`). Skip cleanly when a contributor runs a `--no-deps` local
+    # install rather than emitting the noisy "No module named 'trestle'" error.
+    pytest.importorskip("trestle.oscal.assessment_results")
     from typer.testing import CliRunner
 
     from uiao.cli.ir import ir_app
