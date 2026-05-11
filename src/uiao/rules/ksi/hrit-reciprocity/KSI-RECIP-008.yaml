@@ -1,0 +1,69 @@
+ksi_id: KSI-RECIP-008
+title: Evidence Graph Contains ATO-Decision to Reciprocity-Record Edge
+category: configuration-management
+description: >
+  For every active reciprocity record in the registry, the UIAO evidence
+  graph (UIAO_113) must contain an explicit directed edge from an
+  `ato-decision` node to that `reciprocity-record` node.  This edge
+  establishes the authoritative causal link between the controlling ATO
+  decision and each consuming agency's reciprocity grant.  Reciprocity
+  records that are not anchored to an evidence-graph edge are orphaned
+  from the authoritative record chain and must be treated as invalid.
+security_objective: >
+  Ensure that every active reciprocity grant is provably derived from
+  a documented ATO decision in the evidence graph, providing a complete
+  and auditable authorisation lineage from controlling-ATO to each
+  consuming agency.
+related_controls:
+  - CM-3
+  - AU-10
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero active reciprocity records that lack a corresponding
+    `ato-decision → reciprocity-record` directed edge in the evidence
+    graph node store.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT rr.record_id
+    FROM reciprocity_records rr
+    LEFT JOIN evidence_graph_edges ege
+           ON ege.source_type  = 'ato-decision'
+          AND ege.target_type  = 'reciprocity-record'
+          AND ege.target_id    = rr.record_id
+    WHERE rr.status = 'active'
+      AND ege.edge_id IS NULL
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: hrit_reciprocity.validators.evidence_graph_edge_check
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-06"
+enabled: true
+tags:
+  - hrit
+  - hrit-reciprocity
+  - evidence-graph
+  - ato-decision
+  - provenance
+  - uiao-113
+severity: medium
+nist_mappings:
+  primary: CM-3
+  secondary:
+    - AU-10
+fedramp_controls:
+  - CM-3
+provenance:
+  spec_ref: UIAO_113
+  adr_ref: ADR-054
+  ruleset_version: "1.0"
+  introduced_by: WS-A10
