@@ -1,0 +1,70 @@
+ksi_id: KSI-RECIP-005
+title: SSP ATO-Cycle Cadence Met (30-Day Draft, 45-Day Final)
+category: planning-personnel
+description: >
+  For the current ATO cycle, the controlling System Security Plan must
+  meet the required cadence milestones: a draft SSP delivered no later
+  than 30 calendar days before the ATO decision date, and a final SSP
+  delivered no later than 45 calendar days before the ATO decision date.
+  These windows are defined in Spec2-D6.1 §4 and correspond to the
+  OPM HRIT solicitation reference cadence.  Missing a cadence milestone
+  generates a PLAN-DRIFT finding that blocks the ATO pipeline.
+security_objective: >
+  Ensure timely delivery of authoritative SSP documentation so that the
+  Authorising Official, consuming agencies, and the continuous-monitoring
+  pipeline all operate from current, reviewed security plans rather than
+  stale artifacts.
+related_controls:
+  - PL-2
+  - CA-6
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    For the active ATO cycle: draft_ssp_delivered_at is at most 30 days
+    before ato_decision_date; final_ssp_delivered_at is at most 45 days
+    before ato_decision_date.  Both timestamps must be non-null.
+  type: boolean
+  threshold: 1
+  operator: equals
+  logic: >
+    SELECT ato_cycle_id,
+           ato_decision_date,
+           draft_ssp_delivered_at,
+           final_ssp_delivered_at,
+           (draft_ssp_delivered_at  <= ato_decision_date - INTERVAL '30 days'
+            AND final_ssp_delivered_at <= ato_decision_date - INTERVAL '45 days') AS cadence_met
+    FROM ato_cycles
+    WHERE status = 'active'
+      AND cadence_met = FALSE
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: false
+  custom_validation_logic: hrit_reciprocity.validators.ssp_cadence_check
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: assessment-result
+version: "1.0"
+last_updated: "2026-05-06"
+enabled: true
+tags:
+  - hrit
+  - hrit-reciprocity
+  - ssp
+  - ato-cadence
+  - planning
+  - uiao-140
+severity: high
+nist_mappings:
+  primary: PL-2
+  secondary:
+    - CA-6
+fedramp_controls:
+  - PL-2
+provenance:
+  spec_ref: Spec2-D6.1
+  adr_ref: ADR-058
+  ruleset_version: "1.0"
+  introduced_by: WS-A10

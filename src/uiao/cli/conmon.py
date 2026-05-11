@@ -11,12 +11,18 @@ Usage (after `pip install -e .`)
     uiao conmon process --alert-json alerts/alert-001.json
     uiao conmon export-oa --output exports/oscal/uiao-ongoing-auth.json
     uiao conmon dashboard --output exports/conmon/ksi-dashboard.json
+    uiao conmon ato-cadence-check --award-date 2026-01-01 --ssp-draft-at 2026-01-25T00:00:00Z
 
 Or via module invocation:
     python -m uiao.cli conmon process --alert-json alerts/alert.json
 """
 
 from __future__ import annotations
+
+import json as _json
+from datetime import date as _date
+from datetime import datetime as _datetime
+from typing import Optional
 
 import typer
 from rich.console import Console
@@ -66,7 +72,7 @@ def conmon_process(
 
         uiao conmon process --alert-json alert.json --poam-path data/poam-findings.yml
     """
-    import json as _json
+    import json as _json_inner
     from pathlib import Path as _Path
 
     from uiao.monitoring.sentinel_hook import SentinelHook
@@ -77,7 +83,7 @@ def conmon_process(
         raise typer.Exit(code=1)
 
     _console.print(f"[bold]Processing Sentinel alert from {alert_json}...[/bold]")
-    payload = _json.loads(alert_path.read_text())
+    payload = _json_inner.loads(alert_path.read_text())
 
     hook = SentinelHook(monitoring_sources_path=monitoring_sources)
     alert = hook.parse_alert(payload)
@@ -181,3 +187,156 @@ def conmon_dashboard(
     out = exporter.export_yaml(output) if fmt_lower == "yaml" else exporter.export_json(output)
 
     _console.print(f"[green]KSI dashboard written to {out}[/green]")
+
+
+@conmon_app.command("ato-cadence-check")
+def conmon_ato_cadence_check(
+    award_date: str = typer.Option(
+        ...,
+        "--award-date",
+        help="Contract award date in YYYY-MM-DD format.",
+        metavar="YYYY-MM-DD",
+    ),
+    ssp_draft_at: Optional[str] = typer.Option(
+        None,
+        "--ssp-draft-at",
+        help="ISO-8601 datetime when the draft SSP was submitted (optional).",
+        metavar="ISO-DATETIME",
+    ),
+    ssp_final_at: Optional[str] = typer.Option(
+        None,
+        "--ssp-final-at",
+        help="ISO-8601 datetime when the final SSP was submitted (optional).",
+        metavar="ISO-DATETIME",
+    ),
+    current_ato_decision: Optional[str] = typer.Option(
+        None,
+        "--current-ato-decision",
+        help="Date of the most recent ATO authorization decision (YYYY-MM-DD, optional).",
+        metavar="YYYY-MM-DD",
+    ),
+    current_ato_expires: Optional[str] = typer.Option(
+        None,
+        "--current-ato-expires",
+        help="Date the current ATO expires (YYYY-MM-DD, optional).",
+        metavar="YYYY-MM-DD",
+    ),
+    emit_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit the CadenceReport as JSON instead of a rich table.",
+    ),
+    exit_on_fail: bool = typer.Option(
+        False,
+        "--exit-on-fail",
+        help="Exit with code 1 if the overall verdict is FAIL.",
+    ),
+) -> None:
+    """Validate ATO lifecycle SLA cadence (SSP submission windows + reauthorization).
+
+    Enforces the three SLAs defined in UIAO_140 §4 and ADR-054 Q&A #44:
+
+    \b
+    * SSP-Draft-30      — Draft SSP must be submitted within 30 days of award.
+    * SSP-Final-45      — Final SSP must be submitted within 45 days of award.
+    * Reauthorization-30 — Reauth package due at least 30 days before ATO expiry.
+
+    Verdicts: PASS | WARN | FAIL | N/A.  Overall is the worst-case severity.
+
+    Example::
+
+        uiao conmon ato-cadence-check \\
+            --award-date 2026-01-01 \\
+            --ssp-draft-at 2026-01-25T12:00:00Z \\
+            --ssp-final-at 2026-02-10T12:00:00Z \\
+            --current-ato-decision 2026-03-01 \\
+            --current-ato-expires 2027-03-01 \\
+            --exit-on-fail
+    """
+    from uiao.monitoring.ato_cadence import AtoCadenceInput, evaluate_ato_cadence
+
+    # --- Parse inputs ---
+    try:
+        parsed_award: _date = _date.fromisoformat(award_date)
+    except ValueError as exc:
+        _console.print(f"[red]Invalid --award-date '{award_date}': expected YYYY-MM-DD.[/red]")
+        raise typer.Exit(code=1) from exc
+
+    def _parse_dt(value: Optional[str], flag: str) -> Optional[_datetime]:
+        if value is None:
+            return None
+        try:
+            return _datetime.fromisoformat(value)
+        except ValueError as exc:
+            _console.print(f"[red]Invalid {flag} '{value}': expected ISO-8601 datetime.[/red]")
+            raise typer.Exit(code=1) from exc
+
+    def _parse_date(value: Optional[str], flag: str) -> Optional[_date]:
+        if value is None:
+            return None
+        try:
+            return _date.fromisoformat(value)
+        except ValueError as exc:
+            _console.print(f"[red]Invalid {flag} '{value}': expected YYYY-MM-DD.[/red]")
+            raise typer.Exit(code=1) from exc
+
+    inp = AtoCadenceInput(
+        award_date=parsed_award,
+        ssp_draft_submitted_at=_parse_dt(ssp_draft_at, "--ssp-draft-at"),
+        ssp_final_submitted_at=_parse_dt(ssp_final_at, "--ssp-final-at"),
+        current_ato_decision_date=_parse_date(current_ato_decision, "--current-ato-decision"),
+        current_ato_expires_at=_parse_date(current_ato_expires, "--current-ato-expires"),
+    )
+
+    report = evaluate_ato_cadence(inp)
+
+    # --- JSON output ---
+    if emit_json:
+        _console.print(_json.dumps(_json.loads(report.model_dump_json()), indent=2))
+        if exit_on_fail and report.overall == "FAIL":
+            raise typer.Exit(code=1)
+        return
+
+    # --- Rich table output ---
+    from rich.table import Table
+
+    _VERDICT_STYLE: dict[str, str] = {
+        "PASS": "green",
+        "WARN": "yellow",
+        "FAIL": "red",
+        "N/A": "dim",
+    }
+    _OVERALL_STYLE: dict[str, str] = {
+        "PASS": "bold green",
+        "WARN": "bold yellow",
+        "FAIL": "bold red",
+    }
+
+    table = Table(title="ATO Cadence SLA Report", show_header=True, header_style="bold")
+    table.add_column("SLA", style="cyan", no_wrap=True)
+    table.add_column("Threshold", justify="right")
+    table.add_column("Actual (days)", justify="right")
+    table.add_column("Verdict", justify="center")
+    table.add_column("Message")
+
+    for v in report.verdicts:
+        style = _VERDICT_STYLE.get(v.verdict, "")
+        actual_str = str(v.actual_days) if v.actual_days is not None else "—"
+        table.add_row(
+            v.name,
+            f"{v.threshold_days}d",
+            actual_str,
+            f"[{style}]{v.verdict}[/{style}]",
+            v.message,
+        )
+
+    _console.print(table)
+
+    overall_style = _OVERALL_STYLE.get(report.overall, "bold")
+    _console.print(
+        f"\nOverall: [{overall_style}]{report.overall}[/{overall_style}]  "
+        f"(evaluated at {report.evaluated_at.isoformat()})"
+    )
+
+    if exit_on_fail and report.overall == "FAIL":
+        raise typer.Exit(code=1)
