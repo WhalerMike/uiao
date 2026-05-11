@@ -40,7 +40,7 @@ Design rationale:
 - Starts with a fixed root (`ORG`) for easy regex validation and subtree matching
 - Uses uppercase alphanumeric segments (2-6 characters) separated by hyphens — machine-friendly, sortable, and human-readable
 - Supports both exact node (`-eq`) and branch/subtree (`-startsWith`) queries in dynamic group rules
-- Maximum depth: 8 segments after root (Level 8) — accommodates federal-agency and military-command hierarchies that routinely exceed 4 levels (Department → Sub-agency → Bureau → Office → Division → Branch → Section → Team). Adoption is governed by the codebook membership check, not the regex bound (see ADR-045).
+- Maximum depth: 8 segments after root (Level 8) — accommodates federal-agency and military-command hierarchies that routinely exceed 4 levels (Department → Sub-agency → Bureau → Office → Division → Branch → Section → Team). Adoption is governed by the codebook membership check, not the regex bound (see ADR-062).
 - Stored in: `extensionAttribute1` (synced from AD or populated by HR provisioning) — this is the single source of truth
 
 **Regex Validation Pattern:** `^ORG(-[A-Z0-9]{2,6}){0,8}$`
@@ -245,4 +245,4 @@ This codebook implements Principle 2 (Schema Fixity): the codebook structure is 
 |---------|------|--------|--------|
 | 1.0 | 2026-04-18 | Initial scaffold — structure, regex, drift rules | Copilot Tasks |
 | 2.0 | 2026-04-19 | Promoted to CANONICAL — added sample entries, dynamic group rules, AU mapping, PowerShell validation, implementation steps | Copilot Tasks |
-| 3.0 | 2026-04-26 | Extended hierarchy depth from 4 to 8 segments (ADR-045) — regex `{0,8}`, level table extended through Squad, boundary rule §2 updated | Governance Steward |
+| 3.0 | 2026-04-26 | Extended hierarchy depth from 4 to 8 segments (ADR-062, originally authored as ADR-045 — see ADR provenance block for the renumbering) — regex `{0,8}`, level table extended through Squad, boundary rule §2 updated | Governance Steward |

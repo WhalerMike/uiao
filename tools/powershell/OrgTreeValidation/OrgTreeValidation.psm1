@@ -25,7 +25,7 @@ $ErrorActionPreference = 'Stop'
 # Canonical regex sourced from UIAO_151 §regex / codebook.py:CANONICAL_REGEX.
 # Pester test in tests/OrgTreeValidation.Tests.ps1 verifies this literal
 # matches the value embedded in src/uiao/modernization/orgtree/codebook.py.
-$Script:CanonicalOrgPathPattern = '^ORG(-[A-Z0-9]{2,6}){0,4}$'
+$Script:CanonicalOrgPathPattern = '^ORG(-[A-Z0-9]{2,6}){0,8}$'
 
 
 function Test-OrgPathFormat {
@@ -33,7 +33,7 @@ function Test-OrgPathFormat {
     .SYNOPSIS
         Validates an OrgPath string against the canonical regex (UIAO_151).
     .DESCRIPTION
-        Returns $true if the OrgPath matches ^ORG(-[A-Z0-9]{2,6}){0,4}$;
+        Returns $true if the OrgPath matches ^ORG(-[A-Z0-9]{2,6}){0,8}$;
         $false otherwise. Pure offline check; no tenant access required.
     .PARAMETER OrgPath
         The OrgPath string to validate (e.g., "ORG-FIN-AP").
