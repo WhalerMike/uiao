@@ -46,7 +46,7 @@ def adapter() -> EntraDeviceOrgPathAdapter:
 class TestRegistryIntegrity:
     def test_default_registry_loads(self) -> None:
         reg = default_device_plane_registry()
-        assert reg.document_id == "MOD_C"
+        assert reg.document_id == "UIAO_153"
         # Phase 4 ships extensionAttribute1 and ARM-tag only; app-tag is
         # deferred to Phase 5 per ADR-038.
         assert reg.plane_names == {"extensionAttribute1", "ARM-tag"}
@@ -79,7 +79,7 @@ class TestRegistryValidation:
     def _good_yaml(self) -> str:
         return textwrap.dedent("""\
             schema_version: "1.0.0"
-            document_id: MOD_C
+            document_id: UIAO_153
             parent_canon: UIAO_007
             planes:
               - name: extensionAttribute1
@@ -112,7 +112,7 @@ class TestRegistryValidation:
             arm_tag:
               key: OrgPath
               key_regex: "^OrgPath$"
-              value_regex: "^ORG(-[A-Z0-9]{2,6}){0,4}$"
+              value_regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"
         """)
 
     def test_baseline_loads(self, tmp_path: Path) -> None:
@@ -143,12 +143,12 @@ class TestRegistryValidation:
 
     def test_rejects_arm_regex_divergent_from_codebook(self, tmp_path: Path) -> None:
         bad = self._good_yaml().replace(
-            'value_regex: "^ORG(-[A-Z0-9]{2,6}){0,4}$"',
+            'value_regex: "^ORG(-[A-Z0-9]{2,6}){0,8}$"',
             'value_regex: "^ORG.*$"',
         )
         p = tmp_path / "bad.yaml"
         p.write_text(bad)
-        with pytest.raises(DevicePlaneValidationError, match="canonical MOD_A regex"):
+        with pytest.raises(DevicePlaneValidationError, match="canonical UIAO_151 regex"):
             load_device_plane_registry(p)
 
 

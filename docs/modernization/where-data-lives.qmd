@@ -1,0 +1,148 @@
+---
+title: "Where OrgTree & OrgPath Data Lives"
+subtitle: "Codebook in Git, Values in Entra ID, Authority in HR"
+date: 2026-05-11
+---
+
+::: {.callout-note}
+## A clarifying explainer
+
+A recurring question from operators reading the OrgTree canon for the first
+time is "where is this data actually stored?" — is it in a registry checked
+into the repo, in Entra ID extension attributes, in HR, or somewhere else?
+This page answers that question in one place. The authoritative specs remain
+[UIAO_151 (Codebook)](codebook.qmd) and
+[UIAO_158 (JSON Schema)](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_158_OrgPath_JSON_Schema.md).
+:::
+
+[IMAGE-REF: UIAO-FIG-012]
+
+## The short answer
+
+There is no single "OrgPath registry." OrgPath data lives in **three places
+at once**, each with a distinct role:
+
+| Layer | Where it lives | What it holds | Role |
+|-------|---------------|---------------|------|
+| **Vocabulary** | `src/uiao/canon/data/orgpath/codebook.yaml` (Git) | The enumerated set of *valid* OrgPath codes, hierarchy, regex, lifecycle status | Defines the language |
+| **Assignment** | `extensionAttribute1` on each user / device in **Entra ID** | The *actual* OrgPath value carried by every principal | Carries the runtime data |
+| **Authority** | The **HR system** (Workday, SAP HR, agency HRIS, etc.) | The ground-truth org structure that drives values | Source of truth |
+
+If the three disagree, the resolution order is **HR → Entra → Codebook
+validation → Drift event**. IT never edits `extensionAttribute1` by hand.
+
+## Layer 1 — The vocabulary lives in Git
+
+The Codebook is a YAML file checked into the monorepo. It is not a database
+and not a registry service — it is a versioned, PR-reviewed document.
+
+- **File:** [`src/uiao/canon/data/orgpath/codebook.yaml`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/data/orgpath/codebook.yaml)
+- **Schema:** [`src/uiao/schemas/orgpath/codebook.schema.json`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/schemas/orgpath/codebook.schema.json)
+- **Canon doc:** [`UIAO_151_OrgPath_Codebook.md`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_151_OrgPath_Codebook.md)
+- **JSON Schema spec:** [`UIAO_158_OrgPath_JSON_Schema.md`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_158_OrgPath_JSON_Schema.md)
+
+Each entry in the codebook is an `OrgPathEntry` with:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `code` | string | Must match `^ORG(-[A-Z0-9]{2,6}){0,8}$` |
+| `level` | int 0–8 | Root = 0, Division = 1, … Squad = 8 |
+| `description` | string | Human-readable label |
+| `parentPath` | string \| null | Parent code (null at root) |
+| `status` | enum | `active` · `deprecated` · `pending` |
+| `owner` | string | Responsible role |
+| `createdDate` · `modifiedDate` | ISO 8601 | Audit trail |
+
+Codebook changes follow the canonical Contributor Workflow
+([UIAO_172](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_172_Canonical_Contributor_Workflow.md))
+— PR, CI validation, review, merge, provenance chain.
+
+## Layer 2 — The values live in Entra ID
+
+The actual OrgPath assigned to a given person or device is stored on the
+Entra ID directory object itself, in a Microsoft-provided extension
+attribute slot:
+
+| Principal type | Storage location |
+|----------------|-----------------|
+| **User** | `user.extensionAttribute1` |
+| **Device (Entra-joined)** | `device.extensionAttribute1` |
+| **Azure resource (ARM)** | ARM tag named `OrgPath` |
+| **Service principal** | `extensionAttribute1` on the SP's directory object (when in scope) |
+
+### Are these attributes pre-defined or assessment-defined?
+
+**The *slot* is pre-defined. The *meaning* and the *contents* are
+assessment-defined.**
+
+- `extensionAttribute1` through `extensionAttribute15` are **standard,
+  tenant-wide extensibility attributes** that exist on every Entra ID
+  tenant out of the box. UIAO does not create them.
+- What UIAO **does** define is the *contract*: "`extensionAttribute1`
+  carries an OrgPath that must validate against the current codebook."
+  That contract is declared canonically and asserted by the drift engine.
+- The *values* themselves are populated during migration (Runbook
+  [UIAO_156](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_156_Migration_Runbook_OU_to_Entra.md))
+  and maintained continuously by HR provisioning.
+
+If a tenant is already using `extensionAttribute1` for something else, the
+binding can be remapped — but only in the codebook frontmatter, not in
+individual rules. That single rebinding propagates everywhere.
+
+## Layer 3 — The authority lives in HR
+
+Entra ID is the *system of record* for identity. The HR system is the
+*system of truth* for organizational placement.
+
+```
+HR system (Workday / SAP HR / HRIS)
+        │  authoritative org assignment
+        ▼
+Provisioning pipeline (HR-driven inbound provisioning, Entra Connect, or custom adapter)
+        │  writes extensionAttribute1
+        ▼
+Entra ID user object
+        │  read by dynamic-group / AU / CA / drift engines
+        ▼
+Downstream governance (Dynamic Groups · AUs · CA · Licensing · Drift)
+```
+
+Operating rule (from UIAO_151): **"HR system is the authoritative source —
+IT never manually edits OrgPath values."** Any IT-originated write to
+`extensionAttribute1` is itself a drift event under the provenance rules in
+[UIAO_163 (Drift Engine)](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md).
+
+## What about the `registry/` directory?
+
+The repo's top-level [`registry/`](https://github.com/WhalerMike/uiao/tree/main/registry)
+directory is a common point of confusion. It is **not** the OrgPath store.
+It contains Governance OS adapter and pipeline manifests:
+
+| File | Purpose |
+|------|---------|
+| `manifest.json` · `adapter-manifest.json` | Adapter registration metadata |
+| `modernization.json` | Pipeline sequencing for the modernization canon |
+| `provenance.json` | Audit-trail schema |
+| `boundaries.json` | GCC-Moderate scope definitions |
+
+OrgPath data is **never** stored here.
+
+## Quick reference
+
+| Question | Answer |
+|----------|--------|
+| Where is the list of valid OrgPaths? | `src/uiao/canon/data/orgpath/codebook.yaml` |
+| Where is a specific user's OrgPath? | `user.extensionAttribute1` in Entra ID |
+| Who decides what value goes there? | The HR system, via provisioning |
+| Are the Entra attributes UIAO-defined? | No — Microsoft provides them; UIAO claims them |
+| Is there a database? | No — Git for vocabulary, Entra ID for values |
+| What enforces the binding? | Drift engine (UIAO_163) against codebook schema (UIAO_158) |
+
+## Related
+
+- [Drift Detection Walk-through](drift-walkthrough.qmd) — what the
+  engine catches when the three storage layers disagree
+- [OrgPath Codebook (UIAO_151)](codebook.qmd) — the canonical encoding scheme
+- [OrgTree A-Z Suite](orgtree.qmd) — the full 28-artifact governance stack
+- [Dynamic Groups](dynamic-groups.qmd) — how OrgPath drives group membership
+- [Delegation Matrix](delegation.qmd) — how OrgPath drives AU scoping

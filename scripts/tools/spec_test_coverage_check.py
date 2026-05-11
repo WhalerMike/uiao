@@ -2,7 +2,7 @@
 """spec_test_coverage_check.py — UIAO_103 CI gate.
 
 Re-runs ``spec_test_audit.py`` and compares the result against the
-committed coverage table at ``docs/docs/governance/spec-test-coverage.md``.
+committed coverage table at ``docs/docs/governance/spec-test-coverage.qmd``.
 
 Two modes:
 
@@ -36,7 +36,7 @@ Pipeline:
             │
             ▼
     spec_test_coverage_check.py --check
-            │  diff vs docs/docs/governance/spec-test-coverage.md
+            │  diff vs docs/docs/governance/spec-test-coverage.qmd
             ▼
     PR pass / fail
 
@@ -64,7 +64,7 @@ from spec_test_audit import (  # noqa: E402
     rollup,
 )
 
-DEFAULT_COVERAGE_PATH = REPO_ROOT / "docs" / "docs" / "governance" / "spec-test-coverage.md"
+DEFAULT_COVERAGE_PATH = REPO_ROOT / "docs" / "docs" / "governance" / "spec-test-coverage.qmd"
 
 _AUTO_BEGIN = "<!-- BEGIN AUTO -->"
 _AUTO_END = "<!-- END AUTO -->"

@@ -1,0 +1,109 @@
+---
+title: "SD-WAN Modernization Validation Suite"
+subtitle: "Conformance tests and validation criteria for the sdwan domain"
+doc-type: domain-validation-suite
+audience: [Customer, Assessor, Adapter Owner]
+classification: Controlled
+boundary: GCC-Moderate
+domain: sdwan
+canon-source: "src/uiao/canon/modernization-registry.yaml"
+canon-reference:
+  - "docs/customer-documents/modernization-specs/sdwan/sdwan.qmd"
+  - "docs/customer-documents/architecture-series/six-plane-architecture.qmd"
+derived-from: "uiao canon"
+---
+
+# SD-WAN Modernization Validation Suite
+
+## Scope
+
+Conformance tests and validation criteria for the SD-WAN domain.
+Pairs with the
+[SD-WAN Modernization Spec](../../../modernization-specs/sdwan/sdwan.qmd).
+The suite gates whether an SD-WAN deployment meets substrate
+conformance — primary focus is canonical decision-record emission,
+boundary disposition, and telemetry-as-control posture.
+
+[IMAGE-01: SD-WAN validation suite diagram. Center shows three transport lanes (MPLS, Internet, LTE/5G) feeding a central SD-WAN orchestrator. Above the orchestrator, a "Conformance Gate" rectangle with four test categories listed: Decision-record schema, Boundary disposition, Telemetry-as-control, Drift coverage. Below, a footer band reads "Each routing decision = canonical claim + provenance envelope". Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic.]
+
+## Test categories
+
+### 1. Decision-record schema
+
+For each SD-WAN policy decision (path selection, failover, application
+steering, QoS):
+
+- `controller_id`, `decision_kind`, `source_site`, `destination`,
+  `selected_path`, `policy_refs`, `evaluation_timestamp` are all
+  present.
+- `decision_kind` is one of the canonical enum values.
+- Full provenance envelope wraps the decision record.
+
+### 2. Boundary disposition
+
+- Each SD-WAN adapter declares a boundary disposition: `in-boundary`,
+  one of the named exceptions per ADR-059, or `compensating-controller`
+  with an authorizing ADR.
+- Controllers operating outside FedRAMP-Moderate without an
+  authorizing ADR fail registration.
+
+### 3. Telemetry-as-control
+
+- Path-quality telemetry, SLA observations, and policy decisions
+  flow through the canonical evidence chain.
+- Aggregated views (dashboards, SLA reports) derive from canonical
+  claims, not from a parallel telemetry pipeline.
+
+### 4. Drift detection coverage
+
+- `DRIFT-SCHEMA` — controller policy schema diverges from canonical
+  shape.
+- `DRIFT-PROVENANCE` — telemetry chain breakage between site,
+  controller, and substrate (common at boundary crossings).
+- `DRIFT-AUTHZ` — policy decision outside declared scope (e.g.
+  routing across an unauthorized transport class).
+- `DRIFT-SEMANTIC` — SLA classification mismatch between controller
+  and canonical SLA model.
+
+## Evidence expectations
+
+- Per-decision claim records with full provenance.
+- Path-quality telemetry as canonical claims (not as vendor-specific
+  log dumps).
+- OSCAL artifacts mapping SD-WAN decisions onto NIST 800-53 SC, AU
+  controls.
+- Boundary-disposition evidence for the controller plane.
+
+## Conformance gates
+
+| Gate | Required | Tier |
+|---|---|---|
+| **T1 — decision schema** | Decision records validate against canon schema | Required |
+| **T2 — boundary disposition** | Controller boundary explicitly declared | Required |
+| **T3 — telemetry-as-control** | Telemetry flows through evidence chain | Required |
+| **T4 — drift coverage** | All four SD-WAN-relevant drift classes detected | Target |
+
+## Drift procedures
+
+`DRIFT-PROVENANCE` is common at boundary crossings between site,
+controller, and substrate. P2 findings auto-remediate when the
+adapter can re-classify the claim as `derived`; otherwise escalate
+within 1 hour.
+
+## Honest limits
+
+- SD-WAN vendor maturity in federal cloud boundaries varies; many
+  controllers operate outside FedRAMP-Moderate. Compensating-
+  controller adapter logic is per-program engineering.
+- Path-quality telemetry from some vendors is proprietary; canonical
+  emission may require synthesis with explicit
+  `source_classification: synthesized` per claim.
+- Identity-aware SD-WAN policy is not universally supported; programs
+  with identity-naive SD-WAN cannot demonstrate full T4 conformance
+  even if drift detection technically runs.
+
+## Related documents
+
+- [Modernization Spec — SD-WAN](../../../modernization-specs/sdwan/sdwan.qmd)
+- [Architecture Series — Six-Plane Architecture](../../../architecture-series/six-plane-architecture.qmd)
+- [Modernization Registry (canon)](../../../../../src/uiao/canon/modernization-registry.yaml)

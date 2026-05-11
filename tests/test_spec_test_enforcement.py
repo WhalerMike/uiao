@@ -366,7 +366,7 @@ def test_update_preserves_manual_section_below_auto_markers(tmp_path):
 
 def test_canonical_coverage_doc_baseline_is_intact_in_repo():
     """Smoke-guard against accidental deletion of the committed table."""
-    coverage_path = REPO_ROOT / "docs" / "docs" / "governance" / "spec-test-coverage.md"
+    coverage_path = REPO_ROOT / "docs" / "docs" / "governance" / "spec-test-coverage.qmd"
     assert coverage_path.is_file(), "coverage doc must be committed"
     text = coverage_path.read_text(encoding="utf-8")
     assert "<!-- BEGIN AUTO -->" in text

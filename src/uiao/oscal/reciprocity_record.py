@@ -41,7 +41,7 @@ References
 - UIAO_140 §6 — Evidence Graph Mapping and field set
 - ADR-054 §Implementation — deferred emitter this module closes
 - ADR-058 — HRIT Productization mission ratifying this workstream
-- UIAO_143 §4 — Reciprocity-Record Artifact (operational spec)
+- UIAO_144 §4 — Reciprocity-Record Artifact (operational spec)
 """
 
 from __future__ import annotations

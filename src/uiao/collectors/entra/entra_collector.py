@@ -336,7 +336,7 @@ class EntraCollector(BaseCollector):
         Normalize a ``/users?$select=...,onPremisesExtensionAttributes`` response
         into the shape the Entra adapter's ``normalize()`` consumes.
 
-        OrgPath (MOD_A) lives in ``onPremisesExtensionAttributes.extensionAttribute1``
+        OrgPath (UIAO_151) lives in ``onPremisesExtensionAttributes.extensionAttribute1``
         after Entra Connect syncs it in from on-prem AD. This method surfaces the
         attribute alongside the rest of the user record so downstream drift
         classification can evaluate format + codebook + phantom drift without

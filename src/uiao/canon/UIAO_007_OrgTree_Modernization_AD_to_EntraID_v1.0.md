@@ -181,7 +181,7 @@ OrgPath as a cross-plane dependency graph (per [UIAO_009](UIAO_009_Microsoft_Cov
 | Defender for Cloud Apps Shadow IT discovery | App → app edges (shadow apps consuming sanctioned-app data) | `defender-for-cloud-apps` | conformance | adapter-registry |
 | Defender for Servers EDR / posture | Server → vulnerability edges; server-risk weighting | `defender-for-servers` | conformance | adapter-registry |
 | Azure Migrate dependency map | Server → server edges (port + protocol + service-call graph). **Primary native feed for cross-server dependencies — Gap #4 per UIAO_009 §3.4.** | `azure-migrate` | conformance | adapter-registry |
-| Arc-enabled server inventory | Server → cloud edges; OrgPath ARM tag membership | `entra-device-orgpath` (MOD_C) | modernization | modernization-registry |
+| Arc-enabled server inventory | Server → cloud edges; OrgPath ARM tag membership | `entra-device-orgpath` (UIAO_153) | modernization | modernization-registry |
 | Azure Policy for Arc compliance state | Server-plane policy compliance edges | `azure-policy-arc` | modernization | modernization-registry |
 | M365 audit logs (Exchange, SharePoint, Teams, Purview, Defender for O365) | App-plane access and configuration-change edges | `m365` | modernization | modernization-registry |
 | ScubaGear assessment findings | M365 baseline conformance signals (input to drift) | `scubagear` | conformance | adapter-registry |
