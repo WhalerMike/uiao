@@ -110,6 +110,47 @@ class POAMEntryNode:
 
 
 @dataclass
+class ATODecisionNode:
+    """Node Type 12 — ato-decision (UIAO_113 v1.2 / ADR-058 / UIAO_140 §6).
+
+    The singular root of authority under the Single-ATO Reciprocity Model.
+    Continuous-monitoring evidence attaches to this node, not to individual
+    reciprocity records.
+    """
+
+    id: str
+    controlling_ato_id: str = ""
+    authorizing_official: str = ""
+    decision_date: str = ""
+    expires_at: str = ""
+    ssp_ref: str = ""
+    provenance: Dict[str, Any] = field(default_factory=dict)
+    extra: Dict[str, Any] = field(default_factory=dict)
+    node_type: str = "ato-decision"
+
+
+@dataclass
+class ReciprocityRecordNode:
+    """Node Type 13 — reciprocity-record (UIAO_113 v1.2 / ADR-058 / UIAO_140 §6).
+
+    Scopes one consuming agency's entitlement under a controlling ATO.
+    The canonical key is ``{controlling_ato_id}/{consuming_agency_code}``.
+    """
+
+    id: str
+    record_id: str = ""
+    controlling_ato_id: str = ""
+    consuming_agency_code: str = ""
+    effective_at: str = ""
+    expires_at: str = ""
+    legal_basis: str = ""
+    record_hash: str = ""
+    signature_ref: str = ""
+    extra: Dict[str, Any] = field(default_factory=dict)
+    node_type: str = "reciprocity-record"
+
+
+@dataclass
 class Edge:
     from_id: str
     to_id: str
@@ -147,6 +188,14 @@ class EvidenceGraph:
     def add_poam_entry(self, node):
         self._add(node)
 
+    def add_ato_decision(self, node: ATODecisionNode) -> None:
+        """Add an ATO Decision node (UIAO_113 v1.2 — node type 12)."""
+        self._add(node)
+
+    def add_reciprocity_record(self, node: ReciprocityRecordNode) -> None:
+        """Add a Reciprocity Record node (UIAO_113 v1.2 — node type 13)."""
+        self._add(node)
+
     def _link(self, from_id, to_id, edge_type, **props):
         edge = Edge(from_id=from_id, to_id=to_id, edge_type=edge_type, properties=props)
         self._edges.append(edge)
@@ -167,6 +216,18 @@ class EvidenceGraph:
 
     def link_remediated_by(self, f, po, **p):
         self._link(f, po, "remediated-by", **p)
+
+    def link_authorizes_reciprocity(self, ato_id: str, record_id: str, **p: Any) -> None:
+        """ATO Decision → Reciprocity Record (UIAO_113 v1.2 edge: authorizes-reciprocity)."""
+        self._link(ato_id, record_id, "authorizes-reciprocity", **p)
+
+    def link_scopes_to_agency(self, record_id: str, agency_id: str, **p: Any) -> None:
+        """Reciprocity Record → Consuming Agency (UIAO_113 v1.2 edge: scopes-to-agency)."""
+        self._link(record_id, agency_id, "scopes-to-agency", **p)
+
+    def link_derives_from_ssp(self, record_id: str, ssp_id: str, **p: Any) -> None:
+        """Reciprocity Record → SSP (UIAO_113 v1.2 edge: derives-from-ssp)."""
+        self._link(record_id, ssp_id, "derives-from-ssp", **p)
 
     def get(self, node_id):
         return self._nodes.get(node_id)
