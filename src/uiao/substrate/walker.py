@@ -54,6 +54,12 @@ class DriftFinding:
     severity: str
     path: str
     detail: str
+    # Machine-readable label for sub-flavors within a `drift_class`. The walker
+    # emits multiple kinds of DRIFT-PROVENANCE (dangling code refs, missing
+    # canon docs, retired-slug citations); `subkind` lets callers and the CLI
+    # filter on the specific check via equality instead of substring-on-detail.
+    # `None` for findings that don't need to be distinguished.
+    subkind: Optional[str] = None
 
 
 @dataclass
@@ -100,6 +106,7 @@ class SubstrateReport:
                     "severity": f.severity,
                     "path": f.path,
                     "detail": f.detail,
+                    "subkind": f.subkind,
                 }
                 for f in self.findings
             ],
@@ -771,5 +778,6 @@ def _scan_retired_slugs(
                         severity="P2",
                         path=file_rel,
                         detail=detail,
+                        subkind="retired-slug",
                     )
                 )
