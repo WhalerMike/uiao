@@ -1,0 +1,289 @@
+---
+title: "B.1.1 The Three-Way GCC-Moderate Compliance Conflict (TIC 3.0 × Zero Trust × FedRAMP 20x)"
+subtitle: "Why GCC-Moderate cannot simultaneously satisfy CASB inspection, continuous device-posture verification, and clean-boundary continuous monitoring — and what the substrate surfaces about it"
+doc-type: leaf
+audience: [Executive, Customer, Architect, Assessor]
+classification: Controlled
+boundary: GCC-Moderate
+author: Michael Stratton
+date: "May 2026"
+status: Draft
+canon-source: "inbox/New_FedRAMP_Boundary/M365_GCC-Moderate_Telemetry_and_Boundary_Assessment_External_with_images.docx"
+canon-reference: "src/uiao/canon/compliance/reference/gcc-moderate-boundary-assessment/"
+gap-matrix-data: "src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml"
+parent-leaf: "docs/customer-documents/compliance/boundary-authorization/B1-gcc-moderate-boundary-model.qmd"
+related-narratives:
+  - "docs/customer-documents/whitepapers/federal-ssot-alignment.qmd"
+  - "docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd"
+  - "docs/docs/14_TIC3_F5RetirementRoadmap.qmd"
+repo-path: docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd
+pillar: compliance
+sub-category: B
+leaf: B.1.1
+created-at: 2026-05-11
+updated-at: 2026-05-11
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+**CONTROLLED**
+
+# B.1.1 The Three-Way GCC-Moderate Compliance Conflict
+
+## 1. Position
+
+The GCC-Moderate boundary model documented in
+[B.1](B1-gcc-moderate-boundary-model.qmd) establishes the structural
+telemetry constraints, the four capability-disposition classes, and the
+ZTMM maturity ceiling that the boundary imposes. This leaf treats the
+single most acute compliance finding the boundary produces: a structural
+three-way conflict between TIC 3.0, the CISA Zero Trust Maturity Model,
+and FedRAMP 20x continuous monitoring requirements, all of which are
+mandated for federal civilian agencies and none of which GCC-Moderate
+alone can satisfy simultaneously.
+
+The conflict is not a Microsoft product defect. It is a direct consequence
+of M365 GCC-Moderate running on Azure Commercial infrastructure: telemetry
+and diagnostic data flow to Azure Commercial endpoints, Entra ID tenant
+control planes are shared with non-GovCloud tenants, and the location
+services TIC 3.0 CASB enforcement assumes are not present at the
+GCC-Moderate boundary. Each of the three federal mandates was designed
+against a clean cloud boundary assumption that GCC-Moderate, by
+architecture, does not provide.
+
+Agencies migrating into a GCC-Moderate tenant structurally inherit this
+conflict the moment Entra ID becomes their authoritative identity plane.
+The conflict does not surface during the migration itself — it surfaces
+during the next ATO renewal, the next 3PAO assessment, or the next CISA
+inspection of Zero Trust maturity. The substrate's role is to make the
+conflict an explicit, attributed, continuously verified finding before
+that point — not after.
+
+## 2. The Three-Way Conflict
+
+The three mandates form a structural triangle in which each pair has a
+specific conflict against the GCC-Moderate architecture. None of the three
+can be dropped — all three are mandated for federal civilian agencies —
+and no single compensating control resolves all three simultaneously.
+
+| Mandate axis | Requires | GCC-Moderate provides | Structural conflict |
+|---|---|---|---|
+| **TIC 3.0** | CASB inspection of all cloud service traffic with policy decisions referencing source/destination identity, geolocation, and device posture | Telemetry routes to Azure Commercial multi-tenant analytics endpoints that bypass the agency's TIC inspection point; geolocation signal fidelity reduced; CASB enforcement at the boundary cannot inspect what the boundary forwards to commercial endpoints | The inspection point exists, but the data flow that would feed it is structurally routed around it |
+| **CISA Zero Trust Maturity Model** | Continuous verified device posture as input to every access decision; real-time identity risk signals from ML-driven analytics | Hybrid-joined devices in GCC-Moderate tenants have degraded posture-signal fidelity (Adoption Score unavailable; Endpoint Analytics Advanced and Intune behavioral signals reduced — see [B.1 §3](B1-gcc-moderate-boundary-model.qmd)); real-time Identity Protection ML risk gated by the same boundary | Initial-tier Identity and Devices pillars without significant agency analytics — see [B.1 §4](B1-gcc-moderate-boundary-model.qmd) |
+| **FedRAMP 20x continuous monitoring** | Continuous evidence of control effectiveness across a coherent authorization boundary; rapid-detection assumptions assume the boundary is observable | The boundary is observable for control logging but not for the higher-order behavioral analytics that "rapid detection and investigation" requires (CISA BOD 25-01 intent — see [B.1 §5](B1-gcc-moderate-boundary-model.qmd)); FedRAMP 20x's Minimum Assessment Scope refinement is the future path, not the current state | Core logging meets the letter; observability for rapid detection requires agency-built analytics that themselves require export the boundary constrains |
+
+The triangle is structural because each axis depends on telemetry the
+boundary either constrains, redirects, or degrades, and the three axes
+make non-equivalent demands on that same telemetry. Closing one corner
+does not close the other two.
+
+### 2.1 TIC 3.0 — Inspection Point Without Inspectable Flow
+
+TIC 3.0 explicitly models cloud service consumption as a flow that the
+agency's Trusted Internet Connection provider must inspect, classify, and
+make policy decisions against. The architecture assumes the flow is
+observable at the TIC point. In GCC-Moderate, a meaningful fraction of the
+telemetry the agency would want to inspect — diagnostic data, audit
+signal, Entra ID risk-evaluation traffic — does not transit the TIC
+boundary in inspectable form because it routes from the Microsoft tenant
+control plane to Microsoft's commercial multi-tenant analytics pipelines
+through Microsoft-controlled paths that are not the agency's TIC.
+
+The TIC 3.0 CASB use-case library describes the policy actions an agency
+should be able to take on inspectable cloud traffic. Many of those actions
+remain available against the traffic GCC-Moderate does route through the
+agency network. The conflict is that the policy decisions an agency wants
+to make on the basis of identity risk, behavioral anomaly, or
+machine-learning-derived classification depend on signals produced by the
+commercial pipelines the boundary structurally bypasses. The agency can
+inspect what flows through the TIC. The agency cannot make TIC 3.0
+policy decisions of the fidelity TIC 3.0 envisions against signals the
+boundary keeps from reaching the TIC.
+
+### 2.2 CISA Zero Trust Maturity Model — Posture Verification at Initial Tier
+
+The CISA Zero Trust Maturity Model v2.0 requires that device posture be
+continuously verified and that identity risk be evaluated in real time as
+inputs to every access decision. The Maturity Model classifies these
+capabilities at the Advanced and Optimal tiers when they are continuous,
+behavior-aware, and ML-driven; at the Initial tier when they are
+periodic, static, and rule-based.
+
+Hybrid-joined devices in a GCC-Moderate tenant are subject to the
+degradations the boundary imposes on the underlying telemetry. The
+Endpoint Analytics Advanced and Intune behavioral analytics that feed
+Advanced-tier posture verification are constrained — see the disposition
+table in [B.1 §3](B1-gcc-moderate-boundary-model.qmd).
+Real-time Identity Protection ML risk and Continuous Access Evaluation
+are similarly gated for the same architectural reason. Per the maturity
+table in [B.1 §4](B1-gcc-moderate-boundary-model.qmd),
+GCC-Moderate alone caps near Initial in Identity, Devices, and Networks
+unless the agency builds its own analytics to compensate.
+
+The conflict is that the Zero Trust Executive Order (EO 14028) and OMB
+M-22-09 do not contemplate that the underlying platform might constrain
+the signals continuous verification requires. The mandate assumes the
+signals are available; the boundary is the reason they are not.
+
+### 2.3 FedRAMP 20x Continuous Monitoring — Clean-Boundary Assumption
+
+FedRAMP 20x continuous monitoring contemplates an authorization boundary
+that is both coherent (every artifact lives inside the boundary or is
+explicitly scoped out) and observable (the boundary's behavior is
+continuously evidenced through the substrate that produces the
+authorization package). FedRAMP 20x's Minimum Assessment Scope work — the
+MAS-CSO-IIR and MAS-CSO-MDI refinements — is the program's response to
+the recognition that some service-provider analytics pipelines should be
+removed from the agency's authorization scope rather than blocked at the
+network boundary.
+
+This is the right structural answer over time. It is not the current
+state. Today, the GCC-Moderate boundary is observable for the controls
+FedRAMP Moderate enumerates (the core logging categories of CISA BOD
+25-01 and OMB M-21-31) but not for the behavioral and ML-derived analytics
+that CISA BOD 25-01's "rapid detection and investigation" intent requires
+— see [B.1 §5](B1-gcc-moderate-boundary-model.qmd).
+The conflict is that FedRAMP 20x's continuous-monitoring narrative assumes
+behavioral observability that the boundary, in its current scope, does
+not provide.
+
+## 3. Purview Information Protection Telemetry Constraint
+
+The three-way conflict described above is the headline finding. A specific
+data-governance corollary deserves its own treatment because it propagates
+into every downstream Azure SSOT trust assertion: Microsoft Purview
+Information Protection features — scan-driven sensitivity classification,
+adaptive policy evaluation, lineage attribution to Entra ID principals —
+depend on telemetry and policy signals that traverse the Azure Commercial
+boundary when running under GCC-Moderate.
+
+The consequence is that every Purview governance assertion in a
+GCC-Moderate tenant inherits the boundary's constraint on the underlying
+identity-state telemetry. A sensitivity label applied by a principal whose
+authorization state has drifted is not a compliant control if the drift
+itself is not observable through the boundary the label policy depends on.
+A lineage record attributing a change to a principal in a state the
+boundary's telemetry cannot continuously verify is an evidence artifact
+whose strength is bounded by that verification gap.
+
+This is the architectural reason the
+[OrgPath Narrative chapter 07a](../../orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd)
+positions the substrate as the identity governance layer *beneath* the
+Microsoft Fabric + OneLake + Purview Azure SSOT stack: the trust
+assertions Purview makes about data assets are only as reliable as the
+identity-state telemetry the boundary either does or does not deliver.
+The substrate's role at the GCC-Moderate boundary is to make the
+verification gap that constrains those assertions a continuously
+attributed finding, rather than an assumption hidden in the boundary's
+fine print.
+
+## 4. UIAO Compensating Controls Surface
+
+The substrate does not remediate the boundary. The boundary is structural,
+and Section 6 of [B.1](B1-gcc-moderate-boundary-model.qmd)
+describes the MAS 2026 path as the realistic future remediation. What the
+substrate does is make the conflict an attributed finding, document the
+agency-side compensating controls the conflict requires, and demonstrate
+that those controls are continuously verified.
+
+The Compliance Control Plane is the substrate surface that owns these
+compensating controls. For each axis of the three-way conflict, the
+Compliance Plane records:
+
+- **The mandate the agency is subject to** — TIC 3.0, the Zero Trust
+  Maturity Model pillar, or the FedRAMP 20x continuous-monitoring
+  requirement.
+- **The boundary constraint that conflicts with the mandate** — which
+  signal is unavailable, degraded, or routed past the agency's
+  inspection point.
+- **The compensating control the agency has put in place** — agency-side
+  analytics, third-party SASE or UEBA overlay, custom KQL or SIEM rules,
+  trust-algorithm overlay in the agency SIEM. The compensating-control
+  catalogue in [B.1 §5](B1-gcc-moderate-boundary-model.qmd)
+  enumerates the mandate-by-mandate options that are observed in the
+  field.
+- **The verification surface** — the substrate's own drift findings
+  (`DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`) that demonstrate
+  the compensating control is operating, and the cadence on which the
+  Evidence Bundle records the finding.
+
+This is the agency-side counterpart of the boundary-side restriction: the
+boundary does what it does, and the Compliance Plane records what the
+agency does in response. The pairing is what an assessor consumes to
+evaluate whether the compensating posture actually closes the conflict
+the boundary creates.
+
+## 5. Evidence Bundle Finding Shape
+
+The substrate emits the three-way conflict as a first-class compliance
+finding in the Evidence Bundle. The finding shape is structured rather
+than narrative, so an assessor can consume it the same way the substrate's
+other artifacts are consumed.
+
+| Field | Content |
+|---|---|
+| `finding_id` | `GCC-BOUNDARY-3WAY-001` |
+| `finding_class` | `compliance-conflict` |
+| `severity` | `P1` — structural, agency-wide, persistent until either the boundary or the mandate changes |
+| `mandates_affected` | `["TIC-3.0", "CISA-ZTMM", "FedRAMP-20x"]` |
+| `boundary` | `gcc-moderate` |
+| `gap_matrix_rows` | references into `src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml` for the specific telemetry rows the conflict depends on |
+| `compensating_controls` | array of agency-side controls documented in the Compliance Plane, each with its own verification surface |
+| `verification_drift_findings` | references to `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY` findings that continuously evidence the compensating controls are operating |
+| `remediation_path` | `MAS-2026` (boundary scope refinement) — see [B.1 §6](B1-gcc-moderate-boundary-model.qmd) |
+| `evidence_emission_cadence` | per the standard substrate cadence; the finding accumulates rather than being assembled at assessment time |
+
+The finding is intentionally a single artifact rather than three separate
+findings, one per mandate, because the conflict is structural across all
+three. Splitting it would lose the architectural shape and produce three
+narrower findings that an assessor would have to recompose into the
+triangle the boundary actually creates. The compensating-controls field
+is an array because the agency response is typically a portfolio of
+controls — agency analytics + third-party overlay + custom rules — rather
+than a single compensating action.
+
+## 6. What This Finding Is and Is Not
+
+This finding is not a vulnerability. It is not a misconfiguration. It is
+not something a vendor patch will close. It is a structural compliance
+conflict the agency inherits the moment a Microsoft Entra ID GCC-Moderate
+tenant becomes its authoritative identity plane, and it remains active
+until either the boundary is restructured (the MAS 2026 path) or the
+mandates that conflict with the boundary are themselves restructured.
+
+The finding is also not an indictment of Microsoft. Microsoft has been
+explicit about what GCC-Moderate provides and where the boundary sits;
+the analytical pipelines on the other side of the boundary are real
+services that Microsoft is correctly not bringing into FedRAMP-Moderate
+scope. The conflict is between the agency-side mandates and the
+boundary-side scope decisions. The substrate's role is to make that
+relationship explicit, attributed, and continuously verified, so that
+the agency's compliance posture under the conflict is itself observable.
+
+## 7. Cross-References
+
+- **Parent boundary model**: [B.1 GCC-Moderate Boundary Model](B1-gcc-moderate-boundary-model.qmd)
+- **Configuration-variant sibling**: [B.1.2 Teams Phone Under TIC 2.0 Centralized DIA, F5 Removed, No SD-WAN](B1-2-teams-phone-tic2-centralized-dia.qmd)
+- **Federal mandate alignment whitepaper**: [Federal SSOT Alignment](../../whitepapers/federal-ssot-alignment.qmd)
+- **Azure SSOT stack identity-substrate role**: [OrgPath Narrative 07a — UIAO Beneath the Azure SSOT Stack](../../orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd)
+- **TIC 3.0 F5 retirement roadmap**: [Doc 14](../../../docs/14_TIC3_F5RetirementRoadmap.qmd)
+- **Drift taxonomy**: [Doc 16](../../../docs/16_DriftDetectionStandard.qmd)
+- **Machine-readable gap matrix**: [`canon/data/gcc-moderate-telemetry-gaps.yaml`]({{< meta gap-matrix-data >}})
+- **Source memo**: [`{{< meta canon-source >}}`]({{< meta canon-source >}})
+
+## 8. Provenance
+
+This leaf formalizes the three-way conflict treatment promised by the
+Federal SSOT Alignment whitepaper §4 and the OrgPath Narrative chapter
+07a §Chapter 7. Its content derives from the M365 GCC-Moderate Telemetry
+& Boundary Assessment (External v1.0, 2026-04-25) — the same canon source
+B.1 derives from — restructured around the three-axis compliance
+triangle rather than the telemetry-capability disposition framing B.1
+uses. The yaml gap matrix at
+`src/uiao/canon/data/gcc-moderate-telemetry-gaps.yaml` remains the
+machine-readable authority for per-capability evidence; this leaf is the
+narrative finding artifact built on top of that matrix.
