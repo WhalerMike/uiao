@@ -1,0 +1,209 @@
+---
+title: "UIAO_114 HA / Fault Tolerance — Kickoff Plan"
+subtitle: "Defer-exit criteria, baseline measurement infrastructure, and Phase 2 sequencing"
+date: "2026-05-10"
+date-format: "MMMM D, YYYY"
+description: "Project-plan companion to the §4.4 assessment that deferred UIAO_114. Defines the concrete criteria for promoting UIAO_114 from ⚠️ aspirational / deferred to 🟡 implementation-active, the baseline measurement infrastructure required first, and the implementation sequencing once the criteria are met."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Template | UIAO_127 Project Plan (kickoff shape) |
+| Subject | UIAO_114 — High-Availability & Fault-Tolerance Layer |
+| Plan version | 1.0 (first delivery) |
+| Closes | Action item 114.2 from the [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) (re-open during Phase 2) |
+| Predecessors | [UIAO_117 Phase 1 recovery](2026-04-26-uiao_117-phase1-recovery.qmd) (manual SOP for Class A/B failures) |
+
+## Purpose
+
+The §4.4 assessment correctly deferred UIAO_114 to Phase 2. This plan
+makes that deferral **operational** by naming three things explicitly:
+
+1. **Defer-exit criteria** — the empirical signals that say "the
+   substrate is now far enough along that HA work is the right next
+   investment."
+2. **Baseline measurement infrastructure** — what must ship *before*
+   the implementation work itself, so the HA targets can be measured
+   and the impl can be reviewed against the spec's SLOs.
+3. **Phase 2 sequencing** — the implementation order once the
+   criteria fire, so the work is not a forklift.
+
+This is a kickoff plan, not an implementation plan. No HA code lands
+in this PR; the work this plan describes lives behind the criteria
+below.
+
+## Defer-exit criteria
+
+UIAO_114 leaves "deferred" status when **all three** of the following
+fire. Until then, the substrate-status table continues to show
+UIAO_114 as ⚠️ aspirational with a "deferred to Phase 2" annotation.
+
+### C1 — A regulated tenant is on the substrate
+
+The substrate today operates outside any FedRAMP authorization
+boundary (per substrate-status §"Test-tier status"). HA is operational
+infrastructure for a tenant; without a tenant, there's nothing to
+keep available. C1 fires when at least one regulated agency tenant is
+running production workloads on the substrate.
+
+**Measurement:** presence of an entry in `src/uiao/canon/tenant-registry.yaml`
+(does not yet exist; UIAO_119 work introduces it) with
+`environment: production` and `boundary: gcc-moderate` (or named
+exception per ADR-059).
+
+### C2 — A real evidence freshness baseline exists
+
+The spec's SLOs (M365/AAD evidence <15min lag, drift <5min, OSCAL
+<10min) are aspirational without an empirical baseline. C2 fires when
+the orchestrator has logged 30 consecutive days of pipeline timing
+against the production tenant from C1.
+
+**Measurement:** `EvidenceFreshnessReport` (see baseline infrastructure
+below) emits 30 days of structured per-pipeline timing without gaps.
+
+### C3 — A platform team is named the owner
+
+HA is operational-infrastructure work, not core governance. The
+substrate maintainer (singular today) cannot honor the HA SLOs
+themselves. C3 fires when a platform team is formally assigned
+ownership of the substrate's runtime environment.
+
+**Measurement:** ADR landed naming the platform team and their
+escalation contract; entry in `OWNERS` file at the substrate root.
+
+## Baseline measurement infrastructure (ships first)
+
+Before any HA implementation work begins, the substrate must be able
+to *measure* its own availability and freshness against the spec's
+SLOs. Three deliverables, in order:
+
+### B1 — Per-pipeline timing surface (extends UIAO_115 work)
+
+The orchestrator already records wall-clock duration per plane and
+per adapter run (per the §4.4 UIAO_115 assessment). B1 extends this
+into a structured `PipelineTimingReport` API that:
+
+- emits per-run, per-plane latency in canonical claim form
+- ages out into the data-lake archive on the same retention contract
+  as evidence (UIAO_109)
+- is queryable via the Auditor API with a 90-day rolling window
+
+This is foundational for both UIAO_114 (availability measurement)
+and UIAO_115 (latency-budget enforcement). B1 is shared infrastructure;
+the [UIAO_115 kickoff plan](2026-05-10-uiao_115-perf-kickoff-plan.qmd)
+re-uses it.
+
+### B2 — Regional health probe
+
+A periodic `RegionalHealthCheck` that records:
+
+- Substrate API reachability per declared region
+- Evidence freshness per tenant per pipeline (drift staleness >5min,
+  OSCAL staleness >10min)
+- Adapter dispatch success rate per adapter per region
+
+Emitted into the same canonical claim chain as B1. Surfaces the
+"is the region degraded?" signal that any failover orchestration would
+have to consume.
+
+### B3 — Failover-event provenance schema
+
+Per spec §6, failover/failback events must be cryptographically bound
+to provenance. B3 ships the canonical claim schema for failover
+events under `src/uiao/schemas/failover-event/` plus the
+`FailoverEventEmitter` library that signs events and writes them
+into the evidence chain.
+
+B3 is **schema + library only** — no runtime that triggers failover.
+That work is the implementation phase below.
+
+## Implementation sequencing (after defer-exit criteria fire)
+
+Once C1–C3 have fired and B1–B3 have shipped, implementation
+proceeds in this order. None of these blocks is large, but each
+gates the next.
+
+### Phase 2A — Single-region HA hardening (~2 weeks)
+
+- `RetryPolicy` exposed as canon-configured per-adapter (replaces
+  the hardcoded 0.5s base / 2-attempt loop in
+  `src/uiao/orchestrator/scheduler.py`).
+- Adapter circuit-breakers with health-check-gated half-open state.
+- Plane-level error-budget tracking emitting structured budget claims.
+
+Output: substrate-status table marks UIAO_114 as 🟡 (single-region HA
+shipped). The cross-region work below extends from there.
+
+### Phase 2B — Multi-region foundation (~3 weeks)
+
+- Cross-region data-lake replication via the platform team's chosen
+  storage primitive (out of scope for substrate code; substrate
+  consumes whatever the platform team provides).
+- `RegionalCohort` declaration in tenant registry; tenant home/backup
+  region binding.
+- Standby-region instance of the FastAPI service in
+  `src/uiao/api/`, read-only against replicated lake.
+
+### Phase 2C — Failover orchestration (~3 weeks)
+
+- `FailoverController` consumes B2 health probes; trigger criteria
+  declared in canon (not hardcoded).
+- Promotion workflow: freeze-writes → promote-metadata → promote-
+  services → resume-pipelines → emit signed failover claim per B3.
+- Failback workflow: reverse, with re-replication validation.
+
+### Phase 2D — SLO enforcement and error-budget consumption
+
+- Latency-budget alerts wired to the platform team's paging system.
+- Error-budget consumption emitted into POA&M when exhausted.
+- Annual SLO review cycle declared in canon.
+
+## What stays out of scope (for this kickoff)
+
+- **The platform-team selection itself.** That is an organizational
+  decision the substrate cannot make.
+- **Specific cloud-provider or storage-replication choices.** The
+  substrate code consumes whatever the platform team provides; it
+  does not encode AWS/Azure/GCP-specific replication primitives.
+- **HA at the canon authority level.** Canon ships inside the
+  installable Python package via `importlib.resources`; canon
+  availability is a function of how the package is distributed, not
+  of substrate code. That is a separate concern (release engineering,
+  UIAO_118).
+
+## Action items
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 114.K1 | Land this plan; substrate-status §"Open backlog" links to it under Tier 2 item 5 | Substrate maintainer | This PR |
+| 114.K2 | C1 (regulated tenant) — track via UIAO_119 tenant-registry work | UIAO_119 owner | Phase 2 kickoff |
+| 114.K3 | B1 (per-pipeline timing surface) — design + ship | Substrate maintainer + UIAO_115 owner | Before C2 fires |
+| 114.K4 | B2 (regional health probe) — design + ship | Platform team (once named) | After C3 fires |
+| 114.K5 | B3 (failover-event schema + emitter) | Substrate maintainer | Before Phase 2A |
+| 114.K6 | C3 (platform team ownership) — author the ADR | Substrate maintainer + sponsor | Before Phase 2A |
+
+## Status reporting contract
+
+Until the kickoff fires, substrate-status §"Open backlog" Tier 2 item
+5 is the canonical status surface. The annotation in that item should
+read:
+
+> **UIAO_114 HA / Fault Tolerance** — deferred to Phase 2 per the
+> 2026-04-26 §4.4 assessment. Defer-exit criteria and baseline
+> measurement infrastructure documented in the
+> [2026-05-10 kickoff plan](2026-05-10-uiao_114-ha-kickoff-plan.qmd).
+> No implementation work in flight.
+
+Once C1–C3 fire and B1–B3 ship, the row updates to "🟡 working" with
+links to the per-phase project plans (Phase 2A/B/C/D each ships its
+own UIAO_127 plan instance).
+
+## Related documents
+
+- [§4.4 Assessment — UIAO_114 / 115 / 117 / 119](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd)
+- [UIAO_117 Phase 1 Recovery](2026-04-26-uiao_117-phase1-recovery.qmd)
+- [UIAO_115 Performance Kickoff Plan](2026-05-10-uiao_115-perf-kickoff-plan.qmd)
+- Canon source: [`src/uiao/canon/specs/ha.md`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/ha.md)
