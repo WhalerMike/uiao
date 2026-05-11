@@ -1,4 +1,4 @@
-"""Entra ID dynamic-group provisioning adapter (MOD_B / ADR-036).
+"""Entra ID dynamic-group provisioning adapter (UIAO_152 / ADR-036).
 
 Change-making modernization adapter. Reads the canonical library from
 ``uiao.modernization.orgtree.dynamic_groups`` and reconciles the tenant
@@ -19,7 +19,7 @@ Design notes
 * Tenant state comes from ``EntraCollector`` when wired in, but can also be
   injected directly (``current_tenant_state=...``) to keep tests offline.
 * ``delete-phantom`` is **never** auto-applied; phantom groups become drift
-  findings for governance review (MOD_B §Drift: "No — investigate, then
+  findings for governance review (UIAO_152 §Drift: "No — investigate, then
   delete or canonize"). The canon only auto-remediates ``create`` and
   ``update``.
 * Rule normalisation is intentionally strict — the canonical rule string
@@ -33,6 +33,11 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
+from ._graph_clouds import DEFAULT_CLOUD, graph_token_scope, resolve_graph_base
+
+# EntraDynamicGroupsAdapter targets Graph v1.0 (GA-stable group-management APIs).
+DEFAULT_GRAPH_API_VERSION = "v1.0"
 
 from uiao.modernization.orgtree import (
     DynamicGroupLibrary,
@@ -122,7 +127,15 @@ class DynamicGroupReport:
 
 
 class EntraDynamicGroupsAdapter:
-    """Modernization adapter: provision OrgTree-* dynamic groups in Entra."""
+    """Modernization adapter: provision OrgTree-* dynamic groups in Entra.
+
+    Config keys: ``tenant_id``, ``client_id``, ``client_secret`` (for
+    Graph auth in ``_graph_client()``), plus the cross-adapter cloud
+    convention — ``cloud`` (``commercial`` / ``gcc-high`` / ``dod``,
+    default ``commercial``), ``graph_api_version`` (default ``v1.0``),
+    and ``api_base_url`` (explicit URL override; pre-dates the cloud
+    convention but still honoured). See AGENTS.md.
+    """
 
     ADAPTER_ID = "entra-dynamic-groups"
 
@@ -133,6 +146,18 @@ class EntraDynamicGroupsAdapter:
     ) -> None:
         self._config = config or {}
         self._library = library or default_dynamic_group_library()
+        self._cloud: str = self._config.get("cloud", DEFAULT_CLOUD)
+        self._graph_api_version: str = self._config.get("graph_api_version", DEFAULT_GRAPH_API_VERSION)
+        self._graph_endpoint: str = resolve_graph_base(
+            cloud=self._cloud,
+            graph_api_version=self._graph_api_version,
+            explicit=self._config.get("api_base_url"),
+            adapter_name="EntraDynamicGroupsAdapter",
+        )
+        self._graph_scope: str = graph_token_scope(
+            self._cloud,
+            adapter_name="EntraDynamicGroupsAdapter",
+        )
 
     # ------------------------------------------------------------------
     # Planning
@@ -213,7 +238,7 @@ class EntraDynamicGroupsAdapter:
 
         Operations in :data:`OPS_AUTO_APPLIED` (``create``, ``update``) are
         executed; ``delete-phantom`` is always reported as ``skipped-manual``
-        per the MOD_B auto-remediate policy.
+        per the UIAO_152 auto-remediate policy.
         """
         report = DynamicGroupReport(
             generated_at=datetime.now(timezone.utc).isoformat(),
@@ -226,7 +251,7 @@ class EntraDynamicGroupsAdapter:
                         op=op.op,
                         group_name=op.group_name,
                         status="skipped-manual",
-                        detail="Phantom group — governance review required (MOD_B).",
+                        detail="Phantom group — governance review required (UIAO_152).",
                     )
                 )
                 continue
@@ -292,7 +317,7 @@ class EntraDynamicGroupsAdapter:
                 "client_secret in adapter config, or override _graph_client()."
             )
         body = spec.to_graph_body()
-        base_url = self._config.get("api_base_url", "https://graph.microsoft.com/v1.0")
+        base_url = self._graph_endpoint
         if op.op == OP_CREATE:
             resp = client.post(f"{base_url}/groups", json=body)
             resp.raise_for_status()
@@ -334,6 +359,7 @@ class EntraDynamicGroupsAdapter:
             client_id=client_id,
             client_secret=client_secret,
         )
+        scope = self._graph_scope
 
         class _Auth(httpx.Auth):
             def __init__(self, cred):  # type: ignore[no-untyped-def]
@@ -342,7 +368,7 @@ class EntraDynamicGroupsAdapter:
 
             def auth_flow(self, request):  # type: ignore[no-untyped-def]
                 if self.token is None:
-                    tok = self.cred.get_token("https://graph.microsoft.com/.default")
+                    tok = self.cred.get_token(scope)
                     self.token = tok.token
                 request.headers["Authorization"] = f"Bearer {self.token}"
                 yield request

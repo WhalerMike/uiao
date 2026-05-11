@@ -18,6 +18,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 from ..collectors.entra.entra_collector import EntraCollector
+from ._graph_clouds import DEFAULT_CLOUD, resolve_graph_base
 from .database_base import (
     ClaimObject,
     ClaimSet,
@@ -29,7 +30,10 @@ from .database_base import (
     SchemaMappingObject,
 )
 
-# Local copy of the canonical OrgPath regex (MOD_A). Kept here rather than
+# EntraAdapter targets the Graph v1.0 surface (GA-stable identity APIs).
+DEFAULT_GRAPH_API_VERSION = "v1.0"
+
+# Local copy of the canonical OrgPath regex (UIAO_151). Kept here rather than
 # importing from governance.drift to avoid a dependency cycle between the
 # adapter and the drift engine — both reference the same canon (ADR-035).
 _ORGPATH_REGEX = re.compile(r"^ORG(-[A-Z0-9]{2,6}){0,8}$")
@@ -67,6 +71,11 @@ class EntraAdapter(DatabaseAdapterBase):
       4. Engine merges the alignment into the canon for downstream generation.
 
     This adapter never owns or duplicates data. SSOT remains in the YAML canon.
+
+    Config keys: ``tenant_id``, ``cloud`` (``commercial`` / ``gcc-high`` /
+    ``dod``, default ``commercial``), ``graph_api_version`` (default
+    ``v1.0``), and ``graph_endpoint`` (explicit URL override). See
+    AGENTS.md for the cross-adapter convention.
     """
 
     ADAPTER_ID: str = "entra-id"
@@ -74,6 +83,14 @@ class EntraAdapter(DatabaseAdapterBase):
     def __init__(self, config: Dict[str, Any] | None = None) -> None:
         super().__init__(config or {})
         self.collector = EntraCollector(config=self._config)
+        self._cloud: str = self._config.get("cloud", DEFAULT_CLOUD)
+        self._graph_api_version: str = self._config.get("graph_api_version", DEFAULT_GRAPH_API_VERSION)
+        self._graph_endpoint: str = resolve_graph_base(
+            cloud=self._cloud,
+            graph_api_version=self._graph_api_version,
+            explicit=self._config.get("graph_endpoint"),
+            adapter_name="EntraAdapter",
+        )
 
     # ------------------------------------------------------------------
     # 2.1 Connection & Identity -- delegate to collector
@@ -86,7 +103,7 @@ class EntraAdapter(DatabaseAdapterBase):
         return ConnectionProvenance(
             identity=f"entra:{tenant_id}",
             auth_method="oauth-client-credentials",
-            endpoint="https://graph.microsoft.com/v1.0",
+            endpoint=self._graph_endpoint,
             tls_version="TLSv1.3",
             mtls_enabled=False,
             timestamp=self._now(),
@@ -171,7 +188,7 @@ class EntraAdapter(DatabaseAdapterBase):
                 "raw_link": f"https://portal.azure.com/#view/Microsoft_AAD_UsersAndTenants/UserProfileMenuBlade/~/overview/userId/{record_id}",
             }
 
-            # OrgPath alignment (MOD_A / ADR-035). Codebook membership and
+            # OrgPath alignment (UIAO_151 / ADR-035). Codebook membership and
             # phantom-drift classification belong to governance.drift — the
             # adapter's job is to surface the raw value + format signal so
             # downstream classifiers can run without re-fetching.
@@ -195,7 +212,7 @@ class EntraAdapter(DatabaseAdapterBase):
         tenant_id = self._config.get("tenant_id", "unknown")
         return ClaimSet(
             claims=claims,
-            source_reference=f"https://graph.microsoft.com/v1.0/auditLogs/signIns?tenant={tenant_id}",
+            source_reference=f"{self._graph_endpoint}/auditLogs/signIns?tenant={tenant_id}",
         )
 
     # ------------------------------------------------------------------

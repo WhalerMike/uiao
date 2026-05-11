@@ -49,12 +49,17 @@ from __future__ import annotations
 
 import abc
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Optional
 
 from uiao.governance.epl import EPLAction, EPLContext, EPLEvaluator, EPLMatch
+from uiao.governance.feature_flags import FeatureFlagRegistry
+from uiao.governance.tenancy import Tenant, TenantContext
+
+JOURNAL_TAGGING_FLAG = "enforcement.journal.tenant-tagging"
+EPL_BLOCK_ACTION_FLAG = "epl.action.block.enabled"
 
 # ---------------------------------------------------------------------------
 # Vocabulary
@@ -217,10 +222,21 @@ class BlockHandler(EnforcementHandler):
     UIAO_100 scheduler's "skip these adapters on the next dispatch"
     set). The default just records what would be blocked so tests
     can assert on the side-effect.
+
+    UIAO_119 v2 check-point — when ``flags`` and ``tenant_context``
+    are both supplied, ``dispatch`` consults the
+    ``epl.action.block.enabled`` feature flag. Dispatching against a
+    disabled flag returns a ``status="skipped"`` action whose details
+    cite the gate; the in-memory ``blocked`` set is left unchanged.
+    Without ``flags`` the handler dispatches unconditionally
+    (back-compat).
     """
 
     action: EPLAction = EPLAction.BLOCK
     blocked: set[str] = field(default_factory=set)
+    flags: Optional[FeatureFlagRegistry] = None
+    tenant_context: Optional[TenantContext] = None
+    tenant: Optional[Tenant] = None
 
     def dispatch(
         self,
@@ -229,6 +245,18 @@ class BlockHandler(EnforcementHandler):
         *,
         now: Optional[datetime] = None,
     ) -> EnforcementAction:
+        if self.flags is not None and self.tenant_context is not None:
+            if not self.flags.is_enabled(EPL_BLOCK_ACTION_FLAG, self.tenant_context, self.tenant):
+                return _build_action(
+                    match,
+                    target,
+                    status="skipped",
+                    details=(
+                        f"block gated by feature flag {EPL_BLOCK_ACTION_FLAG} "
+                        f"(disabled for environment={self.tenant_context.environment.value})"
+                    ),
+                    now=now,
+                )
         self.blocked.add(target)
         return _build_action(
             match,
@@ -377,11 +405,41 @@ class EnforcementRuntime:
     The runtime is the moving part in the middle of UIAO_111. Tests
     construct it with a curated handler set + an in-memory journal;
     production deployments inject real handlers + a disk-backed journal.
+
+    UIAO_119 v2 wire-up — when ``tenant_context`` is supplied, every
+    dispatched action carries the tenant tagging payload
+    (``tenant_id`` / ``actor`` / ``environment``, plus ``tenant_class``
+    when ``tenant`` is also supplied) merged into ``action.extra``
+    before the journal records it. The optional ``flags`` registry
+    gates the behavior on the ``enforcement.journal.tenant-tagging``
+    feature flag — when ``flags`` is set and the flag is disabled for
+    the runtime's context, tagging is skipped. Without ``flags`` the
+    tagging is unconditional; pass it only when an operator wants the
+    rollout-controlled behavior.
     """
 
     evaluator: EPLEvaluator
     handlers: Mapping[EPLAction, EnforcementHandler] = field(default_factory=_default_handlers)
     journal: EnforcementJournal = field(default_factory=EnforcementJournal)
+    tenant_context: Optional[TenantContext] = None
+    tenant: Optional[Tenant] = None
+    flags: Optional[FeatureFlagRegistry] = None
+
+    def _tagging_enabled(self) -> bool:
+        if self.tenant_context is None:
+            return False
+        if self.flags is None:
+            return True
+        return self.flags.is_enabled(JOURNAL_TAGGING_FLAG, self.tenant_context, self.tenant)
+
+    def _maybe_tag(self, action: EnforcementAction) -> EnforcementAction:
+        if not self._tagging_enabled():
+            return action
+        assert self.tenant_context is not None  # narrow type for mypy
+        tags = self.tenant_context.as_tag_dict(self.tenant)
+        merged: dict[str, Any] = dict(action.extra)
+        merged.update(tags)
+        return replace(action, extra=merged)
 
     def dispatch_matches(
         self,
@@ -408,6 +466,7 @@ class EnforcementRuntime:
                 )
             else:
                 action = handler.dispatch(match, target, now=now)
+            action = self._maybe_tag(action)
             self.journal.record(action)
             out.append(action)
         return out
@@ -451,6 +510,8 @@ class EnforcementRuntime:
 
 
 __all__ = [
+    "EPL_BLOCK_ACTION_FLAG",
+    "JOURNAL_TAGGING_FLAG",
     "AlertHandler",
     "BlockHandler",
     "EnforcementAction",

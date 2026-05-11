@@ -414,3 +414,116 @@ class TestCQLApi:
     def test_no_auth_returns_401(self, client):
         r = client.get("/api/v1/cql/queries")
         assert r.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# UIAO_119 v2 wave 2 — experimental operators (regex)
+# ---------------------------------------------------------------------------
+
+
+class TestExperimentalOperators:
+    def _enabled_flag(self):
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+        from uiao.governance.tenancy import Environment, TenantClass
+
+        flag = FeatureFlag(
+            name="auditor-api.cql.experimental-ops",
+            enabled_environments=frozenset({Environment.DEV, Environment.STAGE, Environment.PROD}),
+            enabled_tenant_classes=frozenset(
+                {
+                    TenantClass.INTERNAL,
+                    TenantClass.CANARY,
+                    TenantClass.STANDARD,
+                    TenantClass.REGULATED,
+                }
+            ),
+        )
+        return FeatureFlagRegistry(flags={flag.name: flag})
+
+    def _disabled_flag(self):
+        from uiao.governance.feature_flags import FeatureFlag, FeatureFlagRegistry
+
+        flag = FeatureFlag(
+            name="auditor-api.cql.experimental-ops",
+            enabled_environments=frozenset(),
+            enabled_tenant_classes=frozenset(),
+        )
+        return FeatureFlagRegistry(flags={flag.name: flag})
+
+    def test_regex_op_rejected_by_default(self):
+        # No flags / context → strict default → experimental op denied.
+        body = {
+            "source": "findings",
+            "where": {"control_id": {"op": "regex", "value": "AC-.*"}},
+        }
+        with pytest.raises(CQLParseError) as exc:
+            parse_query(body)
+        assert "experimental" in str(exc.value)
+        assert "auditor-api.cql.experimental-ops" in str(exc.value)
+
+    def test_regex_op_rejected_when_flag_disabled(self):
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        ctx = TenantContext(tenant_id="acme", environment=Environment.DEV)
+        body = {
+            "source": "findings",
+            "where": {"control_id": {"op": "regex", "value": "AC-.*"}},
+        }
+        with pytest.raises(CQLParseError):
+            parse_query(body, flags=self._disabled_flag(), tenant_context=ctx)
+
+    def test_regex_op_accepted_when_flag_enabled(self):
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        ctx = TenantContext(tenant_id="acme", environment=Environment.DEV)
+        body = {
+            "source": "findings",
+            "where": {"control_id": {"op": "regex", "value": "AC-.*"}},
+        }
+        query = parse_query(body, flags=self._enabled_flag(), tenant_context=ctx)
+        assert len(query.where) == 1
+        assert query.where[0].op == "regex"
+        assert query.where[0].value == "AC-.*"
+
+    def test_regex_predicate_matches_string(self):
+        from uiao.governance.cql import CQLPredicate
+
+        pred = CQLPredicate(field="control_id", op="regex", value="AC-2|AC-6")
+        assert pred.matches({"control_id": "AC-2"})
+        assert pred.matches({"control_id": "AC-6"})
+        assert not pred.matches({"control_id": "IA-2"})
+
+    def test_regex_predicate_handles_missing_field(self):
+        from uiao.governance.cql import CQLPredicate
+
+        pred = CQLPredicate(field="control_id", op="regex", value=".*")
+        assert not pred.matches({})
+        assert not pred.matches({"control_id": None})
+
+    def test_regex_predicate_handles_invalid_pattern(self):
+        from uiao.governance.cql import CQLPredicate
+
+        # Invalid regex (unmatched paren) is treated as no-match rather
+        # than crashing the evaluator.
+        pred = CQLPredicate(field="x", op="regex", value="(unclosed")
+        assert not pred.matches({"x": "anything"})
+
+    def test_regex_predicate_coerces_non_string_actuals(self):
+        from uiao.governance.cql import CQLPredicate
+
+        pred = CQLPredicate(field="severity", op="regex", value=r"^[1-3]$")
+        # Integer field — re.search calls str() so this works.
+        assert pred.matches({"severity": 2})
+        assert not pred.matches({"severity": 5})
+
+    def test_unknown_op_still_unknown_with_experimental_enabled(self):
+        from uiao.governance.tenancy import Environment, TenantContext
+
+        ctx = TenantContext(tenant_id="acme", environment=Environment.DEV)
+        body = {
+            "source": "findings",
+            "where": {"x": {"op": "phantom-op", "value": 1}},
+        }
+        with pytest.raises(CQLParseError) as exc:
+            parse_query(body, flags=self._enabled_flag(), tenant_context=ctx)
+        assert "unknown operator" in str(exc.value)

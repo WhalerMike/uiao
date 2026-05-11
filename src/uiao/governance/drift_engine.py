@@ -1,6 +1,6 @@
-"""OrgTree drift detection engine (Phase 6, MOD_M / ADR-040).
+"""OrgTree drift detection engine (Phase 6, UIAO_163 / ADR-040).
 
-Implements the six-phase loop MOD_M specifies — Snapshot → Compare →
+Implements the six-phase loop UIAO_163 specifies — Snapshot → Compare →
 Classify → Alert → Remediate → Verify — as an **orchestrator** over the
 Phase 2–5 modernization adapters. The engine never talks to Graph or
 ARM directly; it delegates planning to each phase adapter (which is
@@ -133,7 +133,7 @@ class DriftScanReport:
 
 
 class OrgTreeDriftEngine:
-    """Implements the MOD_M six-phase loop.
+    """Implements the UIAO_163 six-phase loop.
 
     Parameters
     ----------
@@ -243,9 +243,7 @@ class OrgTreeDriftEngine:
         halt_at = self._config.severity_policy.halt_at
         if self._config.defaults.halt_on_critical and any(_at_or_above(f.severity, halt_at) for f in report.findings):
             report.halted = True
-            report.halt_reason = (
-                f"Severity >= {halt_at} detected — MOD_M §Governance halt_on_critical=true; remediation pass skipped."
-            )
+            report.halt_reason = f"Severity >= {halt_at} detected — UIAO_163 §Governance halt_on_critical=true; remediation pass skipped."
             return report
 
         for phase_name, (phase, adapter, plan) in plans_by_phase.items():

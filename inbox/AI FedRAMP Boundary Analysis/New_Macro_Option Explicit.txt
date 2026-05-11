@@ -1,0 +1,424 @@
+Option Explicit
+
+' ============================================================
+' GLOBALS
+' ============================================================
+Private doc As Document
+Private logRange As Range
+
+' ============================================================
+' PUBLIC ENTRY POINT
+' ============================================================
+Public Sub FormatDocument_LearnStyle_Strict()
+
+    On Error GoTo CleanFail
+
+    Set doc = ActiveDocument                 ' Run against the active document (not Normal.dotm)
+    ActiveWindow.View.Type = wdPrintView     ' Ensure Print Layout so styles load
+
+    If doc.ProtectionType <> wdNoProtection Then
+        doc.Unprotect
+    End If
+
+    InitLog
+    Log "Starting Learn-style strict formatting..."
+
+    Application.ScreenUpdating = False
+
+    EnsureAllLearnStylesExist
+
+    StripHTML
+    NormalizeParagraphs
+
+    Log "Converting CSV/TSV blocks..."
+    ConvertDelimitedBlocks
+
+    Log "Converting pipe tables..."
+    ConvertPipeTables
+
+    Log "Applying strict Learn-style body font..."
+    ApplyLearnBodyStyle
+
+    Log "Applying strict Learn-style headings..."
+    ApplyLearnHeadingStyles
+
+    Log "Formatting all tables Learn-style..."
+    FormatAllTables_LearnStyle
+
+    Log "Normalizing lists..."
+    NormalizeLists
+
+    Log "Applying semantic bolding..."
+    SmartSemanticBolding
+
+    Log "Final cleanup..."
+    FinalCleanup
+
+CleanExit:
+    Application.ScreenUpdating = True
+    Log "Done."
+    Exit Sub
+
+CleanFail:
+    Application.ScreenUpdating = True
+    ' Log may not be initialized if we failed early
+    On Error Resume Next
+    If Not logRange Is Nothing Then
+        Log "ERROR " & Err.Number & ": " & Err.Description
+    End If
+    On Error GoTo 0
+    MsgBox "Learn formatter failed: " & Err.Number & vbCrLf & Err.Description, vbExclamation
+    Resume CleanExit
+
+End Sub
+
+' ============================================================
+' LOGGING ENGINE
+' ============================================================
+Private Sub InitLog()
+    Set logRange = doc.Content
+    logRange.Collapse wdCollapseEnd
+
+    logRange.InsertParagraphAfter
+    logRange.InsertAfter vbCrLf & "=== Learn Formatter Log (" & Now & ") ===" & vbCrLf
+    logRange.InsertParagraphAfter
+End Sub
+
+Private Sub Log(msg As String)
+    logRange.Collapse wdCollapseEnd
+    logRange.InsertAfter Format(Now, "hh:mm:ss") & " — " & msg & vbCrLf
+End Sub
+
+' ============================================================
+' ENSURE ALL REQUIRED LEARN STYLES EXIST
+' ============================================================
+Private Sub EnsureAllLearnStylesExist()
+    RefreshStylesCollection
+    EnsureNormalStyleExists
+    EnsureLearnHeadingStylesExist
+    RefreshStylesCollection
+End Sub
+
+Private Sub RefreshStylesCollection()
+    Dim s As Style
+    For Each s In doc.Styles
+        DoEvents
+    Next s
+End Sub
+
+Private Sub EnsureNormalStyleExists()
+    Dim st As Style
+
+    On Error Resume Next
+    Set st = doc.Styles("Normal")
+    On Error GoTo 0
+
+    If st Is Nothing Then
+        Set st = doc.Styles.Add(Name:="Normal", Type:=wdStyleTypeParagraph)
+    End If
+
+    With doc.Styles("Normal").Font
+        .Name = "Segoe UI"
+        .Size = 11
+        .Color = wdColorBlack
+    End With
+
+    With doc.Styles("Normal").ParagraphFormat
+        .SpaceAfter = 6
+        .SpaceBefore = 0
+        .LineSpacingRule = wdLineSpaceSingle
+    End With
+End Sub
+
+Private Sub EnsureLearnHeadingStylesExist()
+    CreateHeadingStyleIfMissing "Heading 1", 20
+    CreateHeadingStyleIfMissing "Heading 2", 16
+    CreateHeadingStyleIfMissing "Heading 3", 14
+    CreateHeadingStyleIfMissing "Heading 4", 12
+End Sub
+
+Private Sub CreateHeadingStyleIfMissing(styleName As String, fontSize As Integer)
+    Dim st As Style
+
+    On Error Resume Next
+    Set st = doc.Styles(styleName)
+    On Error GoTo 0
+
+    If st Is Nothing Then
+        Set st = doc.Styles.Add(Name:=styleName, Type:=wdStyleTypeParagraph)
+    End If
+
+    With doc.Styles(styleName).Font
+        .Name = "Segoe UI"
+        .Size = fontSize
+        .Bold = True
+        .Color = wdColorBlack
+    End With
+
+    With doc.Styles(styleName).ParagraphFormat
+        .SpaceBefore = IIf(fontSize = 20, 18, IIf(fontSize = 16, 12, IIf(fontSize = 14, 6, 3)))
+        .SpaceAfter = 6
+        .LineSpacingRule = wdLineSpaceSingle
+    End With
+End Sub
+
+' ============================================================
+' HTML CLEANUP
+' ============================================================
+Private Sub StripHTML()
+    Dim findList As Variant
+    Dim i As Long
+
+    ' Keep these as literal strings to remove from content
+    findList = Array("&lt;p&gt;", "&lt;/p&gt;", "&lt;br&gt;", "&lt;br/&gt;", "&lt;br /&gt;", _
+                     "&lt;div&gt;", "&lt;/div&gt;", "&lt;span&gt;", "&lt;/span&gt;", _
+                     "&nbsp;", Chr(160))
+
+    For i = LBound(findList) To UBound(findList)
+        With doc.Content.Find
+            .ClearFormatting
+            .Replacement.ClearFormatting
+            .Text = findList(i)
+            .Replacement.Text = " "
+            .Execute Replace:=wdReplaceAll
+        End With
+    Next i
+End Sub
+
+' ============================================================
+' PARAGRAPH NORMALIZATION
+' ============================================================
+Private Sub NormalizeParagraphs()
+    With doc.Range.Find
+        .ClearFormatting
+        .Replacement.ClearFormatting
+        .Text = "^p^p^p"
+        .Replacement.Text = "^p^p"
+        .Execute Replace:=wdReplaceAll
+    End With
+End Sub
+
+' ============================================================
+' CSV / TSV CONVERSION
+' ============================================================
+Private Sub ConvertDelimitedBlocks()
+    Dim para As Paragraph
+    Dim txt As String
+
+    For Each para In doc.Paragraphs
+        txt = Trim(para.Range.Text)
+
+        If (InStr(txt, ",") > 0 Or InStr(txt, vbTab) > 0) And InStr(txt, "|") = 0 Then
+            If CountDelimiters(txt) > 1 Then
+                InsertTableFromDelimited txt, para.Range
+            End If
+        End If
+    Next para
+End Sub
+
+Private Function CountDelimiters(s As String) As Long
+    CountDelimiters = UBound(Split(s, ",")) + UBound(Split(s, vbTab))
+End Function
+
+Private Sub InsertTableFromDelimited(txt As String, insertRange As Range)
+    Dim lines As Variant, cols As Variant
+    Dim tbl As Table
+    Dim r As Long, c As Long
+    Dim numRows As Long, numCols As Long
+
+    txt = Replace(txt, vbCr, vbCrLf)
+    txt = Replace(txt, vbCrLf & vbCrLf, vbCrLf)
+
+    lines = Split(txt, vbCrLf)
+    numRows = UBound(lines) + 1
+
+    If InStr(lines(0), vbTab) > 0 Then
+        cols = Split(lines(0), vbTab)
+    Else
+        cols = Split(lines(0), ",")
+    End If
+
+    numCols = UBound(cols) + 1
+
+    Set tbl = doc.Tables.Add(insertRange, numRows, numCols)
+
+    For r = 0 To UBound(lines)
+        If InStr(lines(r), vbTab) > 0 Then
+            cols = Split(lines(r), vbTab)
+        Else
+            cols = Split(lines(r), ",")
+        End If
+
+        For c = 0 To UBound(cols)
+            tbl.Cell(r + 1, c + 1).Range.Text = Trim(cols(c))
+        Next c
+    Next r
+End Sub
+
+' ============================================================
+' PIPE TABLE CONVERSION
+' ============================================================
+Private Sub ConvertPipeTables()
+    Dim para As Paragraph
+    Dim txt As String
+    Dim rows As Collection
+    Dim r As Variant
+
+    Set rows = New Collection
+
+    For Each para In doc.Paragraphs
+        txt = Trim(para.Range.Text)
+
+        If InStr(txt, "|") > 0 And Left(txt, 1) = "|" Then
+            rows.Add txt
+        Else
+            If rows.Count > 0 Then
+                InsertPipeTable rows, para.Range
+                Set rows = New Collection
+            End If
+        End If
+    Next para
+
+    If rows.Count > 0 Then
+        InsertPipeTable rows, doc.Range(doc.Content.End - 1, doc.Content.End - 1)
+    End If
+End Sub
+
+Private Sub InsertPipeTable(rows As Collection, insertRange As Range)
+    Dim r As Variant, parts As Variant
+    Dim tbl As Table
+    Dim i As Long, j As Long
+
+    Set tbl = doc.Tables.Add(insertRange, rows.Count, CountColumns(rows(1)))
+
+    i = 1
+    For Each r In rows
+        parts = Split(Mid(r, 2, Len(r) - 2), "|")
+        For j = 0 To UBound(parts)
+            tbl.Cell(i, j + 1).Range.Text = Trim(parts(j))
+        Next j
+        i = i + 1
+    Next r
+End Sub
+
+Private Function CountColumns(rowText As String) As Long
+    CountColumns = UBound(Split(rowText, "|"))
+End Function
+
+' ============================================================
+' APPLY LEARN BODY STYLE (STRICT)
+' ============================================================
+Private Sub ApplyLearnBodyStyle()
+    Dim p As Paragraph
+
+    For Each p In doc.Paragraphs
+        With p.Range.Font
+            .Name = "Segoe UI"
+            .Size = 11
+            .Color = wdColorBlack
+        End With
+
+        With p.Format
+            .SpaceAfter = 6
+            .SpaceBefore = 0
+            .LineSpacingRule = wdLineSpaceSingle
+        End With
+    Next p
+End Sub
+
+' ============================================================
+' APPLY LEARN HEADING STYLES (STRICT)
+' ============================================================
+Private Sub ApplyLearnHeadingStyles()
+    Dim p As Paragraph
+    Dim t As String
+
+    For Each p In doc.Paragraphs
+        t = Trim(p.Range.Text)
+
+        If Left(t, 2) = "# " Then
+            p.Style = doc.Styles("Heading 1")
+        ElseIf Left(t, 3) = "## " Then
+            p.Style = doc.Styles("Heading 2")
+        ElseIf Left(t, 4) = "### " Then
+            p.Style = doc.Styles("Heading 3")
+        ElseIf Left(t, 5) = "#### " Then
+            p.Style = doc.Styles("Heading 4")
+        End If
+    Next p
+End Sub
+
+' ============================================================
+' LEARN-STYLE TABLE FORMATTING
+' ============================================================
+Private Sub FormatAllTables_LearnStyle()
+    Dim tbl As Table
+    Dim maxWidth As Single
+
+    With doc.PageSetup
+        maxWidth = .PageWidth - .LeftMargin - .RightMargin
+    End With
+
+    For Each tbl In doc.Tables
+        With tbl
+            .AllowAutoFit = True
+            .AutoFitBehavior wdAutoFitWindow
+            .PreferredWidthType = wdPreferredWidthPoints
+            .PreferredWidth = maxWidth
+
+            .Rows(1).Range.Font.Bold = True
+            .Rows.AllowBreakAcrossPages = False
+        End With
+    Next tbl
+End Sub
+
+' ============================================================
+' NORMALIZE LISTS
+' ============================================================
+Private Sub NormalizeLists()
+    Dim p As Paragraph
+
+    For Each p In doc.Paragraphs
+        If p.Range.ListFormat.ListType <> wdListNoNumbering Then
+            p.Range.Font.Name = "Segoe UI"
+            p.Range.Font.Size = 11
+            p.Format.SpaceAfter = 6
+        End If
+    Next p
+End Sub
+
+' ============================================================
+' SEMANTIC BOLDING
+' ============================================================
+Private Sub SmartSemanticBolding()
+    Dim keywords As Variant
+    Dim k As Variant
+
+    keywords = Array("Objective:", "Summary:", "Impact:", "Finding:", _
+                     "Security Impact:", "Zero Trust", "Forensic", _
+                     "Anomaly Detection", "Insider Risk")
+
+    For Each k In keywords
+        With doc.Range.Find
+            .ClearFormatting
+            .Replacement.ClearFormatting
+            .Text = k
+            .Replacement.Text = k
+            .Replacement.Font.Bold = True
+            .Execute Replace:=wdReplaceAll
+        End With
+    Next k
+End Sub
+
+' ============================================================
+' FINAL CLEANUP
+' ============================================================
+Private Sub FinalCleanup()
+    With doc.Range.Find
+        .ClearFormatting
+        .Replacement.ClearFormatting
+        .Text = "  "
+        .Replacement.Text = " "
+        .Execute Replace:=wdReplaceAll
+    End With
+End Sub

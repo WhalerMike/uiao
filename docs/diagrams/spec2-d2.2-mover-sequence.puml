@@ -1,0 +1,42 @@
+@startuml spec2_d2_2_mover_sequence
+!theme plain
+skinparam defaultFontName Segoe UI
+skinparam sequenceMessageAlign center
+
+actor "HR Source" as HR
+participant "Middleware\n(D3.1)" as MW
+participant "Microsoft Graph\nbulkUpload" as Graph
+participant "Entra ID\nProvisioning Service" as PS
+database "Microsoft Entra ID" as Entra
+participant "Dynamic Group\nEngine (MOD_B)" as DG
+participant "OrgTree Adapters\n(MOD_C / D / N)" as OrgAdapters
+queue "Access Review\nTrigger Queue" as AR
+queue "UIAO Provenance\nStore" as Prov
+participant "Notification\nSink" as Notify
+
+== Detect Mover delta ==
+HR -> MW : record (changed attrs)
+MW -> MW : compute delta vs. prior canonical hash
+note right of MW
+  If delta is workerType only → route to D2.5
+  If delta is termination → route to D2.3
+  If hash unchanged → no-op
+end note
+
+== Emit single atomic PATCH ==
+MW -> MW : OrgPath recalc → UPN preserve\n→ display name → manager link
+MW -> Graph : POST /bulkUpload\n(PATCH /Users/{externalId})
+Graph -> PS : 202 Accepted
+PS -> Entra : write attribute deltas
+
+== Cascade (asynchronous) ==
+Entra -> DG : attribute change → recompute group rules
+Entra -> OrgAdapters : OrgPath change observed (drift engine)
+DG -> Entra : group membership add/remove
+
+== Mover-specific emissions ==
+MW -> AR : access-review-trigger\n(if §8 conditions met)
+MW -> Notify : mover.manager-change\n(if manager delta, §7)
+MW -> Prov : provenance.user.mover\n(delta block, outcome=success)
+
+@enduml

@@ -49,11 +49,16 @@ Example queries (canonical reference set ships in
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Optional
 
 import yaml
+
+if TYPE_CHECKING:
+    from uiao.governance.feature_flags import FeatureFlagRegistry
+    from uiao.governance.tenancy import Tenant, TenantContext
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_QUERY_DIR = REPO_ROOT / "uiao" / "canon" / "queries"
@@ -65,6 +70,16 @@ DEFAULT_QUERY_DIR = REPO_ROOT / "uiao" / "canon" / "queries"
 
 
 VALID_SOURCES = ("findings", "enforcement", "archive", "adapters")
+
+# Operators classified by stability. v1 operators are always available;
+# experimental operators require the UIAO_119 v2 feature flag
+# `auditor-api.cql.experimental-ops` to be enabled for the calling
+# tenant context. Default canon enables it for `internal` tenants in
+# `dev` / `stage` only — agency operators see only the v1 surface so
+# canon stays the contract.
+V1_OPS = ("eq", "ne", "in", "not_in", "contains", "gte", "lte", "exists")
+EXPERIMENTAL_OPS = ("regex",)
+EXPERIMENTAL_OPS_FLAG = "auditor-api.cql.experimental-ops"
 
 
 # A source resolver maps a source name to a list of dict records.
@@ -120,6 +135,18 @@ class CQLPredicate:
                 return bool(actual <= self.value)
             except TypeError:
                 return False
+        if self.op == "regex":
+            # Experimental — parse-time gate ensures only callers that
+            # passed the auditor-api.cql.experimental-ops flag check
+            # can construct a predicate with this op. At evaluation
+            # time we don't re-check the flag (that would couple the
+            # evaluator to the registry); the parser is the gate.
+            if actual is None:
+                return False
+            try:
+                return re.search(self.value, str(actual)) is not None
+            except (re.error, TypeError):
+                return False
         return False
 
 
@@ -173,18 +200,54 @@ class CQLParseError(ValueError):
     """Raised when a query body fails validation."""
 
 
-def _parse_predicate(field_name: str, raw: Any) -> CQLPredicate:
-    """Parse one `where:` entry into a :class:`CQLPredicate`."""
+def _parse_predicate(
+    field_name: str,
+    raw: Any,
+    *,
+    allow_experimental: bool = False,
+) -> CQLPredicate:
+    """Parse one `where:` entry into a :class:`CQLPredicate`.
+
+    ``allow_experimental`` controls whether ops in
+    :data:`EXPERIMENTAL_OPS` (e.g., ``regex``) are accepted. When
+    ``False`` (the default), an experimental op produces a parse
+    error citing the flag that gates it; agency operators see this
+    error rather than ever exercising the experimental surface.
+    """
     if isinstance(raw, Mapping):
         op = str(raw.get("op", "eq")).strip().lower()
-        if op not in ("eq", "ne", "in", "not_in", "contains", "gte", "lte", "exists"):
-            raise CQLParseError(f"unknown operator '{op}' on field '{field_name}'")
-        return CQLPredicate(field=field_name, op=op, value=raw.get("value"))
+        if op in V1_OPS:
+            return CQLPredicate(field=field_name, op=op, value=raw.get("value"))
+        if op in EXPERIMENTAL_OPS:
+            if not allow_experimental:
+                raise CQLParseError(
+                    f"operator '{op}' on field '{field_name}' is experimental; "
+                    f"enable {EXPERIMENTAL_OPS_FLAG!r} for the calling context "
+                    f"or restrict the query to V1 operators ({', '.join(V1_OPS)})"
+                )
+            return CQLPredicate(field=field_name, op=op, value=raw.get("value"))
+        raise CQLParseError(f"unknown operator '{op}' on field '{field_name}'")
     return CQLPredicate(field=field_name, op="eq", value=raw)
 
 
-def parse_query(body: Any) -> CQLQuery:
-    """Parse a query body (dict or YAML string) into a :class:`CQLQuery`."""
+def parse_query(
+    body: Any,
+    *,
+    flags: Optional[FeatureFlagRegistry] = None,
+    tenant_context: Optional[TenantContext] = None,
+    tenant: Optional[Tenant] = None,
+) -> CQLQuery:
+    """Parse a query body (dict or YAML string) into a :class:`CQLQuery`.
+
+    UIAO_119 v2 wave 2 — when ``flags`` and ``tenant_context`` are
+    both supplied, parse-time consults the
+    ``auditor-api.cql.experimental-ops`` feature flag. Queries that
+    use experimental operators (e.g., ``regex``) succeed only when
+    the flag is enabled for the supplied context. Without
+    ``flags``/``tenant_context`` experimental operators are rejected
+    — the strict default keeps the v1 surface stable for agency
+    operators.
+    """
     if isinstance(body, str):
         try:
             body = yaml.safe_load(body)
@@ -192,6 +255,10 @@ def parse_query(body: Any) -> CQLQuery:
             raise CQLParseError(f"invalid YAML: {exc}") from exc
     if not isinstance(body, Mapping):
         raise CQLParseError("query body must be a mapping")
+
+    allow_experimental = False
+    if flags is not None and tenant_context is not None:
+        allow_experimental = flags.is_enabled(EXPERIMENTAL_OPS_FLAG, tenant_context, tenant)
 
     source = str(body.get("source", "")).strip()
     if source not in VALID_SOURCES:
@@ -210,7 +277,13 @@ def parse_query(body: Any) -> CQLQuery:
     predicates: list[CQLPredicate] = []
     if isinstance(where_raw, Mapping):
         for field_name, value in where_raw.items():
-            predicates.append(_parse_predicate(str(field_name), value))
+            predicates.append(
+                _parse_predicate(
+                    str(field_name),
+                    value,
+                    allow_experimental=allow_experimental,
+                )
+            )
 
     order_by = str(body.get("order_by", "")).strip()
     order = str(body.get("order", "asc")).strip().lower()
@@ -398,6 +471,9 @@ __all__ = [
     "CQLQuery",
     "CQLResult",
     "CQLSourceResolver",
+    "EXPERIMENTAL_OPS",
+    "EXPERIMENTAL_OPS_FLAG",
+    "V1_OPS",
     "VALID_SOURCES",
     "adapters_resolver",
     "archive_entries_resolver",

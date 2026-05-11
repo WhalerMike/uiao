@@ -35,7 +35,7 @@ from uiao.ir.models.core import DriftState, ProvenanceRecord, canonical_hash
 #   - a flat ``set[str]`` of active OrgPath codes (legacy contract), or
 #   - a ``uiao.modernization.orgtree.codebook.Codebook`` instance, which
 #     additionally lets the classifier emit Phantom Drift against deprecated
-#     codes (MOD_A §Drift). Duck-typed to avoid a circular import.
+#     codes (UIAO_151 §Drift). Duck-typed to avoid a circular import.
 OrgPathCodebook = Union[Set[str], "Any"]
 
 # ---------------------------------------------------------------------------

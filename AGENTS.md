@@ -9,7 +9,7 @@
 - **Name:** `WhalerMike/uiao`
 - **Purpose:** Unified Identity-Addressing-Overlay Architecture — a FedRAMP-Moderate governance substrate with drift-detected canon, schema-enforced adapters, and OSCAL-native evidence pipelines.
 - **Status:** pre-1.0; `main` is the primary development branch.
-- **Cloud boundary:** GCC-Moderate (Microsoft 365 SaaS only). Amazon Connect Contact Center is the sole Commercial exception.
+- **Cloud boundary:** GCC-Moderate (Microsoft 365 SaaS only). Two named Commercial exceptions: Amazon Connect Contact Center, and SailPoint Non-Employee Risk Management (FedRAMP Moderate on AWS GovCloud, per ADR-059). Each exception is encoded as a discrete enum value in the `gcc-boundary` schema; new exceptions are added in lockstep with their authorizing ADR.
 
 ## Module topology
 
@@ -21,7 +21,12 @@ Declared machine-readably in [`src/uiao/canon/substrate-manifest.yaml`](src/uiao
 | [`tests/`](tests/) | Test suite | ~1000+ tests: unit, integration, adapter conformance, substrate drift. |
 | [`docs/`](docs/) | Derived documentation | Articles, guides, narratives, Quarto site. Every published doc traces provenance to canon under `src/uiao/canon/`. |
 | [`scripts/`](scripts/) | Maintenance scripts | Validators, canon-sync, doc generators, one-shot tooling. |
+| [`tools/`](tools/) | PowerShell generators | `Write-Phase2TSA.ps1`, `Write-Phase2Diagrams.ps1`, `Write-CanonFiles*.ps1` — author-time generators that read source models (`.psd1`/`.txt`) and write derived markdown into `phase2/` and other targets. Not invoked at runtime; not on the CI path. |
+| [`diagrams/`](diagrams/) | Diagram-pipeline subsystem | Self-contained Mermaid SSOT system covering all 9 UIAO document categories. Own README, governance ([`diagrams/governance/DIAGRAM-GOVERNANCE.md`](diagrams/governance/DIAGRAM-GOVERNANCE.md), UIAO_DG_001 v2.0), metadata schema, registry of 17 active diagrams, render/validate/inject Python scripts, and CI workflow definition. Independent of phase numbering — uses `DIAG_NNN` namespace. |
+| [`phase2/`](phase2/) | Phase 2 architecture artifacts | Generated output of `tools/Write-Phase2TSA.ps1` from the source model at `models/phase2/UIAO_Phase2_TSA.psd1`. Feeds the customer-facing **Phase 2 — Governance OS** chapter ([`docs/customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd`](docs/customer-documents/modernization/uiao-modernization-program/03-phase2-governance-os.qmd)). Uses the `UIAO_P2_NNN` namespace (not the canonical `UIAO_NNN` allocation). Most domain/lifecycle/transformation files are placeholder scaffolds pending design sessions; `_legacy/` holds the prior generator output. Index at [`phase2/UIAO_Phase2_Index.md`](phase2/UIAO_Phase2_Index.md). |
+| [`models/`](models/) | **Phase 2 source models — NOT canon authority.** | Holds `models/phase2/UIAO_Phase2_TSA.psd1`, the PowerShell-data-file source model that `tools/Write-Phase2TSA.ps1` consumes to generate `phase2/`. Renamed from `canon/` (which collided with `src/uiao/canon/`) so the role is explicit: generator-input source models, not canonical governance. Canon authority lives **only** at `src/uiao/canon/`. |
 | [`inbox/`](inbox/) | Scratch surface | Agent-authored drafts. Nothing here is canon. |
+| [`deploy/`](deploy/) | Deployment artifacts | `deploy/windows-server/` holds the IIS deployment surface (`run.py`, `web.config`, `requirements-windows.txt`) for the FastAPI service in `src/uiao/api/`. |
 | [`.github/workflows/`](.github/workflows/) | CI | Schema validation, pytest, substrate-drift, mypy (non-blocking), ruff, quarto, link-check, release. |
 
 Install: `pip install -e .` from the repo root; the `uiao` CLI entry point is [`uiao.cli.app:app`](src/uiao/cli/app.py).
@@ -101,7 +106,7 @@ Emits `DRIFT-SCHEMA` (module paths exist) and `DRIFT-PROVENANCE` (registry docs 
 | `adapter-conformance.yml` | `src/uiao/adapters/**` + adapter tests | ✅ |
 | `ruff.yml` | Python PRs | ✅ |
 | `mypy.yml` | Python PRs | ✅ |
-| `link-check.yml` | `*.md` / `*.qmd` PRs + weekly | 🟡 soft-fail |
+| `link-check.yml` | `*.md` / `*.qmd` PRs + weekly | ✅ |
 | `release.yml` | Tag `v*.*.*` | — |
 
 > **Gate restoration history:** `ruff.yml` was returned to blocking after the 230-finding baseline was cleared (135 via `--fix`, ~76 via `ruff format` splitting one-line dataclasses, 13 manual fixes). The full pytest suite was restored to blocking once the `fastapi`/`httpx`/`uvicorn` runtime dependencies of `uiao.api` were declared as an `[api]` optional extra. `mypy.yml` was returned to blocking after a 4-batch burn-down (130 → 0) combining per-module suppressions for third-party-stub-less surfaces (python-docx, python-pptx, matplotlib, jinja2, etc.), duck-typed pattern ignores (adapter-class reflection, importlib.metadata), and real type fixes (entra_token None-narrowing, drift-class Literal typing, ProvenanceRecord `content_hash` kwarg).
@@ -119,6 +124,7 @@ Common `<verb>`s: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`. Use 
 - **Canon edits** → `src/uiao/canon/`, plus a UIAO_NNN entry in `document-registry.yaml` if the document is new. Doctrine changes require an ADR under `src/uiao/canon/adr/`.
 - **New CLI commands** ship with happy-path + failure-mode tests in the same PR.
 - **Adapters** go under `src/uiao/adapters/` and register in `src/uiao/canon/adapter-registry.yaml` (conformance) or `modernization-registry.yaml` (modernization). Every adapter declares `class` × `mission-class` per UIAO_003.
+- **Microsoft Graph adapters** resolve their endpoint via `uiao.adapters._graph_clouds.resolve_graph_base()` rather than hardcoding hostnames. Accepted config keys: `cloud` (`commercial` / `gcc-high` / `dod`, default `commercial` — also serves GCC-Moderate per ADR-033), `graph_api_version` (default per-adapter — `beta` for IntuneAdapter; `v1.0` for EntraAdapter, M365Adapter, EntraDynamicGroupsAdapter, EntraAdminUnitsAdapter, InBoundaryTelemetry), and an explicit URL override key (`graph_endpoint` for most adapters; `api_base_url` for the two Entra group/AU adapters that pre-dated the convention). Unknown clouds fail closed at construction.
 - **Canon reads at runtime** use `importlib.resources` against `uiao.canon` / `uiao.rules` / `uiao.schemas`, never hardcoded filesystem paths.
 
 ## History

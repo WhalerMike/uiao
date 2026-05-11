@@ -94,7 +94,7 @@ class TestNormalizeAgainstGolden:
         out = normalize_scuba(target)
 
         am = out["assessment_metadata"]
-        assert am["tool_version"] == "1.5.0"
+        assert am["tool_version"] == "1.7.1"
         assert am["source_envelope"].get("OpaVersion") == "0.59.0"
         # The pre-flight should have run and passed against the scuba.yaml pin
         assert am["provenance_preflight"]["status"] == "ok"

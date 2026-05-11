@@ -14,7 +14,7 @@ aspirational: true
 
 *Windows Server 2025 + IIS + Gitea + Kerberos + enterprise PKI*
 
-![Figure 1.1 — UIAO Platform Server: five roles on one Windows Server 2025 host](images/01-platform-server-five-roles.png){fig-alt="Architectural diagram of a single Windows Server 2025 host showing five labeled roles: canonical source of truth (Gitea), HTTPS reverse proxy (IIS), legacy-to-modern auth bridge (Kerberos + PKI), transformation engine host (PowerShell + Python + APIs), and adapter dispatcher (DM_* + MOD_I)" width="720"}
+![Figure 1.1 — UIAO Platform Server: five roles on one Windows Server 2025 host](images/01-platform-server-five-roles.png){fig-alt="Architectural diagram of a single Windows Server 2025 host showing five labeled roles: canonical source of truth (Gitea), HTTPS reverse proxy (IIS), legacy-to-modern auth bridge (Kerberos + PKI), transformation engine host (PowerShell + Python + APIs), and adapter dispatcher (DM_* + UIAO_159)" width="720"}
 
 ::: {.callout-important title="The architectural claim"}
 Everything UIAO does — every analysis, every plan, every delivery, every
@@ -53,6 +53,9 @@ by fanning out the governance substrate.
 
 ## The five roles
 
+![Layered platform architecture diagram showing the UIAO substrate stack from...](images/01-platform-foundation-image-01-layered-platform-architecture-di.png)
+
+
 A single host plays five distinct roles. Each maps to a specific
 capability the transformation engine needs.
 
@@ -78,7 +81,7 @@ HSTS, HTTP/2, and forwards to Gitea on loopback port 3000. IIS is
 also the AD LDAPS-aware auth landing point for Gitea's
 `source-config` lookups.
 
-This is the architecture endorsed by [ADR-001](../../../../modernization/orgtree.qmd) —
+This is the architecture endorsed by [ADR-001](../../../../modernization/orgtree.html) —
 Gitea behind IIS reverse proxy. Option A (IIS + `git-http-backend`
 alone) was evaluated and rejected on auth integration + operational
 complexity grounds.
@@ -109,7 +112,7 @@ assessment, planning, and delivery actually happen.
   GroupPolicy, DnsServer, DhcpServer modules), Gitea API calls,
   local-file provenance writes, and the Pester test harness.
 - **Python** (3.12+) handles graph analysis (networkx for OU trees,
-  dependency graphs), OSCAL authoring, schema validation (MOD_H
+  dependency graphs), OSCAL authoring, schema validation (UIAO_158
   JSON schema), and anything that benefits from a richer type
   system or library ecosystem than PowerShell provides.
 - **API integrators** wrap vendor APIs — Graph, ARM, Intune
@@ -123,7 +126,7 @@ with correlation IDs that tie back to a plan + commit.
 
 ### 5. Adapter dispatcher
 
-**DM_* and MOD_I glue.** When the transformation engine needs to touch
+**DM_* and UIAO_159 glue.** When the transformation engine needs to touch
 a specific AD-dependency category (PKI, RADIUS, LDAP, DHCP, etc.), it
 dispatches through the DM_* adapter interface. Each adapter
 implementation (Infoblox, ADCS, Entrust, Cisco ISE, etc.) plugs in
@@ -166,7 +169,7 @@ governed by an adapter spec and a validation suite.
 
 | Integration | Direction | Adapter | Purpose |
 |---|---|---|---|
-| AD Forest (legacy) | Read-only | MOD_I + UIAOADAssessment | Forest/domain/OU discovery, GPO inventory, DNS/DHCP read, Kerberos SPN audit |
+| AD Forest (legacy) | Read-only | UIAO_159 + UIAOADAssessment | Forest/domain/OU discovery, GPO inventory, DNS/DHCP read, Kerberos SPN audit |
 | ADCS (legacy PKI) | Read-only | DM_020 | Template analysis, ESC1-8 vulnerability check, certificate inventory |
 | Entra ID | Read-write | adapter-specs/entra-id | User/group/device/AU/policy provisioning |
 | Intune | Read-write | adapter-specs/intune | Compliance policies, configuration profiles, Autopilot |
@@ -194,9 +197,9 @@ has the following operational properties:
   (`ORG-IT-INF-PLATFORM`), lives in an Administrative Unit
   (`AU-ORG-IT-INF-PLATFORM`), and is targeted by an OrgPath-scoped
   Intune compliance policy.
-- **Drift-monitored** — MOD_M reports the server's state on a schedule
+- **Drift-monitored** — UIAO_163 reports the server's state on a schedule
   (OrgPath, AU membership, Gitea team mapping, Arc heartbeat). Any
-  drift opens an SLA ticket per MOD_Q.
+  drift opens an SLA ticket per UIAO_167.
 - **DR-ready** — nightly backup to Azure Blob, manual failover to a
   passive replica with documented RPO/RTO targets.
 
@@ -219,14 +222,14 @@ Boundaries matter as much as capabilities:
 
 ## Cross-references
 
-- **Full build runbook:** [Platform Server Build Guide](../../platform/platform-server-build.qmd) —
+- **Full build runbook:** [Platform Server Build Guide](../../platform/platform-server-build.html) —
   14 phases, 1,864 lines of PowerShell-first procedure.
 - **ADR-001 Git Infrastructure** — documents the Gitea-behind-IIS
   decision and why Option A was rejected.
-- **Modernization canon** — [MOD_A..Z](../../../modernization/orgtree.qmd)
-  for governance, [DM_010..080](../../../modernization/directory-migration.qmd)
+- **Modernization canon** — [UIAO_151–UIAO_176](../../../modernization/orgtree.html)
+  for governance, [DM_010..080](../../../modernization/directory-migration.html)
   for adapters.
 
 ---
 
-**Next:** [Chapter 02 — Analyzing the Client/Server Estate](02-legacy-ingestion.qmd)
+**Next:** [Chapter 02 — Analyzing the Client/Server Estate](02-legacy-ingestion.html)

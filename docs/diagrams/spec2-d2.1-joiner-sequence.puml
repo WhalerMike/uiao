@@ -1,0 +1,47 @@
+@startuml spec2_d2_1_joiner_sequence
+!theme plain
+skinparam defaultFontName Segoe UI
+skinparam sequenceMessageAlign center
+
+actor "HR Source" as HR
+participant "Middleware\n(D3.1)" as MW
+participant "Microsoft Graph\nbulkUpload" as Graph
+participant "Entra ID\nProvisioning Service" as PS
+database "Microsoft Entra ID" as Entra
+participant "Entra Provisioning\nAgent (HA)" as Agent
+database "On-Prem AD\n(coexistence)" as AD
+queue "UIAO Provenance\nStore" as Prov
+participant "Notification\nSink" as Notify
+
+== Pre-hire (startDate within window, D2.7) ==
+HR -> MW : record (startDate=T+N)
+MW -> MW : normalize → classify → OrgPath → UPN\n(per §4 steps 1–9)
+MW -> Graph : POST /bulkUpload\n(POST /Users, active=false)
+Graph -> PS : 202 Accepted
+PS -> Entra : create user (disabled)
+PS -> Agent : sync (coexistence)
+Agent -> AD : create user (disabled, OU per §8)
+MW -> Prov : provenance.user.joiner\n(outcome=success)
+
+== Day-of-hire (startDate ≤ today) ==
+HR -> MW : record (startDate=T)
+MW -> MW : recompute payload\n(per §4)
+MW -> Graph : POST /bulkUpload\n(PATCH /Users/{externalId}, active=true)
+Graph -> PS : 202 Accepted
+PS -> Entra : enable user; group-based licensing cascades
+PS -> Agent : sync
+Agent -> AD : enable user
+MW -> Notify : welcome\n(joiner.day-of-hire, idempotent)
+MW -> Prov : provenance.user.joiner\n(outcome=success)
+
+== Post-hire correction (attribute drift) ==
+HR -> MW : record (changed attribute)
+MW -> MW : recompute payload
+MW -> Graph : POST /bulkUpload\n(PATCH /Users/{externalId})
+Graph -> PS : 202 Accepted
+PS -> Entra : update attributes
+PS -> Agent : sync
+Agent -> AD : update attributes
+MW -> Prov : provenance.user.joiner\n(outcome=success)
+
+@enduml

@@ -108,3 +108,98 @@ UIAO-INJECT
 # GitHub repository_dispatch endpoint — POST-only URL referenced in CI
 # automation runbooks. GET returns 404, which is correct API behavior.
 ^https://api\.github\.com/repos/[^/]+/[^/]+/dispatches
+
+# Mindcore Techblog (3rd-party blog reference in ADR-002 reference table) —
+# host returns connection failure from CI cloud IPs but is a legitimate
+# blog post when reachable. Cite stays for human readers; lychee skips.
+^https://techblog\.dvbmedia\.net/
+
+# TheTechTrails (3rd-party blog reference in ADR-003) — Google rate-limits
+# the redirect chain into a 429 from cloud CI IPs. Same pattern as
+# techblog.dvbmedia.net above; legitimate blog when reachable from a
+# normal client.
+^https?://(www\.)?thetechtrails\.com/
+
+# Local dev-server URLs appear in contributor setup docs (e.g. quickstart,
+# contributing) as walkthrough examples, not as live links. Generalises the
+# `^http://localhost` exclusion already in the workflow's --exclude list.
+^http://127\.0\.0\.1(:[0-9]+)?(/|$)
+
+# piv.idmanagement.gov is referenced in the HRIT modernization proposed-canon
+# notes. The federal host serves a TLS certificate valid only for
+# coffa.gov / citizenscience.gov / fmi.gov / sftool.gov, so lychee correctly
+# rejects it as a TLS mismatch. The misconfiguration is GSA-side; the URL
+# stays as a citation for human readers, lychee skips it.
+^https://piv\.idmanagement\.gov/
+
+# Defense Counterintelligence and Security Agency (dcsa.mil) — referenced
+# in the DCSA Clearance Attribute Service adapter spec and validation
+# suite. Federal .mil host returns connection-failed from GitHub Actions
+# cloud-IP runners (same geo-gating pattern as learn.microsoft.com and
+# fedramp.gov above). The citation is a legitimate human-navigable
+# reference; lychee should skip the reachability check.
+^https://www\.dcsa\.mil/
+
+# ---------------------------------------------------------------------------
+# Azure / Microsoft API endpoints in code-block illustrations
+# ---------------------------------------------------------------------------
+# All of these patterns are API endpoints that appear inside PowerShell or
+# REST examples. They return 401/403/404 to unauthenticated cloud CI runners
+# (which is correct API behavior — they require a bearer token), but the
+# URLs themselves are stable Microsoft hosts. They are documentation, not
+# navigable links, so lychee should not assert reachability.
+
+# Azure Resource Manager — `management.azure.com` returns 401 without auth.
+^https://management\.azure\.com/
+
+# Microsoft Defender for Endpoint API — 401 without bearer token.
+^https://api\.securitycenter\.microsoft\.com/
+
+# Azure DevOps REST API — example URLs include literal {org}/{project}
+# placeholders (URL-encoded as %7B/%7D) which 404 by design.
+^https://dev\.azure\.com/
+
+# Azure Instance Metadata Service — 169.254.169.254 is link-local and only
+# resolvable from inside an Azure VM. Always fails from external CI runners.
+^http://169\.254\.169\.254/
+
+# Microsoft Entra OIDC discovery — templated URLs of the form
+# https://login.microsoftonline.com/{domain}/v2.0/.well-known/...
+# 400 because the {domain} placeholder is unsubstituted.
+^https://login\.microsoftonline\.com/
+
+# Power BI service-principal scope — `analysis.windows.net/powerbi/api/.default`
+# is the OAuth scope identifier, not a fetchable URL.
+^https://analysis\.windows\.net/
+
+# Tenant-specific SharePoint Online hostnames — examples like
+# contoso-my.sharepoint.com return TLS-mismatch errors from generic
+# resolvers. Tenant SharePoint URLs are illustrative, not navigable.
+^https?://[^/]+\.sharepoint\.com/
+
+# Tenant-specific Azure Blob Storage hostnames — fictional storage accounts
+# (e.g. orgpathguestconfig.blob.core.windows.net) appear in deployment
+# samples and never resolve.
+^https?://[^/]+\.blob\.core\.windows\.net/
+
+# Templated raw.githubusercontent URLs with literal {org}/{repo} placeholders
+# (URL-encoded %7B...%7D) — 400 by design.
+^https://raw\.githubusercontent\.com/.*%7B
+
+# ---------------------------------------------------------------------------
+# Third-party API examples in narrative documentation
+# ---------------------------------------------------------------------------
+
+# Infoblox Cloud Services Portal — `csp.infoblox.com/api/ddi/v1` is the
+# documented base URL for Infoblox DDI; returns 404 to unauthenticated GET
+# (which is correct — it requires an authenticated session).
+^https://csp\.infoblox\.com/
+
+# ---------------------------------------------------------------------------
+# Fictional internal hostnames used in customer-facing narratives
+# ---------------------------------------------------------------------------
+
+# `wiki.internal` is a generic fictional intranet host used in incident
+# response runbook examples. Same pattern as the .local and .contoso.*
+# rules above.
+^https?://wiki\.internal(/|:|$)
