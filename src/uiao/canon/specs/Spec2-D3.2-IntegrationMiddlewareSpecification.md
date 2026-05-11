@@ -428,7 +428,7 @@ D3.7 binds the metrics + traces to alerting rules.
 
 - [ADR-003](../adr/adr-003-api-driven-inbound-provisioning.md)
 - [ADR-035](../adr/adr-035-orgpath-codebook-binding.md)
-- [ADR-048](../adr/adr-048-orgpath-attribute-storage-decision.md)
+- [ADR-048](../adr/adr-048-orgpath-attribute-selection.md)
 - [ADR-049](../adr/adr-049-microsoft-adapter-coverage-expansion.md)
 - [ADR-050](../adr/adr-050-reference-middleware-implementation-choices.md)
 

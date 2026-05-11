@@ -1,4 +1,4 @@
-"""Device OrgPath plane registry loader (MOD_C, ADR-038).
+"""Device OrgPath plane registry loader (UIAO_153, ADR-038).
 
 Loads ``src/uiao/canon/data/orgpath/device-planes.yaml`` which declares,
 for every ``ComputerDisposition.orgpath_plane`` value, the write mechanism
@@ -14,7 +14,7 @@ The loader enforces three integrity checks beyond JSON Schema:
 2. **Disposition uniqueness** — no two planes claim the same disposition
    (a disposition lands on exactly one plane).
 3. **ARM tag regex agreement** — the ARM-tag ``value_regex`` matches the
-   canonical OrgPath regex shipped with MOD_A (ADR-035); they must stay
+   canonical OrgPath regex shipped with UIAO_151 (ADR-035); they must stay
    in lock-step.
 """
 
@@ -154,14 +154,14 @@ def _validate_integrity(document: Dict, codebook: Codebook) -> None:
         raise DevicePlaneValidationError(f"Registry is missing coverage for dispositions: {sorted(missing)}")
 
     # ARM tag regex must agree with the canonical OrgPath regex. We compare
-    # against a reference copy shipped with MOD_A so a divergence between
+    # against a reference copy shipped with UIAO_151 so a divergence between
     # canon files gets caught at load, not at runtime.
     canonical_regex = codebook.regex
     arm_regex = document["arm_tag"]["value_regex"]
     if arm_regex != canonical_regex:
         raise DevicePlaneValidationError(
             f"arm_tag.value_regex ({arm_regex!r}) does not match the "
-            f"canonical MOD_A regex ({canonical_regex!r}) — cross-canon drift"
+            f"canonical UIAO_151 regex ({canonical_regex!r}) — cross-canon drift"
         )
 
 

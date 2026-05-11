@@ -1,0 +1,76 @@
+# Tier-2 contract fixture: SCuBA AAD baseline assessment, all-PASS shape.
+#
+# Codifies the canonical OPA/Rego result-row shape for a SCuBA AAD baseline
+# evaluation when every policy passes. The scuba adapter's transform pipeline
+# normalizes this shape into per-policy canonical claims; this fixture is
+# the happy-path contract that pairs with aad-baseline-with-failures.yaml
+# (negative path).
+#
+# NIST control mapping: CA-2 (Security Assessments), CA-7 (Continuous
+# Monitoring), CM-6 (Configuration Settings).
+
+adapter: "scuba"
+operation: "evaluate_aad_baseline"
+cloud_variant:
+  - gcc-moderate
+  - commercial
+
+request:
+  # SCuBA is invoked locally via PowerShell; "request" is the adapter's
+  # invocation contract rather than an HTTP call. Codified here as a
+  # GET against a well-known local URL the test harness can route.
+  method: GET
+  url: "https://localhost/scubagear/v1/baseline/aad/results"
+  headers:
+    Accept: "application/json"
+  body: null
+
+response:
+  status: 200
+  headers:
+    Content-Type: "application/json; charset=utf-8"
+  body:
+    metadata:
+      ProductName: "AAD"
+      DisplayName: "Microsoft Entra ID"
+      ScubaGearVersion: "1.5.1"
+      BaselineVersion: "0.4.0"
+      Timestamp: "2026-05-10T08:00:00Z"
+      TenantId: "<TENANT_GUID>"
+    results:
+      - PolicyId: "MS.AAD.1.1v1"
+        PolicyDescription: "Legacy authentication SHALL be blocked."
+        Result: "Pass"
+        Criticality: "Shall"
+        Details: "0 enabled CA policies allow legacy authentication."
+      - PolicyId: "MS.AAD.2.1v1"
+        PolicyDescription: "Users detected as high risk SHALL be blocked."
+        Result: "Pass"
+        Criticality: "Shall"
+        Details: "1 CA policy(ies) found that block high-risk users."
+      - PolicyId: "MS.AAD.3.1v1"
+        PolicyDescription: "Phishing-resistant MFA SHALL be enforced for all users."
+        Result: "Pass"
+        Criticality: "Shall"
+        Details: "Phishing-resistant MFA enforced via authentication strength policy."
+
+expected_behavior:
+  - "Adapter MUST emit one canonical scuba_policy_result claim per element in response.body.results."
+  - "PolicyId is the canonical key; SCuBA versions same logical policy with v1/v2/v3 suffixes — the adapter MUST preserve the version suffix in the canonical claim, not strip it."
+  - "Result='Pass' maps to canonical assessment_result='satisfied' per the OSCAL assessment-results schema."
+  - "Criticality='Shall' maps to canonical control_severity='required'; 'Should' maps to 'recommended'; 'May' maps to 'optional'."
+  - "metadata.BaselineVersion MUST be carried through to every emitted claim's provenance — versioned baselines drift independently of the SCuBA tool itself."
+  - "Adapter MUST NOT alter Details prose; it is the auditor-facing narrative and any rewording loses the 3PAO's verifiable thread."
+  - "Empty results array (zero policies evaluated) emits DRIFT-PROVENANCE — SCuBA always evaluates the full baseline; an empty result is a configuration error, not a clean tenant."
+
+provenance:
+  source: "vendor-docs"
+  primary_citation:
+    url: "https://github.com/cisagov/ScubaGear/blob/main/PowerShell/ScubaGear/baselines/aad.md"
+    quote: "Microsoft 365 Secure Configuration Baseline for Microsoft Entra ID."
+    accessed: "2026-05-10"
+  supporting_citation:
+    url: "https://github.com/cisagov/ScubaGear/wiki"
+    accessed: "2026-05-10"
+  captured_by: "Schema-derived from CISA SCuBA baselines repository at version 1.5.1; no live SCuBA run captured. UIAO_131 §3.2 tier-2 authoring."
+  sanitization: "Tenant GUID replaced with <TENANT_GUID>. Policy IDs and descriptions are public CISA baseline content and not sanitized."

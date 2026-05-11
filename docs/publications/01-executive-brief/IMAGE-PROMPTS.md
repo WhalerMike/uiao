@@ -1,5 +1,9 @@
 # Image Prompts for Doc 01 — Executive Brief
 
+<!-- companion: none -->
+<!-- The executive-brief publication has its own build.py and no
+     companion .qmd in this folder; the main harvester opts out here. -->
+
 > Paste these directly into Gemini, DALL-E, Midjourney, or your preferred image generator.
 > Style direction: clean, professional, federal/government-appropriate. Think McKinsey or Deloitte whitepaper — not startup marketing. Muted blues, grays, whites. No stock-photo people. No clip art.
 

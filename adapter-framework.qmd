@@ -1,0 +1,194 @@
+---
+title: "Adapter Framework"
+subtitle: "Design rationale, architectural invariants, and the DatabaseAdapterBase contract"
+uiao:
+  id: UIAO_ADAPTER_FW
+  status: Current
+  owner: Governance Board
+  tags: [adapter, architecture, governance]
+  created: "2026-05-06"
+  lastUpdated: "2026-05-06"
+summary: >
+  Reference documentation for the UIAO adapter framework. Covers the two-axis
+  classification system, the DatabaseAdapterBase seven-domain contract, the
+  Adapter Plane's execution environment, and the architectural invariants all
+  adapters must satisfy.
+fabric: adapter
+---
+
+# Adapter Framework
+
+The UIAO adapter framework defines how external systems connect to the governance pipeline.
+An adapter is a **read-only, stateless connector** that pulls data from an external system,
+normalizes it into canonical claims, and emits evidence the governance pipeline consumes.
+Adapters never write to source systems unless they are explicitly classed as `modernization`
+adapters — and even then, only within well-defined boundaries.
+
+## Classification axes
+
+Every adapter is classified on two independent axes:
+
+| Axis | Values | Meaning |
+|------|--------|---------|
+| **Operational class** | `conformance` / `modernization` | Does the adapter mutate the target system? |
+| **Mission class** | `identity` / `telemetry` / `policy` / `enforcement` / `integration` | What governance domain does it serve? |
+
+`conformance` adapters are the default. They live in `src/uiao/canon/adapter-registry.yaml`
+and must never mutate. `modernization` adapters live in `src/uiao/canon/modernization-registry.yaml`
+and may mutate within the invariants described in that file's preamble.
+
+**Choosing mission class:**
+
+| If your adapter reads... | mission class |
+|--------------------------|--------------|
+| Security posture, policy compliance | `policy` |
+| Directory objects, identity records | `identity` |
+| Metrics, logs, signals | `telemetry` |
+| Enforcement decisions, action records | `enforcement` |
+| Cross-system integration state | `integration` |
+
+## The DatabaseAdapterBase contract
+
+All adapters subclass `DatabaseAdapterBase` (`src/uiao/adapters/database_base.py`) and implement
+seven canonical responsibility domains (per UIAO_121):
+
+| # | Domain | Method | Returns |
+|---|--------|--------|---------|
+| 2.1 | Connection & Identity | `connect()` | `ConnectionProvenance` |
+| 2.2 | Schema Discovery & Mapping | `discover_schema()` | `SchemaMappingObject` |
+| 2.3 | Query Normalization | `execute_query(q)` | `QueryProvenance` |
+| 2.4 | Data Normalization | `normalize(rows)` | `ClaimSet` |
+| 2.5 | Drift Detection | `detect_drift()` | `DriftReport` |
+| 2.6 | Evidence Packaging | `collect_evidence(ksi_id)` | `EvidenceObject` |
+| 2.7 | Security / Operations | `__init__(config)` + static checks | — |
+
+These dataclasses are frozen contracts. Any change to their shape requires an ADR.
+
+**Domain 2.1 — Connection & Identity** establishes the provenance chain. `identity` must be unique
+per connection attempt; `auth_method` must be non-empty. This is where credentials are validated
+and TLS properties are recorded.
+
+**Domain 2.2 — Schema Discovery** documents the translation between the vendor's field names and
+UIAO's canonical shape. The `version_hash` must be deterministic — the conformance suite tests this
+explicitly. `unmapped_fields` records vendor fields intentionally excluded (audit trail).
+
+**Domain 2.3 — Query Normalization** translates canonical queries into vendor-specific filters.
+The `execution_plan_hash` enables drift detection between query plan versions.
+
+**Domain 2.4 — Data Normalization** is the adapter's core work. Every `ClaimObject` carries a
+stable identity, control mapping, implementation status, and a `record_hash` for provenance.
+
+**Domain 2.5 — Drift Detection** reports the adapter's own internal consistency assessment —
+schema version drift, baseline divergence, or structural changes in the source system.
+
+**Domain 2.6 — Evidence Packaging** is optional but strongly recommended. It lets the orchestrator
+pull evidence for a specific Key Security Indicator by `ksi_id`.
+
+**Domain 2.7 — Security / Operations** validates configuration at construction time. Reject unsafe
+configs early; never defer to runtime.
+
+## Four architectural invariants
+
+All adapters must satisfy these invariants regardless of operational or mission class:
+
+**Idempotency** — All adapter operations must be idempotent. Applying the same operation multiple
+times produces the same result as applying it once. This is enforced by the conformance test suite.
+
+**Statelessness** — Adapters must be stateless. All state is maintained by the Truth Fabric.
+An adapter may not retain state between requests. The `_records` pattern in the tutorial is
+only valid within a single invocation.
+
+**Schema conformance** — All inputs and outputs must conform to the canonical schema registered
+in the Truth Fabric. The `version_hash` on `SchemaMappingObject` is the mechanism for detecting
+schema drift.
+
+**Isolation** — Adapters operate within sandboxes with explicit resource limits (see ADR-017).
+No adapter may access the resources of another adapter. The Adapter Plane enforces this
+at the execution boundary.
+
+## Adapter Plane — execution environment
+
+The Adapter Plane (documented in [Appendix A](appendix/a-adapter-plane/index.qmd)) provides
+four services to every registered adapter:
+
+**Lifecycle management** — registration, authorization, suspension, and retirement.
+The lifecycle state machine is defined in [A-01](appendix/a-adapter-plane/a-01-adapter-lifecycle.qmd).
+
+**Sandbox execution** — isolated environments that prevent cross-adapter contamination and
+unauthorized resource access. The isolation model is defined in
+[A-02](appendix/a-adapter-plane/a-02-adapter-sandbox-execution.qmd) and ADR-017.
+
+**Hot-swap and rollback** — zero-downtime adapter version upgrades with automatic rollback
+on anomaly detection. The protocol is in
+[A-03](appendix/a-adapter-plane/a-03-adapter-hot-swap-rollback.qmd) and ADR-021.
+
+**Health and liveness monitoring** — continuous monitoring with automatic lifecycle actions
+on degradation. Defined in
+[A-04](appendix/a-adapter-plane/a-04-adapter-health-liveness.qmd) and ADR-025.
+
+## File layout convention
+
+Single-file adapters live directly under `src/uiao/adapters/`:
+
+```
+src/uiao/adapters/
+├── bluecat_adapter.py
+├── cyberark_adapter.py
+├── scubagear_adapter.py
+└── terraform_adapter.py
+```
+
+Adapters with heavy supporting machinery (IR transforms, runtime harnesses, schemas)
+get a subdirectory beside the single-file entry point:
+
+```
+src/uiao/adapters/
+├── scubagear_adapter.py       ← the adapter class
+└── scuba/
+    ├── ir/                    ← vendor-to-IR transformer
+    ├── runtime/               ← runtime harness
+    └── schemas/               ← normalized-JSON schema
+```
+
+Rule of thumb: start as a single file. Grow a subdirectory only when the adapter has
+three or more supporting Python modules, a runtime, or a schema.
+
+## Registry architecture
+
+Two registries, one adapter each:
+
+**`src/uiao/canon/adapter-registry.yaml`** — conformance adapters (read-only).
+Required fields: `id`, `name`, `class`, `mission-class`, `status`, `phase`, `vendor`,
+`license`, `runtime`, `runner-class`, `tenancy`, `scope`, `outputs`, `triggers`.
+Schema: `src/uiao/schemas/adapter-registry/adapter-registry.schema.json`.
+
+**`src/uiao/canon/modernization-registry.yaml`** — modernization adapters (may mutate).
+Additional invariants documented in the registry file's preamble. Use only for adapters
+that genuinely mutate the target system.
+
+Validate any registry change before committing:
+
+```bash
+python -m pytest tests/test_adapter_registry.py -q
+uiao substrate walk
+```
+
+## Related ADRs
+
+| ADR | Scope |
+|-----|-------|
+| ADR-007 | Multi-cloud adapter model |
+| ADR-013 | Adapter failure isolation |
+| ADR-015 | Adapter extensibility |
+| ADR-017 | Adapter sandbox execution |
+| ADR-021 | Adapter hot-swap and rollback |
+| ADR-023 | Adapter concurrency |
+| ADR-025 | Adapter health and liveness |
+| ADR-027 | Adapter retirement |
+| ADR-049 | Microsoft adapter coverage expansion |
+
+## See also
+
+- [Adapter Authoring Tutorial](adapter-authoring-tutorial.qmd) — 30-minute walkthrough from zero to merged PR
+- [Appendix A — Adapter Plane](appendix/a-adapter-plane/index.qmd) — full Adapter Plane specification
+- [ADR Index](adr/index.qmd) — all binding decisions

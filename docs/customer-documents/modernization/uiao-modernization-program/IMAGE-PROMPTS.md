@@ -1,5 +1,9 @@
 # Image Prompts — UIAO Modernization Program (Series)
 
+<!-- companion: none -->
+<!-- This series has its own generator (generate-series-images.py) and its
+     own heading dialect, so the main harvester opts out here. -->
+
 > Companion catalog for the 8-chapter UIAO Modernization Program series.
 > One entry per `![…]` placeholder in the `.qmd` files. Generated images
 > land in `./images/` with the exact filename referenced by each chapter.

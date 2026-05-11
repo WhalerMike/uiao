@@ -37,7 +37,7 @@ identity / device / server / application planes, **provide the SSOT
 governance shell** (canon, schemas, registries, drift detection), and
 **fill the cross-plane gaps** Microsoft does not provide. The existing
 modernization-registry covers Microsoft surfaces well for the OrgTree
-program (Entra ID, M365 tenant config, the four MOD_B/C/D/N OrgTree
+program (Entra ID, M365 tenant config, the four UIAO_152/C/D/N OrgTree
 adapters, the OrgTree drift engine, ADR-035–ADR-040), but a coverage
 audit against Microsoft's published AD-retirement guidance and the
 Defender / Azure Arc product surface reveals eight Microsoft tools that
@@ -73,9 +73,9 @@ either axis:
 | 2 | **Microsoft Defender for Cloud Apps** (MDCA) | OAuth app governance, Shadow IT discovery, app risk scoring, session controls, Conditional Access App Control — primary signal source for the application plane. |
 | 3 | **Microsoft Defender for Servers** (MDfS) | Arc-server EDR, posture and vulnerability management for hybrid servers — primary risk feed for the server plane. |
 | 4 | **Azure Migrate** | Server / application dependency mapping (port + protocol + service-to-service call graph) — Microsoft's native discovery for domain-retirement sequencing. |
-| 5 | **Azure Policy for Arc** (compliance + remediation) | Hybrid-server policy initiatives, compliance evaluation, remediation tasks. The existing `entra-policy-targeting` adapter (MOD_N) binds *targeting only* — policy bodies and remediation are explicitly out of MOD_N scope. |
+| 5 | **Azure Policy for Arc** (compliance + remediation) | Hybrid-server policy initiatives, compliance evaluation, remediation tasks. The existing `entra-policy-targeting` adapter (UIAO_164) binds *targeting only* — policy bodies and remediation are explicitly out of UIAO_164 scope. |
 | 6 | **Microsoft Entra ID Governance** | Access Reviews, Entitlement Management, Lifecycle Workflows, Privileged Identity Management, Separation-of-Duties policies. Functionally adjacent to `entra-id` but not enumerated in its `scope`. |
-| 7 | **Microsoft Entra Workload Identity** | Workload identities, workload identity federation, app credential hygiene reports — the change-making surface that retires legacy AD service accounts (MOD_F-adjacent). |
+| 7 | **Microsoft Entra Workload Identity** | Workload identities, workload identity federation, app credential hygiene reports — the change-making surface that retires legacy AD service accounts (UIAO_156-adjacent). |
 | 8 | **Microsoft Intune (modernization side)** | Device configuration profile and compliance-policy *body* writes. The conformance-side `intune` adapter is reserved (not active); the modernization side has no allocation at all, even though `src/uiao/adapters/intune_adapter.py` exists as in-flight code. |
 
 ### Why the gaps matter

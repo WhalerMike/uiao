@@ -1,0 +1,70 @@
+# Tier-2 contract fixture: entra-id directory-roles enumeration in
+# GCC-Moderate.
+#
+# Codifies the canonical Microsoft Graph response shape for
+# GET /directoryRoles. Directory roles are the substrate's authoritative
+# privilege catalog at the tenant level — Global Administrator, Privileged
+# Authentication Administrator, etc. — and every privileged-access claim
+# downstream resolves through this list.
+#
+# NIST control mapping: AC-6 (Least Privilege), AC-2(7) (Account
+# Management — Privileged User Accounts), IA-2(1) (Identification &
+# Authentication — Network Access to Privileged Accounts).
+
+adapter: "entra-id"
+operation: "list_directory_roles"
+cloud_variant:
+  - gcc-moderate
+
+request:
+  method: GET
+  url: "https://graph.microsoft.com/v1.0/directoryRoles?$select=id,displayName,description,roleTemplateId"
+  headers:
+    Authorization: "Bearer <TOKEN>"
+    Accept: "application/json"
+  body: null
+
+response:
+  status: 200
+  headers:
+    Content-Type: "application/json; charset=utf-8"
+  body:
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryRoles(id,displayName,description,roleTemplateId)"
+    value:
+      - id: "<DIR_ROLE_GUID_01>"
+        displayName: "Global Administrator"
+        description: "Can manage all aspects of Microsoft Entra ID and Microsoft services that use Microsoft Entra identities."
+        roleTemplateId: "62e90394-69f5-4237-9190-012177145e10"
+      - id: "<DIR_ROLE_GUID_02>"
+        displayName: "Privileged Role Administrator"
+        description: "Can manage role assignments in Microsoft Entra ID, and all aspects of Privileged Identity Management."
+        roleTemplateId: "e8611ab8-c189-46e8-94e1-60213ab1f814"
+      - id: "<DIR_ROLE_GUID_03>"
+        displayName: "Security Administrator"
+        description: "Can read security information and reports, and manage configuration in Microsoft Entra ID and Office 365."
+        roleTemplateId: "194ae4cb-b126-40b2-bd5b-6091b380977d"
+      - id: "<DIR_ROLE_GUID_04>"
+        displayName: "Cloud Application Administrator"
+        description: "Can create and manage all aspects of app registrations and enterprise apps except App Proxy."
+        roleTemplateId: "158c047a-c907-4556-b7ef-446551a6b5f7"
+
+expected_behavior:
+  - "Adapter MUST emit one canonical directory_role claim per element."
+  - "roleTemplateId is the canonical key — it is stable across tenants and clouds, while the activated 'id' field is per-tenant. Canonical claims MUST surface roleTemplateId as the primary identifier; per-tenant id is the foreign key for membership lookup."
+  - "Adapter MUST consider Global Administrator (template 62e90394...) and Privileged Role Administrator (template e8611ab8...) as Tier-0 roles for AC-2(7) — every membership change emits DRIFT-AUTHZ at P1 severity, not P2."
+  - "Adapter MUST follow up each directory role with a /directoryRoles/{id}/members call to enumerate principals; that follow-up is a separate operation with its own fixture."
+  - "Roles activated but with zero members MUST emit DRIFT-PROVENANCE: an activated role with no assignments wastes the namespace and obscures the privilege surface. (Non-activated roles do not appear in this list — Microsoft's GET /directoryRoles only returns activated ones.)"
+  - "Adapter MUST NOT cache role definitions longer than 7 days — Microsoft revises role definitions and CISA SCuBA baselines update accordingly."
+
+provenance:
+  source: "microsoft-learn"
+  primary_citation:
+    url: "https://learn.microsoft.com/en-us/graph/api/directoryrole-list?view=graph-rest-1.0&tabs=http"
+    quote: "List the directory roles that are activated in the tenant."
+    accessed: "2026-05-10"
+  supporting_citation:
+    url: "https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/permissions-reference"
+    quote: "Microsoft Entra built-in roles. The roleTemplateId is the same across all tenants."
+    accessed: "2026-05-10"
+  captured_by: "Schema-derived from Microsoft Learn; no live tenant captured. roleTemplateId values are public Microsoft well-known GUIDs and not sanitized. UIAO_131 §3.2 tier-2 authoring."
+  sanitization: "Bearer token redacted (was never captured live). Per-tenant directory-role activation GUIDs (the 'id' field) replaced with <DIR_ROLE_GUID_NN>. roleTemplateId values left as the public Microsoft well-known GUIDs."

@@ -11,7 +11,7 @@ References
 ----------
 - ADR-054 §Implementation (deferred test cases now closed by this module)
 - ADR-058 — HRIT Productization mission theme
-- UIAO_143 §4–9 — Operational spec for each runtime component
+- UIAO_144 §4–9 — Operational spec for each runtime component
 - inbox/v0.6.0-hrit-productization/03-batch-plan.md §WS-A9
 """
 

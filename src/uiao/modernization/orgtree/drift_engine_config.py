@@ -1,4 +1,4 @@
-"""Drift engine configuration loader (MOD_M, ADR-040).
+"""Drift engine configuration loader (UIAO_163, ADR-040).
 
 Loads ``src/uiao/canon/data/orgpath/drift-engine-config.yaml`` and exposes a
 :class:`DriftEngineConfig` the :class:`OrgTreeDriftEngine` consumes to

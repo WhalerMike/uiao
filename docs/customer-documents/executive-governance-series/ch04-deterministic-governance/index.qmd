@@ -7,29 +7,144 @@ classification: Controlled
 boundary: GCC-Moderate
 family: executive-governance-series
 series-order: 4
-status: Stub
+status: Active
+canon-source: "src/uiao/canon/substrate-manifest.yaml"
+canon-reference:
+  - "src/uiao/canon/adr/adr-006-evidence-determinism.md"
+  - "src/uiao/canon/adr/adr-016-evidence-bundle-lifecycle.md"
 repo-path: docs/customer-documents/executive-governance-series/ch04-deterministic-governance
 created-at: 2026-04-26
-updated-at: 2026-04-26
+updated-at: 2026-05-10
 ---
 
 # Deterministic Governance
 
-::: {.callout-note}
-## Under Development
-This chapter is under active development.
-Content will be derived from canonical governance articles as they are finalized.
-:::
-
 ## Overview
 
-Presents the deterministic governance model — reproducible, machine-verifiable, drift-resistant systems that replace attestation-based approaches.
+Deterministic governance is the substrate-level alternative to
+attestation-based compliance. The defining property: given the same
+canon and the same inputs, the substrate always produces the same
+evidence — byte-for-byte. This chapter explains what determinism buys
+operationally, why it is the response to the
+[compliance paradox](../ch02-compliance-paradox/index.qmd) and to
+[drift](../ch03-drift-as-primary-threat/index.qmd), and how the
+substrate enforces it.
 
-## Key Takeaways
+[IMAGE-01: Deterministic governance reproducibility diagram. Two parallel pipeline rows. Top row labeled "Original assembly" shows: Canon vN + Inputs(t1) → Substrate Pipeline → Evidence Bundle (hash: 0x4f2c…). Bottom row labeled "Independent re-assembly (months later)" shows: Canon vN + Inputs(t1) → Substrate Pipeline → Evidence Bundle (hash: 0x4f2c…). Both bundle-hash values shown identical, with a verification check icon between them. A separate side panel highlights the four ADR-006 properties: no silent drops, append-only writes, ordered records, idempotent ingestion. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic.]
 
-_This section will be populated when the chapter content is finalized._
+## What "deterministic" means here
 
-## Related Documents
+Three properties characterize deterministic governance, distinct from
+"automated" governance:
 
-- [Executive Governance Series Index](../index.qmd)
-- [Document Index](../../document-index.qmd)
+1. **Reproducibility.** Same canon, same inputs → same bundle.
+   Independent re-execution by an assessor is the test.
+2. **Provenance.** Every claim carries the full envelope (issuer,
+   classification, timestamps, lineage_hash) per
+   [`15_ProvenanceProfile.qmd`](../../../docs/15_ProvenanceProfile.qmd).
+3. **Hash-verifiable lineage.** Bundle hash is computed over
+   per-claim hashes; modification anywhere breaks the bundle hash.
+
+Automation produces faster output. Determinism produces *the same*
+output regardless of who runs it or when. Only the second property
+gives a 3PAO independent verification.
+
+## Why determinism is the response to the paradox
+
+The [compliance paradox](../ch02-compliance-paradox/index.qmd) emerges
+because reported state and substrate state diverge between audit
+cycles. Determinism collapses the cycle:
+
+- **Re-running is cheap.** A 3PAO does not have to re-engage the
+  operator to re-execute; the substrate runs the assembly itself.
+- **Drift findings are first-class.** Between audits, drift findings
+  are emitted continuously and carried into the bundle deterministically.
+- **No "snapshot rot."** The bundle from yesterday is regeneratable
+  today, and the regeneration *is* the verification.
+
+The audit cycle stops being load-bearing for evidence freshness. It
+becomes a review event for canon changes, ADR decisions, and program
+posture — which is what an audit cycle should be.
+
+## What determinism is the response to in the drift model
+
+Drift is detected, classified, and remediated through canonical
+contracts. Determinism makes those contracts *evidence*:
+
+- A remediation contract emitted at time T is part of the bundle for
+  any window covering T.
+- Re-running the bundle for that window months later produces the
+  same contract record, byte-identical.
+- The AO can verify the program responded to drift correctly *by
+  re-executing*, not by reading a narrative.
+
+This is why drift detection without determinism is incomplete: the
+findings exist but are not assessor-reproducible.
+
+## How the substrate enforces it
+
+[ADR-006](../../../../src/uiao/canon/adr/adr-006-evidence-determinism.md)
+declares the four properties evidence emission must satisfy:
+
+1. **No silent drops.**
+2. **Append-only writes.**
+3. **Ordered records.**
+4. **Idempotent ingestion.**
+
+[ADR-016](../../../../src/uiao/canon/adr/adr-016-evidence-bundle-lifecycle.md)
+declares the bundle lifecycle: assemble → seal → submit → close.
+Once sealed, the bundle is immutable; updates produce new bundles
+that supersede prior ones with explicit provenance.
+
+Together these constrain *every* OSCAL emission the substrate makes.
+SSP, POA&M, KSI dashboard entries, Component Definition records — all
+emerge from the same deterministic pipeline.
+
+## What changes for the program
+
+For program leadership, three operational properties:
+
+- **Evidence is regenerable.** The program does not have to preserve
+  point-in-time bundles forever; they can be recreated from canon
+  plus archived inputs.
+- **Vendor lock-in shrinks.** The substrate's deterministic emissions
+  do not depend on the vendor's GRC tool to assemble them.
+- **Post-incident reconstruction is cheap.** A 3PAO investigating a
+  past period can regenerate the evidence for that period without
+  the original team's involvement.
+
+For the AO, the operational property is simpler: **independent
+verification is a re-run, not an interview.**
+
+## Honest limits
+
+- Determinism applies to the evidence layer. Canon correctness is a
+  separate concern; the substrate is faithful to canon, not a check
+  on canon.
+- Continuous event-time capture across all adapters is target state.
+  Adapters that ship interval evidence today (e.g. SCuBAGear) are
+  deterministic per interval; continuous deterministic capture is
+  engineering ahead.
+- Deterministic regeneration depends on archiving the inputs alongside
+  the canon version. Programs that discard inputs after assembly lose
+  the regeneration property.
+
+## Key takeaways
+
+- Determinism is the response to both the compliance paradox and the
+  drift problem.
+- It is reproducibility + provenance + hash-verifiable lineage —
+  three properties, not just automation.
+- ADR-006 + ADR-016 constrain every OSCAL emission to the
+  deterministic contract.
+- For the AO, independent verification becomes a re-run.
+- Honest limit: determinism is faithful to canon; canon correctness is
+  a separate (and primary) concern.
+
+## Related documents
+
+- [Executive Governance Series Index](../index.html)
+- [Chapter 6: Evidence over Attestation](../ch06-evidence-over-attestation/index.qmd)
+- [Architecture Series — Evidence Chain](../../architecture-series/evidence-chain.qmd)
+- [ADR-006: Evidence Determinism](../../../../src/uiao/canon/adr/adr-006-evidence-determinism.md)
+- [ADR-016: Evidence Bundle Lifecycle](../../../../src/uiao/canon/adr/adr-016-evidence-bundle-lifecycle.md)

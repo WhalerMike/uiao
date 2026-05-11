@@ -1,0 +1,216 @@
+---
+title: "UIAO_115 Performance Engineering — Kickoff Plan"
+subtitle: "Defer-exit criteria, baseline measurement infrastructure, and profile-then-optimize sequencing"
+date: "2026-05-10"
+date-format: "MMMM D, YYYY"
+description: "Project-plan companion to the §4.4 assessment that deferred UIAO_115. Defines the empirical baseline that must exist before any optimization work begins, the criteria for promoting UIAO_115 from ⚠️ aspirational / deferred to 🟡 implementation-active, and the profile-driven sequencing once the criteria are met."
+---
+
+## Plan metadata
+
+| Field | Value |
+|---|---|
+| Program | UIAO_127 (Project Plans) |
+| Template | UIAO_127 Project Plan (kickoff shape) |
+| Subject | UIAO_115 — Runtime Optimization & Performance Engineering Layer |
+| Plan version | 1.0 (first delivery) |
+| Closes | UIAO_115 Phase 2 follow-up from the [§4.4 assessment](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd) |
+| Companion | [UIAO_114 HA Kickoff Plan](2026-05-10-uiao_114-ha-kickoff-plan.qmd) (shares baseline infrastructure B1) |
+
+## Purpose
+
+The §4.4 assessment correctly observed that performance work without
+empirical baseline is premature: the spec lists optimization techniques
+(Numba/Rust kernels, Redis cache, M365 delta tokens, vectorized rule
+evaluation) but does not bind them to measured baselines. This plan
+makes the deferral **operational** by naming three things explicitly:
+
+1. **Defer-exit criteria** — the empirical signals that say
+   "optimization work is now warranted because a real hotspot is
+   measured against a real baseline."
+2. **Baseline measurement infrastructure** — what must ship *first*
+   so the optimization work can be reviewed against actual hot paths
+   rather than speculative bottlenecks.
+3. **Profile-then-optimize sequencing** — the implementation order
+   once the criteria fire. Crucially, this sequencing is **driven
+   by the baseline**, not by the spec's section order. The spec's
+   §3 (KSI eval), §4 (drift), §5 (OSCAL) are presented as parallel
+   optimization domains; in practice we will optimize whichever the
+   baseline measures as the actual hotspot first.
+
+This is a kickoff plan, not an implementation plan. No optimization
+code lands in this PR.
+
+## Defer-exit criteria
+
+UIAO_115 leaves "deferred" status when **any one** of the following
+fires (logical-OR, not AND — a single concrete bottleneck is enough
+to start work). Until then, substrate-status continues to show
+UIAO_115 as ⚠️ aspirational with a "deferred pending baseline" note.
+
+### C1 — A measured hotspot exceeds a stated SLO
+
+The substrate's pipeline timing surface (B1 below) records 30
+consecutive days of latency where one or more planes consistently
+exceeds the spec's per-plane budget:
+
+- Plane 1 (Ingestion) > 3s p95
+- Plane 2 (IR + KSI) > 1s p95
+- Plane 3 (Evidence Bundles) > 2s p95
+- Plane 4 (OSCAL) > 2s p95
+- Total > 10s p95
+
+**Measurement:** automated alert from B1 reporting; not operator
+intuition.
+
+### C2 — A real tenant request exceeds platform-team SLO contract
+
+If/when a platform team is named (per the [HA kickoff plan](2026-05-10-uiao_114-ha-kickoff-plan.qmd)
+C3) and contracts an SLO with a regulated tenant, breach of that SLO
+fires C2 even if the spec's own per-plane budgets aren't exceeded.
+
+**Measurement:** SLO contract + breach event in the platform team's
+paging system.
+
+### C3 — Cost growth outstrips evidence growth
+
+Substrate compute cost per evidence bundle climbs above a
+to-be-defined threshold (a 2× cost-per-bundle increase year-over-year
+without a 2× bundle-volume increase). C3 is the cost-driven trigger
+when latency itself is acceptable but the substrate is becoming
+expensive to run.
+
+**Measurement:** quarterly cost-per-bundle calculation from the
+platform team's cost reporting + B1 bundle-volume data.
+
+## Baseline measurement infrastructure (ships first)
+
+The §4.4 assessment specifically called out that timing measurements
+exist (`PlaneResult` / `AdapterRun` dataclasses record wall-clock
+duration) but SLO enforcement does not. The baseline infrastructure
+turns those raw measurements into a queryable, alertable surface.
+
+### B1 — Per-pipeline timing surface (shared with UIAO_114 K3)
+
+Same deliverable as the [HA kickoff plan B1](2026-05-10-uiao_114-ha-kickoff-plan.qmd#b1-per-pipeline-timing-surface-extends-uiao_115-work)
+— extends `PlaneResult` / `AdapterRun` into a structured
+`PipelineTimingReport` API:
+
+- Per-run, per-plane latency in canonical claim form.
+- Per-adapter dispatch latency.
+- Per-OSCAL-emission latency, with the artifact size as a paired
+  metric (cost-per-byte is the right ratio for §3.4 short-circuiting
+  decisions).
+- Queryable via Auditor API with a 90-day rolling window.
+
+B1 is shared with UIAO_114; whichever kickoff begins first ships B1.
+
+### B2 — Cache-effectiveness telemetry
+
+The spec's §6 names four cache layers (IR / KSI / Evidence Bundle /
+OSCAL). None of them is currently implemented; B2 is **not building
+the caches** — it is instrumenting the points where caches *would*
+sit so we can measure the effective hit rate before deciding which
+layer is worth implementing.
+
+Concretely:
+
+- Hash the deterministic cache keys at every cache boundary.
+- Log a "would-have-hit" signal whenever the same cache key is
+  computed twice within a configurable window (default: 1 hour).
+- Aggregate hit-rate per cache layer per pipeline run.
+
+Output: a 90-day report showing which cache layer would have the
+highest payoff. Optimization work then prioritizes that layer.
+
+### B3 — Adapter-evidence delta tracking
+
+The spec's §2.4 calls for incremental ingestion (M365 delta tokens,
+Defender deltas). B3 instruments the existing snapshot-based
+adapters to log how much of each snapshot is **unchanged** from the
+previous run. High unchanged-percentage is the signal that delta
+ingestion will pay off.
+
+Output: per-adapter delta-eligibility score in B1's reporting
+surface. Adapters scoring high are first candidates for §2.4
+implementation.
+
+## Profile-then-optimize sequencing (after defer-exit fires)
+
+Once any C1/C2/C3 fires and B1–B3 have shipped, optimization work
+proceeds in this order, **driven by the baseline data**, not by
+spec section order.
+
+### Phase 2A — Read the baseline and pick the target (~2 days)
+
+- Pull 30 days of B1 + B2 + B3 data.
+- Identify the single highest-leverage optimization (likely either
+  the cache layer with the highest would-have-hit rate, or the
+  adapter with the highest delta-eligibility score).
+- File a Phase-2B project plan naming the chosen target, the
+  baseline that justifies it, and the SLO improvement target.
+
+### Phase 2B — Ship the chosen optimization (~2-4 weeks per target)
+
+- Implementation per the spec section that covers the chosen target.
+- Re-run B1 against the same evidence set; quantify the SLO
+  improvement.
+- If the improvement meets target: ship + close the project plan.
+- If the improvement misses target: file a follow-up plan; do not
+  stack additional optimizations on the same hot path until the
+  current one is understood.
+
+### Phase 2C — Repeat for the next-highest hotspot
+
+- Loop back to Phase 2A. Each cycle is one optimization at a time.
+
+The discipline: never optimize without a measured target, and never
+stack optimizations without measuring each in isolation. This is
+deliberately slow compared to "implement the spec end-to-end"; the
+slowness is the point. Optimization without baselines produces
+unreviewable diffs.
+
+## Anti-patterns this plan blocks
+
+These approaches were considered and rejected:
+
+1. **"Implement the spec front-to-back."** The spec's §3.3 calls
+   for Numba/Rust kernels for vectorized KSI evaluation. Without
+   knowing whether KSI eval is even a hotspot, this would be
+   speculative complexity.
+2. **"Add Redis."** The spec mentions Redis for caching. Caching is
+   the right pattern when measured hit rate justifies it; B2 measures
+   that. Adding Redis without B2 data couples the substrate to a
+   Redis dependency that may add no value.
+3. **"Profile in development against synthetic data."** Synthetic
+   benchmarks routinely mislead. The defer-exit criteria above
+   require *production* data because that is what optimization
+   needs to honor.
+
+## Action items
+
+| # | Action | Owner | Due |
+|---|---|---|---|
+| 115.K1 | Land this plan; substrate-status §"Open backlog" links to it under Tier 2 item 6 | Substrate maintainer | This PR |
+| 115.K2 | B1 (per-pipeline timing surface) — design + ship; shared with UIAO_114 | Substrate maintainer | Before C1 can fire |
+| 115.K3 | B2 (cache-effectiveness telemetry) — design + ship | Substrate maintainer | After B1 |
+| 115.K4 | B3 (adapter delta tracking) — design + ship | Substrate maintainer | After B1 |
+| 115.K5 | Once defer-exit fires, file Phase-2A plan with the chosen optimization target | Substrate maintainer + platform team (if named) | After exit fires |
+
+## Status reporting contract
+
+Until the kickoff fires, substrate-status §"Open backlog" Tier 2 item
+6 is the canonical status surface. Annotation:
+
+> **UIAO_115 Performance Engineering** — deferred pending baseline
+> per the 2026-04-26 §4.4 assessment. Defer-exit criteria and
+> baseline measurement infrastructure documented in the
+> [2026-05-10 kickoff plan](2026-05-10-uiao_115-perf-kickoff-plan.qmd).
+> No optimization work in flight; profile-then-optimize discipline
+> in force.
+
+## Related documents
+
+- [§4.4 Assessment — UIAO_114 / 115 / 117 / 119](2026-04-26-ha-perf-recovery-tenancy-assessment.qmd)
+- [UIAO_114 HA Kickoff Plan](2026-05-10-uiao_114-ha-kickoff-plan.qmd)
+- Canon source: [`src/uiao/canon/specs/performance.md`](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/specs/performance.md)

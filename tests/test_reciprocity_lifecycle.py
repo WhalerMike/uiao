@@ -16,7 +16,7 @@ References
 ----------
 - ADR-054 §Implementation line 163 — deferred happy-path + lapsed-ATO test cases
 - ADR-058 §Consequences — 8 blocking CI gates, smoke runs in <60s
-- UIAO_143 §7 — ConMon SLA enforcement (30/45/30-day thresholds)
+- UIAO_144 §7 — ConMon SLA enforcement (30/45/30-day thresholds)
 - inbox/v0.6.0-hrit-productization/03-batch-plan.md §WS-A9
 """
 

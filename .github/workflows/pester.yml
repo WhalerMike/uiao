@@ -1,0 +1,87 @@
+name: Pester
+
+on:
+  pull_request:
+    paths:
+      - 'tools/powershell/**'
+      - '.github/workflows/pester.yml'
+      - 'src/uiao/modernization/orgtree/codebook.py'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/powershell/**'
+      - 'src/uiao/modernization/orgtree/codebook.py'
+
+jobs:
+  pester:
+    name: PowerShell module tests (Pester)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write   # for the on-failure diagnostic comment
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Pin Pester version
+        shell: pwsh
+        run: |
+          Install-Module -Name Pester -RequiredVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          Get-Module -ListAvailable Pester | Select-Object Name, Version
+
+      - name: Run Pester
+        shell: pwsh
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = './tools/powershell/OrgTreeValidation/tests'
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = 'Detailed'
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputPath = 'pester-results.xml'
+          $config.TestResult.OutputFormat = 'JUnitXml'
+          Invoke-Pester -Configuration $config
+
+      - name: Upload Pester results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pester-results
+          path: pester-results.xml
+
+      - name: On failure, post Pester output as PR comment
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '## Pester failure detail\n\n';
+            try {
+              const xml = fs.readFileSync('pester-results.xml', 'utf8');
+              // Crude but adequate: pull <failure ...>message</failure> blocks.
+              const re = /<testcase[^>]*name="([^"]+)"[\s\S]*?<failure[^>]*>([\s\S]*?)<\/failure>/g;
+              let match;
+              let n = 0;
+              while ((match = re.exec(xml)) !== null && n < 25) {
+                const name = match[1];
+                const msg = match[2]
+                  .replace(/&lt;/g, '<')
+                  .replace(/&gt;/g, '>')
+                  .replace(/&amp;/g, '&')
+                  .replace(/&quot;/g, '"');
+                body += `### \`${name}\`\n\n\`\`\`\n${msg.trim().slice(0, 4000)}\n\`\`\`\n\n`;
+                n++;
+              }
+              if (n === 0) {
+                body += '_(no `<failure>` blocks parsed from `pester-results.xml`. The XML may be malformed or the failure happened before any test ran. Raw head:)_\n\n```\n' + xml.slice(0, 4000) + '\n```\n';
+              } else {
+                body += `\n_(${n} failed test case(s) listed.)_\n`;
+              }
+            } catch (err) {
+              body += '_(could not read `pester-results.xml`: ' + err.message + ')_\n';
+            }
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body,
+            });

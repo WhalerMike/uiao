@@ -1,0 +1,78 @@
+# Tier-2 contract fixture: SCuBA AAD baseline assessment with mixed
+# Pass / Fail / Manual / N/A results.
+#
+# Codifies the OPA/Rego result-row shape when the baseline finds at least
+# one violation. Pairs with aad-baseline-pass-result.yaml — the adapter
+# must produce well-formed canonical claims regardless of result mix, and
+# the FAIL case is what flows into POA&M generation downstream.
+#
+# NIST control mapping: CA-2, CA-5 (Plan of Action & Milestones), CA-7,
+# CM-6.
+
+adapter: "scuba"
+operation: "evaluate_aad_baseline"
+cloud_variant:
+  - gcc-moderate
+  - commercial
+
+request:
+  method: GET
+  url: "https://localhost/scubagear/v1/baseline/aad/results"
+  headers:
+    Accept: "application/json"
+  body: null
+
+response:
+  status: 200
+  headers:
+    Content-Type: "application/json; charset=utf-8"
+  body:
+    metadata:
+      ProductName: "AAD"
+      DisplayName: "Microsoft Entra ID"
+      ScubaGearVersion: "1.5.1"
+      BaselineVersion: "0.4.0"
+      Timestamp: "2026-05-10T08:00:00Z"
+      TenantId: "<TENANT_GUID>"
+    results:
+      - PolicyId: "MS.AAD.1.1v1"
+        PolicyDescription: "Legacy authentication SHALL be blocked."
+        Result: "Fail"
+        Criticality: "Shall"
+        Details: "1 enabled CA policy allows legacy authentication: 'Legacy POP/IMAP for service account migration'."
+      - PolicyId: "MS.AAD.2.1v1"
+        PolicyDescription: "Users detected as high risk SHALL be blocked."
+        Result: "Pass"
+        Criticality: "Shall"
+        Details: "1 CA policy(ies) found that block high-risk users."
+      - PolicyId: "MS.AAD.3.1v1"
+        PolicyDescription: "Phishing-resistant MFA SHALL be enforced for all users."
+        Result: "Manual"
+        Criticality: "Shall"
+        Details: "Cannot be checked automatically; manual review required."
+      - PolicyId: "MS.AAD.5.4v1"
+        PolicyDescription: "Federated authentication MAY be configured."
+        Result: "N/A"
+        Criticality: "May"
+        Details: "Not applicable — no federation configured."
+
+expected_behavior:
+  - "Adapter MUST emit one canonical scuba_policy_result claim per element regardless of Result value."
+  - "Result='Fail' MUST emit assessment_result='not-satisfied'; this is what the POA&M generator reads to open a finding."
+  - "Result='Manual' MUST emit assessment_result='not-applicable' with a manual_review_required: true flag — auto-resolution is not possible and the SOC must triage."
+  - "Result='N/A' MUST emit assessment_result='not-applicable' with manual_review_required: false — the baseline itself declared the policy out of scope for this tenant."
+  - "Adapter MUST NOT silently elevate Manual to Pass; Microsoft Learn is explicit that auditor judgment is required."
+  - "POA&M downstream consumes only assessment_result='not-satisfied' rows; Manual results require a separate auditor-action ticket."
+  - "Total result count consistency: response.body.results.length == claims_emitted; mismatch emits DRIFT-PROVENANCE."
+
+provenance:
+  source: "vendor-docs"
+  primary_citation:
+    url: "https://github.com/cisagov/ScubaGear/blob/main/PowerShell/ScubaGear/baselines/aad.md"
+    quote: "Each policy in the baseline is assigned a unique identifier (e.g., MS.AAD.1.1v1) and a criticality (Shall, Should, May)."
+    accessed: "2026-05-10"
+  supporting_citation:
+    url: "https://github.com/cisagov/ScubaGear/blob/main/Rego/AADConfig.rego"
+    accessed: "2026-05-10"
+  captured_by: "Schema-derived from CISA SCuBA baselines + Rego at version 1.5.1; result mix synthesized to exercise all four Result variants. UIAO_131 §3.2 tier-2 authoring."
+  sanitization: "Tenant GUID replaced with <TENANT_GUID>. CA policy display name in the FAIL details is illustrative; not from a real tenant."

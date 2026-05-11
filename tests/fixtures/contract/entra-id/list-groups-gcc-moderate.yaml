@@ -1,0 +1,81 @@
+# Tier-2 contract fixture: entra-id group enumeration in GCC-Moderate.
+#
+# Codifies the canonical Microsoft Graph response shape for GET /groups so the
+# entra-id adapter's group-enumeration operation can be tested without a live
+# tenant. Companion to list-users-gcc-moderate.yaml; together these cover
+# AC-2 (Account Management) and AC-3 (Access Enforcement) evidence at the
+# group-membership level.
+#
+# Per AODIM (UIAO_006), Entra ID groups in this fixture include both static
+# and dynamic-membership groups so the adapter can prove membership_rule
+# is propagated to the canonical claim — dynamic groups are how AODIM
+# realizes attribute-driven access.
+
+adapter: "entra-id"
+operation: "list_groups"
+cloud_variant:
+  - gcc-moderate
+
+request:
+  method: GET
+  url: "https://graph.microsoft.com/v1.0/groups?$select=id,displayName,description,mailEnabled,securityEnabled,groupTypes,membershipRule,createdDateTime&$top=999"
+  headers:
+    Authorization: "Bearer <TOKEN>"
+    Accept: "application/json"
+    ConsistencyLevel: "eventual"
+  body: null
+
+response:
+  status: 200
+  headers:
+    Content-Type: "application/json; charset=utf-8"
+  body:
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#groups(id,displayName,description,mailEnabled,securityEnabled,groupTypes,membershipRule,createdDateTime)"
+    value:
+      - id: "<GROUP_GUID_01>"
+        displayName: "All Federal Employees"
+        description: "Static security group: all employees on payroll."
+        mailEnabled: false
+        securityEnabled: true
+        groupTypes: []
+        membershipRule: null
+        createdDateTime: "2024-02-01T10:00:00Z"
+      - id: "<GROUP_GUID_02>"
+        displayName: "Dynamic — Tier-2 Engineers"
+        description: "Dynamic membership: engineers in Tier-2 OrgPath."
+        mailEnabled: false
+        securityEnabled: true
+        groupTypes:
+          - "DynamicMembership"
+        membershipRule: '(user.department -eq "Engineering") -and (user.extensionAttribute1 -eq "Tier2")'
+        createdDateTime: "2025-04-15T14:32:00Z"
+      - id: "<GROUP_GUID_03>"
+        displayName: "M365 Group — Modernization Program"
+        description: "Microsoft 365 group with mailbox + SharePoint site."
+        mailEnabled: true
+        securityEnabled: false
+        groupTypes:
+          - "Unified"
+        membershipRule: null
+        createdDateTime: "2024-11-08T09:15:00Z"
+
+expected_behavior:
+  - "Adapter MUST emit one canonical group claim per element in response.body.value."
+  - "membershipRule MUST be carried through verbatim — it is the AODIM rule expression and any rewrite breaks attribute-driven access semantics."
+  - "groupTypes containing 'DynamicMembership' marks the claim with membership_kind='dynamic'; absence marks it 'static'; 'Unified' presence marks workload_kind='m365' (orthogonal to membership_kind)."
+  - "Adapter MUST emit DRIFT-AUTHZ when a group with securityEnabled=true has no membership_rule AND no static members enumerated within 7 days of creation — empty active security groups grant no access but still consume directory namespace."
+  - "Adapter MUST NOT drop M365 groups (Unified) from results; downstream OSCAL evidence covers both pillars (Identity + Apps & Workloads)."
+  - "Pagination: same @odata.nextLink contract as list_users; partial enumeration emits CapabilityDegraded, not silent truncation."
+
+provenance:
+  source: "microsoft-learn"
+  primary_citation:
+    url: "https://learn.microsoft.com/en-us/graph/api/group-list?view=graph-rest-1.0&tabs=http"
+    quote: "List all the groups available in an organization, excluding dynamic distribution groups."
+    accessed: "2026-05-10"
+  supporting_citation:
+    url: "https://learn.microsoft.com/en-us/entra/identity/users/groups-dynamic-membership"
+    quote: "Dynamic groups have a single membership rule. The rule is evaluated when a user attribute changes, and group membership is updated automatically."
+    accessed: "2026-05-10"
+  captured_by: "Schema-derived from Microsoft Learn; no live tenant captured. UIAO_131 §3.2 tier-2 authoring; AODIM (UIAO_006) drives the dynamic-group exemplar."
+  sanitization: "Bearer token redacted (was never captured live). Group GUIDs replaced with <GROUP_GUID_NN>; display names and rules are illustrative."

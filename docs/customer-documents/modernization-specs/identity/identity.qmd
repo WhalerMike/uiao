@@ -1,0 +1,127 @@
+---
+title: "Identity Modernization Spec"
+subtitle: "Identity plane governance and migration specification"
+doc-type: modernization-spec
+audience: [Customer, Architect, Assessor]
+classification: Controlled
+boundary: GCC-Moderate
+canon-source: "src/uiao/canon/modernization-registry.yaml"
+canon-reference:
+  - "src/uiao/canon/adr/adr-008-zero-trust-identity.md"
+  - "docs/customer-documents/architecture-series/aodim-architecture.qmd"
+  - "docs/customer-documents/whitepapers/modernization-governance-whitepaper.qmd"
+derived-from: "uiao canon"
+---
+
+# Identity Modernization Spec
+
+## Scope
+
+Cross-adapter specification for identity modernization under the UIAO
+substrate. Covers the directory transition (typically AD → Entra ID),
+attribute model, group computation, delegation, and the canonical claim
+emissions identity adapters must produce. Vendor-specific detail lives
+in adapter specs (see [Adapter Specs](../../adapter-specs/index.html));
+this spec is the substrate contract every identity adapter inherits.
+
+[IMAGE-01: Identity modernization domain diagram. Center shows the canonical Identity Plane as a labeled rectangle with sub-zones for Attributes, Computed Groups, Delegation, and Authentication context. Around the perimeter, four modernization adapter slots labeled (entra-id, active-directory, piv-usaccess, attribute-services) connect with bidirectional arrows to the central plane. Below the plane, a thin horizontal bar labeled "AODIM canonical attribute set: assignment scope, organizational role, classification clearance" anchors the model. Clean engineering blueprint style, dark navy (#0D1B2E) and teal (#1E8C8C) on white background. No photographs, purely diagrammatic.]
+
+## Substrate contract
+
+Every identity adapter inherits four properties:
+
+- **`mission-class: identity`** — declared in
+  `adapter-registry.yaml` or `modernization-registry.yaml`.
+- **`object-identity-only: true`** — claims resolve to identity-plane
+  objects, not opaque strings.
+- **`certificate-anchored: true`** — mTLS-anchored emission of
+  canonical claims.
+- **`gcc-boundary: gcc-moderate`** (or named exception) — operates
+  within the authorization boundary.
+
+These are schema-validated on every PR; an identity adapter that
+violates any of them does not merge.
+
+## Adapters in scope (Phase 1+)
+
+| Adapter | Class | Notes |
+|---|---|---|
+| `active-directory` | modernization | Source-state observer for AD-to-Entra migration |
+| `entra-id` | modernization | Target-state authority post-migration |
+| `entra-policy-targeting` | modernization | Conditional access, PIM, entitlement management mapping |
+| `piv-usaccess` | conformance | PIV credentialing surface (AAL/IAL evidence) |
+| `va-veteran-attribute-service` | conformance | Authoritative VA attribute source |
+| `uscis-immigration-attribute-service` | conformance | Authoritative USCIS attribute source |
+| `treasury-ofac-attribute-service` | conformance | Authoritative OFAC attribute source |
+
+The list grows as additional identity adapters register.
+
+## Integration shape: AODIM
+
+Per the [AODIM Architecture](../../architecture-series/aodim-architecture.qmd),
+identities carry **attributes**, and access is **computed** from those
+attributes. Identity adapters emit canonical claims in this shape:
+
+```yaml
+provenance:
+  claim_id: "urn:uiao:claim:identity:{attribute_kind}:{uuid}"
+  issuer_identity: "{entra_object_id | agency_issuer_id}"
+  source_classification: "authoritative | derived | synthesized"
+  ...
+attributes:
+  assignment_scope: "{scope}"
+  organizational_role: "{role}"
+  classification_clearance: "{clearance_level}"
+  ...
+```
+
+The three attributes named above are the canonical set; downstream
+policies consume them. Additional attributes are allowed but must be
+declared in canon.
+
+## Control mapping
+
+The identity domain maps onto NIST 800-53 IA / AC families and onto
+CISA ZTMM Identity pillar. KSI rules under
+`src/uiao/rules/ksi/iam/` declare the bindings. Each adapter
+declaration in `modernization-registry.yaml` references the KSI rules
+it satisfies.
+
+## Drift considerations
+
+Identity domain drift surfaces as:
+
+- **`DRIFT-IDENTITY`** — issuer cannot be resolved; `P1` severity,
+  halt + alert.
+- **`DRIFT-AUTHZ`** — identity claim emitted outside its consent
+  envelope; `P1`/`P2` depending on liveness.
+- **`DRIFT-SCHEMA`** — attribute structure mismatch; `P2` severity.
+- **`DRIFT-PROVENANCE`** — chain of custody broken across the
+  AD → Entra cutover; `P2`/`P3` depending on liveness.
+
+Cutover periods elevate drift sensitivity; the substrate's tempo
+applies regardless.
+
+## Honest limits
+
+- Runtime detection of `DRIFT-IDENTITY` and `DRIFT-AUTHZ` is partial
+  to design-only across the adapter fleet. Coverage is growing.
+- Migration-time evidence (claims emitted during the AD → Entra
+  cutover window) requires both source and target adapters running;
+  partial deployment loses the bridge evidence.
+- The AODIM attribute set is opinionated. Programs that elect to keep
+  an OU-driven Entra deployment will not realize most of the
+  spec's leverage.
+
+## Validation pairing
+
+This spec pairs with the
+[Identity Validation Suite](../../validation-suites/domains/identity/identity.qmd)
+under Phase 6. Together they form the identity-domain MTS/MVS pair.
+
+## Related documents
+
+- [Modernization Specs Index](../index.qmd)
+- [Architecture Series — AODIM](../../architecture-series/aodim-architecture.qmd)
+- [Whitepaper: Modernization Governance](../../whitepapers/modernization-governance-whitepaper.qmd)
+- [Modernization Registry (canon)](../../../../src/uiao/canon/modernization-registry.yaml)
