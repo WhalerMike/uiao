@@ -76,9 +76,17 @@ once resolved.
 CYBERARK_TENANT              # bare hostname, e.g. <slug>.privilegecloud.cyberark.cloud
 CYBERARK_CLIENT_ID
 CYBERARK_CLIENT_SECRET
+CYBERARK_TEST_SAFE           # required by test_rotation_simulation only;
+                             # name of a dedicated rotation-test Safe.
+                             # Other tier-1 tests skip cleanly without it.
 ```
 
 Access: cyberark.com — search for the Privilege Cloud trial program.
+
+`CYBERARK_TEST_SAFE` is intentionally a separate opt-in: the rotation
+simulation mutates account state, so the operator must name the Safe
+explicitly to confirm intent. Provision a dedicated Safe in the trial
+tenant (e.g. `uiao-tier1-rotation`) and never point this at production.
 
 ## Running locally
 
