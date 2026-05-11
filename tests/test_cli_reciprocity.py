@@ -10,6 +10,7 @@ Covers:
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -23,34 +24,41 @@ from uiao.cli.app import app
 
 runner = CliRunner()
 
+
+def _invoke_help(*args: str) -> tuple[object, str]:
+    """Return the raw result and ANSI-stripped help output."""
+    result = runner.invoke(app, list(args), env={"NO_COLOR": "1", "COLUMNS": "200", "TERM": "dumb"})
+    plain = re.sub(r"\x1b\[[0-9;]*[mK]", "", result.output)
+    return result, plain
+
 # ---------------------------------------------------------------------------
 # --help smoke tests
 # ---------------------------------------------------------------------------
 
 
 def test_reciprocity_help_exits_zero() -> None:
-    result = runner.invoke(app, ["reciprocity", "--help"])
-    assert result.exit_code == 0, result.stdout
+    result, _plain = _invoke_help("reciprocity", "--help")
+    assert result.exit_code == 0, result.output
 
 
 def test_onboard_agency_help_exits_zero() -> None:
-    result = runner.invoke(app, ["reciprocity", "onboard-agency", "--help"])
-    assert result.exit_code == 0, result.stdout
+    result, plain = _invoke_help("reciprocity", "onboard-agency", "--help")
+    assert result.exit_code == 0, result.output
     # Verify the runnable example block is present
-    assert "OPM-HRIT-2026-001" in result.stdout
-    assert "--controlling-ato" in result.stdout
+    assert "OPM-HRIT-2026-001" in plain
+    assert "--controlling-ato" in plain
 
 
 def test_list_records_help_exits_zero() -> None:
-    result = runner.invoke(app, ["reciprocity", "list-records", "--help"])
-    assert result.exit_code == 0, result.stdout
-    assert "--records-dir" in result.stdout
+    result, plain = _invoke_help("reciprocity", "list-records", "--help")
+    assert result.exit_code == 0, result.output
+    assert "--records-dir" in plain
 
 
 def test_verify_help_exits_zero() -> None:
-    result = runner.invoke(app, ["reciprocity", "verify", "--help"])
-    assert result.exit_code == 0, result.stdout
-    assert "--record" in result.stdout
+    result, plain = _invoke_help("reciprocity", "verify", "--help")
+    assert result.exit_code == 0, result.output
+    assert "--record" in plain
 
 
 # ---------------------------------------------------------------------------
