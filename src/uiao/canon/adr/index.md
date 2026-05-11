@@ -73,6 +73,78 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-029](adr-029-substrate-v1-ready-for-release.md) | Substrate v1 Ready for Release | ACCEPTED | 2026-04-16 |
 | [ADR-030](adr-030-pre-uiao-terminology-reconciliation.md) | Pre-UIAO Terminology Reconciliation | ACCEPTED | 2026-04-17 |
 | [ADR-031](adr-031-namespace-package-rename.md) | Python Package uiao_impl → uiao.impl (PEP 420 Namespace) | ACCEPTED | 2026-04-17 |
+| [ADR-032](adr-032-single-package-consolidation.md) | Single-Package Consolidation — flatten src/uiao/ | ACCEPTED | 2026-04-20 |
+| [ADR-044](adr-044-substrate-governance-realignment.md) | Substrate Governance Realignment to Post-ADR-032 Single Package | ACCEPTED | 2026-04-23 |
+| [ADR-046](adr-046-cli-surface-convention.md) | CLI Surface Convention: Sub-App-per-Domain | ACCEPTED | 2026-04-23 |
+
+### Boundary & Compliance
+
+| ADR | Title | Status | Date |
+|-----|-------|--------|------|
+| [ADR-033](adr-033-gcc-boundary-drift-class.md) | GCC Boundary Drift Class and Compensating Controls Architecture | PROPOSED | 2026-04-19 |
+| [ADR-043](adr-043-fedramp-rfc-0026-ca7-integration.md) | FedRAMP RFC-0026 (CA-7 Continuous Monitoring Expectations) — UIAO Integration | PROPOSED | 2026-04-21 |
+| [ADR-045](adr-045-scan-redaction-policy.md) | Scan Artifact Redaction Policy for Multi-Agency Distribution | PROPOSED | 2026-04-23 |
+
+### Device & Identity Modernization
+
+| ADR | Title | Status | Date |
+|-----|-------|--------|------|
+| [ADR-034](adr-034-three-plane-device-model.md) | Three-Plane Device Model and OrgPath Plane-Aware Architecture | PROPOSED | 2026-04-20 |
+| [ADR-035](adr-035-orgpath-codebook-binding.md) | OrgPath Codebook — Executable Canon Binding | ACCEPTED | 2026-04-20 |
+| [ADR-036](adr-036-dynamic-group-provisioning.md) | Dynamic Group Library — Executable Canon + Entra Provisioning Adapter | ACCEPTED | 2026-04-20 |
+| [ADR-037](adr-037-admin-unit-provisioning.md) | Delegation Matrix — Executable Canon + Entra AU/Role Provisioning Adapter | ACCEPTED | 2026-04-20 |
+| [ADR-038](adr-038-device-plane-orgpath.md) | Device-Plane OrgPath Provisioning — Graph + ARM Dual-Transport Adapter | ACCEPTED | 2026-04-20 |
+| [ADR-039](adr-039-policy-targeting.md) | OrgTree Policy Targeting — Intune + Azure Policy Dual Transport | ACCEPTED | 2026-04-20 |
+| [ADR-040](adr-040-drift-engine.md) | OrgTree Drift Detection Engine — Six-Phase Orchestrator | ACCEPTED | 2026-04-20 |
+| [ADR-041](adr-041-uiao-git-infrastructure.md) | UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS | DRAFT | 2026-04-20 |
+| [ADR-042](adr-042-ad-computer-conversion-guide-integration.md) | AD Computer Conversion Guide — Canonical Input to Phase 4 Device Planes | DRAFT | 2026-04-20 |
+
+### Microsoft Coverage
+
+| ADR | Title | Status | Date |
+|-----|-------|--------|------|
+| [ADR-048](adr-048-orgpath-attribute-selection.md) | OrgPath Attribute Selection — extensionAttributes over Custom Security Attributes | ACCEPTED | 2026-04-28 |
+| [ADR-049](adr-049-microsoft-adapter-coverage-expansion.md) | Microsoft Modernization Adapter Coverage Expansion — Defender Suite, Azure Migrate, Azure Policy for Arc, Entra Governance, Entra Workload ID, Intune-Modernization | ACCEPTED | 2026-04-30 |
+| [ADR-050](adr-050-reference-middleware-implementation-choices.md) | D3.1 Reference Middleware — Runtime, Language, Packaging, and Test Choices | ACCEPTED | 2026-04-30 |
+
+> **ADR-048 numbering note:** Two files share the ADR-048 slot on disk:
+> `adr-048-orgpath-attribute-selection.md` (canonical OrgPath attribute selection decision, ACCEPTED 2026-04-28)
+> and `adr-048-orgpath-attribute-storage-decision.md` (status: "Current", appears to be a UIAO-V0 Canonical Architecture Volume document mislabeled with an ADR filename).
+> Maintainer action required: assign a distinct ADR number or retire the second file.
+
+### Federal Federation Block
+
+| ADR | Title | Status | Date |
+|-----|-------|--------|------|
+| [ADR-051](adr-051-saml-trust-anchor.md) | SAML as a Third Trust-Anchor Type for Application Identity | ACCEPTED | 2026-05-04 |
+| [ADR-052](adr-052-piv-usaccess-adapter.md) | PIV / USAccess Conformance Adapter — Federal Personnel Trust-Anchor Authority | ACCEPTED | 2026-05-04 |
+| [ADR-053](adr-053-opm-azure-apim-adapter.md) | OPM Azure APIM Integration Adapter — Centralized Federal API Gateway Authority | ACCEPTED | 2026-05-04 |
+| [ADR-054](adr-054-single-ato-reciprocity.md) | Single-ATO Reciprocity Model — Multi-Tenant Authorization Boundary | ACCEPTED | 2026-05-04 |
+| [ADR-055](adr-055-customer-identity-canon-block.md) | Customer Identity Canon Block — KYC Protocol & Reciprocal Attribute Exchange | ACCEPTED | 2026-05-05 |
+| [ADR-056](adr-056-login-gov-activation-contract.md) | Login.gov Federation Service — Activation Contract (Stage 2) | ACCEPTED | 2026-05-05 |
+
+### Mission Themes
+
+| ADR | Title | Status | Date |
+|-----|-------|--------|------|
+| [ADR-058](adr-058-hrit-productization-mission.md) | HRIT Single-ATO Productization as v0.6.0 Mission Theme | PROPOSED | 2026-05-06 |
+
+### Speculative / Queued
+
+| ADR | Title | Status | Date |
+|-----|-------|--------|------|
+| [ADR-057](adr-057-application-aware-networking-and-token-bound-transport.md) | Application-Aware Networking and Token-Bound Transport Plane — Proposed | PROPOSED | 2026-05-05 |
+
+### ADR-047 Numbering Collision
+
+Two files share the ADR-047 slot on disk. Maintainer action required to establish the canonical mapping:
+
+| File | Title | Status | Date |
+|------|-------|--------|------|
+| [adr-047-continuous-monitoring-program.md](adr-047-continuous-monitoring-program.md) | Continuous Monitoring Program and Customer Documentation Platform Architecture | PROPOSED | 2026-04-14 |
+| [adr-047-fedramp-20x-integration.md](adr-047-fedramp-20x-integration.md) | FedRAMP 20x Integration — KSI emission and Minimum Assessment Scope adoption | PROPOSED | 2026-04-27 |
+
+> One of these files must be renumbered before the ADR-047 slot can be treated as canonically resolved.
 
 ## ADR Governance Rules
 
