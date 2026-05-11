@@ -51,6 +51,7 @@ from uiao.cli.cql import cql_app  # noqa: E402
 from uiao.cli.enforcement import enforcement_app  # noqa: E402
 from uiao.cli.evidence import evidence_app  # noqa: E402
 from uiao.cli.generate import generate_app  # noqa: E402
+from uiao.cli.init import init_app  # noqa: E402
 from uiao.cli.ir import ir_app  # noqa: E402
 from uiao.cli.ksi import ksi_app  # noqa: E402
 from uiao.cli.orchestrator import orchestrator_app  # noqa: E402
@@ -68,6 +69,7 @@ app.add_typer(cql_app, name="cql")
 app.add_typer(enforcement_app, name="enforcement")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(generate_app, name="generate")
+app.add_typer(init_app, name="init")
 app.add_typer(ir_app, name="ir")
 app.add_typer(ksi_app, name="ksi")
 app.add_typer(orchestrator_app, name="orchestrator")
