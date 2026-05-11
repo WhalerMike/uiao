@@ -1,0 +1,248 @@
+---
+title: "A.9 NIST + FICAM Cross-Walk — UIAO Substrate Alignment with Federal ICAM Standards"
+subtitle: "How UIAO substrate components map to NIST IR 8011, NIST SP 800-157, NIST SP 800-63 series, and the FICAM Architecture v3"
+doc-type: compliance-assessment
+audience: [Customer, Assessor, Architect, Sponsor]
+classification: Controlled
+boundary: GCC-Moderate
+author: "UIAO Canon Engine"
+date: "May 2026"
+status: Draft
+canon-source: "src/uiao/canon/substrate-manifest.yaml"
+canon-reference:
+  - "docs/customer-documents/whitepapers/federal-ssot-alignment.qmd"
+  - "docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd"
+  - "docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd"
+  - "docs/docs/16_DriftDetectionStandard.qmd"
+  - "src/uiao/modernization/directory-migration/README.md"
+repo-path: docs/customer-documents/compliance/federal-mandates/nist-icam-crosswalk.qmd
+pillar: compliance
+sub-category: A
+leaf: A.9
+created-at: 2026-05-11
+updated-at: 2026-05-11
+format:
+  html:
+    toc: true
+    toc-depth: 3
+  docx:
+    toc: true
+---
+
+**CONTROLLED**
+
+# A.9 NIST + FICAM Cross-Walk
+
+## 1. Position
+
+This page is the **substrate-to-standard cross-walk** federal agency RFP
+writers, SI proposal authors, and 3PAO assessors search for when they
+need a specific NIST or FICAM identifier next to a UIAO substrate
+component. Every claim here is anchored to a specific canon document or
+schema; speculative alignments are deliberately absent.
+
+The standards covered:
+
+| Standard | Scope | Relevance to UIAO |
+|---|---|---|
+| **NIST IR 8011** (Vol. 1–4) | Automation Support for Security Control Assessments | UIAO's evidence-as-byproduct claim. The substrate is the automation layer NIST IR 8011 contemplates for the identity domain. |
+| **NIST SP 800-157** | Guidelines for Derived Personal Identity Verification (PIV) Credentials | The certificate-anchored substrate overlay. UIAO's `certificate-anchored: true` invariant is the substrate's instantiation of the derived-credential trust model. |
+| **NIST SP 800-63 series** (800-63-3, -63A, -63B, -63C) | Digital Identity Guidelines — Identity Assurance Levels (IAL/AAL/FAL) | The COR schema encodes AAL per principal; drift findings surface conditions under which the encoded AAL is no longer continuously verified. |
+| **FICAM Architecture v3** | Federal Identity, Credential, and Access Management Reference Architecture | The federated-governance frame UIAO's six control planes implement. UIAO is the *substrate beneath* the FICAM Architecture, not an alternative to it. |
+
+What this cross-walk does **not** do:
+
+- Does not claim UIAO supersedes any of these standards. UIAO is the
+  substrate that helps an agency operationalize them; it does not
+  replace the standards or the agency's responsibility to interpret
+  them.
+- Does not assert FedRAMP authorization. UIAO is open-source canon and
+  reference architecture; FedRAMP authorization belongs to the agency
+  or service provider deploying it.
+- Does not provide control implementation status. That is the agency's
+  System Security Plan responsibility. The cross-walk identifies
+  *which* UIAO components are relevant inputs to each control family,
+  not whether any specific control is satisfied.
+
+## 2. NIST IR 8011 — Automation Support for Security Control Assessments
+
+NIST IR 8011 (multi-volume; Volume 1 is the methodology, Volumes 2–4
+cover specific control sub-domains: hardware asset management, software
+asset management, configuration settings management) defines the
+automation primitives federal agencies are expected to use to convert
+control assessment from a periodic-documentation exercise into a
+continuous-evidence operation.
+
+UIAO's substrate provides the automation primitives NIST IR 8011 names
+in the **identity** sub-domain (a domain NIST IR 8011 does not yet
+publish a volume for explicitly, but for which the methodology applies
+directly):
+
+| NIST IR 8011 capability | UIAO substrate component | Canon reference |
+|---|---|---|
+| Authoritative system inventory | OrgTree readiness bundle; COR schema | `src/uiao/schemas/orgtree-readiness/orgtree-readiness.schema.json` |
+| Desired-state declaration | Canon documents under `src/uiao/canon/` with HMAC-signed provenance | `src/uiao/canon/substrate-manifest.yaml` |
+| Actual-state observation | Modernization adapters (AD survey, Entra collector, Intune adapter, ScubaGear conformance) | `src/uiao/canon/modernization-registry.yaml`, `src/uiao/canon/adapter-registry.yaml` |
+| Desired vs. actual comparison | Drift Engine; the five-class drift taxonomy | `docs/docs/16_DriftDetectionStandard.qmd` |
+| Continuous-monitoring evidence | Evidence Bundle assembled deterministically per ADR-006 | `docs/docs/15_ProvenanceProfile.qmd`, `src/uiao/schemas/ksi/evidence-bundle.schema.json` |
+| Defect identification + remediation tracking | Drift findings with severity model and remediation contract | `docs/docs/16_DriftDetectionStandard.qmd` §3–§4 |
+| Assessor-consumable output | OSCAL-aligned assessment-results emission | `src/uiao/oscal/orgtree_evidence.py`, `src/uiao/generators/oscal.py` |
+
+The substrate's `evidence-class: interval` adapter attribute (declared in
+`adapter-registry.yaml`) is the operational form of NIST IR 8011's
+"capability instance" concept — each adapter is a capability instance
+whose interval-windowed findings accumulate into the assessment-results
+output the methodology contemplates.
+
+### 2.1 Identity sub-domain mapping
+
+For the identity-specific sub-domain NIST IR 8011's volumes have not yet
+published explicitly, UIAO's mapping of the methodology is:
+
+- **Authoritative inventory** — the OrgTree registry + COR-schema
+  principals (users, computers, service accounts, groups), each
+  carrying an OrgPath that anchors organizational position
+- **Desired state** — canon-declared adapter contracts under
+  `src/uiao/modernization/directory-migration/adapters/` (8 contracts
+  + the DM_090 SQL Server adapter)
+- **Observation** — the AD survey adapter
+  ([`active_directory/survey.py`](../../../../src/uiao/adapters/modernization/active_directory/survey.py)),
+  Entra collector, and SCuBAGear conformance adapter
+- **Drift output** — `DRIFT-IDENTITY`, `DRIFT-AUTHZ`,
+  `DRIFT-PROVENANCE`, `DRIFT-SCHEMA`, `DRIFT-SEMANTIC` findings per
+  the standard formalized in `16_DriftDetectionStandard.qmd`
+- **Continuous-monitoring artifact** — the OrgTree readiness Evidence
+  Bundle with HMAC-signed provenance + the phase-tagged
+  `spn_inventory` artifact for migration-aware identity assessment
+
+## 3. NIST SP 800-157 — Derived PIV Credentials
+
+NIST SP 800-157 defines the cryptographic trust model under which a PIV
+card's identity assertion is delegated to a mobile or workload-bound
+credential. The substrate's `certificate-anchored: true` invariant is
+the operational form of this model for adapter-emitted artifacts.
+
+| NIST SP 800-157 concept | UIAO substrate component | Canon reference |
+|---|---|---|
+| Derived credential lifecycle | Adapter signing identity provisioning; credential rotation managed alongside the PKI adapter | `src/uiao/modernization/directory-migration/adapters/pki/pki-adapter-interface.md` |
+| Cryptographic binding to the PIV chain of trust | Certificate-anchored adapter operations (every transaction tied to an identity certificate) | `src/uiao/canon/modernization-registry.yaml` (`certificate-anchored: true` invariant) |
+| Authenticator assurance preservation | COR-encoded AAL per principal; `DRIFT-AUTHZ` surfaces drift between encoded AAL and observed credential state | `docs/docs/16_DriftDetectionStandard.qmd` §2 |
+| Credential issuance audit trail | Provenance chain entries per credential operation, immutable | `docs/docs/15_ProvenanceProfile.qmd` |
+
+The substrate does not *issue* derived credentials — that is the agency's
+PIV-D issuing authority's responsibility. The substrate *governs* the
+derived-credential operations: every adapter that uses a derived
+credential records the credential's identity, the operation it
+authorized, the canon document version the operation was made against,
+and the resulting state hash in the provenance chain.
+
+## 4. NIST SP 800-63 series — Identity Assurance
+
+NIST SP 800-63-3 and its companion volumes (-63A enrollment, -63B
+authenticator binding, -63C federation) define the three assurance
+dimensions:
+
+- **IAL** — Identity Assurance Level (how strongly was identity proofed)
+- **AAL** — Authenticator Assurance Level (how strongly is the
+  authenticator bound)
+- **FAL** — Federation Assurance Level (how strongly are federated
+  assertions protected)
+
+UIAO encodes assurance levels as **canon attributes per principal** in
+the COR schema. Drift findings surface conditions under which the
+encoded assurance level is no longer continuously verified — which is
+the precise failure mode 800-63 was written to prevent.
+
+| 800-63 dimension | UIAO substrate component | Canon reference |
+|---|---|---|
+| IAL recording | COR principal attribute (`ial_at_enrollment`); recorded once at canon entry | OrgTree readiness bundle schema |
+| AAL recording | COR principal attribute (`aal_required`); declared per principal based on access scope | OrgTree readiness bundle schema |
+| AAL drift | `DRIFT-AUTHZ` finding when observed Conditional Access policy state contradicts the COR-recorded AAL | `docs/docs/16_DriftDetectionStandard.qmd` §2 |
+| FAL recording | Federation-trust attributes on cross-tenant principals; OrgPath Narrative chapter 10 (Cross-Tenant B2B) covers the operational mechanism | `docs/customer-documents/orgpath-narrative/10-orgpath-and-cross-tenant-collaboration.qmd` |
+| Continuous re-verification | Drift Engine evaluates AAL/FAL on every adapter pass; findings emit into the Evidence Bundle | `docs/docs/16_DriftDetectionStandard.qmd` §4 |
+
+The substrate's role in the 800-63 model is **continuous re-verification
+of the encoded assurance level**, not initial proofing. Initial proofing
+remains the agency's identity-proofing authority's responsibility (a
+PIV credentialing authority for most federal civilian agencies).
+
+## 5. FICAM Architecture v3
+
+The FICAM Architecture v3 (GSA ICAM Subcommittee) is the federal
+reference architecture for identity, credential, and access management.
+It describes a federated-governance model with five service domains:
+identity management, credential management, access management,
+federation, and governance.
+
+UIAO is **not** a FICAM implementation — it is the substrate
+**beneath** FICAM that makes the federated-governance model
+mechanically verifiable. The relationship parallels the OrgPath
+Narrative chapter 07a positioning of UIAO beneath the Azure SSOT
+stack: FICAM describes the federal ICAM architecture; UIAO is the open
+canon that describes how to keep the architecture's invariants
+continuously verified.
+
+| FICAM v3 service domain | UIAO substrate alignment | Notes |
+|---|---|---|
+| Identity Management | COR schema + OrgTree registry + OrgPath attribute | UIAO is the operational form of FICAM's "authoritative identity records" requirement |
+| Credential Management | Certificate-anchored adapter operations + PKI adapter contract | UIAO governs the credential's use against canon; the agency's credential issuing authority remains the FICAM credential-management owner |
+| Access Management | OrgPath-driven Adaptive Policy Scopes (Purview) + Conditional Access policy state (`DRIFT-AUTHZ`) | The substrate verifies the access decisions FICAM declares are required |
+| Federation | OrgPath Narrative chapter 10 (Cross-Tenant B2B); federation-trust attributes on cross-tenant principals | UIAO records federation state; the FAL evaluation under 800-63C remains the agency's federation authority's responsibility |
+| Governance | Substrate's six control planes (Identity, Authorization, Compliance, Migration, Evidence, Operational) | UIAO's federated-governance model directly implements FICAM v3's hybrid-governance pattern |
+
+The FICAM v3 Reference Architecture explicitly contemplates that
+agencies will compose service offerings from multiple providers. UIAO's
+adapter taxonomy (dual-axis: `class` × `mission-class`) is the
+substrate-level realization of that composition: each adapter declares
+which FICAM service domain it contributes to and which canon documents
+its outputs derive from.
+
+## 6. What's NOT in scope here
+
+- **NIST 800-53 Rev 5 control-by-control mapping** — UIAO's KSI library
+  at `src/uiao/rules/ksi/` maps to specific 800-53 controls; that
+  mapping is documented per-KSI in the YAML rules, not duplicated
+  here.
+- **NIST 800-171 (CUI) handling** — A.7 of this sub-category covers
+  the CUI scope. The substrate's evidence-class invariants do not
+  presuppose CUI handling; agencies with CUI requirements add their
+  own data-classification overlay.
+- **FedRAMP Moderate / High parameter selection** — covered in A.1 and
+  A.2 of this sub-category.
+- **DoD IL4 / IL5** — A.8 of this sub-category (currently
+  future-state).
+- **Specific FICAM Playbook implementations** — the FICAM Playbooks
+  describe specific deployment patterns (PIV enablement, EICAM
+  alignment, etc.). UIAO is the substrate they build on, not a
+  Playbook itself.
+
+## 7. Cross-references
+
+- [Federal SSOT Alignment whitepaper](../../whitepapers/federal-ssot-alignment.qmd) — federal mandate landscape (Evidence Act, Federal Data Strategy, CDO, DAMA-DMBOK, Zero Trust, TIC 3.0, NIST 800-63, FedRAMP 20x)
+- [Drift Detection Standard](../../../docs/16_DriftDetectionStandard.qmd) — five-class drift taxonomy + §7 Federal SSOT Context + §7.1 SPN drift
+- [B.1.1 Three-Way GCC-Moderate Compliance Conflict](../boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd) — boundary-side compliance triangle relevant to FedRAMP 20x and TIC 3.0
+- [OrgPath Narrative 07a — UIAO Beneath the Azure SSOT Stack](../../orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd) — identity-substrate role beneath the Microsoft data SSOT stack
+- [Directory Migration README](../../../../src/uiao/modernization/directory-migration/README.md) — discovery and inventory artifacts including the OrgTree readiness bundle
+- [Reference Deployment Pattern](../../case-studies/reference-deployment-fedciv-ad-to-entra.qmd) — synthetic end-to-end engagement that exercises the substrate against an archetype federal civilian agency
+- [`adapter-registry.yaml`](../../../../src/uiao/canon/adapter-registry.yaml) — conformance adapter declarations including `certificate-anchored`, `gcc-boundary`, `evidence-class`
+- [`modernization-registry.yaml`](../../../../src/uiao/canon/modernization-registry.yaml) — change-making adapter declarations
+- [`uiao-control-to-ksi-mapping.yaml`](../../../../src/uiao/rules/ksi/uiao-control-to-ksi-mapping.yaml) — KSI-to-NIST-800-53 control mapping (separate from this cross-walk)
+
+## 8. Provenance
+
+This page is a cross-walk artifact rather than a canonical
+specification: every claim above is anchored to a canon document or
+schema that is the authoritative source for the assertion. When a
+UIAO canon document referenced here is updated, the cross-walk text
+in the corresponding row should be re-verified.
+
+The standards cited above are external. Citation policy:
+
+- NIST IR 8011, NIST SP 800-157, NIST SP 800-63 series — referenced
+  by document number; consult the current publication revision on the
+  NIST CSRC website for authoritative text.
+- FICAM Architecture v3 — referenced by version; consult the current
+  publication on idmanagement.gov for authoritative text.
+
+This page does not reproduce the standards themselves; it maps UIAO
+substrate components to the standards' concepts.
