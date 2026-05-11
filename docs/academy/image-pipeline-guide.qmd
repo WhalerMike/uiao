@@ -438,7 +438,18 @@ python scripts/generate_images.py
 
 **GitHub Actions:**
 
-Go to <https://github.com/WhalerMike/uiao/actions/workflows/image-gen.yml> and click **Run workflow**. Artifacts download from the run's summary page. See [Document Generation Guide](document-generation-guide.html) for details.
+Go to <https://github.com/WhalerMike/uiao/actions/workflows/image-gen.yml> and click **Run workflow**. Two inputs control behavior:
+
+| Input | Default | Effect |
+|-------|---------|--------|
+| `dry_run` | `false` | When `true`, the job scans placeholders and prints the prompts it *would* send to Gemini — no API calls, no quota cost. Useful for verifying that a new `[IMAGE-REF: UIAO-FIG-NNN]` placeholder resolves before paying for a real render. |
+| `commit_back` | `false` | When `true`, the job pushes the rendered PNGs (via Git LFS), their `.png.json` sidecars, and any `image-registry.yaml` updates (`file_sha256`, `generated_at`, fresh `used_by` entries) back to the ref the workflow ran from. When `false`, the PNGs are uploaded as a 30-day workflow artifact and you commit them manually. |
+
+For **canon figures** (anything registered in `image-registry.yaml`), dispatch with `commit_back: true` so the registry's `file_sha256` placeholder zeros are backfilled atomically with the PNG landing. Without `commit_back`, you must download the artifact, copy the PNGs in, and hand-edit the sha256 in a follow-up PR — easy to forget, easy to mismatch.
+
+For **doc-local figures**, `commit_back: false` is usually right: review the artifact ZIP, then bring approved PNGs into your branch PR.
+
+Artifacts also download from the run's summary page either way. See [Document Generation Guide](document-generation-guide.html) for details.
 
 ### 6. Review the rendered PNGs
 

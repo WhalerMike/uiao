@@ -133,6 +133,24 @@ def _classify(path: Path) -> tuple[str, str]:
     )
 
 
+# Hit-density thresholds for sub-bucketing the needs-review pile (Pass 9).
+# Inspection of the 2026-05-10 needs-review report showed hit count is a
+# decent first-cut signal for aspirational density — a doc with 20+
+# matches almost always contains forward-looking program prose, while
+# one with 1-3 matches is typically an innocuous "we will see…" sentence.
+_HIT_HIGH_THRESHOLD = 20
+_HIT_MED_THRESHOLD = 5
+
+
+def _subdivide_needs_review(hits: int) -> str:
+    """Sub-bucket a has-frontmatter-needs-review row by hit count."""
+    if hits >= _HIT_HIGH_THRESHOLD:
+        return "needs-review-high-hits"
+    if hits >= _HIT_MED_THRESHOLD:
+        return "needs-review-med-hits"
+    return "needs-review-low-hits"
+
+
 def _apply_flag(path: Path) -> bool:
     """Add ``aspirational: true`` to the file's YAML frontmatter (immediately
     before the closing ``---``). Returns True if the file was modified.
@@ -178,6 +196,17 @@ def _write_report(classified: list[tuple[Path, int, str, str]], out_path: Path) 
             "session-log-or-inbox": "no action (scratch surface)",
             "draft-status": "auto-flag candidate",
             "has-frontmatter-needs-review": "manual author judgment",
+            "needs-review-high-hits": (
+                f"manual judgment — high hit density (>= {_HIT_HIGH_THRESHOLD}); "
+                "priority for inspection and likely-aspirational"
+            ),
+            "needs-review-med-hits": (
+                f"manual judgment — medium hit density ({_HIT_MED_THRESHOLD}–"
+                f"{_HIT_HIGH_THRESHOLD - 1}); inspect after high-hits"
+            ),
+            "needs-review-low-hits": (
+                f"manual judgment — low hit density (< {_HIT_MED_THRESHOLD}); often innocuous prose, lowest priority"
+            ),
             "unreadable": "investigate",
         }.get(bucket, "—")
         lines.append(f"| `{bucket}` | {bucket_counts[bucket]} | {action_hint} |")
@@ -206,6 +235,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Bucket whose files should have aspirational: true added to frontmatter. Idempotent.",
     )
     parser.add_argument(
+        "--apply-flag-to-paths",
+        type=str,
+        default=None,
+        help=(
+            "Comma-separated list of repo-relative paths to flag with "
+            "aspirational: true. Use this for surgical Pass 9-style flagging "
+            "after manual inspection of the needs-review bucket. Idempotent."
+        ),
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=REPO_ROOT / "inbox" / "drafts" / f"aspirational-candidates-{date.today().isoformat()}.md",
@@ -214,7 +253,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     files = _grep_signal_files()
-    classified = [(path, count, *_classify(path)) for path, count in files.items()]
+
+    def classify_with_subdivision(path: Path, count: int) -> tuple[str, str]:
+        bucket, action = _classify(path)
+        if bucket == "has-frontmatter-needs-review":
+            sub_bucket = _subdivide_needs_review(count)
+            return sub_bucket, action
+        return bucket, action
+
+    classified = [(path, count, *classify_with_subdivision(path, count)) for path, count in files.items()]
 
     if args.apply_flag_to is not None:
         modified = 0
@@ -223,7 +270,24 @@ def main(argv: list[str] | None = None) -> int:
                 modified += 1
         print(f"applied aspirational: true to {modified} files in bucket {args.apply_flag_to!r}")
         # Re-classify after mutation so the report reflects the new state.
-        classified = [(path, count, *_classify(path)) for path, count in files.items()]
+        classified = [(path, count, *classify_with_subdivision(path, count)) for path, count in files.items()]
+
+    if args.apply_flag_to_paths is not None:
+        targets = [REPO_ROOT / p.strip() for p in args.apply_flag_to_paths.split(",") if p.strip()]
+        modified = 0
+        for target in targets:
+            if not target.exists():
+                print(f"  SKIP: {target.relative_to(REPO_ROOT).as_posix()} does not exist")
+                continue
+            if _apply_flag(target):
+                modified += 1
+                print(f"  flagged: {target.relative_to(REPO_ROOT).as_posix()}")
+            else:
+                print(f"  unchanged (already flagged or no frontmatter): {target.relative_to(REPO_ROOT).as_posix()}")
+        print(f"applied aspirational: true to {modified} files from --apply-flag-to-paths list")
+        # Re-grep + reclassify so the report reflects new flag state.
+        files = _grep_signal_files()
+        classified = [(path, count, *classify_with_subdivision(path, count)) for path, count in files.items()]
 
     _write_report(classified, args.output)
     print(f"wrote triage report: {args.output.relative_to(REPO_ROOT).as_posix()}")
