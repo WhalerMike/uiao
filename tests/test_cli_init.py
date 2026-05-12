@@ -14,6 +14,7 @@ tests, so this file focuses on the welcome / walkthrough surface.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -76,8 +77,9 @@ def test_init_canon_ref_paths_resolve_on_filesystem() -> None:
 def test_init_help_exits_zero(runner: CliRunner) -> None:
     result = runner.invoke(app, ["init", "--help"])
     assert result.exit_code == 0
-    assert "--demo" in result.output
-    assert "--out-dir" in result.output
+    clean = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    assert "--demo" in clean
+    assert "--out-dir" in clean
 
 
 def test_init_demo_flag_fails_gracefully_when_subprocess_fails(
