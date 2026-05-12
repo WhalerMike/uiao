@@ -122,7 +122,7 @@ Phases 0–14.
     Maps internal operators to native Gitea identities. Build-guide
     Phase 6.
   - **Entra OIDC** via an app registration in the tenant, redirecting
-    to `https://git.uiao.corp/user/oauth2/EntraID/callback` and
+    to `https://git.uiao.corp.contoso.com/user/oauth2/EntraID/callback` and
     emitting the `groups` claim so dynamic-group membership becomes
     native Gitea team membership without manual reconciliation.
     Build-guide Phase 7.
