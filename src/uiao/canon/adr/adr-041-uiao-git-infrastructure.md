@@ -1,8 +1,9 @@
 ---
 id: ADR-041
 title: "UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS"
-status: draft
+status: accepted
 date: 2026-04-20
+decided: 2026-05-12
 deciders:
   - governance-steward
   - platform-engineer
@@ -14,29 +15,33 @@ related_adrs:
 canon_refs:
   - UIAO_200_Substrate_Manifest
 pending_inputs:
-  - "inbox/UIAO Git Infrastructure — Architecture Decision Record.docx (absent — content synthesized from platform-server-build.qmd v1.2)"
-  - "inbox/UIAO Git Server — Windows Server 2025 with IIS Implementation Guide.docx (absent — content synthesized from platform-server-build.qmd v1.2)"
-  - "inbox/Git on Windows Server 2025 with IIS — Step-by-Step Implementation Guide.docx (absent — content synthesized from platform-server-build.qmd v1.2)"
+  - "inbox/UIAO Git Infrastructure — Architecture Decision Record.docx (absent — content synthesized from platform-server-build.qmd v1.3)"
+  - "inbox/UIAO Git Server — Windows Server 2025 with IIS Implementation Guide.docx (absent — content synthesized from platform-server-build.qmd v1.3)"
+  - "inbox/Git on Windows Server 2025 with IIS — Step-by-Step Implementation Guide.docx (absent — content synthesized from platform-server-build.qmd v1.3)"
 ---
 
 # ADR-041: UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS
 
 ## Status
 
-**DRAFT — populated from canonical implementation guide; awaiting governance review.**
+**ACCEPTED — May 12, 2026.**
 
-Sections below were originally skeleton placeholders expecting pandoc
-extraction from three `.docx` sources in `inbox/`. Those sources are
-absent from the repository as of this revision. Until they are
-restored, the authoritative narrative is the operational implementation
-guide at `docs/customer-documents/platform/platform-server-build.qmd`
-(version 1.2, merged via PR #439, Phases 0–14 inlined). Every Decision
-clause below maps to a numbered phase in that guide; every Consequence
-follows from operational properties asserted there.
+Architectural decision: **Gitea behind IIS reverse proxy on a single
+Windows Server 2025 host (Option B).** Authoritative implementation
+reference is `docs/customer-documents/platform/platform-server-build.qmd`
+v1.3 (UIAO_SBG_001). Binary pins live in
+`src/uiao/canon/release-manifests/platform-server-v1.2.yaml`. The
+Option A alternative (IIS + `git-http-backend` without Gitea) is
+retained at `docs/customer-documents/platform/git-server-implementation.qmd`
+for lab / proof-of-concept use only; **do not deploy Option A to
+production without a new ADR superseding ADR-041.**
 
-Flip `status:` to `proposed` after governance review, then to
-`accepted` once the customer-document portal points operators at this
-ADR as the binding source.
+The three `.docx` sources listed in `pending_inputs` are still absent
+from `inbox/`. The sections below were populated by synthesis from
+the operational guide rather than by pandoc extraction; if the docx
+sources are restored later, reconcile any divergence against this
+ADR — the canonical content of record is this ADR + the build guide,
+not the historical docx.
 
 ## Context
 
@@ -298,3 +303,4 @@ customer-document portal location above.
 |---|---|---|---|
 | 0.1 | 2026-04-20 | Skeleton created, pending docx extraction | Automation |
 | 0.2 | 2026-05-12 | Sections populated from `platform-server-build.qmd` v1.2 (PR #439); docx sources noted as absent; status remains `draft` pending governance review | Claude Code via `claude/assess-server-github-integration-bKTO3` |
+| 1.0 | 2026-05-12 | Status flipped `draft` → `accepted` by user directive; `decided` date set; build-guide v1.3 + release-manifest cross-references confirmed in Status block | Claude Code via `claude/adr-041-accepted-and-git-server-adapter` |

@@ -26,12 +26,20 @@
 # DRIFT-SCHEMA per UIAO_163.
 
 id: platform-server-v1.2
-status: draft
+status: partial
 date: 2026-05-12
 applies_to:
   - docs/customer-documents/platform/platform-server-build.qmd@v1.3
 adr: ADR-041
 boundary: gcc-moderate
+
+# Status semantics:
+#   draft     — all sha256 fields are TBD-* placeholders
+#   partial   — some sha256 fields verified against publisher .sha256, others
+#               still TBD because the verifying host could not reach the
+#               vendor CDN (e.g. Microsoft download.microsoft.com, aka.ms)
+#   pinned    — every sha256 field carries a verified hash
+#   accepted  — pinned + governance review per ADR-041
 
 assets:
 
@@ -41,7 +49,11 @@ assets:
     version: 7.4.6
     canonical_url: https://github.com/PowerShell/PowerShell/releases/download/v7.4.6/PowerShell-7.4.6-win-x64.msi
     filename: PowerShell-7.4.6-win-x64.msi
-    sha256: TBD-powershell-7.4.6-msi
+    sha256: ed331a04679b83d4c013705282d1f3f8d8300485eb04c081f36e11eaf1148bd0
+    sha256_provenance: >
+      Verified 2026-05-12 against
+      https://github.com/PowerShell/PowerShell/releases/download/v7.4.6/hashes.sha256
+      (`PowerShell-7.4.6-win-x64.msi` row). 109,203,456 bytes.
     verify_command: '(Get-FileHash -Algorithm SHA256 $path).Hash'
     upstream_source: github.com/PowerShell/PowerShell
     notes: |
@@ -55,7 +67,13 @@ assets:
     version: 2.44.0
     canonical_url: https://github.com/git-for-windows/git/releases/download/v2.44.0.windows.1/Git-2.44.0-64-bit.exe
     filename: Git-2.44.0-64-bit.exe
-    sha256: TBD-git-for-windows-2.44.0-exe
+    sha256: 914ffc96cee0631d09049b9d87d4cd8ac9c98ead9a9f9a094d3341348324a9ec
+    sha256_provenance: >
+      Computed 2026-05-12 from a direct download of canonical_url; the
+      git-for-windows project does not publish a sibling .sha256 file, so
+      provenance is the HTTPS-fetched artifact itself. 65,350,776 bytes.
+      Cross-check the signed installer's Authenticode signature on the
+      target host (`Get-AuthenticodeSignature`) before install.
     verify_command: '(Get-FileHash -Algorithm SHA256 $path).Hash'
     upstream_source: github.com/git-for-windows/git
     notes: |
@@ -70,7 +88,11 @@ assets:
     version: 1.21.11
     canonical_url: https://github.com/go-gitea/gitea/releases/download/v1.21.11/gitea-1.21.11-windows-4.0-amd64.exe
     filename: gitea.exe
-    sha256: TBD-gitea-1.21.11-windows-amd64
+    sha256: 498e2e6d00ccd9c94dc1c6ce204df897722b4b6113524853829c6dcb48532e5c
+    sha256_provenance: >
+      Verified 2026-05-12 against
+      https://github.com/go-gitea/gitea/releases/download/v1.21.11/gitea-1.21.11-windows-4.0-amd64.exe.sha256
+      (publisher-signed). 208,516,960 bytes.
     verify_command: '(Get-FileHash -Algorithm SHA256 $path).Hash'
     upstream_source: github.com/go-gitea/gitea
     notes: |
@@ -86,6 +108,11 @@ assets:
     canonical_page: https://www.iis.net/downloads/microsoft/url-rewrite
     filename: rewrite_amd64_en-US.msi
     sha256: TBD-iis-url-rewrite-2.1-amd64
+    sha256_provenance: >
+      TBD — verifying host (Linux sandbox) blocked from reaching
+      download.microsoft.com; the WS2025 build host with the §0.5 egress
+      allowlist applied can resolve this URL and compute the hash via
+      `Get-FileHash -Algorithm SHA256 $path` at install time.
     verify_command: '(Get-FileHash -Algorithm SHA256 $path).Hash'
     upstream_source: download.microsoft.com / iis.net
     notes: |
@@ -101,6 +128,9 @@ assets:
     canonical_page: https://www.iis.net/downloads/microsoft/application-request-routing
     filename: requestRouter_amd64.msi
     sha256: TBD-iis-arr-3.0-amd64
+    sha256_provenance: >
+      TBD — same egress restriction as URL Rewrite above; compute on the
+      WS2025 build host.
     verify_command: '(Get-FileHash -Algorithm SHA256 $path).Hash'
     upstream_source: download.microsoft.com / iis.net
     notes: |
@@ -114,6 +144,8 @@ assets:
     canonical_page: https://www.iis.net/downloads/microsoft/httpplatformhandler
     filename: httpPlatformHandler_amd64.msi
     sha256: TBD-iis-httpplatformhandler-1.2
+    sha256_provenance: >
+      TBD — same egress restriction; compute on the WS2025 build host.
     verify_command: '(Get-FileHash -Algorithm SHA256 $path).Hash'
     upstream_source: download.microsoft.com / iis.net
     notes: |
@@ -128,6 +160,9 @@ assets:
     canonical_page: https://dotnet.microsoft.com/download/dotnet/8.0
     filename: dotnet-hosting-8.0.6-win.exe
     sha256: TBD-dotnet-hosting-8.0.6-win
+    sha256_provenance: >
+      TBD — builds.dotnet.microsoft.com not reachable from the verifying
+      sandbox; compute on the WS2025 build host.
     verify_command: '(Get-FileHash -Algorithm SHA256 $path).Hash'
     upstream_source: builds.dotnet.microsoft.com
     notes: |
@@ -140,12 +175,16 @@ assets:
     canonical_url: https://aka.ms/vs/17/release/vc_redist.x64.exe
     filename: vc_redist.x64.exe
     sha256: TBD-vc-redist-x64-latest
+    sha256_provenance: >
+      TBD — aka.ms shortlinks not reachable from the verifying sandbox.
+      Note: aka.ms always serves the latest VS 17 release, so the hash
+      drifts over time; re-verify on each upgrade and record both the
+      hash and the resolved release version here.
     verify_command: '(Get-FileHash -Algorithm SHA256 $path).Hash'
     upstream_source: aka.ms (Microsoft VS 17 release channel)
     notes: |
       Required by Gitea on Windows and by several native PowerShell
-      modules. The aka.ms URL always serves the latest VS 17 release;
-      pin the sha256 at install time and re-verify on each upgrade.
+      modules.
 
   # ── Azure Arc enrollment agent ─────────────────────────────────────
   - name: Azure Connected Machine Agent
@@ -154,6 +193,11 @@ assets:
     canonical_url: https://aka.ms/AzureConnectedMachineAgent
     filename: AzureConnectedMachineAgent.msi
     sha256: TBD-azcmagent-latest
+    sha256_provenance: >
+      TBD — aka.ms not reachable from the verifying sandbox. As with
+      vc_redist above, this resolves to the current Arc agent release
+      and the hash drifts on each upstream release; capture the resolved
+      version + hash on the build host at install time.
     verify_command: '(Get-FileHash -Algorithm SHA256 $path).Hash'
     upstream_source: aka.ms (Microsoft Azure Arc release channel)
     notes: |
@@ -168,6 +212,12 @@ assets:
     canonical_url: https://www.gpg4win.org/get-gpg4win.html
     filename: gpg4win-4.3.1.exe
     sha256: TBD-gpg4win-4.3.1
+    sha256_provenance: >
+      TBD — gpg4win.org not reachable from the verifying sandbox.
+      Cross-check against the SHA-256 listed at
+      https://www.gpg4win.org/package-integrity.html for the matching
+      installer; record both the verified hash and the package-integrity
+      page URL at install time.
     verify_command: '(Get-FileHash -Algorithm SHA256 $path).Hash'
     upstream_source: gpg4win.org
     notes: |
@@ -182,6 +232,8 @@ verification:
     1. Download each asset from canonical_url.
     2. Compute `Get-FileHash -Algorithm SHA256 $path` on the downloaded file.
     3. Compare against the `sha256` field above. Reject install on mismatch.
+       For entries with sha256 starting `TBD-`, populate the value at
+       install time and update sha256_provenance to record the source.
     4. Submit the verified hash to UIAO_163 as a DRIFT-PROVENANCE check via
        `Submit-DriftReport -Engine UIAO_163 -Payload @{ manifest = '...' }`.
 
@@ -194,3 +246,18 @@ changelog:
       platform-server-build.qmd v1.3 §0.4. sha256 fields populated with
       TBD-* placeholders awaiting first authoritative ingest.
     author: Claude Code via claude/assess-server-github-integration-bKTO3
+  - version: 0.2
+    date: 2026-05-12
+    change: >
+      sha256 verified for the three GitHub-Releases binaries (PowerShell
+      7.4.6, Git for Windows 2.44.0, Gitea 1.21.11) — first two
+      cross-checked against the publisher's `.sha256` / `hashes.sha256`,
+      Git for Windows computed from a direct download (no publisher hash
+      file). Microsoft-CDN binaries (URL Rewrite, ARR, HttpPlatformHandler,
+      .NET hosting, VC++ redist, Azure Arc agent) and gpg4win remain TBD;
+      the verifying sandbox cannot reach those hosts. Manifest status
+      promoted draft -> partial; promotion to `pinned` requires the
+      remaining 7 hashes filled from a WS2025 build host with the §0.5
+      egress allowlist applied. Each TBD entry now carries a
+      `sha256_provenance` note explaining why it is unfilled.
+    author: Claude Code via claude/adr-041-accepted-and-git-server-adapter
