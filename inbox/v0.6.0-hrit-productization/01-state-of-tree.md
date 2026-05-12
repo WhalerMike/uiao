@@ -2,6 +2,15 @@
 
 > **Status:** Inbox draft. Not canon. Authored 2026-05-06 against
 > `origin/main` HEAD `92ea7615`.
+>
+> **Renumber note (2026-05-11):** The "Next UIAO_NNN: UIAO_143" claim in
+> the *Free identifier slots* section below was correct at the time of
+> writing but has since been superseded. UIAO_143 was claimed by SCIM
+> RFC Core Schema (PR #342). The HRIT productization spec moved to
+> **UIAO_144**. The ADR-058 candidate identifier in the same section was
+> also renumbered to **ADR-065** (slot collision with Microsoft Purview
+> coverage ADR-058 accepted 2026-05-07). Body retained verbatim for
+> historical record.
 
 ## Doctrine layer — COMPLETE
 
@@ -71,10 +80,10 @@ upstream contracts** — UIAO consumes their assertions, never issues them.
 | `examples/hrit/` | No | Safe |
 | `docs/docs/22_HRITProductization.qmd` | No | Safe (sequence ends at 21) |
 
-## Free identifier slots
+## Free identifier slots (historical — see renumber note at top)
 
-- **Next ADR:** ADR-058 (ADR-057 used by `adr-057-application-aware-networking-and-token-bound-transport.md` on this branch)
-- **Next UIAO_NNN:** UIAO_143 (highest allocated is UIAO_142; reserved range 100–199 has 56 slots free)
+- **Next ADR:** ADR-058 (ADR-057 used by `adr-057-application-aware-networking-and-token-bound-transport.md` on this branch) — **superseded:** renumbered to ADR-065 (see top note)
+- **Next UIAO_NNN:** UIAO_143 (highest allocated is UIAO_142; reserved range 100–199 has 56 slots free) — **superseded:** UIAO_143 now SCIM RFC; HRIT spec is UIAO_144
 - **Next docs/docs/:** `22_HRITProductization.qmd`
 
 ## What's deferred but documented
