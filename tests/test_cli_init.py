@@ -14,6 +14,7 @@ tests, so this file focuses on the welcome / walkthrough surface.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,25 @@ from uiao.cli.app import app
 from uiao.cli.init import _CANON_REFS, _WALKTHROUGH_STEPS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+_BOX_RE = re.compile(r"[│┃║╭╮╯╰─━═]")
+
+
+def _plain(text: str) -> str:
+    """Strip ANSI escapes + Rich box-drawing + collapse whitespace.
+
+    Rich's panel rendering of ``--help`` is sensitive to terminal width
+    and stream type, and ``CliRunner`` does not present a real TTY. Some
+    GitHub-hosted runners produce a layout where option names get
+    wrapped across panel borders, breaking literal substring matches.
+    Normalizing the output here keeps the substring assertions stable
+    without weakening the test's intent.
+    """
+    text = _ANSI_RE.sub("", text)
+    text = _BOX_RE.sub("", text)
+    text = re.sub(r"\s+", "", text)
+    return text
 
 
 @pytest.fixture
@@ -76,8 +96,9 @@ def test_init_canon_ref_paths_resolve_on_filesystem() -> None:
 def test_init_help_exits_zero(runner: CliRunner) -> None:
     result = runner.invoke(app, ["init", "--help"])
     assert result.exit_code == 0
-    assert "--demo" in result.output
-    assert "--out-dir" in result.output
+    plain = _plain(result.output)
+    assert "--demo" in plain, f"--demo missing from help output: {plain!r}"
+    assert "--out-dir" in plain, f"--out-dir missing from help output: {plain!r}"
 
 
 def test_init_demo_flag_fails_gracefully_when_subprocess_fails(
