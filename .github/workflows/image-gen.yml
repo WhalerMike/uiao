@@ -160,6 +160,13 @@ jobs:
             python scripts/generate_images.py
           fi
 
+      - name: Replace placeholders with Quarto figure refs in .qmd / .md
+        # After generation, swap [IMAGE-NN: ...] placeholders for full
+        # Quarto figure syntax: ![cap](path){#fig-id fig-alt="..." width="..."}.
+        # Reads docs/images/.image-manifest.json written by generate_images.py.
+        if: ${{ ! inputs.dry_run }}
+        run: python scripts/replace_placeholders.py
+
       - name: Upload images as workflow artifact
         if: ${{ ! inputs.dry_run }}
         uses: actions/upload-artifact@v7
@@ -181,13 +188,19 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Stage LFS-scoped binaries, sidecars, and registry.
-          # The manifest is gitignored (rebuilt on every run; not source).
+          # Stage LFS-scoped binaries, sidecars, registry, and any .qmd/.md
+          # files modified by replace_placeholders.py (placeholder swap-outs
+          # in scanned doc sources). The manifest is gitignored (rebuilt on
+          # every run; not source).
           git add \
             "docs/customer-documents/**/images/*.png" \
             "docs/customer-documents/**/images/*.png.json" \
             "docs/images/**/*.png" \
             "docs/images/**/*.png.json" \
+            "docs/**/*.qmd" \
+            "docs/**/*.md" \
+            "src/uiao/canon/specs/**/*.md" \
+            "src/uiao/canon/adr/**/*.md" \
             "src/uiao/canon/image-registry.yaml" \
             || true
 
@@ -199,7 +212,7 @@ jobs:
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           git commit \
             -m "chore(images): automated commit-back from image-gen run ${{ github.run_number }}" \
-            -m "Regenerated images, sidecars, and manifest by scripts/generate_images.py. Registry used_by updates (if any) reflect canon-ref placeholders that appeared since the last run. No API keys or secrets in this commit." \
+            -m "Regenerated images, sidecars, manifest, and rewrote [IMAGE-NN:] placeholders into Quarto figure syntax in their host .qmd / .md files. Registry used_by updates (if any) reflect canon-ref placeholders that appeared since the last run. No API keys or secrets in this commit." \
             -m "$RUN_URL"
 
           # Push via LFS so binaries land in LFS storage.
