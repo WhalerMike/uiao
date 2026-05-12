@@ -1,5 +1,5 @@
 ---
-adr: ADR-057
+adr: ADR-066
 title: "Application-Aware Networking and Token-Bound Transport Plane"
 status: Proposed
 date: 2026-05-05
@@ -20,15 +20,16 @@ related:
   - ADR-056  # Login.gov Federation Service Activation (Stage 2)
 ---
 
-# ADR-057: Application-Aware Networking and Token-Bound Transport Plane
+# ADR-066: Application-Aware Networking and Token-Bound Transport Plane
 
-> **Renumber note (2026-05-05):** This ADR was originally drafted as
-> ADR-047 on a stale branch base. Three ADR-047 files exist on `main`
-> (`adr-047-continuous-monitoring-program.md`,
-> `adr-047-fedramp-20x-integration.md`, and the renumber from
-> `adr-025` per commit `572ad6eb`). Renumbered to ADR-057 — the next
-> free slot above the ADR-051..056 federal-federation block — without
-> changing the doctrinal content. Several premises this ADR raised
+> **Renumber history:** This ADR was originally drafted as ADR-047 on a
+> stale branch base, then renumbered to ADR-057 (next free slot above the
+> ADR-051..056 federal-federation block). ADR-057 subsequently collided
+> with `adr-057-thousandeyes-networks-pillar-scope.md` (drafted
+> 2026-04-27, an earlier occupant of that slot). Renumbered again to
+> ADR-066 on 2026-05-12 to resolve the collision; ADR-057 is now
+> canonically `adr-057-thousandeyes-networks-pillar-scope.md`. The
+> doctrinal content is unchanged. Several premises this ADR raised
 > ("who issues the token", "what does federation look like across
 > agencies") are now partly answered by ADR-051 / ADR-052 / ADR-054 /
 > ADR-056; the transport-plane / per-call-token argument itself
