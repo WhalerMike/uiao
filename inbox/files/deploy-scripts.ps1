@@ -142,7 +142,7 @@ $rwInstalled = Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\
                Where-Object { $_.DisplayName -like "*IIS URL Rewrite*" }
 if (-not $rwInstalled) {
     if (-not (Test-Path $rwMsi)) {
-        throw "URL Rewrite installer not found at $rwMsi. Download it from $rwInfoUrl and rerun this script."
+        throw "URL Rewrite installer not found at $rwMsi. Open $rwInfoUrl, download the x64 MSI, save it to $rwMsi, then rerun this script."
     }
     Start-Process msiexec.exe -ArgumentList "/i `"$rwMsi`" /qn" -Wait
     Write-OK "URL Rewrite module installed"
