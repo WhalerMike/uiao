@@ -1,0 +1,323 @@
+---
+title: "Federal HRIT Productization — UIAO Substrate Alignment with OPM HRIT Modernization"
+subtitle: "How the open UIAO canon governs inbound HR provisioning from federal HR systems of record into Entra ID under the Spec 2 HR-agnostic architecture"
+doc-type: whitepaper
+audience: [Executive, Customer, Assessor]
+classification: Public
+boundary: GCC-Moderate
+status: Draft
+canon-source: "src/uiao/canon/specs/Spec2-D6.1-FederalHRITIntegrationRunbook.md"
+canon-reference:
+  - "src/uiao/canon/specs/Spec2-D1.1-CanonicalHRAttributeSchema.md"
+  - "src/uiao/canon/specs/Spec2-D1.3-HRToEntraAttributeMappingMatrix.md"
+  - "src/uiao/canon/specs/Spec2-D2.1-JoinerWorkflowSpecification.md"
+  - "src/uiao/canon/specs/Spec2-D3.5-OrgPathPopulationPipeline.md"
+  - "src/uiao/canon/specs/Spec2-D5.5-ProvisioningDriftDetectionRules.md"
+  - "src/uiao/canon/adr/adr-003-api-driven-inbound-provisioning.md"
+  - "src/uiao/canon/adr/adr-051-saml-trust-anchor.md"
+  - "src/uiao/canon/adr/adr-052-piv-usaccess-adapter.md"
+  - "src/uiao/canon/adr/adr-053-opm-azure-apim-adapter.md"
+  - "src/uiao/canon/adr/adr-054-single-ato-reciprocity.md"
+  - "src/uiao/canon/adr/adr-058-hrit-productization-mission.md"
+  - "docs/customer-documents/whitepapers/federal-ssot-alignment.qmd"
+  - "docs/customer-documents/compliance/federal-mandates/nist-icam-crosswalk.qmd"
+  - "docs/docs/22_HRITProductization.qmd"
+derived-from: "uiao canon"
+---
+
+# Federal HRIT Productization
+
+## How the open UIAO canon governs inbound HR provisioning into Entra ID under the Spec 2 HR-agnostic architecture
+
+### Executive summary
+
+Federal civilian and DoD-civilian agencies do not own their identity-
+proofing event. That event happens at the **HR system of record** — NFC
+EmpowHR, Treasury HR Connect, DCPDS, DOI IBC — typically months before
+the employee's first Entra ID account exists. The HR system holds the
+authoritative personnel record under the Privacy Act (5 U.S.C. §552a)
+and the corresponding agency SORN; Entra ID is a downstream consumer.
+
+The implication is structural: an agency's Entra ID identity plane is
+only as trustworthy as the inbound HR provisioning pipeline that
+populates it. If the pipeline is bespoke per agency, evidence drifts
+between HR system and directory between the SF-50 event and the auditor's
+review. If the pipeline is HR-vendor-specific, the agency is locked into
+whichever Workday / Oracle HCM / SAP SuccessFactors / NFC EmpowHR adapter
+it inherited. If the pipeline is opaque to FedRAMP continuous-monitoring,
+the controls that depend on accurate principal state (NIST 800-53
+AC-2, IA-4, IA-5, NIST 800-63 IAL/AAL) cannot be continuously verified.
+
+UIAO's Spec 2 architecture (UIAO_136) governs this layer. It is
+**HR-system-agnostic** by canon decision (ADR-003): any HR source plugs
+into a single canonical schema via a per-source adapter, then flows
+through a single middleware to a single SCIM 2.0 binding into Entra ID.
+The federal-civilian instance of that architecture is recorded in
+[`Spec2-D6.1`](../../../src/uiao/canon/specs/Spec2-D6.1-FederalHRITIntegrationRunbook.md),
+which names the canonical federal HR / personnel / credential systems
+the substrate integrates with and maps each to its role in the pipeline.
+
+This whitepaper is the customer-facing companion to that runbook. It is
+not a replacement for the agency's authority over identity-proofing,
+PIV issuance, or HR data ownership; it is the open framework that
+records *how the substrate routes those authoritative events into
+Entra ID* and produces FedRAMP-grade evidence of the routing.
+
+The companion AD → Entra ID story
+([Federal SSOT Alignment whitepaper](federal-ssot-alignment.qmd)) covers
+the **directory migration** dimension — moving the legacy AD tree to
+Entra ID as a governance event. This whitepaper covers the **inbound
+provisioning** dimension — keeping the migrated tenant continuously
+populated from authoritative HR sources. The two are complementary;
+both are required for a federal-civilian deployment with a trustworthy
+identity plane.
+
+---
+
+### 1. The HRIT mandate landscape
+
+Federal HR data exchange is governed by an explicit, multi-statute
+regime that pre-dates the cloud era and that the substrate must respect.
+
+| Mandate | Scope | Relevance to substrate |
+|---|---|---|
+| **5 U.S.C. §552a (Privacy Act)** | Defines what counts as a "system of records" containing personnel data; agency-specific SORNs publish the routine uses | The HR system of record is the Privacy Act SoR; substrate is a routine-use consumer, not a SoR. `ssot-mutation: never` is the canon-level instantiation of this constraint |
+| **OPM SORN GOVT-1** | Government-wide HR system records | NFC EmpowHR / FPPS / DCPDS / DOI IBC operate under this and their agency-issued SORNs |
+| **OPM SORN GOVT-7** | EHRI government-wide data warehouse | EHRI is a downstream consumer per Spec2-D6.1 §2 |
+| **HSPD-12 / FIPS 201-3** | PIV credential issuance | USAccess is the substrate's trust-anchor terminator (ADR-052); identity proofing for PIV is upstream of Entra ID |
+| **OMB M-22-09** (Federal Zero Trust) | Continuous identity verification; phishing-resistant MFA | Drives the substrate's AAL recording per principal + `DRIFT-AUTHZ` surface |
+| **OMB M-19-17** | Enterprise identity, credentialing, and access management | Frames the OPM Entra / OPM eAuthentication federation pattern |
+| **5 U.S.C. §3301 et seq.** | OPM authority for federal hiring | USA Staffing / USAJobs operate under this; Spec2-D2.7 covers the pre-hire window |
+| **5 U.S.C. §8901 et seq.** | Federal benefits enrollment | GRB Platform downstream consumer |
+| **5 C.F.R. part 293 + Federal Records Act** | Personnel file retention | eOPF is the substrate's downstream archival consumer |
+| **HRIT Solicitation 24322626R0007** | OPM's HRIT-platform procurement reference | Substrate's federal-instance shape (Spec2-D6.1) anchors against this solicitation's requirements (Req #66 SOAP RPI; §5.1.1 federation; Q&A #146 eOPF ICDs) |
+
+The companion cross-walk at
+[`A.9 NIST + FICAM Cross-Walk`](../compliance/federal-mandates/nist-icam-crosswalk.qmd)
+maps the substrate to NIST IR 8011, NIST SP 800-157 (derived PIV), NIST
+SP 800-63 series (IAL/AAL/FAL), and FICAM Architecture v3. The HRIT
+pipeline is the operational form of NIST SP 800-63A (enrollment +
+identity proofing) — identity proofing happens at the HR system; the
+substrate records the AAL the HR-issued credential terminates at, and
+emits drift findings when continuous verification fails.
+
+---
+
+### 2. The federal HR / personnel ecosystem the substrate names
+
+The federal-civilian HRIT integration runbook
+([`Spec2-D6.1`](../../../src/uiao/canon/specs/Spec2-D6.1-FederalHRITIntegrationRunbook.md))
+catalogues nine federal HR / personnel / credential systems plus the
+Entra ID target. The substrate is **HR-agnostic by canon decision
+(ADR-003)** — any HR source plugs in via a per-source adapter conforming
+to the canonical schema. The federal instance names which sources the
+substrate has integration patterns for.
+
+| System | Operator | Role | Substrate pattern |
+|---|---|---|---|
+| **NFC EmpowHR / FPPS** | USDA National Finance Center | HR SoR for many civilian agencies (USDA, DOJ, DOC, DHS components, Treasury OCC, SSA, …) | Pattern A — native HR adapter |
+| **Treasury HR Connect** | Treasury | HR SoR for Treasury bureaus | Pattern A — native HR adapter |
+| **DCPDS** | DCPAS / DoD | HR SoR for DoD civilian employees | Pattern A — native HR adapter |
+| **DOI IBC HR** | DOI Interior Business Center | HR / payroll for smaller civilian agencies | Pattern A — native HR adapter |
+| **USA Staffing** | OPM | Hire request / vacancy / new-hire data (SOAP RPI to HR systems) | Pattern B — OPM lifecycle, Joiner (Spec2-D2.1) trigger source |
+| **GRB Platform** | OPM | Federal benefits enrollment (FEHB, FEGLI, FSAFEDS, retirement) | Pattern B — downstream consumer of provisioning |
+| **USAJobs** | OPM | Federal job applicant identity (pre-hire) | Pre-hire window source (Spec2-D2.7) |
+| **eOPF** | OPM | Long-term personnel record archive | Pattern B — downstream consumer; Federal Records Act archive |
+| **EHRI** | OPM | Government-wide HR / payroll / training data warehouse | Pattern B — downstream consumer; Privacy Act routine-use disclosures |
+| **USAccess** | GSA Managed Service | PIV credential issuance under HSPD-12 / FIPS 201-3 | Pattern C — trust-anchor; UIAO_129 binding #4 |
+| **OPM eAuthentication / OPM Entra** | OPM | Federal-IdP for HRIT-platform consumers | Pattern C — federation IdP (SAML 2.0 per ADR-051) |
+| **Microsoft Entra Government Cloud** | Microsoft / OPM-tenant-operated | IAM target of the provisioning pipeline | IAM binding (UIAO_129 binding #3) — receives SCIM 2.0 inbound provisioning |
+
+---
+
+### 3. The three federal integration patterns
+
+Per the canon (Spec2-D6.1 §3), every federal HRIT integration follows
+one of three patterns. The substrate's adapter shape is the same; the
+data flow shape differs by pattern.
+
+#### 3.1 Pattern A — Native HR adapter
+
+For HR systems of record (NFC EmpowHR, Treasury HR Connect, DCPDS,
+DOI IBC):
+
+1. Per-source adapter consumes the HR system's published change-data
+   feed (SOAP, REST, or batch file per system).
+2. Adapter normalizes records to the canonical schema
+   ([`Spec2-D1.1`](../../../src/uiao/canon/specs/Spec2-D1.1-CanonicalHRAttributeSchema.md)).
+3. The middleware (Spec2-D3.2) computes OrgPath (Spec2-D3.5), generates
+   the UPN, and constructs the SCIM 2.0 payload.
+4. Microsoft Graph `bulkUpload` endpoint applies the payload to OPM
+   Entra (per the attribute mapping at
+   [`Spec2-D1.3`](../../../src/uiao/canon/specs/Spec2-D1.3-HRToEntraAttributeMappingMatrix.md)).
+5. Joiner / Mover / Leaver workflows (Spec2-D2.1 / D2.2 / D2.3) operate
+   on the resulting Entra records.
+
+Each per-source adapter is a candidate for its own activation ADR
+(modeled on ADR-035) when an engagement requires it.
+
+#### 3.2 Pattern B — OPM-operated lifecycle service
+
+For OPM-operated services that exchange data with the HR system of
+record on lifecycle events (USA Staffing, GRB, EHRI, eOPF):
+
+- **USA Staffing → HR SoR**: Request Processing Interconnection (RPI,
+  SOAP per HRIT Req #66) sends new-hire data upstream into the HR
+  system, which then triggers Spec2-D2.1.
+- **GRB Platform**: consumes HR attributes downstream for benefits
+  enrollment workflows; reads from Entra (post-provisioning) or from
+  the HR system directly.
+- **EHRI**: government-wide data warehouse; ingests HR / payroll /
+  training data via the Guide to Human Resources Reporting feeds.
+- **eOPF**: long-term personnel record archive; ingests SF-50 events,
+  benefits documentation, onboarding records via the eOPF ICDs (per
+  HRIT Solicitation Q&A #146).
+
+These are integration points, not provisioning sources — the substrate
+records them as Pattern B for evidence-bundle attribution and routine-use
+disclosure purposes.
+
+#### 3.3 Pattern C — Trust anchor / federation
+
+For credential and federation services (USAccess, OPM Entra):
+
+- **USAccess** terminates PIV credential issuance per HSPD-12 / FIPS 201-3.
+  The substrate's `certificate-anchored: true` invariant binds adapter
+  operations to PIV-derived credentials per ADR-052; PIV issuance itself
+  is upstream of the substrate.
+- **OPM Entra** is the federation IdP for the entire HRIT platform.
+  Consuming-agency tenants authenticate via SAML 2.0 (per ADR-051) to
+  OPM Entra; the substrate records the trust-anchor chain at each
+  authentication event. The full chain is *PIV credential at USAccess →
+  SAML assertion to OPM Entra → consuming-agency tenant*.
+
+---
+
+### 4. Substrate mechanics — canonical schema, attribute mapping, JML
+
+The substrate's HR-agnostic claim rests on four canon artifacts:
+
+| Artifact | Role |
+|---|---|
+| [`Spec2-D1.1` Canonical HR Attribute Schema](../../../src/uiao/canon/specs/Spec2-D1.1-CanonicalHRAttributeSchema.md) | The single internal representation every HR source normalizes to. Per-source adapters convert from NFC / HR Connect / DCPDS / DOI IBC native formats into this schema; no downstream component depends on the source format |
+| [`Spec2-D1.3` HR → Entra Attribute Mapping Matrix](../../../src/uiao/canon/specs/Spec2-D1.3-HRToEntraAttributeMappingMatrix.md) | The single canonical-schema-to-Entra mapping. ISO-3166 alpha-2 country → Entra `usageLocation`, etc. Changes are canon-change-protocol-governed |
+| [`Spec2-D2.1` Joiner Workflow](../../../src/uiao/canon/specs/Spec2-D2.1-JoinerWorkflowSpecification.md) (+ D2.2 Mover, D2.3 Leaver) | The lifecycle workflows that operate on the Entra record once it lands. Each workflow has explicit triggers, idempotence guarantees, and a remediation contract |
+| [`Spec2-D3.5` OrgPath Population Pipeline](../../../src/uiao/canon/specs/Spec2-D3.5-OrgPathPopulationPipeline.md) | The pipeline that resolves the canonical schema's organizational fields to an OrgPath value and writes it to the Entra extension attribute. This is the bridge between HRIT and the rest of the substrate's OrgPath-driven governance (Purview Adaptive Scopes, Fabric Domains, Intune compliance per the [OrgPath Narrative](../orgpath-narrative/index.qmd)) |
+
+Drift between HR system and Entra ID is governed by
+[`Spec2-D5.5` Provisioning Drift Detection Rules](../../../src/uiao/canon/specs/Spec2-D5.5-ProvisioningDriftDetectionRules.md),
+which maps provisioning-pipeline drift conditions to the five-class
+drift taxonomy in [Doc 16](../../docs/16_DriftDetectionStandard.qmd).
+`DRIFT-IDENTITY` and `DRIFT-AUTHZ` are the load-bearing classes for
+HRIT — the same two that load-bear the AD → Entra ID story per the
+drift standard's §7 Federal SSOT Context.
+
+---
+
+### 5. Federal mandate alignment
+
+The substrate's HRIT pipeline alignment is mechanical, not aspirational.
+Each federal mandate maps to a specific substrate capability that exists
+in canon.
+
+| Federal mandate | Substrate capability | Canon anchor |
+|---|---|---|
+| Privacy Act (5 U.S.C. §552a) — HR SoR ownership | `ssot-mutation: never` invariant; substrate is a routine-use consumer, not a SoR | adapter-registry.yaml, modernization-registry.yaml |
+| HSPD-12 / FIPS 201-3 — PIV issuance | Trust-anchor binding to USAccess; PIV-derived credentials govern adapter operations | ADR-052 |
+| OMB M-22-09 — Federal Zero Trust | Continuous AAL verification per principal; `DRIFT-AUTHZ` findings | Spec2-D5.5 + Doc 16 §2 |
+| OMB M-19-17 — Federal ICAM | OPM Entra federation; SAML 2.0 trust anchor | ADR-051 |
+| NIST SP 800-63A — enrollment + identity proofing | HR-event-triggered provisioning; IAL recording per principal | A.9 NIST + FICAM Cross-Walk §4 |
+| NIST SP 800-53 AC-2 / IA-4 / IA-5 — account management + identifier management | Joiner / Mover / Leaver workflows; canonical-schema attribute mapping | Spec2-D2.1, D2.2, D2.3 |
+| FedRAMP 20x continuous monitoring | Provisioning drift findings emit into the Evidence Bundle as a byproduct of pipeline operation | Spec2-D5.5 + ADR-058 |
+| Single-ATO reciprocity | One canon, multiple consuming tenants; substrate's evidence is reciprocity-ready | ADR-054 |
+| HRIT Solicitation 24322626R0007 §5.1.1 #3 — federal-IdP for consumers | OPM Entra federation IdP routing | ADR-053 |
+| HRIT Solicitation Req #66 — RPI from USA Staffing | Pattern B Joiner trigger source | Spec2-D2.1, D6.1 §3.2 |
+| Federal Records Act + 5 C.F.R. part 293 | eOPF downstream consumption of provisioning events | Spec2-D6.1 §3.2 |
+
+---
+
+### 6. Complementarity with the AD → Entra ID story
+
+UIAO's Federal SSOT alignment whitepaper covers the **directory
+migration** dimension — moving the legacy AD tree to Entra ID as a
+governance event, with COR baselines, drift detection, and
+phase-tagged evidence bundles. This whitepaper covers the **inbound
+provisioning** dimension — keeping the migrated tenant continuously
+populated from authoritative HR sources.
+
+The two are complementary. A federal-civilian deployment with a
+trustworthy identity plane needs both:
+
+| Concern | AD → Entra ID (PR #390 et al.) | OPM HRIT → Entra ID (this whitepaper) |
+|---|---|---|
+| What's moving | The directory (identity store) | Nothing — HRIT is the upstream authoritative source |
+| Substrate role | Govern the migration event end-to-end (5-phase, drift-detected) | Govern the inbound provisioning pipeline (continuous, drift-detected) |
+| Canon home | `src/uiao/modernization/directory-migration/` (8 adapters + DM_090 SQL Server) | `src/uiao/canon/specs/Spec2-*.md` (34 specs, UIAO_136 family) |
+| Identity owner before | The agency's AD (legacy) | The HR system of record (always) |
+| Identity owner after | The agency's Entra ID (migrated) | The HR system of record (unchanged) |
+| Required UIAO invariants | `gcc-boundary: gcc-moderate`, `ssot-mutation: never`, `certificate-anchored: true`, `object-identity-only: true` | Same four; plus `provisioning-source: declared` |
+
+An agency running both substrate dimensions in parallel produces a
+single Evidence Bundle that an authorizing official can hand to a 3PAO:
+the AD-migration story carries the pre/post-migration SPN inventories,
+drift findings, and adapter operations; the HRIT story carries the
+ongoing provisioning evidence, AAL recordings, and JML transitions.
+Together they trace from the HR-event in the SoR through the directory
+migration into a continuously-verified Entra ID identity plane.
+
+---
+
+### 7. What this substrate dimension is NOT
+
+- **Not a replacement for the agency's HR system of record.** NFC,
+  HR Connect, DCPDS, DOI IBC remain the Privacy Act systems of record;
+  the substrate is a routine-use consumer per the agency's SORN.
+- **Not a PIV issuance authority.** USAccess remains the PIV issuance
+  authority under HSPD-12 / FIPS 201-3; the substrate is a downstream
+  trust-anchor consumer per ADR-052.
+- **Not a federation IdP.** OPM Entra remains the HRIT-platform
+  federation IdP; the substrate records the trust chain, it does not
+  replace the IdP per ADR-051 / ADR-053.
+- **Not a benefits-enrollment system.** GRB remains the federal
+  benefits enrollment authority; the substrate emits provisioning
+  events GRB can consume downstream.
+- **Not a SCIM provider implementation.** The substrate uses Microsoft
+  Graph `bulkUpload` (Pattern A step 4) as the SCIM 2.0 binding into
+  OPM Entra; it does not re-implement SCIM.
+- **Not in scope for state-level HR systems.** Per Spec2-D6.1 §1.1,
+  state-agency hires fall outside this reference instance.
+
+---
+
+### Conclusion
+
+Federal HRIT is governed by a clearer mandate landscape than most
+substrate dimensions — Privacy Act SORNs, HSPD-12 / FIPS 201-3 for PIV,
+OMB M-22-09 / M-19-17 for ICAM, NIST SP 800-63A for enrollment, the
+HRIT solicitation for OPM-platform integration. What agencies have
+lacked is an open framework that records *how the substrate routes
+authoritative HR events into Entra ID under those mandates*, and that
+produces FedRAMP-grade evidence of the routing as a byproduct of normal
+operations.
+
+UIAO's Spec 2 architecture is that framework. It is HR-agnostic by canon
+decision (ADR-003), recorded for the federal-civilian instance in
+[Spec2-D6.1](../../../src/uiao/canon/specs/Spec2-D6.1-FederalHRITIntegrationRunbook.md),
+and operationalized through 34 canon deliverables spanning the canonical
+schema, attribute mapping, Joiner / Mover / Leaver workflows, OrgPath
+population, drift detection, and the federation trust chain to OPM
+Entra. Together with the AD → Entra ID story it produces a
+federal-civilian identity plane that is continuously trustworthy from
+the HR event through the directory migration into the Azure SSOT stack
+the [chapter 07a — UIAO Beneath the Azure SSOT Stack](../orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd)
+positions.
+
+For the canon-level operational mechanics, see
+[Spec2-D6.1](../../../src/uiao/canon/specs/Spec2-D6.1-FederalHRITIntegrationRunbook.md)
+and the 33 sibling Spec2 deliverables under
+[`src/uiao/canon/specs/`](../../../src/uiao/canon/specs/).
+For the customer-facing program-level frame, see
+[`Doc 22 — HRIT Productization`](../../docs/22_HRITProductization.qmd).
+For the federal-mandate cross-walk that frames the substrate against
+NIST and FICAM standards, see
+[`A.9 NIST + FICAM Cross-Walk`](../compliance/federal-mandates/nist-icam-crosswalk.qmd).
