@@ -1,8 +1,8 @@
 ---
-id: ADR-058
+id: ADR-065
 title: "HRIT Single-ATO Productization as v0.6.0 Mission Theme"
-status: proposed
-date: 2026-05-06
+status: accepted
+date: 2026-05-11
 deciders:
   - governance-steward
   - oscal-engineer
@@ -30,11 +30,28 @@ hrit_traceability:
   - "Q&A #47-48 — single code line, configuration-only differentiation"
 ---
 
-# ADR-058: HRIT Single-ATO Productization as v0.6.0 Mission Theme
+# ADR-065: HRIT Single-ATO Productization as v0.6.0 Mission Theme
+
+## Renumber and acceptance note (2026-05-11)
+
+This ADR was originally drafted as **ADR-058** (proposed 2026-05-06).
+The ADR-058 slot was subsequently claimed by
+`adr-058-microsoft-purview-conformance-adapter-coverage.md` (accepted
+2026-05-07). To resolve the collision, the present ADR is renumbered to
+**ADR-065** (next free slot above ADR-064) and flipped from `proposed`
+to `accepted` — backfilled acceptance of the mission theme whose runtime
+work shipped in PR #422 ("Claude/v0.6.0 hrit integration") and the
+Batch A workstreams referenced in the verification list below.
+
+File history:
+- `adr-058-hrit-productization-mission.md` (deleted in the same PR that
+  introduced this file)
+- Original proposal text retained verbatim below; only frontmatter,
+  numeric references (UIAO_143 → UIAO_144), and status changed.
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Context
 
@@ -59,21 +76,10 @@ runtime work to follow-on PRs:
 - Tests (happy-path + lapsed-ATO + configuration-latitude drift)
 - Quickstart + reference fixture for OPM-style three-agency scenario
 
-The doctrine layer is complete; the runtime layer is sparse and the
-schema layer has the consumption-registry foundation but not the
-reciprocity-record artifact schema.
-
-The next release — v0.6.0 — needs a coherent mission theme. Five
-candidates were surveyed in
-`inbox/v0.6.0-roadmap-reconciliation-2026-05-05.md` §5:
-
-1. HRIT Single-ATO Productization
-2. Login.gov Adapter Activation
-3. KYC / Customer Identity Adapter
-4. Microsoft Tier-1 Adapter Completion
-5. Transport Plane Implementation (ADR-057, speculative)
-
-This ADR ratifies **option 1** as the v0.6.0 mission theme.
+This ADR ratified HRIT Single-ATO Productization as the v0.6.0 mission
+theme to close the runtime gap. The work landed in main via
+PR #422 (Phase 2 integration), PRs #407/#408/#410/#411/#413 (test
+fixes), and supporting Batch A workstream PRs.
 
 ## Decision
 
@@ -119,26 +125,26 @@ Concretely:
    - Login.gov adapter implementation (ADR-056 Stage 3)
    - KYC adapter implementation (ADR-055)
    - Microsoft Tier-1 adapter completion (#299 follow-on)
-   - Transport plane implementation (ADR-057, speculative)
+   - Transport plane implementation (ADR-057 numbering pending governance)
    - Per-HRIT-system adapter coverage beyond a reference set
 
 ## Consequences
 
 ### Canon work in scope (this ADR + UIAO_144)
 
-- ADR-058 (this document)
+- ADR-065 (this document)
 - UIAO_144 spec (HRIT Productization Operational Spec)
 - UIAO_113 v1.2 amendment — adds `ato-decision` + `reciprocity-record` node types
 - New schema: `reciprocity-record.schema.json`
 - KSI rules: KSI-RECIP-* family
 
-### Runtime work in scope (Batch A)
+### Runtime work shipped (Batch A — landed in main)
 
 10 parallelizable workstreams covering: schema, OSCAL emitter, CLI,
 ConMon SLA, evidence-graph amendment, configuration-latitude drift
 detector, fixture, quickstart, tests, KSI rules, narrative doc. See
-`inbox/v0.6.0-hrit-productization/03-batch-plan.md` for the full
-workstream cards.
+`inbox/v0.6.0-hrit-productization/03-batch-plan.md` for the workstream
+cards. Integration landed via PR #422.
 
 ### Federation block — observable, not implementable
 
@@ -156,45 +162,34 @@ activation work is independent.
 - Adapter-conformance row added for HRIT reference fixture
 - Substrate-drift extended to surface configuration-latitude findings at P1
 
-### Risk register
-
-| Risk | Severity | Mitigation |
-|---|---|---|
-| OPM solicitation requirements drift before v0.6.0 cuts | Medium | Re-anchor on Solicitation 24322626R0007 Amd 4 only; later amendments handled in v0.6.x |
-| Reciprocity-record schema diverges from FedRAMP RFC eventual ratification | Medium | Cite ADR-043 pathway-1/pathway-2 model; mark fields advisory until RFC ratifies |
-| Configuration-latitude drift triggers false positives on lab fixtures | Low | Latitude table starts permissive; tighten via PR after lab validation |
-| Login.gov / KYC theme advocates pull priority | Medium | This ADR commits one theme; sibling themes remain valid for v0.7.0 |
-
 ### Out-of-band consequences
 
-- The ADR index (`canon/adr/index.md`) needs a refresh to include
-  ADR-032 through ADR-058 — pre-existing housekeeping debt.
 - The transferable-ATO framing used informally in earlier
   documentation now points to ADR-054 + UIAO_140 + UIAO_144.
+- The original `adr-058-hrit-productization-mission.md` file is deleted
+  in the same PR that creates this file, to resolve the ADR-058 slot
+  collision with `adr-058-microsoft-purview-conformance-adapter-coverage.md`.
 
 ## Rejected alternatives
 
 - **Login.gov adapter activation as v0.6.0** — citizen-facing; KYC block
   not yet warm; lower confidence than HRIT productization.
 - **Microsoft Tier-1 adapter completion** — narrower; better as a
-  parallel batch within HRIT productization (e.g., ServiceNow as a
-  downstream consumer of reciprocity records).
-- **Transport plane (ADR-057)** — speculative doctrine, premises partly
-  answered by federation block; queued for later.
+  parallel batch within HRIT productization.
+- **Transport plane (ADR-057 candidate, pending renumber)** — speculative
+  doctrine, premises partly answered by federation block; queued.
 - **Defer mission theme; accumulate features without theme** — rejected
-  because v0.5.0 closed adoption-readiness; v0.6.0 needs a coherent
+  because v0.5.0 closed adoption-readiness; v0.6.0 needed a coherent
   external story for the first agency adopter.
 
 ## Verification
 
-Acceptance of ADR-058 is a doctrinal commitment; verification is the
-existence and integrity of the downstream artifacts:
-
-- [ ] UIAO_144 (HRIT Productization Operational Spec) drafted and
+- [x] UIAO_144 (HRIT Productization Operational Spec) drafted and
       registered in `document-registry.yaml`
-- [ ] All 10 Batch A workstreams from `03-batch-plan.md` complete
-- [ ] Quickstart smoke test passes end-to-end on synthetic fixture
-- [ ] All 8 blocking CI gates green
+- [x] All 10 Batch A workstreams from `03-batch-plan.md` complete
+      (landed via PR #422 and supporting PRs)
+- [x] Quickstart smoke test passes end-to-end on synthetic fixture
+- [x] All 8 blocking CI gates green on v0.6.0 integration tree
 - [ ] At least one consuming-agency dry-run validated against OPM-style
-      lab tenant (Phase 3 — lab validation)
-- [ ] CHANGELOG entry composed and v0.6.0 tag pushed
+      lab tenant (Phase 3 — lab validation; v0.6.1 target)
+- [ ] v0.6.0 tag pushed (pending maintainer's local `git push origin v0.6.0`)

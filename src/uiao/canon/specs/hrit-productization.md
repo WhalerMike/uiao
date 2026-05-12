@@ -6,7 +6,7 @@ status: Draft
 classification: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-05-06"
-updated_at: "2026-05-06"
+updated_at: "2026-05-11"
 boundary: "GCC-Moderate"
 ---
 
@@ -15,7 +15,9 @@ boundary: "GCC-Moderate"
 > **Status:** Draft v0.1 — Phase 0 stub. Sections 4–9 are filled by the
 > Batch A workstreams in `inbox/v0.6.0-hrit-productization/03-batch-plan.md`.
 > Promoted to v1.0 when Batch A merges into the v0.6.0 RC1 integration
-> branch and the maintainer ratifies ADR-058 from `proposed` to `accepted`.
+> branch. ADR-065 (renumbered from the original ADR-058 to resolve a
+> slot collision with Microsoft Purview ADR-058) ratifies this spec as
+> `accepted` per maintainer governance review.
 
 ## 1. Overview
 
@@ -33,8 +35,9 @@ It defines:
   to the controlling ATO decision.
 - **Which KSIs** continuously evaluate reciprocity-program health.
 
-Established under ADR-058. Authoritative for any UIAO deployment
-operating under a single-tenant-of-record / multi-tenant-of-consumption
+Established under ADR-065 (originally drafted as ADR-058; see ADR for
+renumber history). Authoritative for any UIAO deployment operating
+under a single-tenant-of-record / multi-tenant-of-consumption
 authorization model. Reference instance is the OPM Federal HRIT
 Modernization platform (Solicitation 24322626R0007).
 
@@ -60,7 +63,7 @@ Out of scope (v0.6.0; pursued in adjacent themes):
 - Per-HRIT-system adapter coverage (Spec2-D6.1 §2 enumerates 12 systems;
   reference subset only in v0.6.0)
 - Microsoft Tier-1 adapter completion (#299 follow-on)
-- Transport plane (ADR-057)
+- Transport plane (ADR-057 candidate, pending renumber)
 
 ## 3. Roles
 
@@ -142,7 +145,7 @@ control and emits a deterministic PASS/WARN/FAIL verdict.
 
 ## 11. Provenance
 
-- Established by ADR-058
+- Established by ADR-065 (originally ADR-058; renumbered to resolve slot collision)
 - Operational counterpart to UIAO_140 (model) and Spec2-D6.1 (runbook)
 - Amends UIAO_113 to v1.2 in §6
 - HRIT traceability inherited from UIAO_140 / ADR-054
@@ -150,7 +153,7 @@ control and emits a deterministic PASS/WARN/FAIL verdict.
 ## 12. References
 
 - ADR-054 (Single-ATO Reciprocity Model)
-- ADR-058 (this spec's ratifying ADR)
+- ADR-065 (this spec's ratifying ADR; renumbered from ADR-058)
 - UIAO_112 (Multi-Tenant Isolation v1.1)
 - UIAO_113 (Evidence Graph — v1.2 in scope)
 - UIAO_140 (Single-ATO Reciprocity Model)

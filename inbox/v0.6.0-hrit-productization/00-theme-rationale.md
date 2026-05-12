@@ -1,6 +1,13 @@
 # 00 — Theme Rationale: HRIT Single-ATO Reciprocity Productization
 
 > **Status:** Inbox draft. Not canon. Authored 2026-05-05.
+>
+> **Renumber note (2026-05-11):** The proposed ADR-058 referenced below
+> was renumbered to **ADR-065** to resolve a slot collision with
+> `adr-058-microsoft-purview-conformance-adapter-coverage.md` (accepted
+> 2026-05-07). The spec slot moved similarly: UIAO_143 → **UIAO_144**
+> (UIAO_143 is now SCIM Core Schema per PR #342). Historical inbox
+> drafts retain original numbers for traceability.
 
 ## Why this theme, why now
 
@@ -38,8 +45,8 @@ Picking this as the v0.6.0 mission theme is defensible on five axes:
   customer-side. Complementary, not blocking.
 - **Not Microsoft Tier-1 adapter completion** — that's the #299 Phase 2
   follow-on. Independent work stream.
-- **Not transport plane (ADR-057)** — speculative doctrine, recommend
-  keeping queued.
+- **Not transport plane (ADR-057 candidate, pending renumber)** —
+  speculative doctrine, recommend keeping queued.
 
 ## Acceptance for v0.6.0
 
@@ -67,10 +74,13 @@ Phase 0 (single sequential session, after maintainer reviews this inbox
 package):
 
 1. Promote `02-proposed-adr-058-draft.md` to
-   `src/uiao/canon/adr/adr-058-hrit-productization-mission.md` (Accepted)
-2. Allocate **UIAO_143** (HRIT Productization Operational Spec) in
-   `document-registry.yaml`
-3. Stub `src/uiao/canon/specs/hrit-productization.md` (UIAO_143)
+   `src/uiao/canon/adr/adr-065-hrit-productization-mission.md` (Accepted)
+   — note: originally proposed as ADR-058, renumbered to ADR-065 to
+   resolve slot collision
+2. Allocate **UIAO_144** (HRIT Productization Operational Spec) in
+   `document-registry.yaml` — note: originally proposed as UIAO_143,
+   renumbered to UIAO_144 (UIAO_143 is now SCIM Core Schema)
+3. Stub `src/uiao/canon/specs/hrit-productization.md` (UIAO_144)
 4. Stub `src/uiao/schemas/reciprocity-record/reciprocity-record.schema.json`
 5. Create branch scaffolding for the 10 Batch A workstreams in
    `03-batch-plan.md`

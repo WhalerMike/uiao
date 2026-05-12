@@ -128,7 +128,13 @@ Per CR-003, accepted ADRs are immutable.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| [ADR-058](adr-058-hrit-productization-mission.md) | HRIT Single-ATO Productization as v0.6.0 Mission Theme | PROPOSED | 2026-05-06 |
+| [ADR-065](adr-065-hrit-productization-mission.md) | HRIT Single-ATO Productization as v0.6.0 Mission Theme | ACCEPTED | 2026-05-11 |
+
+> **Renumber note:** ADR-065 was originally drafted as ADR-058 (proposed
+> 2026-05-06). Renumbered to ADR-065 to resolve slot collision with
+> `adr-058-microsoft-purview-conformance-adapter-coverage.md` (accepted
+> 2026-05-07). Backfilled-accepted on 2026-05-11; runtime work shipped
+> via PR #422.
 
 ### Speculative / Queued
 
@@ -147,7 +153,16 @@ Two files share the ADR-047 slot on disk. Maintainer action required to establis
 
 > One of these files must be renumbered before the ADR-047 slot can be treated as canonically resolved.
 
-## Recent ADRs (032–058, post-consolidation)
+### ADR-057 Numbering Collision (open)
+
+Two files share the ADR-057 slot on disk. Maintainer action required:
+
+| File | Title | Status | Date |
+|------|-------|--------|------|
+| [adr-057-application-aware-networking-and-token-bound-transport.md](adr-057-application-aware-networking-and-token-bound-transport.md) | Application-Aware Networking and Token-Bound Transport Plane | PROPOSED | 2026-05-05 |
+| [adr-057-thousandeyes-networks-pillar-scope.md](adr-057-thousandeyes-networks-pillar-scope.md) | ThousandEyes — Networks-Pillar Conditional Adoption Under GCC-Moderate | PROPOSED | 2026-04-27 |
+
+## Recent ADRs (032–064, post-consolidation)
 
 > Theme classification for these ADRs is deferred — the themes above were
 > defined pre-consolidation and re-categorizing the post-consolidation
@@ -182,14 +197,24 @@ Two files share the ADR-047 slot on disk. Maintainer action required to establis
 | [ADR-054](adr-054-single-ato-reciprocity.md) | Single-ATO Reciprocity Model — Multi-Tenant Authorization Boundary | ACCEPTED | 2026-05-04 |
 | [ADR-055](adr-055-customer-identity-canon-block.md) | Customer Identity Canon Block — KYC Protocol & Reciprocal Attribute Exchange | ACCEPTED | 2026-05-05 |
 | [ADR-056](adr-056-login-gov-activation-contract.md) | Login.gov Federation Service — Activation Contract (Stage 2) | ACCEPTED | 2026-05-05 |
-| [ADR-057](adr-057-thousandeyes-networks-pillar-scope.md) | ThousandEyes — Networks-Pillar Conditional Adoption Under GCC-Moderate | PROPOSED | 2026-04-27 |
+| [ADR-057a](adr-057-thousandeyes-networks-pillar-scope.md) | ThousandEyes — Networks-Pillar Conditional Adoption Under GCC-Moderate | PROPOSED | 2026-04-27 |
+| [ADR-057b](adr-057-application-aware-networking-and-token-bound-transport.md) | Application-Aware Networking and Token-Bound Transport Plane | PROPOSED | 2026-05-05 |
 | [ADR-058](adr-058-microsoft-purview-conformance-adapter-coverage.md) | Microsoft Purview Conformance Adapter Coverage — Audit, DLP, Information Protection, Insider Risk | ACCEPTED | 2026-05-07 |
+| [ADR-059](adr-059-sailpoint-adapter-family.md) | SailPoint NERM Adapter — Boundary-Exception Carve-Out and Slot Allocation | ACCEPTED | 2026-05-07 |
+| [ADR-060](adr-060-...) | (placeholder — see file on disk) | — | — |
+| [ADR-061](adr-061-...) | (placeholder — see file on disk) | — | — |
+| [ADR-062](adr-062-...) | (placeholder — see file on disk) | — | — |
+| [ADR-063](adr-063-...) | (placeholder — see file on disk) | — | — |
+| [ADR-064](adr-064-...) | (placeholder — see file on disk) | — | — |
+| [ADR-065](adr-065-hrit-productization-mission.md) | HRIT Single-ATO Productization as v0.6.0 Mission Theme (renumbered from ADR-058) | ACCEPTED | 2026-05-11 |
 
 ### Known frontmatter inconsistencies (deferred for separate cleanup)
 
 - `adr-033-gcc-boundary-drift-class.md` declares `id: ADR-030` in frontmatter; filename is the source of truth.
 - `adr-034-three-plane-device-model.md` declares `id: ADR-031` in frontmatter; filename is the source of truth.
 - ADR-047 has two files (`continuous-monitoring-program` and `fedramp-20x-integration`) — duplicate ADR number, listed as 047a / 047b.
+- ADR-057 has two files (`thousandeyes-networks-pillar-scope` and `application-aware-networking-and-token-bound-transport`) — duplicate ADR number, listed as 057a / 057b.
+- ADR-060–ADR-064 entries above are placeholders; maintainer should fill titles/status/dates from the actual files on disk.
 
 ## ADR Governance Rules
 
@@ -197,8 +222,7 @@ Per CR-003 (ADR Immutability), once an ADR is ACCEPTED:
 
 - The Context, Decision, and Date fields are immutable
 - Amendments require a new superseding ADR
-- The superseding ADR must include `supersedes: ADR-NNN`
-- The superseded ADR must be updated with `superseded_by: ADR-MMM`
+- The superseded ADR must include `superseded_by: ADR-MMM`
 
 All ADR changes require Governance Plane approval. See [ADR-000](adr-000-adr-process.md) for the full process.
 
