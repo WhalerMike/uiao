@@ -4,10 +4,10 @@ title: "Federal HRIT Integration Runbook"
 spec: UIAO_136 / Spec 2 — HR-Agnostic Provisioning Architecture
 phase: 6
 status: Draft
-version: 0.1
+version: 0.2
 owner: Identity Architecture
 created: 2026-05-05
-updated: 2026-05-05
+updated: 2026-05-12
 canonical_adrs:
   - ADR-003   # HR-system-agnostic by construction
   - ADR-051   # SAML trust anchor
@@ -36,11 +36,16 @@ classification: Controlled
 
 # Spec 2 — D6.1: Federal HRIT Integration Runbook
 
-> **Status (v0.1, 2026-05-05):** Initial federal-civilian-specific
-> instance of the Spec 2 HR-agnostic provisioning architecture. Names
-> the canonical federal HR / personnel / credential systems and maps
-> each to the Spec2-D3.1 inbound provisioning pipeline. Companion to
-> the generic Spec2-D5.4 HR System Onboarding Playbook.
+> **Status (v0.2, 2026-05-12):** Federal-civilian-specific instance of
+> the Spec 2 HR-agnostic provisioning architecture. Names the
+> canonical federal HR / personnel / credential systems and maps each
+> to the Spec2-D3.1 inbound provisioning pipeline. Companion to the
+> generic Spec2-D5.4 HR System Onboarding Playbook. Since v0.1 the
+> customer-facing companion artifacts — the Federal HRIT Productization
+> whitepaper, the OPM HRIT reference deployment case study, the
+> A.9 NIST + FICAM cross-walk §4.1 NIST SP 800-63A subsection, and
+> the `hrit-record-inventory` Python interface stub — have landed in
+> canon. See §12 Revision history.
 
 ## 1. Purpose, Scope, and Reference
 
@@ -306,3 +311,17 @@ Each federal-HRIT engagement produces:
 - ADR-052 — PIV / USAccess (workforce credential authority)
 - ADR-053 — OPM Azure APIM (gateway pattern)
 - ADR-054 — Single-ATO reciprocity model
+
+### Customer-doc companions (added in v0.2)
+
+- [`docs/customer-documents/whitepapers/federal-hrit-productization.qmd`](../../../../docs/customer-documents/whitepapers/federal-hrit-productization.qmd) — customer-facing whitepaper covering the federal HRIT mandate landscape, the 9-system federal HR ecosystem, the three integration patterns, and federal mandate alignment
+- [`docs/customer-documents/case-studies/reference-deployment-opm-hrit-to-entra.qmd`](../../../../docs/customer-documents/case-studies/reference-deployment-opm-hrit-to-entra.qmd) — synthetic end-to-end case study exercising this runbook against a federal civilian agency archetype (companion to the AD reference deployment)
+- [`docs/customer-documents/compliance/federal-mandates/nist-icam-crosswalk.qmd`](../../../../docs/customer-documents/compliance/federal-mandates/nist-icam-crosswalk.qmd) §4.1 — A.9 NIST + FICAM Cross-Walk extension covering NIST SP 800-63A (enrollment + identity proofing) and how this runbook consumes the proofing event
+- [`src/uiao/adapters/modernization/hrit/inventory.py`](../../adapters/modernization/hrit/inventory.py) — phase-tagged HRRecordInventory interface stub (`extract_hrit_record_inventory`) consuming Spec2-D1.1 canonical-schema records; emits `DRIFT-IDENTITY` for OrgPath-unresolvable records; live federal-HR-system adapter implementations deferred
+
+## 12. Revision history
+
+| Version | Date | Author | Summary |
+|---|---|---|---|
+| 0.1 | 2026-05-05 | Identity Architecture | Initial federal-civilian-specific instance of the Spec 2 HR-agnostic provisioning architecture. Named the canonical federal HR / personnel / credential systems (§2 12-row matrix); mapped each to its role in the Spec2-D3.1 pipeline; codified the three federal integration patterns (Pattern A native HR adapter / Pattern B OPM lifecycle service / Pattern C trust anchor / federation); aligned to the lifecycle workflows in Spec2-D2.1–D2.5. |
+| 0.2 | 2026-05-12 | Identity Architecture | Customer-doc surface landed: Federal HRIT Productization whitepaper (PR #437), OPM HRIT → Entra ID reference deployment case study (PR #451), A.9 NIST + FICAM cross-walk §4.1 NIST SP 800-63A extension (PR #453). Python interface-stub adapter landed under `src/uiao/adapters/modernization/hrit/` with phase-tagged `HRRecordInventory` artifact + 24 tests (PR #449). Status callout + canon `version` / `updated` bumped; §11 Cross-references extended with the customer-doc companions. No substantive changes to §§1–10 — the operational runbook is unchanged; v0.2 captures the customer-facing and code-stub surfaces that now reference it. |
