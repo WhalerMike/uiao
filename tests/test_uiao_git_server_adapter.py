@@ -137,9 +137,7 @@ class TestBasics:
             assert isinstance(r, QueryProvenance)
             assert expect in r.vendor_query
 
-    def test_query_unknown_scope_falls_back(
-        self, adapter: UiaoGitServerAdapter
-    ) -> None:
+    def test_query_unknown_scope_falls_back(self, adapter: UiaoGitServerAdapter) -> None:
         r = adapter.execute_query({"from": "nonexistent"})
         # Default fallback is the version endpoint
         assert "/api/v1/version" in r.vendor_query
@@ -157,9 +155,7 @@ class TestNormalization:
         assert isinstance(cs, ClaimSet)
         assert cs.claims == []
 
-    def test_normalize_three_repos(
-        self, adapter: UiaoGitServerAdapter, repos_payload: dict
-    ) -> None:
+    def test_normalize_three_repos(self, adapter: UiaoGitServerAdapter, repos_payload: dict) -> None:
         cs = adapter.normalize(repos_payload["data"])
         assert len(cs.claims) == 3
         # full_name preserved when present
@@ -174,9 +170,7 @@ class TestNormalization:
             assert c.provenance_hash
             assert c.source == "uiao-git-server"
 
-    def test_normalize_handles_completely_missing_fields(
-        self, adapter: UiaoGitServerAdapter
-    ) -> None:
+    def test_normalize_handles_completely_missing_fields(self, adapter: UiaoGitServerAdapter) -> None:
         cs = adapter.normalize([{}])
         assert len(cs.claims) == 1
         # No raises; defaults applied.
@@ -192,9 +186,7 @@ class TestNormalization:
 
 
 class TestEvidenceShapes:
-    def test_service_health_shape(
-        self, adapter: UiaoGitServerAdapter, version_payload: dict
-    ) -> None:
+    def test_service_health_shape(self, adapter: UiaoGitServerAdapter, version_payload: dict) -> None:
         out = adapter.shape_service_health(version_payload)
         assert out["adapter_id"] == "uiao-git-server"
         assert out["gitea_version"] == "1.21.11"
@@ -202,16 +194,12 @@ class TestEvidenceShapes:
         assert out["service_health"] == "ok"
         assert "timestamp" in out
 
-    def test_service_health_handles_missing_payload(
-        self, adapter: UiaoGitServerAdapter
-    ) -> None:
+    def test_service_health_handles_missing_payload(self, adapter: UiaoGitServerAdapter) -> None:
         out = adapter.shape_service_health(None)
         assert out["gitea_version"] == "unknown"
         assert out["uptime_seconds"] == 0
 
-    def test_tls_inventory_shape(
-        self, adapter: UiaoGitServerAdapter, cert_payload: dict
-    ) -> None:
+    def test_tls_inventory_shape(self, adapter: UiaoGitServerAdapter, cert_payload: dict) -> None:
         out = adapter.shape_tls_inventory(cert_payload)
         assert out["subject"] == "CN=git.uiao.corp.contoso.com"
         assert out["sha256_fingerprint"] == "AB:CD:EF:01:23:45"
@@ -219,26 +207,20 @@ class TestEvidenceShapes:
         assert out["mtls_enabled"] is True
         assert out["cipher_suite"] == "TLS_AES_256_GCM_SHA384"
 
-    def test_tls_inventory_with_no_cert(
-        self, adapter: UiaoGitServerAdapter
-    ) -> None:
+    def test_tls_inventory_with_no_cert(self, adapter: UiaoGitServerAdapter) -> None:
         out = adapter.shape_tls_inventory(None)
         # Empty defaults; never raises.
         assert out["subject"] == ""
         assert out["issuer"] == ""
         assert out["sha256_fingerprint"] == ""
 
-    def test_repo_inventory_shape(
-        self, adapter: UiaoGitServerAdapter, repos_payload: dict
-    ) -> None:
+    def test_repo_inventory_shape(self, adapter: UiaoGitServerAdapter, repos_payload: dict) -> None:
         out = adapter.shape_repo_inventory(repos_payload)
         assert out["repo_count"] == 3
         assert out["signed_commits_repos"] == 1
         assert len(out["claims"]["claims"]) == 3
 
-    def test_repo_inventory_empty_payload(
-        self, adapter: UiaoGitServerAdapter
-    ) -> None:
+    def test_repo_inventory_empty_payload(self, adapter: UiaoGitServerAdapter) -> None:
         out = adapter.shape_repo_inventory({"data": []})
         assert out["repo_count"] == 0
         assert out["signed_commits_repos"] == 0
@@ -281,9 +263,7 @@ class TestEvidenceBundle:
         cert_payload: dict,
         repos_payload: dict,
     ) -> None:
-        ev = adapter.generate_evidence_bundle(
-            version_payload, cert_payload, repos_payload
-        )
+        ev = adapter.generate_evidence_bundle(version_payload, cert_payload, repos_payload)
         assert isinstance(ev, EvidenceObject)
         assert ev.source == "uiao-git-server"
         assert ev.ksi_id == "KSI-CM-02-uiao-git-server"
@@ -295,14 +275,10 @@ class TestEvidenceBundle:
         }
         assert ev.freshness_valid is True
 
-    def test_evidence_bundle_with_no_inputs(
-        self, adapter: UiaoGitServerAdapter
-    ) -> None:
+    def test_evidence_bundle_with_no_inputs(self, adapter: UiaoGitServerAdapter) -> None:
         ev = adapter.generate_evidence_bundle()
         assert isinstance(ev, EvidenceObject)
-        assert ev.raw_data["outputs"]["git-server-health.json"][
-            "gitea_version"
-        ] == "unknown"
+        assert ev.raw_data["outputs"]["git-server-health.json"]["gitea_version"] == "unknown"
 
     def test_collect_and_align(self, adapter: UiaoGitServerAdapter) -> None:
         out = adapter.collect_and_align()
@@ -321,20 +297,13 @@ class TestEvidenceBundle:
 
 
 class TestFailureModes:
-    def test_empty_config_instantiates(
-        self, empty_adapter: UiaoGitServerAdapter
-    ) -> None:
+    def test_empty_config_instantiates(self, empty_adapter: UiaoGitServerAdapter) -> None:
         # The registry's conformance check passes empty config to every adapter.
         assert empty_adapter.ADAPTER_ID == "uiao-git-server"
         # default endpoint is the canonical placeholder
-        assert (
-            empty_adapter.connect().endpoint
-            == "https://git.uiao.corp.contoso.com"
-        )
+        assert empty_adapter.connect().endpoint == "https://git.uiao.corp.contoso.com"
 
-    def test_malformed_repos_payload_is_tolerated(
-        self, adapter: UiaoGitServerAdapter
-    ) -> None:
+    def test_malformed_repos_payload_is_tolerated(self, adapter: UiaoGitServerAdapter) -> None:
         # Missing top-level `data` key
         out = adapter.shape_repo_inventory({"unexpected": "shape"})
         assert out["repo_count"] == 0
@@ -342,9 +311,7 @@ class TestFailureModes:
         out_none = adapter.shape_repo_inventory(None)
         assert out_none["repo_count"] == 0
 
-    def test_partial_repo_records_do_not_crash_normalize(
-        self, adapter: UiaoGitServerAdapter
-    ) -> None:
+    def test_partial_repo_records_do_not_crash_normalize(self, adapter: UiaoGitServerAdapter) -> None:
         bad = [
             {"full_name": "uiao/ok", "size": 100},
             {"name": "fragment-only"},
@@ -354,9 +321,7 @@ class TestFailureModes:
         assert len(cs.claims) == 3
         assert cs.claims[2].fields["full_name"] == "unknown"
 
-    def test_drift_emits_with_no_data(
-        self, empty_adapter: UiaoGitServerAdapter
-    ) -> None:
+    def test_drift_emits_with_no_data(self, empty_adapter: UiaoGitServerAdapter) -> None:
         d = empty_adapter.detect_drift()
         assert d.drift_type == "git-server-posture"
         assert d.severity == "info"

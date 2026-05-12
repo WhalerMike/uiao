@@ -61,9 +61,7 @@ class UiaoGitServerAdapter(DatabaseAdapterBase):
 
     def __init__(self, config: Dict[str, Any] | None = None) -> None:
         super().__init__(config or {})
-        self._endpoint: str = self._config.get(
-            "endpoint", "https://git.uiao.corp.contoso.com"
-        )
+        self._endpoint: str = self._config.get("endpoint", "https://git.uiao.corp.contoso.com")
         self._tls_version: str = self._config.get("tls_version", "TLSv1.3")
         self._mtls_enabled: bool = bool(self._config.get("mtls_enabled", False))
 
@@ -129,9 +127,7 @@ class UiaoGitServerAdapter(DatabaseAdapterBase):
                 "repo.template",
                 "team.includes_all_repositories",
             ],
-            version_hash=self._hash(
-                {"vendor": vendor_schema, "canonical": canonical_schema}
-            ),
+            version_hash=self._hash({"vendor": vendor_schema, "canonical": canonical_schema}),
         )
 
     # ------------------------------------------------------------------
@@ -183,9 +179,7 @@ class UiaoGitServerAdapter(DatabaseAdapterBase):
                         "private": bool(repo.get("private", True)),
                         "archived": bool(repo.get("archived", False)),
                         "size_kb": int(repo.get("size", 0)),
-                        "has_signed_commits": bool(
-                            repo.get("has_signed_commits", False)
-                        ),
+                        "has_signed_commits": bool(repo.get("has_signed_commits", False)),
                     },
                     source=self.ADAPTER_ID,
                     provenance_hash=self._hash(repo),
@@ -223,9 +217,7 @@ class UiaoGitServerAdapter(DatabaseAdapterBase):
     # outputs declared in the registry.
     # ------------------------------------------------------------------
 
-    def shape_service_health(
-        self, version_payload: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    def shape_service_health(self, version_payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Return the git-server-health.json data shape.
 
         Args:
@@ -243,9 +235,7 @@ class UiaoGitServerAdapter(DatabaseAdapterBase):
             "timestamp": self._now().isoformat(),
         }
 
-    def shape_tls_inventory(
-        self, cert_payload: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    def shape_tls_inventory(self, cert_payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Return the git-tls-inventory.json data shape.
 
         Args:
@@ -267,9 +257,7 @@ class UiaoGitServerAdapter(DatabaseAdapterBase):
             "timestamp": self._now().isoformat(),
         }
 
-    def shape_repo_inventory(
-        self, repos_payload: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    def shape_repo_inventory(self, repos_payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Return the git-repo-inventory.json data shape.
 
         Args:
@@ -278,9 +266,7 @@ class UiaoGitServerAdapter(DatabaseAdapterBase):
         """
         data = (repos_payload or {}).get("data", [])
         claim_set = self.normalize(data)
-        signed_count = sum(
-            1 for r in data if r.get("has_signed_commits", False)
-        )
+        signed_count = sum(1 for r in data if r.get("has_signed_commits", False))
         return {
             "adapter_id": self.ADAPTER_ID,
             "endpoint": self._endpoint,
