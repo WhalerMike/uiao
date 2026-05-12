@@ -23,6 +23,7 @@ from .servicenow_adapter import ServiceNowAdapter
 from .siem_adapter import SiemAdapter
 from .stigcompliance_adapter import StigComplianceAdapter
 from .terraform_adapter import TerraformAdapter
+from .uiao_git_server_adapter import UiaoGitServerAdapter
 from .vulnscan_adapter import VulnScanAdapter
 
 __all__ = [
@@ -42,5 +43,6 @@ __all__ = [
     "SiemAdapter",
     "StigComplianceAdapter",
     "TerraformAdapter",
+    "UiaoGitServerAdapter",
     "VulnScanAdapter",
 ]
