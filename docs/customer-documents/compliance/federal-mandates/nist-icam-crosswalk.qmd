@@ -11,16 +11,19 @@ status: Draft
 canon-source: "src/uiao/canon/substrate-manifest.yaml"
 canon-reference:
   - "docs/customer-documents/whitepapers/federal-ssot-alignment.qmd"
+  - "docs/customer-documents/whitepapers/federal-hrit-productization.qmd"
   - "docs/customer-documents/compliance/boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd"
   - "docs/customer-documents/orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd"
+  - "docs/customer-documents/case-studies/reference-deployment-opm-hrit-to-entra.qmd"
   - "docs/docs/16_DriftDetectionStandard.qmd"
   - "src/uiao/modernization/directory-migration/README.md"
+  - "src/uiao/canon/specs/Spec2-D1.1-CanonicalHRAttributeSchema.md"
 repo-path: docs/customer-documents/compliance/federal-mandates/nist-icam-crosswalk.qmd
 pillar: compliance
 sub-category: A
 leaf: A.9
 created-at: 2026-05-11
-updated-at: 2026-05-11
+updated-at: 2026-05-12
 format:
   html:
     toc: true
@@ -47,7 +50,7 @@ The standards covered:
 |---|---|---|
 | **NIST IR 8011** (Vol. 1–4) | Automation Support for Security Control Assessments | UIAO's evidence-as-byproduct claim. The substrate is the automation layer NIST IR 8011 contemplates for the identity domain. |
 | **NIST SP 800-157** | Guidelines for Derived Personal Identity Verification (PIV) Credentials | The certificate-anchored substrate overlay. UIAO's `certificate-anchored: true` invariant is the substrate's instantiation of the derived-credential trust model. |
-| **NIST SP 800-63 series** (800-63-3, -63A, -63B, -63C) | Digital Identity Guidelines — Identity Assurance Levels (IAL/AAL/FAL) | The COR schema encodes AAL per principal; drift findings surface conditions under which the encoded AAL is no longer continuously verified. |
+| **NIST SP 800-63 series** (800-63-3, -63A, -63B, -63C) | Digital Identity Guidelines — Identity Assurance Levels (IAL/AAL/FAL) | The COR schema encodes AAL per principal; drift findings surface conditions under which the encoded AAL is no longer continuously verified. **800-63A enrollment** is the upstream event the HRIT inbound provisioning pipeline (UIAO_136 / Spec 2) consumes — see §4.1. |
 | **FICAM Architecture v3** | Federal Identity, Credential, and Access Management Reference Architecture | The federated-governance frame UIAO's six control planes implement. UIAO is the *substrate beneath* the FICAM Architecture, not an alternative to it. |
 
 What this cross-walk does **not** do:
@@ -166,6 +169,63 @@ of the encoded assurance level**, not initial proofing. Initial proofing
 remains the agency's identity-proofing authority's responsibility (a
 PIV credentialing authority for most federal civilian agencies).
 
+### 4.1 NIST SP 800-63A — Enrollment and Identity Proofing
+
+NIST SP 800-63A is the volume of the 800-63-3 family that governs the
+**enrollment and identity-proofing event** — how an identity is
+established before any authenticator is bound to it. For federal
+civilian agencies this event happens at the HR system of record at
+hire time, months before the principal exists in Entra ID. The
+substrate's HRIT inbound provisioning pipeline (UIAO_136 / Spec 2) is
+the operational form of NIST SP 800-63A's expectations once the
+proofing event has completed and the proofed identity needs to be
+expressed as a directory principal.
+
+The substrate is **explicitly not** the identity-proofing authority:
+800-63A's IAL-1 / IAL-2 / IAL-3 proofing rigor is the agency's HR /
+PIV-issuing authority's responsibility, not the substrate's. What the
+substrate does is record the proofed identity's IAL on entry to the
+COR and continuously verify that downstream operations don't violate
+the assurance level the proofing event established.
+
+| NIST SP 800-63A concept | UIAO substrate component | Canon reference |
+|---|---|---|
+| Enrollment event (proofed identity established at HR system of record) | HRIT inbound provisioning pipeline normalizes the HR record into the canonical schema; substrate is a consumer of the proofing event, not its source | `Spec2-D1.1` Canonical HR Attribute Schema |
+| IAL recording at enrollment | COR principal attribute (`ial_at_enrollment`) populated from the HR record's identity-proofing metadata when the agency's HR adapter exposes it | OrgTree readiness bundle schema |
+| Identity-proofing authority chain | `adapter_metadata` per-source provenance bag records which proofing authority asserted the IAL (NFC EmpowHR, Treasury HR Connect, DCPDS, DOI IBC) | `Spec2-D1.1` §`adapter_metadata` |
+| Trusted Referee / Supervised Remote (IAL-2/IAL-3 alternates) | Out of substrate scope — agency's HR / PIV authority's responsibility; substrate records the resulting IAL regardless of proofing path | — |
+| Re-proofing trigger (substantive identity change) | `Mover` workflow event reflecting a name change or organizational move; substrate routes the change but does not re-proof | `Spec2-D2.2` Mover Workflow |
+| Address records (800-63A §4.4 collected attributes) | Optional `addresses` field in the canonical schema; substrate consumes verbatim from HR adapter, does not validate addresses against external authorities | `Spec2-D1.1` §`addresses` |
+| Resolution to a single identity (800-63A §4.3) | `employeeId` as immutable correlation anchor (Spec2-D1.1 §3.1); the substrate's resolution is **per HR system**, not cross-system; cross-system resolution remains the HR-platform federation's responsibility | `Spec2-D1.1` §3.1 |
+
+The two surfaces where the substrate's 800-63A treatment becomes
+operational:
+
+1. **HRIT inbound provisioning** — covered end-to-end in the
+   [Federal HRIT Productization whitepaper](../../whitepapers/federal-hrit-productization.qmd)
+   and the
+   [OPM HRIT Reference Deployment case study](../../case-studies/reference-deployment-opm-hrit-to-entra.qmd).
+   The whitepaper's §5 (Federal mandate alignment) names NIST SP 800-63A
+   explicitly; the case study's Phase 1–6 walkthrough shows the
+   enrollment event flowing from NFC EmpowHR → canonical schema →
+   middleware → OPM Entra under the 800-63A frame.
+
+2. **PIV-derived credential issuance** — covered in
+   [§3 NIST SP 800-157](#nist-sp-800-157-derived-piv-credentials)
+   above. The 800-63A proofing event upstream of USAccess is the basis
+   for the derived-credential trust model 800-157 codifies; the
+   substrate's `certificate-anchored: true` invariant binds adapter
+   operations to that chain per ADR-052.
+
+Boundary note: an HR system that does not emit identity-proofing
+metadata (older NFC / DCPDS connector profiles, for example) cannot
+populate `ial_at_enrollment` from the HR side. In that case the
+substrate records the IAL at the point the PIV credential is issued
+(per the agency's USAccess workflow), and the `DRIFT-PROVENANCE`
+finding surfaces if an Entra principal has no recorded IAL after both
+upstream paths have run. This is the operational realization of
+800-63A's "absence of proofing evidence is itself a finding" posture.
+
 ## 5. FICAM Architecture v3
 
 The FICAM Architecture v3 (GSA ICAM Subcommittee) is the federal
@@ -223,7 +283,10 @@ its outputs derive from.
 - [B.1.1 Three-Way GCC-Moderate Compliance Conflict](../boundary-authorization/B1-1-gcc-moderate-three-way-conflict.qmd) — boundary-side compliance triangle relevant to FedRAMP 20x and TIC 3.0
 - [OrgPath Narrative 07a — UIAO Beneath the Azure SSOT Stack](../../orgpath-narrative/07a-uiao-beneath-the-azure-ssot-stack.qmd) — identity-substrate role beneath the Microsoft data SSOT stack
 - [Directory Migration README](../../../../src/uiao/modernization/directory-migration/README.md) — discovery and inventory artifacts including the OrgTree readiness bundle
-- [Reference Deployment Pattern](../../case-studies/reference-deployment-fedciv-ad-to-entra.qmd) — synthetic end-to-end engagement that exercises the substrate against an archetype federal civilian agency
+- [AD → Entra ID Reference Deployment Pattern](../../case-studies/reference-deployment-fedciv-ad-to-entra.qmd) — synthetic end-to-end engagement covering the directory-migration dimension
+- [Federal HRIT Productization whitepaper](../../whitepapers/federal-hrit-productization.qmd) — customer-facing whitepaper that 800-63A §4.1 above anchors against; covers Spec2-D6.1 / UIAO_136 family
+- [OPM HRIT → Entra ID Reference Deployment Pattern](../../case-studies/reference-deployment-opm-hrit-to-entra.qmd) — synthetic end-to-end engagement for the inbound-provisioning dimension; 800-63A enrollment event flows through this case study
+- [`Spec2-D1.1` Canonical HR Attribute Schema](../../../../src/uiao/canon/specs/Spec2-D1.1-CanonicalHRAttributeSchema.md) — the schema the HRIT inbound pipeline normalizes records into; `adapter_metadata` carries the per-source 800-63A proofing-authority provenance
 - [`adapter-registry.yaml`](../../../../src/uiao/canon/adapter-registry.yaml) — conformance adapter declarations including `certificate-anchored`, `gcc-boundary`, `evidence-class`
 - [`modernization-registry.yaml`](../../../../src/uiao/canon/modernization-registry.yaml) — change-making adapter declarations
 - [`uiao-control-to-ksi-mapping.yaml`](../../../../src/uiao/rules/ksi/uiao-control-to-ksi-mapping.yaml) — KSI-to-NIST-800-53 control mapping (separate from this cross-walk)
