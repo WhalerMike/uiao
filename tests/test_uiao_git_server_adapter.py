@@ -145,7 +145,7 @@ class TestBasics:
     def test_drift(self, adapter: UiaoGitServerAdapter) -> None:
         d = adapter.detect_drift()
         assert isinstance(d, DriftReport)
-        assert d.drift_type == "git-server-posture"
+        assert d.drift_type == "uiao-git-server-posture"
         assert d.details["endpoint"] == "https://git.uiao.corp.contoso.com"
 
 
@@ -244,7 +244,7 @@ class TestEvidenceShapes:
             "git-repo-inventory.json",
         }
         # Each output is a non-empty dict
-        for filename, content in bundle.items():
+        for _filename, content in bundle.items():
             assert isinstance(content, dict)
             assert content["adapter_id"] == "uiao-git-server"
             assert "timestamp" in content
@@ -323,5 +323,5 @@ class TestFailureModes:
 
     def test_drift_emits_with_no_data(self, empty_adapter: UiaoGitServerAdapter) -> None:
         d = empty_adapter.detect_drift()
-        assert d.drift_type == "git-server-posture"
+        assert d.drift_type == "uiao-git-server-posture"
         assert d.severity == "info"

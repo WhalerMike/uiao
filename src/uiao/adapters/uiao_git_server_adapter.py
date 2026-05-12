@@ -193,7 +193,7 @@ class UiaoGitServerAdapter(DatabaseAdapterBase):
 
     def detect_drift(self) -> DriftReport:
         return DriftReport(
-            drift_type="git-server-posture",
+            drift_type="uiao-git-server-posture",
             severity="info",
             first_observed=self._now(),
             last_observed=self._now(),
