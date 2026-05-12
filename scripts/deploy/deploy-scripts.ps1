@@ -135,14 +135,14 @@ Write-OK "Log directory created: $LogPath"
 # Step 6: IIS rewrite module (for HTTP→HTTPS redirect in web.config)
 # -----------------------------------------------------------------------
 Write-Step "Installing URL Rewrite module..."
-$rwUrl = "https://download.microsoft.com/download/1/2/8/128E2E22-C1B9-44A4-BE2A-5859ED1D4592/rewrite_amd64_en-US.msi"
-$rwMsi = "C:\Temp\rewrite_amd64.msi"
+$rwInfoUrl = "https://www.iis.net/downloads/microsoft/url-rewrite"
+$rwMsi = "C:\Temp\rewrite_amd64_en-US.msi"
 
 $rwInstalled = Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\* |
                Where-Object { $_.DisplayName -like "*IIS URL Rewrite*" }
 if (-not $rwInstalled) {
     if (-not (Test-Path $rwMsi)) {
-        Invoke-WebRequest -Uri $rwUrl -OutFile $rwMsi -UseBasicParsing
+        throw "URL Rewrite installer not found at $rwMsi. Open $rwInfoUrl, download the x64 MSI, save it to $rwMsi, then rerun this script."
     }
     Start-Process msiexec.exe -ArgumentList "/i `"$rwMsi`" /qn" -Wait
     Write-OK "URL Rewrite module installed"
