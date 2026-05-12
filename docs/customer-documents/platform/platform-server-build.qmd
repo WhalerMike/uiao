@@ -3,12 +3,12 @@ title: "Platform Server Build Guide — Windows Server 2025 with Gitea, IIS, Int
 subtitle: "Canonical 14-phase runbook for the UIAO on-premises governance substrate"
 doc-type: runbook
 doc-id: UIAO_SBG_001
-version: "1.1"
+version: "1.2"
 status: DRAFT
 audience: "Platform engineers · sysadmins"
-canon-source: "inbox/Posted/UIAO Platform Server Build Guide — Windows Server 2025 with Gitea and IIS.docx"
-derived-from: "UIAO_SBG_001 v1.0 (Posted) + OrgTree canon (UIAO_151–UIAO_176)"
-boundary: "gcc-moderate (M365 SaaS); IaaS per ADR-001"
+canon-source: "inbox/Posted/UIAO Platform Server Build Guide — Windows Server 2025 with Gitea and IIS.docx (absent — Phase 1–13 PowerShell inlined here as interim authority)"
+derived-from: "UIAO_SBG_001 v1.0 (Posted, missing) + OrgTree canon (UIAO_151–UIAO_176)"
+boundary: "gcc-moderate (M365 SaaS); IaaS per ADR-041"
 aspirational: true
 ---
 
@@ -17,25 +17,34 @@ aspirational: true
 ::: {.callout-note title="Canon derivation"}
 This page consolidates two canonical sources:
 
-1. **UIAO Platform Server Build Guide** (`UIAO_SBG_001 v1.0`) — the 13-phase
-   PowerShell-first runbook for Windows Server 2025, IIS, Gitea, Intune, and
-   Azure Arc. Operational PowerShell procedures are authoritative there; this
-   page summarizes and cites them.
-2. **OrgTree Modernization Canon** (`UIAO_151–UIAO_176`) — the governance model
-   for OrgPath encoding, dynamic groups, Administrative Units, and drift
-   detection. Phase 14 below instantiates this canon for the platform server.
+1. **UIAO Platform Server Build Guide** (`UIAO_SBG_001 v1.0`) — the original
+   13-phase PowerShell-first runbook for Windows Server 2025, IIS, Gitea,
+   Intune, and Azure Arc. The Posted `.docx` source (declared at
+   `canon-source` above) is **currently absent from `inbox/Posted/`**; until
+   it is restored, the Phase 1–13 procedures below are the interim
+   operational authority on this page.
+2. **OrgTree Modernization Canon** (`UIAO_151–UIAO_176`) — the governance
+   model for OrgPath encoding, dynamic groups, Administrative Units, and
+   drift detection. Phase 14 below instantiates this canon for the platform
+   server.
 
-The Posted `.docx` remains the operational source-of-truth for per-command
-detail. This page adds **Phase 14 — OrgTree Integration** and provides the
-navigational/canonical home inside the customer-documents portal.
+This page also reconciles the architectural decision recorded in
+**ADR-041 (UIAO Git Infrastructure)** — Gitea behind IIS (Option B) — against
+the alternate IIS + `git-http-backend` build documented in
+[`git-server-implementation.qmd`](./git-server-implementation.qmd) (Option A,
+retained for lab/reference use; see Appendix A below).
 :::
 
 ::: {.callout-warning}
 ## Aspirational — canonically declared, partially adopted
 
-Phases 1–13 are field-tested (Posted v1.0). Phase 14 OrgTree Integration is
+Phases 1–13 below are inlined from canon and validated against the Posted v1.0
+outline; the operational `.docx` source is missing and these procedures should
+be field-rehearsed before production cutover. Phase 14 OrgTree Integration is
 canonically declared but operationally new; UIAO_163 drift detection hooks and
-AU-scoped Gitea authorization are under development.
+AU-scoped Gitea authorization are under development. ADR-041 (Git
+Infrastructure) is currently `status: draft` in `src/uiao/canon/adr/` — finalize
+before tagging this guide as production-ready.
 :::
 
 ## Architecture in one page
@@ -64,10 +73,217 @@ UIAO_163 engine.
 └──────────────────────────────────────────────────────────────────┘
 ```
 
+## Phase 0 — Prerequisites
+
+These prerequisites must hold before Phase 1 begins. They consolidate every
+runtime, module, IIS extension, and policy assumption the rest of the guide
+depends on. Missing any one of them will cause a later phase to fail
+non-obviously.
+
+### 0.1 Host and OS
+
+| Item | Required value | Verification |
+|---|---|---|
+| Host | Single Windows Server 2025 VM (build 26100+), Desktop Experience | `Get-ComputerInfo` |
+| Hostname | `UIAO-GIT01` (or per OrgPath convention) | `$env:ComputerName` |
+| CPU / RAM | 4 vCPU / 16 GB minimum (8 / 32 recommended) | `Get-CimInstance Win32_ComputerSystem` |
+| Disks | `C:` OS (120 GB), `D:` data (≥ 500 GB), `E:` logs/backup optional | `Get-Volume` |
+| Domain join | Joined to legacy AD forest (least-privilege computer account) | `Test-ComputerSecureChannel` |
+| Entra registration | Hybrid → device exists in tenant with `extensionAttribute1` placeholder | `Get-MgDevice -Filter "displayName eq 'UIAO-GIT01'"` |
+| Time sync | NTP to forest PDC emulator (Kerberos requires ≤ 5 min skew) | `w32tm /query /status` |
+
+### 0.2 PowerShell runtime
+
+| Item | Required value | Source |
+|---|---|---|
+| PowerShell | **7.4+** (`pwsh`) installed alongside Windows PowerShell 5.1 | `https://github.com/PowerShell/PowerShell/releases` — pinned MSI |
+| Execution policy | `AllSigned` on the user scope; `RemoteSigned` permissible during build only | `Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy AllSigned` |
+| PSGallery trust | Trusted, with `PSResourceGet` v1.0+ as the install transport | `Set-PSResourceRepository -Name PSGallery -Trusted` |
+| Code-signing cert | Enterprise-CA-issued, Subject `CN=UIAO Canon Signing` | issued by ADCS template `UIAO-CodeSigning` |
+
+::: {.callout-warning title="PowerShell version reconciliation"}
+Earlier revisions of UIAO documentation inconsistently named **PS 5.1+** as
+the floor (see `git-server-implementation.qmd:38`). The canonical floor is
+**PowerShell 7.4+**, set by `01-platform-foundation.qmd:114` and by every
+`#!/usr/bin/env pwsh` shebang in the Gitea hook set. Windows PowerShell 5.1
+is retained only for `Install-WindowsFeature` and a small set of legacy IIS
+cmdlets that have not been ported to PS 7; everything else runs on `pwsh`.
+:::
+
+### 0.3 PowerShell modules
+
+All modules are installed from PSGallery (or an internal PSResource mirror —
+see §0.5). Install with `Install-PSResource -Name <name> -Scope AllUsers`.
+
+| Module | Min version | Used by | Phase |
+|---|---|---|---|
+| `ActiveDirectory` | RSAT 26100 | Forest reads, GPO/DNS/DHCP inventory | 6 |
+| `GroupPolicy` | RSAT 26100 | GPO inventory adapter | 6 |
+| `DnsServer` | RSAT 26100 | DNS-zone read adapter | 6 |
+| `DhcpServer` | RSAT 26100 | DHCP-scope read adapter | 6 |
+| `WebAdministration` | Built-in (Windows PowerShell 5.1) | IIS site/binding/pool admin | 2, 5, 9 |
+| `IISAdministration` | Built-in (PS 7-compatible) | IIS preferred admin module | 2, 5 |
+| `Microsoft.Graph.Authentication` | 2.19+ | Graph connect | 7, 10, 14 |
+| `Microsoft.Graph.Identity.DirectoryManagement` | 2.19+ | AUs, devices, role assignments | 14.1, 14.2 |
+| `Microsoft.Graph.Groups` | 2.19+ | Dynamic groups, group claims | 7, 14.3 |
+| `Microsoft.Graph.DeviceManagement` | 2.19+ | Intune compliance policy | 10, 14.5 |
+| `Az.Accounts` | 3.0+ | Azure sign-in | 11, 12 |
+| `Az.Resources` | 7.0+ | RG/tag operations | 11, 14.1 |
+| `Az.ConnectedMachine` | 1.0+ | Arc enrollment + tags | 11, 14.1, 14.4 |
+| `Az.Storage` | 7.0+ | Nightly backup to Azure Blob | 12 |
+| `Pester` | 5.5+ | Validation harness, Phase 0–13 smoke tests | 0, 13 |
+| `PSPKI` | 4.2+ | ADCS template + ESC1-8 read (DM_020 adapter) | informational |
+| `Microsoft.PowerShell.SecretManagement` | 1.1+ | Two-Brain credential split | 4, 11 |
+| `Microsoft.PowerShell.SecretStore` | 1.0+ | Local secret vault for service accounts | 4, 11 |
+| `PSScriptAnalyzer` | 1.22+ | Hook precondition for pre-receive validation | 9 |
+| `UIAOADAssessment` (internal) | per release | Least-privilege forest reader | 6 |
+
+### 0.4 Windows / IIS dependencies
+
+`Install-WindowsFeature` covers the first group; the remaining items are
+separate MSI installers that the IIS install media does **not** include.
+
+```powershell
+# 0.4.a Built-in Windows roles + features (idempotent)
+Install-WindowsFeature -Name `
+    Web-Server, Web-Common-Http, Web-Static-Content, Web-Default-Doc, `
+    Web-Http-Errors, Web-Http-Redirect, `
+    Web-App-Dev, Web-Net-Ext45, Web-Asp-Net45, `
+    Web-Health, Web-Http-Logging, Web-Custom-Logging, Web-Request-Monitor, `
+    Web-Security, Web-Filtering, Web-Windows-Auth, Web-Basic-Auth, `
+    Web-Performance, Web-Stat-Compression, Web-Dyn-Compression, `
+    Web-Mgmt-Console, Web-Scripting-Tools `
+    -IncludeManagementTools
+```
+
+| MSI / extension | Source | Why required | Pin |
+|---|---|---|---|
+| **URL Rewrite Module 2.1** | `https://www.iis.net/downloads/microsoft/url-rewrite` (also mirrored at `https://download.microsoft.com/.../rewrite_amd64_en-US.msi`) | Phase 5 reverse-proxy rewrite rules to Gitea on `:3000` | 7.2.1993 or later |
+| **Application Request Routing 3.0** | `https://www.iis.net/downloads/microsoft/application-request-routing` | ARR enables the reverse proxy + health probes | 3.0.1985 or later |
+| **HttpPlatformHandler 1.2** | `https://www.iis.net/downloads/microsoft/httpplatformhandler` | Required by `deploy/windows-server/web.config` for the FastAPI service | 1.2.0 |
+| **.NET 8 hosting bundle** | `https://dotnet.microsoft.com/download/dotnet/8.0` | URL Rewrite, ARR, HttpPlatformHandler runtime | 8.0.x LTS |
+| **Visual C++ 2015–2022 redist (x64)** | `https://aka.ms/vs/17/release/vc_redist.x64.exe` | Required by Gitea on Windows + several PS native modules | latest |
+| **Git for Windows** | `https://github.com/git-for-windows/git/releases/download/v2.44.0.windows.1/Git-2.44.0-64-bit.exe` | `git` CLI on the host for clone/fetch/hook execution | 2.44.0+ |
+| **Gitea (Windows AMD64)** | `https://github.com/go-gitea/gitea/releases/download/v1.21.11/gitea-1.21.11-windows-4.0-amd64.exe` | The canonical SSOT service per ADR-041 | 1.21.x LTS |
+| **gpg4win** | `https://www.gpg4win.org/get-gpg4win.html` (mirror to internal feed for offline) | Pre-receive signed-commit verification (Phase 9) | 4.3+ |
+
+::: {.callout-tip title="Source-of-truth pattern"}
+Every binary above has a stable GitHub Releases or Microsoft-CDN URL. Pin the
+exact version and the SHA-256 in a release manifest under
+`canon/release-manifests/platform-server-v1.2.yaml` and verify with
+`Get-FileHash` before installation. This is how the platform survives
+upstream filename changes and supply-chain compromises both.
+:::
+
+### 0.5 Internal package mirrors (recommended for production)
+
+For Tier-0 hosts the recommended pattern is **never reach the public
+internet at runtime** — pre-stage every binary on an internal feed and
+configure the host to consume only that feed.
+
+| Public feed | Internal mirror pattern | Tool |
+|---|---|---|
+| PSGallery (`https://www.powershellgallery.com/api/v2`) | Internal `PSResourceGet` repository on Artifactory / Azure Artifacts | `Register-PSResourceRepository -Name UIAOPS -Uri https://artifactory.corp/repo/psgallery -Trusted` |
+| nuget.org | `https://artifactory.corp/repo/nuget` | `nuget sources add` |
+| GitHub Releases (binaries listed in §0.4) | Internal HTTPS mirror at `https://artifactory.corp/repo/github-releases/` | `Invoke-WebRequest` against the mirror URL |
+| Docker Hub / `mcr.microsoft.com` | `https://artifactory.corp/repo/docker-hub/` and `/repo/mcr/` | `docker login` + image-name rewrite |
+
+When a mirror is in use, replace every public URL in the Phase 1–13
+PowerShell with the mirror equivalent and re-pin SHA-256 hashes in
+`canon/release-manifests/platform-server-v1.2.yaml`.
+
+### 0.6 Code-signing posture
+
+WDAC and AppLocker (Phase 13) require every script executed on the host to
+be signed. Issue a code-signing cert from the enterprise CA's
+`UIAO-CodeSigning` template, install it into `Cert:\CurrentUser\My` of the
+build account, and sign every `.ps1` under `D:\GitRepos\uiao\scripts\` and
+every Gitea hook before deployment:
+
+```powershell
+$cert = Get-ChildItem Cert:\CurrentUser\My |
+    Where-Object { $_.Subject -like '*UIAO Canon Signing*' } |
+    Select-Object -First 1
+Get-ChildItem -Path 'D:\GitRepos\uiao\scripts\' -Filter '*.ps1' -Recurse |
+    ForEach-Object {
+        Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $cert `
+            -TimestampServer 'http://timestamp.digicert.com'
+    }
+```
+
+The pre-receive hook in Phase 9 rejects any unsigned script committed to the
+canonical refs.
+
+## Phase 0.5 — Egress allowlist for proxy-restricted environments
+
+The Posted guide and earlier revisions of this page were silent on
+network-egress policy. For federal / Tier-0 environments the platform server
+typically sits behind an authenticated forward proxy with a deny-by-default
+egress rule. The build and runtime require **outbound HTTPS (443)** to the
+following hostnames; these are the entries the proxy/firewall team
+allowlists. Nothing here is a "proxy bypass" — these are documented,
+audited egress exceptions.
+
+### 0.5.a Build-time (one-shot, while installing Phase 1–13)
+
+| Hostname / pattern | Purpose |
+|---|---|
+| `github.com`, `objects.githubusercontent.com`, `codeload.github.com`, `raw.githubusercontent.com` | UIAO repo clone + GitHub Releases binaries (git, Gitea, PowerShell) |
+| `*.powershellgallery.com`, `psg-prod-eastus.azureedge.net` | PowerShell module install (or replace with §0.5 internal mirror) |
+| `aka.ms`, `download.microsoft.com`, `www.iis.net` | URL Rewrite, ARR, HttpPlatformHandler MSIs |
+| `dotnet.microsoft.com`, `dotnetcli.azureedge.net` | .NET 8 hosting bundle |
+| `packages.microsoft.com` | Azure CLI, optional `pwsh` upgrades |
+| `timestamp.digicert.com`, `timestamp.sectigo.com` | Authenticode timestamping for code signing |
+| Enterprise CA HTTP-CDP + OCSP URLs (per `Get-CACrlDistributionPoint`) | Certificate chain validation |
+
+### 0.5.b Runtime (persistent, after cutover)
+
+| Hostname / pattern | Purpose | Phase |
+|---|---|---|
+| `github.com`, `api.github.com` | Upstream canon mirror — scheduled `git fetch` | 8 |
+| `login.microsoftonline.com`, `graph.microsoft.com` | Entra OIDC + Graph for Gitea OIDC and Phase 14 emitters | 7, 14 |
+| `management.azure.com`, `*.guestconfiguration.azure.com`, `*.his.arc.azure.com` | Arc agent, Arc-projected policy + Guest Config | 11, 14.4 |
+| `*.blob.core.windows.net` (RG-scoped) | Nightly Gitea backup target | 12 |
+| `*.ods.opinsights.azure.com`, `*.oms.opinsights.azure.com` | Azure Monitor / Log Analytics workspace forwarding | 11, 13 |
+| `*.events.data.microsoft.com` | Intune compliance attestation | 10, 14.5 |
+| Internal LDAPS endpoints (`dc01.corp…`, `dc02.corp…`) on TCP/636 | Gitea AD `source-config` for legacy accounts | 6 |
+| Enterprise CA AIA + OCSP URLs | TLS chain validation | 3 |
+
+### 0.5.c Forward proxy configuration on the host
+
+If the proxy requires Kerberos / NTLM auth, configure WinHTTP and PS at the
+machine scope:
+
+```powershell
+# 0.5.c — Persist the corporate proxy for WinHTTP, BITS, .NET, and PowerShell
+$proxy = 'http://proxy.corp.contoso.com:8080'
+$noProxy = '<-loopback>;*.corp.contoso.com;*.azure.com;*.microsoft.com'
+
+netsh winhttp set proxy $proxy bypass-list=$noProxy
+[Environment]::SetEnvironmentVariable('HTTPS_PROXY', $proxy, 'Machine')
+[Environment]::SetEnvironmentVariable('HTTP_PROXY',  $proxy, 'Machine')
+[Environment]::SetEnvironmentVariable('NO_PROXY',    $noProxy, 'Machine')
+
+# Git CLI
+git config --global http.proxy  $proxy
+git config --global https.proxy $proxy
+
+# PowerShell module install via authenticated proxy
+$cred = Get-Credential -Message 'Proxy account'
+Set-PSResourceRepository -Name PSGallery -Trusted
+Install-PSResource -Name <module> `
+    -Proxy $proxy -ProxyCredential $cred -Scope AllUsers
+```
+
+If the environment is truly air-gapped (no egress at all), bind §0.5 to an
+internal-only feed for **every** entry in §0.5.a/b — the procedures in
+Phases 1–13 will work unchanged against mirror URLs.
+
 ## Phase summaries
 
-Detailed PowerShell and configuration content for each phase lives in the
-Posted guide. Summary + cross-reference:
+Detailed operational PowerShell for each phase is **inlined below**
+(Phases 1–13). The Phase summary table here is the navigational index;
+Phase 14 (OrgTree Integration) follows after.
 
 | # | Phase | Purpose | Posted §  |
 |---|---|---|---|
@@ -85,6 +301,543 @@ Posted guide. Summary + cross-reference:
 | 12 | Backup, replication, DR | `Backup-UIAOGitea` function, Azure Blob upload, active-passive replica, RPO/RTO targets | §15 |
 | 13 | Security hardening | CIS baseline, AppLocker, Defender for Servers Plan 2, audit policy, WDAC | §16 |
 | **14** | **OrgTree integration** | **OrgPath tagging · AU delegation · dynamic-group Gitea auth · UIAO_163 drift hooks · OrgPath-scoped Intune compliance** | *new — this page* |
+
+## Phase 1 — Windows Server 2025 base hardening
+
+```powershell
+# 1.a Patch baseline (Microsoft Update for OS + driver class)
+Set-Service -Name wuauserv -StartupType Automatic -Status Running
+Install-Module -Name PSWindowsUpdate -Force
+Import-Module PSWindowsUpdate
+Get-WindowsUpdate -AcceptAll -Install -AutoReboot
+
+# 1.b Firewall — Domain profile only, deny by default
+Set-NetFirewallProfile -Profile Domain  -Enabled True -DefaultInboundAction Block -DefaultOutboundAction Allow
+Set-NetFirewallProfile -Profile Private,Public -Enabled True -DefaultInboundAction Block
+
+# 1.c Restrict WinRM (Tier-0 administration only)
+Set-WSManInstance -ResourceURI 'winrm/config/service' -ValueSet @{ AllowUnencrypted = 'false' }
+Set-WSManInstance -ResourceURI 'winrm/config/service/auth' -ValueSet @{ Basic = 'false'; Negotiate = 'true' }
+New-NetFirewallRule -DisplayName 'UIAO WinRM 5986 Tier0' -Direction Inbound -Protocol TCP -LocalPort 5986 `
+    -RemoteAddress '10.1.20.0/24' -Action Allow -Profile Domain
+
+# 1.d Disable legacy protocols
+Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart
+Set-SmbServerConfiguration -EncryptData $true -EnableSMB1Protocol $false -Confirm:$false
+
+# 1.e Time sync against the forest PDC
+w32tm /config /manualpeerlist:"pdc.corp.contoso.com,0x1" /syncfromflags:manual /update
+Restart-Service w32time
+```
+
+## Phase 2 — IIS install + configuration
+
+```powershell
+# 2.a Roles + features (see §0.4.a). After the call, install the four
+#     out-of-band MSIs (URL Rewrite, ARR, HttpPlatformHandler, .NET 8 hosting bundle).
+$msi = @(
+    @{ Name = 'URL Rewrite 2.1';  Uri = 'https://download.microsoft.com/download/D/8/1/D81E5DD6-1ABB-46B0-9B4B-21894E18B77F/rewrite_amd64_en-US.msi' }
+    @{ Name = 'ARR 3.0';          Uri = 'https://download.microsoft.com/download/E/9/8/E9849D6A-020E-47E4-9FD0-A023E99B54EB/requestRouter_amd64.msi' }
+    @{ Name = 'HttpPlatformHandler 1.2'; Uri = 'https://download.microsoft.com/download/A/8/0/A80747C3-41BD-45DF-B505-E9710D2744E0/httpPlatformHandler_amd64.msi' }
+    @{ Name = '.NET 8 hosting bundle';  Uri = 'https://builds.dotnet.microsoft.com/dotnet/aspnetcore/Runtime/8.0.6/dotnet-hosting-8.0.6-win.exe' }
+)
+foreach ($m in $msi) {
+    $dst = Join-Path $env:TEMP (Split-Path $m.Uri -Leaf)
+    Invoke-WebRequest -Uri $m.Uri -OutFile $dst -UseBasicParsing
+    # Verify SHA-256 against canon/release-manifests/platform-server-v1.2.yaml here.
+    Start-Process -FilePath $dst -ArgumentList '/quiet','/norestart' -Wait
+}
+iisreset /restart
+
+# 2.b ARR — enable proxy mode (required for reverse-proxy rewrite rules)
+Import-Module IISAdministration
+Set-WebConfigurationProperty -PSPath 'MACHINE/WEBROOT/APPHOST' `
+    -Filter 'system.webServer/proxy' -Name 'enabled' -Value $true
+```
+
+## Phase 3 — TLS certificates
+
+```powershell
+# 3.a Request a server certificate from the enterprise CA (template: WebServerV2)
+$req = @"
+[NewRequest]
+Subject = "CN=git.uiao.corp.contoso.com,O=Contoso,L=City,S=ST,C=US"
+KeyLength = 4096
+KeyAlgorithm = RSA
+MachineKeySet = TRUE
+Exportable = FALSE
+RequestType = PKCS10
+KeyUsage = 0xa0
+[Extensions]
+2.5.29.17 = "{text}"
+_continue_ = "dns=git.uiao.corp.contoso.com&"
+_continue_ = "dns=git-canon.corp.contoso.com&"
+[RequestAttributes]
+CertificateTemplate = "WebServerV2"
+"@
+$req | Out-File "$env:TEMP\uiao-git.inf" -Encoding ascii
+certreq -new "$env:TEMP\uiao-git.inf" "$env:TEMP\uiao-git.req"
+certreq -submit -config "ca01.corp.contoso.com\Contoso-IssuingCA" `
+        "$env:TEMP\uiao-git.req" "$env:TEMP\uiao-git.cer"
+certreq -accept "$env:TEMP\uiao-git.cer"
+
+# 3.b ACL the private key to the Gitea service account + IIS app-pool identity
+$thumb = (Get-ChildItem Cert:\LocalMachine\My |
+    Where-Object Subject -like '*git.uiao*' | Select-Object -First 1).Thumbprint
+$keyName = (Get-ChildItem Cert:\LocalMachine\My\$thumb).PrivateKey.CspKeyContainerInfo.UniqueKeyContainerName
+$keyPath = Join-Path "$env:ProgramData\Microsoft\Crypto\Keys" $keyName
+$acl = Get-Acl $keyPath
+$acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule(
+    'NT SERVICE\gitea','Read','Allow')))
+$acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule(
+    'IIS AppPool\UIAOReverseProxy','Read','Allow')))
+Set-Acl -Path $keyPath -AclObject $acl
+```
+
+## Phase 4 — Gitea install
+
+```powershell
+# 4.a Service account (gMSA preferred for production)
+New-ADServiceAccount -Name 'svc-uiao-gitea' `
+    -DNSHostName 'uiao-git01.corp.contoso.com' `
+    -PrincipalsAllowedToRetrieveManagedPassword 'UIAO-GIT01$' `
+    -KerberosEncryptionType AES128,AES256
+Install-ADServiceAccount svc-uiao-gitea
+
+# 4.b Layout
+$root = 'D:\Gitea'
+'data','log','custom','tmp' | ForEach-Object {
+    New-Item -ItemType Directory -Path (Join-Path $root $_) -Force | Out-Null
+}
+New-Item -ItemType Directory -Path 'D:\GitRepos' -Force | Out-Null  # the actual repo storage
+icacls $root /grant 'corp\svc-uiao-gitea$:(OI)(CI)M' /T /C /Q
+icacls 'D:\GitRepos' /grant 'corp\svc-uiao-gitea$:(OI)(CI)M' /T /C /Q
+
+# 4.c Download the pinned Gitea binary (verify SHA-256 against the release manifest)
+$ver  = '1.21.11'
+$uri  = "https://github.com/go-gitea/gitea/releases/download/v$ver/gitea-$ver-windows-4.0-amd64.exe"
+$exe  = "$root\gitea.exe"
+Invoke-WebRequest -Uri $uri -OutFile $exe -UseBasicParsing
+# Get-FileHash $exe | Select-Object -Expand Hash   # compare to canon/release-manifests
+
+# 4.d Canonical app.ini (only the fields that diverge from defaults — full file
+#     lives at src/uiao/canon/platform/gitea/app.ini once committed)
+@"
+APP_NAME = UIAO Canon
+RUN_USER = corp\svc-uiao-gitea$
+RUN_MODE = prod
+[server]
+PROTOCOL          = http
+HTTP_ADDR         = 127.0.0.1
+HTTP_PORT         = 3000
+ROOT_URL          = https://git.uiao.corp.contoso.com/
+DISABLE_SSH       = false
+SSH_DOMAIN        = git.uiao.corp.contoso.com
+SSH_LISTEN_PORT   = 2222
+APP_DATA_PATH     = D:\Gitea\data
+LFS_START_SERVER  = true
+LFS_CONTENT_PATH  = D:\Gitea\data\lfs
+[repository]
+ROOT              = D:\GitRepos
+DEFAULT_BRANCH    = main
+[database]
+DB_TYPE           = postgres
+HOST              = pg01.corp.contoso.com:5432
+NAME              = uiao_gitea
+USER              = uiao_gitea
+PASSWD            = `${SECRET:gitea-db-password}
+[security]
+INSTALL_LOCK              = true
+DISABLE_GIT_HOOKS         = false
+IMPORT_LOCAL_PATHS        = false
+INTERNAL_TOKEN            = `${SECRET:gitea-internal-token}
+[oauth2]
+JWT_SECRET                = `${SECRET:gitea-jwt-secret}
+[log]
+ROOT_PATH = D:\Gitea\log
+MODE      = console,file
+LEVEL     = Info
+[service]
+DISABLE_REGISTRATION              = true
+REQUIRE_SIGNIN_VIEW                = true
+ENABLE_NOTIFY_MAIL                 = false
+DEFAULT_KEEP_EMAIL_PRIVATE         = true
+"@ | Out-File "$root\custom\conf\app.ini" -Encoding utf8
+
+# 4.e Register as a Windows service under the gMSA
+& $exe service install `
+    --config "$root\custom\conf\app.ini" `
+    --user 'corp\svc-uiao-gitea$' --service-name 'gitea'
+Set-Service -Name gitea -StartupType Automatic
+Start-Service -Name gitea
+```
+
+## Phase 5 — IIS reverse proxy (443 → Gitea :3000)
+
+```powershell
+# 5.a Site + binding
+Import-Module IISAdministration
+$site = 'UIAOReverseProxy'
+$pool = 'UIAOReverseProxy'
+$thumb = (Get-ChildItem Cert:\LocalMachine\My |
+    Where-Object Subject -like '*git.uiao*' | Select-Object -First 1).Thumbprint
+
+New-WebAppPool -Name $pool -Force
+Set-ItemProperty "IIS:\AppPools\$pool" -Name managedRuntimeVersion -Value ''
+Set-ItemProperty "IIS:\AppPools\$pool" -Name processModel.identityType -Value 'ApplicationPoolIdentity'
+
+New-Website -Name $site -PhysicalPath 'C:\inetpub\wwwroot\uiao-proxy' `
+    -ApplicationPool $pool -Port 443 -Ssl -HostHeader 'git.uiao.corp.contoso.com' -Force
+New-Item 'C:\inetpub\wwwroot\uiao-proxy' -ItemType Directory -Force | Out-Null
+
+netsh http add sslcert hostnameport=git.uiao.corp.contoso.com:443 `
+    certhash=$thumb appid="{$([guid]::NewGuid())}" certstorename=MY
+
+# 5.b Rewrite rules — forward everything to Gitea on loopback :3000
+$rules = @"
+<configuration>
+  <system.webServer>
+    <rewrite>
+      <rules>
+        <rule name='UIAO-Gitea-Proxy' stopProcessing='true'>
+          <match url='(.*)' />
+          <action type='Rewrite' url='http://127.0.0.1:3000/{R:1}' />
+          <serverVariables>
+            <set name='HTTP_X_FORWARDED_PROTO' value='https' />
+            <set name='HTTP_X_FORWARDED_FOR'   value='{REMOTE_ADDR}' />
+            <set name='HTTP_X_FORWARDED_HOST'  value='{HTTP_HOST}' />
+          </serverVariables>
+        </rule>
+      </rules>
+      <allowedServerVariables>
+        <add name='HTTP_X_FORWARDED_PROTO' />
+        <add name='HTTP_X_FORWARDED_FOR' />
+        <add name='HTTP_X_FORWARDED_HOST' />
+      </allowedServerVariables>
+    </rewrite>
+    <httpProtocol>
+      <customHeaders>
+        <add name='Strict-Transport-Security' value='max-age=31536000; includeSubDomains' />
+        <add name='X-Content-Type-Options'    value='nosniff' />
+        <add name='X-Frame-Options'           value='DENY' />
+      </customHeaders>
+    </httpProtocol>
+    <security>
+      <requestFiltering>
+        <requestLimits maxAllowedContentLength='524288000' />
+      </requestFiltering>
+    </security>
+  </system.webServer>
+</configuration>
+"@
+$rules | Out-File "C:\inetpub\wwwroot\uiao-proxy\web.config" -Encoding utf8
+
+iisreset /restart
+```
+
+## Phase 6 — AD LDAPS authentication (Gitea source-config)
+
+```powershell
+# 6.a LDAPS bind account (least-privilege; can read users + group memberships only)
+$bindDn = 'CN=svc-uiao-ldap,OU=ServiceAccounts,DC=corp,DC=contoso,DC=com'
+$bindPw = Read-Host -AsSecureString -Prompt 'svc-uiao-ldap password'
+
+# 6.b Register the source via the Gitea API (token from Phase 4 admin user)
+$token = $env:GITEA_ADMIN_TOKEN
+$body  = @{
+    type            = 'ldap'
+    name            = 'corp-ad-ldaps'
+    host            = 'dc01.corp.contoso.com'
+    port            = 636
+    security_protocol = 'LDAPS'
+    skip_verify     = $false
+    bind_dn         = $bindDn
+    bind_password   = (ConvertFrom-SecureString -SecureString $bindPw -AsPlainText)
+    user_search_base = 'OU=Users,OU=ORG-IT-INF-PLATFORM,DC=corp,DC=contoso,DC=com'
+    filter          = '(&(objectClass=user)(sAMAccountName=%s))'
+    admin_filter    = '(memberOf=CN=OrgTree-IT-INF-PLATFORM-CanonStewards,OU=Groups,DC=corp,DC=contoso,DC=com)'
+    email_attribute = 'mail'
+    name_attribute  = 'sAMAccountName'
+    surname_attribute = 'sn'
+    given_name_attribute = 'givenName'
+    is_active       = $true
+    is_sync_enabled = $true
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod -Uri 'https://git.uiao.corp.contoso.com/api/v1/admin/sources' `
+    -Method Post -Body $body -ContentType 'application/json' `
+    -Headers @{ Authorization = "token $token" }
+```
+
+## Phase 7 — Entra OAuth2 / OIDC
+
+```powershell
+# 7.a Register the app (idempotent guard via displayName lookup)
+Connect-MgGraph -Scopes 'Application.ReadWrite.All','Directory.ReadWrite.All' -NoWelcome
+$app = Get-MgApplication -Filter "displayName eq 'UIAO-Gitea-OIDC'" -ErrorAction SilentlyContinue
+if (-not $app) {
+    $app = New-MgApplication -DisplayName 'UIAO-Gitea-OIDC' `
+        -SignInAudience 'AzureADMyOrg' `
+        -Web @{ RedirectUris = @('https://git.uiao.corp.contoso.com/user/oauth2/EntraID/callback') } `
+        -OptionalClaims @{ IdToken = @(@{ name = 'groups' }) } `
+        -GroupMembershipClaims 'SecurityGroup'
+    $sp = New-MgServicePrincipal -AppId $app.AppId
+}
+
+# 7.b Client secret — store in SecretStore for the Gitea service account
+$secret = Add-MgApplicationPassword -ApplicationId $app.Id `
+    -PasswordCredential @{ DisplayName = 'Gitea-OIDC'; EndDateTime = (Get-Date).AddYears(1) }
+Set-Secret -Name 'gitea-oidc-secret' -SecureStringSecret (ConvertTo-SecureString $secret.SecretText -AsPlainText -Force) `
+    -Vault UIAOPlatformVault
+
+# 7.c Register the auth source in Gitea
+$oidcBody = @{
+    type     = 'oauth2'
+    name     = 'EntraID'
+    is_active = $true
+    oauth2_config = @{
+        provider      = 'openidConnect'
+        client_id     = $app.AppId
+        client_secret = $secret.SecretText
+        openid_connect_auto_discovery_url = 'https://login.microsoftonline.com/' +
+                                            (Get-MgOrganization).Id + '/v2.0/.well-known/openid-configuration'
+        scopes        = 'openid profile email groups'
+    }
+} | ConvertTo-Json -Depth 5
+Invoke-RestMethod -Uri 'https://git.uiao.corp.contoso.com/api/v1/admin/sources' `
+    -Method Post -Body $oidcBody -ContentType 'application/json' `
+    -Headers @{ Authorization = "token $env:GITEA_ADMIN_TOKEN" }
+```
+
+## Phase 8 — Clone UIAO repo + configure mirror from GitHub
+
+```powershell
+# 8.a Create the org + repo in Gitea, then point it at GitHub upstream as a pull-mirror
+$base = 'https://git.uiao.corp.contoso.com/api/v1'
+$h    = @{ Authorization = "token $env:GITEA_ADMIN_TOKEN" }
+
+# Org
+$null = Invoke-RestMethod -Uri "$base/orgs" -Method Post -Headers $h -ContentType 'application/json' `
+    -Body (@{ username = 'uiao'; visibility = 'private' } | ConvertTo-Json)
+
+# Pull mirror from GitHub canonical origin
+$mirror = @{
+    clone_addr  = 'https://github.com/WhalerMike/uiao.git'
+    repo_name   = 'uiao'
+    repo_owner  = 'uiao'
+    mirror      = $true
+    mirror_interval = '15m0s'
+    lfs         = $true
+    private     = $true
+} | ConvertTo-Json
+Invoke-RestMethod -Uri "$base/repos/migrate" -Method Post -Headers $h `
+    -ContentType 'application/json' -Body $mirror
+
+# 8.b Optional: enable Git LFS server (already set in app.ini; verify storage path)
+Test-Path 'D:\Gitea\data\lfs'
+```
+
+## Phase 9 — Gitea governance hooks
+
+The pre-receive / update / post-receive hook bodies are authored in
+[`git-server-implementation.qmd` §15 (Phase 12)](./git-server-implementation.qmd)
+and apply unchanged to Gitea; the only path difference is the hook destination —
+in Gitea, server-side hooks live in
+`D:\GitRepos\uiao\uiao.git\hooks\` (or are managed via the Gitea web UI under
+*Settings → Webhooks → Git Hooks*). Mandatory rules:
+
+| Hook | Rule | Source |
+|---|---|---|
+| `pre-receive` | Reject pushes to `main` unless author ∈ `OrgTree-IT-INF-PLATFORM-CanonStewards` | `git-server-implementation.qmd` §15 Rule 1 |
+| `pre-receive` | Reject any commit containing `FOUO` / `For Official Use Only` markings | §15 Rule 2 |
+| `pre-receive` | Validate canon-file YAML frontmatter (document_id, version, status, classification, owner, boundary) | §15 Rule 3 |
+| `pre-receive` | Reject canon files not matching `^UIAO_\d{3}_[\w]+_v\d+\.\d+\.md$` | §15 Rule 4 |
+| `pre-receive` | Reject unsigned `.ps1` files under `scripts/` (Authenticode + WDAC requirement) | new, Phase 0.6 |
+| `update`      | Enforce branch-naming allowlist: `main, develop, feature/*, bugfix/*, hotfix/*, canon/*, release/*` | §15 |
+| `post-receive` | Log push + emit `repository_dispatch` to GitHub Actions for canonical CI mirroring | §15 |
+
+Sign every hook with the Phase 0.6 code-signing certificate before deploying.
+
+## Phase 10 — Intune compliance
+
+```powershell
+Connect-MgGraph -Scopes 'DeviceManagementConfiguration.ReadWrite.All','Group.ReadWrite.All' -NoWelcome
+
+# 10.a Compliance policy — Tier-0 baseline (Defender for Servers Plan 2 active, etc.)
+$policy = @{
+    '@odata.type'                       = '#microsoft.graph.windows10CompliancePolicy'
+    displayName                         = 'UIAO-GIT-ServerCompliance-v2'
+    description                         = 'Tier-0 compliance for the UIAO platform server (OrgPath-scoped)'
+    osMinimumVersion                    = '10.0.26100'
+    secureBootEnabled                   = $true
+    bitLockerEnabled                    = $true
+    codeIntegrityEnabled                = $true
+    storageRequireEncryption            = $true
+    activeFirewallRequired              = $true
+    antivirusRequired                   = $true
+    rtpEnabled                          = $true
+    tpmRequired                         = $true
+    defenderEnabled                     = $true
+    deviceCompliancePolicyScript        = $null
+}
+$created = Invoke-MgGraphRequest -Method POST `
+    -Uri 'https://graph.microsoft.com/v1.0/deviceManagement/deviceCompliancePolicies' `
+    -Body ($policy | ConvertTo-Json -Depth 5)
+
+# 10.b OrgPath-scoped assignment — see Phase 14.5 for the dynamic group rule
+$assign = @{
+    assignments = @(@{
+        target = @{
+            '@odata.type' = '#microsoft.graph.groupAssignmentTarget'
+            groupId       = (Get-MgGroup -Filter "displayName eq 'OrgTree-IT-INF-PLATFORM-Devices'").Id
+        }
+    })
+}
+Invoke-MgGraphRequest -Method POST `
+    -Uri "https://graph.microsoft.com/v1.0/deviceManagement/deviceCompliancePolicies/$($created.id)/assign" `
+    -Body ($assign | ConvertTo-Json -Depth 5)
+```
+
+## Phase 11 — Azure Arc enrollment
+
+```powershell
+# 11.a Service-principal sign-in (no interactive creds on a Tier-0 server)
+$tenant   = (Get-Secret -Name 'arc-tenant-id' -AsPlainText)
+$appId    = (Get-Secret -Name 'arc-onboarding-spn-appid' -AsPlainText)
+$appSecret= (Get-Secret -Name 'arc-onboarding-spn-secret' -AsPlainText)
+$subId    = (Get-Secret -Name 'arc-subscription-id' -AsPlainText)
+$rg       = 'rg-uiao-governance'
+$loc      = 'eastus'
+
+# 11.b Install Arc agent + connect
+$msi = "$env:TEMP\AzureConnectedMachineAgent.msi"
+Invoke-WebRequest -Uri 'https://aka.ms/AzureConnectedMachineAgent' -OutFile $msi -UseBasicParsing
+Start-Process msiexec -ArgumentList "/i $msi /qn /norestart" -Wait
+
+& "$env:ProgramFiles\AzureConnectedMachineAgent\azcmagent.exe" connect `
+    --service-principal-id     $appId `
+    --service-principal-secret $appSecret `
+    --tenant-id  $tenant `
+    --subscription-id $subId `
+    --resource-group  $rg `
+    --location $loc `
+    --resource-name 'UIAO-GIT01' `
+    --tags 'OrgPath=ORG-IT-INF-PLATFORM' 'DeviceRole=GitServer' 'DeviceTier=Tier0'
+
+# 11.c Azure Monitor Agent (for SIEM forwarding in Phase 13)
+$ama = @{
+    name      = 'AzureMonitorWindowsAgent'
+    publisher = 'Microsoft.Azure.Monitor'
+    type      = 'AzureMonitorWindowsAgent'
+    location  = $loc
+}
+New-AzConnectedMachineExtension @ama `
+    -ResourceGroupName $rg `
+    -MachineName 'UIAO-GIT01'
+```
+
+## Phase 12 — Backup, replication, DR
+
+```powershell
+function Backup-UIAOGitea {
+    [CmdletBinding()]
+    param(
+        [string]$GiteaRoot   = 'D:\Gitea',
+        [string]$RepoRoot    = 'D:\GitRepos',
+        [string]$StagingDir  = 'E:\Backups\Staging',
+        [string]$StorageAcct = 'stuiaogovernance',
+        [string]$Container   = 'gitea-backups',
+        [int]   $RetainDays  = 30
+    )
+
+    $ts  = Get-Date -Format 'yyyyMMdd-HHmm'
+    $stg = Join-Path $StagingDir "uiao-gitea-$ts"
+    New-Item -ItemType Directory -Path $stg -Force | Out-Null
+
+    # 12.a Quiesce Gitea, snapshot DB + repo storage, restart
+    Stop-Service gitea
+    & "$GiteaRoot\gitea.exe" dump --config "$GiteaRoot\custom\conf\app.ini" `
+        --file (Join-Path $stg 'gitea-dump.zip')
+    Compress-Archive -Path "$RepoRoot\*" -DestinationPath (Join-Path $stg 'repos.zip') -CompressionLevel Optimal
+    Start-Service gitea
+
+    # 12.b Upload (managed identity preferred; SAS shown for clarity)
+    Connect-AzAccount -Identity | Out-Null
+    $ctx = (Get-AzStorageAccount -ResourceGroupName 'rg-uiao-governance' -Name $StorageAcct).Context
+    Get-ChildItem $stg | ForEach-Object {
+        Set-AzStorageBlobContent -File $_.FullName -Container $Container `
+            -Blob "$ts/$($_.Name)" -Context $ctx -Force
+    }
+
+    # 12.c Retention — delete blobs older than $RetainDays
+    Get-AzStorageBlob -Container $Container -Context $ctx |
+        Where-Object { $_.LastModified -lt (Get-Date).AddDays(-$RetainDays) } |
+        Remove-AzStorageBlob -Force
+
+    Remove-Item $stg -Recurse -Force
+}
+
+# Schedule nightly at 02:00
+$action  = New-ScheduledTaskAction -Execute 'pwsh.exe' `
+    -Argument '-NoProfile -ExecutionPolicy AllSigned -Command "Import-Module UIAOPlatform; Backup-UIAOGitea"'
+$trigger = New-ScheduledTaskTrigger -Daily -At 02:00
+Register-ScheduledTask -TaskName 'UIAO-GiteaBackup' -Action $action -Trigger $trigger `
+    -User 'NT SERVICE\gitea' -RunLevel Highest -Force
+```
+
+RPO target: 24 h (nightly snapshot). RTO target: 4 h (cold restore from
+latest backup blob into the passive replica + DNS cutover).
+
+## Phase 13 — Security hardening
+
+```powershell
+# 13.a CIS Level 2 baseline via the Microsoft Security Compliance Toolkit GPO
+#     (download separately; apply with LGPO.exe from the toolkit)
+& "$env:ProgramFiles\LGPO\LGPO.exe" /g "$env:TEMP\CIS-WS2025-L2-GPO"
+
+# 13.b AppLocker — allow signed UIAO scripts; default-deny everything else
+$xml = @'
+<AppLockerPolicy Version="1">
+  <RuleCollection Type="Script" EnforcementMode="Enabled">
+    <FilePublisherRule Id="uiao-signed-scripts" Name="UIAO signed scripts" Action="Allow" UserOrGroupSid="S-1-1-0">
+      <Conditions>
+        <FilePublisherCondition PublisherName="CN=UIAO Canon Signing" ProductName="*" BinaryName="*">
+          <BinaryVersionRange LowSection="*" HighSection="*" />
+        </FilePublisherCondition>
+      </Conditions>
+    </FilePublisherRule>
+  </RuleCollection>
+</AppLockerPolicy>
+'@
+$xml | Out-File "$env:TEMP\uiao-applocker.xml" -Encoding utf8
+Set-AppLockerPolicy -XmlPolicy "$env:TEMP\uiao-applocker.xml" -Merge
+Start-Service -Name AppIDSvc -ErrorAction SilentlyContinue
+Set-Service -Name AppIDSvc -StartupType Automatic
+
+# 13.c WDAC — enforce code integrity for the signed-script policy
+$policyPath = "$env:TEMP\UIAO-WDAC.xml"
+New-CIPolicy -FilePath $policyPath -Level Publisher `
+    -ScanPath 'D:\GitRepos\uiao\scripts' -UserPEs -NoShadowCopy
+Add-SignerRule -FilePath $policyPath -CertificatePath 'C:\Certs\UIAOCanonSigning.cer' -User -Update
+Set-RuleOption -FilePath $policyPath -Option 0   # Enabled:UMCI
+Set-RuleOption -FilePath $policyPath -Option 3 -Delete  # remove Audit Mode
+ConvertFrom-CIPolicy -XmlFilePath $policyPath -BinaryFilePath "$env:TEMP\UIAO-WDAC.cip"
+Copy-Item "$env:TEMP\UIAO-WDAC.cip" 'C:\Windows\System32\CodeIntegrity\SiPolicy.p7b' -Force
+Restart-Computer -Force
+
+# 13.d Defender for Servers Plan 2 + SIEM forwarding via Arc + Azure Monitor
+#     (Plan 2 is enabled at the subscription level; agent is from Phase 11)
+Set-MpPreference -DisableRealtimeMonitoring $false `
+    -CloudBlockLevel 'High' -MAPSReporting 'Advanced' -SubmitSamplesConsent 'SendSafeSamples'
+
+# 13.e Audit policy
+auditpol /set /category:'Logon/Logoff'         /success:enable /failure:enable
+auditpol /set /category:'Object Access'        /success:enable /failure:enable
+auditpol /set /category:'Privilege Use'        /success:enable /failure:enable
+auditpol /set /category:'System'               /success:enable /failure:enable
+auditpol /set /category:'Account Management'   /success:enable /failure:enable
+auditpol /set /category:'Policy Change'        /success:enable /failure:enable
+```
 
 ## Phase 14 — OrgTree Integration
 
@@ -293,10 +1046,45 @@ source; Phase 14 is authored here and inherits from the MOD canon.
 
 - **Posted source:** `UIAO_SBG_001 v1.0` — `UIAO Platform Server Build
   Guide — Windows Server 2025 with Gitea and IIS.docx` (1,864 lines).
+  **Currently absent** from `inbox/Posted/`; Phase 1–13 inlined above is the
+  interim operational authority.
 - **Canon anchors:** `src/uiao/canon/document-registry.yaml`
   entries UIAO_151, UIAO_152, UIAO_153, UIAO_154, UIAO_155, UIAO_156,
   UIAO_158, UIAO_163, UIAO_167, UIAO_171, UIAO_174 (renamed from
   UIAO_151–UIAO_174 per ADR-060).
-- **ADR dependency:** ADR-001 (Git Infrastructure — Gitea behind IIS).
+- **ADR dependency:** ADR-041 (UIAO Git Infrastructure — Self-Hosted Git on
+  Windows Server 2025 + IIS). ADR-041 is currently `status: draft` in
+  `src/uiao/canon/adr/`; the Gitea-behind-IIS decision (Option B) is recorded
+  there. Earlier revisions of this page mis-cited the decision as ADR-001;
+  ADR-001 is `HAADJ Deprecated — Entra ID Join as Sole Device Join Target`
+  and is unrelated to Git infrastructure.
 - **Boundary:** GCC-Moderate for M365 SaaS interactions; IaaS (Arc, Azure
-  tags, Log Analytics) per ADR-001's commercial-FedRAMP exception.
+  tags, Log Analytics) per ADR-041's commercial-FedRAMP exception.
+
+## Appendix A — Option A vs Option B (architectural reconciliation)
+
+ADR-041 evaluates two architectures for self-hosting the UIAO Git
+infrastructure on Windows Server 2025 + IIS. Both are documented in this
+repo; only one is canon.
+
+| Aspect | Option A — IIS + `git-http-backend` (CGI) | **Option B — Gitea behind IIS reverse proxy (CANON)** |
+|---|---|---|
+| Git transport | `git-http-backend.exe` invoked via IIS CGI | Gitea native HTTP/2 on `127.0.0.1:3000` |
+| Auth | IIS Windows Authentication (Kerberos + NTLM) | Gitea AD LDAPS + Entra OIDC, with IIS terminating TLS |
+| Web UI | None — Git CLI only | Gitea web UI, REST API, issues, PRs, OAuth apps |
+| Hooks | Server-side `pre-receive` / `update` / `post-receive` in the bare repo | Same plus Gitea-managed hook chain + webhook fan-out |
+| OrgTree integration | Manual — AD group → IIS role mapping | Native — Entra group claims map to Gitea teams via Phase 7 / 14.3 |
+| LFS | Manual config; requires extra IIS handler | Built-in (`LFS_START_SERVER = true` in app.ini, Phase 4.d) |
+| Drift / SLA hooks | Custom PowerShell | Native Gitea webhooks → UIAO_163 emitter (Phase 14.4) |
+| Reference doc | [`git-server-implementation.qmd`](./git-server-implementation.qmd) | this page |
+
+**Decision recorded in ADR-041:** Option B is canon. Option A is retained
+in [`git-server-implementation.qmd`](./git-server-implementation.qmd) as a
+lab-mode shortcut and as the operational source of the hook bodies
+referenced from Phase 9 above. Do not deploy Option A to production without
+a new ADR superseding ADR-041.
+
+When ADR-041 flips from `status: draft` to `ACCEPTED`, this appendix becomes
+the navigation surface from which operators are pointed to the canonical
+Option B procedure; the Option A guide will carry a permanent
+"superseded for production use" banner.
