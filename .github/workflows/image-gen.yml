@@ -172,7 +172,12 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: generated-images-run-${{ github.run_number }}
-          path: docs/images/
+          # Capture BOTH legacy global location and doc-local locations.
+          # Most pipeline output goes to docs/customer-documents/<series>/images/
+          # (one images/ folder per source doc); a smaller set goes to docs/images/.
+          path: |
+            docs/images/
+            docs/customer-documents/**/images/
           retention-days: 30
           if-no-files-found: warn
 
@@ -192,7 +197,13 @@ jobs:
           # files modified by replace_placeholders.py (placeholder swap-outs
           # in scanned doc sources). The manifest is gitignored (rebuilt on
           # every run; not source).
-          git add \
+          #
+          # IMPORTANT: pathspecs are added one-at-a-time. `git add A B C`
+          # aborts the entire operation on the first pathspec that matches
+          # nothing — historically that left the staged set empty even when
+          # PNGs were generated (run 25744508863 was the first to surface this).
+          # Per-pathspec invocation with `|| true` isolates each failure.
+          for pathspec in \
             "docs/customer-documents/**/images/*.png" \
             "docs/customer-documents/**/images/*.png.json" \
             "docs/images/**/*.png" \
@@ -201,8 +212,9 @@ jobs:
             "docs/**/*.md" \
             "src/uiao/canon/specs/**/*.md" \
             "src/uiao/canon/adr/**/*.md" \
-            "src/uiao/canon/image-registry.yaml" \
-            || true
+            "src/uiao/canon/image-registry.yaml"; do
+            git add "$pathspec" 2>/dev/null || true
+          done
 
           if git diff --cached --quiet; then
             echo "No changes to commit. Pipeline produced no new or modified image artifacts."
