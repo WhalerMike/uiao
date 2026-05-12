@@ -136,7 +136,7 @@ Write-OK "Log directory created: $LogPath"
 # -----------------------------------------------------------------------
 Write-Step "Installing URL Rewrite module..."
 $rwInfoUrl = "https://www.iis.net/downloads/microsoft/url-rewrite"
-$rwMsi = "C:\Temp\rewrite_amd64.msi"
+$rwMsi = "C:\Temp\rewrite_amd64_en-US.msi"
 
 $rwInstalled = Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\* |
                Where-Object { $_.DisplayName -like "*IIS URL Rewrite*" }
