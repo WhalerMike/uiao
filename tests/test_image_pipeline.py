@@ -282,6 +282,23 @@ def test_schema_rejects_bad_related_id(schema):
     assert errors, "related IDs must match UIAO-FIG-NNN pattern"
 
 
+def test_schema_accepts_canon_reference_placeholder_ids(schema):
+    entry = _sample_entry(
+        used_by=[
+            {
+                "document": "docs/customer-documents/executive-briefs/uiao-executive-brief.qmd",
+                "placeholder_id": "IMAGE-REF",
+            },
+            {
+                "document": "docs/customer-documents/executive-briefs/uiao-executive-brief.qmd",
+                "placeholder_id": "IMAGE-REF:UIAO-FIG-001",
+            },
+        ]
+    )
+    errors = list(Draft202012Validator(schema).iter_errors(_wrap(entry)))
+    assert errors == [], "\n".join(f"{list(e.absolute_path)}: {e.message}" for e in errors)
+
+
 # ─────────────────────────────────────────────────────────────────────
 # image_registry_search.py — discovery CLI
 # ─────────────────────────────────────────────────────────────────────
