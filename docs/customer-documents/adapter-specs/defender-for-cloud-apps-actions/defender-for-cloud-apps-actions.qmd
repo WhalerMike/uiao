@@ -25,27 +25,40 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the Microsoft Defender for Cloud Apps — Actions (Reserved Slot) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Microsoft Defender for Cloud Apps — Actions Adapter is the **CASB enforcement actuator** in the UIAO substrate. As a modernization-class integration adapter, it performs the change-making operations on the Microsoft CASB surface — OAuth app governance (revoke / restrict consent), session-control policy writes, and Conditional Access App Control bindings — that turn the read-only observations from [`defender-for-cloud-apps`](../defender-for-cloud-apps/defender-for-cloud-apps.html) into enforced posture.
+
+The dual-axis split is intentional: the conformance entry observes Shadow IT, OAuth inventory, app risk, and session analytics; this entry acts on those observations. Per ADR-049 §Decision 1, this is the canonical pattern for Microsoft surfaces that have both read-only and change-making operational planes.
+
+Three primary functions:
+
+1. **OAuth app governance.** Revokes or restricts user consent to third-party OAuth apps based on canon-defined risk thresholds and app-classification rules. Phantom revocations (apps that are unknown to canon but flagged as high-risk by Defender) surface as findings; only canon-authorized actions auto-apply.
+2. **Session-control policy authoring.** Writes Defender for Cloud Apps session policies that govern in-session actions (download blocking, cut/copy/paste restrictions, file-upload scanning) for OrgPath-keyed user populations and sanctioned-app combinations.
+3. **Conditional Access App Control binding.** Provisions the Conditional Access policies that route traffic for governed apps through the CASB session-control reverse proxy. Bindings reference [`entra-dynamic-groups`](../entra-dynamic-groups/entra-dynamic-groups.html) OrgTree-* groups so the population subject to session control tracks OrgPath assignment automatically.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR modeled on ADR-035.
 
 ## Scope
 
 Target surfaces / subsystems: `oauth-app-governance`, `session-control-policies`, `conditional-access-app-control`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** UIAO_154 / UIAO_155 governance canon (which OAuth governance actions are pre-authorized), the canon-defined CASB session-control policy library, and the live Defender for Cloud Apps configuration via the Defender APIs. Cross-references the read-only inventory emitted by [`defender-for-cloud-apps`](../defender-for-cloud-apps/defender-for-cloud-apps.html) to identify governance candidates.
+
+**Emits:** `mcas-policy-manifest.json` (planned policy / binding changes with per-row provenance back to canon), `mcas-action-audit.json` (post-apply audit trail with one provenance record per OAuth revocation / policy write / CA binding change), and skipped-manual findings for actions that fall outside canon authorization.
+
+**Does NOT:** observe or score apps (that's [`defender-for-cloud-apps`](../defender-for-cloud-apps/defender-for-cloud-apps.html)'s role), modify app catalog metadata, sanction or unsanction apps without canon authority, or auto-revoke OAuth consents whose blast radius is unknown — phantom revocations surface as findings rather than executing. Apply paths are gated on `dry_run=False`; broad-blast-radius CA App Control changes additionally require human approval through UIAO_155.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `AC-3`, `AC-6`, `AC-17`, `AU-2`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **AC-3** Access Enforcement | Primary | Conditional Access App Control bindings + session-control policies are the enforcement edge for SaaS access decisions. |
+| **AC-6** Least Privilege | Primary | OAuth app governance revokes or restricts over-permissioned third-party app consents — the change-making half of the least-privilege review that the conformance side observes. |
+| **AC-17** Remote Access | Supporting | Session-control policies govern in-session actions for remote / BYOD access to sanctioned SaaS apps. |
+| **AU-2** Event Logging | Supporting | Every policy / consent / binding change emits an audit record into the canonical evidence stream. |
 
 ## Operational profile
 
@@ -67,12 +80,14 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Reserved slot per ADR-049. Activation requires a per-adapter ADR modeled on ADR-035. The split across both registries (defender-for-cloud-apps in conformance, this entry in modernization) is the precedent set by ADR-049 §Decision 1 for Microsoft surfaces that have both a read-only and a change-making axis.
+Reserved slot per ADR-049. Activation requires a per-adapter ADR modeled on ADR-035. The split across both registries ([`defender-for-cloud-apps`](../defender-for-cloud-apps/defender-for-cloud-apps.html) in conformance, this entry in modernization) is the precedent set by ADR-049 §Decision 1 for Microsoft surfaces that have both a read-only and a change-making axis.
+
+ZTMM pillars: applications-and-workloads, data.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-049
+- ADR-049 — Reserved-slot allocation framework + dual-axis split rationale
 
 ---
 
