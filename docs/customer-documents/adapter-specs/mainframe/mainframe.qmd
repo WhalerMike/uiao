@@ -25,27 +25,41 @@ aspirational: true
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the Mainframe (z/OS Connect / MQ) Adapter adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Mainframe Adapter is the **legacy z/OS integration edge** of the UIAO substrate. As a modernization-class integration adapter, it maps COBOL records, MQ messages, and CICS transactions to canonical claims via z/OS Connect or an MQ bridge — the canonical mechanism for bringing mainframe-resident data and operations into the same evidence and drift surfaces the substrate uses for cloud workloads.
+
+Federal agencies that operate mainframe systems for HR, financial, benefits, or correspondence workloads typically have decades of business logic embedded in COBOL and CICS that cannot be lift-and-shifted to cloud-native services on a short timeline. This adapter provides the **structural bridge** so the mainframe-resident records and transactions are visible to the same ATO evidence pipeline, drift engine, and compliance reporting as the rest of the customer's modernization scope.
+
+Three primary functions:
+
+1. **COBOL-record canonicalization.** Maps COBOL record layouts (copybooks) to canonical claim shape, translating EBCDIC encoding, packed-decimal fields, and OCCURS clauses into the substrate's normalized representation. One canonical claim per record per execution.
+2. **MQ-message ingestion.** Wraps the MQ bridge so messages flowing through documented queue managers become canonical event claims with provenance back to the source queue, message id, and timestamp.
+3. **CICS-transaction observation.** Captures CICS transaction metadata (transaction id, terminal, user, completion code) via z/OS Connect APIs, emitting canonical claims that feed the AC-2 / AU-2 control evidence stream for mainframe-resident activity.
+
+This is the **highest-priority FIMF (Federal IT Modernization Fabric) legacy migration adapter** per canon. Activation requires z/OS Connect or MQ bridge infrastructure to be in place and an `on-prem-self-hosted` runner with network access to the mainframe management plane.
+
+**Implementation:** Reserved slot per ADR-049 / FIMF Tier 5. Activation requires a per-adapter ADR modeled on ADR-035.
 
 ## Scope
 
 Target surfaces / subsystems: `cobol-records`, `mq-messages`, `cics-transactions`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** z/OS Connect REST APIs for COBOL-record retrieval, the documented MQ bridge for queue-resident messages, and CICS-transaction metadata. mTLS to the z/OS Connect endpoint and authenticated MQ channels per the canonical least-privilege role.
+
+**Emits:** `mainframe-claim-manifest.json` (per-execution canonical claim records covering COBOL, MQ, and CICS surfaces), plus `EvidenceObject` records that feed the CM-8 / AC-2 / AU-2 control evidence stream.
+
+**Does NOT:** modify mainframe configuration (SAF profiles, RACF rules, SMS classes, etc.), inject MQ messages, initiate CICS transactions, modify COBOL programs or copybooks, or write back to mainframe-resident files. The adapter is observation only; mainframe modernization (data migration, application replatforming) is a separate engagement workstream outside this adapter's surface.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CM-8`, `AC-2`, `AU-2`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CM-8** Information System Component Inventory | Primary | Per-record COBOL inventory plus MQ-queue and CICS-transaction inventory produces the canonical mainframe-side component view. |
+| **AC-2** Account Management | Supporting | CICS-transaction observation surfaces principal-level activity that supports account-management correlation with cloud-side identity. |
+| **AU-2** Event Logging | Primary | MQ message ingestion and CICS transaction observation are the canonical evidence sources for mainframe-resident event logging. |
 
 ## Operational profile
 
@@ -67,11 +81,12 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-FIMF Tier 5 adapter. Requires z/OS Connect or MQ bridge infrastructure. Highest-priority legacy migration adapter.
+FIMF Tier 5 adapter. Legacy mainframe integration — maps COBOL records and MQ messages to canonical claims via z/OS Connect or MQ bridge. Highest-priority FIMF adapter for federal legacy-migration use cases. Requires z/OS Connect or MQ bridge infrastructure.
 
 ## References
 
 - UIAO-CANON-003
+- ADR-049 — Reserved-slot allocation framework
 
 ---
 
