@@ -24,27 +24,38 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the Active Directory OrgPath Assignment (OrgTree Phase F) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Active Directory OrgPath Assignment Adapter is the **on-premises starting point** of the UIAO OrgTree governance substrate. As a modernization-class integration adapter, it pairs two complementary operations against the source-of-truth Active Directory environment:
+
+1. **Survey (Phase F.1, read-only)** — enumerates Organizational Units, user objects, and computer objects from authoritative domain controllers via LDAP. The survey output is the candidate OrgTree derived from existing AD structure and is the primary input to the OrgTree canonization workflow.
+2. **OrgPath assignment (Phase F.3, write-back)** — writes the canonical OrgPath value into `extensionAttribute1` (users) and `extensionAttribute2` (computers) per the UIAO_153 attribute mapping table. The write is gated on an explicit `dry_run=False` flag and emits a structured assignment report so reviewers can verify every write before it propagates.
+
+OrgPath values written here propagate to Entra ID via Entra Connect sync — this adapter does **not** issue direct Graph API writes (that is the [`entra-id`](../entra-id/entra-id.html) adapter's responsibility). The synchronization boundary keeps the source-of-truth obligation cleanly on-premises until the agency completes its cloud cutover.
+
+**Implementation:** `src/uiao/adapters/modernization/active-directory/survey.py` + `src/uiao/adapters/modernization/active-directory/orgpath.py`. Runs on an `on-prem-self-hosted` runner because the adapter requires LDAP and Kerberos connectivity to authoritative domain controllers.
 
 ## Scope
 
 Target surfaces / subsystems: `ou-objects`, `user-objects`, `computer-objects`, `orgpath-attributes`, `group-policy-objects`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** LDAP queries against authoritative domain controllers for OU structure, user and computer principal objects, and Group Policy Object metadata. Optional `Get-GPOReport` integration feeds the GPO-to-Intune analytics pipeline used during target-state policy authoring.
+
+**Emits:** `ou-orgpath-mapping.csv` (candidate OrgTree derivation from the AD OU hierarchy), `user-orgpath-assignments.csv` and `computer-orgpath-assignments.csv` (planned extension-attribute writes), `unresolved-queue.csv` (objects without a confident OrgPath assignment that require manual review), and `orgpath-assignment-report.json` (post-apply audit trail with one provenance record per write).
+
+**Does NOT:** modify OU structure or container hierarchies, modify any principal attribute outside the canonical OrgPath extension attributes, issue Microsoft Graph API writes (that is the [`entra-id`](../entra-id/entra-id.html) adapter's role), apply Group Policy changes, or touch domain trust relationships. Surveying is strictly read-only; writing is gated on `dry_run=False` and bounded to the documented OrgPath extension attributes per UIAO_153.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CM-8`, `IA-2`, `IA-4`, `AC-2`, `AC-6`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CM-8** Information System Component Inventory | Primary | Survey output enumerates every OU, user, and computer object in the in-scope domains as canonical inventory rows with stable identifiers. |
+| **IA-2** Identification and Authentication | Supporting | Captures the authoritative principal identifier (objectGUID, SID, UPN) so the migration manifest correlates cloud identities back to on-premises records. |
+| **IA-4** Identifier Management | Primary | Maintains the stable mapping between AD object identifiers and assigned OrgPath values, preserving identity continuity through renames and reorganizations. |
+| **AC-2** Account Management | Supporting | Account inventory feeds downstream OrgPath-targeted dynamic groups (UIAO_152) once values synchronize to Entra ID. |
+| **AC-6** Least Privilege | Supporting | OU-derived OrgPath enables scoped administrative delegation on the Entra side via UIAO_154; on-premises write privilege is bounded to the documented extension attributes. |
 
 ## Operational profile
 
@@ -66,12 +77,17 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Binds to UIAO_151 (OrgPath Codebook) through ADR-035; the executable canon lives at canon/data/orgpath/codebook.yaml and is validated by schemas/orgpath/codebook.schema.json on load. Implementation: src/uiao/adapters/modernization/active-directory/{survey,orgpath}.py. Writes are gated on an explicit dry_run=False flag.
+Binds to UIAO_151 (OrgPath Codebook) through ADR-035; the executable canon lives at `canon/data/orgpath/codebook.yaml` and is validated by `schemas/orgpath/codebook.schema.json` on load. Writes are gated on an explicit `dry_run=False` flag — there is no implicit-apply path.
+
+Phase F.1 (survey) and Phase F.3 (OrgPath assignment) are the two halves of the AD-side migration step defined in UIAO_156. The pair is registered under a single adapter id per UIAO_003 §4.7 `integration` classification. Phase F.2 (canonization) is a curatorial step that operates on survey output and is not an adapter execution.
 
 ## References
 
 - UIAO-CANON-003
-- UIAO_007
+- UIAO_007 — OrgTree Modernization: AD to Entra ID
+- UIAO_151 — OrgPath Codebook
+- UIAO_153 — Attribute Mapping Table
+- UIAO_156 — Migration Runbook: OU to Entra
 
 ---
 

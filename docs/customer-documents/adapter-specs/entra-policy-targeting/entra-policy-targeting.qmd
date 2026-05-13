@@ -25,27 +25,43 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the OrgTree Policy Targeting — Intune + Azure Policy Dual Transport (UIAO_164) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The OrgTree Policy Targeting Adapter is the **policy-binding actuator** of the UIAO OrgTree substrate. As a modernization-class integration adapter, it binds existing Intune configuration profiles and existing Azure Policy definitions to the OrgTree — making sure the right policies enforce against the right organizational populations, without taking ownership of the policy contents themselves.
+
+The split between *policy authoring* and *policy targeting* is intentional. UIAO does not author Intune settings catalogs or Azure Policy rule expressions; existing tooling (and existing change-control authority) does that. What UIAO governs is the *binding* — which population a given profile applies to, and which subscription scope or resource group a given Azure Policy assignment covers. That binding is canon-governed; the policy body is not.
+
+Two primary functions:
+
+1. **Intune profile assignment.** For each Intune configuration profile referenced in UIAO_164, computes the OrgTree-* dynamic group ([`entra-dynamic-groups`](../entra-dynamic-groups/entra-dynamic-groups.html)) that represents the intended population and writes the assignment via Microsoft Graph `/deviceManagement/configurationPolicies/{id}/assignments`. Membership flows from the group — when an OrgPath assignment changes upstream, Intune compliance evaluation picks up the new device set on its next sync without this adapter needing to re-run.
+2. **Azure Policy assignment scoping.** For each Azure Policy definition referenced in UIAO_164, writes a policy assignment scoped to the appropriate management group, subscription, or resource group, with the policy parameter `orgPathPrefix` populated from canon and `matchMode` selecting the prefix-match operator. Arc-enrolled machines are filtered by their `OrgPath` ARM tag (written by [`entra-device-orgpath`](../entra-device-orgpath/entra-device-orgpath.html)), so the assignment evaluates only the intended population.
+
+Policy-consumer drift — phantom assignments (no canon row), missing Intune profiles, missing Azure Policy definitions, or definitions that do not accept the canonical `orgPathPrefix` / `matchMode` parameters — is **never** auto-remediated. The blast radius of automated policy changes is the broadest in the stack, so corrections route through the UIAO_155 governance workflows before any apply lands.
+
+**Implementation:** `src/uiao/adapters/entra_policy_targeting.py`. `plan()` and `apply(dry_run=True)` are offline-safe; `apply(dry_run=False)` issues Graph and ARM mutations limited to the assignment/binding surface.
 
 ## Scope
 
 Target surfaces / subsystems: `intune-policy-assignments`, `azure-policy-arc-assignments`, `orgtree-policy-targeting`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** UIAO_164 policy-targeting table (executable canon at `canon/data/orgpath/policy-targets.yaml`), UIAO_151 codebook (every Arc prefix must resolve to an active code), UIAO_152 dynamic-group canon (every Intune target group must resolve to a UIAO_152 group), UIAO_153 device-plane canon. Live state reads via Microsoft Graph (Intune assignments) and Azure Resource Manager (Azure Policy assignments).
+
+**Emits:** `policy-targeting-plan.json` (planned assignment changes with per-row provenance back to UIAO_164), `policy-targeting-report.json` (post-apply audit trail), and skipped-manual findings for phantom assignments and contract-violating policy definitions.
+
+**Does NOT:** author or modify Intune profile contents, author or modify Azure Policy definition contents, manage Azure Policy initiative (policy-set) authoring, touch Conditional Access policy bodies (separate workflow), or auto-remediate phantom assignments. Policy *bodies* are explicitly out of scope — this adapter binds, it does not author. Apply paths are gated on `dry_run=False`.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CM-2`, `CM-6`, `CM-7`, `CM-8`, `AC-3`, `CA-7`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CM-2** Baseline Configuration | Primary | The canonical UIAO_164 table is the baseline record of which policies apply to which OrgPath populations; assignment plans surface deviation from that baseline. |
+| **CM-6** Configuration Settings | Primary | Intune and Azure Policy assignments are the enforcement edge for configuration settings; this adapter ensures those edges target the correct OrgPath population. |
+| **CM-7** Least Functionality | Supporting | Scoping policy assignments to OrgPath populations is how least-functionality is operationalized — controls apply only to the populations that warrant them. |
+| **CM-8** Information System Component Inventory | Supporting | Plan and report artifacts enumerate every assignment, the UIAO_164 row that authorized it, and the policy definition / Intune profile that it binds. |
+| **AC-3** Access Enforcement | Primary | Policy assignments are the access-enforcement edge for both device configuration (Intune) and server configuration (Azure Policy / Guest Configuration). |
+| **CA-7** Continuous Monitoring | Supporting | Post-apply reports and drift findings provide continuous evidence that the assignment surface remains aligned with canon. |
 
 ## Operational profile
 
@@ -67,12 +83,22 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Binds to UIAO_164 through ADR-039; executable canon at canon/data/orgpath/policy-targets.yaml, JSON Schema at schemas/orgpath/policy-targets.schema.json. Depends on UIAO_151 (codebook, ADR-035), UIAO_152 (dynamic groups, ADR-036), UIAO_153 (device planes, ADR-038) — every Intune target_group must resolve to a UIAO_152 group; every Arc prefix must resolve to an active UIAO_151 code. Implementation: src/uiao/adapters/entra_policy_targeting.py. Azure Policy definitions MUST accept the canonical parameters `orgPathPrefix` and `matchMode` — policy authors follow this contract or surface as drift.
+Binds to UIAO_164 through ADR-039; executable canon at `canon/data/orgpath/policy-targets.yaml`, JSON Schema at `schemas/orgpath/policy-targets.schema.json`. Depends on UIAO_151 (codebook, ADR-035), UIAO_152 (dynamic groups, ADR-036), and UIAO_153 (device planes, ADR-038) — every Intune target group must resolve to a UIAO_152 group; every Arc prefix must resolve to an active UIAO_151 code.
+
+Azure Policy definitions referenced from UIAO_164 **must** accept the canonical parameters `orgPathPrefix` and `matchMode`. Definitions that do not honor this parameter contract surface as drift; policy authors follow the contract or the assignment is skipped-manual.
+
+Policy *bodies* are out of scope — only the targeting / scope binding is canon-governed. Policy-consumer drift (phantom assignments, missing profiles, missing definitions) is never auto-remediated — blast radius is the broadest in the stack.
+
+ZTMM pillars: identity, applications-and-workloads.
 
 ## References
 
 - UIAO-CANON-003
-- UIAO_007
+- UIAO_007 — OrgTree Modernization: AD to Entra ID
+- UIAO_151 — OrgPath Codebook
+- UIAO_152 — Dynamic Group Library
+- UIAO_153 — Attribute Mapping Table
+- UIAO_164 — Policy Targeting Library
 
 ---
 
