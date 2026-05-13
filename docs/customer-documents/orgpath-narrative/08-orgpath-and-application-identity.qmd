@@ -60,10 +60,7 @@ The ownership attribute is recorded as an extension attribute on the app registr
 
 The schema extension property registered in Part Four targets User and Device by default. Adding Application to the target objects list requires deleting and recreating the extension property definition, because the Microsoft Graph API does not support patching the targetObjects array of an existing extension property. This is a one-time pipeline step that must be performed before any application objects are stamped, because the deletion step removes the property definition and would require re-stamping all previously stamped objects if run after the fact. In environments where the extension was never applied to User or Device objects prior to this pipeline run, the delete-and-recreate sequence is low-risk. In environments where users and devices are already stamped, the operation should be deferred until a maintenance window where re-stamping can be completed immediately following the extension recreation, or the extension registration should use a separate extension application that targets Application from the outset.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Warning: Destructive Operation</strong></p>
@@ -94,10 +91,7 @@ With the triage file produced by the governance team's review of the inventory r
 
 \<# data-id="75" .SYNOPSIS Stamps OrgPath ownership on app registrations from a triage assignment file. .DESCRIPTION Reads a triage JSON file produced by the governance team after reviewing the app-inventory.json report. Each entry in the triage file specifies an app ObjectId and the OrgPath of the owning organizational node. Validates each OrgPath against the OrgTree registry before writing. .PARAMETER TriageFilePath Path to the triage JSON file. Format: \[ { "ObjectId": "...", "OrgPathOwner": "/Root/Finance" }, ... \] .PARAMETER OrgTreeRegistryPath Path to OrgTree registry JSON for validation. .PARAMETER OrgPathAttrName Full extension attribute name for OrgPath on Application objects. .NOTES Requires: Connect-MgGraph -Scopes "Application.ReadWrite.All" \#\> param( \[string\]\$TriageFilePath = "C:\governance\assessment\app-triage.json", \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[string\]\$OrgPathAttrName = "extension\_{AppIdWithoutHyphens}\_OrgPath" \# Substitute ) Connect-MgGraph -Scopes "Application.ReadWrite.All" -NoWelcome \$triage = Get-Content \$TriageFilePath -Raw \| ConvertFrom-Json \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \# Build valid path set from OrgTree for validation \$validPaths = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" } \| ForEach-Object { \$\_.Path } \$stats = @{ Stamped = 0; Invalid = 0; Skipped = 0; Failed = 0 } foreach (\$entry in \$triage) { if (-not (\$validPaths -contains \$entry.OrgPathOwner)) { Write-Warning " \[INVALID\] OrgPath '\$(\$entry.OrgPathOwner)' not in registry — skipping \$(\$entry.ObjectId)" \$stats.Invalid++ continue } try { \# PATCH the OrgPath extension attribute on the application object Invoke-MgGraphRequest \` -Method PATCH \` -Uri "https://graph.microsoft.com/v1.0/applications/\$(\$entry.ObjectId)" \` -Body (@{ \$OrgPathAttrName = \$entry.OrgPathOwner } \| ConvertTo-Json) \` -ContentType "application/json" Write-Host " \[OK\] \$(\$entry.ObjectId) =\> \$(\$entry.OrgPathOwner)" \$stats.Stamped++ } catch { Write-Error " \[FAIL\] \$(\$entry.ObjectId): \$\_" \$stats.Failed++ } } Write-Host "" Write-Host "=== App OrgPath Stamp Complete ===" Write-Host " Stamped : \$(\$stats.Stamped) \| Invalid: \$(\$stats.Invalid) \| Failed: \$(\$stats.Failed)" Disconnect-MgGraph
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Operational Note: Sentinel WatchList Refresh</strong></p>
@@ -126,10 +120,7 @@ The OrgTree registry node schema is extended with two additional fields for appl
 
 \<# data-id="92" .SYNOPSIS Configures admin consent request approvers for each OrgPath-owned application category, routing consent requests to the appropriate organizational governance group. .DESCRIPTION Reads the OrgTree registry for nodes flagged as AppConsentBoundary. For each such node, configures the Entra ID admin consent request policy to route consent requests for applications owned by that node to the node's designated consent approver group. .NOTES Requires: Connect-MgGraph -Scopes "Policy.ReadWrite.PermissionGrant","Group.Read.All" The global admin consent workflow must be enabled first: Update-MgPolicyAdminConsentRequestPolicy -IsEnabled \$true -Version 1 -Notifiers @( ... ) in the tenant before per-app routing applies. This script sets the tenant-level approvers; per-app routing uses the appConsentPolicies framework available in Entra ID Governance. \#\> param( \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json" ) Connect-MgGraph -Scopes "Policy.ReadWrite.PermissionGrant","Policy.ReadWrite.AdminConsent","Group.Read.All" -NoWelcome \# Enable the admin consent request workflow at the tenant level \$consentPolicyBody = @{ isEnabled = \$true version = 1 notifiers = @( @{ notificationTemplate = "ReviewerEmailTemplate" notificationChannel = "Email" receivers = @( @{ receiverType = "InitiatorAndAdmins" } ) } ) } Update-MgPolicyAdminConsentRequestPolicy -BodyParameter \$consentPolicyBody Write-Host "\[OK\] Admin consent request workflow enabled." \# Load OrgTree and configure per-node approver groups \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$consentNodes = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" -and \$\_.AppConsentBoundary -eq \$true -and \$\_.ConsentApproverGroupName } Write-Host "AppConsent boundary nodes: \$(\$consentNodes.Count)" foreach (\$node in \$consentNodes) { \$approverGroup = Get-MgGroup \` -Filter "displayName eq '\$(\$node.ConsentApproverGroupName)'" \` -Property "Id,DisplayName" \| Select-Object -First 1 if (-not \$approverGroup) { Write-Warning " Approver group '\$(\$node.ConsentApproverGroupName)' not found for node \$(\$node.Id)" continue } \# Log the approver mapping to the governance audit log @{ Timestamp = (Get-Date -Format "o") Event = "AppConsentApproverConfigured" OrgPathNode = \$node.Path ApproverGroup = \$approverGroup.DisplayName ApproverGroupId = \$approverGroup.Id } \| ConvertTo-Json -Compress \| Out-File -Append "C:\governance\logs\app-consent-audit.jsonl" \# Substitute path Write-Host " \[OK\] Node \$(\$node.Id) (\$(\$node.Name)) =\> Approver: \$(\$approverGroup.DisplayName)" } Write-Host "Admin consent approver configuration complete." Disconnect-MgGraph
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Architecture Note: Permission Grant Policies</strong></p>
@@ -156,10 +147,7 @@ The OrgTree registry node schema is extended with two additional fields for appl
 
 \<# data-id="111" .SYNOPSIS Creates semi-annual Access Reviews for application permissions, grouped by the owning OrgPath organizational node. .DESCRIPTION For each OrgTree node flagged as AppReviewBoundary, creates an Access Review scoped to service principals owned by that node (identified by OrgPath extension attribute on the application object). Reviewers are the node's designated app review group. defaultDecision = "Deny" removes permissions if reviewers take no action. .NOTES Requires: Connect-MgGraph -Scopes "AccessReview.ReadWrite.All","Application.Read.All" Requires Entra ID Governance licensing. Access Reviews for service principal permissions use the /v1.0/identityGovernance/accessReviews/definitions endpoint. \#\> param( \[string\]\$OrgTreeRegistryPath = "C:\governance\orgtree\registry.json", \[string\]\$OrgPathAttrName = "extension\_{AppIdWithoutHyphens}\_OrgPath" \# Substitute ) Connect-MgGraph -Scopes "AccessReview.ReadWrite.All","Application.Read.All" -NoWelcome \$registry = Get-Content \$OrgTreeRegistryPath -Raw \| ConvertFrom-Json \$reviewNodes = \$registry.nodes \| Where-Object { \$\_.Status -eq "Active" -and \$\_.AppReviewBoundary -eq \$true -and \$\_.AppReviewGroupName } \# Start reviews on the coming Monday \$startDate = (Get-Date).AddDays(((1 - \[int\](Get-Date).DayOfWeek + 7) % 7)).ToString("yyyy-MM-dd") if (\$startDate -eq (Get-Date).ToString("yyyy-MM-dd")) { \$startDate = (Get-Date).AddDays(7).ToString("yyyy-MM-dd") } foreach (\$node in \$reviewNodes) { \$reviewName = "AppPermReview-\$(\$node.Id)-SemiAnnual" \$exists = Get-MgIdentityGovernanceAccessReviewDefinition \` -Filter "displayName eq '\$reviewName'" -ErrorAction SilentlyContinue if (\$exists) { Write-Host "\[EXISTS\] \$reviewName"; continue } \$reviewerGroup = Get-MgGroup -Filter "displayName eq '\$(\$node.AppReviewGroupName)'" \` -ErrorAction SilentlyContinue if (-not \$reviewerGroup) { Write-Warning "Review group '\$(\$node.AppReviewGroupName)' not found for node \$(\$node.Id)" continue } \$body = @{ displayName = \$reviewName descriptionForAdmins = "Semi-annual review of application permissions for apps owned by \$(\$node.Name)" descriptionForReviewers = "Review each application's API permissions. Deny removes the permission grant." scope = @{ \# Review service principal permission grants (OAuth2 delegated + app role assignments) "@odata.type" = "#microsoft.graph.principalResourceMembershipsScope" principalScopes = @( @{ "@odata.type" = "#microsoft.graph.accessReviewQueryScope" \# Filter service principals by OrgPath owner — adjust filter as needed query = "/servicePrincipals?\`\$filter=\$OrgPathAttrName eq '\$(\$node.Path)'" queryType = "MicrosoftGraph" } ) resourceScopes = @( @{ "@odata.type" = "#microsoft.graph.accessReviewQueryScope" query = "/servicePrincipals" queryType = "MicrosoftGraph" } ) } reviewers = @( @{ query = "/groups/\$(\$reviewerGroup.Id)/transitiveMembers" queryType = "MicrosoftGraph" } ) settings = @{ mailNotificationsEnabled = \$true reminderNotificationsEnabled = \$true justificationRequiredOnApproval = \$true defaultDecisionEnabled = \$true defaultDecision = "Deny" instanceDurationInDays = 21 autoApplyDecisionsEnabled = \$true recommendationsEnabled = \$true recurrence = @{ pattern = @{ type = "absoluteMonthly"; interval = 6 } range = @{ type = "noEnd"; startDate = \$startDate } } } } \| ConvertTo-Json -Depth 10 Invoke-MgGraphRequest \` -Method POST \` -Uri "https://graph.microsoft.com/v1.0/identityGovernance/accessReviews/definitions" \` -Body \$body -ContentType "application/json" \| Out-Null Write-Host "\[CREATED\] \$reviewName (reviewer: \$(\$node.AppReviewGroupName))" } Write-Host "Application permission Access Review configuration complete." Disconnect-MgGraph
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Important: Reviewer Preparation</strong></p>
@@ -210,10 +198,7 @@ The tagging policy for user-assigned managed identities follows the same pattern
 
 The drift detection scope in the pipeline established in Chapter Five should be extended to include user-assigned managed identities. The extension reads all user-assigned managed identities from the Azure Resource Manager API, checks the OrgPath tag value against the active nodes in the OrgTree registry, and adds any findings to the drift report. Because the Azure Policy enforces tag presence at creation time, the only sources of drift for managed identities created after the policy was assigned are OrgPath values referencing nodes that were subsequently archived or removed from the OrgTree. For managed identities created before the policy was assigned — legacy identities that predate the governance framework — the Phase Zero inventory and triage process applies in the same way as it does for app registrations: inventory, triage, tag-stamp, verify. The policy assignment combined with the drift detection pipeline maintains a closed-loop governance posture going forward: no new untagged managed identity can be created, and existing tagged identities whose OrgPath becomes invalid are detected in the next drift run and surfaced for remediation.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Operational Note: RBAC Role Assignment Audit for Managed Identities</strong></p>
@@ -250,10 +235,7 @@ The three queries below form the core of the application identity monitoring lay
 
 // Query 3: Anomalous Permission Grant Events by OrgPath // Detects new OAuth permission grants and admin consent events, // enriched with the OrgPath of the application receiving the grant. AuditLogs \| where TimeGenerated \>= ago(24h) \| where Category == "ApplicationManagement" \| where OperationName in ( "Add delegated permission grant", "Add app role assignment to service principal", "Consent to application" ) \| extend AppId = tostring(TargetResources\[0\].id), AppName = tostring(TargetResources\[0\].displayName), PermGranted = tostring(TargetResources\[0\].modifiedProperties\[0\].newValue), InitiatedBy = tostring(InitiatedBy.user.userPrincipalName) \| join kind=leftouter ( \_GetWatchlist("AppOrgPathWatchlist") \| project AppId = SearchKey, OrgPath, OrgNodeId ) on \$left.AppId == \$right.AppId \| extend OrgPathResolved = iff(isnotempty(OrgPath), OrgPath, "UNOWNED") \| project TimeGenerated, OperationName, AppName, AppId, OrgPathResolved, OrgNodeId, PermGranted, InitiatedBy, CorrelationId \| order by TimeGenerated desc
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Detection Engineering Note: Behavioral Baseline</strong></p>

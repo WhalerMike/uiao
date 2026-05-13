@@ -144,10 +144,7 @@ The Forwarding Ruleset contains one forwarding rule per on-premises DNS zone tha
 
 The migration signal embedded in the Forwarding Ruleset is operationally significant. As each AD-integrated DNS zone is migrated to an Azure DNS Private Zone, the corresponding forwarding rule in the ruleset is disabled and eventually removed. The complete removal of forwarding rules for a domain is the DNS-side indicator that the zone migration for that domain is complete — Azure-hosted workloads are now resolving names for that domain against the Azure Private Zone, not against the on-premises DNS servers. The governance pipeline tracks the count of active forwarding rules and includes it in the weekly DNS governance review report. A decreasing forwarding rule count is the operational metric for DNS migration progress.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Private Resolver Subnet Requirements</strong></p>
@@ -228,10 +225,7 @@ The KQL query below joins device OrgPath values from the Entra ID audit log agai
 
 // --------------------------------------------------------------- // Certificate Drift: Devices with Certificates Misaligned to OrgPath // Source: AuditLogs (Entra ID + Intune unified audit log) // Schedule: Weekly — alert when result count \> 0 // Severity: Medium (certificate coverage does not match current position) // Remediation: Re-run certificate profile assignment pipeline; the // device will receive a new SCEP certificate from the correct profile // on its next Intune check-in (typically within 8 hours). // --------------------------------------------------------------- // Step 1: Capture the most recent OrgPath value for each device // from Entra ID audit log device update events. let DeviceOrgPaths = AuditLogs \| where TimeGenerated \>= ago(14d) \| where Category == "Device" and OperationName == "Update device" \| mv-expand Props = AdditionalDetails \| where tostring(Props.displayName) contains "OrgPath" \| extend DeviceId = tostring(TargetResources\[0\].id), OrgPath = tostring(Props.newValue) \| where isnotempty(OrgPath) \| summarize arg_max(TimeGenerated, OrgPath) by DeviceId \| project DeviceId, CurrentOrgPath = OrgPath; // Step 2: Capture the most recently enrolled certificate profile // for each device from the Intune certificate enrollment audit events. let CertEnrollments = AuditLogs \| where TimeGenerated \>= ago(30d) \| where OperationName == "Create deviceConfigurationDeviceStatus" \| extend DeviceId = tostring(TargetResources\[0\].id), ProfileName = tostring(TargetResources\[0\].displayName) \| where ProfileName startswith "CERT-" or ProfileName startswith "PKCS-" \| summarize LastCertProfile = arg_max(TimeGenerated, ProfileName) by DeviceId \| project DeviceId, LastCertProfile; // Step 3: Join and identify misaligned devices. // Naming convention: CERT-SCEP-{PURPOSE}-{NODEID} // Extract the NODEID as the last hyphen-delimited segment of the profile name. // Extract the OrgPath leaf node as the last slash-delimited segment. DeviceOrgPaths \| join kind=inner CertEnrollments on DeviceId \| extend CertNodeId = toupper(tostring(split(LastCertProfile, "-")\[-1\])), OrgNodeId = toupper(tostring(split(CurrentOrgPath, "/")\[-1\])) \| where CertNodeId != OrgNodeId \| extend RemediationAction = strcat( "Verify OrgPath branch group membership for device ", DeviceId, ". Re-run certificate profile assignment pipeline to issue new CERT-SCEP-\*-", OrgNodeId, " profile." ) \| project DeviceId, CurrentOrgPath, OrgNodeId, LastCertProfile, CertNodeId, RemediationAction \| order by CurrentOrgPath asc
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Remediation Pathway for Certificate-OrgPath Drift</strong></p>

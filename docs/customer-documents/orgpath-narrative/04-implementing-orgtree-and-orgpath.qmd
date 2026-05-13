@@ -24,10 +24,7 @@ The second precondition is organizational: the engineering team needs an authori
 
 The third precondition is infrastructural: the platform infrastructure described in Chapter 2 must be provisioned and validated before any schema registration or attribute population begins. Schema extension registration in Entra ID is a tenant-level operation with lasting consequences. OrgPath attribute population at scale places real load on the Microsoft Graph API. Neither should be run for the first time on an unvalidated platform. The infrastructure provisioning and validation work documented in Chapter 2 is not a long process, but it is a necessary one, and it should be completed and signed off before the team moves to Chapter 7.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Three Preconditions Checklist</strong></p>
@@ -60,10 +57,7 @@ The assessment workstation is the machine from which Active Directory assessment
 
 The automation server's network access requirements are specific and must be validated before pipeline execution begins. Outbound HTTPS on port 443 must reach the Microsoft Graph API endpoint at graph.microsoft.com, the Azure Resource Manager endpoint at management.azure.com, the Entra ID token endpoint at login.microsoftonline.com, and the target Git repository host — whether that is a self-hosted Gitea instance on the repository server or a hosted service. The automation server must have bidirectional LDAP access on port 389 and LDAPS access on port 636 to the domain controllers it will query. Kerberos authentication traffic on port 88, both UDP and TCP, must be allowed between the automation server and the domain controllers. DNS resolution of the domain's SRV record infrastructure — specifically the \_ldap.\_tcp.{domain} and \_kerberos.\_tcp.{domain} records that direct clients to domain controllers — must work correctly from the automation server's network position. If the deployment includes Azure Arc-managed servers, the automation server must also reach the Azure Arc service endpoints documented in the Azure Arc network requirements reference in the Microsoft documentation. Every one of these connectivity requirements should be tested explicitly — using Test-NetConnection for TCP ports, Resolve-DnsName for DNS records, and a lightweight LDAP bind test using the System.DirectoryServices.DirectoryEntry constructor — during the platform provisioning phase, before any assessment or pipeline work begins.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Connectivity Validation Is Not Optional</strong></p>
@@ -196,10 +190,7 @@ Phase One runs the full Get-ADUser -Filter \* -Properties \*, Get-ADComputer -Fi
 
 Assessment output should be organized in a directory structure that reflects the assessment surface. Forest-level data — the output of Get-ADForest, the site topology, the trust inventory — lives in assessment/forest/. Per-domain data — the domain object, domain controller inventory, OU hierarchy — lives in assessment/domains/{domainFQDN}/. GPO data lives in assessment/gpo/{domainFQDN}/, with one file per GPO named by GPO GUID. DNS infrastructure assessment output lives in assessment/dns/{domainFQDN}/. PKI data lives in assessment/pki/. Computer object data lives in assessment/computers/{domainFQDN}/. User data lives in assessment/users/{domainFQDN}/. Group data lives in assessment/groups/{domainFQDN}/. Trust data lives in assessment/trusts/. Every output file is produced in JSON format for pipeline consumption, with a parallel CSV file for human review. Every output file carries a metadata header — implemented as the first object in the JSON array for array-format files, or as a top-level \_metadata key for object-format files — that records the collection timestamp in ISO 8601 format, the tool name and version, the collecting account UPN, and the target domain controller's FQDN. This metadata structure ensures that any future reader of the assessment archive can determine when and how each file was produced.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Commit Early, Commit Often</strong></p>
@@ -236,10 +227,7 @@ The initial OrgTree population proceeds in four steps. In the first step, the OU
 
 The OrgPath attribute is stored in Entra ID as a directory schema extension registered to an application. The registration sequence begins with confirming that the schema extension application was created during the platform setup phase described in Chapter 3, and that its application object ID and client ID are recorded in the pipeline configuration file at pipeline/config.json. With that confirmation, the extension property creation proceeds by posting to the Microsoft Graph API endpoint /v1.0/applications/{applicationObjectId}/extensionProperties. The POST body for the OrgPath extension property is a JSON object with three fields: "name": "OrgPath", "dataType": "String", and "targetObjects": \["User", "Device"\]. The response includes the full registered attribute name in the name field of the response body — this is the string that all subsequent read and write operations must use, and it must be stored in the pipeline configuration immediately. Additional extension properties are created in separate POST requests to the same endpoint: OrgNodeId with dataType: "String" and targetObjects: \["User", "Device"\], to carry the leaf node id for efficient point-lookup queries; OrgDepth with dataType: "Integer" and targetObjects: \["User", "Device"\], to carry the integer depth of the node in the hierarchy for depth-bounded filtering; and OrgLastValidated with dataType: "String" and targetObjects: \["User", "Device"\], to carry the ISO 8601 timestamp of the last drift detection run that confirmed this object's OrgPath value against the current OrgTree. All four extension properties should be created in a single session and their registered names recorded in the pipeline configuration before any ETL work begins.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Do Not Delete the Schema Extension Application</strong></p>
@@ -364,10 +352,7 @@ Organizational restructuring events — a new division is created, two departmen
 
 The governance pipeline infrastructure requires periodic maintenance to remain operational. The schema extension application registration in Entra ID must be monitored to ensure its credentials — whether client secrets or certificate credentials — remain valid. If the application uses a client secret, the secret's expiration date must be tracked and the secret must be rotated before it expires, because an expired secret prevents the pipeline from authenticating to the Graph API and causes all attribute write operations to fail silently. Certificate credentials are preferable because they can be renewed with longer validity periods. The assessment service account used for Active Directory queries must have its password rotated according to the organization's standard password rotation schedule, and the pipeline configuration must be updated with the new credential wherever it is stored — in a protected credential store, not in the configuration file in clear text. The Git repository on the repository server must be backed up using a mechanism outside of the repository itself — a daily backup of the repository storage directory to a separate backup target — because the repository is the authoritative record of all governance decisions and its loss would be a significant governance incident. The PowerShell modules used by the pipeline — the Graph SDK, the Az module, the AD module — must be reviewed periodically for updates. Module updates should be tested in a non-production environment before being applied to the production automation server, because breaking changes in major module versions — particularly in the Microsoft Graph PowerShell SDK, which has a history of significant API changes between major versions — can cause pipeline failures that are not immediately obvious from the module's release notes alone. A monthly infrastructure maintenance task, added to the governance team's operational calendar, should review all of these components and confirm they are current, valid, and operational.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>The Governance Record as Operational Byproduct</strong></p>
@@ -394,10 +379,7 @@ The version-controlled repository contains the complete history of all of it. Ev
 
 What the organization has built is the layer that the Microsoft identity and governance stack does not provide. The cloud identity platform, the endpoint management system, the hybrid server management plane, the policy engine, the compliance reporting service — each of these tools is powerful in its own domain, and each is more capable than its on-premises predecessor in the ways it was designed to be. What none of them provides is a shared organizational model that spans all of them and gives them a common vocabulary for expressing where an identity belongs in the organization's structure. That shared model had to be built separately, above the tools, in a form that each tool can consume. OrgTree and OrgPath are that model. They are not a product. They are not a feature of any of the tools in the stack. They are an implementation that the engineering team built, deliberately and precisely, from the design established in Part Three of this series, using the assessment data gathered in the earliest chapters of this document and the construction steps that followed. The governance substrate now exists. The migration from the on-premises directory can proceed with the confidence that comes from knowing the governance model has not been abandoned — it has been rebuilt in a form that will outlast the infrastructure it was originally expressed through.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
+<table>
 <tbody>
 <tr>
 <td><p><strong>Series Summary</strong></p>
