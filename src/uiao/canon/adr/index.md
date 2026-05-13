@@ -97,7 +97,7 @@ Per CR-003, accepted ADRs are immutable.
 | [ADR-038](adr-038-device-plane-orgpath.md) | Device-Plane OrgPath Provisioning — Graph + ARM Dual-Transport Adapter | ACCEPTED | 2026-04-20 |
 | [ADR-039](adr-039-policy-targeting.md) | OrgTree Policy Targeting — Intune + Azure Policy Dual Transport | ACCEPTED | 2026-04-20 |
 | [ADR-040](adr-040-drift-engine.md) | OrgTree Drift Detection Engine — Six-Phase Orchestrator | ACCEPTED | 2026-04-20 |
-| [ADR-041](adr-041-uiao-git-infrastructure.md) | UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS | DRAFT | 2026-04-20 |
+| [ADR-041](adr-041-uiao-git-infrastructure.md) | UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS | ACCEPTED | 2026-05-12 |
 | [ADR-042](adr-042-ad-computer-conversion-guide-integration.md) | AD Computer Conversion Guide — Canonical Input to Phase 4 Device Planes | DRAFT | 2026-04-20 |
 
 ### Microsoft Coverage
@@ -178,7 +178,7 @@ ADR-057 now belongs solely to `adr-057-thousandeyes-networks-pillar-scope.md`.
 | [ADR-038](adr-038-device-plane-orgpath.md) | Device-Plane OrgPath Provisioning — Graph + ARM Dual-Transport Adapter | ACCEPTED | 2026-04-20 |
 | [ADR-039](adr-039-policy-targeting.md) | OrgTree Policy Targeting — Intune + Azure Policy Dual Transport | ACCEPTED | 2026-04-20 |
 | [ADR-040](adr-040-drift-engine.md) | OrgTree Drift Detection Engine — Six-Phase Orchestrator | ACCEPTED | 2026-04-20 |
-| [ADR-041](adr-041-uiao-git-infrastructure.md) | UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS | DRAFT | 2026-04-20 |
+| [ADR-041](adr-041-uiao-git-infrastructure.md) | UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS | ACCEPTED | 2026-05-12 |
 | [ADR-042](adr-042-ad-computer-conversion-guide-integration.md) | AD Computer Conversion Guide — Canonical Input to Phase 4 Device Planes | DRAFT | 2026-04-20 |
 | [ADR-043](adr-043-fedramp-rfc-0026-ca7-integration.md) | FedRAMP RFC-0026 (CA-7 Continuous Monitoring Expectations) — UIAO Integration | ACCEPTED | 2026-04-21 |
 | [ADR-044](adr-044-substrate-governance-realignment.md) | Substrate Governance Realignment to Post-ADR-032 Single Package | ACCEPTED | 2026-04-23 |
