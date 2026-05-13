@@ -25,27 +25,29 @@ aspirational: true
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-The STIG Compliance Adapter is a **conformance-class policy** adapter that evaluates system configuration against DISA Security Technical Implementation Guide (STIG) baselines. It ingests XCCDF assessment results from SCAP engines (OpenSCAP, SCAP Workbench) and normalizes them into canonical claims.
+The STIG Compliance Adapter is the **DISA STIG evaluation edge** of the UIAO substrate. As a conformance-class policy adapter, it ingests XCCDF assessment results from SCAP engines (OpenSCAP, SCAP Workbench, STIG Viewer automation, or OPA-based STIG rule engines) and normalizes them into canonical claims that map STIG rule outcomes to NIST 800-53 controls.
 
-Key capabilities: XCCDF result parsing (rule_id, severity, pass/fail/notapplicable), benchmark-scoped assessment, pass/fail counting for evidence generation, and STIG-to-NIST control mapping.
+STIG compliance is operationally distinct from generic vulnerability scanning ([`vuln-scan`](../vuln-scan/vuln-scan.html)). STIGs are configuration-hardening checks against a specific DISA-published baseline for a specific platform (RHEL 8 STIG, Windows Server 2022 STIG, Apache 2.4 STIG, etc.). Each rule has a stable identifier (`SV-NNNNNN`), a severity (CAT I / II / III), and a defined pass / fail / not-applicable result. The adapter is the canonical bridge between that DISA-native shape and the substrate's claim model.
 
-**Implementation:** `uiao/src/uiao/adapters/stigcompliance_adapter.py`. Conformance: 30/30 PASS.
+Three primary functions:
+
+1. **XCCDF result parsing.** Parses the structured XCCDF (Extensible Configuration Checklist Description Format) output produced by SCAP-compliant scanners, extracting rule identifier, severity, result, title, and remediation reference per rule into canonical claim shape.
+2. **Benchmark-scoped assessment summary.** Aggregates per-benchmark statistics — pass count, fail count, not-applicable count, percent compliant — keyed to the specific STIG benchmark version and the asset under assessment. The summary is the input to FedRAMP continuous-monitoring evidence and to baseline-drift findings.
+3. **STIG-to-NIST control mapping.** Translates STIG rule outcomes into NIST 800-53 control evidence via the canonical STIG-to-NIST cross-walk (CCI mappings). A failed STIG rule becomes a per-control deficiency record that flows into the POA&M generation pipeline.
+
+**Implementation:** `src/uiao/adapters/stigcompliance_adapter.py`. Conformance: 30/30 PASS. SCAP-engine driver selection is tracked as ODA-14; activation requires a per-adapter ADR.
 
 ## Scope
 
-Target surfaces / subsystems: _(not yet defined)_
+Target surfaces / subsystems: `xccdf-results`, `stig-benchmark-summaries`, `stig-to-nist-cci-mappings`
 
-**Reads:** STIG assessment results (JSON with rule_id, severity, result, title per XCCDF rule).
-**Emits:** `ClaimSet` with one claim per STIG rule result, `EvidenceObject` with pass/fail/total counts.
-**Does NOT:** execute SCAP scans, modify system configuration, or remediate findings. Read-only policy evaluation.
+**Reads:** SCAP / XCCDF assessment results (JSON or XML) with `rule_id`, `severity` (CAT I / II / III), `result` (pass / fail / notapplicable / error / unknown), `title`, and remediation reference per rule. Read-only — the adapter never invokes the SCAP engine; the scan runs on its own schedule and this adapter parses what it produces.
+
+**Emits:** `findings.json` (per-rule claim records with rule id, severity, result, title, asset, benchmark version), `metadata.json` (per-benchmark summary with pass / fail / not-applicable counts and percent-compliant), plus `EvidenceObject` records that feed the CM-6, CM-7, and CA-7 control evidence stream.
+
+**Does NOT:** execute SCAP scans, modify system configuration, remediate findings, or apply STIG-recommended changes. Read-only policy evaluation; remediation belongs to the configuration-management workflow.
 
 ## Controls
 
@@ -53,9 +55,9 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `CM-6`, `CM-7`, `CA-7`
 
 | Control | Role | Adapter capability |
 |---|---|---|
-| **CM-6** Configuration Settings | Primary | STIG rule evaluation verifies configuration settings against DISA baselines. |
-| **CM-7** Least Functionality | Supporting | STIG rules include least-functionality checks (disabled services, removed packages). |
-| **CA-7** Continuous Monitoring | Supporting | Scheduled STIG assessment provides continuous compliance posture evidence. |
+| **CM-6** Configuration Settings | Primary | STIG rule evaluation verifies configuration settings against DISA-published baselines per platform — the canonical evidence for configuration hardening compliance. |
+| **CM-7** Least Functionality | Supporting | STIG rules include least-functionality checks (disabled services, removed packages, restricted features); failures surface as least-functionality findings. |
+| **CA-7** Continuous Monitoring | Supporting | Scheduled STIG assessment provides continuous compliance posture evidence with the freshness-window semantics defined in canon. |
 
 ## Operational profile
 
@@ -77,12 +79,19 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `CM-6`, `CM-7`, `CA-7`
 
 ## Notes from canon
 
-Slot reserved per ARCHITECTURE.md §3.5 and §13 open decision ODA-14. Candidates include SCAP/OpenSCAP, STIG Viewer automation, or OPA-based STIG rule engines. Selection deferred to Phase 2 planning.
+Slot reserved per ARCHITECTURE.md §3.5 and §13 open decision ODA-14. Candidate engines include SCAP / OpenSCAP, STIG Viewer automation, or OPA-based STIG rule engines. Selection deferred to Phase 2 planning.
+
+Advisory mapping (per ADR-043 D4 / UIAO_132 §5, pending FedRAMP RFC-0026 ratification): satisfies requirement RV5-CA07-VLN (OS / DB / web application configuration scan) on the traditional FedRAMP authorization pathway, with the modernized pathway gated on publication of the VDR Balance Improvement Release.
+
+Pairs with [`vuln-scan`](../vuln-scan/vuln-scan.html), [`siem`](../siem/siem.html), and [`patch-state`](../patch-state/patch-state.html) as the four-adapter compliance-telemetry quartet that produces the continuous-monitoring evidence pack.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-025
+- ADR-025 — Adapter activation framework
+- ADR-043 — FedRAMP RFC-0026 pathway alignment
+- UIAO_132 — Continuous Monitoring Pack
+- https://github.com/FedRAMP/community/discussions/130
 
 ---
 
