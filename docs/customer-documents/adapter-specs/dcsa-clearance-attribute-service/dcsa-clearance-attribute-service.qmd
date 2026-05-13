@@ -24,37 +24,54 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the DCSA Federal Security Clearance Attribute Service adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The DCSA Federal Security Clearance Attribute Service Adapter is the **clearance-status attribute observer** of the UIAO substrate. As a conformance-class identity adapter, it observes federal security clearance status and continuous-evaluation events from the Defense Counterintelligence and Security Agency — the federal authority of record for federal security clearance investigations under EO 12968 and EO 13467 — and emits canonical claims with the disclosure-audit envelope.
+
+The clearance attribute is **the highest-sensitivity attribute surface** in the federal attribute-service family. Retention extends to 25 years per investigative-record retention schedules, far longer than any other attribute the substrate handles. **SEAD 7** statutorily mandates cross-agency reciprocity for clearance findings, so an agency that consumes a DCSA-issued clearance attribute is operating under reciprocity rather than re-adjudicating.
+
+Three primary functions:
+
+1. **Clearance-status disclosure observation.** Watches clearance-status disclosures from DCSA's authoritative channels — current clearance level, eligibility status, last adjudication date, sponsoring agency — emitting canonical claims per disclosure. The adapter never re-adjudicates; it observes the DCSA decision and records the disclosure.
+2. **Continuous-evaluation event ingestion.** Captures continuous-evaluation alerts (financial, behavioral, criminal, foreign contacts) as they are issued by DCSA's CE platform, emitting them as event-class claims that downstream consumers route through the Drift Engine's HIGH / CRITICAL escalation path when warranted.
+3. **Disclosure-audit emission.** Every disclosure carries the canonical disclosure-audit envelope citing the SEAD 7 reciprocity basis, the consuming entitlement, the Privacy Act SORN, and the originating DCSA investigation id.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR modeled on ADR-035.
 
 ## Scope
 
 Target surfaces / subsystems: `clearance-status`, `continuous-evaluation`, `investigation-record`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** DCSA authoritative channels for clearance status, continuous-evaluation alerts, and investigation-record metadata. Access gated by SEAD 7 reciprocity and the consuming-agency security agreement; entitlement recorded in `canon/reciprocal-consumption-registry.yaml`.
+
+**Emits:** `dcsa-clearance-response.json` (per-disclosure canonical claim with clearance level, eligibility, last-adjudication date, sponsoring agency), `dcsa-disclosure-audit.json` (per-disclosure audit record with SEAD 7 reciprocity citation, entitlement reference, Privacy Act SORN), plus `EvidenceObject` records that feed the IA-2 / IA-4 / AC-2 / AC-6 control evidence stream.
+
+**Does NOT:** initiate clearance investigations, modify clearance records, re-adjudicate clearance status, access investigation-record detail beyond what the disclosure event surfaces, or store the underlying investigative material outside the documented 25-year retention envelope.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `IA-2`, `IA-4`, `AC-2`, `AC-6`, `AU-2`, `AU-12`, `SC-8`, `SC-13`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IA-2** Identification and Authentication | Supporting | Clearance status supplements identification of cleared personnel for access decisions in classified systems. |
+| **IA-4** Identifier Management | Primary | DCSA investigation id is the stable identifier for each clearance disclosure. |
+| **AC-2** Account Management | Primary | Clearance-level claims drive account-management decisions (provisioning, level adjustment, deprovisioning on revocation). |
+| **AC-6** Least Privilege | Primary | Continuous-evaluation alerts feed the canonical least-privilege view: a revoked clearance immediately constrains downstream access. |
+| **AU-2** Event Logging | Primary | Every disclosure and CE event is logged with the canonical disclosure-audit envelope. |
+| **AU-12** Audit Record Generation | Supporting | Audit records carry the canonical provenance envelope per ADR-006. |
+| **SC-8** Transmission Confidentiality and Integrity | Primary | All DCSA exchanges are TLS-protected. |
+| **SC-13** Cryptographic Protection | Supporting | Validation uses FIPS-validated cryptographic libraries. |
 
 ## Operational profile
 
 | Field | Value |
 |---|---|
-| Runtime | `python-3.12` |
+| Runtime | `TBD` |
 | Runtime pin | `TBD` |
-| Runner class | `github-hosted` |
+| Runner class | `TBD` |
 | Tenancy | `per-customer` |
-| Evidence class | `interval` |
+| Evidence class | `baseline` |
 | Retention | `25` year(s) |
 
 ## Canon invariants
@@ -66,15 +83,16 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-DCSA is the federal authority of record for federal security clearance investigations and continuous-evaluation status under EO 12968 and EO 13467. Cross-agency reciprocity is statutorily mandated by SEAD 7. Highest-sensitivity attribute surface; retention extends to 25 years per investigative record retention schedules. Activation requires a per-adapter ADR modeled on ADR-035.
+DCSA is the federal authority of record for federal security clearance investigations and continuous-evaluation status under EO 12968 and EO 13467. Cross-agency reciprocity is statutorily mandated by SEAD 7. Highest-sensitivity attribute surface; retention extends to 25 years per investigative-record retention schedules. Activation requires a per-adapter ADR modeled on ADR-035.
+
+Member of the federal attribute-service family.
+
+ZTMM pillar: identity.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-055
-- UIAO_141
-- UIAO_142
-- https://www.dcsa.mil/
+- ADR-049 — Reserved-slot allocation framework
 
 ---
 

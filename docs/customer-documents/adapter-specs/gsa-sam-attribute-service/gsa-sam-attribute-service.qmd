@@ -24,38 +24,52 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the GSA SAM.gov Business Identity Attribute Service adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The GSA SAM.gov Business Identity Attribute Service Adapter is the **federal-business-identity attribute observer** of the UIAO substrate. As a conformance-class identity adapter, it observes business-identity disclosures from GSA SAM.gov — the federal authority of record for the Unique Entity Identifier (UEI) and business registration data used in federal contracting and grants — and emits canonical claims with the disclosure-audit envelope.
+
+SAM.gov serves a public-data API; nevertheless, the reciprocal-consumption entitlement model still applies for audit-grade disclosures. The entitlement record ties each disclosure to the consuming engagement (federal contract, federal grant award, exclusion screening) so the evidence trail remains intact.
+
+Three primary functions:
+
+1. **UEI + business registration observation.** Captures UEI assignments, business legal name, DBA names, address, NAICS codes, registration status (Active / Inactive), and expiration date from SAM.gov, normalizing into canonical claim shape per entity.
+2. **Exclusion-list observation.** Watches SAM.gov exclusion-list entries (suspensions, debarments, other exclusion actions) and emits canonical event claims that downstream consumers (contract-eligibility decisions, payment release gates) route through their own evidence streams.
+3. **Federal contract-eligibility correlation.** For consuming engagements that perform contract-eligibility decisions, correlates the SAM.gov registration status and exclusion-list state with the canonical decision audit so the downstream decision is traceable to the underlying SAM.gov data.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR modeled on ADR-035.
 
 ## Scope
 
 Target surfaces / subsystems: `uei-verification`, `business-registration`, `exclusion-list`, `federal-contract-eligibility`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** SAM.gov public-data API for entity records, registration status, NAICS code assignments, and exclusion-list entries. Public-data access; entitlement still recorded in `canon/reciprocal-consumption-registry.yaml` for audit-grade disclosures.
+
+**Emits:** `sam-attribute-response.json` (per-disclosure canonical claim with UEI, legal name, status, NAICS, exclusion state), `sam-disclosure-audit.json` (per-disclosure audit record with entitlement reference and authority citation), plus `EvidenceObject` records that feed the IA-2 / IA-4 / CA-9 control evidence stream.
+
+**Does NOT:** issue or modify UEI assignments (GSA is the authority of record), modify SAM.gov registrations, add or remove exclusion-list entries, or perform contract-award decisions (decisions are downstream consumer responsibility; the adapter is observation only).
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `IA-2`, `IA-4`, `AU-2`, `AU-12`, `CA-9`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IA-2** Identification and Authentication | Supporting | UEI claims supplement identification when an entity-anchored attribute is required by a downstream contracting decision. |
+| **IA-4** Identifier Management | Primary | UEI is the canonical federal entity identifier; the adapter records UEI as the stable id per entity claim. |
+| **AU-2** Event Logging | Primary | Every disclosure is logged with the canonical disclosure-audit envelope and entitlement reference. |
+| **AU-12** Audit Record Generation | Supporting | Audit records carry the canonical provenance envelope per ADR-006. |
+| **CA-9** Internal System Connections | Supporting | Federal-contract-eligibility decisions are downstream consumers; the adapter provides the canonical authority data for those decisions. |
 
 ## Operational profile
 
 | Field | Value |
 |---|---|
-| Runtime | `python-3.12` |
+| Runtime | `TBD` |
 | Runtime pin | `TBD` |
-| Runner class | `github-hosted` |
+| Runner class | `TBD` |
 | Tenancy | `per-customer` |
-| Evidence class | `interval` |
-| Retention | `7` year(s) |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
 
 ## Canon invariants
 
@@ -68,13 +82,14 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 GSA SAM.gov is the federal authority of record for the Unique Entity Identifier (UEI) and business registration data used in federal contracting and grants. Public-data API; the reciprocal-consumption entitlement model still applies for audit-grade disclosures. Activation requires a per-adapter ADR modeled on ADR-035.
 
+Member of the federal attribute-service family — pairs with [`treasury-ofac-attribute-service`](../treasury-ofac-attribute-service/treasury-ofac-attribute-service.html) (sanctions-screening complement for federal-contracting eligibility) and [`irs-tin-attribute-service`](../irs-tin-attribute-service/irs-tin-attribute-service.html) (TIN-verification complement).
+
+ZTMM pillars: identity, applications-and-workloads.
+
 ## References
 
 - UIAO-CANON-003
-- ADR-055
-- UIAO_141
-- UIAO_142
-- https://sam.gov/data-services/Entity%20Information
+- ADR-049 — Reserved-slot allocation framework
 
 ---
 

@@ -24,37 +24,53 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the PIV / USAccess Federal Personnel Credential Adapter adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The PIV / USAccess Adapter is the **federal-personnel credential observer** of the UIAO substrate. As a conformance-class identity adapter, it validates Federal Personal Identity Verification (FIPS 201-3) credentials — issuance authority, certificate chain to the Federal Common Policy CA, OCSP / CRL revocation state — and produces canonical claims that anchor federal-personnel authentication into the substrate's evidence and access-decision streams.
+
+This adapter closes the HRIT IAM gap for OPM-user PIV-based authentication mandated by **Solicitation 24322626R0007 Amd 4 Clause 1752.224-70(b)** and the PWS p. 112 Zero Trust posture (PIV / CAC). It is the credential-validation half of the federal-personnel authentication chain; the assertion-bearing half is the customer's SAML / OIDC IdP integrated with the personnel directory.
+
+Three primary functions:
+
+1. **PIV credential issuance observation.** Reads issuance metadata from the USAccess shared-service infrastructure (or the agency's PIV issuer) — credential id, FASC-N, UUID, issuance date, expiration date, sponsor — normalizing into canonical claim shape per credential.
+2. **Certificate chain validation.** Validates each PIV authentication certificate against the Federal Common Policy CA chain, producing per-certificate provenance with the path-validation result and the policy OIDs satisfied.
+3. **OCSP / CRL revocation state tracking.** Polls OCSP responders and CRL distribution points, recording revocation state with timestamp and reason. Revocation events flow into the canonical disclosure-audit stream.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR modeled on ADR-035.
 
 ## Scope
 
 Target surfaces / subsystems: `piv-credential-issuance`, `piv-authentication-certificates`, `federal-common-policy-chain`, `ocsp-validation`, `crl-distribution`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** USAccess shared-service issuance API (or agency PIV issuer API), Federal Common Policy CA chain and trust store, plus OCSP responder and CRL distribution point endpoints. mTLS or PIV-anchored client authentication per the canonical least-privilege role.
+
+**Emits:** `piv-credential-inventory.json` (canonical per-credential inventory with issuance, sponsor, expiration), `piv-validation-report.json` (per-credential certificate-chain and revocation validation results), plus `EvidenceObject` records that feed the IA-2(1) / IA-2(2) / IA-5(2) control evidence stream.
+
+**Does NOT:** issue or revoke PIV credentials (USAccess / agency-issuer operations), modify the Federal Common Policy trust store, perform card-present cryptographic operations, or store PIN values or biometric templates.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `IA-2(1)`, `IA-2(2)`, `IA-5(2)`, `SC-12`, `SC-13`, `SC-17`, `PE-2`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IA-2(1)** MFA — Privileged Accounts | Primary | PIV is the canonical federal-personnel MFA mechanism — multi-factor by construction (card + PIN). |
+| **IA-2(2)** MFA — Non-Privileged Accounts | Primary | PIV covers all federal-personnel authentication tiers. |
+| **IA-5(2)** PKI-Based Authentication | Primary | Certificate-chain validation against the Federal Common Policy CA is the canonical PKI-based authentication evidence. |
+| **SC-12** Cryptographic Key Establishment and Management | Supporting | Per-credential public-key metadata is recorded; private-key material remains on the smartcard. |
+| **SC-13** Cryptographic Protection | Supporting | Certificate-chain validation uses FIPS-validated cryptographic libraries. |
+| **SC-17** Public Key Infrastructure Certificates | Primary | The adapter is the canonical observer of certificate state under the Federal Common Policy. |
+| **PE-2** Physical Access Authorizations | Supporting | PIV credentials carry the visual / physical credential layer; the adapter records issuance and revocation that gates physical access. |
 
 ## Operational profile
 
 | Field | Value |
 |---|---|
-| Runtime | `python-3.12` |
+| Runtime | `TBD` |
 | Runtime pin | `TBD` |
-| Runner class | `github-hosted` |
+| Runner class | `TBD` |
 | Tenancy | `per-customer` |
-| Evidence class | `interval` |
+| Evidence class | `baseline` |
 | Retention | `3` year(s) |
 
 ## Canon invariants
@@ -66,14 +82,20 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Federal Personal Identity Verification (FIPS 201-3) credential observer. Validates issuance authority, certificate chain to the Federal Common Policy CA, and revocation state via OCSP / CRL. Closes the HRIT IAM gap for OPM-user PIV-based authentication mandated by Solicitation 24322626R0007 Amd 4 Clause 1752.224-70(b) and the PWS p. 112 Zero Trust posture (PIV/CAC). Companion to ADR-051 (SAML trust anchor): the federal-personnel authentication chain is PIV-cert → SAML-assertion-to-OPM-Entra → Application Identity binding. Tier-1 conformance status: pending — likely EXCLUDED per UIAO_131 §5.1 (no public USAccess developer sandbox) with compensating evidence per §5.1.1 (vendor-attested test report from GSA OR agency-operated PIV smartcard fixture). Activation requires a per-adapter ADR modeled on ADR-035.
+Federal Personal Identity Verification (FIPS 201-3) credential observer. Validates issuance authority, certificate chain to the Federal Common Policy CA, and revocation state via OCSP / CRL. Closes the HRIT IAM gap for OPM-user PIV-based authentication mandated by Solicitation 24322626R0007 Amd 4 Clause 1752.224-70(b) and the PWS p. 112 Zero Trust posture (PIV / CAC).
+
+Companion to ADR-051 (SAML trust anchor): the federal-personnel authentication chain is **PIV-cert → SAML-assertion-to-OPM-Entra → Application Identity binding**.
+
+Tier-1 conformance status: pending — likely EXCLUDED per UIAO_131 §5.1 (no public USAccess developer sandbox) with compensating evidence per §5.1.1 (vendor-attested test report from GSA OR agency-operated PIV smartcard fixture). Activation requires a per-adapter ADR modeled on ADR-035.
+
+ZTMM pillar: identity.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-052
-- https://www.idmanagement.gov/
-- https://piv.idmanagement.gov/
+- ADR-049 — Reserved-slot allocation framework
+- ADR-051 — SAML federation trust anchor
+- UIAO_131 — Tier-1 Conformance Standard
 
 ---
 

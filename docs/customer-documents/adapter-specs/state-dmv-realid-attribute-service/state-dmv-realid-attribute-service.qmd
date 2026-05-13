@@ -24,38 +24,53 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the State DMV REAL-ID Attribute Service adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The State DMV REAL-ID Attribute Service Adapter is the **state-issued driver-license attribute observer** of the UIAO substrate. As a conformance-class identity adapter, it observes attribute-disclosure events from state DMVs — the per-state authorities of record for driver licenses and state IDs under the **REAL ID Act of 2005** — and emits canonical claims with the disclosure-audit envelope.
+
+Federal-state attribute exchange flows through state-operated **AAMVA channels** (the American Association of Motor Vehicle Administrators), which provide the inter-state and federal-state data-exchange contracts that DMV-issued attributes traverse. Each consuming engagement may require a per-state legal-basis citation in the entitlement; some states permit only narrow uses.
+
+Three primary functions:
+
+1. **Driver-license / state-ID disclosure observation.** Captures DL / state-ID disclosure events — license class, expiration date, REAL-ID compliance flag, restrictions, endorsements — via the documented AAMVA channels, emitting canonical claims with the per-state authority citation.
+2. **REAL-ID compliance attestation.** Records whether the disclosed credential satisfies REAL ID requirements (gold-star or equivalent state marker), which is the canonical attribute for federal-facility access decisions post-2025 enforcement.
+3. **Per-state entitlement enforcement.** For each disclosure, validates that the consuming engagement has the per-state legal-basis citation recorded in `canon/reciprocal-consumption-registry.yaml`; engagements without the citation are rejected before any AAMVA call.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR modeled on ADR-035.
 
 ## Scope
 
 Target surfaces / subsystems: `drivers-license-verification`, `state-id-verification`, `real-id-compliance`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** State-operated AAMVA channels for driver-license and state-ID disclosure events. Access gated by the per-state legal-basis citation and the consuming-engagement entitlement; both recorded in `canon/reciprocal-consumption-registry.yaml`.
+
+**Emits:** `dmv-attribute-response.json` (per-disclosure canonical claim with credential class, expiration, REAL-ID flag, issuing state, restrictions), `dmv-disclosure-audit.json` (per-disclosure audit record with per-state legal-basis citation, entitlement reference, AAMVA channel id), plus `EvidenceObject` records that feed the IA-2 / IA-4 / AU-2 control evidence stream.
+
+**Does NOT:** issue or modify driver licenses or state IDs (state DMVs are the authorities of record), bulk-pull DMV records (per-subject disclosures only), access driving-history or violation records outside what the disclosure surfaces, or operate across states without the per-state entitlement.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `IA-2`, `IA-4`, `AU-2`, `AU-12`, `SC-8`, `SC-13`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IA-2** Identification and Authentication | Supporting | DL / state-ID claims supplement identification when a government-issued credential is required. |
+| **IA-4** Identifier Management | Primary | State-issued credential number is the stable identifier per disclosure (per-state namespace). |
+| **AU-2** Event Logging | Primary | Every disclosure is logged with the canonical disclosure-audit envelope, per-state legal-basis citation, AAMVA channel id. |
+| **AU-12** Audit Record Generation | Supporting | Audit records carry the canonical provenance envelope per ADR-006. |
+| **SC-8** Transmission Confidentiality and Integrity | Primary | All AAMVA exchanges are TLS-protected. |
+| **SC-13** Cryptographic Protection | Supporting | Validation uses FIPS-validated cryptographic libraries. |
 
 ## Operational profile
 
 | Field | Value |
 |---|---|
-| Runtime | `python-3.12` |
+| Runtime | `TBD` |
 | Runtime pin | `TBD` |
-| Runner class | `on-prem-self-hosted` |
+| Runner class | `TBD` |
 | Tenancy | `per-customer` |
-| Evidence class | `interval` |
-| Retention | `7` year(s) |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
 
 ## Canon invariants
 
@@ -66,15 +81,16 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-State DMVs are the per-state authorities of record for driver licenses and state IDs under the REAL ID Act of 2005. Inter- state and federal-state attribute exchange flows through state- operated AAMVA channels. Each consuming engagement may require a per-state legal-basis citation in the entitlement; some states permit only narrow uses. Activation requires a per- adapter ADR modeled on ADR-035.
+State DMVs are the per-state authorities of record for driver licenses and state IDs under the REAL ID Act of 2005. Inter-state and federal-state attribute exchange flows through state-operated AAMVA channels. Each consuming engagement may require a per-state legal-basis citation in the entitlement; some states permit only narrow uses. Activation requires a per-adapter ADR modeled on ADR-035.
+
+Member of the federal attribute-service family.
+
+ZTMM pillars: identity, data.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-055
-- UIAO_141
-- UIAO_142
-- https://www.dhs.gov/real-id
+- ADR-049 — Reserved-slot allocation framework
 
 ---
 
