@@ -43,17 +43,9 @@ Chapter Five covers the Azure RBAC integration. The tag strategy that maps OrgPa
 
 Chapter Six synthesizes the complete five-part model and describes what the organization now has, what it can now answer, and what it still requires of the engineering team to remain operational over time.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>Prerequisites</strong></p>
-<p>This document assumes the successful completion of Parts One through Four: the OrgTree registry is populated, OrgPath values are stamped and propagating across user, device, and server objects, dynamic groups are provisioned and evaluated, and the drift detection pipeline is running. Scripts in this document reference the OrgTree registry JSON file, the OrgPath schema extension attribute name, and the governance repository checkout pattern established in Part Four. These references are annotated inline with substitution instructions wherever environment-specific values are required.</p></td>
-</tr>
-</tbody>
-</table>
+::: {.callout-note title="Prerequisites"}
+This document assumes the successful completion of Parts One through Four: the OrgTree registry is populated, OrgPath values are stamped and propagating across user, device, and server objects, dynamic groups are provisioned and evaluated, and the drift detection pipeline is running. Scripts in this document reference the OrgTree registry JSON file, the OrgPath schema extension attribute name, and the governance repository checkout pattern established in Part Four. These references are annotated inline with substitution instructions wherever environment-specific values are required.
+:::
 
 ## Chapter 2 — Keeping Privileged Access Aligned with Organizational Structure
 
@@ -89,17 +81,9 @@ The DirectoryScopeId parameter in the eligibility schedule request body is set t
 
 The archived node flagging behavior — warning rather than deleting — is a deliberate design choice. The pipeline's job is synchronization, not remediation. A group corresponding to an archived node may have active activation requests in flight, may be under review by the compliance team, or may be temporarily archived during a reorganization with the expectation that it will return to Active status. Automatic deletion of PIM eligibilities in response to node archival would produce silent access revocations that could interrupt legitimate work without warning. The flag surfaces the condition to the governance team, who make the revocation decision explicitly.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>Pipeline Integration Note</strong></p>
-<p>This script is invoked as the third step in the OrgTree change propagation pipeline, after the dynamic group provisioning step and before the drift detection baseline update step. The pipeline sequence is: (1) validate registry commit, (2) propagate OrgPath writes to affected users and devices, (3) provision or update dynamic groups, (4) run Set-PIMEligibleGroupsFromOrgPath.ps1, (5) update drift detection baseline, (6) commit pipeline audit record to governance repository. If step 4 fails, the pipeline halts and creates an alert. It does not proceed to step 5, because an incomplete PIM synchronization should not be recorded as a successful baseline update.</p></td>
-</tr>
-</tbody>
-</table>
+::: {.callout-note title="Pipeline Integration Note"}
+This script is invoked as the third step in the OrgTree change propagation pipeline, after the dynamic group provisioning step and before the drift detection baseline update step. The pipeline sequence is: (1) validate registry commit, (2) propagate OrgPath writes to affected users and devices, (3) provision or update dynamic groups, (4) run Set-PIMEligibleGroupsFromOrgPath.ps1, (5) update drift detection baseline, (6) commit pipeline audit record to governance repository. If step 4 fails, the pipeline halts and creates an alert. It does not proceed to step 5, because an incomplete PIM synchronization should not be recorded as a successful baseline update.
+:::
 
 ## Chapter 3 — When an Identity Moves — Automating Structural Access Realignment
 
@@ -151,17 +135,9 @@ The Lifecycle Workflow sends notification emails to the user's new manager and, 
 
 The access review created in the handler script above is a one-time review, not a recurring review. It is specifically scoped to the transition event. It runs for seven days and is assigned to the user's new manager as the primary reviewer. The new manager reviews the user's current group memberships — which, at review time, already reflect the new OrgPath position — and certifies that the memberships are appropriate for the user's new role. If the manager denies any membership, the Lifecycle Workflow system removes the user from the denied group automatically when the review is processed. If the access review expires without a decision, the default decision is configured as None — no automatic removal — with an alert escalated to the governance team queue. This conservative default ensures that an expired review does not cause an inadvertent access revocation during a transition period when the new manager may not yet have visibility into what the user's role requires.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>Important: HR System Integration Dependency</strong></p>
-<p>The mover workflow is triggered by an OrgPath attribute change event. That attribute change is written by the governance propagation pipeline when the OrgTree registry changes. The OrgTree registry changes when the registry is updated — which, in a well-integrated environment, is driven by the HR system of record via the HR-to-Entra provisioning connector. The mover workflow's reliability is therefore directly dependent on the reliability of the HR-to-OrgTree integration. If the HR system records a position change but the OrgTree registry is not updated within the integration window, the mover workflow will not fire. Validate the HR integration pipeline end-to-end before relying on the mover workflow for compliance-critical access realignment.</p></td>
-</tr>
-</tbody>
-</table>
+::: {.callout-note title="Important: HR System Integration Dependency"}
+The mover workflow is triggered by an OrgPath attribute change event. That attribute change is written by the governance propagation pipeline when the OrgTree registry changes. The OrgTree registry changes when the registry is updated — which, in a well-integrated environment, is driven by the HR system of record via the HR-to-Entra provisioning connector. The mover workflow's reliability is therefore directly dependent on the reliability of the HR-to-OrgTree integration. If the HR system records a position change but the OrgTree registry is not updated within the integration window, the mover workflow will not fire. Validate the HR integration pipeline end-to-end before relying on the mover workflow for compliance-critical access realignment.
+:::
 
 ## Chapter 4 — Operational Visibility — Monitoring PIM Through the Lens of Organizational Structure
 
@@ -225,17 +201,9 @@ Query Two is the security operations team's real-time signal for elevated-risk a
 
 Query Three is the governance team's drift posture metric. The daily incident it produces — when the threshold is exceeded — is not a threat incident. It is a governance finding that the PIM eligibility configuration has diverged from the organizational structure, and that divergence must be remediated before the next compliance review. The finding is documented in the governance repository as a formal drift event, the remediation pipeline is run, and the query is re-executed within 24 hours to confirm that the count has returned below the threshold.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>Alert Tuning Guidance</strong></p>
-<p>The sensitive segment list in Query Two and the drift threshold in Query Three both require tuning during the initial deployment period. For the first 30 days after the Sentinel queries are deployed, collect baseline data on activation frequencies per organizational segment and on the typical drift count at each weekly governance review. Use those baselines to set the sensitive segment alert threshold and the drift incident threshold at levels that produce actionable incidents without overwhelming the queues. Revisit thresholds quarterly as organizational structure and activation patterns evolve.</p></td>
-</tr>
-</tbody>
-</table>
+::: {.callout-note title="Alert Tuning Guidance"}
+The sensitive segment list in Query Two and the drift threshold in Query Three both require tuning during the initial deployment period. For the first 30 days after the Sentinel queries are deployed, collect baseline data on activation frequencies per organizational segment and on the typical drift count at each weekly governance review. Use those baselines to set the sensitive segment alert threshold and the drift incident threshold at levels that produce actionable incidents without overwhelming the queues. Revisit thresholds quarterly as organizational structure and activation patterns evolve.
+:::
 
 ## Chapter 5 — Extending Structural Governance to the Resource Plane
 
@@ -296,17 +264,9 @@ Organizations with a flatter Azure resource organization — where resources fro
 
 The two scope models can coexist within a single deployment. A single invocation of the script with a subscription-level scope provides broad coverage for all nodes. Subsequent invocations with resource-group scopes for specific high-sensitivity nodes layer more restrictive assignments on top of the broad baseline, because a more specific RBAC assignment at resource-group scope does not override or conflict with a broader assignment at subscription scope — RBAC in Azure ARM is additive within a scope hierarchy. The governance team can use this layering to implement a progressively refined access model as resource organization catches up to the OrgTree structure.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>Pipeline Invocation Pattern for Multiple Roles</strong></p>
-<p>Run the script once per role definition per scope. A typical initial deployment for a single organizational segment might include three invocations: Reader at the subscription scope, Contributor at the node's dedicated resource group, and Virtual Machine Contributor at the resource group containing Arc-enrolled servers for that segment. The pipeline configuration file should enumerate all role/scope combinations and drive the script invocations in sequence. Adding a new role to the governance model requires adding a new entry to the pipeline configuration file and committing the change — the next pipeline run will create the new groups and assignments for all active nodes automatically.</p></td>
-</tr>
-</tbody>
-</table>
+::: {.callout-note title="Pipeline Invocation Pattern for Multiple Roles"}
+Run the script once per role definition per scope. A typical initial deployment for a single organizational segment might include three invocations: Reader at the subscription scope, Contributor at the node's dedicated resource group, and Virtual Machine Contributor at the resource group containing Arc-enrolled servers for that segment. The pipeline configuration file should enumerate all role/scope combinations and drive the script invocations in sequence. Adding a new role to the governance model requires adding a new entry to the pipeline configuration file and committing the change — the next pipeline run will create the new groups and assignments for all active nodes automatically.
+:::
 
 ## Chapter 6 — The Closed Loop — What the Full Integration Delivers
 

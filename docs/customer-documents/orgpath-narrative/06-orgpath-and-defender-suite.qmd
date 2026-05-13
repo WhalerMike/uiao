@@ -71,17 +71,9 @@ The consequences of this gap play out daily in every security operations center 
 
 Consider the most direct illustration of why this matters. A penetration test is authorized and running in the engineering division. The penetration testing team is generating exactly the alert signatures that a real attacker would generate: lateral movement, privilege escalation attempts, credential harvesting activity, anomalous SharePoint access. Simultaneously, a real attack is underway in the finance division, executing similar techniques. Both sets of activity appear in the Defender portal with identical alert structures. The engineering alerts are expected, documented, and should be acknowledged and excluded from the active investigation queue. The finance alerts are a live incident requiring immediate containment. Without organizational context in the alert data, differentiating these two scenarios requires out-of-band knowledge — an analyst who happens to know that a pentest is running in engineering, or a process that manually excludes engineering devices from the active incident queue for the pentest window. Neither is systematic. Both fail under load, when analysts are rotating, or when the pentest scope expands without the SOC being notified. The root cause is structural: the alert data carries no organizational position for the affected assets, so the SOC cannot build systematic, data-driven differentiation into its processes.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>📝 Organizational Context Is Not Asset Management</strong></p>
-<p>It is worth distinguishing between organizational context and asset management metadata. Asset management systems (CMDB, ITAM, SCCM inventory) track device ownership, location, cost center, and lifecycle state. These are useful fields, but they are not the same as organizational position in the governance hierarchy. OrgPath encodes the device's or user's position in the organizational tree — the chain of accountability from the root of the enterprise down to the specific unit responsible for the asset. This is the dimension that drives security policy differentiation, analyst ownership boundaries, and response procedure selection. Asset management metadata may contribute to deriving OrgPath, but it is not a substitute for it.</p></td>
-</tr>
-</tbody>
-</table>
+::: {.callout-note title="📝 Organizational Context Is Not Asset Management"}
+It is worth distinguishing between organizational context and asset management metadata. Asset management systems (CMDB, ITAM, SCCM inventory) track device ownership, location, cost center, and lifecycle state. These are useful fields, but they are not the same as organizational position in the governance hierarchy. OrgPath encodes the device's or user's position in the organizational tree — the chain of accountability from the root of the enterprise down to the specific unit responsible for the asset. This is the dimension that drives security policy differentiation, analyst ownership boundaries, and response procedure selection. Asset management metadata may contribute to deriving OrgPath, but it is not a substitute for it.
+:::
 
 ### What OrgPath Changes About the SOC Operating Model
 
@@ -153,17 +145,9 @@ This arrangement produces several operational properties that are worth naming e
 
 - **Scope boundaries are auditable.** Because RBAC scope follows a dynamic group whose membership rule is versioned in the governance repository, any scope change is traceable to a specific OrgTree registry update with an associated pull request and approval record.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>ⓘ Ungrouped Device Handling</strong></p>
-<p>MDE always maintains a built-in Ungrouped Devices group that captures devices not matched by any custom device group. In an OrgPath-governed environment, ungrouped devices represent assets whose OrgPath has not yet been assigned by the ETL pipeline — newly enrolled devices awaiting their first pipeline run, or devices that failed OrgPath assignment due to a registry gap. The Ungrouped Devices group should be monitored by a dedicated catch-all SOC role, and alerts from ungrouped devices should trigger an automatic OrgPath assignment ticket in the ITSM system. The goal is a zero-ungrouped-device steady state.</p></td>
-</tr>
-</tbody>
-</table>
+::: {.callout-note title="ⓘ Ungrouped Device Handling"}
+MDE always maintains a built-in Ungrouped Devices group that captures devices not matched by any custom device group. In an OrgPath-governed environment, ungrouped devices represent assets whose OrgPath has not yet been assigned by the ETL pipeline — newly enrolled devices awaiting their first pipeline run, or devices that failed OrgPath assignment due to a registry gap. The Ungrouped Devices group should be monitored by a dedicated catch-all SOC role, and alerts from ungrouped devices should trigger an automatic OrgPath assignment ticket in the ITSM system. The goal is a zero-ungrouped-device steady state.
+:::
 
 ## Chapter 3 — Defender for Identity: Investigation Enrichment and Alert Context
 
@@ -193,17 +177,9 @@ The sensitive segment rule handles the case of a single high-value alert. The su
 
 // --------------------------------------------------------------- // Sentinel Analytics Rule: MDI Alert Volume Surge by OrgPath Segment // Rule Name: MDI-OrgPath-AlertSurge // Frequency: Every 1 hour // Lookback: 1 hour // Severity: Medium (elevated to High by playbook if trend continues) // Trigger: Any OrgPath segment with \> AlertThreshold alerts in the window // Tables: SecurityAlert, AuditLogs // --------------------------------------------------------------- // SUBSTITUTE: Set AlertThreshold based on your environment's baseline MDI alert // volume per segment per hour during normal operations. // Recommended approach: Run the count query in Log Analytics for 30 days and // set the threshold at 2x the 95th-percentile hourly count per segment. let AlertThreshold = 10; let UserOrgPaths = AuditLogs \| where TimeGenerated \>= ago(7d) \| where OperationName == "Update user" \| mv-expand Props = AdditionalDetails \| where tostring(Props.displayName) contains "OrgPath" // SUBSTITUTE: Match the exact extension attribute displayName in your audit log \| extend UPN = tostring(TargetResources\[0\].userPrincipalName), OrgPath = tostring(Props.newValue) \| summarize arg_max(TimeGenerated, OrgPath) by UPN \| project UPN, OrgPath; SecurityAlert \| where TimeGenerated \>= ago(1h) \| where ProviderName == "Microsoft Defender for Identity" \| extend SourceUPN = tostring(todynamic(ExtendedProperties)\["User Name"\]) \| join kind=leftouter UserOrgPaths on \$left.SourceUPN == \$right.UPN // Devices or accounts without an OrgPath are binned as UNKNOWN. // These should be investigated separately as potential shadow IT or unmanaged accounts. \| extend OrgPath = iif(isempty(OrgPath), "UNKNOWN", OrgPath) \| summarize AlertCount = count(), // make_set captures up to 50 distinct alert types for incident description generation. AlertTypes = make_set(AlertName, 50), AffectedUsers = dcount(SourceUPN) by OrgPath, bin(TimeGenerated, 1h) \| where AlertCount \> AlertThreshold \| extend SurgeDetected = true \| project TimeGenerated, OrgPath, AlertCount, AlertTypes, AffectedUsers, SurgeDetected \| order by AlertCount desc
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>ⓘ Tuning the Surge Threshold</strong></p>
-<p>The AlertThreshold value requires per-environment calibration. Run the surge query without the threshold filter for thirty days of historical data. Calculate the 95th-percentile hourly alert count per OrgPath segment. Set the threshold at twice that value for each segment. If the analytics rule supports parameterized thresholds per segment, create a lookup table in Sentinel that maps OrgPath prefixes to per-segment thresholds. A global threshold will either over-alert on high-activity segments like Infrastructure or under-alert on low-baseline segments like Executive where even five alerts in an hour is a significant anomaly.</p></td>
-</tr>
-</tbody>
-</table>
+::: {.callout-note title="ⓘ Tuning the Surge Threshold"}
+The AlertThreshold value requires per-environment calibration. Run the surge query without the threshold filter for thirty days of historical data. Calculate the 95th-percentile hourly alert count per OrgPath segment. Set the threshold at twice that value for each segment. If the analytics rule supports parameterized thresholds per segment, create a lookup table in Sentinel that maps OrgPath prefixes to per-segment thresholds. A global threshold will either over-alert on high-activity segments like Infrastructure or under-alert on low-baseline segments like Executive where even five alerts in an hour is a significant anomaly.
+:::
 
 ## Chapter 4 — Defender for Cloud Apps: Session Controls and Anomaly Detection by Organizational Segment
 
@@ -245,17 +221,9 @@ The following Azure Policy definition uses the deployIfNotExists effect to autom
 
 { "properties": { "displayName": "OrgPath — Enable Defender for Servers Plan 2 on Tier0 Arc Machines", "description": "Deploys Defender for Servers Plan 2 on Arc-enabled machines whose OrgPath tag identifies them as Tier 0 infrastructure. Uses deployIfNotExists to automatically remediate non-compliant resources. Assign at the management group scope covering all subscriptions that may contain Tier 0 Arc-enrolled servers.", "mode": "Indexed", "parameters": { "OrgPathPrefix": { "type": "String", "defaultValue": "/Root/Infrastructure/Tier0", "metadata": { "displayName": "OrgPath Prefix for Tier 0 Machines", "description": "Arc machines whose OrgPath tag starts with this value receive Defender for Servers Plan 2. SUBSTITUTE: Replace with the exact Tier 0 OrgPath prefix used in your OrgTree registry." } } }, "policyRule": { "if": { "allOf": \[ { // Only evaluate Arc-enrolled machines (on-premises servers connected to Azure). "field": "type", "equals": "Microsoft.HybridCompute/machines" }, { // Match machines whose OrgPath tag contains the Tier 0 prefix. // "contains" is used rather than "startsWith" because Azure Policy // tag condition functions differ from KQL. For exact prefix matching, // use the "like" condition with a trailing wildcard: "/Root/Infrastructure/Tier0\*" "field": "tags\['OrgPath'\]", "contains": "\[parameters('OrgPathPrefix')\]" } \] }, "then": { "effect": "deployIfNotExists", "details": { "type": "Microsoft.Security/defenderForServersSettings", "name": "mma-agent", // Existence check: the resource is compliant if Plan 2 is already enabled. "existenceCondition": { "field": "Microsoft.Security/defenderForServersSettings/plan.name", "equals": "P2" }, // roleDefinitionIds: The managed identity performing remediation requires // the Security Admin role (fb1c8493-542b-48eb-b624-b4c8fea62acd) on the // target subscription. Grant this role to the policy assignment's managed // identity through the Remediation tab of the policy assignment blade. "roleDefinitionIds": \[ "/providers/Microsoft.Authorization/roleDefinitions/fb1c8493-542b-48eb-b624-b4c8fea62acd" \], "deployment": { "properties": { "mode": "incremental", "template": { "\$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#", "contentVersion": "1.0.0.0", "resources": \[ { "type": "Microsoft.Security/defenderForServersSettings", "apiVersion": "2022-01-01-preview", "name": "mma-agent", "properties": { "plan": { // P2 = Defender for Servers Plan 2 // P1 = Defender for Servers Plan 1 "name": "P2" } } } \] } } } } } } } }
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>⚠ Policy Assignment Scope</strong></p>
-<p>Assign this policy at the management group level that encompasses all subscriptions containing Arc-enrolled servers. Assigning at the subscription level requires creating a separate assignment per subscription and will miss servers in newly created subscriptions until the assignment is manually extended. Management group-level assignment covers all child subscriptions automatically. Ensure the policy assignment's system-assigned managed identity is granted Security Admin at the management group scope, not just the subscription level, to enable cross-subscription remediation tasks.</p></td>
-</tr>
-</tbody>
-</table>
+::: {.callout-note title="⚠ Policy Assignment Scope"}
+Assign this policy at the management group level that encompasses all subscriptions containing Arc-enrolled servers. Assigning at the subscription level requires creating a separate assignment per subscription and will miss servers in newly created subscriptions until the assignment is manually extended. Management group-level assignment covers all child subscriptions automatically. Ensure the policy assignment's system-assigned managed identity is granted Security Admin at the management group scope, not just the subscription level, to enable cross-subscription remediation tasks.
+:::
 
 ### Azure Resource Graph Query: Defender for Cloud Findings by OrgPath
 
@@ -332,23 +300,17 @@ The following Logic App definition implements the OrgPath-aware incident respons
 
 { "definition": { "\$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#", "contentVersion": "1.0.0.0", "triggers": { "Microsoft_Sentinel_incident": { "type": "ApiConnectionWebhook", "inputs": { "body": { "callback_url": "@{listCallbackUrl()}" }, "host": { "connection": { "name": "@parameters('\$connections')\['azuresentinel'\]\['connectionId'\]" } }, "path": "/incident-creation" } } }, "actions": { // --------------------------------------------------------------- // Step 1: Initialize variables for OrgPath and response config // --------------------------------------------------------------- "Init_UserOrgPath": { "type": "InitializeVariable", "inputs": { "variables": \[{ "name": "UserOrgPath", "type": "string", "value": "" }\] } }, "Init_ResponseConfig": { "type": "InitializeVariable", "runAfter": { "Init_UserOrgPath": \["Succeeded"\] }, "inputs": { "variables": \[{ "name": "ResponseConfig", "type": "object", "value": {} }\] } }, // --------------------------------------------------------------- // Step 2: Get incident entities from Sentinel // --------------------------------------------------------------- "Get_Incident_Entities": { "type": "ApiConnection", "runAfter": { "Init_ResponseConfig": \["Succeeded"\] }, "inputs": { "body": { "incidentArmId": "@triggerBody()?\['object'\]?\['id'\]" }, "host": { "connection": { "name": "@parameters('\$connections')\['azuresentinel'\]\['connectionId'\]" } }, "method": "post", "path": "/Incidents/Entities" } }, // --------------------------------------------------------------- // Step 3: Retrieve the response matrix from the governance repository. // SUBSTITUTE: Replace the URI with the raw content URL for the // response-matrix.json file in your governance repository. // For Azure DevOps: https://dev.azure.com/{org}/{project}/\_apis/git/ // repositories/{repo}/items?path=/governance/security/response-matrix.json // For GitHub: https://raw.githubusercontent.com/{org}/{repo}/main/ // governance/security/response-matrix.json // The managed identity must have Reader access to the repository. // --------------------------------------------------------------- "Get_Response_Matrix": { "type": "Http", "runAfter": { "Get_Incident_Entities": \["Succeeded"\] }, "inputs": { "method": "GET", "uri": "https://dev.azure.com/{OrgName}/{ProjectName}/\_apis/git/repositories/{RepoId}/items?path=/governance/security/response-matrix.json&api-version=7.1", "authentication": { "type": "ManagedServiceIdentity", "resource": "499b84ac-1321-427f-aa17-267ca6975798" } } }, "Parse_Response_Matrix": { "type": "ParseJson", "runAfter": { "Get_Response_Matrix": \["Succeeded"\] }, "inputs": { "content": "@body('Get_Response_Matrix')", "schema": { "type": "object", "properties": { "configurations": { "type": "array" } } } } }, // --------------------------------------------------------------- // Step 4: Process each entity in the incident // --------------------------------------------------------------- "For_Each_Entity": { "type": "Foreach", "runAfter": { "Parse_Response_Matrix": \["Succeeded"\] }, "foreach": "@body('Get_Incident_Entities')?\['Entities'\]", "actions": { "Check_If_Account_Entity": { "type": "If", "expression": { "and": \[{ "equals": \["@item()?\['Type'\]", "account"\] }\] }, "actions": { // Query Microsoft Graph for the user's OrgPath extension attribute. // SUBSTITUTE: Replace {AppIdWithoutHyphens} with the actual application // GUID (no hyphens) of the app registration used to define the OrgPath // extension attribute in Entra ID. // Example attribute name: extension_a9b8c7d6e5f4a9b8c7d6e5f4a9b8c7d6_OrgPath "Get_User_From_Graph": { "type": "Http", "inputs": { "method": "GET", "uri": "https://graph.microsoft.com/v1.0/users/@{item()?\['properties'\]?\['userPrincipalName'\]}?\$select=id,displayName,extension\_{AppIdWithoutHyphens}\_OrgPath", "authentication": { "type": "ManagedServiceIdentity", "resource": "https://graph.microsoft.com" } } }, "Set_UserOrgPath": { "type": "SetVariable", "runAfter": { "Get_User_From_Graph": \["Succeeded"\] }, "inputs": { "name": "UserOrgPath", "value": "@body('Get_User_From_Graph')?\['extension\_{AppIdWithoutHyphens}\_OrgPath'\]" } }, // --------------------------------------------------------------- // Step 5: Apply the response matrix — evaluate OrgPath prefix. // The Switch evaluates the most specific applicable prefix. // In production, replace this with a loop that iterates the // matrix configurations array and applies the first prefix match. // The Switch structure below handles the three most common cases // explicitly; extend the cases block for additional segments. // --------------------------------------------------------------- "Evaluate_OrgPath_Tier": { "type": "Switch", "runAfter": { "Set_UserOrgPath": \["Succeeded"\] }, "expression": "@startsWith(variables('UserOrgPath'), '/Root/Infrastructure/Tier0')", "cases": { "Case_Tier0": { "case": true, "actions": { "Comment_Tier0_Escalation": { "type": "ApiConnection", "inputs": { "body": { "incidentArmId": "@triggerBody()?\['object'\]?\['id'\]", "message": "ORGPATH TIER 0 ESCALATION\n\nAffected Identity: @{item()?\['properties'\]?\['userPrincipalName'\]}\nOrgPath: @{variables('UserOrgPath')}\n\nResponse Matrix: Tier 0 Critical\nActions Initiated:\n - P1 incident classification applied\n - Tier 0 SOC team notified via SEC-TIER0-CRITICAL queue\n - PIM eligible assignment review queued\n - Automatic device isolation: ENABLED per Tier 0 runbook\n - Access review: Initiated\n\nRunbook: https://wiki.internal/security/runbooks/tier0-incident" }, "host": { "connection": { "name": "@parameters('\$connections')\['azuresentinel'\]\['connectionId'\]" } }, "method": "post", "path": "/Incidents/Comment" } }, // Isolate the device in MDE via the Sentinel-MDE connection. // This action fires only for Tier 0 incidents where autoIsolate = true. "Isolate_Device_MDE": { "type": "ApiConnection", "runAfter": { "Comment_Tier0_Escalation": \["Succeeded"\] }, "inputs": { "body": { "incidentArmId": "@triggerBody()?\['object'\]?\['id'\]" }, "host": { "connection": { "name": "@parameters('\$connections')\['wdatp'\]\['connectionId'\]" } }, "method": "post", "path": "/IsolateDevice" } } } } }, // Default: standard response for non-Tier0, non-matched OrgPath "default": { "actions": { "Comment_Standard_Response": { "type": "ApiConnection", "inputs": { "body": { "incidentArmId": "@triggerBody()?\['object'\]?\['id'\]", "message": "ORGPATH CONTEXT ENRICHED\n\nAffected Identity: @{item()?\['properties'\]?\['userPrincipalName'\]}\nOrgPath: @{variables('UserOrgPath')}\n\nResponse Matrix: Standard\nActions Initiated:\n - Incident routed to SEC-STANDARD ITSM queue\n - Analyst assignment per standard rotation\n - No automatic isolation (analyst approval required)\n\nRunbook: https://wiki.internal/security/runbooks/standard-incident" }, "host": { "connection": { "name": "@parameters('\$connections')\['azuresentinel'\]\['connectionId'\]" } }, "method": "post", "path": "/Incidents/Comment" } } } } } }, // No action for non-account entities (device, IP, URL entities) "else": { "actions": {} } } } } } }, "parameters": { "\$connections": { "defaultValue": {}, "type": "Object" } } }
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>⚠ Managed Identity Permission Requirements</strong></p>
-<p>The Logic App's system-assigned managed identity requires the following permissions before this playbook will execute successfully. Missing any permission causes the affected action to fail with a 403 error, which will result in a partial execution and an incomplete incident comment. Verify each permission in the Entra ID <strong>Enterprise Applications</strong> blade under the managed identity's App ID before enabling the automation rule that triggers this playbook.</p>
-<blockquote>
-<p>• <strong>Microsoft Graph:</strong> User.Read.All — required for the Graph API user lookup action</p>
-<p>• <strong>Microsoft Sentinel Responder:</strong> Role assignment on the Sentinel workspace resource — required for incident comment and label actions</p>
-<p>• <strong>Microsoft Defender for Endpoint (via API connection):</strong> Machine.Isolate — required for the Tier 0 device isolation action</p>
-<p>• <strong>Azure DevOps or GitHub:</strong> Reader access to the governance repository — required for the response matrix retrieval action</p>
-</blockquote></td>
-</tr>
-</tbody>
-</table>
+::: {.callout-note title="⚠ Managed Identity Permission Requirements"}
+The Logic App's system-assigned managed identity requires the following permissions before this playbook will execute successfully. Missing any permission causes the affected action to fail with a 403 error, which will result in a partial execution and an incomplete incident comment. Verify each permission in the Entra ID <strong>Enterprise Applications</strong> blade under the managed identity's App ID before enabling the automation rule that triggers this playbook.
+
+• <strong>Microsoft Graph:</strong> User.Read.All — required for the Graph API user lookup action
+
+• <strong>Microsoft Sentinel Responder:</strong> Role assignment on the Sentinel workspace resource — required for incident comment and label actions
+
+• <strong>Microsoft Defender for Endpoint (via API connection):</strong> Machine.Isolate — required for the Tier 0 device isolation action
+
+• <strong>Azure DevOps or GitHub:</strong> Reader access to the governance repository — required for the response matrix retrieval action
+:::
 
 ## Chapter 8 — The Complete Defender Integration Architecture
 
@@ -382,17 +344,9 @@ The security operations center that has completed the implementation described a
 
 The governance model — defined in OrgTree, encoded in OrgPath, propagated automatically by the pipeline, enforced by Azure Policy and dynamic group membership, and expressed through the analytics and playbook layers — is the foundation that makes all of this possible. The Defender suite provides the signals. OrgPath provides the structure that makes those signals actionable at organizational scale. The series is not complete because all security problems have been solved; it is complete because the substrate has been built that allows security policy to be expressed, enforced, and measured in terms of the organizational reality the security team is actually protecting.
 
-<table style="width:1%;">
-<colgroup>
-<col style="width: 1%" />
-</colgroup>
-<tbody>
-<tr>
-<td><p><strong>📝 What Comes Next</strong></p>
-<p>Part Eight of this series covers governance health monitoring: the dashboards, alerting rules, and audit mechanisms that ensure the OrgPath substrate itself remains accurate, current, and authoritative. An organizational governance model is only as valuable as its fidelity to the actual organizational structure. Part Eight documents the continuous validation processes that detect and correct drift between OrgTree and the live environment — ensuring that the organizational context surfaced in the Defender suite accurately reflects the organization the security operations center is protecting.</p></td>
-</tr>
-</tbody>
-</table>
+::: {.callout-note title="📝 What Comes Next"}
+Part Eight of this series covers governance health monitoring: the dashboards, alerting rules, and audit mechanisms that ensure the OrgPath substrate itself remains accurate, current, and authoritative. An organizational governance model is only as valuable as its fidelity to the actual organizational structure. Part Eight documents the continuous validation processes that detect and correct drift between OrgTree and the live environment — ensuring that the organizational context surfaced in the Defender suite accurately reflects the organization the security operations center is protecting.
+:::
 
 ### Appendix A — Component and Naming Reference
 
