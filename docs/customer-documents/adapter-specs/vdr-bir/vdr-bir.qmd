@@ -25,27 +25,39 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the Vulnerability Detection and Response BIR (Pathway-1 Reserved Slot) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Vulnerability Detection and Response (VDR) BIR Adapter is the **Pathway-1 modernized vulnerability-management placeholder** in the UIAO substrate. As a conformance-class telemetry adapter, it reserves the canonical slot for the FedRAMP Vulnerability Detection and Response Balance Improvement Release — the modernized successor to today's pathway-2 vulnerability-scanning cadence covered by the [`vuln-scan`](../vuln-scan/vuln-scan.html), [`stig-compliance`](../stig-compliance/stig-compliance.html), and [`patch-state`](../patch-state/patch-state.html) adapters.
+
+The adapter is intentionally **stub-only today**. Its activation depends on FedRAMP publishing the VDR BIR; until then, the registry entry exists so consuming engagements can declare their planned pathway transition deterministically, and so the migration-readiness check can compute lead time against the mandatory adoption date in **Notice 0009** (2027-06-01). The VDR mandatory date is later than the [`ccm-bir`](../ccm-bir/ccm-bir.html) date, so CCM is the leading deadline; VDR follows.
+
+Three primary functions, all reserved for activation:
+
+1. **Automated VDR evidence emission (reserved).** When the BIR ships, the adapter will consume the substrate's vulnerability evidence stream from the pathway-2 quartet and emit the VDR-compliant continuous-monitoring artifact directly, replacing the periodic-snapshot model with the BIR's defined-cadence model.
+2. **Pathway-2 → Pathway-1 transition gate.** Until the BIR ships, instantiation raises `VdrAdapterNotYetAvailable`; consuming engagements stay on the pathway-2 vulnerability-scanning quartet. The transition is tracked in canon so a 3PAO can see the planned pathway-1 commitment in advance.
+3. **Migration-readiness contribution.** The adapter's reserved-slot metadata feeds the migration-readiness check that runs `readiness-lead-days = 90` ahead of the Notice 0009 mandatory date. Engagements without a pathway-1 plan land as drift findings against their canon-declared roadmap.
+
+**Implementation:** Reserved slot per ADR-043 / UIAO_132 §5. Stub module at `src/uiao/adapters/vdr_adapter.py` — instantiation raises `VdrAdapterNotYetAvailable` until the BIR ships. Activation requires the FedRAMP VDR BIR publication plus a per-adapter ADR.
 
 ## Scope
 
-Target surfaces / subsystems: _(not yet defined)_
+Target surfaces / subsystems: reserved (defined when the VDR BIR ships)
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** Reserved. The expected read surface is the FedRAMP-published VDR BIR API specification plus the substrate's existing vulnerability evidence stream (vuln-scan / stig-compliance / patch-state outputs).
+
+**Emits:** `findings.json` and `metadata.json` (shapes reserved for the BIR publication), plus `EvidenceObject` records that will feed the RA-5 / CA-7 / SI-2 control evidence stream under the modernized pathway.
+
+**Does NOT:** operate today (instantiation raises `VdrAdapterNotYetAvailable`), replace the pathway-2 vulnerability-scanning adapters until the BIR ships and the consuming engagement transitions, or modify the FedRAMP authorization-package shape outside what the BIR specifies.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `RA-5`, `CA-7`, `SI-2`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **RA-5** Vulnerability Monitoring and Scanning | Primary (reserved) | Once the BIR ships, this adapter is the canonical pathway-1 (modernized) vulnerability-monitoring evidence path. |
+| **CA-7** Continuous Monitoring | Primary (reserved) | The VDR BIR introduces a defined-cadence continuous-monitoring model for vulnerabilities; this adapter is the canonical pathway-1 surface for that cadence. |
+| **SI-2** Flaw Remediation | Supporting (reserved) | Remediation-state correlation between scan findings and patch state flows through this adapter under the modernized pathway. |
 
 ## Operational profile
 
@@ -67,24 +79,19 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Pathway-1 (modernized) slot reserved for the Vulnerability Detection and Response Balance Improvement Release once FedRAMP publishes it. Complements the pathway-2 `vuln-scan` slot; both share the CA-7 / RA-5 / SI-2 control surface. Stub module: src/uiao/adapters/vdr_adapter.py — instantiation raises VdrAdapterNotYetAvailable until the BIR ships.
+Pathway-1 (modernized) slot reserved for the Vulnerability Detection and Response Balance Improvement Release once FedRAMP publishes it. Complements the pathway-2 [`vuln-scan`](../vuln-scan/vuln-scan.html) slot; both share the CA-7 / RA-5 / SI-2 control surface. Stub module: `src/uiao/adapters/vdr_adapter.py` — instantiation raises `VdrAdapterNotYetAvailable` until the BIR ships.
 
-fedramp-rfc-0026 (advisory; per ADR-043 D4 / UIAO_132 §5):
-  requirement: RV5-CA07-VLN
-  pathway: pathway-1-modernized (reserved)
-  planned-pathway: pathway-1-modernized
-  pathway-transition-trigger: Publication of the VDR Balance Improvement Release
-  notice-0009-mandatory-by: "2027-06-01"
-  readiness-lead-days: 90
-  adr: ADR-043
+Mandatory adoption date (Notice 0009 / **2027-06-01**) follows the [`ccm-bir`](../ccm-bir/ccm-bir.html) deadline; the migration-readiness check (`readiness-lead-days = 90`) tracks both.
+
+Advisory mapping (per ADR-043 D4 / UIAO_132 §5): satisfies requirement RV5-CA07-VLN on the modernized FedRAMP authorization pathway-1, with the pathway-transition trigger being the publication of the VDR Balance Improvement Release.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-043
-- UIAO_132
-- https://github.com/FedRAMP/community/discussions/130
+- ADR-043 — FedRAMP RFC-0026 pathway alignment
+- UIAO_132 — Continuous Monitoring Pack
 - https://www.fedramp.gov/20x/notice-0009/
+- https://github.com/FedRAMP/community/discussions/130
 
 ---
 
