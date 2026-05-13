@@ -25,27 +25,40 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the Entra ID Administrative Units + Scoped Role Provisioning (OrgTree UIAO_154) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Entra ID Administrative Units + Scoped Role Provisioning Adapter is the **delegation actuator** of the UIAO OrgTree substrate. As a modernization-class integration adapter, it provisions Restricted Management Administrative Units (AUs) and scoped built-in role assignments in Microsoft Entra ID from the canonical UIAO_154 delegation matrix — translating organizational structure into enforceable least-privilege boundaries.
+
+Two primary functions:
+
+1. **Administrative Unit provisioning.** Creates one Restricted Management AU per UIAO_154 delegation row, scoped by the OrgPath prefix recorded in UIAO_151. AUs are bound to the user, group, and device populations whose OrgPath sits at or below the scope prefix, and that membership refreshes as the underlying OrgPath assignments evolve.
+2. **Scoped role assignment.** Issues directory-role assignments (User Administrator, Authentication Administrator, Helpdesk Administrator, etc.) scoped to the AU rather than tenant-wide. Each assignment cites the UIAO_154 row that authorized it and surfaces the role's blast radius in the resulting assignment report.
+
+Phantom resources — AUs whose OrgPath prefix does not resolve to an active UIAO_151 code, tenant-wide (unscoped) role assignments that should have been AU-scoped, and role assignments whose UIAO_154 row has been retired — surface as **skipped-manual** governance findings per UIAO_154 §Drift Detection. The adapter never auto-deletes or auto-narrows an existing assignment; correction routes through the Workflow 3 / Workflow 4 review cycles in UIAO_155.
+
+**Implementation:** `src/uiao/adapters/entra_admin_units.py`. `plan()` and `apply(dry_run=True)` are offline-safe; `apply(dry_run=False)` issues Graph API mutations against `/directory/administrativeUnits` and `/roleManagement/directory/roleAssignments`.
 
 ## Scope
 
 Target surfaces / subsystems: `administrative-units`, `scoped-role-assignments`, `orgpath-delegation-matrix`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** UIAO_154 delegation matrix (executable canon at `canon/data/orgpath/admin-units.yaml`), UIAO_151 codebook for OrgPath prefix validation, UIAO_152 dynamic-group canon for cross-reference, plus the live Entra ID AU and role-assignment state via Microsoft Graph.
+
+**Emits:** `admin-units-plan.json` (planned AU and role-assignment changes with per-row provenance back to UIAO_154), `admin-units-report.json` (post-apply audit trail), and skipped-manual findings for phantom resources surfaced into the governance findings stream.
+
+**Does NOT:** provision the `OrgTree-*-Admins` security groups that hold the *recipients* of these role assignments (those are UIAO_155 Workflow 5 assigned groups, owned by a separate workflow), modify role definitions or scope-restricted built-in roles, or touch tenant-wide role assignments that pre-date the UIAO substrate. Apply paths are gated on `dry_run=False`.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `AC-2`, `AC-3`, `AC-5`, `AC-6`, `CM-8`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **AC-2** Account Management | Primary | AU membership tracks OrgPath-derived population, providing a deterministic mapping from organizational position to administered account set. |
+| **AC-3** Access Enforcement | Primary | Scoped role assignments enforce that administrative authority applies only to the AU's bounded population, not tenant-wide. |
+| **AC-5** Separation of Duties | Primary | Per-OrgPath delegation in UIAO_154 enforces SoD by binding different administrative responsibilities to different organizational segments. |
+| **AC-6** Least Privilege | Primary | AU-scoped role assignments are the canonical mechanism for least-privilege delegation in Entra ID; this adapter is the enforcement edge. |
+| **CM-8** Information System Component Inventory | Supporting | The plan and report artifacts enumerate every AU, every scoped role assignment, and every UIAO_154 row that authorized them. |
 
 ## Operational profile
 
@@ -67,12 +80,19 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Binds to UIAO_154 (Delegation Matrix) through ADR-037; executable canon at canon/data/orgpath/admin-units.yaml, JSON Schema at schemas/orgpath/admin-units.schema.json. Depends on UIAO_151 (codebook, ADR-035) and UIAO_152 (dynamic groups, ADR-036) — loader enforces cross-canon integrity at PR CI. Implementation: src/uiao/adapters/entra_admin_units.py. Admin groups (OrgTree-*-Admins) are referenced but NOT provisioned — those are UIAO_155 Workflow 5 assigned groups.
+Binds to UIAO_154 (Delegation Matrix) through ADR-037; executable canon at `canon/data/orgpath/admin-units.yaml`, JSON Schema at `schemas/orgpath/admin-units.schema.json`. Depends on UIAO_151 (codebook, ADR-035) and UIAO_152 (dynamic groups, ADR-036) — the loader enforces cross-canon integrity at PR CI. Admin recipient groups (`OrgTree-*-Admins`) are referenced but **not** provisioned by this adapter — those are UIAO_155 Workflow 5 assigned groups, owned by a separate workflow.
+
+Phantom AUs, tenant-wide (unscoped) role assignments, and phantom role assignments are never auto-remediated: they surface as skipped-manual findings per UIAO_154 §Drift Detection + Governance Rule 4.
+
+ZTMM pillar: identity.
 
 ## References
 
 - UIAO-CANON-003
-- UIAO_007
+- UIAO_007 — OrgTree Modernization: AD to Entra ID
+- UIAO_151 — OrgPath Codebook
+- UIAO_154 — Delegation Matrix (Administrative Units + Roles)
+- UIAO_155 — Governance Workflow Catalog
 
 ---
 
