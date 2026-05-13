@@ -24,27 +24,39 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the BlueCat Address Manager adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The BlueCat Address Manager Adapter is the **commercial-deployment DDI actuator** in the UIAO substrate. As a modernization-class integration adapter, it consumes BlueCat Address Manager API data to produce canonical claims for DNS records, DHCP scopes, IP allocations, and side-by-side AD event-stream egress for directory-migration flows.
+
+BlueCat is the **commercial sibling** of [`infoblox`](../infoblox/infoblox.html). Infoblox carries FedRAMP-Moderate authorization for federal engagements; BlueCat is for commercial deployments. The two adapters expose the same canonical interface, so customer-side DDI tooling is interchangeable at the substrate level — a customer can move between Infoblox and BlueCat without touching downstream OSCAL pipelines or control mappings.
+
+Three primary functions:
+
+1. **DNS record enumeration.** Pulls A, AAAA, CNAME, MX, TXT, SRV, and PTR records from BlueCat via the documented API, normalizing each into canonical claim shape with FQDN, record type, value, TTL, and zone scope. Each record carries a provenance hash for deterministic regeneration.
+2. **DHCP scope + IP allocation inventory.** Captures DHCP scope definitions, lease ranges, exclusion ranges, and current IP allocations — the canonical input for network-component inventory under CM-8 on the commercial side.
+3. **Proposed DNS change reporting + side-by-side AD event stream.** Produces `DriftReport` entries for proposed DNS changes gated on explicit invocation; also emits the side-by-side AD event stream that directory-migration flows consume to coordinate DNS cutover with directory migration.
+
+**Implementation:** Reference implementation at `impl/src/uiao/impl/directory_migration/adapters/ipam/bluecat/` (migrated from uiao-gos on 2026-04-17). Requires `on-prem-self-hosted` runner with network access to the BlueCat API.
 
 ## Scope
 
 Target surfaces / subsystems: `dns-records`, `dhcp-scopes`, `ip-allocations`, `side-by-side-ad`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** BlueCat Address Manager REST API for DNS records (A, AAAA, CNAME, MX, TXT, SRV, PTR), zones, DHCP scopes, and lease state. Authenticated via the documented BlueCat API client.
+
+**Emits:** `ClaimSet` with one claim per DNS record, `DriftReport` for proposed DNS changes with field-level diff, `EvidenceObject` with record counts, plus the `dns-change-manifest.json`, `ipam-audit.json`, and `event-stream.ndjson` artifacts. The event-stream feed is the canonical side-by-side AD coordination channel for directory-migration flows, identical in shape to the Infoblox counterpart.
+
+**Does NOT:** modify DNS records without explicit change-approval invocation, access DHCP lease data of individual clients (aggregate scope data only per object-identity-only canon invariant), operate outside the configured DNS view, or modify appliance configuration.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `SC-20`, `SC-21`, `CM-8`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **SC-20** Secure Name / Address Resolution (Authoritative) | Primary | DNS record enumeration provides the canonical evidence of authoritative name-resolution state across all configured BlueCat zones. |
+| **SC-21** Secure Name / Address Resolution (Recursive) | Supporting | Zone configuration tracking supports recursive-resolution governance and DNSSEC posture review on the commercial side. |
+| **CM-8** Information System Component Inventory | Supporting | DNS record plus IP allocation enumeration produces the canonical network-component inventory keyed to zone. |
 
 ## Operational profile
 
@@ -66,11 +78,16 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Tier 4 adapter. Product: BlueCat Address Manager. Not FedRAMP-authorized (commercial deployments only; federal-preferred sibling is the `infoblox` adapter). Requires on-prem-self-hosted runner with network access to the BlueCat API. Reference implementation migrated from uiao-gos (2026-04-17) to impl/src/uiao/impl/directory_migration/adapters/ipam/bluecat/. Tier-1 conformance status: EXCLUDED per UIAO_131 §5.1 (BlueCat requires sales contact for any access; no public developer sandbox). Compensating evidence per UIAO_131 §5.1.1: vendor-attested test report from BlueCat OR agency-operated sandbox capture, plus exhaustive tier-2 fixture matrix covering every BlueCat API operation the adapter exposes. The §5.1.1 compensating-evidence artifact lands at docs/findings/compensating-evidence/bluecat-address-manager/ when filed.
+Tier 4 adapter. Product: BlueCat Address Manager. **Not FedRAMP-authorized** — commercial deployments only; the federal-preferred sibling is [`infoblox`](../infoblox/infoblox.html). Requires `on-prem-self-hosted` runner with network access to the BlueCat API.
+
+Reference implementation migrated from uiao-gos (2026-04-17) to `impl/src/uiao/impl/directory_migration/adapters/ipam/bluecat/`. Tier-1 conformance status: EXCLUDED per UIAO_131 §5.1 (BlueCat requires sales contact for any access; no public developer sandbox). Compensating evidence per UIAO_131 §5.1.1: vendor-attested test report from BlueCat OR agency-operated sandbox capture, plus exhaustive Tier-2 fixture matrix covering every BlueCat API operation the adapter exposes. The §5.1.1 compensating-evidence artifact lands at `docs/findings/compensating-evidence/bluecat-address-manager/` when filed.
+
+ZTMM pillar: networks.
 
 ## References
 
 - UIAO-CANON-003
+- UIAO_131 — Tier-1 Conformance Standard (§5.1 sandbox-exclusion + compensating-evidence procedure)
 
 ---
 

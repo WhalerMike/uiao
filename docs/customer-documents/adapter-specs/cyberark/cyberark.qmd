@@ -12,40 +12,41 @@ derived-from: uiao/canon (sync_canon.py)
 generated: '2026-05-07'
 ---
 
-
 # CyberArk Credential Rotation Adapter — Adapter Technical Specification
 
 ::: {.callout-note}
 ## Canon-derived document
 
-**Status:** `reserved` · **Class:** `modernization` · **Mission:** `integration` · **Phase:** `phase-planning`
+**Status:** `active` · **Class:** `modernization` · **Mission:** `integration` · **Phase:** `phase-1`
 
 **Canon source:** `canon/modernization-registry.yaml` (propagated by `uiao/tools/sync_canon.py`).
 
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-The CyberArk Adapter is an **integration-class** modernization adapter for credential rotation and privileged access management. It consumes CyberArk vault account data via the REST API and produces canonical claims for service accounts, certificates, and privileged credentials.
+The CyberArk Credential Rotation Adapter is the **privileged credential actuator** in the UIAO substrate. As a modernization-class integration adapter, it consumes CyberArk vault account data via the REST API and performs change-making actions against the PAM surface — credential rotation, lifecycle tracking, and service-account inventory — producing canonical claims with KSI-anchored provenance for every operation.
 
-Key capabilities: vault account enumeration by safe, credential rotation reporting (change-making surface), and KSI-anchored evidence generation for IA-5 compliance. Requires on-prem-self-hosted runner with network access to the vault.
+The adapter pairs upstream with [`active-directory`](../active-directory/active-directory.html) (which surveys the legacy service-account population) and [`entra-workload-identity`](../entra-workload-identity/entra-workload-identity.html) (which retires legacy service accounts onto federated workload identities). CyberArk serves the workloads that cannot yet federate — the long tail of credentials that must rotate on a schedule rather than disappear entirely.
 
-**Implementation:** `uiao/src/uiao/adapters/cyberark_adapter.py`. Conformance: 30/30 PASS.
+Three primary functions:
+
+1. **Vault account enumeration.** Lists CyberArk vault accounts by Safe and Platform, normalizing each account into canonical claim shape with account id, safe assignment, platform id, username, and last-rotation timestamp. Provenance hash is recorded per account.
+2. **Credential rotation dispatch.** Triggers credential rotation on the canonical schedule, with the rotation event emitted as a `DriftReport` entry plus a provenance-stamped audit record. The adapter never reads the rotated credential value — only metadata about the rotation operation.
+3. **Lifecycle + age tracking.** Tracks credential age, near-expiry signals, and over-permissioned credentials; emits findings when canonical thresholds (per IA-5) are crossed. Age findings feed the broader credential-hygiene view alongside `entra-workload-identity`.
+
+**Implementation:** `src/uiao/adapters/cyberark_adapter.py`. Conformance: 30/30 PASS. Requires `on-prem-self-hosted` runner with network access to the CyberArk vault REST API.
 
 ## Scope
 
 Target surfaces / subsystems: `privileged-accounts`, `service-credentials`, `certificate-rotation`, `vault-policies`
 
-**Reads:** CyberArk vault account data (JSON with AccountID, SafeName, PlatformID, UserName, LastModifiedTime).
-**Emits:** `ClaimSet` with one claim per vault account, `DriftReport` for rotation actions, `EvidenceObject` with account count.
-**Does NOT:** rotate credentials without explicit invocation, access credential values/secrets, or operate outside the configured safe scope.
+**Reads:** CyberArk vault account data via the PAS REST API (`/PasswordVault/API/Accounts/`), Safe metadata, Platform definitions, and rotation history. Read-only metadata access; the adapter never reads the credential value.
+
+**Emits:** `ClaimSet` with one claim per vault account (account id, safe, platform, username, last rotation, owner), `DriftReport` for rotation actions taken in the run, `EvidenceObject` with account counts and rotation-event provenance, plus the `rotation-manifest.json` and `credential-audit.json` artifacts that anchor change-control review.
+
+**Does NOT:** rotate credentials without explicit invocation (rotation is gated on `workflow_dispatch` / `schedule` triggers per the canonical rotation policy), access credential values or secrets, operate outside the configured Safe scope, or modify Safe definitions / Platform definitions / vault policy.
 
 ## Controls
 
@@ -53,10 +54,10 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `IA-5`, `IA-5(1)`, `AC-2`, 
 
 | Control | Role | Adapter capability |
 |---|---|---|
-| **IA-5** Authenticator Management | Primary | Credential lifecycle tracking with rotation timestamps and safe assignments. |
-| **IA-5(1)** Password-Based Authentication | Supporting | Password rotation scheduling and compliance evidence. |
-| **AC-2** Account Management | Supporting | Service account enumeration and lifecycle tracking. |
-| **AC-6** Least Privilege | Supporting | Safe-scoped access ensures credential isolation per least-privilege. |
+| **IA-5** Authenticator Management | Primary | Credential lifecycle tracking with rotation timestamps and Safe assignments — the canonical authenticator-management evidence source for vault-managed credentials. |
+| **IA-5(1)** Password-Based Authentication | Primary | Password rotation scheduling and compliance evidence; the rotation event itself is provenance-stamped and traceable to the canonical rotation policy. |
+| **AC-2** Account Management | Supporting | Vault-managed service-account enumeration complements the broader account-management view from [`active-directory`](../active-directory/active-directory.html) and [`entra-id`](../entra-id/entra-id.html). |
+| **AC-6** Least Privilege | Supporting | Safe-scoped access ensures credential isolation per least-privilege — credentials in one Safe cannot be retrieved by principals in another. |
 
 ## Operational profile
 
@@ -78,7 +79,9 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `IA-5`, `IA-5(1)`, `AC-2`, 
 
 ## Notes from canon
 
-Tier 4 adapter. Requires on-prem-self-hosted runner with network access to CyberArk vault API. Cited in ODA-15 resolution as a future integration-class adapter example.
+Tier 4 adapter. Credential rotation and privileged access management — change-making actions against vault / PAM systems. Requires `on-prem-self-hosted` runner with network access to CyberArk vault REST API. Cited in the resolved ODA-15 (UIAO_003 §4.7) as a future integration-class adapter example.
+
+ZTMM pillars: identity, applications-and-workloads.
 
 ## References
 
