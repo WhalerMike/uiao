@@ -24,27 +24,43 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the Microsoft Defender for Servers (Reserved Slot) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Microsoft Defender for Servers Adapter is the **server-risk telemetry edge** in the UIAO substrate. As a conformance-class telemetry adapter, it consumes the read-only feeds Defender for Servers exposes against Arc-enrolled machines — vulnerability state, EDR findings, posture recommendations, and security-baseline state — and routes them through the canonical evidence chain so OrgPath-keyed server populations carry an authoritative posture record.
+
+This adapter is the server-plane analog of [`defender-for-endpoint`](../defender-for-endpoint/defender-for-endpoint.html): the endpoint adapter handles client devices, this one handles Arc-enrolled servers. The split mirrors the device / server distinction across the OrgPath plane (UIAO_153) and the Azure management surface.
+
+Three primary functions:
+
+1. **Server vulnerability state ingestion.** Pulls per-server vulnerability inventory from Defender for Servers' vulnerability assessment, normalizing CVE / CWE references, severity, exposure context, and remediation state into canonical claim shape.
+2. **EDR finding ingestion.** Captures Defender's server-side EDR findings — active alerts, suspicious behavior, lateral movement signals — and emits them as evidence keyed to OrgPath segment for cross-server correlation by SOC consumers.
+3. **Posture + baseline state observation.** Tracks the Microsoft cloud-security-baseline posture per server, surface-level posture recommendations, and per-baseline compliance percentages. The recommendations flow downstream where [`azure-policy-arc`](../azure-policy-arc/azure-policy-arc.html) can act on them.
+
+The adapter complements the modernization-side `azure-arc` adapters (which establish the Arc enrollment and management plane) by adding the security-posture signal that UIAO_136 Spec 1 device-cohort sequencing depends on for server populations.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR.
 
 ## Scope
 
 Target surfaces / subsystems: `server-vulnerability-state`, `server-edr-findings`, `posture-recommendations`, `security-baseline-state`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** Defender for Servers / Defender for Cloud APIs for Arc-enrolled and Azure-VM server inventory, vulnerability assessments, EDR alerts, posture recommendations, and Microsoft cloud-security-baseline compliance state. Read-only access via Azure Resource Manager and the Defender API surface.
+
+**Emits:** `defender-servers-findings.json` (per-server EDR findings + vulnerability records with severity and CVE references), `defender-servers-posture.json` (per-server posture recommendations and baseline compliance percentages), plus `EvidenceObject` records keyed to OrgPath server-plane segment for SOC and assessor consumers.
+
+**Does NOT:** modify Defender configuration (rule suppression, exclusions, machine tags), execute remediation actions on servers, isolate servers, modify the Microsoft cloud-security-baseline definition, or write to Arc machines. This is the *observation* surface; remediation is the [`azure-policy-arc`](../azure-policy-arc/azure-policy-arc.html) adapter's role.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `RA-5`, `CA-7`, `SI-2`, `SI-4`, `CM-6`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **RA-5** Vulnerability Monitoring and Scanning | Primary | Per-server vulnerability inventory is the canonical vulnerability-monitoring evidence source for Arc-enrolled and Azure-VM servers. |
+| **CA-7** Continuous Monitoring | Primary | Scheduled telemetry collection provides continuous server posture evidence with the freshness-window semantics defined in canon. |
+| **SI-2** Flaw Remediation | Supporting | Vulnerability inventory + posture recommendations drive the server-side patch / update remediation queue (remediation itself is a sibling adapter). |
+| **SI-4** System Monitoring | Primary | Server-side EDR findings + active alert inventory provide the canonical server-monitoring evidence. |
+| **CM-6** Configuration Settings | Supporting | Microsoft cloud-security-baseline compliance state surfaces deviations from the configured baseline; deviations route to `azure-policy-arc` for remediation. |
 
 ## Operational profile
 
@@ -66,12 +82,15 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Reserved slot per ADR-049. Read-only telemetry feed for Arc-server EDR findings, posture recommendations, vulnerability state, and security-baseline state from Microsoft Defender for Servers. Complements the `azure-arc` modernization adapters by providing the server-plane risk signal that UIAO_136 Spec 1 device-cohort sequencing depends on.
+Reserved slot per ADR-049. Read-only telemetry feed for Arc-server EDR findings, posture recommendations, vulnerability state, and security-baseline state from Microsoft Defender for Servers. Complements the modernization-side `azure-arc` adapters by providing the server-plane risk signal that UIAO_136 Spec 1 device-cohort sequencing depends on.
+
+ZTMM pillar: devices.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-049
+- ADR-049 — Reserved-slot allocation framework
+- UIAO_136 — Priority-1 transformation project plans (Spec 1)
 
 ---
 
