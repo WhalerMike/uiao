@@ -25,27 +25,46 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the OrgTree Drift Detection Engine — UIAO_163 Six-Phase Orchestrator adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The OrgTree Drift Detection Engine is the **substrate-internal orchestrator** that turns the OrgPath phase adapters into a closed drift-detection-to-remediation loop. As a modernization-class integration adapter, it composes the four Phase 2–5 adapters — [`entra-dynamic-groups`](../entra-dynamic-groups/entra-dynamic-groups.html), [`entra-admin-units`](../entra-admin-units/entra-admin-units.html), [`entra-device-orgpath`](../entra-device-orgpath/entra-device-orgpath.html), [`entra-policy-targeting`](../entra-policy-targeting/entra-policy-targeting.html) — into the canonical UIAO_163 six-phase loop: **Snapshot → Compare → Classify → Alert → Remediate → Verify**.
+
+This adapter does not talk to Microsoft Graph or Azure Resource Manager directly. It delegates planning and write operations to each phase adapter and reads back their structured findings, producing a unified drift-finding stream keyed to OrgPath segment.
+
+Six primary functions, one per UIAO_163 phase:
+
+1. **Snapshot.** Invokes each phase adapter in `plan()` mode to capture the current canonical state across dynamic groups, admin units, device OrgPath assignments, and policy targeting.
+2. **Compare.** Diffs the snapshot against the canon-declared target state (UIAO_152 / UIAO_153 / UIAO_154 / UIAO_164) to produce per-phase delta records.
+3. **Classify.** Assigns drift class (`DRIFT-SCHEMA`, `DRIFT-PROVENANCE`, `DRIFT-AUTHZ`, `DRIFT-IDENTITY`, `DRIFT-SEMANTIC`) and severity per the canon-defined deterministic mapping.
+4. **Alert.** Emits findings into the unified-finding stream with the canonical disclosure-audit envelope; HIGH / CRITICAL findings route through the Governance Plane.
+5. **Remediate.** For non-governance-review classes, delegates the remediation action to the appropriate phase adapter via `apply(dry_run=False)`. Governance-review operations (`auto_remediate=false`) are **never** dispatched regardless of flag.
+6. **Verify.** Re-invokes the affected phase adapter in `plan()` mode to confirm the remediation closed the drift; verification failures escalate.
+
+`dry_run=True` is the default at every layer; an operator must explicitly opt into apply paths.
+
+**Implementation:** `src/uiao/governance/drift_engine.py`. Binds to UIAO_163 through ADR-040. Executable config at `canon/data/orgpath/drift-engine-config.yaml`; JSON Schema at `schemas/orgpath/drift-engine-config.schema.json`.
 
 ## Scope
 
 Target surfaces / subsystems: `orgtree-drift-observation`, `unified-finding-stream`, `cross-phase-remediation`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** UIAO_163 executable config, the four phase adapters' `plan()` output, and the canonical target-state declarations in UIAO_152 / UIAO_153 / UIAO_154 / UIAO_164.
+
+**Emits:** `drift-scan-report.json` (per-scan canonical findings keyed to OrgPath segment with drift class, severity, phase, and remediation contract), plus `EvidenceObject` records that feed the CA-7 / CM-6 / CM-8 / SI-4 control evidence stream.
+
+**Does NOT:** issue Microsoft Graph or Azure Resource Manager calls directly (all writes go through the delegated phase adapters), modify the UIAO_152 / UIAO_153 / UIAO_154 / UIAO_164 canon documents (those are canon-change-ADR concerns), or auto-remediate findings whose `auto_remediate` flag is false (those route through UIAO_155 governance review).
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CA-7`, `CM-6`, `CM-8`, `AC-6`, `SI-4`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CA-7** Continuous Monitoring | Primary | The Snapshot → Verify loop is the canonical continuous-monitoring mechanism for the OrgTree governance substrate. |
+| **CM-6** Configuration Settings | Primary | Drift findings identify per-segment configuration-setting deviations across the four phase adapters' surfaces. |
+| **CM-8** Information System Component Inventory | Supporting | The unified-finding stream surfaces inventory deltas as `DRIFT-PROVENANCE` findings. |
+| **AC-6** Least Privilege | Supporting | Admin-unit and role-assignment drift surfaces least-privilege deviations through the [`entra-admin-units`](../entra-admin-units/entra-admin-units.html) delegation. |
+| **SI-4** System Monitoring | Primary | The unified-finding stream is the canonical system-monitoring evidence for the OrgPath surface. |
 
 ## Operational profile
 
@@ -67,12 +86,16 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Binds to UIAO_163 through ADR-040; executable config at canon/data/orgpath/drift-engine-config.yaml, JSON Schema at schemas/orgpath/drift-engine-config.schema.json. Composes the four Phase 2–5 adapters (entra-dynamic-groups, entra-admin-units, entra-device-orgpath, entra-policy-targeting). Implementation: src/uiao/governance/drift_engine.py. dry_run=True is the default everywhere; governance-review ops (auto_remediate=false) are never dispatched regardless of flag.
+Binds to UIAO_163 through ADR-040; executable config at `canon/data/orgpath/drift-engine-config.yaml`, JSON Schema at `schemas/orgpath/drift-engine-config.schema.json`. Composes the four Phase 2–5 adapters ([`entra-dynamic-groups`](../entra-dynamic-groups/entra-dynamic-groups.html), [`entra-admin-units`](../entra-admin-units/entra-admin-units.html), [`entra-device-orgpath`](../entra-device-orgpath/entra-device-orgpath.html), [`entra-policy-targeting`](../entra-policy-targeting/entra-policy-targeting.html)). Implementation: `src/uiao/governance/drift_engine.py`. `dry_run=True` is the default everywhere; governance-review operations (`auto_remediate=false`) are never dispatched regardless of flag.
+
+ZTMM pillar: identity.
 
 ## References
 
 - UIAO-CANON-003
-- UIAO_007
+- UIAO_007 — OrgTree Modernization: AD to Entra ID
+- UIAO_163 — OrgTree Drift Detection Engine specification
+- ADR-040 — Drift Detection Engine binding
 
 ---
 
