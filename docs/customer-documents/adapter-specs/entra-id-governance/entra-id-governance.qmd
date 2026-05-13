@@ -24,27 +24,47 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the Microsoft Entra ID Governance (Reserved Slot) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Microsoft Entra ID Governance Adapter is the **identity-governance actuator** in the UIAO Entra family. As a modernization-class integration adapter, it provisions and updates the governance-plane Entra constructs that turn raw identity into operationally-controlled identity: Access Reviews, Entitlement Management packages, Lifecycle Workflows, PIM role assignments, and Separation-of-Duties policies.
+
+It sits alongside the other Entra-family adapters this batch covers and completes the access-plane story:
+
+- **[`entra-id`](../entra-id/entra-id.html)** — handles user / group / service-principal / Conditional Access (the *what exists*).
+- **[`entra-dynamic-groups`](../entra-dynamic-groups/entra-dynamic-groups.html)** (UIAO_152), **[`entra-admin-units`](../entra-admin-units/entra-admin-units.html)** (UIAO_154), **[`entra-device-orgpath`](../entra-device-orgpath/entra-device-orgpath.html)** (UIAO_153), **[`entra-policy-targeting`](../entra-policy-targeting/entra-policy-targeting.html)** (UIAO_164) — handle the OrgPath-driven structural layer (the *how it's organized*).
+- **This adapter** — handles the lifecycle and access-decision layer (the *how access is reviewed, granted, escalated, and retired*).
+
+Three primary functions:
+
+1. **Access Review provisioning.** Creates and updates Access Review definitions per UIAO_154 delegation matrix and UIAO_155 governance workflow catalog. Reviewers, scope, decision rules, and recurrence are canon-governed; one Access Review per OrgTree node that meets the review-boundary threshold.
+2. **Entitlement Management package provisioning.** Provisions catalog access packages keyed to OrgPath populations, with the canonical request workflow, expiration policy, and assignment policy attached. The HR-driven provisioning output described by UIAO_136 Spec 2 (D3.1 forthcoming) feeds the catalog directly.
+3. **Lifecycle Workflows + PIM + SoD configuration.** Wires Lifecycle Workflows for joiner / mover / leaver events, configures PIM role-activation requirements (justification, MFA, approval) per the canon-defined risk tier, and provisions Separation-of-Duties policies that prevent the documented incompatible-role combinations.
+
+**Implementation:** Reserved slot. Activation requires a per-adapter ADR (modeled on ADR-035) and the in-flight HR-driven provisioning output from UIAO_136 Spec 2.
 
 ## Scope
 
 Target surfaces / subsystems: `access-reviews`, `entitlement-management-packages`, `lifecycle-workflows`, `pim-role-assignments`, `separation-of-duties-policies`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** UIAO_154 delegation matrix and UIAO_155 governance workflow catalog (executable canon under `canon/data/orgpath/`), HR-driven population data from UIAO_136 Spec 2 (when activated), and the live Entra ID Governance state via Microsoft Graph (`/identityGovernance/accessReviews`, `/identityGovernance/entitlementManagement`, `/identityGovernance/lifecycleWorkflows`, `/roleManagement/directory`).
+
+**Emits:** `governance-config-manifest.json` (planned changes per construct, with per-row provenance back to UIAO_154 / UIAO_155), `governance-audit.json` (post-apply audit trail), and skipped-manual findings for governance-review operations the adapter declines to auto-apply.
+
+**Does NOT:** make person-identity decisions on behalf of approvers (Access Reviews are the human-decision surface; this adapter only *creates* the review, it does not vote), modify role definitions, manage directory schema, or auto-approve Entitlement Management requests. Apply paths are gated on `dry_run=False`; reviewer-decision operations remain human-bound.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `AC-2`, `AC-2(3)`, `AC-5`, `AC-6`, `AC-6(2)`, `AU-2`, `IA-4`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **AC-2** Account Management | Primary | Access Reviews and Entitlement Management packages provide the canonical mechanism for periodic account-validity assessment and standing-access reduction. |
+| **AC-2(3)** Disable Inactive Accounts | Primary | Lifecycle Workflows trigger on inactivity / leaver events to disable accounts deterministically rather than relying on operator vigilance. |
+| **AC-5** Separation of Duties | Primary | SoD policies enforce the canonical incompatible-role combinations from UIAO_154; assignments that violate SoD surface as findings. |
+| **AC-6** Least Privilege | Primary | PIM activation policies require justification, MFA, and approval before any privileged role becomes active — standing privilege is the exception, not the default. |
+| **AC-6(2)** Non-Privileged Access for Non-Security Functions | Supporting | Catalog access packages bind privileged authorities to specific entitlements rather than broad role grants. |
+| **AU-2** Event Logging | Supporting | Every governance configuration change emits an audit record into the canonical evidence stream. |
+| **IA-4** Identifier Management | Supporting | Lifecycle Workflows correlate joiner / mover / leaver events to the stable principal identifier captured by [`entra-id`](../entra-id/entra-id.html). |
 
 ## Operational profile
 
@@ -66,12 +86,19 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Reserved slot per ADR-049. Consumes the HR-driven provisioning output described by UIAO_136 Spec 2 (D3.1 forthcoming). Required Entra ID P2 licensing (per UIAO_136 Cross-Cutting X3). Activation requires a per-adapter ADR.
+Reserved slot per ADR-049. Sibling of [`entra-id`](../entra-id/entra-id.html) (which handles user / group / SP / CA), [`entra-dynamic-groups`](../entra-dynamic-groups/entra-dynamic-groups.html) (UIAO_152), [`entra-admin-units`](../entra-admin-units/entra-admin-units.html) (UIAO_154), [`entra-device-orgpath`](../entra-device-orgpath/entra-device-orgpath.html) (UIAO_153), and [`entra-policy-targeting`](../entra-policy-targeting/entra-policy-targeting.html) (UIAO_164).
+
+Consumes the HR-driven provisioning output described by UIAO_136 Spec 2 (D3.1 forthcoming). Required Entra ID P2 licensing per UIAO_136 Cross-Cutting X3. Activation requires a per-adapter ADR.
+
+ZTMM pillar: identity.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-049
+- ADR-049 — Reserved-slot allocation framework
+- UIAO_136 — Priority-1 transformation project plans
+- UIAO_154 — Delegation Matrix
+- UIAO_155 — Governance Workflow Catalog
 
 ---
 

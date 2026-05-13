@@ -25,27 +25,41 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the Azure Policy for Arc — Compliance and Remediation (Reserved Slot) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Azure Policy for Arc Adapter is the **server-side policy actuator** of the UIAO substrate. As a modernization-class integration adapter, it assigns Azure Policy initiatives to Arc-enrolled machines, evaluates compliance against those initiatives, and dispatches remediation tasks for non-compliant resources — the change-making counterpart to the read-only [`defender-for-servers`](../defender-for-servers/defender-for-servers.html) telemetry feed.
+
+The adapter complements but does not duplicate [`entra-policy-targeting`](../entra-policy-targeting/entra-policy-targeting.html). Policy targeting binds existing policy *definitions* and Intune *profiles* to OrgTree populations — it scopes who policy applies to, but explicitly leaves policy *bodies* and *remediation* out of scope. This adapter covers the body / remediation side: it owns the canonical Azure Policy initiatives and the remediation tasks they spawn.
+
+Three primary functions:
+
+1. **Initiative assignment.** Provisions Azure Policy initiative assignments scoped to management groups, subscriptions, or resource groups containing Arc-enrolled servers. Initiatives reference canon-governed policy definitions whose contents are owned by the substrate.
+2. **Compliance evaluation observation.** Reads compliance-state output from Azure Policy's evaluation engine for each assignment, producing canonical claims keyed to OrgPath server segment so non-compliance is reportable by organizational position rather than by raw resource id.
+3. **Remediation task dispatch.** For policy definitions with `deployIfNotExists` or `modify` effects, dispatches remediation tasks against non-compliant resources and tracks task progress to completion. Phantom remediation candidates (resources whose OrgPath does not resolve to an active node) surface as skipped-manual findings rather than auto-remediating.
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR.
 
 ## Scope
 
 Target surfaces / subsystems: `arc-policy-assignments`, `arc-policy-remediation-tasks`, `arc-compliance-state`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** Canon-governed Azure Policy initiative definitions (executable canon under `canon/data/`), the live policy-assignment + compliance-state surface via Azure Resource Manager (`Microsoft.Authorization/policyAssignments`, `Microsoft.PolicyInsights/policyStates`), and the [`defender-for-servers`](../defender-for-servers/defender-for-servers.html) compliance feed (to correlate policy non-compliance with security posture findings).
+
+**Emits:** `arc-policy-manifest.json` (planned assignment + remediation-task changes with per-row provenance back to canon), `arc-remediation-audit.json` (post-apply audit trail with one provenance record per remediation task dispatch), and skipped-manual findings for resources whose remediation candidacy cannot be auto-resolved.
+
+**Does NOT:** author Azure Policy *definitions* (those live in canon and arrive through canon-change ADRs), bind policies to OrgPath populations (that is [`entra-policy-targeting`](../entra-policy-targeting/entra-policy-targeting.html)'s role), modify Defender for Servers configuration, install or modify Arc agents, or auto-remediate resources whose remediation-effect blast radius is unbounded. Apply paths are gated on `dry_run=False`; broad-scope assignment changes additionally require human approval through UIAO_155.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CM-2`, `CM-3`, `CM-6`, `CM-8`, `CA-7`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CM-2** Baseline Configuration | Primary | Initiative assignments are the canonical mechanism for declaring the server-side configuration baseline; deviations surface as policy non-compliance. |
+| **CM-3** Configuration Change Control | Primary | Remediation task dispatch is the canon-authorized change-control surface for server-side configuration drift. |
+| **CM-6** Configuration Settings | Primary | Per-resource policy compliance state is the canonical evidence source for server-side configuration setting verification. |
+| **CM-8** Information System Component Inventory | Supporting | Compliance-state plus assignment manifest produces a per-server policy inventory keyed to OrgPath segment. |
+| **CA-7** Continuous Monitoring | Primary | Scheduled compliance evaluation provides continuous policy posture evidence; new non-compliance appears in subsequent runs. |
 
 ## Operational profile
 
@@ -67,12 +81,15 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Reserved slot per ADR-049. Activation requires a per-adapter ADR. Pairs with `defender-for-servers` (conformance / telemetry) which provides the compliance-state observation that this adapter remediates.
+Reserved slot per ADR-049. Activation requires a per-adapter ADR. Pairs with [`defender-for-servers`](../defender-for-servers/defender-for-servers.html) (conformance / telemetry) which provides the compliance-state observation that this adapter remediates. Complements [`entra-policy-targeting`](../entra-policy-targeting/entra-policy-targeting.html) (UIAO_164) which binds Intune profiles + Azure Policy assignments to the OrgTree but explicitly leaves policy *bodies* and *remediation* out of scope; this entry covers the body / remediation side.
+
+ZTMM pillars: devices, applications-and-workloads.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-049
+- ADR-049 — Reserved-slot allocation framework
+- UIAO_164 — Policy Targeting Library
 
 ---
 
