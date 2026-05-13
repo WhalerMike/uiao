@@ -13,7 +13,6 @@ generated: '2026-04-15'
 aspirational: true
 ---
 
-
 # CISA SCuBA M365 Secure Baseline (Target) — Adapter Technical Specification
 
 ::: {.callout-note}
@@ -26,17 +25,18 @@ aspirational: true
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-The CISA SCuBA Baseline Adapter is an **integration-class** modernization adapter that applies the declarative CISA SCuBA security posture to M365 tenants. Unlike its conformance counterpart (`scubagear`, which assesses), this adapter is the **change-maker** — it writes the baseline configuration into the tenant.
+The CISA SCuBA Baseline Adapter is the **change-making half** of the canonical SCuBA assess-then-remediate cycle. As a modernization-class integration adapter, it applies the declarative CISA SCuBA security posture to M365 tenants — turning the baseline from a published document into the actual configuration the tenant runs.
 
-It pairs with `scubagear` to form the canonical assess-then-remediate cycle: scubagear reads the current state, scuba applies the desired state. Both operate within the GCC-Moderate boundary.
+Unlike its conformance counterpart [`scubagear`](../scubagear/scubagear.html) (which reads tenant state and scores it against the baseline), this adapter is the **writer**: it takes the SCuBA Secure Configuration Baselines as the declarative source of truth and reconciles tenant configuration toward them across seven workloads. The two adapters are designed as a pair — one assesses, one applies — and together they close the loop that makes M365 SCuBA compliance a continuous operational posture rather than a point-in-time audit.
+
+Two primary functions:
+
+1. **Baseline parsing and reconciliation.** Reads the seven-workload SCuBA baseline definitions (AAD, Defender, Exchange Online, PowerBI, Power Platform, SharePoint, Teams) and computes the per-setting reconciliation actions needed to bring the tenant into alignment. The reconciliation report names every setting, the current value, the SCuBA-canonical target value, and the action required.
+2. **Baseline application.** Writes the reconciled configuration into the tenant via the workload-specific PowerShell modules and Microsoft Graph. Each write is provenance-stamped and produces a `baseline-apply-manifest.json` entry; subsequent [`scubagear`](../scubagear/scubagear.html) assessments verify that the write took effect and remains in place.
+
+Both halves operate strictly inside the GCC-Moderate tenant boundary, with no commercial-cloud dependencies beyond the documented exceptions in `substrate-manifest.yaml`.
 
 **Implementation:** `src/uiao/adapters/scubagear_adapter.py`. Conformance: 30/30 PASS.
 
@@ -44,9 +44,11 @@ It pairs with `scubagear` to form the canonical assess-then-remediate cycle: scu
 
 Target surfaces / subsystems: `aad-baseline`, `defender-baseline`, `exo-baseline`, `powerbi-baseline`, `powerplatform-baseline`, `sharepoint-baseline`, `teams-baseline`
 
-**Reads:** CISA SCuBA baseline definitions (7 workloads: AAD, Defender, EXO, PowerBI, Power Platform, SharePoint, Teams).
-**Emits:** `ClaimSet` with baseline-application claims, `EvidenceObject` with provenance.
-**Does NOT:** assess current state (that's `scubagear`), modify configurations outside the declared baseline scope, bypass GCC-Moderate boundary.
+**Reads:** CISA SCuBA baseline definitions (seven workloads), tenant configuration via Microsoft Graph and the workload-specific PowerShell modules, and the prior [`scubagear`](../scubagear/scubagear.html) assessment if available (to skip settings already known to be aligned).
+
+**Emits:** `ClaimSet` with baseline-application claims (one per setting written), `EvidenceObject` with provenance per write, and the `baseline-apply-manifest.json` artifact that records every change applied during the run.
+
+**Does NOT:** assess current state (that is [`scubagear`](../scubagear/scubagear.html)'s role), modify configurations outside the declared SCuBA baseline scope, bypass the GCC-Moderate tenant boundary, or apply changes the operator has not approved through the change-control workflow. Apply paths are gated on the `workflow_dispatch` / `repository_dispatch` trigger surface with explicit operator authorization.
 
 ## Controls
 
@@ -54,9 +56,9 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `CM-2`, `CM-6`, `CM-7`
 
 | Control | Role | Adapter capability |
 |---|---|---|
-| **CM-2** Baseline Configuration | Primary | Applies the declarative SCuBA security baseline to tenant configuration. |
-| **CM-6** Configuration Settings | Primary | Writes specific configuration settings per SCuBA workload baseline. |
-| **CM-7** Least Functionality | Supporting | Baseline application disables unnecessary services/features per SCuBA guidance. |
+| **CM-2** Baseline Configuration | Primary | Applies the declarative SCuBA security baseline to tenant configuration — the canonical mechanism by which the baseline becomes operational rather than aspirational. |
+| **CM-6** Configuration Settings | Primary | Writes specific configuration settings per SCuBA workload baseline; every write is provenance-stamped and traceable back to the baseline definition. |
+| **CM-7** Least Functionality | Supporting | Baseline application disables unnecessary services and features per SCuBA guidance (e.g., legacy authentication protocols, default-allow sharing settings). |
 
 ## Operational profile
 
@@ -78,11 +80,16 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `CM-2`, `CM-6`, `CM-7`
 
 ## Notes from canon
 
-Pair with conformance adapter `scubagear` (canon/adapter-registry.yaml) which assesses the applied baseline without mutating it.
+Modernization adapter — applies the declarative CISA SCuBA security posture (change-making) to M365 tenants. Distinct from [`scubagear`](../scubagear/scubagear.html) (the read-only conformance assessor) in `canon/adapter-registry.yaml`. Classified per resolved ODA-15 (UIAO_003 §4.7).
+
+Pair with the conformance adapter [`scubagear`](../scubagear/scubagear.html) (`canon/adapter-registry.yaml`), which assesses the applied baseline without mutating it. Together they form the canonical SCuBA assess-then-remediate cycle.
+
+ZTMM pillars: identity, applications-and-workloads, data.
 
 ## References
 
 - UIAO-CANON-002
+- UIAO-CANON-003
 - https://github.com/cisagov/ScubaGoggles
 
 ---
