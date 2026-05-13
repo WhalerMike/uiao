@@ -25,27 +25,37 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the Collaborative Continuous Monitoring BIR (Pathway-1 Reserved Slot) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Collaborative Continuous Monitoring (CCM) BIR Adapter is the **Pathway-1 modernized continuous-monitoring placeholder** in the UIAO substrate. As a conformance-class telemetry adapter, it reserves the canonical slot for the FedRAMP Collaborative Continuous Monitoring Balance Improvement Release — the modernized successor to today's manual monthly ConMon meeting and document-drop cadence.
+
+The adapter is intentionally **stub-only today**. Its activation depends on FedRAMP publishing the CCM BIR; until then, the registry entry exists so consuming engagements can declare their planned pathway transition deterministically, and so the migration-readiness check can compute lead time against the mandatory adoption date in **Notice 0009** (2027-04-01). The CCM mandatory date is earlier than the [`vdr-bir`](../vdr-bir/vdr-bir.html) date, so it is the **leading deadline** in the modernized-pathway migration plan.
+
+Three primary functions, all reserved for activation:
+
+1. **Automated ConMon evidence emission (reserved).** When the BIR ships, the adapter will consume the substrate's evidence stream and emit the CCM-compliant continuous-monitoring artifact directly, replacing the manual monthly assemble-and-attest workflow described in ADR-043 D3.
+2. **Pathway-2 → Pathway-1 transition gate.** Until the BIR ships, instantiation raises `CcmBirAdapterNotYetAvailable`; consuming engagements stay on the pathway-2 traditional ConMon path. The transition is tracked in canon so a 3PAO can see the planned pathway-1 commitment in advance.
+3. **Migration-readiness contribution.** The adapter's reserved-slot metadata feeds the migration-readiness check that runs `readiness-lead-days = 90` ahead of the Notice 0009 mandatory date. Engagements without a pathway-1 plan land as drift findings against their canon-declared roadmap.
+
+**Implementation:** Reserved slot per ADR-043 / UIAO_132 §5. Stub module at `src/uiao/adapters/ccm_bir_adapter.py` — instantiation raises `CcmBirAdapterNotYetAvailable` until the BIR ships. Activation requires the FedRAMP CCM BIR publication plus a per-adapter ADR.
 
 ## Scope
 
-Target surfaces / subsystems: _(not yet defined)_
+Target surfaces / subsystems: reserved (defined when the CCM BIR ships)
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** Reserved. The expected read surface is the FedRAMP-published CCM BIR API specification plus the substrate's internal evidence stream that the modernized pathway will consume.
+
+**Emits:** `findings.json` and `metadata.json` (shapes reserved for the BIR publication), plus `EvidenceObject` records that will feed the CA-7 control evidence stream under the modernized pathway.
+
+**Does NOT:** operate today (instantiation raises `CcmBirAdapterNotYetAvailable`), replace the pathway-2 monthly ConMon meeting + OSCAL drop cadence described in ADR-043 D3 (the pathway-2 cadence is the canonical surface until the BIR ships and the consuming engagement transitions), or modify the FedRAMP authorization-package shape outside what the BIR specifies.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `CA-7`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **CA-7** Continuous Monitoring | Primary (reserved) | Once the BIR ships, this adapter is the canonical pathway-1 (modernized) continuous-monitoring evidence path — replacing the manual monthly ConMon cadence with automated emission. |
 
 ## Operational profile
 
@@ -67,24 +77,19 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Pathway-1 (modernized) slot reserved for the Collaborative Continuous Monitoring Balance Improvement Release once FedRAMP publishes it. Complements the pathway-2 monthly ConMon meeting + OSCAL drop cadence described in ADR-043 D3. Stub module: src/uiao/adapters/ccm_bir_adapter.py — instantiation raises CcmBirAdapterNotYetAvailable until the BIR ships. Mandatory adoption date (Notice 0009 / 2027-04-01) is earlier than VDR so is the leading deadline in the migration-readiness check.
+Pathway-1 (modernized) slot reserved for the Collaborative Continuous Monitoring Balance Improvement Release once FedRAMP publishes it. Complements the pathway-2 monthly ConMon meeting + OSCAL drop cadence described in ADR-043 D3. Stub module: `src/uiao/adapters/ccm_bir_adapter.py` — instantiation raises `CcmBirAdapterNotYetAvailable` until the BIR ships.
 
-fedramp-rfc-0026 (advisory; per ADR-043 D4 / UIAO_132 §5):
-  requirement: RV5-CA07-CCM
-  pathway: pathway-1-modernized (reserved)
-  planned-pathway: pathway-1-modernized
-  pathway-transition-trigger: Publication of the CCM Balance Improvement Release
-  notice-0009-mandatory-by: "2027-04-01"
-  readiness-lead-days: 90
-  adr: ADR-043
+Mandatory adoption date (Notice 0009 / **2027-04-01**) is earlier than VDR, so this is the **leading deadline** in the migration-readiness check (`readiness-lead-days = 90`).
+
+Advisory mapping (per ADR-043 D4 / UIAO_132 §5): satisfies requirement RV5-CA07-CCM on the modernized FedRAMP authorization pathway-1, with the pathway-transition trigger being the publication of the CCM Balance Improvement Release.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-043
-- UIAO_132
-- https://github.com/FedRAMP/community/discussions/130
+- ADR-043 — FedRAMP RFC-0026 pathway alignment
+- UIAO_132 — Continuous Monitoring Pack
 - https://www.fedramp.gov/20x/notice-0009/
+- https://github.com/FedRAMP/community/discussions/130
 
 ---
 
