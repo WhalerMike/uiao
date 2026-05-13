@@ -25,27 +25,47 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the Microsoft Purview — Audit & Retention State (Reserved Slot) adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The Microsoft Purview — Audit & Retention State Adapter is the **read-only telemetry counterpart** to the change-making Purview surface that the [`m365`](../m365/m365.html) modernization adapter authors. As a conformance-class telemetry adapter, it continuously observes the data-governance configuration that determines whether an agency can produce evidence on demand for audit, DLP, retention, and information-protection controls.
+
+The driving concern is **FINDING-008**, the documented FedRAMP GCC-Moderate Purview audit 180-day cliff. Standard Microsoft 365 audit retention is 180 days; Premium licensing extends to one year; the 10-year add-on extends further. An agency on Standard licensing has a hard, recurring cliff: events older than 180 days are unrecoverable for assessor review. This adapter activates FINDING-008 as a **live drift signal in monthly ConMon packs** (UIAO_132 / ADR-047) rather than a static one-shot finding, so the cliff is visible every assessment cycle until the agency upgrades licensing or accepts the residual risk.
+
+The adapter observes seven Purview surfaces in parallel:
+
+1. **Unified audit retention tier** — Standard (180d), Premium (1y), or 10-year add-on. Drives FINDING-008.
+2. **Audit-event coverage** — whether the audited event categories include the workloads the substrate's other adapters report against.
+3. **DLP policy state** — Data Loss Prevention rule presence and scope; sources control evidence for SC-4.
+4. **Sensitivity-label policy state** — label taxonomy, scope, and auto-labelling policy; sources control evidence for MP-3.
+5. **Information Protection coverage** — which workloads are covered by sensitivity labels and which are gaps.
+6. **Litigation-hold state** — hold scope, duration, and the principals to which holds apply.
+7. **Insider Risk policy state** — Insider Risk Management policies, scope, and detection signals.
+
+Together these close three `DRIFT-PROVENANCE` registry-layer gaps for Purview-anchored controls (SC-4, MP-3, RA-2) — by observing them as live state rather than asserting them as static SSP narrative.
+
+**Implementation:** Reserved slot per ADR-058 / ADR-059. Activation will follow the standard sync-canon allocation flow; the read-only nature of the surface keeps activation low-risk.
 
 ## Scope
 
 Target surfaces / subsystems: `unified-audit-retention-tier`, `audit-event-coverage`, `dlp-policy-state`, `sensitivity-label-policy-state`, `information-protection-coverage`, `litigation-hold-state`, `insider-risk-policy-state`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** Microsoft Purview / Compliance Center configuration via Microsoft Graph (where exposed) and the Security & Compliance PowerShell module (for surfaces not yet on Graph). Read-only client-credential OAuth and certificate-anchored Security & Compliance PowerShell sessions per the documented least-privilege role set.
+
+**Emits:** `purview-audit-tier-findings.json` (current audit retention tier plus the FINDING-008 status), `purview-dlp-policy-state.json` (DLP rule inventory and scope), `purview-label-coverage.json` (sensitivity-label coverage map per workload), plus `EvidenceObject` records that map to the SC-4, MP-3, RA-2, AU-2, AU-11 control evidence stream.
+
+**Does NOT:** modify any Purview configuration (audit tier, DLP rules, label policies, holds, Insider Risk policies) — those are bundled inside [`m365`](../m365/m365.html). Does not access protected content (audit log entries themselves, DLP-flagged content, held-mailbox messages) — observes policy state and coverage, not the protected payloads. Does not bypass licensing limits — when the tenant is on Standard licensing, the adapter reports the 180-day cliff rather than silently working around it.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `AU-2`, `AU-11`, `SC-4`, `MP-3`, `RA-2`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **AU-2** Event Logging | Primary | Audit-event coverage observation verifies which event categories are enabled and which workloads are in scope, producing the canonical evidence of what is being audited. |
+| **AU-11** Audit Record Retention | Primary | Audit retention tier observation activates FINDING-008 as a live signal — Standard (180d) vs Premium (1y) vs 10-year add-on. |
+| **SC-4** Information in Shared System Resources | Primary | DLP policy state inventory sources the control evidence for protections against cross-resource leakage. |
+| **MP-3** Media Marking | Primary | Sensitivity-label policy state and Information Protection coverage source the control evidence for labelling and marking. |
+| **RA-2** Security Categorization | Supporting | Information Protection coverage indicates how the agency has categorized information across workloads; gaps in coverage are categorization-completeness findings. |
 
 ## Operational profile
 
@@ -67,12 +87,20 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-Reserved slot per ADR-058. Read-only telemetry counterpart to the change-making Purview surface bundled inside the `m365` modernization adapter (modernization-registry, scope: purview). Continuously observes audit retention tier (Standard 180d / Premium 1y / 10-year add-on), audit-event coverage, DLP policy state, sensitivity-label policy state, Information Protection coverage, litigation-hold state, and Insider Risk policy state. Activates FINDING-008 (docs/findings/fedramp-gcc-moderate-purview-audit-180day-cliff.qmd) as a live drift signal in monthly ConMon packs (UIAO_132 / ADR-047) rather than a static one-shot finding. Sources control evidence for SC-4 (DLP), MP-3 (sensitivity labels), RA-2 (information classification) — closes three DRIFT-PROVENANCE registry-layer gaps for Purview-anchored controls.
+Reserved slot per ADR-058 / ADR-059. Read-only telemetry counterpart to the change-making Purview surface bundled inside the [`m365`](../m365/m365.html) modernization adapter (modernization-registry, scope: `purview`).
+
+Activates FINDING-008 ([fedramp-gcc-moderate-purview-audit-180day-cliff](../../../findings/fedramp-gcc-moderate-purview-audit-180day-cliff.html)) as a **live drift signal** in monthly ConMon packs (UIAO_132 / ADR-047), not a static finding. Sources control evidence for SC-4 (DLP), MP-3 (sensitivity labels), and RA-2 (information classification) — closes three `DRIFT-PROVENANCE` registry-layer gaps for Purview-anchored controls.
+
+ZTMM pillar: data.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-058
+- ADR-047 — Continuous Monitoring Pack lifecycle
+- ADR-058 — Purview audit telemetry reserved slot
+- ADR-059 — Purview audit telemetry surface scope
+- UIAO_132 — Continuous Monitoring Pack
+- FINDING-008 — FedRAMP GCC-Moderate Purview audit 180-day cliff
 
 ---
 

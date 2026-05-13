@@ -25,27 +25,28 @@ aspirational: true
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-The Intune Adapter is a **conformance-class telemetry** adapter that observes endpoint compliance state via Microsoft Graph API (Intune/Defender for Endpoint). Natural complement to the M365 modernization adapter — M365 manages tenant configuration while Intune observes device compliance.
+The Microsoft Intune Endpoint Compliance Adapter is the **read-only telemetry edge** on the M365 device plane. As a conformance-class telemetry adapter, it observes endpoint compliance state via the Microsoft Graph Intune surfaces (`/deviceManagement/managedDevices`) and Defender for Endpoint, producing object-keyed claims and KSI-anchored evidence with compliant / non-compliant counts.
 
-Key capabilities: managed device compliance enumeration (compliant/noncompliant), OS version tracking, endpoint protection status, and KSI-anchored evidence generation with compliant/noncompliant counts.
+The adapter is the natural complement to two change-making siblings:
 
-**Implementation:** `uiao/src/uiao/adapters/intune_adapter.py`. Conformance: 30/30 PASS.
+- **[`m365`](../m365/m365.html)** — the modernization adapter that manages tenant configuration. m365 authors what *should* be true; intune observes what *is* true on the device fleet.
+- **[`entra-policy-targeting`](../entra-policy-targeting/entra-policy-targeting.html)** — binds existing Intune configuration profiles to OrgTree dynamic groups. intune observes whether the resulting compliance evaluations land where canon expects them to.
+
+Two registry entries cover Intune for symmetric reasons. This entry (in `adapter-registry.yaml`) is the **conformance / telemetry** side — read-only state observation. A parallel **modernization / integration** reserved slot exists in `modernization-registry.yaml` to cover the change-making authoring surface (configuration profiles, compliance policies, security baselines, Autopilot profiles, app deployment policies) per ADR-049; that allocation will activate when the in-flight Python implementation at `src/uiao/adapters/intune_adapter.py` is reconciled to the per-adapter ADR contract.
+
+**Implementation:** `src/uiao/adapters/intune_adapter.py`. Conformance: 30/30 PASS.
 
 ## Scope
 
 Target surfaces / subsystems: `device-compliance`, `endpoint-protection`, `configuration-profiles`, `update-compliance`
 
-**Reads:** Microsoft Graph API (`/deviceManagement/managedDevices`) for device compliance state, OS version, management agent, and last sync time.
-**Emits:** `ClaimSet` with one claim per managed device (compliance_state, os_version, device_name), `EvidenceObject` with compliant/noncompliant/total counts.
-**Does NOT:** modify device configuration or compliance policies, access device content, or enroll/unenroll devices. Read-only telemetry.
+**Reads:** Microsoft Graph API (`/deviceManagement/managedDevices`) for device compliance state, OS version, management agent, last sync time, and endpoint protection status. Read-only client-credential OAuth flow with the documented least-privilege scopes.
+
+**Emits:** `ClaimSet` with one claim per managed device (compliance_state, os_version, device_name, management agent, last sync), `EvidenceObject` with compliant / non-compliant / total counts, plus the `intune-compliance-findings.json` and `endpoint-drift-report.json` artifacts consumed by the continuous-monitoring pack.
+
+**Does NOT:** modify device configuration or compliance policies, access device content, enroll or unenroll devices, or apply remediation actions. This is the *observation* surface for the Intune fleet; the *authoring* surface lives in the modernization-side reserved slot (ADR-049) and `entra-policy-targeting`.
 
 ## Controls
 
@@ -53,10 +54,10 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `CM-8`, `SI-2`, `CA-7`, `SC
 
 | Control | Role | Adapter capability |
 |---|---|---|
-| **CM-8** Component Inventory | Primary | Managed device enumeration with OS version and management agent. |
-| **SI-2** Flaw Remediation | Supporting | Update compliance tracking supports patch/update remediation monitoring. |
-| **CA-7** Continuous Monitoring | Supporting | Scheduled compliance collection provides continuous endpoint posture evidence. |
-| **SC-7** Boundary Protection | Supporting | Device compliance state supports zero-trust boundary decisions. |
+| **CM-8** Information System Component Inventory | Primary | Managed-device enumeration with OS version, management agent, and last-sync timestamp; the canonical device-side inventory for compliance reporting. |
+| **SI-2** Flaw Remediation | Supporting | Update-compliance tracking feeds patch/update remediation monitoring; out-of-date devices surface as monitoring evidence. |
+| **CA-7** Continuous Monitoring | Primary | Scheduled compliance collection provides continuous endpoint posture evidence with the freshness-window semantics defined in canon. |
+| **SC-7** Boundary Protection | Supporting | Device-compliance state feeds zero-trust boundary decisions (Conditional Access compliance grant controls, Intune compliance-based access). |
 
 ## Operational profile
 
@@ -78,11 +79,17 @@ NIST SP 800-53 Rev 5 controls this adapter supports: `CM-8`, `SI-2`, `CA-7`, `SC
 
 ## Notes from canon
 
-Tier 4 conformance adapter. Endpoint compliance telemetry via Microsoft Graph API (Intune device compliance + Defender for Endpoint). Natural complement to the m365 modernization adapter. Read-only — observes device state, never mutates configuration.
+Tier 4 conformance adapter. Endpoint compliance telemetry via Microsoft Graph API (Intune device compliance + Defender for Endpoint). Natural complement to the [`m365`](../m365/m365.html) modernization adapter and the [`entra-policy-targeting`](../entra-policy-targeting/entra-policy-targeting.html) OrgPath actuator. Read-only — observes device state, never mutates configuration.
+
+Advisory mapping (per ADR-043 D4 / UIAO_132 §5, pending FedRAMP RFC-0026 ratification): this adapter satisfies requirement RV5-CA07-VLN (endpoint-compliance telemetry) on the traditional FedRAMP authorization pathway, with the modernized pathway gated on publication of the VDR Balance Improvement Release.
 
 ## References
 
 - UIAO-CANON-003
+- ADR-043 — FedRAMP RFC-0026 pathway alignment
+- ADR-049 — Modernization-side intune reserved slot allocation
+- UIAO_132 — Continuous Monitoring Pack
+- https://github.com/FedRAMP/community/discussions/130
 
 ---
 
