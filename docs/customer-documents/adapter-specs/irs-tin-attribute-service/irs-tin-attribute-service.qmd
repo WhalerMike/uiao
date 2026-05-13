@@ -24,38 +24,53 @@ generated: '2026-05-07'
 The YAML frontmatter and this banner are regenerated from canon on every sync. **Do not hand-edit.** Author new material only below the `## Overview` heading.
 :::
 
-::: {.callout-warning}
-## Scaffold — awaiting authored content
-
-This document is a stub. Replace every `_TODO — ..._` block with authored content that is consistent with UIAO canon. Canon invariants (`gcc-boundary`, `ssot-mutation: never`, etc.) must never be contradicted.
-:::
-
 ## Overview
 
-_TODO — Author an overview of the IRS TIN / Tax-Compliance Attribute Service adapter's role in the UIAO governance perimeter. Do not contradict canon. Cross-reference the companion AVS document where relevant._
+The IRS TIN / Tax-Compliance Attribute Service Adapter is the **IRS attribute observer** of the UIAO substrate. As a conformance-class identity adapter, it observes attribute-disclosure events from the IRS — the federal authority of record for TIN / EIN per **26 U.S.C. §6109** — through TIN Matching (Pub 2108A), Income Verification Express Service (IVES), and federal tax-compliance check APIs.
+
+The adapter operates under one of the strictest disclosure regimes in the federal attribute-service family. **26 U.S.C. §6103** governs return-information confidentiality, and every entitlement must cite the §6103 authorization in addition to the Privacy Act SORN. A consuming engagement that lacks the §6103 authorization is rejected at the entitlement-validation layer before any IRS API call is issued.
+
+Three primary functions:
+
+1. **TIN Matching observation.** Observes TIN / EIN match disclosures via IRS TIN Matching (Pub 2108A) for payment-recipient verification, emitting canonical claims per match attempt.
+2. **IVES income verification ingestion.** Captures income-record disclosures from the Income Verification Express Service. IVES is IRS-hosted but the underlying records are SSA-derived; the adapter pairs with [`ssa-attribute-service`](../ssa-attribute-service/ssa-attribute-service.html) so provenance cites both authorities.
+3. **Federal tax-compliance check ingestion.** Wraps the documented federal tax-compliance check APIs for engagements that require the attribute (federal contracting, grants, federal-financial-assistance eligibility).
+
+**Implementation:** Reserved slot per ADR-049. Activation requires a per-adapter ADR modeled on ADR-035.
 
 ## Scope
 
 Target surfaces / subsystems: `tin-matching`, `ein-verification`, `federal-tax-compliance`, `ives-income-verification`
 
-_TODO — Expand scope with concrete boundaries: what the adapter reads, what it emits, what it explicitly does not touch._
+**Reads:** IRS TIN Matching (Pub 2108A), Income Verification Express Service (IVES), federal tax-compliance check APIs. Access requires the consuming entitlement plus the §6103 authorization in addition to the Privacy Act SORN; both citations recorded in `canon/reciprocal-consumption-registry.yaml`.
+
+**Emits:** `irs-attribute-response.json` (per-disclosure canonical claim with disclosed attribute, IRS channel, statute citation, authority of record), `irs-disclosure-audit.json` (per-disclosure audit record with entitlement reference, §6103 authorization, Privacy Act SORN, IRS disclosure id), plus `EvidenceObject` records that feed the IA-2 / IA-4 / AU-2 control evidence stream.
+
+**Does NOT:** issue or modify TIN / EIN records (IRS is the authority of record), bulk-pull tax-return data (per-subject disclosures only), access taxpayer financial detail beyond what the disclosure surfaces, or store return-information outside the §6103-bounded retention and encryption envelope.
 
 ## Controls
 
 NIST SP 800-53 Rev 5 controls this adapter supports: `IA-2`, `IA-4`, `AU-2`, `AU-12`, `SC-8`, `SC-13`
 
-_TODO — For each control, state the adapter's role (primary, supporting, evidence-only). If a control is aspirational, flag as `NEW (Proposed)` per No-Hallucination Protocol._
+| Control | Role | Adapter capability |
+|---|---|---|
+| **IA-2** Identification and Authentication | Supporting | TIN / EIN-verification claims supplement identification when a tax-anchored attribute is required by a downstream business process. |
+| **IA-4** Identifier Management | Primary | IRS disclosure id is the stable identifier for each disclosure event. |
+| **AU-2** Event Logging | Primary | Every disclosure is logged with the canonical disclosure-audit envelope, entitlement reference, §6103 authorization, and SORN citation. |
+| **AU-12** Audit Record Generation | Supporting | Audit records carry the canonical provenance envelope per ADR-006. |
+| **SC-8** Transmission Confidentiality and Integrity | Primary | All IRS channels are TLS-protected. |
+| **SC-13** Cryptographic Protection | Supporting | Validation uses FIPS-validated cryptographic libraries; return-information at rest is encrypted per §6103 controls. |
 
 ## Operational profile
 
 | Field | Value |
 |---|---|
-| Runtime | `python-3.12` |
+| Runtime | `TBD` |
 | Runtime pin | `TBD` |
-| Runner class | `github-hosted` |
+| Runner class | `TBD` |
 | Tenancy | `per-customer` |
-| Evidence class | `interval` |
-| Retention | `7` year(s) |
+| Evidence class | `baseline` |
+| Retention | `3` year(s) |
 
 ## Canon invariants
 
@@ -66,15 +81,16 @@ _TODO — For each control, state the adapter's role (primary, supporting, evide
 
 ## Notes from canon
 
-IRS is the federal authority of record for TIN/EIN per 26 U.S.C. §6109. This adapter observes attribute-disclosure events through IRS TIN Matching (Pub 2108A), Income Verification Express Service (IVES), and federal tax compliance check APIs. Disclosures are tightly governed by 26 U.S.C. §6103 (return information confidentiality) — every entitlement must cite the §6103 authorization in addition to the Privacy Act SORN. Activation requires a per-adapter ADR modeled on ADR-035.
+IRS is the federal authority of record for TIN / EIN per 26 U.S.C. §6109. This adapter observes attribute-disclosure events through IRS TIN Matching (Pub 2108A), Income Verification Express Service (IVES), and federal tax compliance check APIs. Disclosures are tightly governed by 26 U.S.C. §6103 (return information confidentiality) — every entitlement must cite the §6103 authorization in addition to the Privacy Act SORN. Activation requires a per-adapter ADR modeled on ADR-035.
+
+Member of the federal attribute-service family — pairs with [`ssa-attribute-service`](../ssa-attribute-service/ssa-attribute-service.html) (IVES is IRS-hosted but SSA-derived) and [`gsa-sam-attribute-service`](../gsa-sam-attribute-service/gsa-sam-attribute-service.html) (federal-contracting eligibility).
+
+ZTMM pillars: identity, data.
 
 ## References
 
 - UIAO-CANON-003
-- ADR-055
-- UIAO_141
-- UIAO_142
-- https://www.irs.gov/tax-professionals/taxpayer-identification-number-tin-matching
+- ADR-049 — Reserved-slot allocation framework
 
 ---
 
