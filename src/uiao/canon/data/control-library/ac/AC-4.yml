@@ -1,23 +1,111 @@
-control-id: AC-4
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-4
+# Title      : Information Flow Enforcement
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: AC-4
 title: Information Flow Enforcement
+family: Access Control
 status: implemented
-implemented-by:
-  - azure-firewall
-  - azure-nsg
-narrative: |
-  {{ organization.name }} enforces approved authorizations for controlling the flow of information within the system and between connected systems.
 
-  **Enforcement Mechanisms**
-  Azure Firewall and Network Security Groups perform stateful packet inspection. Micro-segmentation enforces deny-by-default between web, application, and data tiers.
+implemented_by:
+    - azure-firewall
+    - azure-nsg
+    - azure-application-gateway
+    - microsoft-purview
+    - entra-conditional-access
 
-  **Authorized Flows Only**
-  Only explicitly permitted information flows (by protocol, port, source, and destination) are allowed; all others are blocked.
-parameters:
-  default-posture: "Deny-by-Default"
-  inspection-type: "Stateful Packet Inspection"
 evidence:
-  - type: configuration
-    ref: AC-4-evidence
+    - azure-firewall-policy-export
+    - azure-nsg-rule-set-export
+    - application-gateway-waf-config
+    - purview-dlp-policy-export
+    - conditional-access-named-locations
+
+parameters:
+    - id: PARAM-AC-004-001
+      description: >-
+          Default information-flow posture enforced at every
+          authorization-boundary edge.
+      value: "Deny-by-default at every boundary; explicit allow rules are required for every permitted flow with documented source, destination, protocol, port, and business justification"
+    - id: PARAM-AC-004-002
+      description: >-
+          Information flow control mechanisms in use to enforce
+          flow restrictions.
+      value: "Azure Firewall Premium for L7 east-west and north-south inspection; Azure NSG for L4 micro-segmentation; Azure Application Gateway WAF for ingress L7 filtering; Microsoft Purview DLP for data-layer egress restriction"
+    - id: PARAM-AC-004-003
+      description: >-
+          Sensitivity classes subject to data-layer flow enforcement.
+      value: "Controlled Unclassified Information (CUI), Personally Identifiable Information (PII), Federal Tax Information (FTI), authentication secrets, and any data labeled per the UIAO data-classification taxonomy"
+
+narrative: |
+  **Boundary Enforcement and Default Deny**
+  Every authorization-boundary edge within the UIAO substrate
+  enforces the default posture defined in PARAM AC-004-001.
+  Inbound flows are processed by Azure Application Gateway with
+  Web Application Firewall in Prevention mode; intra-boundary flows
+  are processed by Azure Firewall Premium with TLS inspection and
+  IDPS enabled; egress flows are processed by the same firewall
+  pair with explicit allow-list FQDN tagging. No flow traverses a
+  boundary edge without an explicit, version-controlled rule.
+  Firewall policy is managed as infrastructure-as-code via
+  Terraform with mandatory peer review, satisfying **CM-3**
+  (Configuration Change Control) and **SC-7** (Boundary
+  Protection).
+
+  **Micro-Segmentation**
+  Azure Network Security Groups enforce micro-segmentation between
+  trust zones — presentation tier, application tier, data tier,
+  management plane, and bastion plane. Each tier sits in its own
+  subnet with NSG rules permitting only the protocols, ports, and
+  service-tag destinations required for the tier's operational role.
+  Service endpoints and Private Endpoints replace public exposure
+  for PaaS services where Microsoft offers them, reducing the
+  surface area subject to AC-4 enforcement. Bastion-tier access is
+  exclusive to Azure Bastion sessions originating from
+  Conditional-Access-compliant devices.
+
+  **Data-Layer Flow Control**
+  Microsoft Purview Data Loss Prevention enforces the data-layer
+  flow restriction defined in PARAM AC-004-003. DLP policies inspect
+  content at the SharePoint, OneDrive, Exchange, and Teams surfaces
+  and block, encrypt, or require justification for any movement of
+  classified content outside the authorized destination. Endpoint
+  DLP extends the same enforcement to managed endpoints, blocking
+  unauthorized copy to removable media or upload to non-corporate
+  cloud destinations. DLP events are recorded in Microsoft Purview
+  audit logs and streamed to Microsoft Sentinel for correlation
+  with **AU-6** (Audit Record Review).
+
+  **Identity-Layer Flow Restriction**
+  Entra ID Conditional Access named-location policies enforce flow
+  restrictions on the identity-plane: tokens issued from
+  unauthorized geographies are denied; tokens for high-sensitivity
+  applications require originating IP within the
+  agency-authorized-network list; cross-tenant access is governed by
+  Entra ID External Identities cross-tenant access settings with
+  per-tenant allow-list. These restrictions complement the network-
+  and data-layer enforcement and support the layered control intent
+  of **AC-4**.
+
+  **Telemetry and Continuous Validation**
+  Flow-enforcement telemetry from every layer (firewall flow logs,
+  NSG flow logs, WAF logs, DLP events, Conditional Access
+  decisions) is streamed to Microsoft Sentinel. Detection rules
+  alert on deny-rule hits that suggest probing, allow-rule hits
+  that diverge from the historical baseline, and DLP block events
+  that indicate exfiltration attempts. The UIAO governance
+  pipeline reconciles deployed firewall and NSG rule-sets against
+  the source-of-truth Terraform manifest nightly and produces a
+  drift report exported to the evidence ledger.
+
 related_controls:
-  - AC-2
-  - AC-3
+    - AC-3   # Access Enforcement
+    - AC-17  # Remote Access
+    - AU-6   # Audit Record Review
+    - AU-12  # Audit Record Generation
+    - CA-3   # Information Exchange
+    - CM-3   # Configuration Change Control
+    - SC-7   # Boundary Protection
+    - SC-8   # Transmission Confidentiality and Integrity
+    - SI-4   # System Monitoring

@@ -1,22 +1,115 @@
-control-id: AC-3
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-3
+# Title      : Access Enforcement
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: AC-3
 title: Access Enforcement
-narrative: |
-  {{ organization.name }} enforces logical access to information and system resources through policy-based mechanisms.
-
-  **Conditional Access Enforcement**
-  All access requests are evaluated in real-time using Conditional Access policies that consider user role, device compliance, location, and risk signals.
-
-  **Least Privilege Enforcement**
-  Access is granted only to the minimum resources required, with explicit deny-by-default rules.
-implemented-by:
-  - IdentityProvider
-  - PolicyEnforcementPoint
+family: Access Control
 status: implemented
-parameters:
-  session-timeout: "15 minutes"
+
+implemented_by:
+    - entra-id
+    - entra-conditional-access
+    - azure-rbac
+    - microsoft-purview
+    - sharepoint-online
+
 evidence:
-  - type: audit-log
-    ref: AC-3-logs
+    - entra-conditional-access-policy-export
+    - azure-rbac-assignment-report
+    - entra-pim-role-activation-log
+    - microsoft-purview-sensitivity-label-policy
+    - entra-sign-in-log-export
+
+parameters:
+    - id: PARAM-AC-003-001
+      description: >-
+          Approved authorization mechanisms used to enforce logical
+          access to system resources.
+      value: "Entra ID Conditional Access policies for session-level enforcement; Azure RBAC for resource-level enforcement; Entra ID Privileged Identity Management (PIM) for just-in-time elevation; Microsoft Purview sensitivity labels for data-layer enforcement"
+    - id: PARAM-AC-003-002
+      description: >-
+          Approved access-decision telemetry sources used to validate
+          enforcement.
+      value: "Entra ID sign-in logs, Azure Activity logs, Microsoft Sentinel correlated detections, Microsoft Purview information-protection audit records"
+
+narrative: |
+  **Policy-Decision and Policy-Enforcement Separation**
+  The UIAO substrate enforces logical access through a clear
+  separation between the Policy Decision Point and the Policy
+  Enforcement Point as required by the CISA Zero Trust Maturity
+  Model v2.0. The Entra ID identity broker acts as the PDP,
+  evaluating each access request against Conditional Access policies
+  that consume signals from device compliance (Intune), user risk
+  (Entra ID Protection), session risk, location, and named-network
+  context. The PEP is the resource itself — every protected resource
+  (Microsoft Graph, Azure Resource Manager, SaaS application
+  federated via SAML or OIDC, on-premises application fronted by
+  Entra Application Proxy) honors the access token issued by the
+  PDP and refuses any request that lacks a valid, scope-bound token.
+  This satisfies the architectural requirement of **AC-3** and
+  supports **AC-4** (Information Flow Enforcement).
+
+  **Conditional Access as the Enforcement Plane**
+  Entra ID Conditional Access policies are the authoritative
+  enforcement plane for every interactive sign-in and every
+  programmatic token request. Policies are organized by risk class:
+  baseline policies enforce MFA and device compliance for all users;
+  elevated policies require certificate-based authentication for
+  privileged role activations; session policies restrict sign-in
+  frequency and persistent browser sessions for sensitive
+  applications. Policies are version-controlled in the UIAO
+  governance pipeline, exported nightly to the evidence ledger, and
+  re-evaluated on every change against the Conditional Access
+  what-if simulator before merge. No policy is deployed without
+  documented test results and approval, supporting **CM-3**
+  (Configuration Change Control).
+
+  **Resource-Layer RBAC**
+  Azure RBAC enforces the resource-layer access decision for every
+  Azure Resource Manager operation. Role assignments are made at
+  the smallest scope necessary (resource > resource group >
+  subscription > management group) per the principle of least
+  privilege defined in **AC-6**. Custom roles are used where
+  built-in roles grant excessive privileges; every custom role
+  carries documented role intent, scope rationale, and the data
+  owner who approved its creation. Role assignments to standing
+  privileged roles are prohibited; access is granted exclusively
+  through Entra ID PIM with approval workflows, time-bound
+  activation, and Microsoft Sentinel alerting on every activation
+  event.
+
+  **Data-Layer Enforcement**
+  Microsoft Purview sensitivity labels enforce the data-layer
+  access decision for documents, mail, and SharePoint sites within
+  the boundary. Labels carry encryption and access policies that
+  travel with the content; an unauthorized user who obtains a
+  labeled document outside the authorized session cannot decrypt
+  it. This protects information in motion and at rest consistent
+  with **SC-13** (Cryptographic Protection) and **MP-2** (Media
+  Access).
+
+  **Telemetry and Audit**
+  Every access decision generates a sign-in or audit record in
+  Entra ID and Azure Activity logs. Records carry the user
+  identifier, device identifier, requested resource, granted scopes,
+  evaluated Conditional Access policies, and the decision outcome.
+  Records are streamed to Microsoft Sentinel for correlation
+  against detection rules and exported to the UIAO evidence ledger
+  per **AU-12** (Audit Record Generation). Anomalous decisions
+  (unusual location, impossible-travel, repeated denials) trigger
+  alerts that route to the Security Operations Center via
+  ServiceNow Security Incident Response.
+
 related_controls:
-  - AC-2
-  - AC-3
+    - AC-2   # Account Management
+    - AC-4   # Information Flow Enforcement
+    - AC-5   # Separation of Duties
+    - AC-6   # Least Privilege
+    - AC-17  # Remote Access
+    - AU-12  # Audit Record Generation
+    - CM-3   # Configuration Change Control
+    - IA-2   # Identification and Authentication
+    - SC-13  # Cryptographic Protection
+    - MP-2   # Media Access
