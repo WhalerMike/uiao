@@ -13,7 +13,10 @@ def _first_project_url(meta: importlib.metadata.PackageMetadata) -> str:
     """Extract the first URL from Project-URL metadata (format: 'Label, url')."""
     raw = meta.get_all("Project-URL") or []
     for entry in raw:
-        parts = entry.split(",", 1)
+        # `PackageMetadata.get_all()` is typed as returning `list[Any]` in
+        # typeshed; coerce each header value to str to keep the return path
+        # typed as `str` rather than leaking Any out of this function.
+        parts = str(entry).split(",", 1)
         if len(parts) == 2:
             return parts[1].strip()
     return ""
@@ -23,10 +26,12 @@ def _get_installed_packages() -> list[dict[str, str]]:
     """Return a list of installed packages with name, version, and metadata."""
     packages = []
     for dist in importlib.metadata.distributions():
-        # dist.metadata is a PackageMetadata (email.message.Message subclass);
-        # typeshed's PackageMetadata stub omits .get(), but the runtime object
-        # supports it. Cast to the email.Message interface via dict().
-        meta = dict(dist.metadata)
+        # dist.metadata is an email.message.Message subclass; runtime supports
+        # dict() coercion via the Mapping protocol (.keys() + __getitem__),
+        # but typeshed's `PackageMetadata.__iter__` yields header names (str)
+        # rather than (name, value) tuples and `dict()` doesn't pick up the
+        # Mapping overload. Suppress the stub-gap locally.
+        meta: dict[str, str] = dict(dist.metadata)  # type: ignore[arg-type]
         name = meta.get("Name") or ""
         version = meta.get("Version") or ""
         if name and version:
