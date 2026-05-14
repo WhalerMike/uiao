@@ -1,23 +1,131 @@
-control-id: AC-17
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AC-17
+# Title      : Remote Access
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: AC-17
 title: Remote Access
+family: Access Control
 status: implemented
-implemented-by:
-  - azure-vpn-gateway
-  - azure-conditional-access
-narrative: |
-  {{ organization.name }} establishes usage restrictions, configuration requirements, and monitoring for all remote access to the system.
 
-  **Secure Remote Access**
-  All remote connections route through Azure VPN Gateway or ZTNA endpoints and require phishing-resistant MFA plus device compliance validation via Intune.
+implemented_by:
+    - entra-id
+    - entra-conditional-access
+    - intune
+    - microsoft-defender-for-endpoint
+    - azure-bastion
+    - microsoft-sentinel
 
-  **Monitoring and Termination**
-  Microsoft Sentinel monitors remote sessions in real time. Anomalous behavior triggers automated alerts and immediate session termination.
-parameters:
-  mfa-requirement: "FIDO2 / WHfB"
-  vpn-encryption: "AES-256 / TLS 1.2+"
 evidence:
-  - type: configuration
-    ref: AC-17-evidence
+    - entra-conditional-access-named-locations
+    - intune-device-compliance-policy-export
+    - defender-for-endpoint-attack-surface-reduction-rules
+    - azure-bastion-session-records
+    - sentinel-remote-access-detection-rules
+
+parameters:
+    - id: PARAM-AC-017-001
+      description: >-
+          Authorized remote-access methods for connection to the
+          authorization boundary.
+      value: "Browser-based access to cloud SaaS applications gated by Entra ID Conditional Access with phishing-resistant MFA; Azure Bastion for management-plane access to Azure VMs; tunnel-less zero-trust application access via Entra ID Application Proxy for legacy on-premises web apps"
+    - id: PARAM-AC-017-002
+      description: >-
+          Required authentication strength for all remote-access
+          sessions.
+      value: "Phishing-resistant multi-factor authentication using FIDO2 security keys, Windows Hello for Business, or PIV/CAC smart card per the Federal Common Policy CA G2 chain; password-only authentication is prohibited"
+    - id: PARAM-AC-017-003
+      description: >-
+          Device-compliance prerequisites enforced before any
+          remote-access session is permitted.
+      value: "Intune-managed device with current compliance state (encryption enabled, EDR active, security patches current within 14 days, no high-severity Defender finding) and corporate enrollment matching the user's tenant"
+    - id: PARAM-AC-017-004
+      description: >-
+          Maximum session duration before reauthentication is
+          required for a remote session.
+      value: "8 hours for standard sessions; 1 hour for sessions accessing high-sensitivity workloads tagged in the UIAO data-classification taxonomy"
+
+narrative: |
+  **VPN-less Zero-Trust Architecture**
+  The UIAO substrate operates a VPN-less zero-trust remote-access
+  architecture aligned with CISA Zero Trust Maturity Model v2.0.
+  No remote-access traffic is back-hauled through a perimeter VPN
+  concentrator; instead, every remote request is brokered by Entra
+  ID as the Policy Decision Point and authorized to the destination
+  resource as the Policy Enforcement Point. Authorized methods are
+  defined in PARAM AC-017-001. Browser-based SaaS access is the
+  default; Azure Bastion provides managed jump access to Azure VMs
+  without exposing RDP or SSH publicly; Entra ID Application Proxy
+  fronts the residual on-premises web applications that require
+  legacy access patterns, eliminating the on-premises VPN as the
+  reachability mechanism.
+
+  **Phishing-Resistant Authentication**
+  Every remote-access session must satisfy the authentication
+  strength defined in PARAM AC-017-002. Conditional Access policies
+  enforce phishing-resistant MFA at every remote session origination
+  point and reject any sign-in that satisfies only password or
+  push-based MFA. The phishing-resistant authentication path
+  satisfies the OMB M-22-09 mandate, the Solicitation 24322626R0007
+  Amendment 4 PIV/CAC requirement, and CISA Binding Operational
+  Directive 25-01. Authentication telemetry is captured in Entra ID
+  sign-in logs and exported to the UIAO evidence ledger.
+
+  **Device Trust Prerequisite**
+  Conditional Access requires the device compliance state defined in
+  PARAM AC-017-003 for every remote session. Devices are enrolled in
+  Microsoft Intune as the management plane; compliance is computed
+  in real time from Intune signals, Microsoft Defender for Endpoint
+  posture, and the Entra ID device join state. Non-compliant or
+  unmanaged devices are denied or routed through a step-up workflow
+  that remediates the deficiency before access is granted. This
+  satisfies the device pillar of the Zero Trust Maturity Model and
+  supports **AC-19** (Access Control for Mobile Devices) and
+  **CM-2** (Baseline Configuration).
+
+  **Session Monitoring and Termination**
+  Remote sessions are monitored continuously by Microsoft Sentinel
+  using a curated detection rule pack tuned for impossible-travel,
+  anomalous-IP, atypical device usage, and post-MFA session-token
+  theft indicators. High-confidence detections trigger automated
+  session termination via the Conditional Access continuous-access-
+  evaluation channel within seconds of detection. Lower-confidence
+  detections route to the Security Operations Center via ServiceNow
+  Security Incident Response for analyst review. Session-termination
+  events and reauthentication outcomes are logged per **AU-12**
+  (Audit Record Generation).
+
+  **Session Duration and Reauthentication**
+  Conditional Access sign-in frequency policies enforce the session
+  durations defined in PARAM AC-017-004. High-sensitivity workloads
+  carry a shorter session window than baseline applications; the
+  policy is partitioned by application sensitivity rather than
+  applied uniformly, balancing user experience against risk. Refresh
+  tokens are revoked automatically on user-risk elevation, role
+  change, or device-compliance change, providing real-time session
+  reset rather than waiting for the next scheduled reauthentication.
+
+  **Audit and Evidence**
+  Every remote-session decision (allow, deny, step-up, terminate)
+  generates an Entra ID sign-in record with the user identifier,
+  the device identifier, the originating IP, the evaluated
+  Conditional Access policies, the named-location classification,
+  and the decision outcome. Records are streamed to Microsoft
+  Sentinel for correlation and exported nightly to the UIAO
+  evidence ledger, providing a complete remote-access audit trail
+  consistent with **AU-2** (Event Logging) and **AU-12** (Audit
+  Record Generation).
+
 related_controls:
-  - AC-2
-  - AC-3
+    - AC-2   # Account Management
+    - AC-3   # Access Enforcement
+    - AC-4   # Information Flow Enforcement
+    - AC-19  # Access Control for Mobile Devices
+    - AU-2   # Event Logging
+    - AU-12  # Audit Record Generation
+    - CM-2   # Baseline Configuration
+    - IA-2   # Identification and Authentication
+    - IA-8   # Identification and Authentication (Non-Organizational Users)
+    - SC-7   # Boundary Protection
+    - SC-8   # Transmission Confidentiality and Integrity
+    - SC-12  # Cryptographic Key Establishment and Management
