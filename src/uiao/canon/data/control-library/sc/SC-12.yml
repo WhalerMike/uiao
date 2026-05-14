@@ -1,20 +1,138 @@
-control-id: SC-12
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-12
+# Title      : Cryptographic Key Establishment and Management
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: SC-12
 title: Cryptographic Key Establishment and Management
-narrative: |
-  {{ organization.name }} establishes and manages cryptographic keys using approved cryptographic modules.
-
-  **Key Management**
-  Cryptographic keys are generated, distributed, stored, and destroyed using FIPS 140-3 validated modules.
-
-  **Certificate Management**
-  Digital certificates are managed through an enterprise PKI with automated renewal and revocation processes.
-implemented-by:
-  - KeyVault
-  - AzureAD
+family: System and Communications Protection
 status: implemented
+
+implemented_by:
+    - azure-key-vault
+    - azure-managed-hsm
+    - microsoft-entra-id
+    - microsoft-intune
+    - cyberark-pam
+    - microsoft-purview
+
 evidence:
-  - type: audit-log
-    ref: SC-12-logs
+    - key-vault-key-inventory-export
+    - managed-hsm-fips-validation-attestation
+    - key-rotation-event-history
+    - certificate-issuance-revocation-log
+    - hsm-access-control-policy-export
+
+parameters:
+    - id: PARAM-SC-012-001
+      description: >-
+          Approved key-establishment substrates ranked by
+          assurance level.
+      value: "Tier 0: Azure Managed HSM (FIPS 140-3 Level 3); used for root-of-trust signing keys, FPKI sub-CA private keys, and high-assurance workload identities. Tier 1: Azure Key Vault Premium (HSM-backed, FIPS 140-3 Level 2); used for tenant TLS certificates, customer-managed encryption keys for storage / databases. Tier 2: Azure Key Vault Standard (software-backed); reserved for development and non-production substrate where the higher tier is not justified"
+    - id: PARAM-SC-012-002
+      description: >-
+          Key-rotation cadence by key class.
+      value: "Root and signing keys: rotation governed by the issuing PKI lifecycle (5-10 years); auditable through CT logs and CRL publication. Tenant TLS certificates: 397-day maximum lifetime with 30-day-remaining auto-renewal. Customer-managed encryption keys: annual rotation by default, configurable per workload; automated via Key Vault rotation policy. Workload-identity federation tokens: ephemeral, issued per-session per ADR-004"
+    - id: PARAM-SC-012-003
+      description: >-
+          Access-control requirements for key-management operations.
+      value: "Key creation, deletion, and policy modification require Entra PIM-mediated activation of the Key Vault Administrator role with approval per AC-5; key-use operations (sign, decrypt) are scoped to workload-identity service principals with the narrowest possible permissions; soft-delete and purge protection mandatory on every key vault; key-vault diagnostic settings forward all events to Microsoft Sentinel"
+
+narrative: |
+  **Key Substrate Tiering**
+  Cryptographic keys are stored in the substrate defined in PARAM
+  SC-012-001 according to the assurance level required by the
+  key's role. The Azure Managed HSM at FIPS 140-3 Level 3 is the
+  Tier 0 substrate for the highest-assurance keys: agency PKI
+  sub-CA private keys, root-of-trust signing keys, and workload
+  identities that secure Tier 0 components. Azure Key Vault
+  Premium with HSM-backed key storage at FIPS 140-3 Level 2 is
+  the Tier 1 substrate for tenant TLS certificates and
+  customer-managed encryption keys. Software-backed Key Vault
+  Standard is reserved for development and non-production
+  substrate where the higher tier is not justified.
+
+  **Key Generation**
+  Keys are generated within the HSM hardware boundary; key
+  material never leaves the secure enclave in plaintext. RSA keys
+  use 3072-bit minimum length; ECDSA keys use NIST P-256 or
+  P-384; symmetric keys use AES-256 minimum. Key-generation
+  randomness derives from the HSM's hardware RNG, satisfying NIST
+  SP 800-90B entropy-source requirements. This supports **SC-13**
+  (Cryptographic Protection) and **IA-5** (Authenticator
+  Management).
+
+  **Key Distribution and Establishment**
+  Keys are distributed through key-establishment protocols that
+  prevent in-flight key material exposure. TLS-protected channels
+  use ECDHE for forward-secret session-key establishment;
+  asymmetric key delivery uses Key Vault's HSM-attested key-import
+  path with attestation evidence preserved for audit. Workload-
+  identity federation per ADR-004 eliminates the long-lived
+  shared-secret distribution problem for service-to-service
+  authentication.
+
+  **Rotation Cadence**
+  Keys rotate at the cadence defined in PARAM SC-012-002. Azure
+  Key Vault rotation policies automate the rotation lifecycle for
+  customer-managed encryption keys, tenant TLS certificates, and
+  service-principal credentials; ephemeral federated-token usage
+  eliminates rotation for workloads that have migrated to ADR-004.
+  Rotation events generate immutable audit records in the Key
+  Vault diagnostic logs and stream to Microsoft Sentinel for
+  correlation with workload health.
+
+  **Access Control on Key Operations**
+  Key-management operations are gated per PARAM SC-012-003.
+  Administrative operations (create, delete, policy modification)
+  require Entra PIM-mediated activation of the Key Vault
+  Administrator role; activation requires MFA, approval per
+  **AC-5** (Separation of Duties), and is logged with full
+  evidence. Workload key-use operations are scoped to specific
+  service-principal identities via Azure RBAC at the smallest
+  possible scope per **AC-6** (Least Privilege). Every key-vault
+  operation produces an audit event consistent with **AU-12**
+  (Audit Record Generation).
+
+  **Soft-Delete and Purge Protection**
+  Every Key Vault in the substrate is configured with soft-delete
+  and purge protection enabled. Soft-deleted keys are recoverable
+  for 90 days, providing the operational safety net against
+  inadvertent deletion. Purge protection prevents premature
+  destruction even by privileged operators, defending against
+  insider-threat key-destruction patterns and supporting **AU-9**
+  (Protection of Audit Information).
+
+  **Key-Inventory Reconciliation**
+  The substrate maintains a key-inventory manifest enumerating
+  every key by role, substrate tier, owner, rotation schedule,
+  and consuming workload. The inventory is reconciled nightly
+  against the live Key Vault and Managed HSM state; drift between
+  the manifest and the live state generates a Microsoft Sentinel
+  alert. The continuous reconciliation prevents the orphaned-key
+  and shadow-key patterns that historically expanded the
+  cryptographic attack surface.
+
+  **PKI Integration**
+  Certificates issued from Azure Key Vault and Managed HSM chain
+  to the agency PKI roots managed under **SC-13** (Cryptographic
+  Protection) and **SC-17** (Public Key Infrastructure Certificates,
+  where applicable). The Federal Common Policy CA G2 anchors the
+  external-trust path for federal-personnel certificates per the
+  PIV/CAC mandate; the agency Internal PKI roots anchor internal-
+  trust paths. Trust-anchor provenance is preserved through the
+  HSM attestation chain.
+
 related_controls:
-  - AC-2
-  - AC-3
+    - AC-3   # Access Enforcement
+    - AC-5   # Separation of Duties
+    - AC-6   # Least Privilege
+    - AU-9   # Protection of Audit Information
+    - AU-12  # Audit Record Generation
+    - IA-5   # Authenticator Management
+    - IA-7   # Cryptographic Module Authentication
+    - SC-7   # Boundary Protection
+    - SC-8   # Transmission Confidentiality and Integrity
+    - SC-13  # Cryptographic Protection
+    - SC-17  # Public Key Infrastructure Certificates
+    - SC-28  # Protection of Information at Rest

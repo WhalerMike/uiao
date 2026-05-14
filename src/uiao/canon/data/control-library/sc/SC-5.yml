@@ -1,23 +1,114 @@
-control-id: SC-5
-title: Denial-of-Service Protection
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-5
+# Title      : Denial of Service Protection
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: SC-5
+title: Denial of Service Protection
+family: System and Communications Protection
 status: implemented
-implemented-by:
-  - azure-ddos-protection
-  - azure-front-door
-narrative: |
-  {{ organization.name }} protects the system against denial-of-service attacks.
 
-  **Network Layer Protection**
-  All virtual networks have Azure DDoS Protection Standard enabled for automatic Layer 3/4 mitigation and adaptive tuning.
+implemented_by:
+    - azure-ddos-protection-network
+    - azure-front-door-premium
+    - azure-application-gateway-waf
+    - azure-firewall-premium
+    - microsoft-sentinel
 
-  **Application Layer Protection**
-  External traffic is routed through Azure Front Door with Web Application Firewall (WAF) in Prevention mode, including rate limiting and custom rules to block volumetric and application-layer attacks before they reach the origin.
-parameters:
-  ddos-tier: "Azure DDoS Network Protection Standard"
-  waf-mode: "Prevention"
 evidence:
-  - type: configuration
-    ref: SC-5-evidence
+    - azure-ddos-protection-mitigation-reports
+    - front-door-waf-policy-export
+    - application-gateway-waf-rule-set
+    - sentinel-ddos-detection-incidents
+    - azure-network-watcher-flow-analytics
+
+parameters:
+    - id: PARAM-SC-005-001
+      description: >-
+          Authorized denial-of-service protection mechanisms in
+          use across the authorization boundary.
+      value: "Azure DDoS Protection Network tier on every virtual network with adaptive tuning and traffic profiling; Azure Front Door Premium with the Microsoft-managed WAF rule set in Prevention mode for ingress L7 protection; Azure Application Gateway WAF v2 with OWASP CRS 3.2 for tenant-specific application protection; Azure Firewall Premium with rate-based threat protection for east-west and egress flows"
+    - id: PARAM-SC-005-002
+      description: >-
+          Layered defense thresholds and rate limits enforced at
+          the boundary edge.
+      value: "L3/L4: Azure DDoS auto-mitigation triggered on traffic-baseline deviation. L7: Front Door rate limiting at 1000 requests / minute per source IP for unauthenticated paths and 100 requests / minute for authentication endpoints; bot-protection rule set blocks known bad bots; geo-fencing blocks traffic from non-authorized geographies for federal-personnel-only workloads"
+    - id: PARAM-SC-005-003
+      description: >-
+          DOS-related event detection and response objectives.
+      value: "Detection within 60 seconds of attack onset via DDoS Protection telemetry forwarded to Sentinel; automated mitigation engaged within the DDoS Protection SLA; analyst triage initiated within 5 minutes for sustained attacks; post-incident review within 1 business day for any attack lasting more than 15 minutes"
+
+narrative: |
+  **Layered Protection Architecture**
+  The substrate protects against denial-of-service attacks through
+  a defense-in-depth stack defined in PARAM SC-005-001. The L3/L4
+  layer is anchored by Azure DDoS Protection Network tier, which
+  applies adaptive traffic-baseline tuning per protected resource
+  and triggers auto-mitigation on volumetric, protocol, and
+  resource-layer attacks at the Azure network edge — before
+  attacker traffic reaches the tenant boundary. The L7 layer is
+  anchored by Azure Front Door Premium with the Microsoft-managed
+  WAF rule set in Prevention mode, augmented by Azure Application
+  Gateway WAF v2 with OWASP CRS 3.2 for tenant-specific
+  application-protection rules.
+
+  **Rate Limiting and Bot Protection**
+  Front Door rate-limiting policies enforce the per-source-IP
+  thresholds defined in PARAM SC-005-002. Authentication endpoints
+  carry the tightest limits to defend against credential-stuffing
+  attempts; unauthenticated content paths carry standard limits;
+  authenticated paths inherit user-bound limits enforced at the
+  Conditional Access continuous-access-evaluation layer. The
+  bot-protection rule set blocks the Microsoft-curated list of
+  known-bad bot signatures, and custom rules block specific
+  attacker tooling identified by the SOC.
+
+  **Geo-Fencing**
+  Federal-personnel-only workloads enforce geo-fencing at the
+  Front Door layer per the agency-authorized-geography list.
+  Traffic from non-authorized geographies is dropped at the edge,
+  reducing the substrate's exposure surface to attacker
+  infrastructure outside the operational geography. Geo-fence
+  policies are version-controlled in the configuration-as-code
+  repository and updated through the CM-3 change-control pathway.
+
+  **East-West and Egress Protection**
+  Azure Firewall Premium with rate-based threat protection covers
+  east-west and egress flows. Outbound rate limits constrain the
+  blast radius of an internal-origin DoS attempt; threat-intel
+  integration blocks outbound flows to known C2 infrastructure;
+  IDPS in alert+block mode detects and stops attacks on the egress
+  path. This complements **SC-7** (Boundary Protection) and
+  **AC-4** (Information Flow Enforcement).
+
+  **Detection and Response**
+  DDoS Protection telemetry, Front Door WAF logs, Application
+  Gateway WAF logs, and Azure Firewall logs are streamed to
+  Microsoft Sentinel for correlation. Detection rules trigger on
+  sustained anomalous traffic patterns, rate-limit-hit
+  concentrations, and WAF deny-rule clusters. Response objectives
+  per PARAM SC-005-003 are tracked as SOC performance metrics and
+  reviewed by the ISSO and Authorizing Official on the monthly
+  ConMon cycle consistent with **CA-7** (Continuous Monitoring).
+
+  **Capacity Planning and Validation**
+  Azure DDoS Protection's traffic-profiling output informs the
+  capacity-planning baseline for protected resources; sustained
+  baseline growth triggers a capacity review. Periodic DDoS
+  simulation exercises (performed under Azure Microsoft-approved
+  simulation conditions) validate that the protection stack and
+  response procedures perform as designed against representative
+  attack patterns.
+
 related_controls:
-  - CM-2
-  - SC-7
+    - AC-4   # Information Flow Enforcement
+    - AU-2   # Event Logging
+    - AU-6   # Audit Record Review
+    - CA-7   # Continuous Monitoring
+    - CM-2   # Baseline Configuration
+    - CM-3   # Configuration Change Control
+    - CP-2   # Contingency Plan
+    - IR-4   # Incident Handling
+    - SC-7   # Boundary Protection
+    - SC-8   # Transmission Confidentiality and Integrity
+    - SI-4   # System Monitoring
