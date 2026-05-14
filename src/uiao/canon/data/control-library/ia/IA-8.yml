@@ -1,23 +1,127 @@
-control-id: IA-8
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-8
+# Title      : Identification and Authentication (Non-Organizational Users)
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: IA-8
 title: Identification and Authentication (Non-Organizational Users)
+family: Identification and Authentication
 status: implemented
-implemented-by:
-  - azure-ad-b2b
-  - entra-id-governance
-narrative: |
-  {{ organization.name }} uniquely identifies and authenticates non-organizational users (or processes acting on their behalf).
 
-  **External User Management**
-  Guest and partner access uses Entra ID B2B. Authentication occurs via the external user's home IdP or one-time passcode, always subject to organizational MFA and Conditional Access policies.
+implemented_by:
+    - entra-id-external-identities
+    - entra-conditional-access
+    - entra-id-governance
+    - intune
+    - microsoft-sentinel
 
-  **Access Review**
-  Guest accounts are automatically reviewed monthly; inactive accounts exceeding the defined threshold are disabled.
-parameters:
-  guest-inactivity-limit: "30 days"
-  review-frequency: "Monthly"
 evidence:
-  - type: configuration
-    ref: IA-8-evidence
+    - entra-external-identities-cross-tenant-access-policy
+    - entra-b2b-guest-inventory-export
+    - entra-conditional-access-named-locations
+    - entra-access-review-completion-records
+    - sentinel-non-org-authentication-detections
+
+parameters:
+    - id: PARAM-IA-008-001
+      description: >-
+          Approved authentication patterns for non-organizational
+          users accessing the authorization boundary.
+      value: "B2B federation from approved partner tenants with phishing-resistant authentication enforced at the partner IdP; SAML 2.0 federation from credentialed government identity providers (e.g., Login.gov, ID.me, agency-specific PIV/CAC federation); OIDC federation from approved partner organizations; B2B direct connect for trusted partner Teams/Sharepoint surfaces"
+    - id: PARAM-IA-008-002
+      description: >-
+          Approval pathway for cross-tenant or external-user
+          access to substrate resources.
+      value: "Sponsoring federal employee opens a ServiceNow Access Request that names the external user, the resource scope, the business justification, and the expected access duration; Access Control Working Group reviews requests for Tier 0 scopes; routine B2B requests are auto-approved when the partner tenant is on the cross-tenant allow-list and the scope is non-sensitive"
+    - id: PARAM-IA-008-003
+      description: >-
+          Maximum lifetime for any external-user access grant
+          before re-authorization is required.
+      value: "90 days for routine B2B access; 30 days for elevated-scope access; renewable through Entra ID Access Reviews with sponsor reauthorization required at every renewal"
+    - id: PARAM-IA-008-004
+      description: >-
+          Inactivity threshold after which a non-organizational user
+          account is automatically disabled.
+      value: "30 days of no successful interactive sign-in disables the guest account via Entra ID Lifecycle Workflows; 60 days of inactivity deletes the guest object from the tenant"
+
+narrative: |
+  **Federation-First Architecture**
+  Non-organizational users authenticate to the substrate through
+  federation from their home identity provider rather than through
+  locally-provisioned credentials. Entra ID External Identities
+  brokers B2B federation from approved partner tenants and SAML or
+  OIDC federation from credentialed identity providers per PARAM
+  IA-008-001. The substrate never stores a non-organizational
+  user's primary authenticator; trust flows from the partner IdP's
+  attestation that the user authenticated with phishing-resistant
+  MFA at the partner end. Cross-tenant access settings enforce
+  per-tenant allow-list with documented partner-tenant identifiers,
+  satisfying **CA-3** (Information Exchange) and supporting
+  **AC-20** (Use of External Systems).
+
+  **Sponsored Onboarding**
+  Every non-organizational user is sponsored by a named federal
+  employee who owns the business justification and is accountable
+  for the access duration and scope. Sponsorship is captured at
+  onboarding through the workflow defined in PARAM IA-008-002. No
+  external user is admitted to the tenant without recorded
+  sponsorship. Sponsor changes (e.g., when the original sponsor
+  separates) trigger an immediate access review and re-attestation;
+  failure to find a new sponsor within the review window auto-
+  disables the external account per the Lifecycle Workflow.
+
+  **Authentication Strength Carryforward**
+  Conditional Access policies require that the external user's
+  inbound authentication satisfies at minimum the same
+  authentication strength applied to organizational users for the
+  same resource. Entra ID Cross-Tenant Access Settings inherit
+  partner-tenant MFA claims, ensuring that a partner-side MFA
+  satisfies the substrate-side MFA requirement; partner tenants
+  that cannot attest MFA are required to step up via the substrate's
+  own Conditional Access challenge. Authentication strength
+  alignment supports **IA-2** (Identification and Authentication of
+  Organizational Users) and **AC-3** (Access Enforcement).
+
+  **Bounded-Duration Access**
+  External access grants are time-bound per PARAM IA-008-003.
+  Entra ID Access Packages encode the maximum duration; access
+  expires automatically without explicit renewal. Renewal requires
+  sponsor reauthorization and revalidation of the business
+  justification. Tier 0 scope is never granted to external users;
+  any administrative or privileged scope requires routing through
+  the Access Control Working Group with documented compensating
+  controls. This bounded-duration model satisfies **AC-6** (Least
+  Privilege) and supports **CA-3** (Information Exchange).
+
+  **Inactivity Disable and Cleanup**
+  Entra ID Lifecycle Workflows enforce the inactivity threshold
+  defined in PARAM IA-008-004. Inactive guest accounts are disabled
+  and subsequently deleted; deletion events generate ServiceNow
+  cleanup tickets to revoke residual resource-level RBAC
+  assignments. The continuous cleanup loop prevents the
+  guest-object accumulation pattern that historically expanded the
+  external attack surface in legacy B2B deployments.
+
+  **Continuous Monitoring**
+  Non-organizational-user authentications are streamed to Microsoft
+  Sentinel with detection rules tuned for unusual partner-tenant
+  activity, post-MFA token theft from federated sessions, and
+  scope creep beyond the access-package grant. High-confidence
+  detections trigger Conditional Access continuous-access-evaluation
+  signal-out (immediate session revocation) and a ServiceNow
+  Security Incident Response ticket. Authentication telemetry is
+  exported nightly to the UIAO evidence ledger and is reviewable
+  per **AU-6** (Audit Record Review).
+
 related_controls:
-  - AC-2
-  - AC-3
+    - AC-2   # Account Management
+    - AC-3   # Access Enforcement
+    - AC-6   # Least Privilege
+    - AC-17  # Remote Access
+    - AC-20  # Use of External Systems
+    - AU-6   # Audit Record Review
+    - AU-12  # Audit Record Generation
+    - CA-3   # Information Exchange
+    - IA-2   # Identification and Authentication (Organizational Users)
+    - IA-4   # Identifier Management
+    - IA-5   # Authenticator Management
