@@ -1,6 +1,6 @@
-# Image Prompts — UIAO-Core CLI Reference
+# Image Prompts — UIAO CLI Reference
 
-> Companion catalog for `uiao-core-cli-reference.qmd`. One entry per
+> Companion catalog for `uiao-cli-reference.qmd`. One entry per
 > `![...]` placeholder in the `.qmd` file. Generated images land in
 > `./images/` with the exact filename referenced by the page.
 >
@@ -31,7 +31,7 @@
 
 ---
 
-## IMAGE-01 — `uiao-core-cli-reference-image-01-cli-subapp-topology.png`
+## IMAGE-01 — `uiao-cli-reference-image-01-cli-subapp-topology.png`
 
 **Placement:** Top-of-page hero, immediately after the H1.
 
@@ -77,14 +77,142 @@ on white, no human figures.
 
 ---
 
+## IMAGE-02 — `uiao-cli-reference-image-02-pipeline-overview.png`
+
+**Placement:** §1 Overview, after the introductory prose.
+
+**Slug:** `pipeline-overview`
+
+**Aspect:** 1600×600 (landscape)
+
+**Generator:** `mermaid-cli@11.12.0` (rendered, not generative — see
+"Generation notes" below for the regen recipe).
+
+**Source mermaid:**
+
+```mermaid
+flowchart LR
+  Canon["Canon YAML<br/>(src/uiao/canon/)"]
+  OSCAL["generate ssp /<br/>oscal validate"]
+  Visuals["generate visuals /<br/>diagrams / gemini"]
+  Artifacts["generate docx /<br/>pptx / artifacts"]
+  Adapter["adapter run /<br/>run-scuba"]
+  IR["ir scuba-transform /<br/>evidence-bundle / ..."]
+  ConMon["conmon process /<br/>export-oa / dashboard"]
+  Audit["ir auditor-bundle /<br/>evidence graph"]
+  Canon --> OSCAL --> Visuals --> Artifacts
+  Canon --> Adapter --> IR --> ConMon
+  IR --> Audit
+  Artifacts --> Audit
+  classDef canon fill:#0D1B2E,color:#fff,stroke:#0D1B2E;
+  classDef stage fill:#1E8C8C,color:#fff,stroke:#1E8C8C;
+  class Canon canon;
+  class OSCAL,Visuals,Artifacts,Adapter,IR,ConMon,Audit stage;
+```
+
+**`fig-alt`:** Pipeline overview: Canon YAML branches into two parallel
+tracks. Top: generate ssp/oscal validate → generate visuals/diagrams/gemini
+→ generate docx/pptx/artifacts. Bottom: adapter run/run-scuba → ir
+scuba-transform/evidence-bundle → conmon process/export-oa/dashboard. Both
+tracks converge into ir auditor-bundle/evidence graph.
+
+---
+
+## IMAGE-03 — `uiao-cli-reference-image-03-ir-pipeline.png`
+
+**Placement:** §3.8 IR pipeline, after the introductory prose.
+
+**Slug:** `ir-pipeline`
+
+**Aspect:** 1600×600 (landscape)
+
+**Generator:** `mermaid-cli@11.12.0`.
+
+**Source mermaid:**
+
+```mermaid
+flowchart LR
+  Scuba["adapter run-scuba<br/>(normalized JSON)"]
+  Trans["ir scuba-transform"]
+  Bundle["ir evidence-bundle"]
+  Poam["ir poam-export"]
+  Drift["ir drift-detect /<br/>ir diff"]
+  Gov["ir governance-report"]
+  SSP["ir ssp-report"]
+  Audit["ir auditor-bundle"]
+  Fresh["ir freshness /<br/>ir dashboard"]
+  Scuba --> Trans --> Bundle
+  Bundle --> Poam
+  Bundle --> Drift
+  Bundle --> Gov --> SSP
+  Bundle --> Audit
+  Bundle --> Fresh
+  classDef ir fill:#1E8C8C,color:#fff,stroke:#1E8C8C;
+  classDef sink fill:#0D1B2E,color:#fff,stroke:#0D1B2E;
+  class Trans,Bundle,Poam,Drift,Gov,SSP,Audit,Fresh ir;
+  class Scuba sink;
+```
+
+**`fig-alt`:** IR pipeline: adapter run-scuba produces normalized JSON,
+which feeds ir scuba-transform, which produces ir evidence-bundle. The
+evidence bundle fans out to six terminal commands: ir poam-export, ir
+drift-detect/ir diff, ir governance-report (which feeds ir ssp-report),
+ir auditor-bundle, and ir freshness/ir dashboard.
+
+---
+
+## IMAGE-04 — `uiao-cli-reference-image-04-pipeline-architecture.png`
+
+**Placement:** §6 Pipeline architecture, after the introductory prose.
+
+**Slug:** `pipeline-architecture`
+
+**Aspect:** 1200×1000 (portrait)
+
+**Generator:** `mermaid-cli@11.12.0`.
+
+**Source mermaid:**
+
+```mermaid
+flowchart TD
+  A[Canon YAML SSOT] --> B[Core OSCAL Generation]
+  B --> C[Visual Rendering]
+  C --> D[Artifact Packaging]
+  D --> E[Continuous Monitoring]
+  A --> F[Adapter Ingestion]
+  F --> G[IR Pipeline]
+  G --> H[Governance Reporting]
+  H --> I[Auditor Delivery]
+  E --> I
+  classDef canon fill:#0D1B2E,color:#fff,stroke:#0D1B2E;
+  classDef stage fill:#1E8C8C,color:#fff,stroke:#1E8C8C;
+  classDef sink fill:#C74040,color:#fff,stroke:#C74040;
+  class A canon;
+  class B,C,D,E,F,G,H stage;
+  class I sink;
+```
+
+**`fig-alt`:** Full pipeline architecture, top-down. Canon YAML SSOT
+branches into two streams. Stream one: Core OSCAL Generation → Visual
+Rendering → Artifact Packaging → Continuous Monitoring. Stream two:
+Adapter Ingestion → IR Pipeline → Governance Reporting. Both streams
+converge into Auditor Delivery at the bottom.
+
+---
+
 ## Generation notes
 
-- This page also embeds **inline Mermaid diagrams** for the pipeline
-  flow (§1 and §6) and the IR pipeline (§3.8). Those render at Quarto
-  build time and do not require a PNG generation pass.
-- If the hero PNG is missing at render time, Quarto still produces
-  the page — the figure shows the broken-image placeholder with the
-  `fig-alt` text below it. CI link-check tolerates missing images
-  under `images/` by convention (see `.lycheeignore`).
-- To regenerate this image after a prompt edit, delete the matching
-  `.png.json` sidecar so the generator recomputes the hash.
+- **Why pre-rendered, not inline `{mermaid}`.** GitHub Actions DOCX
+  render hangs on inline mermaid blocks because `mermaid-cli` requires
+  a headless Chromium that the runner does not provide. Pre-rendering
+  the PNGs locally with `mmdc` and embedding them with `![]()` makes
+  the DOCX pipeline deterministic and self-contained.
+- **Regenerating an IMAGE-0N PNG.** Save the source mermaid block above
+  to a temporary `.mmd` file and run:
+  `mmdc -i <source>.mmd -o images/<name>.png -b white -w <W> -H <H>`
+  using the aspect dimensions listed for that image. Then update the
+  `sha256` field in the matching `.png.json` sidecar.
+- IMAGE-01 (hero) is the only Gemini-generated figure on this page;
+  IMAGE-02, IMAGE-03, IMAGE-04 are mermaid-rendered diagrams.
+- CI link-check tolerates missing images under `images/` by convention
+  (see `.lycheeignore`).
