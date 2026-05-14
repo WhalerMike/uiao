@@ -1,5 +1,5 @@
 ---
-title: "UIAO-Core CLI Reference"
+title: "UIAO CLI Reference"
 subtitle: "OSCAL compliance toolkit command-line reference (post-ADR-046 sub-app surface)"
 doc-type: api-reference
 audience: [Customer, Technical]
@@ -10,7 +10,7 @@ date: "May 2026"
 status: Active
 canon-source: "docs/docs/cli-reference.qmd (canonical) + src/uiao/cli/app.py"
 derived-from: "ADR-046 (CLI sub-app reorganization) + AGENTS.md §Public surface inventory (v0.5.0 + v0.6.0 deltas)"
-repo-path: docs/customer-documents/substrate/platform-tooling/uiao-core-cli-reference.qmd
+repo-path: docs/customer-documents/substrate/platform-tooling/uiao-cli-reference.qmd
 created-at: 2026-04-26
 updated-at: 2026-05-14
 format:
@@ -21,9 +21,9 @@ format:
     toc: true
 ---
 
-# UIAO-Core CLI Reference {.unnumbered}
+# UIAO CLI Reference {.unnumbered}
 
-![UIAO-Core CLI sub-app topology hero](images/uiao-core-cli-reference-image-01-cli-subapp-topology.png){#fig-uiao-core-cli-reference-image-01 fig-alt="A horizontal blueprint-style diagram showing the uiao root entry point branching into 13 named sub-apps: canon, generate, oscal, adapter, ir, conmon, reciprocity, cql, evidence, substrate, ksi, orchestrator, enforcement. Below the sub-apps, three lanes labelled 'Canon-anchored', 'Adapter-ingested', 'Auditor-delivered' connect to the substrate's data flow. Clean engineering-blueprint aesthetic, dark navy and teal on white, no human figures." width="85%"}
+![UIAO CLI sub-app topology hero](images/uiao-cli-reference-image-01-cli-subapp-topology.png){#fig-uiao-cli-reference-image-01 fig-alt="A horizontal blueprint-style diagram showing the uiao root entry point branching into 13 named sub-apps: canon, generate, oscal, adapter, ir, conmon, reciprocity, cql, evidence, substrate, ksi, orchestrator, enforcement. Below the sub-apps, three lanes labelled 'Canon-anchored', 'Adapter-ingested', 'Auditor-delivered' connect to the substrate's data flow. Clean engineering-blueprint aesthetic, dark navy and teal on white, no human figures." width="85%"}
 
 ::: {.callout-note title="Authoritative surface"}
 This page is the customer-facing rendering of the CLI surface specified in
@@ -45,7 +45,7 @@ only. **Toolkit:** OSCAL compliance toolkit for US Government systems.
 
 ## 1. Overview
 
-UIAO-Core is the canonical command-line toolkit for the **Unified
+The UIAO CLI is the canonical command-line toolkit for the **Unified
 Identity-Addressing-Overlay Architecture (UIAO)** governance substrate.
 It automates the full lifecycle of compliance artifact generation,
 continuous monitoring, governance reporting, and auditor evidence
@@ -58,25 +58,7 @@ monitoring → IR (Intermediate Representation) governance pipeline.
 Every command is idempotent, auditable, and traceable to its canon
 source.
 
-```{mermaid}
-flowchart LR
-  Canon["Canon YAML<br/>(src/uiao/canon/)"]
-  OSCAL["generate ssp /<br/>oscal validate"]
-  Visuals["generate visuals /<br/>diagrams / gemini"]
-  Artifacts["generate docx /<br/>pptx / artifacts"]
-  Adapter["adapter run /<br/>run-scuba"]
-  IR["ir scuba-transform /<br/>evidence-bundle / ..."]
-  ConMon["conmon process /<br/>export-oa / dashboard"]
-  Audit["ir auditor-bundle /<br/>evidence graph"]
-  Canon --> OSCAL --> Visuals --> Artifacts
-  Canon --> Adapter --> IR --> ConMon
-  IR --> Audit
-  Artifacts --> Audit
-  classDef canon fill:#0D1B2E,color:#fff,stroke:#0D1B2E;
-  classDef stage fill:#1E8C8C,color:#fff,stroke:#1E8C8C;
-  class Canon canon;
-  class OSCAL,Visuals,Artifacts,Adapter,IR,ConMon,Audit stage;
-```
+![UIAO CLI pipeline overview](images/uiao-cli-reference-image-02-pipeline-overview.png){#fig-uiao-cli-reference-image-02 fig-alt="Pipeline overview: Canon YAML branches into two parallel tracks. Top: generate ssp/oscal validate → generate visuals/diagrams/gemini → generate docx/pptx/artifacts. Bottom: adapter run/run-scuba → ir scuba-transform/evidence-bundle → conmon process/export-oa/dashboard. Both tracks converge into ir auditor-bundle/evidence graph." width="85%"}
 
 ::: {.callout-important title="Governance note"}
 UIAO operates in **Commercial Cloud as governed by FedRAMP** unless
@@ -87,11 +69,11 @@ FedRAMP High.**
 
 ## 2. Global options
 
-The following options are available on every UIAO-Core invocation.
+The following options are available on every UIAO CLI invocation.
 
 | Option | Short | Description |
 |---|---|---|
-| `--version` | `-V` | Show the UIAO-Core version and exit. |
+| `--version` | `-V` | Show the UIAO version and exit. |
 | `--help` | | Show the top-level help message and exit. |
 
 ::: {.callout-tip title="Sub-app help"}
@@ -273,28 +255,7 @@ traceable, machine-readable artifacts. The IR layer enables drift
 detection, freshness tracking, POA&M generation, SSP narrative
 synthesis, and full auditor evidence packaging.
 
-```{mermaid}
-flowchart LR
-  Scuba["adapter run-scuba<br/>(normalized JSON)"]
-  Trans["ir scuba-transform"]
-  Bundle["ir evidence-bundle"]
-  Poam["ir poam-export"]
-  Drift["ir drift-detect /<br/>ir diff"]
-  Gov["ir governance-report"]
-  SSP["ir ssp-report"]
-  Audit["ir auditor-bundle"]
-  Fresh["ir freshness /<br/>ir dashboard"]
-  Scuba --> Trans --> Bundle
-  Bundle --> Poam
-  Bundle --> Drift
-  Bundle --> Gov --> SSP
-  Bundle --> Audit
-  Bundle --> Fresh
-  classDef ir fill:#1E8C8C,color:#fff,stroke:#1E8C8C;
-  classDef sink fill:#0D1B2E,color:#fff,stroke:#0D1B2E;
-  class Trans,Bundle,Poam,Drift,Gov,SSP,Audit,Fresh ir;
-  class Scuba sink;
-```
+![IR pipeline: SCuBA-to-auditor evidence flow](images/uiao-cli-reference-image-03-ir-pipeline.png){#fig-uiao-cli-reference-image-03 fig-alt="IR pipeline: adapter run-scuba produces normalized JSON, which feeds ir scuba-transform, which produces ir evidence-bundle. The evidence bundle fans out to six terminal commands: ir poam-export, ir drift-detect/ir diff, ir governance-report (which feeds ir ssp-report), ir auditor-bundle, and ir freshness/ir dashboard." width="85%"}
 
 | Command | Description | Pipeline role |
 |---|---|---|
@@ -483,28 +444,11 @@ and the
 
 ## 6. Pipeline architecture
 
-The UIAO-Core CLI implements a deterministic pipeline architecture.
+The UIAO CLI implements a deterministic pipeline architecture.
 Every artifact produced by any command is traceable back to its canon
 YAML source-of-truth.
 
-```{mermaid}
-flowchart TD
-  A[Canon YAML SSOT] --> B[Core OSCAL Generation]
-  B --> C[Visual Rendering]
-  C --> D[Artifact Packaging]
-  D --> E[Continuous Monitoring]
-  A --> F[Adapter Ingestion]
-  F --> G[IR Pipeline]
-  G --> H[Governance Reporting]
-  H --> I[Auditor Delivery]
-  E --> I
-  classDef canon fill:#0D1B2E,color:#fff,stroke:#0D1B2E;
-  classDef stage fill:#1E8C8C,color:#fff,stroke:#1E8C8C;
-  classDef sink fill:#C74040,color:#fff,stroke:#C74040;
-  class A canon;
-  class B,C,D,E,F,G,H stage;
-  class I sink;
-```
+![Full pipeline architecture: canon to auditor](images/uiao-cli-reference-image-04-pipeline-architecture.png){#fig-uiao-cli-reference-image-04 fig-alt="Full pipeline architecture, top-down. Canon YAML SSOT branches into two streams. Stream one: Core OSCAL Generation → Visual Rendering → Artifact Packaging → Continuous Monitoring. Stream two: Adapter Ingestion → IR Pipeline → Governance Reporting. Both streams converge into Auditor Delivery at the bottom." width="70%"}
 
 The pipeline is **idempotent** — any stage can be re-run without side
 effects. Re-running with identical inputs produces identical outputs.
@@ -578,4 +522,3 @@ UIAO operations, artifacts, and communications:
 | Windows Server 2025 deployment | [`platform-server-build.qmd`](../../platform/platform-server-build.qmd), [Git Server Interfaces whitepaper](../../whitepapers/git-server-interfaces-whitepaper.qmd) | Production runtime for the `[api]` extra. |
 | CLI entry point | [`src/uiao/cli/app.py`](../../../../src/uiao/cli/app.py) | Single Typer entry; resolves to `uiao = "uiao.cli.app:app"` in `pyproject.toml`. |
 | CLI smoke test | `tests/test_cli_help_smoke.py` | Walks the Typer tree, asserts `--help` returns 0 for every command. |
-
