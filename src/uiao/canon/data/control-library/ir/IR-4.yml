@@ -1,23 +1,150 @@
-control-id: IR-4
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IR-4
+# Title      : Incident Handling
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: IR-4
 title: Incident Handling
+family: Incident Response
 status: implemented
-implemented-by:
-  - microsoft-sentinel
-  - defender-for-cloud
-narrative: |
-  {{ organization.name }} implements an incident handling capability for security incidents.
 
-  **Full Incident Lifecycle**
-  Microsoft Sentinel serves as the SOAR platform covering preparation, detection, analysis, containment, eradication, recovery, and post-incident activities.
+implemented_by:
+    - microsoft-sentinel
+    - microsoft-defender-xdr
+    - servicenow-security-incident-response
+    - microsoft-power-automate
+    - microsoft-defender-for-endpoint
+    - entra-id-lifecycle-workflows
 
-  **Automated Response**
-  Logic Apps playbooks automatically perform initial containment actions (e.g., disable compromised accounts, isolate VMs) to reduce mean time to remediate.
-parameters:
-  containment-time-target: "60 Minutes for High Severity"
-  soar-platform: "Microsoft Sentinel"
 evidence:
-  - type: configuration
-    ref: IR-4-evidence
+    - sentinel-incident-export
+    - servicenow-sir-ticket-export
+    - defender-xdr-investigation-records
+    - power-automate-playbook-run-history
+    - post-incident-after-action-reports
+
+parameters:
+    - id: PARAM-IR-004-001
+      description: >-
+          Documented incident-response lifecycle phases and the
+          owner of each phase.
+      value: "Preparation (continuous: SOC + Detection Engineering teams) → Detection and Analysis (Sentinel + Defender XDR + SOC analyst triage) → Containment (SOC + automated playbooks) → Eradication (Technical Recovery Team) → Recovery (Technical Recovery Team + workload owner) → Post-Incident Activity (SOC lead + ISSO). Owner accountability is recorded on each ServiceNow SIR ticket as the incident traverses lifecycle phases"
+    - id: PARAM-IR-004-002
+      description: >-
+          Service Level Objectives for incident response by
+          severity class.
+      value: "Critical (Tier 0 compromise, active data exfiltration, ransomware indicators): containment within 60 minutes of detection; eradication within 4 hours; recovery within 24 hours. High (privileged-account abuse, lateral movement, sustained reconnaissance): containment within 4 hours; eradication within 24 hours; recovery within 72 hours. Medium (policy violation, attempted intrusion blocked, malware detection on isolated endpoint): containment within 24 hours. Low (informational alerts, single-source benign anomalies): triage within 5 business days"
+    - id: PARAM-IR-004-003
+      description: >-
+          Automated containment actions authorized for execution
+          without analyst approval.
+      value: "Account disable via Entra ID Lifecycle Workflows (reversible); session revocation via Conditional Access continuous-access-evaluation (reversible); endpoint host isolation via Defender for Endpoint live-response (reversible); CyberArk credential rotation for involved privileged accounts (reversible); IOC ingestion into Defender Threat Intelligence (additive); Conditional Access geo-block addition for involved source IPs (reversible)"
+    - id: PARAM-IR-004-004
+      description: >-
+          Post-incident-review cadence and required artifacts.
+      value: "After-Action Report drafted by the SOC analyst within 5 business days of incident closure; review meeting convened within 10 business days for High/Critical incidents with stakeholder roster (SOC, Detection Engineering, workload owner, ISSO, CISO for Critical); root-cause analysis documented; lessons-learned tickets opened into the configuration-as-code repository; detection-gap tickets opened against the SI-4 coverage matrix"
+
+narrative: |
+  **Lifecycle Architecture**
+  The substrate operates the incident-response lifecycle defined
+  in PARAM IR-004-001 with explicit owner accountability at each
+  phase. ServiceNow Security Incident Response is the canonical
+  record-of-decision for every incident; Microsoft Sentinel and
+  Defender XDR contribute detections and investigation evidence;
+  Microsoft Power Automate executes automated containment
+  playbooks. The lifecycle architecture aligns with NIST SP 800-61
+  Rev 2 and supports **IR-1** (Policy and Procedures) and **IR-8**
+  (Incident Response Plan).
+
+  **Severity-Based Service Levels**
+  Incident-response service levels follow PARAM IR-004-002. The
+  Critical severity carries the tightest containment objective —
+  60 minutes from detection to containment — and is the substrate's
+  most aggressive operational commitment. Tier 0 incidents (those
+  involving the identity broker, evidence ledger, change-control
+  pipeline, or Tier 0 administrative accounts) carry an automatic
+  severity uplift to Critical regardless of other indicators. SLA
+  attainment is measured continuously and reported as the primary
+  SOC performance metric.
+
+  **Automated Containment with Reversibility Boundary**
+  The substrate operates automated containment for reversible
+  actions defined in PARAM IR-004-003. Sentinel-detected and
+  Defender-XDR-detected high-confidence incidents trigger Power
+  Automate playbooks that execute account-disable, session-
+  revocation, endpoint-isolation, and credential-rotation actions
+  without analyst approval. The reversibility boundary is
+  conservative: any action that destroys data, terminates
+  workloads, or has agency-visible blast-radius requires analyst
+  approval before execution. Every automated action is logged
+  against the incident record consistent with **AU-12** (Audit
+  Record Generation).
+
+  **Investigation Surface**
+  Sentinel and Defender XDR provide the analyst investigation
+  surface. Sentinel's investigation graph correlates entities
+  (accounts, devices, IPs, files, processes) across detection
+  events, surfacing kill-chain progression and supporting evidence
+  collection. Defender XDR provides the endpoint-deep investigation
+  surface with process trees, file lineage, and network-flow
+  reconstruction. Investigation evidence is preserved in the
+  Sentinel investigation history and the Defender XDR incident
+  record, providing the auditable forensic chain consistent with
+  **AU-9** (Protection of Audit Information).
+
+  **Containment, Eradication, and Recovery**
+  Containment isolates the affected components from the broader
+  substrate without yet attempting cleanup; eradication removes
+  the attacker presence and the attack vector; recovery restores
+  normal operation. The three phases are explicit lifecycle
+  transitions in the ServiceNow SIR ticket with documented entry
+  and exit criteria. Recovery does not begin until eradication is
+  confirmed by the SOC; this prevents the canonical failure mode
+  of restoring compromised state before the compromise is
+  resolved.
+
+  **Coordination with Contingency Operations**
+  Incidents that exceed the IR scope (regional outages, sustained
+  service degradation, broad ransomware impact) hand off to the
+  Contingency Plan execution per **CP-2** (Contingency Plan). The
+  hand-off criteria are documented explicitly; the SOC lead and
+  the Crisis Management Team chair jointly decide on hand-off.
+  The IR ticket remains open and is correlated with the CP
+  execution record, providing end-to-end traceability across the
+  two response regimes.
+
+  **Post-Incident Review and Continuous Improvement**
+  Every closed incident produces the artifacts defined in PARAM
+  IR-004-004. The After-Action Report identifies what worked,
+  what failed, and the specific gap that allowed the incident to
+  occur or to progress. Detection gaps feed back into the
+  **SI-4** (System Monitoring) coverage matrix; configuration
+  gaps feed back into **CM-3** (Configuration Change Control);
+  process gaps feed back into the IR plan itself per **IR-8**.
+  This continuous-improvement loop is the substrate's defense
+  against repeating the same incident pattern.
+
+  **Tabletop and Functional Exercises**
+  Incident-handling capability is exercised through the cadence
+  defined in **CP-2** and **IR-3** (Incident Response Testing).
+  Exercise findings produce exercise-After-Action Reports treated
+  as first-class governance artifacts; gap remediation is tracked
+  to completion before the next exercise cycle.
+
 related_controls:
-  - CP-4
-  - IR-5
+    - AC-2   # Account Management
+    - AC-3   # Access Enforcement
+    - AU-6   # Audit Record Review
+    - AU-9   # Protection of Audit Information
+    - AU-12  # Audit Record Generation
+    - CA-7   # Continuous Monitoring
+    - CM-3   # Configuration Change Control
+    - CP-2   # Contingency Plan
+    - IR-1   # Policy and Procedures
+    - IR-3   # Incident Response Testing
+    - IR-5   # Incident Monitoring
+    - IR-6   # Incident Reporting
+    - IR-7   # Incident Response Assistance
+    - IR-8   # Incident Response Plan
+    - PM-14  # Testing, Training, and Monitoring
+    - SI-4   # System Monitoring
