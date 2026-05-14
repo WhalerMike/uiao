@@ -29,8 +29,8 @@ If the codebook is wrong, everything downstream is wrong. If the codebook is not
 
 - Fixed root prefix (`ORG`) enables regex validation and subtree matching
 - Uppercase alphanumeric segments, 2-6 characters, hyphen-separated
-- Maximum 4 segments after root (Level 4 = Team)
-- Regex: `^ORG(-[A-Z0-9]{2,6}){0,4}$`
+- Maximum 8 segments after root (Level 8 = Squad), per [ADR-062](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/adr/adr-062-orgpath-depth-extension.md) — the original cap of 4 proved too shallow for federal-agency and military-command hierarchies
+- Regex: `^ORG(-[A-Z0-9]{2,6}){0,8}$`
 - Stored in: `extensionAttribute1` — the single source of truth
 - HR system is authoritative — IT never manually edits OrgPath
 
@@ -133,13 +133,18 @@ Use `-eq` for leaf-node precision:
 
 ## Five Drift Categories
 
+The canonical category names and severities — Schema, Value, Hierarchy, Orphan,
+Phantom — are defined in [UIAO_163](https://github.com/WhalerMike/uiao/blob/main/src/uiao/canon/UIAO_163_Drift_Detection_Engine_Specification.md)
+and explained with worked examples in the
+[Drift Detection Walk-through](drift-walkthrough.qmd).
+
 | Category | What Broke | Severity | Auto-Fix? |
 |----------|-----------|----------|-----------|
-| **Value** | OrgPath not in codebook | High | No |
-| **Format** | Fails regex | Critical | No |
-| **Hierarchy** | Parent path missing | Critical | No |
-| **Orphan** | Code in codebook, zero users | Medium | Flag |
-| **Phantom** | Deprecated code still assigned | Medium | Reassign |
+| **Schema** | OrgPath fails regex or references a code not in the codebook | P1 | No |
+| **Value** | Codebook-valid OrgPath disagrees with the HR authoritative source | P2 | Sometimes (writes HR value back when trusted) |
+| **Hierarchy** | OrgPath references a parent segment no longer in the codebook | P1 | No |
+| **Orphan** | Codebook entry has zero matching principals | P3 | Flag only |
+| **Phantom** | User carries a deprecated OrgPath code | P3 | Reassign (when `replaced_by` is set) |
 
 ## Implementation Sequence
 
