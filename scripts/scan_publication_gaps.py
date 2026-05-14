@@ -232,19 +232,33 @@ def collect_sidebar_qmds(quarto_yml: pathlib.Path) -> set[str]:
 def index_sidebar_content(sidebar_qmds: set[str]) -> dict[str, str]:
     """Read each sidebar-listed .qmd and return {qmd_path: full_text}.
 
+    Quarto resolves paths relative to docs/_quarto.yml's directory
+    (i.e., docs/). So a YAML value of "modernization/orgtree.qmd"
+    is at docs/modernization/orgtree.qmd, and a YAML value of
+    "docs/quickstart.qmd" is at docs/docs/quickstart.qmd.
+
+    The collect_sidebar_qmds() pre-pass ensures every entry already
+    starts with "docs/". This function then tries:
+      1. The path as-is (e.g., docs/modernization/orgtree.qmd)
+      2. With an additional docs/ prefix (e.g., docs/docs/quickstart.qmd)
+
     Used by the link-back detector to find canon references inside
     published narrative pages.
     """
     index: dict[str, str] = {}
     for rel in sorted(sidebar_qmds):
-        path = REPO_ROOT / rel
-        if not path.exists():
-            # Path may already include docs/ prefix or not; try both.
-            alt = REPO_ROOT / rel.removeprefix("docs/")
-            if alt.exists():
-                path = alt
-            else:
-                continue
+        # Try the path as-is first (e.g., docs/modernization/orgtree.qmd
+        # is at REPO_ROOT/docs/modernization/orgtree.qmd).
+        candidates = [REPO_ROOT / rel]
+        # If that misses, the YAML value was something like
+        # "docs/quickstart.qmd" meaning relative to the docs/ project
+        # root → actual file at REPO_ROOT/docs/docs/quickstart.qmd.
+        if rel.startswith("docs/"):
+            candidates.append(REPO_ROOT / "docs" / rel)
+
+        path = next((c for c in candidates if c.exists()), None)
+        if path is None:
+            continue
         try:
             index[rel] = path.read_text(encoding="utf-8", errors="ignore")
         except OSError:
