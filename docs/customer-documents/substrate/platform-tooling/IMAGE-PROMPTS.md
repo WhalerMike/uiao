@@ -1,6 +1,6 @@
-# Image Prompts — UIAO-Core CLI Reference
+# Image Prompts — UIAO CLI Reference
 
-> Companion catalog for `uiao-core-cli-reference.qmd`. One entry per
+> Companion catalog for `uiao-cli-reference.qmd`. One entry per
 > `![...]` placeholder in the `.qmd` file. Generated images land in
 > `./images/` with the exact filename referenced by the page.
 >
@@ -31,7 +31,7 @@
 
 ---
 
-## IMAGE-01 — `uiao-core-cli-reference-image-01-cli-subapp-topology.png`
+## IMAGE-01 — `uiao-cli-reference-image-01-cli-subapp-topology.png`
 
 **Placement:** Top-of-page hero, immediately after the H1.
 
