@@ -53,9 +53,7 @@ def _create_app() -> Any:
         sar_doc = build_sar(bundle=bundle, system_name=system_name)
 
         _write_output(sar_doc, output, console)
-        console.print(
-            f"[green]SAR generated: {len(bundle.evidence)} observations, controls: {ctrl_ids}[/green]"
-        )
+        console.print(f"[green]SAR generated: {len(bundle.evidence)} observations, controls: {ctrl_ids}[/green]")
 
     @app.command()
     def poam(
