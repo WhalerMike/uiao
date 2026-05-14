@@ -1,23 +1,141 @@
-control-id: SC-7
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-7
+# Title      : Boundary Protection
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: SC-7
 title: Boundary Protection
-narrative: |
-  {{ organization.name }} protects system boundaries using a defense-in-depth approach.
-
-  **Edge Protection**
-  All external traffic is routed through Azure Front Door with Web Application Firewall enabled.
-
-  **Internal Segmentation**
-  Micro-segmentation and Network Security Groups enforce deny-by-default policies between application tiers.
-
-  **Monitoring**
-  All boundary traffic is logged and monitored in real-time by the Telemetry Plane.
-implemented-by:
-  - AzureFrontDoor
-  - NetworkSecurityGroups
+family: System and Communications Protection
 status: implemented
+
+implemented_by:
+    - azure-firewall-premium
+    - azure-front-door-premium
+    - azure-application-gateway-waf
+    - azure-network-security-groups
+    - azure-private-endpoints
+    - microsoft-sentinel
+
 evidence:
-  - type: audit-log
-    ref: SC-7-logs
+    - azure-firewall-policy-export
+    - front-door-routing-rule-export
+    - application-gateway-listener-config
+    - nsg-rule-set-export
+    - private-endpoint-inventory
+    - terraform-cloud-deployment-history
+
+parameters:
+    - id: PARAM-SC-007-001
+      description: >-
+          Authorized boundary-protection components and their roles
+          in the substrate architecture.
+      value: "Ingress: Azure Front Door Premium (TLS termination, WAF in Prevention mode, geo-fencing); Azure Application Gateway WAF v2 (tenant-application ingress, OWASP CRS 3.2). East-west: Azure Firewall Premium (L7 inspection, IDPS, TLS inspection); Azure NSG (L4 micro-segmentation between tiers). Egress: Azure Firewall Premium (FQDN-tagged allow-list, threat-intel block-list). PaaS reachability: Azure Private Endpoint replacing public surface for every supported PaaS service"
+    - id: PARAM-SC-007-002
+      description: >-
+          Default-deny posture and authorized-flow allow-list
+          governance.
+      value: "Default-deny at every boundary edge; explicit allow rules required for every permitted flow with documented source, destination, protocol, port, and business justification; allow-list managed as infrastructure-as-code via Terraform with mandatory peer review and OPA Conftest policy gates"
+    - id: PARAM-SC-007-003
+      description: >-
+          Tier-zoning enforcement between substrate components.
+      value: "Five canonical tiers: presentation (public ingress, edge cache), application (tenant workloads, App Service, AKS), data (databases, storage, key vaults), management (Entra ID, Conditional Access, evidence ledger), bastion (Azure Bastion, jump access). Tier-to-tier crossing requires explicit allow rule with documented rationale; Tier 0 to Tier 2+ traversal is prohibited absent a documented compensating control"
+    - id: PARAM-SC-007-004
+      description: >-
+          Boundary-traffic logging and monitoring coverage.
+      value: "All boundary flows are logged to Azure Firewall logs, Front Door access logs, Application Gateway access logs, NSG flow logs (every minute, every flow), and Private Endpoint connection logs; all five log surfaces stream to Microsoft Sentinel for correlation; flow logs are retained per the FedRAMP Moderate retention requirement"
+
+narrative: |
+  **Boundary Architecture**
+  The substrate enforces boundary protection through the layered
+  component stack defined in PARAM SC-007-001. Ingress is the most
+  exposed surface and receives the deepest defensive stack: Azure
+  Front Door Premium for global edge protection, WAF, and DDoS
+  integration; Azure Application Gateway WAF v2 for tenant-
+  specific application protection with the OWASP Core Rule Set in
+  Prevention mode. East-west traffic crosses Azure Firewall
+  Premium with L7 inspection, IDPS in alert+block mode, and TLS
+  inspection where the destination application permits. Egress
+  flows through Azure Firewall Premium with FQDN-tagged
+  allow-listing, threat-intelligence block-listing, and rate-based
+  threat protection per **SC-5** (Denial of Service Protection).
+
+  **Default-Deny and Allow-List Governance**
+  The boundary enforces the default-deny posture defined in PARAM
+  SC-007-002. No traffic traverses any boundary edge without an
+  explicit, version-controlled allow rule. Allow rules carry the
+  source, destination, protocol, port, and a documented business
+  justification; rules without justification are rejected at the
+  CM-3 pre-merge gate. The allow-list is managed as
+  infrastructure-as-code via Terraform; nightly reconciliation
+  between the deployed firewall and NSG rule-sets and the
+  source-of-truth Terraform manifest produces a drift report
+  exported to the UIAO evidence ledger per **CA-7** (Continuous
+  Monitoring).
+
+  **Tier-Zoning Enforcement**
+  Substrate components are partitioned into the five canonical
+  tiers defined in PARAM SC-007-003. Each tier sits in its own
+  subnet with NSG rules permitting only the tier-to-tier flows
+  required for operational role. Tier 0 (management plane) is
+  isolated from Tier 2+ except through documented administrative
+  paths (Azure Bastion-mediated PIM-elevated sessions). The
+  prohibited-traversal rule set is enforced via Azure Policy and
+  audited continuously; violations generate Microsoft Sentinel
+  incidents.
+
+  **PaaS Reachability via Private Endpoint**
+  Every PaaS service that supports Private Endpoint (storage, key
+  vaults, SQL, Cosmos DB, App Service, AKS API server, etc.) is
+  configured with Private Endpoint inside the authorization
+  boundary VNet; public-network access is disabled at the PaaS
+  resource level. This eliminates the public-surface footprint
+  that historically dominated boundary risk in cloud deployments,
+  replacing "exposed by default" with "isolated by default". The
+  Private Endpoint inventory is reconciled nightly against the
+  PaaS-resource inventory; any resource with public access still
+  enabled generates a CM-6 compliance finding and a remediation
+  ticket.
+
+  **Telemetry and Detection**
+  Boundary telemetry per PARAM SC-007-004 streams to Microsoft
+  Sentinel with detection rules tuned for boundary-specific
+  indicators: anomalous source-IP clustering on inbound traffic,
+  rate-limit-hit concentrations, WAF deny-rule clusters suggesting
+  active probing, NSG deny-rule clusters suggesting east-west
+  reconnaissance, and egress flows to known C2 destinations from
+  Microsoft Defender Threat Intelligence. Detection latency is
+  measured continuously and reported as part of the SOC
+  performance dashboard consistent with **SI-4** (System
+  Monitoring).
+
+  **Change-Control Integration**
+  Every boundary-component change flows through the CM-3
+  change-control pathway. Tier-zoning changes and firewall
+  allow-list additions carry an elevated review threshold per the
+  CM-3 change-class taxonomy. Boundary changes that would expand
+  the substrate's attack surface (new public ingress, new outbound
+  destination, tier-traversal exception) require Authorizing
+  Official signature and a documented compensating-control package.
+
+  **Continuous Validation**
+  Adversary-emulation exercises and FedRAMP penetration tests
+  validate that the boundary architecture performs as designed
+  against representative attack patterns. Exercise findings route
+  through the CM-3 pathway as boundary-improvement tickets;
+  recurring or systemic findings escalate to the Access Control
+  Working Group for architectural review.
+
 related_controls:
-  - AC-2
-  - AC-3
+    - AC-3   # Access Enforcement
+    - AC-4   # Information Flow Enforcement
+    - AC-17  # Remote Access
+    - AC-20  # Use of External Systems
+    - AU-2   # Event Logging
+    - CA-3   # Information Exchange
+    - CA-7   # Continuous Monitoring
+    - CM-2   # Baseline Configuration
+    - CM-3   # Configuration Change Control
+    - CM-6   # Configuration Settings
+    - SC-5   # Denial of Service Protection
+    - SC-8   # Transmission Confidentiality and Integrity
+    - SI-4   # System Monitoring

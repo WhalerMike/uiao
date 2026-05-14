@@ -1,23 +1,130 @@
-control-id: SC-8
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SC-8
+# Title      : Transmission Confidentiality and Integrity
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: SC-8
 title: Transmission Confidentiality and Integrity
+family: System and Communications Protection
 status: implemented
-implemented-by:
-  - azure-front-door
-  - azure-application-gateway
-narrative: |
-  {{ organization.name }} protects the confidentiality and integrity of transmitted information.
 
-  **Encryption in Transit**
-  All data in transit uses TLS 1.2 or higher with approved cipher suites. Certificates are managed and rotated via Azure Key Vault.
+implemented_by:
+    - azure-front-door-premium
+    - azure-application-gateway-waf
+    - azure-firewall-premium
+    - azure-key-vault
+    - microsoft-defender-for-cloud
+    - microsoft-purview
 
-  **Cryptographic Compliance**
-  Only FIPS 140-validated modules are used, meeting federal requirements for protecting Controlled Unclassified Information (CUI) and other sensitive data.
-parameters:
-  min-tls-version: "TLS 1.2"
-  cipher-suite: "ECDHE-ECDSA-AES256-GCM-SHA384"
 evidence:
-  - type: configuration
-    ref: SC-8-evidence
+    - front-door-tls-policy-export
+    - application-gateway-listener-config
+    - key-vault-certificate-inventory
+    - defender-for-cloud-tls-compliance-recommendations
+    - sentinel-cleartext-protocol-detections
+
+parameters:
+    - id: PARAM-SC-008-001
+      description: >-
+          Authorized cryptographic algorithms and minimum protocol
+          versions for in-transit data protection.
+      value: "TLS 1.3 preferred where supported by client; TLS 1.2 minimum for all external-facing endpoints; cipher suites restricted to ECDHE-ECDSA-AES256-GCM-SHA384, ECDHE-RSA-AES256-GCM-SHA384, ECDHE-ECDSA-AES128-GCM-SHA256, ECDHE-RSA-AES128-GCM-SHA256; FIPS 140-3 Level 3 HSM substrate for private key storage; FIPS 140-3 validated cryptographic modules at every TLS termination point"
+    - id: PARAM-SC-008-002
+      description: >-
+          Prohibited cryptographic protocols and configurations.
+      value: "TLS 1.0, TLS 1.1, SSL (all versions); RC4, DES, 3DES, MD5, SHA-1 cipher suites; unauthenticated cipher suites; static-IV configurations; null cipher suites; clear-text protocols (HTTP, FTP, Telnet, SNMPv1/v2, LDAP without StartTLS)"
+    - id: PARAM-SC-008-003
+      description: >-
+          Certificate management lifecycle requirements for
+          substrate-issued certificates.
+      value: "Certificates issued from Azure Key Vault with hardware-backed key generation; certificate lifetime maximum 397 days per CA/B Forum baseline; automated renewal at 30 days remaining via Key Vault auto-renewal; revocation publication within 24 hours via CRL and OCSP; certificate transparency logging mandatory for all public-facing certificates"
+
+narrative: |
+  **TLS as Baseline**
+  Every external-facing endpoint and every authenticated
+  internal-facing endpoint in the substrate terminates TLS at the
+  configuration defined in PARAM SC-008-001. Azure Front Door
+  Premium performs ingress TLS termination with the Microsoft-
+  managed TLS profile; Azure Application Gateway WAF v2 performs
+  tenant-application TLS termination with the agency-curated
+  cipher-suite allow-list. Internal service-to-service flows use
+  TLS 1.3 where the client and server support it, falling back to
+  TLS 1.2 with the same cipher-suite restrictions. Cleartext
+  protocols defined in PARAM SC-008-002 are blocked at the boundary
+  per **SC-7** (Boundary Protection).
+
+  **Prohibited-Protocol Enforcement**
+  The protocols and configurations listed in PARAM SC-008-002 are
+  blocked tenant-wide. Front Door and Application Gateway listener
+  configurations reject the deprecated TLS versions at protocol
+  negotiation; Azure Firewall Premium IDPS detects and blocks
+  cleartext-protocol flows on egress; Defender for Cloud
+  recommendations continuously surface any resource configured
+  with a non-compliant TLS profile or deprecated cipher suite.
+  Findings flow to the CM-6 remediation pathway with the
+  DeployIfNotExists effect auto-remediating where the resource
+  type supports it.
+
+  **Certificate Lifecycle**
+  Substrate-issued certificates follow the lifecycle requirements
+  in PARAM SC-008-003. Azure Key Vault generates certificates with
+  hardware-backed key generation in the Premium SKU (HSM-backed)
+  or the Managed HSM (FIPS 140-3 Level 3). Auto-renewal triggers
+  at 30 days remaining, eliminating the renewal-miss failure mode
+  that historically caused substrate-wide outages on certificate
+  expiry. Revocation actions publish to CRL and OCSP within the
+  24-hour SLA; certificate transparency logs are mandatory for
+  every public-facing certificate per RFC 6962 and the agency
+  CT-logging policy.
+
+  **FIPS 140-3 Substrate Compliance**
+  All cryptographic modules at TLS termination points are FIPS
+  140-3 validated per the FedRAMP Moderate baseline requirement.
+  Front Door Premium uses Microsoft's centrally-managed FIPS-
+  validated TLS termination; Application Gateway WAF v2 inherits
+  the same validated module; Azure Key Vault HSM operations use
+  FIPS 140-3 Level 3 hardware. This satisfies **SC-13**
+  (Cryptographic Protection) and supports **IA-7** (Cryptographic
+  Module Authentication).
+
+  **Trust-Anchor Provenance**
+  Public-facing certificates chain to publicly-trusted root CAs
+  approved by the agency Trust Anchor Authority; internal-facing
+  certificates chain to the agency Internal PKI root with
+  certificate-distribution managed via Microsoft Intune and Azure
+  Policy Guest Configuration. The trust-anchor inventory is
+  reconciled nightly against the certificate inventory; any
+  certificate chaining to an unapproved root triggers a CM-6
+  compliance finding and a remediation ticket consistent with
+  **SC-13** (Cryptographic Protection).
+
+  **Data-in-Transit Detection**
+  Microsoft Sentinel runs detection rules tuned for in-transit
+  protection anomalies: TLS-protocol downgrade attempts, cipher-
+  suite negotiation to deprecated ciphers, certificate-validation
+  failures, cleartext-protocol traffic on internal flows, and
+  Defender Threat Intelligence-flagged certificate fingerprints.
+  Detection outcomes route to the SOC for triage and feed back
+  into the configuration-as-code pipeline as policy improvements.
+
+  **Email and Document Protection**
+  Microsoft Purview sensitivity labels apply encryption that
+  travels with the content beyond the boundary edge, providing
+  in-transit protection for messages and documents independent of
+  the network-layer TLS. Exchange Online Mail Flow uses TLS 1.2+
+  for inter-tenant SMTP and rejects connections that cannot
+  negotiate the required strength.
+
 related_controls:
-  - AC-2
-  - AC-3
+    - AC-4   # Information Flow Enforcement
+    - AC-17  # Remote Access
+    - AU-2   # Event Logging
+    - CA-7   # Continuous Monitoring
+    - CM-6   # Configuration Settings
+    - IA-7   # Cryptographic Module Authentication
+    - SC-5   # Denial of Service Protection
+    - SC-7   # Boundary Protection
+    - SC-12  # Cryptographic Key Establishment and Management
+    - SC-13  # Cryptographic Protection
+    - SC-23  # Session Authenticity
+    - SI-4   # System Monitoring
