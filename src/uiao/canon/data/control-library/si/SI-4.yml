@@ -1,23 +1,134 @@
-control-id: SI-4
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : SI-4
+# Title      : System Monitoring
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: SI-4
 title: System Monitoring
+family: System and Information Integrity
 status: implemented
-implemented-by:
-  - microsoft-sentinel
-  - defender-for-cloud
-narrative: |
-  {{ organization.name }} monitors the system to detect attacks and unauthorized activity.
 
-  **Continuous Monitoring**
-  Microsoft Defender for Cloud provides workload protection while Sentinel acts as the central SIEM. Custom KQL detection rules cover all critical entry/exit points.
+implemented_by:
+    - microsoft-sentinel
+    - microsoft-defender-for-cloud
+    - microsoft-defender-xdr
+    - microsoft-defender-for-endpoint
+    - microsoft-defender-for-identity
+    - azure-monitor
 
-  **Coverage**
-  Monitoring includes the WAF, VPN gateways, administrative consoles, and all production resources.
-parameters:
-  monitoring-coverage: "100% of production resources"
-  detection-logic: "KQL / Sentinel Analytics"
 evidence:
-  - type: configuration
-    ref: SI-4-evidence
+    - sentinel-analytics-rule-coverage-report
+    - defender-xdr-detection-coverage-matrix
+    - defender-for-endpoint-attack-surface-reduction-rules
+    - azure-monitor-metric-alerting-rules
+    - sentinel-ueba-baseline-records
+
+parameters:
+    - id: PARAM-SI-004-001
+      description: >-
+          Authoritative detection-pack composition for the
+          substrate.
+      value: "Microsoft Sentinel out-of-the-box analytics rules plus the curated UIAO content pack covering identity-plane / resource-plane / data-plane / endpoint-plane / workload-plane threat patterns; Microsoft Defender XDR built-in detections for endpoint, email, identity, and cloud apps; custom KQL detections authored to the UIAO threat model and version-controlled per CM-3"
+    - id: PARAM-SI-004-002
+      description: >-
+          Monitoring coverage objective expressed as a percentage
+          of MITRE ATT&CK techniques covered by at least one
+          detection.
+      value: "Minimum 80% coverage of MITRE ATT&CK Enterprise techniques applicable to the Azure / M365 / Windows estate; minimum 95% coverage of the Tier 0 Tactic, Technique, and Procedure subset; coverage measured quarterly and reported to the Access Control Working Group"
+    - id: PARAM-SI-004-003
+      description: >-
+          Anomaly-detection methods supplementing rule-based
+          detection.
+      value: "Sentinel User and Entity Behavior Analytics (UEBA) for identity-plane anomaly detection; Defender XDR's behavioral analytics for endpoint anomaly; Azure Monitor metric-alert dynamic thresholds for resource-plane anomaly; Defender for Cloud anomaly-based recommendations"
+
+narrative: |
+  **Multi-Layer Detection Architecture**
+  The substrate operates a multi-layer detection architecture
+  that aligns with the CISA Zero Trust Maturity Model v2.0
+  pillars. Identity-plane monitoring runs in Microsoft Defender
+  for Identity and Entra ID Identity Protection; endpoint-plane
+  in Microsoft Defender for Endpoint; cloud-app-plane in Microsoft
+  Defender for Cloud Apps; email-plane in Microsoft Defender for
+  Office 365; resource-plane in Microsoft Defender for Cloud and
+  Azure Monitor; correlation across all layers in Microsoft
+  Sentinel. This layered architecture provides defense-in-depth
+  across the threat kill-chain consistent with **AU-6** (Audit
+  Record Review) and **IR-4** (Incident Handling).
+
+  **Detection-Coverage Matrix**
+  The substrate maintains a detection-coverage matrix mapping each
+  Sentinel analytics rule and Defender XDR detection to the
+  relevant MITRE ATT&CK technique. The matrix is the authoritative
+  record of detection coverage and is reviewed at the cadence
+  defined in PARAM SI-004-002. Coverage gaps surfaced by the
+  quarterly review become detection-engineering tickets routed
+  through the configuration-as-code pipeline; new detections are
+  authored, tested in audit mode, and promoted to production with
+  full audit history.
+
+  **Anomaly-Based Detection**
+  Rule-based detection covers known threat patterns; anomaly-based
+  detection covers the unknown unknowns. Sentinel UEBA establishes
+  baselines for user and entity behavior (sign-in patterns,
+  resource-access patterns, peer-group behavior) and alerts on
+  statistically significant deviations. Defender XDR's behavioral
+  analytics applies the same approach at the endpoint and email
+  layers. Azure Monitor dynamic-threshold metric alerts catch
+  resource-plane anomalies (sudden traffic spikes, atypical
+  geographic distribution, off-hours administrative activity).
+
+  **Coverage of Critical Surfaces**
+  All Tier 0 surfaces (identity broker, key vaults, conditional-
+  access policy plane, privileged-role activation, change-management
+  pipeline, evidence ledger) carry detection coverage targeted at
+  the specific attack patterns that threaten substrate integrity.
+  These surfaces are explicitly tested in adversary-emulation
+  exercises per **PM-14** (Testing, Training, and Monitoring) and
+  in the periodic FedRAMP penetration test.
+
+  **Real-Time Response Integration**
+  High-confidence detections trigger automated response actions
+  via Microsoft Sentinel playbooks and Defender XDR's automated
+  investigation and response. Response actions include account
+  disable via Entra ID Lifecycle Workflows, session revocation via
+  Conditional Access continuous-access-evaluation, host isolation
+  via Defender for Endpoint, and credential revocation via
+  CyberArk PAM. Automated response is conservative by default —
+  reversible actions execute autonomously; non-reversible actions
+  route to analyst approval — and every action is recorded for
+  post-incident review.
+
+  **Continuous Validation**
+  Sentinel runs periodic "lights-on" detection tests that emit
+  benign signal patterns matching each high-priority detection
+  rule. Failure of a lights-on test indicates the detection has
+  silently broken (rule disabled, data connector failed, query
+  parser drift) and generates an alert routed to the
+  detection-engineering team. This continuous-validation loop is
+  the substrate's defense against silent monitoring decay.
+
+  **Telemetry Retention and Hunt Capability**
+  Sentinel and Defender XDR retain telemetry per the FedRAMP
+  Moderate retention requirement (12 months hot, 24 months total)
+  and feed the hunt-capable Advanced Hunting surface. Hunters can
+  query historical events to support post-incident forensics and
+  to validate new detection logic against past activity. Hunt
+  outcomes feed back into the detection-engineering pipeline,
+  closing the observe → hunt → detect loop consistent with
+  **CA-7** (Continuous Monitoring).
+
 related_controls:
-  - AU-2
-  - SI-4
+    - AC-2   # Account Management
+    - AC-3   # Access Enforcement
+    - AC-6   # Least Privilege
+    - AU-2   # Event Logging
+    - AU-6   # Audit Record Review
+    - AU-12  # Audit Record Generation
+    - CA-7   # Continuous Monitoring
+    - IR-4   # Incident Handling
+    - IR-5   # Incident Monitoring
+    - PM-14  # Testing, Training, and Monitoring
+    - RA-5   # Vulnerability Monitoring and Scanning
+    - SC-7   # Boundary Protection
+    - SI-2   # Flaw Remediation
+    - SI-3   # Malicious Code Protection
