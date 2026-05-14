@@ -9,6 +9,9 @@ updated_at: "2026-05-14"
 boundary: GCC-Moderate
 canon_anchor: ADR-067
 platform: server
+publish_to_site: true
+publication_style: narrative
+published_at: docs/modernization/intune-first.qmd
 ---
 
 # Platform Annex — Arc-Managed Servers
