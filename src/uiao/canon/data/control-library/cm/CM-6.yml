@@ -1,23 +1,128 @@
-control-id: CM-6
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CM-6
+# Title      : Configuration Settings
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: CM-6
 title: Configuration Settings
+family: Configuration Management
 status: implemented
-implemented-by:
-  - azure-policy
-  - microsoft-intune
-narrative: |
-  {{ organization.name }} establishes and enforces secure configuration settings for the information system.
 
-  **Baseline Enforcement**
-  Azure Policy enforces the CIS Microsoft Azure Foundations Benchmark and FedRAMP Moderate baselines across all subscriptions and resources.
+implemented_by:
+    - azure-policy
+    - microsoft-intune
+    - microsoft-defender-for-cloud
+    - scubagear
+    - terraform-cloud
 
-  **Drift Detection & Remediation**
-  Daily compliance scans detect configuration drift. Non-compliant resources are automatically flagged, with DeployIfNotExists policies used for automatic remediation where possible.
-parameters:
-  baseline-standard: "CIS Azure Foundations + FedRAMP Moderate"
-  scan-frequency: "Daily"
 evidence:
-  - type: configuration
-    ref: CM-6-evidence
+    - azure-policy-assignment-export
+    - azure-policy-compliance-report
+    - intune-configuration-profile-assignment
+    - defender-for-cloud-secure-score-export
+    - scubagear-baseline-conformance-report
+
+parameters:
+    - id: PARAM-CM-006-001
+      description: >-
+          Authoritative configuration baseline standards enforced
+          against substrate components.
+      value: "Azure: CIS Microsoft Azure Foundations Benchmark v2.1 plus FedRAMP Moderate baseline plus UIAO substrate-specific augmentations. M365: CISA Secure Cloud Business Applications (SCuBA) baselines plus DOD STIG where applicable. Endpoints: Microsoft Intune security baselines for Windows 11, plus DOD STIG GPO equivalents. Linux workloads: CIS Linux Benchmark with Azure Policy Guest Configuration enforcement"
+    - id: PARAM-CM-006-002
+      description: >-
+          Frequency of automated compliance scanning against the
+          configured baselines.
+      value: "Continuous evaluation via Azure Policy and Defender for Cloud; daily SCuBA M365 conformance scan; nightly Intune compliance evaluation; per-deployment baseline check enforced as a Terraform pre-merge gate"
+    - id: PARAM-CM-006-003
+      description: >-
+          Approved exception process for documented deviation from
+          the configuration baseline.
+      value: "Exception requests are routed through the Change Advisory Board with documented business justification, security-impact analysis, compensating controls, and an expiration date; approved exceptions are recorded as Azure Policy exemptions or per-host Intune exclusions with the exception ticket referenced; exception inventory is reviewed quarterly with the goal of elimination"
+    - id: PARAM-CM-006-004
+      description: >-
+          Authorized remediation pathway for detected non-compliant
+          configurations.
+      value: "DeployIfNotExists Azure Policy effect for high-confidence remediations (logging forwarders, diagnostic settings, NSG defaults, TLS minimum version); Modify effect for tag and metadata enforcement; AuditIfNotExists effect for findings that require human triage; ServiceNow change-ticket generation for findings that require operator action"
+
+narrative: |
+  **Baseline Authority**
+  The configuration baselines defined in PARAM CM-006-001 are the
+  canonical security configuration of record for every substrate
+  component. Baselines are encoded as Azure Policy initiatives,
+  Microsoft Intune security baseline profiles, and ScubaGear
+  conformance rule packs, all stored as version-controlled artifacts
+  in the configuration-as-code repositories under **CM-3**
+  (Configuration Change Control). Baseline updates flow through the
+  change-control pathway with the Change Advisory Board approving
+  any deviation from the upstream vendor baseline.
+
+  **Continuous Compliance Evaluation**
+  Azure Policy evaluates every resource within the boundary against
+  the assigned initiatives at the cadence defined in PARAM
+  CM-006-002. Compliance state is computed in real time at resource
+  creation and on a continuous re-evaluation cycle for existing
+  resources. Microsoft Defender for Cloud secure-score metrics
+  aggregate the compliance posture across the subscription estate
+  and present a single-pane view of substrate-wide compliance.
+  ScubaGear runs daily against the M365 tenant and produces the
+  baseline-conformance report consumed by the UIAO Adapter pattern
+  per ADR-051.
+
+  **Drift Detection and Remediation**
+  Non-compliant resources detected by continuous evaluation route
+  through the remediation pathway defined in PARAM CM-006-004.
+  High-confidence remediations (telemetry forwarding, NSG default
+  rules, TLS minimum version, encryption-at-rest enforcement) use
+  the Azure Policy DeployIfNotExists effect to auto-remediate
+  without operator intervention. Lower-confidence findings produce
+  audit-only records that route to the SOC for triage. Critical
+  remediations that fail to converge within the configured SLA
+  generate a Microsoft Sentinel incident and a ServiceNow ticket
+  routed to the resource owner.
+
+  **Endpoint Baselines via Intune**
+  Microsoft Intune enforces the endpoint baselines via
+  configuration profiles, compliance policies, and security
+  baselines targeted by OrgPath-derived dynamic groups per
+  ADR-036. Compliance is computed at every check-in (default 8
+  hours) and on every Conditional Access evaluation. Non-compliant
+  endpoints are denied access by Conditional Access until the
+  deficiency is remediated, providing real-time enforcement at the
+  access-decision point rather than retroactive audit. This
+  supports **AC-3** (Access Enforcement) and **AC-17** (Remote
+  Access).
+
+  **Exception Process and Inventory**
+  Documented deviations from the baseline follow the exception
+  process defined in PARAM CM-006-003. Every exception carries a
+  business justification, a security-impact analysis with
+  compensating controls, an expiration date, and a Change Advisory
+  Board approval signature. The exception inventory is reviewed
+  quarterly with the explicit objective of elimination; exceptions
+  that have not been retired by the review cycle are escalated to
+  the Authorizing Official with a renewed justification.
+
+  **Pre-Deployment Enforcement**
+  The configuration-as-code pre-merge gate defined in **CM-3**
+  enforces the baseline at the build-time substrate, preventing
+  non-compliant configurations from being deployed in the first
+  place. Terraform plans are evaluated against OPA Conftest policy
+  gates encoding the UIAO baseline rules; plans that introduce
+  non-compliant configuration fail the build and cannot merge.
+  This pre-deployment enforcement is the substrate's primary
+  defense-in-depth layer for **CM-6**.
+
 related_controls:
-  - CM-2
-  - SC-7
+    - AC-3   # Access Enforcement
+    - AC-17  # Remote Access
+    - AU-2   # Event Logging
+    - AU-6   # Audit Record Review
+    - CA-7   # Continuous Monitoring
+    - CM-2   # Baseline Configuration
+    - CM-3   # Configuration Change Control
+    - CM-7   # Least Functionality
+    - CM-8   # System Component Inventory
+    - SC-7   # Boundary Protection
+    - SC-12  # Cryptographic Key Establishment
+    - SC-13  # Cryptographic Protection
+    - SI-2   # Flaw Remediation
