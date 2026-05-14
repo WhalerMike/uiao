@@ -121,6 +121,7 @@ directory-migration/
 
 ## Related
 
-- `src/uiao/modernization/orgtree/` — Identity modernization (OrgPath, dynamic groups, AUs, HR lifecycle)
+- [`src/uiao/modernization/orgtree/`](../orgtree/) — Identity modernization (OrgPath, dynamic groups, AUs, HR lifecycle)
+- [`src/uiao/modernization/intune-first-onboarding/`](../intune-first-onboarding/README.md) — **Sibling track for net-new asset acquisition.** Where this canon takes existing AD-joined devices into Entra ID + Intune, that canon governs net-new assets so they never enter AD in the first place. Anchored by [ADR-067](../../canon/adr/adr-067-intune-first-asset-onboarding.md).
 - `src/uiao/canon/` — Core UIAO platform specifications (UIAO_001–202)
 - Original source: `WhalerMike/uiao-gos` (archived via ADR-028, April 2026)
