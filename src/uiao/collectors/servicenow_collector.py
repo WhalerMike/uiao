@@ -15,7 +15,7 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List
 
-import requests
+import requests  # type: ignore[import-untyped]
 
 
 class ServiceNowCollector:
@@ -85,6 +85,73 @@ class ServiceNowCollector:
                 "Accept": "application/json",
             },
             params=params,
+            timeout=self.TIMEOUT,
+        )
+        response.raise_for_status()
+        return response.json()  # type: ignore[no-any-return]
+
+    # ------------------------------------------------------------------
+    # Write helpers — POST and PATCH via Table API
+    # ------------------------------------------------------------------
+
+    def post_record(self, table: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        POST a new record to a ServiceNow table.
+
+        Args:
+            table: ServiceNow table name (e.g. 'incident', 'change_request').
+            payload: JSON-serialisable dict of field values for the new record.
+
+        Returns:
+            Parsed JSON response from ServiceNow (contains 'result' with new record).
+        """
+        if not self._token:
+            return {
+                "result": {},
+                "_meta": {"warning": "No token configured — returning empty scaffold."},
+            }
+
+        url = f"https://{self.instance}.service-now.com/api/now/table/{table}"
+        response = requests.post(
+            url,
+            headers={
+                "Authorization": f"Bearer {self._token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=self.TIMEOUT,
+        )
+        response.raise_for_status()
+        return response.json()  # type: ignore[no-any-return]
+
+    def patch_record(self, table: str, sys_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        PATCH an existing record in a ServiceNow table.
+
+        Args:
+            table: ServiceNow table name (e.g. 'incident').
+            sys_id: The sys_id of the record to update.
+            payload: JSON-serialisable dict of field values to update.
+
+        Returns:
+            Parsed JSON response from ServiceNow (contains 'result' with updated record).
+        """
+        if not self._token:
+            return {
+                "result": {},
+                "_meta": {"warning": "No token configured — returning empty scaffold."},
+            }
+
+        url = f"https://{self.instance}.service-now.com/api/now/table/{table}/{sys_id}"
+        response = requests.patch(
+            url,
+            headers={
+                "Authorization": f"Bearer {self._token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            json=payload,
             timeout=self.TIMEOUT,
         )
         response.raise_for_status()
