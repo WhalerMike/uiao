@@ -24,6 +24,9 @@ hrit_traceability:
   - "Q&A #43 — ATO reciprocity"
   - "Q&A #44 — SSP draft within 30 days, final within 45 days of award"
   - "Q&A #47-48 — single code line, configuration-only differentiation"
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-054-single-ato-reciprocity.html
 ---
 
 # ADR-054: Single-ATO Reciprocity Model — Multi-Tenant Authorization Boundary

@@ -15,6 +15,9 @@ canon_refs:
   - UIAO_151_OrgPath_Codebook
   - UIAO_152_Dynamic_Group_Library
   - UIAO_007_OrgTree_Modernization_AD_to_EntraID
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-036-dynamic-group-provisioning.html
 ---
 
 # ADR-036: Dynamic Group Library — Executable Canon + Entra Provisioning Adapter

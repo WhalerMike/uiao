@@ -4,6 +4,9 @@ adr: "ADR-023"
 status: ACCEPTED
 date: "2026-03-01"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-023-adapter-concurrency.html
 ---
 
 # ADR-023: Adapter Concurrency

@@ -4,6 +4,9 @@ adr: "ADR-018"
 status: ACCEPTED
 date: "2026-02-15"
 deciders: ["UIAO Governance Board", "ARB"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-018-mission-channel-enforcement.html
 ---
 
 # ADR-018: Mission Channel Enforcement

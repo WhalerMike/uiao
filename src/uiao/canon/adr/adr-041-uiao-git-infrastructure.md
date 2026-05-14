@@ -18,6 +18,9 @@ pending_inputs:
   - "inbox/UIAO Git Infrastructure — Architecture Decision Record.docx (absent — content synthesized from platform-server-build.qmd v1.3)"
   - "inbox/UIAO Git Server — Windows Server 2025 with IIS Implementation Guide.docx (absent — content synthesized from platform-server-build.qmd v1.3)"
   - "inbox/Git on Windows Server 2025 with IIS — Step-by-Step Implementation Guide.docx (absent — content synthesized from platform-server-build.qmd v1.3)"
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-041-uiao-git-infrastructure.html
 ---
 
 # ADR-041: UIAO Git Infrastructure — Self-Hosted Git on Windows Server 2025 + IIS

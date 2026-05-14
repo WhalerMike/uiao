@@ -28,6 +28,9 @@ related_findings:
   - FINDING-001
   - FINDING-002
 related_discussions: []
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-057-thousandeyes-networks-pillar-scope.html
 ---
 
 # ADR-057: ThousandEyes — Networks-Pillar Conditional Adoption Under GCC-Moderate

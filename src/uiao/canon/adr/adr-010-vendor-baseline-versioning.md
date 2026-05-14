@@ -4,6 +4,9 @@ adr: "ADR-010"
 status: ACCEPTED
 date: "2026-01-25"
 deciders: ["UIAO Governance Board"]
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-010-vendor-baseline-versioning.html
 ---
 
 # ADR-010: Vendor Baseline Versioning

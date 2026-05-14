@@ -21,6 +21,9 @@ related_issues:
   - WhalerMike/uiao#355
 related_discussions:
   - https://github.com/Palladium-Innovations/fedramp-cr26-oscal
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-061-fedramp-cr26-catalog-vendoring.html
 ---
 
 # ADR-061: FedRAMP CR26 Catalog Vendoring
