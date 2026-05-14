@@ -24,9 +24,21 @@ from uiao.utils.context import get_settings, load_canon
 
 
 class _SilentUndefined(Undefined):
-    """Jinja2 Undefined that silently returns empty for missing context vars."""
+    """Jinja2 Undefined that silently returns empty for missing context vars.
 
-    def _fail_with_undefined_error(self, *args: object, **kwargs: object) -> _SilentUndefined:
+    The whole point of this subclass is to *not* raise on missing access:
+    jinja2's `Undefined` declares `_fail_with_undefined_error` and
+    `__getitem__` as returning `Never` (they raise `UndefinedError`), so any
+    silent-returning override is a deliberate LSP violation. Suppress the
+    `override` errors at the two call sites where the return-type mismatch
+    matters; the rest of the methods (`__str__`, `__iter__`, etc.) are
+    LSP-compatible because the superclass's `Never` return is a subtype of
+    everything.
+    """
+
+    def _fail_with_undefined_error(  # type: ignore[override]
+        self, *args: object, **kwargs: object
+    ) -> _SilentUndefined:
         return self
 
     def __str__(self) -> str:
@@ -50,7 +62,7 @@ class _SilentUndefined(Undefined):
     def __getattr__(self, name: str) -> _SilentUndefined:
         return self
 
-    def __getitem__(self, name: object) -> _SilentUndefined:
+    def __getitem__(self, name: object) -> _SilentUndefined:  # type: ignore[override]
         return self
 
 
