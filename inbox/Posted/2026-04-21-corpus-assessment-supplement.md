@@ -18,7 +18,7 @@ Since the 2026-04-21 corpus assessment shipped, the inbox/ tree has grown by 23 
 ### 1.1 Top-line findings
 
 - **Zero of 23 new documents conform to Master Document Specification v1.3.** None carries a `[DOCUMENT-METADATA]` block. None carries the required `[VALIDATION]` block. Footnotes are absent across the board.
-- **Boundary-model drift between canonical docs is material.** The Master Spec v1.3 says "UIAO operates in GCC-Moderate only" with Amazon Connect as the only Commercial Cloud exception. The A-Z Canonical Document Suite and the UIAO-Core CLI Reference say "GCC-Moderate applies to M365 SaaS only. UIAO operates in Commercial Cloud as governed by FedRAMP unless specifically noted." Those are different architectural claims.
+- **Boundary-model drift between canonical docs is material.** The Master Spec v1.3 says "UIAO operates in GCC-Moderate only" with Amazon Connect as the only Commercial Cloud exception. The A-Z Canonical Document Suite and the UIAO CLI Reference say "GCC-Moderate applies to M365 SaaS only. UIAO operates in Commercial Cloud as governed by FedRAMP unless specifically noted." Those are different architectural claims.
 - **Author attribution drift: 'Michal Doroszewski' has appeared.** The SCuBA Value Proposition names Michal Doroszewski as sole author. Every other document attributes to Michael Stratton or a team name.
 - **A new capstone candidate exists.** The A-Z Canonical Document Suite positions itself as "Canonical Front Door for Identity Modernization" and enumerates 26 appendices (A-Z). Overlaps in scope with the Master Project Plan.
 - **Two more chat-transcript files have entered inbox/.** AD_to_EntraID_Tree.docx (21,357 words) and claude-session-AD-Group-and-OU-mapping-to-EntraID.docx.
@@ -59,7 +59,7 @@ Remaining backlog: Governance Dashboard Design, Active-Passive Git Replication G
 
 | Document | Words | Role |
 |---|---|---|
-| UIAO-core Value Proposition — Two-Way Governance for SCuBA and BOD 25-01 | 4,171 | Author: Michal Doroszewski (not Stratton) |
+| UIAO Value Proposition — Two-Way Governance for SCuBA and BOD 25-01 | 4,171 | Author: Michal Doroszewski (not Stratton) |
 | UIAO SCuBA Pipeline — Complete Deliverables Package | 2,503 | SCuBA adapter + KSI evidence linker + governance/CI |
 
 ### Identity architecture
@@ -75,7 +75,7 @@ Remaining backlog: Governance Dashboard Design, Active-Passive Git Replication G
 
 | Document | Words | Role |
 |---|---|---|
-| UIAO-Core CLI Reference | 2,680 | CLI reference; boundary statement conflicts with Master Spec |
+| UIAO CLI Reference | 2,680 | CLI reference; boundary statement conflicts with Master Spec |
 | UIAO Documentation Pipeline — Setup and Configuration Guide | 2,759 | Classification labeled "UNCLASSIFIED" — conflicts with canon norms |
 | Chapter-04 through Chapter-09 RENDERED | ~1,150 total | UIAO-Document-Report User's Guide; Chapters 01-03 absent |
 
@@ -112,7 +112,7 @@ Legend: ✓ present; ✗ absent; ~ partial or informal
 | Entra_ID_Org_Hierarchy_Guide-2 | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | AODIM_Architecture_Document | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
 | AODIM_Executive_Whitepaper | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
-| UIAO-Core CLI Reference | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| UIAO CLI Reference | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
 | Documentation Pipeline Setup Guide | ✗ | ~ | ✗ | ✓ | ✓ | ✗ | ✗ |
 | Chapter-04 through Chapter-09 RENDERED | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | UIAO-Executive-Brief-SOURCE | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
@@ -142,7 +142,7 @@ The SCuBA Pipeline Complete Deliverables Package and the SCuBA Value Proposition
 
 ### 5.3 Consistency across documents
 
-**5.3.1 Boundary model — the most important new inconsistency.** Master Spec v1.3 says UIAO operates in GCC-Moderate only. The A-Z Canonical Document Suite and UIAO-Core CLI Reference both say "GCC-Moderate applies to M365 SaaS only; UIAO operates in Commercial Cloud as governed by FedRAMP." These are different architectural claims. The more detailed version is probably more accurate (Azure IaaS cannot be inside GCC-Moderate by definition), but if Master Spec governs, the newer wording is non-conformant drift.
+**5.3.1 Boundary model — the most important new inconsistency.** Master Spec v1.3 says UIAO operates in GCC-Moderate only. The A-Z Canonical Document Suite and UIAO CLI Reference both say "GCC-Moderate applies to M365 SaaS only; UIAO operates in Commercial Cloud as governed by FedRAMP." These are different architectural claims. The more detailed version is probably more accurate (Azure IaaS cannot be inside GCC-Moderate by definition), but if Master Spec governs, the newer wording is non-conformant drift.
 
 **5.3.2 Author attribution.** SCuBA Value Proposition names Michal Doroszewski as sole author. Every other canonical document attributes to Michael Stratton or a team name.
 
@@ -226,7 +226,7 @@ Q = quality/writing; C = coverage; X = consistency; S = strategic; M = Master Sp
 | Entra_ID_Org_Hierarchy_Guide-2 | 4 | 5 | 4 | 3 | 1 | Add metadata; cross-ref Identity Mod |
 | AODIM_Architecture_Document | 3 | 2 | 3 | 4 | 1 | Expand or absorb into A-Z Suite |
 | AODIM_Executive_Whitepaper | 3 | 2 | 3 | 4 | 1 | Consolidate with Architecture Doc |
-| UIAO-Core CLI Reference | 4 | 5 | 3 | 4 | 2 | Reconcile boundary with Master Spec |
+| UIAO CLI Reference | 4 | 5 | 3 | 4 | 2 | Reconcile boundary with Master Spec |
 | Documentation Pipeline Setup Guide | 4 | 4 | 3 | 3 | 1 | Fix UNCLASSIFIED; add boundary |
 | Chapters 04-09 (UIAO-Document-Report) | 3 | 3 | 2 | 2 | 1 | Decide canon status; add Chapters 01-03 |
 | UIAO-Executive-Brief-SOURCE | 4 | 5 | 4 | 5 | 1 | Canonize; cross-ref IMAGE-PROMPTS v2.0 |
