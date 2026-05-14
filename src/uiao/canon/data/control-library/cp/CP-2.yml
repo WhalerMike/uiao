@@ -1,23 +1,138 @@
-control-id: CP-2
-title: Contingency Plan
-status: implemented
-implemented-by:
-  - azure-site-recovery
-  - azure-traffic-manager
-narrative: |
-  {{ organization.name }} maintains a formal Contingency Plan for system recovery and continuity of operations.
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CP-2
+# Title      : Contingency Plan
+# Schema     : data/control-library (uiao canonical format)
 
-  **Business Continuity & Disaster Recovery**
-  Azure Site Recovery provides automated replication of critical virtual machines to a secondary geographic region. Recovery Time Objective (RTO) and Recovery Point Objective (RPO) targets are defined and tested.
+control_id: CP-2
+title: Contingency Plan
+family: Contingency Planning
+status: implemented
+
+implemented_by:
+    - azure-site-recovery
+    - azure-backup
+    - azure-traffic-manager
+    - azure-front-door-premium
+    - terraform-cloud
+    - servicenow-itsm
+
+evidence:
+    - contingency-plan-current-version-pdf
+    - site-recovery-replication-status-export
+    - bcdr-exercise-after-action-reports
+    - contingency-plan-annual-review-record
+    - servicenow-bcdr-ticket-records
+
+parameters:
+    - id: PARAM-CP-002-001
+      description: >-
+          Recovery Time Objective and Recovery Point Objective by
+          workload tier.
+      value: "Tier 0 (identity broker, evidence ledger, change-control pipeline): RTO 1 hour, RPO 15 minutes. Tier 1 (tenant production workloads, customer-facing services): RTO 4 hours, RPO 1 hour. Tier 2 (internal tools, batch processing): RTO 24 hours, RPO 4 hours. Tier 3 (development, non-production): RTO 5 business days, RPO 24 hours"
+    - id: PARAM-CP-002-002
+      description: >-
+          Approved recovery strategies by failure class.
+      value: "Component failure within region: native Azure HA pairs (zone-redundant deployments, geo-redundant storage). Single-region outage: failover to paired secondary region via Azure Site Recovery + Azure Front Door / Traffic Manager DNS failover. Subscription-wide compromise: clean-slate redeploy from configuration-as-code per ADR-041 with evidence-ledger-validated artifacts. Multi-region disruption: agency continuity-of-operations procedures with cross-cloud or on-premises failback per agency direction"
+    - id: PARAM-CP-002-003
+      description: >-
+          Frequency of contingency-plan exercises and reviews.
+      value: "Annual tabletop exercise with full stakeholder participation; biannual functional failover test of Tier 0 components; semi-annual full-substrate disaster-recovery exercise; quarterly recovery-procedure walk-through by the SOC and platform operations teams; immediate review on any significant architecture change"
+    - id: PARAM-CP-002-004
+      description: >-
+          Roles and responsibilities for contingency-plan execution.
+      value: "Crisis Management Team: led by the System Owner, includes UIAO CISO, Authorizing Official representative, SOC lead, platform operations lead, agency-side incident commander. Technical Recovery Team: led by the platform operations lead, includes Identity Engineering, Network Engineering, Data Engineering, and the SOC on-call. Business Liaison Team: led by the Business Owner, manages stakeholder communication and continuity-of-operations decisions"
+
+narrative: |
+  **Plan Authority and Scope**
+  The UIAO Contingency Plan is authored by the System Owner under
+  the authority of the Authorizing Official and addresses every
+  workload class within the authorization boundary. The plan
+  identifies the essential missions, the substrate components that
+  support them, the failure classes anticipated, and the recovery
+  strategy for each combination of mission and failure class. The
+  plan is maintained as a versioned canonical document in
+  SharePoint Online with full revision history and signature
+  approvals consistent with **PM-1** (Information Security Program
+  Plan) and **PL-2** (System Security Plan).
+
+  **Workload Tiering and Recovery Objectives**
+  Workloads are tiered per PARAM CP-002-001 with explicit Recovery
+  Time Objective and Recovery Point Objective. Tier 0 substrate
+  components carry the tightest objectives and the deepest
+  redundancy investment; Tier 3 development workloads tolerate
+  multi-day recovery. The tiering is canonical and drives every
+  downstream architectural decision: zone-redundancy in Tier 0,
+  cross-region pair replication in Tier 1, less aggressive backup
+  cadence in Tier 2-3. This tiering supports **CP-9** (System
+  Backup) and **RA-9** (Criticality Analysis).
+
+  **Recovery Strategies**
+  Recovery strategies follow PARAM CP-002-002 by failure class.
+  In-region component failures rely on native Azure high-
+  availability features (availability zones, zone-redundant
+  services, geo-redundant storage with read access in the paired
+  region). Single-region disruptions failover to the paired
+  secondary region via Azure Site Recovery for VM-backed workloads
+  and via DNS failover (Front Door / Traffic Manager) for
+  application-tier endpoints. Subscription-wide compromise (the
+  worst-case logical-failure mode) triggers clean-slate redeploy
+  from the configuration-as-code repositories per ADR-041, with
+  every deployment artifact validated against the
+  evidence-ledger-recorded manifest hashes before re-use.
+
+  **Crisis Roles and Communication**
+  Roles defined in PARAM CP-002-004 are pre-assigned with documented
+  primary and alternate personnel. The Crisis Management Team
+  convenes within 30 minutes of declared contingency event; the
+  Technical Recovery Team executes the documented runbooks per
+  workload class; the Business Liaison Team handles stakeholder
+  communication with agency-side incident response and any
+  external constituents. Contact rosters are updated quarterly
+  and tested via the exercise cadence in PARAM CP-002-003.
+
+  **Exercise and Review Cadence**
+  Exercises execute at the cadence defined in PARAM CP-002-003.
+  Annual tabletop exercises cover end-to-end contingency scenarios
+  with the full stakeholder roster; biannual functional failover
+  tests exercise Tier 0 failover capability; semi-annual
+  full-substrate DR exercises restore workloads to the paired
+  region from cold; quarterly walk-throughs maintain operational
+  familiarity between formal exercises. Every exercise produces a
+  signed After-Action Report identifying gaps, owner, and
+  remediation deadline; the AAR backlog is reviewed in the next
+  Crisis Management Team session.
 
   **Plan Maintenance**
-  The contingency plan is reviewed and updated annually or after significant system changes. Tabletop exercises and functional failover tests are conducted with documented After-Action Reports.
-parameters:
-  recovery-time-objective: "4 Hours"
-  test-frequency: "Annual"
-evidence:
-  - type: configuration
-    ref: CP-2-evidence
+  The plan is reviewed at least annually and immediately following
+  any architecture change that affects the contingency posture
+  (new substrate component, new dependency, new agency partner,
+  new threat-model entry). Plan revisions follow the CM-3
+  change-control pathway with the Authorizing Official as the
+  approving authority. Revision history is preserved in
+  SharePoint with explicit linkage to the change that triggered
+  the revision, supporting **AU-12** (Audit Record Generation)
+  and **CA-7** (Continuous Monitoring).
+
+  **Integration with Incident Response and Continuity of Operations**
+  The Contingency Plan operates alongside the Incident Response
+  Plan (per **IR-8**) and any agency-side Continuity of Operations
+  Plan. Hand-off criteria between IR-driven incident handling and
+  CP-driven contingency execution are documented explicitly so the
+  transition does not become a coordination gap. Agency-side COOP
+  invocation is the Business Liaison Team's responsibility and is
+  exercised in the annual tabletop.
+
 related_controls:
-  - CP-4
-  - IR-5
+    - CA-7   # Continuous Monitoring
+    - CM-3   # Configuration Change Control
+    - CP-3   # Contingency Training
+    - CP-4   # Contingency Plan Testing
+    - CP-6   # Alternate Storage Site
+    - CP-7   # Alternate Processing Site
+    - CP-9   # System Backup
+    - CP-10  # System Recovery and Reconstitution
+    - IR-4   # Incident Handling
+    - IR-8   # Incident Response Plan
+    - PL-2   # System Security Plan
+    - PM-1   # Information Security Program Plan
+    - RA-9   # Criticality Analysis
