@@ -223,7 +223,7 @@ backlog items.
 - S.P.3 Canon sync (sync_canon.py)
 - S.P.4 CI/CD (GitHub Actions)
 - S.P.5 Customer Documents portal
-- S.P.6 UIAO-Core CLI
+- S.P.6 UIAO CLI
 - S.P.7 PowerShell Module Reference
 - S.P.8 UIAO Academy (training platform)
 
@@ -267,7 +267,7 @@ sub-category. `Target location` is the proposed Quarto path once the
 | 15 | Git Server WS2025 (Option A) | Modernization | A.2 | `modernization/platform-substrate/` *(archive w/ SUPERSEDED-BY)* | **SUPERSEDED** — by ADR-001 |
 | 16 | Git on WS2025 (generic) | Modernization | A.2 | *(archive w/ SUPERSEDED-BY)* | **SUPERSEDED** |
 | 17 | CLI & Operations Guide | Substrate | S.P.6 | `substrate/platform-tooling/cli-operations.qmd` | **PARTIAL** |
-| 18 | UIAO-Core CLI Reference | Substrate | S.P.6 | `substrate/platform-tooling/uiao-core-cli.qmd` | **PARTIAL** |
+| 18 | UIAO CLI Reference | Substrate | S.P.6 | `substrate/platform-tooling/uiao-cli-reference.qmd` | **COVERED** — authored, mermaid→PNG, PR #496 |
 | 19 | SCuBA Value Proposition | Compliance | A.3 | `compliance/federal-mandates/scuba-value-proposition.qmd` | **PARTIAL** — authorship issue (Doroszewski) |
 | 20 | SCuBA Technical Specification | Compliance | A.3 | `compliance/federal-mandates/scuba-technical-spec.qmd` | **PARTIAL** |
 | 21 | SCuBA Pipeline Deliverables | Compliance | C.3 | `compliance/evidence-telemetry/scuba-pipeline.qmd` | **PARTIAL** |
