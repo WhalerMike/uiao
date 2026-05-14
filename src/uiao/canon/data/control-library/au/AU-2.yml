@@ -1,23 +1,127 @@
-control-id: AU-2
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : AU-2
+# Title      : Event Logging
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: AU-2
 title: Event Logging
+family: Audit and Accountability
 status: implemented
-implemented-by:
-  - microsoft-sentinel
-  - azure-monitor
-narrative: |
-  {{ organization.name }} determines the events to be logged within the system.
 
-  **Comprehensive Audit Coverage**
-  Events include successful and failed logons, privilege use (PIM elevations), security group changes, and configuration modifications.
+implemented_by:
+    - microsoft-sentinel
+    - azure-monitor
+    - entra-id
+    - microsoft-defender-xdr
+    - microsoft-purview
 
-  **Centralized Collection**
-  All audit events are streamed in real-time to a Log Analytics workspace via Azure Diagnostic Settings enforced by Azure Policy. This creates a tamper-resistant telemetry plane for security and compliance.
-parameters:
-  collection-method: "Azure Diagnostic Settings"
-  log-retention-period: "365 days"
 evidence:
-  - type: configuration
-    ref: AU-2-evidence
+    - azure-policy-diagnostic-settings-assignment
+    - sentinel-data-connector-inventory
+    - entra-audit-log-export
+    - defender-xdr-advanced-hunting-coverage
+    - purview-audit-search-coverage-report
+
+parameters:
+    - id: PARAM-AU-002-001
+      description: >-
+          Authorized event types subject to logging across the
+          authorization boundary.
+      value: "Identity-plane events (sign-ins, MFA outcomes, Conditional Access decisions, role activations, directory changes); resource-plane events (Azure Activity, control-plane operations, RBAC assignments, key-vault access, policy-as-code evaluations); data-plane events (SharePoint / OneDrive / Exchange / Teams access, sensitivity-label application, DLP events); endpoint events (Defender for Endpoint detections, attack-surface-reduction-rule hits, EDR alerts); workload events (Defender for Cloud, App Service, AKS); service-account and workload-identity sign-ins; security-incident lifecycle records"
+    - id: PARAM-AU-002-002
+      description: >-
+          Frequency at which the event-coverage matrix is reviewed
+          for completeness against the threat model.
+      value: "Quarterly review against the UIAO threat model; immediate update on every new vendor surface onboard; revalidation on every Microsoft Sentinel content-pack release"
+    - id: PARAM-AU-002-003
+      description: >-
+          Authorized parties to whom event-logging coverage gaps
+          are reported.
+      value: "Information System Security Officer (ISSO); Security Operations Center lead; UIAO CISO; Authorizing Official on quarterly review; FedRAMP Continuous Monitoring stakeholders via the monthly ConMon submission"
+
+narrative: |
+  **Event-Coverage Authority**
+  The UIAO substrate operates a centrally-curated event-coverage
+  matrix that enumerates every event type the system must log,
+  the vendor surface that emits the event, the ingestion path into
+  Microsoft Sentinel, the retention class, and the detection-rule
+  coverage. The matrix is the canonical record-of-decision for AU-2
+  and is maintained as a versioned YAML artifact in the UIAO
+  governance pipeline. Every change to the matrix is peer-reviewed
+  and recorded in the change history, supporting **CM-3**
+  (Configuration Change Control).
+
+  **Identity-Plane Coverage**
+  Entra ID emits sign-in logs (interactive, non-interactive,
+  service-principal, managed-identity), audit logs (directory
+  changes, role assignments, policy evaluations), and provisioning
+  logs (SCIM in/out events). All three log surfaces are streamed
+  to Microsoft Sentinel via the Entra ID data connector, with
+  Conditional Access continuous-access-evaluation events flowing
+  through the same pipe. This satisfies the identity-plane
+  observability requirement of CISA Zero Trust Maturity Model v2.0
+  and supports **IA-2** (Identification and Authentication) and
+  **AC-2** (Account Management).
+
+  **Resource-Plane and Workload Coverage**
+  Azure Activity logs at the management-group, subscription, and
+  resource-group scopes are forwarded to Sentinel via Azure Policy
+  diagnostic-settings enforcement. The policy is assigned at the
+  management-group root so every subscription within the boundary
+  inherits the forwarding configuration; no subscription can opt
+  out. Workload identities (service principals, managed identities,
+  workload-identity-federation tokens per ADR-004) carry their own
+  sign-in stream, providing the symmetric workload-side
+  observability that on-prem service-account authentication
+  historically lacked.
+
+  **Data-Plane Coverage**
+  Microsoft Purview audit search captures the data-plane events
+  defined in PARAM AU-002-001 across the M365 estate. Audit search
+  is configured with the maximum-retention class for sensitive
+  workloads and the standard retention class elsewhere. DLP events
+  flow through Sentinel for correlation with **AC-4** (Information
+  Flow Enforcement). Sensitivity-label application events from
+  Microsoft Information Protection complete the data-plane picture
+  by capturing the label-of-record at every classification point.
+
+  **Endpoint and Detection Coverage**
+  Microsoft Defender for Endpoint events (alerts, detections, ASR
+  rule hits, EDR signals) and Defender for Cloud workload events
+  stream to Sentinel via the Defender XDR data connector.
+  Defender's Advanced Hunting surface is configured for the full
+  retention window, providing the threat-hunting evidence surface
+  that complements Sentinel's correlation engine. This supports
+  **SI-4** (System Monitoring) and **IR-4** (Incident Handling).
+
+  **Coverage Gap Detection**
+  The event-coverage matrix is reconciled nightly against the
+  observed Sentinel-side telemetry. Any expected event type that
+  has not produced a record in the prior 24 hours triggers a
+  coverage-gap alert reviewed by the SOC and reported to the
+  parties named in PARAM AU-002-003. The continuous gap-detection
+  loop prevents silent-failure modes where a vendor surface stops
+  emitting logs without anyone noticing.
+
+  **Audit-Coverage Review**
+  The coverage matrix is reviewed at the cadence defined in PARAM
+  AU-002-002 against the latest UIAO threat model, the current
+  Microsoft Sentinel content-pack release, and the FedRAMP
+  Continuous Monitoring requirement. Reviews produce a dated
+  attestation stored alongside the matrix, providing the
+  AU-2 review record consistent with **CA-7** (Continuous
+  Monitoring) and **PM-14** (Testing, Training, and Monitoring).
+
 related_controls:
-  - AU-2
-  - SI-4
+    - AC-2   # Account Management
+    - AC-4   # Information Flow Enforcement
+    - AU-3   # Content of Audit Records
+    - AU-6   # Audit Record Review, Analysis, and Reporting
+    - AU-9   # Protection of Audit Information
+    - AU-11  # Audit Record Retention
+    - AU-12  # Audit Record Generation
+    - CA-7   # Continuous Monitoring
+    - CM-3   # Configuration Change Control
+    - IA-2   # Identification and Authentication
+    - IR-4   # Incident Handling
+    - SI-4   # System Monitoring
