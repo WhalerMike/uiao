@@ -1,0 +1,75 @@
+ksi_id: KSI-SNOW-002
+title: Incidents Map to Controlling ATO via configuration_item.ato_ref
+category: configuration-management
+description: >
+  Every incident record in the ServiceNow incident table must carry a
+  resolvable ATO reference — either via the linked configuration item's
+  `ato_ref` field or via a direct `uiao_control_id` field on the incident
+  itself.  Incidents that cannot be traced to a controlling ATO represent
+  unmonitored system scope and violate the asset-inventory integrity
+  requirement of CM-8, as well as the event-correlation requirement of IR-4.
+security_objective: >
+  Ensure that every ServiceNow incident is attributed to a known, active
+  authorisation boundary so that impact analysis, escalation, and evidence
+  collection remain anchored to the correct controlling ATO and its associated
+  security plan.
+related_controls:
+  - CM-8
+  - IR-4
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero incident records whose `configuration_item.ato_ref` is null or
+    unresolvable AND whose `uiao_control_id` field is also absent or null.
+    At least one of the two fields must resolve to an active ATO registry entry.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT i.sys_id, i.number,
+           ci.ato_ref, i.uiao_control_id
+    FROM servicenow_incidents i
+    LEFT JOIN servicenow_cmdb_ci ci
+           ON ci.sys_id = i.cmdb_ci
+    LEFT JOIN uiao_ato_registry ar_ci
+           ON ar_ci.ato_id = ci.ato_ref
+          AND ar_ci.status = 'active'
+    LEFT JOIN uiao_ato_registry ar_inc
+           ON ar_inc.ato_id = i.uiao_control_id
+          AND ar_inc.status = 'active'
+    WHERE ar_ci.ato_id IS NULL
+      AND ar_inc.ato_id IS NULL
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: servicenow.validators.incident_ato_attribution
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-14"
+enabled: true
+tags:
+  - servicenow
+  - incident-management
+  - ato-attribution
+  - cmdb
+  - configuration-item
+  - cm-8
+  - ir-4
+severity: high
+nist_mappings:
+  primary: CM-8
+  secondary:
+    - IR-4
+fedramp_controls:
+  - CM-8
+  - IR-4
+provenance:
+  spec_ref: v0.6.1-servicenow
+  adr_ref: ADR-049
+  ruleset_version: "1.0"
+  introduced_by: WS-A3

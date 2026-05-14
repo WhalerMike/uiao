@@ -1,0 +1,71 @@
+ksi_id: KSI-SNOW-003
+title: Incident Closure Evidence Captured (closed_at, close_code, close_notes)
+category: incident-response
+description: >
+  Every resolved or closed ServiceNow incident must carry a complete closure
+  evidence triple: a non-null `closed_at` timestamp, a non-null `close_code`
+  drawn from the authorised enumeration, and a non-empty `close_notes` field
+  containing a human-authored resolution summary.  Incidents that are marked
+  closed but lack any element of this triple fail to satisfy the incident
+  record-keeping obligations of IR-5 and the reporting obligations of IR-6,
+  and introduce gaps in the continuous-monitoring evidence chain.
+security_objective: >
+  Guarantee that every closed incident produces tamper-evident, human-readable
+  closure documentation that satisfies FedRAMP incident-tracking requirements,
+  enabling auditors to reconstruct the full incident lifecycle from detection
+  through resolution without relying on out-of-band records.
+related_controls:
+  - IR-5
+  - IR-6
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero closed or resolved incident records missing any element of the
+    closure triple (closed_at IS NULL, close_code IS NULL or empty,
+    close_notes IS NULL or empty string).
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT sys_id, number, state,
+           closed_at, close_code, close_notes
+    FROM servicenow_incidents
+    WHERE state IN ('closed', 'resolved')
+      AND (
+           closed_at IS NULL
+        OR close_code IS NULL OR close_code = ''
+        OR close_notes IS NULL OR TRIM(close_notes) = ''
+      )
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: false
+  custom_validation_logic: servicenow.validators.incident_closure_evidence
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-14"
+enabled: true
+tags:
+  - servicenow
+  - incident-management
+  - closure-evidence
+  - ir-5
+  - ir-6
+  - record-keeping
+severity: medium
+nist_mappings:
+  primary: IR-5
+  secondary:
+    - IR-6
+fedramp_controls:
+  - IR-5
+  - IR-6
+provenance:
+  spec_ref: v0.6.1-servicenow
+  adr_ref: ADR-049
+  ruleset_version: "1.0"
+  introduced_by: WS-A3

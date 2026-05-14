@@ -1,0 +1,75 @@
+ksi_id: KSI-SNOW-005
+title: SLA-Violation Incidents Emit Governance Findings (P2 Default)
+category: incident-response
+description: >
+  Every ServiceNow incident whose SLA target has been breached must trigger
+  the emission of a UIAO governance finding at minimum P2 severity.  SLA
+  violations represent a failure of the incident-response process to meet
+  its committed response or resolution time, which degrades the continuous-
+  monitoring posture tracked under IR-5 and must be surfaced for programme-
+  level oversight under CA-7.  Incidents with an expired SLA that have not
+  generated a corresponding governance finding are a blind spot in the
+  organisation's authorisation evidence.
+security_objective: >
+  Ensure that every breached SLA produces a durable, machine-readable
+  governance finding in the UIAO evidence store so that programme managers
+  can identify systemic incident-response deficiencies, track remediation,
+  and demonstrate to authorising officials that SLA failures are actively
+  managed rather than silently tolerated.
+related_controls:
+  - IR-5
+  - CA-7
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero SLA-breached incidents that do not have at least one corresponding
+    governance finding record with severity >= P2 in the UIAO findings table.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT i.sys_id, i.number, s.breach_time,
+           f.finding_id, f.severity
+    FROM servicenow_incidents i
+    INNER JOIN servicenow_sla_records s
+            ON s.task = i.sys_id
+           AND s.has_breached = TRUE
+    LEFT JOIN uiao_governance_findings f
+           ON f.source_record_id = i.sys_id
+          AND f.source_system = 'servicenow'
+          AND f.severity IN ('P1', 'P2')
+    WHERE f.finding_id IS NULL
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: servicenow.validators.sla_violation_finding_emission
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-14"
+enabled: true
+tags:
+  - servicenow
+  - sla
+  - governance-findings
+  - incident-management
+  - continuous-monitoring
+  - ir-5
+  - ca-7
+severity: medium
+nist_mappings:
+  primary: IR-5
+  secondary:
+    - CA-7
+fedramp_controls:
+  - IR-5
+  - CA-7
+provenance:
+  spec_ref: v0.6.1-servicenow
+  adr_ref: ADR-049
+  ruleset_version: "1.0"
+  introduced_by: WS-A3
