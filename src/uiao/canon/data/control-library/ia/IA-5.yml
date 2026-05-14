@@ -1,24 +1,129 @@
-control-id: IA-5
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-5
+# Title      : Authenticator Management
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: IA-5
 title: Authenticator Management
-narrative: |
-  {{ organization.name }} manages authenticators using phishing-resistant technologies.
-
-  **Authenticator Types**
-  Primary authenticators are FIDO2/WebAuthn or PIV/CAC.
-
-  **Issuance and Revocation**
-  Authenticators are issued through automated workflows and revoked within {{ parameters.auth-revocation-window }} of compromise or loss.
-
-  **Storage**
-  Cryptographic authenticators are stored in hardware security modules with FIPS 140-3 validation.
-implemented-by:
-  - IdentityProvider
+family: Identification and Authentication
 status: implemented
-parameters:
-  auth-revocation-window: "2 hours"
+
+implemented_by:
+    - entra-id
+    - entra-authentication-methods
+    - azure-key-vault
+    - cyberark-pam
+    - intune
+
 evidence:
-  - type: audit-log
-    ref: IA-5-logs
+    - entra-authentication-methods-policy-export
+    - key-vault-rotation-audit-log
+    - cyberark-credential-rotation-records
+    - intune-device-certificate-issuance-log
+    - entra-id-fido2-attestation-report
+
+parameters:
+    - id: PARAM-IA-005-001
+      description: >-
+          Approved authenticator types issued to organizational
+          users.
+      value: "FIDO2 security keys (Yubico YubiKey 5 series, Feitian K series) with attestation against the FIDO Metadata Service; PIV/CAC smart cards anchored to the Federal Common Policy CA G2 chain; Windows Hello for Business with TPM-backed key storage; Microsoft Authenticator with passwordless phone sign-in enabled for transitional populations only"
+    - id: PARAM-IA-005-002
+      description: >-
+          Authenticator lifetime before mandatory renewal or
+          re-issuance.
+      value: "FIDO2 / PIV-CAC: bound to user employment; renewed on issuer-chain expiry or hardware retirement. Windows Hello for Business: device-bound; renewed on device replacement. Passwords (fallback only during migration): 60 days maximum before mandatory rotation"
+    - id: PARAM-IA-005-003
+      description: >-
+          Maximum time window from compromise or loss of an
+          authenticator to its revocation.
+      value: "1 hour from confirmed compromise, theft, or loss; immediate revocation on personnel separation per AC-2; 24 hours from suspected compromise pending investigation"
+    - id: PARAM-IA-005-004
+      description: >-
+          Approved storage substrate for cryptographic authenticator
+          private keys and shared secrets.
+      value: "FIDO2 token secure element (FIPS 140-3 Level 2+); TPM 2.0 in Windows Hello for Business endpoints (FIPS 140-3 Level 1 minimum); Azure Key Vault Managed HSM (FIPS 140-3 Level 3) for workload-identity certificates and federated client credentials; CyberArk Vault for legacy privileged-account credentials pending elimination via workload-identity federation"
+
+narrative: |
+  **Authenticator Issuance Workflow**
+  Authenticator issuance is initiated through a validated source-of-
+  truth event: federal personnel receive FIDO2 keys and PIV/CAC
+  smart cards through the agency credential-issuance process at
+  onboarding; contractors receive FIDO2 keys through a ServiceNow
+  Access Request workflow approved by the sponsoring federal
+  employee. Each issued authenticator is registered against the
+  user's Entra ID account, attested against the FIDO Metadata
+  Service or FPKI revocation list at registration time, and
+  recorded in the authenticator inventory with serial number,
+  issuance date, expiry, and revocation pathway. This satisfies
+  **IA-5(1)** (Password-Based Authentication) requirements at the
+  base level since passwords are not the primary authenticator
+  factor.
+
+  **Authenticator Strength**
+  All authenticators issued under this control conform to NIST SP
+  800-63B Authenticator Assurance Level 3 (AAL3) for federal
+  personnel and contractor users, and at minimum AAL2 for
+  transitional populations during migration windows. Passwords
+  used as fallback during migration carry the minimum-strength
+  requirement defined in **IA-5(1)** and are blocked from
+  high-sensitivity workloads via Conditional Access. SMS-based
+  one-time passcodes and voice-call MFA are explicitly prohibited
+  per the IA-2 prohibited-methods list.
+
+  **Storage and Cryptographic Protection**
+  Authenticator private keys are protected at the storage substrate
+  defined in PARAM IA-005-004. Private keys never leave the
+  hardware boundary in cleartext; signing operations occur within
+  the secure element or HSM. Azure Key Vault stores tenant-issued
+  certificates under FIPS 140-3 Level 3 HSM protection with
+  hardware-anchored key management. CyberArk Vault holds residual
+  legacy credentials with rotation on every check-out and on the
+  cadence defined in PARAM IA-005-002. This supports **SC-12**
+  (Cryptographic Key Establishment) and **SC-13** (Cryptographic
+  Protection).
+
+  **Rotation and Renewal**
+  Authenticators are renewed within the lifetime defined in PARAM
+  IA-005-002. Renewal events generate a new authenticator binding
+  and revoke the prior; in no case does the prior authenticator
+  remain valid after renewal. Workload-identity federated
+  credentials, where supported, eliminate rotation entirely by
+  using ephemeral cloud-issued tokens; this is the canonical state
+  per ADR-004. Legacy service-account credentials that cannot use
+  federation rotate on a 30-day cadence via CyberArk PAM.
+
+  **Revocation on Compromise or Separation**
+  Revocation occurs within the window defined in PARAM IA-005-003.
+  Compromise indicators surfaced by Microsoft Defender for
+  Identity, Microsoft Sentinel, or user self-report initiate the
+  revocation workflow in Entra ID Identity Governance. Separation
+  events from Workday HR trigger immediate revocation of every
+  authenticator bound to the separating user. Revocation events
+  are recorded in the authenticator inventory and the Entra ID
+  audit log, providing the auditable revocation chain consistent
+  with **AU-12** (Audit Record Generation).
+
+  **Authenticator-Inventory Integrity**
+  The authoritative authenticator inventory is exported nightly
+  from Entra ID, Azure Key Vault, and CyberArk Vault to the UIAO
+  evidence ledger. The export carries hash-stamped integrity such
+  that downstream consumers can detect tampering or in-flight
+  modification. Inventory drift (authenticators present in vendor
+  systems but not in the ledger, or vice versa) generates a
+  Microsoft Sentinel alert correlated with **AU-6** (Audit Record
+  Review).
+
 related_controls:
-  - AC-2
-  - AC-3
+    - AC-2   # Account Management
+    - AC-3   # Access Enforcement
+    - AC-6   # Least Privilege
+    - AU-6   # Audit Record Review
+    - AU-12  # Audit Record Generation
+    - IA-2   # Identification and Authentication (Organizational Users)
+    - IA-4   # Identifier Management
+    - IA-7   # Cryptographic Module Authentication
+    - IA-8   # Identification and Authentication (Non-Organizational Users)
+    - SC-12  # Cryptographic Key Establishment and Management
+    - SC-13  # Cryptographic Protection
+    - PS-4   # Personnel Termination

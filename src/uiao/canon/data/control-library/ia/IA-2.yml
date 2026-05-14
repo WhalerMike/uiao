@@ -1,23 +1,123 @@
-control-id: IA-2
-title: Identification and Authentication
-narrative: |
-  {{ organization.name }} requires unique identification and authentication for all users, processes, and devices.
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IA-2
+# Title      : Identification and Authentication (Organizational Users)
+# Schema     : data/control-library (uiao canonical format)
 
-  **Primary Authentication**
-  All users authenticate using phishing-resistant multi-factor authentication via the Identity Provider.
-
-  **Non-Organizational Users**
-  Guests and contractors are required to use the same authentication standards with additional sponsor approval.
-
-  **Device Authentication**
-  Managed devices are identified and authenticated using device certificates and compliance checks.
-implemented-by:
-  - IdentityProvider
-  - Intune
+control_id: IA-2
+title: Identification and Authentication (Organizational Users)
+family: Identification and Authentication
 status: implemented
+
+implemented_by:
+    - entra-id
+    - entra-conditional-access
+    - intune
+    - cyberark-pam
+    - microsoft-sentinel
+
 evidence:
-  - type: audit-log
-    ref: IA-2-logs
+    - entra-sign-in-log-export
+    - entra-authentication-methods-report
+    - intune-device-compliance-report
+    - cyberark-privileged-session-records
+    - sentinel-authentication-anomaly-detections
+
+parameters:
+    - id: PARAM-IA-002-001
+      description: >-
+          Acceptable phishing-resistant authenticator types for
+          organizational users authenticating to the substrate.
+      value: "FIDO2 security keys conforming to WebAuthn Level 2; Windows Hello for Business with hardware-backed TPM; PIV/CAC smart cards anchored to the Federal Common Policy CA G2 chain or agency FPKI sub-CA"
+    - id: PARAM-IA-002-002
+      description: >-
+          Authentication scope for which phishing-resistant MFA is
+          mandatory at every sign-in.
+      value: "All interactive sign-ins for federal personnel and contractor users; all administrator-role activations; all privileged sessions originating through CyberArk PAM; all access requests to Tier 0 management surfaces (Entra ID, Azure subscriptions, key vaults, conditional-access policies)"
+    - id: PARAM-IA-002-003
+      description: >-
+          Authentication methods prohibited within the authorization
+          boundary.
+      value: "Password-only authentication; SMS-based one-time passcodes; voice-call MFA; security questions; static challenge-response tokens; basic authentication for legacy protocols (POP, IMAP, SMTP-AUTH); NTLMv1 (LSA-disabled per ADR-068)"
+
+narrative: |
+  **Unique-Identifier Authority**
+  Microsoft Entra ID is the canonical Identity Provider of record
+  for every organizational user within the UIAO authorization
+  boundary. Each user is assigned a single unique identifier (the
+  Entra ID object identifier) that travels with the user across
+  every federated service. User identifier provenance flows from
+  the authoritative HR source (Workday) through the SCIM
+  provisioning connector defined by **AC-2** (Account Management);
+  no identifier is minted outside this pipeline. Account
+  identifiers are immutable for the duration of the user's
+  employment, providing stable correlation for audit and incident
+  response.
+
+  **Phishing-Resistant Authentication as Default**
+  Every interactive sign-in by an organizational user requires the
+  phishing-resistant authentication strength defined in PARAM
+  IA-002-001. Conditional Access policies enforce this strength at
+  every sign-in for the scope defined in PARAM IA-002-002. The
+  authentication path satisfies OMB M-22-09, CISA Binding
+  Operational Directive 25-01, Solicitation 24322626R0007 Amendment
+  4 Clause 1752.224-70 (PIV/CAC), and the Federal Zero Trust
+  Strategy. Authentication strength evaluation uses the Entra ID
+  authentication-strength taxonomy and is auditable per sign-in
+  via the Conditional Access evaluation logs.
+
+  **Privileged Authentication**
+  All privileged-role activations require certificate-based
+  authentication against the Federal Common Policy CA G2 chain per
+  ADR-068. Entra Privileged Identity Management refuses to activate
+  any privileged role for a session whose authentication strength
+  does not include a certificate-based factor. CyberArk PAM
+  enforces the same requirement for vaulted-credential check-out
+  and recorded privileged sessions. This satisfies the intent of
+  **IA-2(1)**, **IA-2(2)**, and **IA-2(12)** at the base-control
+  level and supports **AC-6** (Least Privilege).
+
+  **Prohibited Authentication Methods**
+  The authentication methods listed in PARAM IA-002-003 are blocked
+  at the tenant level. Legacy authentication is disabled via
+  Conditional Access blocks; SMS-based MFA is blocked via the
+  authentication-methods policy; basic authentication is disabled
+  in Exchange Online; NTLMv1 is disabled at the LSA layer per the
+  ADR-068 schedule with mandatory disablement by 2027-04-01 per
+  Notice 0009. Exception requests require an ADR-068 per-app ADR
+  with the compensating control documented.
+
+  **Non-Person Entity Authentication**
+  Workload identities (service principals and managed identities)
+  authenticate using federated credentials per ADR-004
+  (workload-identity-federation-default) rather than client secrets
+  where the target supports OIDC federation. Where federation is
+  unavailable, secrets are vaulted in Azure Key Vault with
+  certificate-based caller authentication and rotated per **IA-5**.
+  Service-principal sign-ins are logged in the Entra ID
+  service-principal sign-in log and streamed to Microsoft Sentinel
+  for correlation with **AU-12** (Audit Record Generation).
+
+  **Telemetry, Detection, and Continuous Validation**
+  Every sign-in produces a record in the Entra ID sign-in logs
+  carrying the user identifier, the device identifier, the
+  authentication-strength evidence, the Conditional Access
+  evaluation, and the decision outcome. Microsoft Sentinel runs a
+  curated detection pack (impossible-travel, anomalous-IP,
+  authentication-method-downgrade, post-MFA token theft) and
+  forwards high-confidence detections to ServiceNow Security
+  Incident Response. Authentication telemetry is exported nightly
+  to the UIAO evidence ledger for tamper-evident archival
+  consistent with **AU-9** (Protection of Audit Information).
+
 related_controls:
-  - AC-2
-  - AC-3
+    - AC-2   # Account Management
+    - AC-3   # Access Enforcement
+    - AC-6   # Least Privilege
+    - AC-17  # Remote Access
+    - AU-2   # Event Logging
+    - AU-9   # Protection of Audit Information
+    - AU-12  # Audit Record Generation
+    - IA-4   # Identifier Management
+    - IA-5   # Authenticator Management
+    - IA-8   # Identification and Authentication (Non-Organizational Users)
+    - SC-13  # Cryptographic Protection
