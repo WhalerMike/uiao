@@ -1,23 +1,126 @@
-control-id: CM-3
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CM-3
+# Title      : Configuration Change Control
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: CM-3
 title: Configuration Change Control
+family: Configuration Management
 status: implemented
-implemented-by:
-  - github-actions
-  - terraform-cloud
-narrative: |2
-  {{ organization.name }} controls changes to the system configuration through a formal Changes-as-Code process.
 
-  **Change Management Workflow**
-  All configuration changes are submitted as Pull Requests with mandatory peer review and automated security linting (terraform validate, OPA policies, etc.).
+implemented_by:
+    - github-enterprise
+    - github-actions
+    - terraform-cloud
+    - azure-policy
+    - servicenow-itsm
+    - microsoft-sentinel
 
-  **Automated Deployment**
-  Approved changes are deployed via GitHub Actions or Terraform Cloud pipelines. A complete immutable audit trail is maintained in the version control history.
-parameters:
-  deployment-method: "Automated CI/CD Pipeline"
-  review-requirement: "Minimum 1 peer reviewer + automated checks"
 evidence:
-  - type: configuration
-    ref: CM-3-evidence
+    - github-pull-request-review-export
+    - github-actions-workflow-run-history
+    - terraform-cloud-run-audit-log
+    - azure-policy-compliance-events
+    - servicenow-change-ticket-records
+
+parameters:
+    - id: PARAM-CM-003-001
+      description: >-
+          Authorized change-class taxonomy and the approval pathway
+          for each class.
+      value: "Standard change (pre-approved, automated, low risk): peer review + automated checks + auto-deploy. Normal change (non-standard, medium risk): Change Advisory Board review and approval, scheduled deployment window. Emergency change (production-impacting incident): Emergency Change Advisory Board, post-implementation review within 5 business days. Tier 0 change (identity / boundary / encryption / authentication): Change Advisory Board + Authorizing Official + dual-control deployment"
+    - id: PARAM-CM-003-002
+      description: >-
+          Minimum review requirements before any merge to a branch
+          deploying to the authorization boundary.
+      value: "Two human peer reviewers (one of whom is the CODEOWNER of the affected module); automated checks (terraform validate, OPA Conftest policy gates, security linting, secret scanning, license compliance, schema validation); successful CI build; signed commits per ADR-041 release manifest convention"
+    - id: PARAM-CM-003-003
+      description: >-
+          Roles authorized to approve emergency changes outside the
+          standard Change Advisory Board window.
+      value: "Emergency CAB members: UIAO CISO or delegate, System Owner or delegate, on-call SOC lead; quorum of 2 of 3 required for any emergency change; post-implementation review by full CAB within 5 business days"
+
+narrative: |
+  **Configuration-as-Code as the Authoritative Change Surface**
+  Every configuration change within the UIAO authorization boundary
+  originates as a pull request against the configuration-as-code
+  repositories hosted in GitHub Enterprise. The repositories
+  encompass Terraform infrastructure modules, Azure Policy
+  definitions, Conditional Access policies, Intune configuration
+  profiles, Microsoft Sentinel analytics rules, OSCAL SSP artifacts,
+  and the canon manifests defined by ADR-041. No production change
+  is applied outside this pathway; manual changes in the Azure
+  portal, Entra ID portal, or vendor consoles are detected as
+  drift and reconciled or reverted per **CM-2** (Baseline
+  Configuration) and **CM-6** (Configuration Settings).
+
+  **Change-Class Taxonomy and Approval**
+  The change-class taxonomy defined in PARAM CM-003-001 determines
+  the approval pathway for each pull request. Standard changes
+  flow through automated guardrails and a single CODEOWNER review.
+  Normal changes route through the Change Advisory Board with
+  documented business justification, security impact analysis, and
+  rollback plan. Emergency changes route through the Emergency
+  CAB with the abbreviated approval defined in PARAM CM-003-003.
+  Tier 0 changes (those that touch the identity broker, the
+  boundary protection, the cryptographic substrate, or
+  authentication policy) carry the highest approval threshold,
+  including signed approval from the Authorizing Official.
+
+  **Automated Pre-Merge Validation**
+  The pre-merge validation gauntlet defined in PARAM CM-003-002
+  runs against every pull request via GitHub Actions. The gauntlet
+  includes static-analysis checks (terraform validate, terraform
+  plan against the destination workspace, OPA Conftest gates
+  encoding the UIAO security policy, ScubaGear baseline-conformance
+  checks for M365 configurations, OSCAL schema validation),
+  secret-scanning to prevent credential exposure, license-compliance
+  scanning, and a signed-commits requirement enforced via branch
+  protection. Pull requests that fail any gauntlet check cannot
+  merge; the failure is recorded against the change record
+  consistent with **AU-12** (Audit Record Generation).
+
+  **Deployment Pipeline and Audit Chain**
+  Approved pull requests merge to the protected `main` branch,
+  triggering the deployment workflow via GitHub Actions. Terraform
+  Cloud executes the deployment with workload-identity federation
+  per ADR-004 — no long-lived credentials are required. Every
+  deployment run produces an immutable audit record (workflow run
+  ID, commit SHA, signed manifest hash, deployment outcome,
+  resource-state delta) recorded in the GitHub Actions run history
+  and exported nightly to the UIAO evidence ledger. Deployment
+  failures and rollbacks are recorded with the same fidelity.
+
+  **Change-Record Correlation**
+  ServiceNow ITSM holds the human-readable change record that
+  cross-references the GitHub pull request, the Change Advisory
+  Board decision, the deployment workflow run, and any associated
+  incident or risk-acceptance ticket. The cross-reference makes
+  the change traceable end-to-end from business request through
+  technical deployment to audit evidence, supporting **CA-7**
+  (Continuous Monitoring) and **AU-6** (Audit Record Review).
+
+  **Detection of Out-of-Band Changes**
+  Azure Policy diagnostic settings forward all control-plane
+  events to Microsoft Sentinel, where detection rules alert on any
+  resource-modification event that lacks a correlated GitHub
+  Actions deployment run within the change-window correlation
+  threshold. Out-of-band changes are investigated as a potential
+  security incident and either ratified through the post-hoc
+  change-record process or reverted. The continuous correlation
+  loop is the substrate's defense against silent drift and
+  unauthorized modification.
+
 related_controls:
-  - CM-2
-  - SC-7
+    - AC-3   # Access Enforcement
+    - AC-5   # Separation of Duties
+    - AU-2   # Event Logging
+    - AU-6   # Audit Record Review
+    - AU-12  # Audit Record Generation
+    - CA-7   # Continuous Monitoring
+    - CM-2   # Baseline Configuration
+    - CM-4   # Impact Analyses
+    - CM-5   # Access Restrictions for Change
+    - CM-6   # Configuration Settings
+    - CM-8   # System Component Inventory
+    - SC-7   # Boundary Protection
