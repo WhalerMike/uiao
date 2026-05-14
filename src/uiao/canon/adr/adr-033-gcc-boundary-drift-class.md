@@ -16,6 +16,9 @@ canon_refs:
   - Appendix_M_Drift_Detection_Engine
   - Appendix_X_Governance_Telemetry_Model
 uiao_doc_ref: UIAO_GCC_001
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-033-gcc-boundary-drift-class.html
 ---
 
 # ADR-030: GCC Boundary Drift Class and Compensating Controls Architecture

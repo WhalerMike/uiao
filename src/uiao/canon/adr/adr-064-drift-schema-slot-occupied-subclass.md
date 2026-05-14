@@ -16,6 +16,9 @@ canon_refs:
   - UIAO_163_Drift_Detection_Engine_Specification
   - UIAO_167_SLA_Escalation_Playbooks
   - UIAO_173_Canonical_Error_Taxonomy
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-064-drift-schema-slot-occupied-subclass.html
 ---
 
 # ADR-064: DRIFT-SCHEMA::slot-occupied — Sub-class for Pre-existing Non-OrgPath Values

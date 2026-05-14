@@ -12,6 +12,9 @@ supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-003-api-driven-inbound-provisioning.html
 ---
 
 # ADR-003: API-Driven Inbound Provisioning as HR-Agnostic Canonical Path

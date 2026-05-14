@@ -12,6 +12,9 @@ supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-067-intune-first-asset-onboarding.html
 ---
 
 # ADR-067: Intune-First Asset Onboarding — All-Platform Doctrine for Net-New Assets

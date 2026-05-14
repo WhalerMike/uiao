@@ -12,6 +12,9 @@ supersedes: null
 superseded_by: null
 classification: Controlled
 boundary: GCC-Moderate
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-068-canon-publication-policy.html
 ---
 
 # ADR-068: Canon Publication Policy — `publish_to_site` Frontmatter Field and Publication-Gap Scanner

@@ -8,6 +8,9 @@ owner: Michael Stratton
 boundary: GCC-Moderate
 created_at: "2026-04-28"
 updated_at: "2026-04-28"
+publish_to_site: true
+publication_style: include
+published_at: docs/adr/adr-index.html
 ---
 
 # Architectural Decision Records — Index
