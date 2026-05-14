@@ -1,23 +1,132 @@
-control-id: CP-9
-title: Information System Backup
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : CP-9
+# Title      : System Backup
+# Schema     : data/control-library (uiao canonical format)
+
+control_id: CP-9
+title: System Backup
+family: Contingency Planning
 status: implemented
-implemented-by:
-  - azure-backup
-  - recovery-services-vault
-narrative: |
-  {{ organization.name }} performs regular backups of system data and state information.
 
-  **Automated Backup Strategy**
-  Azure Backup with Recovery Services Vaults handles daily/weekly backups of critical data and VMs. Cross-Region Restore is enabled for regional outage resilience.
+implemented_by:
+    - azure-backup
+    - azure-recovery-services-vault
+    - azure-backup-vault
+    - azure-storage-immutable-blob
+    - azure-key-vault
+    - microsoft-sentinel
 
-  **Backup Protection**
-  Backups are encrypted with customer-managed keys, protected by Multi-User Authorization (MUA) and immutability settings to defend against ransomware.
-parameters:
-  backup-frequency: "Daily incremental + Weekly full"
-  retention-period: "30 Days (Production)"
 evidence:
-  - type: configuration
-    ref: CP-9-evidence
+    - azure-backup-job-history
+    - recovery-services-vault-immutability-attestation
+    - backup-restore-test-records
+    - azure-policy-backup-compliance-report
+    - sentinel-backup-deletion-detections
+
+parameters:
+    - id: PARAM-CP-009-001
+      description: >-
+          Backup frequency and retention by workload tier.
+      value: "Tier 0 (identity broker state, evidence ledger, configuration-as-code repositories): continuous Git replication + 4-hour application-consistent snapshot + 7-year retention. Tier 1 (tenant production): daily incremental + weekly full + 90-day standard retention + 7-year regulatory retention for in-scope datasets. Tier 2 (internal): daily backup + 30-day retention. Tier 3 (development): weekly backup + 14-day retention"
+    - id: PARAM-CP-009-002
+      description: >-
+          Required backup protections to defend against ransomware
+          and insider-threat deletion patterns.
+      value: "Customer-managed encryption keys for all backup data; Multi-User Authorization (MUA) required for backup-policy modification; immutability lock with the storage-immutability-policy for the regulatory-retention window; soft-delete with 14-day recovery window mandatory; separate Entra ID tenant for backup-vault administration (where supported) to provide tenant-level blast-radius isolation"
+    - id: PARAM-CP-009-003
+      description: >-
+          Backup geographic-redundancy requirements.
+      value: "Tier 0: geo-redundant with replication to the paired Azure region plus an out-of-region archive copy to a third geographic region. Tier 1: geo-redundant with read-access enabled in the paired region (GRS-RA). Tier 2: locally redundant within the primary region with periodic cross-region archive. Tier 3: locally redundant"
+    - id: PARAM-CP-009-004
+      description: >-
+          Restore-test cadence to validate backup integrity.
+      value: "Tier 0: quarterly automated restore tests with documented success criteria; annual cold-recovery drill restoring from out-of-region archive. Tier 1: monthly automated restore tests for the largest 10% of workloads by criticality. Tier 2-3: quarterly sampled restore tests"
+
+narrative: |
+  **Backup Coverage by Tier**
+  Every workload within the substrate is backed up at the cadence
+  defined in PARAM CP-009-001. Backup coverage is canonical: no
+  workload runs in production without a documented backup
+  configuration recorded against the workload's CMDB-CI entry. The
+  configuration-as-code pre-merge gate enforces this requirement,
+  rejecting Terraform plans that introduce new production
+  workloads without backup configuration; this satisfies **CM-3**
+  (Configuration Change Control) and **CM-6** (Configuration
+  Settings).
+
+  **Encrypted, Multi-User-Authorized Backups**
+  All backups use customer-managed encryption keys stored in Azure
+  Key Vault Premium per **SC-12** (Cryptographic Key Establishment).
+  Backup-policy modifications require Multi-User Authorization in
+  the Recovery Services Vault: a separate approver from the
+  requestor must approve the change, providing the **AC-5**
+  (Separation of Duties) gate against insider-threat backup
+  tampering. The MUA approver list is governed by Entra PIM and
+  is reviewed quarterly.
+
+  **Immutability and Soft-Delete**
+  Backups designated for regulatory-retention windows carry the
+  storage-immutability policy with a write-once retention lock per
+  PARAM CP-009-002. Immutable backups cannot be modified or
+  deleted even by a tenant-administrator-level adversary,
+  defending against the canonical ransomware kill-chain pattern
+  where attackers destroy backups before encrypting production
+  data. Soft-delete is mandatory with a 14-day recovery window,
+  providing the operational safety net for accidental backup
+  deletion.
+
+  **Geographic Redundancy**
+  Backups are stored with the geographic-redundancy posture
+  defined in PARAM CP-009-003. Tier 0 backups maintain three
+  geographic copies (primary region, paired secondary region, and
+  out-of-region archive) so a regional-pair compromise does not
+  eliminate the recovery capability. Tier 1 uses GRS-RA so the
+  paired region's read-access enables faster recovery initiation.
+  This supports **CP-6** (Alternate Storage Site).
+
+  **Restore Validation**
+  Restore is the only test that validates a backup. PARAM
+  CP-009-004 defines the restore-test cadence. Automated restore
+  tests execute against an isolated test environment, restoring
+  the backup payload and validating against checksums and
+  application-level health probes. Tests that fail the success
+  criteria generate a Microsoft Sentinel incident and a
+  ServiceNow ticket routed to the workload owner. The annual cold
+  recovery drill exercises the worst-case scenario of restoring
+  from the out-of-region archive into a clean substrate.
+
+  **Backup-Deletion Detection**
+  Microsoft Sentinel runs detection rules tuned for backup
+  tampering indicators: backup-policy changes outside the change
+  window, soft-deleted backup recovery operations, MUA approval-
+  bypass attempts, geographic-redundancy downgrade operations,
+  unusual restore-frequency patterns. Detections route to the SOC
+  with priority routing for Tier 0 anomalies. This continuous
+  monitoring closes the silent-tamper failure mode that
+  historically defeated backup-based recovery strategies.
+
+  **Integration with the Configuration-as-Code Substrate**
+  Configuration-as-code repositories (Terraform modules, Conditional
+  Access policies, Sentinel analytics rules, OSCAL artifacts) are
+  the substrate's source-of-truth for system configuration and are
+  backed up via continuous Git replication to a separate-tenant
+  cold-storage destination per the Tier 0 cadence. In a worst-case
+  subscription-compromise scenario, clean-slate redeploy from these
+  artifacts is the canonical recovery path per **CP-2**
+  (Contingency Plan) and **ADR-041** (substrate release manifest).
+
 related_controls:
-  - CP-4
-  - IR-5
+    - AC-5   # Separation of Duties
+    - AC-6   # Least Privilege
+    - AU-2   # Event Logging
+    - CA-7   # Continuous Monitoring
+    - CM-3   # Configuration Change Control
+    - CM-6   # Configuration Settings
+    - CP-2   # Contingency Plan
+    - CP-6   # Alternate Storage Site
+    - CP-10  # System Recovery and Reconstitution
+    - IR-4   # Incident Handling
+    - SC-12  # Cryptographic Key Establishment
+    - SC-13  # Cryptographic Protection
+    - SC-28  # Protection of Information at Rest
+    - SI-4   # System Monitoring
