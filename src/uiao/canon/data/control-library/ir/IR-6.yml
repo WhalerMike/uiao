@@ -1,20 +1,143 @@
-control-id: IR-6
-title: Incident Reporting
-status: implemented
-implemented-by:
-  - microsoft-sentinel
-  - azure-service-health
-narrative: |
-  {{ organization.name }} reports security incidents to designated authorities within required timeframes.
+# NIST SP 800-53 Rev 5 - Control Narrative
+# Control ID : IR-6
+# Title      : Incident Reporting
+# Schema     : data/control-library (uiao canonical format)
 
-  **Reporting Workflow**
-  High-severity incidents are escalated immediately to the ISSO and external authorities (US-CERT / Agency SOC). Automated notifications from Sentinel include enriched context and investigation links.
-parameters:
-  reporting-window: "1 Hour (Critical) / 24 Hours (Standard)"
-  authority-contact: "US-CERT / Agency SOC"
+control_id: IR-6
+title: Incident Reporting
+family: Incident Response
+status: implemented
+
+implemented_by:
+    - servicenow-security-incident-response
+    - microsoft-sentinel
+    - microsoft-power-automate
+    - azure-service-health
+    - microsoft-defender-xdr
+
 evidence:
-  - type: configuration
-    ref: IR-6-evidence
+    - servicenow-sir-external-report-records
+    - cisa-cyber-incident-report-submissions
+    - fedramp-incident-notification-records
+    - power-automate-notification-playbook-runs
+    - sentinel-incident-export
+
+parameters:
+    - id: PARAM-IR-006-001
+      description: >-
+          Mandatory external reporting destinations and applicable
+          authorities.
+      value: "CISA (per the Cyber Incident Reporting for Critical Infrastructure Act — CIRCIA, where applicable); FedRAMP Joint Authorization Board (FedRAMP Moderate substrate per the Continuous Monitoring requirement); agency-side SOC and Authorizing Official; agency-side privacy office for any incident with potential PII exposure; agency Inspector General for incidents involving fraud or misuse; law enforcement for criminal-pattern incidents per agency policy"
+    - id: PARAM-IR-006-002
+      description: >-
+          Reporting timeline by incident class.
+      value: "Critical (substrate compromise, active data exfiltration, ransomware): initial notification to agency SOC and CISA within 1 hour of confirmed compromise; written report within 24 hours; CIRCIA reporting per applicable timeline (72-hour written report; 24-hour ransomware-payment notification). High (privileged-account abuse, lateral movement): initial notification within 4 hours; written report within 72 hours. Standard (policy violations, blocked attempts of note): inclusion in the monthly FedRAMP ConMon report"
+    - id: PARAM-IR-006-003
+      description: >-
+          Required content of an incident report consistent with
+          CISA reporting templates and FedRAMP ConMon requirements.
+      value: "Substrate identifier and authorization boundary; incident type and severity classification; timestamp of detection, containment, eradication, and recovery (where reached); attack vector if known; affected components and data classes; user / personnel impact assessment; mitigation status; coordination contacts; CVE / IOC references; recommended actions for similar substrates"
+    - id: PARAM-IR-006-004
+      description: >-
+          Notification roster for substrate-internal stakeholders.
+      value: "System Owner, UIAO CISO, Authorizing Official, FedRAMP PMO POC, ISSO, agency-side Office of Information Security, agency-side Public Affairs (for incidents with potential public-disclosure implications), Legal Counsel (for incidents triggering regulatory or contractual disclosure obligations)"
+
+narrative: |
+  **Reporting-Destination Authority**
+  External reporting destinations are defined authoritatively in
+  PARAM IR-006-001 with the legal or contractual basis for each
+  destination documented in the IR plan. The destination roster
+  is reviewed annually and immediately on any change to applicable
+  law or contract (CIRCIA implementation guidance, FedRAMP
+  ConMon requirement updates, agency-specific reporting MOUs).
+  This roster review prevents the silent-deprecation failure mode
+  where a reporting requirement lapses or a new requirement goes
+  unmet.
+
+  **Timeline Compliance**
+  Reporting timelines defined in PARAM IR-006-002 are tracked
+  against each incident as explicit SLO commitments. Initial
+  notifications are dispatched by Microsoft Power Automate
+  playbooks the moment an incident's severity is confirmed at
+  Critical or High; the playbooks route to the agency SOC,
+  designated authorities, and the internal stakeholder roster per
+  PARAM IR-006-004 with the incident's preliminary scope. The
+  initial-notification window is treated as a hard SLO; missed
+  notifications generate a governance incident reviewed by the
+  CISO within 1 business day.
+
+  **CIRCIA Compliance**
+  Substrate components within the scope of the Cyber Incident
+  Reporting for Critical Infrastructure Act (CIRCIA) trigger the
+  CIRCIA reporting pathway when the substrate's sector designation
+  applies. The reporting pathway is encoded as a Power Automate
+  flow with the CISA CIRCIA reporting endpoint and the applicable
+  72-hour written-report template; ransomware payment events
+  (when relevant) follow the 24-hour notification timeline. The
+  CIRCIA pathway is exercised in the annual tabletop per **IR-3**
+  (Incident Response Testing).
+
+  **FedRAMP Continuous Monitoring Integration**
+  Incident-reporting outputs integrate with the FedRAMP
+  Continuous Monitoring program submitted to the Joint
+  Authorization Board on the monthly cadence. ConMon includes the
+  aggregated incident inventory for the period, severity
+  distribution, response-time metrics against SLO, and a notable-
+  incidents narrative. The ConMon submission is the
+  authoritative external visibility surface for FedRAMP-relevant
+  incidents and is the artifact of record reviewed by the JAB.
+
+  **Report Content Standardization**
+  All external reports use the standardized content schema
+  defined in PARAM IR-006-003. The schema aligns with the CISA
+  cyber-incident reporting template and the FedRAMP incident
+  notification template, ensuring that reports are immediately
+  usable by the receiving authority without supplemental
+  clarification. ServiceNow SIR templates encode the schema and
+  pre-populate the substrate-identifier, authorization-boundary,
+  and stakeholder-roster fields from the substrate metadata.
+
+  **Internal Stakeholder Communication**
+  The notification roster defined in PARAM IR-006-004 covers
+  every internal party with a need-to-know or
+  decision-responsibility. Power Automate playbooks dispatch the
+  initial notification to the full roster on every Critical /
+  High incident; the playbook records dispatch receipts against
+  the incident ticket, providing the auditable communication
+  chain. Stakeholders confirm receipt and acknowledge the
+  incident via the embedded acknowledgement link consistent with
+  **CA-7** (Continuous Monitoring).
+
+  **Public Disclosure Coordination**
+  Incidents with potential public-disclosure implications route
+  to the agency Public Affairs office through the notification
+  workflow. Public-disclosure decisions are owned by Public
+  Affairs in consultation with Legal Counsel, the CISO, and the
+  Authorizing Official; the substrate IR team supports the
+  decision with the technical evidence package but does not
+  drive the disclosure-or-not decision. This separation
+  preserves agency-wide messaging coherence and prevents
+  uncoordinated technical disclosure.
+
+  **Post-Reporting Closure Loop**
+  Once external reporting obligations are satisfied, the report-
+  closure outcome (acknowledgement, follow-up request, or
+  authority-driven action) is recorded against the incident
+  ticket. Closure outcomes feed back into the IR plan review and
+  the **IR-5** (Incident Monitoring) metrics, ensuring that
+  reporting is a complete cycle rather than a one-way send.
+
 related_controls:
-  - CP-4
-  - IR-5
+    - AU-6   # Audit Record Review
+    - CA-3   # Information Exchange
+    - CA-7   # Continuous Monitoring
+    - IR-1   # Policy and Procedures
+    - IR-3   # Incident Response Testing
+    - IR-4   # Incident Handling
+    - IR-5   # Incident Monitoring
+    - IR-7   # Incident Response Assistance
+    - IR-8   # Incident Response Plan
+    - PM-14  # Testing, Training, and Monitoring
+    - PM-15  # Security and Privacy Groups and Associations
+    - SI-4   # System Monitoring
+    - SI-5   # Security Alerts, Advisories, and Directives
