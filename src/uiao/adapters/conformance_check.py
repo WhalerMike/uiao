@@ -52,7 +52,7 @@ def check_adapter(cls: type) -> List[Dict[str, Any]]:
     results: List[Dict[str, Any]] = []
     adapter_id = cls.ADAPTER_ID  # type: ignore[attr-defined]  # duck-typed: every adapter class declares ADAPTER_ID
 
-    def _record(criterion_id: str, description: str, passed: bool, detail: str = ""):
+    def _record(criterion_id: str, description: str, passed: bool, detail: str = "") -> None:
         results.append(
             {
                 "criterion": criterion_id,
@@ -192,7 +192,11 @@ def run_all(adapter_filter: str | None = None) -> Dict[str, Any]:
     if adapter_filter:
         classes = {k: v for k, v in classes.items() if k == adapter_filter}
 
-    report = {
+    # Heterogeneous nested values (str metadata, per-adapter dict, summary
+    # int counters); annotating as `Dict[str, Any]` keeps mypy from inferring
+    # `Dict[str, Collection[str]]` which then refuses indexed assignment on
+    # `report["adapters"][aid] = ...` and `report["summary"]["pass"] += ...`.
+    report: Dict[str, Any] = {
         "generated": datetime.now(timezone.utc).isoformat(),
         "template": "uiao/canon/specs/adapter-conformance-test-plan-template.md v1.0",
         "adapters": {},
