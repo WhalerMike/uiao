@@ -1,0 +1,69 @@
+ksi_id: KSI-SNOW-001
+title: Change-Making Actions Produce ServiceNow Ticket Within Freshness Window
+category: configuration-management
+description: >
+  Every change-making action executed through the UIAO ServiceNow adapter must
+  emit a corresponding ServiceNow change ticket (change_request table) whose
+  `sys_created_on` timestamp falls within the adapter's configured freshness
+  window (default PT24H).  Actions that lack a paired ticket, or whose ticket
+  was created outside the freshness window, indicate that the change-management
+  audit trail is incomplete and that the controlling ATO may be operating on
+  stale authorisation evidence.
+security_objective: >
+  Guarantee that every configuration-impacting action is traceable to a
+  formal change record in ServiceNow within the required time boundary,
+  enabling continuous monitoring under CA-7 and ensuring that the incident
+  response record produced under IR-4 is anchored to a verified change event.
+related_controls:
+  - CA-7
+  - IR-4
+validation_type: automated
+evidence_sources:
+  - custom
+pass_criteria:
+  description: >
+    Zero change-making actions whose matching ServiceNow change_request record
+    is absent or whose `sys_created_on` exceeds the adapter freshness window
+    (default 24 hours) relative to the action timestamp.
+  type: threshold
+  threshold: 0
+  operator: equals
+  logic: >
+    SELECT a.action_id, a.action_timestamp, cr.sys_created_on
+    FROM uiao_change_actions a
+    LEFT JOIN servicenow_change_requests cr
+           ON cr.correlation_id = a.action_id
+    WHERE cr.sys_id IS NULL
+       OR TIMESTAMPDIFF(SECOND, a.action_timestamp, cr.sys_created_on)
+          > a.freshness_window_seconds
+    HAVING COUNT(*) = 0
+uiao_extensions:
+  gcc_moderate_focus: true
+  zero_trust_telemetry: true
+  custom_validation_logic: servicenow.validators.change_ticket_freshness
+oscal_props:
+  implementation_status_prop: implemented
+  evidence_type: observation
+version: "1.0"
+last_updated: "2026-05-14"
+enabled: true
+tags:
+  - servicenow
+  - change-management
+  - freshness-window
+  - continuous-monitoring
+  - ca-7
+  - ir-4
+severity: high
+nist_mappings:
+  primary: CA-7
+  secondary:
+    - IR-4
+fedramp_controls:
+  - CA-7
+  - IR-4
+provenance:
+  spec_ref: v0.6.1-servicenow
+  adr_ref: ADR-049
+  ruleset_version: "1.0"
+  introduced_by: WS-A3
