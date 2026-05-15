@@ -1,11 +1,11 @@
 ---
 document_id: IFO_004
 title: "Validation Checklist, Drift Classes, and Evidence Emission"
-version: "1.0"
+version: "1.1"
 status: CANONICAL
 owner: "Michael Stratton"
 created_at: "2026-05-13"
-updated_at: "2026-05-14"
+updated_at: "2026-05-15"
 boundary: GCC-Moderate
 canon_anchor: ADR-071
 publish_to_site: true
@@ -62,6 +62,15 @@ audit log.
       Server 2025+)
 
 ### OrgPath and group membership
+
+The OrgPath stamped on the device must trace back to exactly one
+source in the OrgPath assignment authority chain (see
+[`doctrine.md`](doctrine.md) §5). For an asset acquired through the
+procurement integration, the expected source is priority 1
+(procurement record). For pre-doctrine, BYOD, or
+procurement-record-absent devices, the expected source is priority 3
+(user derivation) or priority 4 (`/UNPOSITIONED` quarantine); the
+audit log entry recording the stamp identifies which.
 
 - [ ] OrgPath extension attribute on the Entra device object equals
       `asset_orgpath` from the procurement record
