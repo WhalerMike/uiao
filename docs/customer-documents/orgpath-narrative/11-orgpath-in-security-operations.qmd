@@ -31,6 +31,26 @@ The third missing connection is between OrgPath and the Microsoft Sentinel monit
 
 The fourth missing connection is between OrgPath and Azure RBAC at the resource plane. Arc-managed servers and Azure resources are the infrastructure that the identities governed by OrgPath actually operate on. A governance model that covers identity plane access but leaves resource plane access control as a separately managed concern produces a well-governed identity estate sitting on top of an ungoverned resource estate. Tag-based RBAC assignments tied to OrgPath dynamic groups close this gap — they extend the same structural governance to the resource plane and make Azure RBAC assignments as responsive to organizational changes as the directory group memberships that Part Four established.
 
+```{mermaid}
+graph LR
+    OPATH["OrgPath substrate<br/>users, devices, servers"]
+    subgraph "Four operational integrations"
+        PIM["PIM eligibility groups<br/>(ORG-BRANCH-{id} per node)"]
+        MOVE["Lifecycle Workflow mover<br/>OrgPath change to realign + review"]
+        SENT["Sentinel KQL queries<br/>activations + drift by segment"]
+        RBAC["Azure RBAC via tag-based assignments<br/>(resource plane)"]
+    end
+    OPATH --> PIM
+    OPATH --> MOVE
+    OPATH --> SENT
+    OPATH --> RBAC
+    AUDIT["Versioned governance record<br/>audit + compliance evidence"]
+    PIM --> AUDIT
+    MOVE --> AUDIT
+    SENT --> AUDIT
+    RBAC --> AUDIT
+```
+
 ### Architecture of This Document
 
 Chapter Two covers the automation of PIM group eligibility assignment from OrgPath. It presents the complete pipeline script that keeps PIM eligibility synchronized with the current OrgTree registry without human intervention, and explains every design decision in the implementation so that the engineering team can maintain and extend the pipeline as OrgTree evolves.

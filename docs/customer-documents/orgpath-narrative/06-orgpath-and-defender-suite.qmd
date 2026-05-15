@@ -77,6 +77,30 @@ It is worth distinguishing between organizational context and asset management m
 
 ### What OrgPath Changes About the SOC Operating Model
 
+```{mermaid}
+graph LR
+    REG["OrgTree Registry"]
+    ATTR["OrgPath<br/>on users, devices, Arc tags"]
+    REG --> ATTR
+    subgraph "Defender suite (siloed signals without OrgPath)"
+        MDE["Defender for Endpoint<br/>device groups + RBAC scope"]
+        MDI["Defender for Identity<br/>entity profiles + Sentinel rules"]
+        MDA["Defender for Cloud Apps<br/>session controls + anomaly"]
+        MDC["Defender for Cloud + Servers<br/>Azure Policy by OrgTier tag"]
+    end
+    XDR["Defender XDR + Microsoft Sentinel<br/>(cross-product correlation)"]
+    PLAY["Logic App playbooks<br/>OrgPath-aware response matrix"]
+    ATTR -->|"dynamic group membership"| MDE
+    ATTR -->|"identity org context"| MDI
+    ATTR -->|"per-segment baselines"| MDA
+    ATTR -->|"resource tag targeting"| MDC
+    MDE --> XDR
+    MDI --> XDR
+    MDA --> XDR
+    MDC --> XDR
+    XDR --> PLAY
+```
+
 When every device, user, and Arc-enrolled server in the environment carries an OrgPath value, and when that value is present in the telemetry streams that feed Microsoft Sentinel and the Defender portal, organizational context becomes a first-class attribute in every investigation. The change this makes to the SOC operating model is architectural, not cosmetic.
 
 An alert on a device whose OrgPath is /Root/Finance/Accounting arrives in the analyst's queue already annotated: Finance policies apply, the Accounting unit's responsible SOC analyst is designated by the RBAC role assignment that scopes to the MDE-FINANCE-ACCOUNTING device group, the containment action follows the Finance incident response runbook entry in the response matrix, and the Sentinel workbook places this alert in the Finance organizational view alongside all other Finance-segment alerts from Defender for Identity, Defender for Cloud Apps, and Defender for Cloud. The analyst does not reconstruct any of that context. It is present in the data, surfaced by the platform, and acted on by the automation layer before the analyst even opens the incident.

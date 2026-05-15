@@ -105,6 +105,29 @@ The companion document required that every user and device identity carry an aut
 
 ## Chapter 4 — The Registry and the Attribute — A Closed Governance Loop
 
+```{mermaid}
+graph LR
+    subgraph "Authority"
+        TREE["OrgTree Registry<br/>versioned, governed artifact"]
+    end
+    subgraph "Mechanism"
+        PIPE["Governance Pipeline<br/>derive, validate, stamp"]
+    end
+    subgraph "Live Environment"
+        ATTR["OrgPath Attribute<br/>on every user, device, server"]
+        GROUPS["Dynamic Groups<br/>node + branch"]
+        POLICY["Policy Coverage"]
+    end
+    REPO["Governance Repository<br/>every change committed"]
+    TREE -->|"defines valid paths"| PIPE
+    PIPE -->|"stamps validated value"| ATTR
+    ATTR -->|"prefix and exact match"| GROUPS
+    GROUPS -->|"scoped assignment"| POLICY
+    POLICY -.->|"drift findings feed back"| PIPE
+    TREE -.-> REPO
+    PIPE -.-> REPO
+```
+
 ### The Relationship Between OrgTree and OrgPath
 
 OrgTree and OrgPath are not two independent constructs that happen to be useful in proximity. They are two components of a single closed loop, and neither is meaningful without the other. OrgTree defines what the organization looks like: the nodes, the relationships, the lineages, the governance metadata. OrgPath expresses where each asset sits in that definition: the validated, pipeline-derived, attribute-stamped coordinate for each individual identity or resource. Every OrgPath value is derived from OrgTree and is only valid in relation to OrgTree. There is no such thing as an OrgPath value that exists independently of the organizational model it references.
@@ -136,6 +159,16 @@ The OrgTree-OrgPath system, taken together, establishes a single, governed, vali
 ::: {.callout-note title="Requirement Being Addressed — Policy Inheritance"}
 The companion document established that policy must be derivable from organizational position, not only from explicit group assignment, and that the mechanism for this derivation must be a position attribute combined with a dynamic group library maintained by the hierarchy registry. Policy authors must be able to target a segment of the organizational hierarchy and have that targeting apply to all identities at and below that segment, without maintaining explicit lists of members.
 :::
+
+```{mermaid}
+graph TD
+    NODE["OrgTree node<br/>ops / field-svc / region-west"]
+    NODE --> NG["Node Group<br/>rule: OrgPath -eq ops/field-svc/region-west"]
+    NODE --> BG["Branch Group<br/>rule: OrgPath -startsWith ops/field-svc/region-west"]
+    NG --> POL1["Policy applies only at this unit<br/>(equivalent: GPO with block-inheritance)"]
+    BG --> POL2["Policy flows down the subtree<br/>(equivalent: GPO with inheritance)"]
+    BG -.->|"new child node added to OrgTree"| AUTO["Membership extends automatically<br/>no group edit required"]
+```
 
 ### The Dynamic Group Architecture
 

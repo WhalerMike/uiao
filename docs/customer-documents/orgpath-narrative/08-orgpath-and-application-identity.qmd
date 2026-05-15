@@ -37,6 +37,38 @@ A managed identity is a special-purpose service principal created and managed by
 
 ### OrgPath Integration Points
 
+```{mermaid}
+graph LR
+    REG["OrgTree Registry"]
+    subgraph "Application identity types"
+        APP["App Registration<br/>(tenant-owned application definition)"]
+        SP_HOME["Home-tenant Service Principal<br/>(auto-created with app reg)"]
+        SP_ENT["Enterprise App Service Principal<br/>(third-party / consented)"]
+        MI_SA["System-assigned Managed Identity<br/>(tied to Azure resource)"]
+        MI_UA["User-assigned Managed Identity<br/>(independent resource)"]
+    end
+    OWNER["Owner OrgPath<br/>extension attribute"]
+    RES_OPATH["Resource OrgPath tag<br/>(inherited from Arc machine)"]
+    REG --> OWNER
+    REG --> RES_OPATH
+    OWNER --> APP
+    OWNER --> SP_ENT
+    OWNER --> MI_UA
+    APP -->|"instantiates"| SP_HOME
+    RES_OPATH --> MI_SA
+    subgraph "Governance machinery (drives next chapters)"
+        CONSENT["Admin consent workflow<br/>(per-segment approver group)"]
+        REVIEW["Semi-annual Access Reviews<br/>(default Deny)"]
+        DRIFT["Drift detection<br/>(unowned, stale, expired)"]
+        SENT["Sentinel WatchList<br/>+ KQL queries"]
+    end
+    OWNER --> CONSENT
+    OWNER --> REVIEW
+    OWNER --> DRIFT
+    OWNER --> SENT
+    RES_OPATH --> DRIFT
+```
+
 The OrgPath governance model defines two distinct integration points for application identities, serving different purposes and implemented through different mechanisms, but together providing complete organizational context for every application identity in the tenant.
 
 The first integration point is the owner OrgPath. Every app registration and every user-assigned managed identity is stamped with an OrgPath extension attribute that identifies the organizational node whose team is accountable for that identity. The attribute value follows the same slash-delimited path syntax used throughout the series — for example, /Root/Engineering/Platform — and must reference an active node in the OrgTree registry. The owner OrgPath answers the accountability question: when a governance process needs to know who is responsible for this application, who should receive the credential expiry notification, who is invited to the Access Review, and who must approve changes to the application's permission grants, the owner OrgPath provides the organizational address of that team. It is set on the application object itself, using the same schema extension attribute type registered in Part Four, extended to cover the Application object type as described in Chapter Two.
