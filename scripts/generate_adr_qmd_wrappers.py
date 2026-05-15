@@ -210,11 +210,8 @@ def render_adr_index(adr_metadata: list[dict[str, str]]) -> str:
     """Build a docs/adr/adr-index.qmd aggregate index page."""
     rows = []
     for meta in sorted(adr_metadata, key=lambda m: m["adr_id"]):
-        rows.append(
-            f"| [{meta['adr_id']}]({meta['stem']}.qmd) | "
-            f"{meta['title'].replace('|', '\\|')} | "
-            f"{meta['status']} | {meta['date']} |"
-        )
+        escaped_title = meta["title"].replace("|", "\\|")
+        rows.append(f"| [{meta['adr_id']}]({meta['stem']}.qmd) | {escaped_title} | {meta['status']} | {meta['date']} |")
     table = "\n".join(rows)
     return f"""---
 title: "Architecture Decision Records — Index"
